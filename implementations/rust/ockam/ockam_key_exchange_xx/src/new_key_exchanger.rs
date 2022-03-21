@@ -1,5 +1,4 @@
-use crate::state::State;
-use crate::{Initiator, Responder, XXVault};
+use crate::{KeyExchange, XXVault};
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{AsyncTryClone, Result};
 use ockam_key_exchange_core::NewKeyExchanger;
@@ -19,17 +18,15 @@ impl<V: XXVault> XXNewKeyExchanger<V> {
 
 #[async_trait]
 impl<V: XXVault> NewKeyExchanger for XXNewKeyExchanger<V> {
-    type Initiator = Initiator<V>;
-    type Responder = Responder<V>;
+    type Initiator = KeyExchange<V>;
+    type Responder = KeyExchange<V>;
     /// Create a new initiator using the provided backing vault
-    async fn initiator(&self) -> Result<Initiator<V>> {
-        let ss = State::new(&self.vault).await?;
-        Ok(Initiator::new(ss))
+    async fn initiator(&self) -> Result<KeyExchange<V>> {
+        KeyExchange::new(true, self.vault.async_try_clone().await?).await
     }
 
     /// Create a new responder using the provided backing vault
-    async fn responder(&self) -> Result<Responder<V>> {
-        let ss = State::new(&self.vault).await?;
-        Ok(Responder::new(ss))
+    async fn responder(&self) -> Result<KeyExchange<V>> {
+        KeyExchange::new(false, self.vault.async_try_clone().await?).await
     }
 }

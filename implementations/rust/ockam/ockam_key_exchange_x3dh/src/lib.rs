@@ -22,6 +22,8 @@ mod responder;
 pub use responder::*;
 mod new_key_exchanger;
 pub use new_key_exchanger::*;
+mod cipher;
+pub use cipher::*;
 
 /// Represents and (X)EdDSA or ECDSA signature
 /// from Ed25519 or P-256
@@ -163,18 +165,30 @@ mod tests {
                 }
             }
 
-            let initiator = initiator.finalize().await.unwrap();
-            let responder = responder.finalize().await.unwrap();
+            let mut initiator = initiator.finalize().await.unwrap();
+            let mut responder = responder.finalize().await.unwrap();
 
             assert_eq!(initiator.h(), responder.h());
 
-            let s1 = vault.secret_export(initiator.encrypt_key()).await.unwrap();
-            let s2 = vault.secret_export(responder.decrypt_key()).await.unwrap();
+            let s1 = vault
+                .secret_export(&initiator.encryption_cipher().k())
+                .await
+                .unwrap();
+            let s2 = vault
+                .secret_export(&responder.decryption_cipher().k())
+                .await
+                .unwrap();
 
             assert_eq!(s1.as_ref(), s2.as_ref());
 
-            let s1 = vault.secret_export(initiator.decrypt_key()).await.unwrap();
-            let s2 = vault.secret_export(responder.encrypt_key()).await.unwrap();
+            let s1 = vault
+                .secret_export(&initiator.decryption_cipher().k())
+                .await
+                .unwrap();
+            let s2 = vault
+                .secret_export(&responder.encryption_cipher().k())
+                .await
+                .unwrap();
 
             assert_eq!(s1.as_ref(), s2.as_ref());
             ctx.stop().await.unwrap();

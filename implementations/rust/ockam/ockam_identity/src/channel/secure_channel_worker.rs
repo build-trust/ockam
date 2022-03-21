@@ -108,7 +108,6 @@ impl<I: IdentityTrait, T: TrustPolicy> SecureChannelWorker<I, T> {
                 route,
                 Some(self_remote_address_clone),
                 initiator,
-                vault,
             )
             .await
         });

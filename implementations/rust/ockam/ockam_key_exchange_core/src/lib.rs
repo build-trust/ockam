@@ -22,14 +22,31 @@ extern crate core;
 extern crate alloc;
 
 use ockam_core::compat::{string::String, vec::Vec};
-use ockam_core::vault::Secret;
+use ockam_core::vault::Buffer;
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use zeroize::Zeroize;
 
 /// A trait implemented by both Initiator and Responder peers.
 #[async_trait]
-pub trait KeyExchanger {
+pub trait Cipher: Send + 'static {
+    /// Sets nonce for out-of-order decryption
+    fn set_nonce(&mut self, nonce: u64);
+
+    /// AEAD encryption
+    async fn encrypt_with_ad(&mut self, ad: &[u8], plaintext: &[u8]) -> Result<Buffer<u8>>;
+
+    /// AEAD decryption
+    async fn decrypt_with_ad(&mut self, ad: &[u8], ciphertext: &[u8]) -> Result<Buffer<u8>>;
+
+    /// Rotate key
+    async fn rekey(&mut self) -> Result<()>;
+}
+
+/// A trait implemented by both Initiator and Responder peers.
+#[async_trait]
+pub trait KeyExchanger: Send + 'static {
+    /// Cipher used for further encryption
+    type Cipher: Cipher;
     /// Return key exchange unique name.
     async fn name(&self) -> Result<String>;
     /// Generate request that should be sent to the other party.
@@ -39,7 +56,7 @@ pub trait KeyExchanger {
     /// Returns true if the key exchange process is complete.
     async fn is_complete(&self) -> Result<bool>;
     /// Return the data and keys needed for channels. Key exchange must be completed prior to calling this function.
-    async fn finalize(self) -> Result<CompletedKeyExchange>;
+    async fn finalize(self) -> Result<CompletedKeyExchange<Self::Cipher>>;
 }
 
 /// A creator of both initiator and responder peers of a key exchange.
@@ -57,36 +74,35 @@ pub trait NewKeyExchanger {
 }
 
 /// The state of a completed key exchange.
-#[derive(Debug, Zeroize)]
-#[zeroize(drop)]
-pub struct CompletedKeyExchange {
+#[derive(Debug)]
+pub struct CompletedKeyExchange<C: Cipher> {
     h: [u8; 32],
-    encrypt_key: Secret,
-    decrypt_key: Secret,
+    encryption_cipher: C,
+    decryption_cipher: C,
 }
 
-impl CompletedKeyExchange {
+impl<C: Cipher> CompletedKeyExchange<C> {
     /// The state hash.
     pub fn h(&self) -> &[u8; 32] {
         &self.h
     }
-    /// The derived encryption key.
-    pub fn encrypt_key(&self) -> &Secret {
-        &self.encrypt_key
+    /// The encryption cipher.
+    pub fn encryption_cipher(&mut self) -> &mut C {
+        &mut self.encryption_cipher
     }
-    /// The derived decryption key.
-    pub fn decrypt_key(&self) -> &Secret {
-        &self.decrypt_key
+    /// The decryption cipher.
+    pub fn decryption_cipher(&mut self) -> &mut C {
+        &mut self.decryption_cipher
     }
 }
 
-impl CompletedKeyExchange {
+impl<C: Cipher> CompletedKeyExchange<C> {
     /// Build a CompletedKeyExchange comprised of the input parameters.
-    pub fn new(h: [u8; 32], encrypt_key: Secret, decrypt_key: Secret) -> Self {
-        CompletedKeyExchange {
+    pub fn new(h: [u8; 32], encryption_cipher: C, decryption_cipher: C) -> Self {
+        Self {
             h,
-            encrypt_key,
-            decrypt_key,
+            encryption_cipher,
+            decryption_cipher,
         }
     }
 }

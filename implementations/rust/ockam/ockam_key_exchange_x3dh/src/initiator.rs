@@ -1,4 +1,4 @@
-use crate::{PreKeyBundle, X3DHError, X3dhVault, CSUITE};
+use crate::{PreKeyBundle, X3DHError, X3dhCipher, X3dhVault, CSUITE};
 use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
@@ -24,10 +24,9 @@ enum InitiatorState {
 pub struct Initiator<V: X3dhVault> {
     identity_key: Option<Secret>,
     ephemeral_identity_key: Option<Secret>,
-    prekey_bundle: Option<PreKeyBundle>,
     state: InitiatorState,
     vault: V,
-    completed_key_exchange: Option<CompletedKeyExchange>,
+    completed_key_exchange: Option<CompletedKeyExchange<X3dhCipher<V>>>,
 }
 
 impl<V: X3dhVault> Initiator<V> {
@@ -35,7 +34,6 @@ impl<V: X3dhVault> Initiator<V> {
         Self {
             identity_key,
             ephemeral_identity_key: None,
-            prekey_bundle: None,
             state: InitiatorState::GenerateEphemeralIdentityKey,
             vault,
             completed_key_exchange: None,
@@ -56,22 +54,10 @@ impl<V: X3dhVault> Initiator<V> {
     }
 }
 
-impl<V: X3dhVault> core::fmt::Debug for Initiator<V> {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(
-            f,
-            r#"X3dhInitiator {{ ephemeral_identity_key: {:?}, prekey_bundle: {:?}, state: {:?}, vault, completed_key_exchange: {:?}, identity_key: {:?} }}"#,
-            self.ephemeral_identity_key,
-            self.prekey_bundle,
-            self.state,
-            self.completed_key_exchange,
-            self.identity_key,
-        )
-    }
-}
-
 #[async_trait]
 impl<V: X3dhVault> KeyExchanger for Initiator<V> {
+    type Cipher = X3dhCipher<V>;
+
     async fn name(&self) -> Result<String> {
         Ok("X3DH".to_string())
     }
@@ -190,8 +176,8 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
 
                 self.completed_key_exchange = Some(CompletedKeyExchange::new(
                     state_hash,
-                    encrypt_key,
-                    decrypt_key,
+                    X3dhCipher::new(self.vault.async_try_clone().await?, encrypt_key),
+                    X3dhCipher::new(self.vault.async_try_clone().await?, decrypt_key),
                 ));
                 self.state = InitiatorState::Done;
                 Ok(vec![])
@@ -206,7 +192,7 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
         Ok(matches!(self.state, InitiatorState::Done))
     }
 
-    async fn finalize(self) -> Result<CompletedKeyExchange> {
+    async fn finalize(self) -> Result<CompletedKeyExchange<Self::Cipher>> {
         self.completed_key_exchange
             .ok_or_else(|| X3DHError::InvalidState.into())
     }

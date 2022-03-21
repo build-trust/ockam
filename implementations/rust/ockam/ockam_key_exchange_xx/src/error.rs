@@ -10,6 +10,12 @@ pub enum XXError {
     InternalVaultError,
     /// A message had an unexpected length.
     MessageLenMismatch,
+    /// Invalid pre-message pattern setup
+    InvalidPreMsgPatternSetup,
+    /// Invalid pre-message pattern setup
+    InvalidHandshakePatternSetup,
+    /// No Noise patterns was left
+    NoPatternsLeft,
 }
 
 impl XXError {

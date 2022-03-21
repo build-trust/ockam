@@ -1945,8 +1945,8 @@ version = "0.41.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
- "ockam_node",
  "ockam_vault",
+ "tokio",
 ]
 
 [[package]]

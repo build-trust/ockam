@@ -1,4 +1,4 @@
-use crate::{SecureChannelNewKeyExchanger, SecureChannelVault, SecureChannelWorker};
+use crate::{SecureChannelNewKeyExchanger, SecureChannelWorker};
 use ockam_core::async_trait;
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
@@ -11,18 +11,14 @@ use tracing::debug;
 
 /// SecureChannelListener listens for messages from SecureChannel initiators
 /// and creates responder SecureChannels
-pub struct SecureChannelListener<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> {
+pub struct SecureChannelListener<N: SecureChannelNewKeyExchanger> {
     new_key_exchanger: N,
-    vault: V,
 }
 
-impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> SecureChannelListener<V, N> {
+impl<N: SecureChannelNewKeyExchanger> SecureChannelListener<N> {
     /// Create a new SecureChannelListener.
-    pub fn new(new_key_exchanger: N, vault: V) -> Self {
-        Self {
-            new_key_exchanger,
-            vault,
-        }
+    pub fn new(new_key_exchanger: N) -> Self {
+        Self { new_key_exchanger }
     }
 }
 
@@ -55,9 +51,7 @@ impl CreateResponderChannelMessage {
 }
 
 #[async_trait]
-impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
-    for SecureChannelListener<V, N>
-{
+impl<N: SecureChannelNewKeyExchanger> Worker for SecureChannelListener<N> {
     type Message = CreateResponderChannelMessage;
     type Context = Context;
 
@@ -78,7 +72,6 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
         );
 
         let responder = self.new_key_exchanger.responder().await?;
-        let vault = self.vault.async_try_clone().await?;
         let channel = SecureChannelWorker::new(
             false,
             reply.clone(),
@@ -87,7 +80,6 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
             msg.completed_callback_address().clone(),
             None,
             responder,
-            vault,
         )
         .await?;
 

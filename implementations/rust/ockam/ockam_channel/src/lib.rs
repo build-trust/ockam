@@ -54,7 +54,6 @@ mod tests {
             ctx,
             "secure_channel_listener".to_string(),
             new_key_exchanger.async_try_clone().await?,
-            vault.async_try_clone().await?,
         )
         .await?;
         let initiator = SecureChannel::create_extended(
@@ -62,7 +61,6 @@ mod tests {
             Route::new().append("secure_channel_listener"),
             None,
             new_key_exchanger.initiator().await?,
-            vault,
         )
         .await?;
 

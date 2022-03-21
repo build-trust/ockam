@@ -1,4 +1,4 @@
-use crate::{PreKeyBundle, Signature, X3DHError, X3dhVault, CSUITE};
+use crate::{PreKeyBundle, Signature, X3DHError, X3dhCipher, X3dhVault, CSUITE};
 use arrayref::array_ref;
 use ockam_core::compat::{
     string::{String, ToString},
@@ -30,7 +30,7 @@ pub struct Responder<V: X3dhVault> {
     one_time_prekey: Option<Secret>,
     state: ResponderState,
     vault: V,
-    completed_key_exchange: Option<CompletedKeyExchange>,
+    completed_key_exchange: Option<CompletedKeyExchange<X3dhCipher<V>>>,
 }
 
 impl<V: X3dhVault> Responder<V> {
@@ -65,27 +65,10 @@ impl<V: X3dhVault> Responder<V> {
     }
 }
 
-impl<V: X3dhVault> core::fmt::Debug for Responder<V> {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(
-            f,
-            r#"X3dhResponder {{ identity_key: {:?},
-                                      signed_prekey: {:?},
-                                      one_time_prekey: {:?},
-                                      state: {:?},
-                                      vault,
-                                      completed_key_exchange: {:?} }}"#,
-            self.identity_key,
-            self.signed_prekey,
-            self.one_time_prekey,
-            self.state,
-            self.completed_key_exchange
-        )
-    }
-}
-
 #[async_trait]
 impl<V: X3dhVault> KeyExchanger for Responder<V> {
+    type Cipher = X3dhCipher<V>;
+
     async fn name(&self) -> Result<String> {
         Ok("X3DH".to_string())
     }
@@ -209,8 +192,8 @@ impl<V: X3dhVault> KeyExchanger for Responder<V> {
 
                 self.completed_key_exchange = Some(CompletedKeyExchange::new(
                     state_hash,
-                    encrypt_key,
-                    decrypt_key,
+                    X3dhCipher::new(self.vault.async_try_clone().await?, encrypt_key),
+                    X3dhCipher::new(self.vault.async_try_clone().await?, decrypt_key),
                 ));
                 self.state = ResponderState::SendBundle;
                 Ok(vec![])
@@ -225,7 +208,7 @@ impl<V: X3dhVault> KeyExchanger for Responder<V> {
         Ok(matches!(self.state, ResponderState::Done))
     }
 
-    async fn finalize(self) -> Result<CompletedKeyExchange> {
+    async fn finalize(self) -> Result<CompletedKeyExchange<Self::Cipher>> {
         self.completed_key_exchange
             .ok_or_else(|| X3DHError::InvalidState.into())
     }

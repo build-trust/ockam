@@ -32,12 +32,10 @@ impl<T: TrustPolicy, I: IdentityTrait, V: XXVault> Worker for IdentityChannelLis
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         let new_key_exchanger = XXNewKeyExchanger::new(self.vault.async_try_clone().await?);
-        let vault = self.vault.async_try_clone().await?;
         SecureChannel::create_listener_extended(
             ctx,
             self.listener_address.clone(),
             new_key_exchanger,
-            vault,
         )
         .await?;
 
