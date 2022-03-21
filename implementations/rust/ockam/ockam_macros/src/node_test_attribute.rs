@@ -1,7 +1,8 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, ToTokens};
-use syn::punctuated::Punctuated;
-use syn::{parse2, AttributeArgs, ItemFn, Meta::NameValue, NestedMeta, ReturnType};
+use syn::{
+    parse2, punctuated::Punctuated, AttributeArgs, ItemFn, Meta::NameValue, NestedMeta, ReturnType,
+};
 
 use crate::internals::attr::{parse_lit_into_int, parse_lit_into_path, Attr};
 use crate::internals::{ast, ast::FnVariable, check, ctx::Context, symbol::*};
@@ -118,7 +119,7 @@ struct Container<'a> {
 }
 
 impl<'a> Container<'a> {
-    pub fn from_ast(
+    fn from_ast(
         ctx: &Context,
         test_fn: &'a mut ItemFn,
         input_fn: ItemFn,
