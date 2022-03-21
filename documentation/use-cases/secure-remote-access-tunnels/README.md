@@ -225,8 +225,8 @@ async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
-    // We know network address of the node with an Outlet, we also know that Outlet lives at "outlet"
-    // address at that node.
+    // We know the network address of the node with an Outlet, we also know that the Outlet is
+    // running at Ockam Worker address "outlet" on that node.
 
     let route_to_outlet = route![(TCP, "127.0.0.1:4000"), "outlet"];
 
@@ -314,12 +314,13 @@ async fn main(ctx: Context) -> Result<()> {
     // Create:
     //   1. A Vault to store our cryptographic keys
     //   2. An Identity to represent this Node
-    //   3. A Secure Channel Listener at Worker address - secure_channel_listener_service
+    //   3. A Secure Channel Listener at Worker address - secure_channel_listener
     //      that will wait for requests to start an Authenticated Key Exchange.
 
     let vault = Vault::create();
     let mut e = Identity::create(&ctx, &vault).await?;
-    e.create_secure_channel_listener("secure_channel_listener_service", TrustEveryonePolicy).await?;
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
+        .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:5000
@@ -368,11 +369,11 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // For this example, we know that the Outlet node is listening for Ockam Routing Messages
     // over TCP at "127.0.0.1:4000" and its secure channel listener is
-    // at address: "secure_channel_listener_service".
+    // at address: "secure_channel_listener".
 
     let vault = Vault::create();
     let mut e = Identity::create(&ctx, &vault).await?;
-    let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener_service"];
+    let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"];
     let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
@@ -473,7 +474,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     let vault = Vault::create();
     let mut e = Identity::create(&ctx, &vault).await?;
-    e.create_secure_channel_listener("secure_channel_listener_service", TrustEveryonePolicy).await?;
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
+        .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:5000
@@ -537,7 +539,11 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Expect second command line argument to be the Outlet node forwarder address
     let forwarding_address = std::env::args().nth(2).expect("no outlet forwarding address given");
-    let r = route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "secure_channel_listener_service"];
+    let r = route![
+        (TCP, "1.node.ockam.network:4000"),
+        forwarding_address,
+        "secure_channel_listener"
+    ];
     let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
