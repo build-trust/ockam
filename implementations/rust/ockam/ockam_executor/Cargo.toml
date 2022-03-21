@@ -14,7 +14,7 @@ repository = "https://github.com/ockam-network/ockam/tree/develop/implementation
 keywords = ["ockam", "crypto", "encryption", "authentication"]
 license = "Apache-2.0"
 name = "ockam_executor"
-version = "0.16.0"
+version = "0.17.0"
 publish = true
 rust-version = "1.56.0"
 
