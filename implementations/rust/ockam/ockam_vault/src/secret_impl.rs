@@ -69,6 +69,9 @@ impl Vault {
 
     /// Validate secret key.
     pub fn check_secret(&self, secret: &[u8], attributes: &SecretAttributes) -> Result<()> {
+        if secret.len() != attributes.length() {
+            return Err(VaultError::InvalidSecretLength.into());
+        }
         match attributes.stype() {
             #[cfg(feature = "bls")]
             SecretType::Bls => {
