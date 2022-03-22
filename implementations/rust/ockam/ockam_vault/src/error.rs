@@ -16,7 +16,9 @@ pub enum VaultError {
     EntryNotFound,
     /// Invalid AES key length
     InvalidAesKeyLength,
-    /// Invalid HKDF outputtype
+    /// Invalid Secret length
+    InvalidSecretLength,
+    /// Invalid HKDF output type
     InvalidHkdfOutputType,
     /// Invalid private key length
     InvalidPrivateKeyLen,
