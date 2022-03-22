@@ -18,6 +18,7 @@ fn code_and_domain() {
         (11, TransportError::Encoding),
         (12, TransportError::Protocol),
         (13, TransportError::GenericIo),
+        (14, TransportError::PortalInvalidState),
     ]
     .into_iter()
     .collect::<HashMap<_, _>>();
