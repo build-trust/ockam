@@ -1,5 +1,5 @@
-use hex::encode;
 use crate::vault::{Hasher, SecretAttributes, SecretPersistence, SecretType, SecretVault};
+use hex::encode;
 
 pub async fn sha256(vault: &mut impl Hasher) {
     let res = vault.sha256(b"a").await;

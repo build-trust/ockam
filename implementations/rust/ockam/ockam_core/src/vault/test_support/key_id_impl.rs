@@ -1,8 +1,8 @@
-use hex::decode;
 use crate::vault::{
-    CURVE25519_SECRET_LENGTH, KeyIdVault, PublicKey, SecretAttributes, SecretPersistence,
-    SecretType, SecretVault
+    KeyIdVault, PublicKey, SecretAttributes, SecretPersistence, SecretType, SecretVault,
+    CURVE25519_SECRET_LENGTH,
 };
+use hex::decode;
 
 pub async fn compute_key_id_for_public_key(vault: &mut impl KeyIdVault) {
     let public =

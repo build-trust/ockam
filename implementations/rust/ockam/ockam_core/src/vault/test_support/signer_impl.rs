@@ -1,4 +1,7 @@
-use crate::vault::{CURVE25519_SECRET_LENGTH, SecretAttributes, SecretPersistence, SecretType, SecretVault, Signer, Verifier};
+use crate::vault::{
+    SecretAttributes, SecretPersistence, SecretType, SecretVault, Signer, Verifier,
+    CURVE25519_SECRET_LENGTH,
+};
 
 pub async fn sign(vault: &mut (impl Signer + Verifier + SecretVault)) {
     for attributes in [

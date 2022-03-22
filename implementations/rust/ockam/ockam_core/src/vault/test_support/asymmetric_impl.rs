@@ -1,6 +1,6 @@
 use crate::vault::{
-    AsymmetricVault, CURVE25519_SECRET_LENGTH, SecretAttributes, SecretPersistence, SecretType,
-    SecretVault
+    AsymmetricVault, SecretAttributes, SecretPersistence, SecretType, SecretVault,
+    CURVE25519_SECRET_LENGTH,
 };
 
 pub async fn ec_diffie_hellman_curve25519(vault: &mut (impl AsymmetricVault + SecretVault)) {

@@ -1,8 +1,8 @@
-use hex::{decode, encode};
 use crate::vault::{
     SecretAttributes, SecretPersistence, SecretType, SecretVault, CURVE25519_PUBLIC_LENGTH,
     CURVE25519_SECRET_LENGTH,
 };
+use hex::{decode, encode};
 
 pub async fn new_public_keys(vault: &mut impl SecretVault) {
     let attributes = SecretAttributes::new(
