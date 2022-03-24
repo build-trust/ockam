@@ -1,3 +1,13 @@
+use core::fmt::Formatter;
+use core::time::Duration;
+use std::fmt::Debug;
+
+use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
+use ockam_core::{
+    AccessControl, Address, AddressSet, AsyncTryClone, LocalMessage, Message, Passthrough,
+    Processor, Result, Route, TransportMessage, Worker,
+};
+
 use crate::relay::RelayPayload;
 use crate::tokio::{
     self,
@@ -13,12 +23,6 @@ use crate::{
     Cancel, NodeMessage, ShutdownType,
 };
 use crate::{NodeError, Reason};
-use core::time::Duration;
-use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
-use ockam_core::{
-    AccessControl, Address, AddressSet, AsyncTryClone, LocalMessage, Message, Passthrough,
-    Processor, Result, Route, TransportMessage, Worker,
-};
 
 /// A default timeout in seconds
 pub const DEFAULT_TIMEOUT: u64 = 30;
@@ -50,6 +54,17 @@ pub struct Context {
 impl AsyncTryClone for Context {
     async fn async_try_clone(&self) -> Result<Self> {
         self.new_context(Address::random(0)).await
+    }
+}
+
+impl Debug for Context {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Context")
+            .field("address", &self.address)
+            .field("sender", &self.sender)
+            .field("runtime", &self.rt)
+            .field("mailbox", &self.mailbox)
+            .finish()
     }
 }
 
