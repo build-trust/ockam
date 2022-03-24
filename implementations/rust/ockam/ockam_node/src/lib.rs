@@ -35,15 +35,13 @@ pub mod compat;
 mod cancel;
 mod context;
 mod delayed;
+// mod error;
 mod executor;
 mod messages;
 mod node;
 mod parser;
 mod relay;
 mod router;
-
-/// Errors
-pub mod error;
 
 pub use cancel::*;
 pub use context::*;
@@ -92,3 +90,26 @@ where
 
 #[cfg(not(feature = "std"))]
 pub use crate::tokio::runtime::{block_future, spawn};
+
+pub(crate) mod error {
+    //! Move this module to its own file eventually
+    //!
+    //! Utility module to construct various error types
+
+    use ockam_core::error::code::{ErrorCode, Kind, Origin};
+
+    /// Create a `node` error
+    pub fn node(kind: Kind) -> ErrorCode {
+        ErrorCode::new(Origin::Node, kind)
+    }
+
+    /// Create a new `executor` error (meaning tokio broke)
+    pub fn executor(kind: Kind) -> ErrorCode {
+        ErrorCode::new(Origin::Executor, kind)
+    }
+
+    /// Create a new `core` error
+    pub fn core(kind: Kind) -> ErrorCode {
+        ErrorCode::new(Origin::Core, kind)
+    }
+}

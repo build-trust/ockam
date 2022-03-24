@@ -15,6 +15,8 @@ type ErrorData = Box<inner::ErrorData>;
 #[cfg(not(feature = "alloc"))]
 type ErrorData = Inner;
 
+pub type Result<T> = std::result::Result<T, Error2>;
+
 /// The type of errors returned by Ockam functions.
 ///
 /// Errors store:
