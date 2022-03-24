@@ -20,12 +20,13 @@ fn output(cont: Container) -> TokenStream {
 
     // Get the ockam context variable identifier and mutability token extracted
     // from the function arguments, or sets them to their default values.
-    let (ctx_ident, ctx_mut) = match &cont.data.ockam_ctx {
-        None => (quote! {_ctx}, quote! {}),
+    let (ctx_ident, ctx_mut, ctx_path) = match &cont.data.ockam_ctx {
+        None => (quote! {_ctx}, quote! {}, quote! {ockam::Context}),
         Some(ctx_var) => {
             let ident = &ctx_var.ident;
             let mutability = &ctx_var.mutability;
-            (quote! {#ident}, quote! {#mutability})
+            let path = &ctx_var.path;
+            (quote! {#ident}, quote! {#mutability}, quote! {#path})
         }
     };
 
@@ -50,7 +51,7 @@ fn output(cont: Container) -> TokenStream {
         // Assumes the target platform knows about main() functions
         quote! {
             fn main() #ret_type {
-                let (#ctx_mut #ctx_ident, mut executor) = ockam::start_node() as (ockam::Context, ockam::Executor);
+                let (#ctx_mut #ctx_ident, mut executor) = ockam::start_node() as (#ctx_path, ockam::Executor);
                 executor.execute(async move #body)#err_handling
             }
         }
@@ -58,7 +59,7 @@ fn output(cont: Container) -> TokenStream {
         // Assumes you will be defining the ockam node inside your own entry point
         quote! {
             fn ockam_async_main() #ret_type {
-                let (#ctx_mut #ctx_ident, mut executor) = ockam::start_node() as (ockam::Context, ockam::Executor);
+                let (#ctx_mut #ctx_ident, mut executor) = ockam::start_node() as (#ctx_path, ockam::Executor);
                 executor.execute(async move #body)#err_handling
             }
             // TODO: safe way to print the error before panicking?

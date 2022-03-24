@@ -1,8 +1,8 @@
 #![deny(unused_imports)]
 
-use ockam::{self as o};
+use ockam::Context;
 
 #[ockam::node]
-async fn main(mut c: o::Context) {
+async fn main(mut c: Context) {
     c.stop().await.unwrap();
 }
