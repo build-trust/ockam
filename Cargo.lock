@@ -1997,7 +1997,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.41.0"
+version = "0.42.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
