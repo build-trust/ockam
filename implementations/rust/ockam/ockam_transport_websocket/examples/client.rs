@@ -3,14 +3,15 @@
 #[macro_use]
 extern crate tracing;
 
-use futures_util::StreamExt;
-use ockam::{route, Context, Result};
+use futures_util::{SinkExt, StreamExt};
 use tokio::io::AsyncReadExt;
 use tokio::time::{sleep, timeout, Duration};
 
+use ockam_core::{route, Result};
+use ockam_node::Context;
 use ockam_transport_websocket::{WebSocketError, WebSocketTransport, WS};
 
-#[ockam::node]
+#[ockam_macros::node]
 async fn main(mut ctx: Context) -> Result<()> {
     let peer_addr = get_peer_addr();
 
@@ -28,9 +29,10 @@ async fn main(mut ctx: Context) -> Result<()> {
             error!("Couldn't connect to {}", peer_addr);
             return ctx.stop().await;
         }
+        debug!("Connected to {peer_addr}");
     };
 
-    let (stdin_tx, mut stdin_rx) = futures_channel::mpsc::unbounded();
+    let (stdin_tx, mut stdin_rx) = futures_channel::mpsc::channel(1);
     tokio::spawn(read_stdin(stdin_tx));
 
     let route = route![(WS, peer_addr.as_str()), "echoer"];
@@ -41,8 +43,8 @@ async fn main(mut ctx: Context) -> Result<()> {
         }
         match ctx.receive::<String>().await {
             Err(_) => {
-                error!("Failed to receive data");
-                break;
+                warn!("Failed to receive data");
+                continue;
             }
             Ok(msg) => {
                 info!("Received echo: '{}'", msg);
@@ -54,16 +56,17 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.stop().await
 }
 
-async fn read_stdin(tx: futures_channel::mpsc::UnboundedSender<Vec<u8>>) -> Result<()> {
+async fn read_stdin(mut tx: futures_channel::mpsc::Sender<Vec<u8>>) -> Result<()> {
     let mut stdin = tokio::io::stdin();
     loop {
-        let mut buf = vec![0; 10];
-        let n = match stdin.read(&mut buf).await {
+        let mut msg = vec![0; 256];
+        match stdin.read(&mut msg).await {
             Err(_) | Ok(0) => {
+                warn!("Empty stdin");
                 tx.close_channel();
                 break;
             }
-            Ok(n) => n,
+            Ok(n) => msg.truncate(n),
         };
 
         if tx.is_closed() {
@@ -71,10 +74,8 @@ async fn read_stdin(tx: futures_channel::mpsc::UnboundedSender<Vec<u8>>) -> Resu
             break;
         }
 
-        buf.truncate(n);
-        let buf = String::from_utf8(buf).unwrap();
-        let msg = Vec::from(buf.trim());
-        tx.unbounded_send(msg).map_err(WebSocketError::from)?;
+        let msg = Vec::from(String::from_utf8(msg).unwrap().trim());
+        tx.send(msg).await.map_err(WebSocketError::from)?;
     }
     Ok(())
 }
