@@ -1939,7 +1939,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_identity"
-version = "0.38.0"
+version = "0.39.0"
 dependencies = [
  "bls12_381_plus",
  "cfg-if",
