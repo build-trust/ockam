@@ -1,8 +1,9 @@
 use std::fmt::{Display, Formatter};
 
+use tokio_tungstenite::tungstenite::Error as TungsteniteError;
+
 use ockam_core::Error;
 use ockam_transport_core::TransportError;
-use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 
 /// A WebSocket connection worker specific error type
 #[derive(Clone, Copy, Debug)]
@@ -71,5 +72,64 @@ impl From<TungsteniteError> for WebSocketError {
 impl<T> From<futures_channel::mpsc::TrySendError<T>> for WebSocketError {
     fn from(_e: futures_channel::mpsc::TrySendError<T>) -> Self {
         Self::Transport(TransportError::GenericIo)
+    }
+}
+
+impl From<futures_channel::mpsc::SendError> for WebSocketError {
+    fn from(_e: futures_channel::mpsc::SendError) -> Self {
+        Self::Transport(TransportError::GenericIo)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use tokio_tungstenite::tungstenite::http::Response;
+
+    use ockam_core::hashbrown::HashMap;
+
+    use super::*;
+
+    #[test]
+    fn code_and_domain() {
+        let ws_errors_map = [
+            (13, WebSocketError::Transport(TransportError::GenericIo)),
+            (0, WebSocketError::Http),
+            (1, WebSocketError::Tls),
+        ]
+        .into_iter()
+        .collect::<HashMap<_, _>>();
+        for (expected_code, ws_err) in ws_errors_map {
+            let err: Error = ws_err.into();
+            match ws_err {
+                WebSocketError::Transport(_) => {
+                    assert_eq!(err.domain(), TransportError::DOMAIN_NAME);
+                    assert_eq!(err.code(), TransportError::DOMAIN_CODE + expected_code);
+                }
+                _ => {
+                    assert_eq!(err.domain(), WebSocketError::DOMAIN_NAME);
+                    assert_eq!(err.code(), WebSocketError::DOMAIN_CODE + expected_code);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn from_tungstenite_error_to_transport_error() {
+        let ts_err = TungsteniteError::ConnectionClosed;
+        let ws_err: WebSocketError = ts_err.into();
+        let err: Error = ws_err.into();
+        let expected_err_code = TransportError::ConnectionDrop as u32;
+        assert_eq!(err.domain(), TransportError::DOMAIN_NAME);
+        assert_eq!(err.code(), TransportError::DOMAIN_CODE + expected_err_code);
+    }
+
+    #[test]
+    fn from_tungstenite_error_to_websocket_error() {
+        let ts_err = TungsteniteError::Http(Response::new(None));
+        let ws_err: WebSocketError = ts_err.into();
+        let err: Error = ws_err.into();
+        let expected_err_code = (WebSocketError::Http).code();
+        assert_eq!(err.domain(), WebSocketError::DOMAIN_NAME);
+        assert_eq!(err.code(), WebSocketError::DOMAIN_CODE + expected_err_code);
     }
 }

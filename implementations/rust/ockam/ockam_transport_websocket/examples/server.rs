@@ -4,16 +4,17 @@
 #[macro_use]
 extern crate tracing;
 
-use ockam::{worker, Context, Result, Routed, Worker};
-
+use ockam_core::{worker, Result, Routed, Worker};
+use ockam_node::Context;
 use ockam_transport_websocket::WebSocketTransport;
 
-#[ockam::node]
+#[ockam_macros::node]
 async fn main(ctx: Context) -> Result<()> {
     // Get either the default socket address, or a user-input
     let bind_addr = get_bind_addr();
     let ws = WebSocketTransport::create(&ctx).await?;
-    ws.listen(bind_addr).await?;
+    ws.listen(&bind_addr).await?;
+    debug!("Listening on {bind_addr}");
 
     // Create the responder worker
     ctx.start_worker("echoer", Responder).await?;
