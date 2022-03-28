@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.50.0 - 2022-03-28
+
+### Added
+
+- Add examples for all public functions in `ockam_core`
+- Add tests for `ockam_core`
+
+### Changed
+
+- Edit `ockam_core` documentation for typos, clarity and consistency
+- Move `traits` module into its own file
+- Move `ockam_core::println_no_std` to `ockam_core::compat::println`
+- Friendlify api for `ockam_core::access_control`
+- Friendlify api for `ockam_core::routing::address`
+- Friendlify api for `ockam_core::vault::key_id_vault`
+- `TODO` return `Result<&Address>` from `ockam_core::Route.recipient()`
+- Implement basic sender resend handler
+- Various clippy fixes
+- Updated dependencies
+
+### Removed
+
+- Remove unused type `ockam_core::ResultMessage`
+
 ## 0.47.0 - 2022-02-22
 
 ### Added

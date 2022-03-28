@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.49.0 - 2022-03-28
+
+### Added
+
+- Add context usage documentation and update api docs
+
+### Changed
+
+- Rename compat.rs to compat/mod.rs
+- Update cancel documentation
+- Rename heartbeat to delayed event
+- Improve executor documentation
+- Friendlify api for `ockam_core::access_control`
+- Updated dependencies
+
+### Removed
+
+- Delete ockam_node context handle
+
 ## 0.46.0 - 2022-02-22
 
 ### Added

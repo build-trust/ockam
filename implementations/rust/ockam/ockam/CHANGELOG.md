@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.50.0 - 2022-03-28
+
+### Added
+
+- Add basic pipe builder usage documentation
+- Support dynamic pipe handshake with behaviour handlers
+- Support ordering enforcing pipes
+
+### Changed
+
+- Rename heartbeat to delayed event
+- Sketch initial pipe2 api
+- System graph initialisation builder
+- Provide builder init mechanism for system handers
+- Mock up pipe builder initialisation
+- Allow worker system to use different message types
+- Very basic pipe example with new api
+- Implement basic sender resend handler
+- Pipe2 dynamic pipe handshakes
+- Basic delivery ack handler implementation
+- Send resend notify events to delivery handler
+- Update system handler trait documentation
+- Run rustfmt on ockam crate
+- Various clippy fixes
+- Updated dependencies
+
+### Fixed
+
+- Fix ockam::test macro tests
+- Fix ockam::node macro tests
+- Imports ockam context as used in the input function
+- No_std support for system builders and hooks
+
+### Removed
+
+- Remove stray allow(unused)
+
 ## 0.47.0 - 2022-02-22
 
 ### Added
