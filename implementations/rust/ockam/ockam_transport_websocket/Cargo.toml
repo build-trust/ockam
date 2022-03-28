@@ -36,10 +36,11 @@ tokio = { version = "1.8", features = [
     "net",
     "macros",
     "time",
+    "io-std",
 ] }
-tokio-tungstenite = "0.15"
+tokio-tungstenite = "0.17"
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 ockam = { path = "../ockam", default-features = false, features = ["std"] }
-tokio = { version = "1.8", features = ["io-std"] }
+ockam_macros = { path = "../ockam_macros", version = "^0.10.0"}
