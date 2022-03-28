@@ -55,12 +55,7 @@ impl ReceiverOrdering {
         Ok(())
     }
 
-    async fn forward(
-        &mut self,
-        ctx: &mut Context,
-        index: u64,
-        msg: OckamMessage,
-    ) -> Result<()> {
+    async fn forward(&mut self, ctx: &mut Context, index: u64, msg: OckamMessage) -> Result<()> {
         debug!("Forwarding message with index {}", index);
 
         // First forward the currently handled message to the next hop
