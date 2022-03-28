@@ -40,9 +40,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set FIRST_COMMIT (Pull Request)
+      - name: Set FIRST_COMMIT To Begin Linting (Pull Request)
         if: github.event_name == 'pull_request'
-        run: echo "FIRST_COMMIT=$(cat commits.json | jq --raw-output '.[-1].sha')" >> $GITHUB_ENV
+        run: |
+          pull_request_commits_length=$(cat commits.json | jq '. | length')
+          echo "Number of commits in pull requests are $pull_request_commits_length"
+          echo "FIRST_COMMIT=HEAD~${pull_request_commits_length}" >> $GITHUB_ENV
 
       - name: Check all commits in are Verified by Github (Pull Request)
         if: github.event_name == 'pull_request'
