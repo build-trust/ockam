@@ -11,7 +11,7 @@ pub(crate) struct DelayedEvent<M: Message> {
 
 impl<M: Message> DelayedEvent<M> {
     /// Create a new 100ms delayed message event
-    pub async fn new(ctx: &Context, route: Route, msg: M) -> Result<Self> {
+    pub(crate) async fn new(ctx: &Context, route: Route, msg: M) -> Result<Self> {
         let child_ctx = ctx.new_context(Address::random(0)).await?;
 
         debug!(
@@ -28,12 +28,12 @@ impl<M: Message> DelayedEvent<M> {
     }
 
     /// Adjust the delay time with a [`Duration`](core::time::Duration)
-    pub fn with_duration(self, d: Duration) -> Self {
+    pub(crate) fn with_duration(self, d: Duration) -> Self {
         Self { d, ..self }
     }
 
     /// Adjust the delay time in seconds
-    pub fn with_seconds(self, secs: u64) -> Self {
+    pub(crate) fn with_seconds(self, secs: u64) -> Self {
         Self {
             d: Duration::from_secs(secs),
             ..self
@@ -41,7 +41,7 @@ impl<M: Message> DelayedEvent<M> {
     }
 
     /// Run this delayed event
-    pub fn spawn(self) {
+    pub(crate) fn spawn(self) {
         let Self { route, ctx, d, msg } = self;
         spawn(async move {
             ctx.sleep(d).await;

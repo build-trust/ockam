@@ -1,4 +1,14 @@
-use crate::{Context, DelayedEvent, OckamError, OckamMessage, Result, Routed, SystemHandler};
+use crate::{
+    // Warning: delay::DelayedEvent is not the ockam_node one and will
+    // be deprecated soon!
+    delay::DelayedEvent,
+    Context,
+    OckamError,
+    OckamMessage,
+    Result,
+    Routed,
+    SystemHandler,
+};
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, collections::BTreeMap, string::String, vec::Vec},
