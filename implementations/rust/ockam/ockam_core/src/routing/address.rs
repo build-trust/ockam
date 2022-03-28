@@ -3,7 +3,6 @@ use crate::compat::{
     string::{String, ToString},
     vec::{self, Vec},
 };
-use crate::Message;
 use core::fmt::{self, Debug, Display};
 use core::iter::FromIterator;
 use core::ops::Deref;
