@@ -6,18 +6,20 @@ if [ -z $OCKAM_HOME ]; then
 fi
 
 export TOOLS_DIR="$OCKAM_HOME/tools/docs"
-export GET_STARTED="$OCKAM_HOME/examples/rust/get_started/"
+
+export GET_STARTED_CODE="$OCKAM_HOME/examples/rust/get_started/"
 export GET_STARTED_SCRIPT="$TOOLS_DIR/example_runner/get_started.ron"
 
-if [ -z $(which example_runner) ]; then
-    echo "Building example_runner utility"
-    pushd "$TOOLS_DIR/example_runner" &>/dev/null
-    cargo -q install --path . || exit 1
+export TCP_INLET_AND_OUTLET_CODE="$OCKAM_HOME/examples/rust/tcp_inlet_and_outlet/"
+export TCP_INLET_AND_OUTLET_SCRIPT="$TOOLS_DIR/example_runner/tcp_inlet_and_outlet.ron"
+
+# Run example_runner for each case
+function do_run {
+    pushd $1 &>/dev/null
+    echo "============================================================"
+    echo "Running $2"
+    cargo run -p example_runner -- $2
     popd &>/dev/null
-fi
-
-
-pushd $GET_STARTED
-echo $GET_STARTED_SCRIPT
-example_runner $GET_STARTED_SCRIPT
-popd
+}
+do_run $GET_STARTED_CODE $GET_STARTED_SCRIPT
+do_run $TCP_INLET_AND_OUTLET_CODE $TCP_INLET_AND_OUTLET_SCRIPT

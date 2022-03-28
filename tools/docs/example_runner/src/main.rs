@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use duct::cmd;
 use rand::RngCore;
 use ron::de::from_str;
@@ -9,7 +9,10 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+const MATCH_TIMEOUT_SECS: u64 = 120;
+const OUTPUT_FILE_PREFIX: &str = "/tmp/exrun-";
 
 pub type Step = String;
 
@@ -21,53 +24,91 @@ pub struct Script {
     stages: Vec<Stage>,
 }
 
+/// Run the steps of a stage.
+///
+/// A stage is considered as passed if we reach the end of a stage
+/// without signalling a failure.
+///
+/// A failure is signalled if one of the below happens...
+/// - a 'match' step times out before finding its match
+/// - a spawned process exits with an error
 fn run_stage(stage: Stage) -> Result<()> {
-    let stop = Arc::new(AtomicBool::new(false));
     let finished = Arc::new(AtomicBool::new(false));
+    let failed = Arc::new(AtomicBool::new(false));
 
     let join_handles = Arc::new(Mutex::new(Vec::new()));
 
     let mut match_stack: Vec<String> = Vec::new();
     let mut out_order: Vec<String> = Vec::new();
     let mut outputs: Vec<String> = Vec::new();
+    let mut arg_order: Vec<String> = Vec::new();
 
-    for mut step in stage {
-        let stop = stop.clone();
-        let finished = finished.clone();
-        let join_handles = join_handles.clone();
+    let mut stage_iter = stage.into_iter();
+    while let (Some(mut step), false) = (stage_iter.next(), finished.load(Relaxed)) {
+        println!("STEP: {}", step);
 
         if step.starts_with("sleep ") {
             let duration = step.split_off(6);
             let duration = duration.trim();
             let duration: u64 = duration.parse()?;
-            println!("Sleeping for {} seconds", duration);
             sleep(Duration::from_secs(duration));
             continue;
         }
 
         if step.starts_with("match ") {
+            // Try to do case-insensitve match and grab the contents
+            // of the match and upto a newline.
             let pattern = step.split_off(6);
-            println!("Matching '{}' in output", pattern);
-            loop {
-                let mut f = File::open(outputs.last().unwrap())?;
-                let mut s = String::new();
-                f.read_to_string(&mut s)?;
+            let pattern_lower = pattern.to_lowercase();
+            let output_path = outputs.last().unwrap();
+            println!(
+                "Matching '{}' in output (case insensitive, see file {})",
+                pattern, output_path
+            );
 
-                if let Some(index) = s.find(pattern.clone().as_str()) {
-                    let mut matching = s.split_off(index);
-                    if let Some(end) = matching.find('\n') {
-                        matching.truncate(end);
+            let start_time = Instant::now();
+            while !finished.load(Relaxed) {
+                if let Ok(mut f) = File::open(output_path) {
+                    let mut s = String::new();
+                    if f.read_to_string(&mut s).is_ok() {
+                        let s_lower = s.to_lowercase();
+                        if let Some(index) = s_lower.find(pattern_lower.as_str()) {
+                            let mut matching = s.split_off(index);
+                            if let Some(end) = matching.find('\n') {
+                                matching.truncate(end);
+                            }
+                            println!("Matched '{}'", matching);
+                            match_stack.push(matching.to_string());
+                            break;
+                        }
                     }
-                    println!("Matched '{}'", matching);
-                    match_stack.push(matching.to_string());
+                }
+
+                // Timeout when needed. Signal failure.
+                if start_time.elapsed().as_secs() >= MATCH_TIMEOUT_SECS {
+                    println!("Match timed out ({} seconds)", MATCH_TIMEOUT_SECS);
+                    failed.store(true, Relaxed);
+                    finished.store(true, Relaxed);
                     break;
                 }
+
                 sleep(Duration::from_secs(1))
             }
             continue;
         }
 
+        if step.starts_with("arg ") {
+            // Grab a previous match by index and add it as a command line
+            // argument for the next spawn.
+            let index = step.split_off(4);
+            let index: usize = index.parse()?;
+            let matching = match_stack.get(index).unwrap();
+            arg_order.push(matching.clone());
+            continue;
+        }
+
         if step.starts_with("out ") {
+            // Grab a previous match by index and add it to stdin for the next spawn.
             let index = step.split_off(4);
             let index: usize = index.parse()?;
             let matching = match_stack.get(index).unwrap();
@@ -75,74 +116,93 @@ fn run_stage(stage: Stage) -> Result<()> {
             continue;
         }
 
-        if step.starts_with("quit") {
-            std::process::exit(0);
-        }
+        // If step starts with 'cmd', launch its suffix as a command.
+        // Otherwise, take step as the name of an example to be run with cargo.
+        let mut cmd_line = if step.starts_with("cmd ") {
+            step.split_off(4)
+        } else {
+            format!("cargo run --example {}", step)
+        };
 
-        let output_file = format!("/tmp/exrun-{}", rand::thread_rng().next_u32());
+        cmd_line.push_str(format!(" {}", arg_order.join(" ")).as_str());
+        arg_order.clear();
+
+        let output_file = format!("{}{}", OUTPUT_FILE_PREFIX, rand::thread_rng().next_u32());
         outputs.push(output_file.clone());
 
-        let mut stdin = String::new();
-        for out in &out_order {
-            stdin += &*out;
-            stdin += "\n";
-        }
+        let stdin = format!("{}\n", out_order.join("\n"));
+        out_order.clear();
 
+        println!("  Command line: {:?}", cmd_line);
+        println!("  Output file: {}", output_file);
+        println!("  Stdin: {:?}", stdin);
+
+        let finished_clone = finished.clone();
+        let failed_clone = failed.clone();
         let join_handle = std::thread::spawn(move || {
-            let handle = cmd!("cargo", "run", "--example", step)
-                .stdout_file(File::create(output_file.clone()).unwrap())
+            let cmd_line = cmd_line.split_whitespace().collect::<Vec<_>>();
+            let handle = cmd(cmd_line[0], &cmd_line[1..])
+                .stdout_file(File::create(output_file).unwrap())
                 .stdin_bytes(stdin)
                 .start()
                 .unwrap();
-            while !stop.load(Relaxed) {
-                match handle.try_wait() {
-                    Ok(maybe_output) => {
-                        if let Some(output) = maybe_output {
-                            println!(
-                                "Output: {}",
-                                String::from_utf8(output.clone().stdout).unwrap()
-                            );
-                            finished.store(true, Relaxed);
-                            break;
-                        }
-                    }
-                    Err(_) => {
-                        std::process::exit(1);
-                    }
+
+            // Wait till stage has finished, or handle has finshed with an error.
+            while !finished_clone.load(Relaxed) {
+                if let Err(e) = handle.try_wait() {
+                    println!("Error: {}", e);
+                    failed_clone.store(true, Relaxed);
+                    finished_clone.store(true, Relaxed);
                 }
                 sleep(Duration::from_secs(1));
             }
             handle.kill().unwrap();
         });
+
         join_handles.lock().unwrap().push(join_handle);
-        sleep(Duration::from_secs(2));
     }
 
-    while !finished.load(Relaxed) {
-        sleep(Duration::from_secs(1));
-    }
+    // We've run out of steps. Signal we've finished this stage.
+    finished.store(true, Relaxed);
 
-    stop.store(true, Relaxed);
-    let join_handles = join_handles;
+    // Wait for spawned to shut themselves down
     let mut join_handles = join_handles.lock().unwrap();
     while !join_handles.is_empty() {
         let h = join_handles.pop().unwrap();
-        h.join().unwrap();
+        let r = h.join();
+        if r.is_err() {
+            failed.store(true, Relaxed);
+        }
     }
-    Ok(())
+
+    if failed.load(Relaxed) {
+        println!("FAILED");
+        Err(anyhow!("Failed, check logs."))
+    } else {
+        println!("PASSED");
+        Ok(())
+    }
 }
 
 fn run(script: Script) -> Result<()> {
     println!("Running {}", script.title);
-    for stage in script.stages {
+    let stage_count = script.stages.len();
+    for (i, stage) in script.stages.into_iter().enumerate() {
+        println!("==============================");
+        println!("STAGE #{} of {}", i + 1, stage_count);
         run_stage(stage)?;
     }
     Ok(())
 }
 
+/// Exit code is 0 if all stages passed, or non-0 if a stage fails.
+///
+/// Execution stops as soon as a stage fails.
 fn main() -> Result<()> {
-    let file = std::env::args().nth(1).expect("missing script file");
-    let mut file = File::open(file).expect("unable to open script");
+    let file = std::env::args()
+        .nth(1)
+        .expect("missing script file argument");
+    let mut file = File::open(file).expect("unable to open script file");
     let mut guide = String::new();
 
     file.read_to_string(&mut guide)?;
