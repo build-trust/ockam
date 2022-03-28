@@ -27,12 +27,12 @@ impl From<RouteError> for Error {
 mod tests {
     use super::RouteError;
     use crate::{compat::collections::HashMap, Error};
-    use core::array::IntoIter;
 
     #[test]
     fn code_and_domain() {
-        let errors_map =
-            IntoIter::new([(000, RouteError::IncompleteRoute)]).collect::<HashMap<_, _>>();
+        let errors_map = [(000, RouteError::IncompleteRoute)]
+            .into_iter()
+            .collect::<HashMap<_, _>>();
 
         for (expected_code, err) in errors_map {
             let err: Error = err.into();
