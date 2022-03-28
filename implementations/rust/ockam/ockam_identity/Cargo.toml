@@ -75,7 +75,7 @@ credentials = [
 ]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.49.0", default-features = false }
+ockam_core = { path = "../ockam_core", version = "^0.50.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.10.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.48.0", default-features = false }
 ockam_vault_sync_core = { path = "../ockam_vault_sync_core", version = "^0.40.0", default-features = false, optional = true }
