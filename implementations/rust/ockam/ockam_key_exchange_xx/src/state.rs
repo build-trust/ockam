@@ -4,7 +4,7 @@ use ockam_core::vault::{
     PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
     CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
 };
-use ockam_core::Result;
+use ockam_core::error::Result;
 use ockam_key_exchange_core::CompletedKeyExchange;
 
 mod dh_state;

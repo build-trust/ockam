@@ -1,53 +1,84 @@
-use ockam_core::compat::io;
+use ockam_core::{
+    compat::io,
+    error::{
+        code::{ErrorCode, Kind, Origin},
+        Error2,
+    },
+};
 
 /// A Transport worker specific error type
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, thiserror::Error)]
 pub enum TransportError {
     /// Failed to send a malformed message
+    #[error("failed to send a malformed message")]
     SendBadMessage = 1,
     /// Failed to receive a malformed message
+    #[error("failed to receive a malformed message")]
     RecvBadMessage,
     /// Failed to bind to the desired socket
+    #[error("failed to bind to the desired socket")]
     BindFailed,
     /// Connection was dropped unexpectedly
+    #[error("connection was dropped unexpectedly")]
     ConnectionDrop,
     /// Connection was already established
+    #[error("already connected")]
     AlreadyConnected,
     /// Connection peer was not found
+    #[error("connection peer was not found")]
     PeerNotFound,
     /// Peer requested the incoming connection
+    #[error("connection peer is busy")]
     PeerBusy,
     /// Failed to route to an unknown recipient
+    #[error("message routing failed (unknown recipient)")]
     UnknownRoute,
     /// Failed to parse the socket address
+    #[error("failed to parse the socket address")]
     InvalidAddress,
     /// Failed to read message (buffer exhausted) or failed to send it (size is too big)
+    #[error("failed to read message (buffer exhausted)")]
     Capacity,
     /// Failed to encode message
+    // FIXME: replace with ockam_core::encoding error type
+    #[error("failed to encode message")]
     Encoding,
     /// Transport protocol violation
+    #[error("violation in transport protocol")]
     Protocol,
     /// A generic I/O failure
+    #[error("generic I/O failure")]
     GenericIo,
     /// PortalInvalidState
+    #[error("portal entered invalid state")]
     PortalInvalidState,
     /// InvalidRouterResponseType
+    #[error("router responded with invalid type")]
     InvalidRouterResponseType,
 }
 
-impl TransportError {
-    /// Integer code associated with the error domain.
-    pub const DOMAIN_CODE: u32 = 15_000;
-    /// Error domain
-    pub const DOMAIN_NAME: &'static str = "OCKAM_TRANSPORT_CORE";
-}
+impl From<TransportError> for Error2 {
+    fn from(err: TransportError) -> Error2 {
+        use TransportError::*;
+        let kind = match err {
+            SendBadMessage => Kind::Serialization,
+            RecvBadMessage => Kind::Serialization,
+            BindFailed => Kind::Io,
+            ConnectionDrop => Kind::Io,
+            AlreadyConnected => Kind::Io,
+            PeerNotFound => Kind::Misuse,
+            PeerBusy => Kind::Io,
+            UnknownRoute => Kind::Misuse,
+            InvalidAddress => Kind::Misuse,
+            Capacity => Kind::ResourceExhausted,
+            Encoding => Kind::Serialization,
+            Protocol => Kind::Protocol,
+            GenericIo => Kind::Io,
+            PortalInvalidState => Kind::Invalid,
+            InvalidRouterResponseType => Kind::Invalid,
+        };
 
-impl From<TransportError> for ockam_core::Error {
-    fn from(e: TransportError) -> ockam_core::Error {
-        ockam_core::Error::new(
-            TransportError::DOMAIN_CODE + (e as u32),
-            ockam_core::compat::format!("{}::{:?}", module_path!(), e),
-        )
+        Error2::new(ErrorCode::new(Origin::Transport, kind), err)
     }
 }
 

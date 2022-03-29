@@ -1,8 +1,8 @@
 use crate::{XXError, XXVault, SHA256_SIZE};
+use ockam_core::error::Result;
 use ockam_core::vault::{
     PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
 };
-use ockam_core::Result;
 
 pub(crate) struct DhState<V: XXVault> {
     pub(crate) key: Option<Secret>,

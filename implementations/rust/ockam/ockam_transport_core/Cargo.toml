@@ -33,3 +33,4 @@ alloc = ["ockam_core/alloc"]
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.51.0", default_features = false }
 tracing = { version = "0.1", default-features = false }
+thiserror = "1.0"

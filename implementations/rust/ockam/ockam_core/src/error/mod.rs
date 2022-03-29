@@ -18,6 +18,16 @@ type ErrorData = Inner;
 
 pub type Result<T> = std::result::Result<T, Error2>;
 
+/// Produces Ok(false) to avoid an ambiguous reading from using the unadorned value in auth code.
+pub fn deny() -> Result<bool> {
+    Ok(false)
+}
+
+/// Produces Ok(true) to avoid an ambiguous reading from using the unadorned value in auth code.
+pub fn allow() -> Result<bool> {
+    Ok(true)
+}
+
 /// The type of errors returned by Ockam functions.
 ///
 /// Errors store:
@@ -71,33 +81,6 @@ impl Error2 {
     pub fn context(mut self, key: &str, val: impl core::fmt::Display) -> Self {
         self.0.add_context(key, &val);
         self
-    }
-}
-
-impl From<crate::old_error::Error> for Error2 {
-    #[cold]
-    #[track_caller]
-    fn from(src: crate::old_error::Error) -> Self {
-        let origin = match src.domain() {
-            o if o.starts_with("OCKAM_NODE") => code::Origin::Node,
-            o if o.starts_with("OCKAM_EXECUTOR") => code::Origin::Executor,
-            o if o.starts_with("OCKAM_TRANSPORT") => code::Origin::Transport,
-            o if o.starts_with("OCKAM_KEX") => code::Origin::KeyExchange,
-            o if o.starts_with("OCKAM_ENTITY")
-                || o.starts_with("OCKAM_IDENTITY")
-                || o.starts_with("OCKAM_CREDENTIAL") =>
-            {
-                code::Origin::Identity
-            }
-            o if o.starts_with("OCKAM_VAULT") => code::Origin::Vault,
-            o if o.starts_with("OCKAM_FFI") => code::Origin::Api,
-            o if o.starts_with("OCKAM") => code::Origin::Other,
-            _ => code::Origin::Unknown,
-        };
-        let kind = code::Kind::Unknown;
-        let ec = code::ErrorCode::new_with_extra(origin, kind, src.code() as i32);
-        let orig_domain = src.domain().clone();
-        Error2::new(ec, src).context("domain", orig_domain)
     }
 }
 

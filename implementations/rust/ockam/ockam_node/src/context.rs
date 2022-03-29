@@ -15,9 +15,8 @@ use core::time::Duration;
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
     error::{code::Kind, Error2, Result},
-    traits::AsyncTryClone,
-    AccessControl, Address, AddressSet, AllowAll, LocalMessage, Message, Processor, Route,
-    TransportMessage, TransportType, Worker,
+    AccessControl, Address, AddressSet, AllowAll, AsyncTryClone, LocalMessage, Message, Processor,
+    Route, TransportMessage, TransportType, Worker,
 };
 
 /// A default timeout in seconds

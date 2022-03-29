@@ -35,16 +35,6 @@ pub struct Error {
 /// The result type returned by Ockam functions.
 pub type Result<T, E = Error> = core::result::Result<T, E>;
 
-/// Produces Ok(false) to avoid an ambiguous reading from using the unadorned value in auth code.
-pub fn deny() -> Result<bool> {
-    Ok(false)
-}
-
-/// Produces Ok(true) to avoid an ambiguous reading from using the unadorned value in auth code.
-pub fn allow() -> Result<bool> {
-    Ok(true)
-}
-
 impl Error {
     /// Creates a new [`Error`].
     #[cfg(not(feature = "alloc"))]

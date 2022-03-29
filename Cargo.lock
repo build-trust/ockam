@@ -1645,6 +1645,7 @@ dependencies = [
  "serde_bare",
  "spin",
  "subtle",
+ "thiserror",
  "tracing",
  "tracing-error",
  "zeroize",
@@ -1800,6 +1801,7 @@ name = "ockam_transport_core"
 version = "0.24.0"
 dependencies = [
  "ockam_core",
+ "thiserror",
  "tracing",
 ]
 

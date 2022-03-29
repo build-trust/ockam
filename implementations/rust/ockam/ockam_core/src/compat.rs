@@ -263,6 +263,8 @@ pub mod vec {
     #[cfg(not(feature = "alloc"))]
     pub type Vec<T> = heapless::Vec<T, 64>;
 }
+
+/// Provides `core::fmt`
 pub mod fmt {
     pub use alloc::fmt::*;
     #[cfg(feature = "alloc")]
