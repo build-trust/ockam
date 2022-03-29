@@ -96,7 +96,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Expect second command line argument to be the TCP address of a target TCP server.
-    // For example: 127.0.0.1:5000
+    // For example: 127.0.0.1:4002
     //
     // Create a TCP Transport Outlet - at Ockam Worker address "outlet" -
     // that will connect, as a TCP client, to the target TCP server.
@@ -138,18 +138,18 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Before running the example program, start a target TCP server listening on port `5000`. As a first
+Before running the example program, start a target TCP server listening on port `4002`. As a first
 example use a simple HTTP server, later we'll try other TCP-based protocols.
 
 ```
-pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null; python3 -m http.server --bind 0.0.0.0 5000; popd
+pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null; python3 -m http.server --bind 0.0.0.0 4002; popd
 ```
 
 The example program takes two arguments. The first argument is the TCP address on which to start an Inlet
-(port `4001`) and the second argument is the TCP address of our target TCP server (port `5000`).
+(port `4001`) and the second argument is the TCP address of our target TCP server (port `4002`).
 
 ```
-cargo run --example 01-inlet-outlet 127.0.0.1:4001 127.0.0.1:5000
+cargo run --example 01-inlet-outlet 127.0.0.1:4001 127.0.0.1:4002
 ```
 
 Now run an HTTP client, but instead of pointing it directly to our HTTP server, make a request to
@@ -186,7 +186,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
-    // For example: 127.0.0.1:5000
+    // For example: 127.0.0.1:4002
     //
     // Create a TCP Transport Outlet - at Ockam Worker address "outlet" -
     // that will connect, as a TCP client, to the target TCP server.
@@ -254,16 +254,16 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Before we can run our example, let's start a target HTTP server listening on port `5000`.
+Before we can run our example, let's start a target HTTP server listening on port `4002`.
 
 ```
-pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null; python3 -m http.server --bind 0.0.0.0 5000; popd
+pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null; python3 -m http.server --bind 0.0.0.0 4002; popd
 ```
 
 Next start the outlet program and give it the address of the target TCP server:
 
 ```
-cargo run --example 02-outlet 127.0.0.1:5000
+cargo run --example 02-outlet 127.0.0.1:4002
 ```
 
 Then start the inlet program and give it the TCP address on which the Inlet will wait for incoming TCP connections
@@ -292,11 +292,11 @@ Next let's add an end-to-end encrypted and mutually authenticated secure channel
 
 For the remote access use-case, our outlet program is running the TCP listener at port `4000`. To
 make the communication between our two nodes secure, we'll also make it run a secure channel listener
-at address: `secure_channel_listener_service`.
+at address: `secure_channel_listener`.
 
 The inlet program will then initiate a secure channel handshake over the route:
 ```
-route![(TCP, "127.0.0.1:4000"), "secure_channel_listener_service"]
+route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"]
 ```
 
 Create a file at `examples/03-outlet.rs` and copy the below code snippet to it.
@@ -323,7 +323,7 @@ async fn main(ctx: Context) -> Result<()> {
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
-    // For example: 127.0.0.1:5000
+    // For example: 127.0.0.1:4002
     //
     // Create a TCP Transport Outlet - at Ockam Worker address "outlet" -
     // that will connect, as a TCP client, to the target TCP server.
@@ -405,16 +405,16 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Before we can run our example, let's start a target HTTP server listening on port `5000`.
+Before we can run our example, let's start a target HTTP server listening on port `4002`.
 
 ```
-pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null; python3 -m http.server --bind 0.0.0.0 5000; popd
+pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null; python3 -m http.server --bind 0.0.0.0 4002; popd
 ```
 
 Next start the outlet program and give it the address of the target TCP server:
 
 ```
-cargo run --example 03-outlet 127.0.0.1:5000
+cargo run --example 03-outlet 127.0.0.1:4002
 ```
 
 Then start the inlet program and give it the TCP address on which the Inlet will wait for incoming TCP connections
@@ -455,7 +455,7 @@ as a TCP client and ask the forwarding service on that node to create a forwarde
 All messages that arrive at that forwarding address will be sent to this program using the TCP
 connection we created as a client. The forwarding node only sees end-to-end encrypted data.
 You can easily [create your own forwarding nodes](../../guides/rust#step-by-step), for this example we've
-created one that live at `1.node.ockam.network:4000`.
+created one that lives at `1.node.ockam.network:4000`.
 
 We only need to change a few minor details of our program in
 [example 03](#03-tunnel-through-a-secure-channel).
@@ -478,7 +478,7 @@ async fn main(ctx: Context) -> Result<()> {
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
-    // For example: 127.0.0.1:5000
+    // For example: 127.0.0.1:4002
     //
     // Create a TCP Transport Outlet - at Ockam Worker address "outlet" -
     // that will connect, as a TCP client, to the target TCP server.
@@ -574,17 +574,17 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Before we can run our example, let's start a local target HTTP server listening on port `5000`.
+Before we can run our example, let's start a local target HTTP server listening on port `4002`.
 
 ```
-pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null; python3 -m http.server --bind 0.0.0.0 5000; popd
+pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null; python3 -m http.server --bind 0.0.0.0 4002; popd
 ```
 
 Next start the outlet program and give it the address of the local target server. It will print the
 assigned forwarding address in the cloud node, copy it.
 
 ```
-cargo run --example 04-outlet 127.0.0.1:5000
+cargo run --example 04-outlet 127.0.0.1:4002
 ```
 
 Then start the inlet program and give it the address on which the Inlet will wait for incoming TCP connections
