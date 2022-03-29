@@ -1,8 +1,7 @@
 use super::Router;
 use crate::tokio::sync::mpsc::Sender;
-use crate::{error::Error, NodeReply, NodeReplyResult, Reason};
-
-use ockam_core::{Address, Result, TransportType};
+use crate::{error, NodeReply, NodeReplyResult, Reason};
+use ockam_core::{error::Result, Address, TransportType};
 
 /// Receive an address and resolve it to a sender
 ///
@@ -24,7 +23,7 @@ pub(super) async fn resolve(
         reply
             .send(NodeReply::no_such_address(addr.clone()))
             .await
-            .map_err(|_| Error::InternalIOFailure)?;
+            .map_err(|e| error::node_internal(e))?;
 
         return Ok(());
     };
@@ -44,7 +43,7 @@ pub(super) async fn resolve(
         }
     }
     .await
-    .map_err(|_| Error::InternalIOFailure.into())
+    .map_err(|e| error::node_internal(e).into())
 }
 
 pub(super) fn router_addr(router: &mut Router, tt: TransportType) -> Result<Address> {
@@ -52,5 +51,5 @@ pub(super) fn router_addr(router: &mut Router, tt: TransportType) -> Result<Addr
         .external
         .get(&tt)
         .cloned()
-        .ok_or_else(|| Error::InternalIOFailure.into())
+        .ok_or_else(|| error::internal_without_cause())
 }

@@ -1,6 +1,6 @@
 use crate::Context;
 use core::fmt::{self, Debug, Display, Formatter};
-use ockam_core::{Address, LocalMessage, Message, Result, Routed};
+use ockam_core::{error::Result, Address, LocalMessage, Message, Routed};
 
 /// A message wrapper type that allows users to cancel message receival
 ///
@@ -48,7 +48,6 @@ impl<'ctx, M: Message> Cancel<'ctx, M> {
     /// ```
     pub async fn cancel(self) -> Result<()> {
         self.ctx.forward(self.local_msg).await?;
-
         Ok(())
     }
 

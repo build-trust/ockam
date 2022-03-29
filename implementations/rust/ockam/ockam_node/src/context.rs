@@ -6,18 +6,18 @@ use crate::tokio::{
     time::timeout,
 };
 use crate::{
-    error::Error,
-    parser,
+    error, parser,
     relay::{CtrlSignal, ProcessorRelay, RelayMessage, WorkerRelay},
     router::SenderPair,
     Cancel, NodeMessage, ShutdownType,
 };
-use crate::{NodeError, Reason};
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
-    traits::AsyncTryClone, AccessControl, Address, AddressSet, AllowAll, LocalMessage, Message,
-    Processor, Result, Route, TransportMessage, TransportType, Worker,
+    error::{code::Kind, Error2, Result},
+    traits::AsyncTryClone,
+    AccessControl, Address, AddressSet, AllowAll, LocalMessage, Message, Processor, Route,
+    TransportMessage, TransportType, Worker,
 };
 
 /// A default timeout in seconds
@@ -150,13 +150,9 @@ impl Context {
         self.sender
             .send(msg)
             .await
-            .map_err(|_| Error::FailedStartWorker)?;
-
-        Ok(rx
-            .recv()
-            .await
-            .ok_or(Error::InternalIOFailure)?
-            .map(|_| ctx)?)
+            .map_err(|e| Error2::new(error::node(Kind::Invalid), e))?;
+        rx.recv().await.ok_or(error::internal_without_cause())??;
+        Ok(ctx)
     }
 
     /// Start a new worker instance at the given address set
@@ -246,14 +242,11 @@ impl Context {
         self.sender
             .send(msg)
             .await
-            .map_err(|_| Error::FailedStartWorker)?;
+            .map_err(|e| Error2::new(error::node(Kind::Invalid), e))?;
 
         // Wait for the actual return code
-        Ok(rx
-            .recv()
-            .await
-            .ok_or(Error::InternalIOFailure)?
-            .map(|_| ())?)
+        rx.recv().await.ok_or(error::internal_without_cause())??;
+        Ok(())
     }
 
     /// Start a new processor instance at the given address set
@@ -287,14 +280,11 @@ impl Context {
         self.sender
             .send(msg)
             .await
-            .map_err(|_| Error::FailedStartProcessor)?;
+            .map_err(|e| Error2::new(error::node(Kind::Invalid), e))?;
 
         // Wait for the actual return code
-        Ok(rx
-            .recv()
-            .await
-            .ok_or(Error::InternalIOFailure)?
-            .map(|_| ())?)
+        rx.recv().await.ok_or(error::internal_without_cause())??;
+        Ok(())
     }
 
     /// Shut down a local worker by its primary address
@@ -315,14 +305,14 @@ impl Context {
             AddressType::Worker => NodeMessage::stop_worker(addr),
             AddressType::Processor => NodeMessage::stop_processor(addr),
         };
-        self.sender.send(req).await.map_err(Error::from)?;
+        self.sender
+            .send(req)
+            .await
+            .map_err(|e| error::from_send_err(e))?;
 
         // Then check that address was properly shut down
-        Ok(rx
-            .recv()
-            .await
-            .ok_or(Error::InternalIOFailure)?
-            .map(|_| ())?)
+        rx.recv().await.ok_or(error::internal_without_cause())??;
+        Ok(())
     }
 
     /// Signal to the local runtime to shut down immediately
@@ -337,7 +327,7 @@ impl Context {
 
         match tx.send(msg).await {
             Ok(()) => Ok(()),
-            Err(_e) => Err(Error::FailedStopNode.into()),
+            Err(e) => Err(Error2::new(error::node(Kind::Invalid), e)),
         }
     }
 
@@ -357,14 +347,14 @@ impl Context {
     /// or the desired timeout has been reached.
     pub async fn stop_timeout(&mut self, seconds: u8) -> Result<()> {
         let (req, mut rx) = NodeMessage::stop_node(ShutdownType::Graceful(seconds));
-        self.sender.send(req).await.map_err(Error::from)?;
+        self.sender
+            .send(req)
+            .await
+            .map_err(|e| error::from_send_err(e))?;
 
         // Wait until we get the all-clear
-        Ok(rx
-            .recv()
-            .await
-            .ok_or(Error::InternalIOFailure)?
-            .map(|_| ())?)
+        rx.recv().await.ok_or(error::internal_without_cause())??;
+        Ok(())
     }
 
     /// Send a message to another address associated with this worker
@@ -381,7 +371,7 @@ impl Context {
         if self.address.contains(&addr) {
             self.send_from_address(addr, msg, from.into()).await
         } else {
-            Err(NodeError::Rejected(Reason::InvalidAddress).into())
+            Err(Error2::new_without_cause(error::node(Kind::Invalid)))
         }
     }
 
@@ -460,7 +450,7 @@ impl Context {
         M: Message + Send + 'static,
     {
         if !self.address.as_ref().contains(&sending_address) {
-            return Err(Error::SenderAddressDoesNotExist.into());
+            return Err(Error2::new_without_cause(error::node(Kind::Invalid)));
         }
 
         let (reply_tx, mut reply_rx) = channel(1);
@@ -468,11 +458,14 @@ impl Context {
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
 
         // First resolve the next hop in the route
-        self.sender.send(req).await.map_err(Error::from)?;
+        self.sender
+            .send(req)
+            .await
+            .map_err(|e| error::from_send_err(e))?;
         let (addr, sender, needs_wrapping) = reply_rx
             .recv()
             .await
-            .ok_or(Error::InternalIOFailure)??
+            .ok_or(error::internal_without_cause())??
             .take_sender()?;
 
         // Pack the payload into a TransportMessage
@@ -489,8 +482,10 @@ impl Context {
         };
 
         // Send the packed user message with associated route
-        sender.send(msg).await.map_err(Error::from)?;
-
+        sender
+            .send(msg)
+            .await
+            .map_err(|e| error::from_send_err(e))?;
         Ok(())
     }
 
@@ -513,11 +508,14 @@ impl Context {
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
 
         // First resolve the next hop in the route
-        self.sender.send(req).await.map_err(Error::from)?;
+        self.sender
+            .send(req)
+            .await
+            .map_err(|e| error::from_send_err(e))?;
         let (addr, sender, needs_wrapping) = reply_rx
             .recv()
             .await
-            .ok_or(Error::InternalIOFailure)??
+            .ok_or(error::internal_without_cause())??
             .take_sender()?;
 
         // Pack the transport message into a relay message
@@ -528,7 +526,10 @@ impl Context {
         } else {
             RelayMessage::direct(addr, local_msg, onward)
         };
-        sender.send(msg).await.map_err(Error::from)?;
+        sender
+            .send(msg)
+            .await
+            .map_err(|e| error::from_send_err(e))?;
 
         Ok(())
     }
@@ -569,7 +570,7 @@ impl Context {
             self.next_from_mailbox().await
         })
         .await
-        .map_err(Error::from)??;
+        .map_err(|e| error::from_elapsed(e))??;
         Ok(Cancel::new(msg, data, addr, self))
     }
 
@@ -599,7 +600,7 @@ impl Context {
             }
         })
         .await
-        .map_err(Error::from)??;
+        .map_err(|e| error::from_elapsed(e))??;
 
         Ok(Cancel::new(m, data, addr, self))
     }
@@ -621,20 +622,30 @@ impl Context {
     /// initialisation when the node is stopped.
     pub async fn set_cluster<S: Into<String>>(&self, label: S) -> Result<()> {
         let (msg, mut rx) = NodeMessage::set_cluster(self.address(), label.into());
-        self.sender.send(msg).await.map_err(Error::from)?;
-        Ok(rx.recv().await.ok_or(Error::InternalIOFailure)??.is_ok()?)
+        self.sender
+            .send(msg)
+            .await
+            .map_err(|e| error::node_internal(e))?;
+        Ok(rx
+            .recv()
+            .await
+            .ok_or(error::internal_without_cause())??
+            .is_ok()?)
     }
 
     /// Return a list of all available worker addresses on a node
     pub async fn list_workers(&self) -> Result<Vec<Address>> {
         let (msg, mut reply_rx) = NodeMessage::list_workers();
 
-        self.sender.send(msg).await.map_err(Error::from)?;
+        self.sender
+            .send(msg)
+            .await
+            .map_err(|e| error::node_internal(e))?;
 
         Ok(reply_rx
             .recv()
             .await
-            .ok_or(Error::InternalIOFailure)??
+            .ok_or(error::internal_without_cause())??
             .take_workers()?)
     }
 
@@ -648,7 +659,7 @@ impl Context {
         self.sender
             .send(NodeMessage::StopAck(self.address()))
             .await
-            .map_err(Error::from)?;
+            .map_err(|e| error::node_internal(e))?;
         Ok(())
     }
 
@@ -657,9 +668,10 @@ impl Context {
         self.sender
             .send(NodeMessage::Router(type_, addr, tx))
             .await
-            .map_err(|_| Error::InternalIOFailure)?;
+            .map_err(|e| error::node_internal(e))?;
 
-        Ok(rx.recv().await.ok_or(Error::InternalIOFailure)??.is_ok()?)
+        rx.recv().await.ok_or(error::internal_without_cause())??;
+        Ok(())
     }
 
     /// A convenience function to get a data 3-tuple from the mailbox
@@ -677,7 +689,10 @@ impl Context {
     /// has woken it.
     async fn next_from_mailbox<M: Message>(&mut self) -> Result<(M, LocalMessage, Address)> {
         loop {
-            let msg = self.mailbox_next().await?.ok_or(Error::FailedLoadData)?;
+            let msg = self
+                .mailbox_next()
+                .await?
+                .ok_or(error::node_without_cause(Kind::NotFound))?;
             let (addr, data) = msg.local_msg();
 
             // FIXME: make message parsing idempotent to avoid cloning
@@ -701,7 +716,7 @@ impl Context {
         self.sender
             .send(NodeMessage::set_ready(self.address()))
             .await
-            .map_err(|_| Error::InternalIOFailure)?;
+            .map_err(|e| error::node_internal(e))?;
         Ok(())
     }
 
@@ -711,11 +726,14 @@ impl Context {
         self.sender
             .send(msg)
             .await
-            .map_err(|_| Error::InternalIOFailure)?;
+            .map_err(|e| error::node_internal(e))?;
 
         // This call blocks until the address has become ready or is
-        // dropped
-        reply.recv().await.ok_or(Error::InternalIOFailure)??;
+        // dropped by the router
+        reply
+            .recv()
+            .await
+            .ok_or(error::internal_without_cause())??;
         Ok(())
     }
 }

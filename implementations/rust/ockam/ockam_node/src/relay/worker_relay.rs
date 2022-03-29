@@ -3,7 +3,9 @@ use crate::tokio::{runtime::Runtime, sync::mpsc::Receiver};
 use crate::{parser, Context};
 use core::marker::PhantomData;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Address, LocalMessage, Message, Result, Route, Routed, TransportMessage, Worker};
+use ockam_core::{
+    error::Result, Address, LocalMessage, Message, Route, Routed, TransportMessage, Worker,
+};
 
 /// Worker relay machinery
 ///

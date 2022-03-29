@@ -35,7 +35,6 @@ pub mod compat;
 mod cancel;
 mod context;
 mod delayed;
-// mod error;
 mod executor;
 mod messages;
 mod node;
@@ -96,7 +95,40 @@ pub(crate) mod error {
     //!
     //! Utility module to construct various error types
 
-    use ockam_core::error::code::{ErrorCode, Kind, Origin};
+    use crate::messages::NodeError;
+    use crate::tokio::sync::mpsc::error::SendError;
+    use core::fmt::Debug;
+    use ockam_core::{
+        compat::error::Error,
+        error::code::{ErrorCode, Kind, Origin},
+        error::Error2,
+    };
+
+    impl From<NodeError> for Error2 {
+        fn from(e: NodeError) -> Error2 {
+            Error2::new(node(Kind::Internal), e)
+        }
+    }
+
+    pub fn from_send_err<T: Debug + Send + Sync + 'static>(e: SendError<T>) -> Error2 {
+        node_internal(e)
+    }
+
+    pub fn from_elapsed(e: tokio::time::error::Elapsed) -> Error2 {
+        Error2::new(node(Kind::Timeout), e)
+    }
+
+    pub fn node_internal(e: impl Error + Send + Sync + 'static) -> Error2 {
+        Error2::new(node(Kind::Internal), e)
+    }
+
+    pub fn node_without_cause(kind: Kind) -> Error2 {
+        Error2::new_without_cause(node(kind))
+    }
+
+    pub fn internal_without_cause() -> Error2 {
+        Error2::new_without_cause(node(Kind::Internal))
+    }
 
     /// Create a `node` error
     pub fn node(kind: Kind) -> ErrorCode {
@@ -106,10 +138,5 @@ pub(crate) mod error {
     /// Create a new `executor` error (meaning tokio broke)
     pub fn executor(kind: Kind) -> ErrorCode {
         ErrorCode::new(Origin::Executor, kind)
-    }
-
-    /// Create a new `core` error
-    pub fn core(kind: Kind) -> ErrorCode {
-        ErrorCode::new(Origin::Core, kind)
     }
 }

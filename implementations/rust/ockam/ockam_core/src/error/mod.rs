@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod code;
 mod inner;
+pub mod none;
 
 // We box the internal error type if an allocator is available — this is (often
 // significantly) more efficient in the success path.
@@ -49,6 +50,15 @@ impl Error2 {
         E: Into<Box<dyn crate::compat::error::Error + Send + Sync>>,
     {
         Self::new(code::ErrorCode::unknown(), cause)
+    }
+
+    /// Construct a new error without an apparent cause
+    ///
+    /// This constructor should be used for any error occurring
+    /// because of a None unwrap.
+    #[cold]
+    pub fn new_without_cause(code: code::ErrorCode) -> Self {
+        Self(inner::ErrorData::new_without_cause(code).into())
     }
 
     /// Return the [codes](`codes::ErrorCodes`) that identify this error.

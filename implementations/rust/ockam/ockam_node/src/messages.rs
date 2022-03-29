@@ -1,8 +1,8 @@
 use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
-use crate::{error::Error, relay::RelayMessage, router::SenderPair};
-use core::fmt::Formatter;
-use ockam_core::compat::{string::String, vec::Vec};
-use ockam_core::{Address, AddressSet, TransportType};
+use crate::{error, relay::RelayMessage, router::SenderPair};
+use core::fmt;
+use ockam_core::compat::{error::Error as StdError, string::String, vec::Vec};
+use ockam_core::{error::Result, Address, AddressSet, TransportType};
 
 /// Messages sent from the Node to the Executor
 #[derive(Debug)]
@@ -44,8 +44,8 @@ pub enum NodeMessage {
     CheckReady(Address, Sender<NodeReplyResult>),
 }
 
-impl core::fmt::Display for NodeMessage {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+impl fmt::Display for NodeMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             NodeMessage::StartWorker { .. } => write!(f, "StartWorker"),
             NodeMessage::ListWorkers(_) => write!(f, "ListWorkers"),
@@ -148,7 +148,7 @@ impl NodeMessage {
 }
 
 /// The reply/result of a Node
-pub type NodeReplyResult = Result<NodeReply, NodeError>;
+pub type NodeReplyResult = core::result::Result<NodeReply, NodeError>;
 
 /// Successful return values from a router command
 #[derive(Debug)]
@@ -184,6 +184,19 @@ pub enum NodeError {
     Rejected(Reason),
 }
 
+impl fmt::Display for NodeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::NoSuchAddress(addr) => write!(f, "No such address '{}'", addr),
+            Self::WorkerExists(addr) => write!(f, "Worker exists '{}'", addr),
+            Self::RouterExists => write!(f, "Router exists"),
+            Self::Rejected(reason) => write!(f, "Command rejected because: {}", reason),
+        }
+    }
+}
+
+impl StdError for NodeError {}
+
 /// The reason why a command was rejected
 #[derive(Debug, Copy, Clone)]
 pub enum Reason {
@@ -193,6 +206,16 @@ pub enum Reason {
     WorkerShutdown,
     /// Message was addressed to an invalid address
     InvalidAddress,
+}
+
+impl fmt::Display for Reason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::NodeShutdown => write!(f, "node shutting down"),
+            Self::WorkerShutdown => write!(f, "worker shutting down"),
+            Self::InvalidAddress => write!(f, "invalid address"),
+        }
+    }
 }
 
 /// Specify the type of node shutdown
@@ -280,34 +303,34 @@ impl NodeReply {
     }
 
     /// Consume the wrapper and return [NodeReply::Sender]
-    pub fn take_sender(self) -> Result<(Address, Sender<RelayMessage>, bool), Error> {
+    pub fn take_sender(self) -> Result<(Address, Sender<RelayMessage>, bool)> {
         match self {
             Self::Sender { addr, sender, wrap } => Ok((addr, sender, wrap)),
-            _ => Err(Error::InternalIOFailure),
+            _ => Err(error::internal_without_cause()),
         }
     }
 
     /// Consume the wrapper and return [NodeReply::Workers]
-    pub fn take_workers(self) -> Result<Vec<Address>, Error> {
+    pub fn take_workers(self) -> Result<Vec<Address>> {
         match self {
             Self::Workers(w) => Ok(w),
-            _ => Err(Error::InternalIOFailure),
+            _ => Err(error::internal_without_cause()),
         }
     }
 
     /// Consume the wrapper and return [NodeReply::State]
-    pub fn take_state(self) -> Result<bool, Error> {
+    pub fn take_state(self) -> Result<bool> {
         match self {
             Self::State(b) => Ok(b),
-            _ => Err(Error::InternalIOFailure),
+            _ => Err(error::internal_without_cause()),
         }
     }
 
     /// Returns Ok if self is [NodeReply::Ok]
-    pub fn is_ok(self) -> Result<(), Error> {
+    pub fn is_ok(self) -> Result<()> {
         match self {
             Self::Ok => Ok(()),
-            _ => Err(Error::InternalIOFailure),
+            _ => Err(error::internal_without_cause()),
         }
     }
 }

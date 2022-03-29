@@ -1,8 +1,7 @@
 use super::Router;
 use crate::tokio::sync::mpsc::Sender;
-use crate::{error::Error, NodeReply, NodeReplyResult};
-
-use ockam_core::{Address, Result};
+use crate::{error, NodeReply, NodeReplyResult};
+use ockam_core::{error::Result, Address};
 
 pub(super) async fn exec(
     router: &mut Router,
@@ -18,7 +17,7 @@ pub(super) async fn exec(
             reply
                 .send(NodeReply::no_such_address(main_addr.clone()))
                 .await
-                .map_err(|_| Error::InternalIOFailure)?;
+                .map_err(|e| error::node_internal(e))?;
 
             return Ok(());
         }
@@ -34,7 +33,7 @@ pub(super) async fn exec(
     reply
         .send(NodeReply::ok())
         .await
-        .map_err(|_| Error::InternalIOFailure)?;
+        .map_err(|e| error::node_internal(e))?;
 
     Ok(())
 }

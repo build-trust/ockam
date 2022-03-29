@@ -1,6 +1,6 @@
 use super::Router;
-use crate::{error::Error, tokio::sync::mpsc::Sender, NodeReply, NodeReplyResult};
-use ockam_core::{Address, Result};
+use crate::{error, tokio::sync::mpsc::Sender, NodeReply, NodeReplyResult};
+use ockam_core::{error::Result, Address};
 
 /// Register a stop ACK
 ///
@@ -102,6 +102,6 @@ pub(super) async fn immediate(router: &mut Router, reply: Sender<NodeReplyResult
     reply
         .send(NodeReply::ok())
         .await
-        .map_err(|_| Error::InternalIOFailure)?;
+        .map_err(|e| error::node_internal(e))?;
     Ok(())
 }

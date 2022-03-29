@@ -1,13 +1,14 @@
 use crate::relay::{CtrlSignal, RelayMessage};
 use crate::tokio::sync::mpsc::Sender;
-use crate::{error::Error, NodeError, NodeReply, NodeReplyResult};
+use crate::{error, NodeError, NodeReply, NodeReplyResult};
 use ockam_core::{
     compat::{
         collections::{BTreeMap, BTreeSet},
         string::String,
         vec::Vec,
     },
-    Address, AddressSet, Result,
+    error::Result,
+    Address, AddressSet,
 };
 
 /// Address states and associated logic
@@ -175,7 +176,7 @@ impl AddressRecord {
             self.ctrl_tx
                 .send(CtrlSignal::InterruptStop)
                 .await
-                .map_err(|_| Error::InternalIOFailure)?;
+                .map_err(|e| error::node_internal(e))?;
         } else {
             self.sender = None;
         }

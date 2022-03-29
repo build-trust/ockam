@@ -1,8 +1,7 @@
 use super::{AddressMeta, AddressRecord, NodeState, Router, SenderPair};
 use crate::tokio::sync::mpsc::Sender;
-use crate::{error::Error, NodeReply, NodeReplyResult, Reason};
-
-use ockam_core::{AddressSet, Result};
+use crate::{error, NodeReply, NodeReplyResult, Reason};
+use ockam_core::{error::Result, AddressSet};
 
 /// Execute a `StartWorker` command
 pub(super) async fn exec(
@@ -65,7 +64,7 @@ async fn start(
     reply
         .send(NodeReply::ok())
         .await
-        .map_err(|_| Error::InternalIOFailure)?;
+        .map_err(|e| error::node_internal(e))?;
     Ok(())
 }
 
@@ -74,6 +73,6 @@ async fn reject(reply: &Sender<NodeReplyResult>) -> Result<()> {
     reply
         .send(NodeReply::rejected(Reason::NodeShutdown))
         .await
-        .map_err(|_| Error::InternalIOFailure)?;
+        .map_err(|e| error::node_internal(e))?;
     Ok(())
 }

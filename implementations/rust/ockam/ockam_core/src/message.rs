@@ -3,7 +3,11 @@ use crate::{
         string::{String, ToString},
         vec::Vec,
     },
-    Address, LocalMessage, Result, Route, TransportMessage,
+    error::{
+        code::{ErrorCode, Kind, Origin},
+        Error2, Result,
+    },
+    Address, LocalMessage, Route, TransportMessage,
 };
 use core::{
     fmt::{self, Debug, Display, Formatter},
@@ -81,12 +85,7 @@ where
     T: Serialize,
 {
     fn encode(&self) -> Result<Encoded> {
-        serde_bare::to_vec(self).map_err(|e| {
-            crate::Error::new(
-                2,
-                format!("error encoding `{}`: {:?}", core::any::type_name::<T>(), e),
-            )
-        })
+        Ok(serde_bare::to_vec(self)?)
     }
 }
 
@@ -96,18 +95,13 @@ where
     T: DeserializeOwned,
 {
     fn decode(encoded: &[u8]) -> Result<Self> {
-        serde_bare::from_slice(encoded).map_err(|e| {
-            crate::Error::new(
-                1,
-                format!("error decoding `{}`: {:?}", core::any::type_name::<T>(), e),
-            )
-        })
+        Ok(serde_bare::from_slice(encoded)?)
     }
 }
 
-impl From<serde_bare::error::Error> for crate::Error {
+impl From<serde_bare::error::Error> for Error2 {
     fn from(e: serde_bare::error::Error) -> Self {
-        Self::new(1, format!("serde_bare::error::{:?}", e))
+        Error2::new(ErrorCode::new(Origin::Core, Kind::Io), e)
     }
 }
 

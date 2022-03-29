@@ -12,12 +12,12 @@ use state::{NodeState, RouterState};
 
 use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{
-    error::Error,
+    error,
     relay::{CtrlSignal, RelayMessage},
     NodeMessage, NodeReply, ShutdownType,
 };
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::{Address, Result, TransportType};
+use ockam_core::{error::Result, Address, TransportType};
 
 /// A pair of senders to a worker relay
 #[derive(Debug)]
@@ -120,13 +120,13 @@ impl Router {
                 sender
                     .send(NodeReply::ok())
                     .await
-                    .map_err(|_| Error::InternalIOFailure)?
+                    .map_err(|e| error::node_internal(e))?
             }
             // Rejected router registration command
             Router(_, _, sender) => sender
                 .send(NodeReply::router_exists())
                 .await
-                .map_err(|_| Error::InternalIOFailure)?,
+                .map_err(|e| error::node_internal(e))?,
 
             //// ==! Basic worker control
             StartWorker {
@@ -151,7 +151,7 @@ impl Router {
                         sender
                             .send(NodeReply::ok())
                             .await
-                            .map_err(|_| Error::InternalIOFailure)?;
+                            .map_err(|e| error::node_internal(e))?;
                         return Ok(true);
                     };
                 }
@@ -166,7 +166,7 @@ impl Router {
                     sender
                         .send(NodeReply::ok())
                         .await
-                        .map_err(|_| Error::InternalIOFailure)?;
+                        .map_err(|e| error::node_internal(e))?;
                     self.map.internal.clear();
                     return Ok(true);
                 }
@@ -188,7 +188,7 @@ impl Router {
                         sender
                             .send(NodeReply::ok())
                             .await
-                            .map_err(|_| Error::InternalIOFailure)?;
+                            .map_err(|e| error::node_internal(e))?;
                         return Ok(true);
                     }
                 }
@@ -199,15 +199,12 @@ impl Router {
                     self.map.internal.keys().cloned().collect(),
                 ))
                 .await
-                .map_err(|_| Error::InternalIOFailure)?,
+                .map_err(|e| error::node_internal(e))?,
 
             SetCluster(addr, label, reply) => {
                 debug!("Setting cluster on address {}", addr);
                 let msg = self.map.set_cluster(label, addr);
-                reply
-                    .send(msg)
-                    .await
-                    .map_err(|_| Error::InternalIOFailure)?;
+                reply.send(msg).await.map_err(|e| error::node_internal(e))?;
             }
 
             SetReady(addr) => {
@@ -219,7 +216,7 @@ impl Router {
                             sender
                                 .send(NodeReply::ok())
                                 .await
-                                .map_err(|_| Error::InternalIOFailure)?;
+                                .map_err(|e| error::node_internal(e))?;
                         }
                     }
                 }
@@ -231,7 +228,7 @@ impl Router {
                     reply
                         .send(NodeReply::ok())
                         .await
-                        .map_err(|_| Error::InternalIOFailure)?;
+                        .map_err(|e| error::node_internal(e))?;
                 }
             }
 

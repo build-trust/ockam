@@ -92,7 +92,7 @@ pub mod println_no_std {
 /// Module for custom implementation of standard traits.
 pub mod traits {
     use crate::compat::boxed::Box;
-    use crate::Result;
+    use crate::error::Result;
 
     /// Clone trait for async structs.
     #[async_trait]

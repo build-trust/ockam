@@ -1,3 +1,4 @@
+use super::none::NoneError;
 use crate::compat::{boxed::Box, error::Error as ErrorTrait, string::String, vec::Vec};
 use crate::{alloc::borrow::ToOwned, error::code::ErrorCode};
 use serde::{Deserialize, Serialize};
@@ -33,6 +34,12 @@ impl ErrorData {
         E: Into<Box<dyn ErrorTrait + Send + Sync>>,
     {
         Self::new_inner(code, cause.into(), core::any::type_name::<E>())
+    }
+
+    #[cold]
+    #[track_caller]
+    pub(super) fn new_without_cause(code: ErrorCode) -> Self {
+        Self::new_inner(code, NoneError.into(), core::any::type_name::<NoneError>())
     }
 
     #[cold]

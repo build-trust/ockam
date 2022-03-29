@@ -4,7 +4,10 @@ use crate::{
     router::{Router, SenderPair},
     NodeMessage,
 };
-use ockam_core::{Address, Result};
+use ockam_core::{
+    error::{code::Kind, Error2, Result},
+    Address,
+};
 
 use crate::tokio::{runtime::Runtime, sync::mpsc::Sender};
 use core::future::Future;
@@ -65,13 +68,15 @@ impl Executor {
         F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
+        use crate::error;
+
         let rt = Arc::clone(&self.rt);
         let join_body = rt.spawn(future);
 
         crate::block_future(&rt, async move { self.router.run().await })?;
 
         let res = crate::block_future(&rt, async move { join_body.await })
-            .map_err(|_| crate::error::Error::ExecutorBodyJoinError)?;
+            .map_err(|e| Error2::new(error::executor(Kind::Unknown), e))?;
 
         Ok(res)
     }
