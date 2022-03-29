@@ -1,4 +1,3 @@
-use dyn_clonable::*;
 use dyn_clone::DynClone;
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 use ockam_core::{Address, Message, Result, Routed};
@@ -21,9 +20,8 @@ use ockam_core::{Address, Message, Result, Routed};
 /// It is highly recommended to use the
 /// [SystemBuilder](crate::SystemBuilder) utility to generate this
 /// information.
-#[clonable]
 #[ockam_core::async_trait]
-pub trait SystemHandler<C, M>: Clone + DynClone
+pub trait SystemHandler<C, M>: DynClone
 where
     C: Send + 'static,
     M: Message,
@@ -46,4 +44,12 @@ where
         ctx: &mut C,
         msg: Routed<M>,
     ) -> Result<()>;
+}
+
+dyn_clone::clone_trait_object! {
+    <C, M>
+    SystemHandler<C, M>
+    where
+        C: Send + 'static,
+        M: Message,
 }
