@@ -29,7 +29,6 @@ extern crate tracing;
 
 use std::net::SocketAddr;
 
-pub use error::WebSocketError;
 use ockam_core::{Result, TransportType};
 use ockam_transport_core::TransportError;
 pub use transport::*;

@@ -2,9 +2,10 @@ use core::fmt;
 use std::net::SocketAddr;
 use std::str::FromStr;
 
-use crate::{parse_socket_addr, WebSocketRouter, WebSocketRouterHandle};
-use ockam_core::Result;
+use ockam_core::{Address, Result};
 use ockam_node::Context;
+
+use crate::{parse_socket_addr, WebSocketRouter, WebSocketRouterHandle, WS};
 
 /// High level management interface for WebSocket transports
 ///
@@ -66,12 +67,18 @@ impl WebSocketTransport {
 }
 
 #[derive(Clone)]
-pub struct WebSocketAddr {
+pub(crate) struct WebSocketAddress {
     protocol: String,
     socket_addr: SocketAddr,
 }
 
-impl From<SocketAddr> for WebSocketAddr {
+impl From<WebSocketAddress> for Address {
+    fn from(other: WebSocketAddress) -> Self {
+        format!("{}#{}", WS, other.socket_addr).into()
+    }
+}
+
+impl From<SocketAddr> for WebSocketAddress {
     fn from(socket_addr: SocketAddr) -> Self {
         Self {
             protocol: "ws".to_string(),
@@ -80,28 +87,28 @@ impl From<SocketAddr> for WebSocketAddr {
     }
 }
 
-impl From<WebSocketAddr> for SocketAddr {
-    fn from(other: WebSocketAddr) -> Self {
+impl From<WebSocketAddress> for SocketAddr {
+    fn from(other: WebSocketAddress) -> Self {
         other.socket_addr
     }
 }
 
-impl From<&WebSocketAddr> for String {
-    fn from(other: &WebSocketAddr) -> Self {
+impl From<&WebSocketAddress> for String {
+    fn from(other: &WebSocketAddress) -> Self {
         other.to_string()
     }
 }
 
-impl FromStr for WebSocketAddr {
+impl FromStr for WebSocketAddress {
     type Err = ockam_core::Error;
 
     fn from_str(s: &str) -> Result<Self> {
         let socket_addr = parse_socket_addr(s)?;
-        Ok(WebSocketAddr::from(socket_addr))
+        Ok(WebSocketAddress::from(socket_addr))
     }
 }
 
-impl fmt::Display for WebSocketAddr {
+impl fmt::Display for WebSocketAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}://{}", &self.protocol, &self.socket_addr)
     }

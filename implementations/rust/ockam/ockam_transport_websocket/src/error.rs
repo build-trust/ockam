@@ -8,7 +8,7 @@ use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 /// A WebSocket connection worker specific error type
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
-pub enum WebSocketError {
+pub(crate) enum WebSocketError {
     /// A wrapped transport error
     Transport(TransportError),
     /// HTTP error
