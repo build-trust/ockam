@@ -12,26 +12,29 @@ use ockam_core::{
 use ockam_node::{Context, DelayedEvent};
 
 use crate::workers::{AsyncStream, WebSocketRecvProcessor};
+use crate::WebSocketAddress;
 
 /// Transmit and receive peers of a WebSocket connection
 #[derive(Debug)]
 pub(crate) struct WorkerPair {
     hostnames: Vec<String>,
-    peer: SocketAddr,
+    peer: Address,
     tx_addr: Address,
 }
 
 impl WorkerPair {
-    pub fn hostnames(&self) -> &[String] {
+    pub(crate) fn hostnames(&self) -> &[String] {
         &self.hostnames
     }
-    pub fn peer(&self) -> SocketAddr {
-        self.peer
+    pub(crate) fn peer(&self) -> Address {
+        self.peer.clone()
     }
-    pub fn tx_addr(&self) -> Address {
+    pub(crate) fn tx_addr(&self) -> Address {
         self.tx_addr.clone()
     }
 
+    /// Spawn instances of `WebSocketSendWorker` and `WebSocketRecvProcessor` and
+    /// returns a `WorkerPair` instance that will be registered by the `WebSocketRouter`.
     pub(crate) async fn new<S>(
         ctx: &Context,
         stream: WebSocketStream<S>,
@@ -63,7 +66,7 @@ impl WorkerPair {
         // Return a handle to the worker pair
         Ok(WorkerPair {
             hostnames,
-            peer,
+            peer: WebSocketAddress::from(peer).into(),
             tx_addr,
         })
     }
@@ -74,7 +77,7 @@ impl WorkerPair {
 /// This half of the worker is created when spawning a new connection
 /// worker pair, and listens for messages from the node message system
 /// to dispatch to a remote peer.
-pub struct WebSocketSendWorker<S>
+pub(crate) struct WebSocketSendWorker<S>
 where
     S: AsyncStream,
 {
@@ -128,8 +131,8 @@ where
         Ok(())
     }
 
-    // WebSocketSendWorker will receive messages from the WebSocketRouter to send
-    // across the WebSocketStream to the next remote peer.
+    /// It will receive messages from the `WebSocketRouter` to send
+    /// across the `WebSocketStream` to the next remote peer.
     async fn handle_message(
         &mut self,
         ctx: &mut Context,

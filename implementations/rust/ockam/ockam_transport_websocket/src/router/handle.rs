@@ -1,3 +1,4 @@
+use core::str::FromStr;
 use std::net::{SocketAddr, ToSocketAddrs};
 
 use ockam_core::{async_trait, Address, AsyncTryClone, Result};
@@ -6,7 +7,7 @@ use ockam_transport_core::TransportError;
 
 use crate::router::WebSocketRouterMessage;
 use crate::workers::{WebSocketListenProcessor, WorkerPair};
-use crate::{parse_socket_addr, WebSocketAddr, WebSocketError, WS};
+use crate::{error::WebSocketError, parse_socket_addr, WebSocketAddress};
 
 /// A handle to connect to a WebSocketRouter
 ///
@@ -30,13 +31,14 @@ impl WebSocketRouterHandle {
     }
 
     /// Register a new connection worker with this router
-    pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
-        let ws_address: Address = format!("{}#{}", WS, pair.peer()).into();
-        let mut accepts = vec![ws_address];
+    pub(crate) async fn register(&self, pair: &WorkerPair) -> Result<()> {
+        let mut accepts = vec![pair.peer()];
+
         accepts.extend(
             pair.hostnames()
                 .iter()
-                .map(|x| Address::from_string(format!("{}#{}", WS, x))),
+                .filter_map(|x| WebSocketAddress::from_str(x).ok())
+                .map(|addr| addr.into()),
         );
         let self_addr = pair.tx_addr();
         self.ctx
@@ -48,11 +50,12 @@ impl WebSocketRouterHandle {
     }
 
     /// Bind an incoming connection listener for this router
-    pub async fn bind(&self, addr: impl Into<SocketAddr>) -> Result<()> {
+    pub(crate) async fn bind(&self, addr: impl Into<SocketAddr>) -> Result<()> {
         let socket_addr = addr.into();
         WebSocketListenProcessor::start(&self.ctx, self.async_try_clone().await?, socket_addr).await
     }
 
+    /// Return the peer's `SocketAddr` and `hostnames` given a plain `String` address
     pub(crate) fn resolve_peer(peer: impl Into<String>) -> Result<(SocketAddr, Vec<String>)> {
         let peer_str = peer.into();
         let peer_addr;
@@ -81,13 +84,19 @@ impl WebSocketRouterHandle {
     }
 
     /// Establish an outgoing WS connection on an existing transport
-    pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
+    pub(crate) async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
+        // Get peer address and connect to it.
         let (peer_addr, hostnames) = Self::resolve_peer(peer.as_ref())?;
-        let ws_peer_addr = WebSocketAddr::from(peer_addr);
+        let ws_peer_addr = WebSocketAddress::from(peer_addr);
         let (stream, _) = tokio_tungstenite::connect_async(ws_peer_addr.to_string())
             .await
             .map_err(WebSocketError::from)?;
+
+        // Create a new `WorkerPair` for the given peer, initializing a new pair
+        // of sender worker and receiver processor.
         let pair = WorkerPair::new(&self.ctx, stream, peer_addr, hostnames).await?;
+
+        // Handle node's register request.
         self.register(&pair).await
     }
 }

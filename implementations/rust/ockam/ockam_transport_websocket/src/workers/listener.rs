@@ -6,15 +6,20 @@ use ockam_core::{async_trait, Address, Processor, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
-use crate::workers::WorkerPair;
-use crate::{WebSocketError, WebSocketRouterHandle};
+use crate::{error::WebSocketError, workers::WorkerPair, WebSocketRouterHandle};
 
-pub struct WebSocketListenProcessor {
+/// A worker that runs in the background as a `Processor` waiting for incoming
+/// clients' connections.
+///
+/// When a new connection is established, a new `WorkerPair` is spawned and
+/// registered by the router.
+pub(crate) struct WebSocketListenProcessor {
     inner: TcpListener,
     router_handle: WebSocketRouterHandle,
 }
 
 impl WebSocketListenProcessor {
+    /// Create and start a new instance bound to the given `addr`.
     pub(crate) async fn start(
         ctx: &Context,
         router_handle: WebSocketRouterHandle,

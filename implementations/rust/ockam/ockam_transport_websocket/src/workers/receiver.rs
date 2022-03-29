@@ -4,6 +4,7 @@ use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
 use tokio_tungstenite::WebSocketStream;
 
+use crate::WebSocketAddress;
 use ockam_core::{
     async_trait, Address, Decodable, LocalMessage, Processor, Result, TransportMessage,
 };
@@ -12,6 +13,11 @@ use ockam_transport_core::TransportError;
 
 use crate::workers::AsyncStream;
 
+/// A WebSocket receiving message worker
+///
+/// This half of the worker is created when spawning a new connection
+/// worker pair, and listens for messages received to the WebSocket stream
+/// from the remote peer.
 pub(crate) struct WebSocketRecvProcessor<S>
 where
     S: AsyncStream,
@@ -24,10 +30,10 @@ impl<S> WebSocketRecvProcessor<S>
 where
     S: AsyncStream,
 {
-    pub fn new(ws_stream: SplitStream<WebSocketStream<S>>, peer: SocketAddr) -> Self {
+    pub(crate) fn new(ws_stream: SplitStream<WebSocketStream<S>>, peer: SocketAddr) -> Self {
         Self {
             ws_stream,
-            peer_addr: format!("{}#{}", crate::WS, peer).into(),
+            peer_addr: WebSocketAddress::from(peer).into(),
         }
     }
 }
@@ -43,7 +49,11 @@ where
         ctx.set_cluster(crate::CLUSTER_NAME).await
     }
 
+    /// Get next message from the WebSocket stream if there is
+    /// any available, and forward it to the next hop in the route.
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
+        // Get next message from the stream or abort if the stream is
+        // either closed or exhausted.
         let ws_msg = match self.ws_stream.next().await {
             Some(res) => match res {
                 Ok(ws_msg) => ws_msg,
@@ -64,9 +74,10 @@ where
             }
         };
 
+        // Extract message payload
         let encoded_msg = ws_msg.into_data();
 
-        // Deserialize the message now
+        // Deserialize the message
         let mut msg =
             TransportMessage::decode(&encoded_msg).map_err(|_| TransportError::RecvBadMessage)?;
 
