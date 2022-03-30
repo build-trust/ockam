@@ -10,3 +10,5 @@ lib
 *.tsbuildinfo
 target
 *.node
+
+**/ockam/ockam/node_modules
