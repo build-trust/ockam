@@ -58,18 +58,6 @@ impl From<TungsteniteError> for WebSocketError {
     }
 }
 
-impl<T> From<futures_channel::mpsc::TrySendError<T>> for WebSocketError {
-    fn from(_e: futures_channel::mpsc::TrySendError<T>) -> Self {
-        Self::Transport(TransportError::GenericIo)
-    }
-}
-
-impl From<futures_channel::mpsc::SendError> for WebSocketError {
-    fn from(_e: futures_channel::mpsc::SendError) -> Self {
-        Self::Transport(TransportError::GenericIo)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
