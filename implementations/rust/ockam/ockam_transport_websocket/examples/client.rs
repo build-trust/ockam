@@ -9,7 +9,8 @@ use tokio::time::{sleep, timeout, Duration};
 
 use ockam_core::{route, Result};
 use ockam_node::Context;
-use ockam_transport_websocket::{WebSocketError, WebSocketTransport, WS};
+use ockam_transport_core::TransportError;
+use ockam_transport_websocket::{WebSocketTransport, WS};
 
 #[ockam_macros::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -75,7 +76,7 @@ async fn read_stdin(mut tx: futures_channel::mpsc::Sender<Vec<u8>>) -> Result<()
         }
 
         let msg = Vec::from(String::from_utf8(msg).unwrap().trim());
-        tx.send(msg).await.map_err(WebSocketError::from)?;
+        tx.send(msg).await.map_err(|_| TransportError::GenericIo)?;
     }
     Ok(())
 }
