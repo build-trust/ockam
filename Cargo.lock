@@ -2003,6 +2003,7 @@ dependencies = [
  "ockam_executor",
  "ockam_macros",
  "serde 1.0.136",
+ "serde_bare",
  "tokio",
  "tracing",
  "tracing-subscriber",

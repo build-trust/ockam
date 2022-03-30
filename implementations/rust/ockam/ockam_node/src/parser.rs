@@ -12,9 +12,9 @@ pub(crate) fn message<M: Message>(vec: &[u8]) -> Result<M> {
         // sent by a non-Rust implementation.  In this case we
         // prepend the length of the mesage to the vector and try
         // again.  I know it's bad, but as long as we don't have
-        // properly specified payload encoding this is what will
+        // properly specified payload encoding this is what we'll
         // have to do.
-        let mut new_v = vec![vec.len() as u8]; // FIXME: does not handle message sizes over 255
+        let mut new_v = serde_bare::to_vec(&serde_bare::Uint(vec.len() as u64))?;
         trace!("New message length: {:?}", new_v);
 
         new_v.append(&mut vec.to_vec());
