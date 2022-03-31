@@ -303,8 +303,8 @@ Create a file at `examples/03-outlet.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/03-outlet.rs
-use ockam::{Context, Result, TcpTransport};
-use ockam::{Identity, TrustEveryonePolicy, Vault};
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::{vault::Vault, Context, Result, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -355,8 +355,8 @@ Create a file at `examples/03-inlet.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/03-inlet.rs
-use ockam::{route, Context, Result, TcpTransport, TCP};
-use ockam::{Identity, TrustEveryonePolicy, Vault};
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -464,8 +464,12 @@ Create a file at `examples/04-outlet.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/04-outlet.rs
-use ockam::{Context, RemoteForwarder, Result, TcpTransport, TCP};
-use ockam::{Identity, TrustEveryonePolicy, Vault};
+use ockam::{
+    identity::{Identity, TrustEveryonePolicy},
+    remote::RemoteForwarder,
+    vault::Vault,
+    Context, Result, TcpTransport, TCP,
+};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -519,8 +523,8 @@ Create a file at `examples/04-inlet.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/04-inlet.rs
-use ockam::{route, Context, Result, Route, TcpTransport, TCP};
-use ockam::{Identity, TrustEveryonePolicy, Vault};
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::{route, vault::Vault, Context, Result, Route, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

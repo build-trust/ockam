@@ -38,7 +38,8 @@ Add the following code to this file:
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
-use ockam::{Context, Identity, Result, TcpTransport, TrustEveryonePolicy, Vault};
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::{vault::Vault, Context, Result, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -115,8 +116,8 @@ Add the following code to this file:
 // This node creates an end-to-end encrypted secure channel over two tcp transport hops.
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
-use ockam::{route, Context, Result, TrustEveryonePolicy, Vault};
-use ockam::{Identity, TcpTransport, TCP};
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {

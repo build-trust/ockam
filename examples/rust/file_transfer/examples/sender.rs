@@ -1,7 +1,12 @@
 // examples/sender.rs
 
 use file_transfer::{FileData, FileDescription};
-use ockam::{route, Context, Identity, TrustEveryonePolicy, Vault};
+use ockam::{
+    identity::{Identity, TrustEveryonePolicy},
+    route,
+    vault::Vault,
+    Context,
+};
 use ockam::{TcpTransport, TCP};
 
 use std::path::PathBuf;

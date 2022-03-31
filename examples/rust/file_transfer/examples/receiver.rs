@@ -1,8 +1,12 @@
 // examples/receiver.rs
 
 use file_transfer::FileData;
-use ockam::{Context, Identity, Result, TrustEveryonePolicy, Vault};
-use ockam::{RemoteForwarder, Routed, TcpTransport, Worker, TCP};
+use ockam::{
+    identity::{Identity, TrustEveryonePolicy},
+    remote::RemoteForwarder,
+    vault::Vault,
+    Context, Result, Routed, TcpTransport, Worker, TCP,
+};
 
 use std::str;
 

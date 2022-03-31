@@ -1,5 +1,5 @@
-use ockam::{route, Context, Identity, Result, TrustEveryonePolicy, Vault};
-use ockam::{TcpTransport, TCP};
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
 use std::io;
 
 #[ockam::node]

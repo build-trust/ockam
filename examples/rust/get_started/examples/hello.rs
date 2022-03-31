@@ -1,4 +1,9 @@
-use ockam::{route, Context, Identity, Result, TrustEveryonePolicy, Vault};
+use ockam::{
+    identity::{Identity, TrustEveryonePolicy},
+    route,
+    vault::Vault,
+    Context, Result,
+};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {

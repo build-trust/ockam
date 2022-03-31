@@ -51,7 +51,7 @@ pub mod channel;
 pub mod pipe;
 pub mod pipe2;
 pub mod protocols;
-pub mod remote_forwarder;
+pub mod remote;
 pub mod stream;
 pub mod workers;
 

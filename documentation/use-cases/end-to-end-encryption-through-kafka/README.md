@@ -177,9 +177,13 @@ Create a file at `examples/ockam_kafka_bob.rs` and copy the below code snippet t
 
 ```rust
 // examples/ockam_kafka_bob.rs
-use ockam::{route, Context, Identity, Result, TrustEveryonePolicy, Vault};
-use ockam::{stream::Stream, Routed, TcpTransport, Unique, Worker, TCP};
-
+use ockam::{
+    identity::{Identity, TrustEveryonePolicy},
+    route,
+    stream::Stream,
+    vault::Vault,
+    Context, Result, Routed, TcpTransport, Worker, TCP,
+};
 struct Echoer;
 
 // Define an Echoer worker that prints any message it receives and
@@ -222,14 +226,14 @@ async fn main(ctx: Context) -> Result<()> {
     // - a sender (producer) for the `bob_to_alice` stream.
 
     let node_in_hub = (TCP, "1.node.ockam.network:4000");
-    let b_to_a_stream_address = Unique::with_prefix("bob_to_alice");
-    let a_to_b_stream_address = Unique::with_prefix("alice_to_bob");
+    let b_to_a_stream_address = ockam::unique_with_prefix("bob_to_alice");
+    let a_to_b_stream_address = ockam::unique_with_prefix("alice_to_bob");
 
     Stream::new(&ctx)
         .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
-        .client_id(Unique::with_prefix("bob"))
+        .client_id(ockam::unique_with_prefix("bob"))
         .connect(
             route![node_in_hub],
             b_to_a_stream_address.clone(),
@@ -257,8 +261,14 @@ Create a file at `examples/ockam_kafka_alice.rs` and copy the below code snippet
 
 ```rust
 // examples/ockam_kafka_alice.rs
-use ockam::{route, Context, Identity, Result, TrustEveryonePolicy, Vault};
-use ockam::{stream::Stream, TcpTransport, Unique, TCP};
+use ockam::{
+    identity::{Identity, TrustEveryonePolicy},
+    route,
+    stream::Stream,
+    unique_with_prefix,
+    vault::Vault,
+    Context, Result, TcpTransport, TCP,
+};
 use std::io;
 
 #[ockam::node]
@@ -300,7 +310,7 @@ async fn main(mut ctx: Context) -> Result<()> {
         .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
-        .client_id(Unique::with_prefix("alice"))
+        .client_id(unique_with_prefix("alice"))
         .connect(route![node_in_hub], a_to_b_stream_address, b_to_a_stream_address)
         .await?;
 

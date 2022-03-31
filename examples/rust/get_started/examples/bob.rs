@@ -1,5 +1,6 @@
-use ockam::{Context, Identity, Result, TrustEveryonePolicy, Vault};
-use ockam::{RemoteForwarder, Routed, TcpTransport, Worker, TCP};
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::{remote::RemoteForwarder, Routed, TcpTransport, Worker, TCP};
+use ockam::{vault::Vault, Context, Result};
 
 struct Echoer;
 

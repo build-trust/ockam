@@ -534,8 +534,12 @@ Create a file at `examples/04-outlet.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/04-outlet.rs
-use ockam::{Context, RemoteForwarder, Result, TcpTransport, TCP};
-use ockam::{Identity, TrustEveryonePolicy, Vault};
+use ockam::{
+    identity::{Identity, TrustEveryonePolicy},
+    remote::RemoteForwarder,
+    vault::Vault,
+    Context, Result, TcpTransport, TCP,
+};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -544,10 +548,11 @@ async fn main(ctx: Context) -> Result<()> {
 
     let vault = Vault::create();
     let mut e = Identity::create(&ctx, &vault).await?;
-    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy).await?;
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
+        .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
-    // For example: 127.0.0.1:5000
+    // For example: 127.0.0.1:4002
     //
     // Create a TCP Transport Outlet - at Ockam Worker address "outlet" -
     // that will connect, as a TCP client, to the target TCP server.

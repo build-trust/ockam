@@ -113,9 +113,9 @@ we would love to help.
 Create a file at `examples/bob.rs` and copy the below code snippet to it.
 
 ```rust
-// examples/bob.rs
-use ockam::{Context, Identity, Result, TrustEveryonePolicy, Vault};
-use ockam::{RemoteForwarder, Routed, TcpTransport, Worker, TCP};
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::{remote::RemoteForwarder, Routed, TcpTransport, Worker, TCP};
+use ockam::{vault::Vault, Context, Result};
 
 struct Echoer;
 
@@ -181,8 +181,8 @@ Create a file at `examples/alice.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/alice.rs
-use ockam::{route, Context, Identity, Result, TrustEveryonePolicy, Vault};
-use ockam::{TcpTransport, TCP};
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
 use std::io;
 
 #[ockam::node]

@@ -1,5 +1,9 @@
-use ockam::{Context, RemoteForwarder, Result, TcpTransport, TCP};
-use ockam::{Identity, TrustEveryonePolicy, Vault};
+use ockam::{
+    identity::{Identity, TrustEveryonePolicy},
+    remote::RemoteForwarder,
+    vault::Vault,
+    Context, Result, TcpTransport, TCP,
+};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

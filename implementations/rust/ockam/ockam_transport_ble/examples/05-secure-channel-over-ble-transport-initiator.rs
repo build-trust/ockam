@@ -1,6 +1,11 @@
 // This node routes a message, to a worker on a different node, over the ble transport.
 
-use ockam::{route, Context, Identity, Result, TrustEveryonePolicy, Vault};
+use ockam::{
+    identity::{Identity, TrustEveryonePolicy},
+    route,
+    vault::Vault,
+    Context, Result,
+};
 use ockam_transport_ble::{BleTransport, BLE};
 
 use ockam_transport_ble::driver::btleplug::BleAdapter;

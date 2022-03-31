@@ -54,7 +54,7 @@ async fn main(ctx: Context) -> Result<()> {
         .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
-        .client_id(unique_with_prefix("bob"))
+        .client_id(ockam::unique_with_prefix("bob"))
         .connect(
             route![node_in_hub],
             b_to_a_stream_address.clone(),

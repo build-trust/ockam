@@ -43,7 +43,7 @@ Add the following code to this file:
 ```rust
 // examples/10-secure-channel-via-streams-responder.rs
 use hello_ockam::Echoer;
-use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
+use ockam::{channel::SecureChannel, route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -92,7 +92,7 @@ Add the following code to this file:
 
 ```rust
 // examples/10-secure-channel-via-streams-initiator.rs
-use ockam::{route, stream::Stream, Context, Result, SecureChannel, TcpTransport, Vault, TCP};
+use ockam::{channel::SecureChannel, route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
