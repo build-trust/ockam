@@ -24,16 +24,6 @@ type ErrorData = Inner;
 
 pub type Result<T> = std::result::Result<T, Error2>;
 
-/// Produces Ok(false) to avoid an ambiguous reading from using the unadorned value in auth code.
-pub fn deny() -> Result<bool> {
-    Ok(false)
-}
-
-/// Produces Ok(true) to avoid an ambiguous reading from using the unadorned value in auth code.
-pub fn allow() -> Result<bool> {
-    Ok(true)
-}
-
 /// The type of errors returned by Ockam functions.
 ///
 /// Errors store:
