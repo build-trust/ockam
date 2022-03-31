@@ -68,6 +68,7 @@ pub mod compat {
     //! Compatibility adapter for
     pub use ockam_core::compat::*;
     pub use ockam_node::compat::*;
+    pub use ockam_node::tokio;
 }
 
 // TODO: these next few modules should be rethought when we do the updates for

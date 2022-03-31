@@ -387,7 +387,7 @@ impl<V: XXVault> State<V> {
 mod tests {
     use crate::state::{DhState, State};
     use crate::{Initiator, Responder, XXVault};
-    use ockam_core::hex::{decode, encode};
+    use hex::{decode, encode};
     use ockam_core::vault::{
         SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
         CURVE25519_SECRET_LENGTH,

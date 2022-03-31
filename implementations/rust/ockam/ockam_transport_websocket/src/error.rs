@@ -85,8 +85,6 @@ impl From<futures_channel::mpsc::SendError> for WebSocketError {
 mod test {
     use tokio_tungstenite::tungstenite::http::Response;
 
-    use ockam_core::hashbrown::HashMap;
-
     use super::*;
 
     #[test]
@@ -96,8 +94,7 @@ mod test {
             (0, WebSocketError::Http),
             (1, WebSocketError::Tls),
         ]
-        .into_iter()
-        .collect::<HashMap<_, _>>();
+        .into_iter();
         for (expected_code, ws_err) in ws_errors_map {
             let err: Error = ws_err.into();
             match ws_err {

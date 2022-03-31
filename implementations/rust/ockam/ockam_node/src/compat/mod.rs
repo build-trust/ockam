@@ -16,3 +16,5 @@ pub mod asynchronous {
     pub use super::mutex::Mutex;
     pub use super::rwlock::RwLock;
 }
+
+pub use crate::tokio;

@@ -78,7 +78,7 @@ fn output(mut cont: Container) -> TokenStream {
     cont.original_fn.block = parse2(quote! {
         {
             use core::time::Duration;
-            use #ockam_crate::{start_node, tokio::time::timeout};
+            use #ockam_crate::{start_node, compat::tokio::time::timeout};
 
             let (mut #ctx_ident, mut executor) = start_node();
             executor
