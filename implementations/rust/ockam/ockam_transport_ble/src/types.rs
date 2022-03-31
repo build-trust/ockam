@@ -23,7 +23,7 @@ impl From<&BleAddr> for String {
 }
 
 impl FromStr for BleAddr {
-    type Err = ockam_core::Error;
+    type Err = ockam_core::Error2;
 
     fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         Ok(Self {

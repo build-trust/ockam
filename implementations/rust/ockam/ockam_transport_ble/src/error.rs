@@ -1,66 +1,46 @@
-use core::fmt::{Display, Formatter};
+use ockam_core::{
+    errcode::{ErrorCode, Kind, Origin},
+    thiserror, Error2,
+};
 
 /// A Bluetooth Low Energy connection worker specific error type
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum BleError {
+    #[error("permission denied")]
     PermissionDenied,
     /// Functionality is not supported for this platform
+    #[error("functionality is not supported on this platform")]
     NotSupported,
     /// Failed to initialize or communicate with ble hardware
+    #[error("failed to init ble hardware")]
     HardwareError,
+    #[error("not found")]
     NotFound,
+    #[error("timeout")]
     TimedOut,
+    #[error("not connected")]
     NotConnected,
     /// Device configuration failed
+    #[error("configuration failed")]
     ConfigurationFailed,
     /// Device failed to advertise itself
+    #[error("ble advertising failed")]
     AdvertisingFailure,
+    #[error("connection closed")]
     ConnectionClosed,
+    #[error("read error")]
     ReadError,
+    #[error("write error")]
     WriteError,
+    #[error("other error")]
     Other,
+    #[error("unknown error")]
     Unknown,
 }
-
-impl BleError {
-    /// Integer code associated with the error domain.
-    pub const DOMAIN_CODE: u32 = 22_000;
-    /// Error domain
-    pub const DOMAIN_NAME: &'static str = "OCKAM_TRANSPORT_BLE";
-
-    pub fn code(&self) -> u32 {
-        match self {
-            BleError::PermissionDenied => 0,
-            BleError::NotSupported => 1,
-            BleError::HardwareError => 2,
-            BleError::NotFound => 3,
-            BleError::TimedOut => 4,
-            BleError::NotConnected => 5,
-            BleError::ConfigurationFailed => 6,
-            BleError::AdvertisingFailure => 7,
-            BleError::ConnectionClosed => 8,
-            BleError::ReadError => 9,
-            BleError::WriteError => 10,
-            BleError::Other => 11,
-            BleError::Unknown => 12,
-        }
-    }
-}
-
-impl Display for BleError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        let err: ockam_core::Error = (*self).into();
-        err.fmt(f)
-    }
-}
-
-impl From<BleError> for ockam_core::Error {
-    fn from(e: BleError) -> ockam_core::Error {
-        ockam_core::Error::new(
-            BleError::DOMAIN_CODE + (e as u32),
-            ockam_core::compat::format!("{}::{:?}", module_path!(), e),
-        )
+impl From<BleError> for Error2 {
+    fn from(err: BleError) -> Error2 {
+        Error2::new(ErrorCode::new(Origin::Transport, Kind::Io), err)
     }
 }
 
