@@ -1,48 +1,71 @@
 #![deny(missing_docs)]
 #![allow(missing_docs)] // Contents are self describing for now.
 
-/// An enumeration describing some of the error types emitted by this library.
+use ockam_core::{
+    errcode::{ErrorCode, Kind, Origin},
+    thiserror, Error2,
+};
+
+/// An enumeration of different error types emitted by this library.
 ///
 /// Most user code should use [`crate::Error`] instead.
-// FIXME: use updated ockam_core::Error...
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, thiserror::Error)]
 pub enum OckamError {
+    #[error("BareError")]
     BareError = 1,
+    #[error("VerifyFailed")]
     VerifyFailed,
+    #[error("InvalidInternalState")]
     InvalidInternalState,
+    #[error("InvalidProof")]
     InvalidProof,
+    #[error("ConsistencyError")]
     ConsistencyError, // 5
+    #[error("ComplexEventsAreNotSupported")]
     ComplexEventsAreNotSupported,
+    #[error("EventIdDoesNotMatch")]
     EventIdDoesNotMatch,
+    #[error("IdentityIdDoesNotMatch")]
     IdentityIdDoesNotMatch,
+    #[error("EmptyChange")]
     EmptyChange,
+    #[error("ContactNotFound")]
     ContactNotFound, // 10
+    #[error("EventNotFound")]
     EventNotFound,
+    #[error("InvalidChainSequence")]
     InvalidChainSequence,
+    #[error("InvalidEventId")]
     InvalidEventId,
+    #[error("AttestationRequesterDoesNotMatch")]
     AttestationRequesterDoesNotMatch,
+    #[error("AttestationNonceDoesNotMatch")]
     AttestationNonceDoesNotMatch, // 15
+    #[error("InvalidHubResponse")]
     InvalidHubResponse,
+    #[error("InvalidParameter")]
     InvalidParameter,
+    #[error("SecureChannelVerificationFailed")]
     SecureChannelVerificationFailed,
+    #[error("SecureChannelCannotBeAuthenticated")]
     SecureChannelCannotBeAuthenticated,
+    #[error("NoSuchProtocol")]
     NoSuchProtocol, // 20
+    #[error("SystemAddressNotBound")]
     SystemAddressNotBound,
+    #[error("SystemInvalidConfiguration")]
     SystemInvalidConfiguration,
 }
 
-impl OckamError {
-    /// Integer code associated with the error domain.
-    pub const DOMAIN_CODE: u32 = 10_000;
-    /// Descriptive name for the error domain.
-    pub const DOMAIN_NAME: &'static str = "OCKAM";
-}
+impl From<OckamError> for Error2 {
+    fn from(err: OckamError) -> Error2 {
+        use OckamError::*;
+        // TODO: improve this mapping
+        let kind = match err {
+            SystemAddressNotBound | SystemInvalidConfiguration | InvalidParameter => Kind::Misuse,
+            _ => Kind::Protocol,
+        };
 
-impl From<OckamError> for ockam_core::Error {
-    fn from(e: OckamError) -> ockam_core::Error {
-        ockam_core::Error::new(
-            OckamError::DOMAIN_CODE + (e as u32),
-            ockam_core::compat::format!("{}::{:?}", module_path!(), e),
-        )
+        Error2::new(ErrorCode::new(Origin::Ockam, kind), err)
     }
 }

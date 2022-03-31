@@ -136,11 +136,13 @@ pub enum Origin {
     Executor = 9,
     /// Other errors from within `ockam` or `ockam_core`.
     Core = 10,
+    /// Ockam protocol crate
+    Ockam = 11,
     /// Errors from other sources, such as libraries extending `ockam`.
     ///
     /// Note: The actual source (file, line, ...) will (hopefully) be available
     /// on the error itself, as one of the members of the payload.
-    Other = 11,
+    Other = 12,
     // This is a `#[non_exhaustive]` enum — we're free to add more variants
     // here. Do not add any which contain payloads (it should stay a "C style
     // enum"). Payload information should be added to the error itself.
@@ -347,6 +349,7 @@ impl Origin {
             KeyExchange,
             Executor,
             Core,
+            Ockam,
             Other,
         })
     }
