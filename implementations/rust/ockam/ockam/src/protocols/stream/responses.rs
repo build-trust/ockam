@@ -8,13 +8,17 @@ use ockam_core::compat::{collections::BTreeSet, string::String, vec::Vec};
 use ockam_core::{Decodable, Uint};
 use serde::{Deserialize, Serialize};
 
-/// Response to a `CreateStreamRequest`
+/// Response to a [`CreateStreamRequest`](super::requests::CreateStreamRequest)
 #[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
-pub struct Init {
+pub struct InitResponse {
+    /// The name of the stream.
     pub stream_name: String,
 }
 
-impl Init {
+impl InitResponse {
+    /// Create a new protocol payload responding to a [stream creation request].
+    ///
+    /// [stream creation request]: super::requests::CreateStreamRequest
     //noinspection RsExternalLinter
     #[allow(dead_code, clippy::new_ret_no_self)]
     pub fn new<S: Into<String>>(s: S) -> ProtocolPayload {
@@ -30,12 +34,16 @@ impl Init {
 /// Confirm push operation on the mailbox
 #[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
 pub struct PushConfirm {
+    /// The request id
     pub request_id: Uint,
+    /// The request status
     pub status: Status,
+    /// The request index
     pub index: Uint,
 }
 
 impl PushConfirm {
+    /// Create a [`ProtocolPayload`] confirming a push operation on the mailbox.
     //noinspection RsExternalLinter
     #[allow(dead_code, clippy::new_ret_no_self)]
     pub fn new<S: Into<Status>>(request_id: u64, status: S, index: u64) -> ProtocolPayload {
@@ -50,10 +58,13 @@ impl PushConfirm {
     }
 }
 
-/// A simple status code
+/// A simple status code.
+// TODO: replace with `Result<(), ()>`?
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Status {
+    /// Indicates success.
     Ok,
+    /// Indicates failure.
     Error,
 }
 
@@ -73,14 +84,18 @@ impl From<Option<()>> for Status {
     }
 }
 
-/// Response to a `PullRequest`
+/// Response to a [`PullRequest`](super::requests::PullRequest)
 #[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
 pub struct PullResponse {
+    /// The request id
     pub request_id: Uint,
+    /// The list of messages
     pub messages: Vec<StreamMessage>,
 }
 
 impl PullResponse {
+    /// Create a [`PullResponse`] responding to a
+    /// [`PullRequest`](super::requests::PullRequest).
     //noinspection RsExternalLinter
     #[allow(dead_code, clippy::new_ret_no_self)]
     pub fn new<T: Into<Vec<StreamMessage>>>(request_id: u64, messages: T) -> ProtocolPayload {
@@ -103,11 +118,15 @@ pub struct StreamMessage {
     pub data: Vec<u8>,
 }
 
-/// The index return payload
+/// The index return payload, to an
+/// [`IndexRequest`](super::requests::IndexRequest).
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct Index {
+pub struct IndexResponse {
+    /// The client id
     pub client_id: String,
+    /// The stream name.
     pub stream_name: String,
+    /// The index returned.
     pub index: Option<Uint>,
 }
 
@@ -118,10 +137,14 @@ pub struct Index {
 #[allow(clippy::enum_variant_names)]
 #[derive(Serialize, Deserialize, Message)]
 pub enum Response {
-    Init(Init),
+    /// Wraps an [`Init`] response, see its documentation for more info.
+    Init(InitResponse),
+    /// Wraps an [`PushConfirm`] response, see its documentation for more info.
     PushConfirm(PushConfirm),
+    /// Wraps an [`PullResponse`] response, see its documentation for more info.
     PullResponse(PullResponse),
-    Index(Index),
+    /// Wraps a [`IndexResponse`] response, see its documentation for more info.
+    Index(IndexResponse),
 }
 
 impl ProtocolParser for Response {
@@ -139,10 +162,10 @@ impl ProtocolParser for Response {
 
     fn parse(ProtocolPayload { protocol, data }: ProtocolPayload) -> Result<Self> {
         Ok(match protocol.as_str() {
-            "stream_create" => Response::Init(Init::decode(&data)?),
+            "stream_create" => Response::Init(InitResponse::decode(&data)?),
             "stream_push" => Response::PushConfirm(PushConfirm::decode(&data)?),
             "stream_pull" => Response::PullResponse(PullResponse::decode(&data)?),
-            "stream_index" => Response::Index(Index::decode(&data)?),
+            "stream_index" => Response::Index(IndexResponse::decode(&data)?),
             _ => return Err(OckamError::NoSuchProtocol.into()),
         })
     }

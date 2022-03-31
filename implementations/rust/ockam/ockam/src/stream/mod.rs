@@ -83,7 +83,7 @@ impl Stream {
     /// By default, the created stream will poll for new messages
     /// every 250 milliseconds.
     pub async fn new(ctx: &Context) -> Result<Self> {
-        ctx.new_context(Address::random(16)).await.map(|ctx| Self {
+        ctx.new_context(Address::random(0)).await.map(|ctx| Self {
             ctx,
             interval: Duration::from_millis(250),
             forwarding_address: None,
@@ -132,7 +132,7 @@ impl Stream {
     ///
     /// When setting up a stream without calling this function
     /// messages will be buffered by the StreamConsumer and must be
-    /// polled via the [`StreamWorkerCmd`]().
+    /// polled via the [`StreamWorkerCmd`].
     pub fn with_recipient<A: Into<Address>>(self, addr: A) -> Self {
         Self {
             forwarding_address: Some(addr.into()),

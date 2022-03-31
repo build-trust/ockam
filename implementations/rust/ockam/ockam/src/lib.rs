@@ -4,7 +4,7 @@
 //! For a comprehensive introduction to Ockam, see <https://www.ockam.io/learn>.
 #![deny(unsafe_code)]
 #![warn(
-    // missing_docs // not compatible with big_array
+    missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unused_import_braces,

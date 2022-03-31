@@ -33,7 +33,7 @@ async fn handle_response(
     let return_route = route.return_route();
 
     match response {
-        Response::Init(Init { stream_name }) => {
+        Response::Init(InitResponse { stream_name }) => {
             w.route = return_route;
             w.init = true;
 

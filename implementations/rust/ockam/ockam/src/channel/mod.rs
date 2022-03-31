@@ -100,6 +100,9 @@ impl ChannelBuilder {
     }
 }
 
+/// A handle which may be used to send data through a channel.
+///
+/// This is implemented as a type-safe wrapper around an address.
 pub struct ChannelHandle {
     tx: Address,
 }
@@ -108,5 +111,16 @@ impl ChannelHandle {
     /// Returns a route-builder for sending data through this channel.
     pub fn tx(&self) -> RouteBuilder {
         RouteBuilder::new().prepend_route(self.tx.clone().into())
+    }
+
+    /// Returns the underlying address
+    pub fn address(&self) -> &Address {
+        &self.tx
+    }
+}
+
+impl From<ChannelHandle> for Address {
+    fn from(ch: ChannelHandle) -> Address {
+        ch.tx
     }
 }

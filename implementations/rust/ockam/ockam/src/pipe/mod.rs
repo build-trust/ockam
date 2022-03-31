@@ -1,4 +1,5 @@
 //! Ockam pipe module
+#![allow(missing_docs)] // Being replaced by `pipe2`.
 
 mod behavior;
 pub use behavior::{

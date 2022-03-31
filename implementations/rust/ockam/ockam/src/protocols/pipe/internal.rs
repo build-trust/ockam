@@ -7,18 +7,21 @@ use serde::{Deserialize, Serialize};
 /// Make the sender re-send a payload
 #[derive(Debug, Serialize, Deserialize, Message)]
 pub struct Resend {
+    /// The index needing to be re-sent
     pub idx: u64,
 }
 
 /// Acknowlege successful delivery
 #[derive(Debug, Serialize, Deserialize, Message)]
 pub struct Ack {
+    /// The acknowleged index.
     pub idx: u64,
 }
 
 /// Payload sent from handshake listener to newly spawned receiver
 #[derive(Debug, Serialize, Deserialize, Message)]
 pub struct Handshake {
+    /// The route to the sender
     pub route_to_sender: Route,
 }
 
@@ -38,6 +41,8 @@ pub enum InternalCmd {
 }
 
 impl InternalCmd {
+    /// Decode an [`InternalCmd`] contained inside the given
+    /// [`TransportMessage`].
     pub fn from_transport(msg: &TransportMessage) -> Result<Self> {
         Self::decode(&msg.payload)
     }

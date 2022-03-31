@@ -14,10 +14,17 @@ pub enum StreamWorkerCmd {
     /// delayed reactive response
     Fetch,
     /// Pull messages from the consumer's buffer
-    Pull { num: usize },
+    Pull {
+        /// Number of messages to pull.
+        ///
+        /// Zero is used as a sentinal to indicate "all messages".
+        num: usize,
+    },
 }
 
 impl StreamWorkerCmd {
+    /// Return a [`ProtocolPayload`] containing a
+    /// [`Fetch`](StreamWorkerCmd::Fetch) event.
     pub fn fetch() -> ProtocolPayload {
         ProtocolPayload::new(ProtocolId::from("internal.stream.fetch"), Self::Fetch)
     }

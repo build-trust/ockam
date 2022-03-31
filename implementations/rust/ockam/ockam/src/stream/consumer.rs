@@ -2,10 +2,7 @@ use crate::{
     delay::DelayedEvent,
     monotonic::Monotonic,
     protocols::{
-        stream::{
-            requests::{Index as IndexReq, *},
-            responses::{Index as IndexResp, *},
-        },
+        stream::{requests::*, responses::*},
         ProtocolParser, ProtocolPayload,
     },
     stream::StreamWorkerCmd,
@@ -46,7 +43,7 @@ async fn handle_response(
 ) -> Result<()> {
     let return_route = r.return_route();
     match response {
-        Response::Init(Init { stream_name }) => {
+        Response::Init(InitResponse { stream_name }) => {
             info!(
                 "Initialised consumer for stream '{}' and route: {}",
                 stream_name, return_route
@@ -57,11 +54,11 @@ async fn handle_response(
 
             ctx.send(
                 w.index_route.clone(),
-                IndexReq::get(stream_name, w.client_id.clone()),
+                IndexRequest::get(stream_name, w.client_id.clone()),
             )
             .await
         }
-        Response::Index(IndexResp {
+        Response::Index(IndexResponse {
             stream_name, index, ..
         }) => {
             let index = index.unwrap_or_else(|| 0.into());
@@ -126,7 +123,7 @@ async fn handle_response(
             if last_idx != w.idx {
                 ctx.send(
                     w.index_route.clone(),
-                    IndexReq::save(w.receiver_name.clone(), w.client_id.clone(), w.idx),
+                    IndexRequest::save(w.receiver_name.clone(), w.client_id.clone(), w.idx),
                 )
                 .await?;
             }
