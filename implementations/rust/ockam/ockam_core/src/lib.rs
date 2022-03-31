@@ -54,7 +54,6 @@ pub mod error;
 mod message;
 mod processor;
 mod routing;
-pub mod traits;
 mod uint;
 pub mod vault;
 mod worker;
@@ -64,7 +63,6 @@ pub use access_control::*;
 pub use message::*;
 pub use processor::*;
 pub use routing::*;
-pub use traits::*;
 pub use uint::*;
 pub use worker::*;
 
