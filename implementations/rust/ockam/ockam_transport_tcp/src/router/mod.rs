@@ -30,12 +30,40 @@ pub(crate) struct TcpRouter {
 }
 
 impl TcpRouter {
+    /// Create and register a new TCP router with the node context
+    pub async fn register(ctx: &Context) -> Result<TcpRouterHandle> {
+        let main_addr = Address::random_local();
+        let api_addr = Address::random_local();
+        debug!("Initialising new TcpRouter with address {}", &main_addr);
+
+        let child_ctx = ctx.new_context(Address::random_local()).await?;
+
+        let router = Self {
+            ctx: child_ctx,
+            main_addr: main_addr.clone(),
+            api_addr: api_addr.clone(),
+            map: BTreeMap::new(),
+            allow_auto_connection: true,
+        };
+
+        let handle = router.create_self_handle().await?;
+
+        ctx.start_worker(vec![main_addr.clone(), api_addr], router)
+            .await?;
+        trace!("Registering TCP router for type = {}", TCP);
+        ctx.register(TCP, main_addr).await?;
+
+        Ok(handle)
+    }
+
     async fn create_self_handle(&self) -> Result<TcpRouterHandle> {
         let handle_ctx = self.ctx.new_context(Address::random_local()).await?;
         let handle = TcpRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }
+}
 
+impl TcpRouter {
     async fn handle_register(&mut self, accepts: Vec<Address>, self_addr: Address) -> Result<()> {
         if let Some(f) = accepts.first().cloned() {
             trace!("TCP registration request: {} => {}", f, self_addr);
@@ -63,7 +91,9 @@ impl TcpRouter {
 
         Ok(())
     }
+}
 
+impl TcpRouter {
     async fn handle_connect(&mut self, peer: String) -> Result<Address> {
         let (peer_addr, hostnames) = TcpRouterHandle::resolve_peer(peer)?;
 
@@ -98,6 +128,32 @@ impl TcpRouter {
 
         Ok(())
     }
+}
+
+impl TcpRouter {
+    async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
+        trace!(
+            "TCP route request: {:?}",
+            msg.transport().onward_route.next()
+        );
+
+        // Get the next hop
+        let onward = msg.transport().onward_route.next()?;
+
+        let next = self.resolve_route(onward).await?;
+
+        let _ = msg.transport_mut().onward_route.step()?;
+        // Modify the transport message route
+        msg.transport_mut()
+            .onward_route
+            .modify()
+            .prepend(next.clone());
+
+        // Send the transport message to the connection worker
+        ctx.send(next.clone(), msg).await?;
+
+        Ok(())
+    }
 
     async fn resolve_route(&mut self, onward: &Address) -> Result<Address> {
         // Look up the connection worker responsible
@@ -128,30 +184,6 @@ impl TcpRouter {
         } else {
             Err(TransportError::UnknownRoute.into())
         }
-    }
-
-    async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
-        trace!(
-            "TCP route request: {:?}",
-            msg.transport().onward_route.next()
-        );
-
-        // Get the next hop
-        let onward = msg.transport().onward_route.next()?;
-
-        let next = self.resolve_route(onward).await?;
-
-        let _ = msg.transport_mut().onward_route.step()?;
-        // Modify the transport message route
-        msg.transport_mut()
-            .onward_route
-            .modify()
-            .prepend(next.clone());
-
-        // Send the transport message to the connection worker
-        ctx.send(next.clone(), msg).await?;
-
-        Ok(())
     }
 }
 
@@ -205,33 +237,5 @@ impl Worker for TcpRouter {
         }
 
         Ok(())
-    }
-}
-
-impl TcpRouter {
-    /// Create and register a new TCP router with the node context
-    pub async fn register(ctx: &Context) -> Result<TcpRouterHandle> {
-        let main_addr = Address::random_local();
-        let api_addr = Address::random_local();
-        debug!("Initialising new TcpRouter with address {}", &main_addr);
-
-        let child_ctx = ctx.new_context(Address::random_local()).await?;
-
-        let router = Self {
-            ctx: child_ctx,
-            main_addr: main_addr.clone(),
-            api_addr: api_addr.clone(),
-            map: BTreeMap::new(),
-            allow_auto_connection: true,
-        };
-
-        let handle = router.create_self_handle().await?;
-
-        ctx.start_worker(vec![main_addr.clone(), api_addr], router)
-            .await?;
-        trace!("Registering TCP router for type = {}", TCP);
-        ctx.register(TCP, main_addr).await?;
-
-        Ok(handle)
     }
 }
