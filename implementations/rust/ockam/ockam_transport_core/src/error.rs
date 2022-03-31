@@ -1,9 +1,7 @@
 use ockam_core::{
     compat::io,
-    error::{
-        code::{ErrorCode, Kind, Origin},
-        Error2,
-    },
+    errcode::{ErrorCode, Kind, Origin},
+    Error2,
 };
 
 /// A Transport worker specific error type

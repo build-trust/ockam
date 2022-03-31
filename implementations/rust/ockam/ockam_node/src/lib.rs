@@ -100,8 +100,8 @@ pub(crate) mod error {
     use core::fmt::Debug;
     use ockam_core::{
         compat::error::Error,
-        error::code::{ErrorCode, Kind, Origin},
-        error::Error2,
+        errcode::{ErrorCode, Kind, Origin},
+        Error2,
     };
 
     impl From<NodeError> for Error2 {

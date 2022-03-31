@@ -5,7 +5,10 @@ use crate::{
     SignatureType,
 };
 use ockam_core::compat::vec::Vec;
-use ockam_core::{allow, deny, Encodable, Result};
+use ockam_core::{
+    error::{allow, deny, Result},
+    Encodable,
+};
 use ockam_vault::PublicKey;
 use serde::{Deserialize, Serialize};
 

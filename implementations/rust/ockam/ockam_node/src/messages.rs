@@ -2,7 +2,7 @@ use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{error, relay::RelayMessage, router::SenderPair};
 use core::fmt;
 use ockam_core::compat::{error::Error as StdError, string::String, vec::Vec};
-use ockam_core::{error::Result, Address, AddressSet, TransportType};
+use ockam_core::{Address, AddressSet, Result, TransportType};
 
 /// Messages sent from the Node to the Executor
 #[derive(Debug)]

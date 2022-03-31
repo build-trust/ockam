@@ -1,6 +1,6 @@
 use crate::{Vault, VaultEntry, VaultError};
 use arrayref::array_ref;
-use ockam_core::error::Result;
+use ockam_core::Result;
 use ockam_core::vault::{
     AsymmetricVault, Buffer, PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType,
     SecretVault, CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,

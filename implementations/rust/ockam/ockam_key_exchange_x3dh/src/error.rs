@@ -1,9 +1,6 @@
 use ockam_core::{
-    error::{
-        code::{ErrorCode, Kind, Origin},
-        Error2,
-    },
-    thiserror,
+    errcode::{ErrorCode, Kind, Origin},
+    thiserror, Error2,
 };
 
 /// Represents the failures that can occur in

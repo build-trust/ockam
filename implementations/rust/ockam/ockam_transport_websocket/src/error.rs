@@ -1,9 +1,6 @@
 use ockam_core::{
-    error::{
-        code::{ErrorCode, Kind, Origin},
-        Error2,
-    },
-    thiserror,
+    errcode::{ErrorCode, Kind, Origin},
+    thiserror, Error2,
 };
 use ockam_transport_core::TransportError;
 use tokio_tungstenite::tungstenite::Error as TungsteniteError;

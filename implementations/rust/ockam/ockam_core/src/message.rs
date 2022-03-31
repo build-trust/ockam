@@ -3,11 +3,8 @@ use crate::{
         string::{String, ToString},
         vec::Vec,
     },
-    error::{
-        code::{ErrorCode, Kind, Origin},
-        Error2, Result,
-    },
-    Address, LocalMessage, Route, TransportMessage,
+    errcode::{ErrorCode, Kind, Origin},
+    Address, Error2, LocalMessage, Result, Route, TransportMessage,
 };
 use core::{
     fmt::{self, Debug, Display, Formatter},

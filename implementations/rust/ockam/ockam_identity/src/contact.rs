@@ -7,7 +7,7 @@ use crate::change_history::IdentityChangeHistory;
 use crate::{EventIdentifier, IdentityChangeEvent, IdentityIdentifier, IdentityVault};
 
 use ockam_core::compat::vec::Vec;
-use ockam_core::{allow, deny, Result};
+use ockam_core::error::{allow, deny, Result};
 
 /// Contact is an abstraction responsible for storing user's public data (mainly - public keys).
 /// It is designed to share users' public keys in cryptographically verifiable way.

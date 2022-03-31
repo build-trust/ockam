@@ -22,9 +22,7 @@ extern crate core;
 extern crate alloc;
 
 use ockam_core::compat::{string::String, vec::Vec};
-use ockam_core::error::Result;
-use ockam_core::vault::Secret;
-use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{async_trait, compat::boxed::Box, vault::Secret, Result};
 use zeroize::Zeroize;
 
 /// A trait implemented by both Initiator and Responder peers.

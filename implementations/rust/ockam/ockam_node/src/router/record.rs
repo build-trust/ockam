@@ -7,8 +7,7 @@ use ockam_core::{
         string::String,
         vec::Vec,
     },
-    error::Result,
-    Address, AddressSet,
+    Address, AddressSet, Result,
 };
 
 /// Address states and associated logic

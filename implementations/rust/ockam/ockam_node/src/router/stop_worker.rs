@@ -1,7 +1,7 @@
 use super::Router;
 use crate::tokio::sync::mpsc::Sender;
 use crate::{error, NodeReply, NodeReplyResult};
-use ockam_core::{error::Result, Address};
+use ockam_core::{Result, Address};
 
 pub(super) async fn exec(
     router: &mut Router,

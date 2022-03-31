@@ -1,6 +1,6 @@
 use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
 use ockam_core::compat::boxed::Box;
-use ockam_core::{error::Result, Address, AsyncTryClone, Route};
+use ockam_core::{Result, Address, AsyncTryClone, Route};
 use ockam_node::Context;
 
 /// High level management interface for TCP transports

@@ -8,9 +8,7 @@ use ockam_core::vault::{
     KeyId, KeyIdVault, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence,
     SecretType, SecretVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
-use ockam_core::error::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
-
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 cfg_if! {
     if #[cfg(feature = "bls")] {
         use signature_bbs_plus::PublicKey as BlsPublicKey;

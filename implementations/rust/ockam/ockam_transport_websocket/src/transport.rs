@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 
 use crate::{parse_socket_addr, WebSocketRouter, WebSocketRouterHandle};
-use ockam_core::error::Result;
+use ockam_core::Result;
 use ockam_node::Context;
 
 /// High level management interface for WebSocket transports
@@ -93,7 +93,7 @@ impl From<&WebSocketAddr> for String {
 }
 
 impl FromStr for WebSocketAddr {
-    type Err = ockam_core::error::Error2;
+    type Err = ockam_core::Error2;
 
     fn from_str(s: &str) -> Result<Self> {
         let socket_addr = parse_socket_addr(s)?;

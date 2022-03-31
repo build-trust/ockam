@@ -1,5 +1,5 @@
-use crate::error::{
-    code::{ErrorCode, Kind, Origin},
+use crate::{
+    errcode::{ErrorCode, Kind, Origin},
     Error2,
 };
 

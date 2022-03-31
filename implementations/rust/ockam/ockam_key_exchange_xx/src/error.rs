@@ -1,6 +1,6 @@
 use ockam_core::compat::{error::Error as StdError, fmt};
-use ockam_core::error::{
-    code::{ErrorCode, Kind, Origin},
+use ockam_core::{
+    errcode::{ErrorCode, Kind, Origin},
     Error2,
 };
 

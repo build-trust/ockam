@@ -77,7 +77,7 @@ impl PreKeyBundle {
 }
 
 impl TryFrom<&[u8]> for PreKeyBundle {
-    type Error = ockam_core::error::Error2;
+    type Error = ockam_core::Error2;
 
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         if data.len() != Self::SIZE {

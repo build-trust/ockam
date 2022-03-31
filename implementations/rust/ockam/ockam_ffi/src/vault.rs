@@ -4,7 +4,7 @@ use crate::{FfiVaultFatPointer, FfiVaultType};
 use core::{future::Future, result::Result as StdResult, slice};
 use lazy_static::lazy_static;
 use ockam_core::compat::sync::Arc;
-use ockam_core::error::{Error2, Result};
+use ockam_core::{Error2, Result};
 use ockam_core::vault::{
     AsymmetricVault, Hasher, PublicKey, Secret, SecretAttributes, SecretVault, SymmetricVault,
 };

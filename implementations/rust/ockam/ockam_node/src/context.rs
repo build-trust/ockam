@@ -14,9 +14,8 @@ use crate::{
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
-    error::{code::Kind, Error2, Result},
-    AccessControl, Address, AddressSet, AllowAll, AsyncTryClone, LocalMessage, Message, Processor,
-    Route, TransportMessage, TransportType, Worker,
+    errcode::Kind, AccessControl, Address, AddressSet, AllowAll, AsyncTryClone, Error2,
+    LocalMessage, Message, Processor, Result, Route, TransportMessage, TransportType, Worker,
 };
 
 /// A default timeout in seconds

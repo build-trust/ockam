@@ -1,6 +1,6 @@
 use super::Router;
 use crate::{error, tokio::sync::mpsc::Sender, NodeReply, NodeReplyResult};
-use ockam_core::{error::Result, Address};
+use ockam_core::{Address, Result};
 
 /// Register a stop ACK
 ///

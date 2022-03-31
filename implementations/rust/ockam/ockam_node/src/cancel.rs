@@ -1,6 +1,6 @@
 use crate::Context;
 use core::fmt::{self, Debug, Display, Formatter};
-use ockam_core::{error::Result, Address, LocalMessage, Message, Routed};
+use ockam_core::{Result, Address, LocalMessage, Message, Routed};
 
 /// A message wrapper type that allows users to cancel message receival
 ///

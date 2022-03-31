@@ -1,8 +1,7 @@
 use crate::vault::Vault;
 use crate::VaultError;
 use ockam_core::vault::{Hasher, KeyId, KeyIdVault, PublicKey, Secret};
-use ockam_core::error::Result;
-use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 #[async_trait]
 impl KeyIdVault for Vault {
@@ -17,7 +16,7 @@ impl KeyIdVault for Vault {
                     false
                 }
             })
-            .ok_or_else(|| Into::<ockam_core::error::Error2>::into(VaultError::SecretNotFound))?
+            .ok_or_else(|| Into::<ockam_core::Error2>::into(VaultError::SecretNotFound))?
             .0;
 
         Ok(Secret::new(*index))

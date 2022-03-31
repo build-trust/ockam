@@ -3,9 +3,15 @@
 use crate::compat::{boxed::Box, error::Error as ErrorTrait};
 use serde::{Deserialize, Serialize};
 
-pub mod code;
+mod code;
 mod inner;
-pub mod none;
+mod none;
+
+/// A module to export the error code in a meaningful way
+pub mod errcode {
+    pub use super::code::*;
+    pub use super::none::*;
+}
 
 // We box the internal error type if an allocator is available — this is (often
 // significantly) more efficient in the success path.

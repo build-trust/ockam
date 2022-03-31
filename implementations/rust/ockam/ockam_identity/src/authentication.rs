@@ -55,7 +55,7 @@ impl Authentication {
 mod test {
 
     use crate::{Identity, IdentityTrait};
-    use ockam_core::{Error, Result};
+    use ockam_core::{Error2, Result};
     use ockam_node::Context;
     use ockam_vault::Vault;
     use rand::{thread_rng, RngCore};

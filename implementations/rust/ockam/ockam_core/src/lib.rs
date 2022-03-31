@@ -50,7 +50,7 @@ extern crate futures_util;
 
 mod access_control;
 pub mod compat;
-pub mod error;
+mod error;
 mod message;
 mod processor;
 mod routing;
@@ -58,8 +58,8 @@ mod uint;
 pub mod vault;
 mod worker;
 
-pub use crate::error::Result;
 pub use access_control::*;
+pub use error::*;
 pub use message::*;
 pub use processor::*;
 pub use routing::*;

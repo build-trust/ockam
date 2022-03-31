@@ -17,7 +17,7 @@ use crate::{
     NodeMessage, NodeReply, ShutdownType,
 };
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::{error::Result, Address, TransportType};
+use ockam_core::{Address, Result, TransportType};
 
 /// A pair of senders to a worker relay
 #[derive(Debug)]

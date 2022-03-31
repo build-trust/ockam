@@ -1,7 +1,6 @@
 use crate::state::State;
 use crate::{Initiator, Responder, XXVault};
-use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_core::{error::Result, AsyncTryClone};
+use ockam_core::{async_trait, compat::boxed::Box, AsyncTryClone, Result};
 
 use ockam_key_exchange_core::NewKeyExchanger;
 

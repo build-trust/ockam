@@ -1,17 +1,13 @@
 // use crate::message::BaseMessage;
 
+use crate::tokio::{runtime::Runtime, sync::mpsc::Sender};
 use crate::{
     router::{Router, SenderPair},
     NodeMessage,
 };
-use ockam_core::{
-    error::{code::Kind, Error2, Result},
-    Address,
-};
-
-use crate::tokio::{runtime::Runtime, sync::mpsc::Sender};
 use core::future::Future;
 use ockam_core::compat::sync::Arc;
+use ockam_core::{errcode::Kind, Address, Error2, Result};
 
 /// Underlying Ockam node executor
 ///
