@@ -2,7 +2,7 @@ use crate::{IdentityError, IdentityStateConst};
 use core::fmt::{Display, Formatter};
 use ockam_core::compat::string::String;
 use ockam_core::vault::{Hasher, KeyId};
-use ockam_core::{Error, Result};
+use ockam_core::{Error2, Result};
 use serde::{Deserialize, Serialize};
 
 /// An identifier of an Identity.
@@ -49,7 +49,7 @@ impl From<IdentityIdentifier> for String {
 }
 
 impl TryFrom<&str> for IdentityIdentifier {
-    type Error = Error;
+    type Error = Error2;
 
     fn try_from(value: &str) -> Result<Self> {
         if let Some(str) = value.strip_prefix(Self::PREFIX) {
@@ -61,7 +61,7 @@ impl TryFrom<&str> for IdentityIdentifier {
 }
 
 impl TryFrom<String> for IdentityIdentifier {
-    type Error = Error;
+    type Error = Error2;
 
     fn try_from(value: String) -> Result<Self> {
         Self::try_from(value.as_str())
