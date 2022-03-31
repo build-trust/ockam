@@ -52,7 +52,7 @@ fn output(cont: Container) -> TokenStream {
     };
     quote! {
         #async_trait
-        impl #impl_generics ockam_core::traits::AsyncTryClone for #struct_ident #ty_generics #where_clause {
+        impl #impl_generics ockam_core::AsyncTryClone for #struct_ident #ty_generics #where_clause {
             #trait_fn
         }
     }
@@ -169,7 +169,7 @@ impl<'a> Data<'a> {
                     .any(|s| s == &t.ident.to_string())
                 {
                     t.bounds
-                        .push(parse_quote!(ockam_core::traits::AsyncTryClone));
+                        .push(parse_quote!(ockam_core::AsyncTryClone));
                 }
             }
         }
@@ -179,7 +179,7 @@ impl<'a> Data<'a> {
         for ty in complex_generic_fields {
             where_clause
                 .predicates
-                .push(parse_quote!(#ty: ockam_core::traits::AsyncTryClone));
+                .push(parse_quote!(#ty: ockam_core::AsyncTryClone));
         }
 
         generics
