@@ -44,7 +44,6 @@ alloc = [
 ]
 
 [dependencies]
-futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false, features = [
     "tokio-io",
 ] }

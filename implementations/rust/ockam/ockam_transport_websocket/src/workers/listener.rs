@@ -58,7 +58,7 @@ impl Processor for WebSocketListenProcessor {
         debug!("TCP connection accepted");
 
         // Spawn a connection worker for it
-        let pair = WorkerPair::new(ctx, ws_stream, peer, vec![]).await?;
+        let pair = WorkerPair::from_server(ctx, ws_stream, peer, vec![]).await?;
 
         // Register the connection with the local TcpRouter
         self.router_handle.register(&pair).await?;
