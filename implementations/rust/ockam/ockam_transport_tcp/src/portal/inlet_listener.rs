@@ -7,12 +7,18 @@ use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
 use tracing::debug;
 
+/// A TCP Portal Inlet listen processor
+///
+/// TCP Portal Inlet listen processors are created by `TcpTransport`
+/// after a call is made to
+/// [`TcpTransport::create_inlet`](crate::TcpTransport::create_inlet).
 pub(crate) struct TcpInletListenProcessor {
     inner: TcpListener,
     outlet_listener_route: Route,
 }
 
 impl TcpInletListenProcessor {
+    /// Start a new `TcpInletListenProcessor`
     pub(crate) async fn start(
         ctx: &Context,
         outlet_listener_route: Route,

@@ -11,7 +11,7 @@ use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 use tracing::{debug, trace, warn};
 
-/// Transmit and receive peers of a TCP connection
+/// Provides the transmit and receive parts of a TCP connection
 #[derive(Debug)]
 pub(crate) struct WorkerPair {
     hostnames: Vec<String>,
@@ -20,12 +20,17 @@ pub(crate) struct WorkerPair {
 }
 
 impl WorkerPair {
+    /// Return a reference to the peer's hostname(s)
     pub fn hostnames(&self) -> &[String] {
         &self.hostnames
     }
+
+    /// Return a reference to the peer's [`SocketAddr`](std::net::SocketAddr)
     pub fn peer(&self) -> SocketAddr {
         self.peer
     }
+
+    /// Return a clone of the transmit [`Address`]
     pub fn tx_addr(&self) -> Address {
         self.tx_addr.clone()
     }
@@ -40,7 +45,7 @@ pub(crate) enum TcpSendWorkerMsg {
 /// A TCP sending message worker
 ///
 /// Create this worker type by calling
-/// [`start_tcp_worker`](crate::start_tcp_worker)!
+/// [`TcpSendWorker::start_pair`](crate::TcpSendWorker::start_pair)
 ///
 /// This half of the worker is created when spawning a new connection
 /// worker pair, and listens for messages from the node message system
@@ -57,6 +62,7 @@ pub(crate) struct TcpSendWorker {
 }
 
 impl TcpSendWorker {
+    /// Create a new `TcpSendWorker`
     fn new(
         router_handle: TcpRouterHandle,
         stream: Option<TcpStream>,
@@ -84,6 +90,8 @@ impl TcpSendWorker {
         }
     }
 
+    /// Start a `(TcpSendWorker, TcpRecvProcessor)` pair that opens and
+    /// manages the connection with the given peer
     pub(crate) async fn start_pair(
         ctx: &Context,
         router_handle: TcpRouterHandle,
@@ -114,6 +122,7 @@ impl TcpSendWorker {
         })
     }
 
+    /// Schedule a heartbeat
     async fn schedule_heartbeat(&mut self) -> Result<()> {
         let heartbeat_interval = match &self.heartbeat_interval {
             Some(hi) => *hi,
@@ -243,6 +252,11 @@ impl Worker for TcpSendWorker {
     }
 }
 
+/// Helper that creates a length-prefixed buffer containing the given
+/// `TransportMessage`'s payload
+///
+/// The length-prefix is encoded as a big-endian 16-bit unsigned
+/// integer.
 fn prepare_message(msg: TransportMessage) -> Result<Vec<u8>> {
     let mut msg_buf = msg.encode().map_err(|_| TransportError::SendBadMessage)?;
 

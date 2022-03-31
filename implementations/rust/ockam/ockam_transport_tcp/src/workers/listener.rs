@@ -7,6 +7,11 @@ use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tracing::{debug, trace};
 
+/// A TCP Listen processor
+///
+/// TCP listen processors are created by `TcpTransport`
+/// after a call is made to
+/// [`TcpTransport::listen`](crate::TcpTransport::listen).
 pub(crate) struct TcpListenProcessor {
     inner: TcpListener,
     router_handle: TcpRouterHandle,

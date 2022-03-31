@@ -56,6 +56,7 @@ impl TcpRouter {
         Ok(handle)
     }
 
+    /// Create a new `TcpRouterHandle` representing this router
     async fn create_self_handle(&self) -> Result<TcpRouterHandle> {
         let handle_ctx = self.ctx.new_context(Address::random_local()).await?;
         let handle = TcpRouterHandle::new(handle_ctx, self.api_addr.clone());
@@ -64,6 +65,8 @@ impl TcpRouter {
 }
 
 impl TcpRouter {
+    /// Handle any [`TcpRouterRequest::Register`] messages received by
+    /// this node's worker
     async fn handle_register(&mut self, accepts: Vec<Address>, self_addr: Address) -> Result<()> {
         if let Some(f) = accepts.first().cloned() {
             trace!("TCP registration request: {} => {}", f, self_addr);
@@ -84,6 +87,8 @@ impl TcpRouter {
         Ok(())
     }
 
+    /// Handle any [`TcpRouterRequest::Unregister`] messages received by
+    /// this node's worker
     async fn handle_unregister(&mut self, self_addr: Address) -> Result<()> {
         trace!("TCP unregistration request: {}", &self_addr);
 
@@ -94,6 +99,8 @@ impl TcpRouter {
 }
 
 impl TcpRouter {
+    /// Handle any [`TcpRouterRequest::Connect`] messages received by this
+    /// nodes worker
     async fn handle_connect(&mut self, peer: String) -> Result<Address> {
         let (peer_addr, hostnames) = TcpRouterHandle::resolve_peer(peer)?;
 
@@ -112,6 +119,8 @@ impl TcpRouter {
         Ok(self_addr)
     }
 
+    /// Handle any [`TcpRouterRequest::Disconnect`] messages received by this
+    /// nodes worker
     async fn handle_disconnect(&mut self, peer: String) -> Result<()> {
         let (peer_addr, _hostnames) = TcpRouterHandle::resolve_peer(peer)?;
         let tcp_address: Address = format!("{}#{}", TCP, peer_addr).into();
@@ -131,6 +140,8 @@ impl TcpRouter {
 }
 
 impl TcpRouter {
+    /// Handle any [`RouterMessage::Route`] messages received by this
+    /// nodes worker
     async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
         trace!(
             "TCP route request: {:?}",

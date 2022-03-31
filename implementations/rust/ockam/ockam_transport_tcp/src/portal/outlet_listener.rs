@@ -5,12 +5,18 @@ use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tracing::debug;
 
+/// A TCP Portal Outlet listen worker
+///
+/// TCP Portal Outlet listen workers are created by `TcpTransport`
+/// after a call is made to
+/// [`TcpTransport::create_outlet`](crate::TcpTransport::create_outlet).
 pub(crate) struct TcpOutletListenWorker {
     router_handle: TcpRouterHandle,
     peer: String,
 }
 
 impl TcpOutletListenWorker {
+    /// Start a new `TcpOutletListenWorker`
     pub(crate) async fn start(
         router_handle: &TcpRouterHandle,
         address: Address,

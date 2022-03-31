@@ -6,10 +6,10 @@ use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{error, info, trace};
 
-/// A TCP receiving message worker
+/// A TCP receiving message processor
 ///
-/// Create this worker type by calling
-/// [`start_tcp_worker`](crate::start_tcp_worker)!
+/// Create this processor type by calling
+/// [`TcpSendWorker::start_pair`](crate::TcpSendWorker::start_pair)
 ///
 /// This half of the worker is created when spawning a new connection
 /// worker pair, and listens for incoming TCP packets, to relay into
@@ -21,6 +21,7 @@ pub(crate) struct TcpRecvProcessor {
 }
 
 impl TcpRecvProcessor {
+    /// Create a new `TcpRecvProcessor`
     pub fn new(rx: OwnedReadHalf, peer_addr: Address, sender_internal_address: Address) -> Self {
         Self {
             rx,
@@ -38,14 +39,17 @@ impl Processor for TcpRecvProcessor {
         ctx.set_cluster(crate::CLUSTER_NAME).await
     }
 
-    // We are using the initialize function here to run a custom loop,
-    // while never listening for messages sent to our address
-    //
-    // Note: when the loop exits, we _must_ call stop_worker(..) on
-    // Context not to spawn a zombie task.
-    //
-    // Also: we must stop the TcpReceive loop when the worker gets
-    // killed by the user or node.
+    /// Get the next message from the connection if there are any
+    /// available and forward it to the next hop in the route.
+    ///
+    /// Notes:
+    ///
+    /// 1. We are using the initialize function here to run a custom loop,
+    ///    instead of listening for messages sent to our address.
+    /// 2. When the loop exits, we _must_ call stop_worker(..) on
+    ///    Context to avoid spawning a zombie task.
+    /// 3. We must also stop the TcpReceive loop when the worker gets
+    ///    killed by the user or node.
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         // Run in a loop until TcpWorkerPair::stop() is called
         // First read a message length header...
@@ -73,7 +77,7 @@ impl Processor for TcpRecvProcessor {
         // Allocate a buffer of that size
         let mut buf = vec![0; len as usize];
 
-        // Then Read into the buffer
+        // Then read into the buffer
         match self.rx.read_exact(&mut buf).await {
             Ok(_) => {}
             _ => {
@@ -94,7 +98,6 @@ impl Processor for TcpRecvProcessor {
         // reply routing can be properly resolved
         msg.return_route.modify().prepend(self.peer_addr.clone());
 
-        // Some verbose logging we may want to remove
         trace!("Message onward route: {}", msg.onward_route);
         trace!("Message return route: {}", msg.return_route);
 

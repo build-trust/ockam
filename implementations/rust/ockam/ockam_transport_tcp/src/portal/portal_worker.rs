@@ -10,9 +10,12 @@ use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 use tracing::{debug, info, trace, warn};
 
-// State change for Outlet: SendPong -> Initialized
-// State change for Inlet: SendPing -> ReceivePong -> Initialized
-
+/// Enumerate all `TcpPortalWorker` states
+///
+/// Possible state transiions are:
+///
+/// `Outlet`: `SendPong` -> `Initialized`
+/// `Inlet`: `SendPing` -> `ReceivePong` -> `Initialized`
 enum State {
     SendPing { ping_route: Route },
     SendPong { pong_route: Route },
@@ -20,12 +23,19 @@ enum State {
     Initialized { onward_route: Route },
 }
 
+/// Enumerate all portal types
 #[derive(Debug)]
 enum TypeName {
     Inlet,
     Outlet,
 }
 
+/// A TCP Portal worker
+///
+/// A TCP Portal worker is responsible for managing the life-cycle of
+/// a portal conenction and is created by
+/// [`TcpInletListenProcessor::process`](crate::TcpInletListenProcessor)
+/// after a new connection has been accepted.
 pub(crate) struct TcpPortalWorker {
     state: Option<State>,
     tx: Option<OwnedWriteHalf>,
@@ -39,6 +49,7 @@ pub(crate) struct TcpPortalWorker {
 }
 
 impl TcpPortalWorker {
+    /// Create a new portal inlet
     pub(crate) async fn new_inlet(
         ctx: &Context,
         stream: TcpStream,
@@ -57,6 +68,7 @@ impl TcpPortalWorker {
         Ok(())
     }
 
+    /// Create a new portal outlet
     pub(crate) async fn new_outlet(
         ctx: &Context,
         peer: SocketAddr,
@@ -72,6 +84,7 @@ impl TcpPortalWorker {
         .await
     }
 
+    /// Start a `TcpPortalWorker`
     async fn start(
         ctx: &Context,
         peer: SocketAddr,
@@ -123,6 +136,7 @@ impl TcpPortalWorker {
         }
     }
 
+    /// Start a `TcpPortalRecvProcessor`
     async fn start_receiver(&mut self, ctx: &Context) -> Result<()> {
         if let Some(rx) = self.rx.take() {
             let receiver = TcpPortalRecvProcessor::new(rx, self.internal_address.clone());
@@ -133,6 +147,7 @@ impl TcpPortalWorker {
         }
     }
 
+    /// Start the portal disconnection process
     async fn start_disconnection(
         &mut self,
         ctx: &Context,

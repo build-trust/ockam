@@ -25,10 +25,12 @@ impl AsyncTryClone for TcpRouterHandle {
 }
 
 impl TcpRouterHandle {
+    /// Create a new `TcpRouterHandle` with the given address
     pub(crate) fn new(ctx: Context, api_addr: Address) -> Self {
         TcpRouterHandle { ctx, api_addr }
     }
 
+    /// Return a reference to the router handle's [`Context`]
     pub fn ctx(&self) -> &Context {
         &self.ctx
     }
@@ -67,6 +69,32 @@ impl TcpRouterHandle {
         }
     }
 
+    /// Disconnect an outgoing TCP connection on an existing transport
+    pub async fn disconnect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
+        let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;
+
+        child_ctx
+            .send(
+                self.api_addr.clone(),
+                TcpRouterRequest::Disconnect {
+                    peer: peer.as_ref().to_string(),
+                },
+            )
+            .await?;
+
+        let response = child_ctx
+            .receive::<TcpRouterResponse>()
+            .await?
+            .take()
+            .body();
+
+        if let TcpRouterResponse::Disconnect(res) = response {
+            res
+        } else {
+            Err(TransportError::InvalidRouterResponseType.into())
+        }
+    }
+
     /// Register a new connection worker with this router
     pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
         let tcp_address: Address = format!("{}#{}", TCP, pair.peer()).into();
@@ -99,7 +127,7 @@ impl TcpRouterHandle {
         }
     }
 
-    /// Unregister
+    /// Unregister the conenction worker for the given `Address`
     pub async fn unregister(&self, self_addr: Address) -> Result<()> {
         let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;
 
@@ -123,6 +151,7 @@ impl TcpRouterHandle {
         }
     }
 
+    /// Resolve the given peer to a [`SocketAddr`](std::net::SocketAddr)
     pub(crate) fn resolve_peer(peer: impl Into<String>) -> Result<(SocketAddr, Vec<String>)> {
         let peer_str = peer.into();
         let peer_addr;
@@ -143,7 +172,9 @@ impl TcpRouterHandle {
             }
 
             hostnames = vec![peer_str];
-        } else {
+        }
+        // Nothing worked, return an error
+        else {
             return Err(TransportError::InvalidAddress.into());
         }
 
@@ -179,39 +210,15 @@ impl TcpRouterHandle {
         Ok(address)
     }
 
+    /// Stop the inlet's [`TcpInletListenProcessor`]
     pub async fn stop_inlet(&self, addr: impl Into<Address>) -> Result<()> {
         self.ctx.stop_processor(addr).await?;
-
         Ok(())
     }
 
+    /// Stop the inlet's [`TcpPortalWorker`]
     pub async fn stop_outlet(&self, addr: impl Into<Address>) -> Result<()> {
         self.ctx.stop_worker(addr).await?;
         Ok(())
-    }
-
-    pub async fn disconnect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
-        let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;
-
-        child_ctx
-            .send(
-                self.api_addr.clone(),
-                TcpRouterRequest::Disconnect {
-                    peer: peer.as_ref().to_string(),
-                },
-            )
-            .await?;
-
-        let response = child_ctx
-            .receive::<TcpRouterResponse>()
-            .await?
-            .take()
-            .body();
-
-        if let TcpRouterResponse::Disconnect(res) = response {
-            res
-        } else {
-            Err(TransportError::InvalidRouterResponseType.into())
-        }
     }
 }

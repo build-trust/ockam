@@ -18,6 +18,11 @@ end-to-end trust between entities.
 TCP is one possible transport for Routing Protocol messages, over time there
 will be more transport implementations.
 
+Currently available transports include:
+
+* `ockam_transport_ble` - Bluetooth Low Energy Transport
+* `ockam_transport_websocket` - WebSocket Transport
+
 ## Usage
 
 Add this to your `Cargo.toml`:

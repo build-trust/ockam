@@ -7,12 +7,18 @@ use tracing::error;
 
 const BUFFER_SIZE: usize = 256;
 
+/// A TCP Portal receiving message processor
+///
+/// TCP Portal receiving message processor are created by
+/// `TcpPortalWorker` after a call is made to
+/// [`TcpPortalWorker::start_receiver`](crate::TcpPortalWorker::start_receiver)
 pub(crate) struct TcpPortalRecvProcessor {
     rx: OwnedReadHalf,
     sender_address: Address,
 }
 
 impl TcpPortalRecvProcessor {
+    /// Create a new `TcpPortalRecvProcessor`
     pub fn new(rx: OwnedReadHalf, sender_address: Address) -> Self {
         Self { rx, sender_address }
     }

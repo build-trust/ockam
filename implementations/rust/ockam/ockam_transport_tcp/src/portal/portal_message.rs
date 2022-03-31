@@ -1,6 +1,7 @@
 use ockam_core::Message;
 use serde::{Deserialize, Serialize};
 
+/// A command message type for a Portal
 #[derive(Serialize, Deserialize, Message)]
 pub enum PortalMessage {
     /// First message that Inlet sends to the Outlet
@@ -14,6 +15,7 @@ pub enum PortalMessage {
     Payload(Vec<u8>),
 }
 
+/// An internal message type for a Portal
 #[derive(Serialize, Deserialize, Message)]
 pub enum PortalInternalMessage {
     /// Connection was dropped
