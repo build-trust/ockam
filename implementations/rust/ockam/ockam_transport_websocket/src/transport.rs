@@ -2,10 +2,9 @@ use core::fmt;
 use std::net::SocketAddr;
 use std::str::FromStr;
 
-use ockam_core::Result;
-use ockam_node::Context;
-
 use crate::{parse_socket_addr, WebSocketRouter, WebSocketRouterHandle};
+use ockam_core::error::Result;
+use ockam_node::Context;
 
 /// High level management interface for WebSocket transports
 ///
@@ -94,9 +93,9 @@ impl From<&WebSocketAddr> for String {
 }
 
 impl FromStr for WebSocketAddr {
-    type Err = ockam_core::Error;
+    type Err = ockam_core::error::Error2;
 
-    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self> {
         let socket_addr = parse_socket_addr(s)?;
         Ok(WebSocketAddr::from(socket_addr))
     }

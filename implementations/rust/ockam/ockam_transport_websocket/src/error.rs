@@ -1,51 +1,37 @@
-use std::fmt::{Display, Formatter};
-
+use ockam_core::{
+    error::{
+        code::{ErrorCode, Kind, Origin},
+        Error2,
+    },
+    thiserror,
+};
+use ockam_transport_core::TransportError;
 use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 
-use ockam_core::Error;
-use ockam_transport_core::TransportError;
-
 /// A WebSocket connection worker specific error type
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum WebSocketError {
     /// A wrapped transport error
+    #[error("ockam transport error {}", 0)]
     Transport(TransportError),
     /// HTTP error
+    #[error("http protocol error")]
     Http,
     /// TLS error
+    #[error("tls protocol error")]
     Tls,
 }
 
-impl WebSocketError {
-    /// Integer code associated with the error domain.
-    pub const DOMAIN_CODE: u32 = 21_000;
-    /// Error domain
-    pub const DOMAIN_NAME: &'static str = "OCKAM_TRANSPORT_WEBSOCKET";
+impl From<WebSocketError> for Error2 {
+    fn from(err: WebSocketError) -> Error2 {
+        use WebSocketError::*;
+        let kind = match err {
+            Transport(_) => Kind::Io,
+            Http | Tls => Kind::Protocol,
+        };
 
-    pub fn code(&self) -> u32 {
-        match self {
-            WebSocketError::Transport(_) => 0,
-            WebSocketError::Http => 0,
-            WebSocketError::Tls => 1,
-        }
-    }
-}
-
-impl Display for WebSocketError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let err: Error = (*self).into();
-        err.fmt(f)
-    }
-}
-
-impl From<WebSocketError> for Error {
-    fn from(e: WebSocketError) -> Error {
-        let info = ockam_core::compat::format!("{}::{:?}", module_path!(), e);
-        match e {
-            WebSocketError::Transport(e) => e.into(),
-            e => Error::new(WebSocketError::DOMAIN_CODE + e.code(), info),
-        }
+        Error2::new(ErrorCode::new(Origin::Transport, kind), err)
     }
 }
 
