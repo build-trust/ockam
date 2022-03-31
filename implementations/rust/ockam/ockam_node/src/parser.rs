@@ -1,4 +1,4 @@
-use ockam_core::{Result, Message};
+use ockam_core::{Message, Result};
 
 // TODO: this function can not mutate the data vector it is given, and
 // thus copies its contents when using the fallback parsing strategy.

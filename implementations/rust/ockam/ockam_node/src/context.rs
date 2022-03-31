@@ -149,7 +149,9 @@ impl Context {
             .send(msg)
             .await
             .map_err(|e| Error2::new(error::node(Kind::Invalid), e))?;
-        rx.recv().await.ok_or_else(error::internal_without_cause)??;
+        rx.recv()
+            .await
+            .ok_or_else(error::internal_without_cause)??;
         Ok(ctx)
     }
 
@@ -243,7 +245,9 @@ impl Context {
             .map_err(|e| Error2::new(error::node(Kind::Invalid), e))?;
 
         // Wait for the actual return code
-        rx.recv().await.ok_or_else(error::internal_without_cause)??;
+        rx.recv()
+            .await
+            .ok_or_else(error::internal_without_cause)??;
         Ok(())
     }
 
@@ -281,7 +285,9 @@ impl Context {
             .map_err(|e| Error2::new(error::node(Kind::Invalid), e))?;
 
         // Wait for the actual return code
-        rx.recv().await.ok_or_else(error::internal_without_cause)??;
+        rx.recv()
+            .await
+            .ok_or_else(error::internal_without_cause)??;
         Ok(())
     }
 
@@ -303,13 +309,12 @@ impl Context {
             AddressType::Worker => NodeMessage::stop_worker(addr),
             AddressType::Processor => NodeMessage::stop_processor(addr),
         };
-        self.sender
-            .send(req)
-            .await
-            .map_err(error::from_send_err)?;
+        self.sender.send(req).await.map_err(error::from_send_err)?;
 
         // Then check that address was properly shut down
-        rx.recv().await.ok_or_else(error::internal_without_cause)??;
+        rx.recv()
+            .await
+            .ok_or_else(error::internal_without_cause)??;
         Ok(())
     }
 
@@ -345,13 +350,12 @@ impl Context {
     /// or the desired timeout has been reached.
     pub async fn stop_timeout(&mut self, seconds: u8) -> Result<()> {
         let (req, mut rx) = NodeMessage::stop_node(ShutdownType::Graceful(seconds));
-        self.sender
-            .send(req)
-            .await
-            .map_err(error::from_send_err)?;
+        self.sender.send(req).await.map_err(error::from_send_err)?;
 
         // Wait until we get the all-clear
-        rx.recv().await.ok_or_else(error::internal_without_cause)??;
+        rx.recv()
+            .await
+            .ok_or_else(error::internal_without_cause)??;
         Ok(())
     }
 
@@ -456,10 +460,7 @@ impl Context {
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
 
         // First resolve the next hop in the route
-        self.sender
-            .send(req)
-            .await
-            .map_err(error::from_send_err)?;
+        self.sender.send(req).await.map_err(error::from_send_err)?;
         let (addr, sender, needs_wrapping) = reply_rx
             .recv()
             .await
@@ -480,10 +481,7 @@ impl Context {
         };
 
         // Send the packed user message with associated route
-        sender
-            .send(msg)
-            .await
-            .map_err(error::from_send_err)?;
+        sender.send(msg).await.map_err(error::from_send_err)?;
         Ok(())
     }
 
@@ -506,10 +504,7 @@ impl Context {
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
 
         // First resolve the next hop in the route
-        self.sender
-            .send(req)
-            .await
-            .map_err(error::from_send_err)?;
+        self.sender.send(req).await.map_err(error::from_send_err)?;
         let (addr, sender, needs_wrapping) = reply_rx
             .recv()
             .await
@@ -524,10 +519,7 @@ impl Context {
         } else {
             RelayMessage::direct(addr, local_msg, onward)
         };
-        sender
-            .send(msg)
-            .await
-            .map_err(error::from_send_err)?;
+        sender.send(msg).await.map_err(error::from_send_err)?;
 
         Ok(())
     }
@@ -620,10 +612,7 @@ impl Context {
     /// initialisation when the node is stopped.
     pub async fn set_cluster<S: Into<String>>(&self, label: S) -> Result<()> {
         let (msg, mut rx) = NodeMessage::set_cluster(self.address(), label.into());
-        self.sender
-            .send(msg)
-            .await
-            .map_err(error::node_internal)?;
+        self.sender.send(msg).await.map_err(error::node_internal)?;
         Ok(rx
             .recv()
             .await
@@ -635,10 +624,7 @@ impl Context {
     pub async fn list_workers(&self) -> Result<Vec<Address>> {
         let (msg, mut reply_rx) = NodeMessage::list_workers();
 
-        self.sender
-            .send(msg)
-            .await
-            .map_err(error::node_internal)?;
+        self.sender.send(msg).await.map_err(error::node_internal)?;
 
         Ok(reply_rx
             .recv()
@@ -668,7 +654,9 @@ impl Context {
             .await
             .map_err(error::node_internal)?;
 
-        rx.recv().await.ok_or_else(error::internal_without_cause)??;
+        rx.recv()
+            .await
+            .ok_or_else(error::internal_without_cause)??;
         Ok(())
     }
 
@@ -721,10 +709,7 @@ impl Context {
     /// Wait for a particular address to become "ready"
     pub async fn wait_for<A: Into<Address>>(&mut self, addr: A) -> Result<()> {
         let (msg, mut reply) = NodeMessage::get_ready(addr.into());
-        self.sender
-            .send(msg)
-            .await
-            .map_err(error::node_internal)?;
+        self.sender.send(msg).await.map_err(error::node_internal)?;
 
         // This call blocks until the address has become ready or is
         // dropped by the router

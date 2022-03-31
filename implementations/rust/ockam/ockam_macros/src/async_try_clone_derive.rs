@@ -168,8 +168,7 @@ impl<'a> Data<'a> {
                     .iter()
                     .any(|s| s == &t.ident.to_string())
                 {
-                    t.bounds
-                        .push(parse_quote!(ockam_core::AsyncTryClone));
+                    t.bounds.push(parse_quote!(ockam_core::AsyncTryClone));
                 }
             }
         }

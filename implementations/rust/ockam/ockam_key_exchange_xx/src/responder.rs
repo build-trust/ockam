@@ -4,7 +4,7 @@ use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
 };
-use ockam_core::{Result, async_trait, compat::boxed::Box};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
 
 #[derive(Debug)]

@@ -1,7 +1,7 @@
 use super::{AddressMeta, AddressRecord, NodeState, Router, SenderPair};
 use crate::tokio::sync::mpsc::Sender;
 use crate::{error, NodeReply, NodeReplyResult, Reason};
-use ockam_core::{Result, Address};
+use ockam_core::{Address, Result};
 
 /// Execute a `StartWorker` command
 pub(super) async fn exec(

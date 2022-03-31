@@ -1,6 +1,6 @@
 use crate::tokio::sync::mpsc::Receiver;
 use crate::{relay::CtrlSignal, tokio::runtime::Runtime, Context};
-use ockam_core::{Result, Processor};
+use ockam_core::{Processor, Result};
 
 pub struct ProcessorRelay<P>
 where

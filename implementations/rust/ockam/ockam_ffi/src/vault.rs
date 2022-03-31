@@ -4,15 +4,13 @@ use crate::{FfiVaultFatPointer, FfiVaultType};
 use core::{future::Future, result::Result as StdResult, slice};
 use lazy_static::lazy_static;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Error2, Result};
 use ockam_core::vault::{
     AsymmetricVault, Hasher, PublicKey, Secret, SecretAttributes, SecretVault, SymmetricVault,
 };
+use ockam_core::{Error2, Result};
 use ockam_vault::Vault;
 use std::future::Future;
-use tokio::runtime::Runtime;
-use tokio::sync::RwLock;
-use tokio::task;
+use tokio::{runtime::Runtime, sync::RwLock, task};
 
 /// FFI Vault trait. See documentation for individual sub-traits for details.
 pub trait FfiVault: SecretVault + Hasher + SymmetricVault + AsymmetricVault + Send {}

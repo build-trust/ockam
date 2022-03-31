@@ -1,7 +1,7 @@
 use crate::Context;
 use core::time::Duration;
 use futures::future::{AbortHandle, Abortable};
-use ockam_core::{Result, Address, Message};
+use ockam_core::{Address, Message, Result};
 
 /// Allow to send message to destination address periodically after some delay
 /// Only one scheduled heartbeat allowed at a time
