@@ -1,3 +1,4 @@
+use core::str::FromStr;
 use std::collections::BTreeMap;
 use std::ops::Deref;
 
@@ -8,14 +9,15 @@ use ockam_core::{
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
+use crate::error::WebSocketError;
 use crate::workers::WorkerPair;
-use crate::{WebSocketAddr, WebSocketError, WS};
+use crate::{WebSocketAddress, WS};
 use serde::{Deserialize, Serialize};
 
 mod handle;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
-pub enum WebSocketRouterMessage {
+pub(crate) enum WebSocketRouterMessage {
     /// Register a new client to this routing scope.
     Register {
         /// Specify an accept scope for this client.
@@ -33,7 +35,7 @@ pub enum WebSocketRouterMessage {
 ///
 /// Optionally you can also start listening for incoming connections
 /// if the local node is part of a server architecture.
-pub struct WebSocketRouter {
+pub(crate) struct WebSocketRouter {
     ctx: Context,
     main_addr: Address,
     api_addr: Address,
@@ -42,54 +44,80 @@ pub struct WebSocketRouter {
 }
 
 impl WebSocketRouter {
+    /// Create and register a new WebSocket router with the node context
+    ///
+    /// To also handle incoming connections, use
+    /// [`WebSocketRouter::bind`](WebSocketRouter::bind)
+    pub(crate) async fn register(ctx: &Context) -> Result<WebSocketRouterHandle> {
+        let main_addr = Address::random_local();
+        let api_addr = Address::random_local();
+        debug!(
+            "Initialising new WebSocketRouter with address {}",
+            &main_addr
+        );
+
+        // Create the `WebSocketRouter` instance. Note that both the
+        // router and the handle have independent contexts so that
+        // they can manage their own lifecycle.
+        let child_ctx = ctx.new_context(Address::random_local()).await?;
+        let router = Self {
+            ctx: child_ctx,
+            main_addr: main_addr.clone(),
+            api_addr: api_addr.clone(),
+            map: BTreeMap::new(),
+            allow_auto_connection: true,
+        };
+
+        let handle = router.create_self_handle(ctx).await?;
+
+        ctx.start_worker(vec![main_addr.clone(), api_addr], router)
+            .await?;
+        trace!("Registering WS router for type = {}", WS);
+        ctx.register(WS, main_addr).await?;
+
+        Ok(handle)
+    }
+
     async fn create_self_handle(&self, ctx: &Context) -> Result<WebSocketRouterHandle> {
         let handle_ctx = ctx.new_context(Address::random_local()).await?;
         let handle = WebSocketRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }
+}
 
-    async fn handle_register(&mut self, accepts: Vec<Address>, self_addr: Address) -> Result<()> {
-        if let Some(f) = accepts.first().cloned() {
-            trace!("WS registration request: {} => {}", f, self_addr);
+#[async_trait::async_trait]
+impl Worker for WebSocketRouter {
+    type Message = Any;
+    type Context = Context;
+
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
+        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+        Ok(())
+    }
+
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+        let msg_addr = msg.msg_addr();
+
+        if msg_addr == self.main_addr {
+            let msg = LocalMessage::decode(msg.payload())?;
+            self.handle_route(ctx, msg).await?;
+        } else if msg_addr == self.api_addr {
+            let msg = WebSocketRouterMessage::decode(msg.payload())?;
+            match msg {
+                WebSocketRouterMessage::Register { accepts, self_addr } => {
+                    trace!("handle_message register: {:?} => {:?}", accepts, self_addr);
+                    self.handle_register(accepts, self_addr).await?;
+                }
+            };
         } else {
-            // Should not happen
             return Err(TransportError::InvalidAddress.into());
-        }
-
-        for accept in &accepts {
-            if self.map.contains_key(accept) {
-                return Err(TransportError::AlreadyConnected.into());
-            }
-        }
-        for accept in accepts {
-            self.map.insert(accept.clone(), self_addr.clone());
         }
 
         Ok(())
     }
+}
 
-    async fn connect(&mut self, peer: String) -> Result<Address> {
-        let (peer_addr, hostnames) = WebSocketRouterHandle::resolve_peer(peer)?;
-        let ws_peer_addr = WebSocketAddr::from(peer_addr);
-        let (stream, _) = tokio_tungstenite::connect_async(ws_peer_addr.to_string())
-            .await
-            .map_err(WebSocketError::from)?;
-        let pair = WorkerPair::new(&self.ctx, stream, peer_addr, hostnames).await?;
-
-        let ws_address: Address = format!("{}#{}", WS, pair.peer()).into();
-        let mut accepts = vec![ws_address];
-        accepts.extend(
-            pair.hostnames()
-                .iter()
-                .map(|x| Address::from_string(format!("{}#{}", WS, x))),
-        );
-        let self_addr = pair.tx_addr();
-
-        self.handle_register(accepts, self_addr.clone()).await?;
-
-        Ok(self_addr)
-    }
-
+impl WebSocketRouter {
     async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
         trace!(
             "WS route request: {:?}",
@@ -132,67 +160,55 @@ impl WebSocketRouter {
         Ok(())
     }
 
-    /// Create and register a new WebSocket router with the node context
-    ///
-    /// To also handle incoming connections, use
-    /// [`WebSocketRouter::bind`](WebSocketRouter::bind)
-    pub(crate) async fn register(ctx: &Context) -> Result<WebSocketRouterHandle> {
-        let main_addr = Address::random_local();
-        let api_addr = Address::random_local();
-        debug!(
-            "Initialising new WebSocketRouter with address {}",
-            &main_addr
-        );
-
-        let child_ctx = ctx.new_context(Address::random_local()).await?;
-
-        let router = Self {
-            ctx: child_ctx,
-            main_addr: main_addr.clone(),
-            api_addr: api_addr.clone(),
-            map: BTreeMap::new(),
-            allow_auto_connection: true,
-        };
-
-        let handle = router.create_self_handle(ctx).await?;
-
-        ctx.start_worker(vec![main_addr.clone(), api_addr], router)
-            .await?;
-        trace!("Registering WS router for type = {}", WS);
-        ctx.register(WS, main_addr).await?;
-
-        Ok(handle)
-    }
-}
-
-#[async_trait::async_trait]
-impl Worker for WebSocketRouter {
-    type Message = Any;
-    type Context = Context;
-
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
-        Ok(())
-    }
-
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        let msg_addr = msg.msg_addr();
-
-        if msg_addr == self.main_addr {
-            let msg = LocalMessage::decode(msg.payload())?;
-            self.handle_route(ctx, msg).await?;
-        } else if msg_addr == self.api_addr {
-            let msg = WebSocketRouterMessage::decode(msg.payload())?;
-            match msg {
-                WebSocketRouterMessage::Register { accepts, self_addr } => {
-                    trace!("handle_message register: {:?} => {:?}", accepts, self_addr);
-                    self.handle_register(accepts, self_addr).await?;
-                }
-            };
-        } else {
+    async fn handle_register(&mut self, accepts: Vec<Address>, self_addr: Address) -> Result<()> {
+        // The `accepts` vector should always contain at least one address.
+        if let Some(f) = accepts.first().cloned() {
+            trace!("WS registration request: {} => {}", f, self_addr);
+        }
+        // Otherwise, the router is not being used properly and returns an error.
+        else {
+            error!("Tried to register a new client without passing any `Address`");
             return Err(TransportError::InvalidAddress.into());
         }
 
+        // Do not connect twice.
+        for accept in &accepts {
+            if self.map.contains_key(accept) {
+                return Err(TransportError::AlreadyConnected.into());
+            }
+        }
+
+        // Add a new entry for each hostname/address pair.
+        for accept in accepts {
+            self.map.insert(accept.clone(), self_addr.clone());
+        }
+
         Ok(())
+    }
+
+    async fn connect(&mut self, peer: String) -> Result<Address> {
+        // Get peer address and connect to it.
+        let (peer_addr, hostnames) = WebSocketRouterHandle::resolve_peer(peer)?;
+        let ws_peer_addr = WebSocketAddress::from(peer_addr);
+        let (stream, _) = tokio_tungstenite::connect_async(ws_peer_addr.to_string())
+            .await
+            .map_err(WebSocketError::from)?;
+
+        // Create a new `WorkerPair` for the given peer, initializing a new pair
+        // of sender worker and receiver processor.
+        let pair = WorkerPair::new(&self.ctx, stream, peer_addr, hostnames).await?;
+
+        // Handle node's register request.
+        let mut accepts = vec![pair.peer()];
+        accepts.extend(
+            pair.hostnames()
+                .iter()
+                .filter_map(|x| WebSocketAddress::from_str(x).ok())
+                .map(|addr| addr.into()),
+        );
+        let self_addr = pair.tx_addr();
+        self.handle_register(accepts, self_addr.clone()).await?;
+
+        Ok(self_addr)
     }
 }

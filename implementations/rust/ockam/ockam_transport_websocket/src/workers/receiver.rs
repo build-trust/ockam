@@ -13,7 +13,7 @@ use ockam_transport_core::TransportError;
 
 use crate::workers::AsyncStream;
 
-/// A WebSocket receiving message worker
+/// A WebSocket receiving message worker.
 ///
 /// This half of the worker is created when spawning a new connection
 /// worker pair, and listens for messages received to the WebSocket stream

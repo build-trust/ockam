@@ -9,7 +9,7 @@ use crate::router::WebSocketRouterMessage;
 use crate::workers::{WebSocketListenProcessor, WorkerPair};
 use crate::{error::WebSocketError, parse_socket_addr, WebSocketAddress};
 
-/// A handle to connect to a WebSocketRouter
+/// A handle to connect to a WebSocketRouter.
 ///
 /// Dropping this handle is harmless.
 pub(crate) struct WebSocketRouterHandle {
@@ -30,7 +30,7 @@ impl WebSocketRouterHandle {
         Self { ctx, api_addr }
     }
 
-    /// Register a new connection worker with this router
+    /// Register a new connection worker with this router.
     pub(crate) async fn register(&self, pair: &WorkerPair) -> Result<()> {
         let mut accepts = vec![pair.peer()];
 
@@ -49,13 +49,13 @@ impl WebSocketRouterHandle {
             .await
     }
 
-    /// Bind an incoming connection listener for this router
+    /// Bind an incoming connection listener for this router.
     pub(crate) async fn bind(&self, addr: impl Into<SocketAddr>) -> Result<()> {
         let socket_addr = addr.into();
         WebSocketListenProcessor::start(&self.ctx, self.async_try_clone().await?, socket_addr).await
     }
 
-    /// Return the peer's `SocketAddr` and `hostnames` given a plain `String` address
+    /// Return the peer's `SocketAddr` and `hostnames` given a plain `String` address.
     pub(crate) fn resolve_peer(peer: impl Into<String>) -> Result<(SocketAddr, Vec<String>)> {
         let peer_str = peer.into();
         let peer_addr;
@@ -83,7 +83,7 @@ impl WebSocketRouterHandle {
         Ok((peer_addr, hostnames))
     }
 
-    /// Establish an outgoing WS connection on an existing transport
+    /// Establish an outgoing WS connection on an existing transport.
     pub(crate) async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
         // Get peer address and connect to it.
         let (peer_addr, hostnames) = Self::resolve_peer(peer.as_ref())?;
