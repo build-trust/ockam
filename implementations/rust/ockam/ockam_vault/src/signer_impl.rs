@@ -1,7 +1,7 @@
 use crate::vault::Vault;
 use crate::VaultError;
 use ockam_core::vault::{Secret, SecretType, Signature, Signer};
-use ockam_core::Result;
+use ockam_core::error::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
 
 #[async_trait]

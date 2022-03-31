@@ -72,6 +72,8 @@ pub use worker::*;
 #[doc(hidden)]
 pub use compat::println;
 
+pub use thiserror;
+
 #[cfg(feature = "std")]
 #[doc(hidden)]
 pub use std::println;

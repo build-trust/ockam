@@ -6,7 +6,7 @@ use ockam_core::vault::{
     Hasher, Secret, SecretAttributes, SecretType, SecretVault, AES128_SECRET_LENGTH,
     AES256_SECRET_LENGTH,
 };
-use ockam_core::Result;
+use ockam_core::error::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
 use sha2::{Digest, Sha256};
 
@@ -59,7 +59,7 @@ impl Hasher for Vault {
             let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.key().as_ref()), ikm);
 
             prk.expand(info, okm.as_mut_slice())
-                .map_err(|_| Into::<ockam_core::Error>::into(VaultError::HkdfExpandError))?;
+                .map_err(|_| Into::<ockam_core::error::Error2>::into(VaultError::HkdfExpandError))?;
             okm
         };
 

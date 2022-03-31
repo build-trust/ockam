@@ -8,7 +8,7 @@ use ockam_core::vault::{
     KeyId, KeyIdVault, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence,
     SecretType, SecretVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
-use ockam_core::Result;
+use ockam_core::error::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
 
 cfg_if! {
