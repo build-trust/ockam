@@ -1924,6 +1924,7 @@ dependencies = [
  "cfg-if",
  "group",
  "heapless",
+ "hex",
  "ockam_channel",
  "ockam_core",
  "ockam_key_exchange_core",
@@ -1966,6 +1967,7 @@ name = "ockam_key_exchange_x3dh"
 version = "0.42.0"
 dependencies = [
  "arrayref",
+ "hex",
  "ockam_core",
  "ockam_key_exchange_core",
  "ockam_node",
@@ -2089,6 +2091,7 @@ dependencies = [
  "cfg-if",
  "curve25519-dalek",
  "ed25519-dalek",
+ "hex",
  "hkdf",
  "ockam_core",
  "ockam_macros",

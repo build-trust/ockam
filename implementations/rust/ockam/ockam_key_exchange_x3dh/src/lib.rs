@@ -10,7 +10,7 @@ use arrayref::array_ref;
 use ockam_core::vault::{
     AsymmetricVault, Hasher, PublicKey, SecretType, SecretVault, Signer, SymmetricVault, Verifier,
 };
-use ockam_core::{compat::vec::Vec, hex::encode, AsyncTryClone};
+use ockam_core::{compat::vec::Vec, AsyncTryClone};
 use zeroize::Zeroize;
 
 mod error;
@@ -49,7 +49,7 @@ impl From<&[u8; 64]> for Signature {
 
 impl core::fmt::Debug for Signature {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "Signature {{ {} }}", encode(self.0.as_ref()))
+        write!(f, "Signature {{ {} }}", hex::encode(self.0.as_ref()))
     }
 }
 

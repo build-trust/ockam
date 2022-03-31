@@ -1,7 +1,6 @@
 use crate::{IdentityError, IdentityStateConst};
 use core::fmt::{Display, Formatter};
 use ockam_core::compat::string::String;
-use ockam_core::hex::encode;
 use ockam_core::vault::{Hasher, KeyId};
 use ockam_core::{Error, Result};
 use serde::{Deserialize, Serialize};
@@ -80,7 +79,7 @@ impl EventIdentifier {
     }
     /// Human-readable form of the id
     pub fn to_string_representation(&self) -> String {
-        format!("E_ID.{}", encode(&self.0))
+        format!("E_ID.{}", hex::encode(&self.0))
     }
 }
 

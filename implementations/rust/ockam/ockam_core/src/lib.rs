@@ -27,16 +27,11 @@ extern crate alloc;
 
 pub use async_trait::async_trait;
 
-pub extern crate hashbrown;
-
-#[allow(unused_imports)]
-#[macro_use]
-pub extern crate hex;
-
 #[allow(unused_imports)]
 #[macro_use]
 /// Re-export of the `async_trait` macro crate.
 pub extern crate async_trait;
+
 /// Mark an Ockam Worker implementation.
 pub use async_trait::async_trait as worker;
 

@@ -62,7 +62,7 @@ impl Error {
     /// Return an error's domain.
     #[inline]
     #[cfg(feature = "alloc")]
-    pub fn domain(&self) -> &String {
+    pub fn domain(&self) -> &str {
         &self.domain
     }
 

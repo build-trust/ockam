@@ -36,6 +36,7 @@ std = [
     "ockam_node/std",
     "ockam_vault_sync_core/std",
     "ockam_vault/std",
+    "hex/std",
 ]
 
 # Feature: "no_std" enables functionality required for platforms
@@ -61,6 +62,7 @@ alloc = [
     "ockam_node/alloc",
     "ockam_vault_sync_core/alloc",
     "ockam_vault/alloc",
+    "hex/alloc",
 ]
 
 # Feature: "credentials" enables support for the BLS signatures scheme
@@ -96,6 +98,7 @@ sha2 = { version = "0.9", default-features = false }
 serde-big-array = "0.3"
 rand = { version = "0.8", default-features = false }
 tracing = { version = "0.1", default_features = false }
+hex = { version = "0.4", default-features = false }
 
 [dev-dependencies]
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
