@@ -52,8 +52,10 @@ impl AccessControl for DenyAll {
 #[cfg(feature = "alloc")]
 #[cfg(test)]
 mod tests {
-    use crate::Result;
-    use crate::{route, LocalMessage, TransportMessage};
+    use crate::{
+        errcode::{ErrorCode, Kind, Origin},
+        route, LocalMessage, Result, TransportMessage,
+    };
     use futures_util::future::{Future, FutureExt};
 
     use super::{AccessControl, AllowAll, DenyAll};
@@ -126,7 +128,10 @@ mod tests {
         );
         match result {
             Poll::Ready(value) => value,
-            Poll::Pending => Err(crate::Error::new(1000, "SOME_ERROR_DOMAIN")),
+            Poll::Pending => Err(crate::Error2::new_without_cause(ErrorCode::new(
+                Origin::Core,
+                Kind::Unknown,
+            ))),
         }
     }
 }

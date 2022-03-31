@@ -55,13 +55,19 @@ impl Authentication {
 mod test {
 
     use crate::{Identity, IdentityTrait};
-    use ockam_core::{Error2, Result};
+    use ockam_core::{
+        errcode::{ErrorCode, Kind, Origin},
+        Error2, Result,
+    };
     use ockam_node::Context;
     use ockam_vault::Vault;
     use rand::{thread_rng, RngCore};
 
     fn test_error<S: Into<String>>(error: S) -> Result<()> {
-        Err(Error::new(0, error))
+        Err(
+            Error2::new_without_cause(ErrorCode::new(Origin::Identity, Kind::Unknown))
+                .context("msg", error.into()),
+        )
     }
 
     async fn test_auth_use_case(ctx: &Context) -> Result<()> {
