@@ -1,4 +1,10 @@
-use ockam_core::Error;
+use ockam_core::{
+    error::{
+        code::{ErrorCode, Kind, Origin},
+        Error2,
+    },
+    thiserror,
+};
 use std::ffi::CString;
 use std::os::raw::c_char;
 
@@ -29,73 +35,73 @@ impl FfiOckamError {
     }
 }
 
-impl From<Error> for FfiOckamError {
-    fn from(err: Error) -> Self {
-        // TODO: Should this graciously fail?
-        let heaped = CString::new(err.domain().as_bytes()).unwrap();
-
-        // Past this point C is responsible for freeing up its memory!
-        Self {
-            code: err.code() as i32,
-            domain: heaped.into_raw(),
-        }
-    }
-}
-
 /// Represents the failures that can occur in an Ockam FFI Vault.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, thiserror::Error)]
 pub enum FfiError {
     /// Persistence is not supported for this Vault implementation.
+    #[error("persistence is not supported for this Vault implementation.")]
     VaultDoesNotSupportPersistence = 1,
 
     /// An underlying filesystem error prevented Vault creation.
+    #[error("an underlying filesystem error prevented Vault creation.")]
     ErrorCreatingFilesystemVault,
 
     /// Invalid parameter.
+    #[error("invalid parameter.")]
     InvalidParam,
 
     /// Entry not found.
+    #[error("entry not found.")]
     EntryNotFound,
 
     /// Unknown public key type.
+    #[error("unknown public key type.")]
     UnknownPublicKeyType,
 
     /// Invalid string.
+    #[error("invalid string.")]
     InvalidString,
 
     /// Buffer is too small.
+    #[error("buffer is too small.")]
     BufferTooSmall,
 
     /// A public key is invalid.
+    #[error("a public key is invalid.")]
     InvalidPublicKey,
 
     /// No such Vault.
+    #[error("no such Vault.")]
     VaultNotFound,
 
     /// Ownership error.
+    #[error("ownership error.")]
     OwnershipError,
 
     /// Caught a panic (which would be UB if we let it unwind across the FFI).
+    #[error("caught a panic (which would be UB if we let it unwind across the FFI).")]
     UnexpectedPanic,
 }
 
-impl FfiError {
-    /// Integer code associated with the error domain.
-    pub const DOMAIN_CODE: u32 = 13_000;
-    /// Descriptive name for the error domain.
-    pub const DOMAIN_NAME: &'static str = "OCKAM_FFI";
+impl From<FfiError> for Error2 {
+    fn from(err: FfiError) -> Self {
+        Error2::new(ErrorCode::new(Origin::Other, Kind::Other), err)
+    }
 }
 
-impl From<FfiError> for Error {
-    fn from(err: FfiError) -> Self {
-        Self::new(FfiError::DOMAIN_CODE + (err as u32), FfiError::DOMAIN_NAME)
+impl From<Error2> for FfiOckamError {
+    fn from(err: Error2) -> Self {
+        Self::new(
+            err.code().origin as i32 * 10_000 + err.code().kind as i32,
+            "unknown",
+        )
     }
 }
 
 impl From<FfiError> for FfiOckamError {
     fn from(err: FfiError) -> Self {
-        let err: Error = err.into();
-        Self::from(err)
+        let err2: Error2 = err.into();
+        Self::from(err2)
     }
 }
 
