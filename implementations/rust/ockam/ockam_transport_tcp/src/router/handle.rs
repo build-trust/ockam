@@ -16,12 +16,6 @@ pub(crate) struct TcpRouterHandle {
     api_addr: Address,
 }
 
-impl TcpRouterHandle {
-    pub fn ctx(&self) -> &Context {
-        &self.ctx
-    }
-}
-
 #[async_trait]
 impl AsyncTryClone for TcpRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
@@ -34,9 +28,45 @@ impl TcpRouterHandle {
     pub(crate) fn new(ctx: Context, api_addr: Address) -> Self {
         TcpRouterHandle { ctx, api_addr }
     }
+
+    pub fn ctx(&self) -> &Context {
+        &self.ctx
+    }
 }
 
 impl TcpRouterHandle {
+    /// Bind an incoming connection listener for this router
+    pub async fn bind(&self, addr: impl Into<SocketAddr>) -> Result<()> {
+        let socket_addr = addr.into();
+        TcpListenProcessor::start(&self.ctx, self.async_try_clone().await?, socket_addr).await
+    }
+
+    /// Establish an outgoing TCP connection on an existing transport
+    pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<Address> {
+        let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;
+
+        child_ctx
+            .send(
+                self.api_addr.clone(),
+                TcpRouterRequest::Connect {
+                    peer: peer.as_ref().to_string(),
+                },
+            )
+            .await?;
+
+        let response = child_ctx
+            .receive::<TcpRouterResponse>()
+            .await?
+            .take()
+            .body();
+
+        if let TcpRouterResponse::Connect(res) = response {
+            res
+        } else {
+            Err(TransportError::InvalidRouterResponseType.into())
+        }
+    }
+
     /// Register a new connection worker with this router
     pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
         let tcp_address: Address = format!("{}#{}", TCP, pair.peer()).into();
@@ -93,32 +123,6 @@ impl TcpRouterHandle {
         }
     }
 
-    /// Bind an incoming connection listener for this router
-    pub async fn bind(&self, addr: impl Into<SocketAddr>) -> Result<()> {
-        let socket_addr = addr.into();
-        TcpListenProcessor::start(&self.ctx, self.async_try_clone().await?, socket_addr).await
-    }
-
-    /// Bind an incoming portal inlet connection listener for this router
-    pub async fn bind_inlet(
-        &self,
-        outlet_listener_route: impl Into<Route>,
-        addr: impl Into<SocketAddr>,
-    ) -> Result<Address> {
-        let socket_addr = addr.into();
-        let addr =
-            TcpInletListenProcessor::start(&self.ctx, outlet_listener_route.into(), socket_addr)
-                .await?;
-
-        Ok(addr)
-    }
-
-    pub async fn stop_inlet(&self, addr: impl Into<Address>) -> Result<()> {
-        self.ctx.stop_processor(addr).await?;
-
-        Ok(())
-    }
-
     pub(crate) fn resolve_peer(peer: impl Into<String>) -> Result<(SocketAddr, Vec<String>)> {
         let peer_str = peer.into();
         let peer_addr;
@@ -145,31 +149,45 @@ impl TcpRouterHandle {
 
         Ok((peer_addr, hostnames))
     }
+}
 
-    /// Establish an outgoing TCP connection on an existing transport
-    pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<Address> {
-        let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;
+impl TcpRouterHandle {
+    /// Bind an incoming portal inlet connection listener for this router
+    pub async fn bind_inlet(
+        &self,
+        outlet_listener_route: impl Into<Route>,
+        addr: impl Into<SocketAddr>,
+    ) -> Result<Address> {
+        let socket_addr = addr.into();
+        let addr =
+            TcpInletListenProcessor::start(&self.ctx, outlet_listener_route.into(), socket_addr)
+                .await?;
 
-        child_ctx
-            .send(
-                self.api_addr.clone(),
-                TcpRouterRequest::Connect {
-                    peer: peer.as_ref().to_string(),
-                },
-            )
-            .await?;
+        Ok(addr)
+    }
 
-        let response = child_ctx
-            .receive::<TcpRouterResponse>()
-            .await?
-            .take()
-            .body();
+    /// Establish an outgoing TCP connection for Portal Outlet
+    pub async fn connect_outlet(
+        &self,
+        peer: impl Into<String>,
+        pong_route: Route,
+    ) -> Result<Address> {
+        let (peer_addr, _) = Self::resolve_peer(peer)?;
 
-        if let TcpRouterResponse::Connect(res) = response {
-            res
-        } else {
-            Err(TransportError::InvalidRouterResponseType.into())
-        }
+        let address = TcpPortalWorker::new_outlet(&self.ctx, peer_addr, pong_route).await?;
+
+        Ok(address)
+    }
+
+    pub async fn stop_inlet(&self, addr: impl Into<Address>) -> Result<()> {
+        self.ctx.stop_processor(addr).await?;
+
+        Ok(())
+    }
+
+    pub async fn stop_outlet(&self, addr: impl Into<Address>) -> Result<()> {
+        self.ctx.stop_worker(addr).await?;
+        Ok(())
     }
 
     pub async fn disconnect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
@@ -195,23 +213,5 @@ impl TcpRouterHandle {
         } else {
             Err(TransportError::InvalidRouterResponseType.into())
         }
-    }
-
-    /// Establish an outgoing TCP connection for Portal Outlet
-    pub async fn connect_outlet(
-        &self,
-        peer: impl Into<String>,
-        pong_route: Route,
-    ) -> Result<Address> {
-        let (peer_addr, _) = Self::resolve_peer(peer)?;
-
-        let address = TcpPortalWorker::new_outlet(&self.ctx, peer_addr, pong_route).await?;
-
-        Ok(address)
-    }
-
-    pub async fn stop_outlet(&self, addr: impl Into<Address>) -> Result<()> {
-        self.ctx.stop_worker(addr).await?;
-        Ok(())
     }
 }
