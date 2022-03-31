@@ -1,17 +1,21 @@
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use futures_util::stream::SplitSink;
+use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
-use tokio_tungstenite::{tungstenite::protocol::Message as WebSocketMessage, WebSocketStream};
+use tokio_tungstenite::tungstenite::protocol::Message as WebSocketMessage;
 
+use crate::error::WebSocketError;
 use ockam_core::{
     async_trait, route, Address, Any, Decodable, Encodable, LocalMessage, Result, Routed,
     TransportMessage, Worker,
 };
 use ockam_node::{Context, DelayedEvent};
+use ockam_transport_core::TransportError;
 
-use crate::workers::{AsyncStream, WebSocketRecvProcessor};
+use crate::workers::{
+    AsyncStream, TcpClientStream, TcpServerStream, WebSocketRecvProcessor, WebSocketStream,
+};
 use crate::WebSocketAddress;
 
 /// Transmit and receive peers of a WebSocket connection.
@@ -35,21 +39,17 @@ impl WorkerPair {
 
     /// Spawn instances of `WebSocketSendWorker` and `WebSocketRecvProcessor` and
     /// returns a `WorkerPair` instance that will be registered by the `WebSocketRouter`.
-    pub(crate) async fn new<S>(
+    ///
+    /// The WebSocket stream is created when the `WebSocketSendWorker` is initialized.
+    pub(crate) async fn from_client(
         ctx: &Context,
-        stream: WebSocketStream<S>,
         peer: SocketAddr,
         hostnames: Vec<String>,
-    ) -> Result<WorkerPair>
-    where
-        S: AsyncStream,
-    {
+    ) -> Result<WorkerPair> {
         trace!("Creating new WS worker pair");
 
         let internal_addr = Address::random_local();
-        let (ws_sink, ws_stream) = stream.split();
-        let sender = WebSocketSendWorker::new(
-            ws_sink,
+        let sender = WebSocketSendWorker::<TcpClientStream>::new(
             peer,
             internal_addr.clone(),
             DelayedEvent::create(ctx, internal_addr.clone(), vec![]).await?,
@@ -59,9 +59,35 @@ impl WorkerPair {
         ctx.start_worker(vec![tx_addr.clone(), internal_addr], sender)
             .await?;
 
-        let rx_addr = Address::random_local();
-        let receiver = WebSocketRecvProcessor::new(ws_stream, peer);
-        ctx.start_processor(rx_addr.clone(), receiver).await?;
+        // Return a handle to the worker pair
+        Ok(WorkerPair {
+            hostnames,
+            peer: WebSocketAddress::from(peer).into(),
+            tx_addr,
+        })
+    }
+
+    /// Spawn instances of `WebSocketSendWorker` and `WebSocketRecvProcessor` and
+    /// returns a `WorkerPair` instance that will be registered by the `WebSocketRouter`.
+    pub(crate) async fn from_server(
+        ctx: &Context,
+        stream: WebSocketStream<TcpServerStream>,
+        peer: SocketAddr,
+        hostnames: Vec<String>,
+    ) -> Result<WorkerPair> {
+        trace!("Creating new WS worker pair");
+
+        let internal_addr = Address::random_local();
+        let sender = WebSocketSendWorker::<TcpServerStream>::new(
+            stream,
+            peer,
+            internal_addr.clone(),
+            DelayedEvent::create(ctx, internal_addr.clone(), vec![]).await?,
+        );
+
+        let tx_addr = Address::random_local();
+        ctx.start_worker(vec![tx_addr.clone(), internal_addr], sender)
+            .await?;
 
         // Return a handle to the worker pair
         Ok(WorkerPair {
@@ -81,7 +107,8 @@ pub(crate) struct WebSocketSendWorker<S>
 where
     S: AsyncStream,
 {
-    ws_sink: SplitSink<WebSocketStream<S>, WebSocketMessage>,
+    ws_stream: Option<SplitStream<WebSocketStream<S>>>,
+    ws_sink: Option<SplitSink<WebSocketStream<S>, WebSocketMessage>>,
     peer: SocketAddr,
     internal_addr: Address,
     heartbeat: DelayedEvent<Vec<u8>>,
@@ -92,19 +119,18 @@ impl<S> WebSocketSendWorker<S>
 where
     S: AsyncStream,
 {
-    fn new(
-        ws_sink: SplitSink<WebSocketStream<S>, WebSocketMessage>,
-        peer: SocketAddr,
-        internal_addr: Address,
-        heartbeat: DelayedEvent<Vec<u8>>,
-    ) -> Self {
-        Self {
-            ws_sink,
-            peer,
-            internal_addr,
-            heartbeat,
-            heartbeat_interval: None,
+    async fn handle_initialize(&mut self, ctx: &mut Context) -> Result<()> {
+        if let Some(ws_stream) = self.ws_stream.take() {
+            let rx_addr = Address::random_local();
+            let receiver = WebSocketRecvProcessor::new(ws_stream, self.peer);
+            ctx.start_processor(rx_addr.clone(), receiver).await?;
+        } else {
+            return Err(TransportError::GenericIo.into());
         }
+
+        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+        self.schedule_heartbeat().await?;
+        Ok(())
     }
 
     async fn schedule_heartbeat(&mut self) -> Result<()> {
@@ -115,37 +141,23 @@ where
 
         self.heartbeat.schedule(heartbeat_interval).await
     }
-}
 
-#[async_trait::async_trait]
-impl<S> Worker for WebSocketSendWorker<S>
-where
-    S: AsyncStream,
-{
-    type Message = Any;
-    type Context = Context;
-
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
-        self.schedule_heartbeat().await?;
-        Ok(())
-    }
-
-    /// It will receive messages from the `WebSocketRouter` to send
+    /// Receive messages from the `WebSocketRouter` to send
     /// across the `WebSocketStream` to the next remote peer.
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
+    async fn handle_msg(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         self.heartbeat.cancel();
+
+        let ws_sink = if let Some(ws_sink) = &mut self.ws_sink {
+            ws_sink
+        } else {
+            return Err(TransportError::PeerNotFound.into());
+        };
 
         let recipient = msg.msg_addr();
         if recipient == self.internal_addr {
             let msg = TransportMessage::v1(route![], route![], vec![]);
             // Sending empty heartbeat
-            if self
-                .ws_sink
+            if ws_sink
                 .send(WebSocketMessage::from(msg.encode()?))
                 .await
                 .is_err()
@@ -164,7 +176,7 @@ where
             msg.onward_route.step()?;
 
             let msg = WebSocketMessage::from(msg.encode()?);
-            if self.ws_sink.send(msg).await.is_err() {
+            if ws_sink.send(msg).await.is_err() {
                 warn!("Failed to send message to peer {}", self.peer);
                 ctx.stop_worker(ctx.address()).await?;
                 return Ok(());
@@ -175,5 +187,89 @@ where
         self.schedule_heartbeat().await?;
 
         Ok(())
+    }
+}
+
+impl WebSocketSendWorker<TcpServerStream> {
+    fn new(
+        stream: WebSocketStream<TcpServerStream>,
+        peer: SocketAddr,
+        internal_addr: Address,
+        heartbeat: DelayedEvent<Vec<u8>>,
+    ) -> Self {
+        let (ws_sink, ws_stream) = stream.split();
+        Self {
+            ws_sink: Some(ws_sink),
+            ws_stream: Some(ws_stream),
+            peer,
+            internal_addr,
+            heartbeat,
+            heartbeat_interval: None,
+        }
+    }
+}
+
+impl WebSocketSendWorker<TcpClientStream> {
+    fn new(peer: SocketAddr, internal_addr: Address, heartbeat: DelayedEvent<Vec<u8>>) -> Self {
+        Self {
+            ws_stream: None,
+            ws_sink: None,
+            peer,
+            internal_addr,
+            heartbeat,
+            heartbeat_interval: None,
+        }
+    }
+
+    async fn initialize_stream(&mut self) -> Result<()> {
+        if self.ws_stream.is_none() {
+            let peer = WebSocketAddress::from(self.peer).to_string();
+            let (stream, _) = tokio_tungstenite::connect_async(peer)
+                .await
+                .map_err(WebSocketError::from)?;
+            let (ws_sink, ws_stream) = stream.split();
+            self.ws_sink = Some(ws_sink);
+            self.ws_stream = Some(ws_stream);
+        }
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Worker for WebSocketSendWorker<TcpServerStream> {
+    type Message = Any;
+    type Context = Context;
+
+    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        self.handle_initialize(ctx).await?;
+        Ok(())
+    }
+
+    async fn handle_message(
+        &mut self,
+        ctx: &mut Context,
+        msg: Routed<Self::Message>,
+    ) -> Result<()> {
+        self.handle_msg(ctx, msg).await
+    }
+}
+
+#[async_trait::async_trait]
+impl Worker for WebSocketSendWorker<TcpClientStream> {
+    type Message = Any;
+    type Context = Context;
+
+    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        self.initialize_stream().await?;
+        self.handle_initialize(ctx).await?;
+        Ok(())
+    }
+
+    async fn handle_message(
+        &mut self,
+        ctx: &mut Context,
+        msg: Routed<Self::Message>,
+    ) -> Result<()> {
+        self.handle_msg(ctx, msg).await
     }
 }

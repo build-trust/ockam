@@ -9,7 +9,6 @@ use ockam_core::{
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
-use crate::error::WebSocketError;
 use crate::workers::WorkerPair;
 use crate::{WebSocketAddress, WS};
 use serde::{Deserialize, Serialize};
@@ -27,7 +26,7 @@ pub(crate) enum WebSocketRouterMessage {
     },
 }
 
-/// A WebSocket address router and connection listener
+/// A WebSocket address router and connection listener.
 ///
 /// In order to create new WebSocket connection workers you need a router to
 /// map remote addresses of `type = 2` to worker addresses.  This type
@@ -44,10 +43,7 @@ pub(crate) struct WebSocketRouter {
 }
 
 impl WebSocketRouter {
-    /// Create and register a new WebSocket router with the node context
-    ///
-    /// To also handle incoming connections, use
-    /// [`WebSocketRouter::bind`](WebSocketRouter::bind)
+    /// Create and register a new WebSocket router with the node context.
     pub(crate) async fn register(ctx: &Context) -> Result<WebSocketRouterHandle> {
         let main_addr = Address::random_local();
         let api_addr = Address::random_local();
@@ -189,14 +185,10 @@ impl WebSocketRouter {
     async fn connect(&mut self, peer: String) -> Result<Address> {
         // Get peer address and connect to it.
         let (peer_addr, hostnames) = WebSocketRouterHandle::resolve_peer(peer)?;
-        let ws_peer_addr = WebSocketAddress::from(peer_addr);
-        let (stream, _) = tokio_tungstenite::connect_async(ws_peer_addr.to_string())
-            .await
-            .map_err(WebSocketError::from)?;
 
         // Create a new `WorkerPair` for the given peer, initializing a new pair
         // of sender worker and receiver processor.
-        let pair = WorkerPair::new(&self.ctx, stream, peer_addr, hostnames).await?;
+        let pair = WorkerPair::from_client(&self.ctx, peer_addr, hostnames).await?;
 
         // Handle node's register request.
         let mut accepts = vec![pair.peer()];

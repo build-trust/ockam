@@ -1822,7 +1822,6 @@ dependencies = [
 name = "ockam_transport_websocket"
 version = "0.41.0"
 dependencies = [
- "futures-channel",
  "futures-util",
  "ockam_core",
  "ockam_macros",

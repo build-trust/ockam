@@ -7,7 +7,7 @@ use ockam_transport_core::TransportError;
 
 use crate::router::WebSocketRouterMessage;
 use crate::workers::{WebSocketListenProcessor, WorkerPair};
-use crate::{error::WebSocketError, parse_socket_addr, WebSocketAddress};
+use crate::{parse_socket_addr, WebSocketAddress};
 
 /// A handle to connect to a WebSocketRouter.
 ///
@@ -87,14 +87,10 @@ impl WebSocketRouterHandle {
     pub(crate) async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
         // Get peer address and connect to it.
         let (peer_addr, hostnames) = Self::resolve_peer(peer.as_ref())?;
-        let ws_peer_addr = WebSocketAddress::from(peer_addr);
-        let (stream, _) = tokio_tungstenite::connect_async(ws_peer_addr.to_string())
-            .await
-            .map_err(WebSocketError::from)?;
 
         // Create a new `WorkerPair` for the given peer, initializing a new pair
         // of sender worker and receiver processor.
-        let pair = WorkerPair::new(&self.ctx, stream, peer_addr, hostnames).await?;
+        let pair = WorkerPair::from_client(&self.ctx, peer_addr, hostnames).await?;
 
         // Handle node's register request.
         self.register(&pair).await
