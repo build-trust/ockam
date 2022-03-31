@@ -6,7 +6,7 @@ use tracing::info;
 /// Alias worker to register remote workers under local names.
 ///
 /// To talk with this worker, you can use the
-/// [`RemoteForwarder`](crate::remote_forwarder::RemoteForwarder) which is a
+/// [`RemoteForwarder`](crate::remote::RemoteForwarder) which is a
 /// compatible client for this server.
 #[non_exhaustive]
 pub struct ForwardingService;

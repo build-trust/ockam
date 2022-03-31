@@ -137,13 +137,13 @@ pub struct IndexResponse {
 #[allow(clippy::enum_variant_names)]
 #[derive(Serialize, Deserialize, Message)]
 pub enum Response {
-    /// Wraps an [`Init`] response, see its documentation for more info.
+    /// Wraps an [`InitResponse`], see its documentation for more info.
     Init(InitResponse),
     /// Wraps an [`PushConfirm`] response, see its documentation for more info.
     PushConfirm(PushConfirm),
-    /// Wraps an [`PullResponse`] response, see its documentation for more info.
+    /// Wraps an [`PullResponse`], see its documentation for more info.
     PullResponse(PullResponse),
-    /// Wraps a [`IndexResponse`] response, see its documentation for more info.
+    /// Wraps a [`IndexResponse`], see its documentation for more info.
     Index(IndexResponse),
 }
 

@@ -44,7 +44,7 @@ pub const MAX_OCKAM_MESSAGE_LENGTH: usize = 1024;
 ///
 /// iso.identified-organization.ockam.transport.ble (1.3.214.9.4)
 ///
-/// Ockam OID information can be obtained at: http://oid-info.com/get/1.3.214.9.4
+/// Ockam OID information can be obtained at: <http://oid-info.com/get/1.3.214.9.4>
 pub mod uuid {
     /// BLE Service UUID (rfc1700 / big-endian)
     /// Namespace: ns:OID

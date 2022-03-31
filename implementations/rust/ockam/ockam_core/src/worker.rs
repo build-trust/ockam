@@ -11,7 +11,12 @@ pub trait Worker: Send + 'static {
     /// The type of Message the Worker is sent in [`Self::handle_message`].
     type Message: Message;
 
-    /// The API and other resources available for the worker during message processing.
+    /// The API and other resources available for the worker during message
+    /// processing.
+    ///
+    /// Currently, this should be always `ockam::Context` or
+    /// `ockam_node::Context` (which are the same type), but in the future
+    /// custom node implementations may use a different context type.
     type Context: Send + 'static;
 
     /// Override initialisation behaviour.
