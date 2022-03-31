@@ -33,6 +33,7 @@ pub use async_trait::async_trait;
 pub extern crate async_trait;
 
 /// Mark an Ockam Worker implementation.
+#[doc(inline)]
 pub use async_trait::async_trait as worker;
 
 extern crate ockam_macros;

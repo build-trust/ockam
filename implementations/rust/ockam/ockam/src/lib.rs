@@ -58,14 +58,22 @@ pub mod workers;
 pub use ockam_identity as identity;
 
 pub use ockam_core::{
-    route, worker, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage, Message, ProtocolId,
-    Result, Route, Routed, TransportMessage, Worker,
+    route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage, Message, ProtocolId, Result,
+    Route, Routed, TransportMessage, Worker,
 };
+
+/// Mark an Ockam Worker implementation.
+///
+/// This is currently implemented as a re-export of the `async_trait` macro, but
+/// may be changed in the future to a [`Worker`](crate::Worker)-specific macro.
+pub use ockam_core::worker;
 
 // TODO: think about how to handle this more. Probably extract these into an
 // `ockam_compat` crate.
 pub mod compat {
-    //! Compatibility adapter for
+    //! Compatibility adapter, mostly for `no_std` use.
+    //!
+    //! Most user code should not use these types.
     pub use ockam_core::compat::*;
     pub use ockam_node::compat::*;
     pub use ockam_node::tokio;
