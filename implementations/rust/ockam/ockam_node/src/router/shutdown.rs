@@ -102,6 +102,6 @@ pub(super) async fn immediate(router: &mut Router, reply: Sender<NodeReplyResult
     reply
         .send(NodeReply::ok())
         .await
-        .map_err(|e| error::node_internal(e))?;
+        .map_err(error::node_internal)?;
     Ok(())
 }

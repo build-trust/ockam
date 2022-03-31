@@ -149,7 +149,7 @@ impl Context {
             .send(msg)
             .await
             .map_err(|e| Error2::new(error::node(Kind::Invalid), e))?;
-        rx.recv().await.ok_or(error::internal_without_cause())??;
+        rx.recv().await.ok_or_else(error::internal_without_cause)??;
         Ok(ctx)
     }
 
@@ -243,7 +243,7 @@ impl Context {
             .map_err(|e| Error2::new(error::node(Kind::Invalid), e))?;
 
         // Wait for the actual return code
-        rx.recv().await.ok_or(error::internal_without_cause())??;
+        rx.recv().await.ok_or_else(error::internal_without_cause)??;
         Ok(())
     }
 
@@ -281,7 +281,7 @@ impl Context {
             .map_err(|e| Error2::new(error::node(Kind::Invalid), e))?;
 
         // Wait for the actual return code
-        rx.recv().await.ok_or(error::internal_without_cause())??;
+        rx.recv().await.ok_or_else(error::internal_without_cause)??;
         Ok(())
     }
 
@@ -306,10 +306,10 @@ impl Context {
         self.sender
             .send(req)
             .await
-            .map_err(|e| error::from_send_err(e))?;
+            .map_err(error::from_send_err)?;
 
         // Then check that address was properly shut down
-        rx.recv().await.ok_or(error::internal_without_cause())??;
+        rx.recv().await.ok_or_else(error::internal_without_cause)??;
         Ok(())
     }
 
@@ -348,10 +348,10 @@ impl Context {
         self.sender
             .send(req)
             .await
-            .map_err(|e| error::from_send_err(e))?;
+            .map_err(error::from_send_err)?;
 
         // Wait until we get the all-clear
-        rx.recv().await.ok_or(error::internal_without_cause())??;
+        rx.recv().await.ok_or_else(error::internal_without_cause)??;
         Ok(())
     }
 
@@ -459,11 +459,11 @@ impl Context {
         self.sender
             .send(req)
             .await
-            .map_err(|e| error::from_send_err(e))?;
+            .map_err(error::from_send_err)?;
         let (addr, sender, needs_wrapping) = reply_rx
             .recv()
             .await
-            .ok_or(error::internal_without_cause())??
+            .ok_or_else(error::internal_without_cause)??
             .take_sender()?;
 
         // Pack the payload into a TransportMessage
@@ -483,7 +483,7 @@ impl Context {
         sender
             .send(msg)
             .await
-            .map_err(|e| error::from_send_err(e))?;
+            .map_err(error::from_send_err)?;
         Ok(())
     }
 
@@ -509,11 +509,11 @@ impl Context {
         self.sender
             .send(req)
             .await
-            .map_err(|e| error::from_send_err(e))?;
+            .map_err(error::from_send_err)?;
         let (addr, sender, needs_wrapping) = reply_rx
             .recv()
             .await
-            .ok_or(error::internal_without_cause())??
+            .ok_or_else(error::internal_without_cause)??
             .take_sender()?;
 
         // Pack the transport message into a relay message
@@ -527,7 +527,7 @@ impl Context {
         sender
             .send(msg)
             .await
-            .map_err(|e| error::from_send_err(e))?;
+            .map_err(error::from_send_err)?;
 
         Ok(())
     }
@@ -568,7 +568,7 @@ impl Context {
             self.next_from_mailbox().await
         })
         .await
-        .map_err(|e| error::from_elapsed(e))??;
+        .map_err(error::from_elapsed)??;
         Ok(Cancel::new(msg, data, addr, self))
     }
 
@@ -598,7 +598,7 @@ impl Context {
             }
         })
         .await
-        .map_err(|e| error::from_elapsed(e))??;
+        .map_err(error::from_elapsed)??;
 
         Ok(Cancel::new(m, data, addr, self))
     }
@@ -623,11 +623,11 @@ impl Context {
         self.sender
             .send(msg)
             .await
-            .map_err(|e| error::node_internal(e))?;
+            .map_err(error::node_internal)?;
         Ok(rx
             .recv()
             .await
-            .ok_or(error::internal_without_cause())??
+            .ok_or_else(error::internal_without_cause)??
             .is_ok()?)
     }
 
@@ -638,12 +638,12 @@ impl Context {
         self.sender
             .send(msg)
             .await
-            .map_err(|e| error::node_internal(e))?;
+            .map_err(error::node_internal)?;
 
         Ok(reply_rx
             .recv()
             .await
-            .ok_or(error::internal_without_cause())??
+            .ok_or_else(error::internal_without_cause)??
             .take_workers()?)
     }
 
@@ -657,7 +657,7 @@ impl Context {
         self.sender
             .send(NodeMessage::StopAck(self.address()))
             .await
-            .map_err(|e| error::node_internal(e))?;
+            .map_err(error::node_internal)?;
         Ok(())
     }
 
@@ -666,9 +666,9 @@ impl Context {
         self.sender
             .send(NodeMessage::Router(type_, addr, tx))
             .await
-            .map_err(|e| error::node_internal(e))?;
+            .map_err(error::node_internal)?;
 
-        rx.recv().await.ok_or(error::internal_without_cause())??;
+        rx.recv().await.ok_or_else(error::internal_without_cause)??;
         Ok(())
     }
 
@@ -690,7 +690,7 @@ impl Context {
             let msg = self
                 .mailbox_next()
                 .await?
-                .ok_or(error::node_without_cause(Kind::NotFound))?;
+                .ok_or_else(|| error::node_without_cause(Kind::NotFound))?;
             let (addr, data) = msg.local_msg();
 
             // FIXME: make message parsing idempotent to avoid cloning
@@ -714,7 +714,7 @@ impl Context {
         self.sender
             .send(NodeMessage::set_ready(self.address()))
             .await
-            .map_err(|e| error::node_internal(e))?;
+            .map_err(error::node_internal)?;
         Ok(())
     }
 
@@ -724,14 +724,14 @@ impl Context {
         self.sender
             .send(msg)
             .await
-            .map_err(|e| error::node_internal(e))?;
+            .map_err(error::node_internal)?;
 
         // This call blocks until the address has become ready or is
         // dropped by the router
         reply
             .recv()
             .await
-            .ok_or(error::internal_without_cause())??;
+            .ok_or_else(error::internal_without_cause)??;
         Ok(())
     }
 }

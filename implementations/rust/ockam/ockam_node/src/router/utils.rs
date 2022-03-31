@@ -23,7 +23,7 @@ pub(super) async fn resolve(
         reply
             .send(NodeReply::no_such_address(addr.clone()))
             .await
-            .map_err(|e| error::node_internal(e))?;
+            .map_err(error::node_internal)?;
 
         return Ok(());
     };
@@ -43,7 +43,7 @@ pub(super) async fn resolve(
         }
     }
     .await
-    .map_err(|e| error::node_internal(e).into())
+    .map_err(error::node_internal)
 }
 
 pub(super) fn router_addr(router: &mut Router, tt: TransportType) -> Result<Address> {
@@ -51,5 +51,5 @@ pub(super) fn router_addr(router: &mut Router, tt: TransportType) -> Result<Addr
         .external
         .get(&tt)
         .cloned()
-        .ok_or_else(|| error::internal_without_cause())
+        .ok_or_else(error::internal_without_cause)
 }

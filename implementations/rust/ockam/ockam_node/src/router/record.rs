@@ -175,7 +175,7 @@ impl AddressRecord {
             self.ctrl_tx
                 .send(CtrlSignal::InterruptStop)
                 .await
-                .map_err(|e| error::node_internal(e))?;
+                .map_err(error::node_internal)?;
         } else {
             self.sender = None;
         }

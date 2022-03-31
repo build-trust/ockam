@@ -120,13 +120,13 @@ impl Router {
                 sender
                     .send(NodeReply::ok())
                     .await
-                    .map_err(|e| error::node_internal(e))?
+                    .map_err(error::node_internal)?
             }
             // Rejected router registration command
             Router(_, _, sender) => sender
                 .send(NodeReply::router_exists())
                 .await
-                .map_err(|e| error::node_internal(e))?,
+                .map_err(error::node_internal)?,
 
             //// ==! Basic worker control
             StartWorker {
@@ -151,7 +151,7 @@ impl Router {
                         sender
                             .send(NodeReply::ok())
                             .await
-                            .map_err(|e| error::node_internal(e))?;
+                            .map_err(error::node_internal)?;
                         return Ok(true);
                     };
                 }
@@ -166,7 +166,7 @@ impl Router {
                     sender
                         .send(NodeReply::ok())
                         .await
-                        .map_err(|e| error::node_internal(e))?;
+                        .map_err(error::node_internal)?;
                     self.map.internal.clear();
                     return Ok(true);
                 }
@@ -188,7 +188,7 @@ impl Router {
                         sender
                             .send(NodeReply::ok())
                             .await
-                            .map_err(|e| error::node_internal(e))?;
+                            .map_err(error::node_internal)?;
                         return Ok(true);
                     }
                 }
@@ -199,12 +199,12 @@ impl Router {
                     self.map.internal.keys().cloned().collect(),
                 ))
                 .await
-                .map_err(|e| error::node_internal(e))?,
+                .map_err(error::node_internal)?,
 
             SetCluster(addr, label, reply) => {
                 debug!("Setting cluster on address {}", addr);
                 let msg = self.map.set_cluster(label, addr);
-                reply.send(msg).await.map_err(|e| error::node_internal(e))?;
+                reply.send(msg).await.map_err(error::node_internal)?;
             }
 
             SetReady(addr) => {
@@ -216,7 +216,7 @@ impl Router {
                             sender
                                 .send(NodeReply::ok())
                                 .await
-                                .map_err(|e| error::node_internal(e))?;
+                                .map_err(error::node_internal)?;
                         }
                     }
                 }
@@ -228,7 +228,7 @@ impl Router {
                     reply
                         .send(NodeReply::ok())
                         .await
-                        .map_err(|e| error::node_internal(e))?;
+                        .map_err(error::node_internal)?;
                 }
             }
 

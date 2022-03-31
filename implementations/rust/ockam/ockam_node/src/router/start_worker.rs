@@ -64,7 +64,7 @@ async fn start(
     reply
         .send(NodeReply::ok())
         .await
-        .map_err(|e| error::node_internal(e))?;
+        .map_err(error::node_internal)?;
     Ok(())
 }
 
@@ -73,6 +73,6 @@ async fn reject(reply: &Sender<NodeReplyResult>) -> Result<()> {
     reply
         .send(NodeReply::rejected(Reason::NodeShutdown))
         .await
-        .map_err(|e| error::node_internal(e))?;
+        .map_err(error::node_internal)?;
     Ok(())
 }

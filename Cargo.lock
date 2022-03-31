@@ -1801,7 +1801,6 @@ name = "ockam_transport_core"
 version = "0.24.0"
 dependencies = [
  "ockam_core",
- "thiserror",
  "tracing",
 ]
 

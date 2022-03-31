@@ -465,7 +465,7 @@ where
         // No error.
         Ok(Ok(())) => FfiOckamError::none(),
         // Failed with a specific ockam error:
-        Ok(Err(e)) => e.into(),
+        Ok(Err(e)) => e,
         // Panicked
         Err(e) => {
             // Force an abort if either:
