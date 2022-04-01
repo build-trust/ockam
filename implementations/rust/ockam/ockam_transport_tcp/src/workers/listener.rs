@@ -18,8 +18,6 @@ impl TcpListenProcessor {
         router_handle: TcpRouterHandle,
         addr: SocketAddr,
     ) -> Result<()> {
-        let waddr = Address::random_local();
-
         debug!("Binding TcpListener to {}", addr);
         let inner = TcpListener::bind(addr)
             .await
@@ -29,7 +27,8 @@ impl TcpListenProcessor {
             router_handle,
         };
 
-        ctx.start_processor(waddr, worker).await?;
+        ctx.start_processor(Address::random_local(), worker).await?;
+
         Ok(())
     }
 }
