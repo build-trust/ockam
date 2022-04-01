@@ -5,7 +5,7 @@ use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
-use tracing::{debug, trace};
+use tracing::debug;
 
 /// A TCP Listen processor
 ///
@@ -47,10 +47,11 @@ impl Processor for TcpListenProcessor {
     }
 
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
-        trace!("Waiting for incoming TCP connection...");
+        debug!("Waiting for incoming TCP connection...");
 
         // Wait for an incoming connection
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
+        debug!("TCP connection accepted");
 
         let handle_clone = self.router_handle.async_try_clone().await?;
         // And spawn a connection worker for it
@@ -58,6 +59,7 @@ impl Processor for TcpListenProcessor {
 
         // Register the connection with the local TcpRouter
         self.router_handle.register(&pair).await?;
+        debug!("TCP connection registered");
 
         Ok(true)
     }

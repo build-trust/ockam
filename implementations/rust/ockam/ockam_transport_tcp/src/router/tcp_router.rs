@@ -5,7 +5,7 @@ use ockam_core::{Address, Decodable, LocalMessage, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use std::collections::BTreeMap;
-use tracing::{debug, trace};
+use tracing::{debug, error, trace};
 
 /// A TCP address router and connection listener
 ///
@@ -68,12 +68,15 @@ impl TcpRouter {
         if let Some(f) = accepts.first().cloned() {
             trace!("TCP registration request: {} => {}", f, self_addr);
         } else {
-            // Should not happen
-            return Err(TransportError::InvalidAddress.into());
+            error!("TCP registration request failed due to an invalid address list. Please provide at least one valid Address.");
         }
 
         for accept in &accepts {
             if self.map.contains_key(accept) {
+                error!(
+                    "TCP registration request failed, this address is already connected: {}",
+                    accept
+                );
                 return Err(TransportError::AlreadyConnected.into());
             }
         }
@@ -125,6 +128,7 @@ impl TcpRouter {
         let self_address = if let Some(self_address) = self.map.get(&tcp_address) {
             self_address.clone()
         } else {
+            error!("Failed to disconnect, peer not found: {}", tcp_address);
             return Err(TransportError::PeerNotFound.into());
         };
 
@@ -190,6 +194,10 @@ impl TcpRouter {
         if self.allow_auto_connection {
             self.handle_connect(peer).await
         } else {
+            error!(
+                "Failed to resolve route, no existing connection to peer: {}",
+                peer
+            );
             Err(TransportError::UnknownRoute.into())
         }
     }
@@ -241,6 +249,10 @@ impl Worker for TcpRouter {
                 }
             };
         } else {
+            error!(
+                "TCP router received a message for an invalid address: {}",
+                msg_addr
+            );
             return Err(TransportError::InvalidAddress.into());
         }
 
