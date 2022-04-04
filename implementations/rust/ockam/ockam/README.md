@@ -68,7 +68,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam = "0.50.0"
+ockam = "0.51.0"
 ```
 
 ## License
