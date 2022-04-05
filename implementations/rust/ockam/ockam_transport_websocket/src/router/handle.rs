@@ -1,9 +1,10 @@
 use std::net::{SocketAddr, ToSocketAddrs};
 
-use ockam_core::{async_trait, Address, AsyncTryClone, Result, RouterMessage};
+use ockam_core::{async_trait, Address, AsyncTryClone, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
+use crate::router::WebSocketRouterMessage;
 use crate::workers::{WebSocketListenProcessor, WorkerPair};
 use crate::{parse_socket_addr, WebSocketAddr, WebSocketError, WS};
 
@@ -12,20 +13,20 @@ use crate::{parse_socket_addr, WebSocketAddr, WebSocketError, WS};
 /// Dropping this handle is harmless.
 pub(crate) struct WebSocketRouterHandle {
     ctx: Context,
-    addr: Address,
+    api_addr: Address,
 }
 
 #[async_trait]
 impl AsyncTryClone for WebSocketRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
         let child_ctx = self.ctx.new_context(Address::random(0)).await?;
-        Ok(Self::new(child_ctx, self.addr.clone()))
+        Ok(Self::new(child_ctx, self.api_addr.clone()))
     }
 }
 
 impl WebSocketRouterHandle {
-    pub(crate) fn new(ctx: Context, addr: Address) -> Self {
-        Self { ctx, addr }
+    pub(crate) fn new(ctx: Context, api_addr: Address) -> Self {
+        Self { ctx, api_addr }
     }
 
     /// Register a new connection worker with this router
@@ -40,8 +41,8 @@ impl WebSocketRouterHandle {
         let self_addr = pair.tx_addr();
         self.ctx
             .send(
-                self.addr.clone(),
-                RouterMessage::Register { accepts, self_addr },
+                self.api_addr.clone(),
+                WebSocketRouterMessage::Register { accepts, self_addr },
             )
             .await
     }

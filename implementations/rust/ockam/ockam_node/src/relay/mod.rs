@@ -1,5 +1,5 @@
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Address, Encodable, LocalMessage, Route, RouterMessage};
+use ockam_core::{Address, Encodable, LocalMessage, Route};
 
 mod processor_relay;
 mod worker_relay;
@@ -29,10 +29,9 @@ impl RelayMessage {
     #[inline]
     pub fn pre_router(addr: Address, local_msg: LocalMessage, onward: Route) -> Self {
         let route = local_msg.transport().return_route.clone();
-        let r_msg = RouterMessage::Route(local_msg);
         Self {
             addr,
-            data: RelayPayload::PreRouter(r_msg.encode().unwrap(), route),
+            data: RelayPayload::PreRouter(local_msg.encode().unwrap(), route),
             onward,
         }
     }

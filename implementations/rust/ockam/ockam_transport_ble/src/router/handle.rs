@@ -4,11 +4,12 @@ use crate::{
     BleAddr, BleClient, BleServer,
 };
 
+use crate::router::BleRouterMessage;
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, string::String, vec::Vec},
 };
-use ockam_core::{Address, AsyncTryClone, Result, RouterMessage};
+use ockam_core::{Address, AsyncTryClone, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
@@ -17,20 +18,20 @@ use ockam_transport_core::TransportError;
 /// Dropping this handle is harmless.
 pub(crate) struct BleRouterHandle {
     ctx: Context,
-    addr: Address,
+    api_addr: Address,
 }
 
 #[async_trait]
 impl AsyncTryClone for BleRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
         let child_ctx = self.ctx.new_context(Address::random(0)).await?;
-        Ok(Self::new(child_ctx, self.addr.clone()))
+        Ok(Self::new(child_ctx, self.api_addr.clone()))
     }
 }
 
 impl BleRouterHandle {
-    pub(crate) fn new(ctx: Context, addr: Address) -> Self {
-        BleRouterHandle { ctx, addr }
+    pub(crate) fn new(ctx: Context, api_addr: Address) -> Self {
+        BleRouterHandle { ctx, api_addr }
     }
 }
 
@@ -50,8 +51,8 @@ impl BleRouterHandle {
 
         self.ctx
             .send(
-                self.addr.clone(),
-                RouterMessage::Register { accepts, self_addr },
+                self.api_addr.clone(),
+                BleRouterMessage::Register { accepts, self_addr },
             )
             .await
     }

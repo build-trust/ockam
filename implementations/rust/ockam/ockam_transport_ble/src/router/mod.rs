@@ -4,12 +4,25 @@ use ockam::LocalMessage;
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, collections::BTreeMap, vec::Vec},
+    Any,
 };
-use ockam_core::{Address, Result, Routed, RouterMessage, Worker};
+use ockam_core::{Address, Decodable, Message, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
+use serde::{Deserialize, Serialize};
 
 pub(crate) use handle::BleRouterHandle;
+
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
+pub enum BleRouterMessage {
+    /// Register a new client to this routing scope.
+    Register {
+        /// Specify an accept scope for this client.
+        accepts: Vec<Address>,
+        /// The clients own worker bus address.
+        self_addr: Address,
+    },
+}
 
 /// A Bluetooth Low Energy address router and connection listener
 ///
@@ -21,14 +34,15 @@ pub(crate) use handle::BleRouterHandle;
 /// if the local node is part of a server architecture.
 pub struct BleRouter {
     _ctx: Context,
-    addr: Address,
+    main_addr: Address,
+    api_addr: Address,
     map: BTreeMap<Address, Address>,
 }
 
 impl BleRouter {
     async fn create_self_handle(&self, ctx: &Context) -> Result<BleRouterHandle> {
         let handle_ctx = ctx.new_context(Address::random(0)).await?;
-        let handle = BleRouterHandle::new(handle_ctx, self.addr.clone());
+        let handle = BleRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }
 
@@ -85,30 +99,31 @@ impl BleRouter {
 #[async_trait]
 impl Worker for BleRouter {
     type Context = Context;
-    type Message = RouterMessage;
+    type Message = Any;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Context,
-        msg: Routed<RouterMessage>,
-    ) -> Result<()> {
-        let msg = msg.body();
-        use RouterMessage::*;
-        match msg {
-            Route(msg) => {
-                trace!("handle_message route: {:?}", msg.transport().onward_route);
-                self.handle_route(ctx, msg).await?;
-            }
-            Register { accepts, self_addr } => {
-                trace!("handle_message register: {:?} => {:?}", accepts, self_addr);
-                self.handle_register(accepts, self_addr).await?;
-            }
-        };
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+        let msg_addr = msg.msg_addr();
+
+        if msg_addr == self.main_addr {
+            let msg = LocalMessage::decode(msg.payload())?;
+            trace!("handle_message route: {:?}", msg.transport().onward_route);
+            self.handle_route(ctx, msg).await?;
+        } else if msg_addr == self.api_addr {
+            let msg = BleRouterMessage::decode(msg.payload())?;
+            match msg {
+                BleRouterMessage::Register { accepts, self_addr } => {
+                    trace!("handle_message register: {:?} => {:?}", accepts, self_addr);
+                    self.handle_register(accepts, self_addr).await?;
+                }
+            };
+        } else {
+            return Err(TransportError::InvalidAddress.into());
+        }
 
         Ok(())
     }
@@ -120,23 +135,26 @@ impl BleRouter {
     /// To also handle incoming connections, use
     /// [`BleRouter::bind`](BleRouter::bind)
     pub(crate) async fn register(ctx: &Context) -> Result<BleRouterHandle> {
-        let addr = Address::random(0);
-        debug!("Registering new BleRouter with address {}", &addr);
+        let main_addr = Address::random(0);
+        let api_addr = Address::random(0);
+        debug!("Registering new BleRouter with address {}", &main_addr);
 
         let child_ctx = ctx.new_context(Address::random(0)).await?;
         let router = Self {
             _ctx: child_ctx,
-            addr: addr.clone(),
+            main_addr: main_addr.clone(),
+            api_addr: api_addr.clone(),
             map: BTreeMap::new(),
         };
 
         let handle = router.create_self_handle(ctx).await?;
 
-        trace!("Start Ble router for address = {:?}", addr.clone());
-        ctx.start_worker(addr.clone(), router).await?;
+        trace!("Start Ble router for address = {:?}", main_addr.clone());
+        ctx.start_worker(vec![main_addr.clone(), api_addr], router)
+            .await?;
 
         trace!("Registering Ble router for type = {}", crate::BLE);
-        ctx.register(crate::BLE, ctx.address()).await?;
+        ctx.register(crate::BLE, main_addr).await?;
 
         Ok(handle)
     }
