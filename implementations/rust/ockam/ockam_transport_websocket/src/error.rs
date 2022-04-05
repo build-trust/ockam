@@ -5,15 +5,15 @@ use ockam_core::{
 use ockam_transport_core::TransportError;
 use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 
-/// A WebSocket connection worker specific error type
+/// A WebSocket connection worker specific error type.
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub(crate) enum WebSocketError {
-    /// A wrapped transport error
+    /// A wrapped transport error.
     Transport(TransportError),
-    /// HTTP error
+    /// HTTP error.
     Http,
-    /// TLS error
+    /// TLS error.
     Tls,
 }
 impl ockam_core::compat::error::Error for WebSocketError {}

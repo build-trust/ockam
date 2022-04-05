@@ -14,7 +14,7 @@ use ockam_node::{Context, DelayedEvent};
 use crate::workers::{AsyncStream, WebSocketRecvProcessor};
 use crate::WebSocketAddress;
 
-/// Transmit and receive peers of a WebSocket connection
+/// Transmit and receive peers of a WebSocket connection.
 #[derive(Debug)]
 pub(crate) struct WorkerPair {
     hostnames: Vec<String>,
@@ -72,7 +72,7 @@ impl WorkerPair {
     }
 }
 
-/// A WebSocket sending message worker
+/// A WebSocket sending message worker.
 ///
 /// This half of the worker is created when spawning a new connection
 /// worker pair, and listens for messages from the node message system

@@ -1,4 +1,4 @@
-//! WebSocket Transport utilities for Ockam's routing framework
+//! WebSocket Transport utilities for Ockam's routing framework.
 //!
 //! The `ockam_node` crate sits at the core
 //! of the Ockam routing framework, with transport specific
@@ -40,7 +40,7 @@ mod router;
 mod transport;
 mod workers;
 
-/// WebSocket address type constant
+/// WebSocket address type constant.
 pub const WS: TransportType = TransportType::new(3);
 
 pub(crate) const CLUSTER_NAME: &str = "_internals.transport.ws";
