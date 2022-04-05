@@ -51,3 +51,55 @@ impl Worker for Echoer {
         ctx.send(msg.return_route(), msg.body()).await
     }
 }
+
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn tcp_lifecycle__reconnect__should_not_error(ctx: &mut Context) -> Result<()> {
+    let rand_port = rand::thread_rng().gen_range(10000, 65535);
+    let bind_address = format!("127.0.0.1:{}", rand_port);
+    let bind_address = bind_address.as_str();
+
+    ctx.start_worker("echoer", Echoer).await?;
+
+    let transport = TcpTransport::create(ctx).await?;
+    transport.listen(bind_address).await?;
+
+    let mut child_ctx = ctx.new_context(Address::random(0)).await?;
+    let msg: String = {
+        let mut rng = rand::thread_rng();
+        iter::repeat(())
+            .map(|()| rng.sample(&rand::distributions::Alphanumeric))
+            .take(10)
+            .collect()
+    };
+
+    let tx_address = transport.connect(bind_address).await?;
+
+    let r = route![(TCP, bind_address), "echoer"];
+    child_ctx.send(r.clone(), msg.clone()).await?;
+
+    let reply = child_ctx.receive::<String>().await?;
+    assert_eq!(reply, msg, "Should receive the same message");
+
+    transport.disconnect(bind_address).await?;
+
+    // TcpSender address should not exist
+    let res = child_ctx.send(tx_address.clone(), "TEST".to_string()).await;
+    assert!(res.is_err());
+    assert_eq!(
+        res.err().unwrap(),
+        ockam_node::error::Error::UnknownAddress.into()
+    );
+
+    // This should create new connection
+    child_ctx
+        .send(route![(TCP, bind_address), "echoer"], msg.clone())
+        .await?;
+
+    let reply = child_ctx.receive::<String>().await?;
+    assert_eq!(reply, msg, "Should receive the same message");
+
+    ctx.stop().await?;
+
+    Ok(())
+}
