@@ -51,6 +51,7 @@ pub(crate) struct TcpSendWorker {
     tx: Option<OwnedWriteHalf>,
     peer: SocketAddr,
     internal_addr: Address,
+    rx_addr: Option<Address>,
     heartbeat: DelayedEvent<TcpSendWorkerMsg>,
     heartbeat_interval: Option<Duration>,
 }
@@ -77,6 +78,7 @@ impl TcpSendWorker {
             tx,
             peer,
             internal_addr,
+            rx_addr: None,
             heartbeat,
             heartbeat_interval: Some(Duration::from_secs(5 * 60)),
         }
@@ -173,19 +175,27 @@ impl Worker for TcpSendWorker {
             self.rx = Some(rx);
         }
 
-        if let Some(rx) = self.rx.take() {
-            let rx_addr = Address::random(0);
-            let receiver = TcpRecvProcessor::new(
-                rx,
-                format!("{}#{}", crate::TCP, self.peer).into(),
-                self.internal_addr.clone(),
-            );
-            ctx.start_processor(rx_addr.clone(), receiver).await?;
-        } else {
-            return Err(TransportError::GenericIo.into());
-        }
+        let rx = self.rx.take().ok_or(TransportError::GenericIo)?;
+
+        let rx_addr = Address::random(0);
+        let receiver = TcpRecvProcessor::new(
+            rx,
+            format!("{}#{}", crate::TCP, self.peer).into(),
+            self.internal_addr.clone(),
+        );
+        ctx.start_processor(rx_addr.clone(), receiver).await?;
+
+        self.rx_addr = Some(rx_addr);
 
         self.schedule_heartbeat().await?;
+
+        Ok(())
+    }
+
+    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        if let Some(rx_addr) = self.rx_addr.take() {
+            let _ = ctx.stop_processor(rx_addr).await;
+        }
 
         Ok(())
     }
@@ -226,6 +236,9 @@ impl Worker for TcpSendWorker {
                 }
                 TcpSendWorkerMsg::ConnectionClosed => {
                     warn!("Stopping sender due to closed connection {}", self.peer);
+                    // No need to stop Receiver as it notified us about connection drop and will
+                    // stop itself
+                    self.rx_addr = None;
                     self.stop_and_unregister(ctx).await?;
 
                     return Ok(());

@@ -99,6 +99,23 @@ impl TcpRouter {
         Ok(self_addr)
     }
 
+    async fn handle_disconnect(&mut self, peer: String) -> Result<()> {
+        let (peer_addr, _hostnames) = TcpRouterHandle::resolve_peer(peer)?;
+        let tcp_address: Address = format!("{}#{}", TCP, peer_addr).into();
+
+        let self_address = if let Some(self_address) = self.map.get(&tcp_address) {
+            self_address.clone()
+        } else {
+            return Err(TransportError::PeerNotFound.into());
+        };
+
+        self.handle_unregister(self_address.clone()).await?;
+
+        self.ctx.stop_worker(self_address).await?;
+
+        Ok(())
+    }
+
     async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
         trace!(
             "TCP route request: {:?}",
@@ -180,6 +197,12 @@ impl Worker for TcpRouter {
                     let res = self.handle_connect(peer).await;
 
                     ctx.send(return_route, TcpRouterResponse::Connect(res))
+                        .await?;
+                }
+                TcpRouterRequest::Disconnect { peer } => {
+                    let res = self.handle_disconnect(peer).await;
+
+                    ctx.send(return_route, TcpRouterResponse::Disconnect(res))
                         .await?;
                 }
             };

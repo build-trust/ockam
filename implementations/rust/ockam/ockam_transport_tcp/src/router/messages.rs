@@ -12,6 +12,8 @@ pub enum TcpRouterRequest {
     },
     /// Connect
     Connect { peer: String },
+    /// Connect
+    Disconnect { peer: String },
     /// Unregister (usually, after disconnection)
     Unregister {
         /// The clients own worker bus address.
@@ -23,5 +25,6 @@ pub enum TcpRouterRequest {
 pub enum TcpRouterResponse {
     Register(Result<()>),
     Connect(Result<Address>),
+    Disconnect(Result<()>),
     Unregister(Result<()>),
 }

@@ -172,6 +172,31 @@ impl TcpRouterHandle {
         }
     }
 
+    pub async fn disconnect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
+        let mut child_ctx = self.ctx.new_context(Address::random(0)).await?;
+
+        child_ctx
+            .send(
+                self.api_addr.clone(),
+                TcpRouterRequest::Disconnect {
+                    peer: peer.as_ref().to_string(),
+                },
+            )
+            .await?;
+
+        let response = child_ctx
+            .receive::<TcpRouterResponse>()
+            .await?
+            .take()
+            .body();
+
+        if let TcpRouterResponse::Disconnect(res) = response {
+            res
+        } else {
+            Err(TransportError::InvalidRouterResponseType.into())
+        }
+    }
+
     /// Establish an outgoing TCP connection for Portal Outlet
     pub async fn connect_outlet(
         &self,

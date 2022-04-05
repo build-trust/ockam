@@ -83,6 +83,11 @@ impl TcpTransport {
         self.router_handle.connect(peer.as_ref()).await
     }
 
+    /// Disconnect from peer
+    pub async fn disconnect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
+        self.router_handle.disconnect(peer.as_ref()).await
+    }
+
     /// Start listening to incoming connections on an existing transport
     /// ```rust
     /// use ockam_transport_tcp::TcpTransport;
