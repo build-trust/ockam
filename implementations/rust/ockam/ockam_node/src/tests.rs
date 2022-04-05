@@ -1,14 +1,14 @@
 use crate::{start_node, Context};
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::time::Duration;
-use ockam_core::async_trait;
 use ockam_core::compat::{
     boxed::Box,
     string::{String, ToString},
     sync::Arc,
 };
+use ockam_core::{async_trait, Address, LOCAL};
 use ockam_core::{route, Processor, Result, Routed, Worker};
-use std::sync::atomic::AtomicI8;
+use std::sync::atomic::{AtomicI8, AtomicU32};
 use tokio::time::sleep;
 
 #[allow(non_snake_case)]
@@ -420,4 +420,74 @@ fn parse_payload_without_inner_length() {
     let payload = "😀".repeat(25600);
     let r = parser::message::<String>(payload.as_bytes()).unwrap();
     assert_eq!("😀".repeat(25600), r);
+}
+
+struct StopFromHandleMessageWorker {
+    counter_a: Arc<AtomicU32>,
+    counter_b: Arc<AtomicU32>,
+}
+
+#[async_trait]
+impl Worker for StopFromHandleMessageWorker {
+    type Message = String;
+    type Context = Context;
+    async fn handle_message(&mut self, ctx: &mut Context, _msg: Routed<String>) -> Result<()> {
+        self.counter_a.fetch_add(1, Ordering::Relaxed);
+        ctx.stop_worker(ctx.address()).await?;
+        self.counter_b.fetch_add(1, Ordering::Relaxed);
+        Ok(())
+    }
+}
+
+/// Test that a Worker can complete execution of its handle_message()
+/// even if it calls Context::stop_worker() from within handle_message().
+/// See https://github.com/ockam-network/ockam/issues/2283
+/// See https://github.com/ockam-network/ockam/issues/2280
+#[test]
+fn worker_calls_stopworker_from_handlemessage() {
+    let (mut ctx, mut executor) = start_node();
+
+    let counter_a = Arc::new(AtomicU32::new(0));
+    let counter_b = Arc::new(AtomicU32::new(0));
+    let counter_a_clone = counter_a.clone();
+    let counter_b_clone = counter_b.clone();
+
+    executor
+        .execute(async move {
+            const RUNS: u32 = 1000;
+            const WORKERS: u32 = 10;
+            for _ in 0..RUNS {
+                let mut addrs = Vec::new();
+                for _ in 0..WORKERS {
+                    let worker = StopFromHandleMessageWorker {
+                        counter_a: counter_a_clone.clone(),
+                        counter_b: counter_b_clone.clone(),
+                    };
+                    let addr = Address::random(LOCAL);
+                    ctx.start_worker(&addr, worker).await.unwrap();
+                    addrs.push(addr);
+                }
+
+                let mut join_handles = Vec::new();
+                for addr in addrs {
+                    join_handles.push(ctx.send(route![addr], String::from("Testing. 1. 2. 3.")));
+                }
+
+                for h in join_handles {
+                    h.await.unwrap();
+                }
+            }
+
+            ctx.stop().await.unwrap();
+        })
+        .unwrap();
+
+    // Wait till tokio Runtime is shut down
+    std::thread::sleep(Duration::new(1, 0));
+
+    // Assert all handle_message() entry and exit counts match
+    assert_eq!(
+        counter_a.load(Ordering::Relaxed),
+        counter_b.load(Ordering::Relaxed)
+    );
 }

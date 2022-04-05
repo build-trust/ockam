@@ -156,6 +156,9 @@ impl AddressRecord {
     pub fn sender(&self) -> Sender<RelayMessage> {
         self.sender.clone().expect("No such sender!")
     }
+    pub fn sender_drop(&mut self) {
+        self.sender = None;
+    }
     pub fn new(
         address_set: AddressSet,
         sender: Sender<RelayMessage>,
