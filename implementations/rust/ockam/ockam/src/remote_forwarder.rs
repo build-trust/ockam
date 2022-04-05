@@ -196,6 +196,10 @@ impl Worker for RemoteForwarder {
             )
             .await?;
 
+            if let Some(heartbeat) = &mut self.heartbeat {
+                heartbeat.schedule(self.heartbeat_interval).await?;
+            }
+
             return Ok(());
         }
 
