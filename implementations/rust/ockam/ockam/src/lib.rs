@@ -58,8 +58,8 @@ pub mod workers;
 pub use ockam_identity as identity;
 
 pub use ockam_core::{
-    route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage, Message, ProtocolId, Result,
-    Route, Routed, TransportMessage, Worker,
+    route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage, Message, Processor,
+    ProtocolId, Result, Route, Routed, TransportMessage, Worker,
 };
 
 /// Mark an Ockam Worker implementation.
@@ -67,6 +67,12 @@ pub use ockam_core::{
 /// This is currently implemented as a re-export of the `async_trait` macro, but
 /// may be changed in the future to a [`Worker`](crate::Worker)-specific macro.
 pub use ockam_core::worker;
+
+/// Mark an Ockam Processor implementation.
+///
+/// This is currently implemented as a re-export of the `async_trait` macro, but
+/// may be changed in the future to a [`Processor`](crate::Processor)-specific macro.
+pub use ockam_core::processor;
 
 // TODO: think about how to handle this more. Probably extract these into an
 // `ockam_compat` crate.

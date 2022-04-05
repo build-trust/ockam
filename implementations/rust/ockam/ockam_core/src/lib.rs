@@ -35,6 +35,9 @@ pub extern crate async_trait;
 /// Mark an Ockam Worker implementation.
 #[doc(inline)]
 pub use async_trait::async_trait as worker;
+/// Mark an Ockam Processor implementation.
+#[doc(inline)]
+pub use async_trait::async_trait as processor;
 
 extern crate ockam_macros;
 pub use ockam_macros::{AsyncTryClone, Message};
