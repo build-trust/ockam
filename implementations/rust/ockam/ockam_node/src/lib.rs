@@ -35,13 +35,15 @@ pub mod compat;
 mod cancel;
 mod context;
 mod delayed;
-mod error;
 mod executor;
 mod messages;
 mod node;
 mod parser;
 mod relay;
 mod router;
+
+/// Errors
+pub mod error;
 
 pub use cancel::*;
 pub use context::*;
