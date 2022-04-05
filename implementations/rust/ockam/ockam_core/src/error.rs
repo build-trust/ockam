@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// 1. __Error Code__: A `u32` representing the precise error.
 ///
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
 pub struct Error {
     code: u32,
 
