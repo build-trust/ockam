@@ -1,9 +1,10 @@
-use crate::TcpRecvProcessor;
+use crate::{TcpRecvProcessor, TcpRouterHandle};
 use core::time::Duration;
 use ockam_core::{async_trait, route, Any, Decodable, LocalMessage};
-use ockam_core::{Address, Encodable, Result, Routed, TransportMessage, Worker};
+use ockam_core::{Address, Encodable, Message, Result, Routed, TransportMessage, Worker};
 use ockam_node::{Context, DelayedEvent};
 use ockam_transport_core::TransportError;
+use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
@@ -30,6 +31,12 @@ impl WorkerPair {
     }
 }
 
+#[derive(Serialize, Deserialize, Message, Clone)]
+pub(crate) enum TcpSendWorkerMsg {
+    Heartbeat,
+    ConnectionClosed,
+}
+
 /// A TCP sending message worker
 ///
 /// Create this worker type by calling
@@ -39,20 +46,22 @@ impl WorkerPair {
 /// worker pair, and listens for messages from the node message system
 /// to dispatch to a remote peer.
 pub(crate) struct TcpSendWorker {
+    router_handle: TcpRouterHandle,
     rx: Option<OwnedReadHalf>,
     tx: Option<OwnedWriteHalf>,
     peer: SocketAddr,
     internal_addr: Address,
-    heartbeat: DelayedEvent<Vec<u8>>,
+    heartbeat: DelayedEvent<TcpSendWorkerMsg>,
     heartbeat_interval: Option<Duration>,
 }
 
 impl TcpSendWorker {
     fn new(
+        router_handle: TcpRouterHandle,
         stream: Option<TcpStream>,
         peer: SocketAddr,
         internal_addr: Address,
-        heartbeat: DelayedEvent<Vec<u8>>,
+        heartbeat: DelayedEvent<TcpSendWorkerMsg>,
     ) -> Self {
         let (rx, tx) = match stream {
             Some(s) => {
@@ -63,6 +72,7 @@ impl TcpSendWorker {
         };
 
         Self {
+            router_handle,
             rx,
             tx,
             peer,
@@ -74,6 +84,7 @@ impl TcpSendWorker {
 
     pub(crate) async fn start_pair(
         ctx: &Context,
+        router_handle: TcpRouterHandle,
         stream: Option<TcpStream>,
         peer: SocketAddr,
         hostnames: Vec<String>,
@@ -83,10 +94,11 @@ impl TcpSendWorker {
         let tx_addr = Address::random(0);
         let internal_addr = Address::random(0);
         let sender = TcpSendWorker::new(
+            router_handle,
             stream,
             peer,
             internal_addr.clone(),
-            DelayedEvent::create(ctx, internal_addr.clone(), vec![]).await?,
+            DelayedEvent::create(ctx, internal_addr.clone(), TcpSendWorkerMsg::Heartbeat).await?,
         );
 
         ctx.start_worker(vec![tx_addr.clone(), internal_addr], sender)
@@ -109,6 +121,14 @@ impl TcpSendWorker {
         }
 
         self.heartbeat.schedule(heartbeat_interval).await
+    }
+
+    async fn stop_and_unregister(&self, ctx: &Context) -> Result<()> {
+        self.router_handle.unregister(ctx.address()).await?;
+
+        ctx.stop_worker(ctx.address()).await?;
+
+        Ok(())
     }
 }
 
@@ -140,18 +160,26 @@ impl Worker for TcpSendWorker {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
 
         if self.tx.is_none() {
-            let (rx, tx) = TcpStream::connect(self.peer)
-                .await
-                .map_err(TransportError::from)?
-                .into_split();
+            let connection = match TcpStream::connect(self.peer).await {
+                Ok(c) => c,
+                Err(e) => {
+                    self.stop_and_unregister(ctx).await?;
+
+                    return Err(TransportError::from(e).into());
+                }
+            };
+            let (rx, tx) = connection.into_split();
             self.tx = Some(tx);
             self.rx = Some(rx);
         }
 
         if let Some(rx) = self.rx.take() {
             let rx_addr = Address::random(0);
-            let receiver =
-                TcpRecvProcessor::new(rx, format!("{}#{}", crate::TCP, self.peer).into());
+            let receiver = TcpRecvProcessor::new(
+                rx,
+                format!("{}#{}", crate::TCP, self.peer).into(),
+                self.internal_addr.clone(),
+            );
             ctx.start_processor(rx_addr.clone(), receiver).await?;
         } else {
             return Err(TransportError::GenericIo.into());
@@ -180,17 +208,29 @@ impl Worker for TcpSendWorker {
 
         let recipient = msg.msg_addr();
         if recipient == self.internal_addr {
-            let msg = TransportMessage::v1(route![], route![], vec![]);
-            let msg = prepare_message(msg)?;
-            // Sending empty heartbeat
-            if tx.write_all(&msg).await.is_err() {
-                warn!("Failed to send heartbeat to peer {}", self.peer);
-                ctx.stop_worker(ctx.address()).await?;
+            let msg = TcpSendWorkerMsg::decode(msg.payload())?;
 
-                return Ok(());
+            match msg {
+                TcpSendWorkerMsg::Heartbeat => {
+                    let msg = TransportMessage::v1(route![], route![], vec![]);
+                    let msg = prepare_message(msg)?;
+                    // Sending empty heartbeat
+                    if tx.write_all(&msg).await.is_err() {
+                        warn!("Failed to send heartbeat to peer {}", self.peer);
+                        self.stop_and_unregister(ctx).await?;
+
+                        return Ok(());
+                    }
+
+                    debug!("Sent heartbeat to peer {}", self.peer);
+                }
+                TcpSendWorkerMsg::ConnectionClosed => {
+                    warn!("Stopping sender due to closed connection {}", self.peer);
+                    self.stop_and_unregister(ctx).await?;
+
+                    return Ok(());
+                }
             }
-
-            debug!("Sent heartbeat to peer {}", self.peer);
         } else {
             let mut msg = LocalMessage::decode(msg.payload())?.into_transport_message();
             // Remove our own address from the route so the other end
@@ -201,7 +241,7 @@ impl Worker for TcpSendWorker {
 
             if tx.write_all(msg.as_slice()).await.is_err() {
                 warn!("Failed to send message to peer {}", self.peer);
-                ctx.stop_worker(ctx.address()).await?;
+                self.stop_and_unregister(ctx).await?;
 
                 return Ok(());
             }

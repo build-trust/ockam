@@ -1,13 +1,17 @@
-mod handle;
 use crate::{TcpSendWorker, TCP};
 use core::ops::Deref;
-pub(crate) use handle::*;
-use ockam_core::async_trait;
-use ockam_core::{Address, LocalMessage, Result, Routed, RouterMessage, Worker};
+use ockam_core::{async_trait, Any};
+use ockam_core::{Address, Decodable, LocalMessage, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use std::collections::BTreeMap;
 use tracing::{debug, trace};
+
+mod handle;
+mod messages;
+
+pub(crate) use handle::*;
+pub(crate) use messages::*;
 
 /// A TCP address router and connection listener
 ///
@@ -19,15 +23,16 @@ use tracing::{debug, trace};
 /// if the local node is part of a server architecture.
 pub(crate) struct TcpRouter {
     ctx: Context,
-    addr: Address,
+    main_addr: Address,
+    api_addr: Address,
     map: BTreeMap<Address, Address>,
     allow_auto_connection: bool,
 }
 
 impl TcpRouter {
-    async fn create_self_handle(&self, ctx: &Context) -> Result<TcpRouterHandle> {
-        let handle_ctx = ctx.new_context(Address::random(0)).await?;
-        let handle = TcpRouterHandle::new(handle_ctx, self.addr.clone());
+    async fn create_self_handle(&self) -> Result<TcpRouterHandle> {
+        let handle_ctx = self.ctx.new_context(Address::random(0)).await?;
+        let handle = TcpRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }
 
@@ -51,10 +56,34 @@ impl TcpRouter {
         Ok(())
     }
 
-    async fn connect(&mut self, peer: String) -> Result<Address> {
+    async fn handle_unregister(&mut self, self_addr: Address) -> Result<()> {
+        trace!("TCP unregistration request: {}", &self_addr);
+        // TODO: Could have been much more efficient...
+        let to_remove: Vec<Address> = self
+            .map
+            .iter()
+            .filter_map(|i| {
+                if i.1 == &self_addr {
+                    Some(i.0.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for it in to_remove {
+            self.map.remove(&it).unwrap();
+        }
+
+        Ok(())
+    }
+
+    async fn handle_connect(&mut self, peer: String) -> Result<Address> {
         let (peer_addr, hostnames) = TcpRouterHandle::resolve_peer(peer)?;
 
-        let pair = TcpSendWorker::start_pair(&self.ctx, None, peer_addr, hostnames).await?;
+        let router_handle = self.create_self_handle().await?;
+        let pair =
+            TcpSendWorker::start_pair(&self.ctx, router_handle, None, peer_addr, hostnames).await?;
 
         let tcp_address: Address = format!("{}#{}", TCP, pair.peer()).into();
         let mut accepts = vec![tcp_address];
@@ -95,7 +124,7 @@ impl TcpRouter {
 
             // TODO: Check if this is the hostname and we have existing/pending connection to this IP
             if self.allow_auto_connection {
-                next = self.connect(peer_str).await?;
+                next = self.handle_connect(peer_str).await?;
             } else {
                 return Err(TransportError::UnknownRoute.into());
             }
@@ -118,28 +147,45 @@ impl TcpRouter {
 #[async_trait]
 impl Worker for TcpRouter {
     type Context = Context;
-    type Message = RouterMessage;
+    type Message = Any;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Context,
-        msg: Routed<RouterMessage>,
-    ) -> Result<()> {
-        let msg = msg.body();
-        use RouterMessage::*;
-        match msg {
-            Route(msg) => {
-                self.handle_route(ctx, msg).await?;
-            }
-            Register { accepts, self_addr } => {
-                self.handle_register(accepts, self_addr).await?;
-            }
-        };
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+        let return_route = msg.return_route();
+        let msg_addr = msg.msg_addr();
+
+        if msg_addr == self.main_addr {
+            let msg = LocalMessage::decode(msg.payload())?;
+            self.handle_route(ctx, msg).await?;
+        } else if msg_addr == self.api_addr {
+            let msg = TcpRouterRequest::decode(msg.payload())?;
+            match msg {
+                TcpRouterRequest::Register { accepts, self_addr } => {
+                    let res = self.handle_register(accepts, self_addr).await;
+
+                    ctx.send(return_route, TcpRouterResponse::Register(res))
+                        .await?;
+                }
+                TcpRouterRequest::Unregister { self_addr } => {
+                    let res = self.handle_unregister(self_addr).await;
+
+                    ctx.send(return_route, TcpRouterResponse::Unregister(res))
+                        .await?;
+                }
+                TcpRouterRequest::Connect { peer } => {
+                    let res = self.handle_connect(peer).await;
+
+                    ctx.send(return_route, TcpRouterResponse::Connect(res))
+                        .await?;
+                }
+            };
+        } else {
+            return Err(TransportError::InvalidAddress.into());
+        }
 
         Ok(())
     }
@@ -151,23 +197,26 @@ impl TcpRouter {
     /// To also handle incoming connections, use
     /// [`TcpRouter::bind`](TcpRouter::bind)
     pub async fn register(ctx: &Context) -> Result<TcpRouterHandle> {
-        let addr = Address::random(0);
-        debug!("Initialising new TcpRouter with address {}", &addr);
+        let main_addr = Address::random(0);
+        let api_addr = Address::random(0);
+        debug!("Initialising new TcpRouter with address {}", &main_addr);
 
         let child_ctx = ctx.new_context(Address::random(0)).await?;
 
         let router = Self {
             ctx: child_ctx,
-            addr: addr.clone(),
+            main_addr: main_addr.clone(),
+            api_addr: api_addr.clone(),
             map: BTreeMap::new(),
             allow_auto_connection: true,
         };
 
-        let handle = router.create_self_handle(ctx).await?;
+        let handle = router.create_self_handle().await?;
 
-        ctx.start_worker(addr.clone(), router).await?;
+        ctx.start_worker(vec![main_addr.clone(), api_addr], router)
+            .await?;
         trace!("Registering TCP router for type = {}", TCP);
-        ctx.register(TCP, addr).await?;
+        ctx.register(TCP, main_addr).await?;
 
         Ok(handle)
     }

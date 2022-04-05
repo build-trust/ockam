@@ -1,10 +1,10 @@
 use crate::{
-    parse_socket_addr, TcpInletListenProcessor, TcpListenProcessor, TcpPortalWorker, TcpSendWorker,
-    WorkerPair, TCP,
+    parse_socket_addr, TcpInletListenProcessor, TcpListenProcessor, TcpPortalWorker,
+    TcpRouterRequest, TcpRouterResponse, WorkerPair, TCP,
 };
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_core::{Address, AsyncTryClone, Result, Route, RouterMessage};
+use ockam_core::{Address, AsyncTryClone, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
@@ -13,7 +13,7 @@ use ockam_transport_core::TransportError;
 /// Dropping this handle is harmless.
 pub(crate) struct TcpRouterHandle {
     ctx: Context,
-    addr: Address,
+    api_addr: Address,
 }
 
 impl TcpRouterHandle {
@@ -26,13 +26,13 @@ impl TcpRouterHandle {
 impl AsyncTryClone for TcpRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
         let child_ctx = self.ctx.new_context(Address::random(0)).await?;
-        Ok(Self::new(child_ctx, self.addr.clone()))
+        Ok(Self::new(child_ctx, self.api_addr.clone()))
     }
 }
 
 impl TcpRouterHandle {
-    pub(crate) fn new(ctx: Context, addr: Address) -> Self {
-        TcpRouterHandle { ctx, addr }
+    pub(crate) fn new(ctx: Context, api_addr: Address) -> Self {
+        TcpRouterHandle { ctx, api_addr }
     }
 }
 
@@ -48,12 +48,49 @@ impl TcpRouterHandle {
         );
         let self_addr = pair.tx_addr();
 
-        self.ctx
+        let mut child_ctx = self.ctx.new_context(Address::random(0)).await?;
+        child_ctx
             .send(
-                self.addr.clone(),
-                RouterMessage::Register { accepts, self_addr },
+                self.api_addr.clone(),
+                TcpRouterRequest::Register { accepts, self_addr },
             )
-            .await
+            .await?;
+
+        let response = child_ctx
+            .receive::<TcpRouterResponse>()
+            .await?
+            .take()
+            .body();
+
+        if let TcpRouterResponse::Register(res) = response {
+            res
+        } else {
+            Err(TransportError::InvalidRouterResponseType.into())
+        }
+    }
+
+    /// Unregister
+    pub async fn unregister(&self, self_addr: Address) -> Result<()> {
+        let mut child_ctx = self.ctx.new_context(Address::random(0)).await?;
+
+        child_ctx
+            .send(
+                self.api_addr.clone(),
+                TcpRouterRequest::Unregister { self_addr },
+            )
+            .await?;
+
+        let response = child_ctx
+            .receive::<TcpRouterResponse>()
+            .await?
+            .take()
+            .body();
+
+        if let TcpRouterResponse::Unregister(res) = response {
+            res
+        } else {
+            Err(TransportError::InvalidRouterResponseType.into())
+        }
     }
 
     /// Bind an incoming connection listener for this router
@@ -110,13 +147,29 @@ impl TcpRouterHandle {
     }
 
     /// Establish an outgoing TCP connection on an existing transport
-    pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
-        let (peer_addr, hostnames) = Self::resolve_peer(peer.as_ref())?;
+    pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<Address> {
+        let mut child_ctx = self.ctx.new_context(Address::random(0)).await?;
 
-        let pair = TcpSendWorker::start_pair(&self.ctx, None, peer_addr, hostnames).await?;
-        self.register(&pair).await?;
+        child_ctx
+            .send(
+                self.api_addr.clone(),
+                TcpRouterRequest::Connect {
+                    peer: peer.as_ref().to_string(),
+                },
+            )
+            .await?;
 
-        Ok(())
+        let response = child_ctx
+            .receive::<TcpRouterResponse>()
+            .await?
+            .take()
+            .body();
+
+        if let TcpRouterResponse::Connect(res) = response {
+            res
+        } else {
+            Err(TransportError::InvalidRouterResponseType.into())
+        }
     }
 
     /// Establish an outgoing TCP connection for Portal Outlet

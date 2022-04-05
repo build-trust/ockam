@@ -79,7 +79,7 @@ impl TcpTransport {
     /// tcp.connect("127.0.0.1:5000").await?; // and connect to port 5000
     /// # Ok(()) }
     /// ```
-    pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
+    pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<Address> {
         self.router_handle.connect(peer.as_ref()).await
     }
 

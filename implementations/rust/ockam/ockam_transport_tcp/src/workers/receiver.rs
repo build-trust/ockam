@@ -1,3 +1,4 @@
+use crate::TcpSendWorkerMsg;
 use ockam_core::async_trait;
 use ockam_core::{Address, Decodable, LocalMessage, Processor, Result, TransportMessage};
 use ockam_node::Context;
@@ -16,11 +17,16 @@ use tracing::{error, info, trace};
 pub(crate) struct TcpRecvProcessor {
     rx: OwnedReadHalf,
     peer_addr: Address,
+    sender_internal_address: Address,
 }
 
 impl TcpRecvProcessor {
-    pub fn new(rx: OwnedReadHalf, peer_addr: Address) -> Self {
-        Self { rx, peer_addr }
+    pub fn new(rx: OwnedReadHalf, peer_addr: Address, sender_internal_address: Address) -> Self {
+        Self {
+            rx,
+            peer_addr,
+            sender_internal_address,
+        }
     }
 }
 
@@ -50,6 +56,14 @@ impl Processor for TcpRecvProcessor {
                     "Connection to peer '{}' was closed; dropping stream",
                     self.peer_addr
                 );
+
+                // Notify sender tx is closed
+                ctx.send(
+                    self.sender_internal_address.clone(),
+                    TcpSendWorkerMsg::ConnectionClosed,
+                )
+                .await?;
+
                 return Ok(false);
             }
         };

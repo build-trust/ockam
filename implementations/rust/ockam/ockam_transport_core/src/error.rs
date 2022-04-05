@@ -31,6 +31,8 @@ pub enum TransportError {
     GenericIo,
     /// PortalInvalidState
     PortalInvalidState,
+    /// InvalidRouterResponseType
+    InvalidRouterResponseType,
 }
 
 impl TransportError {
