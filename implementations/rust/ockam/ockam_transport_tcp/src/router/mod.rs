@@ -58,22 +58,8 @@ impl TcpRouter {
 
     async fn handle_unregister(&mut self, self_addr: Address) -> Result<()> {
         trace!("TCP unregistration request: {}", &self_addr);
-        // TODO: Could have been much more efficient...
-        let to_remove: Vec<Address> = self
-            .map
-            .iter()
-            .filter_map(|i| {
-                if i.1 == &self_addr {
-                    Some(i.0.clone())
-                } else {
-                    None
-                }
-            })
-            .collect();
 
-        for it in to_remove {
-            self.map.remove(&it).unwrap();
-        }
+        self.map.retain(|_, self_addr_i| self_addr_i != &self_addr);
 
         Ok(())
     }
