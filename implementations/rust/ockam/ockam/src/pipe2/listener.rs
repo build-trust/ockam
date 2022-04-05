@@ -29,7 +29,7 @@ impl Worker for PipeListener {
         // First we need to re-address the worker system.  This means
         // using the same SystemHandler instances and routes, but with
         // new addresses to not cause collisions on this node.
-        let (init_addr, fin_addr) = (Address::random(0), Address::random(0));
+        let (init_addr, fin_addr) = (Address::random_local(), Address::random_local());
         let mut sys_builder = self.system.clone();
         sys_builder.readdress(&fin_addr);
 
@@ -40,7 +40,7 @@ impl Worker for PipeListener {
         let worker = PipeReceiver::new(system, fin_addr.clone(), Some(init_addr.clone()));
 
         // Finally start the worker with the full set of used addresses
-        let mut worker_addrs = vec![Address::random(0), init_addr.clone(), fin_addr];
+        let mut worker_addrs = vec![Address::random_local(), init_addr.clone(), fin_addr];
         worker_addrs.append(&mut system_addrs);
         ctx.start_worker(worker_addrs, worker).await?;
 

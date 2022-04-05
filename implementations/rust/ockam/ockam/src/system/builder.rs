@@ -162,7 +162,7 @@ where
         let addrs: BTreeMap<_, _> = self
             .inner
             .iter()
-            .map(|(_, data)| (data.addr.clone(), Address::random(0)))
+            .map(|(_, data)| (data.addr.clone(), Address::random_local()))
             .collect();
 
         // Small utility function that will either return the the new

@@ -4,7 +4,7 @@ use ockam_core::{compat::string::String, Address, Result};
 #[crate::test]
 async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
     info!("Starting the test...");
-    let rx_addr = Address::random(0);
+    let rx_addr = Address::random_local();
 
     // Start a static receiver
     let rx = PipeBuilder::fixed()
@@ -54,7 +54,7 @@ async fn handshake_pipe(ctx: &mut Context) -> Result<()> {
 
 #[crate::test]
 async fn fixed_delivery_pipe(ctx: &mut Context) -> Result<()> {
-    let rx_addr = Address::random(0);
+    let rx_addr = Address::random_local();
 
     // Start a static receiver
     let rx = PipeBuilder::fixed()
@@ -109,7 +109,7 @@ async fn dynamic_delivery_pipe(ctx: &mut Context) -> Result<()> {
 
 #[crate::test]
 async fn fixed_ordering_pipe(ctx: &mut Context) -> Result<()> {
-    let rx_addr = Address::random(0);
+    let rx_addr = Address::random_local();
 
     // Start a static receiver
     let rx = PipeBuilder::fixed()
@@ -139,7 +139,7 @@ async fn fixed_ordering_pipe(ctx: &mut Context) -> Result<()> {
 
 #[crate::test]
 async fn fixed_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
-    let rx_addr = Address::random(0);
+    let rx_addr = Address::random_local();
 
     // Start a static receiver
     let rx = PipeBuilder::fixed()

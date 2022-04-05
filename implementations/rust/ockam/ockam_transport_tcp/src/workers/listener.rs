@@ -18,7 +18,7 @@ impl TcpListenProcessor {
         router_handle: TcpRouterHandle,
         addr: SocketAddr,
     ) -> Result<()> {
-        let waddr = Address::random(0);
+        let waddr = Address::random_local();
 
         debug!("Binding TcpListener to {}", addr);
         let inner = TcpListener::bind(addr)

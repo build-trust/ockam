@@ -48,14 +48,14 @@ impl ChannelWorker {
         tx_hooks: PipeBehavior,
         rx_hooks: PipeBehavior,
     ) -> Result<()> {
-        let pub_addr = Address::random(0);
+        let pub_addr = Address::random_local();
         ctx.start_worker(
             vec![int_addr.clone(), pub_addr.clone()],
             ChannelWorker {
                 stage: WorkerStage::Stage2,
                 listener: None,
-                tx_addr: Address::random(0),
-                rx_addr: Address::random(0),
+                tx_addr: Address::random_local(),
+                rx_addr: Address::random_local(),
                 peer_routes: Some((peer_tx_route, peer_rx_route)),
                 self_addrs: (pub_addr, int_addr),
                 peer_addr,
@@ -77,7 +77,7 @@ impl ChannelWorker {
         tx_hooks: PipeBehavior,
         rx_hooks: PipeBehavior,
     ) -> Result<()> {
-        let int_addr = Address::random(0);
+        let int_addr = Address::random_local();
         ctx.start_worker(
             vec![int_addr.clone(), pub_addr.clone()],
             ChannelWorker {
@@ -88,9 +88,9 @@ impl ChannelWorker {
                 // create an outgoing message cache in the channel
                 // endpoint and can instead use the PipeSender cache
                 // mechanism instead
-                peer_addr: Address::random(0),
-                rx_addr: Address::random(0),
-                tx_addr: Address::random(0),
+                peer_addr: Address::random_local(),
+                rx_addr: Address::random_local(),
+                tx_addr: Address::random_local(),
                 self_addrs: (pub_addr, int_addr),
                 tx_hooks,
                 rx_hooks,
@@ -146,7 +146,7 @@ impl ChannelWorker {
             self.tx_addr, self.rx_addr
         );
 
-        let rx_int = Address::random(0);
+        let rx_int = Address::random_local();
         PipeReceiver::create(
             ctx,
             self.rx_addr.clone(),
@@ -155,7 +155,7 @@ impl ChannelWorker {
         )
         .await?;
 
-        let tx_int = Address::random(0);
+        let tx_int = Address::random_local();
         PipeSender::uninitialized(
             ctx,
             self.tx_addr.clone(),
@@ -204,7 +204,7 @@ impl ChannelWorker {
         let (route_to_sender, route_to_receiver) = self.peer_routes.clone().unwrap();
 
         // Create a PipeReceiver
-        let rx_int_addr = Address::random(0);
+        let rx_int_addr = Address::random_local();
         PipeReceiver::create(
             ctx,
             self.rx_addr.clone(),
@@ -218,7 +218,7 @@ impl ChannelWorker {
             ctx,
             route_to_receiver.0,
             self.tx_addr.clone(),
-            Address::random(0),
+            Address::random_local(),
             self.tx_hooks.clone(),
         )
         .await?;

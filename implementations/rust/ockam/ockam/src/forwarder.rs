@@ -53,7 +53,7 @@ impl Forwarder {
         registration_payload: Vec<u8>,
     ) -> Result<()> {
         info!("Created new alias for {}", forward_route);
-        let address = Address::random(0);
+        let address = Address::random_local();
         let forwarder = Self {
             forward_route,
             payload: Some(registration_payload),

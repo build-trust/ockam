@@ -87,7 +87,7 @@ impl<I: IdentityTrait, T: TrustPolicy> SecureChannelWorker<I, T> {
         trust_policy: T,
         vault: impl XXVault,
     ) -> Result<Address> {
-        let child_address = Address::random(0);
+        let child_address = Address::random_local();
         let mut child_ctx = ctx.new_context(child_address.clone()).await?;
 
         // Generate 2 random fresh address for newly created SecureChannel.
@@ -100,7 +100,7 @@ impl<I: IdentityTrait, T: TrustPolicy> SecureChannelWorker<I, T> {
             .initiator()
             .await?;
         // Create regular secure channel and set self address as first responder
-        let temp_ctx = ctx.new_context(Address::random(0)).await?;
+        let temp_ctx = ctx.new_context(Address::random_local()).await?;
         let self_remote_address_clone = self_remote_address.clone();
         let channel_future = Box::pin(async move {
             SecureChannel::create_extended(

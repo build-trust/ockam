@@ -106,8 +106,7 @@ impl<'a> From<&'a str> for AddressSet {
 ///
 #[derive(Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Address {
-    /// The transport type
-    pub tt: u8,
+    tt: TransportType,
     inner: Vec<u8>,
 }
 
@@ -162,14 +161,14 @@ impl Address {
     /// # Examples
     ///
     /// ```
-    /// # use ockam_core::Address;
-    /// # pub const TCP: u8 = 1;
+    /// # use ockam_core::{Address, TransportType};
+    /// # pub const TCP: TransportType = TransportType::new(1);
     /// // create a new remote worker address from a transport type and data
     /// let tcp_worker: Address = Address::new(TCP, "carol");
     /// ```
-    pub fn new<S: Into<String>>(transport: u8, data: S) -> Self {
+    pub fn new<S: Into<String>>(tt: TransportType, data: S) -> Self {
         Self {
-            tt: transport,
+            tt,
             inner: data.into().as_bytes().to_vec(),
         }
     }
@@ -204,15 +203,25 @@ impl Address {
     /// # Examples
     ///
     /// ```
-    /// # use ockam_core::Address;
+    /// # use ockam_core::{Address, LOCAL};
     /// // generate a random local address
-    /// let local_worker: Address = Address::random(0);
+    /// let local_worker: Address = Address::random(LOCAL);
     /// ```
-    pub fn random(transport: u8) -> Self {
+    pub fn random(tt: TransportType) -> Self {
+        Self { tt, ..random() }
+    }
+
+    /// Generate a random address with transport type [`LOCAL`].
+    pub fn random_local() -> Self {
         Self {
-            tt: transport,
+            tt: LOCAL,
             ..random()
         }
+    }
+
+    /// Get transport type of this address.
+    pub fn transport_type(&self) -> TransportType {
+        self.tt
     }
 }
 
@@ -229,7 +238,7 @@ impl core::str::FromStr for Address {
         // `#` separator, so the type needs to be implicitly `= 0`
         if vec.len() == 1 {
             Ok(Address {
-                tt: 0,
+                tt: LOCAL,
                 inner: vec.remove(0).as_bytes().to_vec(),
             })
         }
@@ -238,7 +247,7 @@ impl core::str::FromStr for Address {
         else if vec.len() == 2 {
             match str::parse(vec.remove(0)) {
                 Ok(tt) => Ok(Address {
-                    tt,
+                    tt: TransportType::new(tt),
                     inner: vec.remove(0).as_bytes().to_vec(),
                 }),
                 Err(e) => Err(AddressParseError::new(AddressParseErrorKind::InvalidType(
@@ -260,8 +269,7 @@ impl Display for Address {
 
 impl Debug for Address {
     fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
-        let inner: &'a str = from_utf8(self.inner.as_slice()).unwrap_or("Invalid UTF-8");
-        write!(f, "{}#{}", self.tt, inner)
+        <Self as Display>::fmt(self, f)
     }
 }
 
@@ -286,38 +294,38 @@ impl<'a> From<&'a str> for Address {
 
 impl From<Vec<u8>> for Address {
     fn from(data: Vec<u8>) -> Self {
-        Self { tt: 0, inner: data }
-    }
-}
-
-impl From<(u8, Vec<u8>)> for Address {
-    fn from((transport, data): (u8, Vec<u8>)) -> Self {
         Self {
-            tt: transport,
+            tt: LOCAL,
             inner: data,
         }
     }
 }
 
-impl<'a> From<(u8, &'a str)> for Address {
-    fn from((transport, data): (u8, &'a str)) -> Self {
+impl From<(TransportType, Vec<u8>)> for Address {
+    fn from((tt, data): (TransportType, Vec<u8>)) -> Self {
+        Self { tt, inner: data }
+    }
+}
+
+impl<'a> From<(TransportType, &'a str)> for Address {
+    fn from((tt, data): (TransportType, &'a str)) -> Self {
         Self {
-            tt: transport,
+            tt,
             inner: data.as_bytes().to_vec(),
         }
     }
 }
 
-impl From<(u8, String)> for Address {
-    fn from((transport, data): (u8, String)) -> Self {
-        Self::from((transport, data.as_str()))
+impl From<(TransportType, String)> for Address {
+    fn from((tt, data): (TransportType, String)) -> Self {
+        Self::from((tt, data.as_str()))
     }
 }
 
 impl<'a> From<&'a [u8]> for Address {
     fn from(data: &'a [u8]) -> Self {
         Self {
-            tt: 0,
+            tt: LOCAL,
             inner: data.to_vec(),
         }
     }
@@ -326,7 +334,7 @@ impl<'a> From<&'a [u8]> for Address {
 impl<'a> From<&'a [&u8]> for Address {
     fn from(data: &'a [&u8]) -> Self {
         Self {
-            tt: 0,
+            tt: LOCAL,
             inner: data.iter().map(|x| **x).collect(),
         }
     }
@@ -345,13 +353,45 @@ impl Distribution<Address> for Standard {
     }
 }
 
+/// The transport type of an address.
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[serde(transparent)]
+pub struct TransportType(u8);
+
+/// The local transport type.
+pub const LOCAL: TransportType = TransportType::new(0);
+
+impl TransportType {
+    /// Create a new transport type.
+    pub const fn new(n: u8) -> Self {
+        TransportType(n)
+    }
+
+    /// Is this the local transport type?
+    pub fn is_local(self) -> bool {
+        self == LOCAL
+    }
+}
+
+impl Display for TransportType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<TransportType> for u8 {
+    fn from(ty: TransportType) -> Self {
+        ty.0
+    }
+}
+
 #[test]
 fn parse_addr_simple() {
     let addr = Address::from_string("local_friend");
     assert_eq!(
         addr,
         Address {
-            tt: 0,
+            tt: LOCAL,
             inner: "local_friend".as_bytes().to_vec()
         }
     );
@@ -363,7 +403,7 @@ fn parse_addr_with_type() {
     assert_eq!(
         addr,
         Address {
-            tt: 1,
+            tt: TransportType::new(1),
             inner: "remote_friend".as_bytes().to_vec()
         }
     );

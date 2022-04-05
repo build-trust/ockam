@@ -56,7 +56,7 @@ impl Worker for ListenerWorker {
             return Err(IdentityError::IssuerListenerInvalidMessage.into());
         }
 
-        let address = Address::random(0);
+        let address = Address::random_local();
         let worker = IssuerWorker::new(
             self.identity.async_try_clone().await?,
             their_identity_id.clone(),

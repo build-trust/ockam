@@ -19,7 +19,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
     };
 
     let _sender = {
-        let mut ctx = ctx.new_context(Address::random(0)).await?;
+        let mut ctx = ctx.new_context(Address::random_local()).await?;
         let msg: String = {
             let mut rng = rand::thread_rng();
             iter::repeat(())
@@ -64,7 +64,7 @@ async fn tcp_lifecycle__reconnect__should_not_error(ctx: &mut Context) -> Result
     let transport = TcpTransport::create(ctx).await?;
     transport.listen(bind_address).await?;
 
-    let mut child_ctx = ctx.new_context(Address::random(0)).await?;
+    let mut child_ctx = ctx.new_context(Address::random_local()).await?;
     let msg: String = {
         let mut rng = rand::thread_rng();
         iter::repeat(())

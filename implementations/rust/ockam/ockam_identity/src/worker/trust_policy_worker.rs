@@ -18,7 +18,7 @@ impl TrustPolicyImpl {
 
 impl TrustPolicyImpl {
     pub async fn create_using_worker(ctx: &Context, address: &Address) -> Result<Self> {
-        let handle = Handle::new(ctx.new_context(Address::random(0)).await?, address.clone());
+        let handle = Handle::new(ctx.new_context(Address::random_local()).await?, address.clone());
 
         Ok(Self::new(handle))
     }
@@ -29,7 +29,7 @@ impl TrustPolicyImpl {
     }
 
     pub async fn create_worker(ctx: &Context, trust_policy: impl TrustPolicy) -> Result<Address> {
-        let address = Address::random(0);
+        let address = Address::random_local();
 
         ctx.start_worker(address.clone(), TrustPolicyWorker::new(trust_policy))
             .await?;

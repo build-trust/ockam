@@ -300,7 +300,7 @@ mod test {
         let node_in_hub = (TCP, cloud_address);
         let remote_info = RemoteForwarder::create(ctx, node_in_hub.clone()).await?;
 
-        let mut child_ctx = ctx.new_context(Address::random(0)).await?;
+        let mut child_ctx = ctx.new_context(Address::random_local()).await?;
 
         child_ctx
             .send(
@@ -334,7 +334,7 @@ mod test {
         let node_in_hub = (TCP, cloud_address);
         let _ = RemoteForwarder::create_static(ctx, node_in_hub.clone(), "alias").await?;
 
-        let mut child_ctx = ctx.new_context(Address::random(0)).await?;
+        let mut child_ctx = ctx.new_context(Address::random_local()).await?;
 
         child_ctx
             .send(

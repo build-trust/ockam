@@ -1,6 +1,6 @@
 use crate::{
     compat::{collections::VecDeque, string::String, vec::Vec},
-    Address, Result, RouteError,
+    Address, Result, RouteError, TransportType,
 };
 use core::fmt::{self, Display};
 use serde::{Deserialize, Serialize};
@@ -17,8 +17,8 @@ impl Route {
     /// # Examples
     ///
     /// ```
-    /// # use ockam_core::Route;
-    /// # pub const TCP: u8 = 1;
+    /// # use ockam_core::{Route, TransportType};
+    /// # pub const TCP: TransportType = TransportType::new(1);
     /// // ["1#alice", "0#bob"]
     /// let route: Route = Route::new()
     ///     .append_t(TCP, "alice")
@@ -36,8 +36,8 @@ impl Route {
     /// # Examples
     ///
     /// ```
-    /// # use ockam_core::{Address, Route};
-    /// # pub const TCP: u8 = 1;
+    /// # use ockam_core::{Address, Route, TransportType};
+    /// # pub const TCP: TransportType = TransportType::new(1);
     /// // ["1#alice", "0#bob"]
     /// let route: Route = vec![
     ///     Address::new(TCP, "alice"),
@@ -295,19 +295,18 @@ impl RouteBuilder<'_> {
     /// # Examples
     ///
     /// ```
-    /// # use ockam_core::{Route, RouteBuilder};
-    /// # pub const TCP: u8 = 1;
+    /// # use ockam_core::{Route, RouteBuilder, TransportType, LOCAL};
+    /// # pub const TCP: TransportType = TransportType::new(1);
     /// let builder: RouteBuilder = Route::new()
     ///     .append_t(TCP, "alice")
-    ///     .append_t(0, "bob");
+    ///     .append_t(LOCAL, "bob");
     ///
     /// // ["1#alice", "0#bob"]
     /// let route: Route = builder.into();
     /// ```
     ///
-    pub fn append_t<A: Into<String>>(mut self, t: u8, addr: A) -> Self {
-        self.inner
-            .push_back(format!("{}#{}", t, addr.into()).into());
+    pub fn append_t<A: Into<String>>(mut self, ty: TransportType, addr: A) -> Self {
+        self.inner.push_back(Address::from((ty, addr.into())));
         self
     }
 

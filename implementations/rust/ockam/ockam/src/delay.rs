@@ -12,7 +12,7 @@ pub(crate) struct DelayedEvent<M: Message> {
 impl<M: Message> DelayedEvent<M> {
     /// Create a new 100ms delayed message event
     pub(crate) async fn new(ctx: &Context, route: Route, msg: M) -> Result<Self> {
-        let child_ctx = ctx.new_context(Address::random(0)).await?;
+        let child_ctx = ctx.new_context(Address::random_local()).await?;
 
         debug!(
             "Creating a delayed event with address '{}'",

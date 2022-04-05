@@ -17,7 +17,7 @@ use core::time::Duration;
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
     AccessControl, Address, AddressSet, AllowAll, AsyncTryClone, LocalMessage, Message, Processor,
-    Result, Route, TransportMessage, Worker,
+    Result, Route, TransportMessage, TransportType, Worker,
 };
 
 /// A default timeout in seconds
@@ -49,7 +49,7 @@ pub struct Context {
 #[ockam_core::async_trait]
 impl AsyncTryClone for Context {
     async fn async_try_clone(&self) -> Result<Self> {
-        self.new_context(Address::random(0)).await
+        self.new_context(Address::random_local()).await
     }
 }
 
@@ -640,7 +640,7 @@ impl Context {
     }
 
     /// Register a router for a specific address type
-    pub async fn register<A: Into<Address>>(&self, type_: u8, addr: A) -> Result<()> {
+    pub async fn register<A: Into<Address>>(&self, type_: TransportType, addr: A) -> Result<()> {
         self.register_impl(type_, addr.into()).await
     }
 
@@ -653,7 +653,7 @@ impl Context {
         Ok(())
     }
 
-    async fn register_impl(&self, type_: u8, addr: Address) -> Result<()> {
+    async fn register_impl(&self, type_: TransportType, addr: Address) -> Result<()> {
         let (tx, mut rx) = channel(1);
         self.sender
             .send(NodeMessage::Router(type_, addr, tx))

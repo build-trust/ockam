@@ -15,7 +15,10 @@ use crate::{
 use core::{ops::Deref, time::Duration};
 use ockam_core::compat::rand::{self, Rng};
 use ockam_core::compat::string::String;
-use ockam_core::{Decodable, RouteBuilder};
+use ockam_core::{Decodable, RouteBuilder, TransportType};
+
+/// Stream controller transport type.
+pub const STREAM: TransportType = TransportType::new(16);
 
 /// Ockam stream protocol controller
 ///
@@ -83,14 +86,16 @@ impl Stream {
     /// By default, the created stream will poll for new messages
     /// every 250 milliseconds.
     pub async fn new(ctx: &Context) -> Result<Self> {
-        ctx.new_context(Address::random(0)).await.map(|ctx| Self {
-            ctx,
-            interval: Duration::from_millis(250),
-            forwarding_address: None,
-            stream_service: "stream".into(),
-            index_service: "stream_index".into(),
-            client_id: None,
-        })
+        ctx.new_context(Address::random(STREAM))
+            .await
+            .map(|ctx| Self {
+                ctx,
+                interval: Duration::from_millis(250),
+                forwarding_address: None,
+                stream_service: "stream".into(),
+                index_service: "stream_index".into(),
+                client_id: None,
+            })
     }
 
     /// Customize the polling interval for the stream consumer
@@ -168,10 +173,10 @@ impl Stream {
         let receiver_name = receiver_name.into();
 
         // Generate two new random addresses
-        let receiver_address = Address::random(0);
-        let sender_address = Address::random(0);
+        let receiver_address = Address::random_local();
+        let sender_address = Address::random_local();
 
-        let receiver_rx = Address::random(0);
+        let receiver_rx = Address::random_local();
 
         // Generate a random client_id if one has not been provided
         let client_id = match self.client_id.clone() {

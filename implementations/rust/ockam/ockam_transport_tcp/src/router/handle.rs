@@ -25,7 +25,7 @@ impl TcpRouterHandle {
 #[async_trait]
 impl AsyncTryClone for TcpRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
-        let child_ctx = self.ctx.new_context(Address::random(0)).await?;
+        let child_ctx = self.ctx.new_context(Address::random_local()).await?;
         Ok(Self::new(child_ctx, self.api_addr.clone()))
     }
 }
@@ -48,7 +48,7 @@ impl TcpRouterHandle {
         );
         let self_addr = pair.tx_addr();
 
-        let mut child_ctx = self.ctx.new_context(Address::random(0)).await?;
+        let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;
         child_ctx
             .send(
                 self.api_addr.clone(),
@@ -71,7 +71,7 @@ impl TcpRouterHandle {
 
     /// Unregister
     pub async fn unregister(&self, self_addr: Address) -> Result<()> {
-        let mut child_ctx = self.ctx.new_context(Address::random(0)).await?;
+        let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;
 
         child_ctx
             .send(
@@ -148,7 +148,7 @@ impl TcpRouterHandle {
 
     /// Establish an outgoing TCP connection on an existing transport
     pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<Address> {
-        let mut child_ctx = self.ctx.new_context(Address::random(0)).await?;
+        let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;
 
         child_ctx
             .send(
@@ -173,7 +173,7 @@ impl TcpRouterHandle {
     }
 
     pub async fn disconnect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
-        let mut child_ctx = self.ctx.new_context(Address::random(0)).await?;
+        let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;
 
         child_ctx
             .send(

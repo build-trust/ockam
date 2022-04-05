@@ -501,7 +501,11 @@ impl CredentialProtocol for Identity {
             .await
             .unwrap()
             .expect("no current identity");
-        let mut ctx = self.handle.ctx().new_context(Address::random(0)).await?;
+        let mut ctx = self
+            .handle
+            .ctx()
+            .new_context(Address::random_local())
+            .await?;
 
         let worker = HolderWorker::new(
             identity,
@@ -511,7 +515,7 @@ impl CredentialProtocol for Identity {
             values,
             ctx.address(),
         );
-        ctx.start_worker(Address::random(0), worker).await?;
+        ctx.start_worker(Address::random_local(), worker).await?;
 
         let res = ctx
             .receive_timeout::<CredentialAcquisitionResultMessage>(120 /* FIXME */)
@@ -535,7 +539,11 @@ impl CredentialProtocol for Identity {
             .expect("no current identity");
         let credential = self.get_credential(&credential).await?;
 
-        let mut ctx = self.handle.ctx().new_context(Address::random(0)).await?;
+        let mut ctx = self
+            .handle
+            .ctx()
+            .new_context(Address::random_local())
+            .await?;
         let worker = PresenterWorker::new(
             identity,
             verifier_route,
@@ -543,7 +551,7 @@ impl CredentialProtocol for Identity {
             reveal_attributes,
             ctx.address(),
         );
-        ctx.start_worker(Address::random(0), worker).await?;
+        ctx.start_worker(Address::random_local(), worker).await?;
 
         let _ = ctx
             .receive_timeout::<PresentationFinishedMessage>(120 /* FIXME */)
@@ -569,7 +577,11 @@ impl CredentialProtocol for Identity {
         let issuer = identity.get_contact(issuer_id).await?.unwrap();
         let pubkey = issuer.get_signing_public_key()?;
 
-        let mut ctx = self.handle.ctx().new_context(Address::random(0)).await?;
+        let mut ctx = self
+            .handle
+            .ctx()
+            .new_context(Address::random_local())
+            .await?;
         let worker = VerifierWorker::new(
             identity,
             pubkey.as_ref().try_into().unwrap(), // FIXME

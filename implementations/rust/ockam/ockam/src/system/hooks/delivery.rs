@@ -60,7 +60,7 @@ impl SystemHandler<Context, OckamMessage> for SenderConfirm {
             // For a message with no type we register a delayed event
             // and forward it to the next step in the system
             None => {
-                let ack_id = Address::random(0);
+                let ack_id = Address::random_local();
                 let inner_msg = msg.body();
                 let outer_msg = OckamMessage::wrap(inner_msg)?
                     .scope_data(ack_id.encode()?)

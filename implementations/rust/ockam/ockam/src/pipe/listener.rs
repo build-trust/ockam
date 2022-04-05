@@ -27,8 +27,8 @@ impl Worker for PipeListener {
                 info!("Creating new PipeReceiver for incoming handshake");
 
                 // Create a new pipe receiver with a modified behavioral stack
-                let recv_addr = Address::random(0);
-                let int_addr = Address::random(0);
+                let recv_addr = Address::random_local();
+                let int_addr = Address::random_local();
                 let hooks = self.hooks.clone().attach(HandshakeInit::default());
                 PipeReceiver::create(ctx, recv_addr.clone(), int_addr.clone(), hooks).await?;
 

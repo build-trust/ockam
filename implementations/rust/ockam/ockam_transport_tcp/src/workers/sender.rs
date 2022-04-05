@@ -93,8 +93,8 @@ impl TcpSendWorker {
     ) -> Result<WorkerPair> {
         trace!("Creating new TCP worker pair");
 
-        let tx_addr = Address::random(0);
-        let internal_addr = Address::random(0);
+        let tx_addr = Address::random_local();
+        let internal_addr = Address::random_local();
         let sender = TcpSendWorker::new(
             router_handle,
             stream,
@@ -177,7 +177,7 @@ impl Worker for TcpSendWorker {
 
         let rx = self.rx.take().ok_or(TransportError::GenericIo)?;
 
-        let rx_addr = Address::random(0);
+        let rx_addr = Address::random_local();
         let receiver = TcpRecvProcessor::new(
             rx,
             format!("{}#{}", crate::TCP, self.peer).into(),

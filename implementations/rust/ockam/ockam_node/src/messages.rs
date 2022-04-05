@@ -2,7 +2,7 @@ use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{error::Error, relay::RelayMessage, router::SenderPair};
 use core::fmt::Formatter;
 use ockam_core::compat::{string::String, vec::Vec};
-use ockam_core::{Address, AddressSet};
+use ockam_core::{Address, AddressSet, TransportType};
 
 /// Messages sent from the Node to the Executor
 #[derive(Debug)]
@@ -37,7 +37,7 @@ pub enum NodeMessage {
     /// Request the sender for a worker address
     SenderReq(Address, Sender<NodeReplyResult>),
     /// Register a new router for a route id type
-    Router(u8, Address, Sender<NodeReplyResult>),
+    Router(TransportType, Address, Sender<NodeReplyResult>),
     /// Message the router to set an address as "ready"
     SetReady(Address),
     /// Check whether an address has been marked as "ready"

@@ -28,7 +28,7 @@ impl WebSocketListenProcessor {
             inner,
             router_handle,
         };
-        let waddr = Address::random(0);
+        let waddr = Address::random_local();
         ctx.start_processor(waddr, processor).await?;
         Ok(())
     }

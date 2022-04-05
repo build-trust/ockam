@@ -18,7 +18,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
     };
 
     let _sender = {
-        let mut ctx = ctx.new_context(Address::random(0)).await?;
+        let mut ctx = ctx.new_context(Address::random_local()).await?;
         let msg: String = rand::thread_rng()
             .sample_iter(&rand::distributions::Alphanumeric)
             .take(256)

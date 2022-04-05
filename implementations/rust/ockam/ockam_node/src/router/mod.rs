@@ -17,7 +17,7 @@ use crate::{
     NodeMessage, NodeReply, ShutdownType,
 };
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::{Address, Result};
+use ockam_core::{Address, Result, TransportType};
 
 /// A pair of senders to a worker relay
 #[derive(Debug)]
@@ -41,21 +41,21 @@ pub struct Router {
     /// Internal address state
     map: InternalMap,
     /// Externally registered router components
-    external: BTreeMap<u8, Address>,
+    external: BTreeMap<TransportType, Address>,
     /// Receiver for messages from node
     receiver: Receiver<NodeMessage>,
 }
 
 enum RouteType {
     Internal(Address),
-    External(u8),
+    External(TransportType),
 }
 
 fn determine_type(next: &Address) -> RouteType {
-    if next.tt == 0 {
+    if next.transport_type().is_local() {
         RouteType::Internal(next.clone())
     } else {
-        RouteType::External(next.tt)
+        RouteType::External(next.transport_type())
     }
 }
 

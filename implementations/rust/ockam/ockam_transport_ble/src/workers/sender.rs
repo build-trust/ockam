@@ -59,7 +59,7 @@ where
     ) -> Result<WorkerPair> {
         debug!("Creating new BLE worker pair");
 
-        let tx_addr = Address::random(0);
+        let tx_addr = Address::random_local();
         let sender = BleSendWorker::new(stream, peer.clone());
 
         debug!("start send worker({:?})", tx_addr.clone());
@@ -87,7 +87,7 @@ where
         debug!("initialize for peer: {:?}", self.peer);
 
         if let Some(rx_stream) = self.rx_stream.take() {
-            let rx_addr = Address::random(0);
+            let rx_addr = Address::random_local();
             let receiver =
                 BleRecvProcessor::new(rx_stream, format!("{}#{}", crate::BLE, self.peer).into());
             ctx.start_processor(rx_addr.clone(), receiver).await?;

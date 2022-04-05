@@ -43,7 +43,7 @@ impl WorkerPair {
     {
         trace!("Creating new WS worker pair");
 
-        let internal_addr = Address::random(0);
+        let internal_addr = Address::random_local();
         let (ws_sink, ws_stream) = stream.split();
         let sender = WebSocketSendWorker::new(
             ws_sink,
@@ -52,11 +52,11 @@ impl WorkerPair {
             DelayedEvent::create(ctx, internal_addr.clone(), vec![]).await?,
         );
 
-        let tx_addr = Address::random(0);
+        let tx_addr = Address::random_local();
         ctx.start_worker(vec![tx_addr.clone(), internal_addr], sender)
             .await?;
 
-        let rx_addr = Address::random(0);
+        let rx_addr = Address::random_local();
         let receiver = WebSocketRecvProcessor::new(ws_stream, peer);
         ctx.start_processor(rx_addr.clone(), receiver).await?;
 

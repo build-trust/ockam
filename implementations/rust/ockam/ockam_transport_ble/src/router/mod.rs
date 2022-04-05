@@ -41,7 +41,7 @@ pub struct BleRouter {
 
 impl BleRouter {
     async fn create_self_handle(&self, ctx: &Context) -> Result<BleRouterHandle> {
-        let handle_ctx = ctx.new_context(Address::random(0)).await?;
+        let handle_ctx = ctx.new_context(Address::random_local()).await?;
         let handle = BleRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }
@@ -135,11 +135,11 @@ impl BleRouter {
     /// To also handle incoming connections, use
     /// [`BleRouter::bind`](BleRouter::bind)
     pub(crate) async fn register(ctx: &Context) -> Result<BleRouterHandle> {
-        let main_addr = Address::random(0);
-        let api_addr = Address::random(0);
+        let main_addr = Address::random_local();
+        let api_addr = Address::random_local();
         debug!("Registering new BleRouter with address {}", &main_addr);
 
-        let child_ctx = ctx.new_context(Address::random(0)).await?;
+        let child_ctx = ctx.new_context(Address::random_local()).await?;
         let router = Self {
             _ctx: child_ctx,
             main_addr: main_addr.clone(),

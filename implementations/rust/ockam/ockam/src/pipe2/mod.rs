@@ -58,7 +58,7 @@ enum Mode {
 /// ```rust
 /// # use ockam::{Context, Result, Address, pipe2::PipeBuilder};
 /// # async fn pipes_example_no_run(ctx: &mut Context) -> Result<()> {
-/// # let (tcp_connection, my_pipe) = (Address::random(0), Address::random(0));
+/// # let (tcp_connection, my_pipe) = (Address::random_local(), Address::random_local());
 /// let result = PipeBuilder::fixed()
 ///     .connect(vec![tcp_connection, my_pipe])
 ///     .build(ctx)
@@ -78,7 +78,7 @@ enum Mode {
 /// ```rust
 /// # use ockam::{Context, Result, Address, pipe2::PipeBuilder};
 /// # async fn pipes_example_no_run(ctx: &mut Context) -> Result<()> {
-/// # let my_pipe = Address::random(0);
+/// # let my_pipe = Address::random_local();
 /// let receive = PipeBuilder::fixed()
 ///     .receive(my_pipe)
 ///     .build(ctx)
@@ -154,8 +154,8 @@ impl PipeBuilder {
             hooks: BTreeSet::new(),
             peer: None,
             recv: None,
-            tx_fin: Address::random(0),
-            rx_fin: Address::random(0),
+            tx_fin: Address::random_local(),
+            rx_fin: Address::random_local(),
             mode,
         }
     }
@@ -215,8 +215,8 @@ impl PipeBuilder {
         let mut send_hooks = SystemBuilder::new();
         let mut recv_hooks = SystemBuilder::new();
 
-        let (ord_tx_addr, ord_rx_addr) = (Address::random(0), Address::random(0));
-        let (ack_tx_addr, ack_rx_addr) = (Address::random(0), Address::random(0));
+        let (ord_tx_addr, ord_rx_addr) = (Address::random_local(), Address::random_local());
+        let (ack_tx_addr, ack_rx_addr) = (Address::random_local(), Address::random_local());
 
         // Setup ordering enforcement hooks
         if self.hooks.contains(&PipeHook::Ordering) {
@@ -287,7 +287,7 @@ impl PipeBuilder {
 
         // Create a sender
         if let Some(peer) = self.peer {
-            let addr = Address::random(0);
+            let addr = Address::random_local();
             tx_addr = Some(addr.clone());
             let mut addr_set = vec![addr.clone(), self.tx_fin.clone()];
             addr_set.append(&mut tx_sys.addresses());
@@ -327,7 +327,7 @@ impl PipeBuilder {
 
         if let Some(peer) = self.peer {
             let tx_sys = tx_sys.finalise(ctx).await?;
-            let (addr, init_addr) = (Address::random(0), Address::random(0));
+            let (addr, init_addr) = (Address::random_local(), Address::random_local());
             tx_addr = Some(addr.clone());
 
             let mut addr_set = vec![addr.clone(), init_addr.clone(), self.tx_fin.clone()];

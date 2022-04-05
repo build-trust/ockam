@@ -49,11 +49,13 @@ impl ChannelBuilder {
     /// ```
     pub async fn new(ctx: &Context) -> Result<Self> {
         debug!("Creating new ChannelBuilder context...");
-        ctx.new_context(Address::random(0)).await.map(|ctx| Self {
-            ctx,
-            tx_hooks: PipeBehavior::empty(),
-            rx_hooks: PipeBehavior::empty(),
-        })
+        ctx.new_context(Address::random_local())
+            .await
+            .map(|ctx| Self {
+                ctx,
+                tx_hooks: PipeBehavior::empty(),
+                rx_hooks: PipeBehavior::empty(),
+            })
     }
 
     /// Attach a new behavior to be used by the underlying pipe sender
@@ -76,7 +78,7 @@ impl ChannelBuilder {
 
     /// Connect to a channel listener
     pub async fn connect<R: Into<Route>>(&self, listener: R) -> Result<ChannelHandle> {
-        let tx = Address::random(0);
+        let tx = Address::random_local();
         ChannelWorker::stage1(
             &self.ctx,
             tx.clone(),

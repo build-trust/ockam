@@ -30,7 +30,7 @@ extern crate tracing;
 use std::net::SocketAddr;
 
 pub use error::WebSocketError;
-use ockam_core::Result;
+use ockam_core::{Result, TransportType};
 use ockam_transport_core::TransportError;
 pub use transport::*;
 
@@ -42,7 +42,7 @@ mod transport;
 mod workers;
 
 /// WebSocket address type constant
-pub const WS: u8 = 3;
+pub const WS: TransportType = TransportType::new(3);
 
 pub(crate) const CLUSTER_NAME: &str = "_internals.transport.ws";
 

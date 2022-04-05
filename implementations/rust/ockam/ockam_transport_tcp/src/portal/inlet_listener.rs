@@ -18,7 +18,7 @@ impl TcpInletListenProcessor {
         outlet_listener_route: Route,
         addr: SocketAddr,
     ) -> Result<Address> {
-        let waddr = Address::random(0);
+        let waddr = Address::random_local();
 
         debug!("Binding TcpPortalListenerWorker to {}", addr);
         let inner = TcpListener::bind(addr)

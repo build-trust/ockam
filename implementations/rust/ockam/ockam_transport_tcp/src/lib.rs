@@ -38,11 +38,11 @@ mod transport;
 pub use transport::*;
 
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::Result;
+use ockam_core::{Result, TransportType};
 use ockam_transport_core::TransportError;
 
 /// TCP address type constant
-pub const TCP: u8 = 1;
+pub const TCP: TransportType = TransportType::new(1);
 
 pub(crate) const CLUSTER_NAME: &str = "_internals.transport.tcp";
 

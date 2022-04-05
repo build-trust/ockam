@@ -31,7 +31,7 @@ pub(crate) struct TcpRouter {
 
 impl TcpRouter {
     async fn create_self_handle(&self) -> Result<TcpRouterHandle> {
-        let handle_ctx = self.ctx.new_context(Address::random(0)).await?;
+        let handle_ctx = self.ctx.new_context(Address::random_local()).await?;
         let handle = TcpRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }
@@ -206,11 +206,11 @@ impl TcpRouter {
     /// To also handle incoming connections, use
     /// [`TcpRouter::bind`](TcpRouter::bind)
     pub async fn register(ctx: &Context) -> Result<TcpRouterHandle> {
-        let main_addr = Address::random(0);
-        let api_addr = Address::random(0);
+        let main_addr = Address::random_local();
+        let api_addr = Address::random_local();
         debug!("Initialising new TcpRouter with address {}", &main_addr);
 
-        let child_ctx = ctx.new_context(Address::random(0)).await?;
+        let child_ctx = ctx.new_context(Address::random_local()).await?;
 
         let router = Self {
             ctx: child_ctx,

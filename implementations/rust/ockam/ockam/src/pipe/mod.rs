@@ -28,12 +28,12 @@ const CLUSTER_NAME: &str = "_internal.pipe";
 ///
 /// Returns the PipeSender's public address.
 pub async fn connect_static<R: Into<Route>>(ctx: &mut Context, recv: R) -> Result<Address> {
-    let addr = Address::random(0);
+    let addr = Address::random_local();
     PipeSender::create(
         ctx,
         recv.into(),
         addr.clone(),
-        Address::random(0),
+        Address::random_local(),
         PipeBehavior::empty(),
     )
     .await
@@ -52,12 +52,12 @@ where
     R: Into<Route>,
     P: Into<PipeBehavior>,
 {
-    let addr = Address::random(0);
+    let addr = Address::random_local();
     PipeSender::create(
         ctx,
         recv.into(),
         addr.clone(),
-        Address::random(0),
+        Address::random_local(),
         hooks.into(),
     )
     .await
@@ -66,8 +66,8 @@ where
 
 /// Connect to the pipe receive listener and then to a pipe receiver
 pub async fn connect_dynamic(ctx: &mut Context, listener: Route) -> Result<Address> {
-    let addr = Address::random(0);
-    let int_addr = Address::random(0);
+    let addr = Address::random_local();
+    let int_addr = Address::random_local();
 
     // Create an "uninitialised" PipeSender
     PipeSender::uninitialized(
@@ -85,7 +85,13 @@ pub async fn connect_dynamic(ctx: &mut Context, listener: Route) -> Result<Addre
 
 /// Create a receiver with a static address
 pub async fn receiver<I: Into<Address>>(ctx: &mut Context, addr: I) -> Result<()> {
-    PipeReceiver::create(ctx, addr.into(), Address::random(0), PipeBehavior::empty()).await
+    PipeReceiver::create(
+        ctx,
+        addr.into(),
+        Address::random_local(),
+        PipeBehavior::empty(),
+    )
+    .await
 }
 
 /// Create a new receiver with an explicit behavior manager
@@ -94,7 +100,7 @@ where
     A: Into<Address>,
     P: Into<PipeBehavior>,
 {
-    PipeReceiver::create(ctx, addr.into(), Address::random(0), b.into()).await
+    PipeReceiver::create(ctx, addr.into(), Address::random_local(), b.into()).await
 }
 
 /// Create a pipe receive listener with custom behavior
@@ -105,7 +111,7 @@ pub async fn listen_with_behavior<P: Into<PipeBehavior>>(
     ctx: &mut Context,
     hooks: P,
 ) -> Result<Address> {
-    let addr = Address::random(0);
+    let addr = Address::random_local();
     PipeListener::create_with_behavior(ctx, addr.clone(), hooks.into())
         .await
         .map(|_| addr)
@@ -116,7 +122,7 @@ pub async fn listen_with_behavior<P: Into<PipeBehavior>>(
 /// This special worker will create pipe receivers for any incoming
 /// connection.  The worker can simply be stopped via its address.
 pub async fn listen(ctx: &mut Context) -> Result<Address> {
-    let addr = Address::random(0);
+    let addr = Address::random_local();
     PipeListener::create(ctx, addr.clone()).await.map(|_| addr)
 }
 

@@ -24,7 +24,7 @@ pub(crate) struct BleRouterHandle {
 #[async_trait]
 impl AsyncTryClone for BleRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
-        let child_ctx = self.ctx.new_context(Address::random(0)).await?;
+        let child_ctx = self.ctx.new_context(Address::random_local()).await?;
         Ok(Self::new(child_ctx, self.api_addr.clone()))
     }
 }

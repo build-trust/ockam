@@ -43,7 +43,7 @@ pub struct WebSocketRouter {
 
 impl WebSocketRouter {
     async fn create_self_handle(&self, ctx: &Context) -> Result<WebSocketRouterHandle> {
-        let handle_ctx = ctx.new_context(Address::random(0)).await?;
+        let handle_ctx = ctx.new_context(Address::random_local()).await?;
         let handle = WebSocketRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }
@@ -139,14 +139,14 @@ impl WebSocketRouter {
     /// To also handle incoming connections, use
     /// [`WebSocketRouter::bind`](WebSocketRouter::bind)
     pub(crate) async fn register(ctx: &Context) -> Result<WebSocketRouterHandle> {
-        let main_addr = Address::random(0);
-        let api_addr = Address::random(0);
+        let main_addr = Address::random_local();
+        let api_addr = Address::random_local();
         debug!(
             "Initialising new WebSocketRouter with address {}",
             &main_addr
         );
 
-        let child_ctx = ctx.new_context(Address::random(0)).await?;
+        let child_ctx = ctx.new_context(Address::random_local()).await?;
 
         let router = Self {
             ctx: child_ctx,

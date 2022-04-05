@@ -32,7 +32,7 @@ where
             inner: Some(ble_server),
             router_handle,
         };
-        let waddr = Address::random(0);
+        let waddr = Address::random_local();
 
         debug!(
             "BleListenProcessor::start Starting processor with address: {:?}",

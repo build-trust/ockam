@@ -197,7 +197,7 @@ async fn main(ctx: Context) -> Result<()> {
     let available_inlet_ports =
         (config.available_inlet_port_start..config.available_inlet_port_end + 1).collect();
 
-    let internal_address = Address::random(0);
+    let internal_address = Address::random_local();
     let fabric_worker = TcpInletService::new(
         tcp.clone(),
         internal_address.clone(),

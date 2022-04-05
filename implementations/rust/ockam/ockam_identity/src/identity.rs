@@ -18,7 +18,7 @@ pub struct Identity<V: IdentityVault> {
 
 impl<V: IdentityVault> Identity<V> {
     pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
-        let child_ctx = ctx.new_context(Address::random(0)).await?;
+        let child_ctx = ctx.new_context(Address::random_local()).await?;
         let state = IdentityState::create(vault.async_try_clone().await?).await?;
         Ok(Self {
             ctx: child_ctx,

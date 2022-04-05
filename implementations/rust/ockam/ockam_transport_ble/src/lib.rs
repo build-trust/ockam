@@ -40,11 +40,13 @@ mod transport;
 mod types;
 mod workers;
 
+use ockam_core::TransportType;
+
 pub use driver::{BleClient, BleServer};
 pub use transport::BleTransport;
 pub use types::*;
 
 /// BLE address type constant
-pub const BLE: u8 = 4;
+pub const BLE: TransportType = TransportType::new(4);
 
 pub(crate) const CLUSTER_NAME: &str = "_internals.transport.ble";

@@ -79,9 +79,9 @@ impl TcpPortalWorker {
         stream: Option<TcpStream>,
         type_name: TypeName,
     ) -> Result<Address> {
-        let internal_addr = Address::random(0);
-        let remote_addr = Address::random(0);
-        let receiver_address = Address::random(0);
+        let internal_addr = Address::random_local();
+        let remote_addr = Address::random_local();
+        let receiver_address = Address::random_local();
 
         info!(
             "Creating new {:?} at internal: {}, remote: {}",
