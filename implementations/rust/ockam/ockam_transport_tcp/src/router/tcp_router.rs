@@ -25,9 +25,6 @@ pub(crate) struct TcpRouter {
 
 impl TcpRouter {
     /// Create and register a new TCP router with the node context
-    ///
-    /// To also handle incoming connections, use
-    /// [`TcpRouter::bind`](TcpRouter::bind)
     pub async fn register(ctx: &Context) -> Result<TcpRouterHandle> {
         let main_addr = Address::random_local();
         let api_addr = Address::random_local();
