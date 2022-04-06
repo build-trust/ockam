@@ -77,7 +77,7 @@ impl WorkerPair {
     ) -> Result<WorkerPair> {
         trace!("Creating new WS worker pair");
 
-        let internal_addr = Address::random(0);
+        let internal_addr = Address::random_local();
         let sender = WebSocketSendWorker::<TcpServerStream>::new(
             stream,
             peer,
@@ -85,7 +85,7 @@ impl WorkerPair {
             DelayedEvent::create(ctx, internal_addr.clone(), vec![]).await?,
         );
 
-        let tx_addr = Address::random(0);
+        let tx_addr = Address::random_local();
         ctx.start_worker(vec![tx_addr.clone(), internal_addr], sender)
             .await?;
 
@@ -121,7 +121,7 @@ where
 {
     async fn handle_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         if let Some(ws_stream) = self.ws_stream.take() {
-            let rx_addr = Address::random(0);
+            let rx_addr = Address::random_local();
             let receiver = WebSocketRecvProcessor::new(ws_stream, self.peer);
             ctx.start_processor(rx_addr.clone(), receiver).await?;
         } else {
