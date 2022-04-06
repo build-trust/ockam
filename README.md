@@ -78,7 +78,9 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
     ```rust
     // examples/hello.rs
 
-    use ockam::{route, Context, Identity, Result, TrustEveryonePolicy, Vault};
+    use ockam::identity::{Identity, TrustEveryonePolicy};
+    use ockam::vault::Vault;
+    use ockam::{route, Context, Result};
 
     #[ockam::node]
     async fn main(mut ctx: Context) -> Result<()> {
