@@ -9,6 +9,10 @@ fi
 export GUIDE_DOCS="$OCKAM_HOME/documentation/guides/rust"
 export GUIDE_EXAMPLES="$OCKAM_HOME/examples/rust/get_started/examples"
 
+# Hello Ockam ReadMe
+export HELLO_DOC="$OCKAM_HOME/README.md"
+export HELLO_EXAMPLE="$OCKAM_HOME/examples/rust/get_started/examples"
+
 # Kafka
 export KAFKA_DOCS="$OCKAM_HOME/documentation/use-cases/end-to-end-encryption-through-kafka"
 export KAFKA_EXAMPLES="$OCKAM_HOME/examples/rust/ockam_kafka/examples"
@@ -34,18 +38,27 @@ ERR=0
 
 function check_directory {
   doc_dir=$1
-  export EXAMPLES_DIR=$2
+  dir=$2
   for page in $(find $doc_dir -name README.md); do
-    if [[ ! -z $($TOOLS_DIR/verify_md.sh $page) ]]; then
-      echo "$page has outdated examples differing from $EXAMPLES_DIR"
-      ERR=1
-    fi
+    check_readme $page $dir
   done
+}
+
+function check_readme {
+  page=$1
+  export EXAMPLES_DIR=$2
+
+  if [[ ! -z $($TOOLS_DIR/verify_md.sh $page) ]]; then
+    echo "$page has outdated examples differing from $EXAMPLES_DIR"
+    ERR=1
+  fi
 }
 
 check_directory $GUIDE_DOCS $GUIDE_EXAMPLES
 check_directory $KAFKA_DOCS $KAFKA_EXAMPLES
 check_directory $E2E_DOCS $E2E_EXAMPLES
 check_directory $INLET_DOCS $INLET_EXAMPLES
+
+check_readme $HELLO_DOC $HELLO_EXAMPLE
 
 exit $ERR
