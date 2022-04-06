@@ -191,6 +191,7 @@ jobs:
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: rustup default nightly
+      - run: rustup update nightly
       - run: RUSTFLAGS='-Dwarnings' cargo check
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
@@ -207,6 +208,7 @@ jobs:
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: rustup default nightly
+      - run: rustup update nightly
       - run: cd implementations/rust && ../../gradlew build
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
@@ -223,5 +225,6 @@ jobs:
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: rustup default nightly
+      - run: rustup update nightly
       - run: cd implementations/rust && ../../gradlew test
       - uses: ./.github/actions/cargo_target_dir_pre_cache
