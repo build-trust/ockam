@@ -93,10 +93,6 @@ alloc = [
     "serde/alloc",
 ]
 
-# As in `ockam_node`. TODO: This absolutely should not be a feature, and should
-# instead just be configured when starting the node.
-no_init_tracing = ["ockam_node/no_init_tracing"]
-
 [[test]]
 name = "tests"
 path = "tests/main.rs"

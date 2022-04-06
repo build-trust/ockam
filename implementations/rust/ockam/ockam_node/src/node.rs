@@ -34,7 +34,7 @@ pub fn start_node() -> (Context, Executor) {
 /// should be improved, though).
 fn setup_tracing() {
     #[cfg(feature = "std")]
-    if !cfg!(feature = "no_init_tracing") {
+    {
         use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
         static ONCE: std::sync::Once = std::sync::Once::new();
         ONCE.call_once(|| {
@@ -43,11 +43,8 @@ fn setup_tracing() {
                     .add_directive(LevelFilter::INFO.into())
                     .add_directive("ockam_node=info".parse().unwrap())
             });
-            if fmt().with_env_filter(filter).try_init().is_err() {
-                debug!("Failed to initialise tracing_subscriber. Is an instance already running?");
-            }
+            // Ignore failure, since we may init externally.
+            let _ = fmt().with_env_filter(filter).try_init();
         });
-    } else {
-        info!("Logging auto-init disabled, assuming it's initialized separately")
     }
 }

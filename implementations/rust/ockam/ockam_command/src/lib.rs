@@ -184,21 +184,37 @@ fn message(verbose: bool, e: impl std::fmt::Display + std::fmt::Debug) -> String
     }
 }
 
+// Not really ideal, but fine for now.
 fn init_logging(verbose: u8) {
-    let filter = EnvFilter::try_from_env("OCKAM_LOG")
-        .unwrap_or_else(|_| {
-            if verbose == 0 {
-                EnvFilter::default().add_directive("ockam_node=warn".parse().unwrap())
-            } else {
-                EnvFilter::default()
-            }
-        })
-        .add_directive(match verbose + 1 {
-            0 => LevelFilter::WARN.into(),
-            1 => LevelFilter::INFO.into(),
-            2 => LevelFilter::DEBUG.into(),
-            _ => LevelFilter::TRACE.into(),
-        });
+    let ockam_crates = [
+        "ockam",
+        "ockam_node",
+        "ockam_core",
+        "ockam_command",
+        "ockam_identity",
+        "ockam_channel",
+        "ockam_transport_tcp",
+        "ockam_vault",
+        "ockam_vault_sync_core",
+    ];
+    let builder = EnvFilter::builder();
+    let filter = match std::env::var("OCKAM_LOG") {
+        Ok(s) if !s.is_empty() => builder.with_env_var("OCKAM_LOG").from_env_lossy(),
+        _ => match verbose {
+            0 => builder
+                .with_default_directive(LevelFilter::WARN.into())
+                .parse_lossy(ockam_crates.map(|c| format!("{c}=info")).join(",")),
+            1 => builder
+                .with_default_directive(LevelFilter::INFO.into())
+                .parse_lossy(""),
+            2 => builder
+                .with_default_directive(LevelFilter::DEBUG.into())
+                .parse_lossy(""),
+            _ => builder
+                .with_default_directive(LevelFilter::TRACE.into())
+                .parse_lossy(""),
+        },
+    };
     if fmt().with_env_filter(filter).try_init().is_err() {
         tracing::warn!("Failed to initialise logging.");
     }

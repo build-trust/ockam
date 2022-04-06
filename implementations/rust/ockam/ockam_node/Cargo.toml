@@ -29,7 +29,7 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "tokio", "tracing-subscriber/fmt", "tracing-subscriber/env-filter", "alloc", "futures/std"]
+std = ["ockam_core/std", "tokio", "tracing-subscriber", "alloc", "futures/std"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
@@ -37,11 +37,6 @@ no_std = ["ockam_core/no_std", "heapless"]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["ockam_core/alloc", "ockam_executor/alloc", "futures/alloc"]
-
-# Hacky feature to prevent auto-initializing tracing-subscriber. TODO: This
-# absolutely should not be a feature, and should instead just be configured when
-# starting the node.
-no_init_tracing = []
 
 # Feature: "dump_internals" when set, will dump the internal state of
 # workers at startup via the trace! macro.
