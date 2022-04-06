@@ -32,7 +32,7 @@ use ockam_node::Context;
 /// The same `TcpTransport` can also bind to multiple ports.
 ///
 /// ```rust
-/// # use ockam_transport_tcp::TcpTransport;
+/// use ockam_transport_tcp::TcpTransport;
 /// # use ockam_node::Context;
 /// # use ockam_core::Result;
 /// # async fn test(ctx: Context) -> Result<()> {
