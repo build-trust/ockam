@@ -1,7 +1,11 @@
-#![cfg_attr(all(feature = "alloc", feature = "cortexm"), feature(alloc_error_handler))]
+#![cfg_attr(
+    all(feature = "alloc", feature = "cortexm"),
+    feature(alloc_error_handler)
+)]
 #![cfg_attr(all(not(feature = "std"), feature = "cortexm"), no_std)]
 #![cfg_attr(all(not(feature = "std"), feature = "cortexm"), no_main)]
 
+use tracing::{error, info};
 
 // - bare metal entrypoint ----------------------------------------------------
 
@@ -10,12 +14,6 @@ mod allocator;
 
 #[cfg(feature = "cortexm")]
 use panic_semihosting as _;
-
-#[cfg(feature = "cortexm")]
-use cortex_m_semihosting::debug;
-
-#[cfg(feature = "cortexm")]
-use ockam::println;
 
 #[cfg(feature = "atsame54")]
 use atsame54_xpro as _;
@@ -26,14 +24,34 @@ use stm32f4xx_hal as _;
 #[cfg(feature = "cortexm")]
 #[cortex_m_rt::entry]
 fn entry() -> ! {
+    // initialize allocator
     #[cfg(feature = "alloc")]
     allocator::init();
 
-    main().unwrap();
+    // register tracing subscriber
+    #[cfg(feature = "cortexm")]
+    {
+        use hello_ockam_no_std::tracing_subscriber;
+        tracing_subscriber::register();
+    }
 
-    loop { }
+    // execute main program entry point
+    match main() {
+        Ok(_) => (),
+        Err(e) => {
+            error!("Error executing main program entry point: {:?}", e);
+        }
+    }
+
+    // exit qemu
+    #[cfg(feature = "cortexm")]
+    {
+        use cortex_m_semihosting::debug;
+        debug::exit(debug::EXIT_SUCCESS);
+    }
+
+    loop {}
 }
-
 
 // - ockam::node entrypoint ---------------------------------------------------
 
@@ -41,16 +59,9 @@ use ockam::{Context, Result};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-
     // Stop the node as soon as it starts.
-    println!("Stop the node as soon as it starts.");
+    info!("Stop the node as soon as it starts.");
     let result = ctx.stop().await;
-
-    // exit qemu
-    #[cfg(feature = "cortexm")]
-    {
-        debug::exit(debug::EXIT_SUCCESS);
-    }
 
     result
 }
