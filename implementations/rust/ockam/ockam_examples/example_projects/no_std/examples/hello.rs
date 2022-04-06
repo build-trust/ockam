@@ -5,6 +5,8 @@
 #![cfg_attr(all(not(feature = "std"), feature = "cortexm"), no_std)]
 #![cfg_attr(all(not(feature = "std"), feature = "cortexm"), no_main)]
 
+use tracing::{error, info};
+
 // - bare metal entrypoint ----------------------------------------------------
 
 #[cfg(all(feature = "alloc", feature = "cortexm"))]
@@ -14,13 +16,7 @@ mod allocator;
 use panic_semihosting as _;
 
 #[cfg(feature = "cortexm")]
-use cortex_m_semihosting::debug;
-
-#[cfg(feature = "cortexm")]
-use ockam::{
-    compat::string::{String, ToString},
-    println,
-};
+use ockam::compat::string::{String, ToString};
 
 #[cfg(feature = "atsame54")]
 use atsame54_xpro as _;
@@ -31,25 +27,53 @@ use stm32f4xx_hal as _;
 #[cfg(feature = "cortexm")]
 #[cortex_m_rt::entry]
 fn entry() -> ! {
+    // initialize allocator
     #[cfg(feature = "alloc")]
-    allocator::init();
+    {
+        allocator::init();
+    }
 
-    main().unwrap();
+    // register tracing subscriber
+    #[cfg(feature = "cortexm")]
+    {
+        use hello_ockam_no_std::tracing_subscriber;
+        tracing_subscriber::register();
+    }
+
+    // execute main program entry point
+    match main() {
+        Ok(_) => (),
+        Err(e) => {
+            error!("Error executing main program entry point: {:?}", e);
+        }
+    }
+
+    // exit qemu
+    #[cfg(feature = "cortexm")]
+    {
+        use cortex_m_semihosting::debug;
+        debug::exit(debug::EXIT_SUCCESS);
+    }
 
     loop {}
 }
 
 // - ockam::node entrypoint ---------------------------------------------------
 
-use ockam::{route, Context, Identity, Result, TrustEveryonePolicy, Vault};
+use ockam::{
+    identity::{Identity, TrustEveryonePolicy},
+    route,
+    vault::Vault,
+    Context, Result,
+};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Alice and Bob.
-    let vault = Vault::create(&ctx).await?;
+    let vault = Vault::create();
 
     // Create an Identity to represent Bob.
-    let mut bob = Identity::create(&ctx, &vault).await?;
+    let bob = Identity::create(&ctx, &vault).await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
@@ -57,7 +81,7 @@ async fn main(mut ctx: Context) -> Result<()> {
         .await?;
 
     // Create an Identity to represent Alice.
-    let mut alice = Identity::create(&ctx, &vault).await?;
+    let alice = Identity::create(&ctx, &vault).await?;
 
     // As Alice, connect to Bob's secure channel listener and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
@@ -75,16 +99,10 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Wait to receive a message for the "app" worker and print it.
     let message = ctx.receive::<String>().await?;
-    println!("App Received: {}", message); // should print "Hello Ockam!"
+    info!("App Received: {}", message); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
     let result = ctx.stop().await;
-
-    // exit qemu
-    #[cfg(feature = "cortexm")]
-    {
-        debug::exit(debug::EXIT_SUCCESS);
-    }
 
     result
 }

@@ -1,6 +1,5 @@
-use core::alloc::Layout;
 use alloc_cortex_m::CortexMHeap;
-
+use core::alloc::Layout;
 
 // - heap ---------------------------------------------------------------------
 
@@ -9,15 +8,11 @@ const HEAP_SIZE: usize = 1024 * 1536; // in bytes
 #[global_allocator]
 static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
 
-
 // - initialization -----------------------------------------------------------
 
 pub fn init() {
-    unsafe {
-        ALLOCATOR.init(cortex_m_rt::heap_start() as usize, HEAP_SIZE)
-    }
+    unsafe { ALLOCATOR.init(cortex_m_rt::heap_start() as usize, HEAP_SIZE) }
 }
-
 
 // - error handler ------------------------------------------------------------
 
