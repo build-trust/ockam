@@ -227,4 +227,6 @@ jobs:
       - run: rustup default nightly
       - run: rustup update nightly
       - run: cd implementations/rust && ../../gradlew test
+        env:
+          NIGHTLY_CI: 1
       - uses: ./.github/actions/cargo_target_dir_pre_cache
