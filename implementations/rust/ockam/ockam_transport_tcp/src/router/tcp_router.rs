@@ -69,6 +69,7 @@ impl TcpRouter {
             trace!("TCP registration request: {} => {}", f, self_addr);
         } else {
             error!("TCP registration request failed due to an invalid address list. Please provide at least one valid Address.");
+            return Err(TransportError::InvalidAddress.into());
         }
 
         for accept in &accepts {
@@ -80,6 +81,7 @@ impl TcpRouter {
                 return Err(TransportError::AlreadyConnected.into());
             }
         }
+
         for accept in accepts {
             self.map.insert(accept.clone(), self_addr.clone());
         }
@@ -101,14 +103,23 @@ impl TcpRouter {
 impl TcpRouter {
     /// Handle any [`TcpRouterRequest::Connect`] messages received by this
     /// nodes worker
+    ///
+    /// This handler starts a `(TcpSendWorker, TcpRecvProcessor)` pair
+    /// that open and manage a connection to the given peer and
+    /// finally register the given peer with this `TcpRouter`.
     async fn handle_connect(&mut self, peer: String) -> Result<Address> {
+        // Resolve peer address
         let (peer_addr, hostnames) = TcpRouterHandle::resolve_peer(peer)?;
 
+        // Start a new `WorkerPair` for the given peer containing a
+        // `TcpSendWorker` and `TcpRecvprocessor`
         let router_handle = self.create_self_handle().await?;
         let pair =
             TcpSendWorker::start_pair(&self.ctx, router_handle, None, peer_addr, hostnames.clone())
                 .await?;
 
+        // Send this `TcpRouter` a `TcpRouterRequest::Register` message
+        // containing the registration request
         let tcp_address = Address::new(TCP, pair.peer().to_string());
         let mut accepts = vec![tcp_address];
         accepts.extend(hostnames.iter().map(|x| Address::new(TCP, x)));
@@ -138,9 +149,7 @@ impl TcpRouter {
 
         Ok(())
     }
-}
 
-impl TcpRouter {
     /// Handle any [`RouterMessage::Route`] messages received by this
     /// nodes worker
     async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
@@ -187,6 +196,7 @@ impl TcpRouter {
             for accept in hostnames.iter().map(|x| Address::new(TCP, x)) {
                 self.map.insert(accept, n.clone());
             }
+
             return Ok(n);
         }
 
