@@ -1,8 +1,13 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{AttributeArgs, ItemFn, Meta::Path, NestedMeta, ReturnType};
+use syn::{
+    AttributeArgs, ItemFn,
+    Meta::{NameValue, Path},
+    NestedMeta, ReturnType,
+};
 
-use crate::internals::{ast, ast::FnVariable, attr::BoolAttr, check, ctx::Context, symbol::*};
+use crate::internals::attr::{parse_lit_into_path, Attr, BoolAttr};
+use crate::internals::{ast, ast::FnVariable, check, ctx::Context, symbol::*};
 
 pub(crate) fn expand(
     input_fn: ItemFn,
@@ -17,6 +22,7 @@ pub(crate) fn expand(
 fn output(cont: Container) -> TokenStream {
     let body = &cont.original_fn.block;
     let ret_type = cont.data.ret;
+    let ockam_crate = cont.data.attrs.ockam_crate;
 
     // Get the ockam context variable identifier and mutability token extracted
     // from the function arguments, or sets them to their default values.
@@ -50,16 +56,20 @@ fn output(cont: Container) -> TokenStream {
     if !cont.data.attrs.no_main {
         // Assumes the target platform knows about main() functions
         quote! {
+            use #ockam_crate::{start_node, Executor};
+
             fn main() #ret_type {
-                let (#ctx_mut #ctx_ident, mut executor) = ockam::start_node() as (#ctx_path, ockam::Executor);
+                let (#ctx_mut #ctx_ident, mut executor) = start_node() as (#ctx_path, Executor);
                 executor.execute(async move #body)#err_handling
             }
         }
     } else {
         // Assumes you will be defining the ockam node inside your own entry point
         quote! {
+            use #ockam_crate::{start_node, Executor};
+
             fn ockam_async_main() #ret_type {
-                let (#ctx_mut #ctx_ident, mut executor) = ockam::start_node() as (#ctx_path, ockam::Executor);
+                let (#ctx_mut #ctx_ident, mut executor) = start_node() as (#ctx_path, Executor);
                 executor.execute(async move #body)#err_handling
             }
             // TODO: safe way to print the error before panicking?
@@ -120,14 +130,22 @@ impl<'a> Data<'a> {
 }
 
 struct Attributes {
+    ockam_crate: TokenStream,
     no_main: bool,
 }
 
 impl Attributes {
     fn from_ast(ctx: &Context, attrs: &AttributeArgs) -> Self {
+        let mut ockam_crate = Attr::none(ctx, OCKAM_CRATE);
         let mut no_main = BoolAttr::none(ctx, NO_MAIN);
         for attr in attrs {
             match attr {
+                // Parse `#[ockam::test(crate = "ockam")]`
+                NestedMeta::Meta(NameValue(nv)) if nv.path == OCKAM_CRATE => {
+                    if let Ok(path) = parse_lit_into_path(ctx, OCKAM_CRATE, &nv.lit) {
+                        ockam_crate.set(&nv.path, quote! { #path });
+                    }
+                }
                 // Parse `#[ockam::node(no_main)]`
                 NestedMeta::Meta(Path(p)) if p == NO_MAIN => {
                     no_main.set_true(p);
@@ -142,6 +160,7 @@ impl Attributes {
             }
         }
         Self {
+            ockam_crate: ockam_crate.get().unwrap_or(quote! { ockam }),
             no_main: no_main.get(),
         }
     }
