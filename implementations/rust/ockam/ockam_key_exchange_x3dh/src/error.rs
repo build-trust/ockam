@@ -1,5 +1,5 @@
 use ockam_core::{
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     thiserror, Error,
 };
 
@@ -25,6 +25,6 @@ impl From<X3DHError> for Error {
             MessageLenMismatch | SignatureLenMismatch => Kind::Misuse,
         };
 
-        Error::new(ErrorCode::new(Origin::KeyExchange, kind), err)
+        Error::new(Origin::KeyExchange, kind, err)
     }
 }

@@ -21,16 +21,17 @@ pub(super) async fn exec(
         return Ok(());
     };
 
-    let record = if let Some(r) = router.map.internal.remove(&primary_address) {
-        r
-    } else {
-        // Actually should not happen
-        reply
-            .send(NodeReply::no_such_address(addr.clone()))
-            .await
-            .map_err(error::node_internal)?;
+    let record = match router.map.internal.remove(&primary_address) {
+        Some(rec) => rec,
+        None => {
+            // Actually should not happen
+            reply
+                .send(NodeReply::no_such_address(addr.clone()))
+                .await
+                .map_err(error::node_internal)?;
 
-        return Ok(());
+            return Ok(());
+        }
     };
 
     for addr in record.address_set().iter() {

@@ -1,5 +1,5 @@
 use ockam_core::{
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     thiserror, Error,
 };
 
@@ -36,6 +36,6 @@ impl Into<Error> for SecureChannelError {
             }
         };
 
-        Error::new(ErrorCode::new(Origin::Channel, kind), self)
+        Error::new(Origin::Channel, kind, self)
     }
 }

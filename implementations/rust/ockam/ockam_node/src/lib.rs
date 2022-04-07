@@ -99,14 +99,14 @@ pub(crate) mod error {
     use crate::tokio::sync::mpsc::error::SendError;
     use core::fmt::Debug;
     use ockam_core::{
-        compat::error::Error,
-        errcode::{ErrorCode, Kind, Origin},
+        compat::error::Error as StdError,
+        errcode::{Kind, Origin},
         Error,
     };
 
     impl From<NodeError> for Error {
         fn from(e: NodeError) -> Error {
-            Error::new(node(Kind::Internal), e)
+            Error::new(Origin::Node, Kind::Internal, e)
         }
     }
 
@@ -115,28 +115,18 @@ pub(crate) mod error {
     }
 
     pub fn from_elapsed(e: tokio::time::error::Elapsed) -> Error {
-        Error::new(node(Kind::Timeout), e)
+        Error::new(Origin::Node, Kind::Timeout, e)
     }
 
-    pub fn node_internal(e: impl Error + Send + Sync + 'static) -> Error {
-        Error::new(node(Kind::Internal), e)
+    pub fn node_internal(e: impl StdError + Send + Sync + 'static) -> Error {
+        Error::new(Origin::Node, Kind::Internal, e)
     }
 
     pub fn node_without_cause(kind: Kind) -> Error {
-        Error::new_without_cause(node(kind))
+        Error::new_without_cause(Origin::Node, kind)
     }
 
     pub fn internal_without_cause() -> Error {
-        Error::new_without_cause(node(Kind::Internal))
-    }
-
-    /// Create a `node` error
-    pub fn node(kind: Kind) -> ErrorCode {
-        ErrorCode::new(Origin::Node, kind)
-    }
-
-    /// Create a new `executor` error (meaning tokio broke)
-    pub fn executor(kind: Kind) -> ErrorCode {
-        ErrorCode::new(Origin::Executor, kind)
+        Error::new_without_cause(Origin::Node, Kind::Internal)
     }
 }

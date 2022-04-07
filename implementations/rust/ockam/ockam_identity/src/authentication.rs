@@ -56,7 +56,7 @@ mod test {
 
     use crate::{Identity, IdentityTrait};
     use ockam_core::{
-        errcode::{ErrorCode, Kind, Origin},
+        errcode::{Kind, Origin},
         Error, Result,
     };
     use ockam_node::Context;
@@ -64,10 +64,7 @@ mod test {
     use rand::{thread_rng, RngCore};
 
     fn test_error<S: Into<String>>(error: S) -> Result<()> {
-        Err(
-            Error::new_without_cause(ErrorCode::new(Origin::Identity, Kind::Unknown))
-                .context("msg", error.into()),
-        )
+        Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))
     }
 
     async fn test_auth_use_case(ctx: &Context) -> Result<()> {

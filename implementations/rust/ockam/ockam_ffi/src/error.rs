@@ -1,5 +1,5 @@
 use ockam_core::{
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     thiserror, Error,
 };
 use std::ffi::CString;
@@ -82,7 +82,7 @@ pub enum FfiError {
 
 impl From<FfiError> for Error {
     fn from(err: FfiError) -> Self {
-        Error::new(ErrorCode::new(Origin::Other, Kind::Other), err)
+        Error::new(Origin::Other, Kind::Other, err)
     }
 }
 

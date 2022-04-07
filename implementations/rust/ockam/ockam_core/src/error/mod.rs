@@ -3,6 +3,8 @@
 use crate::compat::{boxed::Box, error::Error as ErrorTrait};
 use serde::{Deserialize, Serialize};
 
+use self::code::ErrorCode;
+
 mod code;
 mod inner;
 mod none;
@@ -40,22 +42,22 @@ impl Error {
     /// Construct a new error given ErrorCodes and a cause.
     #[cold]
     #[track_caller]
-    pub fn new<E>(code: code::ErrorCode, cause: E) -> Self
+    pub fn new<E>(origin: code::Origin, kind: code::Kind, cause: E) -> Self
     where
         E: Into<Box<dyn crate::compat::error::Error + Send + Sync>>,
     {
-        Self(inner::ErrorData::new(code, cause).into())
+        Self(inner::ErrorData::new(ErrorCode::new(origin, kind), cause).into())
     }
 
     /// Construct a new error with "unknown" error codes.
     ///
     /// This ideally should not be used inside Ockam.
     #[cold]
-    pub fn new_unknown<E>(cause: E) -> Self
+    pub fn new_unknown<E>(origin: code::Origin, cause: E) -> Self
     where
         E: Into<Box<dyn crate::compat::error::Error + Send + Sync>>,
     {
-        Self::new(code::ErrorCode::unknown(), cause)
+        Self::new(origin, code::Kind::Unknown, cause)
     }
 
     /// Construct a new error without an apparent cause
@@ -63,12 +65,12 @@ impl Error {
     /// This constructor should be used for any error occurring
     /// because of a None unwrap.
     #[cold]
-    pub fn new_without_cause(code: code::ErrorCode) -> Self {
-        Self(inner::ErrorData::new_without_cause(code).into())
+    pub fn new_without_cause(origin: code::Origin, kind: code::Kind) -> Self {
+        Self(inner::ErrorData::new_without_cause(origin, kind).into())
     }
 
     /// Return the [codes](`codes::ErrorCodes`) that identify this error.
-    pub fn code(&self) -> code::ErrorCode {
+    pub fn code(&self) -> ErrorCode {
         self.0.code
     }
 

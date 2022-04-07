@@ -3,7 +3,7 @@ use crate::{
         string::{String, ToString},
         vec::Vec,
     },
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     Address, Error, LocalMessage, Result, Route, TransportMessage,
 };
 use core::{
@@ -98,7 +98,7 @@ where
 
 impl From<serde_bare::error::Error> for Error {
     fn from(e: serde_bare::error::Error) -> Self {
-        Error::new(ErrorCode::new(Origin::Core, Kind::Io), e)
+        Error::new(Origin::Core, Kind::Io, e)
     }
 }
 

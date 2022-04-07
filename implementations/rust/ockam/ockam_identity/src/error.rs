@@ -1,5 +1,5 @@
 use ockam_core::{
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     thiserror, Error,
 };
 
@@ -89,6 +89,6 @@ impl From<IdentityError> for Error {
     fn from(err: IdentityError) -> Self {
         let kind = Kind::Unknown; // FIXME: fill these in with more
                                   // meaningful error kinds
-        Error::new(ErrorCode::new(Origin::Identity, kind), err)
+        Error::new(Origin::Identity, kind, err)
     }
 }

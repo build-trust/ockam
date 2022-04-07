@@ -7,7 +7,10 @@ use crate::{
 };
 use core::future::Future;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{errcode::Kind, Address, Error, Result};
+use ockam_core::{
+    errcode::{Kind, Origin},
+    Address, Error, Result,
+};
 
 /// Underlying Ockam node executor
 ///
@@ -64,15 +67,13 @@ impl Executor {
         F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
-        use crate::error;
-
         let rt = Arc::clone(&self.rt);
         let join_body = rt.spawn(future);
 
         crate::block_future(&rt, async move { self.router.run().await })?;
 
         let res = crate::block_future(&rt, async move { join_body.await })
-            .map_err(|e| Error::new(error::executor(Kind::Unknown), e))?;
+            .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))?;
 
         Ok(res)
     }

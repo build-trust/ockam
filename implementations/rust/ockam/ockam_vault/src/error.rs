@@ -1,5 +1,5 @@
 use ockam_core::{
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     thiserror, Error,
 };
 
@@ -57,6 +57,7 @@ pub enum VaultError {
     #[error("invalid BLS secret")]
     InvalidBlsSecret,
     /// IO error when saving
+    #[error("invalid storage")]
     StorageError,
 }
 
@@ -75,6 +76,6 @@ impl From<VaultError> for Error {
             _ => Kind::Invalid,
         };
 
-        Error::new(ErrorCode::new(Origin::Vault, kind), err)
+        Error::new(Origin::Vault, kind, err)
     }
 }

@@ -115,10 +115,9 @@ impl TcpSendWorker {
     }
 
     async fn schedule_heartbeat(&mut self) -> Result<()> {
-        let heartbeat_interval = if let Some(hi) = &self.heartbeat_interval {
-            *hi
-        } else {
-            return Ok(());
+        let heartbeat_interval = match &self.heartbeat_interval {
+            Some(hi) => *hi,
+            None => return Ok(()),
         };
 
         self.heartbeat.schedule(heartbeat_interval).await
@@ -208,10 +207,9 @@ impl Worker for TcpSendWorker {
     ) -> Result<()> {
         self.heartbeat.cancel();
 
-        let tx = if let Some(t) = &mut self.tx {
-            t
-        } else {
-            return Err(TransportError::PeerNotFound.into());
+        let tx = match &mut self.tx {
+            Some(tx) => tx,
+            None => return Err(TransportError::PeerNotFound.into()),
         };
 
         let recipient = msg.msg_addr();

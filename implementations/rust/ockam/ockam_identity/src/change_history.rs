@@ -74,18 +74,16 @@ impl IdentityChangeHistory {
 
     pub(crate) fn get_first_root_public_key(&self) -> Result<PublicKey> {
         // TODO: Support root key rotation
-        let root_event = if let Some(re) = self.as_ref().first() {
-            re
-        } else {
-            return Err(IdentityError::InvalidInternalState.into());
+        let root_event = match self.as_ref().first() {
+            Some(event) => event,
+            None => return Err(IdentityError::InvalidInternalState.into()),
         };
 
         let root_change = root_event.change_block().change();
 
-        let root_create_key_change = if let CreateKey(c) = root_change.change_type() {
-            c
-        } else {
-            return Err(IdentityError::InvalidInternalState.into());
+        let root_create_key_change = match root_change.change_type() {
+            CreateKey(c) => c,
+            _ => return Err(IdentityError::InvalidInternalState.into()),
         };
 
         Ok(root_create_key_change.data().public_key().clone())

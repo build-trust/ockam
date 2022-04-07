@@ -2,7 +2,7 @@
 
 use file_transfer::FileData;
 use ockam::{
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     identity::{Identity, TrustEveryonePolicy},
     remote::RemoteForwarder,
     vault::Vault,
@@ -37,31 +37,28 @@ impl Worker for FileReception {
                         .open(&self.name)
                         .await
                         .map_err(|e| {
-                            Error::new_without_cause(ErrorCode::new(Origin::Application, Kind::Unknown))
-                                .context("msg", e.to_string())
+                            Error::new_without_cause(Origin::Application, Kind::Unknown).context("msg", e.to_string())
                         })?,
                 )
             }
             FileData::Data(data) => {
                 if self.written_size + data.len() > self.size {
-                    return Err(
-                        Error::new_without_cause(ErrorCode::new(Origin::Application, Kind::Unknown)).context(
-                            "msg",
-                            format!(
-                                "Received too many bytes already read: {}, received: {}, final size: {}",
-                                self.written_size,
-                                data.len(),
-                                self.size
-                            ),
+                    return Err(Error::new_without_cause(Origin::Application, Kind::Unknown).context(
+                        "msg",
+                        format!(
+                            "Received too many bytes already read: {}, received: {}, final size: {}",
+                            self.written_size,
+                            data.len(),
+                            self.size
                         ),
-                    );
+                    ));
                 }
                 if let Some(file) = &mut self.file {
                     match file
                         .write(
                             str::from_utf8(data)
                                 .map_err(|e| {
-                                    Error::new_without_cause(ErrorCode::new(Origin::Application, Kind::Unknown))
+                                    Error::new_without_cause(Origin::Application, Kind::Unknown)
                                         .context("msg", e.to_string())
                                 })?
                                 .as_bytes(),
@@ -75,13 +72,12 @@ impl Worker for FileReception {
                             }
                         }
                         Err(e) => {
-                            return Err(Error::new(ErrorCode::new(Origin::Application, Kind::Unknown), e));
+                            return Err(Error::new(Origin::Application, Kind::Unknown, e));
                         }
                     }
                 } else {
                     return Err(
-                        Error::new_without_cause(ErrorCode::new(Origin::Application, Kind::Unknown))
-                            .context("msg", "file not opened"),
+                        Error::new_without_cause(Origin::Application, Kind::Unknown).context("msg", "file not opened")
                     );
                 }
             }

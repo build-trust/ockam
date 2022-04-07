@@ -2,7 +2,7 @@
 #![allow(missing_docs)] // Contents are self describing for now.
 
 use ockam_core::{
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     thiserror, Error,
 };
 
@@ -66,6 +66,6 @@ impl From<OckamError> for Error {
             _ => Kind::Protocol,
         };
 
-        Error::new(ErrorCode::new(Origin::Ockam, kind), err)
+        Error::new(Origin::Ockam, kind, err)
     }
 }

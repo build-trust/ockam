@@ -73,11 +73,12 @@ impl BleRouter {
         let onward = msg.transport().onward_route.next()?;
 
         // Look up the connection worker responsible
-        let next = if let Some(addr) = self.map.get(onward) {
-            addr.clone()
-        } else {
-            error!("unknown route: {:?}", onward);
-            return Err(TransportError::UnknownRoute.into());
+        let next = match self.map.get(onward) {
+            Some(addr) => addr.clone(),
+            None => {
+                error!("unknown route: {:?}", onward);
+                return Err(TransportError::UnknownRoute.into());
+            }
         };
 
         let _ = msg.transport_mut().onward_route.step()?;

@@ -1,5 +1,5 @@
 use ockam_core::{
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     thiserror, Error,
 };
 
@@ -40,7 +40,7 @@ pub enum BleError {
 }
 impl From<BleError> for Error {
     fn from(err: BleError) -> Error {
-        Error::new(ErrorCode::new(Origin::Transport, Kind::Io), err)
+        Error::new(Origin::Transport, Kind::Io, err)
     }
 }
 

@@ -4,7 +4,7 @@ use aes_gcm::{Aes128Gcm, Aes256Gcm};
 use ockam_core::vault::{
     Buffer, Secret, SecretType, SymmetricVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH,
 };
-use ockam_core::{async_trait, compat::boxed::Box, Result};
+use ockam_core::{async_trait, compat::boxed::Box, Error, Result};
 
 #[async_trait]
 impl SymmetricVault for Vault {

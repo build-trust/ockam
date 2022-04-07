@@ -1,5 +1,5 @@
 use crate::{
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     Error,
 };
 
@@ -15,6 +15,6 @@ impl From<RouteError> for Error {
         let kind = match err {
             RouteError::IncompleteRoute => Kind::Misuse,
         };
-        Error::new(ErrorCode::new(Origin::Core, kind), err)
+        Error::new(Origin::Core, kind, err)
     }
 }

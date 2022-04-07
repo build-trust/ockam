@@ -14,8 +14,9 @@ use crate::{
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
-    errcode::Kind, AccessControl, Address, AddressSet, AllowAll, AsyncTryClone, Error,
-    LocalMessage, Message, Processor, Result, Route, TransportMessage, TransportType, Worker,
+    errcode::{Kind, Origin},
+    AccessControl, Address, AddressSet, AllowAll, AsyncTryClone, Error, LocalMessage, Message,
+    Processor, Result, Route, TransportMessage, TransportType, Worker,
 };
 
 /// A default timeout in seconds
@@ -59,10 +60,8 @@ impl Context {
     /// Wait for the next message from the mailbox
     pub(crate) async fn mailbox_next(&mut self) -> Result<Option<RelayMessage>> {
         loop {
-            let relay_msg = if let Some(msg) = self.mailbox.recv().await.map(|msg| {
+            let relay_msg = if let Some(msg) = self.mailbox.recv().await {
                 trace!("{}: received new message!", self.address());
-                msg
-            }) {
                 msg
             } else {
                 return Ok(None);
@@ -148,7 +147,7 @@ impl Context {
         self.sender
             .send(msg)
             .await
-            .map_err(|e| Error::new(error::node(Kind::Invalid), e))?;
+            .map_err(|e| Error::new(Origin::Node, Kind::Invalid, e))?;
         rx.recv()
             .await
             .ok_or_else(error::internal_without_cause)??;
@@ -242,7 +241,7 @@ impl Context {
         self.sender
             .send(msg)
             .await
-            .map_err(|e| Error::new(error::node(Kind::Invalid), e))?;
+            .map_err(|e| Error::new(Origin::Node, Kind::Invalid, e))?;
 
         // Wait for the actual return code
         rx.recv()
@@ -282,7 +281,7 @@ impl Context {
         self.sender
             .send(msg)
             .await
-            .map_err(|e| Error::new(error::node(Kind::Invalid), e))?;
+            .map_err(|e| Error::new(Origin::Node, Kind::Invalid, e))?;
 
         // Wait for the actual return code
         rx.recv()
@@ -330,7 +329,7 @@ impl Context {
 
         match tx.send(msg).await {
             Ok(()) => Ok(()),
-            Err(e) => Err(Error::new(error::node(Kind::Invalid), e)),
+            Err(e) => Err(Error::new(Origin::Node, Kind::Invalid, e)),
         }
     }
 
@@ -373,7 +372,7 @@ impl Context {
         if self.address.contains(&addr) {
             self.send_from_address(addr, msg, from.into()).await
         } else {
-            Err(Error::new_without_cause(error::node(Kind::Invalid)))
+            Err(Error::new_without_cause(Origin::Node, Kind::Invalid))
         }
     }
 
@@ -452,7 +451,7 @@ impl Context {
         M: Message + Send + 'static,
     {
         if !self.address.as_ref().contains(&sending_address) {
-            return Err(Error::new_without_cause(error::node(Kind::Invalid)));
+            return Err(Error::new_without_cause(Origin::Node, Kind::Invalid));
         }
 
         let (reply_tx, mut reply_rx) = channel(1);

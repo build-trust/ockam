@@ -1,6 +1,6 @@
 use ockam_core::compat::{error::Error as StdError, fmt};
 use ockam_core::{
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     Error,
 };
 
@@ -36,6 +36,6 @@ impl From<XXError> for Error {
             XXError::MessageLenMismatch => Kind::Misuse,
         };
 
-        Error::new(ErrorCode::new(Origin::KeyExchange, kind), err)
+        Error::new(Origin::KeyExchange, kind, err)
     }
 }

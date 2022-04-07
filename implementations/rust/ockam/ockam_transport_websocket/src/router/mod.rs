@@ -106,10 +106,9 @@ impl WebSocketRouter {
             next = n.clone();
         } else {
             // No existing connection
-            let peer_str = if let Ok(s) = String::from_utf8(onward.deref().clone()) {
-                s
-            } else {
-                return Err(TransportError::UnknownRoute.into());
+            let peer_str = match String::from_utf8(onward.deref().clone()) {
+                Ok(s) => s,
+                Err(_e) => return Err(TransportError::UnknownRoute.into()),
             };
 
             // TODO: Check if this is the hostname and we have existing/pending connection to this IP

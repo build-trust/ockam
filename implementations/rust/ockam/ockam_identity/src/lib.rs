@@ -136,17 +136,14 @@ impl IdentitySerializationUtil {
 mod test {
     use super::*;
     use ockam_core::{
-        errcode::{ErrorCode, Kind, Origin},
+        errcode::{Kind, Origin},
         Error,
     };
     use ockam_node::Context;
     use ockam_vault::Vault;
 
     fn test_error<S: Into<String>>(msg: S) -> Result<()> {
-        Err(
-            Error::new_without_cause(ErrorCode::new(Origin::Identity, Kind::Unknown))
-                .context("msg", msg.into()),
-        )
+        Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", msg.into()))
     }
 
     async fn test_basic_identity_key_ops(identity: &mut (impl IdentityTrait + Sync)) -> Result<()> {

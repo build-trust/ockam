@@ -1,5 +1,5 @@
 use ockam_core::{
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     thiserror, Error,
 };
 use ockam_transport_core::TransportError;
@@ -28,7 +28,7 @@ impl From<WebSocketError> for Error {
             Http | Tls => Kind::Protocol,
         };
 
-        Error::new(ErrorCode::new(Origin::Transport, kind), err)
+        Error::new(Origin::Transport, kind, err)
     }
 }
 
@@ -65,10 +65,7 @@ impl From<futures_channel::mpsc::SendError> for WebSocketError {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ockam_core::hashbrown::HashMap;
-    use tokio_tungstenite::tungstenite::http::Response;
-
-    use super::*;
+    use ockam_core::compat::collections::HashMap;
     use tokio_tungstenite::tungstenite::http::Response;
 
     #[test]

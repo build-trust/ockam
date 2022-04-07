@@ -1,6 +1,6 @@
 use ockam_core::{
     compat::io,
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     thiserror, Error,
 };
 
@@ -76,7 +76,7 @@ impl From<TransportError> for Error {
             InvalidRouterResponseType => Kind::Invalid,
         };
 
-        Error::new(ErrorCode::new(Origin::Transport, kind), err)
+        Error::new(Origin::Transport, kind, err)
     }
 }
 

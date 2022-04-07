@@ -28,20 +28,18 @@ impl<V: IdentityVault> TrustPublicKeyPolicy<V> {
 #[async_trait]
 impl<V: IdentityVault> TrustPolicy for TrustPublicKeyPolicy<V> {
     async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
-        let contact = if let Some(c) = self
+        let contact = match self
             .identity
             .get_contact(trust_info.their_identity_id())
             .await?
         {
-            c
-        } else {
-            return Ok(false);
+            Some(contact) => contact,
+            None => return Ok(false),
         };
 
-        if let Ok(pub_key) = contact.get_public_key(&self.public_key_label) {
-            Ok(pub_key == self.public_key)
-        } else {
-            Ok(false)
+        match contact.get_public_key(&self.public_key_label) {
+            Ok(pub_key) => Ok(pub_key == self.public_key),
+            _ => Ok(false),
         }
     }
 }

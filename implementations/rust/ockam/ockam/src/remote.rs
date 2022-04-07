@@ -219,12 +219,10 @@ impl Worker for RemoteForwarder {
                 let route = msg.return_route();
 
                 info!("RemoteForwarder registered with route: {}", route);
-                let address =
-                    if let Some(a) = route.clone().recipient().to_string().strip_prefix("0#") {
-                        a.to_string()
-                    } else {
-                        return Err(OckamError::InvalidHubResponse.into());
-                    };
+                let address = match route.clone().recipient().to_string().strip_prefix("0#") {
+                    Some(addr) => addr.to_string(),
+                    None => return Err(OckamError::InvalidHubResponse.into()),
+                };
 
                 ctx.send(
                     callback_address,

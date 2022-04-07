@@ -117,13 +117,10 @@ impl TcpPortalWorker {
 
 impl TcpPortalWorker {
     fn take_state(&mut self) -> Result<State> {
-        let state = if let Some(s) = self.state.take() {
-            s
-        } else {
-            return Err(TransportError::PortalInvalidState.into());
-        };
-
-        Ok(state)
+        match self.state.take() {
+            Some(s) => Ok(s),
+            None => Err(TransportError::PortalInvalidState.into()),
+        }
     }
 
     async fn start_receiver(&mut self, ctx: &Context) -> Result<()> {

@@ -53,7 +53,7 @@ impl AccessControl for DenyAll {
 #[cfg(test)]
 mod tests {
     use crate::{
-        errcode::{ErrorCode, Kind, Origin},
+        errcode::{Kind, Origin},
         route, LocalMessage, Result, TransportMessage,
     };
     use futures_util::future::{Future, FutureExt};
@@ -128,10 +128,7 @@ mod tests {
         );
         match result {
             Poll::Ready(value) => value,
-            Poll::Pending => Err(crate::Error::new_without_cause(ErrorCode::new(
-                Origin::Core,
-                Kind::Unknown,
-            ))),
+            Poll::Pending => Err(crate::Error::new_without_cause(Origin::Core, Kind::Unknown)),
         }
     }
 }

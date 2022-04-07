@@ -1,3 +1,4 @@
+use super::code::{Kind, Origin};
 use super::none::NoneError;
 use crate::compat::{boxed::Box, error::Error as ErrorTrait, string::String, vec::Vec};
 use crate::{alloc::borrow::ToOwned, error::code::ErrorCode};
@@ -38,8 +39,12 @@ impl ErrorData {
 
     #[cold]
     #[track_caller]
-    pub(super) fn new_without_cause(code: ErrorCode) -> Self {
-        Self::new_inner(code, NoneError.into(), core::any::type_name::<NoneError>())
+    pub(super) fn new_without_cause(origin: Origin, kind: Kind) -> Self {
+        Self::new_inner(
+            ErrorCode::new(origin, kind),
+            NoneError.into(),
+            core::any::type_name::<NoneError>(),
+        )
     }
 
     #[cold]

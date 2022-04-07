@@ -1,5 +1,5 @@
 use ockam_core::{
-    errcode::{ErrorCode, Kind, Origin},
+    errcode::{Kind, Origin},
     thiserror, Error,
 };
 
@@ -18,6 +18,6 @@ impl From<VaultSyncCoreError> for Error {
             VaultSyncCoreError::InvalidResponseType => Kind::Invalid,
         };
 
-        Error::new(ErrorCode::new(Origin::Vault, kind), err)
+        Error::new(Origin::Vault, kind, err)
     }
 }
