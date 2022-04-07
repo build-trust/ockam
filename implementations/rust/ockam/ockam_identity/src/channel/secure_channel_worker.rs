@@ -4,6 +4,7 @@ use crate::{
 };
 use core::future::Future;
 use core::pin::Pin;
+use core::time::Duration;
 use ockam_channel::{
     CreateResponderChannelMessage, KeyExchangeCompleted, SecureChannel, SecureChannelInfo,
 };
@@ -86,6 +87,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         identity: I,
         trust_policy: Arc<dyn TrustPolicy>,
         vault: impl XXVault,
+        timeout: Duration,
     ) -> Result<Address> {
         let child_address = Address::random_local();
         let mut child_ctx = ctx.new_context(child_address.clone()).await?;
@@ -139,9 +141,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         );
 
         let _ = child_ctx
-            .receive_timeout::<AuthenticationConfirmation>(
-                120, /* TODO: What is the correct timeout here? */
-            )
+            .receive_timeout::<AuthenticationConfirmation>(timeout.as_secs())
             .await?;
 
         Ok(self_local_address)

@@ -3,6 +3,7 @@ use crate::{
     IdentityChannelListener, IdentityIdentifier, IdentityState, IdentityTrait, IdentityVault,
     Lease, SecureChannelWorker, TrustPolicy, TTL,
 };
+use core::time::Duration;
 use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
 use ockam_core::vault::{PublicKey, Secret};
 use ockam_core::{async_trait, compat::boxed::Box};
@@ -194,6 +195,27 @@ impl<V: IdentityVault> Identity<V> {
             identity_clone,
             Arc::new(trust_policy),
             vault,
+            Duration::from_secs(120),
+        )
+        .await
+    }
+
+    pub async fn create_secure_channel_extended(
+        &mut self,
+        route: impl Into<Route>,
+        trust_policy: impl TrustPolicy,
+        timeout: Duration,
+    ) -> Result<Address> {
+        let vault = self.state.read().await.vault.async_try_clone().await?;
+        let identity_clone = self.async_try_clone().await?;
+
+        SecureChannelWorker::create_initiator(
+            &self.ctx,
+            route.into(),
+            identity_clone,
+            Arc::new(trust_policy),
+            vault,
+            timeout,
         )
         .await
     }
