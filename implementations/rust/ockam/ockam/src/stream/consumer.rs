@@ -45,7 +45,7 @@ async fn handle_response(
     match response {
         Response::Init(InitResponse { stream_name }) => {
             info!(
-                "Initialised consumer for stream '{}' and route: {}",
+                "Initialised consumer for stream '{}' and route: {:?}",
                 stream_name, return_route
             );
 
@@ -101,7 +101,7 @@ async fn handle_response(
                 // Either forward to the next hop, or to the consumer address
                 let res = match trans.onward_route.next() {
                     Ok(addr) => {
-                        info!("Forwarding {} message to addr: {}", w.receiver_name, addr);
+                        info!("Forwarding {} message to addr: {:?}", w.receiver_name, addr);
                         let local_msg = LocalMessage::new(trans, Vec::new());
                         ctx.forward(local_msg).await
                     }
@@ -191,7 +191,7 @@ impl Worker for StreamConsumer {
     /// This involves sending a CreateStreamRequest to the peer and
     /// waiting for a reply.
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        info!("Initialising stream consumer {}", ctx.address());
+        info!("Initialising stream consumer {:?}", ctx.address());
 
         // Send a create_stream_request with the registered name
         ctx.send(
@@ -215,7 +215,7 @@ impl Worker for StreamConsumer {
             handle_cmd(self, ctx, msg, cmd).await?;
         } else {
             warn!(
-                "Unhandled message for consumer {}: {:?}", // TODO: attempt to get protocol ID
+                "Unhandled message for consumer {:?}: {:?}", // TODO: attempt to get protocol ID
                 ctx.address(),
                 msg.body()
             );
@@ -235,8 +235,8 @@ impl StreamConsumer {
         interval: Duration,
         _forwarding_address: Option<Address>, // TODO implement forwarding
         receiver_rx: Address,
-        stream_service: String,
-        index_service: String,
+        stream_service: Address,
+        index_service: Address,
     ) -> Self {
         Self {
             client_id,

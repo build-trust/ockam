@@ -52,7 +52,7 @@ impl Forwarder {
         forward_route: Route,
         registration_payload: Vec<u8>,
     ) -> Result<()> {
-        info!("Created new alias for {}", forward_route);
+        info!("Created new alias for {:?}", forward_route);
         let address = Address::random_local();
         let forwarder = Self {
             forward_route,
@@ -87,7 +87,7 @@ impl Worker for Forwarder {
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         info!(
-            "Alias forward from {} to {}",
+            "Alias forward from {:?} to {:?}",
             msg.sender(),
             self.forward_route.next().unwrap(),
         );

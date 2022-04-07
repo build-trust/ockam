@@ -10,7 +10,7 @@ impl Worker for Hop {
     /// This handle function takes any incoming message and forwards
     /// it to the next hop in it's onward route
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        println!("Address: {}, Received: {}", ctx.address(), msg);
+        println!("Address: {:?}, Received: {}", ctx.address(), msg);
 
         // Some type conversion
         let mut message = msg.into_local_message();

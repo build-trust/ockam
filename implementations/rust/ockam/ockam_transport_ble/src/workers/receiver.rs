@@ -105,8 +105,8 @@ where
                 msg.return_route.modify().prepend(self.peer_addr.clone());
 
                 // Some verbose logging we may want to remove
-                debug!("Message onward route: {}", msg.onward_route);
-                debug!("Message return route: {}", msg.return_route);
+                debug!("Message onward route: {:?}", msg.onward_route);
+                debug!("Message return route: {:?}", msg.return_route);
 
                 // Forward the message to the final destination worker,
                 // which consumes the TransportMessage and yields the

@@ -7,7 +7,7 @@ use ockam_core::compat::{
     sync::Arc,
 };
 use ockam_core::{async_trait, Address, Any, Decodable, Message, LOCAL};
-use ockam_core::{route, Processor, Result, Routed, Worker};
+use ockam_core::{try_route, Processor, Result, Routed, Worker};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicI8, AtomicU32};
 use tokio::time::sleep;
@@ -20,7 +20,8 @@ fn start_and_shutdown_node__many_iterations__should_not_fail() {
         executor
             .execute(async move {
                 let mut child_ctx = ctx.new_context("child").await?;
-                ctx.send(route!["child"], "Hello".to_string()).await?;
+                ctx.send(try_route!["child"].unwrap(), "Hello".to_string())
+                    .await?;
 
                 let m = child_ctx.receive::<String>().await?.take().body();
 
@@ -86,7 +87,7 @@ fn simple_worker__run_node_lifecycle__worker_lifecycle_should_be_full() {
 
             ctx.start_worker("simple_worker", worker).await.unwrap();
 
-            ctx.send(route!["simple_worker"], "Hello".to_string())
+            ctx.send(try_route!["simple_worker"].unwrap(), "Hello".to_string())
                 .await
                 .unwrap();
 
@@ -301,17 +302,23 @@ fn waiting_processor__messaging__should_work() {
                 .unwrap();
             sleep(Duration::new(1, 0)).await;
 
-            ctx.send(route!["messaging_processor"], "Keep working".to_string())
-                .await
-                .unwrap();
+            ctx.send(
+                try_route!["messaging_processor"].unwrap(),
+                "Keep working".to_string(),
+            )
+            .await
+            .unwrap();
             assert_eq!("OK", ctx.receive::<String>().await.unwrap().take().body());
 
             assert!(initialize_was_called.load(Ordering::Relaxed));
             assert!(!shutdown_was_called.load(Ordering::Relaxed));
 
-            ctx.send(route!["messaging_processor"], "Stop working".to_string())
-                .await
-                .unwrap();
+            ctx.send(
+                try_route!["messaging_processor"].unwrap(),
+                "Stop working".to_string(),
+            )
+            .await
+            .unwrap();
             assert_eq!(
                 "I go home",
                 ctx.receive::<String>().await.unwrap().take().body()
@@ -471,7 +478,9 @@ fn worker_calls_stopworker_from_handlemessage() {
 
                 let mut join_handles = Vec::new();
                 for addr in addrs {
-                    join_handles.push(ctx.send(route![addr], String::from("Testing. 1. 2. 3.")));
+                    join_handles.push(
+                        ctx.send(try_route![addr].unwrap(), String::from("Testing. 1. 2. 3.")),
+                    );
                 }
 
                 for h in join_handles {

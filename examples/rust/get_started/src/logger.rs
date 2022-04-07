@@ -19,9 +19,13 @@ impl Worker for Logger {
         let payload = transport_msg.payload.clone();
 
         if let Ok(str) = String::from_utf8(payload.clone()) {
-            println!("Address: {}, Received string: {}", ctx.address(), str);
+            println!("Address: {:?}, Received string: {}", ctx.address(), str);
         } else {
-            println!("Address: {}, Received binary: {}", ctx.address(), hex::encode(&payload));
+            println!(
+                "Address: {:?}, Received binary: {}",
+                ctx.address(),
+                hex::encode(&payload)
+            );
         }
 
         ctx.forward(local_msg).await

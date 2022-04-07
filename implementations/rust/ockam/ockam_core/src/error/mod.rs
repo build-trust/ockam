@@ -1,5 +1,6 @@
 //! Error and Result types
 #![allow(missing_docs, dead_code)] // FIXME DONOTLAND
+
 use crate::compat::{boxed::Box, error::Error as ErrorTrait};
 use serde::{Deserialize, Serialize};
 
@@ -17,6 +18,7 @@ pub mod errcode {
 // significantly) more efficient in the success path.
 #[cfg(feature = "alloc")]
 type ErrorData = Box<inner::ErrorData>;
+
 // When an allocator is not available, we represent the internal error inline.
 // It should be smaller in this configuration, which avoids much of the cost.
 #[cfg(not(feature = "alloc"))]
@@ -36,6 +38,7 @@ pub type Result<T, E = Error> = core::result::Result<T, E>;
 ///   lost over serialization).
 #[derive(Serialize, Deserialize)]
 pub struct Error(ErrorData);
+
 impl Error {
     /// Construct a new error given ErrorCodes and a cause.
     #[cold]
@@ -116,5 +119,11 @@ impl ErrorTrait for Error {
         } else {
             None
         }
+    }
+}
+
+impl From<core::convert::Infallible> for Error {
+    fn from(e: core::convert::Infallible) -> Self {
+        match e {} // Infallible is uninhabited
     }
 }

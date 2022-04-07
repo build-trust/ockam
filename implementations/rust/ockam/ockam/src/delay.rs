@@ -15,7 +15,7 @@ impl<M: Message> DelayedEvent<M> {
         let child_ctx = ctx.new_context(Address::random_local()).await?;
 
         debug!(
-            "Creating a delayed event with address '{}'",
+            "Creating a delayed event with address '{:?}'",
             child_ctx.address()
         );
 

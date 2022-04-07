@@ -27,7 +27,7 @@ async fn start(
     senders: SenderPair,
     reply: &Sender<NodeReplyResult>,
 ) -> Result<()> {
-    debug!("Starting new processor '{}'", &addr);
+    debug!("Starting new processor '{:?}'", &addr);
     let SenderPair { msgs, ctrl } = senders;
 
     let record = AddressRecord::new(

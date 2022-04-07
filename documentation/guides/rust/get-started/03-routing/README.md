@@ -38,7 +38,6 @@ Add the following code to this file:
 
 ```rust
 // src/hop.rs
-
 use ockam::{Any, Context, Result, Routed, Worker};
 
 pub struct Hop;
@@ -51,7 +50,7 @@ impl Worker for Hop {
     /// This handle function takes any incoming message and forwards
     /// it to the next hop in it's onward route
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        println!("Address: {}, Received: {}", ctx.address(), msg);
+        println!("Address: {:?}, Received: {}", ctx.address(), msg);
 
         // Some type conversion
         let mut message = msg.into_local_message();
@@ -67,7 +66,6 @@ impl Worker for Hop {
         ctx.forward(message).await
     }
 }
-
 ```
 
 To make this `Hop` type accessible to our main program, export it
@@ -90,7 +88,7 @@ Next, let's create our main `"app"` worker.
 
 In the code below we start an `Echoer` worker at address `"echoer"` and a `Hop`
 worker at address `"h1"`. Then, we send a message along the `h1 => echoer`
-route by passing `route!["h1", "echoer"]` to `send(..)`.
+route by passing `try_route!["h1", "echoer"]?` to `send(..)`.
 
 Create a new file at:
 
@@ -105,7 +103,7 @@ Add the following code to this file:
 // This node routes a message.
 
 use hello_ockam::{Echoer, Hop};
-use ockam::{route, Context, Result};
+use ockam::{try_route, Context, Result};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -117,7 +115,8 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Send a message to the worker at address "echoer",
     // via the worker at address "h1"
-    ctx.send(route!["h1", "echoer"], "Hello Ockam!".to_string()).await?;
+    ctx.send(try_route!["h1", "echoer"]?, "Hello Ockam!".to_string())
+        .await?;
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;
@@ -161,7 +160,7 @@ Add the following code to this file:
 // This node routes a message through many hops.
 
 use hello_ockam::{Echoer, Hop};
-use ockam::{route, Context, Result};
+use ockam::{try_route, Context, Result};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -174,7 +173,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker("h3", Hop).await?;
 
     // Send a message to the echoer worker via the "h1", "h2", and "h3" workers
-    let r = route!["h1", "h2", "h3", "echoer"];
+    let r = try_route!["h1", "h2", "h3", "echoer"]?;
     ctx.send(r, "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a reply and print it.

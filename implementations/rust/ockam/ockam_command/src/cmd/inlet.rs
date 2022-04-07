@@ -1,6 +1,6 @@
 use crate::session::initiator::{SessionMaintainer, SessionManager};
 use crate::{args::InletOpts, identity, storage, OckamVault};
-use ockam::{identity::*, route, Context, Result, TcpTransport, TCP};
+use ockam::{identity::*, try_route, Context, Result, TcpTransport, TCP};
 use ockam_core::{Address, AsyncTryClone, Route};
 use std::time::Duration;
 
@@ -41,11 +41,11 @@ impl SessionManager for InletSessionManager {
         let channel = self
             .identity
             .create_secure_channel_extended(
-                route![
+                try_route![
                     (TCP, &self.args.cloud_addr),
                     format!("forward_to_{}", self.args.alias),
                     "secure_channel_listener"
-                ],
+                ]?,
                 self.policy.async_try_clone().await?,
                 timeout,
             )
@@ -53,7 +53,10 @@ impl SessionManager for InletSessionManager {
 
         let inlet_address = self
             .tcp
-            .create_inlet(&self.args.inlet_address, route![channel.clone(), "outlet"])
+            .create_inlet(
+                &self.args.inlet_address,
+                try_route![channel.clone(), "outlet"]?,
+            )
             .await?;
 
         self.existing_session = Some(ExistingSession {
@@ -61,7 +64,7 @@ impl SessionManager for InletSessionManager {
             inlet_address,
         });
 
-        let responder_route = route![channel, "session_responder"];
+        let responder_route = try_route![channel, "session_responder"]?;
 
         Ok(responder_route)
     }

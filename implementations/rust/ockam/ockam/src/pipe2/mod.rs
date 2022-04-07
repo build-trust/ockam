@@ -65,7 +65,7 @@ enum Mode {
 ///     .await?;
 ///
 /// ctx.send(
-///     vec![result.addr(), "app".into()], // Send a message through the pipe to "app"
+///     vec![result.addr(), "app".try_into()?], // Send a message through the pipe to "app"
 ///     String::from("Hello you on the other end of this pipe!"),
 /// )
 /// .await?;

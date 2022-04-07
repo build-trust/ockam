@@ -16,14 +16,14 @@ pub fn start_node() -> (Context, Executor) {
     info!("Initializing ockam node");
 
     let mut exe = Executor::new();
-    let addr: Address = "app".into();
+    let addr = Address::local("app");
 
     // The root application worker needs a mailbox and relay to accept
     // messages from workers, and to buffer incoming transcoded data.
     let (ctx, sender, _) = Context::new(exe.runtime(), exe.sender(), addr.into(), AllowAll);
 
     // Register this mailbox handle with the executor
-    exe.initialize_system("app", sender);
+    exe.initialize_system(Address::local("app"), sender);
 
     (ctx, exe)
 }

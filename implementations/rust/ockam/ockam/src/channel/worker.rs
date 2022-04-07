@@ -109,7 +109,7 @@ impl Worker for ChannelWorker {
         ctx.set_cluster(CLUSTER_NAME).await?;
 
         debug!(
-            "Initialise ChannelWorker (pub: {}, int: {})",
+            "Initialise ChannelWorker (pub: {:?}, int: {:?})",
             self.self_addrs.0, self.self_addrs.1
         );
 
@@ -124,7 +124,10 @@ impl Worker for ChannelWorker {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        trace!("Channel receiving message to address '{}'", msg.msg_addr());
+        trace!(
+            "Channel receiving message to address '{:?}'",
+            msg.msg_addr()
+        );
         self.handle_external(ctx, msg).await
     }
 }
@@ -142,7 +145,7 @@ impl ChannelWorker {
     /// buffer.
     async fn init_stage1(&mut self, ctx: &mut Context) -> Result<()> {
         debug!(
-            "Stage 1 channel init: Sender '{}' and Receiver '{}' pipes",
+            "Stage 1 channel init: Sender '{:?}' and Receiver '{:?}' pipes",
             self.tx_addr, self.rx_addr
         );
 
@@ -169,7 +172,7 @@ impl ChannelWorker {
         // which the peer channel worker will associate with this
         // worker.  That way we can distinguish between messages sent
         // to us by users, and messages sent to us by the PipeReceiver
-        debug!("{}: Initiating channel creation handshake", ctx.address());
+        debug!("{:?}: Initiating channel creation handshake", ctx.address());
         ctx.send_from_address(
             self.listener.clone().unwrap(),
             ChannelCreationHandshake {
@@ -196,7 +199,7 @@ impl ChannelWorker {
     /// No further initialisation is needed past this point
     async fn init_stage2(&mut self, ctx: &mut Context) -> Result<()> {
         debug!(
-            "Stage 2 channel init: Sender '{}' and Receiver '{}' pipes",
+            "Stage 2 channel init: Sender '{:?}' and Receiver '{:?}' pipes",
             self.tx_addr, self.rx_addr
         );
 
@@ -262,7 +265,7 @@ impl ChannelWorker {
                     .modify()
                     .prepend(self.self_addrs.0.clone());
             }
-            addr => warn!("Received invalid message to address {}", addr),
+            addr => warn!("Received invalid message to address {:?}", addr),
         }
 
         // Forward message

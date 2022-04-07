@@ -12,7 +12,7 @@ impl Worker for Echoer {
     type Message = String;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        println!("\n[✓] Address: {}, Received: {}", ctx.address(), msg);
+        println!("\n[✓] Address: {:?}, Received: {}", ctx.address(), msg);
 
         // Echo the message body back on its return_route.
         ctx.send(msg.return_route(), msg.body()).await
@@ -48,7 +48,7 @@ async fn main(ctx: Context) -> Result<()> {
     let forwarder = RemoteForwarder::create(&ctx, node_in_hub).await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address for Bob is:");
-    println!("{}", forwarder.remote_address());
+    println!("{:?}", forwarder.remote_address());
 
     // Start a worker, of type Echoer, at address "echoer".
     // This worker will echo back every message it receives, along its return route.

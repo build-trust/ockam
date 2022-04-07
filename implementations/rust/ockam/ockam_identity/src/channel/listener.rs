@@ -1,6 +1,5 @@
 use crate::{IdentityTrait, SecureChannelWorker, TrustPolicy};
 use ockam_channel::{CreateResponderChannelMessage, SecureChannel};
-use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
@@ -15,7 +14,7 @@ pub(crate) struct IdentityChannelListener<I: IdentityTrait, V: XXVault> {
 
 impl<I: IdentityTrait, V: XXVault> IdentityChannelListener<I, V> {
     pub fn new(trust_policy: impl TrustPolicy, identity: I, vault: V) -> Self {
-        let listener_address: Address = random();
+        let listener_address = Address::random_local();
         IdentityChannelListener {
             trust_policy: Arc::new(trust_policy),
             identity,

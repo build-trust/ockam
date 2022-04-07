@@ -44,7 +44,7 @@ where
 
         parser::message::<M>(payload)
             .map_err(|e| {
-                error!("Failed to decode message payload for worker {}", msg_addr);
+                error!("Failed to decode message payload for worker {:?}", msg_addr);
                 e
             })
             .map(|m| (m, return_route.clone()))
@@ -54,7 +54,7 @@ where
     fn handle_pre_router(msg: &[u8], msg_addr: Address) -> Result<M> {
         M::decode(msg).map_err(|e| {
             error!(
-                "Failed to decode wrapped router message for worker {}.  \
+                "Failed to decode wrapped router message for worker {:?}.  \
              Is your router accepting the correct message type? (ockam_core::RouterMessage)",
                 msg_addr
             );
@@ -70,7 +70,7 @@ where
         let RelayMessage { addr, data, .. } = match self.ctx.mailbox_next().await? {
             Some(msg) => msg,
             None => {
-                trace!("No more messages for worker {}", self.ctx.address());
+                trace!("No more messages for worker {:?}", self.ctx.address());
                 return Ok(false);
             }
         };
@@ -116,7 +116,7 @@ where
             Ok(()) => {}
             Err(e) => {
                 error!(
-                    "Failure during '{}' worker initialisation: {}",
+                    "Failure during '{:?}' worker initialisation: {}",
                     self.ctx.address(),
                     e
                 );
@@ -126,7 +126,7 @@ where
         let address = self.ctx.address();
 
         if let Err(e) = self.ctx.set_ready().await {
-            error!("Failed to mark worker '{}' as 'ready': {}", address, e);
+            error!("Failed to mark worker '{:?}' as 'ready': {}", address, e);
         }
 
         #[cfg(feature = "std")]
@@ -141,7 +141,7 @@ where
                             break;
                         },
                         // An error occurred -- log and continue
-                        Err(e) => error!("Error encountered during '{}' message handling: {}", address, e),
+                        Err(e) => error!("Error encountered during '{:?}' message handling: {}", address, e),
                     }
                 },
                 result = ctrl_rx.recv() => {
@@ -165,7 +165,7 @@ where
                 }
                 // An error occurred -- log and continue
                 Err(e) => error!(
-                    "Error encountered during '{}' message handling: {}",
+                    "Error encountered during '{:?}' message handling: {}",
                     address, e
                 ),
             }
@@ -176,7 +176,7 @@ where
             Ok(()) => {}
             Err(e) => {
                 error!(
-                    "Failure during '{}' worker shutdown: {}",
+                    "Failure during '{:?}' worker shutdown: {}",
                     self.ctx.address(),
                     e
                 );

@@ -9,7 +9,6 @@ use ockam_channel::{
     CreateResponderChannelMessage, KeyExchangeCompleted, SecureChannel, SecureChannelInfo,
 };
 use ockam_core::async_trait;
-use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, sync::Arc, vec::Vec};
 use ockam_core::{
     route, Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
@@ -95,8 +94,8 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         // Generate 2 random fresh address for newly created SecureChannel.
         // One for local workers to encrypt their messages
         // Second for remote workers to decrypt their messages
-        let self_local_address: Address = random();
-        let self_remote_address: Address = random();
+        let self_local_address = Address::random_local();
+        let self_remote_address = Address::random_local();
 
         let initiator = XXNewKeyExchanger::new(vault.async_try_clone().await?)
             .initiator()
@@ -136,8 +135,8 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         .await?;
 
         debug!(
-            "Starting IdentitySecureChannel Initiator at local: {}, remote: {}",
-            &self_local_address, &self_remote_address
+            "Starting IdentitySecureChannel Initiator at local: {:?}, remote: {:?}",
+            self_local_address, self_remote_address
         );
 
         let _ = child_ctx
@@ -169,8 +168,8 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         // Generate 2 random fresh address for newly created SecureChannel.
         // One for local workers to encrypt their messages
         // Second for remote workers to decrypt their messages
-        let self_local_address: Address = random();
-        let self_remote_address: Address = random();
+        let self_local_address = Address::random_local();
+        let self_remote_address = Address::random_local();
 
         // Change completed callback address and forward message for regular key exchange to happen
         let body = CreateResponderChannelMessage::new(
@@ -200,8 +199,8 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         .await?;
 
         debug!(
-            "Starting IdentitySecureChannel Responder at local: {}, remote: {}",
-            &self_local_address, &self_remote_address
+            "Starting IdentitySecureChannel Responder at local: {:?}, remote: {:?}",
+            self_local_address, self_remote_address
         );
 
         ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
@@ -322,8 +321,8 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
             }));
 
             info!(
-                "Initialized IdentitySecureChannel Initiator at local: {}, remote: {}",
-                &self.self_local_address, &self.self_remote_address
+                "Initialized IdentitySecureChannel Initiator at local: {:?}, remote: {:?}",
+                self.self_local_address, self.self_remote_address
             );
 
             ctx.send(
@@ -407,8 +406,8 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
             }));
 
             info!(
-                "Initialized IdentitySecureChannel Responder at local: {}, remote: {}",
-                &self.self_local_address, &self.self_remote_address
+                "Initialized IdentitySecureChannel Responder at local: {:?}, remote: {:?}",
+                self.self_local_address, self.self_remote_address
             );
 
             Ok(())
@@ -515,7 +514,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
             Ok(_) => Ok(()),
             Err(err) => {
                 warn!(
-                    "{} forwarding decrypted message from {}",
+                    "{} forwarding decrypted message from {:?}",
                     err, self.self_local_address
                 );
                 Ok(())

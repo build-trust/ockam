@@ -67,8 +67,8 @@ impl fmt::Display for NodeError {
             f,
             "{}",
             match self {
-                Self::Address(addr) => format!("operation failed for address {}", addr),
-                Self::Recipient(route) => format!("operation failed for recipient {}", route),
+                Self::Address(addr) => format!("operation failed for address {:?}", addr),
+                Self::Recipient(route) => format!("operation failed for recipient {:?}", route),
                 Self::Data => "failed to load data".into(),
                 Self::NodeState(reason) => format!("failed because node state: {}", reason),
                 Self::WorkerState(reason) => format!("failed because worker state: {}", reason),

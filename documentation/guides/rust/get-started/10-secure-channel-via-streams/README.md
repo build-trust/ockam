@@ -92,7 +92,9 @@ Add the following code to this file:
 
 ```rust
 // examples/10-secure-channel-via-streams-initiator.rs
-use ockam::{channel::SecureChannel, route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
+use ockam::{
+    channel::SecureChannel, route, stream::Stream, try_route, vault::Vault, Context, Result, TcpTransport, TCP,
+};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -120,20 +122,20 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a secure channel
     let secure_channel = SecureChannel::create(
         &ctx,
-        route![
+        try_route![
             sender.clone(),            // via the "sc-initiator-to-responder" stream
             "secure_channel_listener"  // to the "secure_channel_listener" listener
-        ],
+        ]?,
         &vault,
     )
     .await?;
 
     // Send a message
     ctx.send(
-        route![
+        try_route![
             secure_channel.address(), // via the secure channel
             "echoer"                  // to the "echoer" worker
-        ],
+        ]?,
         "Hello World!".to_string(),
     )
     .await?;

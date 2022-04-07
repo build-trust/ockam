@@ -2,7 +2,7 @@
 
 use ockam::{
     identity::{Identity, TrustEveryonePolicy},
-    route,
+    try_route,
     vault::Vault,
     Context, Result,
 };
@@ -30,11 +30,11 @@ async fn main(mut ctx: Context) -> Result<()> {
     ble.connect(ble_client, "ockam_ble_1".to_string()).await?;
 
     // Connect to a secure channel listener and perform a handshake.
-    let r = route![(BLE, "ockam_ble_1"), "bob_listener"];
+    let r = try_route![(BLE, "ockam_ble_1"), "bob_listener"]?;
     let channel = alice.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // Send a message to the "echoer" worker, on a different node, via secure channel.
-    let r = route![channel, "echoer"];
+    let r = try_route![channel, "echoer"]?;
     ctx.send(r, "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a reply and print it.

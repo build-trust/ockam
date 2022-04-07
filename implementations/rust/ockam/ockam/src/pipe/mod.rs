@@ -27,11 +27,15 @@ const CLUSTER_NAME: &str = "_internal.pipe";
 /// Connect to the receiving end of a pipe
 ///
 /// Returns the PipeSender's public address.
-pub async fn connect_static<R: Into<Route>>(ctx: &mut Context, recv: R) -> Result<Address> {
+pub async fn connect_static<R>(ctx: &mut Context, recv: R) -> Result<Address>
+where
+    R: TryInto<Route>,
+    R::Error: Into<ockam_core::Error>,
+{
     let addr = Address::random_local();
     PipeSender::create(
         ctx,
-        recv.into(),
+        recv.try_into().map_err(|e| e.into())?,
         addr.clone(),
         Address::random_local(),
         PipeBehavior::empty(),
@@ -49,13 +53,14 @@ pub async fn connect_static_with_behavior<R, P>(
     hooks: P,
 ) -> Result<Address>
 where
-    R: Into<Route>,
+    R: TryInto<Route>,
+    R::Error: Into<ockam_core::Error>,
     P: Into<PipeBehavior>,
 {
     let addr = Address::random_local();
     PipeSender::create(
         ctx,
-        recv.into(),
+        recv.try_into().map_err(|e| e.into())?,
         addr.clone(),
         Address::random_local(),
         hooks.into(),
@@ -84,10 +89,14 @@ pub async fn connect_dynamic(ctx: &mut Context, listener: Route) -> Result<Addre
 }
 
 /// Create a receiver with a static address
-pub async fn receiver<I: Into<Address>>(ctx: &mut Context, addr: I) -> Result<()> {
+pub async fn receiver<I>(ctx: &mut Context, addr: I) -> Result<()>
+where
+    I: TryInto<Address>,
+    I::Error: Into<ockam_core::Error>,
+{
     PipeReceiver::create(
         ctx,
-        addr.into(),
+        addr.try_into().map_err(|e| e.into())?,
         Address::random_local(),
         PipeBehavior::empty(),
     )
@@ -97,10 +106,12 @@ pub async fn receiver<I: Into<Address>>(ctx: &mut Context, addr: I) -> Result<()
 /// Create a new receiver with an explicit behavior manager
 pub async fn receiver_with_behavior<A, P>(ctx: &mut Context, addr: A, b: P) -> Result<()>
 where
-    A: Into<Address>,
+    A: TryInto<Address>,
+    A::Error: Into<ockam_core::Error>,
     P: Into<PipeBehavior>,
 {
-    PipeReceiver::create(ctx, addr.into(), Address::random_local(), b.into()).await
+    let a = addr.try_into().map_err(|e| e.into())?;
+    PipeReceiver::create(ctx, a, Address::random_local(), b.into()).await
 }
 
 /// Create a pipe receive listener with custom behavior

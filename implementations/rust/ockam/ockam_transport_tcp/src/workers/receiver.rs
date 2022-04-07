@@ -57,7 +57,7 @@ impl Processor for TcpRecvProcessor {
             Ok(len) => len,
             Err(_e) => {
                 info!(
-                    "Connection to peer '{}' was closed; dropping stream",
+                    "Connection to peer '{:?}' was closed; dropping stream",
                     self.peer_addr
                 );
 
@@ -91,15 +91,15 @@ impl Processor for TcpRecvProcessor {
 
         // Heartbeat message
         if msg.onward_route.next().is_err() {
-            trace!("Got heartbeat message from: {}", self.peer_addr);
+            trace!("Got heartbeat message from: {:?}", self.peer_addr);
         }
 
         // Insert the peer address into the return route so that
         // reply routing can be properly resolved
         msg.return_route.modify().prepend(self.peer_addr.clone());
 
-        trace!("Message onward route: {}", msg.onward_route);
-        trace!("Message return route: {}", msg.return_route);
+        trace!("Message onward route: {:?}", msg.onward_route);
+        trace!("Message return route: {:?}", msg.return_route);
 
         // Forward the message to the next hop in the route
         ctx.forward(LocalMessage::new(msg, Vec::new())).await?;

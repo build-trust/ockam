@@ -1,9 +1,8 @@
 //! Registration with Ockam Hub, and forwarding to local workers.
 #![deny(missing_docs)]
 
-use crate::{route, Context, Message, OckamError};
+use crate::{try_route, Context, Message, OckamError};
 use core::time::Duration;
-use ockam_core::compat::rand::random;
 use ockam_core::compat::{
     boxed::Box,
     string::{String, ToString},
@@ -11,8 +10,6 @@ use ockam_core::compat::{
 };
 use ockam_core::{Address, AddressSet, Any, Decodable, Result, Route, Routed, Worker};
 use ockam_node::DelayedEvent;
-use rand::distributions::{Distribution, Standard};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
@@ -20,7 +17,7 @@ use tracing::{debug, info};
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Message)]
 pub struct RemoteForwarderInfo {
     forwarding_route: Route,
-    remote_address: String,
+    remote_address: Address,
     worker_address: Address,
 }
 
@@ -30,7 +27,7 @@ impl RemoteForwarderInfo {
         &self.forwarding_route
     }
     /// Returns the remote address.
-    pub fn remote_address(&self) -> &str {
+    pub fn remote_address(&self) -> &Address {
         &self.remote_address
     }
     /// Returns the worker address.
@@ -48,11 +45,11 @@ struct Addresses {
     heartbeat_address: Address,
 }
 
-impl Distribution<Addresses> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Addresses {
+impl Addresses {
+    fn random_local() -> Self {
         Addresses {
-            main_address: rng.gen(),
-            heartbeat_address: rng.gen(),
+            main_address: Address::random_local(),
+            heartbeat_address: Address::random_local(),
         }
     }
 }
@@ -99,16 +96,16 @@ impl RemoteForwarder {
         hub_addr: impl Into<Address>,
         alias: impl Into<String>,
     ) -> Result<RemoteForwarderInfo> {
-        let address: Address = random();
+        let address = Address::random_local();
         let mut child_ctx = ctx.new_context(address).await?;
 
-        let addresses: Addresses = random();
+        let addresses = Addresses::random_local();
 
         let heartbeat =
             DelayedEvent::create(ctx, addresses.heartbeat_address.clone(), vec![]).await?;
         let forwarder = Self::new(
             addresses.clone(),
-            route![hub_addr.into(), "static_forwarding_service"],
+            try_route![hub_addr.into(), "static_forwarding_service"]?,
             alias.into(),
             child_ctx.address(),
             Some(heartbeat),
@@ -116,8 +113,8 @@ impl RemoteForwarder {
         );
 
         debug!(
-            "Starting static RemoteForwarder at {}",
-            &addresses.heartbeat_address
+            "Starting static RemoteForwarder at {:?}",
+            addresses.heartbeat_address
         );
         ctx.start_worker(addresses.into_set(), forwarder).await?;
 
@@ -135,14 +132,14 @@ impl RemoteForwarder {
         ctx: &Context,
         hub_addr: impl Into<Address>,
     ) -> Result<RemoteForwarderInfo> {
-        let address: Address = random();
+        let address = Address::random_local();
         let mut child_ctx = ctx.new_context(address).await?;
 
-        let addresses: Addresses = random();
+        let addresses = Addresses::random_local();
 
         let forwarder = Self::new(
             addresses.clone(),
-            route![hub_addr.into(), "forwarding_service"],
+            try_route![hub_addr.into(), "forwarding_service"]?,
             "register".to_string(),
             child_ctx.address(),
             None,
@@ -150,8 +147,8 @@ impl RemoteForwarder {
         );
 
         debug!(
-            "Starting ephemeral RemoteForwarder at {}",
-            &addresses.main_address
+            "Starting ephemeral RemoteForwarder at {:?}",
+            addresses.main_address
         );
         ctx.start_worker(addresses.main_address, forwarder).await?;
 
@@ -218,11 +215,11 @@ impl Worker for RemoteForwarder {
             if let Some(callback_address) = self.callback_address.take() {
                 let route = msg.return_route();
 
-                info!("RemoteForwarder registered with route: {}", route);
-                let address = match route.clone().recipient().to_string().strip_prefix("0#") {
-                    Some(addr) => addr.to_string(),
-                    None => return Err(OckamError::InvalidHubResponse.into()),
-                };
+                info!("RemoteForwarder registered with route: {:?}", route);
+                let address = route.recipient();
+                if !address.transport_type().is_local() {
+                    return Err(OckamError::InvalidHubResponse.into());
+                }
 
                 ctx.send(
                     callback_address,
@@ -302,7 +299,7 @@ mod test {
 
         child_ctx
             .send(
-                route![node_in_hub, remote_info.remote_address(), "echoer"],
+                try_route![node_in_hub, remote_info.remote_address().clone(), "echoer"]?,
                 "Hello".to_string(),
             )
             .await?;
@@ -336,7 +333,7 @@ mod test {
 
         child_ctx
             .send(
-                route![node_in_hub, "forward_to_alias", "echoer"],
+                try_route![node_in_hub, "forward_to_alias", "echoer"]?,
                 "Hello".to_string(),
             )
             .await?;

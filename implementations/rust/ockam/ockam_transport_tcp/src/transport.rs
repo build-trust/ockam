@@ -114,10 +114,10 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::{TcpTransport, TCP};
     /// # use ockam_node::Context;
-    /// # use ockam_core::{Result, route};
+    /// # use ockam_core::{Result, route, LOCAL};
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let hop_addr = "INTERMEDIARY_HOP:8000";
-    /// let route_path = route![(TCP, hop_addr), "outlet"];
+    /// let route_path = route![(TCP, hop_addr), (LOCAL, "outlet")];
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// tcp.create_inlet("inlet", route_path).await?;
@@ -143,19 +143,23 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::{TcpTransport, TCP};
     /// # use ockam_node::Context;
-    /// # use ockam_core::{Result, route};
+    /// # use ockam_core::{Result, route, LOCAL};
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let hop_addr = "INTERMEDIARY_HOP:8000";
-    /// let route = route![(TCP, hop_addr), "outlet"];
+    /// let route = route![(TCP, hop_addr), (LOCAL, "outlet")];
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// tcp.create_inlet("inlet", route).await?;
     /// tcp.stop_inlet("inlet").await?;
     /// # Ok(()) }
     /// ```
-    pub async fn stop_inlet(&self, addr: impl Into<Address>) -> Result<()> {
-        self.router_handle.stop_inlet(addr).await?;
-
+    pub async fn stop_inlet<A>(&self, addr: A) -> Result<()>
+    where
+        A: TryInto<Address>,
+        A::Error: Into<ockam_core::Error>,
+    {
+        let a = addr.try_into().map_err(|e| e.into())?;
+        self.router_handle.stop_inlet(a).await?;
         Ok(())
     }
 
@@ -176,13 +180,13 @@ impl TcpTransport {
     /// # tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
-    pub async fn create_outlet(
-        &self,
-        address: impl Into<Address>,
-        peer: impl Into<String>,
-    ) -> Result<()> {
-        TcpOutletListenWorker::start(&self.router_handle, address.into(), peer.into()).await?;
-
+    pub async fn create_outlet<A>(&self, address: A, peer: impl Into<String>) -> Result<()>
+    where
+        A: TryInto<Address>,
+        A::Error: Into<ockam_core::Error>,
+    {
+        let addr = address.try_into().map_err(|e| e.into())?;
+        TcpOutletListenWorker::start(&self.router_handle, addr, peer.into()).await?;
         Ok(())
     }
 
@@ -199,8 +203,13 @@ impl TcpTransport {
     /// tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
-    pub async fn stop_outlet(&self, addr: impl Into<Address>) -> Result<()> {
-        self.router_handle.stop_outlet(addr).await?;
+    pub async fn stop_outlet<A>(&self, addr: A) -> Result<()>
+    where
+        A: TryInto<Address>,
+        A::Error: Into<ockam_core::Error>,
+    {
+        let a = addr.try_into().map_err(|e| e.into())?;
+        self.router_handle.stop_outlet(a).await?;
         Ok(())
     }
 }

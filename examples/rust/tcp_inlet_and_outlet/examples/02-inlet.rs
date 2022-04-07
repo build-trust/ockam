@@ -1,4 +1,4 @@
-use ockam::{route, Context, Result, TcpTransport, TCP};
+use ockam::{try_route, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -8,7 +8,7 @@ async fn main(ctx: Context) -> Result<()> {
     // We know the network address of the node with an Outlet, we also know that the Outlet is
     // running at Ockam Worker address "outlet" on that node.
 
-    let route_to_outlet = route![(TCP, "127.0.0.1:4000"), "outlet"];
+    let route_to_outlet = try_route![(TCP, "127.0.0.1:4000"), "outlet"]?;
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
     // For example: 127.0.0.1:4001

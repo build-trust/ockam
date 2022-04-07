@@ -58,8 +58,8 @@ pub mod workers;
 pub use ockam_identity as identity;
 
 pub use ockam_core::{
-    errcode, route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage, Message, ProtocolId,
-    Result, Route, Routed, TransportMessage, Worker,
+    errcode, route, try_route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage, Message,
+    ProtocolId, Result, Route, Routed, TransportMessage, Worker,
 };
 
 /// Mark an Ockam Worker implementation.

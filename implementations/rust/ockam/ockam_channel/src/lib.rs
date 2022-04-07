@@ -52,14 +52,14 @@ mod tests {
         let new_key_exchanger = XXNewKeyExchanger::new(vault.async_try_clone().await?);
         SecureChannel::create_listener_extended(
             ctx,
-            "secure_channel_listener".to_string(),
+            "secure_channel_listener",
             new_key_exchanger.async_try_clone().await?,
             vault.async_try_clone().await?,
         )
         .await?;
         let initiator = SecureChannel::create_extended(
             ctx,
-            Route::new().append("secure_channel_listener"),
+            Route::new().try_append("secure_channel_listener")?,
             None,
             new_key_exchanger.initiator().await?,
             vault,
@@ -68,7 +68,7 @@ mod tests {
 
         let test_msg = "Hello, channel".to_string();
         ctx.send(
-            Route::new().append(initiator.address()).append("app"),
+            Route::new().append(initiator.address()).try_append("app")?,
             test_msg.clone(),
         )
         .await?;

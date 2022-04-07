@@ -118,7 +118,7 @@ async fn main(ctx: Context) -> Result<()> {
     let forwarder = RemoteForwarder::create(&ctx, node_in_hub).await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address for Receiver is:");
-    println!("{}", forwarder.remote_address());
+    println!("{:?}", forwarder.remote_address());
 
     // Start a worker, of type FileReception, at address "receiver".
     ctx.start_worker("receiver", FileReception::default()).await?;

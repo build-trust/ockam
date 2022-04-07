@@ -21,16 +21,17 @@ impl<M: Message + Clone> Drop for DelayedEvent<M> {
 
 impl<M: Message + Clone> DelayedEvent<M> {
     /// Create a heartbeat
-    pub async fn create(
-        ctx: &Context,
-        destination_addr: impl Into<Address>,
-        msg: M,
-    ) -> Result<Self> {
+    pub async fn create<A>(ctx: &Context, destination_addr: A, msg: M) -> Result<Self>
+    where
+        A: TryInto<Address>,
+        A::Error: Into<ockam_core::Error>,
+    {
+        let addr = destination_addr.try_into().map_err(|e| e.into())?;
         let child_ctx = ctx.new_context(Address::random_local()).await?;
 
         let heartbeat = Self {
             ctx: child_ctx,
-            destination_addr: destination_addr.into(),
+            destination_addr: addr,
             abort_handle: None,
             msg,
         };
@@ -63,9 +64,9 @@ impl<M: Message + Clone> DelayedEvent<M> {
                 let res = child_ctx.send(destination_addr.clone(), msg).await;
 
                 if res.is_err() {
-                    warn!("Error sending heartbeat message to {}", destination_addr);
+                    warn!("Error sending heartbeat message to {:?}", destination_addr);
                 } else {
-                    debug!("Sent heartbeat message to {}", destination_addr);
+                    debug!("Sent heartbeat message to {:?}", destination_addr);
                 }
             },
             reg,

@@ -48,7 +48,7 @@ impl BleRouter {
 
     async fn handle_register(&mut self, accepts: Vec<Address>, self_addr: Address) -> Result<()> {
         if let Some(f) = accepts.first().cloned() {
-            debug!("BLE registration request: {} => {}", f, self_addr);
+            debug!("BLE registration request: {:?} => {:?}", f, self_addr);
         } else {
             return Err(TransportError::InvalidAddress.into());
         }
@@ -137,7 +137,7 @@ impl BleRouter {
     pub(crate) async fn register(ctx: &Context) -> Result<BleRouterHandle> {
         let main_addr = Address::random_local();
         let api_addr = Address::random_local();
-        debug!("Registering new BleRouter with address {}", &main_addr);
+        debug!("Registering new BleRouter with address {:?}", main_addr);
 
         let child_ctx = ctx.new_context(Address::random_local()).await?;
         let router = Self {

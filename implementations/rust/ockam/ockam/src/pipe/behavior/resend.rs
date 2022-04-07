@@ -60,7 +60,7 @@ impl BehaviorHook for SenderConfirm {
             InternalCmd::Resend(Resend { idx }) => match self.on_route.remove(idx) {
                 Some(msg) => {
                     debug!(
-                        "Received message index '{}' timeout: resending to peer {}",
+                        "Received message index '{}' timeout: resending to peer {:?}",
                         idx, peer
                     );
 

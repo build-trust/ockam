@@ -1,5 +1,5 @@
 use ockam_core::compat::rand::{self, Rng};
-use ockam_core::{route, Address, Result, Routed, Worker};
+use ockam_core::{try_route, Address, Result, Routed, Worker};
 use ockam_node::Context;
 use tracing::debug;
 
@@ -24,7 +24,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
             .take(256)
             .map(char::from)
             .collect();
-        let r = route![(WS, bind_address), "echoer"];
+        let r = try_route![(WS, bind_address), "echoer"]?;
         ctx.send(r, msg.clone()).await?;
 
         let reply = ctx.receive::<String>().await?;
@@ -45,7 +45,7 @@ impl Worker for Echoer {
     type Context = Context;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        debug!("Replying back to {}", &msg.return_route());
+        debug!("Replying back to {:?}", &msg.return_route());
         ctx.send(msg.return_route(), msg.body()).await
     }
 }

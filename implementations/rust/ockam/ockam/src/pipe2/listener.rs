@@ -22,7 +22,7 @@ impl Worker for PipeListener {
         // handshake request.  We probably want to check the metadata
         // in that OckamMessage to make sure.
         debug!(
-            "Receiving pipe creation handshake from {}",
+            "Receiving pipe creation handshake from {:?}",
             msg.return_route()
         );
 

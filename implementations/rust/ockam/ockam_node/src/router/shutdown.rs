@@ -11,7 +11,7 @@ use ockam_core::{Address, Result};
 /// For every ACK we re-test whether the current cluster has stopped.
 /// If not, we do nothing. If so, we trigger the next cluster to stop.
 pub(super) async fn ack(router: &mut Router, addr: Address) -> Result<bool> {
-    debug!("Handling shutdown ACK for {}", addr);
+    debug!("Handling shutdown ACK for {:?}", addr);
 
     // Permanently remove the address and corresponding worker
     router.map.free_address(addr);
@@ -56,7 +56,7 @@ pub(super) async fn graceful(
     // Start by shutting down clusterless workers
     let mut cluster = vec![];
     for rec in router.map.non_cluster_workers().iter_mut() {
-        debug!("Stopping address {}", rec.address_set().first());
+        debug!("Stopping address {:?}", rec.address_set().first());
         rec.stop().await?;
         cluster.push(rec.address_set().first());
     }

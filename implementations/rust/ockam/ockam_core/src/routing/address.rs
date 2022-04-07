@@ -1,15 +1,14 @@
-use crate::compat::rand::{distributions::Standard, prelude::Distribution, random, Rng};
+use crate::compat::rand;
 use crate::compat::{
     string::{String, ToString},
     vec::{self, Vec},
 };
+use crate::error::errcode::{Kind, Origin};
 use core::fmt::{self, Debug, Display};
 use core::iter::FromIterator;
-use core::ops::Deref;
-use core::str::from_utf8;
 use serde::{Deserialize, Serialize};
 
-/// A read-only set containing a `Vec` of [`Address`] structures.
+/// A read-only sequence of [`Address`]es.
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AddressSet(Vec<Address>);
 
@@ -26,11 +25,20 @@ impl AddressSet {
 
     /// Check if an address is contained in this set.
     pub fn contains(&self, a2: &Address) -> bool {
-        self.0
-            .iter()
-            .find(|a1| a1 == &a2)
-            .map(|_| true)
-            .unwrap_or(false)
+        self.0.contains(a2)
+    }
+
+    /// Try to create an address set from an iterator over [`Address`]-like types.
+    pub fn try_from_iter<A, I>(iter: I) -> Result<Self, A::Error>
+    where
+        A: TryInto<Address>,
+        I: IntoIterator<Item = A>,
+    {
+        let mut v = Vec::new();
+        for a in iter.into_iter() {
+            v.push(a.try_into()?)
+        }
+        Ok(AddressSet(v))
     }
 }
 
@@ -73,15 +81,31 @@ impl From<Address> for AddressSet {
     }
 }
 
-impl<'a> From<&'a Address> for AddressSet {
-    fn from(a: &'a Address) -> Self {
+impl From<&Address> for AddressSet {
+    fn from(a: &Address) -> Self {
         Self(vec![a.clone()])
     }
 }
 
-impl<'a> From<&'a str> for AddressSet {
-    fn from(a: &'a str) -> Self {
-        Self(vec![a.into()])
+impl From<(TransportType, &str)> for AddressSet {
+    fn from((t, a): (TransportType, &str)) -> Self {
+        Self(vec![(t, a).into()])
+    }
+}
+
+impl TryFrom<&str> for AddressSet {
+    type Error = AddressParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Address::try_from(value).map(AddressSet::from)
+    }
+}
+
+impl TryFrom<String> for AddressSet {
+    type Error = AddressParseError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Address::try_from(value).map(AddressSet::from)
     }
 }
 
@@ -90,278 +114,109 @@ impl<'a> From<&'a str> for AddressSet {
 /// The address type is parsed by routers to determine the next local
 /// hop in the router chain to resolve a route to a remote connection.
 ///
-/// ## Parsing addresses
+/// When parsed from strings, addresses are of the following format:
 ///
-/// While addresses are concrete types, creating them from strings is
-/// possible for ergonomic reasons.
-///
-/// When parsing an address from a string, the first `#` symbol is
-/// used to separate the transport type from the rest of the address.
-/// If no `#` symbol is found, the address is assumed to be of `transport =
-/// 0`, the Local Worker transport type.
-///
-/// For example:
-/// * `"0#alice"` represents a local worker with the address: `alice`.
-/// * `"1#carol"` represents a remote worker with the address `carol`, reachable over TCP transport.
-///
+/// ```text
+///     Address <- Full / Local
+///     Full    <- [0-9]+ '#' Char*
+///     Local   <- !'#' Char*
+/// ```
 #[derive(Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Address {
     tt: TransportType,
-    inner: Vec<u8>,
+    addr: Vec<u8>,
 }
-
-/// An error which is returned when address parsing from string fails.
-#[derive(Debug)]
-pub struct AddressParseError {
-    kind: AddressParseErrorKind,
-}
-
-/// Enum to store the cause of an address parsing failure.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum AddressParseErrorKind {
-    /// Unable to parse address num in the address string.
-    InvalidType(core::num::ParseIntError),
-    /// Address string has more than one '#' separator.
-    MultipleSep,
-}
-
-impl AddressParseError {
-    /// Create new address parse error instance.
-    pub fn new(kind: AddressParseErrorKind) -> Self {
-        Self { kind }
-    }
-    /// Return the cause of the address parsing failure.
-    pub fn kind(&self) -> &AddressParseErrorKind {
-        &self.kind
-    }
-}
-
-impl Display for AddressParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.kind {
-            AddressParseErrorKind::InvalidType(e) => {
-                write!(f, "Failed to parse address type: '{}'", e)
-            }
-            AddressParseErrorKind::MultipleSep => {
-                write!(
-                    f,
-                    "Invalid address string: more than one '#' separator found"
-                )
-            }
-        }
-    }
-}
-
-impl crate::compat::error::Error for AddressParseError {}
 
 impl Address {
     /// Creates a new address from separate transport type and data parts.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use ockam_core::{Address, TransportType};
-    /// # pub const TCP: TransportType = TransportType::new(1);
-    /// // create a new remote worker address from a transport type and data
-    /// let tcp_worker: Address = Address::new(TCP, "carol");
-    /// ```
     pub fn new<S: Into<String>>(tt: TransportType, data: S) -> Self {
-        Self {
+        Address {
             tt,
-            inner: data.into().as_bytes().to_vec(),
+            addr: data.into().into_bytes(),
         }
     }
 
-    /// Parses an address from a string.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if passed an invalid address string.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use ockam_core::Address;
-    /// // parse a local worker address
-    /// let local_worker: Address = Address::from_string("alice");
-    ///
-    /// // parse a remote worker address reachable over tcp transport
-    /// let tcp_worker: Address = Address::from_string("1#carol");
-    /// ```
-    pub fn from_string<S: Into<String>>(s: S) -> Self {
-        match s.into().parse::<Address>() {
-            Ok(a) => a,
-            Err(e) => {
-                panic!("Invalid address string {}", e)
-            }
-        }
+    /// Create a new address with transport type [`LOCAL`].
+    pub fn local<T: Into<String>>(data: T) -> Self {
+        Address::new(LOCAL, data.into())
     }
 
     /// Generate a random address with the given transport type.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use ockam_core::{Address, LOCAL};
-    /// // generate a random local address
-    /// let local_worker: Address = Address::random(LOCAL);
-    /// ```
     pub fn random(tt: TransportType) -> Self {
-        Self { tt, ..random() }
+        Address::new(tt, hex::encode(rand::random::<[u8; 16]>()))
     }
 
     /// Generate a random address with transport type [`LOCAL`].
     pub fn random_local() -> Self {
-        Self {
-            tt: LOCAL,
-            ..random()
-        }
+        Address::random(LOCAL)
     }
 
     /// Get transport type of this address.
     pub fn transport_type(&self) -> TransportType {
         self.tt
     }
+
+    /// Access address data without transport type.
+    pub fn data(&self) -> &[u8] {
+        &self.addr
+    }
 }
 
 impl core::str::FromStr for Address {
     type Err = AddressParseError;
-    /// Parse an address from a string.
-    ///
-    /// See type documentation for more detail.
+
     fn from_str(s: &str) -> Result<Address, Self::Err> {
-        let buf: String = s.into();
-        let mut vec: Vec<_> = buf.split('#').collect();
-
-        // If after the split we only have one element, there was no
-        // `#` separator, so the type needs to be implicitly `= 0`
-        if vec.len() == 1 {
-            Ok(Address {
-                tt: LOCAL,
-                inner: vec.remove(0).as_bytes().to_vec(),
-            })
-        }
-        // If after the split we have 2 elements, we extract the type
-        // value from the string, and use the rest as the address
-        else if vec.len() == 2 {
-            match str::parse(vec.remove(0)) {
-                Ok(tt) => Ok(Address {
-                    tt: TransportType::new(tt),
-                    inner: vec.remove(0).as_bytes().to_vec(),
-                }),
-                Err(e) => Err(AddressParseError::new(AddressParseErrorKind::InvalidType(
-                    e,
-                ))),
+        match s.split_once('#') {
+            Some((pre, suf)) => {
+                let n = str::parse(pre).map_err(AddressParseError)?;
+                Ok(Address::new(TransportType::new(n), suf.to_string()))
             }
-        } else {
-            Err(AddressParseError::new(AddressParseErrorKind::MultipleSep))
+            None => Ok(Address::local(s.to_string())),
         }
-    }
-}
-
-impl Display for Address {
-    fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
-        let inner: &'a str = from_utf8(self.inner.as_slice()).unwrap_or("Invalid UTF-8");
-        write!(f, "{}#{}", self.tt, inner)
     }
 }
 
 impl Debug for Address {
-    fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as Display>::fmt(self, f)
-    }
-}
-
-impl Deref for Address {
-    type Target = Vec<u8>;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl From<String> for Address {
-    fn from(s: String) -> Self {
-        Self::from_string(s)
-    }
-}
-
-impl From<&String> for Address {
-    fn from(s: &String) -> Self {
-        Self::from_string(s.as_str())
-    }
-}
-
-impl<'a> From<&'a str> for Address {
-    fn from(s: &'a str) -> Self {
-        Self::from_string(s)
-    }
-}
-
-impl From<Vec<u8>> for Address {
-    fn from(data: Vec<u8>) -> Self {
-        Self {
-            tt: LOCAL,
-            inner: data,
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Ok(s) = core::str::from_utf8(self.data()) {
+            write!(f, "{}#{}", self.transport_type(), s)
+        } else {
+            write!(f, "{}#{}", self.transport_type(), hex::encode(self.data()))
         }
     }
 }
 
-impl From<(TransportType, Vec<u8>)> for Address {
-    fn from((tt, data): (TransportType, Vec<u8>)) -> Self {
-        Self { tt, inner: data }
+impl TryFrom<&str> for Address {
+    type Error = AddressParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        core::str::FromStr::from_str(value)
     }
 }
 
-impl<'a> From<(TransportType, &'a str)> for Address {
-    fn from((tt, data): (TransportType, &'a str)) -> Self {
-        Self {
-            tt,
-            inner: data.as_bytes().to_vec(),
-        }
+impl TryFrom<String> for Address {
+    type Error = AddressParseError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        core::str::FromStr::from_str(value.as_str())
     }
 }
 
-impl<'a> From<(TransportType, &'a String)> for Address {
-    fn from((tt, inner): (TransportType, &'a String)) -> Self {
-        Self::from((tt, inner.as_str()))
+impl From<(TransportType, &str)> for Address {
+    fn from((tt, data): (TransportType, &str)) -> Self {
+        Address::new(tt, data)
     }
 }
 
 impl From<(TransportType, String)> for Address {
-    fn from((transport, data): (TransportType, String)) -> Self {
-        Self::from((transport, data.as_str()))
+    fn from((tt, data): (TransportType, String)) -> Self {
+        Address::new(tt, data)
     }
 }
 
-impl<'a> From<&'a [u8]> for Address {
-    fn from(data: &'a [u8]) -> Self {
-        Self {
-            tt: LOCAL,
-            inner: data.to_vec(),
-        }
-    }
-}
-
-impl<'a> From<&'a [&u8]> for Address {
-    fn from(data: &'a [&u8]) -> Self {
-        Self {
-            tt: LOCAL,
-            inner: data.iter().map(|x| **x).collect(),
-        }
-    }
-}
-
-impl From<Address> for String {
-    fn from(address: Address) -> Self {
-        address.to_string()
-    }
-}
-
-impl Distribution<Address> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Address {
-        let address: [u8; 16] = rng.gen();
-        hex::encode(address).as_bytes().into()
+impl From<(TransportType, &String)> for Address {
+    fn from((tt, data): (TransportType, &String)) -> Self {
+        Address::new(tt, data)
     }
 }
 
@@ -397,38 +252,51 @@ impl From<TransportType> for u8 {
     }
 }
 
-#[test]
-fn parse_addr_simple() {
-    let addr = Address::from_string("local_friend");
-    assert_eq!(
-        addr,
-        Address {
-            tt: LOCAL,
-            inner: "local_friend".as_bytes().to_vec()
-        }
-    );
+/// An error which is returned when address parsing from string fails.
+#[derive(Debug)]
+pub struct AddressParseError(core::num::ParseIntError);
+
+impl Display for AddressParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Failed to parse address type.")
+    }
 }
 
-#[test]
-fn parse_addr_with_type() {
-    let addr = Address::from_string("1#remote_friend");
-    assert_eq!(
-        addr,
-        Address {
-            tt: TransportType::new(1),
-            inner: "remote_friend".as_bytes().to_vec()
-        }
-    );
+#[cfg(feature = "std")]
+impl std::error::Error for AddressParseError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.0)
+    }
 }
 
-#[test]
-#[should_panic(expected = "Failed to parse address type:")]
-fn parse_addr_invalid() {
-    Address::from_string("#,my_friend");
+#[cfg(not(feature = "std"))]
+impl crate::compat::error::Error for AddressParseError {}
+
+impl From<AddressParseError> for crate::Error {
+    fn from(e: AddressParseError) -> Self {
+        crate::Error::new(Origin::Unknown, Kind::Invalid, e)
+    }
 }
 
-#[test]
-#[should_panic(expected = "Invalid address string:")]
-fn parse_addr_invalid_multiple_separators() {
-    let _ = Address::from_string("1#invalid#");
+#[cfg(test)]
+mod tests {
+    use super::{Address, TransportType, LOCAL};
+
+    #[test]
+    fn parse_addr_simple() {
+        let addr = Address::try_from("local_friend").unwrap();
+        assert_eq!(addr, Address::new(LOCAL, "local_friend"));
+    }
+
+    #[test]
+    fn parse_addr_with_type() {
+        let addr = Address::try_from("1#remote_friend").unwrap();
+        assert_eq!(addr, Address::new(TransportType::new(1), "remote_friend"))
+    }
+
+    #[test]
+    #[should_panic]
+    fn parse_addr_invalid() {
+        Address::try_from("#,my_friend").unwrap();
+    }
 }

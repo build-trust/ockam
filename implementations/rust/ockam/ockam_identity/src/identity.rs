@@ -169,30 +169,40 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
 }
 
 impl<V: IdentityVault> Identity<V> {
-    pub async fn create_secure_channel_listener(
+    pub async fn create_secure_channel_listener<A>(
         &self,
-        address: impl Into<Address>,
+        address: A,
         trust_policy: impl TrustPolicy,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        A: TryInto<Address>,
+        A::Error: Into<ockam_core::Error>,
+    {
+        let address = address.try_into().map_err(|e| e.into())?;
         let vault = self.state.read().await.vault.async_try_clone().await?;
         let identity_clone = self.async_try_clone().await?;
         let listener = IdentityChannelListener::new(trust_policy, identity_clone, vault);
-        self.ctx.start_worker(address.into(), listener).await?;
+        self.ctx.start_worker(address, listener).await?;
 
         Ok(())
     }
 
-    pub async fn create_secure_channel(
+    pub async fn create_secure_channel<R>(
         &self,
-        route: impl Into<Route>,
+        route: R,
         trust_policy: impl TrustPolicy,
-    ) -> Result<Address> {
+    ) -> Result<Address>
+    where
+        R: TryInto<Route>,
+        R::Error: Into<ockam_core::Error>,
+    {
+        let route = route.try_into().map_err(|e| e.into())?;
         let vault = self.state.read().await.vault.async_try_clone().await?;
         let identity_clone = self.async_try_clone().await?;
 
         SecureChannelWorker::create_initiator(
             &self.ctx,
-            route.into(),
+            route,
             identity_clone,
             Arc::new(trust_policy),
             vault,

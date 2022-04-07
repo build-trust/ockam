@@ -55,7 +55,7 @@ impl Worker for TcpOutletListenWorker {
             .connect_outlet(self.peer.clone(), return_route.clone())
             .await?;
 
-        debug!("Created Tcp Outlet at {}", &address);
+        debug!("Created Tcp Outlet at {:?}", address);
 
         Ok(())
     }

@@ -1,6 +1,10 @@
 use crate::{pipe2::PipeBuilder, Context};
 use ockam_core::{compat::string::String, Address, Result};
 
+fn app() -> Address {
+    Address::local("app")
+}
+
 #[crate::test]
 async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
     info!("Starting the test...");
@@ -11,18 +15,17 @@ async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
         .receive(rx_addr.clone())
         .build(ctx)
         .await?;
-    info!("Created receiver pipe: {}", rx.addr());
+    info!("Created receiver pipe: {:?}", rx.addr());
 
     // Connect to a static receiver
     let sender = PipeBuilder::fixed()
         .connect(vec![rx_addr])
         .build(ctx)
         .await?;
-    info!("Created sender pipe: {}", sender.addr());
+    info!("Created sender pipe: {:?}", sender.addr());
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(vec![sender.addr(), app()], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
@@ -32,7 +35,7 @@ async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
 #[crate::test]
 async fn handshake_pipe(ctx: &mut Context) -> Result<()> {
     let listener = PipeBuilder::dynamic()
-        .receive("my-pipe-listener")
+        .receive(Address::local("my-pipe-listener"))
         .build(ctx)
         .await?;
 
@@ -43,8 +46,7 @@ async fn handshake_pipe(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(vec![sender.addr(), app()], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
@@ -62,7 +64,7 @@ async fn fixed_delivery_pipe(ctx: &mut Context) -> Result<()> {
         .delivery_ack()
         .build(ctx)
         .await?;
-    info!("Created receiver pipe: {}", rx.addr());
+    info!("Created receiver pipe: {:?}", rx.addr());
 
     // Connect to a static receiver
     let sender = PipeBuilder::fixed()
@@ -71,11 +73,10 @@ async fn fixed_delivery_pipe(ctx: &mut Context) -> Result<()> {
         .build(ctx)
         .await?;
 
-    info!("Created sender pipe: {}", sender.addr());
+    info!("Created sender pipe: {:?}", sender.addr());
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(vec![sender.addr(), app()], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
@@ -85,7 +86,7 @@ async fn fixed_delivery_pipe(ctx: &mut Context) -> Result<()> {
 #[crate::test]
 async fn dynamic_delivery_pipe(ctx: &mut Context) -> Result<()> {
     let listener = PipeBuilder::dynamic()
-        .receive("my-pipe-listener")
+        .receive(Address::local("my-pipe-listener"))
         .delivery_ack()
         .build(ctx)
         .await?;
@@ -98,8 +99,7 @@ async fn dynamic_delivery_pipe(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(vec![sender.addr(), app()], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
@@ -117,7 +117,7 @@ async fn fixed_ordering_pipe(ctx: &mut Context) -> Result<()> {
         .enforce_ordering()
         .build(ctx)
         .await?;
-    info!("Created receiver pipe: {}", rx.addr());
+    info!("Created receiver pipe: {:?}", rx.addr());
 
     // Connect to a static receiver
     let sender = PipeBuilder::fixed()
@@ -126,11 +126,10 @@ async fn fixed_ordering_pipe(ctx: &mut Context) -> Result<()> {
         .build(ctx)
         .await?;
 
-    info!("Created sender pipe: {}", sender.addr());
+    info!("Created sender pipe: {:?}", sender.addr());
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(vec![sender.addr(), app()], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
@@ -148,7 +147,7 @@ async fn fixed_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
         .enforce_ordering()
         .build(ctx)
         .await?;
-    info!("Created receiver pipe: {}", rx.addr());
+    info!("Created receiver pipe: {:?}", rx.addr());
 
     // Connect to a static receiver
     let sender = PipeBuilder::fixed()
@@ -158,11 +157,10 @@ async fn fixed_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
         .build(ctx)
         .await?;
 
-    info!("Created sender pipe: {}", sender.addr());
+    info!("Created sender pipe: {:?}", sender.addr());
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(vec![sender.addr(), app()], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
@@ -172,7 +170,7 @@ async fn fixed_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
 #[crate::test]
 async fn dynamic_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
     let listener = PipeBuilder::dynamic()
-        .receive("my-pipe-listener")
+        .receive(Address::local("my-pipe-listener"))
         .delivery_ack()
         .enforce_ordering()
         .build(ctx)
@@ -187,8 +185,7 @@ async fn dynamic_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(vec![sender.addr(), app()], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);

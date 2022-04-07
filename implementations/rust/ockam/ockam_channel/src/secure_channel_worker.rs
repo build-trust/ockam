@@ -259,8 +259,8 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
             };
 
             info!(
-                "Started SecureChannel {} at local: {}, remote: {}",
-                role_str, &self.address_local, &self.address_remote
+                "Started SecureChannel {} at local: {:?}, remote: {:?}",
+                role_str, self.address_local, self.address_remote
             );
 
             // Notify interested worker about finished key exchange

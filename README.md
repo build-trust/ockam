@@ -79,7 +79,7 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
 // examples/hello.rs
 use ockam::{
     identity::{Identity, TrustEveryonePolicy},
-    route,
+    try_route,
     vault::Vault,
     Context, Result,
 };
@@ -108,7 +108,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     //
     // This message will automatically get encrypted when it enters the channel
     // and decrypted just before it exits the channel.
-    ctx.send(route![channel, "app"], "Hello Ockam!".to_string()).await?;
+    ctx.send(try_route![channel, "app"]?, "Hello Ockam!".to_string())
+        .await?;
 
     // Wait to receive a message for the "app" worker and print it.
     let message = ctx.receive::<String>().await?;

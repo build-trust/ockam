@@ -97,13 +97,9 @@ impl TcpRouterHandle {
 
     /// Register a new connection worker with this router
     pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
-        let tcp_address: Address = format!("{}#{}", TCP, pair.peer()).into();
+        let tcp_address = Address::new(TCP, pair.peer().to_string());
         let mut accepts = vec![tcp_address];
-        accepts.extend(
-            pair.hostnames()
-                .iter()
-                .map(|x| Address::from_string(format!("{}#{}", TCP, x))),
-        );
+        accepts.extend(pair.hostnames().iter().map(|x| Address::new(TCP, x)));
         let self_addr = pair.tx_addr();
 
         let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;

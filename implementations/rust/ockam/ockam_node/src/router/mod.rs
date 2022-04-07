@@ -173,7 +173,7 @@ impl Router {
             }
 
             StopAck(addr) if self.state.running() => {
-                debug!("Received shutdown ACK for address {}", addr);
+                debug!("Received shutdown ACK for address {:?}", addr);
                 if let Some(rec) = self.map.internal.remove(&addr) {
                     rec.address_set().iter().for_each(|addr| {
                         self.map.addr_map.remove(addr);
@@ -202,7 +202,7 @@ impl Router {
                 .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?,
 
             SetCluster(addr, label, reply) => {
-                debug!("Setting cluster on address {}", addr);
+                debug!("Setting cluster on address {:?}", addr);
                 let msg = self.map.set_cluster(label, addr);
                 reply
                     .send(msg)
@@ -211,7 +211,7 @@ impl Router {
             }
 
             SetReady(addr) => {
-                trace!("Marking address {} as ready!", addr);
+                trace!("Marking address {:?} as ready!", addr);
                 match self.map.set_ready(addr) {
                     Err(e) => warn!("Failed to set address as ready: {}", e),
                     Ok(waiting) => {

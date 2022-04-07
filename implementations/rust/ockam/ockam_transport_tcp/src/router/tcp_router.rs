@@ -1,5 +1,4 @@
 use crate::{TcpRouterHandle, TcpRouterRequest, TcpRouterResponse, TcpSendWorker, TCP};
-use core::ops::Deref;
 use ockam_core::{async_trait, Any};
 use ockam_core::{Address, Decodable, LocalMessage, Result, Routed, Worker};
 use ockam_node::Context;
@@ -28,7 +27,7 @@ impl TcpRouter {
     pub async fn register(ctx: &Context) -> Result<TcpRouterHandle> {
         let main_addr = Address::random_local();
         let api_addr = Address::random_local();
-        debug!("Initialising new TcpRouter with address {}", &main_addr);
+        debug!("Initialising new TcpRouter with address {:?}", main_addr);
 
         let child_ctx = ctx.new_context(Address::random_local()).await?;
 
@@ -63,7 +62,7 @@ impl TcpRouter {
     /// this node's worker
     async fn handle_register(&mut self, accepts: Vec<Address>, self_addr: Address) -> Result<()> {
         if let Some(f) = accepts.first().cloned() {
-            trace!("TCP registration request: {} => {}", f, self_addr);
+            trace!("TCP registration request: {:?} => {:?}", f, self_addr);
         } else {
             error!("TCP registration request failed due to an invalid address list. Please provide at least one valid Address.");
             return Err(TransportError::InvalidAddress.into());
@@ -72,7 +71,7 @@ impl TcpRouter {
         for accept in &accepts {
             if self.map.contains_key(accept) {
                 error!(
-                    "TCP registration request failed, this address is already connected: {}",
+                    "TCP registration request failed, this address is already connected: {:?}",
                     accept
                 );
                 return Err(TransportError::AlreadyConnected.into());
@@ -89,7 +88,7 @@ impl TcpRouter {
     /// Handle any [`TcpRouterRequest::Unregister`] messages received by
     /// this node's worker
     async fn handle_unregister(&mut self, self_addr: Address) -> Result<()> {
-        trace!("TCP unregistration request: {}", &self_addr);
+        trace!("TCP unregistration request: {:?}", self_addr);
 
         self.map.retain(|_, self_addr_i| self_addr_i != &self_addr);
 
@@ -131,12 +130,12 @@ impl TcpRouter {
     /// nodes worker
     async fn handle_disconnect(&mut self, peer: String) -> Result<()> {
         let (peer_addr, _hostnames) = TcpRouterHandle::resolve_peer(peer)?;
-        let tcp_address: Address = format!("{}#{}", TCP, peer_addr).into();
+        let tcp_address = Address::new(TCP, peer_addr.to_string());
 
         let self_address = if let Some(self_address) = self.map.get(&tcp_address) {
             self_address.clone()
         } else {
-            error!("Failed to disconnect, peer not found: {}", tcp_address);
+            error!("Failed to disconnect, peer not found: {:?}", tcp_address);
             return Err(TransportError::PeerNotFound.into());
         };
 
@@ -182,8 +181,13 @@ impl TcpRouter {
         }
 
         // Try resolve a tcp address for the onward address
-        let peer =
-            String::from_utf8(onward.deref().clone()).map_err(|_| TransportError::UnknownRoute)?;
+        let peer = {
+            if onward.transport_type() != TCP {
+                return Err(TransportError::UnknownRoute.into());
+            }
+            String::from_utf8(onward.data().to_vec()).map_err(|_| TransportError::UnknownRoute)?
+        };
+
         let (peer_addr, hostnames) = TcpRouterHandle::resolve_peer(peer.clone())?;
         let tcp_address = Address::new(TCP, peer_addr.to_string());
 
@@ -257,7 +261,7 @@ impl Worker for TcpRouter {
             };
         } else {
             error!(
-                "TCP router received a message for an invalid address: {}",
+                "TCP router received a message for an invalid address: {:?}",
                 msg_addr
             );
             return Err(TransportError::InvalidAddress.into());

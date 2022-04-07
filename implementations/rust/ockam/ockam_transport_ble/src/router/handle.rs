@@ -38,12 +38,12 @@ impl BleRouterHandle {
 impl BleRouterHandle {
     /// Register a new connection worker with this router
     pub async fn register(&self, pair: &WorkerPair) -> Result<()> {
-        let ble_address: Address = format!("{}#{}", crate::BLE, pair.peer()).into();
+        let ble_address = Address::new(crate::BLE, pair.peer().to_string());
         let mut accepts = vec![ble_address];
         accepts.extend(
             pair.servicenames()
                 .iter()
-                .map(|x| Address::from_string(format!("{}#{}", crate::BLE, x))),
+                .map(|x| Address::new(crate::BLE, x)),
         );
         let self_addr = pair.tx_addr();
 

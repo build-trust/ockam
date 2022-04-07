@@ -168,7 +168,7 @@ impl Worker for TcpSendWorker {
         let rx_addr = Address::random_local();
         let receiver = TcpRecvProcessor::new(
             rx,
-            format!("{}#{}", crate::TCP, self.peer).into(),
+            Address::new(crate::TCP, self.peer.to_string()),
             self.internal_addr.clone(),
         );
         ctx.start_processor(rx_addr.clone(), receiver).await?;

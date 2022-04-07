@@ -182,7 +182,7 @@ Create a file at `examples/alice.rs` and copy the below code snippet to it.
 ```rust
 // examples/alice.rs
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
+use ockam::{try_route, vault::Vault, Context, Result, TcpTransport, TCP};
 use std::io;
 
 #[ockam::node]
@@ -207,7 +207,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Combine the tcp address of the node and the forwarding_address to get a route
     // to Bob's secure channel listener.
-    let route_to_bob_listener = route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "listener"];
+    let route_to_bob_listener = try_route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "listener"]?;
 
     // As Alice, connect to Bob's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
@@ -225,7 +225,8 @@ async fn main(mut ctx: Context) -> Result<()> {
         let message = message.trim();
 
         // Send the provided message, through the channel, to Bob's echoer.
-        ctx.send(route![channel.clone(), "echoer"], message.to_string()).await?;
+        ctx.send(try_route![channel.clone(), "echoer"]?, message.to_string())
+            .await?;
 
         // Wait to receive an echo and print it.
         let reply = ctx.receive::<String>().await?;

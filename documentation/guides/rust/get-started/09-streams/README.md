@@ -77,10 +77,10 @@ For example:
 ```rust
 // Send a message
 ctx.send(
-    route![
+    try_route![
         sender.clone(), // via the "initiator-to-responder" stream
         "echoer"        // to the "echoer" worker
-    ],
+    ]?,
     "Hello World!".to_string()
 )
 .await?;
@@ -166,7 +166,7 @@ Add the following code to this file:
 
 ```rust
 // examples/09-streams-initiator.rs
-use ockam::{route, stream::Stream, Context, Result, TcpTransport, TCP};
+use ockam::{route, stream::Stream, try_route, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -190,10 +190,10 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Send a message
     ctx.send(
-        route![
+        try_route![
             sender.clone(), // via the "initiator-to-responder" stream
             "echoer"        // to the "echoer" worker
-        ],
+        ]?,
         "Hello World!".to_string(),
     )
     .await?;

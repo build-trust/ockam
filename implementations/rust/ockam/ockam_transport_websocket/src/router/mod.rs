@@ -1,6 +1,5 @@
 use core::str::FromStr;
 use std::collections::BTreeMap;
-use std::ops::Deref;
 
 pub(crate) use handle::WebSocketRouterHandle;
 use ockam_core::{
@@ -48,8 +47,8 @@ impl WebSocketRouter {
         let main_addr = Address::random_local();
         let api_addr = Address::random_local();
         debug!(
-            "Initialising new WebSocketRouter with address {}",
-            &main_addr
+            "Initialising new WebSocketRouter with address {:?}",
+            main_addr
         );
 
         // Create the `WebSocketRouter` instance. Note that both the
@@ -129,10 +128,14 @@ impl WebSocketRouter {
             // Connection already exists
             next = n.clone();
         } else {
+            if onward.transport_type() != WS {
+                return Err(TransportError::UnknownRoute.into());
+            }
             // No existing connection
-            let peer_str = match String::from_utf8(onward.deref().clone()) {
-                Ok(s) => s,
-                Err(_e) => return Err(TransportError::UnknownRoute.into()),
+            let peer_str = if let Ok(s) = String::from_utf8(onward.data().to_vec()) {
+                s
+            } else {
+                return Err(TransportError::UnknownRoute.into());
             };
 
             // TODO: Check if this is the hostname and we have existing/pending connection to this IP
@@ -159,7 +162,7 @@ impl WebSocketRouter {
     async fn handle_register(&mut self, accepts: Vec<Address>, self_addr: Address) -> Result<()> {
         // The `accepts` vector should always contain at least one address.
         if let Some(f) = accepts.first().cloned() {
-            trace!("WS registration request: {} => {}", f, self_addr);
+            trace!("WS registration request: {:?} => {:?}", f, self_addr);
         }
         // Otherwise, the router is not being used properly and returns an error.
         else {

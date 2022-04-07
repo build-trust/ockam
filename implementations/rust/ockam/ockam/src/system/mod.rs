@@ -67,21 +67,20 @@ impl<C: Send + 'static, M: Message> WorkerSystem<C, M> {
     }
 
     /// Attach a system handler to this system
-    pub fn attach<A, H>(&mut self, addr: A, handler: H)
+    pub fn attach<H>(&mut self, addr: Address, handler: H)
     where
-        A: Into<Address>,
         H: SystemHandler<C, M> + Send + 'static,
     {
-        self.map.insert(addr.into(), Box::new(handler));
+        self.map.insert(addr, Box::new(handler));
     }
 
     /// Attach a boxed system handler to this system
-    pub fn attach_boxed<A: Into<Address>>(
+    pub fn attach_boxed(
         &mut self,
-        addr: A,
+        addr: Address,
         handler: Box<dyn SystemHandler<C, M> + Send + 'static>,
     ) {
-        self.map.insert(addr.into(), handler);
+        self.map.insert(addr, handler);
     }
 
     /// Specify an "entry point" address for this system
@@ -94,8 +93,8 @@ impl<C: Send + 'static, M: Message> WorkerSystem<C, M> {
     ///
     /// You can then start the handling process by calling
     /// `dispatch_entry()`.
-    pub fn set_entry<A: Into<Address>>(&mut self, addr: A) {
-        self.entry = Some(addr.into());
+    pub fn set_entry(&mut self, addr: Address) {
+        self.entry = Some(addr);
     }
 
     /// Get an optional reference to the entry point of this system

@@ -62,7 +62,7 @@ impl Context {
     pub(crate) async fn mailbox_next(&mut self) -> Result<Option<RelayMessage>> {
         loop {
             let relay_msg = if let Some(msg) = self.mailbox.recv().await {
-                trace!("{}: received new message!", self.address());
+                trace!("{:?}: received new message!", self.address());
                 msg
             } else {
                 return Ok(None);
@@ -70,7 +70,10 @@ impl Context {
 
             if let RelayPayload::Direct(local_msg) = &relay_msg.data {
                 if !self.access_control.is_authorized(local_msg).await? {
-                    warn!("Message for {} did not pass access control", relay_msg.addr);
+                    warn!(
+                        "Message for {:?} did not pass access control",
+                        relay_msg.addr
+                    );
                     continue;
                 }
             }
@@ -130,8 +133,13 @@ impl Context {
     /// Note: this function is very low-level.  For most users
     /// [`start_worker()`](Self::start_worker) is the recommended to
     /// way to create a new worker context.
-    pub async fn new_context<S: Into<Address>>(&self, addr: S) -> Result<Context> {
-        self.new_context_impl(addr.into()).await
+    pub async fn new_context<S>(&self, addr: S) -> Result<Context>
+    where
+        S: TryInto<Address>,
+        S::Error: Into<Error>,
+    {
+        let a = addr.try_into().map_err(|e| e.into())?;
+        self.new_context_impl(a).await
     }
 
     async fn new_context_impl(&self, addr: Address) -> Result<Context> {
@@ -188,12 +196,13 @@ impl Context {
     /// ```
     pub async fn start_worker<NM, NW, S>(&self, address: S, worker: NW) -> Result<()>
     where
-        S: Into<AddressSet>,
+        S: TryInto<AddressSet>,
+        S::Error: Into<Error>,
         NM: Message + Send + 'static,
         NW: Worker<Context = Context, Message = NM>,
     {
-        self.start_worker_impl(address.into(), worker, AllowAll)
-            .await
+        let set = address.try_into().map_err(|e| e.into())?;
+        self.start_worker_impl(set, worker, AllowAll).await
     }
 
     /// Start a new worker instance with explicit access controls
@@ -206,13 +215,14 @@ impl Context {
         access_control: NA,
     ) -> Result<()>
     where
-        S: Into<AddressSet>,
+        S: TryInto<AddressSet>,
+        S::Error: Into<Error>,
         NM: Message + Send + 'static,
         NW: Worker<Context = Context, Message = NM>,
         NA: AccessControl,
     {
-        self.start_worker_impl(address.into(), worker, access_control)
-            .await
+        let set = address.try_into().map_err(|e| e.into())?;
+        self.start_worker_impl(set, worker, access_control).await
     }
 
     async fn start_worker_impl<NM, NW, NA>(
@@ -258,11 +268,14 @@ impl Context {
     /// receive messages.  If your code is built around responding to
     /// message events, consider using
     /// [`start_worker()`](Self::start_processor) instead!
-    pub async fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
+    pub async fn start_processor<P, A>(&self, address: A, processor: P) -> Result<()>
     where
+        A: TryInto<Address>,
+        A::Error: Into<Error>,
         P: Processor<Context = Context>,
     {
-        self.start_processor_impl(address.into(), processor).await
+        let a = address.try_into().map_err(|e| e.into())?;
+        self.start_processor_impl(a, processor).await
     }
 
     async fn start_processor_impl<P>(&self, address: Address, processor: P) -> Result<()>
@@ -292,17 +305,27 @@ impl Context {
     }
 
     /// Shut down a local worker by its primary address
-    pub async fn stop_worker<A: Into<Address>>(&self, addr: A) -> Result<()> {
-        self.stop_address(addr.into(), AddressType::Worker).await
+    pub async fn stop_worker<A>(&self, addr: A) -> Result<()>
+    where
+        A: TryInto<Address>,
+        A::Error: Into<Error>,
+    {
+        let a = addr.try_into().map_err(|e| e.into())?;
+        self.stop_address(a, AddressType::Worker).await
     }
 
     /// Shut down a local processor by its address
-    pub async fn stop_processor<A: Into<Address>>(&self, addr: A) -> Result<()> {
-        self.stop_address(addr.into(), AddressType::Processor).await
+    pub async fn stop_processor<A>(&self, addr: A) -> Result<()>
+    where
+        A: TryInto<Address>,
+        A::Error: Into<Error>,
+    {
+        let a = addr.try_into().map_err(|e| e.into())?;
+        self.stop_address(a, AddressType::Processor).await
     }
 
     async fn stop_address(&self, addr: Address, t: AddressType) -> Result<()> {
-        debug!("Shutting down {} {}", t.str(), addr);
+        debug!("Shutting down {} {:?}", t.str(), addr);
 
         // Send the stop request
         let (req, mut rx) = match t {
@@ -376,7 +399,8 @@ impl Context {
     /// [`receive`]: Self::receive
     pub async fn send_and_receive<R, M, N>(&self, route: R, msg: M) -> Result<N>
     where
-        R: Into<Route>,
+        R: TryInto<Route>,
+        R::Error: Into<Error>,
         M: Message + Send + 'static,
         N: Message,
     {
@@ -392,12 +416,14 @@ impl Context {
     /// addresses.
     pub async fn send_to_self<A, M>(&self, from: A, addr: A, msg: M) -> Result<()>
     where
-        A: Into<Address>,
+        A: TryInto<Address>,
+        A::Error: Into<Error>,
         M: Message + Send + 'static,
     {
-        let addr = addr.into();
+        let addr = addr.try_into().map_err(|e| e.into())?;
         if self.address.contains(&addr) {
-            self.send_from_address(addr, msg, from.into()).await
+            let from = from.try_into().map_err(|e| e.into())?;
+            self.send_from_address(addr, msg, from).await
         } else {
             Err(NodeError::NodeState(NodeReason::Unknown).internal())
         }
@@ -434,11 +460,12 @@ impl Context {
     /// ```
     pub async fn send<R, M>(&self, route: R, msg: M) -> Result<()>
     where
-        R: Into<Route>,
+        R: TryInto<Route>,
+        R::Error: Into<Error>,
         M: Message + Send + 'static,
     {
-        self.send_from_address(route.into(), msg, self.address())
-            .await
+        let r = route.try_into().map_err(|e| e.into())?;
+        self.send_from_address(r, msg, self.address()).await
     }
 
     /// Send a message to an address or via a fully-qualified route
@@ -461,11 +488,12 @@ impl Context {
         sending_address: Address,
     ) -> Result<()>
     where
-        R: Into<Route>,
+        R: TryInto<Route>,
+        R::Error: Into<Error>,
         M: Message + Send + 'static,
     {
-        self.send_from_address_impl(route.into(), msg, sending_address)
-            .await
+        let r = route.try_into().map_err(|e| e.into())?;
+        self.send_from_address_impl(r, msg, sending_address).await
     }
 
     async fn send_from_address_impl<M>(
@@ -671,8 +699,13 @@ impl Context {
     }
 
     /// Register a router for a specific address type
-    pub async fn register<A: Into<Address>>(&self, type_: TransportType, addr: A) -> Result<()> {
-        self.register_impl(type_, addr.into()).await
+    pub async fn register<A>(&self, type_: TransportType, addr: A) -> Result<()>
+    where
+        A: TryInto<Address>,
+        A::Error: Into<Error>,
+    {
+        let a = addr.try_into().map_err(|e| e.into())?;
+        self.register_impl(type_, a).await
     }
 
     /// Send a shutdown acknowledgement to the router
@@ -744,8 +777,13 @@ impl Context {
     }
 
     /// Wait for a particular address to become "ready"
-    pub async fn wait_for<A: Into<Address>>(&mut self, addr: A) -> Result<()> {
-        let (msg, mut reply) = NodeMessage::get_ready(addr.into());
+    pub async fn wait_for<A>(&mut self, addr: A) -> Result<()>
+    where
+        A: TryInto<Address>,
+        A::Error: Into<Error>,
+    {
+        let addr = addr.try_into().map_err(|e| e.into())?;
+        let (msg, mut reply) = NodeMessage::get_ready(addr);
         self.sender
             .send(msg)
             .await

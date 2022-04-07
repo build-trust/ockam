@@ -11,7 +11,7 @@ pub(super) async fn exec(
     addr: &Address,
     reply: &Sender<NodeReplyResult>,
 ) -> Result<()> {
-    trace!("Stopping worker '{}'", addr);
+    trace!("Stopping worker '{:?}'", addr);
 
     let primary_address = match router.map.addr_map.get(addr) {
         Some(p) => p.clone(),

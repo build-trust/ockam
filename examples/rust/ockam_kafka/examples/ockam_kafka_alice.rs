@@ -2,7 +2,7 @@ use ockam::{
     identity::{Identity, TrustEveryonePolicy},
     route,
     stream::Stream,
-    unique_with_prefix,
+    try_route, unique_with_prefix,
     vault::Vault,
     Context, Result, TcpTransport, TCP,
 };
@@ -54,7 +54,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // As Alice, connect to Bob's secure channel listener using the sender, and
     // perform an Authenticated Key Exchange to establish an encrypted secure
     // channel with Bob.
-    let r = route![sender.clone(), "listener"];
+    let r = try_route![sender.clone(), "listener"]?;
     let channel = alice.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
@@ -67,7 +67,8 @@ async fn main(mut ctx: Context) -> Result<()> {
         let message = message.trim();
 
         // Send the provided message, through the channel, to Bob's echoer.
-        ctx.send(route![channel.clone(), "echoer"], message.to_string()).await?;
+        ctx.send(try_route![channel.clone(), "echoer"]?, message.to_string())
+            .await?;
 
         // Wait to receive an echo and print it.
         let reply = ctx.receive::<String>().await?;

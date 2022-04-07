@@ -199,8 +199,8 @@ impl Stream {
                     self.interval,
                     self.forwarding_address.clone(),
                     receiver_rx.clone(),
-                    self.stream_service.clone(),
-                    self.index_service.clone(),
+                    self.stream_service.clone().try_into()?,
+                    self.index_service.clone().try_into()?,
                 ),
             )
             .await?;

@@ -38,7 +38,7 @@ async fn handle_response(
             w.init = true;
 
             info!(
-                "Initialised producer for stream '{}' and route: {}",
+                "Initialised producer for stream '{}' and route: {:?}",
                 stream_name, w.route
             );
 
@@ -46,7 +46,7 @@ async fn handle_response(
             let outbox = core::mem::take(&mut w.outbox);
             for trans in outbox.into_iter() {
                 let route = w.route.clone();
-                debug!("Sending queued message to {}", route);
+                debug!("Sending queued message to {:?}", route);
                 ctx.send(route, trans).await?;
             }
 
@@ -84,7 +84,7 @@ impl Worker for StreamProducer {
             self.route
                 .clone()
                 .modify()
-                .append(self.stream_service.clone()),
+                .try_append(self.stream_service.clone())?,
             CreateStreamRequest::new(Some(self.sender_name.clone())),
         )
         .await

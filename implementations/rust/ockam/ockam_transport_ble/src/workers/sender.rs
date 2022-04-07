@@ -89,7 +89,7 @@ where
         if let Some(rx_stream) = self.rx_stream.take() {
             let rx_addr = Address::random_local();
             let receiver =
-                BleRecvProcessor::new(rx_stream, format!("{}#{}", crate::BLE, self.peer).into());
+                BleRecvProcessor::new(rx_stream, Address::new(crate::BLE, self.peer.to_string()));
             ctx.start_processor(rx_addr.clone(), receiver).await?;
             debug!("started receiver");
         } else {

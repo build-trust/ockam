@@ -97,7 +97,7 @@ impl TcpPortalWorker {
         let receiver_address = Address::random_local();
 
         info!(
-            "Creating new {:?} at internal: {}, remote: {}",
+            "Creating new {:?} at internal: {:?}, remote: {:?}",
             type_name, internal_addr, remote_addr
         );
 
@@ -166,7 +166,7 @@ impl TcpPortalWorker {
             .await?;
 
             debug!(
-                "Notified the other side from {:?} at: {} about connection drop",
+                "Notified the other side from {:?} at: {:?} about connection drop",
                 self.type_name, self.internal_address
             );
 
@@ -194,7 +194,7 @@ impl TcpPortalWorker {
                 .is_ok()
             {
                 debug!(
-                    "{:?} at: {} stopped receiver due to connection drop",
+                    "{:?} at: {:?} stopped receiver due to connection drop",
                     self.type_name, self.internal_address
                 );
             }
@@ -203,7 +203,7 @@ impl TcpPortalWorker {
         ctx.stop_worker(self.internal_address.clone()).await?;
 
         info!(
-            "{:?} at: {} stopped due to connection drop",
+            "{:?} at: {:?} stopped due to connection drop",
             self.type_name, self.internal_address
         );
 
@@ -225,7 +225,7 @@ impl Worker for TcpPortalWorker {
                 ctx.send_from_address(ping_route, PortalMessage::Ping, self.remote_address.clone())
                     .await?;
 
-                debug!("Inlet at: {} sent ping", self.internal_address);
+                debug!("Inlet at: {:?} sent ping", self.internal_address);
 
                 self.state = Some(State::ReceivePong);
             }
@@ -249,12 +249,12 @@ impl Worker for TcpPortalWorker {
                     self.start_receiver(ctx).await?;
 
                     debug!(
-                        "Outlet at: {} successfully connected",
+                        "Outlet at: {:?} successfully connected",
                         self.internal_address
                     );
                 }
 
-                debug!("Outlet at: {} sent pong", self.internal_address);
+                debug!("Outlet at: {:?} sent pong", self.internal_address);
 
                 self.state = Some(State::Initialized {
                     onward_route: pong_route,
@@ -303,7 +303,7 @@ impl Worker for TcpPortalWorker {
 
                 self.start_receiver(ctx).await?;
 
-                debug!("Inlet at: {} received pong", self.internal_address);
+                debug!("Inlet at: {:?} received pong", self.internal_address);
 
                 self.state = Some(State::Initialized {
                     onward_route: return_route,
@@ -312,7 +312,7 @@ impl Worker for TcpPortalWorker {
             State::Initialized { onward_route } => {
                 if recipient == self.internal_address {
                     trace!(
-                        "{:?} at: {} received internal tcp packet",
+                        "{:?} at: {:?} received internal tcp packet",
                         self.type_name,
                         self.internal_address
                     );
@@ -330,7 +330,7 @@ impl Worker for TcpPortalWorker {
                         }
                         PortalInternalMessage::Disconnect => {
                             info!(
-                                "Tcp stream was dropped for {:?} at: {}",
+                                "Tcp stream was dropped for {:?} at: {:?}",
                                 self.type_name, self.internal_address
                             );
                             self.start_disconnection(ctx, Some(onward_route.clone()))
@@ -339,7 +339,7 @@ impl Worker for TcpPortalWorker {
                     }
                 } else {
                     trace!(
-                        "{:?} at: {} received remote tcp packet",
+                        "{:?} at: {:?} received remote tcp packet",
                         self.type_name,
                         self.internal_address
                     );

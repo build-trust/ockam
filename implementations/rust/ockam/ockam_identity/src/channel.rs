@@ -55,7 +55,7 @@ mod test {
     use crate::{Identity, IdentityTrait};
     use core::sync::atomic::{AtomicU8, Ordering};
     use ockam_core::compat::sync::Arc;
-    use ockam_core::{route, Any, Route, Routed, Worker};
+    use ockam_core::{route, try_route, Any, Route, Routed, Worker};
     use ockam_node::Context;
     use ockam_vault::Vault;
     use std::time::Duration;
@@ -76,7 +76,7 @@ mod test {
             .await?;
 
         let alice_channel = alice
-            .create_secure_channel(route!["bob_listener"], alice_trust_policy)
+            .create_secure_channel(try_route!["bob_listener"]?, alice_trust_policy)
             .await?;
 
         ctx.send(
@@ -118,7 +118,7 @@ mod test {
             .await?;
 
         let alice_channel = alice
-            .create_secure_channel(route!["bob_listener"], alice_trust_policy.clone())
+            .create_secure_channel(try_route!["bob_listener"]?, alice_trust_policy.clone())
             .await?;
 
         bob.create_secure_channel_listener("bob_another_listener", bob_trust_policy)
@@ -126,7 +126,7 @@ mod test {
 
         let alice_another_channel = alice
             .create_secure_channel(
-                route![alice_channel, "bob_another_listener"],
+                try_route![alice_channel, "bob_another_listener"]?,
                 alice_trust_policy,
             )
             .await?;
@@ -163,7 +163,7 @@ mod test {
             .await?;
 
         let alice_channel = alice
-            .create_secure_channel(route!["bob_listener"], alice_trust_policy.clone())
+            .create_secure_channel(try_route!["bob_listener"]?, alice_trust_policy.clone())
             .await?;
 
         bob.create_secure_channel_listener("bob_another_listener", bob_trust_policy.clone())
@@ -171,7 +171,7 @@ mod test {
 
         let alice_another_channel = alice
             .create_secure_channel(
-                route![alice_channel, "bob_another_listener"],
+                try_route![alice_channel, "bob_another_listener"]?,
                 alice_trust_policy.clone(),
             )
             .await?;
@@ -181,7 +181,7 @@ mod test {
 
         let alice_yet_another_channel = alice
             .create_secure_channel(
-                route![alice_another_channel, "bob_yet_another_listener"],
+                try_route![alice_another_channel, "bob_yet_another_listener"]?,
                 alice_trust_policy,
             )
             .await?;
@@ -221,9 +221,9 @@ mod test {
                 .await?;
             let channel_route: Route;
             if i > 0 {
-                channel_route = route![channels.pop().unwrap(), i.to_string()];
+                channel_route = try_route![channels.pop().unwrap(), i.to_string()]?;
             } else {
-                channel_route = route![i.to_string()];
+                channel_route = try_route![i.to_string()]?;
             }
             let alice_channel = alice
                 .create_secure_channel(channel_route, alice_trust_policy.clone())
@@ -295,8 +295,11 @@ mod test {
             .create_secure_channel("listener", TrustEveryonePolicy)
             .await?;
 
-        ctx.send(route![alice_channel, "receiver"], "Hello, Bob!".to_string())
-            .await?;
+        ctx.send(
+            try_route![alice_channel, "receiver"]?,
+            "Hello, Bob!".to_string(),
+        )
+        .await?;
 
         sleep(Duration::from_secs(1)).await;
 
@@ -331,8 +334,11 @@ mod test {
             .create_secure_channel("listener", TrustEveryonePolicy)
             .await?;
 
-        ctx.send(route![alice_channel, "receiver"], "Hello, Bob!".to_string())
-            .await?;
+        ctx.send(
+            try_route![alice_channel, "receiver"]?,
+            "Hello, Bob!".to_string(),
+        )
+        .await?;
 
         sleep(Duration::from_secs(1)).await;
 
@@ -357,7 +363,7 @@ mod test {
         ctx.start_worker_with_access_control("receiver", receiver, access_control)
             .await?;
 
-        ctx.send(route!["receiver"], "Hello, Bob!".to_string())
+        ctx.send(try_route!["receiver"]?, "Hello, Bob!".to_string())
             .await?;
 
         sleep(Duration::from_secs(1)).await;

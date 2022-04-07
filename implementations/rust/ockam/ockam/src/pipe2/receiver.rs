@@ -20,7 +20,7 @@ impl Worker for PipeReceiver {
         ctx.set_cluster(crate::pipe2::CLUSTER_NAME).await?;
         if self.init_addr.is_some() {
             debug!(
-                "PipeReceiver '{}' waiting for initialisation message",
+                "PipeReceiver '{:?}' waiting for initialisation message",
                 ctx.address()
             );
         }
@@ -29,7 +29,7 @@ impl Worker for PipeReceiver {
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<OckamMessage>) -> Result<()> {
         debug!(
-            "PipeReceiver: received message to address: {}",
+            "PipeReceiver: received message to address: {:?}",
             msg.msg_addr()
         );
 
@@ -68,7 +68,7 @@ impl Worker for PipeReceiver {
                     }
                     Ok(())
                 } else {
-                    trace!("Forwarding message to worker system: {}", addr);
+                    trace!("Forwarding message to worker system: {:?}", addr);
                     self.system.handle_message(ctx, msg).await
                 }
             }

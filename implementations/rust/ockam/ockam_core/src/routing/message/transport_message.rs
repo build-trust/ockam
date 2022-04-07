@@ -1,5 +1,4 @@
 use crate::{compat::vec::Vec, Message, Route};
-use core::fmt::{self, Display, Formatter};
 use serde::{Deserialize, Serialize};
 
 /// A generic transport message type.
@@ -43,15 +42,5 @@ impl TransportMessage {
             return_route: return_route.into(),
             payload,
         }
-    }
-}
-
-impl Display for TransportMessage {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Message (onward route: {}, return route: {})",
-            self.onward_route, self.return_route
-        )
     }
 }

@@ -84,6 +84,12 @@ impl Display for Error {
 
 impl crate::compat::error::Error for Error {}
 
+impl From<core::convert::Infallible> for Error {
+    fn from(e: core::convert::Infallible) -> Self {
+        match e {} // Infallible is uninhabited
+    }
+}
+
 #[cfg(feature = "alloc")]
 #[cfg(test)]
 mod std_test {

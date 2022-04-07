@@ -44,7 +44,7 @@ async fn main(ctx: Context) -> Result<()> {
     let forwarder = RemoteForwarder::create(&ctx, node_in_hub).await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address in Hub is:");
-    println!("{}", forwarder.remote_address());
+    println!("{:?}", forwarder.remote_address());
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.

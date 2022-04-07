@@ -1,6 +1,5 @@
 use crate::{SecureChannelNewKeyExchanger, SecureChannelVault, SecureChannelWorker};
 use ockam_core::async_trait;
-use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
     Address, Encodable, LocalMessage, Message, Result, Routed, TransportMessage, Worker,
@@ -69,12 +68,12 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
         let reply = msg.return_route().clone();
         let msg = msg.body();
 
-        let address_remote: Address = random();
-        let address_local: Address = random();
+        let address_remote = Address::random_local();
+        let address_local = Address::random_local();
 
         debug!(
-            "Starting SecureChannel responder at local: {}, remote: {}",
-            &address_local, &address_remote
+            "Starting SecureChannel responder at local: {:?}, remote: {:?}",
+            address_local, address_remote
         );
 
         let responder = self.new_key_exchanger.responder().await?;

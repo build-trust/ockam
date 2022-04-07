@@ -3,7 +3,7 @@
 use file_transfer::{FileData, FileDescription};
 use ockam::{
     identity::{Identity, TrustEveryonePolicy},
-    route,
+    try_route,
     vault::Vault,
     Context,
 };
@@ -53,7 +53,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Combine the tcp address of the node and the forwarding_address to get a route
     // to Receiver's secure channel listener.
-    let route_to_receiver_listener = route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "listener"];
+    let route_to_receiver_listener = try_route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "listener"]?;
 
     // As Sender, connect to the Receiver's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Receiver.
@@ -79,7 +79,7 @@ async fn main(ctx: Context) -> Result<()> {
         size: metadata.len() as usize,
     });
 
-    ctx.send(route![channel.clone(), "receiver"], descr).await?;
+    ctx.send(try_route![channel.clone(), "receiver"]?, descr).await?;
 
     let mut buffer = vec![0u8; opt.chunk_size];
     loop {
@@ -88,7 +88,7 @@ async fn main(ctx: Context) -> Result<()> {
                 break;
             }
             let data = FileData::Data(buffer[..count].to_vec());
-            ctx.send(route![channel.clone(), "receiver"], data).await?;
+            ctx.send(try_route![channel.clone(), "receiver"]?, data).await?;
         }
     }
 

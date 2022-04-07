@@ -104,8 +104,8 @@ pub(crate) struct WebSocketAddress {
 }
 
 impl From<WebSocketAddress> for Address {
-    fn from(other: WebSocketAddress) -> Self {
-        format!("{}#{}", WS, other.socket_addr).into()
+    fn from(a: WebSocketAddress) -> Self {
+        Address::new(WS, a.socket_addr.to_string())
     }
 }
 

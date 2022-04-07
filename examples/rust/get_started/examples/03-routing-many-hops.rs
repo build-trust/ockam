@@ -1,7 +1,7 @@
 // This node routes a message through many hops.
 
 use hello_ockam::{Echoer, Hop};
-use ockam::{route, Context, Result};
+use ockam::{try_route, Context, Result};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -14,7 +14,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker("h3", Hop).await?;
 
     // Send a message to the echoer worker via the "h1", "h2", and "h3" workers
-    let r = route!["h1", "h2", "h3", "echoer"];
+    let r = try_route!["h1", "h2", "h3", "echoer"]?;
     ctx.send(r, "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a reply and print it.

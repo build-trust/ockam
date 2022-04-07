@@ -29,7 +29,7 @@ where
             Ok(()) => {}
             Err(e) => {
                 error!(
-                    "Failure during '{}' processor initialisation: {}",
+                    "Failure during '{:?}' processor initialisation: {}",
                     ctx.address(),
                     e
                 );
@@ -37,7 +37,10 @@ where
         }
 
         if let Err(e) = ctx.set_ready().await {
-            error!("Failed to mark processor '{}' as 'ready': {}", ctx_addr, e);
+            error!(
+                "Failed to mark processor '{:?}' as 'ready': {}",
+                ctx_addr, e
+            );
         }
 
         // This future encodes the main processor run loop logic
@@ -63,7 +66,7 @@ where
             // Then select over the two futures
             tokio::select! {
                 _ = shutdown_signal => {
-                    debug!("Shutting down processor {}", ctx_addr);
+                    debug!("Shutting down processor {:?}", ctx_addr);
                 },
                 _ = run_loop => {}
             };
@@ -72,7 +75,7 @@ where
         // TODO wait on run_loop until we have a no_std select! implementation
         #[cfg(not(feature = "std"))]
         match run_loop.await {
-            Ok(_) => trace!("Processor shut down cleanly {}", ctx_addr),
+            Ok(_) => trace!("Processor shut down cleanly {:?}", ctx_addr),
             Err(err) => error!("processor run loop aborted with error: {:?}", err),
         };
 
@@ -80,7 +83,7 @@ where
         match processor.shutdown(&mut ctx).await {
             Ok(()) => {}
             Err(e) => {
-                error!("Failure during '{}' processor shutdown: {}", ctx_addr, e);
+                error!("Failure during '{:?}' processor shutdown: {}", ctx_addr, e);
             }
         }
 

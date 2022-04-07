@@ -38,8 +38,8 @@ impl ChannelBuilder {
     /// builder.create_channel_listener("my-channel-listener").await?;
     ///
     /// // Connect a channel to the listener
-    /// let ch = builder.connect(vec!["my-channel-listener"]).await?;
-    /// ctx.send(ch.tx().append("app"), String::from("Hello via channel!")).await?;
+    /// let ch = builder.connect(vec!["my-channel-listener".try_into()?]).await?;
+    /// ctx.send(ch.tx().try_append("app")?, String::from("Hello via channel!")).await?;
     ///
     /// // Wait for the reply message
     /// let msg = ctx.receive::<String>().await?;
@@ -77,12 +77,16 @@ impl ChannelBuilder {
     }
 
     /// Connect to a channel listener
-    pub async fn connect<R: Into<Route>>(&self, listener: R) -> Result<ChannelHandle> {
+    pub async fn connect<R>(&self, listener: R) -> Result<ChannelHandle>
+    where
+        R: TryInto<Route>,
+        R::Error: Into<ockam_core::Error>,
+    {
         let tx = Address::random_local();
         ChannelWorker::stage1(
             &self.ctx,
             tx.clone(),
-            listener.into(),
+            listener.try_into().map_err(|e| e.into())?,
             PipeBehavior::empty(),
             PipeBehavior::empty(),
         )
@@ -91,10 +95,14 @@ impl ChannelBuilder {
     }
 
     /// Create a new channel listener
-    pub async fn create_channel_listener<A: Into<Address>>(&self, addr: A) -> Result<()> {
+    pub async fn create_channel_listener<A>(&self, addr: A) -> Result<()>
+    where
+        A: TryInto<Address>,
+        A::Error: Into<ockam_core::Error>,
+    {
         ChannelListener::create(
             &self.ctx,
-            addr.into(),
+            addr.try_into().map_err(|e| e.into())?,
             self.tx_hooks.clone(),
             self.rx_hooks.clone(),
         )

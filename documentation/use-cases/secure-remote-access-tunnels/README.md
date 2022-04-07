@@ -88,7 +88,7 @@ Create a file at `examples/01-inlet-outlet.rs` and copy the below code snippet t
 
 ```rust
 // examples/01-inlet-outlet.rs
-use ockam::{route, Context, Result, TcpTransport};
+use ockam::{try_route, Context, Result, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -129,7 +129,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    and send it as raw TCP data to a connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
-    tcp.create_inlet(inlet_address, route!["outlet"]).await?;
+    tcp.create_inlet(inlet_address, try_route!["outlet"]?).await?;
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
@@ -218,7 +218,7 @@ Create a file at `examples/02-inlet.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/02-inlet.rs
-use ockam::{route, Context, Result, TcpTransport, TCP};
+use ockam::{try_route, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -228,7 +228,7 @@ async fn main(ctx: Context) -> Result<()> {
     // We know the network address of the node with an Outlet, we also know that the Outlet is
     // running at Ockam Worker address "outlet" on that node.
 
-    let route_to_outlet = route![(TCP, "127.0.0.1:4000"), "outlet"];
+    let route_to_outlet = try_route![(TCP, "127.0.0.1:4000"), "outlet"]?;
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
     // For example: 127.0.0.1:4001
@@ -356,7 +356,7 @@ Create a file at `examples/03-inlet.rs` and copy the below code snippet to it.
 ```rust
 // examples/03-inlet.rs
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
+use ockam::{try_route, vault::Vault, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -373,13 +373,13 @@ async fn main(ctx: Context) -> Result<()> {
 
     let vault = Vault::create();
     let e = Identity::create(&ctx, &vault).await?;
-    let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"];
+    let r = try_route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"]?;
     let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.
 
-    let route_to_outlet = route![channel, "outlet"];
+    let route_to_outlet = try_route![channel, "outlet"]?;
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
     // For example: 127.0.0.1:4001
@@ -510,7 +510,7 @@ async fn main(ctx: Context) -> Result<()> {
     let forwarder = RemoteForwarder::create(&ctx, node_in_hub).await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address in Hub is:");
-    println!("{}", forwarder.remote_address());
+    println!("{:?}", forwarder.remote_address());
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
@@ -524,7 +524,7 @@ Create a file at `examples/04-inlet.rs` and copy the below code snippet to it.
 ```rust
 // examples/04-inlet.rs
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, vault::Vault, Context, Result, Route, TcpTransport, TCP};
+use ockam::{try_route, vault::Vault, Context, Result, Route, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -543,16 +543,16 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Expect second command line argument to be the Outlet node forwarder address
     let forwarding_address = std::env::args().nth(2).expect("no outlet forwarding address given");
-    let r = route![
+    let r = try_route![
         (TCP, "1.node.ockam.network:4000"),
         forwarding_address,
         "secure_channel_listener"
-    ];
+    ]?;
     let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.
-    let route_to_outlet: Route = route![channel, "outlet"];
+    let route_to_outlet: Route = try_route![channel, "outlet"]?;
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
     // For example: 127.0.0.1:4001

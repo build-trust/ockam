@@ -1,4 +1,4 @@
-use ockam_core::{route, Result};
+use ockam_core::{try_route, Result};
 use ockam_node::Context;
 use ockam_transport_tcp::TcpTransport;
 use rand::{random, Rng};
@@ -19,7 +19,7 @@ async fn setup(ctx: &Context) -> Result<(String, TcpListener)> {
 
     let inlet_port = rand::thread_rng().gen_range(10000, 65535);
     let inlet_addr = format!("127.0.0.1:{}", inlet_port);
-    tcp.create_inlet(inlet_addr.clone(), route!["outlet"])
+    tcp.create_inlet(inlet_addr.clone(), try_route!["outlet"]?)
         .await?;
 
     Ok((inlet_addr, listener))

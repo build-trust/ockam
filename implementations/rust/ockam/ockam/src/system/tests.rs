@@ -1,6 +1,8 @@
 use crate::{Context, OckamMessage, SystemHandler, WorkerSystem};
 use ockam_core::compat::{collections::BTreeMap, string::String};
-use ockam_core::{Address, Any, Decodable, LocalMessage, Message, Result, Routed, Worker};
+use ockam_core::{
+    Address, AddressSet, Any, Decodable, LocalMessage, Message, Result, Routed, Worker,
+};
 
 #[derive(Default)]
 struct TestWorker {
@@ -15,8 +17,8 @@ struct StepHandler {
 }
 
 impl StepHandler {
-    fn new<A: Into<Address>>(next: A) -> Self {
-        Self { next: next.into() }
+    fn new(next: Address) -> Self {
+        Self { next }
     }
 }
 
@@ -73,15 +75,23 @@ async fn send_messages(ctx: &mut Context) -> Result<()> {
     // initialised.  Also: this system MUST interact with the
     // MetadataMessage, meaning that for some System Handlers it is
     // possible to get the "next" address from the metadata section.
-    w.system.attach("worker.1", StepHandler::new("worker.2"));
-    w.system.attach("worker.2", StepHandler::new("app"));
+    w.system.attach(
+        "worker.1".try_into()?,
+        StepHandler::new("worker.2".try_into()?),
+    );
+    w.system
+        .attach("worker.2".try_into()?, StepHandler::new("app".try_into()?));
 
     // Start the worker with three publicly mapped addresses
-    ctx.start_worker(vec!["worker", "worker.1", "worker.2"], w)
-        .await?;
+    ctx.start_worker(
+        AddressSet::try_from_iter(["worker", "worker.1", "worker.2"])?,
+        w,
+    )
+    .await?;
 
     // Send a message and wait for a reply
-    ctx.send("worker.1", String::from("Hello Ockam!")).await?;
+    ctx.send(Address::local("worker.1"), String::from("Hello Ockam!"))
+        .await?;
     let msg = ctx.receive::<String>().await?;
     info!("Received message '{}'", msg);
 
@@ -96,10 +106,10 @@ struct AddMetadata {
 }
 
 impl AddMetadata {
-    fn new<S: Into<String>, A: Into<Address>>(dkey: S, dval: Vec<u8>, next: A) -> Self {
+    fn new<S: Into<String>>(dkey: S, dval: Vec<u8>, next: Address) -> Self {
         Self {
             data: (dkey.into(), dval),
-            next: next.into(),
+            next,
         }
     }
 }
@@ -137,20 +147,30 @@ impl<M: Message> SystemHandler<Context, M> for AddMetadata {
 #[crate::test]
 async fn attach_metadata(ctx: &mut Context) -> Result<()> {
     let mut w = TestWorker::default();
-    w.system
-        .attach("worker.1", AddMetadata::new("foo", vec![42], "worker.2"));
-    w.system
-        .attach("worker.2", AddMetadata::new("bar", vec![7], "app")); // my favourite number
+    w.system.attach(
+        "worker.1".try_into()?,
+        AddMetadata::new("foo", vec![42], "worker.2".try_into()?),
+    );
+    w.system.attach(
+        "worker.2".try_into()?,
+        AddMetadata::new("bar", vec![7], "app".try_into()?),
+    ); // my favourite number
 
     // Start the worker with three publicly mapped addresses
-    ctx.start_worker(vec!["worker", "worker.1", "worker.2"], w)
-        .await?;
+    ctx.start_worker(
+        AddressSet::try_from_iter(["worker", "worker.1", "worker.2"])?,
+        w,
+    )
+    .await?;
 
     // Send an OckamMessage wrapping a simple String payload.  In
     // reality this step should be performed by some utility in the
     // pipe worker (as an example)
-    ctx.send("worker.1", OckamMessage::new(String::from("Hello Ockam!"))?)
-        .await?;
+    ctx.send(
+        Address::local("worker.1"),
+        OckamMessage::new(String::from("Hello Ockam!"))?,
+    )
+    .await?;
 
     // Then wait for a reply and extract relevant metadata
     let msg = ctx.receive::<OckamMessage>().await?;

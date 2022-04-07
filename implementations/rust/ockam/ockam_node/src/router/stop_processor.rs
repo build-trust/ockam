@@ -11,7 +11,7 @@ pub(super) async fn exec(
     main_addr: &Address,
     reply: &Sender<NodeReplyResult>,
 ) -> Result<()> {
-    trace!("Stopping processor '{}'", main_addr);
+    trace!("Stopping processor '{:?}'", main_addr);
 
     // First check if the processor exists
     let mut record = match router.map.internal.remove(main_addr) {

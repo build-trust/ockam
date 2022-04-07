@@ -2,7 +2,6 @@ use crate::{
     KeyExchangeCompleted, SecureChannelKeyExchanger, SecureChannelListener,
     SecureChannelNewKeyExchanger, SecureChannelVault, SecureChannelWorker,
 };
-use ockam_core::compat::rand::random;
 use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
@@ -34,11 +33,15 @@ pub struct SecureChannel;
 impl SecureChannel {
     /// Create and start channel listener with given address using noise xx and software vault.
     #[cfg(all(feature = "software_vault", feature = "noise_xx"))]
-    pub async fn create_listener<A: Into<Address>, V: SecureChannelVault>(
+    pub async fn create_listener<A, V: SecureChannelVault>(
         ctx: &Context,
         address: A,
         vault: &V,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        A: TryInto<Address>,
+        A::Error: Into<ockam_core::Error>,
+    {
         use ockam_key_exchange_xx::XXNewKeyExchanger;
         let new_key_exchanger = XXNewKeyExchanger::new(vault.async_try_clone().await?);
         Self::create_listener_extended(
@@ -52,7 +55,7 @@ impl SecureChannel {
 
     /// Create and start channel listener with given address.
     pub async fn create_listener_extended<
-        A: Into<Address>,
+        A,
         N: SecureChannelNewKeyExchanger,
         V: SecureChannelVault,
     >(
@@ -60,10 +63,14 @@ impl SecureChannel {
         address: A,
         new_key_exchanger: N,
         vault: V,
-    ) -> Result<()> {
-        let address = address.into();
+    ) -> Result<()>
+    where
+        A: TryInto<Address>,
+        A::Error: Into<ockam_core::Error>,
+    {
+        let address = address.try_into().map_err(|e| e.into())?;
         let channel_listener = SecureChannelListener::new(new_key_exchanger, vault);
-        info!("Starting SecureChannel listener at {}", &address);
+        info!("Starting SecureChannel listener at {:?}", &address);
         ctx.start_worker(address, channel_listener).await?;
 
         Ok(())
@@ -97,17 +104,17 @@ impl SecureChannel {
         key_exchanger: impl SecureChannelKeyExchanger,
         vault: impl SecureChannelVault,
     ) -> Result<SecureChannelInfo> {
-        let address_remote: Address = random();
-        let address_local: Address = random();
+        let address_remote = Address::random_local();
+        let address_local = Address::random_local();
 
         debug!(
-            "Starting SecureChannel initiator at local: {}, remote: {}",
-            &address_local, &address_remote
+            "Starting SecureChannel initiator at local: {:?}, remote: {:?}",
+            address_local, address_remote
         );
 
         let route = route.into();
 
-        let address: Address = random();
+        let address = Address::random_local();
         let mut child_ctx = ctx.new_context(address).await?;
         let channel = SecureChannelWorker::new(
             true,
