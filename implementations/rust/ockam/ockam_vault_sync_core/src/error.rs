@@ -1,6 +1,6 @@
 use ockam_core::{
     errcode::{ErrorCode, Kind, Origin},
-    thiserror, Error2,
+    thiserror, Error,
 };
 
 /// Represents the failures that can occur in
@@ -12,12 +12,12 @@ pub enum VaultSyncCoreError {
     InvalidResponseType = 1,
 }
 
-impl From<VaultSyncCoreError> for Error2 {
+impl From<VaultSyncCoreError> for Error {
     fn from(err: VaultSyncCoreError) -> Self {
         let kind = match err {
             VaultSyncCoreError::InvalidResponseType => Kind::Invalid,
         };
 
-        Error2::new(ErrorCode::new(Origin::Vault, kind), err)
+        Error::new(ErrorCode::new(Origin::Vault, kind), err)
     }
 }

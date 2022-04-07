@@ -1,6 +1,6 @@
 use ockam_core::{
     errcode::{ErrorCode, Kind, Origin},
-    thiserror, Error2,
+    thiserror, Error,
 };
 use ockam_transport_core::TransportError;
 use tokio_tungstenite::tungstenite::Error as TungsteniteError;
@@ -20,15 +20,15 @@ pub enum WebSocketError {
     Tls,
 }
 
-impl From<WebSocketError> for Error2 {
-    fn from(err: WebSocketError) -> Error2 {
+impl From<WebSocketError> for Error {
+    fn from(err: WebSocketError) -> Error {
         use WebSocketError::*;
         let kind = match err {
             Transport(_) => Kind::Io,
             Http | Tls => Kind::Protocol,
         };
 
-        Error2::new(ErrorCode::new(Origin::Transport, kind), err)
+        Error::new(ErrorCode::new(Origin::Transport, kind), err)
     }
 }
 
@@ -82,7 +82,7 @@ mod test {
         .into_iter()
         .collect::<HashMap<_, _>>();
         for (_expected_code, ws_err) in ws_errors_map {
-            let _err: Error2 = ws_err.into();
+            let _err: Error = ws_err.into();
             match ws_err {
                 WebSocketError::Transport(_) => {
                     // assert_eq!(err.code(), TransportError::DOMAIN_CODE + expected_code);
@@ -99,7 +99,7 @@ mod test {
     fn from_tungstenite_error_to_transport_error() {
         let ts_err = TungsteniteError::ConnectionClosed;
         let ws_err: WebSocketError = ts_err.into();
-        let _err: Error2 = ws_err.into();
+        let _err: Error = ws_err.into();
         // let expected_err_code = TransportError::ConnectionDrop as u32;
         // assert_eq!(err.domain(), TransportError::DOMAIN_NAME);
         // assert_eq!(err.code(), TransportError::DOMAIN_CODE + expected_err_code);
@@ -110,7 +110,7 @@ mod test {
     fn from_tungstenite_error_to_websocket_error() {
         let ts_err = TungsteniteError::Http(Response::new(None));
         let ws_err: WebSocketError = ts_err.into();
-        let _err: Error2 = ws_err.into();
+        let _err: Error = ws_err.into();
         // let expected_err_code = (WebSocketError::Http).code();
         // assert_eq!(err.domain(), WebSocketError::DOMAIN_NAME);
         // assert_eq!(err.code(), WebSocketError::DOMAIN_CODE + expected_err_code);

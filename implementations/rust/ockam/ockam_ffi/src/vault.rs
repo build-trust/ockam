@@ -7,7 +7,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::vault::{
     AsymmetricVault, Hasher, PublicKey, Secret, SecretAttributes, SecretVault, SymmetricVault,
 };
-use ockam_core::{Error2, Result};
+use ockam_core::{Error, Result};
 use ockam_vault::Vault;
 use std::future::Future;
 use tokio::{runtime::Runtime, sync::RwLock, task};
@@ -109,7 +109,7 @@ pub extern "C" fn ockam_vault_secret_generate(
             let v = get_vault(context).await?;
             let atts = attributes.try_into()?;
             let ctx = v.secret_generate(atts).await?;
-            Ok::<u64, Error2>(ctx.index() as u64)
+            Ok::<u64, Error>(ctx.index() as u64)
         })?;
         Ok(())
     })
@@ -133,7 +133,7 @@ pub extern "C" fn ockam_vault_secret_import(
             let secret_data = unsafe { core::slice::from_raw_parts(input, input_length as usize) };
 
             let ctx = v.secret_import(secret_data, atts).await?;
-            Ok::<u64, Error2>(ctx.index() as u64)
+            Ok::<u64, Error>(ctx.index() as u64)
         })?;
         Ok(())
     })
@@ -166,7 +166,7 @@ pub extern "C" fn ockam_vault_secret_export(
                     key.as_ref().len(),
                 );
             };
-            Ok::<(), Error2>(())
+            Ok::<(), Error>(())
         })?;
         Ok(())
     })
@@ -199,7 +199,7 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
                     key.as_ref().len(),
                 );
             };
-            Ok::<(), Error2>(())
+            Ok::<(), Error>(())
         })?;
         Ok(())
     })
@@ -217,7 +217,7 @@ pub extern "C" fn ockam_vault_secret_attributes_get(
             let v = get_vault(context).await?;
             let ctx = Secret::new(secret as usize);
             let atts = v.secret_attributes_get(&ctx).await?;
-            Ok::<FfiSecretAttributes, Error2>(atts.into())
+            Ok::<FfiSecretAttributes, Error>(atts.into())
         })?;
         Ok(())
     })
@@ -233,7 +233,7 @@ pub extern "C" fn ockam_vault_secret_destroy(
         let v = get_vault(context).await?;
         let ctx = Secret::new(secret as usize);
         v.secret_destroy(ctx).await?;
-        Ok::<(), Error2>(())
+        Ok::<(), Error>(())
     }) {
         Ok(_) => FfiOckamError::none(),
         Err(err) => err.into(),
@@ -262,7 +262,7 @@ pub extern "C" fn ockam_vault_ecdh(
             let atts = v.secret_attributes_get(&ctx).await?;
             let pubkey = PublicKey::new(peer_publickey.to_vec(), atts.stype());
             let shared_ctx = v.ec_diffie_hellman(&ctx, &pubkey).await?;
-            Ok::<u64, Error2>(shared_ctx.index() as u64)
+            Ok::<u64, Error>(shared_ctx.index() as u64)
         })?;
         Ok(())
     })
@@ -326,7 +326,7 @@ pub extern "C" fn ockam_vault_hkdf_sha256(
                     derived_outputs_count,
                 )
             };
-            Ok::<(), Error2>(())
+            Ok::<(), Error>(())
         })?;
         Ok(())
     })
@@ -379,7 +379,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_encrypt(
                     ciphertext.len(),
                 )
             };
-            Ok::<(), Error2>(())
+            Ok::<(), Error>(())
         })?;
         Ok(())
     })
@@ -426,7 +426,7 @@ pub extern "C" fn ockam_vault_aead_aes_gcm_decrypt(
             *plaintext_length = plain.len() as u32;
 
             unsafe { std::ptr::copy_nonoverlapping(plain.as_ptr(), plaintext, plain.len()) };
-            Ok::<(), Error2>(())
+            Ok::<(), Error>(())
         })?;
         Ok(())
     })

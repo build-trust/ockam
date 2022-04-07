@@ -1,6 +1,6 @@
 use ockam_core::{
     errcode::{ErrorCode, Kind, Origin},
-    thiserror, Error2,
+    thiserror, Error,
 };
 
 #[derive(Clone, Copy, Debug, thiserror::Error)]
@@ -85,10 +85,10 @@ pub enum IdentityError {
     VerifierInvalidMessage,
 }
 
-impl From<IdentityError> for Error2 {
+impl From<IdentityError> for Error {
     fn from(err: IdentityError) -> Self {
         let kind = Kind::Unknown; // FIXME: fill these in with more
                                   // meaningful error kinds
-        Error2::new(ErrorCode::new(Origin::Identity, kind), err)
+        Error::new(ErrorCode::new(Origin::Identity, kind), err)
     }
 }

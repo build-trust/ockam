@@ -4,7 +4,7 @@ use crate::{
         vec::Vec,
     },
     errcode::{ErrorCode, Kind, Origin},
-    Address, Error2, LocalMessage, Result, Route, TransportMessage,
+    Address, Error, LocalMessage, Result, Route, TransportMessage,
 };
 use core::{
     fmt::{self, Debug, Display, Formatter},
@@ -96,9 +96,9 @@ where
     }
 }
 
-impl From<serde_bare::error::Error> for Error2 {
+impl From<serde_bare::error::Error> for Error {
     fn from(e: serde_bare::error::Error) -> Self {
-        Error2::new(ErrorCode::new(Origin::Core, Kind::Io), e)
+        Error::new(ErrorCode::new(Origin::Core, Kind::Io), e)
     }
 }
 

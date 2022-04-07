@@ -1,6 +1,6 @@
 use crate::{
     errcode::{ErrorCode, Kind, Origin},
-    Error2,
+    Error,
 };
 
 /// A routing specific error type.
@@ -10,11 +10,11 @@ pub enum RouteError {
     #[error("incomplete route")]
     IncompleteRoute,
 }
-impl From<RouteError> for Error2 {
+impl From<RouteError> for Error {
     fn from(err: RouteError) -> Self {
         let kind = match err {
             RouteError::IncompleteRoute => Kind::Misuse,
         };
-        Error2::new(ErrorCode::new(Origin::Core, kind), err)
+        Error::new(ErrorCode::new(Origin::Core, kind), err)
     }
 }

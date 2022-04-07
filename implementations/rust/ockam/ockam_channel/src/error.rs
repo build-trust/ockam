@@ -1,6 +1,6 @@
 use ockam_core::{
     errcode::{ErrorCode, Kind, Origin},
-    thiserror, Error2,
+    thiserror, Error,
 };
 
 /// Types of errors that may occur constructing a secure channel.
@@ -26,8 +26,8 @@ pub enum SecureChannelError {
     InvalidLocalInfoType,
 }
 #[allow(clippy::from_over_into)]
-impl Into<Error2> for SecureChannelError {
-    fn into(self) -> Error2 {
+impl Into<Error> for SecureChannelError {
+    fn into(self) -> Error {
         use SecureChannelError::*;
         let kind = match self {
             KeyExchange | KeyExchangeNotComplete => Kind::Protocol,
@@ -36,6 +36,6 @@ impl Into<Error2> for SecureChannelError {
             }
         };
 
-        Error2::new(ErrorCode::new(Origin::Channel, kind), self)
+        Error::new(ErrorCode::new(Origin::Channel, kind), self)
     }
 }

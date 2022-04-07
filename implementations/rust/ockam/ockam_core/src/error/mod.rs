@@ -22,7 +22,7 @@ type ErrorData = Box<inner::ErrorData>;
 #[cfg(not(feature = "alloc"))]
 type ErrorData = Inner;
 
-pub type Result<T> = std::result::Result<T, Error2>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// The type of errors returned by Ockam functions.
 ///
@@ -35,8 +35,8 @@ pub type Result<T> = std::result::Result<T, Error2>;
 /// - Various debugging information, such as a backtrace and spantrace (which is
 ///   lost over serialization).
 #[derive(Serialize, Deserialize)]
-pub struct Error2(ErrorData);
-impl Error2 {
+pub struct Error(ErrorData);
+impl Error {
     /// Construct a new error given ErrorCodes and a cause.
     #[cold]
     #[track_caller]
@@ -80,20 +80,20 @@ impl Error2 {
     }
 }
 
-impl core::fmt::Debug for Error2 {
+impl core::fmt::Debug for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl core::fmt::Display for Error2 {
+impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.0.fmt(f)
     }
 }
 
 #[cfg(feature = "std")]
-impl ErrorTrait for Error2 {
+impl ErrorTrait for Error {
     fn source(&self) -> Option<&(dyn ErrorTrait + 'static)> {
         if let Some(e) = self.0.cause() {
             let force_coersion: &(dyn ErrorTrait + 'static) = e;

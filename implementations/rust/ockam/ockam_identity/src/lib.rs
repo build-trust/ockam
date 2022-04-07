@@ -137,14 +137,14 @@ mod test {
     use super::*;
     use ockam_core::{
         errcode::{ErrorCode, Kind, Origin},
-        Error2,
+        Error,
     };
     use ockam_node::Context;
     use ockam_vault::Vault;
 
     fn test_error<S: Into<String>>(msg: S) -> Result<()> {
         Err(
-            Error2::new_without_cause(ErrorCode::new(Origin::Identity, Kind::Unknown))
+            Error::new_without_cause(ErrorCode::new(Origin::Identity, Kind::Unknown))
                 .context("msg", msg.into()),
         )
     }

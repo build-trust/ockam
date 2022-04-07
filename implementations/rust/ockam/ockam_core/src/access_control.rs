@@ -128,7 +128,7 @@ mod tests {
         );
         match result {
             Poll::Ready(value) => value,
-            Poll::Pending => Err(crate::Error2::new_without_cause(ErrorCode::new(
+            Poll::Pending => Err(crate::Error::new_without_cause(ErrorCode::new(
                 Origin::Core,
                 Kind::Unknown,
             ))),

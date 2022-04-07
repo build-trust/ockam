@@ -1,7 +1,7 @@
 use ockam_core::{
     compat::io,
     errcode::{ErrorCode, Kind, Origin},
-    thiserror, Error2,
+    thiserror, Error,
 };
 
 /// A Transport worker specific error type
@@ -55,8 +55,8 @@ pub enum TransportError {
     InvalidRouterResponseType,
 }
 
-impl From<TransportError> for Error2 {
-    fn from(err: TransportError) -> Error2 {
+impl From<TransportError> for Error {
+    fn from(err: TransportError) -> Error {
         use TransportError::*;
         let kind = match err {
             SendBadMessage => Kind::Serialization,
@@ -76,7 +76,7 @@ impl From<TransportError> for Error2 {
             InvalidRouterResponseType => Kind::Invalid,
         };
 
-        Error2::new(ErrorCode::new(Origin::Transport, kind), err)
+        Error::new(ErrorCode::new(Origin::Transport, kind), err)
     }
 }
 

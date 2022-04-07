@@ -1,6 +1,6 @@
 use ockam_core::{
     errcode::{ErrorCode, Kind, Origin},
-    thiserror, Error2,
+    thiserror, Error,
 };
 
 /// Represents the failures that can occur in
@@ -17,7 +17,7 @@ pub enum X3DHError {
     InvalidHash,
 }
 
-impl From<X3DHError> for Error2 {
+impl From<X3DHError> for Error {
     fn from(err: X3DHError) -> Self {
         use X3DHError::*;
         let kind = match err {
@@ -25,6 +25,6 @@ impl From<X3DHError> for Error2 {
             MessageLenMismatch | SignatureLenMismatch => Kind::Misuse,
         };
 
-        Error2::new(ErrorCode::new(Origin::KeyExchange, kind), err)
+        Error::new(ErrorCode::new(Origin::KeyExchange, kind), err)
     }
 }

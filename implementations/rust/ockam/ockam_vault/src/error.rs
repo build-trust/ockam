@@ -1,6 +1,6 @@
 use ockam_core::{
     errcode::{ErrorCode, Kind, Origin},
-    thiserror, Error2,
+    thiserror, Error,
 };
 
 /// Represents the failures that can occur in
@@ -60,7 +60,7 @@ pub enum VaultError {
     StorageError,
 }
 
-impl From<VaultError> for Error2 {
+impl From<VaultError> for Error {
     fn from(err: VaultError) -> Self {
         use VaultError::*;
         let kind = match err {
@@ -75,6 +75,6 @@ impl From<VaultError> for Error2 {
             _ => Kind::Invalid,
         };
 
-        Error2::new(ErrorCode::new(Origin::Vault, kind), err)
+        Error::new(ErrorCode::new(Origin::Vault, kind), err)
     }
 }

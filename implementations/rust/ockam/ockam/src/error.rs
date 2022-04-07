@@ -3,7 +3,7 @@
 
 use ockam_core::{
     errcode::{ErrorCode, Kind, Origin},
-    thiserror, Error2,
+    thiserror, Error,
 };
 
 /// An enumeration of different error types emitted by this library.
@@ -57,8 +57,8 @@ pub enum OckamError {
     SystemInvalidConfiguration,
 }
 
-impl From<OckamError> for Error2 {
-    fn from(err: OckamError) -> Error2 {
+impl From<OckamError> for Error {
+    fn from(err: OckamError) -> Error {
         use OckamError::*;
         // TODO: improve this mapping
         let kind = match err {
@@ -66,6 +66,6 @@ impl From<OckamError> for Error2 {
             _ => Kind::Protocol,
         };
 
-        Error2::new(ErrorCode::new(Origin::Ockam, kind), err)
+        Error::new(ErrorCode::new(Origin::Ockam, kind), err)
     }
 }

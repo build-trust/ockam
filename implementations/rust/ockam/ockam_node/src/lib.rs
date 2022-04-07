@@ -101,33 +101,33 @@ pub(crate) mod error {
     use ockam_core::{
         compat::error::Error,
         errcode::{ErrorCode, Kind, Origin},
-        Error2,
+        Error,
     };
 
-    impl From<NodeError> for Error2 {
-        fn from(e: NodeError) -> Error2 {
-            Error2::new(node(Kind::Internal), e)
+    impl From<NodeError> for Error {
+        fn from(e: NodeError) -> Error {
+            Error::new(node(Kind::Internal), e)
         }
     }
 
-    pub fn from_send_err<T: Debug + Send + Sync + 'static>(e: SendError<T>) -> Error2 {
+    pub fn from_send_err<T: Debug + Send + Sync + 'static>(e: SendError<T>) -> Error {
         node_internal(e)
     }
 
-    pub fn from_elapsed(e: tokio::time::error::Elapsed) -> Error2 {
-        Error2::new(node(Kind::Timeout), e)
+    pub fn from_elapsed(e: tokio::time::error::Elapsed) -> Error {
+        Error::new(node(Kind::Timeout), e)
     }
 
-    pub fn node_internal(e: impl Error + Send + Sync + 'static) -> Error2 {
-        Error2::new(node(Kind::Internal), e)
+    pub fn node_internal(e: impl Error + Send + Sync + 'static) -> Error {
+        Error::new(node(Kind::Internal), e)
     }
 
-    pub fn node_without_cause(kind: Kind) -> Error2 {
-        Error2::new_without_cause(node(kind))
+    pub fn node_without_cause(kind: Kind) -> Error {
+        Error::new_without_cause(node(kind))
     }
 
-    pub fn internal_without_cause() -> Error2 {
-        Error2::new_without_cause(node(Kind::Internal))
+    pub fn internal_without_cause() -> Error {
+        Error::new_without_cause(node(Kind::Internal))
     }
 
     /// Create a `node` error

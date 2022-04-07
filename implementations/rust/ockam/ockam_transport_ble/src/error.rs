@@ -1,6 +1,6 @@
 use ockam_core::{
     errcode::{ErrorCode, Kind, Origin},
-    thiserror, Error2,
+    thiserror, Error,
 };
 
 /// A Bluetooth Low Energy connection worker specific error type
@@ -38,9 +38,9 @@ pub enum BleError {
     #[error("unknown error")]
     Unknown,
 }
-impl From<BleError> for Error2 {
-    fn from(err: BleError) -> Error2 {
-        Error2::new(ErrorCode::new(Origin::Transport, Kind::Io), err)
+impl From<BleError> for Error {
+    fn from(err: BleError) -> Error {
+        Error::new(ErrorCode::new(Origin::Transport, Kind::Io), err)
     }
 }
 
@@ -66,7 +66,7 @@ fn code_and_domain() {
     ])
     .collect::<HashMap<u32, BleError>>();
     for (_expected_code, ble_err) in ble_errors_map {
-        let _err: Error2 = ble_err.into();
+        let _err: Error = ble_err.into();
         // assert_eq!(err.domain(), BleError::DOMAIN_NAME);
         // assert_eq!(err.code(), BleError::DOMAIN_CODE + expected_code);
     }

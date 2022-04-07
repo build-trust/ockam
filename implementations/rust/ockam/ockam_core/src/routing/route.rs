@@ -427,9 +427,9 @@ impl Drop for RouteBuilder<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Address, Error2, Route};
+    use crate::{Address, Error, Route};
 
-    fn validate_error(_err: Error2) {
+    fn validate_error(_err: Error) {
         // assert_eq!(err.domain(), RouteError::DOMAIN_NAME);
         // assert_eq!(err.code(), RouteError::DOMAIN_CODE);
         // ???

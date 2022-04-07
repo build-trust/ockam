@@ -1,7 +1,7 @@
 use ockam_core::compat::{error::Error as StdError, fmt};
 use ockam_core::{
     errcode::{ErrorCode, Kind, Origin},
-    Error2,
+    Error,
 };
 
 /// Represents the failures that can occur in
@@ -28,7 +28,7 @@ impl fmt::Display for XXError {
     }
 }
 
-impl From<XXError> for Error2 {
+impl From<XXError> for Error {
     fn from(err: XXError) -> Self {
         let kind = match err {
             XXError::InvalidState => Kind::Invalid,
@@ -36,6 +36,6 @@ impl From<XXError> for Error2 {
             XXError::MessageLenMismatch => Kind::Misuse,
         };
 
-        Error2::new(ErrorCode::new(Origin::KeyExchange, kind), err)
+        Error::new(ErrorCode::new(Origin::KeyExchange, kind), err)
     }
 }

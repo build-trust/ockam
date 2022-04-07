@@ -1,6 +1,6 @@
 use ockam_core::{
     errcode::{ErrorCode, Kind, Origin},
-    thiserror, Error2,
+    thiserror, Error,
 };
 use std::ffi::CString;
 use std::os::raw::c_char;
@@ -80,14 +80,14 @@ pub enum FfiError {
     UnexpectedPanic,
 }
 
-impl From<FfiError> for Error2 {
+impl From<FfiError> for Error {
     fn from(err: FfiError) -> Self {
-        Error2::new(ErrorCode::new(Origin::Other, Kind::Other), err)
+        Error::new(ErrorCode::new(Origin::Other, Kind::Other), err)
     }
 }
 
-impl From<Error2> for FfiOckamError {
-    fn from(err: Error2) -> Self {
+impl From<Error> for FfiOckamError {
+    fn from(err: Error) -> Self {
         Self::new(
             err.code().origin as i32 * 10_000 + err.code().kind as i32,
             "unknown",
@@ -97,7 +97,7 @@ impl From<Error2> for FfiOckamError {
 
 impl From<FfiError> for FfiOckamError {
     fn from(err: FfiError) -> Self {
-        let err2: Error2 = err.into();
+        let err2: Error = err.into();
         Self::from(err2)
     }
 }

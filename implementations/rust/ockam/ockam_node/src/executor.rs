@@ -7,7 +7,7 @@ use crate::{
 };
 use core::future::Future;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{errcode::Kind, Address, Error2, Result};
+use ockam_core::{errcode::Kind, Address, Error, Result};
 
 /// Underlying Ockam node executor
 ///
@@ -72,7 +72,7 @@ impl Executor {
         crate::block_future(&rt, async move { self.router.run().await })?;
 
         let res = crate::block_future(&rt, async move { join_body.await })
-            .map_err(|e| Error2::new(error::executor(Kind::Unknown), e))?;
+            .map_err(|e| Error::new(error::executor(Kind::Unknown), e))?;
 
         Ok(res)
     }

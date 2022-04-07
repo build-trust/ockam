@@ -57,7 +57,7 @@ mod test {
     use crate::{Identity, IdentityTrait};
     use ockam_core::{
         errcode::{ErrorCode, Kind, Origin},
-        Error2, Result,
+        Error, Result,
     };
     use ockam_node::Context;
     use ockam_vault::Vault;
@@ -65,7 +65,7 @@ mod test {
 
     fn test_error<S: Into<String>>(error: S) -> Result<()> {
         Err(
-            Error2::new_without_cause(ErrorCode::new(Origin::Identity, Kind::Unknown))
+            Error::new_without_cause(ErrorCode::new(Origin::Identity, Kind::Unknown))
                 .context("msg", error.into()),
         )
     }

@@ -93,7 +93,7 @@ impl From<&WebSocketAddr> for String {
 }
 
 impl FromStr for WebSocketAddr {
-    type Err = ockam_core::Error2;
+    type Err = ockam_core::Error;
 
     fn from_str(s: &str) -> Result<Self> {
         let socket_addr = parse_socket_addr(s)?;

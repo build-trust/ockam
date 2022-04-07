@@ -6,7 +6,7 @@ use ockam::{
     identity::{Identity, TrustEveryonePolicy},
     remote::RemoteForwarder,
     vault::Vault,
-    Context, Error2, Result, Routed, TcpTransport, Worker, TCP,
+    Context, Error, Result, Routed, TcpTransport, Worker, TCP,
 };
 use std::str;
 use tokio::fs::OpenOptions;
@@ -37,7 +37,7 @@ impl Worker for FileReception {
                         .open(&self.name)
                         .await
                         .map_err(|e| {
-                            Error2::new_without_cause(ErrorCode::new(Origin::Application, Kind::Unknown))
+                            Error::new_without_cause(ErrorCode::new(Origin::Application, Kind::Unknown))
                                 .context("msg", e.to_string())
                         })?,
                 )
@@ -45,7 +45,7 @@ impl Worker for FileReception {
             FileData::Data(data) => {
                 if self.written_size + data.len() > self.size {
                     return Err(
-                        Error2::new_without_cause(ErrorCode::new(Origin::Application, Kind::Unknown)).context(
+                        Error::new_without_cause(ErrorCode::new(Origin::Application, Kind::Unknown)).context(
                             "msg",
                             format!(
                                 "Received too many bytes already read: {}, received: {}, final size: {}",
@@ -61,7 +61,7 @@ impl Worker for FileReception {
                         .write(
                             str::from_utf8(data)
                                 .map_err(|e| {
-                                    Error2::new_without_cause(ErrorCode::new(Origin::Application, Kind::Unknown))
+                                    Error::new_without_cause(ErrorCode::new(Origin::Application, Kind::Unknown))
                                         .context("msg", e.to_string())
                                 })?
                                 .as_bytes(),
@@ -75,12 +75,12 @@ impl Worker for FileReception {
                             }
                         }
                         Err(e) => {
-                            return Err(Error2::new(ErrorCode::new(Origin::Application, Kind::Unknown), e));
+                            return Err(Error::new(ErrorCode::new(Origin::Application, Kind::Unknown), e));
                         }
                     }
                 } else {
                     return Err(
-                        Error2::new_without_cause(ErrorCode::new(Origin::Application, Kind::Unknown))
+                        Error::new_without_cause(ErrorCode::new(Origin::Application, Kind::Unknown))
                             .context("msg", "file not opened"),
                     );
                 }
