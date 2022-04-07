@@ -24,6 +24,13 @@ pub(crate) mod cmd {
     pub(crate) mod outlet;
 }
 
+pub(crate) mod session {
+    pub(crate) mod error;
+    pub(crate) mod initiator;
+    pub(crate) mod msg;
+    pub(crate) mod responder;
+}
+
 // This should be this library's only public function.
 pub fn run_main() {
     let args = CliArgs::parse();

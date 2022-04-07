@@ -108,6 +108,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-recursion"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2cda8f4bcc10624c4e85bc66b3f452cca98cfa5ca002dc83a16aad2367641bea"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1539,6 +1550,7 @@ name = "ockam_command"
 version = "0.11.0"
 dependencies = [
  "anyhow",
+ "async-recursion",
  "async-trait",
  "clap 3.1.8",
  "dirs",

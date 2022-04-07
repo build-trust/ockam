@@ -40,6 +40,7 @@ hex = "0.4"
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 rand = "0.8"
+async-recursion = { version = "1.0.0" }
 
 ockam = { path = "../ockam", version = "0.51.0", features = ["software_vault"] }
 ockam_vault = { path = "../ockam_vault", version = "0.43.0", features = ["storage"] }
