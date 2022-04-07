@@ -69,15 +69,12 @@ impl TcpRouter {
 
         let router_handle = self.create_self_handle().await?;
         let pair =
-            TcpSendWorker::start_pair(&self.ctx, router_handle, None, peer_addr, hostnames).await?;
+            TcpSendWorker::start_pair(&self.ctx, router_handle, None, peer_addr, hostnames.clone())
+                .await?;
 
-        let tcp_address: Address = format!("{}#{}", TCP, pair.peer()).into();
+        let tcp_address = Address::new(TCP, pair.peer().to_string());
         let mut accepts = vec![tcp_address];
-        accepts.extend(
-            pair.hostnames()
-                .iter()
-                .map(|x| Address::from_string(format!("{}#{}", TCP, x))),
-        );
+        accepts.extend(hostnames.iter().map(|x| Address::new(TCP, x)));
         let self_addr = pair.tx_addr();
 
         self.handle_register(accepts, self_addr.clone()).await?;
@@ -102,6 +99,37 @@ impl TcpRouter {
         Ok(())
     }
 
+    async fn resolve_route(&mut self, onward: &Address) -> Result<Address> {
+        // Look up the connection worker responsible
+        if let Some(n) = self.map.get(onward) {
+            // Connection already exists
+            return Ok(n.clone());
+        }
+
+        let peer =
+            String::from_utf8(onward.deref().clone()).map_err(|_| TransportError::UnknownRoute)?;
+        let (peer_addr, hostnames) = TcpRouterHandle::resolve_peer(peer.clone())?;
+        let tcp_address = Address::new(TCP, peer_addr.to_string());
+
+        // Check for existing connection under different name
+        if let Some(n) = self.map.get(&tcp_address).cloned() {
+            // There is existing connection under different name
+            // Add new aliases for existing connection
+            for accept in hostnames.iter().map(|x| Address::new(TCP, x)) {
+                self.map.insert(accept, n.clone());
+            }
+
+            return Ok(n);
+        }
+
+        // No existing connection
+        if self.allow_auto_connection {
+            self.handle_connect(peer).await
+        } else {
+            Err(TransportError::UnknownRoute.into())
+        }
+    }
+
     async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
         trace!(
             "TCP route request: {:?}",
@@ -111,27 +139,7 @@ impl TcpRouter {
         // Get the next hop
         let onward = msg.transport().onward_route.next()?;
 
-        let next;
-        // Look up the connection worker responsible
-        if let Some(n) = self.map.get(onward) {
-            // Connection already exists
-            next = n.clone();
-        } else {
-            // No existing connection
-            let peer_str;
-            if let Ok(s) = String::from_utf8(onward.deref().clone()) {
-                peer_str = s;
-            } else {
-                return Err(TransportError::UnknownRoute.into());
-            }
-
-            // TODO: Check if this is the hostname and we have existing/pending connection to this IP
-            if self.allow_auto_connection {
-                next = self.handle_connect(peer_str).await?;
-            } else {
-                return Err(TransportError::UnknownRoute.into());
-            }
-        }
+        let next = self.resolve_route(onward).await?;
 
         let _ = msg.transport_mut().onward_route.step()?;
         // Modify the transport message route

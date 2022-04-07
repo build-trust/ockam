@@ -27,7 +27,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
                 .take(10)
                 .collect()
         };
-        let r = route![(TCP, bind_address), "echoer"];
+        let r = route![(TCP, format!("localhost:{}", rand_port)), "echoer"];
         ctx.send(r, msg.clone()).await?;
 
         let reply = ctx.receive::<String>().await?;
@@ -75,7 +75,7 @@ async fn tcp_lifecycle__reconnect__should_not_error(ctx: &mut Context) -> Result
 
     let tx_address = transport.connect(bind_address).await?;
 
-    let r = route![(TCP, bind_address), "echoer"];
+    let r = route![(TCP, format!("localhost:{}", rand_port)), "echoer"];
     child_ctx.send(r.clone(), msg.clone()).await?;
 
     let reply = child_ctx.receive::<String>().await?;
@@ -93,7 +93,10 @@ async fn tcp_lifecycle__reconnect__should_not_error(ctx: &mut Context) -> Result
 
     // This should create new connection
     child_ctx
-        .send(route![(TCP, bind_address), "echoer"], msg.clone())
+        .send(
+            route![(TCP, format!("localhost:{}", rand_port)), "echoer"],
+            msg.clone(),
+        )
         .await?;
 
     let reply = child_ctx.receive::<String>().await?;
