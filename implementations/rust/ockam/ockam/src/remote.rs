@@ -112,7 +112,7 @@ impl RemoteForwarder {
             alias.into(),
             child_ctx.address(),
             Some(heartbeat),
-            Duration::from_secs(10),
+            Duration::from_secs(5),
         );
 
         debug!(
