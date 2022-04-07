@@ -1,3 +1,4 @@
+use crate::session::responder::SessionResponder;
 use crate::{args::OutletOpts, identity, storage};
 use ockam::{identity::Identity, remote::RemoteForwarder, Context, TcpTransport, TCP};
 
@@ -7,6 +8,9 @@ pub async fn run(args: OutletOpts, ctx: Context) -> anyhow::Result<()> {
 
     let (exported_ident, vault) = identity::load_identity_and_vault(&ockam_dir)?;
     let policy = storage::load_trust_policy(&ockam_dir)?;
+
+    ctx.start_worker("session_responder", SessionResponder)
+        .await?;
 
     let tcp = TcpTransport::create(&ctx).await?;
 
