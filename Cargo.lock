@@ -1645,7 +1645,6 @@ dependencies = [
  "serde_bare",
  "spin",
  "subtle",
- "thiserror",
  "tracing",
  "tracing-error",
  "zeroize",

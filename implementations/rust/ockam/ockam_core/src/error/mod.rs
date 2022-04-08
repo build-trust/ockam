@@ -7,12 +7,10 @@ use self::code::ErrorCode;
 
 mod code;
 mod inner;
-mod none;
 
 /// A module to export the error code in a meaningful way
 pub mod errcode {
     pub use super::code::*;
-    pub use super::none::*;
 }
 
 // We box the internal error type if an allocator is available — this is (often
@@ -24,7 +22,7 @@ type ErrorData = Box<inner::ErrorData>;
 #[cfg(not(feature = "alloc"))]
 type ErrorData = Inner;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = core::result::Result<T, E>;
 
 /// The type of errors returned by Ockam functions.
 ///
@@ -42,9 +40,21 @@ impl Error {
     /// Construct a new error given ErrorCodes and a cause.
     #[cold]
     #[track_caller]
+    #[cfg(feature = "std")]
     pub fn new<E>(origin: code::Origin, kind: code::Kind, cause: E) -> Self
     where
-        E: Into<Box<dyn crate::compat::error::Error + Send + Sync>>,
+        E: Into<Box<dyn std::error::Error + Send + Sync>>,
+    {
+        Self(inner::ErrorData::new(ErrorCode::new(origin, kind), cause).into())
+    }
+
+    // FIXME: figure out a better solution here...
+    #[cold]
+    #[track_caller]
+    #[cfg(not(feature = "std"))]
+    pub fn new<E>(origin: code::Origin, kind: code::Kind, cause: E) -> Self
+    where
+        E: core::fmt::Display,
     {
         Self(inner::ErrorData::new(ErrorCode::new(origin, kind), cause).into())
     }
@@ -53,6 +63,7 @@ impl Error {
     ///
     /// This ideally should not be used inside Ockam.
     #[cold]
+    #[cfg(feature = "std")]
     pub fn new_unknown<E>(origin: code::Origin, cause: E) -> Self
     where
         E: Into<Box<dyn crate::compat::error::Error + Send + Sync>>,
@@ -94,8 +105,8 @@ impl core::fmt::Display for Error {
     }
 }
 
-#[cfg(feature = "std")]
 impl ErrorTrait for Error {
+    #[cfg(feature = "std")]
     fn source(&self) -> Option<&(dyn ErrorTrait + 'static)> {
         if let Some(e) = self.0.cause() {
             let force_coersion: &(dyn ErrorTrait + 'static) = e;

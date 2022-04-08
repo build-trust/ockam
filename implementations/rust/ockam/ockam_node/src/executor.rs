@@ -7,9 +7,12 @@ use crate::{
 };
 use core::future::Future;
 use ockam_core::compat::sync::Arc;
+use ockam_core::{Address, Result};
+
+#[cfg(feature = "std")]
 use ockam_core::{
     errcode::{Kind, Origin},
-    Address, Error, Result,
+    Error,
 };
 
 /// Underlying Ockam node executor

@@ -1,6 +1,6 @@
 use ockam_core::{
     errcode::{Kind, Origin},
-    thiserror, Error,
+    Error,
 };
 use std::ffi::CString;
 use std::os::raw::c_char;
@@ -33,56 +33,71 @@ impl FfiOckamError {
 }
 
 /// Represents the failures that can occur in an Ockam FFI Vault.
-#[derive(Clone, Copy, Debug, thiserror::Error)]
+#[derive(Clone, Copy, Debug)]
 pub enum FfiError {
     /// Persistence is not supported for this Vault implementation.
-    #[error("persistence is not supported for this Vault implementation.")]
     VaultDoesNotSupportPersistence = 1,
 
     /// An underlying filesystem error prevented Vault creation.
-    #[error("an underlying filesystem error prevented Vault creation.")]
     ErrorCreatingFilesystemVault,
 
     /// Invalid parameter.
-    #[error("invalid parameter.")]
     InvalidParam,
 
     /// Entry not found.
-    #[error("entry not found.")]
     EntryNotFound,
 
     /// Unknown public key type.
-    #[error("unknown public key type.")]
     UnknownPublicKeyType,
 
     /// Invalid string.
-    #[error("invalid string.")]
     InvalidString,
 
     /// Buffer is too small.
-    #[error("buffer is too small.")]
     BufferTooSmall,
 
     /// A public key is invalid.
-    #[error("a public key is invalid.")]
     InvalidPublicKey,
 
     /// No such Vault.
-    #[error("no such Vault.")]
     VaultNotFound,
 
     /// Ownership error.
-    #[error("ownership error.")]
     OwnershipError,
 
     /// Caught a panic (which would be UB if we let it unwind across the FFI).
-    #[error("caught a panic (which would be UB if we let it unwind across the FFI).")]
     UnexpectedPanic,
 }
-
+impl ockam_core::compat::error::Error for FfiError {}
 impl From<FfiError> for Error {
     fn from(err: FfiError) -> Self {
         Error::new(Origin::Other, Kind::Other, err)
+    }
+}
+impl core::fmt::Display for FfiError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::VaultDoesNotSupportPersistence => write!(
+                f,
+                "persistence is not supported for this Vault implementation."
+            ),
+            Self::ErrorCreatingFilesystemVault => write!(
+                f,
+                "an underlying filesystem error prevented Vault creation."
+            ),
+            Self::InvalidParam => write!(f, "invalid parameter."),
+            Self::EntryNotFound => write!(f, "entry not found."),
+            Self::UnknownPublicKeyType => write!(f, "unknown public key type."),
+            Self::InvalidString => write!(f, "invalid string."),
+            Self::BufferTooSmall => write!(f, "buffer is too small."),
+            Self::InvalidPublicKey => write!(f, "a public key is invalid."),
+            Self::VaultNotFound => write!(f, "no such Vault."),
+            Self::OwnershipError => write!(f, "ownership error."),
+            Self::UnexpectedPanic => write!(
+                f,
+                "caught a panic (which would be UB if we let it unwind across the FFI)."
+            ),
+        }
     }
 }
 

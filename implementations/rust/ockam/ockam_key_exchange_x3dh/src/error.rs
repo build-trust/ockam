@@ -1,20 +1,28 @@
 use ockam_core::{
     errcode::{Kind, Origin},
-    thiserror, Error,
+    Error,
 };
 
 /// Represents the failures that can occur in
 /// an Ockam X3DH kex
-#[derive(Clone, Copy, Debug, thiserror::Error)]
+#[derive(Clone, Copy, Debug)]
 pub enum X3DHError {
-    #[error("invalid state")]
     InvalidState = 1,
-    #[error("message length mismatch")]
     MessageLenMismatch,
-    #[error("signature length mismatch")]
     SignatureLenMismatch,
-    #[error("invalid hash")]
     InvalidHash,
+}
+
+impl ockam_core::compat::error::Error for X3DHError {}
+impl core::fmt::Display for X3DHError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::InvalidState => "invalid state".fmt(f),
+            Self::MessageLenMismatch => "message length mismatch".fmt(f),
+            Self::SignatureLenMismatch => "signature length mismatch".fmt(f),
+            Self::InvalidHash => "invalid hash".fmt(f),
+        }
+    }
 }
 
 impl From<X3DHError> for Error {

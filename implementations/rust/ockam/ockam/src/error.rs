@@ -3,58 +3,43 @@
 
 use ockam_core::{
     errcode::{Kind, Origin},
-    thiserror, Error,
+    Error,
 };
 
 /// An enumeration of different error types emitted by this library.
 ///
 /// Most user code should use [`crate::Error`] instead.
-#[derive(Clone, Copy, Debug, thiserror::Error)]
+#[derive(Clone, Copy, Debug)]
 pub enum OckamError {
-    #[error("BareError")]
     BareError = 1,
-    #[error("VerifyFailed")]
     VerifyFailed,
-    #[error("InvalidInternalState")]
     InvalidInternalState,
-    #[error("InvalidProof")]
     InvalidProof,
-    #[error("ConsistencyError")]
     ConsistencyError, // 5
-    #[error("ComplexEventsAreNotSupported")]
     ComplexEventsAreNotSupported,
-    #[error("EventIdDoesNotMatch")]
     EventIdDoesNotMatch,
-    #[error("IdentityIdDoesNotMatch")]
     IdentityIdDoesNotMatch,
-    #[error("EmptyChange")]
     EmptyChange,
-    #[error("ContactNotFound")]
     ContactNotFound, // 10
-    #[error("EventNotFound")]
     EventNotFound,
-    #[error("InvalidChainSequence")]
     InvalidChainSequence,
-    #[error("InvalidEventId")]
     InvalidEventId,
-    #[error("AttestationRequesterDoesNotMatch")]
     AttestationRequesterDoesNotMatch,
-    #[error("AttestationNonceDoesNotMatch")]
     AttestationNonceDoesNotMatch, // 15
-    #[error("InvalidHubResponse")]
     InvalidHubResponse,
-    #[error("InvalidParameter")]
     InvalidParameter,
-    #[error("SecureChannelVerificationFailed")]
     SecureChannelVerificationFailed,
-    #[error("SecureChannelCannotBeAuthenticated")]
     SecureChannelCannotBeAuthenticated,
-    #[error("NoSuchProtocol")]
-    NoSuchProtocol, // 20
-    #[error("SystemAddressNotBound")]
+    NoSuchProtocol,
     SystemAddressNotBound,
-    #[error("SystemInvalidConfiguration")]
     SystemInvalidConfiguration,
+}
+
+impl ockam_core::compat::error::Error for OckamError {}
+impl core::fmt::Display for OckamError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Debug::fmt(self, f)
+    }
 }
 
 impl From<OckamError> for Error {

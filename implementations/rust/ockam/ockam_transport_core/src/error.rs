@@ -1,58 +1,66 @@
 use ockam_core::{
     compat::io,
     errcode::{Kind, Origin},
-    thiserror, Error,
+    Error,
 };
 
 /// A Transport worker specific error type
-#[derive(Clone, Copy, Debug, PartialEq, thiserror::Error)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TransportError {
     /// Failed to send a malformed message
-    #[error("failed to send a malformed message")]
     SendBadMessage = 1,
     /// Failed to receive a malformed message
-    #[error("failed to receive a malformed message")]
     RecvBadMessage,
     /// Failed to bind to the desired socket
-    #[error("failed to bind to the desired socket")]
     BindFailed,
     /// Connection was dropped unexpectedly
-    #[error("connection was dropped unexpectedly")]
     ConnectionDrop,
     /// Connection was already established
-    #[error("already connected")]
     AlreadyConnected,
     /// Connection peer was not found
-    #[error("connection peer was not found")]
     PeerNotFound,
     /// Peer requested the incoming connection
-    #[error("connection peer is busy")]
     PeerBusy,
     /// Failed to route to an unknown recipient
-    #[error("message routing failed (unknown recipient)")]
     UnknownRoute,
     /// Failed to parse the socket address
-    #[error("failed to parse the socket address")]
     InvalidAddress,
     /// Failed to read message (buffer exhausted) or failed to send it (size is too big)
-    #[error("failed to read message (buffer exhausted)")]
     Capacity,
     /// Failed to encode message
     // FIXME: replace with ockam_core::encoding error type
-    #[error("failed to encode message")]
     Encoding,
     /// Transport protocol violation
-    #[error("violation in transport protocol")]
     Protocol,
     /// A generic I/O failure
-    #[error("generic I/O failure")]
     GenericIo,
     /// PortalInvalidState
-    #[error("portal entered invalid state")]
     PortalInvalidState,
     /// InvalidRouterResponseType
-    #[error("router responded with invalid type")]
     InvalidRouterResponseType,
+}
+
+impl ockam_core::compat::error::Error for TransportError {}
+impl core::fmt::Display for TransportError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::SendBadMessage => write!(f, "failed to send a malformed message"),
+            Self::RecvBadMessage => write!(f, "failed to receive a malformed message"),
+            Self::BindFailed => write!(f, "failed to bind to the desired socket"),
+            Self::ConnectionDrop => write!(f, "connection was dropped unexpectedly"),
+            Self::AlreadyConnected => write!(f, "already connected"),
+            Self::PeerNotFound => write!(f, "connection peer was not found"),
+            Self::PeerBusy => write!(f, "connection peer is busy"),
+            Self::UnknownRoute => write!(f, "message routing failed (unknown recipient)"),
+            Self::InvalidAddress => write!(f, "failed to parse the socket address"),
+            Self::Capacity => write!(f, "failed to read message (buffer exhausted)"),
+            Self::Encoding => write!(f, "failed to encode message"),
+            Self::Protocol => write!(f, "violation in transport protocol"),
+            Self::GenericIo => write!(f, "generic I/O failure"),
+            Self::PortalInvalidState => write!(f, "portal entered invalid state"),
+            Self::InvalidRouterResponseType => write!(f, "router responded with invalid type"),
+        }
+    }
 }
 
 impl From<TransportError> for Error {

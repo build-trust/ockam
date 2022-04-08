@@ -1,88 +1,56 @@
 use ockam_core::{
     errcode::{Kind, Origin},
-    thiserror, Error,
+    Error,
 };
 
-#[derive(Clone, Copy, Debug, thiserror::Error)]
+#[derive(Clone, Copy, Debug)]
 pub enum IdentityError {
-    #[error("BareError")]
     BareError = 1,
-    #[error("VerifyFailed")]
     VerifyFailed,
-    #[error("InvalidInternalState")]
     InvalidInternalState,
-    #[error("InvalidProof")]
     InvalidProof,
-    #[error("ConsistencyError")]
     ConsistencyError,
-    #[error("ComplexEventsAreNotSupported")]
     ComplexEventsAreNotSupported,
-    #[error("EventIdDoesNotMatch")]
     EventIdDoesNotMatch,
-    #[error("IdentityIdDoesNotMatch")]
     IdentityIdDoesNotMatch,
-    #[error("EmptyChange")]
     EmptyChange,
-    #[error("ContactNotFound")]
     ContactNotFound,
-    #[error("EventNotFound")]
     EventNotFound,
-    #[error("InvalidChainSequence")]
     InvalidChainSequence,
-    #[error("InvalidEventId")]
     InvalidEventId,
-    #[error("AttestationRequesterDoesNotMatch")]
     AttestationRequesterDoesNotMatch,
-    #[error("AttestationNonceDoesNotMatch")]
     AttestationNonceDoesNotMatch,
-    #[error("InvalidHubResponse")]
     InvalidHubResponse,
-    #[error("InvalidParameter")]
     InvalidParameter,
-    #[error("SecureChannelVerificationFailed")]
     SecureChannelVerificationFailed,
-    #[error("SecureChannelTrustCheckFailed")]
     SecureChannelTrustCheckFailed,
-    #[error("SecureChannelCannotBeAuthenticated")]
     SecureChannelCannotBeAuthenticated,
-    #[error("IdentityInvalidResponseType")]
     IdentityInvalidResponseType,
-    #[error("IdentityNotFound")]
     IdentityNotFound,
-    #[error("NotImplemented")]
     NotImplemented,
-    #[error("UnknownChannelMsgDestination")]
     UnknownChannelMsgDestination,
-    #[error("UnknownChannelMsgOrigin")]
     UnknownChannelMsgOrigin,
-    #[error("InvalidLocalInfoType")]
     InvalidLocalInfoType,
-    #[error("InvalidSecureChannelInternalState")]
     InvalidSecureChannelInternalState,
-    #[error("ContactVerificationFailed")]
     ContactVerificationFailed,
-    #[error("InvalidIdentityId")]
     InvalidIdentityId,
-    #[error("DuplicateCredential")]
     DuplicateCredential,
-    #[error("CredentialNotFound")]
     CredentialNotFound,
-    #[error("InvalidIssueState")]
     InvalidIssueState,
-    #[error("CredentialTrustCheckFailed")]
     CredentialTrustCheckFailed,
-    #[error("SchemaIdDoesNotMatch")]
     SchemaIdDoesNotMatch,
-    #[error("IssuerListenerInvalidMessage")]
     IssuerListenerInvalidMessage,
-    #[error("HolderInvalidMessage")]
     HolderInvalidMessage,
-    #[error("IssuerInvalidMessage")]
     IssuerInvalidMessage,
-    #[error("PresenterInvalidMessage")]
     PresenterInvalidMessage,
-    #[error("VerifierInvalidMessage")]
     VerifierInvalidMessage,
+}
+
+impl ockam_core::compat::error::Error for IdentityError {}
+impl core::fmt::Display for IdentityError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Debug::fmt(self, f)
+    }
 }
 
 impl From<IdentityError> for Error {

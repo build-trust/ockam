@@ -1,73 +1,54 @@
 use ockam_core::{
     errcode::{Kind, Origin},
-    thiserror, Error,
+    Error,
 };
 
 /// A Bluetooth Low Energy connection worker specific error type
-#[derive(Clone, Copy, Debug, thiserror::Error)]
+#[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub enum BleError {
-    #[error("permission denied")]
     PermissionDenied,
     /// Functionality is not supported for this platform
-    #[error("functionality is not supported on this platform")]
     NotSupported,
     /// Failed to initialize or communicate with ble hardware
-    #[error("failed to init ble hardware")]
     HardwareError,
-    #[error("not found")]
     NotFound,
-    #[error("timeout")]
     TimedOut,
-    #[error("not connected")]
     NotConnected,
     /// Device configuration failed
-    #[error("configuration failed")]
     ConfigurationFailed,
     /// Device failed to advertise itself
-    #[error("ble advertising failed")]
     AdvertisingFailure,
-    #[error("connection closed")]
     ConnectionClosed,
-    #[error("read error")]
     ReadError,
-    #[error("write error")]
     WriteError,
-    #[error("other error")]
     Other,
-    #[error("unknown error")]
     Unknown,
 }
-impl From<BleError> for Error {
-    fn from(err: BleError) -> Error {
-        Error::new(Origin::Transport, Kind::Io, err)
+
+impl ockam_core::compat::error::Error for BleError {}
+impl core::fmt::Display for BleError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::PermissionDenied => write!(f, "permission denied"),
+            Self::NotSupported => write!(f, "functionality is not supported on this platform"),
+            Self::HardwareError => write!(f, "failed to init ble hardware"),
+            Self::NotFound => write!(f, "not found"),
+            Self::TimedOut => write!(f, "timeout"),
+            Self::NotConnected => write!(f, "not connected"),
+            Self::ConfigurationFailed => write!(f, "configuration failed"),
+            Self::AdvertisingFailure => write!(f, "ble advertising failed"),
+            Self::ConnectionClosed => write!(f, "connection closed"),
+            Self::ReadError => write!(f, "read error"),
+            Self::WriteError => write!(f, "write error"),
+            Self::Other => write!(f, "other error"),
+            Self::Unknown => write!(f, "unknown error"),
+        }
     }
 }
 
-#[test]
-#[ignore]
-fn code_and_domain() {
-    use ockam_core::compat::collections::HashMap;
-
-    let ble_errors_map = IntoIterator::into_iter([
-        (000, BleError::PermissionDenied),
-        (001, BleError::NotSupported),
-        (002, BleError::HardwareError),
-        (003, BleError::NotFound),
-        (004, BleError::TimedOut),
-        (005, BleError::NotConnected),
-        (006, BleError::ConfigurationFailed),
-        (007, BleError::AdvertisingFailure),
-        (008, BleError::ConnectionClosed),
-        (009, BleError::ReadError),
-        (010, BleError::WriteError),
-        (011, BleError::Other),
-        (012, BleError::Unknown),
-    ])
-    .collect::<HashMap<u32, BleError>>();
-    for (_expected_code, ble_err) in ble_errors_map {
-        let _err: Error = ble_err.into();
-        // assert_eq!(err.domain(), BleError::DOMAIN_NAME);
-        // assert_eq!(err.code(), BleError::DOMAIN_CODE + expected_code);
+impl From<BleError> for Error {
+    fn from(err: BleError) -> Error {
+        Error::new(Origin::Transport, Kind::Io, err)
     }
 }

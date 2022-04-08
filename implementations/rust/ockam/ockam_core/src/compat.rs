@@ -37,7 +37,8 @@ pub mod error {
     #[cfg(not(feature = "std"))]
     /// A `no_std` compatible definition of the `std::error::Error` trait.
     pub trait Error: core::fmt::Debug + core::fmt::Display {
-        fn cause(&self) -> Option<&(dyn Error + 'static)> {
+        /// The source of this error.
+        fn source(&self) -> Option<&(dyn Error + 'static)> {
             None
         }
     }

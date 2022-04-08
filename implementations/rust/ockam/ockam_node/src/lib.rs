@@ -98,8 +98,9 @@ pub(crate) mod error {
     use crate::messages::NodeError;
     use crate::tokio::sync::mpsc::error::SendError;
     use core::fmt::Debug;
+    #[cfg(feature = "std")]
+    use ockam_core::compat::error::Error as StdError;
     use ockam_core::{
-        compat::error::Error as StdError,
         errcode::{Kind, Origin},
         Error,
     };
@@ -114,10 +115,12 @@ pub(crate) mod error {
         node_internal(e)
     }
 
+    #[cfg(feature = "std")]
     pub fn from_elapsed(e: tokio::time::error::Elapsed) -> Error {
         Error::new(Origin::Node, Kind::Timeout, e)
     }
 
+    #[cfg(feature = "std")]
     pub fn node_internal(e: impl StdError + Send + Sync + 'static) -> Error {
         Error::new(Origin::Node, Kind::Internal, e)
     }
@@ -128,5 +131,14 @@ pub(crate) mod error {
 
     pub fn internal_without_cause() -> Error {
         Error::new_without_cause(Origin::Node, Kind::Internal)
+    }
+    #[cfg(not(feature = "std"))]
+    pub fn node_internal<E>(_e: E) -> Error {
+        Error::new_without_cause(Origin::Node, Kind::Internal)
+    }
+
+    #[cfg(not(feature = "std"))]
+    pub fn from_elapsed<E>(_e: E) -> Error {
+        Error::new_without_cause(Origin::Node, Kind::Timeout)
     }
 }

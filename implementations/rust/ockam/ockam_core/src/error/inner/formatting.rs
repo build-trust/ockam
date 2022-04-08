@@ -1,5 +1,5 @@
 use super::*;
-
+#[cfg(feature = "std")]
 impl core::fmt::Display for ErrorData {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if let Some(c) = &self.cause {
@@ -19,9 +19,10 @@ impl core::fmt::Display for ErrorData {
     }
 }
 
+#[cfg(feature = "std")]
 impl core::fmt::Debug for ErrorData {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        writeln!(f, "Ockam Error [{}] at {}", self.code, self.source_loc,)?;
+        writeln!(f, "Ockam Error [{}] at {}", self.code, self.source_loc)?;
         writeln!(f, "--- Details ---")?;
         if let Some(c) = &self.cause {
             // TODO: iterate the cause chain, print the whole thing outp
@@ -68,5 +69,20 @@ impl core::fmt::Debug for ErrorData {
         }
         writeln!(f, "--------------------------")?;
         Ok(())
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl core::fmt::Display for ErrorData {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        // TODO
+        write!(f, "Ockam Error [{}]", self.code)
+    }
+}
+#[cfg(not(feature = "std"))]
+impl core::fmt::Debug for ErrorData {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        // TODO
+        write!(f, "Ockam Error [{}]", self.code)
     }
 }

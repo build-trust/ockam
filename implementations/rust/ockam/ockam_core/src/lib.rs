@@ -70,23 +70,9 @@ pub use worker::*;
 #[doc(hidden)]
 pub use compat::println;
 
-pub use thiserror;
-
 #[cfg(feature = "std")]
 #[doc(hidden)]
 pub use std::println;
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-/// println macro for no_std
-pub mod println_no_std {
-    #[macro_export]
-    /// implements println for no_std by wrapping the tracing::info! macro
-    macro_rules! println {
-        ($($arg:tt)*) => {{
-            tracing::info!($($arg)*);
-        }};
-    }
-}
 
 use crate::compat::boxed::Box;
 

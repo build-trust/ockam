@@ -1,23 +1,30 @@
 use ockam_core::{
     errcode::{Kind, Origin},
-    thiserror, Error,
+    Error,
 };
 use ockam_transport_core::TransportError;
 use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 
 /// A WebSocket connection worker specific error type
-#[derive(Clone, Copy, Debug, thiserror::Error)]
+#[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub enum WebSocketError {
     /// A wrapped transport error
-    #[error("ockam transport error {}", 0)]
     Transport(TransportError),
     /// HTTP error
-    #[error("http protocol error")]
     Http,
     /// TLS error
-    #[error("tls protocol error")]
     Tls,
+}
+impl ockam_core::compat::error::Error for WebSocketError {}
+impl core::fmt::Display for WebSocketError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Transport(t) => write!(f, "ockam transport error {t}"),
+            Self::Http => write!(f, "http protocol error"),
+            Self::Tls => write!(f, "tls protocol error"),
+        }
+    }
 }
 
 impl From<WebSocketError> for Error {
