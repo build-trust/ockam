@@ -612,11 +612,10 @@ impl Context {
     pub async fn set_cluster<S: Into<String>>(&self, label: S) -> Result<()> {
         let (msg, mut rx) = NodeMessage::set_cluster(self.address(), label.into());
         self.sender.send(msg).await.map_err(error::node_internal)?;
-        Ok(rx
-            .recv()
+        rx.recv()
             .await
             .ok_or_else(error::internal_without_cause)??
-            .is_ok()?)
+            .is_ok()
     }
 
     /// Return a list of all available worker addresses on a node
@@ -625,11 +624,11 @@ impl Context {
 
         self.sender.send(msg).await.map_err(error::node_internal)?;
 
-        Ok(reply_rx
+        reply_rx
             .recv()
             .await
             .ok_or_else(error::internal_without_cause)??
-            .take_workers()?)
+            .take_workers()
     }
 
     /// Register a router for a specific address type

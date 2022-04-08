@@ -104,7 +104,7 @@ impl ErrorData {
 
         Self {
             code,
-            cause: cause,
+            cause,
             source_loc: location.into(),
             local: Some(local),
             payload,

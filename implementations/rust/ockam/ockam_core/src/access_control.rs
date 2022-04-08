@@ -24,6 +24,7 @@ use crate::{LocalMessage, Result};
 /// ```
 ///
 #[async_trait]
+#[allow(clippy::wrong_self_convention)]
 pub trait AccessControl: Send + Sync + 'static {
     /// Return true if the message is allowed to pass, and false if not.
     async fn is_authorized(&self, local_msg: &LocalMessage) -> Result<bool>;
