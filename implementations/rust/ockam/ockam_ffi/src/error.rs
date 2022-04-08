@@ -70,6 +70,7 @@ pub enum FfiError {
 }
 impl ockam_core::compat::error::Error for FfiError {}
 impl From<FfiError> for Error {
+    #[track_caller]
     fn from(err: FfiError) -> Self {
         Error::new(Origin::Other, Kind::Other, err)
     }

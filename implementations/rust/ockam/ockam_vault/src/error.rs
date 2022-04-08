@@ -69,6 +69,7 @@ impl core::fmt::Display for VaultError {
 }
 
 impl From<VaultError> for Error {
+    #[track_caller]
     fn from(err: VaultError) -> Self {
         use VaultError::*;
         let kind = match err {

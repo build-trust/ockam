@@ -29,6 +29,7 @@ impl fmt::Display for XXError {
 }
 
 impl From<XXError> for Error {
+    #[track_caller]
     fn from(err: XXError) -> Self {
         let kind = match err {
             XXError::InvalidState => Kind::Invalid,

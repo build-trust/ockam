@@ -28,6 +28,7 @@ impl core::fmt::Display for WebSocketError {
 }
 
 impl From<WebSocketError> for Error {
+    #[track_caller]
     fn from(err: WebSocketError) -> Error {
         use WebSocketError::*;
         let kind = match err {

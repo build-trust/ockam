@@ -47,6 +47,7 @@ impl Error {
 }
 
 impl From<Error> for ockam_core::Error {
+    #[track_caller]
     fn from(e: Error) -> ockam_core::Error {
         ockam_core::Error::new(
             Error::DOMAIN_CODE + (e as u32),

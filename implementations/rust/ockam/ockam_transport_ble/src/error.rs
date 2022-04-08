@@ -48,6 +48,7 @@ impl core::fmt::Display for BleError {
 }
 
 impl From<BleError> for Error {
+    #[track_caller]
     fn from(err: BleError) -> Error {
         Error::new(Origin::Transport, Kind::Io, err)
     }

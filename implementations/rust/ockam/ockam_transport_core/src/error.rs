@@ -64,6 +64,7 @@ impl core::fmt::Display for TransportError {
 }
 
 impl From<TransportError> for Error {
+    #[track_caller]
     fn from(err: TransportError) -> Error {
         use TransportError::*;
         let kind = match err {

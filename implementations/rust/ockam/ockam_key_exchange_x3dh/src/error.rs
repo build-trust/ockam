@@ -26,6 +26,7 @@ impl core::fmt::Display for X3DHError {
 }
 
 impl From<X3DHError> for Error {
+    #[track_caller]
     fn from(err: X3DHError) -> Self {
         use X3DHError::*;
         let kind = match err {

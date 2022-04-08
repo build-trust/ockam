@@ -43,6 +43,7 @@ impl core::fmt::Display for OckamError {
 }
 
 impl From<OckamError> for Error {
+    #[track_caller]
     fn from(err: OckamError) -> Error {
         use OckamError::*;
         // TODO: improve this mapping

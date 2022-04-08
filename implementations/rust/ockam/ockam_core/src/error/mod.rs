@@ -64,6 +64,7 @@ impl Error {
     /// This ideally should not be used inside Ockam.
     #[cold]
     #[cfg(feature = "std")]
+    #[track_caller]
     pub fn new_unknown<E>(origin: code::Origin, cause: E) -> Self
     where
         E: Into<Box<dyn crate::compat::error::Error + Send + Sync>>,
@@ -76,6 +77,7 @@ impl Error {
     /// This constructor should be used for any error occurring
     /// because of a None unwrap.
     #[cold]
+    #[track_caller]
     pub fn new_without_cause(origin: code::Origin, kind: code::Kind) -> Self {
         Self(inner::ErrorData::new_without_cause(origin, kind).into())
     }

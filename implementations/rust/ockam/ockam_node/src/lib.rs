@@ -106,38 +106,49 @@ pub(crate) mod error {
     };
 
     impl From<NodeError> for Error {
+        #[track_caller]
         fn from(e: NodeError) -> Error {
             Error::new(Origin::Node, Kind::Internal, e)
         }
     }
 
+    #[track_caller]
     pub fn from_send_err<T: Debug + Send + Sync + 'static>(e: SendError<T>) -> Error {
         node_internal(e)
     }
 
+    #[track_caller]
     #[cfg(feature = "std")]
     pub fn from_elapsed(e: tokio::time::error::Elapsed) -> Error {
         Error::new(Origin::Node, Kind::Timeout, e)
     }
 
+    #[track_caller]
     #[cfg(feature = "std")]
     pub fn node_internal(e: impl StdError + Send + Sync + 'static) -> Error {
         Error::new(Origin::Node, Kind::Internal, e)
     }
 
+    #[track_caller]
     pub fn node_without_cause(kind: Kind) -> Error {
         Error::new_without_cause(Origin::Node, kind)
     }
 
+    #[track_caller]
     pub fn internal_without_cause() -> Error {
         Error::new_without_cause(Origin::Node, Kind::Internal)
     }
+
+    #[track_caller]
     #[cfg(not(feature = "std"))]
+    #[track_caller]
     pub fn node_internal<E>(_e: E) -> Error {
         Error::new_without_cause(Origin::Node, Kind::Internal)
     }
 
+    #[track_caller]
     #[cfg(not(feature = "std"))]
+    #[track_caller]
     pub fn from_elapsed<E>(_e: E) -> Error {
         Error::new_without_cause(Origin::Node, Kind::Timeout)
     }

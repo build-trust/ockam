@@ -63,6 +63,7 @@ impl From<CredentialError> for Error {
 
 #[cfg(not(feature = "alloc"))]
 impl From<CredentialError> for Error {
+    #[track_caller]
     fn from(v: CredentialError) -> Error {
         Error::new(CredentialError::DOMAIN_CODE + v.as_u32())
     }

@@ -11,6 +11,7 @@ pub enum RouteError {
 }
 
 impl From<RouteError> for Error {
+    #[track_caller]
     fn from(err: RouteError) -> Self {
         let kind = match err {
             RouteError::IncompleteRoute => Kind::Misuse,

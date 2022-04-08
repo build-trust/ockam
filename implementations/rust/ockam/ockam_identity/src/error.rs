@@ -54,6 +54,7 @@ impl core::fmt::Display for IdentityError {
 }
 
 impl From<IdentityError> for Error {
+    #[track_caller]
     fn from(err: IdentityError) -> Self {
         let kind = Kind::Unknown; // FIXME: fill these in with more
                                   // meaningful error kinds
