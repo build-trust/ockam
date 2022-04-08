@@ -139,14 +139,12 @@ pub(crate) mod error {
         Error::new_without_cause(Origin::Node, Kind::Internal)
     }
 
-    #[track_caller]
     #[cfg(not(feature = "std"))]
     #[track_caller]
     pub fn node_internal<E>(_e: E) -> Error {
         Error::new_without_cause(Origin::Node, Kind::Internal)
     }
 
-    #[track_caller]
     #[cfg(not(feature = "std"))]
     #[track_caller]
     pub fn from_elapsed<E>(_e: E) -> Error {
