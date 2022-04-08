@@ -1,10 +1,8 @@
 #[cfg(feature = "storage")]
 use crate::storage::*;
-use crate::VaultError;
 use core::sync::atomic::AtomicUsize;
 use ockam_core::compat::{collections::BTreeMap, string::String, sync::Arc};
 use ockam_core::vault::{SecretAttributes, SecretKey};
-use ockam_core::Result;
 use ockam_node::compat::asynchronous::RwLock;
 
 /// Vault implementation that stores secrets in memory and uses software crypto.
@@ -65,10 +63,10 @@ impl Vault {
     /// Load a vault from the serialized format produced by `SoftwareVault::serialize`.
     #[cfg(feature = "storage")]
     #[tracing::instrument(err, skip_all)]
-    pub fn deserialize(data: &[u8]) -> Result<Self> {
+    pub fn deserialize(data: &[u8]) -> ockam_core::Result<Self> {
         let data = deserialize(data).map_err(|e| {
             tracing::error!("Data loaded from vault failed to parse: {:?}", e);
-            VaultError::StorageError
+            crate::VaultError::StorageError
         })?;
         Ok(Self { data })
     }
