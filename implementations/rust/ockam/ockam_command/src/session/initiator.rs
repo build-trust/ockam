@@ -96,7 +96,7 @@ impl<S: SessionManager> Worker for SessionMaintainer<S> {
         if msg.msg_addr() == self.main_addr {
             match msg.body() {
                 SessionMsg::Pong(request_id) => {
-                    let last_request_id = if let Some(id) = self.last_sent_request_id.take() {
+                    let last_request_id = if let Some(id) = self.last_sent_request_id.as_ref() {
                         id
                     } else {
                         // We weren't waiting for any request id (may be out-of-order) - ignore
@@ -104,7 +104,7 @@ impl<S: SessionManager> Worker for SessionMaintainer<S> {
                         return Ok(());
                     };
 
-                    if last_request_id != request_id {
+                    if last_request_id != &request_id {
                         // This is not the pong we were waiting for (may be out-of-order) - ignore
                         warn!("Got wrong request_id: {}", request_id.0);
                         return Ok(());
@@ -112,6 +112,7 @@ impl<S: SessionManager> Worker for SessionMaintainer<S> {
 
                     // Everything is fine
                     info!("Got respond: {}", request_id.0);
+                    self.last_sent_request_id = None;
                     self.heartbeat.schedule(self.heartbeat_duration).await?;
                 }
                 SessionMsg::Heartbeat | SessionMsg::Ping(_) => {
