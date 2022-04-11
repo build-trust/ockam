@@ -1825,7 +1825,6 @@ version = "0.40.0"
 dependencies = [
  "futures-channel",
  "futures-util",
- "ockam",
  "ockam_core",
  "ockam_macros",
  "ockam_node",
