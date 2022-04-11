@@ -207,10 +207,12 @@ pub mod string {
 /// Provides `std::sync` for `no_std` targets.
 #[cfg(not(feature = "std"))]
 pub mod sync {
+    use core::convert::Infallible;
+
     pub use alloc::sync::Arc;
     pub use spin::RwLock;
 
-    /// Wrap `spin::Mutex.lock()` as it does not return Option<T> like `std::sync::Mutex`.
+    /// Wrap `spin::Mutex.lock()` as it does not return LockResult<Guard> like `std::sync::Mutex`.
     pub struct Mutex<T>(spin::Mutex<T>);
     impl<T> Mutex<T> {
         /// Creates a new mutex in an unlocked state ready for use.
@@ -218,8 +220,8 @@ pub mod sync {
             Mutex(spin::Mutex::new(value))
         }
         /// Acquires a mutex, blocking the current thread until it is able to do so.
-        pub fn lock(&self) -> Option<spin::MutexGuard<'_, T>> {
-            Some(self.0.lock())
+        pub fn lock(&self) -> Result<spin::MutexGuard<'_, T>, Infallible> {
+            Ok(self.0.lock())
         }
     }
     impl<T> core::ops::Deref for Mutex<T> {
