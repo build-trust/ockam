@@ -56,7 +56,7 @@ use ockam::{Context, Result};
 async fn main(mut ctx: Context) -> Result<()> {
     let ws = WebSocketTransport::create(&ctx).await?;
     ws.listen("localhost:8000").await?; // Listen on port 8000
-    
+
     // Start a worker, of type MyWorker, at address "my_worker"
     ctx.start_worker("my_worker", MyWorker).await?;
 
@@ -75,13 +75,13 @@ use ockam::{Context, Result};
 async fn main(mut ctx: Context) -> Result<()> {
     // Initialize the WS Transport.
     let _ws = WebSocketTransport::create(&ctx).await?;
-    
+
     // Define the route to the server's worker.
     let r = route![(WS, "localhost:8000"), "my_worker"];
 
     // Now you can send messages to the worker.
     ctx.send(r, "Hello Ockam!".to_string()).await?;
-    
+
     // Or receive messages from the server.
     let reply = ctx.receive::<String>().await?;
 
