@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.51.0 - 2022-04-11
+
+### Changed
+
+- Get rid of common `RouterMessage` in favor of transport-specific structs (ble, ws)
+- Make `ockam_core::Error` derive `Eq` and `PartialEq`
+- Don't re-export `hex` or `hashbrown` from `ockam_core`
+- Tune up some of the documentation
+- Ensure more documentation ends up in the right place
+- Implement miniature `ockam` command for demo
+- Vault updates
+- Updated dependencies
+
+### Fixed
+
+- Insert a temporary mechanism to improve error messages
+- Fix clippy warnings
+
 ## 0.50.0 - 2022-03-28
 
 ### Added

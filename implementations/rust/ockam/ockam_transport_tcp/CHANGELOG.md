@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.47.0 - 2022-04-11
+
+### Added
+
+- Add `Tcp` disconnect test
+
+### Changed
+
+- Implement tcp disconnection
+- Implement manual disconnection for `Tcp`
+- Implemented tcp connection to already connected ip under different hostname
+- Updated dependencies
+
+### Fixed
+
+- Fix clippy warnings
+
+### Removed
+
+- Remove outdated tcprouter docs
+
 ## 0.46.0 - 2022-04-04
 
 ### Changed
