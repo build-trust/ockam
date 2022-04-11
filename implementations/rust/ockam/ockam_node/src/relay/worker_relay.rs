@@ -1,9 +1,8 @@
-use crate::relay::{CtrlSignal, RelayMessage, RelayPayload};
+use crate::relay::CtrlSignal;
 use crate::tokio::{runtime::Runtime, sync::mpsc::Receiver};
 use crate::{parser, Context};
 use core::marker::PhantomData;
-use ockam_core::compat::vec::Vec;
-use ockam_core::{Address, LocalMessage, Message, Result, Route, Routed, TransportMessage, Worker};
+use ockam_core::{LocalMessage, Message, Result, Routed, Worker};
 
 /// Worker relay machinery
 ///
@@ -35,29 +34,9 @@ where
 
     /// Convenience function to handle an incoming direct message
     #[inline]
-    fn handle_direct(msg: &LocalMessage, msg_addr: Address) -> Result<(M, Route)> {
-        let TransportMessage {
-            ref payload,
-            ref return_route,
-            ..
-        } = msg.transport();
-
-        parser::message::<M>(payload)
-            .map_err(|e| {
-                error!("Failed to decode message payload for worker {}", msg_addr);
-                e
-            })
-            .map(|m| (m, return_route.clone()))
-    }
-
-    #[inline]
-    fn handle_pre_router(msg: &[u8], msg_addr: Address) -> Result<M> {
-        M::decode(msg).map_err(|e| {
-            error!(
-                "Failed to decode wrapped router message for worker {}.  \
-             Is your router accepting the correct message type? (ockam_core::RouterMessage)",
-                msg_addr
-            );
+    fn handle_direct(msg: &LocalMessage) -> Result<M> {
+        parser::message::<M>(msg.transport().payload.as_slice()).map_err(|e| {
+            error!("Failed to decode message payload for worker" /* FIXME */);
             e
         })
     }
@@ -67,7 +46,7 @@ where
     /// Report errors as they occur, and signal whether the loop should
     /// continue running or not
     async fn recv_message(&mut self) -> Result<bool> {
-        let RelayMessage { addr, data, .. } = match self.ctx.mailbox_next().await? {
+        let relay_msg = match self.ctx.receiver_next().await? {
             Some(msg) => msg,
             None => {
                 trace!("No more messages for worker {}", self.ctx.address());
@@ -79,28 +58,11 @@ where
         // wrap state.  Messages addressed to a router will be of
         // type `RouterMessage`, while generic userspace workers
         // can provide any type they want.
-        let (msg, _, local_msg) = (|data| -> Result<(M, Route, LocalMessage)> {
-            Ok(match data {
-                RelayPayload::Direct(local_msg) => Self::handle_direct(&local_msg, addr.clone())
-                    .map(|(msg, r)| (msg, r, local_msg))?,
-                RelayPayload::PreRouter(enc_msg, route) => {
-                    Self::handle_pre_router(&enc_msg, addr.clone()).map(|m| {
-                        (
-                            m,
-                            route.clone(),
-                            LocalMessage::new(
-                                TransportMessage::v1(Route::new(), route, enc_msg),
-                                Vec::new(),
-                            ),
-                        )
-                    })?
-                }
-            })
-        })(data)?;
+        let msg = Self::handle_direct(&relay_msg.local_msg)?;
 
         // Wrap the user message in a `Routed` to provide return
         // route information via a composition side-channel
-        let routed = Routed::new(msg, addr.clone(), local_msg);
+        let routed = Routed::new(msg, relay_msg.addr.clone(), relay_msg.local_msg);
 
         // Call the worker handle function - pass errors up
         self.worker.handle_message(&mut self.ctx, routed).await?;

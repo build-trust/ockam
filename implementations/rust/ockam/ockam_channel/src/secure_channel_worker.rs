@@ -174,7 +174,7 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
     ) -> Result<()> {
         debug!("SecureChannel received Decrypt");
 
-        let transport_message = msg.into_transport_message();
+        let (transport_message, mut local_info) = msg.into_local_message().dissolve();
         let payload = transport_message.payload;
         let payload = Vec::<u8>::decode(&payload)?;
 
@@ -199,9 +199,11 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
             .modify()
             .prepend(self.address_local.clone());
 
-        let local_info = SecureChannelLocalInfo::new(self.key_exchange_name.clone());
+        // Preserve local info
+        local_info
+            .push(SecureChannelLocalInfo::new(self.key_exchange_name.clone()).to_local_info()?);
 
-        let local_msg = LocalMessage::new(transport_message, vec![local_info.to_local_info()?]);
+        let local_msg = LocalMessage::new(transport_message, local_info);
 
         ctx.forward(local_msg).await
     }

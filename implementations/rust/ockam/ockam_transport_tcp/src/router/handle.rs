@@ -1,6 +1,6 @@
 use crate::{
-    parse_socket_addr, TcpInletListenProcessor, TcpListenProcessor, TcpPortalWorker,
-    TcpRouterRequest, TcpRouterResponse, WorkerPair, TCP,
+    parse_socket_addr, TcpInletListenProcessor, TcpListenProcessor, TcpRouterRequest,
+    TcpRouterResponse, WorkerPair, TCP,
 };
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
 use ockam_core::{async_trait, compat::boxed::Box};
@@ -195,19 +195,6 @@ impl TcpRouterHandle {
         } else {
             Err(TransportError::InvalidRouterResponseType.into())
         }
-    }
-
-    /// Establish an outgoing TCP connection for Portal Outlet
-    pub async fn connect_outlet(
-        &self,
-        peer: impl Into<String>,
-        pong_route: Route,
-    ) -> Result<Address> {
-        let (peer_addr, _) = Self::resolve_peer(peer)?;
-
-        let address = TcpPortalWorker::new_outlet(&self.ctx, peer_addr, pong_route).await?;
-
-        Ok(address)
     }
 
     pub async fn stop_outlet(&self, addr: impl Into<Address>) -> Result<()> {

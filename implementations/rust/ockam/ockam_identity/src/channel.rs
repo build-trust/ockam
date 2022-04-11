@@ -1,7 +1,3 @@
-use crate::IdentityIdentifier;
-use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_core::{AccessControl, LocalMessage, Result};
-
 mod secure_channel_worker;
 pub(crate) use secure_channel_worker::*;
 mod listener;
@@ -10,52 +6,18 @@ mod messages;
 pub(crate) use messages::*;
 mod trust_policy;
 pub use trust_policy::*;
+pub mod access_control;
 mod local_info;
 pub use local_info::*;
-
-pub struct IdentityAccessControlBuilder;
-
-impl IdentityAccessControlBuilder {
-    pub fn new_with_id(their_identity_id: IdentityIdentifier) -> IdentityIdAccessControl {
-        IdentityIdAccessControl { their_identity_id }
-    }
-
-    pub fn new_with_any_id() -> IdentityAnyIdAccessControl {
-        IdentityAnyIdAccessControl
-    }
-}
-
-pub struct IdentityAnyIdAccessControl;
-
-#[async_trait]
-impl AccessControl for IdentityAnyIdAccessControl {
-    async fn is_authorized(&self, local_msg: &LocalMessage) -> Result<bool> {
-        Ok(IdentitySecureChannelLocalInfo::find_info(local_msg).is_ok())
-    }
-}
-
-pub struct IdentityIdAccessControl {
-    their_identity_id: IdentityIdentifier,
-}
-
-#[async_trait]
-impl AccessControl for IdentityIdAccessControl {
-    async fn is_authorized(&self, local_msg: &LocalMessage) -> Result<bool> {
-        if let Ok(msg_identity_id) = IdentitySecureChannelLocalInfo::find_info(local_msg) {
-            Ok(msg_identity_id.their_identity_id() == &self.their_identity_id)
-        } else {
-            Ok(false)
-        }
-    }
-}
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::access_control::IdentityAccessControlBuilder;
     use crate::{Identity, IdentityTrait};
     use core::sync::atomic::{AtomicU8, Ordering};
     use ockam_core::compat::sync::Arc;
-    use ockam_core::{route, Any, Route, Routed, Worker};
+    use ockam_core::{route, Any, Mailboxes, Result, Route, Routed, Worker};
     use ockam_node::Context;
     use ockam_vault::Vault;
     use std::time::Duration;
@@ -285,8 +247,11 @@ mod test {
         let bob = Identity::create(ctx, &vault).await?;
 
         let access_control = IdentityAccessControlBuilder::new_with_id(alice.identifier().await?);
-        ctx.start_worker_with_access_control("receiver", receiver, access_control)
-            .await?;
+        ctx.start_worker_impl(
+            Mailboxes::main("receiver", Arc::new(access_control)),
+            receiver,
+        )
+        .await?;
 
         bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
             .await?;
@@ -321,8 +286,11 @@ mod test {
         let bob = Identity::create(ctx, &vault).await?;
 
         let access_control = IdentityAccessControlBuilder::new_with_id(bob.identifier().await?);
-        ctx.start_worker_with_access_control("receiver", receiver, access_control)
-            .await?;
+        ctx.start_worker_impl(
+            Mailboxes::main("receiver", Arc::new(access_control)),
+            receiver,
+        )
+        .await?;
 
         bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
             .await?;
@@ -354,8 +322,11 @@ mod test {
         let access_control = IdentityAccessControlBuilder::new_with_id(
             "P79b26ba2ea5ad9b54abe5bebbcce7c446beda8c948afc0de293250090e5270b6".try_into()?,
         );
-        ctx.start_worker_with_access_control("receiver", receiver, access_control)
-            .await?;
+        ctx.start_worker_impl(
+            Mailboxes::main("receiver", Arc::new(access_control)),
+            receiver,
+        )
+        .await?;
 
         ctx.send(route!["receiver"], "Hello, Bob!".to_string())
             .await?;

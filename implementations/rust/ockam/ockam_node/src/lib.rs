@@ -36,11 +36,15 @@ mod cancel;
 mod context;
 mod delayed;
 mod executor;
+mod local_info;
 mod messages;
 mod node;
 mod parser;
 mod relay;
 mod router;
+
+/// Access Control
+pub mod access_control;
 
 /// Errors
 pub mod error;
@@ -49,6 +53,7 @@ pub use cancel::*;
 pub use context::*;
 pub use delayed::*;
 pub use executor::*;
+pub use local_info::*;
 pub use messages::*;
 
 pub use node::{start_node, NullWorker};

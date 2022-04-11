@@ -1,29 +1,16 @@
-use crate::{PortalMessage, TcpRouterHandle};
-use ockam_core::{async_trait, AsyncTryClone};
-use ockam_core::{Address, Result, Routed, Worker};
+use crate::{PortalMessage, TcpPortalWorker, TcpRouterHandle};
+use ockam_core::{async_trait, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tracing::debug;
 
 pub(crate) struct TcpOutletListenWorker {
-    router_handle: TcpRouterHandle,
     peer: String,
 }
 
 impl TcpOutletListenWorker {
-    pub(crate) async fn start(
-        router_handle: &TcpRouterHandle,
-        address: Address,
-        peer: String,
-    ) -> Result<()> {
-        let worker = Self {
-            router_handle: router_handle.async_try_clone().await?,
-            peer,
-        };
-
-        router_handle.ctx().start_worker(address, worker).await?;
-
-        Ok(())
+    pub(crate) fn new(peer: String) -> Self {
+        Self { peer }
     }
 }
 
@@ -34,7 +21,7 @@ impl Worker for TcpOutletListenWorker {
 
     async fn handle_message(
         &mut self,
-        _ctx: &mut Self::Context,
+        ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         let return_route = msg.return_route();
@@ -44,10 +31,10 @@ impl Worker for TcpOutletListenWorker {
             return Err(TransportError::Protocol.into());
         }
 
-        let address = self
-            .router_handle
-            .connect_outlet(self.peer.clone(), return_route.clone())
-            .await?;
+        let (peer_addr, _) = TcpRouterHandle::resolve_peer(self.peer.clone())?;
+
+        let address =
+            TcpPortalWorker::start_new_outlet(ctx, peer_addr, return_route.clone()).await?;
 
         debug!("Created Tcp Outlet at {}", &address);
 

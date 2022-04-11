@@ -1,13 +1,125 @@
+use crate::access_control::AccessControl;
 use crate::compat::rand::{distributions::Standard, prelude::Distribution, random, Rng};
 use crate::compat::{
     string::{String, ToString},
+    sync::Arc,
     vec::{self, Vec},
 };
+use crate::{LocalMessage, Result};
 use core::fmt::{self, Debug, Display};
 use core::iter::FromIterator;
 use core::ops::Deref;
 use core::str::from_utf8;
 use serde::{Deserialize, Serialize};
+
+pub struct Mailbox {
+    address: Address,
+    access_control: Arc<dyn AccessControl>,
+}
+
+impl Mailbox {
+    pub fn new(address: Address, access_control: Arc<dyn AccessControl>) -> Self {
+        Self {
+            address,
+            access_control,
+        }
+    }
+    pub fn address(&self) -> &Address {
+        &self.address
+    }
+    pub fn access_control(&self) -> &Arc<dyn AccessControl> {
+        &self.access_control
+    }
+}
+
+pub struct Mailboxes {
+    main_mailbox: Mailbox,
+    additional_mailboxes: Vec<Mailbox>,
+}
+
+impl Mailboxes {
+    pub fn from_address_set(
+        address_set: AddressSet,
+        access_control: Arc<dyn AccessControl>,
+    ) -> Self {
+        let main_mailbox = Mailbox::new(address_set.first(), access_control.clone());
+        let additional_mailboxes = address_set
+            .into_iter()
+            .skip(1)
+            .map(|x| Mailbox::new(x, access_control.clone()))
+            .collect();
+
+        Mailboxes::new(main_mailbox, additional_mailboxes)
+    }
+
+    pub fn aliases(&self) -> AddressSet {
+        self.additional_mailboxes
+            .iter()
+            .map(|x| x.address.clone())
+            .collect()
+    }
+
+    pub fn main_address(&self) -> Address {
+        self.main_mailbox.address.clone()
+    }
+
+    pub fn contains(&self, msg_addr: &Address) -> bool {
+        if &self.main_mailbox.address == msg_addr {
+            true
+        } else {
+            self.additional_mailboxes
+                .iter()
+                .find(|x| &x.address == msg_addr)
+                .is_some()
+        }
+    }
+
+    fn find_mailbox(&self, msg_addr: &Address) -> Option<&Mailbox> {
+        if &self.main_mailbox.address == msg_addr {
+            Some(&self.main_mailbox)
+        } else {
+            self.additional_mailboxes
+                .iter()
+                .find(|x| &x.address == msg_addr)
+        }
+    }
+
+    pub async fn is_authorized(
+        &self,
+        msg_addr: &Address,
+        local_msg: &LocalMessage,
+    ) -> Result<bool> {
+        let mailbox = self.find_mailbox(msg_addr).unwrap(); // FIXME
+        mailbox.access_control.is_authorized(local_msg).await
+    }
+
+    pub fn addresses(&self) -> AddressSet {
+        let mut addresses = vec![self.main_mailbox.address.clone()];
+
+        addresses.append(&mut self.aliases().0);
+
+        AddressSet(addresses)
+    }
+    pub fn new(main_mailbox: Mailbox, additional_mailboxes: Vec<Mailbox>) -> Self {
+        Self {
+            main_mailbox,
+            additional_mailboxes,
+        }
+    }
+    pub fn main<A: Into<Address>>(address: A, access_control: Arc<dyn AccessControl>) -> Self {
+        Self {
+            main_mailbox: Mailbox::new(address.into(), access_control),
+            additional_mailboxes: vec![],
+        }
+    }
+
+    pub fn main_mailbox(&self) -> &Mailbox {
+        &self.main_mailbox
+    }
+    pub fn additional_mailboxes(&self) -> &Vec<Mailbox> {
+        &self.additional_mailboxes
+    }
+}
 
 /// A read-only set containing a `Vec` of [`Address`] structures.
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]

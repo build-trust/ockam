@@ -41,7 +41,8 @@ impl Processor for TcpInletListenProcessor {
 
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
-        TcpPortalWorker::new_inlet(ctx, stream, peer, self.outlet_listener_route.clone()).await?;
+        TcpPortalWorker::start_new_inlet(ctx, stream, peer, self.outlet_listener_route.clone())
+            .await?;
 
         Ok(true)
     }

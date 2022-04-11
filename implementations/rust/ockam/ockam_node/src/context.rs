@@ -1,4 +1,3 @@
-use crate::relay::RelayPayload;
 use crate::tokio::{
     self,
     runtime::Runtime,
@@ -14,9 +13,10 @@ use crate::{
 };
 use crate::{NodeError, Reason};
 use core::time::Duration;
+use ockam_core::access_control::AllowAll;
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
-    AccessControl, Address, AddressSet, AllowAll, AsyncTryClone, LocalMessage, Message, Processor,
+    Address, AddressSet, AsyncTryClone, LocalMessage, Mailbox, Mailboxes, Message, Processor,
     Result, Route, TransportMessage, TransportType, Worker,
 };
 
@@ -39,11 +39,10 @@ impl AddressType {
 
 /// Context contains Node state and references to the runtime.
 pub struct Context {
-    address: AddressSet,
+    mailboxes: Mailboxes,
     sender: Sender<NodeMessage>,
     rt: Arc<Runtime>,
-    mailbox: Receiver<RelayMessage>,
-    access_control: Box<dyn AccessControl>,
+    receiver: Receiver<RelayMessage>,
 }
 
 #[ockam_core::async_trait]
@@ -59,9 +58,9 @@ impl Context {
         self.rt.clone()
     }
     /// Wait for the next message from the mailbox
-    pub(crate) async fn mailbox_next(&mut self) -> Result<Option<RelayMessage>> {
+    pub(crate) async fn receiver_next(&mut self) -> Result<Option<RelayMessage>> {
         loop {
-            let relay_msg = if let Some(msg) = self.mailbox.recv().await.map(|msg| {
+            let relay_msg = if let Some(msg) = self.receiver.recv().await.map(|msg| {
                 trace!("{}: received new message!", self.address());
                 msg
             }) {
@@ -70,11 +69,13 @@ impl Context {
                 return Ok(None);
             };
 
-            if let RelayPayload::Direct(local_msg) = &relay_msg.data {
-                if !self.access_control.is_authorized(local_msg).await? {
-                    warn!("Message for {} did not pass access control", relay_msg.addr);
-                    continue;
-                }
+            if !self
+                .mailboxes
+                .is_authorized(&relay_msg.addr, &relay_msg.local_msg)
+                .await?
+            {
+                warn!("Message for {} did not pass access control", relay_msg.addr);
+                continue;
             }
 
             return Ok(Some(relay_msg));
@@ -90,18 +91,16 @@ impl Context {
     pub(crate) fn new(
         rt: Arc<Runtime>,
         sender: Sender<NodeMessage>,
-        address: AddressSet,
-        access_control: impl AccessControl,
+        mailboxes: Mailboxes,
     ) -> (Self, SenderPair, Receiver<CtrlSignal>) {
-        let (mailbox_tx, mailbox) = channel(32);
+        let (mailbox_tx, receiver) = channel(32);
         let (ctrl_tx, ctrl_rx) = channel(1);
         (
             Self {
                 rt,
                 sender,
-                address,
-                mailbox,
-                access_control: Box::new(access_control),
+                mailboxes,
+                receiver,
             },
             SenderPair {
                 msgs: mailbox_tx,
@@ -113,12 +112,12 @@ impl Context {
 
     /// Return the primary address of the current worker
     pub fn address(&self) -> Address {
-        self.address.first()
+        self.mailboxes.main_address()
     }
 
     /// Return all addresses of the current worker
     pub fn aliases(&self) -> AddressSet {
-        self.address.clone().into_iter().skip(1).collect()
+        self.mailboxes.aliases()
     }
 
     /// Utility function to sleep tasks from other crates
@@ -132,21 +131,22 @@ impl Context {
     /// Note: this function is very low-level.  For most users
     /// [`start_worker()`](Self::start_worker) is the recommended to
     /// way to create a new worker context.
-    pub async fn new_context<S: Into<Address>>(&self, addr: S) -> Result<Context> {
-        self.new_context_impl(addr.into()).await
+    pub async fn new_context<S: Into<AddressSet>>(&self, address_set: S) -> Result<Context> {
+        // Inherit access control
+        let access_control = self.mailboxes.main_mailbox().access_control().clone();
+
+        let mailboxes = Mailboxes::from_address_set(address_set.into(), access_control);
+
+        self.new_context_impl(mailboxes).await
     }
 
-    async fn new_context_impl(&self, addr: Address) -> Result<Context> {
+    pub async fn new_context_impl(&self, mailboxes: Mailboxes) -> Result<Context> {
         // Create a new context and get access to the mailbox senders
-        let (ctx, sender, _) = Self::new(
-            Arc::clone(&self.rt),
-            self.sender.clone(),
-            addr.clone().into(),
-            AllowAll,
-        );
+        let addrs = mailboxes.addresses();
+        let (ctx, sender, _) = Self::new(Arc::clone(&self.rt), self.sender.clone(), mailboxes);
 
         // Create a "bare relay" and register it with the router
-        let (msg, mut rx) = NodeMessage::start_worker(addr.into(), sender, true);
+        let (msg, mut rx) = NodeMessage::start_worker(addrs, sender, true);
         self.sender
             .send(msg)
             .await
@@ -196,53 +196,30 @@ impl Context {
         NM: Message + Send + 'static,
         NW: Worker<Context = Context, Message = NM>,
     {
-        self.start_worker_impl(address.into(), worker, AllowAll)
-            .await
-    }
-
-    /// Start a new worker instance with explicit access controls
-    // TODO: Worker builder?
-    // TODO: how is this meant to be used?
-    pub async fn start_worker_with_access_control<NM, NW, NA, S>(
-        &self,
-        address: S,
-        worker: NW,
-        access_control: NA,
-    ) -> Result<()>
-    where
-        S: Into<AddressSet>,
-        NM: Message + Send + 'static,
-        NW: Worker<Context = Context, Message = NM>,
-        NA: AccessControl,
-    {
-        self.start_worker_impl(address.into(), worker, access_control)
-            .await
-    }
-
-    async fn start_worker_impl<NM, NW, NA>(
-        &self,
-        address: AddressSet,
-        worker: NW,
-        access_control: NA,
-    ) -> Result<()>
-    where
-        NM: Message + Send + 'static,
-        NW: Worker<Context = Context, Message = NM>,
-        NA: AccessControl,
-    {
-        // Pass it to the context
-        let (ctx, sender, ctrl_rx) = Context::new(
-            self.rt.clone(),
-            self.sender.clone(),
-            address.clone(),
-            access_control,
+        // Inherit access control
+        let mailboxes = Mailboxes::from_address_set(
+            address.into(),
+            self.mailboxes.main_mailbox().access_control().clone(),
         );
+
+        self.start_worker_impl(mailboxes, worker).await
+    }
+
+    pub async fn start_worker_impl<NM, NW>(&self, mailboxes: Mailboxes, worker: NW) -> Result<()>
+    where
+        NM: Message + Send + 'static,
+        NW: Worker<Context = Context, Message = NM>,
+    {
+        let addrs = mailboxes.addresses();
+
+        // Pass it to the context
+        let (ctx, sender, ctrl_rx) = Context::new(self.rt.clone(), self.sender.clone(), mailboxes);
 
         // Then initialise the worker message relay
         WorkerRelay::<NW, NM>::init(self.rt.as_ref(), worker, ctx, ctrl_rx);
 
         // Send start request to router
-        let (msg, mut rx) = NodeMessage::start_worker(address, sender, false);
+        let (msg, mut rx) = NodeMessage::start_worker(addrs, sender, false);
         self.sender
             .send(msg)
             .await
@@ -276,8 +253,10 @@ impl Context {
     {
         let addr = address.clone();
 
-        let (ctx, senders, ctrl_rx) =
-            Context::new(self.rt.clone(), self.sender.clone(), addr.into(), AllowAll);
+        let main_mailbox = Mailbox::new(addr, Arc::new(AllowAll)); // FIXME
+        let mailboxes = Mailboxes::new(main_mailbox, vec![]);
+
+        let (ctx, senders, ctrl_rx) = Context::new(self.rt.clone(), self.sender.clone(), mailboxes);
 
         // Initialise the processor relay with the ctrl receiver
         ProcessorRelay::<P>::init(self.rt.as_ref(), processor, ctx, ctrl_rx);
@@ -378,7 +357,7 @@ impl Context {
         M: Message + Send + 'static,
     {
         let addr = addr.into();
-        if self.address.contains(&addr) {
+        if self.mailboxes.contains(&addr) {
             self.send_from_address(addr, msg, from.into()).await
         } else {
             Err(NodeError::Rejected(Reason::InvalidAddress).into())
@@ -459,7 +438,7 @@ impl Context {
     where
         M: Message + Send + 'static,
     {
-        if !self.address.as_ref().contains(&sending_address) {
+        if !self.mailboxes.contains(&sending_address) {
             return Err(Error::SenderAddressDoesNotExist.into());
         }
 
@@ -479,14 +458,10 @@ impl Context {
         let payload = msg.encode().unwrap();
         let mut transport_msg = TransportMessage::v1(route.clone(), Route::new(), payload);
         transport_msg.return_route.modify().append(sending_address);
-        let local_msg = LocalMessage::new(transport_msg, Vec::new());
+        let local_msg = LocalMessage::new(transport_msg, vec![]);
 
         // Pack transport message into relay message wrapper
-        let msg = if needs_wrapping {
-            RelayMessage::pre_router(addr, local_msg, route)
-        } else {
-            RelayMessage::direct(addr, local_msg, route)
-        };
+        let msg = RelayMessage::new(addr, local_msg, route, needs_wrapping);
 
         // Send the packed user message with associated route
         sender.send(msg).await.map_err(Error::from)?;
@@ -523,11 +498,7 @@ impl Context {
         // Pack the transport message into a relay message
         let onward = local_msg.transport().onward_route.clone();
         // let msg = RelayMessage::direct(addr, data, onward);
-        let msg = if needs_wrapping {
-            RelayMessage::pre_router(addr, local_msg, onward)
-        } else {
-            RelayMessage::direct(addr, local_msg, onward)
-        };
+        let msg = RelayMessage::new(addr, local_msg, onward, needs_wrapping);
         sender.send(msg).await.map_err(Error::from)?;
 
         Ok(())
@@ -677,8 +648,9 @@ impl Context {
     /// has woken it.
     async fn next_from_mailbox<M: Message>(&mut self) -> Result<(M, LocalMessage, Address)> {
         loop {
-            let msg = self.mailbox_next().await?.ok_or(Error::FailedLoadData)?;
-            let (addr, data) = msg.local_msg();
+            let msg = self.receiver_next().await?.ok_or(Error::FailedLoadData)?;
+            let addr = msg.addr;
+            let data = msg.local_msg;
 
             // FIXME: make message parsing idempotent to avoid cloning
             match parser::message(&data.transport().payload).ok() {
@@ -689,11 +661,6 @@ impl Context {
                 }
             }
         }
-    }
-
-    /// Set access control for current context
-    pub async fn set_access_control(&mut self) -> Result<()> {
-        unimplemented!()
     }
 
     /// This function is called by Relay to indicate a worker is initialised

@@ -37,6 +37,8 @@ pub enum Error {
     ExecutorBodyJoinError,
     /// Given command was rejected
     CommandRejected,
+    /// Invalid LocalInfo type
+    InvalidLocalInfoType,
 }
 
 impl Error {

@@ -2,8 +2,10 @@
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
+use ockam::access_control::AllowedTransport;
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{vault::Vault, Context, Result, TcpTransport};
+use ockam::{vault::Vault, Address, Context, Mailboxes, Result, TcpTransport, TCP};
+use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -18,8 +20,17 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Bob.
     let vault = Vault::create();
 
+    // FIXME: Child context is needed because "app" Context has LocalOriginOnly AccessControl,
+    // that can be fixed by improving #[ockam::node] macro
+    let child_ctx = ctx
+        .new_context_impl(Mailboxes::main(
+            Address::random_local(),
+            Arc::new(AllowedTransport::single(TCP)),
+        ))
+        .await?;
+
     // Create an Identity to represent Bob.
-    let bob = Identity::create(&ctx, &vault).await?;
+    let bob = Identity::create(&child_ctx, &vault).await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.

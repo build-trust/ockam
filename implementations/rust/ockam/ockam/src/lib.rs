@@ -58,9 +58,16 @@ pub mod workers;
 pub use ockam_identity as identity;
 
 pub use ockam_core::{
-    route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage, Message, Processor,
-    ProtocolId, Result, Route, Routed, TransportMessage, Worker,
+    route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage, Mailbox, Mailboxes, Message,
+    Processor, ProtocolId, Result, Route, Routed, TransportMessage, Worker,
 };
+
+/// Access Control
+pub mod access_control {
+    pub use ockam_core::access_control::*;
+    pub use ockam_identity::access_control::*;
+    pub use ockam_node::access_control::*;
+}
 
 /// Mark an Ockam Worker implementation.
 ///

@@ -1,6 +1,8 @@
 use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
+use ockam_core::access_control::AccessControl;
 use ockam_core::compat::boxed::Box;
-use ockam_core::{Address, AsyncTryClone, Result, Route};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{Address, AsyncTryClone, Mailboxes, Result, Route};
 use ockam_node::Context;
 
 /// High level management interface for TCP transports
@@ -180,7 +182,30 @@ impl TcpTransport {
         address: impl Into<Address>,
         peer: impl Into<String>,
     ) -> Result<()> {
-        TcpOutletListenWorker::start(&self.router_handle, address.into(), peer.into()).await?;
+        let worker = TcpOutletListenWorker::new(peer.into());
+        self.router_handle
+            .ctx()
+            .start_worker(address.into(), worker)
+            .await?;
+
+        Ok(())
+    }
+
+    /// FIXME
+    pub async fn create_outlet_with_access_control(
+        &self,
+        address: impl Into<Address>,
+        peer: impl Into<String>,
+        access_control: Arc<dyn AccessControl>,
+    ) -> Result<()> {
+        let worker = TcpOutletListenWorker::new(peer.into());
+
+        let mailboxes = Mailboxes::from_address_set(address.into().into(), access_control);
+
+        self.router_handle
+            .ctx()
+            .start_worker_impl(mailboxes, worker)
+            .await?;
 
         Ok(())
     }

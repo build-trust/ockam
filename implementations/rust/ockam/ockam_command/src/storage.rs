@@ -1,6 +1,7 @@
 //! In theory this is the file that operates on the config dir itself, but this
 //! is all a bit messy.
 use anyhow::{Context, Result};
+use ockam::access_control::IdentityIdAccessControl;
 use ockam::identity::*;
 use std::path::PathBuf;
 
@@ -151,7 +152,7 @@ pub fn write(path: &std::path::Path, data: &[u8]) -> anyhow::Result<()> {
 
 pub fn load_trust_policy(
     ockam_dir: &std::path::Path,
-) -> anyhow::Result<TrustMultiIdentifiersPolicy> {
+) -> anyhow::Result<(TrustMultiIdentifiersPolicy, IdentityIdAccessControl)> {
     let path = ockam_dir.join("trusted");
     let idents = crate::identity::read_trusted_idents_from_file(&path)?;
     eprintln!(
@@ -160,5 +161,9 @@ pub fn load_trust_policy(
         path.display(),
     );
     tracing::debug!("Trusting identifiers: {:?}", idents);
-    Ok(TrustMultiIdentifiersPolicy::new(idents))
+
+    let trust_policy = TrustMultiIdentifiersPolicy::new(idents.clone());
+    let access_control = IdentityIdAccessControl::new(idents);
+
+    Ok((trust_policy, access_control))
 }

@@ -1,6 +1,9 @@
 use crate::session::error::SessionManagementError;
 use crate::session::msg::{RequestId, SessionMsg};
+use ockam::access_control::{AccessControl, LocalOriginOnly};
 use ockam::{Address, Context, DelayedEvent, Result, Route, Routed, Worker};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{Mailbox, Mailboxes};
 use std::time::Duration;
 use tracing::{error, info, warn};
 
@@ -24,7 +27,11 @@ pub struct SessionMaintainer<S: SessionManager> {
 }
 
 impl<S: SessionManager> SessionMaintainer<S> {
-    pub async fn start(ctx: &Context, manager: S) -> Result<Address> {
+    pub async fn start(
+        ctx: &Context,
+        manager: S,
+        access_control: Arc<dyn AccessControl>,
+    ) -> Result<Address> {
         let heartbeat_addr = Address::random_local();
         let main_addr = Address::random_local();
 
@@ -42,8 +49,11 @@ impl<S: SessionManager> SessionMaintainer<S> {
             main_addr: main_addr.clone(),
         };
 
-        ctx.start_worker(vec![main_addr.clone(), heartbeat_addr], manager)
-            .await?;
+        let main_mailbox = Mailbox::new(main_addr.clone(), access_control);
+        let heartbeat_mailbox = Mailbox::new(heartbeat_addr, Arc::new(LocalOriginOnly));
+        let mailboxes = Mailboxes::new(main_mailbox, vec![heartbeat_mailbox]);
+
+        ctx.start_worker_impl(mailboxes, manager).await?;
 
         Ok(main_addr)
     }

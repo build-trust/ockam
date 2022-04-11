@@ -39,25 +39,23 @@ pub(crate) struct TcpPortalWorker {
 }
 
 impl TcpPortalWorker {
-    pub(crate) async fn new_inlet(
+    pub(crate) async fn start_new_inlet(
         ctx: &Context,
         stream: TcpStream,
         peer: SocketAddr,
         ping_route: Route,
-    ) -> Result<()> {
-        let _ = Self::start(
+    ) -> Result<Address> {
+        Self::start(
             ctx,
             peer,
             State::SendPing { ping_route },
             Some(stream),
             TypeName::Inlet,
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
-    pub(crate) async fn new_outlet(
+    pub(crate) async fn start_new_outlet(
         ctx: &Context,
         peer: SocketAddr,
         pong_route: Route,
