@@ -69,7 +69,7 @@ storage = ["std", "serde", "serde_json"]
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.51.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.12.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.50.0", default_features = false }
+ockam_node = { path = "../ockam_node", version = "^0.51.0", default_features = false }
 signature_core = { path = "../signature_core", version = "^0.36.0", optional = true }
 signature_bbs_plus = { path = "../signature_bbs_plus", version = "^0.36.0", optional = true }
 signature_bls = { path = "../signature_bls", version = "^0.34.0", optional = true }
