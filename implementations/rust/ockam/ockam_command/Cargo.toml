@@ -43,5 +43,5 @@ rand = "0.8"
 async-recursion = { version = "1.0.0" }
 
 ockam = { path = "../ockam", version = "^0.52.0", features = ["software_vault"] }
-ockam_vault = { path = "../ockam_vault", version = "0.43.0", features = ["storage"] }
+ockam_vault = { path = "../ockam_vault", version = "^0.44.0", features = ["storage"] }
 ockam_core = { path = "../ockam_core", version = "^0.51.0"}
