@@ -61,15 +61,14 @@ impl Context {
     /// Wait for the next message from the mailbox
     pub(crate) async fn mailbox_next(&mut self) -> Result<Option<RelayMessage>> {
         loop {
-            let relay_msg;
-            if let Some(msg) = self.mailbox.recv().await.map(|msg| {
+            let relay_msg = if let Some(msg) = self.mailbox.recv().await.map(|msg| {
                 trace!("{}: received new message!", self.address());
                 msg
             }) {
-                relay_msg = msg;
+                msg
             } else {
                 return Ok(None);
-            }
+            };
 
             if let RelayPayload::Direct(local_msg) = &relay_msg.data {
                 if !self.access_control.is_authorized(local_msg).await? {

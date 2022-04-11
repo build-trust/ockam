@@ -222,12 +222,11 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
         // Update route to a remote
         self.remote_route = reply;
 
-        let key_exchanger;
-        if let Some(k) = self.key_exchanger.as_mut() {
-            key_exchanger = k;
+        let key_exchanger = if let Some(k) = self.key_exchanger.as_mut() {
+            k
         } else {
             return Err(SecureChannelError::InvalidInternalState.into());
-        }
+        };
         let _ = key_exchanger.handle_response(payload.as_slice()).await?;
 
         if !key_exchanger.is_complete().await? {
@@ -235,19 +234,17 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
             self.send_key_exchange_payload(ctx, payload, false).await?;
         }
 
-        let key_exchanger;
-        if let Some(k) = self.key_exchanger.as_mut() {
-            key_exchanger = k;
+        let key_exchanger = if let Some(k) = self.key_exchanger.as_mut() {
+            k
         } else {
             return Err(SecureChannelError::InvalidInternalState.into());
-        }
+        };
         if key_exchanger.is_complete().await? {
-            let key_exchanger;
-            if let Some(k) = self.key_exchanger.take() {
-                key_exchanger = k;
+            let key_exchanger = if let Some(k) = self.key_exchanger.take() {
+                k
             } else {
                 return Err(SecureChannelError::InvalidInternalState.into());
-            }
+            };
             let keys = key_exchanger.finalize().await?;
 
             self.keys = Some(ChannelKeys {

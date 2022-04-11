@@ -105,12 +105,11 @@ where
     }
 
     async fn schedule_heartbeat(&mut self) -> Result<()> {
-        let heartbeat_interval;
-        if let Some(hi) = &self.heartbeat_interval {
-            heartbeat_interval = *hi;
+        let heartbeat_interval = if let Some(hi) = &self.heartbeat_interval {
+            *hi
         } else {
             return Ok(());
-        }
+        };
 
         self.heartbeat.schedule(heartbeat_interval).await
     }

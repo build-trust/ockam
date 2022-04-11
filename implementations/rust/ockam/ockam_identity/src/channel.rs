@@ -29,7 +29,7 @@ pub struct IdentityAnyIdAccessControl;
 
 #[async_trait]
 impl AccessControl for IdentityAnyIdAccessControl {
-    async fn is_authorized(&mut self, local_msg: &LocalMessage) -> Result<bool> {
+    async fn is_authorized(&self, local_msg: &LocalMessage) -> Result<bool> {
         Ok(IdentitySecureChannelLocalInfo::find_info(local_msg).is_ok())
     }
 }
@@ -40,7 +40,7 @@ pub struct IdentityIdAccessControl {
 
 #[async_trait]
 impl AccessControl for IdentityIdAccessControl {
-    async fn is_authorized(&mut self, local_msg: &LocalMessage) -> Result<bool> {
+    async fn is_authorized(&self, local_msg: &LocalMessage) -> Result<bool> {
         if let Ok(msg_identity_id) = IdentitySecureChannelLocalInfo::find_info(local_msg) {
             Ok(msg_identity_id.their_identity_id() == &self.their_identity_id)
         } else {

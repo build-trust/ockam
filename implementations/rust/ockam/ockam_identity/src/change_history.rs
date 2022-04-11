@@ -74,21 +74,19 @@ impl IdentityChangeHistory {
 
     pub(crate) fn get_first_root_public_key(&self) -> Result<PublicKey> {
         // TODO: Support root key rotation
-        let root_event;
-        if let Some(re) = self.as_ref().first() {
-            root_event = re;
+        let root_event = if let Some(re) = self.as_ref().first() {
+            re
         } else {
             return Err(IdentityError::InvalidInternalState.into());
-        }
+        };
 
         let root_change = root_event.change_block().change();
 
-        let root_create_key_change;
-        if let CreateKey(c) = root_change.change_type() {
-            root_create_key_change = c;
+        let root_create_key_change = if let CreateKey(c) = root_change.change_type() {
+            c
         } else {
             return Err(IdentityError::InvalidInternalState.into());
-        }
+        };
 
         Ok(root_create_key_change.data().public_key().clone())
     }
@@ -213,12 +211,7 @@ impl IdentityChangeHistory {
         existing_events: &[IdentityChangeEvent],
         new_events: &[IdentityChangeEvent],
     ) -> bool {
-        let mut prev_event;
-        if let Some(e) = existing_events.last() {
-            prev_event = Some(e);
-        } else {
-            prev_event = None;
-        }
+        let mut prev_event = existing_events.last();
 
         for event in new_events.iter() {
             // Events should go in correct order as stated in previous_event_identifier field

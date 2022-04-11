@@ -15,7 +15,7 @@ impl IdentityIdentifier {
     pub const PREFIX: &'static str = "P";
     /// Create an IdentityIdentifier from a KeyId
     pub fn from_key_id(key_id: KeyId) -> Self {
-        Self { 0: key_id }
+        Self(key_id)
     }
     /// Return the wrapped KeyId
     pub fn key_id(&self) -> &KeyId {
@@ -88,7 +88,7 @@ impl EventIdentifier {
     }
     /// Create identifier from public key hash
     pub fn from_hash(hash: [u8; 32]) -> Self {
-        Self { 0: hash }
+        Self(hash)
     }
     /// Human-readable form of the id
     pub fn to_string_representation(&self) -> String {

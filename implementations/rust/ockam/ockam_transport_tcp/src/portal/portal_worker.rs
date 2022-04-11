@@ -117,12 +117,11 @@ impl TcpPortalWorker {
 
 impl TcpPortalWorker {
     fn take_state(&mut self) -> Result<State> {
-        let state;
-        if let Some(s) = self.state.take() {
-            state = s;
+        let state = if let Some(s) = self.state.take() {
+            s
         } else {
             return Err(TransportError::PortalInvalidState.into());
-        }
+        };
 
         Ok(state)
     }

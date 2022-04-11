@@ -12,7 +12,7 @@ use crate::{LocalMessage, Result};
 ///
 /// #[async_trait]
 /// impl AccessControl for IdentityIdAccessControl {
-///     async fn is_authorized(&mut self, local_msg: &LocalMessage) -> Result<bool> {
+///     async fn is_authorized(&self, local_msg: &LocalMessage) -> Result<bool> {
 ///         // ...
 ///         // some authorization logic that returns one of:
 ///         //   ockam_core::allow()
@@ -26,7 +26,7 @@ use crate::{LocalMessage, Result};
 #[async_trait]
 pub trait AccessControl: Send + Sync + 'static {
     /// Return true if the message is allowed to pass, and false if not.
-    async fn is_authorized(&mut self, local_msg: &LocalMessage) -> Result<bool>;
+    async fn is_authorized(&self, local_msg: &LocalMessage) -> Result<bool>;
 }
 
 /// An Access Control type that allows all messages to pass through.
@@ -34,7 +34,7 @@ pub struct AllowAll;
 
 #[async_trait]
 impl AccessControl for AllowAll {
-    async fn is_authorized(&mut self, _local_msg: &LocalMessage) -> Result<bool> {
+    async fn is_authorized(&self, _local_msg: &LocalMessage) -> Result<bool> {
         crate::allow()
     }
 }
@@ -44,7 +44,7 @@ pub struct DenyAll;
 
 #[async_trait]
 impl AccessControl for DenyAll {
-    async fn is_authorized(&mut self, _local_msg: &LocalMessage) -> Result<bool> {
+    async fn is_authorized(&self, _local_msg: &LocalMessage) -> Result<bool> {
         crate::deny()
     }
 }
