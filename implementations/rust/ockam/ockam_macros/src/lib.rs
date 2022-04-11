@@ -20,7 +20,7 @@ mod node_attribute;
 mod node_test_attribute;
 mod vault_test_attribute;
 
-/// Custom derive for the `ockam_core::AsyncTryClone` trait.
+/// Implements the [`AsyncTryClone`](https://docs.rs/ockam_core/latest/ockam_core/traits/trait.AsyncTryClone.html) trait for a type.
 ///
 /// Example of use:
 ///
@@ -38,7 +38,7 @@ pub fn async_try_clone_derive(input: TokenStream) -> TokenStream {
         .into()
 }
 
-/// Implements Message trait for a type.
+/// Implements the [`Message`](https://docs.rs/ockam_core/latest/ockam_core/trait.Message.html) trait for a type.
 ///
 /// Example of use:
 ///
@@ -61,7 +61,12 @@ pub fn message_derive(input: TokenStream) -> TokenStream {
 ///
 /// The macro supports the following attributes:
 ///
-/// - #[ockam::test(no_main)]: by default, this macro executes the provided function within the standard
+/// - `#[ockam::node(crate = "...")]`: specify a path to the crate that will be
+///   used to import the items required by the macro. This can be helpful
+///   when using the macro from an internal `ockam` crate. Defaults to
+///   `ockam`.
+///
+/// - #[ockam::node(no_main)]: by default, this macro executes the provided function within the standard
 /// entry point function `main`. If your target device doesn't support this entry point, use this argument
 /// to execute the input function within your own entry point as a separate function.
 ///
@@ -91,7 +96,7 @@ pub fn node(args: TokenStream, item: TokenStream) -> TokenStream {
 /// The macro supports the following attributes:
 ///
 /// - `#[ockam::test(crate = "...")]`: specify a path to the crate that will be
-///   used to import the functions required by the macro. This can be helpful
+///   used to import the items required by the macro. This can be helpful
 ///   when using the macro from an internal `ockam` crate. Defaults to
 ///   `ockam_node`.
 ///
@@ -103,7 +108,7 @@ pub fn node(args: TokenStream, item: TokenStream) -> TokenStream {
 /// Example of use:
 ///
 /// ```ignore
-/// #[ockam::node]
+/// #[ockam::test]
 /// async fn main(mut ctx: ockam::Context) -> ockam::Result<()> {
 ///     ctx.stop().await
 /// }

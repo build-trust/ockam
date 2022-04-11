@@ -31,9 +31,16 @@ proc-macro = true
 [features]
 default = []
 
+# Feature (enabled by default): "std" enables functionality expected to
+# be available on a standard platform.
 std = ["alloc"]
-no_std = []
+
+# Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = []
+
+# Feature: "no_std" enables functionality required for platforms
+# without the standard library, requires nightly.
+no_std = []
 
 [dependencies]
 proc-macro2 = "1.0"
