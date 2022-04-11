@@ -1677,7 +1677,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_macros"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "proc-macro2",
  "quote",
