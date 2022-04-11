@@ -76,7 +76,7 @@ ockam_core = { path = "../ockam_core", version = "^0.50.0", default-features = f
 ockam_macros = { path = "../ockam_macros", version = "^0.11.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.50.0", default-features = false }
 ockam_vault = { path = "../ockam_vault", version = "^0.43.0", default-features = false, optional = true }
-ockam_channel = { path = "../ockam_channel", version = "^0.46.0", default-features = false }
+ockam_channel = { path = "../ockam_channel", version = "^0.47.0", default-features = false }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.43.0", default-features = false, optional = true }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.41.0", default-features = false }
 cfg-if = "1.0.0"

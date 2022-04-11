@@ -1525,7 +1525,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.46.0"
+version = "0.47.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
