@@ -1666,7 +1666,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.43.0"
+version = "0.44.0"
 dependencies = [
  "hex",
  "ockam_core",
