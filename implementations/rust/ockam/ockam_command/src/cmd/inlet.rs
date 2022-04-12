@@ -4,6 +4,7 @@ use ockam::{identity::*, route, Context, Result, TcpTransport, TCP};
 use ockam_core::{Address, AsyncTryClone, Route};
 use std::time::Duration;
 
+#[derive(Debug)]
 struct ExistingSession {
     pub _channel: Address,
     pub inlet_address: Address,
@@ -67,6 +68,7 @@ impl SessionManager for InletSessionManager {
 
     async fn stop_session(&mut self, _ctx: &Context) -> Result<()> {
         if let Some(existing_session) = self.existing_session.take() {
+            tracing::info!("Stopping session {:?}", existing_session);
             // TODO: Stop SecureChannel
             self.tcp.stop_inlet(existing_session.inlet_address).await?;
         }

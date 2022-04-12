@@ -1,6 +1,7 @@
 use crate::session::error::SessionManagementError;
 use crate::session::msg::SessionMsg;
 use ockam::{Context, Result, Routed, Worker};
+use tracing::info;
 
 pub struct SessionResponder;
 
@@ -18,6 +19,7 @@ impl Worker for SessionResponder {
 
         match msg.body() {
             SessionMsg::Ping(request_id) => {
+                info!("Received keep-alive ping {}, sending pong", request_id);
                 ctx.send(return_route, SessionMsg::Pong(request_id)).await?
             }
             SessionMsg::Pong(_) | SessionMsg::Heartbeat => {

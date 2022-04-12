@@ -63,13 +63,23 @@ impl<S: SessionManager> SessionMaintainer<S> {
             .await
         {
             Ok(ping_route) => {
+                info!(
+                    "session started, route to keep-alive responder: {:?}",
+                    ping_route,
+                );
                 // Update ping route
                 self.ping_route = Some(ping_route);
                 // Schedule heartbeat
                 self.heartbeat.schedule(self.heartbeat_duration).await?;
             }
             Err(err) => {
-                error!("Error starting session: {}", err);
+                error!(
+                    "Error starting session (will retry in {:?}): {:?}",
+                    self.session_start_timeout, err,
+                );
+                // Sleep for a bit before we try again, to limit the damage if
+                // we're stuck unable to start the session indefinitely.
+                ctx.sleep(self.session_start_timeout).await;
                 self.restart_session(ctx).await?;
             }
         }
@@ -99,19 +109,22 @@ impl<S: SessionManager> Worker for SessionMaintainer<S> {
                     let last_request_id = if let Some(id) = self.last_sent_request_id.as_ref() {
                         id
                     } else {
-                        // We weren't waiting for any request id (may be out-of-order) - ignore
-                        warn!("Got unassigned request_id: {}", request_id.0);
+                        // We weren't waiting for any request request_id (may be out-of-order) - ignore
+                        warn!("Ignoring keep-alive pong {} (not waiting)", request_id);
                         return Ok(());
                     };
 
                     if last_request_id != &request_id {
                         // This is not the pong we were waiting for (may be out-of-order) - ignore
-                        warn!("Got wrong request_id: {}", request_id.0);
+                        warn!(
+                            "Ignoring keep-alive pong {} (waiting for {})",
+                            request_id, last_request_id,
+                        );
                         return Ok(());
                     }
 
                     // Everything is fine
-                    info!("Got respond: {}", request_id.0);
+                    info!("Session still alive (got keep-alive pong {})", request_id);
                     self.last_sent_request_id = None;
                     self.heartbeat.schedule(self.heartbeat_duration).await?;
                 }
@@ -126,7 +139,13 @@ impl<S: SessionManager> Worker for SessionMaintainer<S> {
                     // Heartbeat fired
                     if self.last_sent_request_id.is_some() {
                         // We haven't got pong for latest ping, but heartbeat already fired again
-                        info!("Restarting session due to timeout");
+                        info!(
+                            "Restarting session: keep-alive ping {} timed_out",
+                            self.last_sent_request_id
+                                .as_ref()
+                                .map(|s| s.0.as_str())
+                                .unwrap_or("<unknown>"),
+                        );
                         self.restart_session(ctx).await?;
                         return Ok(());
                     }
@@ -134,15 +153,16 @@ impl<S: SessionManager> Worker for SessionMaintainer<S> {
                     let ping_route = if let Some(r) = self.ping_route.clone() {
                         r
                     } else {
+                        info!("Starting or re-starting session: No route to keep-alive responder");
                         // Probably session couldn't start, let's restart it and get new ping_route
                         self.restart_session(ctx).await?;
 
                         return Ok(());
                     };
 
-                    // Send ping
+                    // Send the next keep-alive ping
                     let request_id = RequestId::generate();
-                    info!("Sending request: {}", &request_id.0);
+                    info!("Initiating keep-alive, sending ping {}", request_id);
                     ctx.send(ping_route, SessionMsg::Ping(request_id.clone()))
                         .await?;
                     self.last_sent_request_id = Some(request_id);

@@ -2,7 +2,7 @@ use ockam::Message;
 use rand::random;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Message, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Message, Debug, Clone, PartialEq)]
 pub struct RequestId(pub String);
 
 impl RequestId {
@@ -14,7 +14,13 @@ impl RequestId {
     }
 }
 
-#[derive(Serialize, Deserialize, Message, Clone)]
+impl core::fmt::Display for RequestId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Message, Clone)]
 pub enum SessionMsg {
     Heartbeat,
     Ping(RequestId),
