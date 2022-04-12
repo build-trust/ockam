@@ -22,18 +22,18 @@ use crate::internals::ctx::Context;
 /// - The type path: `std::str::Bytes`.
 /// - The reference token: `&`.
 /// - The mutability token: `mut`.
-pub struct FnVariable<'a> {
-    pub arg: &'a FnArg,
-    pub ident: &'a Ident,
-    pub path: &'a TypePath,
-    pub and_token: Option<And>,
-    pub mutability: Option<Mut>,
+pub(crate) struct FnVariable<'a> {
+    pub(crate) arg: &'a FnArg,
+    pub(crate) ident: &'a Ident,
+    pub(crate) path: &'a TypePath,
+    pub(crate) and_token: Option<And>,
+    pub(crate) mutability: Option<Mut>,
 }
 
 impl<'a> FnVariable<'a> {
     /// Extracts a list of `FnVariable` items out from a list of `FnArg`,
     /// generally provided by the `InputFn`'s `sig.inputs` attribute.
-    pub fn from_fn_args(
+    pub(crate) fn from_fn_args(
         ctx: &Context,
         args: &'a Punctuated<FnArg, Comma>,
     ) -> Punctuated<FnVariable<'a>, Comma> {
@@ -87,7 +87,7 @@ impl<'a> FnVariable<'a> {
 /// This is a specific use case where we want to extract only
 /// the `ockam::Context` variable from all the arguments available
 /// in the `InputFn`.
-pub fn ockam_context_variable_from_input_fn<'a>(
+pub(crate) fn ockam_context_variable_from_input_fn<'a>(
     ctx: &Context,
     input_fn: &'a ItemFn,
 ) -> Option<FnVariable<'a>> {

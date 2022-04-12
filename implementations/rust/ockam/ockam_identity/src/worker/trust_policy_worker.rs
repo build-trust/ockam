@@ -5,7 +5,9 @@ use ockam_core::{
 };
 use ockam_node::{Context, Handle};
 use serde::{Deserialize, Serialize};
+
 #[derive(AsyncTryClone)]
+#[async_try_clone(crate = "ockam_core")]
 pub struct TrustPolicyImpl {
     handle: Handle,
 }
@@ -18,7 +20,10 @@ impl TrustPolicyImpl {
 
 impl TrustPolicyImpl {
     pub async fn create_using_worker(ctx: &Context, address: &Address) -> Result<Self> {
-        let handle = Handle::new(ctx.new_context(Address::random_local()).await?, address.clone());
+        let handle = Handle::new(
+            ctx.new_context(Address::random_local()).await?,
+            address.clone(),
+        );
 
         Ok(Self::new(handle))
     }

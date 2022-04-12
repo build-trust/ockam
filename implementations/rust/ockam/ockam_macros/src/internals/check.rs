@@ -2,32 +2,32 @@ use syn::{ItemFn, ReturnType, Type};
 
 use crate::internals::{ast::FnVariable, ctx::Context};
 
-pub mod item_fn {
+pub(crate) mod item_fn {
     use super::*;
 
     #[cfg(not(feature = "no_main"))]
-    pub fn ident_is_main(ctx: &Context, input_fn: &ItemFn) {
+    pub(crate) fn ident_is_main(ctx: &Context, input_fn: &ItemFn) {
         if input_fn.sig.ident != "main" {
             let msg = "the function name must be `main`";
             ctx.error_spanned_by(&input_fn.sig.ident, msg);
         }
     }
 
-    pub fn is_async(ctx: &Context, input_fn: &ItemFn) {
+    pub(crate) fn is_async(ctx: &Context, input_fn: &ItemFn) {
         if input_fn.sig.asyncness.is_none() {
             let msg = "the `async` keyword is missing from the function declaration";
             ctx.error_spanned_by(&input_fn.sig.fn_token, msg);
         }
     }
 
-    pub fn has_one_arg(ctx: &Context, input_fn: &ItemFn) {
+    pub(crate) fn has_one_arg(ctx: &Context, input_fn: &ItemFn) {
         if input_fn.sig.inputs.len() != 1 {
             let msg = "the function must have exactly one argument";
             ctx.error_spanned_by(&input_fn.sig.inputs, msg);
         }
     }
 
-    pub fn has_ockam_ctx_arg<'a>(
+    pub(crate) fn has_ockam_ctx_arg<'a>(
         ctx: &Context,
         input_fn: &'a ItemFn,
         ockam_ctx: &'a Option<FnVariable<'a>>,
@@ -39,7 +39,7 @@ pub mod item_fn {
         ockam_ctx
     }
 
-    pub fn ockam_ctx_is_mut_ref<'a>(ctx: &Context, ockam_ctx: &Option<FnVariable<'a>>) {
+    pub(crate) fn ockam_ctx_is_mut_ref<'a>(ctx: &Context, ockam_ctx: &Option<FnVariable<'a>>) {
         if let Some(ockam_ctx) = ockam_ctx {
             if ockam_ctx.and_token.is_none() {
                 let msg = "the `Context` argument must be passed as reference";
@@ -52,7 +52,7 @@ pub mod item_fn {
         }
     }
 
-    pub fn returns_result(ctx: &Context, input_fn: &ItemFn) {
+    pub(crate) fn returns_result(ctx: &Context, input_fn: &ItemFn) {
         let msg = "the function must have a return type";
         match &input_fn.sig.output {
             // If the return type is the default type `()`, an error is registered.

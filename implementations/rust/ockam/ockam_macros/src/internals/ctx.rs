@@ -1,7 +1,8 @@
-use quote::ToTokens;
 use std::cell::RefCell;
 use std::fmt::Display;
 use std::thread;
+
+use quote::ToTokens;
 
 /// A type to collect errors together and format them.
 ///
@@ -9,7 +10,7 @@ use std::thread;
 ///
 /// References can be shared since this type uses run-time exclusive mut checking.
 #[derive(Default)]
-pub struct Context {
+pub(crate) struct Context {
     // The contents will be set to `None` during checking. This is so that checking can be
     // enforced.
     errors: RefCell<Option<Vec<syn::Error>>>,
@@ -19,7 +20,7 @@ impl Context {
     /// Create a new context object.
     ///
     /// This object contains no errors, but will still trigger a panic if it is not `check`ed.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Context {
             errors: RefCell::new(Some(Vec::new())),
         }
@@ -28,7 +29,7 @@ impl Context {
     /// Add an error to the context object with a tokenenizable object.
     ///
     /// The object is used for spanning in error messages.
-    pub fn error_spanned_by<A: ToTokens, T: Display>(&self, obj: A, msg: T) {
+    pub(crate) fn error_spanned_by<A: ToTokens, T: Display>(&self, obj: A, msg: T) {
         self.errors
             .borrow_mut()
             .as_mut()
@@ -37,8 +38,13 @@ impl Context {
             .push(syn::Error::new_spanned(obj.into_token_stream(), msg));
     }
 
+    /// Add one of Syn's parse errors.
+    pub(crate) fn syn_error(&self, err: syn::Error) {
+        self.errors.borrow_mut().as_mut().unwrap().push(err);
+    }
+
     /// Consume this object, producing a formatted error string if there are errors.
-    pub fn check(self) -> Result<(), Vec<syn::Error>> {
+    pub(crate) fn check(self) -> Result<(), Vec<syn::Error>> {
         let errors = self.errors.borrow_mut().take().unwrap();
         match errors.len() {
             0 => Ok(()),

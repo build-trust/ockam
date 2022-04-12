@@ -12,6 +12,7 @@ use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
 
 #[derive(AsyncTryClone)]
+#[async_try_clone(crate = "ockam_core")]
 pub struct Identity<V: IdentityVault> {
     ctx: Context,
     state: Arc<RwLock<IdentityState<V>>>,

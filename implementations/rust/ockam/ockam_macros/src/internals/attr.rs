@@ -3,8 +3,7 @@ use std::str::FromStr;
 
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::parse;
-use syn::parse::Parse;
+use syn::{parse, parse::Parse, Meta::List, Path};
 
 use crate::internals::{ctx::Context, respan::respan, symbol::Symbol};
 
@@ -14,7 +13,7 @@ use crate::internals::{ctx::Context, respan::respan, symbol::Symbol};
 /// will contain:
 /// - The name: `timeout`.
 /// - The value: `1000`.
-pub struct Attr<'c, T> {
+pub(crate) struct Attr<'c, T> {
     ctx: &'c Context,
     name: Symbol,
     tokens: TokenStream,
@@ -23,7 +22,7 @@ pub struct Attr<'c, T> {
 
 #[allow(dead_code)]
 impl<'c, T> Attr<'c, T> {
-    pub fn none(ctx: &'c Context, name: Symbol) -> Self {
+    pub(crate) fn none(ctx: &'c Context, name: Symbol) -> Self {
         Attr {
             ctx,
             name,
@@ -32,7 +31,7 @@ impl<'c, T> Attr<'c, T> {
         }
     }
 
-    pub fn set<A: ToTokens>(&mut self, obj: A, value: T) {
+    pub(crate) fn set<A: ToTokens>(&mut self, obj: A, value: T) {
         let tokens = obj.into_token_stream();
 
         if self.value.is_some() {
@@ -44,23 +43,23 @@ impl<'c, T> Attr<'c, T> {
         }
     }
 
-    pub fn set_opt<A: ToTokens>(&mut self, obj: A, value: Option<T>) {
+    pub(crate) fn set_opt<A: ToTokens>(&mut self, obj: A, value: Option<T>) {
         if let Some(value) = value {
             self.set(obj, value);
         }
     }
 
-    pub fn set_if_none(&mut self, value: T) {
+    pub(crate) fn set_if_none(&mut self, value: T) {
         if self.value.is_none() {
             self.value = Some(value);
         }
     }
 
-    pub fn get(self) -> Option<T> {
+    pub(crate) fn get(self) -> Option<T> {
         self.value
     }
 
-    pub fn get_with_tokens(self) -> Option<(TokenStream, T)> {
+    pub(crate) fn get_with_tokens(self) -> Option<(TokenStream, T)> {
         match self.value {
             Some(v) => Some((self.tokens, v)),
             None => None,
@@ -68,18 +67,18 @@ impl<'c, T> Attr<'c, T> {
     }
 }
 
-pub struct BoolAttr<'c>(Attr<'c, ()>);
+pub(crate) struct BoolAttr<'c>(Attr<'c, ()>);
 
 impl<'c> BoolAttr<'c> {
-    pub fn none(cx: &'c Context, name: Symbol) -> Self {
+    pub(crate) fn none(cx: &'c Context, name: Symbol) -> Self {
         BoolAttr(Attr::none(cx, name))
     }
 
-    pub fn set_true<A: ToTokens>(&mut self, obj: A) {
+    pub(crate) fn set_true<A: ToTokens>(&mut self, obj: A) {
         self.0.set(obj, ());
     }
 
-    pub fn get(&self) -> bool {
+    pub(crate) fn get(&self) -> bool {
         self.0.value.is_some()
     }
 }
@@ -135,18 +134,22 @@ fn spanned_tokens(s: &syn::LitStr) -> parse::Result<TokenStream> {
     Ok(respan(stream, s.span()))
 }
 
-pub fn parse_lit_into_path(
+pub(crate) fn parse_lit_into_path(
     ctx: &Context,
     attr_name: Symbol,
     lit: &syn::Lit,
-) -> Result<syn::Path, ()> {
+) -> Result<Path, ()> {
     let string = get_lit_str(ctx, attr_name, lit)?;
     parse_lit_str(string).map_err(|_| {
         ctx.error_spanned_by(lit, format!("failed to parse path: {:?}", string.value()));
     })
 }
 
-pub fn parse_lit_into_int<T>(ctx: &Context, attr_name: Symbol, lit: &syn::Lit) -> Result<T, ()>
+pub(crate) fn parse_lit_into_int<T>(
+    ctx: &Context,
+    attr_name: Symbol,
+    lit: &syn::Lit,
+) -> Result<T, ()>
 where
     T: FromStr,
     T::Err: Display,
@@ -158,5 +161,27 @@ where
             Err(())
         }
         Ok(int) => Ok(int),
+    }
+}
+
+pub(crate) fn get_serde_meta_items(
+    ctx: &Context,
+    helper_attr: &Symbol,
+    attr: &syn::Attribute,
+) -> Result<Vec<syn::NestedMeta>, ()> {
+    if attr.path.ne(helper_attr) {
+        return Ok(Vec::new());
+    }
+
+    match attr.parse_meta() {
+        Ok(List(meta)) => Ok(meta.nested.into_iter().collect()),
+        Ok(other) => {
+            ctx.error_spanned_by(other, format!("expected #[{}(...)]", helper_attr));
+            Err(())
+        }
+        Err(err) => {
+            ctx.syn_error(err);
+            Err(())
+        }
     }
 }

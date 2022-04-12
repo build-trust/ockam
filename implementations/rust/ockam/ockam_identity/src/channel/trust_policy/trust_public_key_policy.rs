@@ -5,6 +5,7 @@ use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{AsyncTryClone, Result};
 
 #[derive(AsyncTryClone)]
+#[async_try_clone(crate = "ockam_core")]
 pub struct TrustPublicKeyPolicy<V: IdentityVault> {
     public_key: PublicKey,
     public_key_label: String,

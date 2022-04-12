@@ -5,6 +5,7 @@ use ockam_key_exchange_core::NewKeyExchanger;
 
 /// Represents an XX NewKeyExchanger
 #[derive(AsyncTryClone)]
+#[async_try_clone(crate = "ockam_core")]
 pub struct X3dhNewKeyExchanger<V: X3dhVault> {
     vault: V,
 }

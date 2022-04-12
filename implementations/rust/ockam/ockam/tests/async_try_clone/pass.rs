@@ -6,12 +6,14 @@ pub struct Tmp {
 }
 
 #[derive(AsyncTryClone)]
+#[async_try_clone(crate = "ockam")]
 pub struct Tmp1<T> {
     a: u32,
     b: Vec<T>,
 }
 
 #[derive(AsyncTryClone)]
+#[async_try_clone(crate = "ockam_core")]
 pub struct Tmp2<T> {
     a: u32,
     b: T,
