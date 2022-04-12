@@ -1,11 +1,13 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{
     parse_quote, punctuated::Punctuated, token::Comma, Attribute, Data::Struct, DeriveInput, Field,
-    GenericParam, Generics, Ident, Type,
+    GenericParam, Generics, Ident, Meta::NameValue, NestedMeta, Type,
 };
 
+use crate::internals::attr::{get_serde_meta_items, parse_lit_into_path, Attr};
 use crate::internals::ctx::Context;
+use crate::internals::symbol::{ASYNC_TRY_CLONE, OCKAM_CRATE};
 
 pub(crate) fn expand(input_derive: DeriveInput) -> Result<TokenStream, Vec<syn::Error>> {
     let ctx = Context::new();
@@ -16,8 +18,8 @@ pub(crate) fn expand(input_derive: DeriveInput) -> Result<TokenStream, Vec<syn::
 
 fn output(cont: Container) -> TokenStream {
     let struct_ident = cont.data.struct_ident;
+    let ockam_crate = cont.data.attrs.ockam_crate;
     let (impl_generics, ty_generics, where_clause) = cont.data.generics.split_for_impl();
-    let async_trait: Attribute = parse_quote!(#[ockam_core::async_trait]);
     let fields = cont.data.struct_fields.iter().map(|f| {
         let field_name = &f.ident;
         quote! {
@@ -32,8 +34,8 @@ fn output(cont: Container) -> TokenStream {
         }
     });
     let trait_fn = quote! {
-        async fn async_try_clone(&self) -> ockam_core::Result<Self>{
-            let results = ockam_core::compat::try_join!(
+        async fn async_try_clone(&self) -> #ockam_crate::Result<Self>{
+            let results = #ockam_crate::compat::try_join!(
                 #(#fields_async_impls),*
             );
             match results {
@@ -50,9 +52,16 @@ fn output(cont: Container) -> TokenStream {
             }
         }
     };
+    let async_trait: Attribute = match ockam_crate.to_string().as_str() {
+        "ockam" => parse_quote!(#[#ockam_crate::worker]),
+        "crate" | "ockam_core" => parse_quote!(#[#ockam_crate::async_trait]),
+        _ => {
+            unreachable!("'crate' attribute is already checked in Attributes")
+        }
+    };
     quote! {
         #async_trait
-        impl #impl_generics ockam_core::AsyncTryClone for #struct_ident #ty_generics #where_clause {
+        impl #impl_generics #ockam_crate::AsyncTryClone for #struct_ident #ty_generics #where_clause {
             #trait_fn
         }
     }
@@ -72,16 +81,20 @@ impl<'a> Container<'a> {
 }
 
 struct Data<'a> {
+    // Macro attributes.
+    attrs: Attributes,
     struct_ident: &'a Ident,
     struct_fields: &'a Punctuated<Field, Comma>,
     generics: Generics,
 }
 
 impl<'a> Data<'a> {
-    fn from_ast(_ctx: &Context, input_derive: &'a DeriveInput) -> Result<Self, Vec<syn::Error>> {
+    fn from_ast(ctx: &Context, input_derive: &'a DeriveInput) -> Result<Self, Vec<syn::Error>> {
+        let attrs = Attributes::from_ast(ctx, &input_derive.attrs);
         let struct_fields = Self::struct_fields(input_derive)?;
-        let generics = Self::generics(input_derive, struct_fields);
+        let generics = Self::generics(input_derive, struct_fields, &attrs);
         Ok(Self {
+            attrs,
             struct_ident: &input_derive.ident,
             struct_fields,
             generics,
@@ -122,6 +135,7 @@ impl<'a> Data<'a> {
     fn generics(
         input_derive: &'a DeriveInput,
         struct_fields: &'a Punctuated<Field, Comma>,
+        attrs: &Attributes,
     ) -> Generics {
         // Get generic type params from struct definition
         let generic_tys = input_derive
@@ -156,6 +170,8 @@ impl<'a> Data<'a> {
         // Clone input's derive generics to modify them.
         let mut generics = input_derive.generics.clone();
 
+        let ockam_crate = &attrs.ockam_crate;
+
         // Add trait bounds on generic type params
         for p in &mut generics.params {
             if let GenericParam::Type(ref mut t) = *p {
@@ -168,7 +184,7 @@ impl<'a> Data<'a> {
                     .iter()
                     .any(|s| s == &t.ident.to_string())
                 {
-                    t.bounds.push(parse_quote!(ockam_core::AsyncTryClone));
+                    t.bounds.push(parse_quote!(#ockam_crate::AsyncTryClone));
                 }
             }
         }
@@ -178,7 +194,7 @@ impl<'a> Data<'a> {
         for ty in complex_generic_fields {
             where_clause
                 .predicates
-                .push(parse_quote!(#ty: ockam_core::AsyncTryClone));
+                .push(parse_quote!(#ty: #ockam_crate::AsyncTryClone));
         }
 
         generics
@@ -240,5 +256,51 @@ impl<'a> Data<'a> {
             }
         }
         false
+    }
+}
+
+struct Attributes {
+    ockam_crate: TokenStream,
+}
+
+impl Attributes {
+    fn from_ast(ctx: &Context, attrs: &[Attribute]) -> Self {
+        let mut ockam_crate = Attr::none(ctx, OCKAM_CRATE);
+        for attr in attrs
+            .iter()
+            .flat_map(|attr| get_serde_meta_items(ctx, &ASYNC_TRY_CLONE, attr))
+            .flatten()
+        {
+            match attr {
+                // Parse `#[async_try_clone(crate = "ockam")]`
+                NestedMeta::Meta(NameValue(nv)) if nv.path == OCKAM_CRATE => {
+                    if let Ok(path) = parse_lit_into_path(ctx, OCKAM_CRATE, &nv.lit) {
+                        let path = quote! { #path };
+                        let path_string = path.to_string();
+                        if !["ockam", "ockam_core", "crate"].contains(&path_string.as_str()) {
+                            ctx.error_spanned_by(
+                                path.clone(),
+                                format!(
+                                    "only `ockam`, `ockam_core` or `crate` are supported, got `{}`",
+                                    path_string
+                                ),
+                            );
+                        }
+                        ockam_crate.set(&nv.path, path);
+                    }
+                }
+                NestedMeta::Meta(m) => {
+                    let path = m.path().into_token_stream().to_string().replace(' ', "");
+                    ctx.error_spanned_by(m.path(), format!("unknown attribute `{}`", path));
+                }
+                NestedMeta::Lit(lit) => {
+                    ctx.error_spanned_by(lit, "unexpected literal in attribute");
+                }
+            }
+        }
+
+        Self {
+            ockam_crate: ockam_crate.get().unwrap_or(quote! { ockam }),
+        }
     }
 }

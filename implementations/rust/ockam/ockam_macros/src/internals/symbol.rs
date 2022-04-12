@@ -1,13 +1,18 @@
 use std::fmt::{self, Display};
+
 use syn::{Ident, Path};
 
 /// A type to represent the name of a macro attribute.
 #[derive(Copy, Clone)]
-pub struct Symbol(&'static str);
+pub(crate) struct Symbol(&'static str);
 
-pub const NO_MAIN: Symbol = Symbol("no_main");
-pub const OCKAM_CRATE: Symbol = Symbol("crate");
-pub const TIMEOUT_MS: Symbol = Symbol("timeout");
+// Attributes
+pub(crate) const NO_MAIN: Symbol = Symbol("no_main");
+pub(crate) const OCKAM_CRATE: Symbol = Symbol("crate");
+pub(crate) const TIMEOUT_MS: Symbol = Symbol("timeout");
+
+// Derive's helper attributes
+pub(crate) const ASYNC_TRY_CLONE: Symbol = Symbol("async_try_clone");
 
 impl PartialEq<Symbol> for Ident {
     fn eq(&self, word: &Symbol) -> bool {

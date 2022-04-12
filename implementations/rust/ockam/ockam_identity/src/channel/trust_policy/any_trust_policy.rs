@@ -3,6 +3,7 @@ use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{AsyncTryClone, Result};
 
 #[derive(AsyncTryClone)]
+#[async_try_clone(crate = "ockam_core")]
 pub struct AnyTrustPolicy<F: TrustPolicy, S: TrustPolicy> {
     // TODO: Extend for more than 2 policies
     first: F,

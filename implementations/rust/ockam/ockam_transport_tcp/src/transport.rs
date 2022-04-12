@@ -42,6 +42,7 @@ use ockam_node::Context;
 /// # Ok(()) }
 /// ```
 #[derive(AsyncTryClone)]
+#[async_try_clone(crate = "ockam_core")]
 pub struct TcpTransport {
     router_handle: TcpRouterHandle,
 }
