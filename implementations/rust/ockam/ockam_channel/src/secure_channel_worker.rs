@@ -120,18 +120,15 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
     async fn handle_encrypt(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
-        msg: Routed<<Self as Worker>::Message>,
+        mut onward_route: Route,
+        return_route: Route,
+        payload: Vec<u8>,
     ) -> Result<()> {
         debug!("SecureChannel received Encrypt");
 
-        let reply = msg.return_route();
-        let mut onward_route = msg.onward_route();
-        let transport_message = msg.into_transport_message();
-        let payload = transport_message.payload;
-
         let _ = onward_route.step();
 
-        let msg = TransportMessage::v1(onward_route, reply, payload.to_vec());
+        let msg = TransportMessage::v1(onward_route, return_route, payload.to_vec());
         let payload = msg.encode()?;
 
         let payload = {
@@ -170,12 +167,10 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
     async fn handle_decrypt(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
-        msg: Routed<<Self as Worker>::Message>,
+        payload: Vec<u8>,
     ) -> Result<()> {
         debug!("SecureChannel received Decrypt");
 
-        let transport_message = msg.into_transport_message();
-        let payload = transport_message.payload;
         let payload = Vec::<u8>::decode(&payload)?;
 
         let payload = {
@@ -209,18 +204,16 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
     async fn handle_key_exchange(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
-        msg: Routed<<Self as Worker>::Message>,
+        return_route: Route,
+        payload: Vec<u8>,
     ) -> Result<()> {
         // Received key exchange message from remote channel, need to forward it to local key exchange
         debug!("SecureChannel received KeyExchangeRemote");
 
-        let reply = msg.return_route();
-        let transport_message = msg.into_transport_message();
-        let payload = transport_message.payload;
         let payload = Vec::<u8>::decode(&payload)?;
 
         // Update route to a remote
-        self.remote_route = reply;
+        self.remote_route = return_route;
 
         let key_exchanger = if let Some(k) = self.key_exchanger.as_mut() {
             k
@@ -300,10 +293,35 @@ impl KeyExchangeCompleted {
     }
 }
 
+#[derive(Serialize, Deserialize, Message)]
+pub enum SecureChannelMsg {
+    Encrypt { payload: Vec<u8> },
+    Decrypt { payload: Vec<u8> },
+}
+
 #[async_trait]
 impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> Worker for SecureChannelWorker<V, K> {
-    type Message = Any;
+    type Message = SecureChannelMsg;
     type Context = Context;
+
+    fn deserialize_message(
+        &mut self,
+        address: &Address,
+        local_msg: &LocalMessage,
+    ) -> Result<Self::Message> {
+        if address == &self.address_local {
+            Ok(SecureChannelMsg::Encrypt {
+                payload: local_msg.transport().payload.clone(),
+            })
+        } else if address == &self.address_remote {
+            Ok(SecureChannelMsg::Decrypt {
+                payload: local_msg.transport().payload.clone(),
+            })
+        } else {
+            // Error
+            unimplemented!()
+        }
+    }
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         if self.is_initiator {
@@ -324,17 +342,20 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> Worker for SecureChann
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let msg_addr = msg.msg_addr();
-
-        if msg_addr == self.address_local {
-            self.handle_encrypt(ctx, msg).await?;
-        } else if msg_addr == self.address_remote {
-            if self.keys.is_none() {
-                self.handle_key_exchange(ctx, msg).await?;
-            } else {
-                self.handle_decrypt(ctx, msg).await?;
+        let onward_route = msg.onward_route();
+        let return_route = msg.return_route();
+        match msg.body() {
+            SecureChannelMsg::Encrypt { payload } => {
+                self.handle_encrypt(ctx, onward_route, return_route, payload)
+                    .await
+            }
+            SecureChannelMsg::Decrypt { payload } => {
+                if self.keys.is_none() {
+                    self.handle_key_exchange(ctx, return_route, payload).await
+                } else {
+                    self.handle_decrypt(ctx, payload).await
+                }
             }
         }
-        Ok(())
     }
 }

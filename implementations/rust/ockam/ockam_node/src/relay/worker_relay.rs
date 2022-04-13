@@ -35,19 +35,13 @@ where
 
     /// Convenience function to handle an incoming direct message
     #[inline]
-    fn handle_direct(msg: &LocalMessage, msg_addr: Address) -> Result<(M, Route)> {
-        let TransportMessage {
-            ref payload,
-            ref return_route,
-            ..
-        } = msg.transport();
+    fn handle_direct(msg: &LocalMessage, msg_addr: Address) -> Result<M> {
+        let TransportMessage { ref payload, .. } = msg.transport();
 
-        parser::message::<M>(payload)
-            .map_err(|e| {
-                error!("Failed to decode message payload for worker {}", msg_addr);
-                e
-            })
-            .map(|m| (m, return_route.clone()))
+        parser::message::<M>(payload).map_err(|e| {
+            error!("Failed to decode message payload for worker {}", msg_addr);
+            e
+        })
     }
 
     #[inline]
@@ -79,22 +73,19 @@ where
         // wrap state.  Messages addressed to a router will be of
         // type `RouterMessage`, while generic userspace workers
         // can provide any type they want.
-        let (msg, _, local_msg) = (|data| -> Result<(M, Route, LocalMessage)> {
+        let (msg, local_msg) = (|data| -> Result<(M, LocalMessage)> {
             Ok(match data {
-                RelayPayload::Direct(local_msg) => Self::handle_direct(&local_msg, addr.clone())
-                    .map(|(msg, r)| (msg, r, local_msg))?,
-                RelayPayload::PreRouter(enc_msg, route) => {
-                    Self::handle_pre_router(&enc_msg, addr.clone()).map(|m| {
-                        (
-                            m,
-                            route.clone(),
-                            LocalMessage::new(
-                                TransportMessage::v1(Route::new(), route, enc_msg),
-                                Vec::new(),
-                            ),
-                        )
-                    })?
-                }
+                RelayPayload::Direct(local_msg) => (
+                    self.worker.deserialize_message(&addr, &local_msg)?,
+                    local_msg,
+                ),
+                RelayPayload::PreRouter(enc_msg, route) => (
+                    Self::handle_pre_router(&enc_msg, addr.clone())?,
+                    LocalMessage::new(
+                        TransportMessage::v1(Route::new(), route, enc_msg),
+                        Vec::new(),
+                    ),
+                ),
             })
         })(data)?;
 

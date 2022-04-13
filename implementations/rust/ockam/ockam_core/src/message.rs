@@ -69,7 +69,16 @@ pub trait Decodable: Sized {
 }
 
 /// A user defined message that can be serialised and deserialized.
-pub trait Message: Encodable + Decodable + Send + 'static {}
+pub trait Message: Encodable + Decodable + Send + 'static {
+    fn deserialize_from_transport(payload: &[u8]) -> Result<Self> {
+        Self::decode(payload).or_else(|_| {
+            let mut new_v = serde_bare::to_vec(&serde_bare::Uint(payload.len() as u64))?;
+
+            new_v.append(&mut payload.to_vec());
+            Self::decode(&payload)
+        })
+    }
+}
 
 impl Message for () {}
 impl Message for Vec<u8> {}
