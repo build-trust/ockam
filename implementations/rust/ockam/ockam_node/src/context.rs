@@ -572,7 +572,7 @@ impl Context {
             self.next_from_mailbox().await
         })
         .await
-        .map_err(|e| NodeError::Data.from_elapsed(e))??;
+        .map_err(|e| NodeError::Data.with_elapsed(e))??;
         Ok(Cancel::new(msg, data, addr, self))
     }
 
@@ -602,7 +602,7 @@ impl Context {
             }
         })
         .await
-        .map_err(|e| NodeError::Data.from_elapsed(e))??;
+        .map_err(|e| NodeError::Data.with_elapsed(e))??;
 
         Ok(Cancel::new(m, data, addr, self))
     }
@@ -627,7 +627,7 @@ impl Context {
         self.sender
             .send(msg)
             .await
-            .map_err(|e| NodeError::from_send_err(e))?;
+            .map_err(NodeError::from_send_err)?;
         rx.recv()
             .await
             .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??
@@ -641,7 +641,7 @@ impl Context {
         self.sender
             .send(msg)
             .await
-            .map_err(|e| NodeError::from_send_err(e))?;
+            .map_err(NodeError::from_send_err)?;
 
         reply_rx
             .recv()
@@ -660,7 +660,7 @@ impl Context {
         self.sender
             .send(NodeMessage::StopAck(self.address()))
             .await
-            .map_err(|e| NodeError::from_send_err(e))?;
+            .map_err(NodeError::from_send_err)?;
         Ok(())
     }
 
@@ -669,7 +669,7 @@ impl Context {
         self.sender
             .send(NodeMessage::Router(type_, addr, tx))
             .await
-            .map_err(|e| NodeError::from_send_err(e))?;
+            .map_err(NodeError::from_send_err)?;
 
         rx.recv()
             .await
@@ -719,7 +719,7 @@ impl Context {
         self.sender
             .send(NodeMessage::set_ready(self.address()))
             .await
-            .map_err(|e| NodeError::from_send_err(e))?;
+            .map_err(NodeError::from_send_err)?;
         Ok(())
     }
 
@@ -729,7 +729,7 @@ impl Context {
         self.sender
             .send(msg)
             .await
-            .map_err(|e| NodeError::from_send_err(e))?;
+            .map_err(NodeError::from_send_err)?;
 
         // This call blocks until the address has become ready or is
         // dropped by the router

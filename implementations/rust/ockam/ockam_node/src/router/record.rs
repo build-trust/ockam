@@ -34,7 +34,7 @@ impl InternalMap {
         let rec = self
             .internal
             .get(&primary)
-            .ok_or(NodeError::Address(primary).not_found())?;
+            .ok_or_else(|| NodeError::Address(primary).not_found())?;
 
         // If this is the first time we see this cluster ID
         if !self.clusters.contains_key(&label) {
@@ -58,7 +58,7 @@ impl InternalMap {
         let addr_record = self
             .internal
             .get_mut(&addr)
-            .ok_or(NodeError::Address(addr).not_found())?;
+            .ok_or_else(|| NodeError::Address(addr).not_found())?;
         Ok(addr_record.set_ready())
     }
 

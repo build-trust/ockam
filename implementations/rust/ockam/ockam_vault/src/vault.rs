@@ -4,7 +4,6 @@ use core::sync::atomic::AtomicUsize;
 use ockam_core::compat::{collections::BTreeMap, string::String, sync::Arc};
 use ockam_core::vault::{SecretAttributes, SecretKey};
 use ockam_node::compat::asynchronous::RwLock;
-use tracing::info;
 
 /// Vault implementation that stores secrets in memory and uses software crypto.
 ///

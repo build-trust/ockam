@@ -103,7 +103,7 @@ impl ErrorCode {
 /// Note that [`Error`](super::Error) should already contain precise origin
 /// information (file, line) where the error originated from.
 ///
-// Internal note: Once we stablize the API, we should not remove these, just stop emitting them.
+// Internal note: Once we stabilise the API, we should not remove these, just stop emitting them.
 #[repr(u8)]
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Serialize, Deserialize)]
@@ -120,7 +120,7 @@ pub enum Origin {
     Vault = 2,
     /// Errors emitted by the transport layer.
     Transport = 3,
-    /// Errors from some part of the node implementation — the router or relay,
+    /// Errors from some part of the node implementation — the router or relay,
     /// for example.
     Node = 4,
     /// Errors from the surface API — for example: the FFI layer.
@@ -148,7 +148,7 @@ pub enum Origin {
     // enum"). Payload information should be added to the error itself.
 }
 
-/// Catgory indicates "what went wrong", in abstract terms.
+/// Category indicates "what went wrong", in abstract terms.
 ///
 /// # Choosing a `Kind`
 ///

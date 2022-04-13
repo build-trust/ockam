@@ -9,7 +9,6 @@ use ockam_core::vault::{
 };
 use ockam_core::{Error, Result};
 use ockam_vault::Vault;
-use std::future::Future;
 use tokio::{runtime::Runtime, sync::RwLock, task};
 
 /// FFI Vault trait. See documentation for individual sub-traits for details.

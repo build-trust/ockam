@@ -54,7 +54,7 @@ impl NodeError {
     }
 
     /// Create an ockam_core::Error from a tokio::Elapsed
-    pub(crate) fn from_elapsed(self, err: Elapsed) -> Error {
+    pub(crate) fn with_elapsed(self, err: Elapsed) -> Error {
         Error::new(Origin::Node, Kind::Timeout, self).context("Elapsed", err)
     }
 }

@@ -19,6 +19,8 @@ pub enum VaultError {
     EntryNotFound,
     /// Invalid AES key length
     InvalidAesKeyLength,
+    /// Invalid Secret length
+    InvalidSecretLength,
     /// Invalid HKDF outputtype
     InvalidHkdfOutputType,
     /// Invalid private key length
@@ -53,6 +55,7 @@ impl core::fmt::Display for VaultError {
             Self::InvalidKeyType => write!(f, "invalid key type"),
             Self::EntryNotFound => write!(f, "entry not found"),
             Self::InvalidAesKeyLength => write!(f, "invalid AES key length"),
+            Self::InvalidSecretLength => write!(f, "invalid secret length"),
             Self::InvalidHkdfOutputType => write!(f, "invalid HKDF outputtype"),
             Self::InvalidPrivateKeyLen => write!(f, "invalid private key length"),
             Self::AeadAesGcmEncrypt => write!(f, "aes encryption failed"),
