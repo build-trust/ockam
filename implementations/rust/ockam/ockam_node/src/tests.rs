@@ -1,13 +1,14 @@
 use crate::{start_node, Context};
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::time::Duration;
-use ockam_core::async_trait;
 use ockam_core::compat::{
     boxed::Box,
     string::{String, ToString},
     sync::Arc,
 };
+use ockam_core::{async_trait, Any, Decodable, Message};
 use ockam_core::{route, Processor, Result, Routed, Worker};
+use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicI8;
 use tokio::time::sleep;
 
@@ -420,4 +421,59 @@ fn parse_payload_without_inner_length() {
     let payload = "😀".repeat(25600);
     let r = parser::message::<String>(payload.as_bytes()).unwrap();
     assert_eq!("😀".repeat(25600), r);
+}
+
+struct SendReceiveWorker;
+
+#[async_trait]
+impl Worker for SendReceiveWorker {
+    type Context = Context;
+    type Message = Any;
+
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+        let return_route = msg.return_route();
+        let msg = SendReceiveRequest::decode(msg.payload())?;
+
+        match msg {
+            SendReceiveRequest::Connect() => {
+                ctx.send(return_route, SendReceiveResponse::Connect(Ok(())))
+                    .await?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Message)]
+enum SendReceiveRequest {
+    Connect(),
+}
+
+#[derive(Serialize, Deserialize, Debug, Message)]
+enum SendReceiveResponse {
+    Connect(Result<()>),
+}
+
+/// Test the new method Context::send_and_receive().
+/// See https://github.com/ockam-network/ockam/issues/2628.
+#[test]
+fn use_context_send_and_receive() {
+    let (mut ctx, mut executor) = start_node();
+    executor
+        .execute(async move {
+            ctx.start_worker("SendReceiveWorker", SendReceiveWorker)
+                .await?;
+
+            let msg_tx = SendReceiveRequest::Connect();
+            let msg_rx = ctx.send_and_receive("SendReceiveWorker", msg_tx).await?;
+
+            if let SendReceiveResponse::Connect(Err(e)) = msg_rx {
+                panic!("test failure: {}", e)
+            }
+
+            ctx.stop().await
+        })
+        .unwrap()
+        .unwrap();
 }

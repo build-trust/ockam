@@ -365,6 +365,26 @@ impl Context {
         Ok(())
     }
 
+    /// Using a temporary new context, send a message and then receive a message
+    ///
+    /// This helper function uses [`new_context`], [`send`], and
+    /// [`receive`] internally. See their documentation for more
+    /// details.
+    ///
+    /// [`new_context`]: Self::new_context
+    /// [`send`]: Self::send
+    /// [`receive`]: Self::receive
+    pub async fn send_and_receive<R, M, N>(&self, route: R, msg: M) -> Result<N>
+    where
+        R: Into<Route>,
+        M: Message + Send + 'static,
+        N: Message,
+    {
+        let mut child_ctx = self.new_context(Address::random_local()).await?;
+        child_ctx.send(route, msg).await?;
+        Ok(child_ctx.receive::<N>().await?.take().body())
+    }
+
     /// Send a message to another address associated with this worker
     ///
     /// This function is a simple wrapper around `Self::send()` which
