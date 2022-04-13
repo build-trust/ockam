@@ -1,8 +1,12 @@
 use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
-use crate::{error, relay::RelayMessage, router::SenderPair};
+use crate::{
+    error::{NodeError, NodeReason, RouterReason, WorkerReason},
+    relay::RelayMessage,
+    router::SenderPair,
+};
 use core::fmt;
-use ockam_core::compat::{error::Error as StdError, string::String, vec::Vec};
-use ockam_core::{Address, AddressSet, Result, TransportType};
+use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::{Address, AddressSet, Error, Result, TransportType};
 
 /// Messages sent from the Node to the Executor
 #[derive(Debug)]
@@ -148,11 +152,11 @@ impl NodeMessage {
 }
 
 /// The reply/result of a Node
-pub type NodeReplyResult = core::result::Result<NodeReply, NodeError>;
+pub type NodeReplyResult = core::result::Result<RouterReply, Error>;
 
 /// Successful return values from a router command
 #[derive(Debug)]
-pub enum NodeReply {
+pub enum RouterReply {
     /// Success with no payload
     Ok,
     /// A list of worker addresses
@@ -169,53 +173,6 @@ pub enum NodeReply {
     },
     /// Indicate the 'ready' state of an address
     State(bool),
-}
-
-/// Failure states from a router command
-#[derive(Debug)]
-pub enum NodeError {
-    /// No such address existst (for either workers or processors)
-    NoSuchAddress(Address),
-    /// Worker already exists
-    WorkerExists(Address),
-    /// Router already exists
-    RouterExists,
-    /// Command rejected
-    Rejected(Reason),
-}
-
-impl fmt::Display for NodeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::NoSuchAddress(addr) => write!(f, "No such address '{}'", addr),
-            Self::WorkerExists(addr) => write!(f, "Worker exists '{}'", addr),
-            Self::RouterExists => write!(f, "Router exists"),
-            Self::Rejected(reason) => write!(f, "Command rejected because: {}", reason),
-        }
-    }
-}
-
-impl StdError for NodeError {}
-
-/// The reason why a command was rejected
-#[derive(Debug, Copy, Clone)]
-pub enum Reason {
-    /// Rejected because the node is currently shutting down
-    NodeShutdown,
-    /// Rejected because the worker is currently shutting down
-    WorkerShutdown,
-    /// Message was addressed to an invalid address
-    InvalidAddress,
-}
-
-impl fmt::Display for Reason {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::NodeShutdown => write!(f, "node shutting down"),
-            Self::WorkerShutdown => write!(f, "worker shutting down"),
-            Self::InvalidAddress => write!(f, "invalid address"),
-        }
-    }
 }
 
 /// Specify the type of node shutdown
@@ -261,35 +218,40 @@ impl Default for ShutdownType {
     }
 }
 
-impl NodeReply {
+impl RouterReply {
     /// Return [NodeReply::Ok]
     pub fn ok() -> NodeReplyResult {
-        Ok(NodeReply::Ok)
+        Ok(RouterReply::Ok)
     }
 
     /// Return [NodeReply::State]
     pub fn state(b: bool) -> NodeReplyResult {
-        Ok(NodeReply::State(b))
+        Ok(RouterReply::State(b))
     }
 
     /// Return [NodeError::NoSuchAddress]
     pub fn no_such_address(a: Address) -> NodeReplyResult {
-        Err(NodeError::NoSuchAddress(a))
+        Err(NodeError::Address(a).not_found())
     }
 
     /// Return [NodeError::WorkerExists] for the given address
     pub fn worker_exists(a: Address) -> NodeReplyResult {
-        Err(NodeError::WorkerExists(a))
+        Err(NodeError::Address(a).already_exists())
     }
 
     /// Return [NodeError::RouterExists]
     pub fn router_exists() -> NodeReplyResult {
-        Err(NodeError::RouterExists)
+        Err(NodeError::RouterState(RouterReason::Duplicate).already_exists())
     }
 
     /// Return [NodeReply::Rejected(reason)]
-    pub fn rejected(reason: Reason) -> NodeReplyResult {
-        Err(NodeError::Rejected(reason))
+    pub fn node_rejected(reason: NodeReason) -> NodeReplyResult {
+        Err(NodeError::NodeState(reason).conflict())
+    }
+
+    /// Return [NodeReply::Rejected(reason)]
+    pub fn worker_rejected(reason: WorkerReason) -> NodeReplyResult {
+        Err(NodeError::WorkerState(reason).conflict())
     }
 
     /// Return [NodeReply::Workers] for the given addresses
@@ -299,14 +261,14 @@ impl NodeReply {
 
     /// Return [NodeReply::Sender] for the given information
     pub fn sender(addr: Address, sender: Sender<RelayMessage>, wrap: bool) -> NodeReplyResult {
-        Ok(NodeReply::Sender { addr, sender, wrap })
+        Ok(RouterReply::Sender { addr, sender, wrap })
     }
 
     /// Consume the wrapper and return [NodeReply::Sender]
     pub fn take_sender(self) -> Result<(Address, Sender<RelayMessage>, bool)> {
         match self {
             Self::Sender { addr, sender, wrap } => Ok((addr, sender, wrap)),
-            _ => Err(error::internal_without_cause()),
+            _ => Err(NodeError::NodeState(NodeReason::Unknown).internal()),
         }
     }
 
@@ -314,7 +276,7 @@ impl NodeReply {
     pub fn take_workers(self) -> Result<Vec<Address>> {
         match self {
             Self::Workers(w) => Ok(w),
-            _ => Err(error::internal_without_cause()),
+            _ => Err(NodeError::NodeState(NodeReason::Unknown).internal()),
         }
     }
 
@@ -322,7 +284,7 @@ impl NodeReply {
     pub fn take_state(self) -> Result<bool> {
         match self {
             Self::State(b) => Ok(b),
-            _ => Err(error::internal_without_cause()),
+            _ => Err(NodeError::NodeState(NodeReason::Unknown).internal()),
         }
     }
 
@@ -330,7 +292,7 @@ impl NodeReply {
     pub fn is_ok(self) -> Result<()> {
         match self {
             Self::Ok => Ok(()),
-            _ => Err(error::internal_without_cause()),
+            _ => Err(NodeError::NodeState(NodeReason::Unknown).internal()),
         }
     }
 }

@@ -1,6 +1,9 @@
 use super::Router;
 use crate::tokio::sync::mpsc::Sender;
-use crate::{error, NodeReply, NodeReplyResult, Reason};
+use crate::{
+    error::{NodeError, NodeReason, WorkerReason},
+    NodeReplyResult, RouterReply,
+};
 use ockam_core::{Address, Result, TransportType};
 
 /// Receive an address and resolve it to a sender
@@ -21,9 +24,9 @@ pub(super) async fn resolve(
     } else {
         trace!("{} FAILED; no such worker", base);
         reply
-            .send(NodeReply::no_such_address(addr.clone()))
+            .send(RouterReply::no_such_address(addr.clone()))
             .await
-            .map_err(error::node_internal)?;
+            .map_err(NodeError::from_send_err)?;
 
         return Ok(());
     };
@@ -31,19 +34,20 @@ pub(super) async fn resolve(
     match router.map.internal.get(&primary_address) {
         Some(record) if record.check() => {
             trace!("{} OK", base);
-            reply.send(NodeReply::sender(addr.clone(), record.sender(), wrap))
+            reply.send(RouterReply::sender(addr.clone(), record.sender(), wrap))
         }
         Some(_) => {
             trace!("{} REJECTED; worker shutting down", base);
-            reply.send(NodeReply::rejected(Reason::WorkerShutdown))
+            reply.send(RouterReply::worker_rejected(WorkerReason::Shutdown))
         }
         None => {
             trace!("{} FAILED; no such worker", base);
-            reply.send(NodeReply::no_such_address(addr.clone()))
+            reply.send(RouterReply::no_such_address(addr.clone()))
         }
     }
     .await
-    .map_err(error::node_internal)
+    .map_err(NodeError::from_send_err)?;
+    Ok(())
 }
 
 pub(super) fn router_addr(router: &mut Router, tt: TransportType) -> Result<Address> {
@@ -51,5 +55,5 @@ pub(super) fn router_addr(router: &mut Router, tt: TransportType) -> Result<Addr
         .external
         .get(&tt)
         .cloned()
-        .ok_or_else(error::internal_without_cause)
+        .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())
 }

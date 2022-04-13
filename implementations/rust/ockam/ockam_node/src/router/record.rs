@@ -1,6 +1,9 @@
 use crate::relay::{CtrlSignal, RelayMessage};
 use crate::tokio::sync::mpsc::Sender;
-use crate::{error, NodeError, NodeReply, NodeReplyResult};
+use crate::{
+    error::{NodeError, NodeReason},
+    NodeReplyResult, RouterReply,
+};
 use ockam_core::{
     compat::{
         collections::{BTreeMap, BTreeSet},
@@ -31,7 +34,7 @@ impl InternalMap {
         let rec = self
             .internal
             .get(&primary)
-            .ok_or(NodeError::NoSuchAddress(primary))?;
+            .ok_or(NodeError::Address(primary).not_found())?;
 
         // If this is the first time we see this cluster ID
         if !self.clusters.contains_key(&label) {
@@ -47,7 +50,7 @@ impl InternalMap {
                 .insert(addr);
         }
 
-        NodeReply::ok()
+        RouterReply::ok()
     }
 
     /// Set an address as ready and return the list of waiting pollers
@@ -55,7 +58,7 @@ impl InternalMap {
         let addr_record = self
             .internal
             .get_mut(&addr)
-            .ok_or(NodeError::NoSuchAddress(addr))?;
+            .ok_or(NodeError::Address(addr).not_found())?;
         Ok(addr_record.set_ready())
     }
 
@@ -175,7 +178,7 @@ impl AddressRecord {
             self.ctrl_tx
                 .send(CtrlSignal::InterruptStop)
                 .await
-                .map_err(error::node_internal)?;
+                .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
         } else {
             self.sender = None;
         }

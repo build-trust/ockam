@@ -12,9 +12,9 @@ use state::{NodeState, RouterState};
 
 use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{
-    error,
+    error::{NodeError, NodeReason},
     relay::{CtrlSignal, RelayMessage},
-    NodeMessage, NodeReply, ShutdownType,
+    NodeMessage, RouterReply, ShutdownType,
 };
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, Result, TransportType};
@@ -118,15 +118,15 @@ impl Router {
 
                 self.external.insert(tt, addr);
                 sender
-                    .send(NodeReply::ok())
+                    .send(RouterReply::ok())
                     .await
-                    .map_err(error::node_internal)?
+                    .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?
             }
             // Rejected router registration command
             Router(_, _, sender) => sender
-                .send(NodeReply::router_exists())
+                .send(RouterReply::router_exists())
                 .await
-                .map_err(error::node_internal)?,
+                .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?,
 
             //// ==! Basic worker control
             StartWorker {
@@ -149,9 +149,9 @@ impl Router {
                     info!("No more workers left.  Goodbye!");
                     if let Some(sender) = self.state.stop_reply() {
                         sender
-                            .send(NodeReply::ok())
+                            .send(RouterReply::ok())
                             .await
-                            .map_err(error::node_internal)?;
+                            .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
                         return Ok(true);
                     };
                 }
@@ -164,9 +164,9 @@ impl Router {
             AbortNode => {
                 if let Some(sender) = self.state.stop_reply() {
                     sender
-                        .send(NodeReply::ok())
+                        .send(RouterReply::ok())
                         .await
-                        .map_err(error::node_internal)?;
+                        .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
                     self.map.internal.clear();
                     return Ok(true);
                 }
@@ -186,25 +186,28 @@ impl Router {
                     info!("No more workers left.  Goodbye!");
                     if let Some(sender) = self.state.stop_reply() {
                         sender
-                            .send(NodeReply::ok())
+                            .send(RouterReply::ok())
                             .await
-                            .map_err(error::node_internal)?;
+                            .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
                         return Ok(true);
                     }
                 }
             }
 
             ListWorkers(sender) => sender
-                .send(NodeReply::workers(
+                .send(RouterReply::workers(
                     self.map.internal.keys().cloned().collect(),
                 ))
                 .await
-                .map_err(error::node_internal)?,
+                .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?,
 
             SetCluster(addr, label, reply) => {
                 debug!("Setting cluster on address {}", addr);
                 let msg = self.map.set_cluster(label, addr);
-                reply.send(msg).await.map_err(error::node_internal)?;
+                reply
+                    .send(msg)
+                    .await
+                    .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
             }
 
             SetReady(addr) => {
@@ -213,10 +216,9 @@ impl Router {
                     Err(e) => warn!("Failed to set address as ready: {}", e),
                     Ok(waiting) => {
                         for sender in waiting {
-                            sender
-                                .send(NodeReply::ok())
-                                .await
-                                .map_err(error::node_internal)?;
+                            sender.send(RouterReply::ok()).await.map_err(|_| {
+                                NodeError::NodeState(NodeReason::Unknown).internal()
+                            })?;
                         }
                     }
                 }
@@ -226,9 +228,9 @@ impl Router {
                 let ready = self.map.get_ready(addr, reply.clone());
                 if ready {
                     reply
-                        .send(NodeReply::ok())
+                        .send(RouterReply::ok())
                         .await
-                        .map_err(error::node_internal)?;
+                        .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
                 }
             }
 

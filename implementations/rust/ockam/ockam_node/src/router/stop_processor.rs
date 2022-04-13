@@ -1,6 +1,9 @@
 use super::Router;
 use crate::tokio::sync::mpsc::Sender;
-use crate::{error, NodeReply, NodeReplyResult};
+use crate::{
+    error::{NodeError, NodeReason},
+    NodeReplyResult, RouterReply,
+};
 use ockam_core::{Address, Result};
 
 pub(super) async fn exec(
@@ -15,9 +18,9 @@ pub(super) async fn exec(
         Some(proc) => proc,
         None => {
             reply
-                .send(NodeReply::no_such_address(main_addr.clone()))
+                .send(RouterReply::no_such_address(main_addr.clone()))
                 .await
-                .map_err(error::node_internal)?;
+                .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
 
             return Ok(());
         }
@@ -31,9 +34,9 @@ pub(super) async fn exec(
 
     // Signal back that everything went OK
     reply
-        .send(NodeReply::ok())
+        .send(RouterReply::ok())
         .await
-        .map_err(error::node_internal)?;
+        .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
 
     Ok(())
 }

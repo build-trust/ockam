@@ -1,6 +1,9 @@
 use super::{AddressMeta, AddressRecord, NodeState, Router, SenderPair};
 use crate::tokio::sync::mpsc::Sender;
-use crate::{error, NodeReply, NodeReplyResult, Reason};
+use crate::{
+    error::{NodeError, NodeReason},
+    NodeReplyResult, RouterReply,
+};
 use ockam_core::{AddressSet, Result};
 
 /// Execute a `StartWorker` command
@@ -62,17 +65,17 @@ async fn start(
     // For now we just send an OK back -- in the future we need to
     // communicate the current executor state
     reply
-        .send(NodeReply::ok())
+        .send(RouterReply::ok())
         .await
-        .map_err(error::node_internal)?;
+        .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
     Ok(())
 }
 
 async fn reject(reply: &Sender<NodeReplyResult>) -> Result<()> {
     trace!("StartWorker command rejected: node shutting down");
     reply
-        .send(NodeReply::rejected(Reason::NodeShutdown))
+        .send(RouterReply::node_rejected(NodeReason::Shutdown))
         .await
-        .map_err(error::node_internal)?;
+        .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
     Ok(())
 }
