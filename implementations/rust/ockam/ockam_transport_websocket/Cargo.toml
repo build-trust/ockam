@@ -50,7 +50,7 @@ futures-util = { version = "0.3", default-features = false, features = [
 ] }
 ockam_core = { path = "../ockam_core", version = "^0.51.0", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.51.0", default_features = false }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.23.0", default_features = false }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.24.0", default_features = false }
 tokio = { version = "1.8", default-features = false, optional = true, features = [
     "rt-multi-thread",
     "sync",
