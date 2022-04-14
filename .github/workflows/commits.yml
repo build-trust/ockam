@@ -23,13 +23,13 @@ jobs:
     steps:
       - name: Checkout
         if: github.event_name != 'pull_request'
-        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+        uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
         with:
           fetch-depth: 0 # checkout full tree
 
       - name: Checkout (Pull Request)
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+        uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
         with:
           fetch-depth: 0 # checkout full tree
           ref: ${{ github.event.pull_request.head.sha }}
