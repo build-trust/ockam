@@ -147,12 +147,11 @@ where
     async fn handle_msg(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         self.heartbeat.cancel();
 
-        let ws_sink;
-        if let Some(t) = &mut self.ws_sink {
-            ws_sink = t;
+        let ws_sink = if let Some(ws_sink) = &mut self.ws_sink {
+            ws_sink
         } else {
             return Err(TransportError::PeerNotFound.into());
-        }
+        };
 
         let recipient = msg.msg_addr();
         if recipient == self.internal_addr {
