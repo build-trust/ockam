@@ -42,7 +42,7 @@ defmodule Ockam.Examples.Forwarding do
 
   def responder(notify \\ nil) do
     TCP.start()
-    forwarding_route = [@hub_address, "forwarding_service"]
+    forwarding_route = [@hub_address, "forwarding"]
 
     Ockam.Node.register_address("example_responder")
 

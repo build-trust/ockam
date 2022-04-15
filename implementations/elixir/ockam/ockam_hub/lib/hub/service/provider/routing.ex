@@ -22,24 +22,31 @@ defmodule Ockam.Hub.Service.Provider.Routing do
 
   @impl true
   def child_spec(:echo, args) do
-    {EchoService, Keyword.merge([address: "echo_service"], args)}
+    {EchoService, Keyword.merge([address: "echo"], args)}
   end
 
   def child_spec(:forwarding, args) do
     {ForwardingService,
-     Keyword.merge([address: "forwarding_service", extra_addresses: ["forwarding"]], args)}
+     Keyword.merge([address: "forwarding", extra_addresses: ["forwarding_service"]], args)}
   end
 
   def child_spec(:static_forwarding, args) do
     {StaticForwardingService,
-     Keyword.merge([address: "static_forwarding_service", prefix: "forward_to"], args)}
+     Keyword.merge(
+       [
+         address: "static_forwarding",
+         prefix: "forward_to",
+         extra_addresses: ["static_forwarding_service"]
+       ],
+       args
+     )}
   end
 
   def child_spec(:pub_sub, args) do
-    {PubSubService, Keyword.merge([address: "pub_sub_service", prefix: "pub_sub_t"], args)}
+    {PubSubService, Keyword.merge([address: "pub_sub", prefix: "pub_sub_t"], args)}
   end
 
   def child_spec(:tracing, args) do
-    {TracingService, Keyword.merge([address: "tracing_service"], args)}
+    {TracingService, Keyword.merge([address: "tracing"], args)}
   end
 end

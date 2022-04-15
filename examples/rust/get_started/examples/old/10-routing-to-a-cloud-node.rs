@@ -10,10 +10,10 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    // Send a message to the `echo_service` worker on your cloud node.
+    // Send a message to the `echo` worker on your cloud node.
     ctx.send(
-        // route to the echo_service worker on your cloud node
-        route![(TCP, cloud_node_tcp_address), "echo_service"],
+        // route to the echo worker on your cloud node
+        route![(TCP, cloud_node_tcp_address), "echo"],
         // the message you want echo-ed back
         "Hello Ockam!".to_string(),
     )

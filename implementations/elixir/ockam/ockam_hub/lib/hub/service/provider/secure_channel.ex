@@ -7,7 +7,7 @@ defmodule Ockam.Hub.Service.Provider.SecureChannel do
   @behaviour Ockam.Hub.Service.Provider
 
   @services [:secure_channel]
-  @address "secure_channel_service"
+  @address "secure_channel"
 
   @impl true
   def services() do

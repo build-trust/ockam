@@ -75,7 +75,7 @@ defmodule Ockam.Examples.Messaging.ReliableDeduplication do
 
     {:ok, _subscription} =
       PubSubSubscriber.create(
-        pub_sub_route: [client, "pub_sub_service"],
+        pub_sub_route: [client, "pub_sub"],
         name: "responder",
         topic: "responder"
       )
@@ -111,7 +111,7 @@ defmodule Ockam.Examples.Messaging.ReliableDeduplication do
 
     {:ok, _subscription} =
       PubSubSubscriber.create(
-        pub_sub_route: [client, "pub_sub_service"],
+        pub_sub_route: [client, "pub_sub"],
         name: "initiator",
         topic: "initiator"
       )

@@ -15,7 +15,7 @@ Currently, *Token Lease Manager* is a Ockam Worker which depends on two main pie
 
 They will be modules that will be passed as arguments under `:cloud_service_module` and `:storage_service_module`.
 
-It will be started if the service `token_lease_service` is required.
+It will be started if the service `token_lease` is required.
 
 ## Cloud Service
 

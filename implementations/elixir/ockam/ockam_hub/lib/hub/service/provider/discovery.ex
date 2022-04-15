@@ -20,7 +20,7 @@ defmodule Ockam.Hub.Service.Provider.Discovery do
     {DiscoveryService,
      Keyword.merge(
        [
-         address: "discovery_service",
+         address: "discovery",
          storage: Ockam.Hub.Service.Discovery.Storage.Supervisor,
          ## TODO: provide superviser from args
          storage_options: [supervisor: Ockam.Hub.Service.Provider]

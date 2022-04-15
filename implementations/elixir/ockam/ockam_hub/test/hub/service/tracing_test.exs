@@ -2,12 +2,12 @@ defmodule Test.Hub.Service.TracingTest do
   use ExUnit.Case
 
   test "trace payloads" do
-    Ockam.Hub.Service.Tracing.create(address: "tracing_service")
-    Ockam.Hub.Service.Echo.create(address: "echo_service")
+    Ockam.Hub.Service.Tracing.create(address: "tracing")
+    Ockam.Hub.Service.Echo.create(address: "echo")
     Ockam.Node.register_address("TEST")
 
     Ockam.Router.route(%{
-      onward_route: ["tracing_service"],
+      onward_route: ["tracing"],
       return_route: ["TEST"],
       payload: "register"
     })
@@ -21,7 +21,7 @@ defmodule Test.Hub.Service.TracingTest do
       end
 
     payload = "Hello!"
-    echo_request = %{onward_route: [tracing_address, "echo_service"], payload: payload}
+    echo_request = %{onward_route: [tracing_address, "echo"], payload: payload}
     Ockam.Workers.Call.call(echo_request)
 
     # Receive outgoing message

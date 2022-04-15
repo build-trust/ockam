@@ -26,7 +26,7 @@ Ockam.SecureChannel.create_listener(
 {:ok, forwarder} =
   RemoteForwarder.create(
     # Route to forwarding service
-    service_route: [TCPAddress.new("1.node.ockam.network", 4000), "forwarding_service"],
+    service_route: [TCPAddress.new("1.node.ockam.network", 4000), "forwarding"],
     # Route to worker to forward to
     forward_to: ["secure_channel_listener"]
   )

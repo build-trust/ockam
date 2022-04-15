@@ -15,7 +15,7 @@ alias Ockam.Workers.RemoteForwarder
 # Create a remote forwarder for the "app" on the node at TCPAddress - ("1.node.ockam.network", 4000)
 {:ok, forwarder} = RemoteForwarder.create(
   # Route to forwarding service
-  service_route: [TCPAddress.new("1.node.ockam.network", 4000), "forwarding_service"],
+  service_route: [TCPAddress.new("1.node.ockam.network", 4000), "forwarding"],
   # Route to worker to forward to
   forward_to: ["echoer"]
 )

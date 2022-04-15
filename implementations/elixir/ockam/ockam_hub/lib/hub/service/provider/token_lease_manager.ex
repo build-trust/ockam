@@ -2,8 +2,8 @@ defmodule Ockam.TokenLeaseManager.Hub.Service.Provider do
   @moduledoc false
   @behaviour Ockam.Hub.Service.Provider
 
-  @services [:influxdb_token_lease_service]
-  @address "influxdb_token_lease_service"
+  @services [:influxdb_token_lease]
+  @address "influxdb_token_lease"
 
   @impl true
   def services() do
