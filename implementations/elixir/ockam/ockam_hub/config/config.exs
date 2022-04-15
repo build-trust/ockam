@@ -5,6 +5,9 @@ import Config
 
 config :logger, level: :info
 
-config :logger, :console, metadata: [:module, :line, :pid]
+config :logger, :console,
+  metadata: [:module, :line, :pid],
+  format_string: "$dateT$time $metadata[$level] $message\n",
+  format: {Ockam.Hub.LogFormatter, :format}
 
 import_config "#{Mix.env()}.exs"
