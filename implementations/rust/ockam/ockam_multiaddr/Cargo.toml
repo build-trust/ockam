@@ -1,0 +1,29 @@
+[package]
+name        = "ockam_multiaddr"
+version     = "0.1.0"
+authors     = ["Ockam Developers"]
+license     = "Apache-2.0"
+edition     = "2021"
+homepage    = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_multiaddr"
+repository  = "https://github.com/ockam-network/ockam"
+description = "An implementation of multiformats.io/multiaddr"
+
+[features]
+std = ["unsigned-varint/std"]
+
+[dependencies]
+once_cell       = "1.10.0"
+tinyvec         = { version = "1.5.1", features = ["alloc"] }
+unsigned-varint = "0.7.1"
+
+[dev-dependencies]
+criterion       = "0.3"
+multiaddr       = "0.14"
+ockam_multiaddr = { path = ".", features = ["std"] }
+quickcheck      = "1.0.3"
+rand            = "0.8.5"
+
+[[bench]]
+name    = "benchmark"
+harness = false
+
