@@ -15,7 +15,7 @@ indent_style = space
 indent_size = 2
 
 # Let the corresponding language formatters deal with indent size
-[{*.{ex,exs,c,h,rs,cmake,cmake.in,stderr,ts},CMakeLists.txt,Cargo.lock}]
+[{{*.{ex,exs,c,h,rs,cmake,cmake.in,stderr,ts,md},CMakeLists.txt,Cargo.lock}}]
 indent_size = unset
 
 [*.{drawio,svg}]
