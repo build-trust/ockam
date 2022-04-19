@@ -1711,7 +1711,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.42.0"
+version = "0.43.0"
 dependencies = [
  "ockam_core",
  "zeroize",
