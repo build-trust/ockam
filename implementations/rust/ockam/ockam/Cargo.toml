@@ -94,7 +94,7 @@ path = "tests/main.rs"
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.52.0", default-features = false }
-ockam_macros = { path = "../ockam_macros", version = "^0.12.0", default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.13.0", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.51.0", default-features = false }
 ockam_vault = { path = "../ockam_vault", version = "^0.44.0", default_features = false, optional = true }
 ockam_channel = { path = "../ockam_channel", version = "^0.48.0", default_features = false }

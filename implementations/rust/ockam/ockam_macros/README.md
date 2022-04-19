@@ -16,7 +16,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_macros = "0.12.0"
+ockam_macros = "0.13.0"
 ```
 
 ## Develop

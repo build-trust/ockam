@@ -44,4 +44,4 @@ tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 ockam = { path = "../ockam", default-features = false, features = ["std"] }
-ockam_macros = { path = "../ockam_macros", version = "^0.12.0"}
+ockam_macros = { path = "../ockam_macros", version = "^0.13.0"}
