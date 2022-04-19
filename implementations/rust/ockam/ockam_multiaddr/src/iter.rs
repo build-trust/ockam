@@ -1,4 +1,4 @@
-use crate::{Checked, Code, Error, Registry, DEFAULT_REGISTRY};
+use crate::{default_registry, Checked, Code, Error, Registry};
 use unsigned_varint::decode;
 
 /// Iterator over binary protocol values.
@@ -23,7 +23,7 @@ impl<'a> BytesIter<'a> {
             bytes,
             offset: 0,
             is_err: false,
-            registry: DEFAULT_REGISTRY.clone(),
+            registry: default_registry().clone(),
         }
     }
 
@@ -34,6 +34,10 @@ impl<'a> BytesIter<'a> {
             is_err: false,
             registry: reg,
         }
+    }
+
+    pub fn offset(&self) -> usize {
+        self.offset
     }
 }
 
@@ -89,7 +93,7 @@ impl<'a> StrIter<'a> {
         StrIter {
             string,
             is_err: false,
-            registry: DEFAULT_REGISTRY.clone(),
+            registry: default_registry().clone(),
         }
     }
 
@@ -132,31 +136,6 @@ impl<'a> Iterator for StrIter<'a> {
             }
         } else {
             Some(Err(Error::unregistered_prefix(prefix)))
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{BytesIter, StrIter};
-    use crate::MultiAddr;
-
-    #[test]
-    fn binary() {
-        let st = "/ip4/127.0.0.1/tcp/80/ip4/192.168.0.1/ip6/::1/tcp/443/dns/example.com/tcp/80";
-        let ma = MultiAddr::try_from(st).unwrap();
-        let it = BytesIter::new(ma.as_ref());
-        for triple in it {
-            println!("{triple:?}")
-        }
-    }
-
-    #[test]
-    fn string() {
-        let st = "/ip4/127.0.0.1/tcp/80/ip4/192.168.0.1/ip6/::1/tcp/443/dns/example.com/tcp/80";
-        let it = StrIter::new(st);
-        for pair in it {
-            println!("{pair:?}")
         }
     }
 }
