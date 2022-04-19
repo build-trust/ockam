@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.52.0 - 2022-04-19
+
+### Changed
+
+- Introduce error type
+- Build error mapping for various crates
+- Clean up ockam_core import paths
+- Update broken tests
+- Move allow and deny utils to ockam_core root
+- Rename error2 to error
+- Updated dependencies
+
+### Fixed
+
+- Update `compat::sync::Mutex` to return `Result` instead of `Option`
+- Fix error module lints
+- Errors: fix ockam_core
+- Errors: fix ockam_vault
+- Errors: fix ockam
+- Fix various clippy and rustfmt lints
+
+### Removed
+
+- Remove ockam_node errors and add new util module
+- Remove traits module from ockam_core
+- Remove thiserror as it does not support no_std
+
 ## 0.51.0 - 2022-04-11
 
 ### Changed
