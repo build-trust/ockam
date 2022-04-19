@@ -2,7 +2,9 @@ use ockam_multiaddr::proto::{Dns, Tcp};
 use ockam_multiaddr::{Code, MultiAddr, Protocol};
 use quickcheck::{quickcheck, Arbitrary, Gen};
 use rand::prelude::*;
+use std::collections::VecDeque;
 use std::net::{Ipv4Addr, Ipv6Addr};
+use std::str::FromStr;
 
 /// Newtype to implement `Arbitrary` for.
 #[derive(Debug, Clone)]
@@ -10,15 +12,63 @@ struct Addr(MultiAddr);
 
 quickcheck! {
     fn to_str_from_str(a: Addr) -> bool {
-        let s = a.0.to_string();
-        let b = MultiAddr::try_from(s.as_str()).unwrap();
-        a.0 == b
+        a.0 == MultiAddr::try_from(a.0.to_string().as_str()).unwrap()
     }
 
     fn to_bytes_from_bytes(a: Addr) -> bool {
-        let v: Vec<u8> = a.0.clone().into();
-        let b = MultiAddr::try_from(v.as_slice()).unwrap();
-        a.0 == b
+        a.0 == MultiAddr::try_from(a.0.as_ref()).unwrap()
+    }
+
+    fn operations(ops: Vec<Op>) -> bool {
+        let mut gen = rand::thread_rng();
+        let mut addr = MultiAddr::default();
+        let mut prot = VecDeque::new();
+        for o in &ops {
+            match o {
+                Op::PopBack => {
+                    addr.pop_back();
+                    prot.pop_back();
+                }
+                Op::PopFront => {
+                    addr.pop_front();
+                    prot.pop_front();
+                }
+                Op::DropLast => {
+                    addr.drop_last();
+                    prot.pop_back();
+                }
+                Op::DropFirst => {
+                    addr.drop_first();
+                    prot.pop_front();
+                }
+                Op::Clone => {
+                    addr = addr.clone()
+                }
+                Op::PushBack => match *PROTOS.choose(&mut gen).unwrap() {
+                    Tcp::CODE => {
+                        addr.push_back(Tcp(0)).unwrap();
+                        prot.push_back(Tcp::CODE);
+                    }
+                    Dns::CODE => {
+                        addr.push_back(Dns::new("localhost")).unwrap();
+                        prot.push_back(Dns::CODE);
+                    }
+                    Ipv4Addr::CODE => {
+                        addr.push_back(Ipv4Addr::from([172,0,0,2])).unwrap();
+                        prot.push_back(Ipv4Addr::CODE)
+                    }
+                    Ipv6Addr::CODE => {
+                        addr.push_back(Ipv6Addr::from_str("::1").unwrap()).unwrap();
+                        prot.push_back(Ipv6Addr::CODE)
+                    }
+                    _ => unreachable!()
+                }
+            }
+            if prot.iter().zip(addr.iter()).any(|(a, b)| *a != b.code()) {
+                return false
+            }
+        }
+        true
     }
 }
 
@@ -37,6 +87,31 @@ impl Arbitrary for Addr {
             }
         }
         Addr(a)
+    }
+}
+
+/// An operation to perform on a MultiAddr.
+#[derive(Debug, Copy, Clone)]
+enum Op {
+    PushBack,
+    PopBack,
+    PopFront,
+    DropLast,
+    DropFirst,
+    Clone,
+}
+
+impl Arbitrary for Op {
+    fn arbitrary(g: &mut Gen) -> Self {
+        *g.choose(&[
+            Op::PushBack,
+            Op::PopBack,
+            Op::PopFront,
+            Op::DropLast,
+            Op::DropFirst,
+            Op::Clone,
+        ])
+        .unwrap()
     }
 }
 
