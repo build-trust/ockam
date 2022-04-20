@@ -9,7 +9,7 @@ repository  = "https://github.com/ockam-network/ockam"
 description = "An implementation of multiformats.io/multiaddr"
 
 [features]
-std = []
+std = ["unsigned-varint/std"]
 
 [dependencies]
 once_cell       = { version = "1.10.0", default-features = false, features = ["alloc"] }

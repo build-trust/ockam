@@ -1,4 +1,4 @@
-use ockam_multiaddr::proto::{Dns, Tcp};
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Tcp};
 use ockam_multiaddr::{Code, MultiAddr, Protocol};
 use quickcheck::{quickcheck, Arbitrary, Gen};
 use rand::prelude::*;
@@ -46,20 +46,20 @@ quickcheck! {
                 }
                 Op::PushBack => match *PROTOS.choose(&mut gen).unwrap() {
                     Tcp::CODE => {
-                        addr.push_back(Tcp(0)).unwrap();
+                        addr.push_back(Tcp::new(0)).unwrap();
                         prot.push_back(Tcp::CODE);
                     }
-                    Dns::CODE => {
-                        addr.push_back(Dns::new("localhost")).unwrap();
-                        prot.push_back(Dns::CODE);
+                    DnsAddr::CODE => {
+                        addr.push_back(DnsAddr::new("localhost")).unwrap();
+                        prot.push_back(DnsAddr::CODE);
                     }
-                    Ipv4Addr::CODE => {
-                        addr.push_back(Ipv4Addr::from([172,0,0,2])).unwrap();
-                        prot.push_back(Ipv4Addr::CODE)
+                    Ip4::CODE => {
+                        addr.push_back(Ip4::new([172,0,0,2])).unwrap();
+                        prot.push_back(Ip4::CODE)
                     }
-                    Ipv6Addr::CODE => {
-                        addr.push_back(Ipv6Addr::from_str("::1").unwrap()).unwrap();
-                        prot.push_back(Ipv6Addr::CODE)
+                    Ip6::CODE => {
+                        addr.push_back(Ip6::new(Ipv6Addr::from_str("::1").unwrap())).unwrap();
+                        prot.push_back(Ip6::CODE)
                     }
                     _ => unreachable!()
                 }
@@ -72,17 +72,17 @@ quickcheck! {
     }
 }
 
-const PROTOS: &[Code] = &[Tcp::CODE, Dns::CODE, Ipv4Addr::CODE, Ipv6Addr::CODE];
+const PROTOS: &[Code] = &[Tcp::CODE, DnsAddr::CODE, Ip4::CODE, Ip6::CODE];
 
 impl Arbitrary for Addr {
     fn arbitrary(g: &mut Gen) -> Self {
         let mut a = MultiAddr::default();
         for _ in 0..g.size() {
             match *g.choose(PROTOS).unwrap() {
-                Tcp::CODE => a.push_back(Tcp(u16::arbitrary(g))).unwrap(),
-                Dns::CODE => a.push_back(Dns::new(gen_hostname())).unwrap(),
-                Ipv4Addr::CODE => a.push_back(Ipv4Addr::arbitrary(g)).unwrap(),
-                Ipv6Addr::CODE => a.push_back(Ipv6Addr::arbitrary(g)).unwrap(),
+                Tcp::CODE => a.push_back(Tcp::new(u16::arbitrary(g))).unwrap(),
+                DnsAddr::CODE => a.push_back(DnsAddr::new(gen_hostname())).unwrap(),
+                Ip4::CODE => a.push_back(Ip4::new(Ipv4Addr::arbitrary(g))).unwrap(),
+                Ip6::CODE => a.push_back(Ip6::new(Ipv6Addr::arbitrary(g))).unwrap(),
                 _ => unreachable!(),
             }
         }

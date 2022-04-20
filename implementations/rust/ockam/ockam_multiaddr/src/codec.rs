@@ -1,5 +1,5 @@
 use super::{Buffer, Checked, Code, Codec, Protocol};
-use crate::proto::{Dns, Tcp};
+use crate::proto::{DnsAddr, Tcp};
 use crate::Error;
 use core::fmt;
 use unsigned_varint::decode;
@@ -27,17 +27,17 @@ impl Codec for StdCodec {
     ) -> Result<(Checked<&'a [u8]>, &'a [u8]), Error> {
         match code {
             #[cfg(feature = "std")]
-            std::net::Ipv4Addr::CODE => {
+            crate::proto::Ip4::CODE => {
                 if input.len() < 4 {
-                    return Err(Error::required_bytes(std::net::Ipv4Addr::CODE, 4));
+                    return Err(Error::required_bytes(crate::proto::Ip4::CODE, 4));
                 }
                 let (x, y) = input.split_at(4);
                 Ok((Checked(x), y))
             }
             #[cfg(feature = "std")]
-            std::net::Ipv6Addr::CODE => {
+            crate::proto::Ip6::CODE => {
                 if input.len() < 16 {
-                    return Err(Error::required_bytes(std::net::Ipv6Addr::CODE, 16));
+                    return Err(Error::required_bytes(crate::proto::Ip6::CODE, 16));
                 }
                 let (x, y) = input.split_at(16);
                 Ok((Checked(x), y))
@@ -49,10 +49,10 @@ impl Codec for StdCodec {
                 let (x, y) = input.split_at(2);
                 Ok((Checked(x), y))
             }
-            Dns::CODE => {
+            DnsAddr::CODE => {
                 let (len, input) = decode::usize(input)?;
                 if input.len() < len {
-                    return Err(Error::required_bytes(Dns::CODE, len));
+                    return Err(Error::required_bytes(DnsAddr::CODE, len));
                 }
                 let (x, y) = input.split_at(len);
                 Ok((Checked(x), y))
@@ -64,11 +64,11 @@ impl Codec for StdCodec {
     fn is_valid_bytes(&self, code: Code, input: Checked<&[u8]>) -> bool {
         match code {
             #[cfg(feature = "std")]
-            std::net::Ipv4Addr::CODE => std::net::Ipv4Addr::read_bytes(input).is_ok(),
+            crate::proto::Ip4::CODE => crate::proto::Ip4::read_bytes(input).is_ok(),
             #[cfg(feature = "std")]
-            std::net::Ipv6Addr::CODE => std::net::Ipv6Addr::read_bytes(input).is_ok(),
+            crate::proto::Ip6::CODE => crate::proto::Ip6::read_bytes(input).is_ok(),
             Tcp::CODE => Tcp::read_bytes(input).is_ok(),
-            Dns::CODE => Dns::read_bytes(input).is_ok(),
+            DnsAddr::CODE => DnsAddr::read_bytes(input).is_ok(),
             _ => false,
         }
     }
@@ -81,21 +81,21 @@ impl Codec for StdCodec {
     ) -> Result<(), Error> {
         match prefix {
             #[cfg(feature = "std")]
-            std::net::Ipv4Addr::PREFIX => {
-                std::net::Ipv4Addr::read_str(value)?.write_bytes(buf);
+            crate::proto::Ip4::PREFIX => {
+                crate::proto::Ip4::read_str(value)?.write_bytes(buf);
                 Ok(())
             }
             #[cfg(feature = "std")]
-            std::net::Ipv6Addr::PREFIX => {
-                std::net::Ipv6Addr::read_str(value)?.write_bytes(buf);
+            crate::proto::Ip6::PREFIX => {
+                crate::proto::Ip6::read_str(value)?.write_bytes(buf);
                 Ok(())
             }
             Tcp::PREFIX => {
                 Tcp::read_str(value)?.write_bytes(buf);
                 Ok(())
             }
-            Dns::PREFIX => {
-                Dns::read_str(value)?.write_bytes(buf);
+            DnsAddr::PREFIX => {
+                DnsAddr::read_str(value)?.write_bytes(buf);
                 Ok(())
             }
             _ => Err(Error::unregistered_prefix(prefix)),
@@ -110,21 +110,21 @@ impl Codec for StdCodec {
     ) -> Result<(), Error> {
         match code {
             #[cfg(feature = "std")]
-            std::net::Ipv4Addr::CODE => {
-                std::net::Ipv4Addr::read_bytes(value)?.write_str(f)?;
+            crate::proto::Ip4::CODE => {
+                crate::proto::Ip4::read_bytes(value)?.write_str(f)?;
                 Ok(())
             }
             #[cfg(feature = "std")]
-            std::net::Ipv6Addr::CODE => {
-                std::net::Ipv6Addr::read_bytes(value)?.write_str(f)?;
+            crate::proto::Ip6::CODE => {
+                crate::proto::Ip6::read_bytes(value)?.write_str(f)?;
                 Ok(())
             }
             Tcp::CODE => {
                 Tcp::read_bytes(value)?.write_str(f)?;
                 Ok(())
             }
-            Dns::CODE => {
-                Dns::read_bytes(value)?.write_str(f)?;
+            DnsAddr::CODE => {
+                DnsAddr::read_bytes(value)?.write_str(f)?;
                 Ok(())
             }
             _ => Err(Error::unregistered(code)),

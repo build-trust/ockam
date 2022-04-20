@@ -1,6 +1,6 @@
 use super::{Code, Codec, Protocol};
 use crate::codec::StdCodec;
-use crate::proto::{Dns, Tcp};
+use crate::proto::{DnsAddr, Tcp};
 use alloc::collections::btree_map::BTreeMap;
 use alloc::sync::Arc;
 use core::fmt;
@@ -27,16 +27,16 @@ impl Default for Registry {
         let mut r = RegistryBuilder::new();
         r.register(Tcp::CODE, Tcp::PREFIX, std_codec.clone());
         #[allow(clippy::redundant_clone)]
-        r.register(Dns::CODE, Dns::PREFIX, std_codec.clone());
+        r.register(DnsAddr::CODE, DnsAddr::PREFIX, std_codec.clone());
         #[cfg(feature = "std")]
         r.register(
-            std::net::Ipv4Addr::CODE,
-            std::net::Ipv4Addr::PREFIX,
+            crate::proto::Ip4::CODE,
+            crate::proto::Ip4::PREFIX,
             std_codec.clone(),
         )
         .register(
-            std::net::Ipv6Addr::CODE,
-            std::net::Ipv6Addr::PREFIX,
+            crate::proto::Ip6::CODE,
+            crate::proto::Ip6::PREFIX,
             std_codec,
         );
         r.finish()
