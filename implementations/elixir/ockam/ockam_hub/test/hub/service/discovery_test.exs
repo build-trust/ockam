@@ -7,49 +7,40 @@ defmodule Test.Hub.Service.DiscoveryTest do
   alias Ockam.Hub.Service.Discovery.Storage
 
   test "in-memory register and list" do
-    {:ok, _pid, _address} =
+    {:ok, pid, _address} =
       Discovery.start_link(
-        address: "discovery",
+        address: "discovery_memory",
         storage: Storage.Memory
       )
 
-    on_exit(fn ->
-      Ockam.Node.stop("discovery")
-    end)
+    DiscoveryClient.register_service(["discovery_memory"], "discovered_service", ["me"], %{})
 
-    DiscoveryClient.register_service(["discovery"], "my_service", ["me"], %{})
+    {:ok, services} = DiscoveryClient.list_services([], ["discovery_memory"])
 
-    {:ok, services} = DiscoveryClient.list_services([], ["discovery"])
-
-    assert [%{id: "my_service", route: ["me"]}] = services
+    assert [%{id: "discovered_service", route: ["me"]}] = services
   end
 
   test "supervisor list" do
     supervisor = Test.Hub.Service.DiscoveryTest.Supervisor
     {:ok, sup_pid} = Supervisor.start_link([], name: supervisor, strategy: :one_for_one)
 
-    {:ok, _pid, _address} =
+    {:ok, pid, _address} =
       Discovery.start_link(
-        address: "discovery",
+        address: "discovery_supervisor",
         storage: Storage.Supervisor,
         storage_options: [supervisor: supervisor]
       )
 
-    on_exit(fn ->
-      Supervisor.stop(supervisor)
-      Ockam.Node.stop("discovery")
-    end)
-
     Supervisor.start_child(
       supervisor,
-      Supervisor.child_spec({Test.Hub.Service.DiscoveryTest.Service, [address: "my_service"]},
-        id: :my_service
+      Supervisor.child_spec({Test.Hub.Service.DiscoveryTest.Service, [address: "discovered_service"]},
+        id: :discovered_service
       )
     )
 
-    {:ok, services} = DiscoveryClient.list_services([], ["discovery"])
+    {:ok, services} = DiscoveryClient.list_services([], ["discovery_supervisor"])
 
-    assert [%{id: "my_service", route: ["my_service"]}] = services
+    assert [%{id: "discovered_service", route: ["discovered_service"]}] = services
     ## on_exit happens on a different process
     ## causing the test process to get a shutdown form the supervisor
     ## unlink to avoid error message
