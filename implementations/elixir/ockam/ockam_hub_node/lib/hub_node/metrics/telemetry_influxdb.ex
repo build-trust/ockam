@@ -1,4 +1,4 @@
-defmodule Ockam.Hub.Metrics.TelemetryInfluxDB do
+defmodule Ockam.HubNode.Metrics.TelemetryInfluxDB do
   @moduledoc """
   Telemetry InfluxDB metric reporting configuration
   """
@@ -12,7 +12,7 @@ defmodule Ockam.Hub.Metrics.TelemetryInfluxDB do
           [
             version: :v2,
             protocol: :http,
-            reporter_name: "Ockam Hub",
+            reporter_name: "Ockam Hub Node",
             host: Application.get_env(:telemetry_influxdb, :host) || "http://127.0.0.1",
             port: String.to_integer(Application.get_env(:telemetry_influxdb, :port) || "8086"),
             bucket: Application.get_env(:telemetry_influxdb, :bucket) || "ockam_hub",

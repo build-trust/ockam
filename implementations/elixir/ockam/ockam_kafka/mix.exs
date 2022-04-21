@@ -30,13 +30,14 @@ defmodule OckamKafka.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ockam, path: "../ockam"},
+      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
+      {:ex_doc, "~> 0.25", only: :dev, runtime: false},
+      {:ockam_hub, path: "../ockam_hub"},
       {:brod,
        git: "https://github.com/hairyhum/brod.git", branch: "kpro-connection-timeout-3.15"},
-      {:snappyer, "~> 1.2", override: true},
+      {:snappyer, "~> 1.2", override: true}
       # {:brod, "~> 3.14.0"},
-      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.1", only: [:dev], runtime: false}
     ]
   end
 

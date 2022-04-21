@@ -1,24 +1,8 @@
 import Config
 
-influx_token =
-  with true <- File.exists?("/mnt/secrets/influx/token"),
-       {:ok, contents} <- File.read("/mnt/secrets/influx/token"),
-       client_secret <- String.trim(contents) do
-    client_secret
-  else
-    false ->
-      System.get_env("INFLUXDB_TOKEN")
+# Ockam Hub application config
 
-    {:error, :enoent} ->
-      System.get_env("INFLUXDB_TOKEN")
-  end
-
-config :telemetry_influxdb,
-  host: System.get_env("INFLUXDB_HOST"),
-  port: System.get_env("INFLUXDB_PORT"),
-  bucket: System.get_env("INFLUXDB_BUCKET"),
-  org: System.get_env("INFLUXDB_ORG"),
-  token: influx_token
+## Token manager config
 
 token_manager_cloud_service_module =
   case System.get_env("TOKEN_MANAGER_CLOUD_SERVICE", "INFLUXDB") do
@@ -32,19 +16,21 @@ token_manager_storage_service_module =
 
 config :ockam_hub, :token_manager,
   cloud_service_module: token_manager_cloud_service_module,
-  storage_service_module: token_manager_storage_service_module
+  storage_service_module: token_manager_storage_service_module,
+  cloud_service_options: [
+    endpoint: System.get_env("HUB_NODE_INFLUXDB_ENDPOINT"),
+    token: System.get_env("HUB_NODE_INFLUXDB_TOKEN"),
+    org: System.get_env("HUB_NODE_INFLUXDB_ORG")
+  ],
+  storage_service_options: [
+    hostname: System.get_env("POSTGRES_HOST"),
+    port: String.to_integer(System.get_env("POSTGRES_PORT", "5432")),
+    username: System.get_env("POSTGRES_USERNAME"),
+    password: System.get_env("POSTGRES_PASSWORD"),
+    database: System.get_env("POSTGRES_DATABASE")
+  ]
 
-config :ockam_hub, :influxdb,
-  endpoint: System.get_env("HUB_NODE_INFLUXDB_ENDPOINT"),
-  token: System.get_env("HUB_NODE_INFLUXDB_TOKEN"),
-  org: System.get_env("HUB_NODE_INFLUXDB_ORG")
-
-config :ockam_hub, :postgres,
-  hostname: System.get_env("POSTGRES_HOST"),
-  port: String.to_integer(System.get_env("POSTGRES_PORT", "5432")),
-  username: System.get_env("POSTGRES_USERNAME"),
-  password: System.get_env("POSTGRES_PASSWORD"),
-  database: System.get_env("POSTGRES_DATABASE")
+## Transports config
 
 config :ockam_hub,
   tcp_transport_port: 4000,
@@ -158,6 +144,32 @@ config :ockam_hub,
     :tracing
   ]
 
+# Ockam Hub Node application config
+
+## InfluxDB metrics config
+
+influx_token =
+  with true <- File.exists?("/mnt/secrets/influx/token"),
+       {:ok, contents} <- File.read("/mnt/secrets/influx/token"),
+       client_secret <- String.trim(contents) do
+    client_secret
+  else
+    false ->
+      System.get_env("INFLUXDB_TOKEN")
+
+    {:error, :enoent} ->
+      System.get_env("INFLUXDB_TOKEN")
+  end
+
+config :telemetry_influxdb,
+  host: System.get_env("INFLUXDB_HOST"),
+  port: System.get_env("INFLUXDB_PORT"),
+  bucket: System.get_env("INFLUXDB_BUCKET"),
+  org: System.get_env("INFLUXDB_ORG"),
+  token: influx_token
+
+## Auto cleanup config
+
 cleanup_crontab = System.get_env("CLEANUP_CRONTAB")
 
 cleanup_idle_timeout =
@@ -181,9 +193,18 @@ cleanup_idle_timeout =
 
 cleanup_kafka_topics = System.get_env("CLEANUP_KAFKA_TOPICS", "false") == "true"
 
-config :ockam_hub,
+config :ockam_hub_node,
   cleanup: [
     crontab: cleanup_crontab,
     idle_timeout: cleanup_idle_timeout,
     cleanup_kafka_topics: cleanup_kafka_topics
   ]
+
+## Logger config
+
+config :logger, level: :info
+
+config :logger, :console,
+  metadata: [:module, :line, :pid],
+  format_string: "$dateT$time $metadata[$level] $message\n",
+  format: {Ockam.HubNode.LogFormatter, :format}

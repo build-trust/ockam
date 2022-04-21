@@ -12,10 +12,10 @@ defmodule Ockam.TokenLeaseManager.CloudService.Influxdb do
   @http_not_found 404
 
   @impl true
-  def handle_init(_options) do
-    endpoint = Application.get_env(:ockam_hub, :influxdb)[:endpoint]
-    token = Application.get_env(:ockam_hub, :influxdb)[:token]
-    org = Application.get_env(:ockam_hub, :influxdb)[:org]
+  def handle_init(options) do
+    endpoint = options[:endpoint]
+    token = options[:token]
+    org = options[:org]
     {:ok, [endpoint: endpoint, token: token, auth_url: @auth_url, org: org]}
   end
 

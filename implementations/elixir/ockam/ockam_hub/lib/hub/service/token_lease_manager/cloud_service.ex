@@ -27,7 +27,14 @@ defmodule Ockam.TokenLeaseManager.CloudService do
 
       @name :token_cloud_service
 
-      def start_link(), do: GenServer.start_link(__MODULE__, [], name: @name)
+      def start_link() do
+        options =
+          Application.get_env(:ockam_hub, :token_manager, [])
+          |> Keyword.get(:cloud_service_options, [])
+
+        GenServer.start_link(__MODULE__, options, name: @name)
+      end
+
       def create(options), do: GenServer.call(@name, {:create, options})
       def get(lease_id), do: GenServer.call(@name, {:get, lease_id})
       def revoke(lease_id), do: GenServer.call(@name, {:revoke, lease_id})

@@ -1,4 +1,3 @@
-## TODO: this needs to be moved to ockam_kafka after we create ockam_hub_core
 defmodule Ockam.Kafka.Hub.Service.Provider do
   @moduledoc """
   Implementation for Ockam.Hub.Service.Provider

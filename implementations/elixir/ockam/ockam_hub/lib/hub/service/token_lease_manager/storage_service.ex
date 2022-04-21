@@ -21,11 +21,17 @@ defmodule Ockam.TokenLeaseManager.StorageService do
 
       @name :storage_service
 
-      def start_link({token_cloud_service, token_cloud_service_address}),
-        do:
-          GenServer.start_link(__MODULE__, {token_cloud_service, token_cloud_service_address},
-            name: @name
-          )
+      def start_link({token_cloud_service, token_cloud_service_address}) do
+        options =
+          Application.get_env(:ockam_hub, :token_manager, [])
+          |> Keyword.get(:storage_service_options, [])
+
+        GenServer.start_link(
+          __MODULE__,
+          {token_cloud_service, token_cloud_service_address, options},
+          name: @name
+        )
+      end
 
       def save(lease), do: GenServer.call(@name, {:save, lease})
       def get(lease_id), do: GenServer.call(@name, {:get, lease_id})

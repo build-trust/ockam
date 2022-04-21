@@ -1,4 +1,4 @@
-defmodule Ockam.Hub.Cleanup.WorkerCleanup do
+defmodule Ockam.HubNode.Cleanup.WorkerCleanup do
   @moduledoc """
   Helper functions to clean up workers by condition
   """

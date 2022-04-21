@@ -1,4 +1,4 @@
-defmodule Ockam.Hub.Cleanup.Kafka.TopicCleanup do
+defmodule Ockam.HubNode.Cleanup.Kafka.TopicCleanup do
   @moduledoc """
   Helper module to cleanup idle kafka topics
   """

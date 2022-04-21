@@ -187,7 +187,7 @@ defmodule Ockam.Hub.Service.Provider do
   end
 
   def parse_services_json(json) do
-    case Jason.decode(json, keys: :atoms) do
+    case Poison.decode(json, keys: :atoms) do
       {:ok, services} ->
         ## TODO: validate services
         services

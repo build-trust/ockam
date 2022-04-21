@@ -1,4 +1,4 @@
-defmodule Ockam.Hub.TelemetryPoller do
+defmodule Ockam.HubNode.Metrics.TelemetryPoller do
   @moduledoc """
   Telemetry poller callbacks to collect information about workers and transports
   """

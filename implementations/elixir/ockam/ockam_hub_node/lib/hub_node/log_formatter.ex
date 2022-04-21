@@ -1,4 +1,4 @@
-defmodule Ockam.Hub.LogFormatter do
+defmodule Ockam.HubNode.LogFormatter do
   @moduledoc """
   Formats lines using Logger.Formatter, but replaces line breaks in log messages with `\n`
 
@@ -7,7 +7,7 @@ defmodule Ockam.Hub.LogFormatter do
 
   Usage:
   config :logger, :console,
-    format: {Ockam.Hub.LogFormatter, :format} # Use this formatter
+    format: {Ockam.HubNode.LogFormatter, :format} # Use this formatter
     format_string: "$time $metadata[$level] $message\n" # Pattern to format the log entry
 
   """

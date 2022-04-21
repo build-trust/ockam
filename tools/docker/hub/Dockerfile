@@ -7,12 +7,12 @@ COPY . /work
 RUN set -xe; \
     cd implementations/elixir; \
     ../../gradlew build; \
-    cd ockam/ockam_hub; \
+    cd ockam/ockam_hub_node; \
     MIX_ENV=prod mix release;
 
 # Stage 2
 FROM ${BASE_IMAGE}
-COPY --from=0 /work/implementations/elixir/ockam/ockam_hub/_build/prod/rel/ockam_hub /opt/ockam_hub
+COPY --from=0 /work/implementations/elixir/ockam/ockam_hub_node/_build/prod/rel/ockam_hub_node /opt/ockam_hub_node
 
-ENTRYPOINT ["/opt/ockam_hub/bin/ockam_hub"]
+ENTRYPOINT ["/opt/ockam_hub_node/bin/ockam_hub_node"]
 CMD ["start"]

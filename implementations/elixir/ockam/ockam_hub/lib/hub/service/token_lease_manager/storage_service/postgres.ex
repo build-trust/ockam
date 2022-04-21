@@ -8,10 +8,9 @@ defmodule Ockam.TokenLeaseManager.StorageService.Postgres do
   @table "leases"
 
   @impl true
-  def handle_init({token_cloud_service, token_cloud_service_address}) do
+  def handle_init({token_cloud_service, token_cloud_service_address, options}) do
     opts =
-      :ockam_hub
-      |> Application.get_env(:postgres)
+      options
       |> Keyword.put(:token_cloud_service, token_cloud_service)
       |> Keyword.put(:token_cloud_service_address, token_cloud_service_address)
 

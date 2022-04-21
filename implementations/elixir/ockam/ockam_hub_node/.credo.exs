@@ -41,7 +41,7 @@
         ## Design Checks
         #
         {Credo.Check.Design.AliasUsage,
-         [priority: :low, if_nested_deeper_than: 2, if_called_more_often_than: 0]},
+         [priority: :low, if_nested_deeper_than: 2, if_called_more_often_than: 1]},
         {Credo.Check.Design.TagTODO, false},
         {Credo.Check.Design.TagFIXME, []},
 
@@ -56,7 +56,7 @@
         {Credo.Check.Readability.ModuleDoc, []},
         {Credo.Check.Readability.ModuleNames, []},
         {Credo.Check.Readability.ParenthesesInCondition, []},
-        {Credo.Check.Readability.ParenthesesOnZeroArityDefs, []},
+        {Credo.Check.Readability.ParenthesesOnZeroArityDefs, false},
         {Credo.Check.Readability.PredicateFunctionNames, []},
         {Credo.Check.Readability.PreferImplicitTry, []},
         {Credo.Check.Readability.RedundantBlankLines, []},
@@ -115,7 +115,7 @@
         {Credo.Check.Readability.AliasAs, false},
         {Credo.Check.Readability.MultiAlias, []},
         {Credo.Check.Readability.Specs, false},
-        {Credo.Check.Readability.SinglePipe, []},
+        {Credo.Check.Readability.SinglePipe, false},
         {Credo.Check.Readability.WithCustomTaggedTuple, []},
         {Credo.Check.Refactor.ABCSize, false},
         {Credo.Check.Refactor.AppendSingleItem, []},
@@ -126,7 +126,7 @@
         {Credo.Check.Refactor.VariableRebinding, false},
         {Credo.Check.Warning.LeakyEnvironment, false},
         {Credo.Check.Warning.MapGetUnsafePass, []},
-        {Credo.Check.Warning.UnsafeToAtom, []}
+        {Credo.Check.Warning.UnsafeToAtom, false}
 
         #
         # Custom checks can be created using `mix credo.gen.check`.

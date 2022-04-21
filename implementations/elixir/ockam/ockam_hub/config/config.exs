@@ -3,11 +3,22 @@
 
 import Config
 
-config :logger, level: :info
+config :ockam_hub,
+  tcp_transport_port: 4000,
+  udp_transport_port: 7000
 
-config :logger, :console,
-  metadata: [:module, :line, :pid],
-  format_string: "$dateT$time $metadata[$level] $message\n",
-  format: {Ockam.Hub.LogFormatter, :format}
+config :ockam_hub,
+  service_providers: [
+    # default services
+    Ockam.Hub.Service.Provider.Routing,
+    # stream services
+    Ockam.Hub.Service.Provider.Stream,
+    # token lease services
+    Ockam.TokenLeaseManager.Hub.Service.Provider,
+    # secure channel services
+    Ockam.Hub.Service.Provider.SecureChannel,
+    # discovery service
+    Ockam.Hub.Service.Provider.Discovery
+  ]
 
 import_config "#{Mix.env()}.exs"

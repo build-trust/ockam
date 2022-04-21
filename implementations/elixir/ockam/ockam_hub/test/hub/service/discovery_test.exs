@@ -33,7 +33,8 @@ defmodule Test.Hub.Service.DiscoveryTest do
 
     Supervisor.start_child(
       supervisor,
-      Supervisor.child_spec({Test.Hub.Service.DiscoveryTest.Service, [address: "discovered_service"]},
+      Supervisor.child_spec(
+        {Test.Hub.Service.DiscoveryTest.Service, [address: "discovered_service"]},
         id: :discovered_service
       )
     )

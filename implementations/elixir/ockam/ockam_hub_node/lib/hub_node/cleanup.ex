@@ -1,10 +1,10 @@
-defmodule Ockam.Hub.Cleanup do
+defmodule Ockam.HubNode.Cleanup do
   @moduledoc """
   Worker and topic cleanup helpers.
   """
 
-  alias Ockam.Hub.Cleanup.Kafka.TopicCleanup
-  alias Ockam.Hub.Cleanup.WorkerCleanup
+  alias Ockam.HubNode.Cleanup.Kafka.TopicCleanup
+  alias Ockam.HubNode.Cleanup.WorkerCleanup
 
   require Logger
 
