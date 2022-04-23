@@ -1,7 +1,5 @@
-//! Ockam is a library for end-to-end encryption and mutual authentication for
-//! distributed applications.
-//!
-//! For a comprehensive introduction to Ockam, see <https://www.ockam.io/learn>.
+//! End-to-end encryption and mutual authentication for distributed applications.
+
 #![deny(unsafe_code)]
 #![warn(
     missing_docs,
