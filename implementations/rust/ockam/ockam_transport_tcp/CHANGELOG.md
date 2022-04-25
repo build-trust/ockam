@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.49.0 - 2022-04-25
+
+### Added
+
+- Add tests for `ockam_transport_tcp`
+- Add documentation for `ockam_transport_tcp`
+- Add "crate" attribute to async_try_clone_derive macro
+
+### Changed
+
+- Friendlify code organisation of `ockam_transport_tcp::TcpRouter`
+- Friendlify code organisation of `ockam_transport_tcp::TcpRouterHandle`
+- Friendlify code organisation of `ockam_transport_tcp::TcpListenProcessor`
+- Friendlify code organisation of `ockam_transport_tcp::TcpSendWorker`
+- Move `TcpRouter` into its own file
+- Updated dependencies
+
+### Fixed
+
+- Fixes #2630
+
 ## 0.48.0 - 2022-04-19
 
 ### Changed
