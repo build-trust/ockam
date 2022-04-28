@@ -356,6 +356,19 @@ impl MultiAddr {
         Ok(())
     }
 
+    /// Add a protocol to the front of this address.
+    pub fn push_front<'a, P: Protocol<'a>>(&mut self, p: P) -> Result<(), Error> {
+        if self.reg.get_by_code(P::CODE).is_none() {
+            return Err(Error::unregistered(P::CODE));
+        }
+        debug_assert!(self.reg.get_by_prefix(P::PREFIX).is_some());
+        let mut dat = TinyVec::new();
+        p.write_bytes(&mut dat);
+        dat.extend_from_slice(&self.dat); // TODO
+        self.dat = dat;
+        Ok(())
+    }
+
     /// Remove and return the last protocol component.
     ///
     /// O(n) in the number of protocols.

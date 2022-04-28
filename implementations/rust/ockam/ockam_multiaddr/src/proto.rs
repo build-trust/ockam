@@ -3,7 +3,7 @@ use crate::Error;
 use alloc::borrow::Cow;
 use core::fmt;
 use core::ops::Deref;
-use core::str::FromStr;
+use core::str::{self, FromStr};
 use unsigned_varint::encode;
 
 /// An IPv4 address.
@@ -180,7 +180,7 @@ impl<'a> Protocol<'a> for DnsAddr<'a> {
     }
 
     fn read_bytes(input: Checked<&'a [u8]>) -> Result<Self, Error> {
-        let s = core::str::from_utf8(&input).map_err(Error::message)?;
+        let s = str::from_utf8(&input).map_err(Error::message)?;
         Ok(DnsAddr(Cow::Borrowed(s)))
     }
 
@@ -227,7 +227,7 @@ impl<'a> Protocol<'a> for Ockam<'a> {
     }
 
     fn read_bytes(input: Checked<&'a [u8]>) -> Result<Self, Error> {
-        let s = core::str::from_utf8(&input).map_err(Error::message)?;
+        let s = str::from_utf8(&input).map_err(Error::message)?;
         Ok(Ockam(Cow::Borrowed(s)))
     }
 

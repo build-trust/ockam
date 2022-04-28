@@ -17,13 +17,8 @@ tinyvec         = { version = "1.5.1", features = ["alloc"] }
 unsigned-varint = "0.7.1"
 
 [dev-dependencies]
-criterion       = "0.3"
 multiaddr       = "0.14"
 ockam_multiaddr = { path = ".", features = ["std"] }
 quickcheck      = "1.0.3"
 rand            = "0.8.5"
-
-[[bench]]
-name    = "benchmark"
-harness = false
 
