@@ -6,6 +6,7 @@ use core::ops::Deref;
 use core::str::FromStr;
 use unsigned_varint::encode;
 
+/// An IPv4 address.
 #[cfg(feature = "std")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ip4(pub std::net::Ipv4Addr);
@@ -56,6 +57,7 @@ impl Protocol<'_> for Ip4 {
     }
 }
 
+/// An IPv6 address.
 #[cfg(feature = "std")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ip6(pub std::net::Ipv6Addr);
@@ -106,6 +108,7 @@ impl Protocol<'_> for Ip6 {
     }
 }
 
+/// A TCP port number.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Tcp(pub u16);
 
@@ -150,6 +153,7 @@ impl Protocol<'_> for Tcp {
     }
 }
 
+/// A DNS address.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DnsAddr<'a>(pub Cow<'a, str>);
 
@@ -178,6 +182,53 @@ impl<'a> Protocol<'a> for DnsAddr<'a> {
     fn read_bytes(input: Checked<&'a [u8]>) -> Result<Self, Error> {
         let s = core::str::from_utf8(&input).map_err(Error::message)?;
         Ok(DnsAddr(Cow::Borrowed(s)))
+    }
+
+    fn write_str(&self, f: &mut fmt::Formatter) -> Result<(), Error> {
+        write!(f, "/{}/{}", Self::PREFIX, self.0)?;
+        Ok(())
+    }
+
+    fn write_bytes(&self, buf: &mut dyn Buffer) {
+        let mut b = encode::u32_buffer();
+        let uvi = encode::u32(Self::CODE.into(), &mut b);
+        buf.extend_with(uvi);
+        let mut b = encode::usize_buffer();
+        let uvi = encode::usize(self.0.len(), &mut b);
+        buf.extend_with(uvi);
+        buf.extend_with(self.0.as_bytes())
+    }
+}
+
+/// A local Ockam worker address.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Ockam<'a>(Cow<'a, str>);
+
+impl<'a> Ockam<'a> {
+    pub fn new<S: Into<Cow<'a, str>>>(s: S) -> Self {
+        Ockam(s.into())
+    }
+}
+
+impl Deref for Ockam<'_> {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a> Protocol<'a> for Ockam<'a> {
+    const CODE: Code = Code::new(62526);
+    const PREFIX: &'static str = "ockam";
+
+    fn read_str(input: Checked<&'a str>) -> Result<Self, Error> {
+        Ok(Ockam(Cow::Borrowed(input.0)))
+    }
+
+    fn read_bytes(input: Checked<&'a [u8]>) -> Result<Self, Error> {
+        let s = core::str::from_utf8(&input).map_err(Error::message)?;
+        Ok(Ockam(Cow::Borrowed(s)))
     }
 
     fn write_str(&self, f: &mut fmt::Formatter) -> Result<(), Error> {
