@@ -1,6 +1,6 @@
 use super::{Code, Codec, Protocol};
 use crate::codec::StdCodec;
-use crate::proto::{DnsAddr, Tcp};
+use crate::proto::{DnsAddr, Ockam, Tcp};
 use alloc::collections::btree_map::BTreeMap;
 use alloc::sync::Arc;
 use core::fmt;
@@ -26,8 +26,9 @@ impl Default for Registry {
         let std_codec = Arc::new(StdCodec);
         let mut r = RegistryBuilder::new();
         r.register(Tcp::CODE, Tcp::PREFIX, std_codec.clone());
-        #[allow(clippy::redundant_clone)]
         r.register(DnsAddr::CODE, DnsAddr::PREFIX, std_codec.clone());
+        #[allow(clippy::redundant_clone)]
+        r.register(Ockam::CODE, Ockam::PREFIX, std_codec.clone());
         #[cfg(feature = "std")]
         r.register(
             crate::proto::Ip4::CODE,
