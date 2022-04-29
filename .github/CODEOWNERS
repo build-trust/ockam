@@ -1,25 +1,5 @@
-# Request reviews from Mrinal unless one of the specific rules later in this file take precedence.
-*                        @mrinalwadhwa
-
-# Request reviews from elixir-reviewers for any elixir implementation changes.
-*.ex                     @ockam-network/reviewers-elixir
-*.exs                    @ockam-network/reviewers-elixir
-/implementations/elixir/ @ockam-network/reviewers-elixir
-
-# Request reviews from rust-reviewers for any rust implementation changes.
-*.rs                     @ockam-network/reviewers-rust
-*.toml                   @ockam-network/reviewers-rust
-/implementations/rust/   @ockam-network/reviewers-rust
-
-# Request reviews from tools-reviewers for any tools changes.
-Dockerfile               @ockam-network/reviewers-tools
-/.github/workflows/      @ockam-network/reviewers-tools
-/.github/actions/        @ockam-network/reviewers-tools
-/tools/                  @ockam-network/reviewers-tools
-/.vim/                   @ockam-network/reviewers-tools
-/.vscode/                @ockam-network/reviewers-tools
-/.devcontainer/          @ockam-network/reviewers-tools
-*.gradle                 @ockam-network/reviewers-tools
+# Request reviews from the approvers team
+* @ockam-network/approvers
 
 # References on updating this file:
 # https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners
