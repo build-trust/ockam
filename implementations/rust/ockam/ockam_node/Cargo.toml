@@ -29,7 +29,7 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "tokio", "tracing-subscriber", "alloc", "futures/std"]
+std = ["ockam_core/std", "tokio", "tracing-subscriber", "tracing-error", "alloc", "futures/std"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
@@ -54,6 +54,7 @@ tokio = { version = "1.8", default-features = false, optional = true, features =
 ] }
 futures = { version = "0.3.21", default-features = false }
 tracing = { version = "0.1", default_features = false }
+tracing-error = { version = "0.2", optional = true }
 tracing-subscriber = { version = "0.3", features = [
     "fmt",
     "env-filter",

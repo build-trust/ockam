@@ -34,6 +34,7 @@ dirs = "4.0.0"
 clap = { version = "3", features = ["derive", "cargo"] }
 tracing = { version = "0.1.31", features = ["attributes"] }
 tracing-subscriber = "0.3.9"
+tracing-error = "0.2"
 tokio = { version="1", features = ["full"] }
 async-trait = "0.1"
 hex = "0.4"

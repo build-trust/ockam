@@ -1621,6 +1621,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+ "tracing-error",
  "tracing-subscriber",
 ]
 
@@ -1762,6 +1763,7 @@ dependencies = [
  "serde_bare",
  "tokio",
  "tracing",
+ "tracing-error",
  "tracing-subscriber",
 ]
 

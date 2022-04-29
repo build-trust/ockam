@@ -35,7 +35,7 @@ pub fn start_node() -> (Context, Executor) {
 fn setup_tracing() {
     #[cfg(feature = "std")]
     {
-        use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
+        use tracing_subscriber::{filter::LevelFilter, fmt, prelude::*, EnvFilter};
         static ONCE: std::sync::Once = std::sync::Once::new();
         ONCE.call_once(|| {
             let filter = EnvFilter::try_from_env("OCKAM_LOG").unwrap_or_else(|_| {
@@ -44,7 +44,11 @@ fn setup_tracing() {
                     .add_directive("ockam_node=info".parse().unwrap())
             });
             // Ignore failure, since we may init externally.
-            let _ = fmt().with_env_filter(filter).try_init();
+            let _ = tracing_subscriber::registry()
+                .with(filter)
+                .with(tracing_error::ErrorLayer::default())
+                .with(fmt::layer())
+                .try_init();
         });
     }
 }
