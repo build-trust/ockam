@@ -193,6 +193,7 @@ fn message(verbose: bool, e: impl std::fmt::Display + std::fmt::Debug) -> String
 
 // Not really ideal, but fine for now.
 fn init_logging(verbose: u8) {
+    use tracing_subscriber::prelude::*;
     let ockam_crates = [
         "ockam",
         "ockam_node",
@@ -222,7 +223,13 @@ fn init_logging(verbose: u8) {
                 .parse_lossy(""),
         },
     };
-    if fmt().with_env_filter(filter).try_init().is_err() {
+
+    let result = tracing_subscriber::registry()
+        .with(filter)
+        .with(tracing_error::ErrorLayer::default())
+        .with(fmt::layer())
+        .try_init();
+    if result.is_err() {
         tracing::warn!("Failed to initialise logging.");
     }
 }
