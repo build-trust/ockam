@@ -10,6 +10,7 @@ use ockam_core::{Address, Result};
 ///
 /// For every ACK we re-test whether the current cluster has stopped.
 /// If not, we do nothing. If so, we trigger the next cluster to stop.
+#[tracing::instrument(name = "shutdown::ack", skip_all, ret, err, fields(addr = ?addr))]
 pub(super) async fn ack(router: &mut Router, addr: Address) -> Result<bool> {
     debug!("Handling shutdown ACK for {}", addr);
 
@@ -25,6 +26,7 @@ pub(super) async fn ack(router: &mut Router, addr: Address) -> Result<bool> {
     stop_next_cluster(router).await
 }
 
+#[tracing::instrument(name = "shutdown::ack", skip_all, ret, err)]
 async fn stop_next_cluster(r: &mut Router) -> Result<bool> {
     match r.map.next_cluster() {
         Some(mut vec) => {

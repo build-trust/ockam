@@ -7,6 +7,7 @@ use crate::{
 use ockam_core::{AddressSet, Result};
 
 /// Execute a `StartWorker` command
+#[tracing::instrument(name = "start_worker", skip_all, err, fields(addrs = ?addrs))]
 pub(super) async fn exec(
     router: &mut Router,
     addrs: AddressSet,
@@ -71,6 +72,7 @@ async fn start(
     Ok(())
 }
 
+#[tracing::instrument(name = "start_worker::reject", skip_all, err)]
 async fn reject(reply: &Sender<NodeReplyResult>) -> Result<()> {
     trace!("StartWorker command rejected: node shutting down");
     reply

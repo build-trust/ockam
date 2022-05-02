@@ -20,16 +20,19 @@ pub trait Worker: Send + 'static {
     type Context: Send + 'static;
 
     /// Override initialisation behaviour.
+    #[tracing::instrument(skip_all, fields(worker_type = core::any::type_name::<Self>()))]
     async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
         Ok(())
     }
 
     /// Override shutdown behaviour.
+    #[tracing::instrument(skip_all, fields(worker_type = core::any::type_name::<Self>()))]
     async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
         Ok(())
     }
 
     /// Try to open and handle a typed message.
+    #[tracing::instrument(skip_all, fields(worker_type = core::any::type_name::<Self>()))]
     async fn handle_message(
         &mut self,
         _context: &mut Self::Context,

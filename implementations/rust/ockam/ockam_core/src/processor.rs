@@ -10,11 +10,13 @@ pub trait Processor: Send + 'static {
     type Context: Send + 'static;
 
     /// Define the Processor Worker initialisation behaviour.
+    #[tracing::instrument(skip_all, fields(worker_type = core::any::type_name::<Self>()))]
     async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
         Ok(())
     }
 
     /// Define the Processor Worker shutdown behaviour.
+    #[tracing::instrument(skip_all, fields(worker_type = core::any::type_name::<Self>()))]
     async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
         Ok(())
     }
@@ -31,6 +33,7 @@ pub trait Processor: Send + 'static {
     ///
     /// When in doubt, prefer async `.await` operations where they are
     /// available.
+    #[tracing::instrument(skip_all, fields(worker_type = core::any::type_name::<Self>()))]
     async fn process(&mut self, _context: &mut Self::Context) -> Result<bool> {
         Ok(false)
     }

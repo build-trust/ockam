@@ -66,6 +66,7 @@ where
     ///
     /// Report errors as they occur, and signal whether the loop should
     /// continue running or not
+    #[tracing::instrument(skip_all, ret, err, fields(message_type = core::any::type_name::<M>(), worker_type = core::any::type_name::<W>()))]
     async fn recv_message(&mut self) -> Result<bool> {
         let RelayMessage { addr, data, .. } = match self.ctx.mailbox_next().await? {
             Some(msg) => msg,
@@ -111,6 +112,7 @@ where
 
     #[cfg_attr(not(feature = "std"), allow(unused_mut))]
     #[cfg_attr(not(feature = "std"), allow(unused_variables))]
+    #[tracing::instrument(skip_all, fields(message_type = core::any::type_name::<M>(), worker_type = core::any::type_name::<W>()))]
     async fn run(mut self, mut ctrl_rx: Receiver<CtrlSignal>) {
         match self.worker.initialize(&mut self.ctx).await {
             Ok(()) => {}
@@ -191,6 +193,7 @@ where
     }
 
     /// Build and spawn a new worker relay, returning a send handle to it
+    #[tracing::instrument(skip_all, fields(ctx.addr = ?ctx.address(), message_type = core::any::type_name::<M>(), worker_type = core::any::type_name::<W>()))]
     pub(crate) fn init(rt: &Runtime, worker: W, ctx: Context, ctrl_rx: Receiver<CtrlSignal>) {
         let relay = WorkerRelay::<W, M>::new(worker, ctx);
         rt.spawn(relay.run(ctrl_rx));

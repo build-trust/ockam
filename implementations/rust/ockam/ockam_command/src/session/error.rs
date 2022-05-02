@@ -28,6 +28,7 @@ impl fmt::Display for SessionManagementError {
 impl StdError for SessionManagementError {}
 
 impl From<SessionManagementError> for ockam_core::Error {
+    #[track_caller]
     fn from(e: SessionManagementError) -> ockam_core::Error {
         ockam_core::Error::new(Origin::Application, Kind::Misuse, e)
     }

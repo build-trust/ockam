@@ -81,6 +81,7 @@ pub(crate) struct SecureChannelWorker<I: IdentityTrait> {
 }
 
 impl<I: IdentityTrait> SecureChannelWorker<I> {
+    #[tracing::instrument(skip_all, err, fields(ctx.addr = ?ctx.address(), route = ?route, timeout = ?timeout))]
     pub async fn create_initiator(
         ctx: &Context,
         route: Route,
@@ -147,6 +148,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         Ok(self_local_address)
     }
 
+    #[tracing::instrument(skip_all, err, fields(ctx.addr = ?ctx.address(), listener_address = ?listener_address))]
     pub(crate) async fn create_responder(
         ctx: &Context,
         identity: I,
@@ -209,6 +211,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, err, fields(initiator = ?self.is_initiator))]
     async fn handle_kex_done(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
@@ -244,6 +247,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn handle_send_identity(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
@@ -338,6 +342,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         }
     }
 
+    #[tracing::instrument(skip_all, err, fields(initiator = ?self.is_initiator))]
     async fn handle_receive_identity(
         &mut self,
         _ctx: &mut <Self as Worker>::Context,
@@ -417,6 +422,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         }
     }
 
+    #[tracing::instrument(skip_all, err, fields(initiator = ?self.is_initiator))]
     fn take_state(&mut self) -> Result<State<I>> {
         if let Some(s) = self.state.take() {
             Ok(s)
@@ -425,6 +431,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         }
     }
 
+    #[tracing::instrument(skip_all, err, fields(initiator = ?self.is_initiator))]
     async fn handle_encrypt(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
@@ -465,6 +472,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, err, fields(initiator = ?self.is_initiator))]
     async fn handle_decrypt(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
@@ -529,6 +537,7 @@ impl<I: IdentityTrait> Worker for SecureChannelWorker<I> {
     type Message = Any;
     type Context = Context;
 
+    #[tracing::instrument(skip_all, err, fields(initiator = ?self.is_initiator))]
     async fn initialize(&mut self, _ctx: &mut Self::Context) -> Result<()> {
         if self.is_initiator {
             match self.take_state()? {
@@ -549,6 +558,7 @@ impl<I: IdentityTrait> Worker for SecureChannelWorker<I> {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, err, fields(initiator = ?self.is_initiator))]
     async fn handle_message(
         &mut self,
         ctx: &mut Self::Context,

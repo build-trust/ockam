@@ -10,6 +10,7 @@ impl Worker for SessionResponder {
     type Message = SessionMsg;
     type Context = Context;
 
+    #[tracing::instrument(skip_all, err)]
     async fn handle_message(
         &mut self,
         ctx: &mut Self::Context,

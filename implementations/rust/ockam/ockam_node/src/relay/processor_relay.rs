@@ -20,6 +20,7 @@ where
 
     #[cfg_attr(not(feature = "std"), allow(unused_mut))]
     #[cfg_attr(not(feature = "std"), allow(unused_variables))]
+    #[tracing::instrument(skip_all, fields(addr = ?self.ctx.address(), processor_type = core::any::type_name::<P>()))]
     async fn run(self, mut ctrl_rx: Receiver<CtrlSignal>) {
         let mut ctx = self.ctx;
         let mut processor = self.processor;
@@ -92,6 +93,7 @@ where
     }
 
     /// Create a processor relay with two node contexts
+    #[tracing::instrument(skip_all, fields(ctx.addr = ?ctx.address(), processor_type = core::any::type_name::<P>()))]
     pub(crate) fn init(rt: &Runtime, processor: P, ctx: Context, ctrl_rx: Receiver<CtrlSignal>) {
         let relay = ProcessorRelay::<P>::new(processor, ctx);
         rt.spawn(relay.run(ctrl_rx));

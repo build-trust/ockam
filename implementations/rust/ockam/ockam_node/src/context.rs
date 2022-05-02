@@ -47,6 +47,14 @@ pub struct Context {
     access_control: Box<dyn AccessControl>,
 }
 
+impl core::fmt::Debug for Context {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Context")
+            .field("address", &self.address)
+            .finish_non_exhaustive()
+    }
+}
+
 #[ockam_core::async_trait]
 impl AsyncTryClone for Context {
     async fn async_try_clone(&self) -> Result<Self> {
@@ -798,6 +806,7 @@ impl Context {
     }
 
     /// This function is called by Relay to indicate a worker is initialised
+    #[tracing::instrument(skip_all, err, fields(addr = ?self.address()))]
     pub(crate) async fn set_ready(&mut self) -> Result<()> {
         self.sender
             .send(NodeMessage::set_ready(self.address()))

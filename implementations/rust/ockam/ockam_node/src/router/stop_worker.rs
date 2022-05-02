@@ -6,6 +6,7 @@ use crate::{
 };
 use ockam_core::{Address, Result};
 
+#[tracing::instrument(name = "stop_worker", skip_all, err, fields(addr = ?addr))]
 pub(super) async fn exec(
     router: &mut Router,
     addr: &Address,

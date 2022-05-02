@@ -37,6 +37,7 @@ impl InletSessionManager {
 
 #[ockam::worker]
 impl SessionManager for InletSessionManager {
+    #[tracing::instrument(skip_all, ret(Debug), err, fields(timeout = ?timeout, channel_addr, inlet_addr))]
     async fn start_session(&mut self, _ctx: &Context, timeout: Duration) -> Result<Route> {
         let channel = self
             .identity
@@ -66,6 +67,7 @@ impl SessionManager for InletSessionManager {
         Ok(responder_route)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn stop_session(&mut self, _ctx: &Context) -> Result<()> {
         if let Some(existing_session) = self.existing_session.take() {
             tracing::info!("Stopping session {:?}", existing_session);

@@ -30,6 +30,7 @@ impl<I: IdentityTrait, V: XXVault> Worker for IdentityChannelListener<I, V> {
     type Message = CreateResponderChannelMessage;
     type Context = Context;
 
+    #[tracing::instrument(skip_all, err)]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         let new_key_exchanger = XXNewKeyExchanger::new(self.vault.async_try_clone().await?);
         let vault = self.vault.async_try_clone().await?;
@@ -44,6 +45,7 @@ impl<I: IdentityTrait, V: XXVault> Worker for IdentityChannelListener<I, V> {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         // Ignore the error in case node is shutting down and this listener was stopped already
         let _ = ctx.stop_worker(self.listener_address.clone()).await;
@@ -51,6 +53,7 @@ impl<I: IdentityTrait, V: XXVault> Worker for IdentityChannelListener<I, V> {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn handle_message(
         &mut self,
         ctx: &mut Self::Context,

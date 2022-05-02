@@ -24,6 +24,7 @@ pub struct SessionMaintainer<S: SessionManager> {
 }
 
 impl<S: SessionManager> SessionMaintainer<S> {
+    #[tracing::instrument(skip_all, err)]
     pub async fn start(ctx: &Context, manager: S) -> Result<Address> {
         let heartbeat_addr = Address::random_local();
         let main_addr = Address::random_local();
@@ -49,6 +50,7 @@ impl<S: SessionManager> SessionMaintainer<S> {
     }
 
     #[async_recursion::async_recursion]
+    #[tracing::instrument(skip_all, err)]
     async fn restart_session(&mut self, ctx: &Context) -> Result<()> {
         // Stops session if there is any
         self.heartbeat.cancel();
@@ -93,11 +95,13 @@ impl<S: SessionManager> Worker for SessionMaintainer<S> {
     type Message = SessionMsg;
     type Context = Context;
 
+    #[tracing::instrument(skip_all, err)]
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         // Start session
         self.restart_session(ctx).await
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn handle_message(
         &mut self,
         ctx: &mut Self::Context,
