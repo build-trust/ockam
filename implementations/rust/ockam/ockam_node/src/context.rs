@@ -23,6 +23,7 @@ use ockam_core::{
 /// A default timeout in seconds
 pub const DEFAULT_TIMEOUT: u64 = 30;
 
+#[derive(Debug, Copy, Clone, PartialEq)]
 enum AddressType {
     Worker,
     Processor,
@@ -215,6 +216,17 @@ impl Context {
             .await
     }
 
+    #[tracing::instrument(
+        level = "trace",
+        skip_all,
+        err,
+        fields(
+            self_addr = ?self.address(),
+            address = ?address,
+            worker_ty = core::any::type_name::<NW>(),
+            message_ty = core::any::type_name::<NM>(),
+        ),
+    )]
     async fn start_worker_impl<NM, NW, NA>(
         &self,
         address: AddressSet,
@@ -265,6 +277,16 @@ impl Context {
         self.start_processor_impl(address.into(), processor).await
     }
 
+    #[tracing::instrument(
+        level = "trace",
+        skip_all,
+        err,
+        fields(
+            self_addr = ?self.address(),
+            address = ?address,
+            proc_ty = core::any::type_name::<P>(),
+        ),
+    )]
     async fn start_processor_impl<P>(&self, address: Address, processor: P) -> Result<()>
     where
         P: Processor<Context = Context>,
@@ -301,6 +323,16 @@ impl Context {
         self.stop_address(addr.into(), AddressType::Processor).await
     }
 
+    #[tracing::instrument(
+        level = "trace",
+        skip_all,
+        err,
+        fields(
+            self_addr = ?self.address(),
+            target_addr = ?addr,
+            addr_type = ?t,
+        ),
+    )]
     async fn stop_address(&self, addr: Address, t: AddressType) -> Result<()> {
         debug!("Shutting down {} {}", t.str(), addr);
 
@@ -468,6 +500,17 @@ impl Context {
             .await
     }
 
+    #[tracing::instrument(
+        level = "trace",
+        skip_all,
+        err,
+        fields(
+            self_addr = ?self.address(),
+            send_addr = ?sending_address,
+            route = ?route,
+            message = core::any::type_name::<M>(),
+        ),
+    )]
     async fn send_from_address_impl<M>(
         &self,
         route: Route,
@@ -562,6 +605,15 @@ impl Context {
     /// node is shut down.  A safer variant of this function is
     /// [`receive`](Self::receive) and
     /// [`receive_timeout`](Self::receive_timeout).
+    #[tracing::instrument(
+        level = "trace",
+        skip_all,
+        err,
+        fields(
+            addr = ?self.address(),
+            message_ty = core::any::type_name::<M>(),
+        ),
+    )]
     pub async fn receive_block<M: Message>(&mut self) -> Result<Cancel<'_, M>> {
         let (msg, data, addr) = self.next_from_mailbox().await?;
         Ok(Cancel::new(msg, data, addr, self))
@@ -584,6 +636,17 @@ impl Context {
     /// Wait to receive a message up to a specified timeout
     ///
     /// See [`receive`](Self::receive) for more details.
+    // #[track_caller]
+    #[tracing::instrument(
+        level = "trace",
+        skip_all,
+        err,
+        fields(
+            addr = ?self.address(),
+            message = core::any::type_name::<M>(),
+            timeout_secs = timeout_secs,
+        ),
+    )]
     pub async fn receive_timeout<M: Message>(
         &mut self,
         timeout_secs: u64,
