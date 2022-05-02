@@ -9,5 +9,4 @@ This folder contains the Typescript implementation of Ockam.
 
 ```
 yarn install
-yarn build
 ```
