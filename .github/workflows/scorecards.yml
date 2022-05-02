@@ -6,7 +6,7 @@ permissions:
   security-events: write # Needed to upload results to code-scanning dashboard.
 
 on:
-  # Only the default branch is supported.
+  workflow_dispatch:
   branch_protection_rule:
   schedule:
     - cron: '0 1 * * 1'
