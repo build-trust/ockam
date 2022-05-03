@@ -46,7 +46,9 @@ We can also generate changelog from a referenced `git tag`, changelog should be 
 
 ## Crate Publish
 
-Crates are published to `crates.io` using [cargo-release](https://github.com/crate-ci/cargo-release) right after bump. Only crates that have been updated (comparing `git diff` with last git tag) are published. Crates can also be excluded from being published using the `EXCLUDE_CRATES` variable, to exclude crates, we can optionally specify crates that are to be excluded `EXCLUDE_CRATES="signature_core ockam_core"`, where `signature_core` and `ockam_core` are excluded.
+Crates are published to `crates.io` using [cargo-release](https://github.com/crate-ci/cargo-release) right after bump. Only crates that have been updated (comparing `git diff` with last git tag) are published. Crates can also be excluded from being published using the `EXCLUDE_CRATES` variable, to exclude crates, we can optionally specify crates that are to be excluded `EXCLUDE_CRATES="signature_core ockam_core"`, where `signature_core` and `ockam_core` are excluded. Publish script can also be rerun after a recent fail, recently successfully published crates will automatically be detected and excluded. To indicate a script rerun we set the `RECENT_FAILURE` env to a `true`.
+
+`RECENT_FAILURE="true"`.
 
 To publish crates
 ```bash
