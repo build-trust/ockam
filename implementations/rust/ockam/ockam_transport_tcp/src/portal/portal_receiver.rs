@@ -1,11 +1,12 @@
 use crate::PortalInternalMessage;
 use ockam_core::async_trait;
+use ockam_core::compat::vec::Vec;
 use ockam_core::{route, Address, Processor, Result};
 use ockam_node::Context;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::error;
 
-const BUFFER_SIZE: usize = 256;
+const MAX_PAYLOAD_SIZE: usize = 32 * 1024;
 
 /// A TCP Portal receiving message processor
 ///
@@ -13,6 +14,7 @@ const BUFFER_SIZE: usize = 256;
 /// `TcpPortalWorker` after a call is made to
 /// [`TcpPortalWorker::start_receiver`](crate::TcpPortalWorker::start_receiver)
 pub(crate) struct TcpPortalRecvProcessor {
+    buf: Vec<u8>,
     rx: OwnedReadHalf,
     sender_address: Address,
 }
@@ -20,7 +22,11 @@ pub(crate) struct TcpPortalRecvProcessor {
 impl TcpPortalRecvProcessor {
     /// Create a new `TcpPortalRecvProcessor`
     pub fn new(rx: OwnedReadHalf, sender_address: Address) -> Self {
-        Self { rx, sender_address }
+        Self {
+            buf: Vec::with_capacity(MAX_PAYLOAD_SIZE),
+            rx,
+            sender_address,
+        }
     }
 }
 
@@ -29,8 +35,9 @@ impl Processor for TcpPortalRecvProcessor {
     type Context = Context;
 
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
-        let mut buf = [0u8; BUFFER_SIZE];
-        let len = match self.rx.read(&mut buf).await {
+        self.buf.clear();
+
+        let _len = match self.rx.read_buf(&mut self.buf).await {
             Ok(len) => len,
             Err(err) => {
                 error!("Tcp Portal connection read failed with error: {}", err);
@@ -38,16 +45,7 @@ impl Processor for TcpPortalRecvProcessor {
             }
         };
 
-        if len != 0 {
-            let mut vec = vec![0u8; len];
-            vec.copy_from_slice(&buf[..len]);
-            let msg = PortalInternalMessage::Payload(vec);
-
-            // Let Sender forward payload to the other side
-            ctx.send(route![self.sender_address.clone()], msg).await?;
-
-            Ok(true)
-        } else {
+        if self.buf.is_empty() {
             // Notify Sender that connection was closed
             ctx.send(
                 route![self.sender_address.clone()],
@@ -55,7 +53,17 @@ impl Processor for TcpPortalRecvProcessor {
             )
             .await?;
 
-            Ok(false)
+            return Ok(false);
         }
+
+        // Loop just in case buf was extended (should not happen though)
+        for chunk in self.buf.chunks(MAX_PAYLOAD_SIZE) {
+            let msg = PortalInternalMessage::Payload(chunk.to_vec());
+
+            // Let Sender forward payload to the other side
+            ctx.send(route![self.sender_address.clone()], msg).await?;
+        }
+
+        Ok(true)
     }
 }
