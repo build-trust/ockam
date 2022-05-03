@@ -24,6 +24,9 @@ export E2E_EXAMPLES="$OCKAM_HOME/examples/rust/get_started/examples" # TODO
 export INLET_DOCS="$OCKAM_HOME/documentation/use-cases/secure-remote-access-tunnels"
 export INLET_EXAMPLES="$OCKAM_HOME/examples/rust/tcp_inlet_and_outlet/examples"
 
+export SECURE_CHANNEL_INLET_DOCS="$OCKAM_HOME/documentation/use-cases/end-to-end-encrypt-all-application-layer-communication"
+export SECURE_CHANNEL_INLET_EXAMPLES="$OCKAM_HOME/examples/rust/tcp_inlet_and_outlet/examples"
+
 export TOOLS_DIR="$OCKAM_HOME/tools/docs"
 
 if [ -z $(which example_blocks) ]; then
@@ -58,6 +61,7 @@ check_directory $GUIDE_DOCS $GUIDE_EXAMPLES
 check_directory $KAFKA_DOCS $KAFKA_EXAMPLES
 check_directory $E2E_DOCS $E2E_EXAMPLES
 check_directory $INLET_DOCS $INLET_EXAMPLES
+check_directory $SECURE_CHANNEL_INLET_DOCS $SECURE_CHANNEL_INLET_EXAMPLES
 
 check_readme $HELLO_DOC $HELLO_EXAMPLE
 
