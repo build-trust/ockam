@@ -11,7 +11,6 @@ use identity::load_identity;
 use ockam::identity::IdentityIdentifier;
 use std::collections::BTreeSet;
 use storage::{ensure_identity_exists, get_ockam_dir};
-use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 pub(crate) type OckamVault = ockam::vault::Vault;
 
@@ -193,7 +192,7 @@ fn message(verbose: bool, e: impl std::fmt::Display + std::fmt::Debug) -> String
 
 // Not really ideal, but fine for now.
 fn init_logging(verbose: u8) {
-    use tracing_subscriber::prelude::*;
+    use tracing_subscriber::{filter::LevelFilter, prelude::*, EnvFilter};
     let ockam_crates = [
         "ockam",
         "ockam_node",
@@ -205,30 +204,66 @@ fn init_logging(verbose: u8) {
         "ockam_vault",
         "ockam_vault_sync_core",
     ];
+    #[cfg(all(feature = "tokio-console", not(tokio_unstable)))]
+    eprintln!(
+        "Note: The `tokio-console` feature was enabled \
+        without setting `RUSTFLAGS=\"--cfg tokio_unstable\"`, which \
+        will not work. See the documentation in the `tokio/console` \
+        repository on github for more information",
+    );
+    let extra_filters = if cfg!(all(feature = "tokio-console", tokio_unstable)) {
+        Some("tokio=trace,runtime=trace")
+    } else {
+        None
+    };
+
     let builder = EnvFilter::builder();
     let filter = match std::env::var("OCKAM_LOG") {
         Ok(s) if !s.is_empty() => builder.with_env_var("OCKAM_LOG").from_env_lossy(),
         _ => match verbose {
-            0 => builder
-                .with_default_directive(LevelFilter::WARN.into())
-                .parse_lossy(ockam_crates.map(|c| format!("{c}=info")).join(",")),
+            0 => {
+                let mut crates_at_info = ockam_crates.map(|c| format!("{c}=info")).join(",");
+                if let Some(filters) = extra_filters {
+                    crates_at_info.push(',');
+                    crates_at_info.push_str(filters);
+                }
+                builder
+                    .with_default_directive(LevelFilter::WARN.into())
+                    .parse_lossy(crates_at_info)
+            }
             1 => builder
                 .with_default_directive(LevelFilter::INFO.into())
-                .parse_lossy(""),
+                .parse_lossy(extra_filters.unwrap_or("")),
             2 => builder
                 .with_default_directive(LevelFilter::DEBUG.into())
-                .parse_lossy(""),
+                .parse_lossy(extra_filters.unwrap_or("")),
             _ => builder
                 .with_default_directive(LevelFilter::TRACE.into())
-                .parse_lossy(""),
+                .parse_lossy(extra_filters.unwrap_or("")),
         },
     };
 
-    let result = tracing_subscriber::registry()
-        .with(filter)
+    let layer = tracing_subscriber::registry()
         .with(tracing_error::ErrorLayer::default())
-        .with(fmt::layer())
-        .try_init();
+        .with(filter);
+
+    #[cfg(feature = "tracing-tree")]
+    let layer = layer.with(
+        tracing_tree::HierarchicalLayer::default()
+            .with_indent_lines(true)
+            .with_targets(true)
+            .with_wraparound(4)
+            .with_verbose_exit(false)
+            .with_verbose_entry(false),
+    );
+    #[cfg(all(feature = "tokio-console", tokio_unstable))]
+    let layer = layer.with(console_subscriber::spawn());
+
+    // #[cfg(not(feature = "tracing-tree"))]
+    // let layer = layer.with(tracing_subscriber::fmt::layer());
+
+    let result = tracing::subscriber::set_global_default(layer);
+
     if result.is_err() {
         tracing::warn!("Failed to initialise logging.");
     }

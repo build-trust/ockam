@@ -28,14 +28,22 @@ name = "ockam"
 doc = false
 test = false
 
+[features]
+default = ["console-subscriber", "tracing-tree"]
+# For `tokio-console` support ensure the build is done with
+# `RUSTFLAGS="--cfg tokio_unstable"`
+tokio-console = ["console-subscriber"]
+
 [dependencies]
 anyhow = "1"
 dirs = "4.0.0"
 clap = { version = "3", features = ["derive", "cargo"] }
 tracing = { version = "0.1.31", features = ["attributes"] }
 tracing-subscriber = "0.3.9"
+tracing-tree = { version = "0.2", optional = true }
 tracing-error = "0.2"
-tokio = { version="1", features = ["full"] }
+tokio = { version="1", features = ["full", "tracing"] }
+console-subscriber = { version = "0.1", optional = true }
 async-trait = "0.1"
 hex = "0.4"
 serde_json = "1"

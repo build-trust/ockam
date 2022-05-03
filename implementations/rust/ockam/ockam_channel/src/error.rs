@@ -22,6 +22,7 @@ pub enum SecureChannelError {
 
 #[allow(clippy::from_over_into)]
 impl Into<Error> for SecureChannelError {
+    #[track_caller]
     fn into(self) -> Error {
         use SecureChannelError::*;
         let kind = match self {
