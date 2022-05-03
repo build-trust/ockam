@@ -7,7 +7,7 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
 
   Pre-requisites:
 
-  Ockam hub running with stream service and TCP listener
+  Ockam cloud node running with stream service and TCP listener
 
   Two ockam nodes "ping" and "pong"
 
@@ -19,7 +19,7 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
 
   Implementation:
 
-  Stream service is running on the hub node
+  Stream service is running on the cloud node
 
   Ping and pong nodes create local consumers and publishers to exchange messages
 
@@ -66,9 +66,9 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
 
   def config() do
     %{
-      hub_ip: "127.0.0.1",
-      hub_port: 4000,
-      hub_port_udp: 7000,
+      cloud_ip: "127.0.0.1",
+      cloud_port: 4000,
+      cloud_port_udp: 7000,
       service_address: "stream_kafka",
       index_address: "stream_kafka_index",
       ping_stream: "ping_stream",
@@ -202,20 +202,20 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
   def stream_options(protocol) do
     config = config()
 
-    {:ok, hub_ip_n} = :inet.parse_address(to_charlist(config.hub_ip))
-    tcp_address = Ockam.Transport.TCPAddress.new(hub_ip_n, config.hub_port)
+    {:ok, cloud_ip_n} = :inet.parse_address(to_charlist(config.cloud_ip))
+    tcp_address = Ockam.Transport.TCPAddress.new(cloud_ip_n, config.cloud_port)
 
-    udp_address = Ockam.Transport.UDPAddress.new(hub_ip_n, config.hub_port_udp)
+    udp_address = Ockam.Transport.UDPAddress.new(cloud_ip_n, config.cloud_port_udp)
 
-    hub_address =
+    cloud_address =
       case protocol do
         :tcp -> tcp_address
         :udp -> udp_address
       end
 
     [
-      service_route: [hub_address, config.service_address],
-      index_route: [hub_address, config.index_address],
+      service_route: [cloud_address, config.service_address],
+      index_route: [cloud_address, config.index_address],
       partitions: 1
     ]
   end

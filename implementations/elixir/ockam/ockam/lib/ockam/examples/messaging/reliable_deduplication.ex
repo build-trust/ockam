@@ -64,7 +64,7 @@ defmodule Ockam.Examples.Messaging.ReliableDeduplication do
     start_ping_pong(channel)
   end
 
-  def hub_responder() do
+  def cloud_responder() do
     Ockam.Transport.TCP.start()
 
     Ockam.Node.register_address("me")
@@ -104,7 +104,7 @@ defmodule Ockam.Examples.Messaging.ReliableDeduplication do
       )
   end
 
-  def hub_initiator() do
+  def cloud_initiator() do
     {:ok, "ping"} = Ping.create(address: "ping", delay: 500)
 
     {:ok, client} = RecoverableClient.create(destination: {"localhost", 4000})
@@ -140,8 +140,8 @@ defmodule Ockam.Examples.Messaging.ReliableDeduplication do
       )
   end
 
-  def run_hub_initiator() do
-    {:ok, channel} = hub_initiator()
+  def run_cloud_initiator() do
+    {:ok, channel} = cloud_initiator()
     start_ping_pong(channel)
   end
 

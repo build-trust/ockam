@@ -24,15 +24,15 @@ defmodule Ockam.Examples.Stream do
 
   def stream_options() do
     config = %{
-      hub_ip: "127.0.0.1",
-      hub_port: 4000,
+      cloud_ip: "127.0.0.1",
+      cloud_port: 4000,
       service_address: "stream_kafka",
       index_address: "stream_kafka_index",
       stream_name: "my_client_stream"
     }
 
-    {:ok, hub_ip_n} = :inet.parse_address(to_charlist(config.hub_ip))
-    tcp_address = Ockam.Transport.TCPAddress.new(hub_ip_n, config.hub_port)
+    {:ok, cloud_ip_n} = :inet.parse_address(to_charlist(config.cloud_ip))
+    tcp_address = Ockam.Transport.TCPAddress.new(cloud_ip_n, config.cloud_port)
 
     %{
       service_route: [tcp_address, config.service_address],

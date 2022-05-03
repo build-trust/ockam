@@ -1,14 +1,14 @@
 defmodule Ockam.Workers.RemoteForwarder do
   @moduledoc """
-  Ockam worker to handle forwarding from the Ockam Hub forwarding service `Ockam.Hub.Service.Forwarding`
+  Ockam worker to handle forwarding from the Ockam Services forwarding service `Ockam.Services.Forwarding`
 
-  On start creates a hub forwarder in the forwarding service.
-  Forwards messages from the hub forwarder to configured route.
+  On start creates a cloud forwarder in the forwarding service.
+  Forwards messages from the cloud forwarder to configured route.
 
   Options:
 
   `service_route` - a route to the forwarding service
-  `forward_to` - a route to forward messages from the hub forwarder to
+  `forward_to` - a route to forward messages from the cloud forwarder to
   `register_payload` - (defaults to "register") payload to use when registering a forwarder
 
   Usage:
@@ -19,13 +19,13 @@ defmodule Ockam.Workers.RemoteForwarder do
     forward_to: local_route
   )
 
-  Get the forwarding address local to the Hub:
+  Get the forwarding address local to the Services node:
   forwarder_address = RemoteForwarder.forwarder_address(forwarder)
 
   Send messages from another node:
-  Ockam.Router.route(%{onward_route: hub_route ++ [forwarder_address], ...})
+  Ockam.Router.route(%{onward_route: cloud_route ++ [forwarder_address], ...})
 
-  Messages will be delivered through the hub forwarder
+  Messages will be delivered through the cloud forwarder
   to the remote forwarder on the first node
   to the configured `local_route`
   """

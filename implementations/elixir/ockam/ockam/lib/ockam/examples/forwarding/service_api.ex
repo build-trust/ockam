@@ -1,7 +1,7 @@
 defmodule Ockam.Examples.Forwarding.ServiceApi do
   @moduledoc """
   Simple forwarding service client.
-  Registers current process with a remote forwarder in ockam hub.
+  Registers current process with a remote forwarder in ockam services node.
   Current process needs to be registered in Ockam.Node.Registry
   """
 
@@ -17,7 +17,7 @@ defmodule Ockam.Examples.Forwarding.ServiceApi do
 
   Returns:
 
-  {:ok, forwarder_address} - an address on hub, forwarding to the current worker
+  {:ok, forwarder_address} - an address on services node, forwarding to the current worker
   {:error, :timeout} - timeout before registration confirmation is received
   {:error, :not_registered_worker} - self_address is nil and current process is not registered in Ockam.Node.Registry
   """

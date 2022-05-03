@@ -283,7 +283,7 @@ defmodule Ockam.Router.Tests do
         1_000
       )
 
-      # tcp sends to echo on hub
+      # tcp sends to echo on remote node
       assert_receive(
         {:trace, ^echo, :receive,
          %{

@@ -33,7 +33,7 @@ defmodule OckamKafka.MixProject do
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
       {:ex_doc, "~> 0.25", only: :dev, runtime: false},
-      {:ockam_hub, path: "../ockam_hub"},
+      {:ockam_services, path: "../ockam_services"},
       {:brod,
        git: "https://github.com/hairyhum/brod.git", branch: "kpro-connection-timeout-3.15"},
       {:snappyer, "~> 1.2", override: true}

@@ -46,9 +46,20 @@ updates:
       - "Type: Dependencies"
       - "Implementation: Elixir"
 
-  # Maintain dependencies for elixir ockam_hub application
+  # Maintain dependencies for elixir ockam_services application
   - package-ecosystem: "mix"
-    directory: "/implementations/elixir/ockam/ockam_hub"
+    directory: "/implementations/elixir/ockam/ockam_services"
+    commit-message:
+      prefix: "build:"
+    schedule:
+      interval: "daily"
+    labels:
+      - "Type: Dependencies"
+      - "Implementation: Elixir"
+
+  # Maintain dependencies for elixir ockam_cloud_node application
+  - package-ecosystem: "mix"
+    directory: "/implementations/elixir/ockam/ockam_cloud_node"
     commit-message:
       prefix: "build:"
     schedule:
@@ -78,11 +89,3 @@ updates:
     labels:
       - "Type: Dependencies"
       - "Implementation: Elixir"
-
-  # Maintain dependencies for elixir ockam_node_web application
-  # - package-ecosystem: "mix"
-  #   directory: "/implementations/elixir/ockam/ockam_node_web"
-  #   commit-message:
-  #     prefix: "build:"
-  #   schedule:
-  #     interval: "daily"

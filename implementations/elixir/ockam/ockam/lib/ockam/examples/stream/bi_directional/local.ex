@@ -7,7 +7,7 @@ defmodule Ockam.Examples.Stream.BiDirectional.Local do
 
   Pre-requisites:
 
-  Ockam hub running with stream service and TCP listener
+  Ockam cloud node running with stream service and TCP listener
 
   Two ockam nodes "ping" and "pong"
 
@@ -19,7 +19,7 @@ defmodule Ockam.Examples.Stream.BiDirectional.Local do
 
   Implementation:
 
-  Stream service is running on the hub node
+  Stream service is running on the cloud node
 
   Ping and pong nodes create local consumers and publishers to exchange messages
   """
@@ -33,8 +33,8 @@ defmodule Ockam.Examples.Stream.BiDirectional.Local do
 
   def config() do
     %{
-      hub_ip: "127.0.0.1",
-      hub_port: 4000,
+      cloud_ip: "127.0.0.1",
+      cloud_port: 4000,
       service_address: "stream",
       index_address: "stream_index"
     }
@@ -43,8 +43,8 @@ defmodule Ockam.Examples.Stream.BiDirectional.Local do
   def stream_options() do
     config = config()
 
-    {:ok, hub_ip_n} = :inet.parse_address(to_charlist(config.hub_ip))
-    tcp_address = Ockam.Transport.TCPAddress.new(hub_ip_n, config.hub_port)
+    {:ok, cloud_ip_n} = :inet.parse_address(to_charlist(config.cloud_ip))
+    tcp_address = Ockam.Transport.TCPAddress.new(cloud_ip_n, config.cloud_port)
 
     [
       service_route: [tcp_address, config.service_address],

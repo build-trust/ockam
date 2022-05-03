@@ -53,17 +53,17 @@ Run the builder:
 docker run --rm -it -e HOST_USER_ID=$(id -u) --volume $(pwd):/work ockam/builder:latest bash
 ```
 
-## Hub
+## Cloud node
 
 ```
 docker build \
-  --tag ockam/hub:latest \
-  --tag ghcr.io/ockam-network/ockam/hub:latest \
-  --file tools/docker/hub/Dockerfile .
+  --tag ockam-cloud-node:latest \
+  --tag ghcr.io/ockam-network/ockam-cloud-node:latest \
+  --file tools/docker/cloud-node/Dockerfile .
 ```
 
-Run the hub:
+Run the cloud node:
 
 ```
-docker run --rm -it ockam/hub:latest
+docker run --rm -it ockam-cloud-node:latest
 ```

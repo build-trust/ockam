@@ -1,6 +1,6 @@
 defmodule Ockam.Workers.PubSubSubscriber do
   @moduledoc """
-  Worker to maintain Ockam.Hub pub_sub service subscription
+  Worker to maintain Ockam.Services pub_sub service subscription
 
   Refreshes subscription to pub_sup service every interval milliseconds
 
