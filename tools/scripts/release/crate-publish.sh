@@ -12,6 +12,7 @@ source tools/scripts/release/crates-to-publish.sh
 
 declare -A bumped_crates
 
+# Get crates that were updated, this will be published.
 for crate in ${updated_crates[@]}; do
     name=$(eval "tomlq package.name -f implementations/rust/ockam/$crate/Cargo.toml")
     bumped_crates[$name]=true
@@ -20,6 +21,7 @@ done
 crates_specified_to_be_excluded=( $EXCLUDE_CRATES )
 exclude_string=""
 
+# Get crates that are indicated to be excluded.
 for crate in ${crates_specified_to_be_excluded[@]}; do
     echo "Excluding $crate from publishing as specified in env"
     exclude_string="$exclude_string --exclude $crate"
@@ -28,6 +30,7 @@ done
 
 declare -A crates_version
 
+# Every other crate that were not updated...
 for crate in $(ls "implementations/rust/ockam"); do
     # There are some crates that differ from their folder name, e.g. ockam_ffi
     # so we need the crate name source of truth from Cargo.toml.
@@ -43,7 +46,8 @@ for crate in $(ls "implementations/rust/ockam"); do
     fi
 done
 
-if [[ ! -z $RECENT_FAILURE ]]; then
+# Check if this is a re-run...
+if [[ $RECENT_FAILURE == true ]]; then
     echo "Script rerun on recent failure..."
     echo "Checking recently successfully published crates..."
 
