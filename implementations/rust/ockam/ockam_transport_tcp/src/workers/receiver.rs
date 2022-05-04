@@ -92,6 +92,7 @@ impl Processor for TcpRecvProcessor {
         // Heartbeat message
         if msg.onward_route.next().is_err() {
             trace!("Got heartbeat message from: {}", self.peer_addr);
+            return Ok(true);
         }
 
         // Insert the peer address into the return route so that
