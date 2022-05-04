@@ -46,9 +46,13 @@ where
                 // protect against accidental async executor deadlock
                 crate::tokio::task::yield_now().await;
 
-                let should_continue = processor.process(&mut ctx).await?;
-                if !should_continue {
-                    break;
+                match processor.process(&mut ctx).await {
+                    Ok(should_continue) => {
+                        if !should_continue {
+                            break;
+                        }
+                    }
+                    Err(e) => error!("Error encountered during '{}' processing: {}", ctx_addr, e),
                 }
             }
 
