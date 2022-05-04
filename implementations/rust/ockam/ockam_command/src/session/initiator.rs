@@ -36,8 +36,8 @@ impl<S: SessionManager> SessionMaintainer<S> {
             ping_route: None,
             last_sent_request_id: None,
             heartbeat,
-            heartbeat_duration: Duration::from_secs(5),
-            session_start_timeout: Duration::from_secs(10),
+            heartbeat_duration: Duration::from_secs(60),
+            session_start_timeout: Duration::from_secs(30),
             heartbeat_addr: heartbeat_addr.clone(),
             main_addr: main_addr.clone(),
         };
