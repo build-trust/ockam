@@ -16,7 +16,7 @@ use tracing::{debug, info};
 pub(crate) struct ChannelKeys {
     encrypt_key: Secret,
     decrypt_key: Secret,
-    nonce: u16,
+    nonce: u64,
 }
 
 /// SecureChannel is an abstraction responsible for sending messages (usually over the network) in
@@ -64,24 +64,21 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
         })
     }
 
-    fn convert_nonce_u16(nonce: u16) -> ([u8; 2], [u8; 12]) {
+    fn convert_nonce_from_u64(nonce: u64) -> ([u8; 8], [u8; 12]) {
         let mut n: [u8; 12] = [0; 12];
-        let b: [u8; 2] = nonce.to_be_bytes();
-        n[10] = b[0];
-        n[11] = b[1];
+        let b: [u8; 8] = nonce.to_be_bytes();
+
+        n[4..].copy_from_slice(&b);
 
         (b, n)
     }
 
-    fn convert_nonce_small(b: &[u8]) -> Result<[u8; 12]> {
-        if b.len() != 2 {
-            return Err(SecureChannelError::InvalidNonce.into());
-        }
-        let mut n: [u8; 12] = [0; 12];
-        n[10] = b[0];
-        n[11] = b[1];
+    fn convert_nonce_from_small(b: &[u8]) -> Result<[u8; 12]> {
+        let bytes: [u8; 8] = b.try_into().map_err(|_| SecureChannelError::InvalidNonce)?;
 
-        Ok(n)
+        let nonce = u64::from_be_bytes(bytes);
+
+        Ok(Self::convert_nonce_from_u64(nonce).1)
     }
 
     fn get_keys(keys: &mut Option<ChannelKeys>) -> Result<&mut ChannelKeys> {
@@ -139,13 +136,13 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
 
             let nonce = keys.nonce;
 
-            if nonce == u16::max_value() {
+            if nonce == u64::MAX {
                 return Err(SecureChannelError::InvalidNonce.into());
             }
 
             keys.nonce += 1;
 
-            let (small_nonce, nonce) = Self::convert_nonce_u16(nonce);
+            let (small_nonce, nonce) = Self::convert_nonce_from_u64(nonce);
 
             let mut cipher_text = self
                 .vault
@@ -181,14 +178,14 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelWorker<V,
         let payload = {
             let keys = Self::get_keys(&mut self.keys)?;
 
-            if payload.len() < 2 {
+            if payload.len() < 8 {
                 return Err(SecureChannelError::InvalidNonce.into());
             }
 
-            let nonce = Self::convert_nonce_small(&payload.as_slice()[..2])?;
+            let nonce = Self::convert_nonce_from_small(&payload.as_slice()[..8])?;
 
             self.vault
-                .aead_aes_gcm_decrypt(&keys.decrypt_key, &payload[2..], &nonce, &[])
+                .aead_aes_gcm_decrypt(&keys.decrypt_key, &payload[8..], &nonce, &[])
                 .await?
         };
 

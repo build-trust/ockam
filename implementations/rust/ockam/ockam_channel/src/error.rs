@@ -20,18 +20,17 @@ pub enum SecureChannelError {
     InvalidLocalInfoType,
 }
 
-#[allow(clippy::from_over_into)]
-impl Into<Error> for SecureChannelError {
-    fn into(self) -> Error {
+impl From<SecureChannelError> for Error {
+    fn from(e: SecureChannelError) -> Self {
         use SecureChannelError::*;
-        let kind = match self {
+        let kind = match e {
             KeyExchange | KeyExchangeNotComplete => Kind::Protocol,
             InvalidInternalState | InvalidNonce | InvalidHubResponse | InvalidLocalInfoType => {
                 Kind::Invalid
             }
         };
 
-        Error::new(Origin::Channel, kind, self)
+        Self::new(Origin::Channel, kind, e)
     }
 }
 
