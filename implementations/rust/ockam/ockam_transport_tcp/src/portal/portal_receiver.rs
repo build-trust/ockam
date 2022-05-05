@@ -4,7 +4,7 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::{route, Address, Processor, Result};
 use ockam_node::Context;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
-use tracing::error;
+use tracing::{error, warn};
 
 const MAX_PAYLOAD_SIZE: usize = 256;
 
@@ -47,11 +47,19 @@ impl Processor for TcpPortalRecvProcessor {
 
         if self.buf.is_empty() {
             // Notify Sender that connection was closed
-            ctx.send(
-                route![self.sender_address.clone()],
-                PortalInternalMessage::Disconnect,
-            )
-            .await?;
+            match ctx
+                .send(
+                    route![self.sender_address.clone()],
+                    PortalInternalMessage::Disconnect,
+                )
+                .await
+            {
+                Err(err) => warn!(
+                    "Error notifying Tcp Portal Sender about dropped connection {}",
+                    err
+                ),
+                _ => {}
+            }
 
             return Ok(false);
         }
