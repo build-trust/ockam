@@ -10,28 +10,28 @@ on:
         description: SHA to test workflow
   pull_request:
     paths:
-      - '.github/workflows/rust.yml'
-      - '**.rs'
-      - '**.toml'
-      - '**/Cargo.lock'
-      - '**.gradle'
-      - 'tools/gradle/**'
-      - 'gradlew'
-      - 'gradlew.bat'
-      - '.github/actions/**'
+      - ".github/workflows/rust.yml"
+      - "**.rs"
+      - "**.toml"
+      - "**/Cargo.lock"
+      - "**.gradle"
+      - "tools/gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - ".github/actions/**"
   push:
     paths:
-      - '.github/workflows/rust.yml'
-      - '**.rs'
-      - '**.toml'
-      - '**/Cargo.lock'
-      - '**.gradle'
-      - 'tools/gradle/**'
-      - 'gradlew'
-      - 'gradlew.bat'
-      - '.github/actions/**'
+      - ".github/workflows/rust.yml"
+      - "**.rs"
+      - "**.toml"
+      - "**/Cargo.lock"
+      - "**.gradle"
+      - "tools/gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - ".github/actions/**"
   schedule:
-    - cron: '0 1 * * *'
+    - cron: "0 1 * * *"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -154,11 +154,10 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
+      # TODO: re-enable features after no_std has an unbounded channel.
       - run: |
           cd implementations/rust/ockam/ockam
-          RUSTFLAGS='-Dwarnings' cargo check --no-default-features --features 'no_std alloc software_vault'
-        # TODO: re-enable after no_std has an unbounded channel.
-        if: ${{ false }}
+          RUSTFLAGS='-Dwarnings' cargo check
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_cargo_update:
