@@ -10,7 +10,7 @@ pub(crate) fn message<M: Message>(vec: &[u8]) -> Result<M> {
 
         // This condition means we _may_ be dealing with a payload
         // sent by a non-Rust implementation.  In this case we
-        // prepend the length of the mesage to the vector and try
+        // prepend the length of the message to the vector and try
         // again.  I know it's bad, but as long as we don't have
         // properly specified payload encoding this is what we'll
         // have to do.
