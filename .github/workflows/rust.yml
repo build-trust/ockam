@@ -157,6 +157,8 @@ jobs:
       - run: |
           cd implementations/rust/ockam/ockam
           RUSTFLAGS='-Dwarnings' cargo check --no-default-features --features 'no_std alloc software_vault'
+        # TODO: re-enable after no_std has an unbounded channel.
+        if: ${{ false }}
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_cargo_update:
