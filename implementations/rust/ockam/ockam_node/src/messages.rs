@@ -1,4 +1,4 @@
-use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
+use crate::tokio::sync::mpsc::{channel, Receiver, Sender, UnboundedSender};
 use crate::{
     error::{NodeError, NodeReason, RouterReason, WorkerReason},
     relay::RelayMessage,
@@ -166,7 +166,7 @@ pub enum RouterReply {
         /// The address a message is being sent to
         addr: Address,
         /// The relay sender
-        sender: Sender<RelayMessage>,
+        sender: UnboundedSender<RelayMessage>,
         /// Indicate whether the relay message needs to be constructed
         /// with router wrapping.
         wrap: bool,
@@ -260,12 +260,16 @@ impl RouterReply {
     }
 
     /// Return [NodeReply::Sender] for the given information
-    pub fn sender(addr: Address, sender: Sender<RelayMessage>, wrap: bool) -> NodeReplyResult {
+    pub fn sender(
+        addr: Address,
+        sender: UnboundedSender<RelayMessage>,
+        wrap: bool,
+    ) -> NodeReplyResult {
         Ok(RouterReply::Sender { addr, sender, wrap })
     }
 
     /// Consume the wrapper and return [NodeReply::Sender]
-    pub fn take_sender(self) -> Result<(Address, Sender<RelayMessage>, bool)> {
+    pub fn take_sender(self) -> Result<(Address, UnboundedSender<RelayMessage>, bool)> {
         match self {
             Self::Sender { addr, sender, wrap } => Ok((addr, sender, wrap)),
             _ => Err(NodeError::NodeState(NodeReason::Unknown).internal()),

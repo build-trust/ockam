@@ -10,7 +10,7 @@ mod utils;
 use record::{AddressMeta, AddressRecord, InternalMap};
 use state::{NodeState, RouterState};
 
-use crate::tokio::sync::mpsc::{channel, Receiver, Sender};
+use crate::tokio::sync::mpsc::{channel, Receiver, Sender, UnboundedSender};
 use crate::{
     error::{NodeError, NodeReason},
     relay::{CtrlSignal, RelayMessage},
@@ -22,7 +22,7 @@ use ockam_core::{Address, Result, TransportType};
 /// A pair of senders to a worker relay
 #[derive(Debug)]
 pub struct SenderPair {
-    pub msgs: Sender<RelayMessage>,
+    pub msgs: UnboundedSender<RelayMessage>,
     pub ctrl: Sender<CtrlSignal>,
 }
 

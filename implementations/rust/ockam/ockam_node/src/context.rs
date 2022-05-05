@@ -2,7 +2,7 @@ use crate::relay::RelayPayload;
 use crate::tokio::{
     self,
     runtime::Runtime,
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::mpsc::{channel, unbounded_channel, Receiver, Sender, UnboundedReceiver},
     time::timeout,
 };
 use crate::{
@@ -42,7 +42,7 @@ pub struct Context {
     address: AddressSet,
     sender: Sender<NodeMessage>,
     rt: Arc<Runtime>,
-    mailbox: Receiver<RelayMessage>,
+    mailbox: UnboundedReceiver<RelayMessage>,
     access_control: Box<dyn AccessControl>,
 }
 
@@ -91,7 +91,7 @@ impl Context {
         address: AddressSet,
         access_control: impl AccessControl,
     ) -> (Self, SenderPair, Receiver<CtrlSignal>) {
-        let (mailbox_tx, mailbox) = channel(32);
+        let (mailbox_tx, mailbox) = unbounded_channel();
         let (ctrl_tx, ctrl_rx) = channel(1);
         (
             Self {
@@ -510,7 +510,7 @@ impl Context {
         };
 
         // Send the packed user message with associated route
-        sender.send(msg).await.map_err(NodeError::from_send_err)?;
+        sender.send(msg).map_err(NodeError::from_send_err)?;
         Ok(())
     }
 
@@ -551,7 +551,7 @@ impl Context {
         } else {
             RelayMessage::direct(addr, local_msg, onward)
         };
-        sender.send(msg).await.map_err(NodeError::from_send_err)?;
+        sender.send(msg).map_err(NodeError::from_send_err)?;
 
         Ok(())
     }

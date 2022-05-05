@@ -1,5 +1,5 @@
 use crate::relay::{CtrlSignal, RelayMessage};
-use crate::tokio::sync::mpsc::Sender;
+use crate::tokio::sync::mpsc::{Sender, UnboundedSender};
 use crate::{
     error::{NodeError, NodeReason},
     NodeReplyResult, RouterReply,
@@ -142,7 +142,7 @@ pub struct AddressMeta {
 #[derive(Debug)]
 pub struct AddressRecord {
     address_set: AddressSet,
-    sender: Option<Sender<RelayMessage>>,
+    sender: Option<UnboundedSender<RelayMessage>>,
     ctrl_tx: Sender<CtrlSignal>,
     state: AddressState,
     ready: ReadyState,
@@ -153,7 +153,7 @@ impl AddressRecord {
     pub fn address_set(&self) -> &AddressSet {
         &self.address_set
     }
-    pub fn sender(&self) -> Sender<RelayMessage> {
+    pub fn sender(&self) -> UnboundedSender<RelayMessage> {
         self.sender.clone().expect("No such sender!")
     }
     pub fn sender_drop(&mut self) {
@@ -161,7 +161,7 @@ impl AddressRecord {
     }
     pub fn new(
         address_set: AddressSet,
-        sender: Sender<RelayMessage>,
+        sender: UnboundedSender<RelayMessage>,
         ctrl_tx: Sender<CtrlSignal>,
         meta: AddressMeta,
     ) -> Self {
