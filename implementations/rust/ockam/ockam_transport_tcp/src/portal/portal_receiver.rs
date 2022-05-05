@@ -1,4 +1,5 @@
 use crate::PortalInternalMessage;
+use core::time::Duration;
 use ockam_core::async_trait;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{route, Address, Processor, Result};
@@ -70,6 +71,7 @@ impl Processor for TcpPortalRecvProcessor {
 
             // Let Sender forward payload to the other side
             ctx.send(route![self.sender_address.clone()], msg).await?;
+            ctx.sleep(Duration::from_millis(10)).await;
         }
 
         Ok(true)
