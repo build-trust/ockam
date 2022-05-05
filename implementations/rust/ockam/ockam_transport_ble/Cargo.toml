@@ -20,12 +20,11 @@ autoexamples = false
 publish = true
 
 [features]
-default = ["std", "use_btleplug", "ockam/software_vault"]
+default = ["std", "use_btleplug"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
 std = [
-    "ockam/std",
     "ockam_core/std",
     "ockam_node/std",
     "ockam_transport_core/std",
@@ -36,7 +35,6 @@ std = [
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
 no_std = [
-    "ockam/no_std",
     "ockam_core/no_std",
     "ockam_node/no_std",
     "ockam_transport_core/no_std",
@@ -47,7 +45,6 @@ no_std = [
 # Feature: "alloc" enables support for heap allocation on "no_std"
 # platforms, requires nightly.
 alloc = [
-    "ockam/alloc",
     "ockam_core/alloc",
     "ockam_node/alloc",
     "ockam_transport_core/alloc",
@@ -87,10 +84,8 @@ pic32mx1xxfxxxb = ["pic32", "pic32-hal/pic32mx1xxfxxxb"]
 pic32mx2xxfxxxb = ["pic32", "pic32-hal/pic32mx2xxfxxxb"]
 
 [dependencies]
-ockam = { path = "../ockam", version = "^0.57.0", default_features = false }
 ockam_core = { path = "../ockam_core", version = "^0.53.0", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.54.0", default_features = false }
-ockam_executor = { path = "../ockam_executor", version = "^0.21.0", default_features = false }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.26.0", default_features = false }
 
 futures = { version = "0.3.19", default-features = false }
@@ -127,6 +122,10 @@ cortex-m = "0.7.3"
 # Architecture RISCV: TODO move this into its own "Ockam Addon" crate
 [target.'cfg(any(target_arch = "riscv32", target_arch = "riscv64"))'.dependencies]
 riscv = "0.7.0"
+
+[dev-dependencies]
+ockam_identity = { path = "../ockam_identity", version = "^0.45.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.47.0" }
 
 [[example]]
 name = "04-routing-over-ble-transport-initiator"

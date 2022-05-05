@@ -1,6 +1,5 @@
-use ockam::Address;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
-use ockam_core::{async_trait, Encodable, Result, Routed, TransportMessage, Worker};
+use ockam_core::{async_trait, Address, Encodable, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 

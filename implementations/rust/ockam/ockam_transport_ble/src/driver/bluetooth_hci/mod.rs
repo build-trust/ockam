@@ -92,7 +92,7 @@ where
         }
     }
 
-    pub fn reset<T, Time>(&mut self, timer: &mut T, time: Time) -> ockam::Result<()>
+    pub fn reset<T, Time>(&mut self, timer: &mut T, time: Time) -> Result<()>
     where
         T: embedded_hal::timer::CountDown<Time = Time>,
         Time: Copy,
@@ -106,7 +106,7 @@ where
     }
 
     #[cfg(target_arch = "mips")]
-    pub fn reset_with_delay<D, UXX>(&mut self, delay: &mut D, time: UXX) -> ockam::Result<()>
+    pub fn reset_with_delay<D, UXX>(&mut self, delay: &mut D, time: UXX) -> Result<()>
     where
         D: blocking::delay::DelayMs<UXX>,
         UXX: Copy,
@@ -119,7 +119,7 @@ where
         self._handle_reset_response()
     }
 
-    pub fn _handle_reset_response(&mut self) -> ockam::Result<()> {
+    pub fn _handle_reset_response(&mut self) -> Result<()> {
         match self
             .bluetooth
             .with_spi(&mut self.spi, |controller| block!(controller.read()))
@@ -160,7 +160,7 @@ where
     SPI::Error: Debug,
     GpioError: Debug + Send,
 {
-    async fn bind(&mut self, ble_addr: &BleAddr) -> ockam::Result<()> {
+    async fn bind(&mut self, ble_addr: &BleAddr) -> Result<()> {
         self.ble_addr = ble_addr.clone();
 
         ble_uart::setup(&mut self.spi, &mut self.bluetooth)
@@ -182,7 +182,7 @@ where
         Ok(())
     }
 
-    async fn start_advertising(&mut self) -> ockam::Result<()> {
+    async fn start_advertising(&mut self) -> Result<()> {
         if let Err(e) = ble_uart::start_advertising(
             &mut self.spi,
             &mut self.bluetooth,
@@ -208,7 +208,7 @@ where
     SPI::Error: Debug,
     GpioError: Debug + Send,
 {
-    async fn poll<'b>(&mut self, out_fragment: &'b mut [u8]) -> ockam::Result<BleEvent<'b>> {
+    async fn poll<'b>(&mut self, out_fragment: &'b mut [u8]) -> Result<BleEvent<'b>> {
         // avoid deadlocking the caller
         ockam_node::tokio::task::yield_now().await;
 
@@ -218,8 +218,6 @@ where
                 self.start_advertising().await?;
                 self.state = State::Advertising;
                 debug!("\nstate = {:?}", self.state);
-                #[cfg(feature = "debug_alloc")]
-                ockam_executor::debug_alloc::stats();
             }
             State::Advertising => {}
             State::Connected => {}
@@ -292,7 +290,7 @@ where
         }
     }
 
-    async fn write(&mut self, buffer: &[u8]) -> ockam::Result<()> {
+    async fn write(&mut self, buffer: &[u8]) -> Result<()> {
         debug!("BleAdapter<bluetooth_hci>::write");
 
         let Self {

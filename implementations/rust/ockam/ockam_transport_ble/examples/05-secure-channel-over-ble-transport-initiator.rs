@@ -1,18 +1,24 @@
 // This node routes a message, to a worker on a different node, over the ble transport.
 
-use ockam::{
-    identity::{Identity, TrustEveryonePolicy},
-    route,
-    vault::Vault,
-    Context, Result,
-};
-use ockam_transport_ble::{BleTransport, BLE};
+use ockam_core::{route, Result};
+use ockam_identity::{Identity, TrustEveryonePolicy};
+use ockam_node::Context;
+use ockam_vault::Vault;
 
 use ockam_transport_ble::driver::btleplug::BleAdapter;
 use ockam_transport_ble::driver::BleClient;
+use ockam_transport_ble::{BleTransport, BLE};
 
-#[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+fn main() -> Result<()> {
+    let (ctx, mut exe) = ockam_node::start_node();
+    exe.execute(async move {
+        async_main(ctx).await.unwrap();
+    })
+    .unwrap();
+    Ok(())
+}
+
+async fn async_main(mut ctx: Context) -> Result<()> {
     // Create a ble_client
     let ble_adapter = BleAdapter::try_new().await?;
     let ble_client = BleClient::with_adapter(ble_adapter);

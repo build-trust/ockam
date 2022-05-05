@@ -5,6 +5,8 @@ use crate::driver::CHARACTERISTIC_VALUE_LENGTH;
 use crate::driver::MAX_OCKAM_MESSAGE_LENGTH;
 use crate::error::BleError;
 
+use ockam_core::Result;
+
 /// PacketBuffer
 pub struct PacketBuffer {
     fragment_len: usize,
@@ -129,7 +131,7 @@ impl PacketBuffer {
         Some(self.packet_len)
     }
 
-    pub fn receive_next_fragment(&mut self, fragment: &[u8]) -> ockam::Result<Option<&[u8]>> {
+    pub fn receive_next_fragment(&mut self, fragment: &[u8]) -> Result<Option<&[u8]>> {
         if self.offset >= self.packet_len {
             panic!("packet buffer already has enough fragments")
         }

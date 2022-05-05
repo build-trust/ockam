@@ -1,7 +1,6 @@
 use core::fmt;
 use core::str::FromStr;
 use ockam_core::compat::string::{String, ToString};
-use ockam_core::Result;
 use ockam_transport_core::TransportError;
 
 #[derive(Clone, Debug, Default)]
@@ -25,7 +24,7 @@ impl From<&BleAddr> for String {
 impl FromStr for BleAddr {
     type Err = ockam_core::Error;
 
-    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self {
             device_name: s.to_string(),
             local_name: s.to_string(),
@@ -33,7 +32,7 @@ impl FromStr for BleAddr {
     }
 }
 
-pub fn parse_ble_addr<S: AsRef<str>>(s: S) -> Result<BleAddr> {
+pub fn parse_ble_addr<S: AsRef<str>>(s: S) -> ockam_core::Result<BleAddr> {
     Ok(s.as_ref()
         .parse()
         .map_err(|_| TransportError::InvalidAddress)?)

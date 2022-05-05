@@ -12,7 +12,7 @@ use btleplug::platform::{Adapter, Manager};
 use futures::stream::{Stream, StreamExt};
 use uuid::Uuid;
 
-use ockam_core::async_trait;
+use ockam_core::{async_trait, Result};
 
 use crate::driver::{self, BleEvent};
 use crate::driver::{BleClientDriver, BleStreamDriver};
@@ -52,7 +52,7 @@ pub struct BleAdapter {
 }
 
 impl BleAdapter {
-    pub async fn try_new() -> ockam::Result<BleAdapter> {
+    pub async fn try_new() -> Result<BleAdapter> {
         let manager = Manager::new().await.map_err(BleError::from)?;
         Ok(Self {
             manager,
@@ -66,7 +66,7 @@ impl BleAdapter {
 
 #[async_trait]
 impl BleClientDriver for BleAdapter {
-    async fn scan(&mut self, ble_addr: &BleAddr) -> ockam::Result<()> {
+    async fn scan(&mut self, ble_addr: &BleAddr) -> Result<()> {
         let adapters = self.manager.adapters().await.map_err(BleError::from)?;
         if adapters.is_empty() {
             error!("No Bluetooth adapters found");
@@ -96,7 +96,7 @@ impl BleClientDriver for BleAdapter {
         Ok(())
     }
 
-    async fn connect(&mut self) -> ockam::Result<()> {
+    async fn connect(&mut self) -> Result<()> {
         if self.peripheral.is_none() {
             return Err(BleError::NotFound.into());
         }
@@ -173,7 +173,7 @@ impl BleClientDriver for BleAdapter {
 
 #[async_trait]
 impl BleStreamDriver for BleAdapter {
-    async fn poll<'b>(&mut self, buffer: &'b mut [u8]) -> ockam::Result<BleEvent<'b>> {
+    async fn poll<'b>(&mut self, buffer: &'b mut [u8]) -> Result<BleEvent<'b>> {
         // avoid deadlocking the caller
         ockam_node::tokio::task::yield_now().await;
 
@@ -205,7 +205,7 @@ impl BleStreamDriver for BleAdapter {
         Ok(BleEvent::None)
     }
 
-    async fn write(&mut self, buffer: &[u8]) -> ockam::Result<()> {
+    async fn write(&mut self, buffer: &[u8]) -> Result<()> {
         trace!("write {} bytes", buffer.len());
 
         if self.peripheral.is_none() {
@@ -239,7 +239,7 @@ impl BleStreamDriver for BleAdapter {
 async fn scan_for_peripheral_name(
     adapters: &[Adapter],
     local_name_filter: &str,
-) -> ockam::Result<btleplug::platform::Peripheral> {
+) -> Result<btleplug::platform::Peripheral> {
     for (count, adapter) in adapters.iter().enumerate() {
         let peripherals = adapter.peripherals().await.map_err(BleError::from)?;
         debug!(

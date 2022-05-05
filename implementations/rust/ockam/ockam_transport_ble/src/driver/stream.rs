@@ -1,4 +1,5 @@
 use ockam_core::compat::sync::Arc;
+use ockam_core::Result;
 
 #[cfg(feature = "std")]
 use futures::lock::Mutex;
@@ -48,15 +49,12 @@ impl<A> AsyncStream<A>
 where
     A: BleStreamDriver + Send,
 {
-    async fn write(&self, buffer: &[u8]) -> ockam::Result<()> {
+    async fn write(&self, buffer: &[u8]) -> Result<()> {
         let mut guard = self.inner.lock().await;
         (*guard).write(buffer).await
     }
 
-    async fn poll<'a, 'b>(
-        &'a self,
-        buffer: &'b mut [u8],
-    ) -> ockam::Result<crate::driver::BleEvent<'b>> {
+    async fn poll<'a, 'b>(&'a self, buffer: &'b mut [u8]) -> Result<crate::driver::BleEvent<'b>> {
         let mut guard = self.inner.lock().await;
         (*guard).poll(buffer).await
     }
@@ -71,7 +69,7 @@ impl<A> Sink<A>
 where
     A: BleStreamDriver + Send,
 {
-    pub async fn write(&self, buffer: &[u8]) -> ockam::Result<()> {
+    pub async fn write(&self, buffer: &[u8]) -> Result<()> {
         self.inner.write(buffer).await
     }
 }
@@ -88,7 +86,7 @@ where
     pub async fn poll<'a, 'b>(
         &'a self,
         buffer: &'b mut [u8],
-    ) -> ockam::Result<crate::driver::BleEvent<'b>> {
+    ) -> Result<crate::driver::BleEvent<'b>> {
         self.inner.poll(buffer).await
     }
 }

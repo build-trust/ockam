@@ -1,12 +1,11 @@
 mod handle;
 
-use ockam::LocalMessage;
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, collections::BTreeMap, vec::Vec},
     Any,
 };
-use ockam_core::{Address, Decodable, Message, Result, Routed, Worker};
+use ockam_core::{Address, Decodable, LocalMessage, Message, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};

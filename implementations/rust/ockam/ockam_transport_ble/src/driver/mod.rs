@@ -22,7 +22,7 @@ pub(crate) use packet::PacketBuffer;
 pub(crate) use stream::{AsyncStream, Sink, Source};
 
 use crate::BleAddr;
-use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 /// The minimum MTU required by the BLE spec. Many devices
 /// (e.g. bluenrg_ms) don't allow for configuration higher than this.
@@ -76,24 +76,24 @@ pub enum BleEvent<'a> {
 /// hardware to function as a BLE Client
 #[async_trait]
 pub trait BleClientDriver {
-    async fn scan(&mut self, ble_addr: &BleAddr) -> ockam::Result<()>;
-    async fn connect(&mut self) -> ockam::Result<()>;
+    async fn scan(&mut self, ble_addr: &BleAddr) -> Result<()>;
+    async fn connect(&mut self) -> Result<()>;
 }
 
 /// Implement the BleServerDriver trait if you want to allow your
 /// hardware to function as a BLE Client
 #[async_trait]
 pub trait BleServerDriver {
-    async fn bind(&mut self, ble_addr: &BleAddr) -> ockam::Result<()>;
-    async fn start_advertising(&mut self) -> ockam::Result<()>;
+    async fn bind(&mut self, ble_addr: &BleAddr) -> Result<()>;
+    async fn start_advertising(&mut self) -> Result<()>;
 }
 
 /// Implement the BleStreamDriver to transmit and receive data from
 /// your hardware
 #[async_trait]
 pub trait BleStreamDriver {
-    async fn poll<'b>(&mut self, buffer: &'b mut [u8]) -> ockam::Result<BleEvent<'b>>;
-    async fn write(&mut self, buffer: &[u8]) -> ockam::Result<()>;
+    async fn poll<'b>(&mut self, buffer: &'b mut [u8]) -> Result<BleEvent<'b>>;
+    async fn write(&mut self, buffer: &[u8]) -> Result<()>;
 }
 
 /// A BLE client that initiates GATT commands and requests, and
@@ -116,11 +116,11 @@ impl<A> BleClientDriver for BleClient<A>
 where
     A: BleClientDriver + BleStreamDriver + Send,
 {
-    async fn scan(&mut self, ble_addr: &BleAddr) -> ockam::Result<()> {
+    async fn scan(&mut self, ble_addr: &BleAddr) -> Result<()> {
         self.inner.scan(ble_addr).await
     }
 
-    async fn connect(&mut self) -> ockam::Result<()> {
+    async fn connect(&mut self) -> Result<()> {
         self.inner.connect().await
     }
 }
@@ -130,11 +130,11 @@ impl<A> BleStreamDriver for BleClient<A>
 where
     A: BleClientDriver + BleStreamDriver + Send,
 {
-    async fn poll<'b>(&mut self, buffer: &'b mut [u8]) -> ockam::Result<BleEvent<'b>> {
+    async fn poll<'b>(&mut self, buffer: &'b mut [u8]) -> Result<BleEvent<'b>> {
         self.inner.poll(buffer).await
     }
 
-    async fn write(&mut self, buffer: &[u8]) -> ockam::Result<()> {
+    async fn write(&mut self, buffer: &[u8]) -> Result<()> {
         self.inner.write(buffer).await
     }
 }
@@ -159,11 +159,11 @@ impl<A> BleServerDriver for BleServer<A>
 where
     A: BleServerDriver + BleStreamDriver + Send,
 {
-    async fn bind(&mut self, ble_addr: &BleAddr) -> ockam::Result<()> {
+    async fn bind(&mut self, ble_addr: &BleAddr) -> Result<()> {
         self.inner.bind(ble_addr).await
     }
 
-    async fn start_advertising(&mut self) -> ockam::Result<()> {
+    async fn start_advertising(&mut self) -> Result<()> {
         self.inner.start_advertising().await
     }
 }
@@ -173,11 +173,11 @@ impl<A> BleStreamDriver for BleServer<A>
 where
     A: BleServerDriver + BleStreamDriver + Send,
 {
-    async fn poll<'b>(&mut self, buffer: &'b mut [u8]) -> ockam::Result<BleEvent<'b>> {
+    async fn poll<'b>(&mut self, buffer: &'b mut [u8]) -> Result<BleEvent<'b>> {
         self.inner.poll(buffer).await
     }
 
-    async fn write(&mut self, buffer: &[u8]) -> ockam::Result<()> {
+    async fn write(&mut self, buffer: &[u8]) -> Result<()> {
         self.inner.write(buffer).await
     }
 }

@@ -1,9 +1,8 @@
 use core::str::FromStr;
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use ockam::AsyncTryClone;
 use ockam_core::compat::boxed::Box;
-use ockam_core::{async_trait, Result};
+use ockam_core::{async_trait, AsyncTryClone, Result};
 use ockam_node::Context;
 
 use crate::driver::{BleClient, BleServer};
