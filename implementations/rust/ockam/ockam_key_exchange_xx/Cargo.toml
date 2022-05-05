@@ -39,6 +39,6 @@ ockam_core = { path = "../ockam_core", version = "^0.53.0", default_features = f
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.44.0", default_features = false }
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", version = "^0.46.0"}
+ockam_vault = { path = "../ockam_vault", version = "^0.47.0"}
 ockam_node = { path = "../ockam_node", version = "^0.54.0"}
 hex = "0.4"

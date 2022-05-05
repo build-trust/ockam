@@ -96,7 +96,7 @@ path = "tests/main.rs"
 ockam_core = { path = "../ockam_core", version = "^0.53.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.14.0", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.54.0", default-features = false }
-ockam_vault = { path = "../ockam_vault", version = "^0.46.0", default_features = false, optional = true }
+ockam_vault = { path = "../ockam_vault", version = "^0.47.0", default_features = false, optional = true }
 ockam_channel = { path = "../ockam_channel", version = "^0.51.0", default_features = false }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.52.0", optional = true }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.44.0", default_features = false }
@@ -116,7 +116,7 @@ hex = { version = "0.4", default-features = false }
 dyn-clone = "1.0"
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", version = "^0.46.0"}
+ockam_vault = { path = "../ockam_vault", version = "^0.47.0"}
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.47.0"}
 trybuild = { version = "1.0", features = ["diff"] }
 serde_json = "1.0"
