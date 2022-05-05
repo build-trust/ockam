@@ -48,18 +48,17 @@ impl Processor for TcpPortalRecvProcessor {
 
         if self.buf.is_empty() {
             // Notify Sender that connection was closed
-            match ctx
+            if let Err(err) = ctx
                 .send(
                     route![self.sender_address.clone()],
                     PortalInternalMessage::Disconnect,
                 )
                 .await
             {
-                Err(err) => warn!(
+                warn!(
                     "Error notifying Tcp Portal Sender about dropped connection {}",
                     err
-                ),
-                _ => {}
+                );
             }
 
             return Ok(false);
