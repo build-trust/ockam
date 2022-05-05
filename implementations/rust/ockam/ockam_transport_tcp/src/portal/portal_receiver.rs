@@ -6,7 +6,7 @@ use ockam_node::Context;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{error, warn};
 
-const MAX_PAYLOAD_SIZE: usize = 256;
+const MAX_PAYLOAD_SIZE: usize = 10 * 1024;
 
 /// A TCP Portal receiving message processor
 ///
