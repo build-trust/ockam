@@ -6,6 +6,7 @@ use ockam_node::{Context, DelayedEvent};
 use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
+use std::time::Instant;
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
@@ -59,6 +60,7 @@ pub(crate) struct TcpSendWorker {
     rx_addr: Option<Address>,
     heartbeat: DelayedEvent<TcpSendWorkerMsg>,
     heartbeat_interval: Option<Duration>,
+    time: Instant,
 }
 
 impl TcpSendWorker {
@@ -87,6 +89,7 @@ impl TcpSendWorker {
             rx_addr: None,
             heartbeat,
             heartbeat_interval: Some(Duration::from_secs(5 * 60)),
+            time: Instant::now(),
         }
     }
 
@@ -128,7 +131,10 @@ impl TcpSendWorker {
             Some(hi) => *hi,
             None => return Ok(()),
         };
-
+        if self.time.elapsed() < heartbeat_interval {
+            return Ok(());
+        }
+        self.time = Instant::now();
         self.heartbeat.schedule(heartbeat_interval).await
     }
 
