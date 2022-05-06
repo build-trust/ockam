@@ -1,9 +1,6 @@
 name: OSSF Scorecards
 
-permissions:
-  actions: read
-  contents: read
-  security-events: write # Needed to upload results to code-scanning dashboard.
+permissions: read-all
 
 on:
   workflow_dispatch:
@@ -17,6 +14,10 @@ jobs:
   analyze:
     name: Scorecards - Analyze
     runs-on: ubuntu-20.04
+    permissions:
+      actions: read
+      contents: read
+      security-events: write # Needed to upload results to code-scanning dashboard.
 
     steps:
       - name: Checkout
