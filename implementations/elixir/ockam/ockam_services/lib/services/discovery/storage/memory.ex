@@ -5,7 +5,7 @@ defmodule Ockam.Services.Discovery.Storage.Memory do
   """
   @behaviour Ockam.Services.Discovery.Storage
 
-  alias Ockam.Services.Discovery.ServiceInfo
+  alias Ockam.API.Discovery.ServiceInfo
 
   @type storage_state() :: %{binary() => ServiceInfo.t()}
 

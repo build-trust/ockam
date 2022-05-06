@@ -103,20 +103,6 @@ defmodule Ockam.Services.Provider do
     end
   end
 
-  @spec start_service(atom(), atom(), list()) ::
-          {:ok, pid()} | {:ok, pid(), any()} | {:error, any()}
-  def start_configured_service(service_name, supervisor, extra_args \\ []) do
-    services = get_configured_services()
-
-    case Keyword.get(services, service_name) do
-      nil ->
-        {:error, :service_not_configured}
-
-      default_args ->
-        start_service({service_name, Keyword.merge(default_args, extra_args)}, nil, supervisor)
-    end
-  end
-
   @spec get_service_providers_map(nil | list()) :: map()
   def get_service_providers_map(providers) when is_list(providers) or providers == nil do
     providers

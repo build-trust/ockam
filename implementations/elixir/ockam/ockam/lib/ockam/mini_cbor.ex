@@ -28,14 +28,14 @@ defmodule MiniCBOR do
 
   def encode(struct, schema) do
     schema_map = struct_schema(schema)
-    simple_map = rekey_struct(struct, schema_map)
-    CBOR.encode(simple_map)
+    optimized = rekey_struct(struct, schema_map)
+    CBOR.encode(optimized)
   end
 
   def decode(binary, schema) do
-    with {:ok, simple_map, rest} <- CBOR.decode(binary) do
-      schema_map = simple_map_schema(schema)
-      struct = rekey_simple_map(simple_map, schema_map)
+    with {:ok, optimized, rest} <- CBOR.decode(binary) do
+      schema_map = optimized_schema(schema)
+      struct = rekey_optimized(optimized, schema_map)
       {:ok, struct, rest}
     end
   end
@@ -61,11 +61,15 @@ defmodule MiniCBOR do
     {:enum, mapping}
   end
 
-  def simple_map_schema({:map, keys}) when is_list(keys) do
+  def struct_schema({:list, schema}) do
+    {:list, struct_schema(schema)}
+  end
+
+  def optimized_schema({:map, keys}) when is_list(keys) do
     mapping =
       keys
       |> Enum.with_index(fn
-        {key, inner_schema}, index -> {index, {key, simple_map_schema(inner_schema)}}
+        {key, inner_schema}, index -> {index, {key, optimized_schema(inner_schema)}}
         key, index -> {index, key}
       end)
       |> Map.new()
@@ -73,7 +77,7 @@ defmodule MiniCBOR do
     {:map, mapping}
   end
 
-  def simple_map_schema({:enum, options}) when is_list(options) do
+  def optimized_schema({:enum, options}) when is_list(options) do
     mapping =
       options
       |> Enum.with_index(fn key, index -> {index, key} end)
@@ -82,8 +86,18 @@ defmodule MiniCBOR do
     {:enum, mapping}
   end
 
+  def optimized_schema({:list, schema}) do
+    {:list, optimized_schema(schema)}
+  end
+
   def rekey_struct(struct, :noschema) do
     struct
+  end
+
+  def rekey_struct(struct, {:list, schema}) do
+    Enum.map(struct, fn val ->
+      rekey_struct(val, schema)
+    end)
   end
 
   def rekey_struct(struct, {:map, schema_map}) do
@@ -109,18 +123,24 @@ defmodule MiniCBOR do
     Map.fetch!(option_map, atom)
   end
 
-  def rekey_simple_map(simple_map, :noschema) do
-    simple_map
+  def rekey_optimized(optimized, :noschema) do
+    optimized
   end
 
-  def rekey_simple_map(simple_map, {:map, schema_map}) do
-    Enum.flat_map(simple_map, fn {index, val} ->
+  def rekey_optimized(optimized, {:list, schema}) do
+    Enum.map(optimized, fn val ->
+      rekey_optimized(val, schema)
+    end)
+  end
+
+  def rekey_optimized(optimized, {:map, schema_map}) do
+    Enum.flat_map(optimized, fn {index, val} ->
       case Map.get(schema_map, index) do
         nil ->
           []
 
         {key, inner_schema} ->
-          [{key, rekey_simple_map(val, inner_schema)}]
+          [{key, rekey_optimized(val, inner_schema)}]
 
         key ->
           [{key, val}]
@@ -129,7 +149,7 @@ defmodule MiniCBOR do
     |> Map.new()
   end
 
-  def rekey_simple_map(index, {:enum, option_map}) when is_integer(index) do
+  def rekey_optimized(index, {:enum, option_map}) when is_integer(index) do
     Map.fetch!(option_map, index)
   end
 end

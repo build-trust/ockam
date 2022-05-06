@@ -78,9 +78,9 @@ defmodule Ockam.Services.StaticForwarding.Forwarder do
 
   alias Ockam.Message
 
-  def update_route(worker, route) do
+  def update_route(worker, route, options \\ []) do
     ## TODO: reply to the subscriber?
-    Ockam.Worker.call(worker, {:update_route, route})
+    Ockam.Worker.call(worker, {:update_route, route, options})
   end
 
   @impl true
@@ -90,14 +90,20 @@ defmodule Ockam.Services.StaticForwarding.Forwarder do
   end
 
   @impl true
-  def handle_call({:update_route, route}, _from, %{alias: alias_str} = state) do
+  def handle_call({:update_route, route, options}, _from, %{alias: alias_str} = state) do
     state = Map.put(state, :route, route)
 
-    Ockam.Router.route(%{
-      onward_route: route,
-      return_route: [state.address],
-      payload: :bare.encode("#{alias_str}", :string)
-    })
+    case Keyword.get(options, :notify, true) do
+      true ->
+        Ockam.Router.route(%{
+          onward_route: route,
+          return_route: [state.address],
+          payload: :bare.encode("#{alias_str}", :string)
+        })
+
+      false ->
+        :ok
+    end
 
     {:reply, :ok, state}
   end

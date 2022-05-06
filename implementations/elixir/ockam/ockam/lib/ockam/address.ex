@@ -53,6 +53,10 @@ defmodule Ockam.Address do
     %{type: type(address), value: value(address)}
   end
 
+  def denormalize(%{"type" => type, "value" => value}) do
+    denormalize(%{type: type, value: value})
+  end
+
   def denormalize(%{type: 0, value: string}), do: string
   def denormalize(string) when is_binary(string), do: string
   def denormalize(%{} = address), do: struct(__MODULE__, address)

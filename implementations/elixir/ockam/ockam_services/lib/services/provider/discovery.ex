@@ -6,7 +6,7 @@ defmodule Ockam.Services.Provider.Discovery do
 
   @behaviour Ockam.Services.Provider
 
-  alias Ockam.Services.Discovery, as: DiscoveryService
+  alias Ockam.Services.API.Discovery, as: DiscoveryService
 
   @services [:discovery]
 

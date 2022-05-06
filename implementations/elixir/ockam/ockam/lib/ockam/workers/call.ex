@@ -8,11 +8,10 @@ defmodule Ockam.Workers.Call do
 
   require Logger
 
-  def call_on_current_process(payload, onward_route, timeout \\ 20_000) do
-    {:ok, call_address} = Ockam.Node.register_random_address()
-    Ockam.Router.route(payload, onward_route, [call_address])
+  def call_on_current_process(payload, onward_route, timeout \\ 10_000, self_address \\ nil) do
+    with_self_address(self_address, fn call_address ->
+      Ockam.Router.route(payload, onward_route, [call_address])
 
-    result =
       receive do
         %Ockam.Message{
           onward_route: [^call_address]
@@ -22,26 +21,27 @@ defmodule Ockam.Workers.Call do
         timeout ->
           {:error, :timeout}
       end
+    end)
+  end
 
-    Ockam.Node.unregister_address(call_address)
+  def with_self_address(nil, fun) do
+    {:ok, call_address} = Ockam.Node.register_random_address()
 
-    ## There is a short time frame after timeout and before we unregister address
-    ## The mailbox might contain the message we're waiting for
-    case result do
-      {:error, :timeout} ->
-        receive do
-          %Ockam.Message{
-            onward_route: [^call_address]
-          } = message ->
-            {:ok, message}
-        after
-          0 ->
-            {:error, :timeout}
-        end
-
-      other ->
-        other
+    try do
+      fun.(call_address)
+    after
+      Ockam.Node.unregister_address(call_address)
+      ## Flush the mailbox
+      receive do
+        %Ockam.Message{onward_route: [^call_address]} -> :ok
+      after
+        0 -> :ok
+      end
     end
+  end
+
+  def with_self_address(address, fun) do
+    fun.(address)
   end
 
   def call(call, options \\ [], timeout \\ 20_000) do

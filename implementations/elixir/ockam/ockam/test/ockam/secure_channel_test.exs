@@ -1,20 +1,3 @@
-defmodule Ockam.SecureChannel.Tests.Echoer do
-  use Ockam.Worker
-
-  alias Ockam.Message
-  alias Ockam.Router
-
-  require Logger
-
-  @impl true
-  def handle_message(message, state) do
-    reply = Message.reply(message, state.address, Message.payload(message))
-
-    Router.route(reply)
-    {:ok, state}
-  end
-end
-
 defmodule Ockam.SecureChannel.Tests.Wait do
   def until(f), do: f.() || until(f)
 end
@@ -26,8 +9,8 @@ defmodule Ockam.SecureChannel.Tests do
   alias Ockam.Node
   alias Ockam.Router
   alias Ockam.SecureChannel
-  alias Ockam.SecureChannel.Tests.Echoer
   alias Ockam.SecureChannel.Tests.Wait
+  alias Ockam.Tests.Helpers.Echoer
   alias Ockam.Vault
   alias Ockam.Vault.Software, as: SoftwareVault
 

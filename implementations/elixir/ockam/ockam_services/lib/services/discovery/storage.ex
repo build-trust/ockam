@@ -2,7 +2,7 @@ defmodule Ockam.Services.Discovery.Storage do
   @moduledoc """
   Storage module behaviour for discovery service
   """
-  alias Ockam.Services.Discovery.ServiceInfo
+  alias Ockam.API.Discovery.ServiceInfo
 
   @type storage_state() :: any()
   @type metadata() :: %{binary() => binary()}

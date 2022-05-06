@@ -1,19 +1,21 @@
 defmodule Test.Services.DiscoveryTest do
   use ExUnit.Case
 
-  alias Ockam.CloudApi.DiscoveryClient
+  alias Ockam.API.Client.DiscoveryClient
 
-  alias Ockam.Services.Discovery
+  alias Ockam.Services.API.Discovery
   alias Ockam.Services.Discovery.Storage
 
   test "in-memory register and list" do
-    {:ok, pid, _address} =
+    {:ok, _pid, _address} =
       Discovery.start_link(
         address: "discovery_memory",
         storage: Storage.Memory
       )
 
-    DiscoveryClient.register_service(["discovery_memory"], "discovered_service", ["me"], %{})
+    :ok = Ockam.Node.register_address("me")
+
+    :ok = DiscoveryClient.register(["discovery_memory"], "discovered_service", "me", %{})
 
     {:ok, services} = DiscoveryClient.list_services([], ["discovery_memory"])
 
@@ -24,7 +26,7 @@ defmodule Test.Services.DiscoveryTest do
     supervisor = Test.Services.DiscoveryTest.Supervisor
     {:ok, sup_pid} = Supervisor.start_link([], name: supervisor, strategy: :one_for_one)
 
-    {:ok, pid, _address} =
+    {:ok, _pid, _address} =
       Discovery.start_link(
         address: "discovery_supervisor",
         storage: Storage.Supervisor,

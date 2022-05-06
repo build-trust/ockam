@@ -4,7 +4,7 @@ defmodule Ockam.Services.Discovery.Storage.Supervisor do
   """
   @behaviour Ockam.Services.Discovery.Storage
 
-  alias Ockam.Services.Discovery.ServiceInfo
+  alias Ockam.API.Discovery.ServiceInfo
 
   def init(options) do
     supervisor = Keyword.fetch!(options, :supervisor)
