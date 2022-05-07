@@ -3,12 +3,12 @@ authors = ["Ockam Developers"]
 description = """Example projects using the Ockam APIs"""
 version = "0.29.0"
 edition = "2021"
-homepage = "https://github.com/ockam-network/ockam"
+homepage = "https://github.com/build-trust/ockam"
 keywords = ["ockam", "crypto", "cryptography"]
 license = "Apache-2.0"
 name = "ockam_examples"
 readme = "README.md"
-repository = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/build-trust/ockam"
 publish = false
 rust-version = "1.56.0"
 

@@ -128,7 +128,7 @@ In most cases, `cross` is sufficient for cross compiling to RISC-V Linux. Howeve
 
 Let's create an encrypted secure channel between Alice and Bob. When a message is sent through this channel it will be encrypted when it enters the channel and decrypted just before it exits the channel.
 
-For the purpose of our example, we'll create a local channel within one program. In our [other examples](https://github.com/ockam-network/ockam/tree/develop/documentation/guides/rust#readme), you'll see that it's just as easy to create end-to-end protected channels over multi-hop, multi-protocol transport routes:
+For the purpose of our example, we'll create a local channel within one program. In our [other examples](https://github.com/build-trust/ockam/tree/develop/documentation/guides/rust#readme), you'll see that it's just as easy to create end-to-end protected channels over multi-hop, multi-protocol transport routes:
 
 Replace the contents of `src/main.rs` with the following code:
 

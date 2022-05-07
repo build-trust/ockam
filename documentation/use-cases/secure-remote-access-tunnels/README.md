@@ -65,7 +65,7 @@ cargo new --lib secure_remote_access && cd secure_remote_access && mkdir example
 ```
 
 If the above instructions don't work on your machine please
-[post a question](https://github.com/ockam-network/ockam/discussions/1642),
+[post a question](https://github.com/build-trust/ockam/discussions/1642),
 we would love to help.
 
 ## 01: Setup an Inlet and an Outlet
@@ -624,7 +624,7 @@ Routing messages is incredibly powerful, lightweight and composable. It allows u
 In the examples above, we saw a glimpse of the flexible set of
 [composable building blocks](../../guides/rust#readme) available in the Ockam rust crates. These building
 blocks can be easily combined for a variety of end-to-end secure, private,
-and [trustful communication use-cases](https://github.com/ockam-network/ockam#next-steps).
+and [trustful communication use-cases](https://github.com/build-trust/ockam#next-steps).
 
 Ockam's Identity and Trust features plug into existing workforce identity and enterprise access
 policy engines to enable **dynamically created, policy-driven, short-lived, granularly authorized,

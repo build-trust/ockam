@@ -1,4 +1,4 @@
-repo = "https://github.com/ockam-network/ockam.git"
+repo = "https://github.com/build-trust/ockam.git"
 
 Mix.install([
   {:ockam,

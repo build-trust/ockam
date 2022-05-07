@@ -112,7 +112,7 @@ impl PacketBuffer {
         // packet consisting of 6 zero bytes followed by two bytes
         // that can be non-zero.
         //
-        // https://github.com/ockam-network/ockam/issues/2514
+        // https://github.com/build-trust/ockam/issues/2514
         if packet_len > (2 << 16) {
             error!(
                 "Packet is too long for this implementation.\n \

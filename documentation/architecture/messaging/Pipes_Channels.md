@@ -1,6 +1,6 @@
 # Pipes and channels
 
-**NOTE: this document contains information from the [pipes and channels proposal](https://github.com/ockam-network/proposals/tree/main/design/0011-pipes-and-channels)**
+**NOTE: this document contains information from the [pipes and channels proposal](https://github.com/build-trust/proposals/tree/main/design/0011-pipes-and-channels)**
 
 ## Purpose
 
@@ -142,7 +142,7 @@ RR: [C2] ; return_route
 
 What happens here is the channel end which receives a message forwards it through the pipe and the channel end which is supposed to send that message.
 
-Pipe channels can be dynamically established using [pipe channel session process](https://github.com/ockam-network/proposals/blob/main/design/0011-pipes-and-channels/pipe_channel_session.md)
+Pipe channels can be dynamically established using [pipe channel session process](https://github.com/build-trust/proposals/blob/main/design/0011-pipes-and-channels/pipe_channel_session.md)
 
 
 **Back to:** [Delivery properties](Delivery.md)

@@ -8,5 +8,5 @@ we would love to hear them.
 We do new releases of Ockam Rust Crates every week.
 
 Please
-[file an issue](https://github.com/ockam-network/ockam/issues) or
-[start a discussion](https://github.com/ockam-network/ockam/discussions).
+[file an issue](https://github.com/build-trust/ockam/issues) or
+[start a discussion](https://github.com/build-trust/ockam/discussions).

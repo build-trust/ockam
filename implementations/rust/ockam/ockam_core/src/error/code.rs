@@ -182,7 +182,7 @@ pub enum Origin {
 pub enum Kind {
     /// Indicates that there is no way to determine a more specific kind.
     // Internal note: We should not emit this from within the
-    // `ockam-network/ockam` crates.
+    // `build-trust/ockam` crates.
     Unknown = 0,
 
     /// Used for serious internal errors, including panics.

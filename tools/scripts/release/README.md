@@ -36,7 +36,7 @@ If `BUMPED_DEP_CRATES_VERSION` is not defined then transitive dependent crates a
 
 ## Changelog Generation (Requires zsh)
 
-Changelogs are generated using [git-cliff](https://github.com/orhun/git-cliff). To generate changelogs, we call the [changelog.sh script](https://github.com/ockam-network/ockam/blob/develop/tools/scripts/release/changelog.sh) which will generate changelogs and append to their CHANGELOG.md file.
+Changelogs are generated using [git-cliff](https://github.com/orhun/git-cliff). To generate changelogs, we call the [changelog.sh script](https://github.com/build-trust/ockam/blob/develop/tools/scripts/release/changelog.sh) which will generate changelogs and append to their CHANGELOG.md file.
 To run changelog generator, from the Ockam root path, call
 ```bash
 tools/scripts/release/changelog.sh

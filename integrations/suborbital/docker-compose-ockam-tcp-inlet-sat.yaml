@@ -16,7 +16,7 @@ services:
       - ockam-inlet
 
   ockam-inlet:
-    image: ghcr.io/ockam-network/examples/tcp_inlet_and_outlet
+    image: ghcr.io/build-trust/examples/tcp_inlet_and_outlet
     command: "04-inlet 0.0.0.0:${PORT:-4001} ${FORWARDING_ADDRESS}"
     ports:
       - "${PORT:-4001}:${PORT:-4001}"

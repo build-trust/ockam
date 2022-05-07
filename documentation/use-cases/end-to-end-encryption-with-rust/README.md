@@ -62,7 +62,7 @@ intermediaries. Our application’s vulnerability surface quickly grows and beco
 
 ### Mutually Authenticated, End-to-End Encrypted Secure Channels with Ockam
 
-[Ockam](https://github.com/ockam-network/ockam) is a suite of programming libraries that make it simple
+[Ockam](https://github.com/build-trust/ockam) is a suite of programming libraries that make it simple
 for applications to create any number of lightweight, mutually-authenticated, end-to-end encrypted
 secure channels. These channels use cryptography to guarantee end-to-end integrity, authenticity, and
 confidentiality of messages.
@@ -105,7 +105,7 @@ cargo new --lib hello_ockam && cd hello_ockam && mkdir examples &&
 ```
 
 If the above instructions don't work on your machine please
-[post a question](https://github.com/ockam-network/ockam/discussions/1642),
+[post a question](https://github.com/build-trust/ockam/discussions/1642),
 we would love to help.
 
 ### Bob

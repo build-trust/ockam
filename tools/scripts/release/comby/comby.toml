@@ -9,4 +9,4 @@ rewrite='keywords = ["ockam", "crypto", :[key]]'
 
 [ockam-homepage]
 match='homepage = ":[_]"'
-rewrite='homepage = "https://github.com/ockam-network/ockam"'
+rewrite='homepage = "https://github.com/build-trust/ockam"'

@@ -18,7 +18,7 @@ Ockam Hub integrates with message brokers through the use of Ockam Streams and a
 
 Ockam Streams is a minimal API to access the basic stream functions like publishing messages and pulling them from the stream log.
 
-Further information can be found in the [Ockam Stream service protocol definition](https://github.com/ockam-network/proposals/tree/main/design/0009-stream-protocol)
+Further information can be found in the [Ockam Stream service protocol definition](https://github.com/build-trust/proposals/tree/main/design/0009-stream-protocol)
 
 
 ### The Stream client API

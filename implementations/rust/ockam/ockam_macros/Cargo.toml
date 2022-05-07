@@ -12,7 +12,7 @@ categories = [
     "embedded",
 ]
 description = "End-to-end encryption and mutual authentication for distributed applications."
-homepage = "https://github.com/ockam-network/ockam"
+homepage = "https://github.com/build-trust/ockam"
 keywords = [
     "ockam",
     "crypto",
@@ -21,7 +21,7 @@ keywords = [
     "encryption",
 ]
 readme = "README.md"
-repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_macros"
+repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_macros"
 publish = true
 rust-version = "1.56.0"
 

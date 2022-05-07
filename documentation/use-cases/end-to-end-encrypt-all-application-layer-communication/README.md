@@ -65,7 +65,7 @@ HTTP server. It will create a forwarder in the cloud node and print the assigned
 
 ```
 docker run --rm -it --network=host --name=outlet \
-  ghcr.io/ockam-network/examples/tcp_inlet_and_outlet 04-outlet 127.0.0.1:5000
+  ghcr.io/build-trust/examples/tcp_inlet_and_outlet 04-outlet 127.0.0.1:5000
 ```
 
 Then start the inlet program, in a separate terminal window, and give it the TCP address on which the
@@ -74,7 +74,7 @@ that was printed in the previous step.
 
 ```
 docker run --rm -it --network=host --name=inlet \
-  ghcr.io/ockam-network/examples/tcp_inlet_and_outlet 04-inlet 127.0.0.1:4001 [[FORWARDING_ADDRESS]]
+  ghcr.io/build-trust/examples/tcp_inlet_and_outlet 04-inlet 127.0.0.1:4001 [[FORWARDING_ADDRESS]]
 ```
 
 Now run an HTTP client, but instead of pointing it directly to our HTTP server, make a request to
@@ -94,7 +94,7 @@ listening ports that expose them to attacks from the Internet.
 The Inlet and Outlet pair that we used in this example are general TCP Inlet and Outlet so that can be used
 to tunnel any TCP based protocol through Ockam Secure Channels. Try replacing the HTTP server and client in
 above example with some other TCP based client and server.
-We'd love to [hear about your experiments](https://github.com/ockam-network/ockam/discussions).
+We'd love to [hear about your experiments](https://github.com/build-trust/ockam/discussions).
 
 Next let's dig into the [code behind the above example](#code-walkthrough). You can stop the above docker
 containers as follows:
@@ -132,7 +132,7 @@ cargo new --lib ockam_tcp_inlet_outlet && cd ockam_tcp_inlet_outlet && mkdir exa
 ```
 
 If the above instructions don't work on your machine please
-[post a question](https://github.com/ockam-network/ockam/discussions/1642),
+[post a question](https://github.com/build-trust/ockam/discussions/1642),
 we would love to help.
 
 ### 01: Setup an Inlet and an Outlet

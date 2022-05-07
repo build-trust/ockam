@@ -16,7 +16,7 @@ jobs:
 
     # We assume that commit 2fd0d36fe6ae0c2d527368683ec3a6352617b381 will be in the history
     # of all commits based on ockam develop branch
-    # https://github.com/ockam-network/ockam/commit/2fd0d36fe6ae0c2d527368683ec3a6352617b381
+    # https://github.com/build-trust/ockam/commit/2fd0d36fe6ae0c2d527368683ec3a6352617b381
     env:
       FIRST_COMMIT: 2fd0d36fe6ae0c2d527368683ec3a6352617b381
 
@@ -36,7 +36,7 @@ jobs:
 
       - name: Get commit information from Github (Pull Request)
         if: github.event_name == 'pull_request'
-        run: gh api repos/ockam-network/ockam/pulls/${{ github.event.number }}/commits > commits.json
+        run: gh api repos/build-trust/ockam/pulls/${{ github.event.number }}/commits > commits.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -80,7 +80,7 @@ jobs:
             but it seems this is not the case with the current HEAD.
 
             Try rebasing to the develop branch of ockam.
-            https://github.com/ockam-network/ockam/tree/develop
+            https://github.com/build-trust/ockam/tree/develop
           " && exit 1)
 
       - name: Check no merge commits
@@ -123,7 +123,7 @@ jobs:
               5. Only feat, fix, refactor type commits are included in our changelog.
 
               The linting rules are defined in:
-              https://github.com/ockam-network/ockam/blob/develop/tools/commitlint/commitlint.config.js
+              https://github.com/build-trust/ockam/blob/develop/tools/commitlint/commitlint.config.js
 
               More about the Ockam Commit Message Convention
               https://ockam.io/learn/how-to-guides/contributing/CONTRIBUTING#commit-messages
@@ -132,7 +132,7 @@ jobs:
       - name: Get Contributors List
         run: |
           curl --proto '=https' --tlsv1.2 --silent --show-error --fail \
-            https://raw.githubusercontent.com/ockam-network/contributors/main/CONTRIBUTORS.csv \
+            https://raw.githubusercontent.com/build-trust/contributors/main/CONTRIBUTORS.csv \
             > CONTRIBUTORS.csv
 
       - name: Split Contributors List
@@ -176,9 +176,9 @@ jobs:
               1. Read the CLA at: https://www.ockam.io/learn/how-to-guides/contributing/cla
 
               2. To accept the CLA, please send a different pull request to our
-              [contributors repository](https://github.com/ockam-network/contributors) indicating
+              [contributors repository](https://github.com/build-trust/contributors) indicating
               that you accept the CLA by adding your Git/Github details in a row at the end of the
-              [CONTRIBUTORS.csv](https://github.com/ockam-network/contributors/blob/main/CONTRIBUTORS.csv)
+              [CONTRIBUTORS.csv](https://github.com/build-trust/contributors/blob/main/CONTRIBUTORS.csv)
               file.
 
               We look forward to merging your first contribution!
@@ -222,9 +222,9 @@ jobs:
                 1. Read the CLA at: https://www.ockam.io/learn/how-to-guides/contributing/cla
 
                 2. To accept the CLA, please send a different pull request to our
-                [contributors repository](https://github.com/ockam-network/contributors) indicating
+                [contributors repository](https://github.com/build-trust/contributors) indicating
                 that you accept the CLA by adding your Git/Github details in a row at the end of the
-                [CONTRIBUTORS.csv](https://github.com/ockam-network/contributors/blob/main/CONTRIBUTORS.csv)
+                [CONTRIBUTORS.csv](https://github.com/build-trust/contributors/blob/main/CONTRIBUTORS.csv)
                 file.
 
                 We look forward to merging your contribution!

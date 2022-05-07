@@ -1,5 +1,5 @@
 # Request reviews from the approvers team
-* @ockam-network/approvers
+* @build-trust/approvers
 
 # References on updating this file:
 # https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners

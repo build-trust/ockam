@@ -4,8 +4,8 @@ version = "0.51.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
-homepage = "https://github.com/ockam-network/ockam"
-repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_vault"
+homepage = "https://github.com/build-trust/ockam"
+repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_vault"
 readme = "README.md"
 categories = [
     "cryptography",

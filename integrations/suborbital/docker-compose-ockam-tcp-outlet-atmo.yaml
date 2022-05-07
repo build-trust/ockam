@@ -14,7 +14,7 @@ services:
       - "./:/home/atmo"
 
   ockam-outlet:
-    image: ghcr.io/ockam-network/examples/tcp_inlet_and_outlet
+    image: ghcr.io/build-trust/examples/tcp_inlet_and_outlet
     command: ["04-outlet", "atmo:8080"]
     networks:
       - suborbital-ockam

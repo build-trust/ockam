@@ -9,8 +9,8 @@ categories = [
 ]
 description = "Ockam Node implementation crate"
 edition = "2021"
-homepage = "https://github.com/ockam-network/ockam"
-repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_node"
+homepage = "https://github.com/build-trust/ockam"
+repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_node"
 keywords = [
     "ockam",
     "crypto",

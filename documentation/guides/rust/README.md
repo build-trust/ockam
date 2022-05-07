@@ -38,7 +38,7 @@ cargo new --lib hello_ockam && cd hello_ockam && mkdir examples &&
 ```
 
 If the above instructions don't work on your machine, please
-[post a question](https://github.com/ockam-network/ockam/discussions/1642),
+[post a question](https://github.com/build-trust/ockam/discussions/1642),
 we would love to help.
 
 ### Step-by-step

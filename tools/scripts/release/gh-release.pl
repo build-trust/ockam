@@ -11,7 +11,7 @@ my ($tmp, $notes) = tempfile();
 
 print $tmp qq{* [Crate](https://crates.io/crates/$crate/$ver)
 * [Documentation](https://docs.rs/$crate/$ver/$crate/)
-* [CHANGELOG](https://github.com/ockam-network/ockam/blob/${crate}_v$ver/implementations/rust/ockam/$crate/CHANGELOG.md)
+* [CHANGELOG](https://github.com/build-trust/ockam/blob/${crate}_v$ver/implementations/rust/ockam/$crate/CHANGELOG.md)
 };
 
 my $tag = $crate . "_v$ver";

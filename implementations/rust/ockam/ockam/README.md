@@ -84,15 +84,15 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 [docs-link]: https://docs.rs/ockam
 
 [status-image]: https://img.shields.io/badge/Status-Preview-58E0C9.svg
-[status-link]: https://github.com/ockam-network/ockam/blob/develop/SECURITY.md
+[status-link]: https://github.com/build-trust/ockam/blob/develop/SECURITY.md
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
-[license-link]: https://github.com/ockam-network/ockam/blob/HEAD/LICENSE
+[license-link]: https://github.com/build-trust/ockam/blob/HEAD/LICENSE
 
 [discuss-image]: https://img.shields.io/badge/Discuss-On%20Github-ff70b4.svg
-[discuss-link]: https://github.com/ockam-network/ockam/discussions
+[discuss-link]: https://github.com/build-trust/ockam/discussions
 
-[e2ee-rust-guide]: https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-with-rust#readme
-[e2ee-kafka-guide]: https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-through-kafka#readme
-[step-by-step-rust-guide]: https://github.com/ockam-network/ockam/tree/develop/documentation/guides/rust#readme
-[secure-remote-access-tunnels]: https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/secure-remote-access-tunnels
+[e2ee-rust-guide]: https://github.com/build-trust/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-with-rust#readme
+[e2ee-kafka-guide]: https://github.com/build-trust/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-through-kafka#readme
+[step-by-step-rust-guide]: https://github.com/build-trust/ockam/tree/develop/documentation/guides/rust#readme
+[secure-remote-access-tunnels]: https://github.com/build-trust/ockam/tree/develop/documentation/use-cases/secure-remote-access-tunnels

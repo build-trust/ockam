@@ -62,7 +62,7 @@ intermediaries. Our application’s vulnerability surface quickly grows and beco
 
 ### Mutually Authenticated, End-to-End Encrypted Secure Channels with Ockam
 
-[Ockam](https://github.com/ockam-network/ockam) is a suite of programming libraries that make it simple
+[Ockam](https://github.com/build-trust/ockam) is a suite of programming libraries that make it simple
 for applications to create any number of lightweight, mutually-authenticated, end-to-end encrypted
 secure channels. These channels use cryptography to guarantee end-to-end integrity, authenticity, and
 confidentiality of messages.
@@ -111,7 +111,7 @@ To make it easy to try, we've created a Docker image that contains both Alice an
 1. Run Bob’s program:
 
     ```
-    docker run --rm --interactive --tty ghcr.io/ockam-network/examples/kafka ockam_kafka_bob
+    docker run --rm --interactive --tty ghcr.io/build-trust/examples/kafka ockam_kafka_bob
     ```
 
     The Bob program creates a Secure Channel Listener to accept requests to begin an Authenticated Key
@@ -130,7 +130,7 @@ To make it easy to try, we've created a Docker image that contains both Alice an
 3. In a separate terminal window, run the Alice program:
 
     ```
-    docker run --rm --interactive --tty ghcr.io/ockam-network/examples/kafka ockam_kafka_alice
+    docker run --rm --interactive --tty ghcr.io/build-trust/examples/kafka ockam_kafka_alice
     ```
 
 4. The Alice program will stop to ask for the stream addresses that were printed in step 2. Enter them.
@@ -168,7 +168,7 @@ cargo new --lib ockam_kafka && cd ockam_kafka && mkdir examples &&
 ```
 
 If the above instructions don't work on your machine please
-[post a question](https://github.com/ockam-network/ockam/discussions/1642),
+[post a question](https://github.com/build-trust/ockam/discussions/1642),
 we would love to help.
 
 #### Bob

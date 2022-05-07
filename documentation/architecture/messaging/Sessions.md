@@ -4,7 +4,7 @@ Sessions is a technique to have coordinated state across multiple workers.
 
 Sessions are useful when working with distributed forwarding like Pipes and Channels.
 
-Basic session concepts are described here: [Sessions discussion thread](https://github.com/ockam-network/ockam/discussions/1486)
+Basic session concepts are described here: [Sessions discussion thread](https://github.com/build-trust/ockam/discussions/1486)
 
 ## Terminology
 

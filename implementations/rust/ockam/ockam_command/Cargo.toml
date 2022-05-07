@@ -6,8 +6,8 @@ license = "Apache-2.0"
 publish = false
 rust-version = "1.58.1"
 authors = ["Ockam Developers"]
-homepage = "https://github.com/ockam-network/ockam"
-repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_command"
+homepage = "https://github.com/build-trust/ockam"
+repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/ockam_command"
 description = ""
 
 [[bin]]

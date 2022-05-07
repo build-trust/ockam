@@ -4,8 +4,8 @@ version = "0.36.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
-homepage = "https://github.com/ockam-network/ockam"
-repository = "https://github.com/ockam-network/ockam/blob/develop/implementations/rust/ockam/signature_bbs_plus"
+homepage = "https://github.com/build-trust/ockam"
+repository = "https://github.com/build-trust/ockam/blob/develop/implementations/rust/ockam/signature_bbs_plus"
 readme = "README.md"
 categories = [
     "cryptography",

@@ -393,7 +393,7 @@ async fn wait_for_worker(ctx: &mut Context) -> Result<()> {
 /// Test the, unexpected, case where a payload is received that does not
 /// code its length at the start. This _may_ happen when dealing with a
 /// payload sent by a non-Rust implementation.
-/// See https://github.com/ockam-network/ockam/issues/2236.
+/// See https://github.com/build-trust/ockam/issues/2236.
 #[test]
 fn parse_payload_without_inner_length() {
     use crate::parser;
@@ -442,8 +442,8 @@ impl Worker for StopFromHandleMessageWorker {
 
 /// Test that a Worker can complete execution of its handle_message()
 /// even if it calls Context::stop_worker() from within handle_message().
-/// See https://github.com/ockam-network/ockam/issues/2283
-/// See https://github.com/ockam-network/ockam/issues/2280
+/// See https://github.com/build-trust/ockam/issues/2283
+/// See https://github.com/build-trust/ockam/issues/2280
 #[test]
 fn worker_calls_stopworker_from_handlemessage() {
     let (mut ctx, mut executor) = start_node();
@@ -526,7 +526,7 @@ enum SendReceiveResponse {
 }
 
 /// Test the new method Context::send_and_receive().
-/// See https://github.com/ockam-network/ockam/issues/2628.
+/// See https://github.com/build-trust/ockam/issues/2628.
 #[test]
 fn use_context_send_and_receive() {
     let (mut ctx, mut executor) = start_node();

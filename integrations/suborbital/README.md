@@ -4,9 +4,9 @@
 
 This integration is a reference design for a secure-by-default edge computing network using
 [Suborbital's](https://suborbital.dev) WebAssembly-based server application environment and
-[Ockam's](https://github.com/ockam-network/ockam) end-to-end encrypted communication channels.
+[Ockam's](https://github.com/build-trust/ockam) end-to-end encrypted communication channels.
 
-The WebAssembly sandbox and [trustful communication](https://github.com/ockam-network/ockam#readme)
+The WebAssembly sandbox and [trustful communication](https://github.com/build-trust/ockam#readme)
 provided by Ockam, make it simple to deploy edge computing infrastructure that protects user
 data in transit and curbs security incidents caused by malicious code or supply-chain attacks.
 
@@ -40,7 +40,7 @@ The source code for the `helloworld-rs` function is included in this directory.
 To build it, use `Subo`:
 
 ```bash
-git clone https://github.com/ockam-network/ockam
+git clone https://github.com/build-trust/ockam
 
 cd ockam/integrations/suborbital
 subo build .
@@ -97,7 +97,7 @@ fabric that connects them.
 
 <div>
 <hr>
-<b>Next:</b> Learn more about <a href="https://github.com/ockam-network/ockam#next-steps">Ockam</a> and <a href="https://suborbital.dev/atmo">Suborbital</a>.
+<b>Next:</b> Learn more about <a href="https://github.com/build-trust/ockam#next-steps">Ockam</a> and <a href="https://suborbital.dev/atmo">Suborbital</a>.
 </div>
 
-[e2ee-secure-channels]: https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encrypt-all-application-layer-communication#readme
+[e2ee-secure-channels]: https://github.com/build-trust/ockam/tree/develop/documentation/use-cases/end-to-end-encrypt-all-application-layer-communication#readme

@@ -103,7 +103,7 @@ This code is licensed under the terms of the [Apache License 2.0][license-link].
 [docs-link]: https://docs.rs/ockam_transport_websocket
 
 [license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
-[license-link]: https://github.com/ockam-network/ockam/blob/HEAD/LICENSE
+[license-link]: https://github.com/build-trust/ockam/blob/HEAD/LICENSE
 
 [discuss-image]: https://img.shields.io/badge/Discuss-Github%20Discussions-ff70b4.svg
-[discuss-link]: https://github.com/ockam-network/ockam/discussions
+[discuss-link]: https://github.com/build-trust/ockam/discussions

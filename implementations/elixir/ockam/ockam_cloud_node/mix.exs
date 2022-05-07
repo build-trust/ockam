@@ -5,7 +5,7 @@ defmodule Ockam.CloudNode.MixProject do
 
   @elixir_requirement "~> 1.10"
 
-  @ockam_github_repo "https://github.com/ockam-network/ockam"
+  @ockam_github_repo "https://github.com/build-trust/ockam"
   @ockam_github_repo_path "implementations/elixir/ockam/ockam_cloud_node"
 
   def project do

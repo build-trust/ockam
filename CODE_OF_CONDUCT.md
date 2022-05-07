@@ -1,4 +1,4 @@
-Thank you for participating in the [Ockam Community](https://github.com/ockam-network/ockam/discussions).
+Thank you for participating in the [Ockam Community](https://github.com/build-trust/ockam/discussions).
 
 We have several documents on [Ockam.io](https://www.ockam.io/) that will help to guide you.
 

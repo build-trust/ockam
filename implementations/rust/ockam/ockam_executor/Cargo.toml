@@ -9,8 +9,8 @@ categories = [
 ]
 description = "Ockam async executor crate"
 edition = "2021"
-homepage = "https://github.com/ockam-network/ockam"
-repository = "https://github.com/ockam-network/ockam/tree/develop/implementations/rust/ockam/ockam_executor"
+homepage = "https://github.com/build-trust/ockam"
+repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_executor"
 keywords = ["ockam", "crypto", "encryption", "authentication"]
 license = "Apache-2.0"
 name = "ockam_executor"

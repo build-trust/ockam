@@ -1,13 +1,13 @@
 blank_issues_enabled: false
 contact_links:
   - name: Bug and Issues
-    url: https://github.com/ockam-network/ockam/issues/new/
+    url: https://github.com/build-trust/ockam/issues/new/
     about: Report a bug or issue
   - name: Feature Request
-    url: https://github.com/ockam-network/ockam/discussions/new
+    url: https://github.com/build-trust/ockam/discussions/new
     about: Request a feature to be added to the platform
   - name: Ask a Question
-    url: https://github.com/ockam-network/ockam/discussions/new
+    url: https://github.com/build-trust/ockam/discussions/new
     about: Ask questions and discuss with other community members
   - name: Learn how to Contribute
     url: https://www.ockam.io/learn/how-to-guides/contributing/CONTRIBUTING/

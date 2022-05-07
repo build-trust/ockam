@@ -1,7 +1,7 @@
 1. Run outlet docker image on Control Plane node:
 
     ```sh
-    docker run ghcr.io/ockam-network/ockam/tcp_outlet:latest suborbital.node.ockam.network:4000 control_plane host.docker.internal:4001
+    docker run ghcr.io/build-trust/ockam/tcp_outlet:latest suborbital.node.ockam.network:4000 control_plane host.docker.internal:4001
     ```
 
     Where arguments describe following:

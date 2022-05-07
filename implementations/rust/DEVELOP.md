@@ -9,7 +9,7 @@ To start contributing to our rust code, clone the Ockam repo from Github and
 change your current directory to `ockam/implementations/rust`:
 
 ```
-git clone git@github.com:ockam-network/ockam.git
+git clone git@github.com:build-trust/ockam.git
 cd ockam/implementations/rust
 ```
 
@@ -127,7 +127,7 @@ cargo license --json | jq ".[] | .license" | sort | uniq
 
 ## Get Help
 
-Ask a question on [Github Discussions](https://github.com/ockam-network/ockam/discussions)
+Ask a question on [Github Discussions](https://github.com/build-trust/ockam/discussions)
 
 
 

@@ -70,7 +70,7 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
     ```
 
     If the above instructions don't work on your machine, please
-    [post a question](https://github.com/ockam-network/ockam/discussions/1642),
+    [post a question](https://github.com/build-trust/ockam/discussions/1642),
     we would love to help.
 
 3. Create a file at `examples/hello.rs` and copy the below code snippet to it.
@@ -191,9 +191,9 @@ The code in this repository is licensed under the terms of the [Apache License 2
 <hr>
 
 <p>
-<a href="https://github.com/ockam-network/ockam/actions?query=workflow%3A%22Continuous+Integration%22">
+<a href="https://github.com/build-trust/ockam/actions?query=workflow%3A%22Continuous+Integration%22">
 <img alt="Continuous Integration"
-  src="https://github.com/ockam-network/ockam/workflows/Continuous%20Integration/badge.svg">
+  src="https://github.com/build-trust/ockam/workflows/Continuous%20Integration/badge.svg">
 </a>
 
 <a href="https://www.ockam.io/learn/how-to-guides/high-performance-team/conduct/">
