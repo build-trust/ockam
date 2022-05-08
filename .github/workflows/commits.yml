@@ -55,7 +55,7 @@ jobs:
             echo '[✓] All commits in this pull request are Verified by Github.'
           else
             echo '
-              We require that all commits in a pull request are signed an Verified by Github
+              We require that all commits in a pull request are signed and Verified by Github
 
               Please read about signing commits at:
               https://docs.github.com/en/authentication/managing-commit-signature-verification
