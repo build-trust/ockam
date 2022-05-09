@@ -59,9 +59,9 @@ defmodule Ockam.SecureChannel.Channel do
          {:ok, data} <- setup_vault(options, data),
          {:ok, data} <- setup_peer(options, data),
          {:ok, data} <- setup_initiating_message(options, data),
-         {:ok, initial, data} <- setup_key_establishment_protocol(options, data),
+         {:ok, initial, data, next_events} <- setup_key_establishment_protocol(options, data),
          {:ok, initial, data} <- setup_encrypted_transport_protocol(options, initial, data) do
-      return_value = {:ok, initial, data}
+      return_value = {:ok, initial, data, next_events}
 
       metadata = Map.put(metadata, :return_value, return_value)
       Telemetry.emit_stop_event([__MODULE__, :init], start_time, metadata: metadata)
