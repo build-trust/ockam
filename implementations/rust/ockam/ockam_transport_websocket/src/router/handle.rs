@@ -50,7 +50,7 @@ impl WebSocketRouterHandle {
     }
 
     /// Bind an incoming connection listener for this router.
-    pub(crate) async fn bind(&self, addr: impl Into<SocketAddr>) -> Result<()> {
+    pub(crate) async fn bind(&self, addr: impl Into<SocketAddr>) -> Result<SocketAddr> {
         let socket_addr = addr.into();
         WebSocketListenProcessor::start(&self.ctx, self.async_try_clone().await?, socket_addr).await
     }

@@ -1,7 +1,10 @@
-use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
+use std::net::SocketAddr;
+
 use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, AsyncTryClone, Result, Route};
 use ockam_node::Context;
+
+use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
 
 /// High level management interface for TCP transports
 ///
@@ -90,6 +93,12 @@ impl TcpTransport {
     }
 
     /// Start listening to incoming connections on an existing transport
+    ///
+    /// Returns the local address that this transport is bound to.
+    ///
+    /// This can be useful, for example, when binding to port 0 to figure out
+    /// which port was actually bound.
+    ///
     /// ```rust
     /// use ockam_transport_tcp::TcpTransport;
     /// # use ockam_node::Context;
@@ -98,10 +107,9 @@ impl TcpTransport {
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// tcp.listen("127.0.0.1:8000").await?;
     /// # Ok(()) }
-    pub async fn listen<S: AsRef<str>>(&self, bind_addr: S) -> Result<()> {
+    pub async fn listen<S: AsRef<str>>(&self, bind_addr: S) -> Result<SocketAddr> {
         let bind_addr = parse_socket_addr(bind_addr.as_ref())?;
-        self.router_handle.bind(bind_addr).await?;
-        Ok(())
+        self.router_handle.bind(bind_addr).await
     }
 }
 
@@ -128,14 +136,9 @@ impl TcpTransport {
         &self,
         bind_addr: impl Into<String>,
         outlet_route: impl Into<Route>,
-    ) -> Result<Address> {
+    ) -> Result<(Address, SocketAddr)> {
         let bind_addr = parse_socket_addr(bind_addr.into())?;
-        let addr = self
-            .router_handle
-            .bind_inlet(outlet_route, bind_addr)
-            .await?;
-
-        Ok(addr)
+        self.router_handle.bind_inlet(outlet_route, bind_addr).await
     }
 
     /// Stop inlet at addr

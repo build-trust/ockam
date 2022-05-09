@@ -51,7 +51,7 @@ impl SessionManager for InletSessionManager {
             )
             .await?;
 
-        let inlet_address = self
+        let (inlet_address, _) = self
             .tcp
             .create_inlet(&self.args.inlet_address, route![channel.clone(), "outlet"])
             .await?;

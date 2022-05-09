@@ -5,21 +5,11 @@ use ockam_transport_websocket::{WebSocketTransport, WS};
 
 #[ockam_macros::test]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
-    let gen_bind_addr = || {
-        let rand_port = rand::thread_rng().gen_range(1024..65535);
-        format!("127.0.0.1:{}", rand_port)
-    };
-    let bind_address;
+    let listener_address;
 
     let _listener = {
         let transport = WebSocketTransport::create(ctx).await?;
-        loop {
-            let try_bind_addr = gen_bind_addr();
-            if transport.listen(&try_bind_addr).await.is_ok() {
-                bind_address = try_bind_addr;
-                break;
-            }
-        }
+        listener_address = transport.listen("127.0.0.1:0").await?;
         ctx.start_worker("echoer", Echoer).await?;
     };
 
@@ -30,7 +20,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
             .take(256)
             .map(char::from)
             .collect();
-        let r = route![(WS, bind_address), "echoer"];
+        let r = route![(WS, listener_address.to_string()), "echoer"];
         ctx.send(r, msg.clone()).await?;
 
         let reply = ctx.receive::<String>().await?;

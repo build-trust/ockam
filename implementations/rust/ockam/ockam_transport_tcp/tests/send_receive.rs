@@ -6,21 +6,11 @@ use ockam_transport_tcp::{TcpTransport, TCP};
 
 #[ockam_macros::test]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
-    let gen_bind_addr = || {
-        let rand_port = rand::thread_rng().gen_range(56323..56325);
-        format!("127.0.0.1:{}", rand_port)
-    };
-    let bind_address;
+    let listener_address;
 
     let _listener = {
         let transport = TcpTransport::create(ctx).await?;
-        loop {
-            let try_bind_addr = gen_bind_addr();
-            if transport.listen(&try_bind_addr).await.is_ok() {
-                bind_address = try_bind_addr;
-                break;
-            }
-        }
+        listener_address = transport.listen("127.0.0.1:0").await?;
         ctx.start_worker("echoer", Echoer).await?;
     };
 
@@ -31,7 +21,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
             .take(256)
             .map(char::from)
             .collect();
-        let r = route![(TCP, bind_address), "echoer"];
+        let r = route![(TCP, listener_address.to_string()), "echoer"];
         ctx.send(r, msg.clone()).await?;
 
         let reply = ctx.receive::<String>().await?;
@@ -55,22 +45,10 @@ impl Worker for Echoer {
 #[allow(non_snake_case)]
 #[ockam_macros::test]
 async fn tcp_lifecycle__reconnect__should_not_error(ctx: &mut Context) -> Result<()> {
-    let gen_bind_addr = || {
-        let rand_port = rand::thread_rng().gen_range(1024..65535);
-        format!("127.0.0.1:{}", rand_port)
-    };
-    let bind_address;
-
     ctx.start_worker("echoer", Echoer).await?;
 
     let transport = TcpTransport::create(ctx).await?;
-    loop {
-        let try_bind_addr = gen_bind_addr();
-        if transport.listen(&try_bind_addr).await.is_ok() {
-            bind_address = try_bind_addr;
-            break;
-        }
-    }
+    let listener_address = transport.listen("127.0.0.1:0").await?.to_string();
 
     let mut child_ctx = ctx.new_context(Address::random_local()).await?;
     let msg: String = rand::thread_rng()
@@ -79,15 +57,15 @@ async fn tcp_lifecycle__reconnect__should_not_error(ctx: &mut Context) -> Result
         .map(char::from)
         .collect();
 
-    let tx_address = transport.connect(&bind_address).await?;
+    let tx_address = transport.connect(&listener_address).await?;
 
-    let r = route![(TCP, bind_address.clone()), "echoer"];
+    let r = route![(TCP, listener_address.clone()), "echoer"];
     child_ctx.send(r.clone(), msg.clone()).await?;
 
     let reply = child_ctx.receive::<String>().await?;
     assert_eq!(reply, msg, "Should receive the same message");
 
-    transport.disconnect(&bind_address).await?;
+    transport.disconnect(&listener_address).await?;
 
     // TcpSender address should not exist
     let res = child_ctx.send(tx_address.clone(), "TEST".to_string()).await;
@@ -101,7 +79,7 @@ async fn tcp_lifecycle__reconnect__should_not_error(ctx: &mut Context) -> Result
 
     // This should create new connection
     child_ctx
-        .send(route![(TCP, bind_address), "echoer"], msg.clone())
+        .send(route![(TCP, listener_address), "echoer"], msg.clone())
         .await?;
 
     let reply = child_ctx.receive::<String>().await?;

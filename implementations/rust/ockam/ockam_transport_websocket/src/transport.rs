@@ -83,6 +83,11 @@ impl WebSocketTransport {
 
     /// Start listening to incoming connections on an existing transport.
     ///
+    /// Returns the local address that this transport is bound to.
+    ///
+    /// This can be useful, for example, when binding to port 0 to figure out
+    /// which port was actually bound.
+    ///
     /// ```rust
     /// use ockam_transport_websocket::WebSocketTransport;
     /// # use ockam_node::Context;
@@ -91,7 +96,7 @@ impl WebSocketTransport {
     /// let ws = WebSocketTransport::create(&ctx).await?;
     /// ws.listen("127.0.0.1:8000").await?;
     /// # Ok(()) }
-    pub async fn listen<S: AsRef<str>>(&self, bind_addr: S) -> Result<()> {
+    pub async fn listen<S: AsRef<str>>(&self, bind_addr: S) -> Result<SocketAddr> {
         let bind_addr = parse_socket_addr(bind_addr)?;
         self.router_handle.bind(bind_addr).await
     }
