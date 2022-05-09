@@ -18,6 +18,5 @@ async fn add_key(ctx: &mut Context) -> Result<()> {
         .await?;
 
     e.add_key("test".into(), &key).await?;
-
-    ctx.stop().await
+    Ok(())
 }

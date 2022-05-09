@@ -93,6 +93,7 @@ impl From<io::Error> for TransportError {
     fn from(e: io::Error) -> Self {
         match e.kind() {
             io::ErrorKind::ConnectionRefused => Self::PeerNotFound,
+            io::ErrorKind::AddrInUse | io::ErrorKind::AddrNotAvailable => Self::BindFailed,
             _ => Self::GenericIo,
         }
     }

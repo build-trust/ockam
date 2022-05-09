@@ -1,19 +1,25 @@
 use ockam_core::compat::rand::{self, Rng};
 use ockam_core::{route, Address, Result, Routed, Worker};
 use ockam_node::Context;
-use tracing::debug;
-
 use ockam_transport_websocket::{WebSocketTransport, WS};
 
 #[ockam_macros::test]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
-    let rand_port = rand::thread_rng().gen_range(10000..65535);
-    let bind_address = format!("127.0.0.1:{}", rand_port);
-    let bind_address = bind_address.as_str();
+    let gen_bind_addr = || {
+        let rand_port = rand::thread_rng().gen_range(1024..65535);
+        format!("127.0.0.1:{}", rand_port)
+    };
+    let bind_address;
 
     let _listener = {
         let transport = WebSocketTransport::create(ctx).await?;
-        transport.listen(bind_address).await?;
+        loop {
+            let try_bind_addr = gen_bind_addr();
+            if transport.listen(&try_bind_addr).await.is_ok() {
+                bind_address = try_bind_addr;
+                break;
+            }
+        }
         ctx.start_worker("echoer", Echoer).await?;
     };
 
@@ -30,10 +36,6 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
         let reply = ctx.receive::<String>().await?;
         assert_eq!(reply, msg, "Should receive the same message");
     };
-
-    if let Err(e) = ctx.stop().await {
-        println!("Unclean stop: {}", e)
-    }
     Ok(())
 }
 
@@ -45,7 +47,6 @@ impl Worker for Echoer {
     type Context = Context;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        debug!("Replying back to {}", &msg.return_route());
         ctx.send(msg.return_route(), msg.body()).await
     }
 }

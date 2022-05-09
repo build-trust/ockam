@@ -233,7 +233,6 @@ mod test {
         let mut results = vec![];
         results.push(test_basic_identity_key_ops(&mut alice).await);
         results.push(test_update_contact_after_change(&mut alice, &mut bob).await);
-        ctx.stop().await?;
 
         for r in results {
             match r {
