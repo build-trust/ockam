@@ -1773,7 +1773,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_ble"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "atsame54_xpro",
  "bluenrg",
