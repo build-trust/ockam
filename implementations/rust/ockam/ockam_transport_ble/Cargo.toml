@@ -124,7 +124,7 @@ cortex-m = "0.7.3"
 riscv = "0.7.0"
 
 [dev-dependencies]
-ockam_identity = { path = "../ockam_identity", version = "^0.45.0" }
+ockam_identity = { path = "../ockam_identity", version = "^0.46.0"}
 ockam_vault = { path = "../ockam_vault", version = "^0.47.0" }
 
 [[example]]
