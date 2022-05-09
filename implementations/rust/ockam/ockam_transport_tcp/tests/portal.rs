@@ -1,26 +1,48 @@
+use std::time::Duration;
+
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
+
+use ockam_core::compat::rand::{self, random, Rng};
 use ockam_core::{route, Result};
 use ockam_node::Context;
 use ockam_transport_tcp::TcpTransport;
-use rand::{random, Rng};
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
 
 const LENGTH: usize = 32;
 
 async fn setup(ctx: &Context) -> Result<(String, TcpListener)> {
-    let target_port = rand::thread_rng().gen_range(10000, 65535);
-    let target_addr = format!("127.0.0.1:{}", target_port);
-    let listener = TcpListener::bind(target_addr.clone()).await.unwrap();
+    let gen_bind_addr = || {
+        let rand_port = rand::thread_rng().gen_range(1024..65535);
+        format!("127.0.0.1:{}", rand_port)
+    };
+    let bind_address;
+
+    let listener;
+    loop {
+        let try_bind_addr = gen_bind_addr();
+        if let Ok(l) = TcpListener::bind(&try_bind_addr).await {
+            listener = l;
+            bind_address = try_bind_addr;
+            break;
+        }
+    }
 
     let tcp = TcpTransport::create(ctx).await?;
 
-    tcp.create_outlet("outlet", target_addr).await?;
+    tcp.create_outlet("outlet", bind_address).await?;
 
-    let inlet_port = rand::thread_rng().gen_range(10000, 65535);
-    let inlet_addr = format!("127.0.0.1:{}", inlet_port);
-    tcp.create_inlet(inlet_addr.clone(), route!["outlet"])
-        .await?;
+    let inlet_addr;
+    loop {
+        let try_bind_addr = gen_bind_addr();
+        if tcp
+            .create_inlet(&try_bind_addr, route!["outlet"])
+            .await
+            .is_ok()
+        {
+            inlet_addr = try_bind_addr;
+            break;
+        }
+    }
 
     Ok((inlet_addr, listener))
 }
@@ -63,8 +85,7 @@ async fn portal__standard_flow__should_succeed(ctx: &mut Context) -> Result<()> 
     read_assert_binary(&mut stream, payload2).await;
 
     tokio::time::sleep(Duration::new(0, 250_000)).await;
-
-    ctx.stop().await
+    Ok(())
 }
 
 #[allow(non_snake_case)]
@@ -90,6 +111,5 @@ async fn portal__reverse_flow__should_succeed(ctx: &mut Context) -> Result<()> {
     read_assert_binary(&mut stream, payload2).await;
 
     tokio::time::sleep(Duration::new(0, 250_000)).await;
-
-    ctx.stop().await
+    Ok(())
 }

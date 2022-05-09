@@ -383,10 +383,6 @@ async fn wait_for_worker(ctx: &mut Context) -> Result<()> {
 
     let t2 = tokio::time::Instant::now();
     assert!((t2 - t1) > Duration::from_secs(1));
-
-    if let Err(e) = ctx.stop().await {
-        println!("Unclean stop: {}", e)
-    }
     Ok(())
 }
 
