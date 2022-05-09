@@ -29,6 +29,6 @@ bls = ["ockam_core/bls"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.54.0"}
-ockam_vault = { path = "../ockam_vault", version = "^0.47.0"}
+ockam_vault = { path = "../ockam_vault", version = "^0.48.0"}
 lazy_static = "1.4"
 tokio = { version = "1.8", features = ["full"] }
