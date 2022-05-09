@@ -2408,7 +2408,7 @@ checksum = "f054c6c1a6e95179d6f23ed974060dcefb2d9388bb7256900badad682c499de4"
 
 [[package]]
 name = "signature_bbs_plus"
-version = "0.36.0"
+version = "0.37.0"
 dependencies = [
  "blake2",
  "bls12_381_plus",
