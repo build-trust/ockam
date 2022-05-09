@@ -1,25 +1,26 @@
+use crate::compat::tokio::task::JoinHandle;
 use crate::Context;
 use core::time::Duration;
-use futures::future::{AbortHandle, Abortable};
+use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Message, Result};
 
 /// Allow to send message to destination address periodically after some delay
 /// Only one scheduled heartbeat allowed at a time
 /// Dropping this handle cancels scheduled heartbeat
-pub struct DelayedEvent<M: Message + Clone> {
-    ctx: Context,
+pub struct DelayedEvent<M> {
+    ctx: Arc<Context>,
     destination_addr: Address,
     msg: M,
-    abort_handle: Option<AbortHandle>,
+    handle: Option<JoinHandle<()>>,
 }
 
-impl<M: Message + Clone> Drop for DelayedEvent<M> {
+impl<M> Drop for DelayedEvent<M> {
     fn drop(&mut self) {
         self.cancel()
     }
 }
 
-impl<M: Message + Clone> DelayedEvent<M> {
+impl<M> DelayedEvent<M> {
     /// Create a heartbeat
     pub async fn create(
         ctx: &Context,
@@ -29,50 +30,43 @@ impl<M: Message + Clone> DelayedEvent<M> {
         let child_ctx = ctx.new_context(Address::random_local()).await?;
 
         let heartbeat = Self {
-            ctx: child_ctx,
+            ctx: Arc::new(child_ctx),
             destination_addr: destination_addr.into(),
-            abort_handle: None,
+            handle: None,
             msg,
         };
 
         Ok(heartbeat)
     }
+
+    /// Cancel heartbeat
+    pub fn cancel(&mut self) {
+        if let Some(h) = self.handle.take() {
+            h.abort()
+        }
+    }
 }
 
 impl<M: Message + Clone> DelayedEvent<M> {
-    /// Cancel heartbeat
-    pub fn cancel(&mut self) {
-        if let Some(handle) = self.abort_handle.take() {
-            handle.abort()
-        }
-    }
-
     /// Schedule heartbeat. Cancels already scheduled heartbeat if there is such heartbeat
     pub async fn schedule(&mut self, duration: Duration) -> Result<()> {
         self.cancel();
 
-        let child_ctx = self.ctx.new_context(Address::random_local()).await?;
-        let destination_addr = self.destination_addr.clone();
+        let ctx = self.ctx.clone();
+        let addr = self.destination_addr.clone();
         let msg = self.msg.clone();
 
-        let (handle, reg) = AbortHandle::new_pair();
-        let future = Abortable::new(
-            async move {
-                child_ctx.sleep(duration).await;
+        let future = async move {
+            ctx.sleep(duration).await;
+            if ctx.send(addr.clone(), msg).await.is_err() {
+                warn!("Error sending heartbeat message to {}", addr);
+            } else {
+                debug!("Sent heartbeat message to {}", addr);
+            }
+        };
 
-                let res = child_ctx.send(destination_addr.clone(), msg).await;
-
-                if res.is_err() {
-                    warn!("Error sending heartbeat message to {}", destination_addr);
-                } else {
-                    debug!("Sent heartbeat message to {}", destination_addr);
-                }
-            },
-            reg,
-        );
-
-        self.abort_handle = Some(handle);
-        self.ctx.runtime().spawn(future);
+        debug_assert!(self.handle.is_none());
+        self.handle = Some(self.ctx.runtime().spawn(future));
 
         Ok(())
     }

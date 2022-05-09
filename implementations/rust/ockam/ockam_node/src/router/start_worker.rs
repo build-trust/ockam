@@ -14,6 +14,12 @@ pub(super) async fn exec(
     bare: bool,
     reply: &Sender<NodeReplyResult>,
 ) -> Result<()> {
+    trace! {
+        internal = router.map.internal.len(),
+        external = router.external.len(),
+        aliases = router.map.addr_map.len(),
+        "router tables sizes"
+    };
     match router.state.node_state() {
         NodeState::Running => start(router, addrs, senders, bare, reply).await,
         NodeState::Stopping(_) => reject(reply).await,
