@@ -38,7 +38,7 @@ impl TcpRouterHandle {
 
 impl TcpRouterHandle {
     /// Bind an incoming connection listener for this router
-    pub async fn bind(&self, addr: impl Into<SocketAddr>) -> Result<()> {
+    pub async fn bind(&self, addr: impl Into<SocketAddr>) -> Result<SocketAddr> {
         let socket_addr = addr.into();
         TcpListenProcessor::start(&self.ctx, self.async_try_clone().await?, socket_addr).await
     }
@@ -188,13 +188,9 @@ impl TcpRouterHandle {
         &self,
         outlet_listener_route: impl Into<Route>,
         addr: impl Into<SocketAddr>,
-    ) -> Result<Address> {
+    ) -> Result<(Address, SocketAddr)> {
         let socket_addr = addr.into();
-        let addr =
-            TcpInletListenProcessor::start(&self.ctx, outlet_listener_route.into(), socket_addr)
-                .await?;
-
-        Ok(addr)
+        TcpInletListenProcessor::start(&self.ctx, outlet_listener_route.into(), socket_addr).await
     }
 
     /// Establish an outgoing TCP connection for Portal Outlet

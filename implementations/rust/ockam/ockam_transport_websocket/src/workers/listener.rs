@@ -24,18 +24,19 @@ impl WebSocketListenProcessor {
         ctx: &Context,
         router_handle: WebSocketRouterHandle,
         addr: SocketAddr,
-    ) -> Result<()> {
+    ) -> Result<SocketAddr> {
         debug!("Binding WebSocketListener to {}", addr);
         let inner = TcpListener::bind(addr)
             .await
             .map_err(TransportError::from)?;
+        let saddr = inner.local_addr().map_err(TransportError::from)?;
         let processor = Self {
             inner,
             router_handle,
         };
         let waddr = Address::random_local();
         ctx.start_processor(waddr, processor).await?;
-        Ok(())
+        Ok(saddr)
     }
 }
 

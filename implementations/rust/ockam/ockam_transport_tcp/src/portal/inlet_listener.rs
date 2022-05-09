@@ -23,13 +23,14 @@ impl TcpInletListenProcessor {
         ctx: &Context,
         outlet_listener_route: Route,
         addr: SocketAddr,
-    ) -> Result<Address> {
+    ) -> Result<(Address, SocketAddr)> {
         let waddr = Address::random_local();
 
         debug!("Binding TcpPortalListenerWorker to {}", addr);
         let inner = TcpListener::bind(addr)
             .await
             .map_err(TransportError::from)?;
+        let saddr = inner.local_addr().map_err(TransportError::from)?;
         let processor = Self {
             inner,
             outlet_listener_route,
@@ -37,7 +38,7 @@ impl TcpInletListenProcessor {
 
         ctx.start_processor(waddr.clone(), processor).await?;
 
-        Ok(waddr)
+        Ok((waddr, saddr))
     }
 }
 

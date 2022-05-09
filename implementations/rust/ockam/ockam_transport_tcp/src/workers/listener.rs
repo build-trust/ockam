@@ -22,11 +22,12 @@ impl TcpListenProcessor {
         ctx: &Context,
         router_handle: TcpRouterHandle,
         addr: SocketAddr,
-    ) -> Result<()> {
+    ) -> Result<SocketAddr> {
         debug!("Binding TcpListener to {}", addr);
         let inner = TcpListener::bind(addr)
             .await
             .map_err(TransportError::from)?;
+        let saddr = inner.local_addr().map_err(TransportError::from)?;
         let worker = Self {
             inner,
             router_handle,
@@ -34,7 +35,7 @@ impl TcpListenProcessor {
 
         ctx.start_processor(Address::random_local(), worker).await?;
 
-        Ok(())
+        Ok(saddr)
     }
 }
 
