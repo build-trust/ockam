@@ -4,7 +4,7 @@ use ockam_core::{Address, Processor, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
-use tracing::debug;
+use tracing::{debug, trace};
 
 /// A TCP Listen processor
 ///
@@ -54,12 +54,23 @@ impl Processor for TcpListenProcessor {
         debug!("TCP connection accepted");
 
         let handle_clone = self.router_handle.async_try_clone().await?;
-        // And spawn a connection worker for it
-        let pair = TcpSendWorker::start_pair(ctx, handle_clone, Some(stream), peer, vec![]).await?;
+        // And create a connection worker for it
+        let (worker, pair) =
+            TcpSendWorker::new_pair(ctx, handle_clone, Some(stream), peer, Vec::new()).await?;
 
         // Register the connection with the local TcpRouter
         self.router_handle.register(&pair).await?;
-        debug!("TCP connection registered");
+        debug!(%peer, "TCP connection registered");
+
+        trace! {
+            peer = %peer,
+            tx_addr = %pair.tx_addr(),
+            int_addr = %worker.internal_addr(),
+            "starting tcp connection worker"
+        };
+
+        ctx.start_worker(vec![pair.tx_addr(), worker.internal_addr().clone()], worker)
+            .await?;
 
         Ok(true)
     }

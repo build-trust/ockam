@@ -89,6 +89,37 @@ impl TcpSendWorker {
         }
     }
 
+    pub(crate) fn internal_addr(&self) -> &Address {
+        &self.internal_addr
+    }
+
+    /// Create a `(TcpSendWorker, WorkerPair)` without spawning the worker.
+    pub(crate) async fn new_pair(
+        ctx: &Context,
+        router_handle: TcpRouterHandle,
+        stream: Option<TcpStream>,
+        peer: SocketAddr,
+        hostnames: Vec<String>,
+    ) -> Result<(Self, WorkerPair)> {
+        let tx_addr = Address::random_local();
+        let int_addr = Address::random_local();
+        let sender = TcpSendWorker::new(
+            router_handle,
+            stream,
+            peer,
+            int_addr.clone(),
+            DelayedEvent::create(ctx, int_addr.clone(), TcpSendWorkerMsg::Heartbeat).await?,
+        );
+        Ok((
+            sender,
+            WorkerPair {
+                hostnames,
+                peer,
+                tx_addr,
+            },
+        ))
+    }
+
     /// Start a `(TcpSendWorker, TcpRecvProcessor)` pair that opens and
     /// manages the connection with the given peer
     pub(crate) async fn start_pair(
@@ -99,26 +130,10 @@ impl TcpSendWorker {
         hostnames: Vec<String>,
     ) -> Result<WorkerPair> {
         trace!("Creating new TCP worker pair");
-
-        let tx_addr = Address::random_local();
-        let internal_addr = Address::random_local();
-        let sender = TcpSendWorker::new(
-            router_handle,
-            stream,
-            peer,
-            internal_addr.clone(),
-            DelayedEvent::create(ctx, internal_addr.clone(), TcpSendWorkerMsg::Heartbeat).await?,
-        );
-
-        ctx.start_worker(vec![tx_addr.clone(), internal_addr], sender)
+        let (worker, pair) = Self::new_pair(ctx, router_handle, stream, peer, hostnames).await?;
+        ctx.start_worker(vec![pair.tx_addr(), worker.internal_addr().clone()], worker)
             .await?;
-
-        // Return a handle to the worker pair
-        Ok(WorkerPair {
-            hostnames,
-            peer,
-            tx_addr,
-        })
+        Ok(pair)
     }
 
     /// Schedule a heartbeat
