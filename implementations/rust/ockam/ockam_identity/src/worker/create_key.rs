@@ -6,7 +6,7 @@ use crate::{
     KeyAttributes, MetaKeyAttributes, Signature, SignatureType,
 };
 use ockam_core::vault::Signature as OckamVaultSignature;
-use ockam_core::vault::{PublicKey, Secret};
+use ockam_core::vault::{KeyId, PublicKey};
 use ockam_core::{Encodable, Result};
 use serde::{Deserialize, Serialize};
 
@@ -68,10 +68,10 @@ impl CreateKeyChange {
 
 impl<V: IdentityVault> IdentityState<V> {
     async fn generate_key_if_needed(
-        secret: Option<&Secret>,
+        secret: Option<&KeyId>,
         key_attributes: &KeyAttributes,
         vault: &mut V,
-    ) -> Result<Secret> {
+    ) -> Result<KeyId> {
         if let Some(s) = secret {
             Ok(s.clone())
         } else {
@@ -83,11 +83,11 @@ impl<V: IdentityVault> IdentityState<V> {
 
     /// Create a new key
     pub(crate) async fn make_create_key_event_static(
-        secret: Option<&Secret>,
+        secret: Option<&KeyId>,
         prev_id: EventIdentifier,
         key_attributes: KeyAttributes,
         attributes: IdentityEventAttributes,
-        root_key: Option<&Secret>,
+        root_key: Option<&KeyId>,
         vault: &mut V,
     ) -> Result<IdentityChangeEvent> {
         let secret_key = Self::generate_key_if_needed(secret, &key_attributes, vault).await?;
@@ -136,7 +136,7 @@ impl<V: IdentityVault> IdentityState<V> {
     /// Create a new key
     pub(crate) async fn make_create_key_event(
         &mut self,
-        secret: Option<&Secret>,
+        secret: Option<&KeyId>,
         key_attributes: KeyAttributes,
         attributes: IdentityEventAttributes,
     ) -> Result<IdentityChangeEvent> {

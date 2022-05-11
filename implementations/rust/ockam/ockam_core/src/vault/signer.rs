@@ -1,4 +1,4 @@
-use crate::vault::{Secret, Signature};
+use crate::vault::{KeyId, Signature};
 use crate::Result;
 use crate::{async_trait, compat::boxed::Box};
 
@@ -6,5 +6,5 @@ use crate::{async_trait, compat::boxed::Box};
 #[async_trait]
 pub trait Signer {
     /// Generate a `Signature` for the given data using the given `Secret` key.
-    async fn sign(&self, secret_key: &Secret, data: &[u8]) -> Result<Signature>;
+    async fn sign(&self, key_id: &KeyId, data: &[u8]) -> Result<Signature>;
 }

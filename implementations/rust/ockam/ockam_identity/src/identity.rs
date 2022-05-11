@@ -5,7 +5,7 @@ use crate::{
 };
 use core::time::Duration;
 use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
-use ockam_core::vault::{PublicKey, Secret};
+use ockam_core::vault::{KeyId, PublicKey};
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{Address, AsyncTryClone, Result, Route};
 use ockam_node::compat::asynchronous::RwLock;
@@ -52,7 +52,7 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
         self.state.write().await.create_key(label).await
     }
 
-    async fn add_key(&self, label: String, secret: &Secret) -> Result<()> {
+    async fn add_key(&self, label: String, secret: &KeyId) -> Result<()> {
         self.state.write().await.add_key(label, secret).await
     }
 
@@ -60,11 +60,11 @@ impl<V: IdentityVault> IdentityTrait for Identity<V> {
         self.state.write().await.rotate_root_secret_key().await
     }
 
-    async fn get_root_secret_key(&self) -> Result<Secret> {
+    async fn get_root_secret_key(&self) -> Result<KeyId> {
         self.state.read().await.get_root_secret_key().await
     }
 
-    async fn get_secret_key(&self, label: String) -> Result<Secret> {
+    async fn get_secret_key(&self, label: String) -> Result<KeyId> {
         self.state.read().await.get_secret_key(label).await
     }
 

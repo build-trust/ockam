@@ -1,6 +1,6 @@
 use crate::{Changes, Contact, IdentityChangeEvent, IdentityIdentifier, Lease, TTL};
 use ockam_core::compat::{string::String, vec::Vec};
-use ockam_core::vault::{PublicKey, Secret};
+use ockam_core::vault::{KeyId, PublicKey};
 use ockam_core::{async_trait, compat::boxed::Box, AsyncTryClone};
 use ockam_core::{Result, Route};
 
@@ -16,16 +16,16 @@ pub trait IdentityTrait: AsyncTryClone + Send + Sync + 'static {
     async fn create_key(&self, label: String) -> Result<()>;
 
     /// Add key that already exists in current Vault
-    async fn add_key(&self, label: String, secret: &Secret) -> Result<()>;
+    async fn add_key(&self, label: String, secret: &KeyId) -> Result<()>;
 
     /// Rotate existing key.
     async fn rotate_root_secret_key(&self) -> Result<()>;
 
     /// Get [`Secret`] key.
-    async fn get_root_secret_key(&self) -> Result<Secret>;
+    async fn get_root_secret_key(&self) -> Result<KeyId>;
 
     /// Get [`Secret`] key.
-    async fn get_secret_key(&self, label: String) -> Result<Secret>;
+    async fn get_secret_key(&self, label: String) -> Result<KeyId>;
 
     /// Get [`PublicKey`].
     async fn get_root_public_key(&self) -> Result<PublicKey>;

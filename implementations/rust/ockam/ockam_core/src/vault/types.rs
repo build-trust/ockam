@@ -1,4 +1,3 @@
-use crate::vault::Secret;
 use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -18,7 +17,7 @@ cfg_if! {
         pub type SecretKeyVec = heapless::Vec<u8, 32>;
         /// Public Key Vector. The maximum size is 65 bytes.
         pub type PublicKeyVec = heapless::Vec<u8, 65>;
-        /// Bufer for small vectors (e.g. an array of attributes). The maximum length is 4 elements.
+        /// Buffer for small vectors (e.g. an array of attributes). The maximum length is 4 elements.
         pub type SmallBuffer<T> = heapless::Vec<T, 4>;
         /// Buffer for large binaries (e.g. encrypted data). The maximum length is 512 elements.
         pub type Buffer<T> = heapless::Vec<T, 512>;
@@ -210,13 +209,13 @@ impl SecretAttributes {
 #[derive(Clone, Debug, Zeroize)]
 #[zeroize(drop)]
 pub struct KeyPair {
-    secret: Secret,
+    secret: KeyId,
     public: PublicKey,
 }
 
 impl KeyPair {
     /// Secret key
-    pub fn secret(&self) -> &Secret {
+    pub fn secret(&self) -> &KeyId {
         &self.secret
     }
     /// Public Key
@@ -227,7 +226,7 @@ impl KeyPair {
 
 impl KeyPair {
     /// Create a new key pair
-    pub fn new(secret: Secret, public: PublicKey) -> Self {
+    pub fn new(secret: KeyId, public: PublicKey) -> Self {
         Self { secret, public }
     }
 }

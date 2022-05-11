@@ -1,10 +1,10 @@
 use crate::vault::{
-    KeyIdVault, PublicKey, SecretAttributes, SecretPersistence, SecretType, SecretVault,
+    AsymmetricVault, PublicKey, SecretAttributes, SecretPersistence, SecretType, SecretVault,
     CURVE25519_SECRET_LENGTH,
 };
 use hex::decode;
 
-pub async fn compute_key_id_for_public_key(vault: &mut impl KeyIdVault) {
+pub async fn compute_key_id_for_public_key(vault: &mut impl AsymmetricVault) {
     let public =
         decode("68858ea1ea4e1ade755df7fb6904056b291d9781eb5489932f46e32f12dd192a").unwrap();
     let public = PublicKey::new(public.to_vec(), SecretType::X25519);
@@ -17,7 +17,7 @@ pub async fn compute_key_id_for_public_key(vault: &mut impl KeyIdVault) {
     );
 }
 
-pub async fn secret_by_key_id(vault: &mut (impl KeyIdVault + SecretVault)) {
+pub async fn secret_by_key_id(vault: &mut (impl AsymmetricVault + SecretVault)) {
     let attributes_set = [
         SecretAttributes::new(
             SecretType::X25519,
@@ -36,8 +36,7 @@ pub async fn secret_by_key_id(vault: &mut (impl KeyIdVault + SecretVault)) {
         let public = vault.secret_public_key_get(&secret).await.unwrap();
 
         let key_id = vault.compute_key_id_for_public_key(&public).await.unwrap();
-        let secret2 = vault.secret_by_key_id(&key_id).await.unwrap();
 
-        assert_eq!(secret.index(), secret2.index());
+        assert_eq!(secret, key_id);
     }
 }

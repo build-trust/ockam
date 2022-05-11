@@ -1,4 +1,4 @@
-use crate::vault::{Secret, SecretAttributes, SmallBuffer};
+use crate::vault::{KeyId, SecretAttributes, SmallBuffer};
 use crate::Result;
 use crate::{async_trait, compat::boxed::Box};
 
@@ -12,9 +12,9 @@ pub trait Hasher {
     /// material.
     async fn hkdf_sha256(
         &self,
-        salt: &Secret,
+        salt: &KeyId,
         info: &[u8],
-        ikm: Option<&Secret>,
+        ikm: Option<&KeyId>,
         output_attributes: SmallBuffer<SecretAttributes>,
-    ) -> Result<SmallBuffer<Secret>>;
+    ) -> Result<SmallBuffer<KeyId>>;
 }

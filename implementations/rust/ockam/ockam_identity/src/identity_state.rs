@@ -15,7 +15,7 @@ use ockam_core::compat::{
 };
 use ockam_core::vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH};
 use ockam_core::{allow, deny, Result, Route};
-use ockam_vault::{PublicKey, Secret, SecretAttributes};
+use ockam_vault::{KeyId, PublicKey, SecretAttributes};
 
 cfg_if! {
     if #[cfg(feature = "credentials")] {
@@ -159,12 +159,10 @@ impl<V: IdentityVault> IdentityState<V> {
     pub(crate) async fn get_secret_key_from_event(
         event: &IdentityChangeEvent,
         vault: &mut V,
-    ) -> Result<Secret> {
+    ) -> Result<KeyId> {
         let public_key = event.change_block().change().public_key()?;
 
-        let public_key_id = vault.compute_key_id_for_public_key(&public_key).await?;
-
-        vault.secret_by_key_id(&public_key_id).await
+        vault.compute_key_id_for_public_key(&public_key).await
     }
 
     pub fn has_lease(&self) -> bool {
@@ -191,7 +189,7 @@ impl<V: IdentityVault> IdentityState<V> {
         self.add_change(event).await
     }
 
-    pub async fn add_key(&mut self, label: String, secret: &Secret) -> Result<()> {
+    pub async fn add_key(&mut self, label: String, secret: &KeyId) -> Result<()> {
         let secret_attributes = self.vault.secret_attributes_get(secret).await?;
         let key_attribs = KeyAttributes::new(
             label,
@@ -216,12 +214,12 @@ impl<V: IdentityVault> IdentityState<V> {
     }
 
     /// Get [`Secret`] key. Key is uniquely identified by label in [`KeyAttributes`]
-    pub async fn get_root_secret_key(&self) -> Result<Secret> {
+    pub async fn get_root_secret_key(&self) -> Result<KeyId> {
         self.get_secret_key(IdentityStateConst::ROOT_LABEL.to_string())
             .await
     }
 
-    pub async fn get_secret_key(&self, label: String) -> Result<Secret> {
+    pub async fn get_secret_key(&self, label: String) -> Result<KeyId> {
         let event =
             IdentityChangeHistory::find_last_key_event(self.change_history().as_ref(), &label)?
                 .clone();

@@ -24,7 +24,6 @@ pub use ockam_core;
 mod asymmetric_impl;
 mod error;
 mod hasher_impl;
-mod key_id_impl;
 mod secret_impl;
 mod signer_impl;
 
@@ -38,13 +37,12 @@ mod xeddsa;
 
 // Re-export types commonly used by higher level APIs
 pub use ockam_core::vault::{
-    Hasher, KeyIdVault, PublicKey, Secret, SecretAttributes, SecretVault, Signer, Verifier,
+    Hasher, KeyId, PublicKey, SecretAttributes, SecretVault, Signer, Verifier,
 };
 
 pub use asymmetric_impl::*;
 pub use error::*;
 pub use hasher_impl::*;
-pub use key_id_impl::*;
 pub use secret_impl::*;
 pub use signer_impl::*;
 pub use symmetric_impl::*;

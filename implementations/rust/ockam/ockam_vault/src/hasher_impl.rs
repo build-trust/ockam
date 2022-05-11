@@ -3,7 +3,7 @@ use crate::VaultError;
 use arrayref::array_ref;
 use ockam_core::compat::vec::Vec;
 use ockam_core::vault::{
-    Hasher, Secret, SecretAttributes, SecretType, SecretVault, AES128_SECRET_LENGTH,
+    Hasher, KeyId, SecretAttributes, SecretType, SecretVault, AES128_SECRET_LENGTH,
     AES256_SECRET_LENGTH,
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
@@ -21,16 +21,16 @@ impl Hasher for Vault {
     /// Output secrets should be only of type Buffer or AES
     async fn hkdf_sha256(
         &self,
-        salt: &Secret,
+        salt: &KeyId,
         info: &[u8],
-        ikm: Option<&Secret>,
+        ikm: Option<&KeyId>,
         output_attributes: Vec<SecretAttributes>,
-    ) -> Result<Vec<Secret>> {
+    ) -> Result<Vec<KeyId>> {
         let entries = self.data.entries.read().await;
 
         let ikm: Result<&[u8]> = match ikm {
             Some(ikm) => {
-                let ikm = entries.get(&ikm.index()).ok_or(VaultError::EntryNotFound)?;
+                let ikm = entries.get(ikm).ok_or(VaultError::EntryNotFound)?;
                 if ikm.key_attributes().stype() == SecretType::Buffer {
                     Ok(ikm.key().as_ref())
                 } else {
@@ -42,9 +42,7 @@ impl Hasher for Vault {
 
         let ikm = ikm?;
 
-        let salt = entries
-            .get(&salt.index())
-            .ok_or(VaultError::EntryNotFound)?;
+        let salt = entries.get(salt).ok_or(VaultError::EntryNotFound)?;
 
         if salt.key_attributes().stype() != SecretType::Buffer {
             return Err(VaultError::InvalidKeyType.into());
@@ -65,7 +63,7 @@ impl Hasher for Vault {
         // Prevent dead-lock by freeing entries lock, since we don't need it
         drop(entries);
 
-        let mut secrets = Vec::<Secret>::new();
+        let mut secrets = Vec::<KeyId>::new();
         let mut index = 0;
 
         for attributes in output_attributes {

@@ -1,16 +1,14 @@
 use crate::vault::Vault;
 use crate::VaultError;
-use ockam_core::vault::{Secret, SecretType, Signature, Signer};
+use ockam_core::vault::{KeyId, SecretType, Signature, Signer};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 #[async_trait]
 impl Signer for Vault {
     /// Sign data with xeddsa algorithm. Only curve25519 is supported.
-    async fn sign(&self, secret_key: &Secret, data: &[u8]) -> Result<Signature> {
+    async fn sign(&self, secret_key: &KeyId, data: &[u8]) -> Result<Signature> {
         let entries = self.data.entries.read().await;
-        let entry = entries
-            .get(&secret_key.index())
-            .ok_or(VaultError::EntryNotFound)?;
+        let entry = entries.get(secret_key).ok_or(VaultError::EntryNotFound)?;
 
         let key = entry.key().as_ref();
         match entry.key_attributes().stype() {

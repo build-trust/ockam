@@ -2,7 +2,7 @@ use crate::{Vault, VaultError};
 use aes_gcm::aead::{generic_array::GenericArray, Aead, NewAead, Payload};
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
 use ockam_core::vault::{
-    Buffer, Secret, SecretType, SymmetricVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH,
+    Buffer, KeyId, SecretType, SymmetricVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH,
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
@@ -10,15 +10,13 @@ use ockam_core::{async_trait, compat::boxed::Box, Result};
 impl SymmetricVault for Vault {
     async fn aead_aes_gcm_encrypt(
         &self,
-        context: &Secret,
+        key_id: &KeyId,
         plaintext: &[u8],
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
         let entries = self.data.entries.read().await;
-        let entry = entries
-            .get(&context.index())
-            .ok_or(VaultError::EntryNotFound)?;
+        let entry = entries.get(key_id).ok_or(VaultError::EntryNotFound)?;
 
         if entry.key_attributes().stype() != SecretType::Aes {
             return Err(VaultError::AeadAesGcmEncrypt.into());
@@ -58,15 +56,13 @@ impl SymmetricVault for Vault {
 
     async fn aead_aes_gcm_decrypt(
         &self,
-        context: &Secret,
+        key_id: &KeyId,
         cipher_text: &[u8],
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
         let entries = self.data.entries.read().await;
-        let entry = entries
-            .get(&context.index())
-            .ok_or(VaultError::EntryNotFound)?;
+        let entry = entries.get(key_id).ok_or(VaultError::EntryNotFound)?;
 
         if entry.key_attributes().stype() != SecretType::Aes {
             return Err(VaultError::AeadAesGcmEncrypt.into());
