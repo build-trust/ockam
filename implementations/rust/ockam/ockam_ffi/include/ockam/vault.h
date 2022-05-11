@@ -19,7 +19,7 @@ typedef uint64_t ockam_vault_secret_t;
 
 /**
  * @struct ockam_vault_extern_error_t
- * @brief Represents an error that occured in one of the `ockam_vault` functions.
+ * @brief Represents an error that occurred in one of the `ockam_vault` functions.
  *
  * In the case of an error, resources associated with this error (the `domain` string)
  * must be released using @ref ockam_vault_free_error (which is a no-op if an error did
@@ -85,7 +85,7 @@ ockam_vault_extern_error_t ockam_vault_sha256(ockam_vault_t  vault,
  *          generate. For EC keys and AES keys, length is ignored.
  * @param   vault[in]       Vault object to use for generating a secret key.
  * @param   secret[out]     Pointer to an ockam secret object to be populated with a handle to the secret
- * @param   attributes[in]  Desired attribtes for the secret to be generated.
+ * @param   attributes[in]  Desired attributes for the secret to be generated.
  * @return  an error, which should be freed using @ref ockam_vault_free_error.
  */
 ockam_vault_extern_error_t ockam_vault_secret_generate(ockam_vault_t                   vault,
@@ -164,7 +164,7 @@ ockam_vault_extern_error_t ockam_vault_secret_destroy(ockam_vault_t vault, ockam
 * @param   privatekey[in]            The ockam vault secret to use for the private key of ECDH.
 * @param   peer_publickey[in]        Public key data to use for ECDH.
 * @param   peer_publickey_length[in] Length of the public key.
-* @param   shared_secret[out]        Resulting shared secret from a sucessful ECDH operation. Invalid if ECDH failed.
+* @param   shared_secret[out]        Resulting shared secret from a successful ECDH operation. Invalid if ECDH failed.
 * @return  an error, which should be freed using @ref ockam_vault_free_error.
 */
 ockam_vault_extern_error_t ockam_vault_ecdh(ockam_vault_t         vault,
@@ -178,7 +178,7 @@ ockam_vault_extern_error_t ockam_vault_ecdh(ockam_vault_t         vault,
  * @param   vault[in]                      Vault object to use for encryption.
  * @param   salt[in]                       Ockam vault secret containing the salt for HKDF.
  * @param   input_key_material[in]         Ockam vault secret containing input key material to use for HKDF.
- * @param   derived_outputs_attributes[in] Attibutes of output secrets.
+ * @param   derived_outputs_attributes[in] Attributes of output secrets.
  * @param   derived_outputs_count[in]      Length of outputs attributes array.
  * @param   derived_outputs[out]           Array of ockam vault secrets resulting from HKDF.
  * @return  an error, which should be freed using @ref ockam_vault_free_error.

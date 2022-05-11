@@ -19,4 +19,4 @@ members = [
     "tools/docs/example_blocks",
 ]
 
-exclude = ["implementations/rust/ockam/ockam_examples/example_projects", "implementations/rust/ockam/ockam_command", "implementations/rust/ockam/ockam_ffi"]
+exclude = ["implementations/rust/ockam/ockam_examples/example_projects", "implementations/rust/ockam/ockam_command"]
