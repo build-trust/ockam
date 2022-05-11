@@ -1,11 +1,10 @@
 use crate::{TcpRecvProcessor, TcpRouterHandle};
 use core::time::Duration;
-use ockam_core::{async_trait, route, Any, Decodable, LocalMessage};
+use ockam_core::{async_trait, compat::net::SocketAddr, route, Any, Decodable, LocalMessage};
 use ockam_core::{Address, Encodable, Message, Result, Routed, TransportMessage, Worker};
 use ockam_node::{Context, DelayedEvent};
 use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;

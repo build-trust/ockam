@@ -1,9 +1,8 @@
 use crate::{TcpRouterHandle, TcpSendWorker};
-use ockam_core::{async_trait, AsyncTryClone};
+use ockam_core::{async_trait, compat::net::SocketAddr, AsyncTryClone};
 use ockam_core::{Address, Processor, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
-use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tracing::debug;
 

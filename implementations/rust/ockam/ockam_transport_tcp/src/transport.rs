@@ -1,6 +1,4 @@
-use std::net::SocketAddr;
-
-use ockam_core::compat::boxed::Box;
+use ockam_core::compat::{boxed::Box, net::SocketAddr};
 use ockam_core::{Address, AsyncTryClone, Result, Route};
 use ockam_node::Context;
 
