@@ -73,6 +73,6 @@ mod tests {
         )
         .await?;
         assert_eq!(ctx.receive::<String>().await?, test_msg);
-        Ok(())
+        ctx.stop().await
     }
 }

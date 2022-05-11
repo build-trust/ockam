@@ -27,6 +27,11 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
         let reply = ctx.receive::<String>().await?;
         assert_eq!(reply, msg, "Should receive the same message");
     };
+
+    if let Err(e) = ctx.stop().await {
+        println!("Unclean stop: {}", e)
+    }
+
     Ok(())
 }
 
@@ -84,5 +89,10 @@ async fn tcp_lifecycle__reconnect__should_not_error(ctx: &mut Context) -> Result
 
     let reply = child_ctx.receive::<String>().await?;
     assert_eq!(reply, msg, "Should receive the same message");
+
+    if let Err(e) = ctx.stop().await {
+        println!("Unclean stop: {}", e)
+    }
+
     Ok(())
 }

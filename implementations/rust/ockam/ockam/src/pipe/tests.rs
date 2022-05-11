@@ -21,7 +21,7 @@ async fn static_simple_pipe(ctx: &mut Context) -> Result<()> {
     info!("App reiceved msg: '{}'", msg);
     assert_eq!(msg, sent_msg);
 
-    Ok(())
+    ctx.stop().await
 }
 
 #[crate::test]
@@ -43,7 +43,7 @@ async fn static_confirm_pipe(ctx: &mut Context) -> Result<()> {
     info!("App reiceved msg: '{}'", msg);
     assert_eq!(msg, sent_msg);
 
-    Ok(())
+    ctx.stop().await
 }
 
 /// Create hook that sends a message when the send timeout has elapsed
@@ -125,7 +125,7 @@ async fn fails_static_confirm_pipe(ctx: &mut Context) -> Result<()> {
     warn!("App reiceved msg: '{}'", invalid);
     assert_eq!(invalid, "Shut it down...".to_string());
 
-    Ok(())
+    ctx.stop().await
 }
 
 /// A simple test to ensure static ordering pipes can deliver messages
@@ -152,7 +152,7 @@ async fn static_ordering_pipe(ctx: &mut Context) -> Result<()> {
     info!("App reiceved msg: '{}'", msg2);
     assert_eq!(msg2, sent_msg2);
 
-    Ok(())
+    ctx.stop().await
 }
 
 /// A test for a pipe that enforces ordering _and_ sends confirm messages
@@ -190,7 +190,7 @@ async fn static_confirm_ordering_pipe(ctx: &mut Context) -> Result<()> {
     info!("App reiceved msg: '{}'", msg2);
     assert_eq!(msg2, sent_msg2);
 
-    Ok(())
+    ctx.stop().await
 }
 
 /// A test for a pipe that enforces ordering _and_ sends confirm
@@ -229,7 +229,7 @@ async fn static_confirm_ordering_pipe_reversed(ctx: &mut Context) -> Result<()> 
     info!("App reiceved msg: '{}'", msg2);
     assert_eq!(msg2, sent_msg2);
 
-    Ok(())
+    ctx.stop().await
 }
 
 #[crate::test]
@@ -246,7 +246,7 @@ async fn simple_pipe_handshake(ctx: &mut Context) -> Result<()> {
     info!("App received msg: '{}'", msg);
     assert_eq!(msg, msg_sent);
 
-    Ok(())
+    ctx.stop().await
 }
 
 #[crate::test]
@@ -278,5 +278,5 @@ async fn layered_pipe(ctx: &mut Context) -> Result<()> {
     info!("App received message: {}", msg_recv);
     assert_eq!(msg_recv, msg);
 
-    Ok(())
+    ctx.stop().await
 }

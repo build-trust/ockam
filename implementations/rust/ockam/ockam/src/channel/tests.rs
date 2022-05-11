@@ -28,7 +28,7 @@ async fn simple_channel(ctx: &mut Context) -> Result<()> {
     info!("Received message '{}' through channel", recv);
     assert_eq!(recv, msg);
 
-    Ok(())
+    ctx.stop().await
 }
 
 #[crate::test]
@@ -57,5 +57,5 @@ async fn reliable_channel(ctx: &mut Context) -> Result<()> {
     info!("Received message '{}' through channel", recv);
     assert_eq!(recv, msg);
 
-    Ok(())
+    ctx.stop().await
 }

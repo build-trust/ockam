@@ -287,6 +287,7 @@ mod test {
         if let Some(c) = get_cloud_address() {
             cloud_address = c;
         } else {
+            ctx.stop().await?;
             return Ok(());
         }
 
@@ -309,7 +310,8 @@ mod test {
         let resp = child_ctx.receive::<String>().await?.take().body();
 
         assert_eq!(resp, "Hello");
-        Ok(())
+
+        ctx.stop().await
     }
 
     #[allow(non_snake_case)]
@@ -319,6 +321,7 @@ mod test {
         if let Some(c) = get_cloud_address() {
             cloud_address = c;
         } else {
+            ctx.stop().await?;
             return Ok(());
         }
 
@@ -341,6 +344,7 @@ mod test {
         let resp = child_ctx.receive::<String>().await?.take().body();
 
         assert_eq!(resp, "Hello");
-        Ok(())
+
+        ctx.stop().await
     }
 }
