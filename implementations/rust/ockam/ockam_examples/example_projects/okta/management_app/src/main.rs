@@ -5,7 +5,7 @@ mod config;
 
 use ockam_vault::{
     ockam_core::vault::{
-        Hasher, Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault, Signer,
+        Hasher, KeyId, SecretAttributes, SecretPersistence, SecretType, SecretVault, Signer,
     },
     SoftwareVault,
 };
@@ -62,7 +62,7 @@ fn main() {
     let mut services_data = BTreeMap::new();
     let mut x3dh_bundles: BTreeMap<u32, EstablishmentBundle>;
     let mut access_token = String::new();
-    let mut credential_key: Option<Secret> = None;
+    let mut credential_key: Option<KeyId> = None;
 
     let mut de = serde_json::Deserializer::from_reader(service_stream.try_clone().unwrap());
     loop {

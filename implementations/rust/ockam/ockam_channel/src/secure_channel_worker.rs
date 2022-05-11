@@ -4,7 +4,7 @@ use crate::{
 };
 use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
-use ockam_core::vault::Secret;
+use ockam_core::vault::KeyId;
 use ockam_core::{
     Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
     TransportMessage, Worker,
@@ -14,8 +14,8 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
 pub(crate) struct ChannelKeys {
-    encrypt_key: Secret,
-    decrypt_key: Secret,
+    encrypt_key: KeyId,
+    decrypt_key: KeyId,
     nonce: u64,
 }
 

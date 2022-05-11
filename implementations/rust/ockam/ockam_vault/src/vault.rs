@@ -1,8 +1,6 @@
-#[cfg(feature = "storage")]
-use crate::storage::*;
-use core::sync::atomic::AtomicUsize;
-use ockam_core::compat::{collections::BTreeMap, string::String, sync::Arc};
-use ockam_core::vault::{SecretAttributes, SecretKey};
+use ockam_core::compat::{collections::BTreeMap, sync::Arc};
+use ockam_core::vault::storage::Storage;
+use ockam_core::vault::{KeyId, SecretAttributes, SecretKey};
 use ockam_node::compat::asynchronous::RwLock;
 
 /// Vault implementation that stores secrets in memory and uses software crypto.
@@ -36,13 +34,13 @@ use ockam_node::compat::asynchronous::RwLock;
 #[derive(Default, Clone)]
 pub struct Vault {
     pub(crate) data: VaultData,
+    pub(crate) storage: Option<Arc<dyn Storage>>,
 }
 
 #[derive(Default, Clone)]
 pub(crate) struct VaultData {
     // TODO: make these private, and save automatically on modification.
-    pub(crate) entries: Arc<RwLock<BTreeMap<usize, VaultEntry>>>,
-    pub(crate) next_id: Arc<AtomicUsize>,
+    pub(crate) entries: Arc<RwLock<BTreeMap<KeyId, VaultEntry>>>,
 }
 
 impl Vault {
@@ -50,25 +48,8 @@ impl Vault {
     pub fn new() -> Self {
         Self {
             data: Default::default(),
+            storage: None,
         }
-    }
-
-    /// Serialize a vault to bytes which may later be restored using
-    /// `SoftwareVault::deserialize`.
-    #[cfg(feature = "storage")]
-    pub async fn serialize(&self) -> Vec<u8> {
-        serialize(&self.data).await
-    }
-
-    /// Load a vault from the serialized format produced by `SoftwareVault::serialize`.
-    #[cfg(feature = "storage")]
-    #[tracing::instrument(err, skip_all)]
-    pub fn deserialize(data: &[u8]) -> ockam_core::Result<Self> {
-        let data = deserialize(data).map_err(|e| {
-            tracing::error!("Data loaded from vault failed to parse: {:?}", e);
-            crate::VaultError::StorageError
-        })?;
-        Ok(Self { data })
     }
 
     /// Same as ```Vault::new()```
@@ -78,17 +59,12 @@ impl Vault {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-#[cfg_attr(feature = "storage", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct VaultEntry {
-    key_id: Option<String>,
     key_attributes: SecretAttributes,
     key: SecretKey,
 }
 
 impl VaultEntry {
-    pub fn key_id(&self) -> &Option<String> {
-        &self.key_id
-    }
     pub fn key_attributes(&self) -> SecretAttributes {
         self.key_attributes
     }
@@ -98,9 +74,8 @@ impl VaultEntry {
 }
 
 impl VaultEntry {
-    pub fn new(key_id: Option<String>, key_attributes: SecretAttributes, key: SecretKey) -> Self {
+    pub fn new(key_attributes: SecretAttributes, key: SecretKey) -> Self {
         VaultEntry {
-            key_id,
             key_attributes,
             key,
         }
@@ -110,12 +85,10 @@ impl VaultEntry {
 #[cfg(test)]
 mod tests {
     use crate::Vault;
-    use std::sync::atomic::Ordering;
 
     #[tokio::test]
     async fn new_vault() {
         let vault = Vault::new();
-        assert_eq!(vault.data.next_id.load(Ordering::Relaxed), 0);
         assert_eq!(vault.data.entries.read().await.len(), 0);
     }
 }

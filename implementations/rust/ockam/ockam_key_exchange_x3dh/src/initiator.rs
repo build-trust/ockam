@@ -5,7 +5,7 @@ use ockam_core::compat::{
 };
 use ockam_core::vault::Signature as GenericSignature;
 use ockam_core::vault::{
-    Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
+    KeyId, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
     CURVE25519_SECRET_LENGTH,
 };
 use ockam_core::Result;
@@ -22,8 +22,8 @@ enum InitiatorState {
 /// The initiator of X3DH receives a prekey bundle and computes the shared secret
 /// to communicate the first message to the responder
 pub struct Initiator<V: X3dhVault> {
-    identity_key: Option<Secret>,
-    ephemeral_identity_key: Option<Secret>,
+    identity_key: Option<KeyId>,
+    ephemeral_identity_key: Option<KeyId>,
     prekey_bundle: Option<PreKeyBundle>,
     state: InitiatorState,
     vault: V,
@@ -31,7 +31,7 @@ pub struct Initiator<V: X3dhVault> {
 }
 
 impl<V: X3dhVault> Initiator<V> {
-    pub(crate) fn new(vault: V, identity_key: Option<Secret>) -> Self {
+    pub(crate) fn new(vault: V, identity_key: Option<KeyId>) -> Self {
         Self {
             identity_key,
             ephemeral_identity_key: None,

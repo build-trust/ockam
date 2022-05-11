@@ -5,7 +5,7 @@ use ockam_core::compat::{
     vec::Vec,
 };
 use ockam_core::vault::{
-    PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
+    KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
     CURVE25519_SECRET_LENGTH,
 };
 use ockam_core::Result;
@@ -25,16 +25,16 @@ enum ResponderState {
 /// The responder of X3DH creates a prekey bundle that can be used to establish a shared
 /// secret key with another party that can use
 pub struct Responder<V: X3dhVault> {
-    identity_key: Option<Secret>,
-    signed_prekey: Option<Secret>,
-    one_time_prekey: Option<Secret>,
+    identity_key: Option<KeyId>,
+    signed_prekey: Option<KeyId>,
+    one_time_prekey: Option<KeyId>,
     state: ResponderState,
     vault: V,
     completed_key_exchange: Option<CompletedKeyExchange>,
 }
 
 impl<V: X3dhVault> Responder<V> {
-    pub(crate) fn new(vault: V, identity_key: Option<Secret>) -> Self {
+    pub(crate) fn new(vault: V, identity_key: Option<KeyId>) -> Self {
         Self {
             identity_key,
             signed_prekey: None,

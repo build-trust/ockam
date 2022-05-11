@@ -61,7 +61,6 @@ pub async fn secret_import_export(vault: &mut impl SecretVault) {
         .await
         .unwrap();
 
-    assert_eq!(secret.index(), 1);
     assert_eq!(
         encode(vault.secret_export(&secret).await.unwrap().as_ref()),
         secret_str
@@ -73,8 +72,6 @@ pub async fn secret_import_export(vault: &mut impl SecretVault) {
         .secret_import(decode(secret_str).unwrap().as_slice(), attributes)
         .await
         .unwrap();
-
-    assert_eq!(secret.index(), 2);
 
     assert_eq!(
         encode(vault.secret_export(&secret).await.unwrap().as_ref()),

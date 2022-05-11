@@ -1,12 +1,12 @@
 use crate::{XXError, XXVault, SHA256_SIZE};
 use ockam_core::vault::{
-    PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
+    KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
 };
 use ockam_core::Result;
 
 pub(crate) struct DhState<V: XXVault> {
-    pub(crate) key: Option<Secret>,
-    pub(crate) ck: Option<Secret>,
+    pub(crate) key: Option<KeyId>,
+    pub(crate) ck: Option<KeyId>,
     pub(crate) vault: V,
 }
 
@@ -37,10 +37,10 @@ impl<V: XXVault> DhState<V> {
 }
 
 impl<V: XXVault> DhState<V> {
-    pub(crate) fn key(&self) -> Option<&Secret> {
+    pub(crate) fn key(&self) -> Option<&KeyId> {
         self.key.as_ref()
     }
-    pub(crate) fn ck(&self) -> Option<&Secret> {
+    pub(crate) fn ck(&self) -> Option<&KeyId> {
         self.ck.as_ref()
     }
 }
@@ -50,11 +50,7 @@ impl<V: XXVault> DhState<V> {
         (SecretType::Aes, AES256_SECRET_LENGTH)
     }
     /// Perform the diffie-hellman computation
-    pub(crate) async fn dh(
-        &mut self,
-        secret_handle: &Secret,
-        public_key: &PublicKey,
-    ) -> Result<()> {
+    pub(crate) async fn dh(&mut self, secret_handle: &KeyId, public_key: &PublicKey) -> Result<()> {
         let ck = self.ck.as_ref().ok_or(XXError::InvalidState)?;
 
         let attributes_ck = SecretAttributes::new(

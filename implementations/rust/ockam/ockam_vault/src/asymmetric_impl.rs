@@ -1,8 +1,8 @@
 use crate::{Vault, VaultEntry, VaultError};
 use arrayref::array_ref;
 use ockam_core::vault::{
-    AsymmetricVault, Buffer, PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType,
-    SecretVault, CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
+    AsymmetricVault, Buffer, Hasher, KeyId, PublicKey, SecretAttributes, SecretPersistence,
+    SecretType, SecretVault, CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
 };
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
@@ -44,13 +44,11 @@ impl Vault {
 impl AsymmetricVault for Vault {
     async fn ec_diffie_hellman(
         &self,
-        context: &Secret,
+        secret: &KeyId,
         peer_public_key: &PublicKey,
-    ) -> Result<Secret> {
+    ) -> Result<KeyId> {
         let entries = self.data.entries.read().await;
-        let entry = entries
-            .get(&context.index())
-            .ok_or(VaultError::EntryNotFound)?;
+        let entry = entries.get(secret).ok_or(VaultError::EntryNotFound)?;
 
         let dh = Self::ecdh_internal(entry, peer_public_key)?;
 
@@ -60,6 +58,11 @@ impl AsymmetricVault for Vault {
         let attributes =
             SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, dh.len());
         self.secret_import(&dh, attributes).await
+    }
+
+    async fn compute_key_id_for_public_key(&self, public_key: &PublicKey) -> Result<KeyId> {
+        let key_id = self.sha256(public_key.as_ref()).await?;
+        Ok(hex::encode(key_id))
     }
 }
 

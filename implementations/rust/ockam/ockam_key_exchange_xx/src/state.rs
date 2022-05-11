@@ -1,6 +1,6 @@
 use crate::{XXError, XXVault, AES_GCM_TAGSIZE, SHA256_SIZE};
 use ockam_core::vault::{
-    PublicKey, Secret, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
+    KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
     CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
 };
 use ockam_core::{compat::vec::Vec, Result};
@@ -12,9 +12,9 @@ pub(crate) use dh_state::*;
 /// Represents the XX Handshake
 pub(crate) struct State<V: XXVault> {
     run_prologue: bool,
-    identity_key: Option<Secret>,
+    identity_key: Option<KeyId>,
     identity_public_key: Option<PublicKey>,
-    ephemeral_secret: Option<Secret>,
+    ephemeral_secret: Option<KeyId>,
     ephemeral_public: Option<PublicKey>,
     _remote_static_public_key: Option<PublicKey>,
     remote_ephemeral_public_key: Option<PublicKey>,
@@ -160,7 +160,7 @@ impl<V: XXVault> State<V> {
     }
 
     /// Split step in Noise protocol
-    async fn split(&mut self) -> Result<(Secret, Secret)> {
+    async fn split(&mut self) -> Result<(KeyId, KeyId)> {
         let ck = self.dh_state.ck().ok_or(XXError::InvalidState)?;
 
         let symmetric_key_info = self.get_symmetric_key_type_and_length();
@@ -185,7 +185,7 @@ impl<V: XXVault> State<V> {
     }
 
     /// Set this state up to send and receive messages
-    fn finalize(self, encrypt_key: Secret, decrypt_key: Secret) -> Result<CompletedKeyExchange> {
+    fn finalize(self, encrypt_key: KeyId, decrypt_key: KeyId) -> Result<CompletedKeyExchange> {
         let h = self.h.ok_or(XXError::InvalidState)?;
 
         Ok(CompletedKeyExchange::new(h, encrypt_key, decrypt_key))

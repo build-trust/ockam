@@ -33,7 +33,7 @@ pub use lease::*;
 use ockam_channel::SecureChannelVault;
 use ockam_core::compat::{collections::HashMap, string::String, vec::Vec};
 use ockam_core::{AsyncTryClone, Decodable, Encodable, Result};
-use ockam_vault::{Hasher, KeyIdVault, SecretVault, Signer, Verifier};
+use ockam_vault::{Hasher, SecretVault, Signer, Verifier};
 pub use traits::*;
 pub use worker::*;
 
@@ -64,22 +64,13 @@ cfg_if! {
 
 /// Traits required for a Vault implementation suitable for use in an Identity
 pub trait IdentityVault:
-    SecretVault
-    + SecureChannelVault
-    + KeyIdVault
-    + Hasher
-    + Signer
-    + Verifier
-    + AsyncTryClone
-    + Send
-    + 'static
+    SecretVault + SecureChannelVault + Hasher + Signer + Verifier + AsyncTryClone + Send + 'static
 {
 }
 
 impl<D> IdentityVault for D where
     D: SecretVault
         + SecureChannelVault
-        + KeyIdVault
         + Hasher
         + Signer
         + Verifier

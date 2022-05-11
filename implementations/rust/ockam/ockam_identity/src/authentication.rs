@@ -2,7 +2,7 @@ use crate::{IdentityError, IdentityVault};
 use ockam_core::compat::vec::Vec;
 use ockam_core::vault::Signature;
 use ockam_core::{Decodable, Encodable, Result};
-use ockam_vault::{PublicKey, Secret};
+use ockam_vault::{KeyId, PublicKey};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ pub(crate) struct Authentication {}
 impl Authentication {
     pub(crate) async fn generate_proof<V: IdentityVault>(
         channel_state: &[u8],
-        secret: &Secret,
+        secret: &KeyId,
         vault: &mut V,
     ) -> Result<Vec<u8>> {
         let signature = vault.sign(secret, channel_state).await?;

@@ -5,7 +5,7 @@ use core::{future::Future, result::Result as StdResult, slice};
 use lazy_static::lazy_static;
 use ockam_core::compat::sync::Arc;
 use ockam_core::vault::{
-    AsymmetricVault, Hasher, PublicKey, Secret, SecretAttributes, SecretVault, SymmetricVault,
+    AsymmetricVault, Hasher, KeyId, PublicKey, SecretAttributes, SecretVault, SymmetricVault,
 };
 use ockam_core::{Error, Result};
 use ockam_vault::Vault;

@@ -12,20 +12,19 @@
 
 mod asymmetric_vault;
 mod hasher;
-mod key_id_vault;
-mod secret;
 mod secret_vault;
 mod signer;
 mod symmetric_vault;
 mod types;
 mod verifier;
 
+/// Storage
+pub mod storage;
+
 pub mod test_support;
 
 pub use asymmetric_vault::*;
 pub use hasher::*;
-pub use key_id_vault::*;
-pub use secret::*;
 pub use secret_vault::*;
 pub use signer::*;
 pub use symmetric_vault::*;
