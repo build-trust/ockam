@@ -1551,6 +1551,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam-ffi"
+version = "0.45.0"
+dependencies = [
+ "futures 0.3.21",
+ "lazy_static",
+ "ockam_core",
+ "ockam_vault",
+ "tokio",
+]
+
+[[package]]
 name = "ockam_api"
 version = "0.2.0"
 dependencies = [
