@@ -1,10 +1,10 @@
 use crate::{PortalInternalMessage, PortalMessage, TcpPortalRecvProcessor};
 use core::time::Duration;
-use ockam_core::{async_trait, compat::boxed::Box, Decodable};
+use ockam_core::compat::{boxed::Box, net::SocketAddr};
+use ockam_core::{async_trait, Decodable};
 use ockam_core::{Address, Any, Result, Route, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
-use std::net::SocketAddr;
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;

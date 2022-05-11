@@ -5,13 +5,9 @@ use ockam_transport_websocket::{WebSocketTransport, WS};
 
 #[ockam_macros::test]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
-    let listener_address;
-
-    let _listener = {
-        let transport = WebSocketTransport::create(ctx).await?;
-        listener_address = transport.listen("127.0.0.1:0").await?;
-        ctx.start_worker("echoer", Echoer).await?;
-    };
+    let transport = WebSocketTransport::create(ctx).await?;
+    let listener_address = transport.listen("127.0.0.1:0").await?;
+    ctx.start_worker("echoer", Echoer).await?;
 
     let _sender = {
         let mut ctx = ctx.new_context(Address::random_local()).await?;
