@@ -85,7 +85,8 @@ async fn send_messages(ctx: &mut Context) -> Result<()> {
     let msg = ctx.receive::<String>().await?;
     info!("Received message '{}'", msg);
 
-    Ok(())
+    // Shut down the test
+    ctx.stop().await
 }
 
 #[derive(Clone)]
@@ -156,5 +157,5 @@ async fn attach_metadata(ctx: &mut Context) -> Result<()> {
     info!("Received message metadata: '{:?}'", msg.generic);
     info!("Received message data: {}", String::decode(&msg.data)?);
 
-    Ok(())
+    ctx.stop().await
 }

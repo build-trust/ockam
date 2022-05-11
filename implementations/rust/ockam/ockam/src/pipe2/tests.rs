@@ -26,7 +26,7 @@ async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
-    Ok(())
+    ctx.stop().await
 }
 
 #[crate::test]
@@ -49,7 +49,7 @@ async fn handshake_pipe(ctx: &mut Context) -> Result<()> {
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
 
-    Ok(())
+    ctx.stop().await
 }
 
 #[crate::test]
@@ -79,7 +79,7 @@ async fn fixed_delivery_pipe(ctx: &mut Context) -> Result<()> {
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
-    Ok(())
+    ctx.stop().await
 }
 
 #[crate::test]
@@ -104,7 +104,7 @@ async fn dynamic_delivery_pipe(ctx: &mut Context) -> Result<()> {
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
 
-    Ok(())
+    ctx.stop().await
 }
 
 #[crate::test]
@@ -134,7 +134,7 @@ async fn fixed_ordering_pipe(ctx: &mut Context) -> Result<()> {
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
-    Ok(())
+    ctx.stop().await
 }
 
 #[crate::test]
@@ -166,7 +166,7 @@ async fn fixed_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
-    Ok(())
+    ctx.stop().await
 }
 
 #[crate::test]
@@ -193,5 +193,5 @@ async fn dynamic_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
 
-    Ok(())
+    ctx.stop().await
 }

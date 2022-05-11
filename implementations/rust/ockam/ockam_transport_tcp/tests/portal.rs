@@ -63,6 +63,11 @@ async fn portal__standard_flow__should_succeed(ctx: &mut Context) -> Result<()> 
     read_assert_binary(&mut stream, payload2).await;
 
     tokio::time::sleep(Duration::new(0, 250_000)).await;
+
+    if let Err(e) = ctx.stop().await {
+        println!("Unclean stop: {}", e)
+    }
+
     Ok(())
 }
 
@@ -89,5 +94,10 @@ async fn portal__reverse_flow__should_succeed(ctx: &mut Context) -> Result<()> {
     read_assert_binary(&mut stream, payload2).await;
 
     tokio::time::sleep(Duration::new(0, 250_000)).await;
+
+    if let Err(e) = ctx.stop().await {
+        println!("Unclean stop: {}", e)
+    }
+
     Ok(())
 }

@@ -89,10 +89,7 @@ fn output(mut cont: Container) -> TokenStream {
                                 #ctx_stop_stmt
                                 Err(err)
                             },
-                            Ok(_) => {
-                                #ctx_stop_stmt
-                                Ok(())
-                            }
+                            Ok(_) => Ok(())
                         },
                         Err(_) => {
                             #ctx_stop_stmt

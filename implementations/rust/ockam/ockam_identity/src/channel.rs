@@ -101,7 +101,7 @@ mod test {
 
         assert_eq!("Hello, Alice!", msg.body());
 
-        Ok(())
+        ctx.stop().await
     }
 
     #[ockam_macros::test]
@@ -146,7 +146,7 @@ mod test {
             ctx.receive::<String>().await?.take().body()
         );
 
-        Ok(())
+        ctx.stop().await
     }
 
     #[ockam_macros::test]
@@ -201,7 +201,7 @@ mod test {
             ctx.receive::<String>().await?.take().body()
         );
 
-        Ok(())
+        ctx.stop().await
     }
 
     #[ockam_macros::test]
@@ -246,7 +246,7 @@ mod test {
             ctx.receive::<String>().await?.take().body()
         );
 
-        Ok(())
+        ctx.stop().await
     }
 
     struct Receiver {
@@ -302,7 +302,7 @@ mod test {
 
         assert_eq!(received_count.load(Ordering::Relaxed), 1);
 
-        Ok(())
+        ctx.stop().await
     }
 
     #[allow(non_snake_case)]
@@ -338,7 +338,7 @@ mod test {
 
         assert_eq!(received_count.load(Ordering::Relaxed), 0);
 
-        Ok(())
+        ctx.stop().await
     }
 
     #[allow(non_snake_case)]
@@ -364,6 +364,6 @@ mod test {
 
         assert_eq!(received_count.load(Ordering::Relaxed), 0);
 
-        Ok(())
+        ctx.stop().await
     }
 }
