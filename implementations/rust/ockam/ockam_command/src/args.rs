@@ -71,10 +71,9 @@ pub struct IdentityOpts {
     ///
     /// This is a destructive operation and cannot be undone.
     ///
-    /// Note: This only applies to the `<ockam_dir>/vault.json` and
-    /// `<ockam_dir>/identity.json` files, and not to `<ockam_dir>/trusted`,
-    /// which is left as-is must be managed manually. For example, with the
-    /// `ockam add-trusted-identity` subcommand)
+    /// Note: This only applies to the `<ockam_dir>/identity.json` files,
+    /// and not to `<ockam_dir>/trusted`, which is left as-is must be managed manually.
+    /// For example, with the `ockam add-trusted-identity` subcommand)
     #[clap(long)]
     pub overwrite: bool,
 }

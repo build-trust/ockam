@@ -43,8 +43,12 @@ pub enum VaultError {
     InvalidBlsSecret,
     /// Invalid Secret Attributes
     InvalidSecretAttributes,
-    /// IO error when saving
+    /// IO error
     StorageError,
+    /// Invalid Storage data
+    InvalidStorageData,
+    /// Serialization Error
+    SerializationError,
 }
 
 impl ockam_core::compat::error::Error for VaultError {}
@@ -70,6 +74,8 @@ impl core::fmt::Display for VaultError {
             Self::InvalidBlsSecret => write!(f, "invalid BLS secret"),
             Self::InvalidSecretAttributes => write!(f, "invalid secret attributes"),
             Self::StorageError => write!(f, "invalid storage"),
+            Self::InvalidStorageData => write!(f, "invalid storage data"),
+            Self::SerializationError => write!(f, "serialization error"),
         }
     }
 }

@@ -1,6 +1,5 @@
-use crate::OckamVault;
 use anyhow::{Context, Result};
-use ockam::{identity::*, vault::*};
+use ockam::identity::*;
 
 const VERSION: u32 = 1;
 
@@ -10,8 +9,9 @@ pub struct IdentityFile {
     identity: ExportedIdentity,
 }
 
-// #[tracing::instrument(level = "debug", err)]
-pub fn load_identity(identity_json: &std::path::Path) -> anyhow::Result<ExportedIdentity> {
+#[tracing::instrument(level = "debug", err)]
+pub fn load_identity(ockam_dir: &std::path::Path) -> anyhow::Result<ExportedIdentity> {
+    let identity_json = ockam_dir.join("identity.json");
     let ident_bytes = std::fs::read(&identity_json)
         .with_context(|| format!("Failed to open identity.json from {identity_json:?}"))?;
     let stored_ident = serde_json::from_slice::<IdentityFile>(&ident_bytes)
@@ -20,38 +20,25 @@ pub fn load_identity(identity_json: &std::path::Path) -> anyhow::Result<Exported
         stored_ident.version == VERSION,
         "Identifier in {identity_json:?} has wrong format version",
     );
+    tracing::info!(
+        "Loaded identity {:?} from {:?}",
+        stored_ident.identity.id,
+        identity_json
+    );
     Ok(stored_ident.identity)
-}
-
-#[tracing::instrument(level = "debug", err)]
-pub fn load_identity_and_vault(
-    ockam_dir: &std::path::Path,
-) -> anyhow::Result<(ExportedIdentity, OckamVault)> {
-    let vault_path = ockam_dir.join("vault.json");
-    let vault_bytes = std::fs::read(&vault_path)
-        .with_context(|| format!("Failed to open vault.json from {vault_path:?}"))?;
-    let vault = Vault::deserialize(&vault_bytes[..])
-        .with_context(|| format!("Failed to load the ockam vault at {vault_path:?}"))?;
-    let ident_path = ockam_dir.join("identity.json");
-    let identity = load_identity(&ident_path)?;
-    tracing::info!("Loaded identity {:?} from {:?}", identity.id, ident_path);
-    Ok((identity, vault))
 }
 
 #[tracing::instrument(level = "debug", skip_all, err, fields(id = ?i.id.key_id()))]
 pub async fn save_identity(
     ockam_dir: &std::path::Path,
     i: &ExportedIdentity,
-    vault: &OckamVault,
 ) -> anyhow::Result<()> {
-    let vault_bytes = vault.serialize().await;
     let ident_bytes = serde_json::to_string(&IdentityFile {
         version: VERSION,
         identity: i.clone(),
     })
     .expect("exported identity should be serializable");
     crate::storage::write(&ockam_dir.join("identity.json"), ident_bytes.as_bytes())?;
-    crate::storage::write(&ockam_dir.join("vault.json"), &vault_bytes)?;
     Ok(())
 }
 

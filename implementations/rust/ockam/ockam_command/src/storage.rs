@@ -53,7 +53,7 @@ pub fn ensure_identity_exists(expect_trusted: bool) -> Result<()> {
             "Failed to locate the ockam directory. Do you need to run `ockam create-identity`?"
         );
     }
-    if !dir.join("identity.json").exists() || !dir.join("vault.json").exists() {
+    if !dir.join("identity.json").exists() {
         anyhow::bail!(
             "No identity has been initialized in the ockam directory at `{}`. \
             You may need to need to run `ockam create-identity`. If this directory \
@@ -122,7 +122,7 @@ pub fn write(path: &std::path::Path, data: &[u8]) -> anyhow::Result<()> {
     use std::io::prelude::*;
     use std::os::unix::prelude::*;
     // TODO: look up how to avoid TOCTOU races for this case. Note that we must
-    // still guarantee that there isn't a window where an unprivledged
+    // still guarantee that there isn't a window where an unprivileged
     // process/user can read the data. Currently this has a race that results in
     // us failing to write, but theres no window where our mode could fail to be
     // used, which would be worse.
@@ -134,7 +134,7 @@ pub fn write(path: &std::path::Path, data: &[u8]) -> anyhow::Result<()> {
         .write(true)
         .read(true)
         // `create_new` means we error if it exists. This ensures the mode we
-        // provide is respecte (the `mode(0o600)` is only used if creating the
+        // provide is respect (the `mode(0o600)` is only used if creating the
         // file)
         .create_new(true)
         .mode(0o600) // TODO: not portable, what about windows?

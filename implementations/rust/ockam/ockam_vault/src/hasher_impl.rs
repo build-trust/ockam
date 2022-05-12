@@ -26,6 +26,11 @@ impl Hasher for Vault {
         ikm: Option<&KeyId>,
         output_attributes: Vec<SecretAttributes>,
     ) -> Result<Vec<KeyId>> {
+        self.preload_from_storage(salt).await;
+        if let Some(ikm) = ikm {
+            self.preload_from_storage(ikm).await;
+        }
+
         let entries = self.data.entries.read().await;
 
         let ikm: Result<&[u8]> = match ikm {

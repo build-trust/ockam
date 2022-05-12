@@ -5,8 +5,10 @@ use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 #[async_trait]
 impl Signer for Vault {
-    /// Sign data with xeddsa algorithm. Only curve25519 is supported.
+    /// Sign data.
     async fn sign(&self, secret_key: &KeyId, data: &[u8]) -> Result<Signature> {
+        self.preload_from_storage(secret_key).await;
+
         let entries = self.data.entries.read().await;
         let entry = entries.get(secret_key).ok_or(VaultError::EntryNotFound)?;
 

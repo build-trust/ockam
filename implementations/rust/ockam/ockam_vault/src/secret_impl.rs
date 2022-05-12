@@ -1,11 +1,11 @@
-use crate::vault::{Vault, VaultEntry};
+use crate::vault::Vault;
 use crate::VaultError;
 use arrayref::array_ref;
 use cfg_if::cfg_if;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::vault::{
     AsymmetricVault, KeyId, PublicKey, SecretAttributes, SecretKey, SecretPersistence, SecretType,
-    SecretVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
+    SecretVault, VaultEntry, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 cfg_if! {
@@ -89,15 +89,10 @@ impl Vault {
         Ok(())
     }
 
-    async fn store_secret(
-        &self,
-        attributes: SecretAttributes,
-        secret: &KeyId,
-        secret_key: &SecretKey,
-    ) -> Result<()> {
-        if attributes.persistence() == SecretPersistence::Persistent {
+    async fn store_secret(&self, key_id: &KeyId, vault_entry: &VaultEntry) -> Result<()> {
+        if vault_entry.key_attributes().persistence() == SecretPersistence::Persistent {
             if let Some(storage) = &self.storage {
-                storage.store(secret, secret_key).await?;
+                storage.store(key_id, vault_entry).await?;
             }
         }
 
@@ -161,13 +156,14 @@ impl SecretVault for Vault {
         };
         let key_id = self.compute_key_id(key.as_ref(), &attributes).await?;
 
-        self.store_secret(attributes, &key_id, &key).await?;
+        let entry = VaultEntry::new(attributes, key);
+        self.store_secret(&key_id, &entry).await?;
 
         self.data
             .entries
             .write()
             .await
-            .insert(key_id.clone(), VaultEntry::new(attributes, key));
+            .insert(key_id.clone(), entry);
 
         Ok(key_id)
     }
@@ -179,18 +175,21 @@ impl SecretVault for Vault {
 
         let secret_key = SecretKey::new(secret.to_vec());
 
-        self.store_secret(attributes, &key_id, &secret_key).await?;
+        let entry = VaultEntry::new(attributes, secret_key);
+        self.store_secret(&key_id, &entry).await?;
 
         self.data
             .entries
             .write()
             .await
-            .insert(key_id.clone(), VaultEntry::new(attributes, secret_key));
+            .insert(key_id.clone(), entry);
 
         Ok(key_id)
     }
 
     async fn secret_export(&self, key_id: &KeyId) -> Result<SecretKey> {
+        self.preload_from_storage(key_id).await;
+
         Ok(self
             .data
             .entries
@@ -203,6 +202,8 @@ impl SecretVault for Vault {
     }
 
     async fn secret_attributes_get(&self, key_id: &KeyId) -> Result<SecretAttributes> {
+        self.preload_from_storage(key_id).await;
+
         Ok(self
             .data
             .entries
@@ -215,6 +216,8 @@ impl SecretVault for Vault {
 
     /// Extract public key from secret. Only Curve25519 type is supported
     async fn secret_public_key_get(&self, key_id: &KeyId) -> Result<PublicKey> {
+        self.preload_from_storage(key_id).await;
+
         let entries = self.data.entries.read().await;
         let entry = entries.get(key_id).ok_or(VaultError::EntryNotFound)?;
 
@@ -257,11 +260,27 @@ impl SecretVault for Vault {
 
     /// Remove secret from memory
     async fn secret_destroy(&self, key_id: KeyId) -> Result<()> {
-        // TODO: Delete from the Storage
-        match self.data.entries.write().await.remove(&key_id) {
-            None => Err(VaultError::EntryNotFound.into()),
-            Some(_) => Ok(()),
+        let attrs = self.secret_attributes_get(&key_id).await?;
+
+        // Acquire lock to avoid race conditions
+        let mut entries = self.data.entries.write().await;
+
+        let res = if attrs.persistence() == SecretPersistence::Persistent {
+            if let Some(storage) = &self.storage {
+                storage.delete(&key_id).await.map(|_| ())
+            } else {
+                Ok(())
+            }
+        } else {
+            Ok(())
+        };
+
+        match entries.remove(&key_id) {
+            None => return Err(VaultError::EntryNotFound.into()),
+            Some(_) => {}
         }
+
+        res
     }
 }
 

@@ -15,6 +15,8 @@ impl SymmetricVault for Vault {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
+        self.preload_from_storage(key_id).await;
+
         let entries = self.data.entries.read().await;
         let entry = entries.get(key_id).ok_or(VaultError::EntryNotFound)?;
 
@@ -61,6 +63,8 @@ impl SymmetricVault for Vault {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Buffer<u8>> {
+        self.preload_from_storage(key_id).await;
+
         let entries = self.data.entries.read().await;
         let entry = entries.get(key_id).ok_or(VaultError::EntryNotFound)?;
 
