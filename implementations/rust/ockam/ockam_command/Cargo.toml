@@ -32,16 +32,27 @@ test = false
 anyhow = "1"
 dirs = "4.0.0"
 clap = { version = "3", features = ["derive", "cargo"] }
+minicbor = { version = "0.16", features = ["std", "derive"] }
+open = "2"
+reqwest = { version = "0.11", features = ["json"] }
 tracing = { version = "0.1.31", features = ["attributes"] }
 tracing-subscriber = "0.3.9"
-tokio = { version="1", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
+tokio-retry = "0.3"
 async-trait = "0.1"
 hex = "0.4"
-serde_json = "1"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_cbor = "0.11"
 rand = "0.8"
 async-recursion = { version = "1.0.0" }
 
 ockam = { path = "../ockam", version = "^0.58.0", features = ["software_vault"] }
 ockam_vault = { path = "../ockam_vault", version = "^0.48.0", features = ["storage"] }
 ockam_core = { path = "../ockam_core", version = "^0.54.0"}
+
+[dev-dependencies]
+assert_cmd = "2"
+fake = { version = "2", features=['derive', 'http']}
+predicates = "2"
+mockall = "0.11"

@@ -1,6 +1,10 @@
-use crate::OckamVault;
-use anyhow::{Context, Result};
+use std::path::PathBuf;
+
+use anyhow::Context;
+
 use ockam::{identity::*, vault::*};
+
+use crate::{IdentityOpts, OckamVault};
 
 const VERSION: u32 = 1;
 
@@ -8,6 +12,17 @@ const VERSION: u32 = 1;
 pub struct IdentityFile {
     version: u32,
     identity: ExportedIdentity,
+}
+
+pub async fn load_or_create_identity_and_vault(
+    args: &IdentityOpts,
+    ctx: &ockam::Context,
+    ockam_dir: &std::path::Path,
+) -> anyhow::Result<(ExportedIdentity, OckamVault)> {
+    match load_identity_and_vault(ockam_dir) {
+        Ok((identity, vault)) => Ok((identity, vault)),
+        Err(_) => create_identity(args, ctx, ockam_dir.into()).await,
+    }
 }
 
 // #[tracing::instrument(level = "debug", err)]
@@ -38,8 +53,44 @@ pub fn load_identity_and_vault(
     Ok((identity, vault))
 }
 
-#[tracing::instrument(level = "debug", skip_all, err, fields(id = ?i.id.key_id()))]
-pub async fn save_identity(
+pub async fn create_identity(
+    args: &IdentityOpts,
+    ctx: &ockam::Context,
+    ockam_dir: PathBuf,
+) -> anyhow::Result<(ExportedIdentity, OckamVault)> {
+    let id_path = ockam_dir.join("identity.json");
+    let vault_path = ockam_dir.join("vault.json");
+    if id_path.exists() || vault_path.exists() {
+        if !args.overwrite {
+            anyhow::bail!(
+                "An identity or vault already exists in {:?}. Pass `--overwrite` to continue anyway",
+                ockam_dir
+            );
+        }
+        if vault_path.exists() {
+            std::fs::remove_file(&vault_path)
+                .with_context(|| format!("Failed to remove {:?}", vault_path))?;
+        }
+        if id_path.exists() {
+            std::fs::remove_file(&id_path)
+                .with_context(|| format!("Failed to remove {:?}", id_path))?;
+        }
+    }
+    let vault = Vault::create();
+    let identity = Identity::create(ctx, &vault).await?;
+    let exported = identity.export().await;
+    tracing::info!("Saving new identity: {:?}", exported.id.key_id());
+    save_identity(&ockam_dir, &exported, &vault).await?;
+    println!(
+        "Initialized {:?} with identity {:?}.",
+        ockam_dir,
+        exported.id.key_id()
+    );
+    Ok((exported, vault))
+}
+
+#[tracing::instrument(level = "debug", skip_all, err, fields(id = ? i.id.key_id()))]
+async fn save_identity(
     ockam_dir: &std::path::Path,
     i: &ExportedIdentity,
     vault: &OckamVault,
@@ -55,7 +106,7 @@ pub async fn save_identity(
     Ok(())
 }
 
-pub fn parse_identities(idents: &str) -> Result<Vec<IdentityIdentifier>> {
+pub fn parse_identities(idents: &str) -> anyhow::Result<Vec<IdentityIdentifier>> {
     idents
         .split(|c: char| c.is_whitespace() || c == ',')
         .map(|s| s.trim())

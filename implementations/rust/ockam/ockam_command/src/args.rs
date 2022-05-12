@@ -1,5 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 
+use crate::cmd::cloud::CloudCommand;
+
 #[derive(Clone, Debug, Parser)]
 #[clap(name = "ockam", version)]
 pub struct CliArgs {
@@ -12,6 +14,10 @@ pub struct CliArgs {
     ///   `-vvv` => Trace level.
     #[clap(long, short, parse(from_occurrences))]
     pub verbose: u8,
+    /// Parse command's arguments without running it.
+    /// Useful for testing purposes.
+    #[clap(display_order = 1100, long)]
+    pub dry_run: bool,
 }
 
 #[derive(Clone, Debug, Args)]
@@ -42,15 +48,18 @@ pub enum Command {
     /// code that `$OCKAM_DIR/trusted` if overwritten).
     #[clap(display_order = 1003)]
     AddTrustedIdentity(AddTrustedIdentityOpts),
+    /// Cloud subcommands.
+    #[clap(display_order = 1010)]
+    Cloud(CloudCommand),
     /// Print the identifier for the currently configured identity.
-    #[clap(display_order = 1004)]
+    #[clap(display_order = 1030)]
     PrintIdentity,
     /// Print path to the ockam directory.
     ///
     /// This is usually `$OCKAM_DIR` or `~/.config/ockam`, but in some cases can
     /// be different, such as on Windows, unixes where `$XDG_CONFIG_HOME` has
     /// been modified, etc.
-    #[clap(display_order = 1005)]
+    #[clap(display_order = 1040)]
     PrintPath,
 }
 

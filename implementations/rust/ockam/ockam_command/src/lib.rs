@@ -15,10 +15,13 @@ use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 pub(crate) type OckamVault = ockam::vault::Vault;
 
+pub(crate) mod api;
 pub(crate) mod args;
 pub(crate) mod identity;
 pub(crate) mod storage;
+
 pub(crate) mod cmd {
+    pub(crate) mod cloud;
     pub(crate) mod identity;
     pub(crate) mod inlet;
     pub(crate) mod outlet;
@@ -37,11 +40,19 @@ pub fn run_main() {
     let verbose = args.verbose;
     init_logging(verbose);
     tracing::debug!("Parsed arguments (outlet) {:?}", args);
+
+    // Command arguments are checked but the command is not executed.
+    // This is useful to test arguments without having to execute their logic.
+    if args.dry_run {
+        return;
+    }
+
     // Note: We don't force all commands to start the node.
     match args.command {
         args::Command::CreateIdentity(arg) => node_subcommand(verbose > 0, arg, cmd::identity::run),
         args::Command::CreateInlet(arg) => node_subcommand(verbose > 0, arg, cmd::inlet::run),
         args::Command::CreateOutlet(arg) => node_subcommand(verbose > 0, arg, cmd::outlet::run),
+        args::Command::Cloud(arg) => node_subcommand(verbose > 0, arg, cmd::cloud::run),
         args::Command::AddTrustedIdentity(arg) => exit_with_result(verbose > 0, add_trusted(arg)),
         args::Command::PrintIdentity => exit_with_result(verbose > 0, print_identity()),
         args::Command::PrintPath => exit_with_result(verbose > 0, print_ockam_dir()),
