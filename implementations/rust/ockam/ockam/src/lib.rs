@@ -99,6 +99,12 @@ pub mod vault {
     //! Types and traits relating to ockam vaults.
     pub use ockam_core::vault::*;
     pub use ockam_vault::Vault;
+
+    #[cfg(feature = "software_vault_storage")]
+    /// Storage
+    pub mod storage {
+        pub use ockam_vault::storage::*;
+    }
 }
 
 #[cfg(feature = "ockam_transport_tcp")]

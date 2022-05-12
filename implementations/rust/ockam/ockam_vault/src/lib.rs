@@ -28,7 +28,8 @@ mod secret_impl;
 mod signer_impl;
 
 #[cfg(feature = "storage")]
-pub(crate) mod storage;
+/// Storage
+pub mod storage;
 
 mod symmetric_impl;
 mod vault;

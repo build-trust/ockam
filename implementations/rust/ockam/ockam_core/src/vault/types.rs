@@ -230,3 +230,31 @@ impl KeyPair {
         Self { secret, public }
     }
 }
+
+/// Secret stored in a Vault Storage
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct VaultEntry {
+    key_attributes: SecretAttributes,
+    key: SecretKey,
+}
+
+impl VaultEntry {
+    /// Secret's Attributes
+    pub fn key_attributes(&self) -> SecretAttributes {
+        self.key_attributes
+    }
+    /// Raw secret's bytes
+    pub fn key(&self) -> &SecretKey {
+        &self.key
+    }
+}
+
+impl VaultEntry {
+    /// Constructor
+    pub fn new(key_attributes: SecretAttributes, key: SecretKey) -> Self {
+        VaultEntry {
+            key_attributes,
+            key,
+        }
+    }
+}

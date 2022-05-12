@@ -1,6 +1,6 @@
 use ockam_core::compat::{collections::BTreeMap, sync::Arc};
 use ockam_core::vault::storage::Storage;
-use ockam_core::vault::{KeyId, SecretAttributes, SecretKey};
+use ockam_core::vault::{KeyId, VaultEntry};
 use ockam_node::compat::asynchronous::RwLock;
 
 /// Vault implementation that stores secrets in memory and uses software crypto.
@@ -39,46 +39,49 @@ pub struct Vault {
 
 #[derive(Default, Clone)]
 pub(crate) struct VaultData {
-    // TODO: make these private, and save automatically on modification.
     pub(crate) entries: Arc<RwLock<BTreeMap<KeyId, VaultEntry>>>,
 }
 
 impl Vault {
     /// Create a new SoftwareVault
-    pub fn new() -> Self {
+    pub fn new(storage: Option<Arc<dyn Storage>>) -> Self {
         Self {
             data: Default::default(),
-            storage: None,
+            storage,
         }
     }
 
     /// Same as ```Vault::new()```
     pub fn create() -> Self {
-        Self::new()
+        Self::new(None)
     }
-}
 
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub(crate) struct VaultEntry {
-    key_attributes: SecretAttributes,
-    key: SecretKey,
-}
+    pub(crate) async fn preload_from_storage(&self, key_id: &KeyId) {
+        // Do nothing if there is no Storage
+        let storage = match &self.storage {
+            Some(s) => s,
+            None => return,
+        };
 
-impl VaultEntry {
-    pub fn key_attributes(&self) -> SecretAttributes {
-        self.key_attributes
-    }
-    pub fn key(&self) -> &SecretKey {
-        &self.key
-    }
-}
-
-impl VaultEntry {
-    pub fn new(key_attributes: SecretAttributes, key: SecretKey) -> Self {
-        VaultEntry {
-            key_attributes,
-            key,
+        // Check if given secret is already loaded into the memory
+        if self.data.entries.read().await.contains_key(key_id) {
+            return;
         }
+
+        // Try to load secret from the Storage
+        let entry = match storage.load(key_id).await {
+            Ok(e) => e,
+            Err(_) => return,
+        };
+
+        // It's fine if we override the values, since storage is expected to return the same
+        // data for the given key_id
+        let _ = self
+            .data
+            .entries
+            .write()
+            .await
+            .insert(key_id.clone(), entry);
     }
 }
 
@@ -88,7 +91,7 @@ mod tests {
 
     #[tokio::test]
     async fn new_vault() {
-        let vault = Vault::new();
+        let vault = Vault::create();
         assert_eq!(vault.data.entries.read().await.len(), 0);
     }
 }
