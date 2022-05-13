@@ -2,7 +2,6 @@
 
 queue_rules:
   - name: test
-    conditions: []
 
 pull_request_rules:
   - name: automatic rebase and queue on approval
@@ -10,10 +9,8 @@ pull_request_rules:
       queue:
         name: test
         method: rebase
+        update_method: rebase
+        require_branch_protection: true
     conditions:
-      and:
-        - base=test
-        - label=auto-merge
-        # - "#approved-reviews-by>=1"
-        # - "#changes-requested-reviews-by=0"
-        # - "approved-reviews-by=mrinalwadhwa"
+      - base=test
+      - label=auto-merge
