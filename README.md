@@ -188,21 +188,6 @@ that make up Ockam. We dive into Node, Workers, Routing, Transport, Secure Chann
 
 The code in this repository is licensed under the terms of the [Apache License 2.0](LICENSE).
 
-<hr>
-
-<p>
-<a href="https://github.com/build-trust/ockam/actions?query=workflow%3A%22Continuous+Integration%22">
-<img alt="Continuous Integration"
-  src="https://github.com/build-trust/ockam/workflows/Continuous%20Integration/badge.svg">
-</a>
-
-<a href="https://www.ockam.io/learn/how-to-guides/high-performance-team/conduct/">
-<img alt="Contributor Covenant"
-  src="https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg">
-</a>
-
-<hr>
-
 <div align="center">
 :sparkles:
 <a href="./documentation/use-cases/end-to-end-encryption-with-rust#readme">
