@@ -1,0 +1,19 @@
+# Reference https://doc.mergify.io/configuration.html
+
+queue_rules:
+  - name: test
+    conditions: []
+
+pull_request_rules:
+  - name: automatic rebase and queue on approval
+    actions:
+      queue:
+        name: test
+        method: rebase
+    conditions:
+      and:
+        - base=test
+        - label=auto-merge
+        # - "#approved-reviews-by>=1"
+        # - "#changes-requested-reviews-by=0"
+        # - "approved-reviews-by=mrinalwadhwa"
