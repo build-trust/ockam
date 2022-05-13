@@ -1,16 +1,16 @@
 # Reference https://doc.mergify.io/configuration.html
 
 queue_rules:
-  - name: test
+  - name: default
 
 pull_request_rules:
   - name: automatic rebase and queue on approval
+    conditions:
+      - base=develop
+      - label=auto-merge
     actions:
       queue:
-        name: test
+        name: default
         method: rebase
         update_method: rebase
         require_branch_protection: true
-    conditions:
-      - base=test
-      - label=auto-merge
