@@ -202,3 +202,11 @@ The code in this repository is licensed under the terms of the [Apache License 2
 </a>
 
 <hr>
+
+<div align="center">
+:sparkles:
+<a href="./documentation/use-cases/end-to-end-encryption-with-rust#readme">
+Hands-on Introduction: Build end-to-end encrypted, mutually-authenticated, secure messaging in Rust
+</a>
+:sparkles:
+</div>
