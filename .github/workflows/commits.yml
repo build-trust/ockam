@@ -47,25 +47,6 @@ jobs:
           echo "Number of commits in pull requests are $pull_request_commits_length"
           echo "FIRST_COMMIT=HEAD~${pull_request_commits_length}" >> $GITHUB_ENV
 
-      - name: Check all commits in are Verified by Github (Pull Request)
-        if: github.event_name == 'pull_request'
-        run: |
-          unverified=$(cat commits.json | jq --raw-output '.[] | [.sha, .commit.verification.verified] | @csv' | grep false || echo '')
-          if [ -z "$unverified" ]; then
-            echo '[✓] All commits in this pull request are Verified by Github.'
-          else
-            echo '
-              We require that all commits in a pull request are signed and Verified by Github
-
-              Please read about signing commits at:
-              https://docs.github.com/en/authentication/managing-commit-signature-verification
-
-              ERROR: The following commits are not Verified by Github.
-            '
-            echo "$unverified"
-            exit 1
-          fi
-
       - name: Check FIRST_COMMIT is ancestor of HEAD
         run: |
           git merge-base --is-ancestor $FIRST_COMMIT HEAD || \
@@ -132,7 +113,7 @@ jobs:
       - name: Get Contributors List
         run: |
           curl --proto '=https' --tlsv1.2 --silent --show-error --fail \
-            https://raw.githubusercontent.com/build-trust/contributors/main/CONTRIBUTORS.csv \
+            https://raw.githubusercontent.com/build-trust/ockam-contributors/main/CONTRIBUTORS.csv \
             > CONTRIBUTORS.csv
 
       - name: Split Contributors List
@@ -176,9 +157,9 @@ jobs:
               1. Read the CLA at: https://www.ockam.io/learn/how-to-guides/contributing/cla
 
               2. To accept the CLA, please send a different pull request to our
-              [contributors repository](https://github.com/build-trust/contributors) indicating
+              [contributors repository](https://github.com/build-trust/ockam-contributors) indicating
               that you accept the CLA by adding your Git/Github details in a row at the end of the
-              [CONTRIBUTORS.csv](https://github.com/build-trust/contributors/blob/main/CONTRIBUTORS.csv)
+              [CONTRIBUTORS.csv](https://github.com/build-trust/ockam-contributors/blob/main/CONTRIBUTORS.csv)
               file.
 
               We look forward to merging your first contribution!
@@ -222,9 +203,9 @@ jobs:
                 1. Read the CLA at: https://www.ockam.io/learn/how-to-guides/contributing/cla
 
                 2. To accept the CLA, please send a different pull request to our
-                [contributors repository](https://github.com/build-trust/contributors) indicating
+                [contributors repository](https://github.com/build-trust/ockam-contributors) indicating
                 that you accept the CLA by adding your Git/Github details in a row at the end of the
-                [CONTRIBUTORS.csv](https://github.com/build-trust/contributors/blob/main/CONTRIBUTORS.csv)
+                [CONTRIBUTORS.csv](https://github.com/build-trust/ockam-contributors/blob/main/CONTRIBUTORS.csv)
                 file.
 
                 We look forward to merging your contribution!
@@ -232,3 +213,34 @@ jobs:
               exit 1
             fi
           done
+
+      - name: Get Developers List
+        run: |
+          curl --proto '=https' --tlsv1.2 --silent --show-error --fail \
+            https://raw.githubusercontent.com/build-trust/ockam-contributors/main/DEVELOPERS.csv \
+            > DEVELOPERS.csv
+
+      - name: Check all commits in are Verified by Github (Pull Request)
+        if: github.event_name == 'pull_request'
+        env:
+          PR_SENDER: ${{ github.event.pull_request.user.login }}
+        run: |
+          unverified=$(cat commits.json | jq --raw-output '.[] | [.sha, .commit.verification.verified] | @csv' | grep false || echo '')
+
+          if [ -z "$unverified" ]; then
+            echo '[✓] All commits in this pull request are Verified by Github.'
+          elif grep -q -i ^"$PR_SENDER"$ 'DEVELOPERS.csv'; then
+            echo "::warning:: [!] Some commits are unverified, ignoring them since pull request sender is a developer."
+            echo "$unverified"
+          else
+            echo '
+              We require that all commits in a pull request are signed and Verified by Github
+
+              Please read about signing commits at:
+              https://docs.github.com/en/authentication/managing-commit-signature-verification
+
+              ERROR: The following commits are not Verified by Github.
+            '
+            echo "$unverified"
+            exit 1
+          fi
