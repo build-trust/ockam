@@ -49,10 +49,16 @@ jobs:
 
       - name: Check all commits in are Verified by Github (Pull Request)
         if: github.event_name == 'pull_request'
+        env:
+          PR_SENDER: ${{ github.event.pull_request.user.login }}
         run: |
           unverified=$(cat commits.json | jq --raw-output '.[] | [.sha, .commit.verification.verified] | @csv' | grep false || echo '')
           if [ -z "$unverified" ]; then
             echo '[✓] All commits in this pull request are Verified by Github.'
+          elif gh api "/orgs/build-trust/teams/developers/memberships/$PR_SENDER"; then
+            echo '::warning:: [!] The following commits are unverified but pull request sender is a member of the developers team.'
+            echo '[!] The following commits are unverified but pull request sender is a member of the developers team.'
+            echo "$unverified"
           else
             echo '
               We require that all commits in a pull request are signed and Verified by Github
