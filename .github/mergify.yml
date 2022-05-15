@@ -5,10 +5,17 @@ queue_rules:
     conditions: []
 
 pull_request_rules:
-  - name: automatic rebase and queue on approval
+  - name: enque for merge to develop
     conditions:
       - base=develop
       - label=auto-merge
+      - or:
+          - and:
+            - author=@mrinalwadhwa
+          - and:
+            - author=@developers
+            - "#approved-reviews-by>=1"
+            - "#changes-requested-reviews-by=0"
     actions:
       queue:
         name: default
