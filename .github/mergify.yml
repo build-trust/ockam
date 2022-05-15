@@ -10,8 +10,7 @@ pull_request_rules:
       - base=develop
       - label=auto-merge
       - or:
-          - and:
-            - author=mrinalwadhwa
+          - author=mrinalwadhwa
           - and:
             - author=@developers
             - "#approved-reviews-by>=1"
