@@ -13,8 +13,8 @@ pull_request_rules:
           - author=mrinalwadhwa
           - and:
             - author=@developers
+            - "approved-reviews-by=@approvers"
             - "#approved-reviews-by>=1"
-            - "#approved-reviews-by=@approvers"
             - "#changes-requested-reviews-by=0"
     actions:
       queue:
