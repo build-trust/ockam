@@ -59,7 +59,10 @@ module.exports = {
         'style',
 
         // test: add missing tests or correct existing tests
-        'test'
+        'test',
+
+        // revert: reverts a previous commit
+        'revert'
       ]
     ],
 
