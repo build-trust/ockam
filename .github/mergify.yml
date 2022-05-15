@@ -12,7 +12,6 @@ pull_request_rules:
       - or:
           - author=mrinalwadhwa
           - and:
-            - author=@developers
             - "approved-reviews-by=@approvers"
             - "#approved-reviews-by>=1"
             - "#changes-requested-reviews-by=0"
