@@ -14,6 +14,7 @@ pull_request_rules:
           - and:
             - author=@developers
             - "#approved-reviews-by>=1"
+            - "#approved-reviews-by=@approvers"
             - "#changes-requested-reviews-by=0"
     actions:
       queue:
