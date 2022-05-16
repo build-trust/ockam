@@ -14,7 +14,7 @@ Build the base:
 docker build \
   --build-arg BASE_IMAGE=debian:11.1-slim@sha256:312218c8dae688bae4e9d12926704fa9af6f7307a6edb4f66e479702a9af5a0c \
   --tag ockam/base:latest \
-  --tag ghcr.io/build-trust/ockam/base:latest \
+  --tag ghcr.io/build-trust/ockam-base:latest \
   tools/docker/base
 ```
 
@@ -30,7 +30,7 @@ Build the base_builder:
 docker build \
   --build-arg BASE_IMAGE=gcc:11.2.0@sha256:04582e63d008aaca294965f075669226f5f74d744f38904f1ad0f00a9590a6e0 \
   --tag ockam/builder_base:latest \
-  --tag ghcr.io/build-trust/ockam/builder_base:latest \
+  --tag ghcr.io/build-trust/ockam-builder-base:latest \
   tools/docker/base
 ```
 
@@ -43,7 +43,7 @@ Build the builder:
 ```
 docker build \
   --tag ockam/builder:latest \
-  --tag ghcr.io/build-trust/ockam/builder:latest \
+  --tag ghcr.io/build-trust/ockam-builder:latest \
   tools/docker/builder
 ```
 
@@ -67,3 +67,6 @@ Run the cloud node:
 ```
 docker run --rm -it ockam-cloud-node:latest
 ```
+
+## Verifying Ockam Images
+All Ockam images are signed by [cosign](https://github.com/sigstore/cosign) 
