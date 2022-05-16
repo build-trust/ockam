@@ -45,7 +45,7 @@ jobs:
     name: Documentation - Check Examples
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam/builder@sha256:41df07cc61029f7293430acde1fccc8d7162cd3130aa32d151e440c9f9b31626
+      image: ghcr.io/build-trust/ockam-builder@sha256:3ea4c222da220c69b62a60d42d83769286e07bf8e41ef7cfdbeba18b7f22a488
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - uses: ./.github/actions/gradle_cache

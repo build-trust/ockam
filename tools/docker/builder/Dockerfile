@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ghcr.io/build-trust/ockam/builder_base:latest
+ARG BASE_IMAGE=ghcr.io/build-trust/ockam-builder-base:latest
 FROM ${BASE_IMAGE}
 
 ARG CMAKE_VERSION=3.22.1
