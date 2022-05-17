@@ -50,7 +50,10 @@ pub struct Context {
 impl Drop for Context {
     fn drop(&mut self) {
         block_future(&self.rt, async {
-            if let Ok(()) = self.stop_worker(self.address()).await {
+            if let Ok(()) = self
+                .stop_address(self.address(), AddressType::Worker, true)
+                .await
+            {
                 debug!("De-allocated bare context {}", self.address());
             }
         });
@@ -304,20 +307,22 @@ impl Context {
 
     /// Shut down a local worker by its primary address
     pub async fn stop_worker<A: Into<Address>>(&self, addr: A) -> Result<()> {
-        self.stop_address(addr.into(), AddressType::Worker).await
+        self.stop_address(addr.into(), AddressType::Worker, false)
+            .await
     }
 
     /// Shut down a local processor by its address
     pub async fn stop_processor<A: Into<Address>>(&self, addr: A) -> Result<()> {
-        self.stop_address(addr.into(), AddressType::Processor).await
+        self.stop_address(addr.into(), AddressType::Processor, false)
+            .await
     }
 
-    async fn stop_address(&self, addr: Address, t: AddressType) -> Result<()> {
+    async fn stop_address(&self, addr: Address, t: AddressType, bare: bool) -> Result<()> {
         debug!("Shutting down {} {}", t.str(), addr);
 
         // Send the stop request
         let (req, mut rx) = match t {
-            AddressType::Worker => NodeMessage::stop_worker(addr),
+            AddressType::Worker => NodeMessage::stop_worker(addr, bare),
             AddressType::Processor => NodeMessage::stop_processor(addr),
         };
         self.sender
