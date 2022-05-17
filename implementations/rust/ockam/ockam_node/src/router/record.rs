@@ -29,6 +29,11 @@ pub struct InternalMap {
 }
 
 impl InternalMap {
+    /// Used for router diagnostics
+    pub(super) fn count(&self) -> usize {
+        self.internal.len()
+    }
+
     /// Add an address to a particular cluster
     pub(super) fn set_cluster(&mut self, label: String, primary: Address) -> NodeReplyResult {
         let rec = self
@@ -121,7 +126,7 @@ impl InternalMap {
             .collect()
     }
 
-    /// Permanently free all remainin resources associated to a particular address
+    /// Permanently free all remaining resources associated to a particular address
     pub(super) fn free_address(&mut self, primary: Address) {
         self.stopping.remove(&primary);
         if let Some(record) = self.internal.remove(&primary) {
