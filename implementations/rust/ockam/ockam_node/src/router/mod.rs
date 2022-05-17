@@ -136,7 +136,9 @@ impl Router {
                 bare,
                 ref reply,
             } => start_worker::exec(self, addrs, senders, bare, reply).await?,
-            StopWorker(ref addr, ref reply) => stop_worker::exec(self, addr, reply).await?,
+            StopWorker(ref addr, ref bare, ref reply) => {
+                stop_worker::exec(self, addr, *bare, reply).await?
+            }
 
             //// ==! Basic processor control
             StartProcessor(addr, senders, ref reply) => {

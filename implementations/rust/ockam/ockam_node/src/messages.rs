@@ -27,7 +27,7 @@ pub enum NodeMessage {
     /// Add an existing address to a cluster
     SetCluster(Address, String, Sender<NodeReplyResult>),
     /// Stop an existing worker
-    StopWorker(Address, Sender<NodeReplyResult>),
+    StopWorker(Address, bool, Sender<NodeReplyResult>),
     /// Start a new processor
     StartProcessor(Address, SenderPair, Sender<NodeReplyResult>),
     /// Stop an existing processor
@@ -54,7 +54,7 @@ impl fmt::Display for NodeMessage {
             NodeMessage::StartWorker { .. } => write!(f, "StartWorker"),
             NodeMessage::ListWorkers(_) => write!(f, "ListWorkers"),
             NodeMessage::SetCluster(_, _, _) => write!(f, "SetCluster"),
-            NodeMessage::StopWorker(_, _) => write!(f, "StopWorker"),
+            NodeMessage::StopWorker(_, _, _) => write!(f, "StopWorker"),
             NodeMessage::StartProcessor(_, _, _) => write!(f, "StartProcessor"),
             NodeMessage::StopProcessor(_, _) => write!(f, "StopProcessor"),
             NodeMessage::StopNode(_, _) => write!(f, "StopNode"),
@@ -122,9 +122,9 @@ impl NodeMessage {
     }
 
     /// Create a stop worker message and reply receiver
-    pub fn stop_worker(address: Address) -> (Self, Receiver<NodeReplyResult>) {
+    pub fn stop_worker(address: Address, bare: bool) -> (Self, Receiver<NodeReplyResult>) {
         let (tx, rx) = channel(1);
-        (Self::StopWorker(address, tx), rx)
+        (Self::StopWorker(address, bare, tx), rx)
     }
 
     /// Create a stop node message
