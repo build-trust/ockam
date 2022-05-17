@@ -1,3 +1,4 @@
+use crate::block_future;
 use crate::relay::RelayPayload;
 use crate::tokio::{
     self,
@@ -44,6 +45,16 @@ pub struct Context {
     rt: Arc<Runtime>,
     mailbox: UnboundedReceiver<RelayMessage>,
     access_control: Box<dyn AccessControl>,
+}
+
+impl Drop for Context {
+    fn drop(&mut self) {
+        block_future(&self.rt, async {
+            if let Ok(()) = self.stop_worker(self.address()).await {
+                debug!("De-allocated bare context {}", self.address());
+            }
+        });
+    }
 }
 
 #[ockam_core::async_trait]
