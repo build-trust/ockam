@@ -32,6 +32,7 @@ mod tests;
 /// Async Mutex and RwLock
 pub mod compat;
 
+mod async_drop;
 mod cancel;
 mod context;
 mod delayed;

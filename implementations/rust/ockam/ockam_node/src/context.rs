@@ -1,4 +1,4 @@
-use crate::block_future;
+use crate::async_drop::AsyncDrop;
 use crate::relay::RelayPayload;
 use crate::tokio::{
     self,
@@ -38,25 +38,26 @@ impl AddressType {
     }
 }
 
+type AsyncDropSender = crate::tokio::sync::oneshot::Sender<Address>;
+
 /// Context contains Node state and references to the runtime.
 pub struct Context {
     address: AddressSet,
     sender: Sender<NodeMessage>,
     rt: Arc<Runtime>,
+    async_drop_sender: Option<AsyncDropSender>,
     mailbox: UnboundedReceiver<RelayMessage>,
     access_control: Box<dyn AccessControl>,
 }
 
 impl Drop for Context {
     fn drop(&mut self) {
-        block_future(&self.rt, async {
-            if let Ok(()) = self
-                .stop_address(self.address(), AddressType::Worker, true)
-                .await
-            {
-                debug!("De-allocated bare context {}", self.address());
+        if let Some(sender) = self.async_drop_sender.take() {
+            debug!("De-allocated bare context {}", self.address());
+            if let Err(e) = sender.send(self.address()) {
+                warn!("Encountered error while dropping bare context: {}", e);
             }
-        });
+        }
     }
 }
 
@@ -99,10 +100,14 @@ impl Context {
     ///
     /// This function returns a new instance of Context, the relay
     /// sender pair, and relay control signal receiver.
+    ///
+    /// `async_drop_sender` must be provided when creating a bare
+    /// Context type (i.e. not backed by a worker relay).
     pub(crate) fn new(
         rt: Arc<Runtime>,
         sender: Sender<NodeMessage>,
         address: AddressSet,
+        async_drop_sender: Option<AsyncDropSender>,
         access_control: impl AccessControl,
     ) -> (Self, SenderPair, Receiver<CtrlSignal>) {
         let (mailbox_tx, mailbox) = unbounded_channel();
@@ -113,6 +118,7 @@ impl Context {
                 sender,
                 address,
                 mailbox,
+                async_drop_sender,
                 access_control: Box::new(access_control),
             },
             SenderPair {
@@ -149,11 +155,22 @@ impl Context {
     }
 
     async fn new_context_impl(&self, addr: Address) -> Result<Context> {
+        // A bare context exists without a worker relay, which
+        // requires some special shutdown handling.  To avoid blocking
+        // on a future in the Drop handler of the Context, we use an
+        // AsyncDrop handler, which is spawned, waits for a Drop
+        // signal, and then executes the same code as
+        // `ctx.stop_address(...)`, but without needing access to a
+        // full Context!
+        let (async_drop, drop_sender) = AsyncDrop::new(self.sender.clone());
+        async_drop.spawn(&self.rt);
+
         // Create a new context and get access to the mailbox senders
         let (ctx, sender, _) = Self::new(
             Arc::clone(&self.rt),
             self.sender.clone(),
             addr.clone().into(),
+            Some(drop_sender),
             AllowAll,
         );
 
@@ -245,6 +262,7 @@ impl Context {
             self.rt.clone(),
             self.sender.clone(),
             address.clone(),
+            None,
             access_control,
         );
 
@@ -285,8 +303,13 @@ impl Context {
     {
         let addr = address.clone();
 
-        let (ctx, senders, ctrl_rx) =
-            Context::new(self.rt.clone(), self.sender.clone(), addr.into(), AllowAll);
+        let (ctx, senders, ctrl_rx) = Context::new(
+            self.rt.clone(),
+            self.sender.clone(),
+            addr.into(),
+            None,
+            AllowAll,
+        );
 
         // Initialise the processor relay with the ctrl receiver
         ProcessorRelay::<P>::init(self.rt.as_ref(), processor, ctx, ctrl_rx);
