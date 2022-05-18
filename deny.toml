@@ -22,5 +22,12 @@ unmaintained = "deny"
 vulnerability = "deny"
 yanked = "warn"
 ignore = [
-    "RUSTSEC-2020-0159"
+    "RUSTSEC-2020-0159",
+
+    # `serde_cbor` is unmaintained
+    # (https://rustsec.org/advisories/RUSTSEC-2021-0127.html)
+    #
+    # Pulled-in by `cddl-cat` which is used for validating
+    # CDDL schema conformance in tests.
+    "RUSTSEC-2021-0127"
 ]
