@@ -1,0 +1,29 @@
+[package]
+name        = "ockam_api"
+version     = "0.1.0"
+edition     = "2021"
+authors     = ["Ockam Developers"]
+license     = "Apache-2.0"
+homepage    = "https://github.com/ockam-network/ockam"
+repository  = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_api"
+description = "A set of common API types"
+
+[features]
+std = ["minicbor/std", "ockam_core/std"]
+tag = []
+
+[dependencies]
+minicbor = { version = "0.16.0", features = ["alloc", "derive"] }
+tinyvec  = { version = "1.6.0", features = ["rustc_1_57"] }
+
+[dependencies.ockam_core]
+version          = "0.54.0"
+path             = "../ockam_core"
+default-features = false
+features         = ["no_std", "alloc"]
+
+[dev-dependencies]
+cddl-cat   = "0.6.1"
+ockam_api  = { path = ".", features = ["std"] }
+quickcheck = "1.0.1"
+
