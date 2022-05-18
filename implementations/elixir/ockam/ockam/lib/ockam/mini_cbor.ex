@@ -103,7 +103,7 @@ defmodule MiniCBOR do
   def rekey_struct(struct, {:map, schema_map}) do
     struct
     # because enum is not implemented for structs
-    |> Map.from_struct()
+    |> as_map()
     |> Enum.flat_map(fn {key, val} ->
       case Map.get(schema_map, key) do
         nil ->
@@ -151,5 +151,13 @@ defmodule MiniCBOR do
 
   def rekey_optimized(index, {:enum, option_map}) when is_integer(index) do
     Map.fetch!(option_map, index)
+  end
+
+  defp as_map(map) when is_struct(map) do
+    Map.from_struct(map)
+  end
+
+  defp as_map(map) when is_map(map) do
+    map
   end
 end
