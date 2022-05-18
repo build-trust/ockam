@@ -22,18 +22,22 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
+mod common;
 mod error;
 mod local_info;
 mod secure_channel;
+mod secure_channel_decryptor;
+mod secure_channel_encryptor;
 mod secure_channel_listener;
-mod secure_channel_worker;
 mod traits;
 
+pub use common::*;
 pub use error::*;
 pub use local_info::*;
 pub use secure_channel::*;
+pub use secure_channel_decryptor::*;
+pub(crate) use secure_channel_encryptor::*;
 pub use secure_channel_listener::*;
-pub use secure_channel_worker::*;
 pub use traits::*;
 
 #[cfg(test)]
