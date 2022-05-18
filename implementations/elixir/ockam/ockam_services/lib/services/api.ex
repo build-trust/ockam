@@ -72,7 +72,7 @@ defmodule Ockam.Services.API do
     400
   end
 
-  def status_code({:bad_request, _}) do
+  def status_code({:bad_request, _reason}) do
     400
   end
 
@@ -80,8 +80,25 @@ defmodule Ockam.Services.API do
     404
   end
 
+  def status_code(:resource_exists) do
+    409
+  end
+
+  def status_code({:resource_exists, _reason}) do
+    409
+  end
+
   def status_code(_unknown_error) do
     500
+  end
+
+  ## TODO: better standard error messages
+  def error_message({:bad_request, data}) do
+    inspect(data)
+  end
+
+  def error_message({:resource_exists, data}) do
+    inspect(data)
   end
 
   def error_message(message) do
