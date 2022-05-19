@@ -2,8 +2,10 @@ use crate::IdentityIdentifier;
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{AccessControl, LocalMessage, Result};
 
-mod secure_channel_worker;
-pub(crate) use secure_channel_worker::*;
+mod encryptor;
+pub(crate) use encryptor::*;
+mod decryptor;
+pub(crate) use decryptor::*;
 mod listener;
 pub(crate) use listener::*;
 mod messages;
@@ -84,6 +86,7 @@ mod test {
             "Hello, Bob!".to_string(),
         )
         .await?;
+
         let msg = ctx.receive::<String>().await?.take();
 
         let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
