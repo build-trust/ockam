@@ -21,7 +21,7 @@ impl TrustPolicyImpl {
 impl TrustPolicyImpl {
     pub async fn create_using_worker(ctx: &Context, address: &Address) -> Result<Self> {
         let handle = Handle::new(
-            ctx.new_context(Address::random_local()).await?,
+            ctx.new_detached(Address::random_local()).await?,
             address.clone(),
         );
 

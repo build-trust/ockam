@@ -38,7 +38,11 @@ impl AddressType {
     }
 }
 
-type AsyncDropSender = crate::tokio::sync::oneshot::Sender<Address>;
+/// A special sender type that connects a type to an AsyncDrop handler
+pub type AsyncDropSender = crate::tokio::sync::oneshot::Sender<Address>;
+
+/// A special type of `Context` that has no worker relay
+pub type DetachedContext = Context;
 
 /// Context contains Node state and references to the runtime.
 pub struct Context {
@@ -53,9 +57,9 @@ pub struct Context {
 impl Drop for Context {
     fn drop(&mut self) {
         if let Some(sender) = self.async_drop_sender.take() {
-            debug!("De-allocated bare context {}", self.address());
+            debug!("De-allocated detached context {}", self.address());
             if let Err(e) = sender.send(self.address()) {
-                warn!("Encountered error while dropping bare context: {}", e);
+                warn!("Encountered error while dropping detached context: {}", e);
             }
         }
     }
@@ -64,7 +68,7 @@ impl Drop for Context {
 #[ockam_core::async_trait]
 impl AsyncTryClone for Context {
     async fn async_try_clone(&self) -> Result<Self> {
-        self.new_context(Address::random_local()).await
+        self.new_detached(Address::random_local()).await
     }
 }
 
@@ -101,7 +105,7 @@ impl Context {
     /// This function returns a new instance of Context, the relay
     /// sender pair, and relay control signal receiver.
     ///
-    /// `async_drop_sender` must be provided when creating a bare
+    /// `async_drop_sender` must be provided when creating a detached
     /// Context type (i.e. not backed by a worker relay).
     pub(crate) fn new(
         rt: Arc<Runtime>,
@@ -145,23 +149,24 @@ impl Context {
         tokio::time::sleep(dur).await;
     }
 
-    /// Create a new context without spawning a full worker
+    /// Create a new detached context without spawning a full worker
     ///
     /// Note: this function is very low-level.  For most users
     /// [`start_worker()`](Self::start_worker) is the recommended to
     /// way to create a new worker context.
-    pub async fn new_context<S: Into<Address>>(&self, addr: S) -> Result<Context> {
-        self.new_context_impl(addr.into()).await
+    pub async fn new_detached<S: Into<Address>>(&self, addr: S) -> Result<DetachedContext> {
+        self.new_detached_impl(addr.into()).await
     }
 
-    async fn new_context_impl(&self, addr: Address) -> Result<Context> {
-        // A bare context exists without a worker relay, which
-        // requires some special shutdown handling.  To avoid blocking
-        // on a future in the Drop handler of the Context, we use an
-        // AsyncDrop handler, which is spawned, waits for a Drop
-        // signal, and then executes the same code as
-        // `ctx.stop_address(...)`, but without needing access to a
-        // full Context!
+    async fn new_detached_impl(&self, addr: Address) -> Result<DetachedContext> {
+        // A detached Context exists without a worker relay, which
+        // requires special shutdown handling.  To allow the Drop
+        // handler to interact with the Node runtime, we use an
+        // AsyncDrop handler.
+        //
+        // This handler is spawned and listens for an event from the
+        // Drop handler, and then forwards a message to the Node
+        // router.
         let (async_drop, drop_sender) = AsyncDrop::new(self.sender.clone());
         async_drop.spawn(&self.rt);
 
@@ -174,7 +179,7 @@ impl Context {
             AllowAll,
         );
 
-        // Create a "bare relay" and register it with the router
+        // Create a "detached relay" and register it with the router
         let (msg, mut rx) = NodeMessage::start_worker(addr.into(), sender, true);
         self.sender
             .send(msg)
@@ -330,22 +335,20 @@ impl Context {
 
     /// Shut down a local worker by its primary address
     pub async fn stop_worker<A: Into<Address>>(&self, addr: A) -> Result<()> {
-        self.stop_address(addr.into(), AddressType::Worker, false)
-            .await
+        self.stop_address(addr.into(), AddressType::Worker).await
     }
 
     /// Shut down a local processor by its address
     pub async fn stop_processor<A: Into<Address>>(&self, addr: A) -> Result<()> {
-        self.stop_address(addr.into(), AddressType::Processor, false)
-            .await
+        self.stop_address(addr.into(), AddressType::Processor).await
     }
 
-    async fn stop_address(&self, addr: Address, t: AddressType, bare: bool) -> Result<()> {
+    async fn stop_address(&self, addr: Address, t: AddressType) -> Result<()> {
         debug!("Shutting down {} {}", t.str(), addr);
 
         // Send the stop request
         let (req, mut rx) = match t {
-            AddressType::Worker => NodeMessage::stop_worker(addr, bare),
+            AddressType::Worker => NodeMessage::stop_worker(addr, false),
             AddressType::Processor => NodeMessage::stop_processor(addr),
         };
         self.sender
@@ -406,11 +409,11 @@ impl Context {
 
     /// Using a temporary new context, send a message and then receive a message
     ///
-    /// This helper function uses [`new_context`], [`send`], and
+    /// This helper function uses [`new_detached`], [`send`], and
     /// [`receive`] internally. See their documentation for more
     /// details.
     ///
-    /// [`new_context`]: Self::new_context
+    /// [`new_detached`]: Self::new_detached
     /// [`send`]: Self::send
     /// [`receive`]: Self::receive
     pub async fn send_and_receive<R, M, N>(&self, route: R, msg: M) -> Result<N>
@@ -419,7 +422,7 @@ impl Context {
         M: Message + Send + 'static,
         N: Message,
     {
-        let mut child_ctx = self.new_context(Address::random_local()).await?;
+        let mut child_ctx = self.new_detached(Address::random_local()).await?;
         child_ctx.send(route, msg).await?;
         Ok(child_ctx.receive::<N>().await?.take().body())
     }

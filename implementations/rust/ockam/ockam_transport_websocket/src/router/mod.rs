@@ -55,7 +55,7 @@ impl WebSocketRouter {
         // Create the `WebSocketRouter` instance. Note that both the
         // router and the handle have independent contexts so that
         // they can manage their own lifecycle.
-        let child_ctx = ctx.new_context(Address::random_local()).await?;
+        let child_ctx = ctx.new_detached(Address::random_local()).await?;
         let router = Self {
             ctx: child_ctx,
             main_addr: main_addr.clone(),
@@ -75,7 +75,7 @@ impl WebSocketRouter {
     }
 
     async fn create_self_handle(&self, ctx: &Context) -> Result<WebSocketRouterHandle> {
-        let handle_ctx = ctx.new_context(Address::random_local()).await?;
+        let handle_ctx = ctx.new_detached(Address::random_local()).await?;
         let handle = WebSocketRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }

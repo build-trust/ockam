@@ -100,7 +100,7 @@ impl RemoteForwarder {
         alias: impl Into<String>,
     ) -> Result<RemoteForwarderInfo> {
         let address: Address = random();
-        let mut child_ctx = ctx.new_context(address).await?;
+        let mut child_ctx = ctx.new_detached(address).await?;
 
         let addresses: Addresses = random();
 
@@ -136,7 +136,7 @@ impl RemoteForwarder {
         hub_addr: impl Into<Address>,
     ) -> Result<RemoteForwarderInfo> {
         let address: Address = random();
-        let mut child_ctx = ctx.new_context(address).await?;
+        let mut child_ctx = ctx.new_detached(address).await?;
 
         let addresses: Addresses = random();
 

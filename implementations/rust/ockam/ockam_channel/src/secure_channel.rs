@@ -108,7 +108,7 @@ impl SecureChannel {
         let route = route.into();
 
         let address: Address = random();
-        let mut child_ctx = ctx.new_context(address).await?;
+        let mut child_ctx = ctx.new_detached(address).await?;
         let channel = SecureChannelWorker::new(
             true,
             route,

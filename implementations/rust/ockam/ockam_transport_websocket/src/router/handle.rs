@@ -20,7 +20,7 @@ pub(crate) struct WebSocketRouterHandle {
 #[async_trait]
 impl AsyncTryClone for WebSocketRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
-        let child_ctx = self.ctx.new_context(Address::random_local()).await?;
+        let child_ctx = self.ctx.new_detached(Address::random_local()).await?;
         Ok(Self::new(child_ctx, self.api_addr.clone()))
     }
 }

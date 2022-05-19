@@ -51,7 +51,7 @@ async fn tcp_lifecycle__reconnect__should_not_error(ctx: &mut Context) -> Result
     let transport = TcpTransport::create(ctx).await?;
     let listener_address = transport.listen("127.0.0.1:0").await?.to_string();
 
-    let mut child_ctx = ctx.new_context(Address::random_local()).await?;
+    let mut child_ctx = ctx.new_detached(Address::random_local()).await?;
     let msg: String = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
         .take(256)

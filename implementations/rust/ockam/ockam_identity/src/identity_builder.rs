@@ -10,7 +10,7 @@ pub struct IdentityBuilder<V: IdentityVault> {
 
 impl<V: IdentityVault> IdentityBuilder<V> {
     pub async fn new(ctx: &Context, vault: &V) -> Result<Self> {
-        let child_ctx = ctx.new_context(Address::random_local()).await?;
+        let child_ctx = ctx.new_detached(Address::random_local()).await?;
 
         Ok(Self {
             ctx: child_ctx,

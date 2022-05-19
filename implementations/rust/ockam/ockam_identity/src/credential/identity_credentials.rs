@@ -504,7 +504,7 @@ impl CredentialProtocol for Identity {
         let mut ctx = self
             .handle
             .ctx()
-            .new_context(Address::random_local())
+            .new_detached(Address::random_local())
             .await?;
 
         let worker = HolderWorker::new(
@@ -542,7 +542,7 @@ impl CredentialProtocol for Identity {
         let mut ctx = self
             .handle
             .ctx()
-            .new_context(Address::random_local())
+            .new_detached(Address::random_local())
             .await?;
         let worker = PresenterWorker::new(
             identity,
@@ -580,7 +580,7 @@ impl CredentialProtocol for Identity {
         let mut ctx = self
             .handle
             .ctx()
-            .new_context(Address::random_local())
+            .new_detached(Address::random_local())
             .await?;
         let worker = VerifierWorker::new(
             identity,

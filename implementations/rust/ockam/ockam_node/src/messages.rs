@@ -17,8 +17,8 @@ pub enum NodeMessage {
         addrs: AddressSet,
         /// Pair of senders to the worker relay (msgs and ctrl)
         senders: SenderPair,
-        /// A bare worker runs no relay state
-        bare: bool,
+        /// A detached context/ "worker" runs no relay state
+        detached: bool,
         /// Reply channel for command confirmation
         reply: Sender<NodeReplyResult>,
     },
@@ -73,21 +73,21 @@ impl NodeMessage {
     ///
     /// * `senders`: message and command senders for the relay
     ///
-    /// * `bare`: indicate whether this worker address has a full
-    ///   relay behind it that can respond to shutdown commands.
-    ///   Setting this to `true` will disable stop ACK support in the
-    ///   router
+    /// * `detached`: indicate whether this worker address has a full
+    ///               relay behind it that can respond to shutdown
+    ///               commands.  Setting this to `true` will disable
+    ///               stop ACK support in the router
     pub fn start_worker(
         addrs: AddressSet,
         senders: SenderPair,
-        bare: bool,
+        detached: bool,
     ) -> (Self, Receiver<NodeReplyResult>) {
         let (reply, rx) = channel(1);
         (
             Self::StartWorker {
                 addrs,
                 senders,
-                bare,
+                detached,
                 reply,
             },
             rx,
@@ -122,9 +122,9 @@ impl NodeMessage {
     }
 
     /// Create a stop worker message and reply receiver
-    pub fn stop_worker(address: Address, bare: bool) -> (Self, Receiver<NodeReplyResult>) {
+    pub fn stop_worker(address: Address, detached: bool) -> (Self, Receiver<NodeReplyResult>) {
         let (tx, rx) = channel(1);
-        (Self::StopWorker(address, bare, tx), rx)
+        (Self::StopWorker(address, detached, tx), rx)
     }
 
     /// Create a stop node message

@@ -121,8 +121,8 @@ impl InternalMap {
                     Some(rec)
                 }
             })
-            // Filter all bare workers because they don't matter
-            .filter(|rec| !rec.meta.bare)
+            // Filter all detached workers because they don't matter :(
+            .filter(|rec| !rec.meta.detached)
             .collect()
     }
 
@@ -141,7 +141,7 @@ impl InternalMap {
 #[derive(Debug)]
 pub struct AddressMeta {
     pub processor: bool,
-    pub bare: bool,
+    pub detached: bool,
 }
 
 #[derive(Debug)]

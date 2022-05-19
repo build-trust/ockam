@@ -40,7 +40,7 @@ pub struct BleRouter {
 
 impl BleRouter {
     async fn create_self_handle(&self, ctx: &Context) -> Result<BleRouterHandle> {
-        let handle_ctx = ctx.new_context(Address::random_local()).await?;
+        let handle_ctx = ctx.new_detached(Address::random_local()).await?;
         let handle = BleRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }
@@ -138,7 +138,7 @@ impl BleRouter {
         let api_addr = Address::random_local();
         debug!("Registering new BleRouter with address {}", &main_addr);
 
-        let child_ctx = ctx.new_context(Address::random_local()).await?;
+        let child_ctx = ctx.new_detached(Address::random_local()).await?;
         let router = Self {
             _ctx: child_ctx,
             main_addr: main_addr.clone(),

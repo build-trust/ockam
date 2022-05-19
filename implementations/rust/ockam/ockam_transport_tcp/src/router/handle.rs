@@ -19,7 +19,7 @@ pub(crate) struct TcpRouterHandle {
 #[async_trait]
 impl AsyncTryClone for TcpRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
-        let child_ctx = self.ctx.new_context(Address::random_local()).await?;
+        let child_ctx = self.ctx.new_detached(Address::random_local()).await?;
         Ok(Self::new(child_ctx, self.api_addr.clone()))
     }
 }
@@ -92,7 +92,7 @@ impl TcpRouterHandle {
         );
         let self_addr = pair.tx_addr();
 
-        let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;
+        let mut child_ctx = self.ctx.new_detached(Address::random_local()).await?;
         child_ctx
             .send(
                 self.api_addr.clone(),

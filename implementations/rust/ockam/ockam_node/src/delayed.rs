@@ -26,7 +26,7 @@ impl<M: Message + Clone> DelayedEvent<M> {
         destination_addr: impl Into<Address>,
         msg: M,
     ) -> Result<Self> {
-        let child_ctx = ctx.new_context(Address::random_local()).await?;
+        let child_ctx = ctx.new_detached(Address::random_local()).await?;
 
         let heartbeat = Self {
             ctx: child_ctx,
@@ -51,7 +51,7 @@ impl<M: Message + Clone> DelayedEvent<M> {
     pub async fn schedule(&mut self, duration: Duration) -> Result<()> {
         self.cancel();
 
-        let child_ctx = self.ctx.new_context(Address::random_local()).await?;
+        let child_ctx = self.ctx.new_detached(Address::random_local()).await?;
         let destination_addr = self.destination_addr.clone();
         let msg = self.msg.clone();
 

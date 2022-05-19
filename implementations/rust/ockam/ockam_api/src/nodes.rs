@@ -135,7 +135,7 @@ pub struct Client {
 
 impl Client {
     pub async fn new(r: Route, ctx: &Context) -> ockam_core::Result<Self> {
-        let ctx = ctx.new_context(Address::random_local()).await?;
+        let ctx = ctx.new_detached(Address::random_local()).await?;
         Ok(Client {
             ctx,
             route: r,
