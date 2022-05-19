@@ -102,6 +102,29 @@ impl From<serde_bare::error::Error> for Error {
     }
 }
 
+impl From<minicbor::decode::Error> for Error {
+    fn from(e: minicbor::decode::Error) -> Self {
+        Error::new(Origin::Unknown, Kind::Invalid, e)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<E> From<minicbor::encode::Error<E>> for Error
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    fn from(e: minicbor::encode::Error<E>) -> Self {
+        Error::new(Origin::Unknown, Kind::Invalid, e)
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl<E: Display> From<minicbor::encode::Error<E>> for Error {
+    fn from(e: minicbor::encode::Error<E>) -> Self {
+        Error::new(Origin::Unknown, Kind::Invalid, e)
+    }
+}
+
 /// A message wrapper that provides message route information.
 ///
 /// Workers can accept arbitrary message types, which may not contain

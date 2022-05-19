@@ -29,6 +29,7 @@ default = ["std", "error-traces"]
 std = [
     "alloc",
     "hex/std",
+    "minicbor/std",
     "rand/std",
     "rand/std_rng",
     "serde_bare/std",
@@ -45,6 +46,7 @@ alloc = [
     "core2/alloc",
     "heapless",
     "hex/alloc",
+    "minicbor/alloc",
     "serde/alloc",
     "serde_bare/alloc",
 ]
@@ -63,6 +65,7 @@ hashbrown = { version = "0.11", default-features = false, features = [
 ] }
 heapless = { version = "0.7.1", optional = true }
 hex = { version = "0.4", default-features = false, optional = true }
+minicbor = "0.16.0"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_bare = { version = "0.5.0", default-features = false }
 rand = { version = "0.8", default-features = false }
