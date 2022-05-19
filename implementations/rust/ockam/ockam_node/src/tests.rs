@@ -19,7 +19,7 @@ fn start_and_shutdown_node__many_iterations__should_not_fail() {
         let (mut ctx, mut executor) = start_node();
         executor
             .execute(async move {
-                let mut child_ctx = ctx.new_context("child").await?;
+                let mut child_ctx = ctx.new_detached("child").await?;
                 ctx.send(route!["child"], "Hello".to_string()).await?;
 
                 let m = child_ctx.receive::<String>().await?.take().body();

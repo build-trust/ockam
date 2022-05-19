@@ -86,7 +86,7 @@ impl Stream {
     /// By default, the created stream will poll for new messages
     /// every 250 milliseconds.
     pub async fn new(ctx: &Context) -> Result<Self> {
-        ctx.new_context(Address::random(STREAM))
+        ctx.new_detached(Address::random(STREAM))
             .await
             .map(|ctx| Self {
                 ctx,
@@ -220,7 +220,7 @@ impl Stream {
             },
             ReceiverAddress {
                 _inner: receiver_address,
-                ctx: self.ctx.new_context(receiver_rx).await?,
+                ctx: self.ctx.new_detached(receiver_rx).await?,
             },
         ))
     }

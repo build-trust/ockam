@@ -28,7 +28,7 @@ impl Custom {
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Create and run our non-worker
-    let ctx2 = ctx.new_context("some.address").await?;
+    let ctx2 = ctx.new_detached("some.address").await?;
     Custom(ctx2).run();
 
     assert_eq!(ctx.receive::<String>().await?, "Hello 1".to_string());

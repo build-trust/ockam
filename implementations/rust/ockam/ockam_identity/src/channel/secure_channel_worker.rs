@@ -90,7 +90,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         timeout: Duration,
     ) -> Result<Address> {
         let child_address = Address::random_local();
-        let mut child_ctx = ctx.new_context(child_address.clone()).await?;
+        let mut child_ctx = ctx.new_detached(child_address.clone()).await?;
 
         // Generate 2 random fresh address for newly created SecureChannel.
         // One for local workers to encrypt their messages
@@ -102,7 +102,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
             .initiator()
             .await?;
         // Create regular secure channel and set self address as first responder
-        let temp_ctx = ctx.new_context(Address::random_local()).await?;
+        let temp_ctx = ctx.new_detached(Address::random_local()).await?;
         let self_remote_address_clone = self_remote_address.clone();
         let channel_future = Box::pin(async move {
             SecureChannel::create_extended(

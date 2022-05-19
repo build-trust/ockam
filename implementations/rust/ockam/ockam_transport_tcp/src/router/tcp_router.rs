@@ -30,7 +30,7 @@ impl TcpRouter {
         let api_addr = Address::random_local();
         debug!("Initialising new TcpRouter with address {}", &main_addr);
 
-        let child_ctx = ctx.new_context(Address::random_local()).await?;
+        let child_ctx = ctx.new_detached(Address::random_local()).await?;
 
         let router = Self {
             ctx: child_ctx,
@@ -52,7 +52,7 @@ impl TcpRouter {
 
     /// Create a new `TcpRouterHandle` representing this router
     async fn create_self_handle(&self) -> Result<TcpRouterHandle> {
-        let handle_ctx = self.ctx.new_context(Address::random_local()).await?;
+        let handle_ctx = self.ctx.new_detached(Address::random_local()).await?;
         let handle = TcpRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }

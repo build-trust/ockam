@@ -49,7 +49,7 @@ impl ChannelBuilder {
     /// ```
     pub async fn new(ctx: &Context) -> Result<Self> {
         debug!("Creating new ChannelBuilder context...");
-        ctx.new_context(Address::random_local())
+        ctx.new_detached(Address::random_local())
             .await
             .map(|ctx| Self {
                 ctx,

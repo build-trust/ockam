@@ -9,7 +9,7 @@ use ockam_core::{Address, Result};
 pub(super) async fn exec(
     router: &mut Router,
     addr: &Address,
-    bare: bool,
+    detached: bool,
     reply: &Sender<NodeReplyResult>,
 ) -> Result<()> {
     trace!("Stopping worker '{}'", addr);
@@ -54,9 +54,9 @@ pub(super) async fn exec(
     // If we are dropping a real worker, then we simply close the
     // mailbox channel to trigger a graceful worker self-shutdown.
     //
-    // For bare workers (i.e. Context's without a mailbox relay
+    // For detached workers (i.e. Context's without a mailbox relay
     // running) we simply drop the record
-    if !bare {
+    if !detached {
         record.sender_drop();
     } else {
         router.map.free_address(primary_address);

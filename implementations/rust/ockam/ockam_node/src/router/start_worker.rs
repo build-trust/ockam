@@ -11,11 +11,11 @@ pub(super) async fn exec(
     router: &mut Router,
     addrs: AddressSet,
     senders: SenderPair,
-    bare: bool,
+    detached: bool,
     reply: &Sender<NodeReplyResult>,
 ) -> Result<()> {
     match router.state.node_state() {
-        NodeState::Running => start(router, addrs, senders, bare, reply).await,
+        NodeState::Running => start(router, addrs, senders, detached, reply).await,
         NodeState::Stopping(_) => reject(reply).await,
         NodeState::Dead => unreachable!(),
     }?;
@@ -26,7 +26,7 @@ async fn start(
     router: &mut Router,
     addrs: AddressSet,
     senders: SenderPair,
-    bare: bool,
+    detached: bool,
     reply: &Sender<NodeReplyResult>,
 ) -> Result<()> {
     debug!("Starting new worker '{}'", addrs.first());
@@ -40,7 +40,7 @@ async fn start(
         ctrl,
         AddressMeta {
             processor: false,
-            bare,
+            detached,
         },
     );
     router

@@ -36,7 +36,7 @@ async fn start(
         ctrl,
         AddressMeta {
             processor: true,
-            bare: false,
+            detached: false,
         },
     );
 

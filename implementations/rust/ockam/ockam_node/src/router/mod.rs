@@ -79,7 +79,7 @@ impl Router {
                 senders.ctrl,
                 AddressMeta {
                     processor: false,
-                    bare: true,
+                    detached: true,
                 },
             ),
         );
@@ -133,11 +133,11 @@ impl Router {
             StartWorker {
                 addrs,
                 senders,
-                bare,
+                detached,
                 ref reply,
-            } => start_worker::exec(self, addrs, senders, bare, reply).await?,
-            StopWorker(ref addr, ref bare, ref reply) => {
-                stop_worker::exec(self, addr, *bare, reply).await?
+            } => start_worker::exec(self, addrs, senders, detached, reply).await?,
+            StopWorker(ref addr, ref detached, ref reply) => {
+                stop_worker::exec(self, addr, *detached, reply).await?
             }
 
             //// ==! Basic processor control
