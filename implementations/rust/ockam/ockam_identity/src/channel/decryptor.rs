@@ -1,12 +1,13 @@
 use crate::{
-    IdentityChannelMessage, IdentityError, IdentityIdentifier, IdentitySecureChannelLocalInfo,
-    IdentityTrait, SecureChannelTrustInfo, TrustPolicy,
+    EncryptorWorker, IdentityChannelMessage, IdentityError, IdentityIdentifier,
+    IdentitySecureChannelLocalInfo, IdentityTrait, SecureChannelTrustInfo, TrustPolicy,
 };
 use core::future::Future;
 use core::pin::Pin;
 use core::time::Duration;
 use ockam_channel::{
-    CreateResponderChannelMessage, KeyExchangeCompleted, SecureChannel, SecureChannelInfo,
+    CreateResponderChannelMessage, KeyExchangeCompleted, SecureChannel, SecureChannelDecryptor,
+    SecureChannelInfo,
 };
 use ockam_core::async_trait;
 use ockam_core::compat::rand::random;
@@ -61,8 +62,8 @@ struct ResponderWaitForIdentity<I: IdentityTrait> {
 #[derive(Clone)]
 struct Initialized {
     local_secure_channel_address: Address,
-    remote_identity_secure_channel_address: Address,
     their_identity_id: IdentityIdentifier,
+    encryptor_address: Address,
 }
 
 enum State<I: IdentityTrait> {
@@ -73,14 +74,14 @@ enum State<I: IdentityTrait> {
     Initialized(Initialized),
 }
 
-pub(crate) struct SecureChannelWorker<I: IdentityTrait> {
+pub(crate) struct DecryptorWorker<I: IdentityTrait> {
     is_initiator: bool,
-    self_local_address: Address,
-    self_remote_address: Address,
+    self_address: Address,
+    kex_callback_address: Option<Address>,
     state: Option<State<I>>,
 }
 
-impl<I: IdentityTrait> SecureChannelWorker<I> {
+impl<I: IdentityTrait> DecryptorWorker<I> {
     pub async fn create_initiator(
         ctx: &Context,
         route: Route,
@@ -92,27 +93,17 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         let child_address = Address::random_local();
         let mut child_ctx = ctx.new_context(child_address.clone()).await?;
 
-        // Generate 2 random fresh address for newly created SecureChannel.
-        // One for local workers to encrypt their messages
-        // Second for remote workers to decrypt their messages
-        let self_local_address: Address = random();
-        let self_remote_address: Address = random();
+        let self_address: Address = random();
 
         let initiator = XXNewKeyExchanger::new(vault.async_try_clone().await?)
             .initiator()
             .await?;
         // Create regular secure channel and set self address as first responder
+        let custom_payload = self_address.encode()?;
         let temp_ctx = ctx.new_context(Address::random_local()).await?;
-        let self_remote_address_clone = self_remote_address.clone();
         let channel_future = Box::pin(async move {
-            SecureChannel::create_extended(
-                &temp_ctx,
-                route,
-                Some(self_remote_address_clone),
-                initiator,
-                vault,
-            )
-            .await
+            SecureChannel::create_extended(&temp_ctx, route, Some(custom_payload), initiator, vault)
+                .await
         });
 
         let state = State::InitiatorStartChannel(InitiatorStartChannel {
@@ -122,63 +113,48 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
             trust_policy,
         });
 
-        let worker = SecureChannelWorker {
+        let worker = DecryptorWorker {
             is_initiator: true,
-            self_local_address: self_local_address.clone(),
-            self_remote_address: self_remote_address.clone(),
+            self_address: self_address.clone(),
+            kex_callback_address: None,
             state: Some(state),
         };
 
-        ctx.start_worker(
-            vec![self_local_address.clone(), self_remote_address.clone()],
-            worker,
-        )
-        .await?;
+        ctx.start_worker(self_address.clone(), worker).await?;
 
         debug!(
-            "Starting IdentitySecureChannel Initiator at local: {}, remote: {}",
-            &self_local_address, &self_remote_address
+            "Starting IdentitySecureChannel Initiator at remote: {}",
+            &self_address
         );
 
-        let _ = child_ctx
+        let encryptor_address = child_ctx
             .receive_timeout::<AuthenticationConfirmation>(timeout.as_secs())
-            .await?;
+            .await?
+            .take()
+            .body()
+            .0;
 
-        Ok(self_local_address)
+        Ok(encryptor_address)
     }
 
     pub(crate) async fn create_responder(
         ctx: &Context,
         identity: I,
         trust_policy: Arc<dyn TrustPolicy>,
-        listener_address: Address,
+        vault: impl XXVault,
         msg: Routed<CreateResponderChannelMessage>,
     ) -> Result<()> {
-        let mut onward_route = msg.onward_route();
-        onward_route.step()?;
-        onward_route.modify().prepend(listener_address);
-
         let return_route = msg.return_route();
+        let mut onward_route = msg.onward_route();
         let body = msg.body();
         // This is the address of Worker on the other end, that Initiator gave us to perform further negotiations.
-        let first_responder_address = body
-            .completed_callback_address()
-            .clone()
+        let custom_payload = body
+            .custom_payload()
+            .as_ref()
             .ok_or(IdentityError::SecureChannelCannotBeAuthenticated)?;
+        let first_responder_address = Address::decode(custom_payload)?;
 
-        // Generate 2 random fresh address for newly created SecureChannel.
-        // One for local workers to encrypt their messages
-        // Second for remote workers to decrypt their messages
-        let self_local_address: Address = random();
-        let self_remote_address: Address = random();
-
-        // Change completed callback address and forward message for regular key exchange to happen
-        let body = CreateResponderChannelMessage::new(
-            body.payload().to_vec(),
-            Some(self_local_address.clone()),
-        );
-
-        let msg = TransportMessage::v1(onward_route, return_route, body.encode()?);
+        let self_address: Address = random();
 
         let state = State::ResponderWaitForKex(ResponderWaitForKex {
             first_responder_address,
@@ -186,23 +162,43 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
             trust_policy,
         });
 
-        let worker = SecureChannelWorker {
+        let kex_callback_address = Address::random_local();
+        let worker = DecryptorWorker {
             is_initiator: false,
-            self_local_address: self_local_address.clone(),
-            self_remote_address: self_remote_address.clone(),
+            self_address: self_address.clone(),
+            kex_callback_address: Some(kex_callback_address.clone()),
             state: Some(state),
         };
 
         ctx.start_worker(
-            vec![self_local_address.clone(), self_remote_address.clone()],
+            vec![self_address.clone(), kex_callback_address.clone()],
             worker,
         )
         .await?;
 
         debug!(
-            "Starting IdentitySecureChannel Responder at local: {}, remote: {}",
-            &self_local_address, &self_remote_address
+            "Starting IdentitySecureChannel Responder at remote: {}",
+            &self_address
         );
+
+        let regular_responder_address = Address::random_local();
+
+        let responder = XXNewKeyExchanger::new(vault.async_try_clone().await?)
+            .responder()
+            .await?;
+
+        let vault = vault.async_try_clone().await?;
+        let regular_decryptor =
+            SecureChannelDecryptor::new_responder(responder, Some(kex_callback_address), vault)
+                .await?;
+
+        ctx.start_worker(vec![regular_responder_address.clone()], regular_decryptor)
+            .await?;
+
+        onward_route.step()?;
+        onward_route.modify().prepend(regular_responder_address);
+
+        let msg = TransportMessage::v1(onward_route, return_route, body.payload().encode()?);
 
         ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
 
@@ -229,7 +225,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         ctx.send_from_address(
             route![kex_msg.address().clone(), state.first_responder_address],
             msg,
-            self.self_remote_address.clone(),
+            self.self_address.clone(),
         )
         .await?;
         debug!("Sent Authentication request");
@@ -311,24 +307,36 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
 
             let remote_identity_secure_channel_address = return_route.recipient();
 
-            ctx.send_from_address(return_route, auth_msg, self.self_remote_address.clone())
+            ctx.send_from_address(return_route, auth_msg, self.self_address.clone())
                 .await?;
             debug!("Sent Authentication response");
 
+            let encryptor_address = Address::random_local();
+
             self.state = Some(State::Initialized(Initialized {
                 local_secure_channel_address: state.channel.address(),
-                remote_identity_secure_channel_address,
                 their_identity_id,
+                encryptor_address: encryptor_address.clone(),
             }));
+
+            let encryptor = EncryptorWorker::new(
+                self.is_initiator,
+                self.self_address.clone(),
+                remote_identity_secure_channel_address,
+                state.channel.address(),
+            );
+
+            ctx.start_worker(encryptor_address.clone(), encryptor)
+                .await?;
 
             info!(
                 "Initialized IdentitySecureChannel Initiator at local: {}, remote: {}",
-                &self.self_local_address, &self.self_remote_address
+                &encryptor_address, &self.self_address
             );
 
             ctx.send(
                 state.callback_address,
-                AuthenticationConfirmation(self.self_local_address.clone()),
+                AuthenticationConfirmation(encryptor_address),
             )
             .await?;
 
@@ -340,7 +348,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
 
     async fn handle_receive_identity(
         &mut self,
-        _ctx: &mut <Self as Worker>::Context,
+        ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
         state: ResponderWaitForIdentity<I>,
     ) -> Result<()> {
@@ -400,15 +408,27 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
 
             let remote_identity_secure_channel_address = return_route.recipient();
 
+            let encryptor_address = Address::random_local();
+
             self.state = Some(State::Initialized(Initialized {
-                local_secure_channel_address: state.local_secure_channel_address,
-                remote_identity_secure_channel_address,
+                local_secure_channel_address: state.local_secure_channel_address.clone(),
                 their_identity_id,
+                encryptor_address: encryptor_address.clone(),
             }));
+
+            let encryptor = EncryptorWorker::new(
+                self.is_initiator,
+                self.self_address.clone(),
+                remote_identity_secure_channel_address,
+                state.local_secure_channel_address,
+            );
+
+            ctx.start_worker(encryptor_address.clone(), encryptor)
+                .await?;
 
             info!(
                 "Initialized IdentitySecureChannel Responder at local: {}, remote: {}",
-                &self.self_local_address, &self.self_remote_address
+                &encryptor_address, &self.self_address
             );
 
             Ok(())
@@ -417,52 +437,13 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
         }
     }
 
+    // FIXME: Avoid situation where we take state but don't put it back because of an error
     fn take_state(&mut self) -> Result<State<I>> {
         if let Some(s) = self.state.take() {
             Ok(s)
         } else {
             Err(IdentityError::InvalidSecureChannelInternalState.into())
         }
-    }
-
-    async fn handle_encrypt(
-        &mut self,
-        ctx: &mut <Self as Worker>::Context,
-        msg: Routed<<Self as Worker>::Message>,
-        state: Initialized,
-    ) -> Result<()> {
-        debug!(
-            "IdentitySecureChannel {} received Encrypt",
-            if self.is_initiator {
-                "Initiator"
-            } else {
-                "Responder"
-            }
-        );
-
-        self.state = Some(State::Initialized(state.clone()));
-
-        let mut onward_route = msg.onward_route();
-        let mut return_route = msg.return_route();
-        let payload = msg.payload().to_vec();
-
-        // Send to the other party using local regular SecureChannel
-        let _ = onward_route.step()?;
-        let onward_route = onward_route
-            .modify()
-            .prepend(state.remote_identity_secure_channel_address)
-            .prepend(state.local_secure_channel_address);
-
-        let return_route = return_route
-            .modify()
-            .prepend(self.self_remote_address.clone());
-
-        let transport_msg = TransportMessage::v1(onward_route, return_route, payload);
-
-        ctx.forward(LocalMessage::new(transport_msg, Vec::new()))
-            .await?;
-
-        Ok(())
     }
 
     async fn handle_decrypt(
@@ -501,7 +482,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
             .modify()
             .pop_front()
             .pop_front()
-            .prepend(self.self_local_address.clone());
+            .prepend(state.encryptor_address.clone());
 
         let transport_msg = TransportMessage::v1(onward_route, return_route, payload);
 
@@ -516,7 +497,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
             Err(err) => {
                 warn!(
                     "{} forwarding decrypted message from {}",
-                    err, self.self_local_address
+                    err, state.encryptor_address
                 );
                 Ok(())
             }
@@ -525,7 +506,7 @@ impl<I: IdentityTrait> SecureChannelWorker<I> {
 }
 
 #[async_trait]
-impl<I: IdentityTrait> Worker for SecureChannelWorker<I> {
+impl<I: IdentityTrait> Worker for DecryptorWorker<I> {
     type Message = Any;
     type Context = Context;
 
@@ -561,30 +542,32 @@ impl<I: IdentityTrait> Worker for SecureChannelWorker<I> {
                 return Err(IdentityError::InvalidSecureChannelInternalState.into())
             }
             State::ResponderWaitForKex(s) => {
-                if msg_addr == self.self_local_address {
+                let kex_callback_address = self
+                    .kex_callback_address
+                    .take()
+                    .ok_or(IdentityError::UnknownChannelMsgDestination)?;
+                if msg_addr == kex_callback_address {
                     self.handle_kex_done(ctx, msg, s).await?;
                 } else {
                     return Err(IdentityError::UnknownChannelMsgDestination.into());
                 }
             }
             State::InitiatorSendIdentity(s) => {
-                if msg_addr == self.self_remote_address {
+                if msg_addr == self.self_address {
                     self.handle_send_identity(ctx, msg, s).await?;
                 } else {
                     return Err(IdentityError::UnknownChannelMsgDestination.into());
                 }
             }
             State::ResponderWaitForIdentity(s) => {
-                if msg_addr == self.self_remote_address {
+                if msg_addr == self.self_address {
                     self.handle_receive_identity(ctx, msg, s).await?;
                 } else {
                     return Err(IdentityError::UnknownChannelMsgDestination.into());
                 }
             }
             State::Initialized(s) => {
-                if msg_addr == self.self_local_address {
-                    self.handle_encrypt(ctx, msg, s).await?;
-                } else if msg_addr == self.self_remote_address {
+                if msg_addr == self.self_address {
                     self.handle_decrypt(ctx, msg, s).await?;
                 } else {
                     return Err(IdentityError::UnknownChannelMsgDestination.into());
