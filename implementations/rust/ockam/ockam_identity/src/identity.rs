@@ -1,7 +1,7 @@
 use crate::{
-    AuthenticationProof, Changes, Contact, ExportedIdentity, IdentityChangeEvent,
+    AuthenticationProof, Changes, Contact, DecryptorWorker, ExportedIdentity, IdentityChangeEvent,
     IdentityChannelListener, IdentityIdentifier, IdentityState, IdentityTrait, IdentityVault,
-    Lease, SecureChannelWorker, TrustPolicy, TTL,
+    Lease, TrustPolicy, TTL,
 };
 use core::time::Duration;
 use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
@@ -190,7 +190,7 @@ impl<V: IdentityVault> Identity<V> {
         let vault = self.state.read().await.vault.async_try_clone().await?;
         let identity_clone = self.async_try_clone().await?;
 
-        SecureChannelWorker::create_initiator(
+        DecryptorWorker::create_initiator(
             &self.ctx,
             route.into(),
             identity_clone,
@@ -210,7 +210,7 @@ impl<V: IdentityVault> Identity<V> {
         let vault = self.state.read().await.vault.async_try_clone().await?;
         let identity_clone = self.async_try_clone().await?;
 
-        SecureChannelWorker::create_initiator(
+        DecryptorWorker::create_initiator(
             &self.ctx,
             route.into(),
             identity_clone,
