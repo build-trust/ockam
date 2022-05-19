@@ -1666,8 +1666,11 @@ dependencies = [
  "minicbor",
  "ockam_api",
  "ockam_core",
+ "ockam_macros",
+ "ockam_node",
  "quickcheck",
  "tinyvec",
+ "tracing",
 ]
 
 [[package]]
@@ -1723,6 +1726,7 @@ dependencies = [
  "hashbrown 0.11.2",
  "heapless",
  "hex",
+ "minicbor",
  "ockam_macros",
  "once_cell",
  "rand 0.8.5",
