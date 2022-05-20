@@ -42,6 +42,14 @@ defmodule Ockam.Transport.TCPAddress do
     %Address{type: @address_type, value: format_host_port(host, port)}
   end
 
+  @spec new(String.t()) :: t()
+  def new(host_port) when is_binary(host_port) or is_list(host_port) do
+    case parse_host_port(host_port) do
+      {:ok, {host, port}} -> new(host, port)
+      error -> raise "Invalid host port string: #{inspect(error)}"
+    end
+  end
+
   def format_host_port(host, port) when is_binary(host) do
     "#{host}:#{port}"
   end

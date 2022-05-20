@@ -7,12 +7,13 @@ defmodule Ockam.Transport.TCP.RecoverableClient do
 
   Options:
 
-  `desination` - {host, port} tuple to connect to
+  `desination` - Ockam.Transport.TCPAddress or {host, port} tuple to connect to
   `refresh_timeout` - time to wait between client restarts
   """
   use Ockam.AsymmetricWorker
 
   alias Ockam.Transport.TCP.Client
+  alias Ockam.Transport.TCPAddress
 
   alias Ockam.Message
   alias Ockam.Router
@@ -24,12 +25,14 @@ defmodule Ockam.Transport.TCP.RecoverableClient do
 
   @impl true
   def inner_setup(options, state) do
-    destination = Keyword.fetch!(options, :destination)
+    destination_opt = Keyword.fetch!(options, :destination)
     refresh_timeout = Keyword.get(options, :refresh_timeout, 5_000)
 
-    state = Map.merge(state, %{destination: destination, refresh_timeout: refresh_timeout})
+    with {:ok, destination} <- make_destination(destination_opt) do
+      state = Map.merge(state, %{destination: destination, refresh_timeout: refresh_timeout})
 
-    {:ok, refresh_client(state)}
+      {:ok, refresh_client(state)}
+    end
   end
 
   @impl true
@@ -88,7 +91,8 @@ defmodule Ockam.Transport.TCP.RecoverableClient do
 
     destination = Map.get(state, :destination)
 
-    case Client.create(destination: destination) do
+    ## TODO: change monitors to links here
+    case Client.create(destination: destination, restart_type: :temporary) do
       {:ok, client} ->
         monitor_client(client, state)
 
@@ -113,5 +117,13 @@ defmodule Ockam.Transport.TCP.RecoverableClient do
     timer_ref = Process.send_after(self(), :refresh_client, refresh_timeout)
 
     Map.put(state, :refresh_timer, timer_ref)
+  end
+
+  defp make_destination({_host, _port} = destination) do
+    {:ok, destination}
+  end
+
+  defp make_destination(address) do
+    TCPAddress.to_host_port(address)
   end
 end

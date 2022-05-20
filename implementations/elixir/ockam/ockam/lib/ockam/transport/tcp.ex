@@ -62,7 +62,10 @@ defmodule Ockam.Transport.TCP do
       {:ok, destination} ->
         ## TODO: reuse clients when using tcp address
         with {:ok, client_address} <-
-               Client.create([{:destination, destination} | client_options]) do
+               Client.create([
+                 {:destination, destination},
+                 {:restart_type, :temporary} | client_options
+               ]) do
           Ockam.Node.send(client_address, message)
         end
 

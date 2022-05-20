@@ -14,7 +14,14 @@ defmodule Ockam.Services.Provider.Routing do
   alias Ockam.Services.Tracing, as: TracingService
 
   ## TODO: API to start all services in a provider?
-  @services [:echo, :forwarding, :static_forwarding, :static_forwarding_api, :pub_sub, :tracing]
+  @services [
+    :echo,
+    :forwarding,
+    :static_forwarding,
+    :static_forwarding_api,
+    :pub_sub,
+    :tracing
+  ]
 
   @impl true
   def services() do
