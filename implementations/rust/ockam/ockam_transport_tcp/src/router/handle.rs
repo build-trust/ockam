@@ -45,22 +45,15 @@ impl TcpRouterHandle {
 
     /// Establish an outgoing TCP connection on an existing transport
     pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<Address> {
-        let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;
-
-        child_ctx
-            .send(
+        let response = self
+            .ctx
+            .send_and_receive(
                 self.api_addr.clone(),
                 TcpRouterRequest::Connect {
                     peer: peer.as_ref().to_string(),
                 },
             )
             .await?;
-
-        let response = child_ctx
-            .receive::<TcpRouterResponse>()
-            .await?
-            .take()
-            .body();
 
         if let TcpRouterResponse::Connect(res) = response {
             res
@@ -71,22 +64,15 @@ impl TcpRouterHandle {
 
     /// Disconnect an outgoing TCP connection on an existing transport
     pub async fn disconnect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
-        let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;
-
-        child_ctx
-            .send(
+        let response = self
+            .ctx
+            .send_and_receive(
                 self.api_addr.clone(),
                 TcpRouterRequest::Disconnect {
                     peer: peer.as_ref().to_string(),
                 },
             )
             .await?;
-
-        let response = child_ctx
-            .receive::<TcpRouterResponse>()
-            .await?
-            .take()
-            .body();
 
         if let TcpRouterResponse::Disconnect(res) = response {
             res
@@ -129,20 +115,13 @@ impl TcpRouterHandle {
 
     /// Unregister the conenction worker for the given `Address`
     pub async fn unregister(&self, self_addr: Address) -> Result<()> {
-        let mut child_ctx = self.ctx.new_context(Address::random_local()).await?;
-
-        child_ctx
-            .send(
+        let response = self
+            .ctx
+            .send_and_receive(
                 self.api_addr.clone(),
                 TcpRouterRequest::Unregister { self_addr },
             )
             .await?;
-
-        let response = child_ctx
-            .receive::<TcpRouterResponse>()
-            .await?
-            .take()
-            .body();
 
         if let TcpRouterResponse::Unregister(res) = response {
             res

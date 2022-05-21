@@ -1,5 +1,5 @@
 use ockam_core::compat::rand::{self, Rng};
-use ockam_core::{route, Address, Result, Routed, Worker};
+use ockam_core::{route, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_websocket::{WebSocketTransport, WS};
 
@@ -10,16 +10,14 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
     ctx.start_worker("echoer", Echoer).await?;
 
     let _sender = {
-        let mut ctx = ctx.new_context(Address::random_local()).await?;
         let msg: String = rand::thread_rng()
             .sample_iter(&rand::distributions::Alphanumeric)
             .take(256)
             .map(char::from)
             .collect();
         let r = route![(WS, listener_address.to_string()), "echoer"];
-        ctx.send(r, msg.clone()).await?;
+        let reply = ctx.send_and_receive::<_, _, String>(r, msg.clone()).await?;
 
-        let reply = ctx.receive::<String>().await?;
         assert_eq!(reply, msg, "Should receive the same message");
     };
 

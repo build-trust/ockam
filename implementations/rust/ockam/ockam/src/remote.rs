@@ -283,31 +283,26 @@ mod test {
     #[allow(non_snake_case)]
     #[ockam_macros::test]
     async fn forwarding__ephemeral_address__should_respond(ctx: &mut Context) -> Result<()> {
-        let cloud_address;
-        if let Some(c) = get_cloud_address() {
-            cloud_address = c;
+        let cloud_address = if let Some(c) = get_cloud_address() {
+            c
         } else {
             ctx.stop().await?;
             return Ok(());
-        }
+        };
 
         ctx.start_worker("echoer", Echoer).await?;
 
-        TcpTransport::create(&ctx).await?;
+        TcpTransport::create(ctx).await?;
 
         let node_in_hub = (TCP, cloud_address);
         let remote_info = RemoteForwarder::create(ctx, node_in_hub.clone()).await?;
 
-        let mut child_ctx = ctx.new_context(Address::random_local()).await?;
-
-        child_ctx
-            .send(
+        let resp = ctx
+            .send_and_receive::<_, _, String>(
                 route![node_in_hub, remote_info.remote_address(), "echoer"],
                 "Hello".to_string(),
             )
             .await?;
-
-        let resp = child_ctx.receive::<String>().await?.take().body();
 
         assert_eq!(resp, "Hello");
 
@@ -317,31 +312,26 @@ mod test {
     #[allow(non_snake_case)]
     #[ockam_macros::test]
     async fn forwarding__static_address__should_respond(ctx: &mut Context) -> Result<()> {
-        let cloud_address;
-        if let Some(c) = get_cloud_address() {
-            cloud_address = c;
+        let cloud_address = if let Some(c) = get_cloud_address() {
+            c
         } else {
             ctx.stop().await?;
             return Ok(());
-        }
+        };
 
         ctx.start_worker("echoer", Echoer).await?;
 
-        TcpTransport::create(&ctx).await?;
+        TcpTransport::create(ctx).await?;
 
         let node_in_hub = (TCP, cloud_address);
         let _ = RemoteForwarder::create_static(ctx, node_in_hub.clone(), "alias").await?;
 
-        let mut child_ctx = ctx.new_context(Address::random_local()).await?;
-
-        child_ctx
-            .send(
+        let resp = ctx
+            .send_and_receive::<_, _, String>(
                 route![node_in_hub, "forward_to_alias", "echoer"],
                 "Hello".to_string(),
             )
             .await?;
-
-        let resp = child_ctx.receive::<String>().await?.take().body();
 
         assert_eq!(resp, "Hello");
 
