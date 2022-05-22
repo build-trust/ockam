@@ -1,0 +1,58 @@
+[package]
+name = "ockam_transport_udp"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2021"
+license = "Apache-2.0"
+homepage = "https://github.com/ockam-network/ockam"
+repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_transport_tcp"
+readme = "README.md"
+keywords = ["ockam", "crypto", "network", "networking", "tcp"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "network-programming",
+    "embedded",
+]
+description = """
+TCP Transport for the Ockam Routing Protocol.
+"""
+autoexamples = false
+publish = false
+rust-version = "1.56.0"
+
+[features]
+default = ["std"]
+std = ["ockam_macros/std"]
+alloc = []
+
+[dependencies]
+bytes = "1.1.0"
+futures-util = "0.3"
+ockam_core = { path = "../ockam_core", version = "^0.54.0", default_features = false }
+ockam_node = { path = "../ockam_node", version = "^0.56.0"}
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.27.0"}
+rand = "0.7"
+hashbrown = { version = "0.9" }
+tracing = { version = "0.1", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+tokio = { version = "1.8", features = [
+    "rt-multi-thread",
+    "sync",
+    "net",
+    "macros",
+    "time",
+    "io-util",
+] }
+tokio-util = { version = "0.7.1", features = ["net", "codec"] }
+
+[dev-dependencies]
+ockam_macros = { path = "../ockam_macros", version = "^0.15.0"}
+ockam = { path = "../ockam", version = "^0.59.0"}
+
+[[example]]
+name = "client"
+
+[[example]]
+name = "echo_server"
