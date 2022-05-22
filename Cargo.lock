@@ -56,6 +56,12 @@ dependencies = [
 
 [[package]]
 name = "ahash"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "739f4a8db6605981345c5654f3a85b056ce52f37a39d34da03f25bf2151ea16e"
+
+[[package]]
+name = "ahash"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
@@ -1462,6 +1468,9 @@ name = "hashbrown"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
+dependencies = [
+ "ahash 0.4.7",
+]
 
 [[package]]
 name = "hashbrown"
@@ -1469,7 +1478,7 @@ version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 dependencies = [
- "ahash",
+ "ahash 0.7.6",
  "serde",
 ]
 
@@ -2420,6 +2429,25 @@ dependencies = [
  "tokio",
  "tracing",
  "trybuild",
+]
+
+[[package]]
+name = "ockam_transport_udp"
+version = "0.1.0"
+dependencies = [
+ "bytes 1.1.0",
+ "futures-util",
+ "hashbrown 0.9.1",
+ "ockam",
+ "ockam_core",
+ "ockam_macros",
+ "ockam_node",
+ "ockam_transport_core",
+ "rand 0.7.3",
+ "serde",
+ "tokio",
+ "tokio-util 0.7.2",
+ "tracing",
 ]
 
 [[package]]
