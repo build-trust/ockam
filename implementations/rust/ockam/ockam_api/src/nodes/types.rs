@@ -38,7 +38,7 @@ impl<'a> CreateNode<'a> {
     }
 
     pub fn name(&self) -> &str {
-        &*self.name
+        &self.name
     }
 }
 
@@ -68,19 +68,19 @@ impl<'a> NodeInfo<'a> {
     }
 
     pub fn id(&self) -> &str {
-        &*self.id
+        &self.id
     }
 
     pub fn name(&self) -> &str {
-        &*self.name
+        &self.name
     }
 
     pub fn status(&self) -> &str {
-        &*self.status
+        &self.status
     }
 
     pub fn url(&self) -> &str {
-        &*self.url
+        &self.url
     }
 
     pub fn into_owned<'b>(self) -> NodeInfo<'b> {

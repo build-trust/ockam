@@ -52,6 +52,15 @@ pub enum Command {
     /// been modified, etc.
     #[clap(display_order = 1005)]
     PrintPath,
+    StartNode(StartNodeOpts),
+    #[clap(subcommand)]
+    Api(Api),
+}
+
+#[derive(Clone, Debug, Subcommand)]
+pub enum Api {
+    #[clap(subcommand)]
+    Nodes(Nodes),
 }
 
 #[derive(Clone, Debug, Args)]
@@ -89,4 +98,36 @@ pub struct AddTrustedIdentityOpts {
     /// Some effort is taken to avoid writing the file when not necessary, and
     /// to avoid adding duplicates entries in the file. Note that
     pub to_trust: String,
+}
+
+#[derive(Clone, Debug, Args)]
+pub struct StartNodeOpts {
+    #[clap(long, default_value = "127.0.0.1:62526")]
+    pub listen_addr: String,
+}
+
+#[derive(Clone, Debug, Subcommand)]
+pub enum Nodes {
+    Create {
+        #[clap(long)]
+        addr: String,
+        #[clap(long)]
+        name: String,
+    },
+    Get {
+        #[clap(long)]
+        addr: String,
+        #[clap(long)]
+        id: String,
+    },
+    List {
+        #[clap(long)]
+        addr: String,
+    },
+    Delete {
+        #[clap(long)]
+        addr: String,
+        #[clap(long)]
+        id: String,
+    },
 }

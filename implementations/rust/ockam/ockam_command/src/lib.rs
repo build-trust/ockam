@@ -19,9 +19,11 @@ pub(crate) mod args;
 pub(crate) mod identity;
 pub(crate) mod storage;
 pub(crate) mod cmd {
+    pub(crate) mod api;
     pub(crate) mod identity;
     pub(crate) mod inlet;
     pub(crate) mod outlet;
+    pub(crate) mod start_node;
 }
 
 pub(crate) mod session {
@@ -43,6 +45,8 @@ pub fn run_main() {
         args::Command::CreateInlet(arg) => node_subcommand(verbose > 0, arg, cmd::inlet::run),
         args::Command::CreateOutlet(arg) => node_subcommand(verbose > 0, arg, cmd::outlet::run),
         args::Command::AddTrustedIdentity(arg) => exit_with_result(verbose > 0, add_trusted(arg)),
+        args::Command::StartNode(arg) => node_subcommand(verbose > 0, arg, cmd::start_node::run),
+        args::Command::Api(arg) => node_subcommand(verbose > 0, arg, cmd::api::run),
         args::Command::PrintIdentity => exit_with_result(verbose > 0, print_identity()),
         args::Command::PrintPath => exit_with_result(verbose > 0, print_ockam_dir()),
     }

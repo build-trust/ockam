@@ -25,7 +25,7 @@ default-features = false
 features         = ["no_std", "alloc"]
 
 [dependencies.ockam_node]
-version          = "0.55.0"
+version          = "0.56.0"
 path             = "../ockam_node"
 default-features = false
 features         = ["std"] # FIXME: required because of unbounded channels in ockam_node
