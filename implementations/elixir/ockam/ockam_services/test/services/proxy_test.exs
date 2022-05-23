@@ -64,7 +64,7 @@ defmodule Test.Services.ProxyTest do
 
     forward_route = [TCPAddress.new("localhost", @tcp_port), echo_address]
 
-    {:ok, proxy_address} = Proxy.create(forward_route: forward_route, over_tcp: true)
+    {:ok, proxy_address} = Proxy.create(forward_route: forward_route)
 
     on_exit(fn ->
       Ockam.Node.stop(proxy_address)
