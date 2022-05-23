@@ -30,14 +30,6 @@ defmodule Ockam.Wire do
               {:ok, message :: Message.t()} | {:error, error :: DecodeError.t()}
 
   @doc """
-  Formats an error returned by `Ockam.Wire.encode/1` or `Ockam.Wire.decode/1`.
-
-  Returns a string.
-  """
-  @callback format_error(error :: EncodeError.t() | DecodeError.t()) ::
-              formatted_error_message :: String.t()
-
-  @doc """
   Encode a message to a binary using the provided encoder.
   """
   @spec encode(encoder :: atom, message :: Message.t()) ::
@@ -71,19 +63,12 @@ defmodule Ockam.Wire do
   @spec decode(decoder :: atom, encoded :: binary) ::
           {:ok, message :: Message.t()} | {:error, error :: DecodeError.t()}
 
-  def decode!(decoder, encoded) do
-    case decode(decoder, encoded) do
-      {:ok, message} -> {:ok, message}
-      {:error, reason} -> raise reason
-    end
-  end
-
   def decode(decoder \\ nil, encoded)
 
   def decode(nil, encoded) when is_binary(encoded) do
     case default_implementation() do
       nil -> {:error, DecodeError.new(:decoder_is_nil_and_no_default_decoder)}
-      decoder -> decode!(decoder, encoded)
+      decoder -> decode(decoder, encoded)
     end
   end
 
@@ -152,4 +137,15 @@ defmodule Ockam.Wire do
 
   def format_error(%EncodeError{reason: {:module_does_not_export, {module, :encode, 1}}}),
     do: "Encoder module does not export: #{inspect(module)}.encode/1"
+
+  def format_error(%DecodeError{reason: {:too_much_data, encoded, rest}}),
+    do: "Too much data in #{inspect(encoded)} ; extra data: #{inspect(rest)}"
+
+  def format_error(%DecodeError{reason: {:not_enough_data, data}}),
+    do: "Not enough data in #{inspect(data)}"
+
+  def format_error(%DecodeError{reason: {:invalid_version, data, version}}),
+    do: "Unknown message format or version: #{inspect(version)} #{inspect(data)}"
+
+  def format_error(%{reason: reason}), do: inspect(reason)
 end
