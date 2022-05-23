@@ -27,4 +27,3 @@ features         = ["no_std", "alloc"]
 cddl-cat   = "0.6.1"
 ockam_api  = { path = ".", features = ["std"] }
 quickcheck = "1.0.1"
-
