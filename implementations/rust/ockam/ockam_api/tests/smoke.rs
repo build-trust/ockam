@@ -8,18 +8,33 @@ async fn smoke(ctx: &mut Context) -> Result<()> {
 
     let mut client = nodes::Client::new("nodes".into(), ctx).await?;
 
-    // create a node
     let a = client
-        .create_node(&nodes::types::CreateNode::new("first"))
+        .create_node(&nodes::types::CreateNode::new("a"))
         .await?;
     let i = a.id().to_string();
 
-    // get the node info for the identifier received
-    let b = client.get(&i).await?;
-    assert_eq!(i, b.id());
+    let b = client
+        .create_node(&nodes::types::CreateNode::new("b"))
+        .await?;
+    let j = b.id().to_string();
+
+    let c = client.get(&i).await?;
+    assert_eq!(i, c.unwrap().id());
+
+    let c = client.get(&j).await?;
+    assert_eq!(j, c.unwrap().id());
+
+    let c = client.list().await?;
+    assert_eq!(2, c.len());
+
+    let c = client.delete(&i).await;
+    assert!(c.is_ok());
 
     let c = client.list().await?;
     assert_eq!(1, c.len());
+
+    let c = client.get(&j).await?;
+    assert_eq!(j, c.unwrap().id());
 
     ctx.stop().await?;
     Ok(())
