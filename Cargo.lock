@@ -1837,7 +1837,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.55.0"
+version = "0.56.0"
 dependencies = [
  "futures 0.3.21",
  "heapless",
