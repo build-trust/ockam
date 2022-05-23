@@ -18,19 +18,15 @@ defmodule Ockam.Services.Proxy do
 
   Forwarding to TCP addresses:
 
-  If the first address of the route is a TCP, forwarding might cause TCP clients leak, because each
+  If the first address of the route is TCP, forwarding might cause TCP clients leak, because each
   new message will create a new TCP client.
 
-  To prevent that, there is an `over_tcp` option, which creates
-  a `Ockam.Transport.TCP.RecoverableClient` instance, and replaces the TCP address
-  with this client address
+  To prevent that, if the first address is TCP, a `Ockam.Transport.TCP.RecoverableClient`
+  instance is created, and the TCP address is replaced with this client address
 
   Options:
 
   - forward_route: route (list or string formatted) to forward messages to
-  - over_tcp: boolean,
-      if the first address in forward_route is TCP - create a static client to forward through
-      if the first address is not a TCP - worker setup fails
   """
 
   use Ockam.AsymmetricWorker
@@ -44,52 +40,41 @@ defmodule Ockam.Services.Proxy do
 
   @impl true
   def inner_setup(options, state) do
-    with {:ok, forward_route} <- forward_route_config(options) do
-      case Keyword.get(options, :over_tcp, false) do
+    forward_route_option = Keyword.fetch!(options, :forward_route)
+
+    with {:ok, [first_address | route_tail]} <- forward_route_config(forward_route_option) do
+      case TCPAddress.is_tcp_address(first_address) do
         true ->
-          setup_with_tcp_client(forward_route, state)
+          client_address = "PROXY_CLIENT_" <> state.address
+
+          with {:ok, _pid, client_address} <-
+                 RecoverableClient.start_link(destination: first_address, address: client_address) do
+            forward_route = [client_address | route_tail]
+
+            {:ok,
+             Map.merge(state, %{forward_route: forward_route, client_address: client_address})}
+          end
 
         false ->
-          {:ok, Map.put(state, :forward_route, forward_route)}
+          forward_route = [first_address | route_tail]
+          {:ok, Map.merge(state, %{forward_route: forward_route})}
       end
     end
   end
 
-  def setup_with_tcp_client(forward_route, state) do
-    [first_address | route_tail] = forward_route
-
-    case TCPAddress.is_tcp_address(first_address) do
-      true ->
-        client_address = "PROXY_CLIENT_" <> state.address
-
-        with {:ok, _pid, client_address} <-
-               RecoverableClient.start_link(destination: first_address, address: client_address) do
-          forward_route = [client_address | route_tail]
-          {:ok, Map.merge(state, %{forward_route: forward_route, client_address: client_address})}
-        end
-
-      false ->
-        {:error,
-         {:invalid_options,
-          ":over_tcp requires TCP address as a first address in the forward route"}}
-    end
+  def forward_route_config(string) when is_binary(string) do
+    forward_route_config(Address.parse_route!(string))
+  catch
+    _type, _error ->
+      {:error, :cannot_parse_forward_route}
   end
 
-  def forward_route_config(options) do
-    forward_route = Keyword.fetch!(options, :forward_route)
+  def forward_route_config([]) do
+    {:error, :forward_route_cannot_be_empty}
+  end
 
-    case forward_route do
-      string when is_binary(string) ->
-        try do
-          {:ok, Address.parse_route!(string)}
-        catch
-          _type, _error ->
-            {:error, :cannot_parse_forward_route}
-        end
-
-      route when is_list(route) ->
-        {:ok, route}
-    end
+  def forward_route_config(route) when is_list(route) do
+    {:ok, route}
   end
 
   @impl true
