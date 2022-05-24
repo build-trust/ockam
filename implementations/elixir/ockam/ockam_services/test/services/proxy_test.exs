@@ -95,4 +95,16 @@ defmodule Test.Services.ProxyTest do
 
     assert Enum.count(tcp_clients()) == tcp_clients_count + 1
   end
+
+  test "proxy provider" do
+    System.put_env("SERVICE_PROXY_remote_echo", "1#localhost:4000;0#echo")
+    [spec] = Ockam.Services.Provider.Proxy.child_spec(:proxy, [])
+
+    assert %{
+             id: :proxy_remote_echo,
+             start:
+               {Ockam.Services.Proxy, :start_link,
+                [[address: "remote_echo", forward_route: "1#localhost:4000;0#echo"]]}
+           } = spec
+  end
 end

@@ -32,9 +32,12 @@ config :ockam_services, :token_manager,
 
 ## Transports config
 
+tcp_port = String.to_integer(System.get_env("TCP_PORT", "4000"))
+udp_port = String.to_integer(System.get_env("UDP_PORT", "7000"))
+
 config :ockam_services,
-  tcp_transport_port: 4000,
-  udp_transport_port: 7000
+  tcp_transport_port: tcp_port,
+  udp_transport_port: udp_port
 
 ## Kafka default config
 
@@ -124,7 +127,9 @@ config :ockam_services,
     # secure channel services
     Ockam.Services.Provider.SecureChannel,
     # discovery service
-    Ockam.Services.Provider.Discovery
+    Ockam.Services.Provider.Discovery,
+    # proxies for remote services
+    Ockam.Services.Provider.Proxy
   ],
   services_config_source: services_config_source,
   # JSON version of the services definition
@@ -142,7 +147,8 @@ config :ockam_services,
     :stream,
     :stream_index,
     :secure_channel,
-    :tracing
+    :tracing,
+    :proxy
   ]
 
 # Ockam Cloud Node application config
