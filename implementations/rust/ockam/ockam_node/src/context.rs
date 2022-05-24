@@ -1,11 +1,9 @@
 use crate::async_drop::AsyncDrop;
-use crate::relay::RelayPayload;
-use crate::tokio::{
-    self,
-    runtime::Runtime,
-    sync::mpsc::{channel, unbounded_channel, Receiver, Sender, UnboundedReceiver},
-    time::timeout,
+use crate::channel_types::{
+    message_channel, small_channel, MessageReceiver, SmallReceiver, SmallSender,
 };
+use crate::relay::RelayPayload;
+use crate::tokio::{self, runtime::Runtime, time::timeout};
 use crate::{
     error::*,
     parser,
@@ -47,10 +45,10 @@ pub type DetachedContext = Context;
 /// Context contains Node state and references to the runtime.
 pub struct Context {
     address: AddressSet,
-    sender: Sender<NodeMessage>,
+    sender: SmallSender<NodeMessage>,
     rt: Arc<Runtime>,
     async_drop_sender: Option<AsyncDropSender>,
-    mailbox: UnboundedReceiver<RelayMessage>,
+    mailbox: MessageReceiver<RelayMessage>,
     access_control: Box<dyn AccessControl>,
 }
 
@@ -109,13 +107,13 @@ impl Context {
     /// Context type (i.e. not backed by a worker relay).
     pub(crate) fn new(
         rt: Arc<Runtime>,
-        sender: Sender<NodeMessage>,
+        sender: SmallSender<NodeMessage>,
         address: AddressSet,
         async_drop_sender: Option<AsyncDropSender>,
         access_control: impl AccessControl,
-    ) -> (Self, SenderPair, Receiver<CtrlSignal>) {
-        let (mailbox_tx, mailbox) = unbounded_channel();
-        let (ctrl_tx, ctrl_rx) = channel(1);
+    ) -> (Self, SenderPair, SmallReceiver<CtrlSignal>) {
+        let (mailbox_tx, mailbox) = message_channel();
+        let (ctrl_tx, ctrl_rx) = small_channel();
         (
             Self {
                 rt,
@@ -523,7 +521,7 @@ impl Context {
             return Err(Error::new_without_cause(Origin::Node, Kind::Invalid));
         }
 
-        let (reply_tx, mut reply_rx) = channel(1);
+        let (reply_tx, mut reply_rx) = small_channel();
         let next = route.next().unwrap(); // TODO: communicate bad routes
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
 
@@ -552,7 +550,7 @@ impl Context {
         };
 
         // Send the packed user message with associated route
-        sender.send(msg).map_err(NodeError::from_send_err)?;
+        sender.send(msg).await.map_err(NodeError::from_send_err)?;
         Ok(())
     }
 
@@ -570,7 +568,7 @@ impl Context {
     /// [`TransportMessage`]: ockam_core::TransportMessage
     pub async fn forward(&self, local_msg: LocalMessage) -> Result<()> {
         // Resolve the sender for the next hop in the messages route
-        let (reply_tx, mut reply_rx) = channel(1);
+        let (reply_tx, mut reply_rx) = small_channel();
         let next = local_msg.transport().onward_route.next().unwrap(); // TODO: communicate bad routes
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
 
@@ -593,7 +591,7 @@ impl Context {
         } else {
             RelayMessage::direct(addr, local_msg, onward)
         };
-        sender.send(msg).map_err(NodeError::from_send_err)?;
+        sender.send(msg).await.map_err(NodeError::from_send_err)?;
 
         Ok(())
     }
@@ -727,7 +725,7 @@ impl Context {
     }
 
     async fn register_impl(&self, type_: TransportType, addr: Address) -> Result<()> {
-        let (tx, mut rx) = channel(1);
+        let (tx, mut rx) = small_channel();
         self.sender
             .send(NodeMessage::Router(type_, addr, tx))
             .await

@@ -1,7 +1,7 @@
 use super::Router;
+use crate::channel_types::SmallSender;
 use crate::{
     error::{NodeError, NodeReason},
-    tokio::sync::mpsc::Sender,
     NodeReplyResult, RouterReply,
 };
 use ockam_core::{Address, Result};
@@ -47,7 +47,7 @@ async fn stop_next_cluster(r: &mut Router) -> Result<bool> {
 pub(super) async fn graceful(
     router: &mut Router,
     seconds: u8,
-    reply: Sender<NodeReplyResult>,
+    reply: SmallSender<NodeReplyResult>,
 ) -> Result<bool> {
     // Mark the router as shutting down to prevent spawning
     info!("Initiate graceful node shutdown");
@@ -100,7 +100,10 @@ pub(super) async fn graceful(
 /// shutdown(...)` hook.  However: the router will not wait for them!
 /// Messages sent during the shutdown phase may not be delivered and
 /// shutdown hooks may be suddenly interrupted by thread-deallocation.
-pub(super) async fn immediate(router: &mut Router, reply: Sender<NodeReplyResult>) -> Result<()> {
+pub(super) async fn immediate(
+    router: &mut Router,
+    reply: SmallSender<NodeReplyResult>,
+) -> Result<()> {
     router.map.internal.clear();
     router.state.kill();
     reply

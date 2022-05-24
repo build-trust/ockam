@@ -1,5 +1,5 @@
 use super::Router;
-use crate::tokio::sync::mpsc::Sender;
+use crate::channel_types::SmallSender;
 use crate::{
     error::{NodeError, NodeReason},
     NodeReplyResult, RouterReply,
@@ -9,7 +9,7 @@ use ockam_core::{Address, Result};
 pub(super) async fn exec(
     router: &mut Router,
     main_addr: &Address,
-    reply: &Sender<NodeReplyResult>,
+    reply: &SmallSender<NodeReplyResult>,
 ) -> Result<()> {
     trace!("Stopping processor '{}'", main_addr);
 
