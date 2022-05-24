@@ -181,24 +181,31 @@ impl<'a> Request<'a> {
         }
     }
 
-    pub fn get<P: Into<Cow<'a, str>>>(path: P, has_body: bool) -> Self {
-        Request::new(Method::Get, path, has_body)
+    pub fn builder<P: Into<Cow<'a, str>>>(method: Method, path: P) -> RequestBuilder<'a> {
+        RequestBuilder {
+            header: Request::new(method, path, false),
+            body: None,
+        }
     }
 
-    pub fn post<P: Into<Cow<'a, str>>>(path: P, has_body: bool) -> Self {
-        Request::new(Method::Post, path, has_body)
+    pub fn get<P: Into<Cow<'a, str>>>(path: P) -> RequestBuilder<'a> {
+        Request::builder(Method::Get, path)
     }
 
-    pub fn put<P: Into<Cow<'a, str>>>(path: P, has_body: bool) -> Self {
-        Request::new(Method::Put, path, has_body)
+    pub fn post<P: Into<Cow<'a, str>>>(path: P) -> RequestBuilder<'a> {
+        Request::builder(Method::Post, path)
     }
 
-    pub fn delete<P: Into<Cow<'a, str>>>(path: P, has_body: bool) -> Self {
-        Request::new(Method::Delete, path, has_body)
+    pub fn put<P: Into<Cow<'a, str>>>(path: P) -> RequestBuilder<'a> {
+        Request::builder(Method::Put, path)
     }
 
-    pub fn patch<P: Into<Cow<'a, str>>>(path: P, has_body: bool) -> Self {
-        Request::new(Method::Patch, path, has_body)
+    pub fn delete<P: Into<Cow<'a, str>>>(path: P) -> RequestBuilder<'a> {
+        Request::builder(Method::Delete, path)
+    }
+
+    pub fn patch<P: Into<Cow<'a, str>>>(path: P) -> RequestBuilder<'a> {
+        Request::builder(Method::Patch, path)
     }
 
     pub fn id(&self) -> Id {
@@ -232,6 +239,29 @@ impl Response {
             status: Some(status),
             has_body,
         }
+    }
+
+    pub fn builder(re: Id, status: Status) -> ResponseBuilder {
+        ResponseBuilder {
+            header: Response::new(re, status, false),
+            body: None,
+        }
+    }
+
+    pub fn ok(re: Id) -> ResponseBuilder {
+        Response::builder(re, Status::Ok)
+    }
+
+    pub fn bad_request(re: Id) -> ResponseBuilder {
+        Response::builder(re, Status::BadRequest)
+    }
+
+    pub fn not_found(re: Id) -> ResponseBuilder {
+        Response::builder(re, Status::NotFound)
+    }
+
+    pub fn not_implemented(re: Id) -> ResponseBuilder {
+        Response::builder(re, Status::NotImplemented)
     }
 
     pub fn id(&self) -> Id {
@@ -320,5 +350,117 @@ impl<'a, const N: usize> Segments<'a, N> {
 
     pub fn as_slice(&self) -> &[&'a str] {
         &self.0[..]
+    }
+}
+
+#[derive(Debug)]
+pub struct RequestBuilder<'a, T = ()> {
+    header: Request<'a>,
+    body: Option<T>,
+}
+
+impl<'a, T> RequestBuilder<'a, T> {
+    pub fn id(mut self, id: Id) -> Self {
+        self.header.id = id;
+        self
+    }
+
+    pub fn path<P: Into<Cow<'a, str>>>(mut self, path: P) -> Self {
+        self.header.path = path.into();
+        self
+    }
+
+    pub fn method(mut self, m: Method) -> Self {
+        self.header.method = Some(m);
+        self
+    }
+
+    pub fn header(&self) -> &Request<'a> {
+        &self.header
+    }
+
+    pub fn into_parts(self) -> (Request<'a>, Option<T>) {
+        (self.header, self.body)
+    }
+}
+
+impl<'a> RequestBuilder<'a, ()> {
+    pub fn body<T: Encode<()>>(self, b: T) -> RequestBuilder<'a, T> {
+        let mut b = RequestBuilder {
+            header: self.header,
+            body: Some(b),
+        };
+        b.header.has_body = true;
+        b
+    }
+}
+
+impl<'a, T: Encode<()>> RequestBuilder<'a, T> {
+    pub fn encode<W>(&self, buf: W) -> Result<(), encode::Error<W::Error>>
+    where
+        W: Write,
+    {
+        let mut e = Encoder::new(buf);
+        e.encode(&self.header)?;
+        if let Some(b) = &self.body {
+            e.encode(b)?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct ResponseBuilder<T = ()> {
+    header: Response,
+    body: Option<T>,
+}
+
+impl<T> ResponseBuilder<T> {
+    pub fn id(mut self, id: Id) -> Self {
+        self.header.id = id;
+        self
+    }
+
+    pub fn re(mut self, re: Id) -> Self {
+        self.header.re = re;
+        self
+    }
+
+    pub fn status(mut self, s: Status) -> Self {
+        self.header.status = Some(s);
+        self
+    }
+
+    pub fn header(&self) -> &Response {
+        &self.header
+    }
+
+    pub fn into_parts(self) -> (Response, Option<T>) {
+        (self.header, self.body)
+    }
+}
+
+impl ResponseBuilder<()> {
+    pub fn body<T: Encode<()>>(self, b: T) -> ResponseBuilder<T> {
+        let mut b = ResponseBuilder {
+            header: self.header,
+            body: Some(b),
+        };
+        b.header.has_body = true;
+        b
+    }
+}
+
+impl<T: Encode<()>> ResponseBuilder<T> {
+    pub fn encode<W>(&self, buf: W) -> Result<(), encode::Error<W::Error>>
+    where
+        W: Write,
+    {
+        let mut e = Encoder::new(buf);
+        e.encode(&self.header)?;
+        if let Some(b) = &self.body {
+            e.encode(b)?;
+        }
+        Ok(())
     }
 }
