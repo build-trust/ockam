@@ -1,6 +1,6 @@
 // use crate::message::BaseMessage;
 
-use crate::tokio::{runtime::Runtime, sync::mpsc::Sender};
+use crate::tokio::runtime::Runtime;
 use crate::{
     router::{Router, SenderPair},
     NodeMessage,
@@ -9,6 +9,7 @@ use core::future::Future;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Result};
 
+use crate::channel_types::SmallSender;
 #[cfg(feature = "std")]
 use ockam_core::{
     errcode::{Kind, Origin},
@@ -42,7 +43,7 @@ impl Executor {
     }
 
     /// Get access to the internal message sender
-    pub(crate) fn sender(&self) -> Sender<NodeMessage> {
+    pub(crate) fn sender(&self) -> SmallSender<NodeMessage> {
         self.router.sender()
     }
 

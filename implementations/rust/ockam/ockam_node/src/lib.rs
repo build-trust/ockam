@@ -32,6 +32,9 @@ mod tests;
 /// Async Mutex and RwLock
 pub mod compat;
 
+/// MPSC channel type aliases
+pub mod channel_types;
+
 mod cancel;
 mod context;
 mod delayed;

@@ -10,7 +10,7 @@ mod utils;
 use record::{AddressMeta, AddressRecord, InternalMap};
 use state::{NodeState, RouterState};
 
-use crate::tokio::sync::mpsc::{channel, Receiver, Sender, UnboundedSender};
+use crate::channel_types::{router_channel, MessageSender, RouterReceiver, SmallSender};
 use crate::{
     error::{NodeError, NodeReason},
     relay::{CtrlSignal, RelayMessage},
@@ -22,8 +22,8 @@ use ockam_core::{Address, Result, TransportType};
 /// A pair of senders to a worker relay
 #[derive(Debug)]
 pub struct SenderPair {
-    pub msgs: UnboundedSender<RelayMessage>,
-    pub ctrl: Sender<CtrlSignal>,
+    pub msgs: MessageSender<RelayMessage>,
+    pub ctrl: SmallSender<CtrlSignal>,
 }
 
 /// A combined address type and local worker router
@@ -43,7 +43,7 @@ pub struct Router {
     /// Externally registered router components
     external: BTreeMap<TransportType, Address>,
     /// Receiver for messages from node
-    receiver: Receiver<NodeMessage>,
+    receiver: RouterReceiver<NodeMessage>,
 }
 
 enum RouteType {
@@ -61,7 +61,7 @@ fn determine_type(next: &Address) -> RouteType {
 
 impl Router {
     pub fn new() -> Self {
-        let (sender, receiver) = channel(32);
+        let (sender, receiver) = router_channel();
         Self {
             state: RouterState::new(sender),
             map: InternalMap::default(),
@@ -86,7 +86,7 @@ impl Router {
         self.map.addr_map.insert(addr.clone(), addr);
     }
 
-    pub fn sender(&self) -> Sender<NodeMessage> {
+    pub fn sender(&self) -> SmallSender<NodeMessage> {
         self.state.sender.clone()
     }
 

@@ -1,5 +1,5 @@
+use crate::channel_types::{MessageSender, SmallSender};
 use crate::relay::{CtrlSignal, RelayMessage};
-use crate::tokio::sync::mpsc::{Sender, UnboundedSender};
 use crate::{
     error::{NodeError, NodeReason},
     NodeReplyResult, RouterReply,
@@ -54,7 +54,7 @@ impl InternalMap {
     }
 
     /// Set an address as ready and return the list of waiting pollers
-    pub(super) fn set_ready(&mut self, addr: Address) -> Result<Vec<Sender<NodeReplyResult>>> {
+    pub(super) fn set_ready(&mut self, addr: Address) -> Result<Vec<SmallSender<NodeReplyResult>>> {
         let addr_record = self
             .internal
             .get_mut(&addr)
@@ -63,7 +63,7 @@ impl InternalMap {
     }
 
     /// Get the ready state of an address
-    pub(super) fn get_ready(&mut self, addr: Address, reply: Sender<NodeReplyResult>) -> bool {
+    pub(super) fn get_ready(&mut self, addr: Address, reply: SmallSender<NodeReplyResult>) -> bool {
         self.internal
             .get_mut(&addr)
             .map_or(false, |rec| rec.ready(reply))
@@ -142,8 +142,8 @@ pub struct AddressMeta {
 #[derive(Debug)]
 pub struct AddressRecord {
     address_set: AddressSet,
-    sender: Option<UnboundedSender<RelayMessage>>,
-    ctrl_tx: Sender<CtrlSignal>,
+    sender: Option<MessageSender<RelayMessage>>,
+    ctrl_tx: SmallSender<CtrlSignal>,
     state: AddressState,
     ready: ReadyState,
     meta: AddressMeta,
@@ -153,7 +153,7 @@ impl AddressRecord {
     pub fn address_set(&self) -> &AddressSet {
         &self.address_set
     }
-    pub fn sender(&self) -> UnboundedSender<RelayMessage> {
+    pub fn sender(&self) -> MessageSender<RelayMessage> {
         self.sender.clone().expect("No such sender!")
     }
     pub fn sender_drop(&mut self) {
@@ -161,8 +161,8 @@ impl AddressRecord {
     }
     pub fn new(
         address_set: AddressSet,
-        sender: UnboundedSender<RelayMessage>,
-        ctrl_tx: Sender<CtrlSignal>,
+        sender: MessageSender<RelayMessage>,
+        ctrl_tx: SmallSender<CtrlSignal>,
         meta: AddressMeta,
     ) -> Self {
         AddressRecord {
@@ -196,7 +196,7 @@ impl AddressRecord {
 
     /// Check whether this address has been marked as ready yet and if
     /// it hasn't we register our sender for future notification
-    pub fn ready(&mut self, reply: Sender<NodeReplyResult>) -> bool {
+    pub fn ready(&mut self, reply: SmallSender<NodeReplyResult>) -> bool {
         match self.ready {
             ReadyState::Ready => true,
             ReadyState::Initialising(ref mut vec) => {
@@ -207,7 +207,7 @@ impl AddressRecord {
     }
 
     /// Mark this address as 'ready' and return the list of active pollers
-    pub fn set_ready(&mut self) -> Vec<Sender<NodeReplyResult>> {
+    pub fn set_ready(&mut self) -> Vec<SmallSender<NodeReplyResult>> {
         let waiting = core::mem::replace(&mut self.ready, ReadyState::Ready);
         match waiting {
             ReadyState::Initialising(vec) => vec,
@@ -234,5 +234,5 @@ pub enum ReadyState {
     /// THe runner is fully ready
     Ready,
     /// The runner is still processing user init code and contains a list of waiting polling addresses
-    Initialising(Vec<Sender<NodeReplyResult>>),
+    Initialising(Vec<SmallSender<NodeReplyResult>>),
 }

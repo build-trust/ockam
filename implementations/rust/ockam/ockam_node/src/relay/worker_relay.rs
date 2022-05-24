@@ -1,5 +1,6 @@
+use crate::channel_types::SmallReceiver;
 use crate::relay::{CtrlSignal, RelayMessage, RelayPayload};
-use crate::tokio::{runtime::Runtime, sync::mpsc::Receiver};
+use crate::tokio::runtime::Runtime;
 use crate::{parser, Context};
 use core::marker::PhantomData;
 use ockam_core::compat::vec::Vec;
@@ -111,7 +112,7 @@ where
 
     #[cfg_attr(not(feature = "std"), allow(unused_mut))]
     #[cfg_attr(not(feature = "std"), allow(unused_variables))]
-    async fn run(mut self, mut ctrl_rx: Receiver<CtrlSignal>) {
+    async fn run(mut self, mut ctrl_rx: SmallReceiver<CtrlSignal>) {
         match self.worker.initialize(&mut self.ctx).await {
             Ok(()) => {}
             Err(e) => {
@@ -191,7 +192,7 @@ where
     }
 
     /// Build and spawn a new worker relay, returning a send handle to it
-    pub(crate) fn init(rt: &Runtime, worker: W, ctx: Context, ctrl_rx: Receiver<CtrlSignal>) {
+    pub(crate) fn init(rt: &Runtime, worker: W, ctx: Context, ctrl_rx: SmallReceiver<CtrlSignal>) {
         let relay = WorkerRelay::<W, M>::new(worker, ctx);
         rt.spawn(relay.run(ctrl_rx));
     }
