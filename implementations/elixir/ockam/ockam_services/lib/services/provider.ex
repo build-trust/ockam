@@ -18,7 +18,7 @@ defmodule Ockam.Services.Provider do
   ## TODO: maybe we need more than just a name here?
   @callback services() :: [atom()]
 
-  @callback child_spec(name :: atom(), args :: Keyword.t()) :: child_spec()
+  @callback child_spec(name :: atom(), args :: Keyword.t()) :: child_spec() | [child_spec()]
 
   def child_spec(args) do
     %{
@@ -52,7 +52,7 @@ defmodule Ockam.Services.Provider do
 
     spec_results =
       Enum.map(services_config, fn service_config ->
-        get_service_child_spec(service_config, service_providers_map)
+        get_service_child_specs(service_config, service_providers_map)
       end)
 
     {ok_results, errors} =
@@ -61,20 +61,20 @@ defmodule Ockam.Services.Provider do
         {:error, _} -> false
       end)
 
-    child_specs = Enum.map(ok_results, fn {:ok, spec} -> spec end)
+    child_specs = Enum.flat_map(ok_results, fn {:ok, specs} -> specs end)
 
     {child_specs, errors}
   end
 
-  @spec get_service_child_spec(service_config(), nil | list()) ::
-          {:ok, child_spec()} | {:error, any()}
-  def get_service_child_spec(service_config, providers \\ nil)
+  @spec get_service_child_specs(service_config(), nil | list()) ::
+          {:ok, [child_spec()]} | {:error, any()}
+  def get_service_child_specs(service_config, providers \\ nil)
 
-  def get_service_child_spec(service_name, providers) when is_atom(service_name) do
-    get_service_child_spec({service_name, []}, providers)
+  def get_service_child_specs(service_name, providers) when is_atom(service_name) do
+    get_service_child_specs({service_name, []}, providers)
   end
 
-  def get_service_child_spec({service_name, service_args}, providers) do
+  def get_service_child_specs({service_name, service_args}, providers) do
     service_providers_map = get_service_providers_map(providers)
 
     case Map.get(service_providers_map, service_name) do
@@ -82,24 +82,30 @@ defmodule Ockam.Services.Provider do
         {:error, {:unknown_service, service_name}}
 
       provider_mod ->
-        child_spec =
-          Supervisor.child_spec(provider_mod.child_spec(service_name, service_args),
-            id: service_name
-          )
+        case provider_mod.child_spec(service_name, service_args) do
+          multiple_specs when is_list(multiple_specs) ->
+            {:ok, multiple_specs}
 
-        {:ok, child_spec}
+          %{id: _id} = single_spec_map ->
+            {:ok, [single_spec_map]}
+
+          single_spec ->
+            {:ok, [Supervisor.child_spec(single_spec, id: service_name)]}
+        end
     end
   end
 
   @spec start_service(service_config(), atom(), nil | list()) ::
-          {:ok, pid()} | {:ok, pid(), any()} | {:error, any()}
+          [{:ok, pid()}] | [{:ok, pid(), any()}] | [{:error, any()}]
   def start_service(service_config, supervisor, providers \\ nil) do
-    case get_service_child_spec(service_config, providers) do
-      {:ok, child_spec} ->
-        Supervisor.start_child(supervisor, child_spec)
+    case get_service_child_specs(service_config, providers) do
+      {:ok, child_specs} ->
+        Enum.map(child_specs, fn spec ->
+          Supervisor.start_child(supervisor, spec)
+        end)
 
       {:error, reason} ->
-        {:error, reason}
+        [{:error, reason}]
     end
   end
 
