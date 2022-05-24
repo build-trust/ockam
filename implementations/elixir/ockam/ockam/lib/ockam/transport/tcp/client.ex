@@ -3,6 +3,7 @@ defmodule Ockam.Transport.TCP.Client do
   use Ockam.Worker
 
   alias Ockam.Message
+  alias Ockam.Transport.TCP
   alias Ockam.Wire
 
   require Logger
@@ -62,6 +63,7 @@ defmodule Ockam.Transport.TCP.Client do
 
   @impl true
   def handle_info({:tcp, socket, data}, %{socket: socket} = state) do
+    ## TODO: send/receive message in multiple TCP packets
     case Wire.decode(@wire_encoder_decoder, data) do
       {:ok, message} ->
         forwarded_message = Message.trace_address(message, state.address)
@@ -112,18 +114,26 @@ defmodule Ockam.Transport.TCP.Client do
     end
   end
 
-  ## TODO: implement Worker API
   @impl true
   def handle_message(%{payload: _payload} = message, state) do
-    encode_and_send_over_tcp(message, state)
-    {:ok, state}
+    with :ok <- encode_and_send_over_tcp(message, state) do
+      {:ok, state}
+    end
   end
 
   defp encode_and_send_over_tcp(message, state) do
     forwarded_message = Message.forward(message)
 
     with {:ok, encoded_message} <- Wire.encode(@wire_encoder_decoder, forwarded_message) do
-      send_over_tcp(encoded_message, state)
+      ## TODO: send/receive message in multiple TCP packets
+      case byte_size(encoded_message) <= TCP.packed_size_limit() do
+        true ->
+          send_over_tcp(encoded_message, state)
+
+        false ->
+          Logger.error("Message to big for TCP: #{inspect(message)}")
+          {:error, {:message_too_big, message}}
+      end
     end
   end
 

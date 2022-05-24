@@ -12,6 +12,12 @@ defmodule Ockam.Transport.TCP do
 
   require Logger
 
+  @packed_size_limit 65_000
+
+  def packed_size_limit() do
+    @packed_size_limit
+  end
+
   def child_spec(options) do
     id = id(options)
 
