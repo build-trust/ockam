@@ -19,7 +19,11 @@ pub async fn run(args: IdentityOpts, mut ctx: Context) -> anyhow::Result<()> {
                 .with_context(|| format!("Failed to remove {:?}", id_path))?;
         }
     }
-    let vault_storage = FileStorage::create(&ockam_dir.join("vault.json")).await?;
+    let vault_storage = FileStorage::create(
+        &ockam_dir.join("vault.json"),
+        &ockam_dir.join("vault.json.temp"),
+    )
+    .await?;
     let vault = OckamVault::new(Some(Arc::new(vault_storage)));
     let identity = Identity::create(&ctx, &vault).await?;
     let exported = identity.export().await;

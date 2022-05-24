@@ -83,7 +83,11 @@ pub async fn run(args: InletOpts, ctx: Context) -> anyhow::Result<()> {
     storage::ensure_identity_exists(true)?;
     let ockam_dir = storage::get_ockam_dir()?;
 
-    let vault_storage = FileStorage::create(&ockam_dir.join("vault.json")).await?;
+    let vault_storage = FileStorage::create(
+        &ockam_dir.join("vault.json"),
+        &ockam_dir.join("vault.json.temp"),
+    )
+    .await?;
     let vault = OckamVault::new(Some(Arc::new(vault_storage)));
 
     let exported_id = identity::load_identity(&ockam_dir)?;
