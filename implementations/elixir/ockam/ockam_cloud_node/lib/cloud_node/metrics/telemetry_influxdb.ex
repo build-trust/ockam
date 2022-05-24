@@ -47,6 +47,10 @@ defmodule Ockam.CloudNode.Metrics.TelemetryInfluxDB do
                 metadata_tag_keys: [:port]
               },
               %{
+                name: [:ockam, :tcp, :handler, :message],
+                metadata_tag_keys: [:address]
+              },
+              %{
                 name: [:vm, :total_run_queue_lengths],
                 metadata_tag_keys: [:total, :cpu, :io]
               },

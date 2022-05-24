@@ -5,6 +5,7 @@ defmodule Ockam.Transport.TCP.Handler do
 
   alias Ockam.Message
   alias Ockam.Telemetry
+  alias Ockam.Transport.TCP
 
   require Logger
 
@@ -50,6 +51,13 @@ defmodule Ockam.Transport.TCP.Handler do
   def handle_info({:tcp, socket, data}, %{socket: socket, address: address} = state) do
     {function_name, _} = __ENV__.function
 
+    data_size = byte_size(data)
+
+    Telemetry.emit_event([:tcp, :handler, :message],
+      measurements: %{byte_size: data_size},
+      metadata: %{address: address}
+    )
+
     case Ockam.Wire.decode(data) do
       {:ok, decoded} ->
         forwarded_message = Message.trace_address(decoded, address)
@@ -80,7 +88,15 @@ defmodule Ockam.Transport.TCP.Handler do
 
     case Ockam.Wire.encode(forwarded_message) do
       {:ok, encoded} ->
-        transport.send(socket, encoded)
+        ## TODO: send/receive message in multiple TCP packets
+        case byte_size(encoded) <= TCP.packed_size_limit() do
+          true ->
+            transport.send(socket, encoded)
+
+          false ->
+            Logger.error("Message to big for TCP: #{inspect(message)}")
+            raise {:message_too_big, message}
+        end
 
       a ->
         Logger.error("TCP transport send error #{inspect(a)}")
