@@ -1,4 +1,4 @@
-use crate::tokio::sync::mpsc::Receiver;
+use crate::channel_types::SmallReceiver;
 use crate::{relay::CtrlSignal, tokio::runtime::Runtime, Context};
 use ockam_core::{Processor, Result};
 
@@ -20,7 +20,7 @@ where
 
     #[cfg_attr(not(feature = "std"), allow(unused_mut))]
     #[cfg_attr(not(feature = "std"), allow(unused_variables))]
-    async fn run(self, mut ctrl_rx: Receiver<CtrlSignal>) {
+    async fn run(self, mut ctrl_rx: SmallReceiver<CtrlSignal>) {
         let mut ctx = self.ctx;
         let mut processor = self.processor;
         let ctx_addr = ctx.address();
@@ -96,7 +96,12 @@ where
     }
 
     /// Create a processor relay with two node contexts
-    pub(crate) fn init(rt: &Runtime, processor: P, ctx: Context, ctrl_rx: Receiver<CtrlSignal>) {
+    pub(crate) fn init(
+        rt: &Runtime,
+        processor: P,
+        ctx: Context,
+        ctrl_rx: SmallReceiver<CtrlSignal>,
+    ) {
         let relay = ProcessorRelay::<P>::new(processor, ctx);
         rt.spawn(relay.run(ctrl_rx));
     }

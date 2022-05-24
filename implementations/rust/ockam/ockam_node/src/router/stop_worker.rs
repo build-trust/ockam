@@ -1,5 +1,5 @@
 use super::Router;
-use crate::tokio::sync::mpsc::Sender;
+use crate::channel_types::SmallSender;
 use crate::{
     error::{NodeError, NodeReason},
     NodeReplyResult, RouterReply,
@@ -10,7 +10,7 @@ pub(super) async fn exec(
     router: &mut Router,
     addr: &Address,
     detached: bool,
-    reply: &Sender<NodeReplyResult>,
+    reply: &SmallSender<NodeReplyResult>,
 ) -> Result<()> {
     trace!("Stopping worker '{}'", addr);
 

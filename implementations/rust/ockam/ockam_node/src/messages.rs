@@ -1,4 +1,4 @@
-use crate::tokio::sync::mpsc::{channel, Receiver, Sender, UnboundedSender};
+use crate::channel_types::{small_channel, MessageSender, SmallReceiver, SmallSender};
 use crate::{
     error::{NodeError, NodeReason, RouterReason, WorkerReason},
     relay::RelayMessage,
@@ -20,32 +20,32 @@ pub enum NodeMessage {
         /// A detached context/ "worker" runs no relay state
         detached: bool,
         /// Reply channel for command confirmation
-        reply: Sender<NodeReplyResult>,
+        reply: SmallSender<NodeReplyResult>,
     },
     /// Return a list of all worker addresses
-    ListWorkers(Sender<NodeReplyResult>),
+    ListWorkers(SmallSender<NodeReplyResult>),
     /// Add an existing address to a cluster
-    SetCluster(Address, String, Sender<NodeReplyResult>),
+    SetCluster(Address, String, SmallSender<NodeReplyResult>),
     /// Stop an existing worker
-    StopWorker(Address, bool, Sender<NodeReplyResult>),
+    StopWorker(Address, bool, SmallSender<NodeReplyResult>),
     /// Start a new processor
-    StartProcessor(Address, SenderPair, Sender<NodeReplyResult>),
+    StartProcessor(Address, SenderPair, SmallSender<NodeReplyResult>),
     /// Stop an existing processor
-    StopProcessor(Address, Sender<NodeReplyResult>),
+    StopProcessor(Address, SmallSender<NodeReplyResult>),
     /// Stop the node (and all workers)
-    StopNode(ShutdownType, Sender<NodeReplyResult>),
+    StopNode(ShutdownType, SmallSender<NodeReplyResult>),
     /// Immediately stop the node runtime
     AbortNode,
     /// Let the router know a particular address has stopped
     StopAck(Address),
     /// Request the sender for a worker address
-    SenderReq(Address, Sender<NodeReplyResult>),
+    SenderReq(Address, SmallSender<NodeReplyResult>),
     /// Register a new router for a route id type
-    Router(TransportType, Address, Sender<NodeReplyResult>),
+    Router(TransportType, Address, SmallSender<NodeReplyResult>),
     /// Message the router to set an address as "ready"
     SetReady(Address),
     /// Check whether an address has been marked as "ready"
-    CheckReady(Address, Sender<NodeReplyResult>),
+    CheckReady(Address, SmallSender<NodeReplyResult>),
 }
 
 impl fmt::Display for NodeMessage {
@@ -81,8 +81,8 @@ impl NodeMessage {
         addrs: AddressSet,
         senders: SenderPair,
         detached: bool,
-    ) -> (Self, Receiver<NodeReplyResult>) {
-        let (reply, rx) = channel(1);
+    ) -> (Self, SmallReceiver<NodeReplyResult>) {
+        let (reply, rx) = small_channel();
         (
             Self::StartWorker {
                 addrs,
@@ -98,44 +98,44 @@ impl NodeMessage {
     pub fn start_processor(
         address: Address,
         senders: SenderPair,
-    ) -> (Self, Receiver<NodeReplyResult>) {
-        let (tx, rx) = channel(1);
+    ) -> (Self, SmallReceiver<NodeReplyResult>) {
+        let (tx, rx) = small_channel();
         (Self::StartProcessor(address, senders, tx), rx)
     }
 
     /// Create a stop worker message and reply receiver
-    pub fn stop_processor(address: Address) -> (Self, Receiver<NodeReplyResult>) {
-        let (tx, rx) = channel(1);
+    pub fn stop_processor(address: Address) -> (Self, SmallReceiver<NodeReplyResult>) {
+        let (tx, rx) = small_channel();
         (Self::StopProcessor(address, tx), rx)
     }
 
     /// Create a list worker message and reply receiver
-    pub fn list_workers() -> (Self, Receiver<NodeReplyResult>) {
-        let (tx, rx) = channel(1);
+    pub fn list_workers() -> (Self, SmallReceiver<NodeReplyResult>) {
+        let (tx, rx) = small_channel();
         (Self::ListWorkers(tx), rx)
     }
 
     /// Create a set cluster message and reply receiver
-    pub fn set_cluster(addr: Address, label: String) -> (Self, Receiver<NodeReplyResult>) {
-        let (tx, rx) = channel(1);
+    pub fn set_cluster(addr: Address, label: String) -> (Self, SmallReceiver<NodeReplyResult>) {
+        let (tx, rx) = small_channel();
         (Self::SetCluster(addr, label, tx), rx)
     }
 
     /// Create a stop worker message and reply receiver
-    pub fn stop_worker(address: Address, detached: bool) -> (Self, Receiver<NodeReplyResult>) {
-        let (tx, rx) = channel(1);
+    pub fn stop_worker(address: Address, detached: bool) -> (Self, SmallReceiver<NodeReplyResult>) {
+        let (tx, rx) = small_channel();
         (Self::StopWorker(address, detached, tx), rx)
     }
 
     /// Create a stop node message
-    pub fn stop_node(tt: ShutdownType) -> (Self, Receiver<NodeReplyResult>) {
-        let (tx, rx) = channel(1);
+    pub fn stop_node(tt: ShutdownType) -> (Self, SmallReceiver<NodeReplyResult>) {
+        let (tx, rx) = small_channel();
         (Self::StopNode(tt, tx), rx)
     }
 
     /// Create a sender request message and reply receiver
-    pub fn sender_request(route: Address) -> (Self, Receiver<NodeReplyResult>) {
-        let (tx, rx) = channel(1);
+    pub fn sender_request(route: Address) -> (Self, SmallReceiver<NodeReplyResult>) {
+        let (tx, rx) = small_channel();
         (Self::SenderReq(route, tx), rx)
     }
 
@@ -145,8 +145,8 @@ impl NodeMessage {
     }
 
     /// Create a GetReady message and reply receiver
-    pub fn get_ready(addr: Address) -> (Self, Receiver<NodeReplyResult>) {
-        let (tx, rx) = channel(1);
+    pub fn get_ready(addr: Address) -> (Self, SmallReceiver<NodeReplyResult>) {
+        let (tx, rx) = small_channel();
         (Self::CheckReady(addr, tx), rx)
     }
 }
@@ -166,7 +166,7 @@ pub enum RouterReply {
         /// The address a message is being sent to
         addr: Address,
         /// The relay sender
-        sender: UnboundedSender<RelayMessage>,
+        sender: MessageSender<RelayMessage>,
         /// Indicate whether the relay message needs to be constructed
         /// with router wrapping.
         wrap: bool,
@@ -262,14 +262,14 @@ impl RouterReply {
     /// Return [NodeReply::Sender] for the given information
     pub fn sender(
         addr: Address,
-        sender: UnboundedSender<RelayMessage>,
+        sender: MessageSender<RelayMessage>,
         wrap: bool,
     ) -> NodeReplyResult {
         Ok(RouterReply::Sender { addr, sender, wrap })
     }
 
     /// Consume the wrapper and return [NodeReply::Sender]
-    pub fn take_sender(self) -> Result<(Address, UnboundedSender<RelayMessage>, bool)> {
+    pub fn take_sender(self) -> Result<(Address, MessageSender<RelayMessage>, bool)> {
         match self {
             Self::Sender { addr, sender, wrap } => Ok((addr, sender, wrap)),
             _ => Err(NodeError::NodeState(NodeReason::Unknown).internal()),

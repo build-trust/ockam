@@ -1,21 +1,21 @@
 //! Router run state utilities
 
+use crate::channel_types::SmallSender;
 use crate::messages::{NodeMessage, NodeReplyResult};
-use crate::tokio::sync::mpsc::Sender;
 
 pub enum NodeState {
     Running,
-    Stopping(Sender<NodeReplyResult>),
+    Stopping(SmallSender<NodeReplyResult>),
     Dead,
 }
 
 pub struct RouterState {
-    pub(super) sender: Sender<NodeMessage>,
+    pub(super) sender: SmallSender<NodeMessage>,
     node_state: NodeState,
 }
 
 impl RouterState {
-    pub fn new(sender: Sender<NodeMessage>) -> Self {
+    pub fn new(sender: SmallSender<NodeMessage>) -> Self {
         Self {
             sender,
             node_state: NodeState::Running,
@@ -23,7 +23,7 @@ impl RouterState {
     }
 
     /// Toggle this router to shut down soon
-    pub(super) fn shutdown(&mut self, reply: Sender<NodeReplyResult>) {
+    pub(super) fn shutdown(&mut self, reply: SmallSender<NodeReplyResult>) {
         self.node_state = NodeState::Stopping(reply)
     }
 
@@ -32,7 +32,7 @@ impl RouterState {
         self.node_state = NodeState::Dead;
     }
 
-    pub(super) fn stop_reply(&self) -> Option<Sender<NodeReplyResult>> {
+    pub(super) fn stop_reply(&self) -> Option<SmallSender<NodeReplyResult>> {
         match &self.node_state {
             NodeState::Stopping(sender) => Some(sender.clone()),
             _ => None,

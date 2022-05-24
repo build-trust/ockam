@@ -1,5 +1,5 @@
 use super::{AddressMeta, AddressRecord, NodeState, Router, SenderPair};
-use crate::tokio::sync::mpsc::Sender;
+use crate::channel_types::SmallSender;
 use crate::{
     error::{NodeError, NodeReason},
     NodeReplyResult, RouterReply,
@@ -11,7 +11,7 @@ pub(super) async fn exec(
     router: &mut Router,
     addrs: Address,
     senders: SenderPair,
-    reply: &Sender<NodeReplyResult>,
+    reply: &SmallSender<NodeReplyResult>,
 ) -> Result<()> {
     match router.state.node_state() {
         NodeState::Running => start(router, addrs, senders, reply).await,
@@ -25,7 +25,7 @@ async fn start(
     router: &mut Router,
     addr: Address,
     senders: SenderPair,
-    reply: &Sender<NodeReplyResult>,
+    reply: &SmallSender<NodeReplyResult>,
 ) -> Result<()> {
     debug!("Starting new processor '{}'", &addr);
     let SenderPair { msgs, ctrl } = senders;
@@ -60,7 +60,7 @@ async fn start(
     Ok(())
 }
 
-async fn reject(reply: &Sender<NodeReplyResult>) -> Result<()> {
+async fn reject(reply: &SmallSender<NodeReplyResult>) -> Result<()> {
     trace!("StartWorker command rejected: node shutting down");
     reply
         .send(RouterReply::node_rejected(NodeReason::Shutdown))

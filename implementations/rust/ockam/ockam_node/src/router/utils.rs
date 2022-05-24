@@ -1,5 +1,5 @@
 use super::Router;
-use crate::tokio::sync::mpsc::Sender;
+use crate::channel_types::SmallSender;
 use crate::{
     error::{NodeError, NodeReason, WorkerReason},
     NodeReplyResult, RouterReply,
@@ -14,7 +14,7 @@ use ockam_core::{Address, Result, TransportType};
 pub(super) async fn resolve(
     router: &mut Router,
     addr: &Address,
-    reply: &Sender<NodeReplyResult>,
+    reply: &SmallSender<NodeReplyResult>,
     wrap: bool,
 ) -> Result<()> {
     let base = format!("Resolving worker address '{}'...", addr);
