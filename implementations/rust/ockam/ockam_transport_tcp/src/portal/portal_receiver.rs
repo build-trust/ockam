@@ -1,13 +1,12 @@
-use crate::PortalInternalMessage;
-use core::time::Duration;
-use ockam_core::async_trait;
+use crate::{PortalInternalMessage, PortalMessage};
 use ockam_core::compat::vec::Vec;
+use ockam_core::{async_trait, Encodable, LocalMessage, Route, TransportMessage};
 use ockam_core::{route, Address, Processor, Result};
 use ockam_node::Context;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{error, warn};
 
-const MAX_PAYLOAD_SIZE: usize = 10 * 1024;
+const MAX_PAYLOAD_SIZE: usize = 48 * 1024;
 
 /// A TCP Portal receiving message processor
 ///
@@ -18,15 +17,17 @@ pub(crate) struct TcpPortalRecvProcessor {
     buf: Vec<u8>,
     rx: OwnedReadHalf,
     sender_address: Address,
+    onward_route: Route,
 }
 
 impl TcpPortalRecvProcessor {
     /// Create a new `TcpPortalRecvProcessor`
-    pub fn new(rx: OwnedReadHalf, sender_address: Address) -> Self {
+    pub fn new(rx: OwnedReadHalf, sender_address: Address, onward_route: Route) -> Self {
         Self {
             buf: Vec::with_capacity(MAX_PAYLOAD_SIZE),
             rx,
             sender_address,
+            onward_route,
         }
     }
 }
@@ -61,16 +62,24 @@ impl Processor for TcpPortalRecvProcessor {
                 );
             }
 
+            let msg = TransportMessage::v1(
+                self.onward_route.clone(),
+                self.sender_address.clone(),
+                PortalMessage::Disconnect.encode()?,
+            );
+            ctx.forward(LocalMessage::new(msg, vec![])).await?;
+
             return Ok(false);
         }
 
         // Loop just in case buf was extended (should not happen though)
         for chunk in self.buf.chunks(MAX_PAYLOAD_SIZE) {
-            let msg = PortalInternalMessage::Payload(chunk.to_vec());
-
-            // Let Sender forward payload to the other side
-            ctx.send(route![self.sender_address.clone()], msg).await?;
-            ctx.sleep(Duration::from_millis(10)).await;
+            let msg = TransportMessage::v1(
+                self.onward_route.clone(),
+                self.sender_address.clone(),
+                PortalMessage::Payload(chunk.to_vec()).encode()?,
+            );
+            ctx.forward(LocalMessage::new(msg, vec![])).await?;
         }
 
         Ok(true)

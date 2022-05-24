@@ -12,15 +12,16 @@ use tracing::{debug, info, trace, warn};
 
 /// Enumerate all `TcpPortalWorker` states
 ///
-/// Possible state transiions are:
+/// Possible state transitions are:
 ///
 /// `Outlet`: `SendPong` -> `Initialized`
 /// `Inlet`: `SendPing` -> `ReceivePong` -> `Initialized`
+#[derive(Clone)]
 enum State {
     SendPing { ping_route: Route },
     SendPong { pong_route: Route },
     ReceivePong,
-    Initialized { onward_route: Route },
+    Initialized,
 }
 
 /// Enumerate all portal types
@@ -33,17 +34,18 @@ enum TypeName {
 /// A TCP Portal worker
 ///
 /// A TCP Portal worker is responsible for managing the life-cycle of
-/// a portal conenction and is created by
+/// a portal connection and is created by
 /// [`TcpInletListenProcessor::process`](crate::TcpInletListenProcessor)
 /// after a new connection has been accepted.
 pub(crate) struct TcpPortalWorker {
-    state: Option<State>,
+    state: State,
     tx: Option<OwnedWriteHalf>,
     rx: Option<OwnedReadHalf>,
     peer: SocketAddr,
     internal_address: Address,
     remote_address: Address,
     receiver_address: Address,
+    remote_route: Option<Route>,
     is_disconnecting: bool,
     type_name: TypeName,
 }
@@ -110,12 +112,13 @@ impl TcpPortalWorker {
         };
 
         let sender = Self {
-            state: Some(state),
+            state,
             tx,
             rx,
             peer,
             internal_address: internal_addr.clone(),
             remote_address: remote_addr.clone(),
+            remote_route: None,
             receiver_address,
             is_disconnecting: false,
             type_name,
@@ -128,18 +131,22 @@ impl TcpPortalWorker {
     }
 }
 
+enum DisconnectionReason {
+    FailedTx,
+    FailedRx,
+    Remote,
+}
+
 impl TcpPortalWorker {
-    fn take_state(&mut self) -> Result<State> {
-        match self.state.take() {
-            Some(s) => Ok(s),
-            None => Err(TransportError::PortalInvalidState.into()),
-        }
+    fn clone_state(&self) -> State {
+        self.state.clone()
     }
 
     /// Start a `TcpPortalRecvProcessor`
-    async fn start_receiver(&mut self, ctx: &Context) -> Result<()> {
+    async fn start_receiver(&mut self, ctx: &Context, onward_route: Route) -> Result<()> {
         if let Some(rx) = self.rx.take() {
-            let receiver = TcpPortalRecvProcessor::new(rx, self.internal_address.clone());
+            let receiver =
+                TcpPortalRecvProcessor::new(rx, self.internal_address.clone(), onward_route);
             ctx.start_processor(self.receiver_address.clone(), receiver)
                 .await
         } else {
@@ -147,19 +154,11 @@ impl TcpPortalWorker {
         }
     }
 
-    /// Start the portal disconnection process
-    async fn start_disconnection(
-        &mut self,
-        ctx: &Context,
-        onward_route: Option<Route>,
-    ) -> Result<()> {
-        self.is_disconnecting = true;
-
-        // Connection was dropped on our side
-        if let Some(onward_route) = onward_route {
-            // Notify the other end
+    async fn notify_remote_about_disconnection(&mut self, ctx: &Context) -> Result<()> {
+        // Notify the other end
+        if let Some(remote_route) = self.remote_route.take() {
             ctx.send_from_address(
-                onward_route,
+                remote_route,
                 PortalMessage::Disconnect,
                 self.remote_address.clone(),
             )
@@ -169,34 +168,58 @@ impl TcpPortalWorker {
                 "Notified the other side from {:?} at: {} about connection drop",
                 self.type_name, self.internal_address
             );
-
-            // TODO: Remove when we have better way to handle race condition
-
-            // Avoiding race condition when both inlet and outlet connections
-            // are dropped at the same time. In this case we want to wait for the `Disconnect`
-            // message from the other side to reach our worker, before we shut it down which
-            // leads to errors (destination Worker is already stopped)
-            ctx.sleep(Duration::from_secs(1)).await;
         }
-        // Connection was dropped on the other side
-        else {
-            // TODO: Remove when we have better way to handle race condition
 
-            // Avoiding race condition when both inlet and outlet connections
-            // are dropped at the same time. In this case Processor may stop itself
-            // while we had `Disconnect` message from the other side. Let it stop itself,
-            // but recheck that by calling `stop_processor` and ignoring the error
-            ctx.sleep(Duration::from_secs(1)).await;
+        // Avoiding race condition when both inlet and outlet connections
+        // are dropped at the same time. In this case we want to wait for the `Disconnect`
+        // message from the other side to reach our worker, before we shut it down which
+        // leads to errors (destination Worker is already stopped)
+        // TODO: Remove when we have better way to handle race condition
+        ctx.sleep(Duration::from_secs(1)).await;
 
-            if ctx
-                .stop_processor(self.receiver_address.clone())
-                .await
-                .is_ok()
-            {
-                debug!(
-                    "{:?} at: {} stopped receiver due to connection drop",
-                    self.type_name, self.internal_address
-                );
+        Ok(())
+    }
+
+    async fn stop_receiver(&self, ctx: &Context) -> Result<()> {
+        // Avoiding race condition when both inlet and outlet connections
+        // are dropped at the same time. In this case Processor may stop itself
+        // while we had `Disconnect` message from the other side. Let it stop itself,
+        // but recheck that by calling `stop_processor` and ignoring the error
+        // TODO: Remove when we have better way to handle race condition
+        ctx.sleep(Duration::from_secs(1)).await;
+
+        if ctx
+            .stop_processor(self.receiver_address.clone())
+            .await
+            .is_ok()
+        {
+            debug!(
+                "{:?} at: {} stopped receiver due to connection drop",
+                self.type_name, self.internal_address
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Start the portal disconnection process
+    async fn start_disconnection(
+        &mut self,
+        ctx: &Context,
+        reason: DisconnectionReason,
+    ) -> Result<()> {
+        self.is_disconnecting = true;
+
+        match reason {
+            DisconnectionReason::FailedTx => {
+                self.notify_remote_about_disconnection(ctx).await?;
+            }
+            DisconnectionReason::FailedRx => {
+                self.notify_remote_about_disconnection(ctx).await?;
+                self.stop_receiver(ctx).await?;
+            }
+            DisconnectionReason::Remote => {
+                self.stop_receiver(ctx).await?;
             }
         }
 
@@ -209,6 +232,47 @@ impl TcpPortalWorker {
 
         Ok(())
     }
+
+    async fn handle_send_ping(&self, ctx: &Context, ping_route: Route) -> Result<State> {
+        // Force creation of Outlet on the other side
+        ctx.send_from_address(ping_route, PortalMessage::Ping, self.remote_address.clone())
+            .await?;
+
+        debug!("Inlet at: {} sent ping", self.internal_address);
+
+        Ok(State::ReceivePong)
+    }
+
+    async fn handle_send_pong(&mut self, ctx: &Context, pong_route: Route) -> Result<State> {
+        // Respond to Inlet
+        ctx.send_from_address(
+            pong_route.clone(),
+            PortalMessage::Pong,
+            self.remote_address.clone(),
+        )
+        .await?;
+
+        if self.tx.is_none() {
+            let stream = TcpStream::connect(self.peer)
+                .await
+                .map_err(TransportError::from)?;
+            let (rx, tx) = stream.into_split();
+            self.tx = Some(tx);
+            self.rx = Some(rx);
+
+            self.start_receiver(ctx, pong_route.clone()).await?;
+
+            debug!(
+                "Outlet at: {} successfully connected",
+                self.internal_address
+            );
+        }
+
+        debug!("Outlet at: {} sent pong", self.internal_address);
+
+        self.remote_route = Some(pong_route);
+        Ok(State::Initialized)
+    }
 }
 
 #[async_trait]
@@ -217,48 +281,14 @@ impl Worker for TcpPortalWorker {
     type Message = Any;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        let state = self.take_state()?;
+        let state = self.clone_state();
 
         match state {
             State::SendPing { ping_route } => {
-                // Force creation of Outlet on the other side
-                ctx.send_from_address(ping_route, PortalMessage::Ping, self.remote_address.clone())
-                    .await?;
-
-                debug!("Inlet at: {} sent ping", self.internal_address);
-
-                self.state = Some(State::ReceivePong);
+                self.state = self.handle_send_ping(ctx, ping_route.clone()).await?;
             }
             State::SendPong { pong_route } => {
-                // Respond to Inlet
-                ctx.send_from_address(
-                    pong_route.clone(),
-                    PortalMessage::Pong,
-                    self.remote_address.clone(),
-                )
-                .await?;
-
-                if self.tx.is_none() {
-                    let stream = TcpStream::connect(self.peer)
-                        .await
-                        .map_err(TransportError::from)?;
-                    let (rx, tx) = stream.into_split();
-                    self.tx = Some(tx);
-                    self.rx = Some(rx);
-
-                    self.start_receiver(ctx).await?;
-
-                    debug!(
-                        "Outlet at: {} successfully connected",
-                        self.internal_address
-                    );
-                }
-
-                debug!("Outlet at: {} sent pong", self.internal_address);
-
-                self.state = Some(State::Initialized {
-                    onward_route: pong_route,
-                });
+                self.state = self.handle_send_pong(ctx, pong_route.clone()).await?;
             }
             State::ReceivePong | State::Initialized { .. } => {
                 return Err(TransportError::PortalInvalidState.into())
@@ -286,7 +316,7 @@ impl Worker for TcpPortalWorker {
             return Err(TransportError::UnknownRoute.into());
         }
 
-        let state = self.take_state()?;
+        let state = self.clone_state();
 
         match state {
             State::ReceivePong => {
@@ -301,15 +331,14 @@ impl Worker for TcpPortalWorker {
                     return Err(TransportError::Protocol.into());
                 }
 
-                self.start_receiver(ctx).await?;
+                self.start_receiver(ctx, return_route.clone()).await?;
 
                 debug!("Inlet at: {} received pong", self.internal_address);
 
-                self.state = Some(State::Initialized {
-                    onward_route: return_route,
-                });
+                self.remote_route = Some(return_route);
+                self.state = State::Initialized;
             }
-            State::Initialized { onward_route } => {
+            State::Initialized => {
                 if recipient == self.internal_address {
                     trace!(
                         "{:?} at: {} received internal tcp packet",
@@ -320,20 +349,12 @@ impl Worker for TcpPortalWorker {
                     let msg = PortalInternalMessage::decode(msg.payload())?;
 
                     match msg {
-                        PortalInternalMessage::Payload(payload) => {
-                            ctx.send_from_address(
-                                onward_route.clone(),
-                                PortalMessage::Payload(payload),
-                                self.remote_address.clone(),
-                            )
-                            .await?;
-                        }
                         PortalInternalMessage::Disconnect => {
                             info!(
                                 "Tcp stream was dropped for {:?} at: {}",
                                 self.type_name, self.internal_address
                             );
-                            self.start_disconnection(ctx, Some(onward_route.clone()))
+                            self.start_disconnection(ctx, DisconnectionReason::FailedRx)
                                 .await?;
                         }
                     }
@@ -357,8 +378,11 @@ impl Worker for TcpPortalWorker {
                                             "Failed to send message to peer {} with error: {}",
                                             self.peer, err
                                         );
-                                        self.start_disconnection(ctx, Some(onward_route.clone()))
-                                            .await?;
+                                        self.start_disconnection(
+                                            ctx,
+                                            DisconnectionReason::FailedTx,
+                                        )
+                                        .await?;
                                     }
                                 }
                             } else {
@@ -366,15 +390,14 @@ impl Worker for TcpPortalWorker {
                             }
                         }
                         PortalMessage::Disconnect => {
-                            self.start_disconnection(ctx, None).await?;
+                            self.start_disconnection(ctx, DisconnectionReason::Remote)
+                                .await?;
                         }
                         PortalMessage::Ping | PortalMessage::Pong => {
                             return Err(TransportError::Protocol.into());
                         }
                     }
                 }
-
-                self.state = Some(State::Initialized { onward_route })
             }
             State::SendPing { .. } | State::SendPong { .. } => {
                 return Err(TransportError::PortalInvalidState.into())
