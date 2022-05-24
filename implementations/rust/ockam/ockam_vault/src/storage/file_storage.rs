@@ -31,6 +31,7 @@ type Data = RwLock<BTreeMap<KeyId, VaultEntry>>;
 /// File Storage
 pub struct FileStorage {
     path: PathBuf,
+    temp_path: PathBuf,
     data: Data,
 }
 
@@ -92,25 +93,28 @@ impl FileStorage {
         let data = self.serialize().await?;
 
         let path = &self.path;
+        let temp_path = &self.temp_path;
 
         use std::io::prelude::*;
         use std::os::unix::prelude::*;
 
+        let _ = std::fs::remove_file(temp_path);
+
         let mut file = std::fs::OpenOptions::new()
             .write(true)
-            .read(true)
             // `create_new` means we error if it exists. This ensures the mode we
             // provide is respect (the `mode(0o600)` is only used if creating the
             // file)
-            .create(true)
-            .truncate(true)
+            .create_new(true)
             .mode(0o600) // TODO: not portable, what about windows?
-            .open(path)
+            .open(temp_path)
             .map_err(|_| VaultError::StorageError)?;
         file.write_all(&data)
             .map_err(|_| VaultError::StorageError)?;
         file.flush().map_err(|_| VaultError::StorageError)?;
         file.sync_all().map_err(|_| VaultError::StorageError)?;
+
+        std::fs::rename(temp_path, path).map_err(|_| VaultError::StorageError)?;
 
         Ok(())
     }
@@ -126,21 +130,24 @@ impl FileStorage {
             Self::deserialize(&vault_bytes).await?
         };
 
+        let _ = std::fs::remove_file(&self.temp_path);
+
         Ok(())
     }
 
     /// Constructor.
     /// NOTE: Doesn't initialize the storage. Call [`FileStorage::init()`] or use [`FileStorage::create()`]
-    pub fn new(path: &Path) -> Self {
+    pub fn new(path: &Path, temp_path: &Path) -> Self {
         Self {
             path: path.to_path_buf(),
+            temp_path: temp_path.to_path_buf(),
             data: Default::default(),
         }
     }
 
     /// Create and init Storage
-    pub async fn create(path: &Path) -> Result<Self> {
-        let mut s = Self::new(path);
+    pub async fn create(path: &Path, temp_path: &Path) -> Result<Self> {
+        let mut s = Self::new(path, temp_path);
         s.init().await?;
 
         Ok(s)
@@ -152,6 +159,8 @@ impl FileStorage {
             debug!("Note: removing previous file at {:?}", self.path);
             let _ = std::fs::remove_file(&self.path);
         }
+
+        let _ = std::fs::remove_file(&self.temp_path);
     }
 }
 
@@ -203,12 +212,17 @@ mod tests {
     async fn secret_persistence__recreate_vault__loads_from_storage() {
         let mut rng = thread_rng();
         let mut rand_id = [0u8; 32];
-        rng.fill_bytes(&mut rand_id);
 
-        let rand_id = hex::encode(&rand_id);
+        rng.fill_bytes(&mut rand_id);
+        let rand_id1 = hex::encode(&rand_id);
+
+        rng.fill_bytes(&mut rand_id);
+        let rand_id2 = hex::encode(&rand_id);
 
         let dir = std::env::temp_dir();
-        let storage = FileStorage::create(&dir.join(rand_id)).await.unwrap();
+        let storage = FileStorage::create(&dir.join(rand_id1), &dir.join(rand_id2))
+            .await
+            .unwrap();
         let storage = Arc::new(storage);
         let vault = Vault::new(Some(storage.clone()));
 
