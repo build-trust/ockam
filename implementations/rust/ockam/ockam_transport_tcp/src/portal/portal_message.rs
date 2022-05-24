@@ -20,6 +20,4 @@ pub enum PortalMessage {
 pub enum PortalInternalMessage {
     /// Connection was dropped
     Disconnect,
-    /// Message with binary payload
-    Payload(Vec<u8>),
 }
