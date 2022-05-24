@@ -3,7 +3,7 @@ use clap::Parser;
 use ockam::Context;
 
 pub(crate) mod enroll;
-// pub(crate) mod project;
+pub(crate) mod project;
 // pub(crate) mod space;
 
 #[derive(Clone, Debug, Parser)]
@@ -22,15 +22,15 @@ pub enum CloudSubCommand {
     // /// Space subcommands.
     // #[clap(display_order = 1001)]
     // Space(space::SpaceCommand),
-    // /// Project subcommands.
-    // #[clap(display_order = 1002)]
-    // Project(project::ProjectCommand),
+    /// Project subcommands.
+    #[clap(display_order = 1002)]
+    Project(project::ProjectCommand),
 }
 
 pub async fn run(args: CloudCommand, ctx: Context) -> anyhow::Result<()> {
     match args.command {
         CloudSubCommand::Enroll(arg) => enroll::run(arg, ctx).await,
         // CloudSubCommand::Space(arg) => space::run(arg, ctx).await,
-        // CloudSubCommand::Project(arg) => project::run(arg, ctx).await,
+        CloudSubCommand::Project(arg) => project::run(arg, ctx).await,
     }
 }

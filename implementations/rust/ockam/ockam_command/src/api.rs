@@ -12,15 +12,15 @@ use ockam_core::{route, Route};
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub trait CloudApi {
-    async fn send<Params: 'static, Payload: 'static, Response: 'static>(
+    async fn send<Params: 'static, Body: 'static, Response: 'static>(
         &mut self,
         method: RequestMethod, //TODO: replace by a proper type after CBOR support is ready
         params: Params,
-        payload: Payload,
+        body: Body,
     ) -> ockam::Result<Option<Response>>
     where
         Params: Send,
-        Payload: Message + serde::Serialize + serde::de::DeserializeOwned,
+        Body: Message + serde::Serialize + serde::de::DeserializeOwned,
         Response: serde::de::DeserializeOwned;
 }
 
@@ -144,7 +144,7 @@ pub mod enroll {
     #[derive(Message, serde::Serialize, serde::Deserialize, Encode, Decode, Debug)]
     #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
     #[cbor(map)]
-    pub struct Auth0Payload {
+    pub struct Auth0Tokens {
         #[n(0)]
         pub token_type: TokenType,
         #[n(1)]
@@ -165,82 +165,82 @@ pub mod enroll {
     pub struct AccessToken(#[n(0)] String);
 }
 
-// pub mod project {
-//     use super::*;
-//
-//     pub mod create {
-//         use super::*;
-//
-//         #[derive(Message, serde::Serialize, serde::Deserialize, Debug)]
-//         #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
-//         pub struct RequestParams {
-//             pub space_name: String,
-//         }
-//
-//         #[derive(Message, serde::Serialize, serde::Deserialize, Debug)]
-//         #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
-//         pub struct RequestBody {
-//             pub project_name: String,
-//             pub services: Vec<String>,
-//         }
-//
-//         #[derive(serde::Serialize, serde::Deserialize, Debug)]
-//         #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
-//         pub struct ResponseBody {
-//             pub id: String,
-//             pub name: String,
-//             pub services: Vec<String>,
-//             pub access_route: Vec<u8>,
-//         }
-//     }
-//
-//     #[derive(Message, serde::Serialize, serde::Deserialize, Debug)]
-//     #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
-//     pub struct CreateProjectPayload {
-//         pub project_name: String,
-//         // pub services: Vec<String>,
-//     }
-//
-//     impl From<ProjectOpts> for CreateProjectPayload {
-//         fn from(args: ProjectOpts) -> Self {
-//             Self {
-//                 project_name: args.project_name,
-//             }
-//         }
-//     }
-//
-//     #[derive(Message, serde::Serialize, serde::Deserialize, Debug)]
-//     #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
-//     pub struct ShowProjectRequestPayload {
-//         pub project_name: String,
-//     }
-//
-//     impl From<ProjectOpts> for ShowProjectRequestPayload {
-//         fn from(args: ProjectOpts) -> Self {
-//             Self {
-//                 project_name: args.project_name,
-//             }
-//         }
-//     }
-//
-//     #[derive(Message, serde::Serialize, serde::Deserialize, Debug)]
-//     #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
-//     pub struct ListProjectsRequestPayload;
-//
-//     #[derive(Message, serde::Serialize, serde::Deserialize, Debug)]
-//     #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
-//     pub struct DeleteProjectRequestPayload {
-//         pub project_name: String,
-//     }
-//
-//     impl From<ProjectOpts> for DeleteProjectRequestPayload {
-//         fn from(args: ProjectOpts) -> Self {
-//             Self {
-//                 project_name: args.project_name,
-//             }
-//         }
-//     }
-// }
+pub mod project {
+    use super::*;
+
+    pub mod create {
+        use super::*;
+
+        #[derive(Message, serde::Serialize, serde::Deserialize, Debug)]
+        #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
+        pub struct RequestParams {
+            pub space_name: String,
+        }
+
+        #[derive(Message, serde::Serialize, serde::Deserialize, Debug)]
+        #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
+        pub struct RequestBody {
+            pub project_name: String,
+            pub services: Vec<String>,
+        }
+
+        #[derive(serde::Serialize, serde::Deserialize, Debug)]
+        #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
+        pub struct ResponseBody {
+            pub id: String,
+            pub name: String,
+            pub services: Vec<String>,
+            pub access_route: Vec<u8>,
+        }
+    }
+
+    // #[derive(Message, serde::Serialize, serde::Deserialize, Debug)]
+    // #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
+    // pub struct CreateProjectPayload {
+    //     pub project_name: String,
+    //     // pub services: Vec<String>,
+    // }
+    //
+    // impl From<ProjectOpts> for CreateProjectPayload {
+    //     fn from(args: ProjectOpts) -> Self {
+    //         Self {
+    //             project_name: args.project_name,
+    //         }
+    //     }
+    // }
+    //
+    // #[derive(Message, serde::Serialize, serde::Deserialize, Debug)]
+    // #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
+    // pub struct ShowProjectRequestPayload {
+    //     pub project_name: String,
+    // }
+    //
+    // impl From<ProjectOpts> for ShowProjectRequestPayload {
+    //     fn from(args: ProjectOpts) -> Self {
+    //         Self {
+    //             project_name: args.project_name,
+    //         }
+    //     }
+    // }
+    //
+    // #[derive(Message, serde::Serialize, serde::Deserialize, Debug)]
+    // #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
+    // pub struct ListProjectsRequestPayload;
+    //
+    // #[derive(Message, serde::Serialize, serde::Deserialize, Debug)]
+    // #[cfg_attr(test, derive(PartialEq, Clone, Dummy))]
+    // pub struct DeleteProjectRequestPayload {
+    //     pub project_name: String,
+    // }
+    //
+    // impl From<ProjectOpts> for DeleteProjectRequestPayload {
+    //     fn from(args: ProjectOpts) -> Self {
+    //         Self {
+    //             project_name: args.project_name,
+    //         }
+    //     }
+    // }
+}
 
 // mod space {
 //     use super::*;
@@ -319,14 +319,14 @@ pub mod enroll {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use ockam::TcpTransport;
-
     use super::*;
 
     pub(crate) mod node_api {
-        use rand::Rng;
         use std::marker::PhantomData;
 
+        use rand::Rng;
+
+        use ockam::TcpTransport;
         use ockam::{Routed, Worker};
 
         use super::*;

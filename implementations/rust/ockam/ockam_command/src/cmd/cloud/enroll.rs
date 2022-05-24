@@ -77,7 +77,7 @@ pub enum Authenticator {
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub(crate) trait AuthenticatorClientTrait {
-    async fn auth0(&self) -> anyhow::Result<api::enroll::Auth0Payload>;
+    async fn auth0(&self) -> anyhow::Result<api::enroll::Auth0Tokens>;
 }
 
 pub(crate) struct AuthenticatorClient;
@@ -111,7 +111,7 @@ mod auth0 {
 
     #[async_trait::async_trait]
     impl AuthenticatorClientTrait for AuthenticatorClient {
-        async fn auth0(&self) -> anyhow::Result<api::enroll::Auth0Payload> {
+        async fn auth0(&self) -> anyhow::Result<api::enroll::Auth0Tokens> {
             // Request device code
             // More on how to use scope and audience in https://auth0.com/docs/quickstart/native/device#device-code-parameters
             let device_code_res = {
@@ -182,7 +182,7 @@ mod auth0 {
                 match res.status() {
                     StatusCode::OK => {
                         tokens_res =
-                            res.json::<api::enroll::Auth0Payload>()
+                            res.json::<api::enroll::Auth0Tokens>()
                                 .await
                                 .map_err(|err| {
                                     anyhow!("failed to deserialize tokens response [err={err}]")
@@ -233,8 +233,8 @@ mod tests {
         #[ockam::test(crate = "ockam")]
         async fn auth0__can_send_payload(ctx: &mut ockam::Context) -> ockam::Result<()> {
             let (mut node_api, worker_name) = setup_node_api(ctx).await?;
-            let payload: api::enroll::Auth0Payload = Faker.fake();
-            send_payload::<api::enroll::Auth0Payload>(&mut node_api, &worker_name, payload).await?;
+            let payload: api::enroll::Auth0Tokens = Faker.fake();
+            send_payload::<api::enroll::Auth0Tokens>(&mut node_api, &worker_name, payload).await?;
             ctx.stop().await?;
             Ok(())
         }
@@ -251,7 +251,7 @@ mod tests {
         #[tokio::test]
         async fn happy_path() -> anyhow::Result<()> {
             let req_params = api::enroll::RequestParams;
-            let expected_creds: api::enroll::Auth0Payload = Faker.fake();
+            let expected_creds: api::enroll::Auth0Tokens = Faker.fake();
             let mut auth_client = MockAuthenticatorClientTrait::new();
             let moved_expected_creds = expected_creds.clone();
             auth_client
@@ -281,7 +281,7 @@ mod tests {
 
             let mut api_client = MockCloudApi::new();
             api_client
-                .expect_send::<api::enroll::RequestParams, api::enroll::Auth0Payload, ()>()
+                .expect_send::<api::enroll::RequestParams, api::enroll::Auth0Tokens, ()>()
                 .never();
 
             authenticate(&Authenticator::Auth0, auth_client, api_client)
@@ -294,7 +294,7 @@ mod tests {
         #[tokio::test]
         async fn err_if_authentication_fails() -> anyhow::Result<()> {
             let req_params = api::enroll::RequestParams;
-            let expected_creds: api::enroll::Auth0Payload = Faker.fake();
+            let expected_creds: api::enroll::Auth0Tokens = Faker.fake();
             let mut auth_client = MockAuthenticatorClientTrait::new();
             let moved_expected_creds = expected_creds.clone();
             auth_client
