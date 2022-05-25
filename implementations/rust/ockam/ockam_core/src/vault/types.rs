@@ -178,9 +178,9 @@ pub enum SecretPersistence {
 #[derive(Serialize, Deserialize, Copy, Encode, Decode, Clone, Debug, Eq, PartialEq)]
 #[rustfmt::skip]
 pub struct SecretAttributes {
-    #[b(1)] stype: SecretType,
-    #[b(2)] persistence: SecretPersistence,
-    #[b(3)] length: usize,
+    #[n(1)] stype: SecretType,
+    #[n(2)] persistence: SecretPersistence,
+    #[n(3)] length: usize,
 }
 
 impl SecretAttributes {

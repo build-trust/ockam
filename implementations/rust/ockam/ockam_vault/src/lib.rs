@@ -27,9 +27,13 @@ mod hasher_impl;
 mod secret_impl;
 mod signer_impl;
 
-#[cfg(feature = "storage")]
 /// Storage
+#[cfg(feature = "storage")]
 pub mod storage;
+
+/// Service
+#[cfg(feature = "service")]
+pub mod service;
 
 mod symmetric_impl;
 mod vault;

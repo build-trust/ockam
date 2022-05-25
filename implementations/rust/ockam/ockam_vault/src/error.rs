@@ -21,7 +21,7 @@ pub enum VaultError {
     InvalidAesKeyLength,
     /// Invalid Secret length
     InvalidSecretLength,
-    /// Invalid HKDF outputtype
+    /// Invalid HKDF output type
     InvalidHkdfOutputType,
     /// Invalid private key length
     InvalidPrivateKeyLen,
@@ -47,8 +47,6 @@ pub enum VaultError {
     StorageError,
     /// Invalid Storage data
     InvalidStorageData,
-    /// Serialization Error
-    SerializationError,
 }
 
 impl ockam_core::compat::error::Error for VaultError {}
@@ -75,7 +73,6 @@ impl core::fmt::Display for VaultError {
             Self::InvalidSecretAttributes => write!(f, "invalid secret attributes"),
             Self::StorageError => write!(f, "invalid storage"),
             Self::InvalidStorageData => write!(f, "invalid storage data"),
-            Self::SerializationError => write!(f, "serialization error"),
         }
     }
 }

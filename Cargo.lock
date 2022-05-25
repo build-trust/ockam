@@ -2483,6 +2483,8 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "hkdf",
+ "minicbor",
+ "ockam_api",
  "ockam_core",
  "ockam_macros",
  "ockam_node",

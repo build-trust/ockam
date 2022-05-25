@@ -24,7 +24,7 @@ rust-version = "1.56.0"
 crate-type = ["rlib"]
 
 [features]
-default = ["std", "storage"]
+default = ["std", "storage", "tag", "service"]
 bls = [
     "ockam_core/bls",
     "signature_core",
@@ -38,6 +38,7 @@ std = [
     "ockam_core/std",
     "ockam_macros/std",
     "ockam_node/std",
+    "ockam_api/std",
     "aes-gcm/alloc",
     "aes-gcm/std",
     "rand/std",
@@ -62,18 +63,22 @@ no_std = [
 ]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
-alloc = ["ockam_core/alloc", "ockam_node/alloc", "aes-gcm/alloc"]
+alloc = ["ockam_core/alloc", "ockam_node/alloc", "aes-gcm/alloc", "minicbor/alloc"]
 
+tag = ["ockam_api/tag"]
 storage = ["std", "serde", "serde_json"]
+service = ["ockam_api", "minicbor"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.54.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.15.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.56.0", default_features = false }
+ockam_api = { path = "../ockam_api", version = "^0.2.0", default_features = false, optional = true }
 signature_core = { path = "../signature_core", version = "^0.37.0", optional = true }
 signature_bbs_plus = { path = "../signature_bbs_plus", version = "^0.37.0", optional = true }
 signature_bls = { path = "../signature_bls", version = "^0.35.0", optional = true }
 signature_ps = { path = "../signature_ps", version = "^0.35.0", default-features = false, optional = true }
+minicbor = { version = "0.17.1", features = ["derive"], optional = true }
 arrayref = "0.3"
 aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }
 curve25519-dalek = { version = "3.1", default-features = false }
