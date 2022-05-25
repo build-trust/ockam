@@ -22,6 +22,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::ops::Deref;
+use core::str::FromStr;
 use once_cell::race::OnceBox;
 use tinyvec::{Array, ArrayVec, TinyVec};
 
@@ -488,6 +489,14 @@ impl TryFrom<&[u8]> for MultiAddr {
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         MultiAddr::try_from_bytes(value, default_registry().clone())
+    }
+}
+
+impl FromStr for MultiAddr {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.try_into()
     }
 }
 

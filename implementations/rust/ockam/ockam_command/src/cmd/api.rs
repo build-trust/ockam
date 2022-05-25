@@ -1,14 +1,16 @@
 use crate::args::{Api, Nodes};
 use crate::identity;
 use crate::storage;
+use crate::util::multiaddr_to_route;
 use crate::OckamVault;
 use anyhow::anyhow;
 use ockam::identity::{Identity, TrustMultiIdentifiersPolicy};
 use ockam::vault::storage::FileStorage;
 use ockam::vault::Vault;
-use ockam::{route, Context, Route, TcpTransport};
+use ockam::{route, Context, TcpTransport};
 use ockam_api::nodes;
 use ockam_api::nodes::types::CreateNode;
+use ockam_multiaddr::MultiAddr;
 use std::sync::Arc;
 
 pub async fn run(cmd: Api, mut ctx: Context) -> anyhow::Result<()> {
@@ -59,12 +61,12 @@ pub async fn run(cmd: Api, mut ctx: Context) -> anyhow::Result<()> {
 }
 
 async fn client(
-    addr: &str,
+    addr: &MultiAddr,
     id: &Identity<Vault>,
     ctx: &Context,
     policy: TrustMultiIdentifiersPolicy,
 ) -> anyhow::Result<nodes::Client> {
-    let to = Route::parse(addr).ok_or_else(|| anyhow!("failed to parse route: {addr}"))?;
+    let to = multiaddr_to_route(addr).ok_or_else(|| anyhow!("failed to parse address: {addr}"))?;
     let me = id.create_secure_channel(to, policy).await?;
     let to = route![me, "nodes"];
     let cl = nodes::Client::new(to, ctx).await?;

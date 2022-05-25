@@ -25,7 +25,7 @@ pub async fn run(args: StartNodeOpts, ctx: Context) -> anyhow::Result<()> {
     let identity = Identity::import(&ctx, &vault, id).await?;
 
     let tcp = TcpTransport::create(&ctx).await?;
-    tcp.listen(&args.listen_addr).await?;
+    tcp.listen(args.listen_addr.to_string()).await?;
 
     identity
         .create_secure_channel_listener("api", policy)
