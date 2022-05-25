@@ -1,4 +1,6 @@
 use clap::{Args, Parser, Subcommand};
+use ockam_multiaddr::MultiAddr;
+use std::net::SocketAddr;
 
 #[derive(Clone, Debug, Parser)]
 #[clap(name = "ockam", version)]
@@ -103,30 +105,30 @@ pub struct AddTrustedIdentityOpts {
 #[derive(Clone, Debug, Args)]
 pub struct StartNodeOpts {
     #[clap(long, default_value = "127.0.0.1:62526")]
-    pub listen_addr: String,
+    pub listen_addr: SocketAddr,
 }
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum Nodes {
     Create {
         #[clap(long)]
-        addr: String,
+        addr: MultiAddr,
         #[clap(long)]
         name: String,
     },
     Get {
         #[clap(long)]
-        addr: String,
+        addr: MultiAddr,
         #[clap(long)]
         id: String,
     },
     List {
         #[clap(long)]
-        addr: String,
+        addr: MultiAddr,
     },
     Delete {
         #[clap(long)]
-        addr: String,
+        addr: MultiAddr,
         #[clap(long)]
         id: String,
     },

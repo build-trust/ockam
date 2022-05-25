@@ -1769,6 +1769,7 @@ dependencies = [
  "ockam",
  "ockam_api",
  "ockam_core",
+ "ockam_multiaddr",
  "ockam_vault",
  "rand 0.8.5",
  "serde",

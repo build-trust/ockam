@@ -18,6 +18,7 @@ pub(crate) type OckamVault = ockam::vault::Vault;
 pub(crate) mod args;
 pub(crate) mod identity;
 pub(crate) mod storage;
+pub(crate) mod util;
 pub(crate) mod cmd {
     pub(crate) mod api;
     pub(crate) mod identity;
@@ -55,7 +56,7 @@ pub fn run_main() {
 fn print_identity() -> anyhow::Result<()> {
     ensure_identity_exists(false)?;
     let dir = get_ockam_dir()?;
-    let identity = load_identity(&dir.join("identity.json"))?;
+    let identity = load_identity(&dir)?;
     println!("{}", identity.id.key_id());
     Ok(())
 }
