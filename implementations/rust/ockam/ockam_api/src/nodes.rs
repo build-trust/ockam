@@ -48,6 +48,7 @@ impl Server {
             id     = %req.id(),
             method = ?req.method(),
             path   = %req.path(),
+            body   = %req.has_body(),
             "request"
         }
 

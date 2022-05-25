@@ -113,13 +113,13 @@ pub enum Nodes {
     Create {
         #[clap(long)]
         addr: MultiAddr,
-        #[clap(long)]
+        #[clap(long, validator(non_empty))]
         name: String,
     },
     Get {
         #[clap(long)]
         addr: MultiAddr,
-        #[clap(long)]
+        #[clap(long, validator(non_empty))]
         id: String,
     },
     List {
@@ -129,7 +129,14 @@ pub enum Nodes {
     Delete {
         #[clap(long)]
         addr: MultiAddr,
-        #[clap(long)]
+        #[clap(long, validator(non_empty))]
         id: String,
     },
+}
+
+fn non_empty(arg: &str) -> Result<(), String> {
+    if arg.is_empty() {
+        return Err("value must not be empty".to_string());
+    }
+    Ok(())
 }
