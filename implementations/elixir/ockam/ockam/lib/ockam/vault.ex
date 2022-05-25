@@ -63,8 +63,9 @@ defmodule Ockam.Vault do
   """
   @spec secret_attributes_get(Ockam.Vault, reference()) :: {:ok, keyword()} | :error
   def secret_attributes_get(%vault_module{id: vault_id}, secret_handle) do
-    attributes = vault_module.secret_attributes_get(vault_id, secret_handle)
-    Map.to_list(attributes)
+    with {:ok, attributes} <- vault_module.secret_attributes_get(vault_id, secret_handle) do
+      {:ok, Map.to_list(attributes)}
+    end
   end
 
   @doc """

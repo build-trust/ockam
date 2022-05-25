@@ -11,7 +11,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
   end
 
   ## TODO: batter name to not collide with Ockam.Worker.handle_message
-  def handle_message(message, {:encrypted_transport, :ready} = state, data) do
+  def handle_message(message, state, data) do
     first_address = message |> Message.onward_route() |> List.first()
 
     cond do
@@ -31,8 +31,13 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
 
     with {:ok, encoded} <- Wire.encode(forwarded_message),
          {:ok, encrypted, data} <- encrypt(encoded, data) do
+      ## TODO: optimise double encoding of binaries
+      ## Rust implementation is using implicit encoding,
+      ## which encodes binaries even if it's not necessary
+      payload = :bare.encode(encrypted, :data)
+
       envelope = %{
-        payload: encrypted,
+        payload: payload,
         onward_route: data.peer.route,
         return_route: [data.ciphertext_address]
       }
@@ -43,20 +48,27 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
     end
   end
 
-  defp encrypt(plaintext, %{encrypted_transport: state, vault: vault} = data) do
-    %{h: h, decrypt: decrypt, encrypt: {k, n}} = state
+  defp encrypt(plaintext, %{encrypted_transport: encrypted_transport, vault: vault} = data) do
+    %{encrypt: {k, n}} = encrypted_transport
 
-    with {:ok, ciphertext} <- Vault.aead_aes_gcm_encrypt(vault, k, n, h, plaintext),
+    ## TODO: Should we use the hash from handshake here?
+    hash = ""
+
+    with {:ok, ciphertext} <- Vault.aead_aes_gcm_encrypt(vault, k, n, hash, plaintext),
          {:ok, next_n} <- increment_nonce(n) do
-      data = Map.put(data, :encrypted_transport, %{h: h, decrypt: decrypt, encrypt: {k, next_n}})
-      {:ok, <<n::unsigned-big-integer-size(16)>> <> ciphertext, data}
+      data = Map.put(data, :encrypted_transport, %{encrypted_transport | encrypt: {k, next_n}})
+      {:ok, <<n::unsigned-big-integer-size(64)>> <> ciphertext, data}
     end
   end
 
+  ## TODO: refactor these modules, use `state` instead of `data`
   defp decrypt_and_send_to_router(envelope, state, data) do
     payload = Message.payload(envelope)
 
-    with {:ok, decrypted, data} <- decrypt(payload, data),
+    ## TODO: optimise double encoding of binaries
+    {:ok, encrypted, ""} = :bare.decode(payload, :data)
+
+    with {:ok, decrypted, data} <- decrypt(encrypted, data),
          {:ok, decoded} <- Wire.decode(decrypted) do
       message = Message.trace(decoded, data.plaintext_address)
 
@@ -66,18 +78,17 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
     end
   end
 
-  defp decrypt(<<n::unsigned-big-integer-size(16), ciphertext::binary>>, data) do
-    %{encrypted_transport: state, vault: vault} = data
-    %{h: h, decrypt: {k, _expected_n}, encrypt: encrypt} = state
+  defp decrypt(<<n::unsigned-big-integer-size(64), ciphertext::binary>>, data) do
+    %{encrypted_transport: encrypted_transport, vault: vault} = data
+    %{decrypt: {k, _expected_n}} = encrypted_transport
 
-    with {:ok, plaintext} <- Vault.aead_aes_gcm_decrypt(vault, k, n, h, ciphertext),
+    ## TODO: Should we use the hash from handshake here?
+    hash = ""
+
+    with {:ok, plaintext} <- Vault.aead_aes_gcm_decrypt(vault, k, n, hash, ciphertext),
          {:ok, next_expected_n} <- increment_nonce(n) do
       data =
-        Map.put(data, :encrypted_transport, %{
-          h: h,
-          decrypt: {k, next_expected_n},
-          encrypt: encrypt
-        })
+        Map.put(data, :encrypted_transport, %{encrypted_transport | decrypt: {k, next_expected_n}})
 
       {:ok, plaintext, data}
     end

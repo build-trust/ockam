@@ -37,8 +37,10 @@ defmodule Ockam.SecureChannel.Channel do
 
   @doc false
   def start_link(options) when is_list(options) do
-    with {:ok, address} <- get_from_options(:address, options),
-         {:ok, pid} <- start(address, options) do
+    address = Keyword.get(options, :address, Node.get_random_unregistered_address())
+    options = Keyword.put(options, :address, address)
+
+    with {:ok, pid} <- start(address, options) do
       {:ok, pid, address}
     end
   end
