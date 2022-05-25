@@ -135,15 +135,19 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
 
     case return_value do
       {:ok, encoded, protocol_state} ->
-        {:ok, encoded, %{data | xx_key_establishment_state: protocol_state}}
+        ## TODO: optimise double encoding of binaries
+        encoded_payload = :bare.encode(encoded, :data)
+        {:ok, encoded_payload, %{data | xx_key_establishment_state: protocol_state}}
 
       {:error, reason} ->
         {:error, {:failed_to_encode, message_name, reason}}
     end
   end
 
-  def decode(message_name, message, %{xx_key_establishment_state: protocol_state} = data)
+  def decode(message_name, message_payload, %{xx_key_establishment_state: protocol_state} = data)
       when message_name in [:message1, :message2, :message3] do
+    ## TODO: optimise double encoding of binaries
+    {:ok, message, ""} = :bare.decode(message_payload, :data)
     decoder = String.to_existing_atom("decode_" <> Atom.to_string(message_name))
     return_value = apply(__MODULE__, decoder, [message, protocol_state])
 

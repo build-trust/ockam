@@ -11,26 +11,26 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
     {:ok, {:key_establishment, @role, :ready}, data, [{:next_event, :info, :enter}]}
   end
 
-  ## TODO: batter name to not collide with Ockam.Worker.handle_message
   def handle_message(:enter, {:key_establishment, @role, :ready}, data) do
     message1_onward_route = data.peer.route
     message1_return_route = [data.ciphertext_address]
 
     with {:ok, encoded_message1, data} <- Protocol.encode(:message1, data),
-         :ok <- send(encoded_message1, message1_onward_route, message1_return_route) do
+         init_handshake = encode_init_handshake(encoded_message1, data),
+         :ok <- send(init_handshake, message1_onward_route, message1_return_route) do
       {:next_state, {:key_establishment, @role, :awaiting_message2}, data}
     end
   end
 
   def handle_message(message, {:key_establishment, @role, :awaiting_message2}, data) do
-    message2 = Message.payload(message)
+    message2_payload = Message.payload(message)
     message3_onward_route = Message.return_route(message)
     message3_return_route = [data.ciphertext_address]
 
     peer = data.peer
     data = Map.put(data, :peer, %{peer | route: message3_onward_route})
 
-    with {:ok, payload, data} <- Protocol.decode(:message2, message2, data),
+    with {:ok, payload, data} <- Protocol.decode(:message2, message2_payload, data),
          {:ok, data} <- set_peer(payload, data),
          {:ok, encoded_message3, data} <- Protocol.encode(:message3, data),
          :ok <- send(encoded_message3, message3_onward_route, message3_return_route),
@@ -63,5 +63,10 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
       data = Map.put(data, :encrypted_transport, %{h: h, decrypt: {k1, 0}, encrypt: {k2, 0}})
       {:ok, data}
     end
+  end
+
+  defp encode_init_handshake(payload, data) do
+    extra_payload = Map.get(data, :extra_init_payload)
+    Ockam.SecureChannel.InitHandshake.encode(%{handshake: payload, extra_payload: extra_payload})
   end
 end

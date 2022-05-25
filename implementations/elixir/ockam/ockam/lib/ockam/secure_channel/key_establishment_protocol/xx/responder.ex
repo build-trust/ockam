@@ -17,13 +17,12 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Responder do
     {:ok, {:key_establishment, @role, :awaiting_message1}, data, actions}
   end
 
-  ## TODO: batter name to not collide with Ockam.Worker.handle_message
   def handle_message(message, {:key_establishment, @role, :awaiting_message1}, data) do
-    message1 = Message.payload(message)
+    message1_payload = Message.payload(message)
     message2_onward_route = Message.return_route(message)
     message2_return_route = [data.ciphertext_address]
 
-    with {:ok, _payload, data} <- Protocol.decode(:message1, message1, data),
+    with {:ok, _payload, data} <- Protocol.decode(:message1, message1_payload, data),
          {:ok, encoded_message2, data} <- Protocol.encode(:message2, data),
          :ok <- send(encoded_message2, message2_onward_route, message2_return_route) do
       {:next_state, {:key_establishment, @role, :awaiting_message3}, data}
@@ -31,12 +30,12 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Responder do
   end
 
   def handle_message(message, {:key_establishment, @role, :awaiting_message3}, data) do
-    message3 = Message.payload(message)
+    message3_payload = Message.payload(message)
 
     peer = data.peer
     data = Map.put(data, :peer, %{peer | route: Message.return_route(message)})
 
-    with {:ok, payload, data} <- Protocol.decode(:message3, message3, data),
+    with {:ok, payload, data} <- Protocol.decode(:message3, message3_payload, data),
          {:ok, data} <- set_peer(payload, data),
          {:ok, data} <- set_encrypted_transport_state(data) do
       {:next_state, {:encrypted_transport, :ready}, data}

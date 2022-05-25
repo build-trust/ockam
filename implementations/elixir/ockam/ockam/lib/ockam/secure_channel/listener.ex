@@ -5,6 +5,9 @@ defmodule Ockam.SecureChannel.Listener do
 
   alias Ockam.Message
   alias Ockam.SecureChannel.Channel
+  alias Ockam.SecureChannel.InitHandshake
+
+  require Logger
 
   @impl true
   def address_prefix(_options), do: "SC_"
@@ -27,31 +30,30 @@ defmodule Ockam.SecureChannel.Listener do
   end
 
   defp create_channel(message, state) do
-    channel_options =
+    payload = Message.payload(message)
+
+    base_channel_options =
       [role: :responder]
       |> Keyword.put(:vault, state.vault)
       |> Keyword.put(:identity_keypair, state.identity_keypair)
 
-    with {:ok, channel_options} <- update_routes(message, channel_options),
-         {:ok, _address} <- Channel.create(channel_options) do
+    with {:ok, init_handshake} <- InitHandshake.decode(payload),
+         {:ok, responder_init_message} <- make_responder_init_message(message, init_handshake),
+         channel_options <-
+           Keyword.put(base_channel_options, :initiating_message, responder_init_message),
+         {:ok, _address} <- Channel.create(channel_options ++ [restart_type: :temporary]) do
       {:ok, state}
     end
   end
 
-  defp update_routes(message, channel_options) do
-    onward_route = Message.onward_route(message)
+  defp make_responder_init_message(message, init_handshake) do
     return_route = Message.return_route(message)
-    payload = Message.payload(message)
 
-    {_address, onward_route} = List.pop_at(onward_route, length(onward_route) - 1)
-
-    message = %Ockam.Message{
-      onward_route: onward_route,
-      return_route: return_route,
-      payload: payload
-    }
-
-    channel_options = Keyword.put(channel_options, :initiating_message, message)
-    {:ok, channel_options}
+    {:ok,
+     %Ockam.Message{
+       onward_route: [],
+       return_route: return_route,
+       payload: Map.get(init_handshake, :handshake)
+     }}
   end
 end
