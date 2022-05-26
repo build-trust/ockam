@@ -1,6 +1,6 @@
 use crate::util::{embedded_node, multiaddr_to_route};
 use clap::Args;
-use ockam::{Context, Result, TcpTransport};
+use ockam::{Context, TcpTransport};
 use ockam_multiaddr::MultiAddr;
 
 #[derive(Clone, Debug, Args)]
@@ -15,7 +15,7 @@ impl SendCommand {
     }
 }
 
-async fn send_message(ctx: Context, command: SendCommand) -> Result<()> {
+async fn send_message(ctx: Context, command: SendCommand) -> anyhow::Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
     if let Some(route) = multiaddr_to_route(&command.address) {

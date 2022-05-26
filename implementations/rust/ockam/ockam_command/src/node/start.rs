@@ -36,7 +36,7 @@ impl StartCommand {
     }
 }
 
-async fn setup(ctx: Context, c: StartCommand) -> Result<()> {
+async fn setup(ctx: Context, c: StartCommand) -> anyhow::Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
     tcp.listen("127.0.0.1:62526").await?;
 
@@ -46,5 +46,7 @@ async fn setup(ctx: Context, c: StartCommand) -> Result<()> {
             node_name: c.node_name,
         },
     )
-    .await
+    .await?;
+
+    Ok(())
 }

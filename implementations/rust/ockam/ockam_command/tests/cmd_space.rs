@@ -1,0 +1,25 @@
+use assert_cmd::prelude::*;
+use std::process::Command;
+
+#[test]
+fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
+    let prefix_args = ["--dry-run", "cloud", "space"];
+
+    let mut cmd = Command::cargo_bin("ockam")?;
+    cmd.args(&prefix_args).arg("create").arg("space-name");
+    cmd.assert().success();
+
+    let mut cmd = Command::cargo_bin("ockam")?;
+    cmd.args(&prefix_args).arg("list");
+    cmd.assert().success();
+
+    let mut cmd = Command::cargo_bin("ockam")?;
+    cmd.args(&prefix_args).arg("show").arg("space-id");
+    cmd.assert().success();
+
+    let mut cmd = Command::cargo_bin("ockam")?;
+    cmd.args(&prefix_args).arg("delete").arg("space-id");
+    cmd.assert().success();
+
+    Ok(())
+}

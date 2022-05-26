@@ -14,7 +14,7 @@ pub fn embedded_node<A, F, Fut>(f: F, a: A)
 where
     A: Send + Sync + 'static,
     F: FnOnce(ockam::Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = ockam::Result<()>> + Send + 'static,
+    Fut: core::future::Future<Output = anyhow::Result<()>> + Send + 'static,
 {
     let (ctx, mut executor) = ockam::start_node();
     let res = executor.execute(async move {
