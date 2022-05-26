@@ -1,3 +1,5 @@
+pub mod cloud;
+pub(crate) mod error;
 pub mod nodes;
 
 use core::fmt;
@@ -111,6 +113,7 @@ pub enum Method {
 pub enum Status {
     #[n(200)] Ok,
     #[n(400)] BadRequest,
+    #[n(401)] Unauthorized,
     #[n(404)] NotFound,
     #[n(405)] MethodNotAllowed,
     #[n(500)] InternalServerError,

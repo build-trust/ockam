@@ -15,7 +15,12 @@ tag = []
 
 [dependencies]
 minicbor = { version = "0.16.0", features = ["alloc", "derive"] }
+open = "2"
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tinyvec  = { version = "1.6.0", features = ["rustc_1_57"] }
+tokio-retry = "0.3"
 tracing  = { version = "0.1.34", default-features = false }
 
 [dependencies.ockam_core]
@@ -32,6 +37,9 @@ features         = ["std"] # FIXME: required because of unbounded channels in oc
 
 [dev-dependencies]
 cddl-cat     = "0.6.1"
+fake = { version = "2", features=['derive', 'http']}
+mockall = "0.11"
 ockam_api    = { path = ".", features = ["std"] }
 ockam_macros = { version = "0.15.0", path = "../ockam_macros", features = ["std"] }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.54.0" }
 quickcheck   = "1.0.1"

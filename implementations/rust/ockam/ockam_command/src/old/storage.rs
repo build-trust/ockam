@@ -1,8 +1,10 @@
 //! In theory this is the file that operates on the config dir itself, but this
 //! is all a bit messy.
-use anyhow::{Context, Result};
-use ockam::identity::*;
 use std::path::PathBuf;
+
+use anyhow::Context;
+
+use ockam::identity::*;
 
 fn config_home() -> Option<PathBuf> {
     if cfg!(target_os = "macos") {
@@ -17,7 +19,7 @@ fn config_home() -> Option<PathBuf> {
     }
 }
 
-pub fn get_ockam_dir() -> Result<PathBuf> {
+pub fn get_ockam_dir() -> anyhow::Result<PathBuf> {
     // TODO: ideally we'd use `$OCKAM_HOME` but all of our build tools assume
     // that's the repo...
     let ockam_dir = if let Some(s) = std::env::var_os("OCKAM_DIR") {
@@ -46,7 +48,7 @@ pub fn get_ockam_dir() -> Result<PathBuf> {
     Ok(ockam_dir)
 }
 
-pub fn ensure_identity_exists(expect_trusted: bool) -> Result<()> {
+pub fn ensure_identity_exists(expect_trusted: bool) -> anyhow::Result<()> {
     let dir = get_ockam_dir()?;
     if !dir.exists() {
         anyhow::bail!(
@@ -73,7 +75,7 @@ pub fn ensure_identity_exists(expect_trusted: bool) -> Result<()> {
 }
 
 #[tracing::instrument(level = "debug", err)]
-pub fn init_ockam_dir() -> Result<std::path::PathBuf> {
+pub fn init_ockam_dir() -> anyhow::Result<std::path::PathBuf> {
     use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
     let path = get_ockam_dir()?;
     tracing::debug!("Ockam dir will be at: {:?}", path);

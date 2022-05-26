@@ -1,5 +1,11 @@
-use anyhow::{Context, Result};
+use anyhow::Context;
+use std::sync::Arc;
+
 use ockam::identity::*;
+use ockam_vault::storage::FileStorage;
+
+use crate::old::{storage, OckamVault};
+use crate::IdentityOpts;
 
 const VERSION: u32 = 1;
 
@@ -7,6 +13,53 @@ const VERSION: u32 = 1;
 pub struct IdentityFile {
     version: u32,
     identity: ExportedIdentity,
+}
+
+pub async fn create_identity(
+    args: &IdentityOpts,
+    ctx: &ockam::Context,
+) -> anyhow::Result<ExportedIdentity> {
+    let ockam_dir = storage::init_ockam_dir()?;
+    let id_path = ockam_dir.join("identity.json");
+    if id_path.exists() {
+        if !args.overwrite {
+            anyhow::bail!(
+                "An identity or vault already exists in {:?}. Pass `--overwrite` to continue anyway",
+                ockam_dir
+            );
+        }
+        if id_path.exists() {
+            std::fs::remove_file(&id_path)
+                .with_context(|| format!("Failed to remove {:?}", id_path))?;
+        }
+    }
+    let vault_storage = FileStorage::create(
+        &ockam_dir.join("vault.json"),
+        &ockam_dir.join("vault.json.temp"),
+    )
+    .await?;
+    let vault = OckamVault::new(Some(Arc::new(vault_storage)));
+    let identity = Identity::create(ctx, &vault).await?;
+    let exported = identity.export().await;
+    let identifier = exported.id.clone();
+    tracing::info!("Saving new identity: {:?}", identifier.key_id());
+    save_identity(&ockam_dir, &exported).await?;
+    println!(
+        "Initialized {:?} with identity {:?}.",
+        ockam_dir,
+        identifier.key_id()
+    );
+    Ok(exported)
+}
+
+pub async fn load_or_create_identity(
+    args: &IdentityOpts,
+    ctx: &ockam::Context,
+) -> anyhow::Result<ExportedIdentity> {
+    match load_identity(&storage::get_ockam_dir()?) {
+        Ok(identity) => Ok(identity),
+        Err(_) => create_identity(args, ctx).await,
+    }
 }
 
 #[tracing::instrument(level = "debug", err)]
@@ -42,7 +95,7 @@ pub async fn save_identity(
     Ok(())
 }
 
-pub fn parse_identities(idents: &str) -> Result<Vec<IdentityIdentifier>> {
+pub fn parse_identities(idents: &str) -> anyhow::Result<Vec<IdentityIdentifier>> {
     idents
         .split(|c: char| c.is_whitespace() || c == ',')
         .map(|s| s.trim())
