@@ -1,8 +1,9 @@
 // use crate::message::BaseMessage;
 
-use crate::tokio::runtime::Runtime;
 use crate::{
+    metrics::Metrics,
     router::{Router, SenderPair},
+    tokio::runtime::Runtime,
     NodeMessage,
 };
 use core::future::Future;
@@ -26,13 +27,21 @@ pub struct Executor {
     rt: Arc<Runtime>,
     /// Main worker and application router
     router: Router,
+    /// Metrics collection endpoint
+    #[allow(unused)]
+    metrics: Metrics,
 }
 
 impl Default for Executor {
     fn default() -> Self {
         let rt = Arc::new(Runtime::new().unwrap());
         let router = Router::new();
-        Self { rt, router }
+        let metrics = Metrics::new(&rt);
+        Self {
+            rt,
+            router,
+            metrics,
+        }
     }
 }
 

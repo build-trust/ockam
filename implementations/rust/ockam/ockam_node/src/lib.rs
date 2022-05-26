@@ -43,6 +43,7 @@ mod delayed;
 mod error;
 mod executor;
 mod messages;
+mod metrics;
 mod node;
 mod parser;
 mod relay;
