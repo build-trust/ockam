@@ -1,8 +1,12 @@
 //! This library is used by the `ockam` CLI (in `./bin/ockam.rs`).
 
+mod message;
+mod node;
 mod util;
 
 use clap::{Parser, Subcommand};
+use message::MessageCommand;
+use node::NodeCommand;
 use util::setup_logging;
 
 mod old;
@@ -25,6 +29,14 @@ pub struct OckamCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum OckamSubcommand {
+    /// Manage nodes
+    #[clap(display_order = 900)]
+    Node(NodeCommand),
+
+    /// Send and receive messages
+    #[clap(display_order = 901)]
+    Message(MessageCommand),
+
     // OLD
     /// Start an outlet.
     #[clap(display_order = 1000)]
@@ -68,6 +80,9 @@ pub fn run() {
     tracing::debug!("Parsed {:?}", ockam_command);
 
     match ockam_command.subcommand {
+        OckamSubcommand::Node(command) => NodeCommand::run(command),
+        OckamSubcommand::Message(command) => MessageCommand::run(command),
+
         // OLD
         OckamSubcommand::CreateOutlet(arg) => {
             node_subcommand(verbose > 0, arg, old::cmd::outlet::run)
