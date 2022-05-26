@@ -3,5 +3,5 @@
 // with the `ockam` crate.
 
 fn main() {
-    ockam_command::run_main()
+    ockam_command::run()
 }

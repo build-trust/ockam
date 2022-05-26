@@ -38,7 +38,7 @@ pub async fn save_identity(
         identity: i.clone(),
     })
     .expect("exported identity should be serializable");
-    crate::storage::write(&ockam_dir.join("identity.json"), ident_bytes.as_bytes())?;
+    crate::old::storage::write(&ockam_dir.join("identity.json"), ident_bytes.as_bytes())?;
     Ok(())
 }
 
@@ -80,7 +80,7 @@ pub fn read_trusted_idents_from_file(
         .map(|(n, id)| (n, id.strip_prefix('P').unwrap_or(id)));
     let mut idents = vec![];
     for (num, line) in lines {
-        if !crate::identity::is_valid_ident(line) {
+        if !crate::old::identity::is_valid_ident(line) {
             anyhow::bail!(
                 "Failed to parse '{path:?}'. Line {num} is not a valid identifier. \
                 Expected 64 ascii hex chars, but got: {line:?}",

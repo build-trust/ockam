@@ -1,11 +1,23 @@
-use crate::session::responder::SessionResponder;
-use crate::{args::OutletOpts, identity, storage, OckamVault};
+use crate::old::session::responder::SessionResponder;
+use crate::old::{identity, storage, OckamVault};
+use clap::Args;
 use ockam::{identity::Identity, remote::RemoteForwarder, Context, TcpTransport, TCP};
 use ockam_vault::storage::FileStorage;
 use std::sync::Arc;
 
+#[derive(Clone, Debug, Args)]
+pub struct OutletOpts {
+    /// Ockam's cloud node address
+    pub cloud_addr: String,
+    /// Alias that is used to identify Control Plane node
+    pub alias: String,
+    /// Address of tcp service running on Control Plane node that will receive
+    /// connections from the Outlet
+    pub outlet_target: String,
+}
+
 pub async fn run(args: OutletOpts, ctx: Context) -> anyhow::Result<()> {
-    crate::storage::ensure_identity_exists(true)?;
+    crate::old::storage::ensure_identity_exists(true)?;
     let ockam_dir = storage::get_ockam_dir()?;
 
     let vault_storage = FileStorage::create(

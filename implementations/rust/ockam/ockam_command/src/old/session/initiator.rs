@@ -1,5 +1,5 @@
-use crate::session::error::SessionManagementError;
-use crate::session::msg::{RequestId, SessionMsg};
+use crate::old::session::error::SessionManagementError;
+use crate::old::session::msg::{RequestId, SessionMsg};
 use ockam::{Address, Context, DelayedEvent, Result, Route, Routed, Worker};
 use std::time::Duration;
 use tracing::{error, info, warn};

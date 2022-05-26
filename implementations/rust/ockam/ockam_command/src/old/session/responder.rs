@@ -1,5 +1,5 @@
-use crate::session::error::SessionManagementError;
-use crate::session::msg::SessionMsg;
+use crate::old::session::error::SessionManagementError;
+use crate::old::session::msg::SessionMsg;
 use ockam::{Context, Result, Routed, Worker};
 use tracing::info;
 
