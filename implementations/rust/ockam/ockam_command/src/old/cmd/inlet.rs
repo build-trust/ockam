@@ -1,10 +1,21 @@
-use crate::session::initiator::{SessionMaintainer, SessionManager};
-use crate::{args::InletOpts, identity, storage, OckamVault};
+use crate::old::session::initiator::{SessionMaintainer, SessionManager};
+use crate::old::{identity, storage, OckamVault};
+use clap::Args;
 use ockam::{identity::*, route, Context, Result, TcpTransport, TCP};
 use ockam_core::{Address, AsyncTryClone, Route};
 use ockam_vault::storage::FileStorage;
 use std::sync::Arc;
 use std::time::Duration;
+
+#[derive(Clone, Debug, Args)]
+pub struct InletOpts {
+    /// Ockam's cloud node address
+    pub cloud_addr: String,
+    /// Alias that is used to identify Control Plane node
+    pub alias: String,
+    /// Bind address for the inlet to listen on.
+    pub inlet_address: String,
+}
 
 #[derive(Debug)]
 struct ExistingSession {

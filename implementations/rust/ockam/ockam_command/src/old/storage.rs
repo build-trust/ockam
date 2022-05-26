@@ -153,7 +153,7 @@ pub fn load_trust_policy(
     ockam_dir: &std::path::Path,
 ) -> anyhow::Result<TrustMultiIdentifiersPolicy> {
     let path = ockam_dir.join("trusted");
-    let idents = crate::identity::read_trusted_idents_from_file(&path)?;
+    let idents = crate::old::identity::read_trusted_idents_from_file(&path)?;
     eprintln!(
         "Loaded {:?} trusted identifiers from list at '{}'",
         idents.len(),

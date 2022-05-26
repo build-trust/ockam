@@ -1,8 +1,22 @@
-use crate::{args::IdentityOpts, identity::save_identity, storage, OckamVault};
+use crate::old::{identity::save_identity, storage, OckamVault};
 use anyhow::Context as Ctx;
+use clap::Args;
 use ockam::{identity::*, Context};
 use ockam_vault::storage::FileStorage;
 use std::sync::Arc;
+
+#[derive(Clone, Debug, Args)]
+pub struct IdentityOpts {
+    /// If an ockam identity already exists, overwrite it.
+    ///
+    /// This is a destructive operation and cannot be undone.
+    ///
+    /// Note: This only applies to the `<ockam_dir>/identity.json` files,
+    /// and not to `<ockam_dir>/trusted`, which is left as-is must be managed manually.
+    /// For example, with the `ockam add-trusted-identity` subcommand)
+    #[clap(long)]
+    pub overwrite: bool,
+}
 
 pub async fn run(args: IdentityOpts, mut ctx: Context) -> anyhow::Result<()> {
     let ockam_dir = storage::init_ockam_dir()?;

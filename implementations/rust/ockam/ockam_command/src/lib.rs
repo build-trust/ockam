@@ -1,240 +1,85 @@
-//! This library exists only to be used by the `ockam` CLI (in
-//! `./bin/ockam.rs`).
-//!
-//! It should only publically expose a [single item](`run_main`) which should
-//! called from `fn main()` of `bin/ockam.rs` as the only thing it does.
+//! This library is used by the `ockam` CLI (in `./bin/ockam.rs`).
 
-use self::args::*;
-use anyhow::{Context, Result};
-use clap::Parser;
-use identity::load_identity;
-use ockam::identity::IdentityIdentifier;
-use std::collections::BTreeSet;
-use storage::{ensure_identity_exists, get_ockam_dir};
-use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
+mod util;
 
-pub(crate) type OckamVault = ockam::vault::Vault;
+use clap::{Parser, Subcommand};
+use util::setup_logging;
 
-pub(crate) mod args;
-pub(crate) mod identity;
-pub(crate) mod storage;
-pub(crate) mod util;
-pub(crate) mod cmd {
-    pub(crate) mod api;
-    pub(crate) mod identity;
-    pub(crate) mod inlet;
-    pub(crate) mod outlet;
-    pub(crate) mod start_node;
+mod old;
+use old::cmd::identity::IdentityOpts;
+use old::cmd::inlet::InletOpts;
+use old::cmd::outlet::OutletOpts;
+use old::AddTrustedIdentityOpts;
+use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_ockam_dir};
+
+#[derive(Clone, Debug, Parser)]
+#[clap(name = "ockam", version)]
+pub struct OckamCommand {
+    #[clap(subcommand)]
+    pub subcommand: OckamSubcommand,
+
+    /// Increase verbosity of logging output.
+    #[clap(long, short, parse(from_occurrences))]
+    pub verbose: u8,
 }
 
-pub(crate) mod session {
-    pub(crate) mod error;
-    pub(crate) mod initiator;
-    pub(crate) mod msg;
-    pub(crate) mod responder;
+#[derive(Clone, Debug, Subcommand)]
+pub enum OckamSubcommand {
+    // OLD
+    /// Start an outlet.
+    #[clap(display_order = 1000)]
+    CreateOutlet(OutletOpts),
+
+    /// Start an inlet.
+    #[clap(display_order = 1001)]
+    CreateInlet(InletOpts),
+
+    /// Create an ockam identity.
+    #[clap(display_order = 1002)]
+    CreateIdentity(IdentityOpts),
+
+    /// Add an identity (or multiple) to the trusted list.
+    ///
+    /// This is equivalent to adding the identifier to the end of the the list
+    /// in `<ockam_dir>/trusted` (`~/.config/ockam/trusted` by default, but
+    /// code that `$OCKAM_DIR/trusted` if overwritten).
+    #[clap(display_order = 1003)]
+    AddTrustedIdentity(AddTrustedIdentityOpts),
+
+    /// Print the identifier for the currently configured identity.
+    #[clap(display_order = 1004)]
+    PrintIdentity,
+
+    /// Print path to the ockam directory.
+    ///
+    /// This is usually `$OCKAM_DIR` or `~/.config/ockam`, but in some cases can
+    /// be different, such as on Windows, unixes where `$XDG_CONFIG_HOME` has
+    /// been modified, etc.
+    #[clap(display_order = 1005)]
+    PrintPath,
 }
 
-// This should be this library's only public function.
-pub fn run_main() {
-    let args = CliArgs::parse();
-    let verbose = args.verbose;
-    init_logging(verbose);
-    tracing::debug!("Parsed arguments (outlet) {:?}", args);
-    // Note: We don't force all commands to start the node.
-    match args.command {
-        args::Command::CreateIdentity(arg) => node_subcommand(verbose > 0, arg, cmd::identity::run),
-        args::Command::CreateInlet(arg) => node_subcommand(verbose > 0, arg, cmd::inlet::run),
-        args::Command::CreateOutlet(arg) => node_subcommand(verbose > 0, arg, cmd::outlet::run),
-        args::Command::AddTrustedIdentity(arg) => exit_with_result(verbose > 0, add_trusted(arg)),
-        args::Command::StartNode(arg) => node_subcommand(verbose > 0, arg, cmd::start_node::run),
-        args::Command::Api(arg) => node_subcommand(verbose > 0, arg, cmd::api::run),
-        args::Command::PrintIdentity => exit_with_result(verbose > 0, print_identity()),
-        args::Command::PrintPath => exit_with_result(verbose > 0, print_ockam_dir()),
-    }
-}
+pub fn run() {
+    let ockam_command = OckamCommand::parse();
 
-fn print_identity() -> anyhow::Result<()> {
-    ensure_identity_exists(false)?;
-    let dir = get_ockam_dir()?;
-    let identity = load_identity(&dir)?;
-    println!("{}", identity.id.key_id());
-    Ok(())
-}
+    let verbose = ockam_command.verbose;
+    setup_logging(verbose);
 
-fn print_ockam_dir() -> anyhow::Result<()> {
-    match get_ockam_dir() {
-        Ok(path) => {
-            // We'd rather panic than print a lossy (and thus possibly wrong)
-            // path. But `get_ockam_dir()` checks this.
-            println!("{}", path.to_str().expect("bug in `get_ockam_dir`"));
-            Ok(())
+    tracing::debug!("Parsed {:?}", ockam_command);
+
+    match ockam_command.subcommand {
+        // OLD
+        OckamSubcommand::CreateOutlet(arg) => {
+            node_subcommand(verbose > 0, arg, old::cmd::outlet::run)
         }
-        Err(e) => {
-            eprintln!(
-                "Failed to locate the ockam directory (or it was invalid). \
-                Hint: try providing `$OCKAM_DIR` explicitly, or changing the \
-                value of `$OCKAM_DIR` if it is already set in your environment.",
-            );
-            Err(e)
+        OckamSubcommand::CreateInlet(arg) => {
+            node_subcommand(verbose > 0, arg, old::cmd::inlet::run)
         }
-    }
-}
-
-fn add_trusted(arg: AddTrustedIdentityOpts) -> anyhow::Result<()> {
-    // Parse args before we start complaining about the directory.
-    let to_trust = crate::identity::parse_identities(&arg.to_trust)?;
-    ensure_identity_exists(false)?;
-    let ockam_dir = get_ockam_dir()?;
-    let trusted_file = ockam_dir.join("trusted");
-    if to_trust.is_empty() && !arg.only {
-        eprintln!(
-            "No change to {} needed, no identities were \
-            provided (and `--only` is not in use).",
-            trusted_file.display(),
-        );
-        return Ok(());
-    }
-    let existing = if trusted_file.exists() && !arg.only {
-        crate::identity::read_trusted_idents_from_file(&trusted_file)?
-    } else {
-        vec![]
-    };
-    let need = to_trust
-        .into_iter()
-        .filter(|id| !existing.contains(id))
-        .collect::<Vec<_>>();
-    if need.is_empty() && !arg.only {
-        eprintln!(
-            "No change to {} needed, all identities already \
-            trusted (and `--only` is not in use).",
-            trusted_file.display(),
-        );
-        return Ok(());
-    }
-    let all: Vec<_> = existing.iter().chain(need.iter()).cloned().collect();
-    let all_dedup = all
-        .iter()
-        .cloned()
-        .collect::<BTreeSet<IdentityIdentifier>>();
-    // Keep user-provided order if no duplicates.
-    let idents_to_write = if all_dedup.len() == all.len() {
-        all
-    } else {
-        all_dedup.into_iter().collect::<Vec<_>>()
-    };
-    if idents_to_write == existing && !arg.only {
-        eprintln!(
-            "No change to {} needed. New and old trusted lists \
-            would be identical (and `--only` is not in use).",
-            trusted_file.display(),
-        );
-        return Ok(());
-    }
-    let strings_to_write = idents_to_write
-        .into_iter()
-        .map(|s| s.key_id().clone())
-        .collect::<Vec<String>>();
-    let new_contents = strings_to_write.join("\n");
-
-    crate::storage::write(&trusted_file, new_contents.as_bytes()).with_context(|| {
-        format!(
-            "Writing updated list of trusted identities to {:?}",
-            trusted_file
-        )
-    })?;
-    eprintln!(
-        "Wrote updated list to {}, containing {} identities.",
-        trusted_file.display(),
-        strings_to_write.len(),
-    );
-    Ok(())
-}
-
-fn node_subcommand<A, F, Fut>(verbose: bool, arg: A, f: F)
-where
-    A: Send + Sync + 'static,
-    F: FnOnce(A, ockam::Context) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = anyhow::Result<()>> + Send + 'static,
-{
-    let (ctx, mut executor) = ockam::start_node();
-    let res = executor.execute(async move {
-        if let Err(e) = f(arg, ctx).await {
-            print_error_and_exit(verbose, e);
+        OckamSubcommand::CreateIdentity(arg) => {
+            node_subcommand(verbose > 0, arg, old::cmd::identity::run)
         }
-    });
-    if let Err(e) = res {
-        eprintln!(
-            "Ockam node failed at last minute. TODO: find out something \
-            smarter to do if this happens: {:?}",
-            e,
-        );
-    }
-}
-
-fn print_error_and_exit(v: bool, e: anyhow::Error) -> ! {
-    tracing::trace!("Exiting with error {:?}", e);
-    eprintln!("Error: {}", message(v, &e));
-    for cause in e.chain().skip(1) {
-        eprintln!("- caused by: {}", message(v, cause));
-    }
-    std::process::exit(1);
-}
-
-fn exit_with_result(verbose: bool, result: Result<()>) -> ! {
-    if let Err(e) = result {
-        print_error_and_exit(verbose, e);
-    } else {
-        std::process::exit(0);
-    }
-}
-
-fn message(verbose: bool, e: impl std::fmt::Display + std::fmt::Debug) -> String {
-    if verbose {
-        format!("{:?}", e)
-    } else {
-        format!("{}", e)
-    }
-}
-
-// Not really ideal, but fine for now.
-fn init_logging(verbose: u8) {
-    use tracing_subscriber::prelude::*;
-    let ockam_crates = [
-        "ockam",
-        "ockam_node",
-        "ockam_core",
-        "ockam_command",
-        "ockam_identity",
-        "ockam_channel",
-        "ockam_transport_tcp",
-        "ockam_vault",
-        "ockam_vault_sync_core",
-    ];
-    let builder = EnvFilter::builder();
-    let filter = match std::env::var("OCKAM_LOG") {
-        Ok(s) if !s.is_empty() => builder.with_env_var("OCKAM_LOG").from_env_lossy(),
-        _ => match verbose {
-            0 => builder
-                .with_default_directive(LevelFilter::WARN.into())
-                .parse_lossy(ockam_crates.map(|c| format!("{c}=info")).join(",")),
-            1 => builder
-                .with_default_directive(LevelFilter::INFO.into())
-                .parse_lossy(""),
-            2 => builder
-                .with_default_directive(LevelFilter::DEBUG.into())
-                .parse_lossy(""),
-            _ => builder
-                .with_default_directive(LevelFilter::TRACE.into())
-                .parse_lossy(""),
-        },
-    };
-
-    let result = tracing_subscriber::registry()
-        .with(filter)
-        .with(tracing_error::ErrorLayer::default())
-        .with(fmt::layer())
-        .try_init();
-    if result.is_err() {
-        tracing::warn!("Failed to initialise logging.");
+        OckamSubcommand::AddTrustedIdentity(arg) => exit_with_result(verbose > 0, add_trusted(arg)),
+        OckamSubcommand::PrintIdentity => exit_with_result(verbose > 0, print_identity()),
+        OckamSubcommand::PrintPath => exit_with_result(verbose > 0, print_ockam_dir()),
     }
 }
