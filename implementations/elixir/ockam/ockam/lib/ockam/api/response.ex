@@ -25,14 +25,19 @@ defmodule Ockam.API.Response do
 
     base = MiniCBOR.encode(response, @schema)
 
-    case has_body do
-      true -> base <> body
-      false -> base
-    end
+    payload =
+      case has_body do
+        true -> base <> body
+        false -> base
+      end
+
+    :bare.encode(payload, :data)
   end
 
   def decode(data) when is_binary(data) do
-    case MiniCBOR.decode(data, @schema) do
+    {:ok, payload, ""} = :bare.decode(data, :data)
+
+    case MiniCBOR.decode(payload, @schema) do
       {:ok, decoded, body} ->
         has_body = Map.get(decoded, :has_body)
         body_present = byte_size(body) > 0
