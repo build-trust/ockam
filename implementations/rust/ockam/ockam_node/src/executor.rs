@@ -83,6 +83,7 @@ impl Executor {
         let rt = Arc::clone(&self.rt);
         let join_body = rt.spawn(future);
 
+        // Then block on the execution of the router
         crate::block_future(&rt, async move { self.router.run().await })?;
 
         let res = crate::block_future(&rt, async move { join_body.await })
