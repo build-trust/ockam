@@ -19,7 +19,7 @@ struct DecryptorReadyState {
 pub struct SecureChannelDecryptor<V: SecureChannelVault, K: SecureChannelKeyExchanger> {
     role: Role,
     key_exchanger: Option<K>,
-    // Optional address to which message is sent after SecureChannel is created
+    /// Optional address to which message is sent after SecureChannel is created
     key_exchange_completed_callback_route: Option<Address>,
     state: Option<DecryptorReadyState>,
     remote_route: Route,
@@ -70,6 +70,7 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelDecryptor
         })
     }
 
+    /// Restore 12-byte nonce needed for AES GCM from 8 byte that we use for noise
     fn convert_nonce_from_small(b: &[u8]) -> Result<[u8; 12]> {
         let bytes: [u8; 8] = b.try_into().map_err(|_| SecureChannelError::InvalidNonce)?;
 

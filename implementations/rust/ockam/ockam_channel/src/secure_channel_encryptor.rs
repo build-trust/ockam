@@ -20,6 +20,9 @@ impl<V: SecureChannelVault> SecureChannelEncryptor<V> {
         }
     }
 
+    /// We use u64 nonce since it's convenient to work with it (e.g. increment)
+    /// But we use 8-byte be format to send it over to the other side (according to noise spec)
+    /// And we use 12-byte be format for encryption, since AES-GCM wants 12 bytes
     pub(crate) fn convert_nonce_from_u64(nonce: u64) -> ([u8; 8], [u8; 12]) {
         let mut n: [u8; 12] = [0; 12];
         let b: [u8; 8] = nonce.to_be_bytes();
