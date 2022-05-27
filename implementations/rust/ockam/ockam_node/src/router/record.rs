@@ -29,9 +29,9 @@ pub struct InternalMap {
 }
 
 impl InternalMap {
-    /// Used for router diagnostics
-    pub(super) fn count(&self) -> usize {
-        self.internal.len()
+    /// Return map metrics: (address alloc count, cluster count)
+    pub(super) fn metrics(&self) -> (usize, usize) {
+        (self.internal.len(), self.clusters.len())
     }
 
     /// Add an address to a particular cluster

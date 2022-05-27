@@ -1,7 +1,7 @@
 // use crate::message::BaseMessage;
 
+use crate::channel_types::SmallSender;
 use crate::{
-    metrics::Metrics,
     router::{Router, SenderPair},
     tokio::runtime::Runtime,
     NodeMessage,
@@ -10,7 +10,14 @@ use core::future::Future;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Result};
 
-use crate::channel_types::SmallSender;
+#[cfg(feature = "std")]
+use crate::metrics::Metrics;
+
+// This import is available on emebedded but we don't use the metrics
+// collector, thus don't need it in scope.
+#[cfg(feature = "std")]
+use core::sync::atomic::{AtomicBool, Ordering};
+
 #[cfg(feature = "std")]
 use ockam_core::{
     errcode::{Kind, Origin},
@@ -28,8 +35,7 @@ pub struct Executor {
     /// Main worker and application router
     router: Router,
     /// Metrics collection endpoint
-    #[allow(unused)]
-    metrics: Metrics,
+    metrics: Arc<Metrics>,
 }
 
 impl Default for Executor {
@@ -80,12 +86,22 @@ impl Executor {
         F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
+        // Spawn the metrics collector first
+        let alive = Arc::new(AtomicBool::from(true));
+        self.rt
+            .spawn(Arc::clone(&self.metrics).run(Arc::clone(&alive)));
+
+        // Spawn user code second
         let rt = Arc::clone(&self.rt);
         let join_body = rt.spawn(future);
 
         // Then block on the execution of the router
         crate::block_future(&rt, async move { self.router.run().await })?;
 
+        // Shut down metrics collector
+        alive.fetch_or(true, Ordering::Acquire);
+
+        // Last join user code
         let res = crate::block_future(&rt, async move { join_body.await })
             .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))?;
 
