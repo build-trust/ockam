@@ -111,7 +111,7 @@ impl Router {
 
     async fn handle_msg(&mut self, msg: NodeMessage) -> Result<bool> {
         use NodeMessage::*;
-        debug!("Currently router has {} addresses", self.map.count());
+        debug!("Currently router has {} addresses", self.map.metrics().0);
         match msg {
             // Successful router registration command
             Router(tt, addr, sender) if !self.external.contains_key(&tt) => {
