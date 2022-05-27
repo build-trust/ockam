@@ -212,10 +212,10 @@ impl<V: XXVault> State<V> {
             .clone();
 
         let payload = payload.as_ref();
-        self.h = Some(self.mix_hash(ephemeral_public_key.as_ref()).await?);
+        self.h = Some(self.mix_hash(ephemeral_public_key.data()).await?);
         self.h = Some(self.mix_hash(payload).await?);
 
-        let mut output = ephemeral_public_key.as_ref().to_vec();
+        let mut output = ephemeral_public_key.data().to_vec();
         output.extend_from_slice(payload);
         Ok(output)
     }
@@ -239,7 +239,7 @@ impl<V: XXVault> State<V> {
         let encrypted_rs_and_tag = &message[index_l..index_r];
         let encrypted_payload_and_tag = &message[index_r..];
 
-        self.h = Some(self.mix_hash(re.as_ref()).await?);
+        self.h = Some(self.mix_hash(re.data()).await?);
         self.dh_state.dh(&ephemeral_secret_handle, &re).await?;
         self.remote_ephemeral_public_key = Some(re);
         let (rs, h) = self.decrypt_and_mix_hash(encrypted_rs_and_tag).await?;
@@ -269,8 +269,7 @@ impl<V: XXVault> State<V> {
             .clone()
             .ok_or(XXError::InvalidState)?;
 
-        let (mut encrypted_s_and_tag, h) =
-            self.encrypt_and_mix_hash(static_public.as_ref()).await?;
+        let (mut encrypted_s_and_tag, h) = self.encrypt_and_mix_hash(static_public.data()).await?;
         self.h = Some(h);
         self.dh_state
             .dh(&static_secret, &remote_ephemeral_public_key)
@@ -304,7 +303,7 @@ impl<V: XXVault> State<V> {
 
         let re = &message_1[..public_key_size];
         let re = PublicKey::new(re.to_vec(), SecretType::X25519);
-        self.h = Some(self.mix_hash(re.as_ref()).await?);
+        self.h = Some(self.mix_hash(re.data()).await?);
         self.h = Some(self.mix_hash(&message_1[public_key_size..]).await?);
         self.remote_ephemeral_public_key = Some(re);
         Ok(message_1[public_key_size..].to_vec())
@@ -324,13 +323,12 @@ impl<V: XXVault> State<V> {
             .clone()
             .ok_or(XXError::InvalidState)?;
 
-        self.h = Some(self.mix_hash(ephemeral_public.as_ref()).await?);
+        self.h = Some(self.mix_hash(ephemeral_public.data()).await?);
         self.dh_state
             .dh(&ephemeral_secret, &remote_ephemeral_public_key)
             .await?;
 
-        let (mut encrypted_s_and_tag, h) =
-            self.encrypt_and_mix_hash(static_public.as_ref()).await?;
+        let (mut encrypted_s_and_tag, h) = self.encrypt_and_mix_hash(static_public.data()).await?;
         self.h = Some(h);
         self.dh_state
             .dh(&static_secret, &remote_ephemeral_public_key)
@@ -340,7 +338,7 @@ impl<V: XXVault> State<V> {
         self.h = Some(h);
         self.nonce += 1;
 
-        let mut output = ephemeral_public.as_ref().to_vec();
+        let mut output = ephemeral_public.data().to_vec();
         output.append(&mut encrypted_s_and_tag);
         output.append(&mut encrypted_payload_and_tag);
         Ok(output)

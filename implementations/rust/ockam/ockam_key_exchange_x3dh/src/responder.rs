@@ -103,7 +103,7 @@ impl<V: X3dhVault> KeyExchanger for Responder<V> {
                 let signed_prekey_pub = self.vault.secret_public_key_get(signed_prekey).await?;
                 let signature = self
                     .vault
-                    .sign(identity_secret_key, signed_prekey_pub.as_ref())
+                    .sign(identity_secret_key, signed_prekey_pub.data())
                     .await?;
                 let identity_key = self
                     .vault

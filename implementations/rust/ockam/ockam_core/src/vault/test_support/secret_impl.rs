@@ -18,7 +18,7 @@ pub async fn new_public_keys(vault: &mut impl SecretVault) {
     let res = vault.secret_public_key_get(&ed_ctx_1).await;
     assert!(res.is_ok());
     let pk_1 = res.unwrap();
-    assert_eq!(pk_1.as_ref().len(), CURVE25519_PUBLIC_LENGTH);
+    assert_eq!(pk_1.data().len(), CURVE25519_PUBLIC_LENGTH);
 
     let attributes = SecretAttributes::new(
         SecretType::X25519,
@@ -31,7 +31,7 @@ pub async fn new_public_keys(vault: &mut impl SecretVault) {
     let res = vault.secret_public_key_get(&x25519_ctx_1).await;
     assert!(res.is_ok());
     let pk_1 = res.unwrap();
-    assert_eq!(pk_1.as_ref().len(), CURVE25519_PUBLIC_LENGTH);
+    assert_eq!(pk_1.data().len(), CURVE25519_PUBLIC_LENGTH);
 }
 
 pub async fn new_secret_keys(vault: &mut impl SecretVault) {

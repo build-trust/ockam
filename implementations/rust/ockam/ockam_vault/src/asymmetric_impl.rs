@@ -12,7 +12,7 @@ impl Vault {
         let key = vault_entry.key();
         match vault_entry.key_attributes().stype() {
             SecretType::X25519 => {
-                if peer_public_key.as_ref().len() != CURVE25519_PUBLIC_LENGTH
+                if peer_public_key.data().len() != CURVE25519_PUBLIC_LENGTH
                     || key.as_ref().len() != CURVE25519_SECRET_LENGTH
                 {
                     return Err(VaultError::UnknownEcdhKeyType.into());
@@ -24,7 +24,7 @@ impl Vault {
                     CURVE25519_SECRET_LENGTH
                 ));
                 let pk_t = x25519_dalek::PublicKey::from(*array_ref!(
-                    peer_public_key.as_ref(),
+                    peer_public_key.data(),
                     0,
                     CURVE25519_PUBLIC_LENGTH
                 ));
@@ -61,7 +61,7 @@ impl AsymmetricVault for Vault {
     }
 
     async fn compute_key_id_for_public_key(&self, public_key: &PublicKey) -> Result<KeyId> {
-        let key_id = self.sha256(public_key.as_ref()).await?;
+        let key_id = self.sha256(public_key.data()).await?;
         Ok(hex::encode(key_id))
     }
 }

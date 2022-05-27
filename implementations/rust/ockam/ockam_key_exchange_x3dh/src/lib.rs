@@ -68,10 +68,10 @@ impl PreKeyBundle {
     /// Convert the prekey bundle to a byte array
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut output = Vec::new();
-        output.extend_from_slice(self.identity_key.as_ref());
-        output.extend_from_slice(self.signed_prekey.as_ref());
+        output.extend_from_slice(self.identity_key.data());
+        output.extend_from_slice(self.signed_prekey.data());
         output.extend_from_slice(self.signature_prekey.0.as_ref());
-        output.extend_from_slice(self.one_time_prekey.as_ref());
+        output.extend_from_slice(self.one_time_prekey.data());
         output
     }
 }
