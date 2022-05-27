@@ -237,17 +237,13 @@ pub extern "C" fn ockam_vault_secret_publickey_get(
             let entry = get_vault_entry(context).await?;
             let key_id = entry.get(secret).await?;
             let key = entry.vault.secret_public_key_get(&key_id).await?;
-            if output_buffer_size < key.as_ref().len() as u32 {
+            if output_buffer_size < key.data().len() as u32 {
                 return Err(FfiError::BufferTooSmall.into());
             }
-            *output_buffer_length = key.as_ref().len() as u32;
+            *output_buffer_length = key.data().len() as u32;
 
             unsafe {
-                std::ptr::copy_nonoverlapping(
-                    key.as_ref().as_ptr(),
-                    output_buffer,
-                    key.as_ref().len(),
-                );
+                std::ptr::copy_nonoverlapping(key.data().as_ptr(), output_buffer, key.data().len());
             };
             Ok::<(), Error>(())
         })?;

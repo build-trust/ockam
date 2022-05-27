@@ -99,8 +99,8 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
                 self.state = InitiatorState::ProcessPreKeyBundle;
 
                 let mut response = Vec::new();
-                response.extend_from_slice(pubkey.as_ref());
-                response.extend_from_slice(ephemeral_pubkey.as_ref());
+                response.extend_from_slice(pubkey.data());
+                response.extend_from_slice(ephemeral_pubkey.data());
                 Ok(response)
             }
             InitiatorState::ProcessPreKeyBundle | InitiatorState::Done => {
@@ -126,7 +126,7 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
                     .verify(
                         &GenericSignature::new(prekey_bundle.signature_prekey.as_ref().to_vec()),
                         &prekey_bundle.identity_key,
-                        prekey_bundle.signed_prekey.as_ref(),
+                        prekey_bundle.signed_prekey.data(),
                     )
                     .await?;
 

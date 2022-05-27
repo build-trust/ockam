@@ -115,12 +115,6 @@ impl PublicKey {
     }
 }
 
-impl AsRef<[u8]> for PublicKey {
-    fn as_ref(&self) -> &[u8] {
-        &self.data
-    }
-}
-
 /// Binary representation of Signature.
 #[derive(Serialize, Deserialize, Clone, Debug, Zeroize)]
 #[zeroize(drop)]

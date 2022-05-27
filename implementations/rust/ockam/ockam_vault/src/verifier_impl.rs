@@ -14,7 +14,7 @@ impl Verifier for Vault {
     ) -> Result<bool> {
         match public_key.stype() {
             SecretType::X25519 => {
-                if public_key.as_ref().len() != CURVE25519_PUBLIC_LENGTH
+                if public_key.data().len() != CURVE25519_PUBLIC_LENGTH
                     || signature.as_ref().len() != 64
                 {
                     return Err(VaultError::InvalidPublicKey.into());
@@ -25,14 +25,14 @@ impl Verifier for Vault {
 
                 let signature_array = array_ref!(signature.as_ref(), 0, 64);
                 let public_key = x25519_dalek::PublicKey::from(*array_ref!(
-                    public_key.as_ref(),
+                    public_key.data(),
                     0,
                     CURVE25519_PUBLIC_LENGTH
                 ));
                 Ok(public_key.xeddsa_verify(data.as_ref(), signature_array))
             }
             SecretType::Ed25519 => {
-                if public_key.as_ref().len() != CURVE25519_PUBLIC_LENGTH
+                if public_key.data().len() != CURVE25519_PUBLIC_LENGTH
                     || signature.as_ref().len() != 64
                 {
                     return Err(VaultError::InvalidPublicKey.into());
@@ -40,12 +40,12 @@ impl Verifier for Vault {
                 use ed25519_dalek::Verifier;
 
                 let signature = ed25519_dalek::Signature::from_bytes(signature.as_ref()).unwrap();
-                let public_key = ed25519_dalek::PublicKey::from_bytes(public_key.as_ref()).unwrap();
+                let public_key = ed25519_dalek::PublicKey::from_bytes(public_key.data()).unwrap();
                 Ok(public_key.verify(data.as_ref(), &signature).is_ok())
             }
             #[cfg(feature = "bls")]
             SecretType::Bls => {
-                if public_key.as_ref().len() != 96 && signature.as_ref().len() != 112 {
+                if public_key.data().len() != 96 && signature.as_ref().len() != 112 {
                     return Err(VaultError::InvalidPublicKey.into());
                 }
 
