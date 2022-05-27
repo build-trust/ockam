@@ -3,8 +3,6 @@ FROM ${BASE_IMAGE}
 
 ARG CMAKE_VERSION=3.22.1
 ARG CMAKE_SHA256=73565c72355c6652e9db149249af36bcab44d9d478c5546fd926e69ad6b43640
-ARG ZIG_VERSION=0.10.0-dev.108+7c1e17a84
-ARG ZIG_SHA256=b12a97e505d8c32507767a1cb9fe9ed7cdc233eb7c5c785d201f95bcf903c5c8
 ARG RUSTUP_INIT_VERSION=1.24.3
 ARG RUSTUP_INIT_SHA256=3dc5ef50861ee18657f9db2eeb7392f9c2a6c95c90ab41e45ab4ca71476b4338
 ARG RUST_VERSION=1.60.0
@@ -16,7 +14,6 @@ ARG NODEJS_VERSION=16.13.1
 ARG NODEJS_SHA256=a3721f87cecc0b52b0be8587c20776ac7305db413751db02c55aa2bffac15198
 
 ENV CMAKE_HOME=/opt/cmake \
-    ZIG_HOME=/opt/zig \
     RUSTUP_HOME=/opt/rust/rustup \
     CARGO_HOME=/usr/rust/cargo \
     JAVA_HOME=/opt/java/openjdk \
@@ -35,13 +32,6 @@ RUN set -xe; \
     tar -xf "${CMAKE_PACKAGE}" -C /opt/; \
     mv "/opt/cmake-${CMAKE_VERSION}-linux-x86_64" "${CMAKE_HOME}"; \
     rm -rf "${CMAKE_PACKAGE}"; \
-# Setup zig
-    ZIG_PACKAGE="zig-linux-x86_64-${ZIG_VERSION}.tar.xz"; \
-    curl --proto '=https' --tlsv1.2 -sSOL "https://ziglang.org/builds/${ZIG_PACKAGE}"; \
-    echo "${ZIG_SHA256}  ${ZIG_PACKAGE}" | sha256sum -c -; \
-    tar -xf "${ZIG_PACKAGE}" -C /opt/; \
-    mv "/opt/zig-linux-x86_64-${ZIG_VERSION}" "${ZIG_HOME}"; \
-    rm -rf "${ZIG_PACKAGE}"; \
 # Setup nodejs
     NODEJS_PACKAGE="node-v${NODEJS_VERSION}-linux-x64.tar.xz"; \
     curl --proto '=https' --tlsv1.2 -sSOL \
@@ -104,7 +94,7 @@ RUN set -xe; \
     mv jq-linux64 /usr/bin/jq; \
     chmod +x /usr/bin/jq
 
-ENV PATH="${JAVA_HOME}/bin:${RUSTUP_HOME}/bin:${CARGO_HOME}/bin:${ZIG_HOME}:${CMAKE_HOME}/bin:${NODEJS_HOME}/bin:$PATH" \
+ENV PATH="${JAVA_HOME}/bin:${RUSTUP_HOME}/bin:${CARGO_HOME}/bin:${CMAKE_HOME}/bin:${NODEJS_HOME}/bin:$PATH" \
     AR=/usr/bin/ar \
     AS=/usr/bin/as \
     CC=/usr/local/bin/gcc \
