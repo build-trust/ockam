@@ -39,15 +39,15 @@ pub enum OckamSubcommand {
 
     // OLD
     /// Start an outlet.
-    #[clap(display_order = 1000)]
+    #[clap(display_order = 1000, hide = true)]
     CreateOutlet(OutletOpts),
 
     /// Start an inlet.
-    #[clap(display_order = 1001)]
+    #[clap(display_order = 1001, hide = true)]
     CreateInlet(InletOpts),
 
     /// Create an ockam identity.
-    #[clap(display_order = 1002)]
+    #[clap(display_order = 1002, hide = true)]
     CreateIdentity(IdentityOpts),
 
     /// Add an identity (or multiple) to the trusted list.
@@ -55,11 +55,11 @@ pub enum OckamSubcommand {
     /// This is equivalent to adding the identifier to the end of the the list
     /// in `<ockam_dir>/trusted` (`~/.config/ockam/trusted` by default, but
     /// code that `$OCKAM_DIR/trusted` if overwritten).
-    #[clap(display_order = 1003)]
+    #[clap(display_order = 1003, hide = true)]
     AddTrustedIdentity(AddTrustedIdentityOpts),
 
     /// Print the identifier for the currently configured identity.
-    #[clap(display_order = 1004)]
+    #[clap(display_order = 1004, hide = true)]
     PrintIdentity,
 
     /// Print path to the ockam directory.
@@ -67,7 +67,7 @@ pub enum OckamSubcommand {
     /// This is usually `$OCKAM_DIR` or `~/.config/ockam`, but in some cases can
     /// be different, such as on Windows, unixes where `$XDG_CONFIG_HOME` has
     /// been modified, etc.
-    #[clap(display_order = 1005)]
+    #[clap(display_order = 1005, hide = true)]
     PrintPath,
 }
 
