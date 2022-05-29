@@ -29,10 +29,10 @@ pub struct OckamCommand {
     #[clap(long, short, parse(from_occurrences))]
     pub verbose: u8,
 
-    /// Parse command's arguments without running it.
-    /// Useful for testing purposes.
-    #[clap(display_order = 1100, long)]
-    pub dry_run: bool,
+    // if test_argument_parser is true, command arguments are checked
+    // but the command is not executed.
+    #[clap(global = true, long, hide = true)]
+    pub test_argument_parser: bool,
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -86,16 +86,17 @@ pub enum OckamSubcommand {
 pub fn run() {
     let ockam_command = OckamCommand::parse();
 
+    // If test_argument_parser is true, command arguments are checked
+    // but the command is not executed. This is useful to test arguments
+    // without having to execute their logic.
+    if ockam_command.test_argument_parser {
+        return;
+    }
+
     let verbose = ockam_command.verbose;
     setup_logging(verbose);
 
     tracing::debug!("Parsed {:?}", ockam_command);
-
-    // Command arguments are checked but the command is not executed.
-    // This is useful to test arguments without having to execute their logic.
-    if ockam_command.dry_run {
-        return;
-    }
 
     match ockam_command.subcommand {
         OckamSubcommand::Node(command) => NodeCommand::run(command),
