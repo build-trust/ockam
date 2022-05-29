@@ -1522,6 +1522,7 @@ version = "0.1.0"
 dependencies = [
  "hex",
  "ockam",
+ "ockam_transport_udp",
  "ockam_transport_websocket",
  "rand 0.8.5",
  "serde",
