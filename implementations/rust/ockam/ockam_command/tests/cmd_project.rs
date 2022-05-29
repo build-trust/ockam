@@ -3,7 +3,7 @@ use std::process::Command;
 
 #[test]
 fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
-    let prefix_args = ["--dry-run", "cloud", "project"];
+    let prefix_args = ["--test-argument-parser", "cloud", "project"];
 
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.args(&prefix_args)
