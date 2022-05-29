@@ -12,15 +12,21 @@ if Code.ensure_loaded?(:telemetry) do
     end
 
     def attach() do
-      events = [
-        [:ockam, Ockam.Router, :start_link],
-        [:ockam, :decode_and_send_to_router],
-        [:ockam, :encode_and_send_over_udp],
-        [:ockam, :init],
-        [:ockam, :handle_info]
+      subscribe_events = [
+        [:ockam, Ockam.Worker, :init, :start],
+        [:ockam, Ockam.Worker, :init, :stop]
       ]
 
-      :telemetry.attach_many("logger", events, &Ockam.TelemetryLogger.handle_event/4, nil)
+      :telemetry.attach_many(
+        "logger",
+        subscribe_events,
+        &Ockam.TelemetryLogger.handle_event/4,
+        nil
+      )
+    end
+
+    def detach() do
+      :telemetry.detach("logger")
     end
   end
 end
