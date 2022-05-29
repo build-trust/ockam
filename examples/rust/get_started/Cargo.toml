@@ -27,6 +27,7 @@ ockam = { path = "../../../implementations/rust/ockam/ockam", default_features =
     "software_vault",
 ] }
 ockam_transport_websocket = { path = "../../../implementations/rust/ockam/ockam_transport_websocket", optional = true }
+ockam_transport_udp = { path = "../../../implementations/rust/ockam/ockam_transport_udp" }
 serde = { version = "1", default_features = false, features = ["derive"] }
 serde_json = { version = "1.0", default_features = false }
 hex = "0.4"
