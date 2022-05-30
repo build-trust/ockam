@@ -8,6 +8,7 @@ use delete::DeleteCommand;
 use list::ListCommand;
 use show::ShowCommand;
 
+use crate::HELP_TEMPLATE;
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
@@ -19,19 +20,19 @@ pub struct SpaceCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum SpaceSubcommand {
     /// Create spaces
-    #[clap(display_order = 900)]
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Create(CreateCommand),
 
     /// Delete spaces
-    #[clap(display_order = 900)]
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Delete(DeleteCommand),
 
     /// List spaces
-    #[clap(display_order = 900)]
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     List(ListCommand),
 
     /// Show spaces
-    #[clap(display_order = 900)]
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Show(ShowCommand),
 }
 

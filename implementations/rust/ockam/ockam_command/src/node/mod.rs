@@ -10,6 +10,7 @@ use show::ShowCommand;
 use spawn::SpawnCommand;
 use start::StartCommand;
 
+use crate::HELP_TEMPLATE;
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
@@ -21,23 +22,23 @@ pub struct NodeCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum NodeSubcommand {
     /// List nodes.
-    #[clap(display_order = 900)]
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     List(ListCommand),
 
     /// Show nodes.
-    #[clap(display_order = 901)]
+    #[clap(display_order = 901, help_template = HELP_TEMPLATE)]
     Show(ShowCommand),
 
     /// Start nodes.
-    #[clap(display_order = 902)]
+    #[clap(display_order = 902, help_template = HELP_TEMPLATE)]
     Start(StartCommand),
 
     /// Spawn nodes.
-    #[clap(display_order = 903)]
+    #[clap(display_order = 903, help_template = HELP_TEMPLATE)]
     Spawn(SpawnCommand),
 
     /// Delete nodes.
-    #[clap(display_order = 904)]
+    #[clap(display_order = 904, help_template = HELP_TEMPLATE)]
     Delete(DeleteCommand),
 }
 

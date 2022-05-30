@@ -6,6 +6,7 @@ use enroll::EnrollCommand;
 use project::ProjectCommand;
 use space::SpaceCommand;
 
+use crate::HELP_TEMPLATE;
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
@@ -17,15 +18,15 @@ pub struct CloudCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum CloudSubcommand {
     /// Enroll with Ockam Cloud
-    #[clap(display_order = 900)]
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Enroll(EnrollCommand),
 
     /// Create, update and delete projects in Ockam Cloud
-    #[clap(display_order = 900)]
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Project(ProjectCommand),
 
     /// Create, update and delete spaces in Ockam Cloud
-    #[clap(display_order = 900)]
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Space(SpaceCommand),
 }
 
