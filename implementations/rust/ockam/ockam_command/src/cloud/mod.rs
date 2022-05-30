@@ -1,41 +1,40 @@
-use clap::Parser;
+mod enroll;
+mod project;
+mod space;
 
-use ockam::{Context, TcpTransport};
+use enroll::EnrollCommand;
+use project::ProjectCommand;
+use space::SpaceCommand;
 
-pub(crate) mod enroll;
-pub(crate) mod project;
-pub(crate) mod space;
+use clap::{Args, Subcommand};
 
-#[derive(Clone, Debug, Parser)]
+#[derive(Clone, Debug, Args)]
 pub struct CloudCommand {
     #[clap(subcommand)]
-    pub subcommand: CloudSubCommand,
-    #[clap(long, short, parse(from_occurrences))]
-    pub verbose: u8,
+    pub subcommand: CloudSubcommand,
 }
 
-#[derive(Clone, Debug, Parser)]
-pub enum CloudSubCommand {
-    /// Enroll identity in ockam.cloud.
-    #[clap(display_order = 1000)]
-    Enroll(enroll::EnrollCommandArgs),
-    /// Space subcommands.
-    #[clap(display_order = 1001)]
-    Space(space::SpaceCommand),
-    /// Project subcommands.
-    #[clap(display_order = 1002)]
-    Project(project::ProjectCommand),
+#[derive(Clone, Debug, Subcommand)]
+pub enum CloudSubcommand {
+    /// Enroll with Ockam Cloud
+    #[clap(display_order = 900)]
+    Enroll(EnrollCommand),
+
+    /// Create, update and delete projects in Ockam Cloud
+    #[clap(display_order = 900)]
+    Project(ProjectCommand),
+
+    /// Create, update and delete spaces in Ockam Cloud
+    #[clap(display_order = 900)]
+    Space(SpaceCommand),
 }
 
 impl CloudCommand {
-    pub async fn run(mut ctx: Context, command: CloudCommand) -> anyhow::Result<()> {
-        TcpTransport::create(&ctx).await?;
+    pub fn run(command: CloudCommand) {
         match command.subcommand {
-            CloudSubCommand::Enroll(arg) => enroll::run(arg, &mut ctx).await,
-            CloudSubCommand::Space(arg) => space::run(arg, &mut ctx).await,
-            CloudSubCommand::Project(arg) => project::run(arg, &mut ctx).await,
-        }?;
-        ctx.stop().await?;
-        Ok(())
+            CloudSubcommand::Enroll(command) => EnrollCommand::run(command),
+            CloudSubcommand::Project(command) => ProjectCommand::run(command),
+            CloudSubcommand::Space(command) => SpaceCommand::run(command),
+        }
     }
 }
