@@ -18,6 +18,24 @@ use old::cmd::outlet::OutletOpts;
 use old::AddTrustedIdentityOpts;
 use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_ockam_dir};
 
+const HELP_TEMPLATE: &str = "\
+{before-help}
+{name} {version} {author-with-newline}
+{about-with-newline}
+{usage-heading}
+    {usage}
+
+{all-args}
+
+LEARN MORE
+    Use 'ockam help <SUBCOMMAND>' for more information about a subcommand.
+    Learn more at https://docs.ockam.io/get-started/command-line
+
+FEEDBACK
+    If you have any questions or feedback, please start a discussion
+    on Github https://github.com/build-trust/ockam/discussions/new
+";
+
 /// Work seamlessly with Ockam from the command line.
 #[derive(Clone, Debug, Parser)]
 #[clap(
@@ -25,16 +43,7 @@ use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_
     version,
     propagate_version(true),
     color(ColorChoice::Never),
-    after_help = "\
-LEARN MORE
-  Use 'ockam help <SUBCOMMAND>' for more information about a subcommand.
-  Learn more at https://docs.ockam.io/get-started/command-line
-
-FEEDBACK
-  If you have any questions or feedback, please start a discussion
-  on Github https://github.com/build-trust/ockam/discussions/new
-
-"
+    help_template = HELP_TEMPLATE,
 )]
 pub struct OckamCommand {
     #[clap(subcommand)]
@@ -63,15 +72,15 @@ pub struct OckamCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum OckamSubcommand {
     /// Manage spaces and projects in Ockam Cloud.
-    #[clap(display_order = 900)]
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Cloud(CloudCommand),
 
     /// Send and receive messages
-    #[clap(display_order = 900)]
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Message(MessageCommand),
 
     /// Create, update and delete nodes.
-    #[clap(display_order = 900)]
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Node(NodeCommand),
 
     // OLD

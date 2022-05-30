@@ -1,5 +1,6 @@
 mod send;
 
+use crate::HELP_TEMPLATE;
 use clap::{Args, Subcommand};
 use send::SendCommand;
 
@@ -11,7 +12,8 @@ pub struct MessageCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum MessageSubcommand {
-    /// Send messages.
+    /// Send messages
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Send(SendCommand),
 }
 
