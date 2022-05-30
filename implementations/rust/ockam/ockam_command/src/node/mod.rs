@@ -20,16 +20,25 @@ pub struct NodeCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum NodeSubcommand {
-    /// Delete nodes.
-    Delete(DeleteCommand),
     /// List nodes.
+    #[clap(display_order = 900)]
     List(ListCommand),
+
     /// Show nodes.
+    #[clap(display_order = 901)]
     Show(ShowCommand),
+
     /// Start nodes.
+    #[clap(display_order = 902)]
     Start(StartCommand),
+
     /// Spawn nodes.
+    #[clap(display_order = 903)]
     Spawn(SpawnCommand),
+
+    /// Delete nodes.
+    #[clap(display_order = 904)]
+    Delete(DeleteCommand),
 }
 
 impl NodeCommand {
