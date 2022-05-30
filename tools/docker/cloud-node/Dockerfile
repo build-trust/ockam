@@ -52,6 +52,10 @@ COPY --from=debian-packages /bin/cat /bin/cat
 COPY --from=debian-packages /bin/grep /bin/grep
 COPY --from=debian-packages /usr/bin/dirname /bin/dirname
 COPY --from=debian-packages /usr/bin/basename /bin/basename
+COPY --from=debian-packages /usr/bin/od /bin/od
+COPY --from=debian-packages /usr/bin/awk /bin/awk
+COPY --from=debian-packages /bin/mkdir /bin/mkdir
+COPY --from=debian-packages /bin/ls /bin/ls
 
 ENV LANG=C.UTF-8
 
