@@ -1,14 +1,19 @@
 //! This library is used by the `ockam` CLI (in `./bin/ockam.rs`).
 
-mod cloud;
+mod enroll;
 mod message;
 mod node;
+mod project;
+mod space;
 mod util;
 
 use clap::{ColorChoice, Parser, Subcommand};
-use cloud::CloudCommand;
+
+use enroll::EnrollCommand;
 use message::MessageCommand;
 use node::NodeCommand;
+use project::ProjectCommand;
+use space::SpaceCommand;
 use util::setup_logging;
 
 mod old;
@@ -28,7 +33,7 @@ const HELP_TEMPLATE: &str = "\
 {all-args}
 
 LEARN MORE
-    Use 'ockam help <SUBCOMMAND>' for more information about a subcommand.
+    Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
     Learn more at https://docs.ockam.io/get-started/command-line
 
 FEEDBACK
@@ -71,17 +76,25 @@ pub struct OckamCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum OckamSubcommand {
-    /// Manage spaces and projects in Ockam Cloud.
+    /// Enroll with Ockam Orchestrator
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    Cloud(CloudCommand),
+    Enroll(EnrollCommand),
 
-    /// Send and receive messages
+    /// Send or receive messages
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Message(MessageCommand),
 
-    /// Create, update and delete nodes.
+    /// Create, update or delete nodes
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Node(NodeCommand),
+
+    /// Create, update or delete projects
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Project(ProjectCommand),
+
+    /// Create, update or delete spaces
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Space(SpaceCommand),
 
     // OLD
     /// Start an outlet.
@@ -133,9 +146,11 @@ pub fn run() {
     tracing::debug!("Parsed {:?}", ockam_command);
 
     match ockam_command.subcommand {
-        OckamSubcommand::Cloud(command) => CloudCommand::run(command),
+        OckamSubcommand::Enroll(command) => EnrollCommand::run(command),
         OckamSubcommand::Message(command) => MessageCommand::run(command),
         OckamSubcommand::Node(command) => NodeCommand::run(command),
+        OckamSubcommand::Project(command) => ProjectCommand::run(command),
+        OckamSubcommand::Space(command) => SpaceCommand::run(command),
 
         // OLD
         OckamSubcommand::CreateOutlet(arg) => {
