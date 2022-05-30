@@ -77,7 +77,6 @@ pub struct Id(#[n(0)] u32);
 
 /// Request methods.
 #[derive(Debug, Copy, Clone, Encode, Decode)]
-#[non_exhaustive]
 #[rustfmt::skip]
 #[cbor(index_only)]
 pub enum Method {
