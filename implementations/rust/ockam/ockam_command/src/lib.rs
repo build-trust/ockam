@@ -12,7 +12,6 @@ use node::NodeCommand;
 use util::setup_logging;
 
 mod old;
-use crate::util::embedded_node;
 use old::cmd::identity::IdentityOpts;
 use old::cmd::inlet::InletOpts;
 use old::cmd::outlet::OutletOpts;
@@ -37,13 +36,17 @@ pub struct OckamCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum OckamSubcommand {
-    /// Manage nodes
+    /// Manage spaces and projects in Ockam Cloud.
     #[clap(display_order = 900)]
-    Node(NodeCommand),
+    Cloud(CloudCommand),
 
     /// Send and receive messages
-    #[clap(display_order = 901)]
+    #[clap(display_order = 900)]
     Message(MessageCommand),
+
+    /// Create, update and delete nodes.
+    #[clap(display_order = 900)]
+    Node(NodeCommand),
 
     // OLD
     /// Start an outlet.
@@ -77,10 +80,6 @@ pub enum OckamSubcommand {
     /// been modified, etc.
     #[clap(display_order = 1005, hide = true)]
     PrintPath,
-
-    /// Cloud subcommands.
-    #[clap(display_order = 1010)]
-    Cloud(CloudCommand),
 }
 
 pub fn run() {
@@ -99,9 +98,9 @@ pub fn run() {
     tracing::debug!("Parsed {:?}", ockam_command);
 
     match ockam_command.subcommand {
-        OckamSubcommand::Node(command) => NodeCommand::run(command),
+        OckamSubcommand::Cloud(command) => CloudCommand::run(command),
         OckamSubcommand::Message(command) => MessageCommand::run(command),
-        OckamSubcommand::Cloud(command) => embedded_node(CloudCommand::run, command),
+        OckamSubcommand::Node(command) => NodeCommand::run(command),
 
         // OLD
         OckamSubcommand::CreateOutlet(arg) => {
