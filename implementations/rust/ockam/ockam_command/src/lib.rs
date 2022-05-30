@@ -5,7 +5,7 @@ mod message;
 mod node;
 mod util;
 
-use clap::{Parser, Subcommand};
+use clap::{ColorChoice, Parser, Subcommand};
 use cloud::CloudCommand;
 use message::MessageCommand;
 use node::NodeCommand;
@@ -18,15 +18,41 @@ use old::cmd::outlet::OutletOpts;
 use old::AddTrustedIdentityOpts;
 use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_ockam_dir};
 
+/// Work seamlessly with Ockam from the command line.
 #[derive(Clone, Debug, Parser)]
-#[clap(name = "ockam", version)]
+#[clap(
+    name = "ockam",
+    version,
+    propagate_version(true),
+    color(ColorChoice::Never),
+    after_help = "\
+LEARN MORE
+  Use 'ockam help <SUBCOMMAND>' for more information about a subcommand.
+  Learn more at https://docs.ockam.io/get-started/command-line
+
+FEEDBACK
+  If you have any questions or feedback, please start a discussion
+  on Github https://github.com/build-trust/ockam/discussions/new
+
+"
+)]
 pub struct OckamCommand {
     #[clap(subcommand)]
-    pub subcommand: OckamSubcommand,
+    subcommand: OckamSubcommand,
 
-    /// Increase verbosity of logging output.
-    #[clap(long, short, parse(from_occurrences))]
-    pub verbose: u8,
+    /// Do not print trace messages.
+    #[clap(global = true, long, short, conflicts_with("verbose"))]
+    quiet: bool,
+
+    /// Increase verbosity of trace messages.
+    #[clap(
+        global = true,
+        long,
+        short,
+        conflicts_with("quiet"),
+        parse(from_occurrences)
+    )]
+    verbose: u8,
 
     // if test_argument_parser is true, command arguments are checked
     // but the command is not executed.
