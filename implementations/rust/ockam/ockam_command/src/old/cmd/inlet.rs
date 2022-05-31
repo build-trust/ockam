@@ -1,7 +1,9 @@
 use crate::old::session::initiator::{SessionMaintainer, SessionManager};
 use crate::old::{identity, storage, OckamVault};
 use clap::Args;
+use ockam::access_control::LocalOriginOnly;
 use ockam::{identity::*, route, Context, Result, TcpTransport, TCP};
+use ockam_core::access_control::{AccessControl, AnyAccessControl};
 use ockam_core::{Address, AsyncTryClone, Route};
 use ockam_vault::storage::FileStorage;
 use std::sync::Arc;
@@ -27,7 +29,9 @@ struct InletSessionManager {
     args: InletOpts,
     tcp: TcpTransport,
     identity: Identity<OckamVault>,
-    policy: TrustMultiIdentifiersPolicy,
+    policy: Arc<dyn TrustPolicy>,
+    // TODO AccessControl
+    _access_control: Arc<dyn AccessControl>,
     existing_session: Option<ExistingSession>,
 }
 
@@ -36,13 +40,15 @@ impl InletSessionManager {
         args: InletOpts,
         tcp: TcpTransport,
         identity: Identity<OckamVault>,
-        policy: TrustMultiIdentifiersPolicy,
+        policy: Arc<dyn TrustPolicy>,
+        access_control: Arc<dyn AccessControl>,
     ) -> Self {
         Self {
             args,
             tcp,
             identity,
             policy,
+            _access_control: access_control,
             existing_session: None,
         }
     }
@@ -102,14 +108,22 @@ pub async fn run(args: InletOpts, ctx: Context) -> anyhow::Result<()> {
     let vault = OckamVault::new(Some(Arc::new(vault_storage)));
 
     let exported_id = identity::load_identity(&ockam_dir)?;
-    let policy = storage::load_trust_policy(&ockam_dir)?;
+    let (policy, access_control) = storage::load_trust_policy(&ockam_dir)?;
+
+    let access_control = Arc::new(AnyAccessControl::new(access_control, LocalOriginOnly));
 
     let tcp = TcpTransport::create(&ctx).await?;
     let identity = Identity::import(&ctx, &vault, exported_id).await?;
 
-    let session_manager = InletSessionManager::new(args, tcp, identity, policy);
+    let session_manager = InletSessionManager::new(
+        args,
+        tcp,
+        identity,
+        Arc::new(policy),
+        access_control.clone(),
+    );
 
-    SessionMaintainer::start(&ctx, session_manager).await?;
+    SessionMaintainer::start(&ctx, session_manager, access_control).await?;
 
     Ok(())
 }

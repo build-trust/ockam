@@ -273,3 +273,54 @@ pub mod fmt {
     #[cfg(not(feature = "alloc"))]
     pub type Vec<T> = heapless::Vec<T, 64>;
 }
+
+/// Provides `future::poll_once`
+pub mod future {
+    use crate::{
+        errcode::{Kind, Origin},
+        Error, Result,
+    };
+    use futures_util::future::{Future, FutureExt};
+
+    /// Polls a future just once and returns the Result
+    ///
+    /// This is only used for some tests and it is hoped that we can
+    /// remove it if, at some point, this makes it into `core::future`
+    pub fn poll_once<'a, F, T>(future: F) -> Result<T>
+    where
+        F: Future<Output = Result<T>> + Send + 'a,
+    {
+        use core::task::{Context, Poll};
+        use core::task::{RawWaker, RawWakerVTable, Waker};
+
+        fn dummy_raw_waker() -> RawWaker {
+            fn no_op(_: *const ()) {}
+            fn clone(_: *const ()) -> RawWaker {
+                dummy_raw_waker()
+            }
+            let vtable = &RawWakerVTable::new(clone, no_op, no_op, no_op);
+            RawWaker::new(core::ptr::null(), vtable)
+        }
+
+        fn dummy_waker() -> Waker {
+            // The RawWaker's vtable only contains safe no-op
+            // functions which do not refer to the data field.
+            #[allow(unsafe_code)]
+            unsafe {
+                Waker::from_raw(dummy_raw_waker())
+            }
+        }
+
+        let waker = dummy_waker();
+        let mut context = Context::from_waker(&waker);
+        let result = future.boxed().poll_unpin(&mut context);
+        assert!(
+            result.is_ready(),
+            "poll_once() only accepts futures that resolve after being polled once"
+        );
+        match result {
+            Poll::Ready(value) => value,
+            Poll::Pending => Err(Error::new_without_cause(Origin::Core, Kind::Invalid)),
+        }
+    }
+}

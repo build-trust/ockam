@@ -38,12 +38,16 @@ pub mod channel_types;
 #[cfg(feature = "metrics")]
 mod metrics;
 
+/// Access Control
+pub mod access_control;
+
 mod async_drop;
 mod cancel;
 mod context;
 mod delayed;
 mod error;
 mod executor;
+mod local_info;
 mod messages;
 mod node;
 mod parser;
@@ -55,6 +59,7 @@ pub use context::*;
 pub use delayed::*;
 pub use error::*;
 pub use executor::*;
+pub use local_info::*;
 pub use messages::*;
 
 pub use node::{start_node, NullWorker};

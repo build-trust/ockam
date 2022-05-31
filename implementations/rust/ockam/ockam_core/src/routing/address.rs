@@ -1,13 +1,146 @@
+use crate::access_control::AccessControl;
 use crate::compat::rand::{distributions::Standard, prelude::Distribution, random, Rng};
 use crate::compat::{
     string::{String, ToString},
+    sync::Arc,
     vec::{self, Vec},
 };
+use crate::{LocalMessage, Result};
 use core::fmt::{self, Debug, Display};
 use core::iter::FromIterator;
 use core::ops::Deref;
 use core::str::from_utf8;
 use serde::{Deserialize, Serialize};
+
+/// A `Mailbox` controls the dispatch of incoming messages for a
+/// particular `Address`
+pub struct Mailbox {
+    address: Address,
+    access_control: Arc<dyn AccessControl>,
+}
+
+impl Mailbox {
+    /// Create a new `Mailbox` with the given [`Address`] and [`AccessControl`]
+    pub fn new(address: Address, access_control: Arc<dyn AccessControl>) -> Self {
+        Self {
+            address,
+            access_control,
+        }
+    }
+    /// Return a reference to the [`Address`] of this mailbox
+    pub fn address(&self) -> &Address {
+        &self.address
+    }
+    /// Return a reference to the [`AccessControl`] for this mailbox
+    pub fn access_control(&self) -> &Arc<dyn AccessControl> {
+        &self.access_control
+    }
+}
+
+/// A collection of [`Mailbox`]es for a [`Context`]
+pub struct Mailboxes {
+    main_mailbox: Mailbox,
+    additional_mailboxes: Vec<Mailbox>,
+}
+
+impl Mailboxes {
+    /// Create a new `Mailboxes` from the given [`AddressSet`] and [`AccessControl`]
+    pub fn from_address_set(
+        address_set: AddressSet,
+        access_control: Arc<dyn AccessControl>,
+    ) -> Self {
+        let main_mailbox = Mailbox::new(address_set.first(), access_control.clone());
+        let additional_mailboxes = address_set
+            .into_iter()
+            .skip(1)
+            .map(|x| Mailbox::new(x, access_control.clone()))
+            .collect();
+
+        Mailboxes::new(main_mailbox, additional_mailboxes)
+    }
+
+    /// Return an [`AddressSet`] containing all addresses represented by these `Mailboxes`
+    pub fn aliases(&self) -> AddressSet {
+        self.additional_mailboxes
+            .iter()
+            .map(|x| x.address.clone())
+            .collect()
+    }
+
+    /// Return the main [`Address`] for these `Mailboxes`
+    pub fn main_address(&self) -> Address {
+        self.main_mailbox.address.clone()
+    }
+
+    /// Return `true` if the given [`Address`] is represented by these `Mailboxes`
+    pub fn contains(&self, msg_addr: &Address) -> bool {
+        if &self.main_mailbox.address == msg_addr {
+            true
+        } else {
+            self.additional_mailboxes
+                .iter()
+                .any(|x| &x.address == msg_addr)
+        }
+    }
+
+    /// Return a reference to the [`Mailbox`] with the given [`Address`]
+    fn find_mailbox(&self, msg_addr: &Address) -> Option<&Mailbox> {
+        if &self.main_mailbox.address == msg_addr {
+            Some(&self.main_mailbox)
+        } else {
+            self.additional_mailboxes
+                .iter()
+                .find(|x| &x.address == msg_addr)
+        }
+    }
+
+    /// Return `true` if the given [`Address`] is authorized to post
+    /// the given [`LocalMessage`] to these `Mailboxes`
+    pub async fn is_authorized(
+        &self,
+        msg_addr: &Address,
+        local_msg: &LocalMessage,
+    ) -> Result<bool> {
+        let mailbox = self.find_mailbox(msg_addr).unwrap(); // FIXME
+        mailbox.access_control.is_authorized(local_msg).await
+    }
+
+    /// Return the [`AddressSet`] represented by these `Mailboxes`
+    pub fn addresses(&self) -> AddressSet {
+        let mut addresses = vec![self.main_mailbox.address.clone()];
+        addresses.append(&mut self.aliases().0);
+        AddressSet(addresses)
+    }
+
+    /// Create a new collection of `Mailboxes` from the given [`Mailbox`]es
+    pub fn new(main_mailbox: Mailbox, additional_mailboxes: Vec<Mailbox>) -> Self {
+        Self {
+            main_mailbox,
+            additional_mailboxes,
+        }
+    }
+
+    /// Create a new collection of `Mailboxes` for the given
+    /// [`Address`] with the given [`AccessControl`]
+    pub fn main<A: Into<Address>>(address: A, access_control: Arc<dyn AccessControl>) -> Self {
+        Self {
+            main_mailbox: Mailbox::new(address.into(), access_control),
+            additional_mailboxes: vec![],
+        }
+    }
+
+    /// Return a reference to the main [`Mailbox`] for this collection
+    /// of `Mailboxes`
+    pub fn main_mailbox(&self) -> &Mailbox {
+        &self.main_mailbox
+    }
+
+    /// Return a reference to the additional [`Mailbox`]es for this
+    /// collection of `Mailboxes`
+    pub fn additional_mailboxes(&self) -> &Vec<Mailbox> {
+        &self.additional_mailboxes
+    }
+}
 
 /// A read-only set containing a `Vec` of [`Address`] structures.
 #[derive(Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]

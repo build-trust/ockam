@@ -80,6 +80,10 @@ impl LocalMessage {
     pub fn local_info(&self) -> &[LocalInfo] {
         &self.local_info
     }
+    /// Dissolve
+    pub fn dissolve(self) -> (TransportMessage, Vec<LocalInfo>) {
+        (self.transport_message, self.local_info)
+    }
 }
 
 impl LocalMessage {
