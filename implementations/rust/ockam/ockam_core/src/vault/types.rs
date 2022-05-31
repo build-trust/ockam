@@ -1,4 +1,5 @@
 use cfg_if::cfg_if;
+use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -82,11 +83,15 @@ impl AsRef<[u8]> for SecretKey {
 }
 
 /// A public key.
-#[derive(Serialize, Deserialize, Clone, Debug, Zeroize)]
+#[derive(Encode, Decode, Serialize, Deserialize, Clone, Debug, Zeroize)]
 #[zeroize(drop)]
+#[rustfmt::skip]
+#[cbor(map)]
 pub struct PublicKey {
-    data: PublicKeyVec,
-    stype: SecretType,
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<8922437>,
+    #[b(1)] data: PublicKeyVec,
+    #[n(2)] stype: SecretType,
 }
 
 impl Eq for PublicKey {}
@@ -141,36 +146,41 @@ impl PartialEq for Signature {
 }
 
 /// All possible [`SecretType`]s
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq, Zeroize)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Encode, Decode, Eq, PartialEq, Zeroize)]
+#[rustfmt::skip]
+#[cbor(index_only)]
 pub enum SecretType {
     /// Secret buffer
-    Buffer,
+    #[n(1)] Buffer,
     /// AES key
-    Aes,
+    #[n(2)] Aes,
     /// Curve 22519 key
-    X25519,
+    #[n(3)] X25519,
     /// Curve 22519 key
-    Ed25519,
+    #[n(4)] Ed25519,
     /// BLS key
     #[cfg(feature = "bls")]
-    Bls,
+    #[n(5)] Bls,
 }
 
 /// All possible [`SecretKey`] persistence types
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Copy, Clone, Encode, Decode, Debug, Eq, PartialEq)]
+#[rustfmt::skip]
+#[cbor(index_only)]
 pub enum SecretPersistence {
     /// An ephemeral/temporary secret
-    Ephemeral,
+    #[n(1)] Ephemeral,
     /// A persistent secret
-    Persistent,
+    #[n(2)] Persistent,
 }
 
 /// Attributes for a specific vault.
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Copy, Encode, Decode, Clone, Debug, Eq, PartialEq)]
+#[rustfmt::skip]
 pub struct SecretAttributes {
-    stype: SecretType,
-    persistence: SecretPersistence,
-    length: usize,
+    #[b(1)] stype: SecretType,
+    #[b(2)] persistence: SecretPersistence,
+    #[b(3)] length: usize,
 }
 
 impl SecretAttributes {
