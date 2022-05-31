@@ -1,7 +1,7 @@
-use crate::TcpSendWorkerMsg;
+use crate::{TcpSendWorkerMsg, TCP};
 use ockam_core::async_trait;
 use ockam_core::{Address, Decodable, LocalMessage, Processor, Result, TransportMessage};
-use ockam_node::Context;
+use ockam_node::{Context, ExternalLocalInfo};
 use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{error, info, trace};
@@ -102,8 +102,12 @@ impl Processor for TcpRecvProcessor {
         trace!("Message onward route: {}", msg.onward_route);
         trace!("Message return route: {}", msg.return_route);
 
+        // Mark that message originates from some other node
+        let local_info = ExternalLocalInfo::new(TCP).to_local_info()?;
+
         // Forward the message to the next hop in the route
-        ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
+        ctx.forward(LocalMessage::new(msg, vec![local_info]))
+            .await?;
 
         Ok(true)
     }
