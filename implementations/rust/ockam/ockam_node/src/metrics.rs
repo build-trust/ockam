@@ -1,6 +1,6 @@
 use crate::tokio::{runtime::Runtime, time};
 use core::{
-    sync::atomic::{AtomicBool, Ordering},
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
     time::Duration,
 };
 use ockam_core::compat::{collections::BTreeMap, sync::Arc};
@@ -8,12 +8,19 @@ use std::{fs::OpenOptions, io::Write};
 
 pub struct Metrics {
     rt: Arc<Runtime>,
+    router: (Arc<AtomicUsize>, Arc<AtomicUsize>),
 }
 
 impl Metrics {
     /// Create a new Metrics collector with access to the runtime
-    pub(crate) fn new(rt: &Arc<Runtime>) -> Arc<Self> {
-        Arc::new(Self { rt: Arc::clone(rt) })
+    pub(crate) fn new(
+        rt: &Arc<Runtime>,
+        router: (Arc<AtomicUsize>, Arc<AtomicUsize>),
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            rt: Arc::clone(rt),
+            router,
+        })
     }
 
     /// Spawned by the Executor to periodically collect metrics
@@ -61,28 +68,35 @@ impl Metrics {
         let m = self.rt.metrics();
 
         let tokio_workers = m.num_workers();
-        // let io_ready_count = m.io_driver_ready_count();
+        let router_addr_count = self.router.0.load(Ordering::Acquire);
+        let router_cluster_count = self.router.1.load(Ordering::Acquire);
 
-        let mut worker_busy_ms = BTreeMap::new();
+        let mut tokio_busy_ms = BTreeMap::new();
         for wid in 0..tokio_workers {
             // Get the previously accumulated
-            let acc_ms = acc.worker_busy_ms.get(&wid).unwrap_or(&0);
+            let acc_ms = acc.tokio_busy_ms.get(&wid).unwrap_or(&0);
             let raw_ms = m.worker_total_busy_duration(wid).as_millis();
 
             let diff_ms = raw_ms - acc_ms;
             let percent = diff_ms as f32 / freq as f32;
 
-            worker_busy_ms.insert(wid, percent as u128);
-            acc.worker_busy_ms.insert(wid, raw_ms);
+            tokio_busy_ms.insert(wid, percent as u128);
+            acc.tokio_busy_ms.insert(wid, raw_ms);
         }
 
-        MetricsReport { worker_busy_ms }
+        MetricsReport {
+            tokio_busy_ms,
+            router_addr_count,
+            router_cluster_count,
+        }
     }
 }
 
 #[derive(Default)]
 pub struct MetricsReport {
-    worker_busy_ms: BTreeMap<usize, u128>,
+    tokio_busy_ms: BTreeMap<usize, u128>,
+    router_addr_count: usize,
+    router_cluster_count: usize,
 }
 
 impl MetricsReport {
@@ -90,7 +104,7 @@ impl MetricsReport {
     pub fn to_csv(&self) -> String {
         format!(
             "{}",
-            self.worker_busy_ms
+            self.tokio_busy_ms
                 .iter()
                 .map(|(wid, depth)| format!("({}:{}%)", wid, depth))
                 .collect::<Vec<String>>()

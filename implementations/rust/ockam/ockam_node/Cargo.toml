@@ -25,7 +25,7 @@ publish = true
 rust-version = "1.56.0"
 
 [features]
-default = ["std"]
+default = ["std", "metrics"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -41,6 +41,8 @@ alloc = ["ockam_core/alloc", "ockam_executor/alloc", "futures/alloc"]
 # Feature: "dump_internals" when set, will dump the internal state of
 # workers at startup via the trace! macro.
 dump_internals = []
+# TODO should these features be combined?
+metrics = []
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.55.0", default_features = false }

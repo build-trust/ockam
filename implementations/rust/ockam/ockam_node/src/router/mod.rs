@@ -7,6 +7,8 @@ mod stop_processor;
 mod stop_worker;
 mod utils;
 
+use std::sync::atomic::AtomicUsize;
+
 use record::{AddressMeta, AddressRecord, InternalMap};
 use state::{NodeState, RouterState};
 
@@ -16,7 +18,7 @@ use crate::{
     relay::{CtrlSignal, RelayMessage},
     NodeMessage, RouterReply, ShutdownType,
 };
-use ockam_core::compat::collections::BTreeMap;
+use ockam_core::compat::{collections::BTreeMap, sync::Arc};
 use ockam_core::{Address, Result, TransportType};
 
 /// A pair of senders to a worker relay
@@ -70,6 +72,10 @@ impl Router {
         }
     }
 
+    pub(crate) fn get_metrics_readout(&self) -> (Arc<AtomicUsize>, Arc<AtomicUsize>) {
+        self.map.get_metrics()
+    }
+
     pub fn init(&mut self, addr: Address, senders: SenderPair) {
         self.map.internal.insert(
             addr.clone(),
@@ -77,6 +83,7 @@ impl Router {
                 addr.clone().into(),
                 senders.msgs,
                 senders.ctrl,
+                Arc::new(0.into()), // don't track for app worker (yet?)
                 AddressMeta {
                     processor: false,
                     detached: true,
@@ -111,7 +118,10 @@ impl Router {
 
     async fn handle_msg(&mut self, msg: NodeMessage) -> Result<bool> {
         use NodeMessage::*;
-        debug!("Currently router has {} addresses", self.map.metrics().0);
+        debug!(
+            "Current router alloc: {} addresses",
+            self.map.get_addr_count()
+        );
         match msg {
             // Successful router registration command
             Router(tt, addr, sender) if !self.external.contains_key(&tt) => {
@@ -134,8 +144,9 @@ impl Router {
                 addrs,
                 senders,
                 detached,
+                metrics,
                 ref reply,
-            } => start_worker::exec(self, addrs, senders, detached, reply).await?,
+            } => start_worker::exec(self, addrs, senders, detached, metrics, reply).await?,
             StopWorker(ref addr, ref detached, ref reply) => {
                 stop_worker::exec(self, addr, *detached, reply).await?
             }

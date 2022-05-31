@@ -11,7 +11,10 @@ use crate::{
     router::SenderPair,
     Cancel, NodeMessage, ShutdownType,
 };
-use core::time::Duration;
+use core::{
+    sync::atomic::{AtomicUsize, Ordering},
+    time::Duration,
+};
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
@@ -50,6 +53,7 @@ pub struct Context {
     async_drop_sender: Option<AsyncDropSender>,
     mailbox: MessageReceiver<RelayMessage>,
     access_control: Box<dyn AccessControl>,
+    metrics: Arc<AtomicUsize>,
 }
 
 impl Drop for Context {
@@ -80,6 +84,10 @@ impl Context {
         loop {
             let relay_msg = if let Some(msg) = self.mailbox.recv().await {
                 trace!("{}: received new message!", self.address());
+
+                // First we update the mailbox fill metrics
+                self.metrics.fetch_sub(1, Ordering::Acquire);
+
                 msg
             } else {
                 return Ok(None);
@@ -122,6 +130,7 @@ impl Context {
                 mailbox,
                 async_drop_sender,
                 access_control: Box::new(access_control),
+                metrics: Arc::new(0.into()),
             },
             SenderPair {
                 msgs: mailbox_tx,
@@ -178,7 +187,8 @@ impl Context {
         );
 
         // Create a "detached relay" and register it with the router
-        let (msg, mut rx) = NodeMessage::start_worker(addr.into(), sender, true);
+        let (msg, mut rx) =
+            NodeMessage::start_worker(addr.into(), sender, true, Arc::clone(&self.metrics));
         self.sender
             .send(msg)
             .await
@@ -273,7 +283,8 @@ impl Context {
         WorkerRelay::<NW, NM>::init(self.rt.as_ref(), worker, ctx, ctrl_rx);
 
         // Send start request to router
-        let (msg, mut rx) = NodeMessage::start_worker(address, sender, false);
+        let (msg, mut rx) =
+            NodeMessage::start_worker(address, sender, false, Arc::clone(&self.metrics));
         self.sender
             .send(msg)
             .await

@@ -4,8 +4,8 @@ use crate::{
     relay::RelayMessage,
     router::SenderPair,
 };
-use core::fmt;
-use ockam_core::compat::{string::String, vec::Vec};
+use core::{fmt, sync::atomic::AtomicUsize};
+use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
 use ockam_core::{Address, AddressSet, Error, Result, TransportType};
 
 /// Messages sent from the Node to the Executor
@@ -19,6 +19,8 @@ pub enum NodeMessage {
         senders: SenderPair,
         /// A detached context/ "worker" runs no relay state
         detached: bool,
+        /// A mechanism to read channel fill-state for a worker
+        metrics: Arc<AtomicUsize>,
         /// Reply channel for command confirmation
         reply: SmallSender<NodeReplyResult>,
     },
@@ -81,6 +83,7 @@ impl NodeMessage {
         addrs: AddressSet,
         senders: SenderPair,
         detached: bool,
+        metrics: Arc<AtomicUsize>,
     ) -> (Self, SmallReceiver<NodeReplyResult>) {
         let (reply, rx) = small_channel();
         (
@@ -88,6 +91,7 @@ impl NodeMessage {
                 addrs,
                 senders,
                 detached,
+                metrics,
                 reply,
             },
             rx,

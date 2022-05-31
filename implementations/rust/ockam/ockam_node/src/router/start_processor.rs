@@ -4,7 +4,7 @@ use crate::{
     error::{NodeError, NodeReason},
     NodeReplyResult, RouterReply,
 };
-use ockam_core::{Address, Result};
+use ockam_core::{compat::sync::Arc, Address, Result};
 
 /// Execute a `StartWorker` command
 pub(super) async fn exec(
@@ -34,6 +34,7 @@ async fn start(
         addr.clone().into(),
         msgs,
         ctrl,
+        Arc::new(0.into()), // don't track metrics
         AddressMeta {
             processor: true,
             detached: false,
