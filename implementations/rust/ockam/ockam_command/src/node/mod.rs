@@ -1,14 +1,12 @@
+mod create;
 mod delete;
 mod list;
 mod show;
-mod spawn;
-mod start;
 
+use create::CreateCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
 use show::ShowCommand;
-use spawn::SpawnCommand;
-use start::StartCommand;
 
 use crate::HELP_TEMPLATE;
 use clap::{Args, Subcommand};
@@ -21,32 +19,27 @@ pub struct NodeCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum NodeSubcommand {
+    /// Create nodes.
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Create(CreateCommand),
+
+    /// Delete nodes.
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Delete(DeleteCommand),
+
     /// List nodes.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     List(ListCommand),
 
     /// Show nodes.
-    #[clap(display_order = 901, help_template = HELP_TEMPLATE)]
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Show(ShowCommand),
-
-    /// Start nodes.
-    #[clap(display_order = 902, help_template = HELP_TEMPLATE)]
-    Start(StartCommand),
-
-    /// Spawn nodes.
-    #[clap(display_order = 903, help_template = HELP_TEMPLATE)]
-    Spawn(SpawnCommand),
-
-    /// Delete nodes.
-    #[clap(display_order = 904, help_template = HELP_TEMPLATE)]
-    Delete(DeleteCommand),
 }
 
 impl NodeCommand {
     pub fn run(command: NodeCommand) {
         match command.subcommand {
-            NodeSubcommand::Start(command) => StartCommand::run(command),
-            NodeSubcommand::Spawn(command) => SpawnCommand::run(command),
+            NodeSubcommand::Create(command) => CreateCommand::run(command),
             NodeSubcommand::Delete(command) => DeleteCommand::run(command),
             NodeSubcommand::List(command) => ListCommand::run(command),
             NodeSubcommand::Show(command) => ShowCommand::run(command),

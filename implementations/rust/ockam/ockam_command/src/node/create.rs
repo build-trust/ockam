@@ -1,4 +1,5 @@
 use clap::Args;
+use std::process::Command;
 
 use crate::util::embedded_node;
 use ockam::{Context, Result, Routed, TcpTransport, Worker};
@@ -24,19 +25,30 @@ impl Worker for Status {
 }
 
 #[derive(Clone, Debug, Args)]
-pub struct StartCommand {
+pub struct CreateCommand {
     /// Name of the node.
     #[clap(default_value_t = String::from("default"))]
     pub node_name: String,
+
+    /// Spawn a node in the background.
+    #[clap(display_order = 900, long, short)]
+    spawn: bool,
 }
 
-impl StartCommand {
-    pub fn run(command: StartCommand) {
-        embedded_node(setup, command)
+impl CreateCommand {
+    pub fn run(command: CreateCommand) {
+        if command.spawn {
+            Command::new("ockam")
+                .args(["node", "create", &command.node_name])
+                .spawn()
+                .expect("could not spawn node");
+        } else {
+            embedded_node(setup, command)
+        }
     }
 }
 
-async fn setup(ctx: Context, c: StartCommand) -> anyhow::Result<()> {
+async fn setup(ctx: Context, c: CreateCommand) -> anyhow::Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
     tcp.listen("127.0.0.1:62526").await?;
 
