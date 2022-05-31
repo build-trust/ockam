@@ -54,6 +54,7 @@ mod error;
 mod message;
 mod processor;
 mod routing;
+mod type_tag;
 mod uint;
 pub mod vault;
 mod worker;
@@ -63,6 +64,7 @@ pub use error::*;
 pub use message::*;
 pub use processor::*;
 pub use routing::*;
+pub use type_tag::*;
 pub use uint::*;
 pub use worker::*;
 

@@ -3,7 +3,7 @@ use ockam_core;
 use ockam_core::compat::borrow::Cow;
 
 #[cfg(feature = "tag")]
-use crate::TypeTag;
+use ockam_core::TypeTag;
 
 /// Request body when asking a node for its status
 #[derive(Debug, Clone, Encode, Decode)]
