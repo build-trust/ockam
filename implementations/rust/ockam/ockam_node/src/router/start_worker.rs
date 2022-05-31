@@ -4,7 +4,8 @@ use crate::{
     error::{NodeError, NodeReason},
     NodeReplyResult, RouterReply,
 };
-use ockam_core::{AddressSet, Result};
+use core::sync::atomic::AtomicUsize;
+use ockam_core::{compat::sync::Arc, AddressSet, Result};
 
 /// Execute a `StartWorker` command
 pub(super) async fn exec(
@@ -12,10 +13,11 @@ pub(super) async fn exec(
     addrs: AddressSet,
     senders: SenderPair,
     detached: bool,
+    metrics: Arc<AtomicUsize>,
     reply: &SmallSender<NodeReplyResult>,
 ) -> Result<()> {
     match router.state.node_state() {
-        NodeState::Running => start(router, addrs, senders, detached, reply).await,
+        NodeState::Running => start(router, addrs, senders, detached, metrics, reply).await,
         NodeState::Stopping(_) => reject(reply).await,
         NodeState::Dead => unreachable!(),
     }?;
@@ -27,6 +29,7 @@ async fn start(
     addrs: AddressSet,
     senders: SenderPair,
     detached: bool,
+    metrics: Arc<AtomicUsize>,
     reply: &SmallSender<NodeReplyResult>,
 ) -> Result<()> {
     debug!("Starting new worker '{}'", addrs.first());
@@ -38,6 +41,7 @@ async fn start(
         addrs.clone(),
         msgs,
         ctrl,
+        metrics,
         AddressMeta {
             processor: false,
             detached,

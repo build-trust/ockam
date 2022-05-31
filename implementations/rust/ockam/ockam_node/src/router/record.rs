@@ -4,10 +4,12 @@ use crate::{
     error::{NodeError, NodeReason},
     NodeReplyResult, RouterReply,
 };
+use core::sync::atomic::{AtomicUsize, Ordering};
 use ockam_core::{
     compat::{
         collections::{BTreeMap, BTreeSet},
         string::String,
+        sync::Arc,
         vec::Vec,
     },
     Address, AddressSet, Result,
@@ -26,12 +28,22 @@ pub struct InternalMap {
     clusters: BTreeMap<String, BTreeSet<Address>>,
     /// Track stop information
     stopping: BTreeSet<Address>,
+    /// Metrics collection and sharing
+    metrics: (Arc<AtomicUsize>, Arc<AtomicUsize>),
 }
 
 impl InternalMap {
-    /// Return map metrics: (address alloc count, cluster count)
-    pub(super) fn metrics(&self) -> (usize, usize) {
-        (self.internal.len(), self.clusters.len())
+    pub(super) fn update_metrics(&self) {
+        self.metrics.0.store(self.internal.len(), Ordering::Release);
+        self.metrics.1.store(self.clusters.len(), Ordering::Release);
+    }
+
+    pub(super) fn get_metrics(&self) -> (Arc<AtomicUsize>, Arc<AtomicUsize>) {
+        (Arc::clone(&self.metrics.0), Arc::clone(&self.metrics.1))
+    }
+
+    pub(super) fn get_addr_count(&self) -> usize {
+        self.metrics.0.load(Ordering::Acquire)
     }
 
     /// Add an address to a particular cluster
@@ -152,6 +164,7 @@ pub struct AddressRecord {
     state: AddressState,
     ready: ReadyState,
     meta: AddressMeta,
+    msg_count: Arc<AtomicUsize>,
 }
 
 impl AddressRecord {
@@ -168,6 +181,7 @@ impl AddressRecord {
         address_set: AddressSet,
         sender: MessageSender<RelayMessage>,
         ctrl_tx: SmallSender<CtrlSignal>,
+        msg_count: Arc<AtomicUsize>,
         meta: AddressMeta,
     ) -> Self {
         AddressRecord {
@@ -176,8 +190,13 @@ impl AddressRecord {
             ctrl_tx,
             state: AddressState::Running,
             ready: ReadyState::Initialising(vec![]),
+            msg_count,
             meta,
         }
+    }
+
+    pub fn increment_msg_count(&self) {
+        self.msg_count.fetch_add(1, Ordering::Acquire);
     }
 
     /// Signal this worker to stop -- it will no longer be able to receive messages

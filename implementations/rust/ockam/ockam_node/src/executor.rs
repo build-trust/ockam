@@ -42,7 +42,7 @@ impl Default for Executor {
     fn default() -> Self {
         let rt = Arc::new(Runtime::new().unwrap());
         let router = Router::new();
-        let metrics = Metrics::new(&rt);
+        let metrics = Metrics::new(&rt, router.get_metrics_readout());
         Self {
             rt,
             router,
