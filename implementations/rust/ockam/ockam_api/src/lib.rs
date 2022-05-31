@@ -6,7 +6,6 @@ pub mod error;
 
 use core::fmt;
 use core::ops::Deref;
-use minicbor::decode::{self, Decoder};
 use minicbor::encode::{self, Encoder, Write};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
@@ -14,6 +13,8 @@ use ockam_core::compat::rand;
 use tinyvec::ArrayVec;
 
 #[cfg(feature = "tag")]
+use ockam_core::TypeTag;
+
 pub const SCHEMA: &str = core::include_str!("../schema.cddl");
 
 /// A request header.
@@ -100,42 +101,6 @@ pub enum Status {
     #[n(405)] MethodNotAllowed,
     #[n(500)] InternalServerError,
     #[n(501)] NotImplemented
-}
-
-/// A type tag represents a type as a unique numeric value.
-///
-/// This zero-sized type is meant to help catching type errors in cases where
-/// CBOR items structurally match various nominal types. It will end up as an
-/// unsigned integer in CBOR and decoding checks that the value is expected.
-#[derive(Clone, Copy, Default)]
-pub struct TypeTag<const N: usize>;
-
-// Custom `Debug` impl to include the tag number.
-impl<const N: usize> fmt::Debug for TypeTag<N> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("TypeTag").field(&N).finish()
-    }
-}
-
-impl<C, const N: usize> Encode<C> for TypeTag<N> {
-    fn encode<W: Write>(
-        &self,
-        e: &mut Encoder<W>,
-        _: &mut C,
-    ) -> Result<(), encode::Error<W::Error>> {
-        e.u64(N as u64)?.ok()
-    }
-}
-
-impl<'b, C, const N: usize> Decode<'b, C> for TypeTag<N> {
-    fn decode(d: &mut Decoder<'b>, _: &mut C) -> Result<Self, decode::Error> {
-        let n = d.u64()?;
-        if N as u64 == n {
-            return Ok(TypeTag);
-        }
-        let msg = format!("type tag mismatch (expected {N}, got {n})");
-        Err(decode::Error::message(msg))
-    }
 }
 
 impl Id {
@@ -555,6 +520,7 @@ pub(crate) fn assert_request_match<'a>(schema: impl Into<Option<&'a str>>, cbor:
     #[cfg(feature = "tag")]
     {
         use cddl_cat::validate_cbor_bytes;
+        use minicbor::decode::Decoder;
 
         let mut dec = Decoder::new(cbor);
         dec.decode::<Request>().expect("header");
@@ -576,6 +542,7 @@ pub(crate) fn assert_response_match<'a>(schema: impl Into<Option<&'a str>>, cbor
     #[cfg(feature = "tag")]
     {
         use cddl_cat::validate_cbor_bytes;
+        use minicbor::decode::Decoder;
 
         let mut dec = Decoder::new(cbor);
         dec.decode::<Response>().expect("header");
