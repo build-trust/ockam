@@ -3,6 +3,7 @@ pub(crate) mod error;
 pub mod nodes;
 
 use core::fmt;
+use core::ops::{Deref, DerefMut};
 use minicbor::decode::{self, Decoder};
 use minicbor::encode::{self, Encoder, Write};
 use minicbor::{Decode, Encode};
@@ -467,5 +468,107 @@ impl<T: Encode<()>> ResponseBuilder<T> {
             e.encode(b)?;
         }
         Ok(())
+    }
+}
+
+/// A newtype around `Cow<'_, str>` that borrows from input.
+///
+/// Contrary to `Cow<_, str>` the `Decode` impl for this type will always borrow
+/// from input so using it in types like `Option`, `Vec<_>` etc will not produce
+/// owned element values.
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cbor(transparent)]
+pub struct CowStr<'a>(#[b(0)] pub Cow<'a, str>);
+
+impl CowStr<'_> {
+    pub fn is_borrowed(&self) -> bool {
+        matches!(self.0, Cow::Borrowed(_))
+    }
+
+    pub fn to_owned<'r>(&self) -> CowStr<'r> {
+        CowStr(Cow::Owned(self.0.to_string()))
+    }
+}
+
+impl<'a> From<&'a str> for CowStr<'a> {
+    fn from(s: &'a str) -> Self {
+        CowStr(Cow::Borrowed(s))
+    }
+}
+
+impl From<String> for CowStr<'_> {
+    fn from(s: String) -> Self {
+        CowStr(Cow::Owned(s))
+    }
+}
+
+impl<'a> From<CowStr<'a>> for Cow<'a, str> {
+    fn from(c: CowStr<'a>) -> Self {
+        c.0
+    }
+}
+
+impl<'a> Deref for CowStr<'a> {
+    type Target = Cow<'a, str>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a> DerefMut for CowStr<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+/// A newtype around `Cow<'_, [u8]>` that borrows from input.
+///
+/// Contrary to `Cow<_, [u8]>` the `Decode` impl for this type will always borrow
+/// from input so using it in types like `Option`, `Vec<_>` etc will not produce
+/// owned element values.
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cbor(transparent)]
+pub struct CowBytes<'a>(#[cbor(b(0), with = "minicbor::bytes")] pub Cow<'a, [u8]>);
+
+impl CowBytes<'_> {
+    pub fn is_borrowed(&self) -> bool {
+        matches!(self.0, Cow::Borrowed(_))
+    }
+
+    pub fn to_owned<'r>(&self) -> CowBytes<'r> {
+        CowBytes(Cow::Owned(self.0.to_vec()))
+    }
+}
+
+impl<'a> From<&'a [u8]> for CowBytes<'a> {
+    fn from(s: &'a [u8]) -> Self {
+        CowBytes(Cow::Borrowed(s))
+    }
+}
+
+impl From<Vec<u8>> for CowBytes<'_> {
+    fn from(s: Vec<u8>) -> Self {
+        CowBytes(Cow::Owned(s))
+    }
+}
+
+impl<'a> From<CowBytes<'a>> for Cow<'a, [u8]> {
+    fn from(c: CowBytes<'a>) -> Self {
+        c.0
+    }
+}
+
+impl<'a> Deref for CowBytes<'a> {
+    type Target = Cow<'a, [u8]>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a> DerefMut for CowBytes<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }

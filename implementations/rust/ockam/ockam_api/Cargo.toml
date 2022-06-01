@@ -14,7 +14,7 @@ std = ["minicbor/std", "ockam_core/std", "ockam_node/std", "tinyvec/std", "traci
 tag = []
 
 [dependencies]
-minicbor = { version = "0.16.0", features = ["alloc", "derive"] }
+minicbor = { version = "0.17.1", features = ["alloc", "derive"] }
 open = "2"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
