@@ -1,5 +1,5 @@
 use clap::Args;
-use std::process::Command;
+use std::{env::current_exe, process::Command};
 
 use crate::util::embedded_node;
 use ockam::{Context, Result, Routed, TcpTransport, Worker};
@@ -38,7 +38,11 @@ pub struct CreateCommand {
 impl CreateCommand {
     pub fn run(command: CreateCommand) {
         if command.spawn {
-            Command::new("ockam")
+            // On systems with non-obvious path setups (or during
+            // development) re-executing the current binary is a more
+            // deterministic way of starting a node.
+            let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
+            Command::new(ockam)
                 .args(["node", "create", &command.node_name])
                 .spawn()
                 .expect("could not spawn node");
