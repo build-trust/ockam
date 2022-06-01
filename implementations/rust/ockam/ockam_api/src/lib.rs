@@ -1,6 +1,8 @@
+pub mod auth;
 pub mod cloud;
-pub(crate) mod error;
 pub mod nodes;
+
+pub(crate) mod error;
 
 use core::fmt;
 use core::ops::{Deref, DerefMut};

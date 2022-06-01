@@ -694,15 +694,15 @@ dependencies = [
  "aligned",
  "bare-metal 0.2.5",
  "bitfield",
- "cortex-m 0.7.4",
+ "cortex-m 0.7.5",
  "volatile-register",
 ]
 
 [[package]]
 name = "cortex-m"
-version = "0.7.4"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37ff967e867ca14eba0c34ac25cd71ea98c678e741e3915d923999bb2fe7c826"
+checksum = "cd20d4ac4aa86f4f75f239d59e542ef67de87cce2c282818dc6e84155d3ea126"
 dependencies = [
  "bare-metal 0.2.5",
  "bitfield",
@@ -748,7 +748,7 @@ checksum = "95da181745b56d4bd339530ec393508910c909c784e8962d15d722bacf0bcbcd"
 dependencies = [
  "bare-metal 1.0.0",
  "cfg-if",
- "cortex-m 0.7.4",
+ "cortex-m 0.7.5",
  "riscv",
 ]
 
@@ -893,13 +893,14 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "5.3.3"
+version = "5.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "391b56fbd302e585b7a9494fb70e40949567b1cf9003a8e4a6041a1687c26573"
+checksum = "3495912c9c1ccf2e18976439f4443f3fee0fd61f424ff99fde6a66b15ecb448f"
 dependencies = [
  "cfg-if",
  "hashbrown 0.12.1",
  "lock_api",
+ "parking_lot_core",
 ]
 
 [[package]]
@@ -1610,9 +1611,9 @@ checksum = "c4a1e36c821dbe04574f602848a19f742f4fb3c98d40449f11bcad18d6b17421"
 
 [[package]]
 name = "hyper"
-version = "0.14.18"
+version = "0.14.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b26ae0a80afebe130861d90abf98e3814a4f28a4c6ffeb5ab8ebb2be311e0ef2"
+checksum = "42dc3c131584288d375f2d07f822b0cb012d8c6fb899a5b9fdb3cb7eb9b6004f"
 dependencies = [
  "bytes 1.1.0",
  "futures-channel",
@@ -1664,9 +1665,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.8.1"
+version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f647032dfaa1f8b6dc29bd3edb7bbef4861b8b8007ebb118d6db284fd59f6ee"
+checksum = "e6012d540c5baa3589337a98ce73408de9b5a25ec9fc2c6fd6be8f0d39e0ca5a"
 dependencies = [
  "autocfg",
  "hashbrown 0.11.2",
@@ -1744,6 +1745,29 @@ version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c185b5b7ad900923ef3a8ff594083d4d9b5aea80bb4f32b8342363138c0d456b"
 dependencies = [
+ "pkg-config",
+]
+
+[[package]]
+name = "lmdb-rkv"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "447a296f7aca299cfbb50f4e4f3d49451549af655fb7215d7f8c0c3d64bad42b"
+dependencies = [
+ "bitflags",
+ "byteorder",
+ "libc",
+ "lmdb-rkv-sys",
+]
+
+[[package]]
+name = "lmdb-rkv-sys"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61b9ce6b3be08acefa3003c57b7565377432a89ec24476bbe72e11d101f852fe"
+dependencies = [
+ "cc",
+ "libc",
  "pkg-config",
 ]
 
@@ -1845,9 +1869,9 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "miniz_oxide"
-version = "0.5.1"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2b29bd4bc3f33391105ebee3589c19197c4271e3e5a9ec9bfe8127eeff8f082"
+checksum = "6f5c75688da582b8ffc1f1799e9db273f32133c49e048f614d22ec3256773ccc"
 dependencies = [
  "adler",
 ]
@@ -2121,6 +2145,7 @@ version = "0.2.0"
 dependencies = [
  "cddl-cat",
  "fake",
+ "lmdb-rkv",
  "minicbor",
  "mockall",
  "ockam_api",
@@ -2133,6 +2158,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "tempfile",
  "tinyvec",
  "tokio-retry",
  "tracing",
@@ -2351,7 +2377,7 @@ dependencies = [
  "bluenrg",
  "bluetooth-hci",
  "btleplug",
- "cortex-m 0.7.4",
+ "cortex-m 0.7.5",
  "embedded-hal",
  "futures 0.3.21",
  "futures-util",
@@ -2519,9 +2545,9 @@ dependencies = [
 
 [[package]]
 name = "os_str_bytes"
-version = "6.0.1"
+version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "029d8d0b2f198229de29dca79676f2738ff952edf3fde542eb8bf94d8c21b435"
+checksum = "21326818e99cfe6ce1e524c2a805c189a99b5ae555a35d19f9a284b427d86afa"
 
 [[package]]
 name = "pairing"
@@ -2534,9 +2560,9 @@ dependencies = [
 
 [[package]]
 name = "parking_lot"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87f5ec2493a61ac0506c0f4199f99070cbe83857b0337006a30f3e6719b8ef58"
+checksum = "3742b2c103b9f06bc9fff0a37ff4912935851bee6d36f3c02bcc755bcfec228f"
 dependencies = [
  "lock_api",
  "parking_lot_core",
@@ -3360,7 +3386,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da3d56009c8f32e4f208dbea17df72484154d1040a8969b75d8c73eb7b18fe8f"
 dependencies = [
  "bare-metal 0.2.5",
- "cortex-m 0.7.4",
+ "cortex-m 0.7.5",
  "cortex-m-rt",
  "vcell",
 ]
@@ -3373,7 +3399,7 @@ checksum = "89b4cb13b1bb36e7381eaf8941062b1eba172542b9d4f72dc50c35c4ac6260f2"
 dependencies = [
  "bare-metal 1.0.0",
  "cast",
- "cortex-m 0.7.4",
+ "cortex-m 0.7.5",
  "cortex-m-rt",
  "embedded-dma",
  "embedded-hal",
@@ -3391,7 +3417,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b672c837e0ee8158ecc7fce0f9a948dd0693a9c588338e728d14b73307a0b7d"
 dependencies = [
  "bare-metal 0.2.5",
- "cortex-m 0.7.4",
+ "cortex-m 0.7.5",
  "cortex-m-rt",
  "vcell",
 ]
@@ -3404,7 +3430,7 @@ checksum = "67034b80041bc33a48df1c1c435b6ae3bb18c35e42aa7e702ce8363b96793398"
 dependencies = [
  "bare-metal 1.0.0",
  "cast",
- "cortex-m 0.7.4",
+ "cortex-m 0.7.5",
  "cortex-m-rt",
  "embedded-dma",
  "embedded-hal",
