@@ -60,7 +60,7 @@ impl<S: Storage + Send + Sync + 'static> Server<S> {
 
         match req.method() {
             Some(Method::Get) => match req.path_segments::<5>().as_slice() {
-                ["subject", id, "attribute", key] => {
+                ["authenticated", id, "attribute", key] => {
                     if let Some(a) = self.store.get(id, key).await.map_err(AuthError::storage)? {
                         Response::ok(req.id())
                             .body(Attribute::new(&a))
@@ -77,7 +77,7 @@ impl<S: Storage + Send + Sync + 'static> Server<S> {
                 }
             },
             Some(Method::Post) => match req.path_segments::<3>().as_slice() {
-                ["subject", id] => {
+                ["authenticated", id] => {
                     if req.has_body() {
                         let ca: Attributes = dec.decode()?;
                         for (k, v) in ca.attrs() {
@@ -102,7 +102,7 @@ impl<S: Storage + Send + Sync + 'static> Server<S> {
                 }
             },
             Some(Method::Delete) => match req.path_segments::<5>().as_slice() {
-                ["subject", id, "attribute", key] => {
+                ["authenticated", id, "attribute", key] => {
                     self.store.del(id, key).await.map_err(AuthError::storage)?;
                     Response::ok(req.id()).encode(buf)?
                 }
@@ -156,8 +156,8 @@ impl Client {
         })
     }
 
-    pub async fn set(&mut self, subj: &str, attrs: &Attributes<'_>) -> ockam_core::Result<()> {
-        let req = Request::post(format!("/subject/{subj}")).body(attrs);
+    pub async fn set(&mut self, id: &str, attrs: &Attributes<'_>) -> ockam_core::Result<()> {
+        let req = Request::post(format!("/authenticated/{id}")).body(attrs);
         self.buf = self.request("set attributes", &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response("set attributes", &mut d)?;
@@ -168,8 +168,8 @@ impl Client {
         }
     }
 
-    pub async fn get(&mut self, subj: &str, attr: &str) -> ockam_core::Result<Option<&[u8]>> {
-        let req = Request::get(format!("/subject/{subj}/attribute/{attr}"));
+    pub async fn get(&mut self, id: &str, attr: &str) -> ockam_core::Result<Option<&[u8]>> {
+        let req = Request::get(format!("/authenticated/{id}/attribute/{attr}"));
         self.buf = self.request("get attribute", &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response("get attribute", &mut d)?;
@@ -183,8 +183,8 @@ impl Client {
         }
     }
 
-    pub async fn del(&mut self, subj: &str, attr: &str) -> ockam_core::Result<()> {
-        let req = Request::delete(format!("/subject/{subj}/attribute/{attr}"));
+    pub async fn del(&mut self, id: &str, attr: &str) -> ockam_core::Result<()> {
+        let req = Request::delete(format!("/authenticated/{id}/attribute/{attr}"));
         self.buf = self.request("del attribute", &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response("del attribute", &mut d)?;
