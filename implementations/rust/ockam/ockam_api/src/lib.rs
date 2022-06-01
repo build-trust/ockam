@@ -2,7 +2,7 @@ pub mod auth;
 pub mod cloud;
 pub mod nodes;
 
-pub(crate) mod error;
+pub mod error;
 
 use core::fmt;
 use core::ops::{Deref, DerefMut};
@@ -14,13 +14,10 @@ use ockam_core::compat::rand;
 use tinyvec::ArrayVec;
 
 /// CDDL schema or request and response headers as well as errors.
-// request  = { ?0: 7586022, 1: id, 2: path, 3: method, 4: has_body }
-// response = { ?0: 9750358, 1: id, 2: re, 3: status, 4: has_body }
-// error    = { ?0: 5359172, 1: path, ?2: method, ?3: message }
 pub const SCHEMA: &str = r#"
-   request  = { 0: id, 1: path, 2: method, 3: has_body }
-   response = { 0: id, 1: re, 2: status, 3: has_body }
-   error    = { 0: path, ?1: method, ?2: message }
+    request  = { ?0: 7586022, 1: id, 2: path, 3: method, 4: has_body }
+    response = { ?0: 9750358, 1: id, 2: re, 3: status, 4: has_body }
+    error    = { ?0: 5359172, 1: path, ?2: method, ?3: message }
     id       = uint
     re       = uint
     path     = text
@@ -50,20 +47,20 @@ pub struct Request<'a> {
     /// unique numeric value that identifies this type to help catching type
     /// errors. Otherwise this tag will not be produced and is ignored during
     /// decoding if present.
-    /// #[cfg(feature = "tag")]
-    /// #[n(0)] tag: TypeTag<7586022>,
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<7586022>,
     /// The request identifier.
-    #[n(0)] id: Id,
+    #[n(1)] id: Id,
     /// The resource path.
-    #[b(1)] path: Cow<'a, str>,
+    #[b(2)] path: Cow<'a, str>,
     /// The request method.
     ///
     /// It is wrapped in an `Option` to be forwards compatible, i.e. adding
     /// methods will not cause decoding errors and client code can decide
     /// how to handle unknown methods.
-    #[n(2)] method: Option<Method>,
+    #[n(3)] method: Option<Method>,
     /// Indicator if a request body is expected after this header.
-    #[n(3)] has_body: bool
+    #[n(4)] has_body: bool
 }
 
 /// The response header.
@@ -77,20 +74,20 @@ pub struct Response {
     /// unique numeric value that identifies this type to help catching type
     /// errors. Otherwise this tag will not be produced and is ignored during
     /// decoding if present.
-    /// #[cfg(feature = "tag")]
-    /// #[n(0)] tag: TypeTag<9750358>,
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<9750358>,
     /// The response identifier.
-    #[n(0)] id: Id,
+    #[n(1)] id: Id,
     /// The identifier of the request corresponding to this response.
-    #[n(1)] re: Id,
+    #[n(2)] re: Id,
     /// A status code.
     ///
     /// It is wrapped in an `Option` to be forwards compatible, i.e. adding
     /// status codes will not cause decoding errors and client code can decide
     /// how to handle unknown codes.
-    #[n(2)] status: Option<Status>,
+    #[n(3)] status: Option<Status>,
     /// Indicator if a response body is expected after this header.
-    #[n(3)] has_body: bool
+    #[n(4)] has_body: bool
 }
 
 /// A request/response identifier.
@@ -303,14 +300,14 @@ pub struct Error<'a> {
     /// unique numeric value that identifies this type to help catching type
     /// errors. Otherwise this tag will not be produced and is ignored during
     /// decoding if present.
-    /// #[cfg(feature = "tag")]
-    /// #[n(0)] tag: TypeTag<5359172>,
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<5359172>,
     /// The resource path of this error.
-    #[b(0)] path: Cow<'a, str>,
+    #[b(1)] path: Cow<'a, str>,
     /// The request method of this error.
-    #[n(1)] method: Option<Method>,
+    #[n(2)] method: Option<Method>,
     /// The actual error message.
-    #[b(2)] message: Option<Cow<'a, str>>,
+    #[b(3)] message: Option<Cow<'a, str>>,
 }
 
 impl<'a> Error<'a> {

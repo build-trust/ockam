@@ -10,7 +10,9 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
         .arg("create")
         .arg("space-id")
         .arg("project-name")
-        .arg("service-a service-b");
+        .arg("service-a service-b")
+        .arg("--")
+        .arg("/ip4/127.0.0.1/tcp/8080");
     cmd.assert().success();
 
     let mut cmd = Command::cargo_bin("ockam")?;
@@ -21,14 +23,16 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
     cmd.args(&prefix_args)
         .arg("show")
         .arg("space-id")
-        .arg("project-id");
+        .arg("project-id")
+        .arg("/ip4/127.0.0.1/tcp/8080");
     cmd.assert().success();
 
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.args(&prefix_args)
         .arg("delete")
         .arg("space-id")
-        .arg("project-id");
+        .arg("project-id")
+        .arg("/ip4/127.0.0.1/tcp/8080");
     cmd.assert().success();
 
     Ok(())

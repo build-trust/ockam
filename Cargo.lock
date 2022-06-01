@@ -1156,8 +1156,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21a8531dd3a64fd1cfbe92fad4160bc2060489c6195fe847e045e5788f710bae"
 dependencies = [
  "dummy",
- "http",
  "rand 0.8.5",
+ "uuid",
 ]
 
 [[package]]
@@ -1831,6 +1831,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
+name = "md5"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
+
+[[package]]
 name = "memchr"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2160,17 +2166,16 @@ dependencies = [
  "mockall",
  "ockam_api",
  "ockam_core",
+ "ockam_identity",
  "ockam_macros",
  "ockam_node",
  "ockam_transport_tcp",
- "open",
  "quickcheck",
  "reqwest",
  "serde",
  "serde_json",
  "tempfile",
  "tinyvec",
- "tokio-retry",
  "tracing",
 ]
 
@@ -2213,11 +2218,14 @@ dependencies = [
  "ockam_core",
  "ockam_multiaddr",
  "ockam_vault",
+ "open",
  "rand 0.8.5",
+ "reqwest",
  "serde",
  "serde_json",
  "thiserror",
  "tokio",
+ "tokio-retry",
  "tracing",
  "tracing-error",
  "tracing-subscriber",
@@ -2551,9 +2559,9 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.73"
+version = "0.9.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d5fd19fb3e0a8191c1e34935718976a3e70c112ab9a24af6d7cadccd9d90bc0"
+checksum = "835363342df5fba8354c5b453325b110ffd54044e588c539cf2f20a8014e4cb1"
 dependencies = [
  "autocfg",
  "cc",
@@ -3223,6 +3231,21 @@ dependencies = [
  "cpufeatures",
  "digest 0.10.3",
 ]
+
+[[package]]
+name = "sha1"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1da05c97445caa12d05e848c4a4fcbbea29e748ac28f7e80e9b010392063770"
+dependencies = [
+ "sha1_smol",
+]
+
+[[package]]
+name = "sha1_smol"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae1a47186c03a32177042e55dbc5fd5aee900b8e0069a8d70fba96a9375cd012"
 
 [[package]]
 name = "sha2"
@@ -3969,6 +3992,11 @@ name = "uuid"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+dependencies = [
+ "getrandom 0.2.6",
+ "md5",
+ "sha1",
+]
 
 [[package]]
 name = "valuable"

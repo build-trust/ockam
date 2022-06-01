@@ -4,7 +4,7 @@ use crate::util::{embedded_node, multiaddr_to_route};
 use anyhow::anyhow;
 use cli_table::{print_stdout, Cell, Style, Table};
 use ockam::{route, Context, TcpTransport};
-use ockam_api::cloud::Client;
+use ockam_api::cloud::MessagingClient;
 use ockam_multiaddr::MultiAddr;
 
 #[derive(Clone, Debug, Args)]
@@ -26,7 +26,7 @@ async fn list(mut ctx: Context, args: (MultiAddr, ListCommand)) -> anyhow::Resul
     let cloud_addr = multiaddr_to_route(&cloud_addr)
         .ok_or_else(|| anyhow!("failed to parse address: {}", cloud_addr))?;
     let route = route![cloud_addr.to_string(), "invitations"];
-    let mut api = Client::new(route, &ctx).await?;
+    let mut api = MessagingClient::new(route, &ctx).await?;
     let invitations = api.list_invitations(&cmd.email).await?;
     let table = invitations
         .iter()

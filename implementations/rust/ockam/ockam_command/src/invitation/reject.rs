@@ -3,7 +3,7 @@ use clap::Args;
 use crate::util::{embedded_node, multiaddr_to_route};
 use anyhow::anyhow;
 use ockam::{route, Context, TcpTransport};
-use ockam_api::cloud::Client;
+use ockam_api::cloud::MessagingClient;
 use ockam_multiaddr::MultiAddr;
 
 #[derive(Clone, Debug, Args)]
@@ -28,7 +28,7 @@ async fn reject(mut ctx: Context, args: (MultiAddr, RejectCommand)) -> anyhow::R
     let r = multiaddr_to_route(&cloud_addr)
         .ok_or_else(|| anyhow!("failed to parse address: {}", cloud_addr))?;
     let route = route![r.to_string(), "invitations"];
-    let mut api = Client::new(route, &ctx).await?;
+    let mut api = MessagingClient::new(route, &ctx).await?;
     let res = api.reject_invitations(&cmd.email, &cmd.invitation).await?;
     println!("{res:?}");
     ctx.stop().await?;
