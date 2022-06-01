@@ -30,23 +30,26 @@ test = false
 
 [dependencies]
 anyhow = "1"
-thiserror = "1"
-dirs = "4.0.0"
-clap = { version = "3", features = ["derive", "cargo"] }
-tracing = { version = "0.1.31", features = ["attributes"] }
-tracing-subscriber = "0.3.9"
-tracing-error = "0.2"
-tokio = { version="1", features = ["full"] }
-async-trait = "0.1"
-hex = "0.4"
-serde_json = "1"
-serde = { version = "1", features = ["derive"] }
-rand = "0.8"
 async-recursion = { version = "1.0.0" }
-directories = "4"
+async-trait = "0.1"
+clap = { version = "3", features = ["derive", "cargo"] }
 cli-table = "0.4"
-nix = "0.24"
 crossbeam-channel = "0.5"
+directories = "4"
+dirs = "4.0.0"
+hex = "0.4"
+nix = "0.24"
+open = "2"
+rand = "0.8"
+reqwest = { version = "0.11", default-features = false, features = ["json", "default-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+tokio = { version="1", features = ["full"] }
+tracing = { version = "0.1.31", features = ["attributes"] }
+tracing-error = "0.2"
+tokio-retry = "0.3"
+tracing-subscriber = "0.3.9"
 
 ockam = { path = "../ockam", version = "^0.59.0", features = ["software_vault", "ockam_command"] }
 ockam_api = { path = "../ockam_api", version = "0.2.0", features = ["std"] }

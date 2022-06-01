@@ -1,7 +1,4 @@
-mod create;
-mod delete;
-mod list;
-mod show;
+use clap::{Args, Subcommand};
 
 use create::CreateCommand;
 use delete::DeleteCommand;
@@ -9,7 +6,11 @@ use list::ListCommand;
 use show::ShowCommand;
 
 use crate::HELP_TEMPLATE;
-use clap::{Args, Subcommand};
+
+mod create;
+mod delete;
+mod list;
+mod show;
 
 #[derive(Clone, Debug, Args)]
 pub struct SpaceCommand {
