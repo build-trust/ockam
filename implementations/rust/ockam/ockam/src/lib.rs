@@ -35,6 +35,7 @@ mod forwarder;
 mod lease;
 mod metadata;
 mod monotonic;
+mod nodeman;
 mod system;
 mod unique;
 
