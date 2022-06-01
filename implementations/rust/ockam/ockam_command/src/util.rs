@@ -5,10 +5,62 @@ use tracing::error;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
-use ockam::{Address, Route, TCP};
+use ockam::{route, Address, Route, TcpTransport, TCP};
 use ockam_core::LOCAL;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Ockam, Tcp};
 use ockam_multiaddr::{MultiAddr, Protocol};
+
+pub const DEFAULT_TCP_PORT: u16 = 62526;
+
+/// A simple wrapper for shutting down the local embedded node (for
+/// the client side of the CLI).  Swallows errors and turns them into
+/// eprintln logs.
+///
+/// TODO: We may want to change this behaviour in the future.
+pub async fn stop_node(mut ctx: ockam::Context) -> anyhow::Result<()> {
+    if let Err(e) = ctx.stop().await {
+        eprintln!("an error occured while shutting down local node: {}", e);
+    }
+    Ok(())
+}
+
+/// Connect to a remote node (on localhost for now)
+///
+/// This function requires the "remote" port, some command payload,
+/// and a user function to run.  It uses `embedded_node` internally,
+/// while also configuring a TcpTransport and connecting to another
+/// node.
+///
+/// **IMPORTANT** every handler is responsibly for shutting down its
+/// local node after it's done communicating with the remote node via
+/// `ctx.stop().await`!
+pub fn connect_to<A, F, Fut>(port: u16, a: A, lambda: F)
+where
+    A: Send + Sync + 'static,
+    F: FnOnce(ockam::Context, A, Route) -> Fut + Send + Sync + 'static,
+    Fut: core::future::Future<Output = anyhow::Result<()>> + Send + 'static,
+{
+    embedded_node(
+        move |ctx, a| async move {
+            let tcp = TcpTransport::create(&ctx)
+                .await
+                .expect("failed to create TcpTransport");
+            tcp.connect(format!("localhost:{}", port))
+                .await
+                .expect("failed to connect to node");
+            let route = route![(TCP, format!("localhost:{}", port))];
+
+            println!("{:?}", route);
+
+            lambda(ctx, a, route)
+                .await
+                .expect("encountered an error in command handler code");
+
+            Ok(())
+        },
+        a,
+    )
+}
 
 pub fn embedded_node<A, F, Fut>(f: F, a: A)
 where
