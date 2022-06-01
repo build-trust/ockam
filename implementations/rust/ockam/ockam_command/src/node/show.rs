@@ -1,3 +1,4 @@
+use crate::config::OckamConfig;
 use clap::Args;
 
 #[derive(Clone, Debug, Args)]
@@ -7,7 +8,7 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(command: ShowCommand) {
+    pub fn run(_cfg: &mut OckamConfig, command: ShowCommand) {
         println!("showing {:?}", command)
     }
 }
