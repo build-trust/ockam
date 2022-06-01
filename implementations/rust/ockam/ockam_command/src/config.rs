@@ -4,7 +4,7 @@ use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
-    fs::{File, OpenOptions},
+    fs::{create_dir, create_dir_all, File, OpenOptions},
     io::{Read, Write},
     path::PathBuf,
 };
@@ -20,14 +20,25 @@ pub struct OckamConfig {
 /// saving, only "user error".  While these errors are fatal, they
 /// MUST NOT crash the CLI but instead terminate gracefully with a
 /// message.
+#[derive(thiserror::Error, Debug)]
 pub enum ConfigError {
-    NodeExists,
-    NodeNotFound,
+    #[error("node with name {} already exists", 0)]
+    NodeExists(String),
+    #[error("node with name {} does not exist", 0)]
+    NodeNotFound(String),
 }
 
 fn get_config_path() -> PathBuf {
-    let proj = ProjectDirs::from("io", "ockam", "ockam-cli").expect("failed to determine configuration storage location.  Verify that your XDG_CONFIG_HOME and XDG_DATA_HOME environment variables are correctly set.  Otherwise your OS or OS configuration may not be supported!");
-    proj.config_dir().join("config.json")
+    let proj = ProjectDirs::from("io", "ockam", "ockam-cli").expect(
+        "failed to determine configuration storage location.
+Verify that your XDG_CONFIG_HOME and XDG_DATA_HOME environment variables are correctly set.
+Otherwise your OS or OS configuration may not be supported!",
+    );
+
+    let cfg_home = proj.config_dir();
+    let _ = create_dir_all(&cfg_home);
+
+    cfg_home.join("config.json")
 }
 
 impl OckamConfig {
@@ -74,7 +85,7 @@ impl OckamConfig {
     /// Add a new node to the configuration for future lookup
     pub fn create_node(&mut self, name: &str, port: u16) -> Result<(), ConfigError> {
         if self.nodes.contains_key(name) {
-            return Err(ConfigError::NodeExists);
+            return Err(ConfigError::NodeExists(name.to_string()));
         }
 
         self.nodes.insert(name.to_string(), NodeConfig { port });
@@ -83,7 +94,9 @@ impl OckamConfig {
 
     /// Delete an existing node
     pub fn delete_node(&mut self, name: &str) -> Result<(), ConfigError> {
-        self.nodes.remove(name).ok_or(ConfigError::NodeNotFound)?;
+        self.nodes
+            .remove(name)
+            .ok_or(ConfigError::NodeNotFound(name.to_string()))?;
         Ok(())
     }
 }

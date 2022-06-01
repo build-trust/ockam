@@ -1,5 +1,6 @@
 //! This library is used by the `ockam` CLI (in `./bin/ockam.rs`).
 
+mod config;
 mod enroll;
 mod message;
 mod node;
@@ -22,6 +23,8 @@ use old::cmd::inlet::InletOpts;
 use old::cmd::outlet::OutletOpts;
 use old::AddTrustedIdentityOpts;
 use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_ockam_dir};
+
+use crate::config::OckamConfig;
 
 const HELP_TEMPLATE: &str = "\
 {before-help}
@@ -145,10 +148,12 @@ pub fn run() {
 
     tracing::debug!("Parsed {:?}", ockam_command);
 
+    let mut cfg = OckamConfig::load();
+
     match ockam_command.subcommand {
         OckamSubcommand::Enroll(command) => EnrollCommand::run(command),
         OckamSubcommand::Message(command) => MessageCommand::run(command),
-        OckamSubcommand::Node(command) => NodeCommand::run(command),
+        OckamSubcommand::Node(command) => NodeCommand::run(&mut cfg, command),
         OckamSubcommand::Project(command) => ProjectCommand::run(command),
         OckamSubcommand::Space(command) => SpaceCommand::run(command),
 
