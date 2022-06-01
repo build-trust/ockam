@@ -1,3 +1,4 @@
+use crate::config::OckamConfig;
 use clap::Args;
 
 #[derive(Clone, Debug, Args)]
@@ -7,7 +8,7 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(command: DeleteCommand) {
+    pub fn run(cfg: &mut OckamConfig, command: DeleteCommand) {
         println!("deleting {:?}", command)
     }
 }
