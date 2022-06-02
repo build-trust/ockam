@@ -624,16 +624,25 @@ impl Context {
     /// Wait to receive a message up to a specified timeout
     ///
     /// See [`receive`](Self::receive) for more details.
+    pub async fn receive_duration_timeout<M: Message>(
+        &mut self,
+        timeout_duration: Duration,
+    ) -> Result<Cancel<'_, M>> {
+        let (msg, data, addr) = timeout(timeout_duration, async { self.next_from_mailbox().await })
+            .await
+            .map_err(|e| NodeError::Data.with_elapsed(e))??;
+        Ok(Cancel::new(msg, data, addr, self))
+    }
+
+    /// Wait to receive a message up to a specified timeout
+    ///
+    /// See [`receive`](Self::receive) for more details.
     pub async fn receive_timeout<M: Message>(
         &mut self,
         timeout_secs: u64,
     ) -> Result<Cancel<'_, M>> {
-        let (msg, data, addr) = timeout(Duration::from_secs(timeout_secs), async {
-            self.next_from_mailbox().await
-        })
-        .await
-        .map_err(|e| NodeError::Data.with_elapsed(e))??;
-        Ok(Cancel::new(msg, data, addr, self))
+        self.receive_duration_timeout(Duration::from_secs(timeout_secs))
+            .await
     }
 
     /// Block the current worker to wait for a message satisfying a conditional
