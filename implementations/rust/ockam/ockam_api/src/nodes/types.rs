@@ -5,6 +5,16 @@ use ockam_core::compat::borrow::Cow;
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 
+/// Request body when asking a node for its status
+#[derive(Debug, Clone, Encode, Decode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct QueryStatus {
+    #[cfg(feature = "tag")]
+    #[n(0)]
+    tag: TypeTag<1407961>,
+}
+
 /// Request body when creating a new node.
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
