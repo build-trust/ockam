@@ -41,26 +41,33 @@ impl<'a> CreateSecretRequest<'a> {
     }
 }
 
+#[derive(Debug, Copy, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
+#[rustfmt::skip]
+#[cbor(index_only)]
+pub enum GetSecretRequestOperation {
+    #[n(1)] GetAttributes,
+    #[n(2)] GetSecretBytes,
+}
+
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct GetSecretRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<4500806>,
-    /// 1 - get attributes, 2 - get secret bytes
-    #[n(1)] operation: u8,
+    #[n(1)] operation: GetSecretRequestOperation,
 }
 
 impl GetSecretRequest {
-    pub fn new(operation: u8) -> Self {
+    pub fn new(operation: GetSecretRequestOperation) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             operation,
         }
     }
-    /// 0 - get attributes, 1 - get secret bytes
-    pub fn operation(&self) -> u8 {
+    pub fn operation(&self) -> GetSecretRequestOperation {
         self.operation
     }
 }

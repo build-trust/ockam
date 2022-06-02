@@ -113,22 +113,17 @@ impl VaultService {
                     let key_id: KeyId = key_id.to_string();
 
                     match args.operation() {
-                        1 => {
+                        GetSecretRequestOperation::GetAttributes => {
                             let resp = self.vault.secret_attributes_get(&key_id).await?;
                             let body = GetSecretAttributesResponse::new(resp);
 
                             Self::ok_response(req, Some(body), enc)
                         }
-                        2 => {
+                        GetSecretRequestOperation::GetSecretBytes => {
                             let resp = self.vault.secret_export(&key_id).await?;
                             let body = ExportSecretResponse::new(resp.as_ref());
 
                             Self::ok_response(req, Some(body), enc)
-                        }
-                        _ => {
-                            Self::response_for_bad_request(&req, "invalid args", buf)?;
-
-                            return Ok(());
                         }
                     }
                 }
