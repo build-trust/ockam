@@ -50,8 +50,6 @@ where
                 .expect("failed to connect to node");
             let route = route![(TCP, format!("localhost:{}", port))];
 
-            println!("{:?}", route);
-
             lambda(ctx, a, route)
                 .await
                 .expect("encountered an error in command handler code");
@@ -160,6 +158,6 @@ pub fn setup_logging(verbose: u8) {
         .with(fmt::layer())
         .try_init();
     if result.is_err() {
-        eprintln!("Failed to initialise logging.");
+        eprintln!("Failed to initialise tracing logging.");
     }
 }
