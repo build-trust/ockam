@@ -488,6 +488,10 @@ impl CowStr<'_> {
     pub fn to_owned<'r>(&self) -> CowStr<'r> {
         CowStr(Cow::Owned(self.0.to_string()))
     }
+
+    pub fn into_owned(self) -> String {
+        self.0.into_owned()
+    }
 }
 
 impl<'a> From<&'a str> for CowStr<'a> {
@@ -538,6 +542,10 @@ impl CowBytes<'_> {
 
     pub fn to_owned<'r>(&self) -> CowBytes<'r> {
         CowBytes(Cow::Owned(self.0.to_vec()))
+    }
+
+    pub fn into_owned(self) -> Vec<u8> {
+        self.0.into_owned()
     }
 }
 
