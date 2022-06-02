@@ -1,11 +1,13 @@
 mod create;
 mod delete;
 mod list;
+mod purge;
 mod show;
 
 use create::CreateCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
+use purge::PurgeCommand;
 use show::ShowCommand;
 
 use crate::{config::OckamConfig, HELP_TEMPLATE};
@@ -34,6 +36,10 @@ pub enum NodeSubcommand {
     /// Show nodes.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Show(ShowCommand),
+
+    /// Purge all node configuration (great for development)
+    #[clap(display_order = 1005, hide = true)]
+    Purge(PurgeCommand),
 }
 
 impl NodeCommand {
@@ -43,6 +49,7 @@ impl NodeCommand {
             NodeSubcommand::Delete(command) => DeleteCommand::run(cfg, command),
             NodeSubcommand::List(command) => ListCommand::run(cfg, command),
             NodeSubcommand::Show(command) => ShowCommand::run(cfg, command),
+            NodeSubcommand::Purge(command) => PurgeCommand::run(cfg, command),
         }
     }
 }
