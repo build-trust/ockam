@@ -29,7 +29,13 @@ impl CreateCommand {
             // deterministic way of starting a node.
             let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
             Command::new(ockam)
-                .args(["node", "create", &command.node_name])
+                .args([
+                    "node",
+                    "create",
+                    "--port",
+                    &command.port.to_string(),
+                    &command.node_name,
+                ])
                 .spawn()
                 .expect("could not spawn node");
 
@@ -77,8 +83,7 @@ async fn query_status(ctx: Context, _: (), mut base_route: Route) -> anyhow::Res
 
 async fn setup(ctx: Context, c: CreateCommand) -> anyhow::Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
-    tcp.listen(format!("127.0.0.1:{}", DEFAULT_TCP_PORT))
-        .await?;
+    tcp.listen(format!("127.0.0.1:{}", c.port)).await?;
 
     ctx.start_worker("_internal.nodeman", NodeMan::new(c.node_name))
         .await?;
