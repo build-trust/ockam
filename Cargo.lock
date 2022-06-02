@@ -1997,6 +1997,7 @@ dependencies = [
  "bls12_381_plus",
  "dyn-clone",
  "hex",
+ "ockam_api",
  "ockam_channel",
  "ockam_core",
  "ockam_identity",

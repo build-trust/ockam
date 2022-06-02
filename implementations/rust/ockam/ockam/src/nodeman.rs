@@ -22,6 +22,8 @@ pub enum NodeManReply {
         status: String,
         /// Number of registered workers
         workers: u32,
+        /// Current pid
+        pid: i32,
     },
 }
 
@@ -57,6 +59,7 @@ impl Worker for NodeMan {
                         node_name: self.node_name.clone(),
                         status: "[✓]".into(), // TODO: figure out if the current node is "healthy"
                         workers: ctx.list_workers().await?.len() as u32,
+                        pid: std::process::id() as i32,
                     },
                 )
                 .await?
