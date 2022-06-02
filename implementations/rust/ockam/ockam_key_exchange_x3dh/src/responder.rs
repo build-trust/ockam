@@ -1,4 +1,5 @@
 use crate::{PreKeyBundle, Signature, X3DHError, X3dhVault, CSUITE};
+use alloc::vec;
 use arrayref::array_ref;
 use ockam_core::compat::{
     string::{String, ToString},

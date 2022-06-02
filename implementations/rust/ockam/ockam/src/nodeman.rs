@@ -1,6 +1,7 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
 use crate::{Context, Message, Result, Routed, Worker};
+use ockam_core::compat::{boxed::Box, string::String};
 use serde::{Deserialize, Serialize};
 
 /// Messaging commands sent to node manager
