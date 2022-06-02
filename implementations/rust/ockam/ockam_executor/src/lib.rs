@@ -37,6 +37,9 @@ pub mod tokio {
         pub mod mpsc {
             pub use crate::channel::*;
         }
+        pub mod oneshot {
+            pub use futures::channel::oneshot::*;
+        }
     }
     pub mod task {
         pub use crate::runtime;

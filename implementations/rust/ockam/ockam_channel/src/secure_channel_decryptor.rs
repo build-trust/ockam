@@ -2,7 +2,7 @@ use crate::{
     ChannelKeys, CreateResponderChannelMessage, KeyExchangeCompleted, Role, SecureChannelEncryptor,
     SecureChannelError, SecureChannelKeyExchanger, SecureChannelLocalInfo, SecureChannelVault,
 };
-use ockam_core::compat::{boxed::Box, vec::Vec};
+use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::{async_trait, route};
 use ockam_core::{
     Address, Any, Decodable, LocalMessage, Result, Route, Routed, TransportMessage, Worker,

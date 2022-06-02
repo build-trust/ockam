@@ -2,7 +2,7 @@ use crate::{
     KeyExchangeCompleted, SecureChannelDecryptor, SecureChannelKeyExchanger, SecureChannelListener,
     SecureChannelNewKeyExchanger, SecureChannelVault,
 };
-use ockam_core::compat::rand::random;
+use ockam_core::compat::{rand::random, vec::Vec};
 use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
