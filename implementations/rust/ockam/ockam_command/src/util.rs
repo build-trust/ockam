@@ -160,6 +160,6 @@ pub fn setup_logging(verbose: u8) {
         .with(fmt::layer())
         .try_init();
     if result.is_err() {
-        tracing::warn!("Failed to initialise logging.");
+        eprintln!("Failed to initialise logging.");
     }
 }
