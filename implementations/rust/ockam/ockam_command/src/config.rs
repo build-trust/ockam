@@ -11,6 +11,7 @@ use std::{
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct OckamConfig {
+    pub log_path: PathBuf,
     nodes: BTreeMap<String, NodeConfig>,
 }
 
@@ -28,7 +29,7 @@ pub enum ConfigError {
     NodeNotFound(String),
 }
 
-fn get_config_path() -> PathBuf {
+fn get_paths() -> (PathBuf, PathBuf) {
     let proj = ProjectDirs::from("io", "ockam", "ockam-cli").expect(
         "failed to determine configuration storage location.
 Verify that your XDG_CONFIG_HOME and XDG_DATA_HOME environment variables are correctly set.
@@ -38,14 +39,24 @@ Otherwise your OS or OS configuration may not be supported!",
     let cfg_home = proj.config_dir();
     let _ = create_dir_all(&cfg_home);
 
-    cfg_home.join("config.json")
+    let data_home = proj.data_local_dir();
+    let _ = create_dir_all(&data_home);
+
+    (cfg_home.join("config.json"), data_home.to_path_buf())
 }
 
 impl OckamConfig {
+    fn new(log_path: PathBuf) -> Self {
+        Self {
+            log_path,
+            ..Default::default()
+        }
+    }
+
     /// Attempt to load an ockam config.  If none exists, one is
     /// created and then returned.
     pub fn load() -> Self {
-        let config_path = get_config_path();
+        let (config_path, log_path) = get_paths();
 
         match File::open(&config_path) {
             Ok(ref mut f) => {
@@ -54,7 +65,7 @@ impl OckamConfig {
                 serde_json::from_str(&buf).expect("failed to parse config")
             }
             Err(_) => {
-                let new = Self::default();
+                let new = Self::new(log_path);
                 let json: String =
                     serde_json::to_string_pretty(&new).expect("failed to serialise config");
                 let mut f =
@@ -68,7 +79,7 @@ impl OckamConfig {
 
     /// Save the current config state
     pub fn save(&self) {
-        let config_path = get_config_path();
+        let (config_path, _) = get_paths();
 
         let mut file = OpenOptions::new()
             .create(false)
@@ -83,12 +94,18 @@ impl OckamConfig {
     }
 
     /// Add a new node to the configuration for future lookup
-    pub fn create_node(&mut self, name: &str, port: u16) -> Result<(), ConfigError> {
+    pub fn create_node(&mut self, name: &str, port: u16, pid: i32) -> Result<(), ConfigError> {
         if self.nodes.contains_key(name) {
             return Err(ConfigError::NodeExists(name.to_string()));
         }
 
-        self.nodes.insert(name.to_string(), NodeConfig { port });
+        self.nodes.insert(
+            name.to_string(),
+            NodeConfig {
+                port,
+                pid: Some(pid),
+            },
+        );
         Ok(())
     }
 
@@ -99,9 +116,38 @@ impl OckamConfig {
             None => Err(ConfigError::NodeExists(name.to_string())),
         }
     }
+
+    /// Update the pid of an existing node process
+    pub fn update_pid(
+        &mut self,
+        name: &str,
+        pid: impl Into<Option<i32>>,
+    ) -> Result<(), ConfigError> {
+        if !self.nodes.contains_key(name) {
+            return Err(ConfigError::NodeNotFound(name.to_string()));
+        }
+
+        self.nodes.get_mut(name).unwrap().pid = pid.into();
+        Ok(())
+    }
+
+    /// Get read-acces to all node configuration
+    pub fn get_nodes(&self) -> &BTreeMap<String, NodeConfig> {
+        &self.nodes
+    }
+
+    /// Get the log path for a specific node
+    pub fn log_path(&self, node_name: &String) -> String {
+        self.log_path
+            .join(format!("{}.log", node_name))
+            .to_str()
+            .unwrap()
+            .to_owned()
+    }
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct NodeConfig {
-    port: u16,
+    pub port: u16,
+    pub pid: Option<i32>,
 }

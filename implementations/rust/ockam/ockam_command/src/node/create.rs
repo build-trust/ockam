@@ -1,11 +1,12 @@
 use clap::Args;
-use std::{env::current_exe, process::Command, time::Duration};
+use std::{env::current_exe, fs::OpenOptions, process::Command, time::Duration};
 
 use crate::{
     config::OckamConfig,
-    util::{self, connect_to, embedded_node, DEFAULT_TCP_PORT},
+    node::show::query_status,
+    util::{connect_to, embedded_node, DEFAULT_TCP_PORT},
 };
-use ockam::{Context, NodeMan, NodeManMessage, NodeManReply, Route, TcpTransport};
+use ockam::{Context, NodeMan, TcpTransport};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -28,16 +29,38 @@ impl CreateCommand {
             // development) re-executing the current binary is a more
             // deterministic way of starting a node.
             let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
-            Command::new(ockam)
+
+            let log_file = OpenOptions::new()
+                .create(true)
+                .append(true)
+                // FIXME: slugify the node name
+                .open(&cfg.log_path.join(format!("{}.log", command.node_name)))
+                .expect("failed to open log path");
+
+            // Override the log level for spawned nodes because debug
+            // logs are significantly more useful for debugging
+            std::env::set_var("OCKAM_LOG", "debug");
+            let child = Command::new(ockam)
                 .args([
+                    "--spawn-marker",
                     "node",
                     "create",
                     "--port",
                     &command.port.to_string(),
                     &command.node_name,
                 ])
+                .stdout(log_file)
                 .spawn()
                 .expect("could not spawn node");
+
+            if let Err(e) = cfg.create_node(&command.node_name, command.port, child.id() as i32) {
+                eprintln!(
+                    "failed to update node configuration for '{}': {:?}",
+                    command.node_name, e
+                );
+                std::process::exit(-1);
+            }
+            cfg.save();
 
             // Wait a bit
             std::thread::sleep(Duration::from_millis(500));
@@ -45,40 +68,9 @@ impl CreateCommand {
             // Then query the node manager for the status
             connect_to(command.port, (), query_status);
         } else {
-            if let Err(e) = cfg.create_node(&command.node_name, DEFAULT_TCP_PORT) {
-                eprintln!(
-                    "failed to spawn node with name '{}': {:?}",
-                    command.node_name, e
-                );
-                std::process::exit(-1);
-            }
             embedded_node(setup, command);
         }
     }
-}
-
-async fn query_status(ctx: Context, _: (), mut base_route: Route) -> anyhow::Result<()> {
-    let reply: NodeManReply = ctx
-        .send_and_receive(
-            base_route.modify().append("_internal.nodeman"),
-            NodeManMessage::Status,
-        )
-        .await
-        .unwrap();
-
-    match reply {
-        NodeManReply::Status {
-            node_name,
-            status,
-            workers,
-        } => println!(
-            "Node: {}, Status: {}, Worker count: {}",
-            node_name, status, workers
-        ),
-        // _ => eprintln!("Received invalid reply format!"),
-    }
-
-    util::stop_node(ctx).await
 }
 
 async fn setup(ctx: Context, c: CreateCommand) -> anyhow::Result<()> {
