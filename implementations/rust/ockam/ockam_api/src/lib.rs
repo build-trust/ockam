@@ -5,7 +5,7 @@ pub mod nodes;
 pub mod error;
 
 use core::fmt;
-use core::ops::{Deref, DerefMut};
+use core::ops::Deref;
 use minicbor::decode::{self, Decoder};
 use minicbor::encode::{self, Encoder, Write};
 use minicbor::{Decode, Encode};
@@ -495,16 +495,10 @@ impl<'a> From<CowStr<'a>> for Cow<'a, str> {
 }
 
 impl<'a> Deref for CowStr<'a> {
-    type Target = Cow<'a, str>;
+    type Target = str;
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-impl<'a> DerefMut for CowStr<'a> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
     }
 }
 
@@ -550,16 +544,10 @@ impl<'a> From<CowBytes<'a>> for Cow<'a, [u8]> {
 }
 
 impl<'a> Deref for CowBytes<'a> {
-    type Target = Cow<'a, [u8]>;
+    type Target = [u8];
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-impl<'a> DerefMut for CowBytes<'a> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
     }
 }
 
