@@ -75,6 +75,14 @@ pub struct OckamCommand {
     // but the command is not executed.
     #[clap(global = true, long, hide = true)]
     pub test_argument_parser: bool,
+
+    /// A marker to indicate that this instance was spawned
+    ///
+    /// This is a quick work-around to avoid spamming the user with
+    /// irrelevant log messages from embedded nodes, while letting
+    /// spawned nodes log their full potential into their log files.
+    #[clap(display_order = 1006, long, hide = true)]
+    spawn_marker: bool,
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -144,9 +152,10 @@ pub fn run() {
     }
 
     let verbose = ockam_command.verbose;
-    setup_logging(verbose);
-
-    tracing::debug!("Parsed {:?}", ockam_command);
+    if ockam_command.spawn_marker {
+        setup_logging(verbose);
+        tracing::debug!("Parsed {:?}", ockam_command);
+    }
 
     let mut cfg = OckamConfig::load();
 
