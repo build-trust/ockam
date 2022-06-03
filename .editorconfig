@@ -25,3 +25,6 @@ insert_final_newline = unset
 [Makefile]
 # Make requires tab.
 indent_style = tab
+
+[*.cddl]
+indent_size = unset

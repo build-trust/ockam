@@ -13,28 +13,8 @@ use ockam_core::compat::borrow::Cow;
 use ockam_core::compat::rand;
 use tinyvec::ArrayVec;
 
-/// CDDL schema or request and response headers as well as errors.
-pub const SCHEMA: &str = r#"
-    request  = { ?0: 7586022, 1: id, 2: path, 3: method, 4: has_body }
-    response = { ?0: 9750358, 1: id, 2: re, 3: status, 4: has_body }
-    error    = { ?0: 5359172, 1: path, ?2: method, ?3: message }
-    id       = uint
-    re       = uint
-    path     = text
-    method   = 0   ;; GET
-             / 1   ;; POST
-             / 2   ;; PUT
-             / 3   ;; DELETE
-             / 4   ;; PATCH
-    status   = 200 ;; OK
-             / 400 ;; Bad request
-             / 404 ;; Not found
-             / 405 ;; Method not allowed
-             / 500 ;; Internal server error
-             / 501 ;; Not implemented
-    message  = text
-    has_body = bool
-"#;
+#[cfg(feature = "tag")]
+pub const SCHEMA: &str = core::include_str!("../schema.cddl");
 
 /// A request header.
 #[derive(Debug, Clone, Encode, Decode)]
@@ -580,5 +560,47 @@ impl<'a> Deref for CowBytes<'a> {
 impl<'a> DerefMut for CowBytes<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+#[allow(unused_variables)]
+pub(crate) fn assert_request_match<'a>(schema: impl Into<Option<&'a str>>, cbor: &[u8]) {
+    #[cfg(feature = "tag")]
+    {
+        use cddl_cat::validate_cbor_bytes;
+
+        let mut dec = Decoder::new(cbor);
+        dec.decode::<Request>().expect("header");
+
+        if let Err(e) = validate_cbor_bytes("request", SCHEMA, &cbor[..dec.position()]) {
+            tracing::error!(error = %e, "request header mismatch")
+        }
+
+        if let Some(schema) = schema.into() {
+            if let Err(e) = validate_cbor_bytes(schema, SCHEMA, &cbor[dec.position()..]) {
+                tracing::error!(%schema, error = %e, "request body mismatch")
+            }
+        }
+    }
+}
+
+#[allow(unused_variables)]
+pub(crate) fn assert_response_match<'a>(schema: impl Into<Option<&'a str>>, cbor: &[u8]) {
+    #[cfg(feature = "tag")]
+    {
+        use cddl_cat::validate_cbor_bytes;
+
+        let mut dec = Decoder::new(cbor);
+        dec.decode::<Response>().expect("header");
+
+        if let Err(e) = validate_cbor_bytes("response", SCHEMA, &cbor[..dec.position()]) {
+            tracing::error!(error = %e, "response header mismatch")
+        }
+
+        if let Some(schema) = schema.into() {
+            if let Err(e) = validate_cbor_bytes(schema, SCHEMA, &cbor[dec.position()..]) {
+                tracing::error!(%schema, error = %e, "response body mismatch")
+            }
+        }
     }
 }
