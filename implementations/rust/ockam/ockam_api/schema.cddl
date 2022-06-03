@@ -1,0 +1,105 @@
+;;; NOTE: Many types have at key 0 a type identifier (aka type tag). This is
+;;; a randomly generated number that helps in tests to ensure that the CBOR
+;;; item is the type expected.
+
+;;; Request Header ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+request = {
+    ?0: 7586022,
+     1: id,
+     2: path,
+     3: method,
+     4: has_body
+}
+
+id       = uint
+re       = uint
+path     = text
+has_body = bool
+
+method = 0 ;; GET
+       / 1 ;; POST
+       / 2 ;; PUT
+       / 3 ;; DELETE
+       / 4 ;; PATCH
+
+
+;;; Response Header ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+response = {
+    ?0: 9750358,
+     1: id,
+     2: re,
+     3: status,
+     4: has_body
+}
+
+status = 200 ;; OK
+       / 400 ;; Bad request
+       / 404 ;; Not found
+       / 405 ;; Method not allowed
+       / 500 ;; Internal server error
+       / 501 ;; Not implemented
+
+;;; Error ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+error = {
+    ?0: 5359172,
+     1: path,
+    ?2: method,
+    ?3: message
+}
+
+message = text
+
+;;; Authenticated attributes ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+attributes = {
+    ?0: 4724285,
+     1: {+ text => bytes }
+}
+
+attribute = {
+    ?0: 6844116,
+     1: value
+}
+
+value = bytes
+
+;;; Space ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: type tag?
+space = {
+    0: space_id
+    1: space_name
+}
+
+;; TODO: type tag?
+create_space = {
+    0: space_name
+}
+
+space_id   = text
+space_name = text
+
+
+;;; Projects ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: type tag?
+project = {
+    0: project_id,
+    1: project_name,
+    2: [+ service_name],
+    3: access_route
+}
+
+;; TODO: type tag?
+create_project = {
+    0: project_name,
+    1: [+ service_name]
+}
+
+project_id   = text
+project_name = text
+service_name = text
+access_route = bytes

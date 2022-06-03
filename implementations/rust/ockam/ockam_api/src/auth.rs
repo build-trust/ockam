@@ -1,6 +1,7 @@
 pub mod store;
 pub mod types;
 
+use crate::{assert_request_match, assert_response_match};
 use crate::{Error, Method, Request, RequestBuilder, Response, Status};
 use core::convert::Infallible;
 use core::fmt;
@@ -158,7 +159,8 @@ impl Client {
 
     pub async fn set(&mut self, id: &str, attrs: &Attributes<'_>) -> ockam_core::Result<()> {
         let req = Request::post(format!("/authenticated/{id}")).body(attrs);
-        self.buf = self.request("set attributes", &req).await?;
+        self.buf = self.request("set attributes", "attributes", &req).await?;
+        assert_response_match(None, &self.buf);
         let mut d = Decoder::new(&self.buf);
         let res = response("set attributes", &mut d)?;
         if res.status() == Some(Status::Ok) {
@@ -170,11 +172,12 @@ impl Client {
 
     pub async fn get(&mut self, id: &str, attr: &str) -> ockam_core::Result<Option<&[u8]>> {
         let req = Request::get(format!("/authenticated/{id}/attribute/{attr}"));
-        self.buf = self.request("get attribute", &req).await?;
+        self.buf = self.request("get attribute", None, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response("get attribute", &mut d)?;
         match res.status() {
             Some(Status::Ok) => {
+                assert_response_match("attribute", &self.buf);
                 let a: Attribute = d.decode()?;
                 Ok(Some(a.value()))
             }
@@ -185,7 +188,8 @@ impl Client {
 
     pub async fn del(&mut self, id: &str, attr: &str) -> ockam_core::Result<()> {
         let req = Request::delete(format!("/authenticated/{id}/attribute/{attr}"));
-        self.buf = self.request("del attribute", &req).await?;
+        self.buf = self.request("del attribute", None, &req).await?;
+        assert_response_match(None, &self.buf);
         let mut d = Decoder::new(&self.buf);
         let res = response("del attribute", &mut d)?;
         if res.status() == Some(Status::Ok) {
@@ -199,6 +203,7 @@ impl Client {
     async fn request<T>(
         &mut self,
         label: &str,
+        schema: impl Into<Option<&str>>,
         req: &RequestBuilder<'_, T>,
     ) -> ockam_core::Result<Vec<u8>>
     where
@@ -206,6 +211,7 @@ impl Client {
     {
         let mut buf = Vec::new();
         req.encode(&mut buf)?;
+        assert_request_match(schema, &buf);
         trace! {
             target: "ockam_api::auth::client",
             id     = %req.header().id(),
