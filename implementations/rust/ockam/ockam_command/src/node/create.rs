@@ -42,7 +42,7 @@ impl CreateCommand {
             std::env::set_var("OCKAM_LOG", "debug");
             let child = Command::new(ockam)
                 .args([
-                    "--spawn-marker",
+                    "--quiet",
                     "node",
                     "create",
                     "--port",
