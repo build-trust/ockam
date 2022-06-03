@@ -6,12 +6,14 @@ use ockam_core::{self, Address, Route};
 use ockam_node::Context;
 
 use crate::cloud::enroll::{Authenticator, AuthenticatorClientTrait};
+use crate::cloud::invitation::{CreateInvitation, Invitation};
 use crate::cloud::project::{CreateProject, Project};
 use crate::cloud::space::{CreateSpace, Space};
 use crate::{Error, Response};
 use crate::{Request, RequestBuilder, Status};
 
 pub mod enroll;
+pub mod invitation;
 pub mod project;
 pub mod space;
 
@@ -53,6 +55,84 @@ impl Client {
             }
             Authenticator::EnrollmentToken => unimplemented!(),
         };
+        self.buf = self.request(target, label, &req).await?;
+        let mut d = Decoder::new(&self.buf);
+        let res = response(target, label, &mut d)?;
+        if res.status() == Some(Status::Ok) {
+            Ok(())
+        } else {
+            Err(error(target, label, &res, &mut d))
+        }
+    }
+
+    pub async fn create_invitation(
+        &mut self,
+        body: CreateInvitation<'_>,
+    ) -> ockam_core::Result<Invitation<'_>> {
+        let target = "ockam_api::cloud::create_invitation";
+        let label = "create_invitation";
+        trace!(target = %target, space = %body.space_id, "creating invitation");
+
+        let req = Request::post("v0/").body(body);
+        self.buf = self.request(target, label, &req).await?;
+        let mut d = Decoder::new(&self.buf);
+        let res = response(target, label, &mut d)?;
+        if res.status() == Some(Status::Ok) {
+            d.decode().map_err(|e| e.into())
+        } else {
+            Err(error(target, label, &res, &mut d))
+        }
+    }
+
+    pub async fn list_invitations(
+        &mut self,
+        email: &str,
+    ) -> ockam_core::Result<Vec<Invitation<'_>>> {
+        let target = "ockam_api::cloud::list_invitations";
+        let label = "list_invitations";
+        trace!(target = %target, "listing invitations");
+
+        let req = Request::get(format!("v0/{}", email));
+        self.buf = self.request(target, label, &req).await?;
+        let mut d = Decoder::new(&self.buf);
+        let res = response(target, label, &mut d)?;
+        if res.status() == Some(Status::Ok) {
+            d.decode().map_err(|e| e.into())
+        } else {
+            Err(error(target, label, &res, &mut d))
+        }
+    }
+
+    pub async fn accept_invitations(
+        &mut self,
+        email: &str,
+        invitation_id: &str,
+    ) -> ockam_core::Result<()> {
+        let target = "ockam_api::cloud::accept_invitations";
+        let label = "accept_invitation";
+        trace!(target = %target, "accept invitation");
+
+        let req = Request::put(format!("v0/{}/{}", invitation_id, email));
+        self.buf = self.request(target, label, &req).await?;
+        let mut d = Decoder::new(&self.buf);
+        let res = response(target, label, &mut d)?;
+        if res.status() == Some(Status::Ok) {
+            Ok(())
+        } else {
+            Err(error(target, label, &res, &mut d))
+        }
+    }
+
+    pub async fn reject_invitations(
+        &mut self,
+        email: &str,
+        invitation_id: &str,
+    ) -> ockam_core::Result<()> {
+        let target = "ockam_api::cloud::reject_invitations";
+        let label = "reject_invitation";
+        trace!(target = %target, "reject invitation");
+
+        let req = Request::delete(format!("v0/{}/{}", invitation_id, email));
         self.buf = self.request(target, label, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response(target, label, &mut d)?;

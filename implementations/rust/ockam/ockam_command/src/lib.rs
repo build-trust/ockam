@@ -3,6 +3,7 @@
 mod auth;
 mod config;
 mod enroll;
+mod invitation;
 mod message;
 mod node;
 mod project;
@@ -13,6 +14,7 @@ use clap::{ColorChoice, Parser, Subcommand};
 
 use auth::AuthCommand;
 use enroll::EnrollCommand;
+use invitation::InvitationCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use project::ProjectCommand;
@@ -84,6 +86,10 @@ pub enum OckamSubcommand {
     /// Manage authenticated attributes.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, subcommand)]
     Auth(AuthCommand),
+
+    /// Create, list, accept or reject Invitations
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Invitation(InvitationCommand),
 
     /// Enroll with Ockam Orchestrator
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
@@ -159,6 +165,7 @@ pub fn run() {
 
     match ockam_command.subcommand {
         OckamSubcommand::Auth(command) => AuthCommand::run(command),
+        OckamSubcommand::Invitation(command) => InvitationCommand::run(command),
         OckamSubcommand::Enroll(command) => EnrollCommand::run(command),
         OckamSubcommand::Message(command) => MessageCommand::run(command),
         OckamSubcommand::Node(command) => NodeCommand::run(&mut cfg, command),
