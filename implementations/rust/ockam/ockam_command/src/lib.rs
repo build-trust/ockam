@@ -1,6 +1,6 @@
 //! This library is used by the `ockam` CLI (in `./bin/ockam.rs`).
 
-mod auth;
+mod authenticated;
 mod config;
 mod enroll;
 mod invitation;
@@ -12,7 +12,7 @@ mod util;
 
 use clap::{ColorChoice, Parser, Subcommand};
 
-use auth::AuthCommand;
+use authenticated::AuthenticatedCommand;
 use enroll::EnrollCommand;
 use invitation::InvitationCommand;
 use message::MessageCommand;
@@ -84,8 +84,8 @@ pub struct OckamCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum OckamSubcommand {
     /// Manage authenticated attributes.
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE, subcommand)]
-    Auth(AuthCommand),
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Authenticated(AuthenticatedCommand),
 
     /// Create, list, accept or reject Invitations
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
@@ -164,7 +164,7 @@ pub fn run() {
     let mut cfg = OckamConfig::load();
 
     match ockam_command.subcommand {
-        OckamSubcommand::Auth(command) => AuthCommand::run(command),
+        OckamSubcommand::Authenticated(command) => AuthenticatedCommand::run(command),
         OckamSubcommand::Invitation(command) => InvitationCommand::run(command),
         OckamSubcommand::Enroll(command) => EnrollCommand::run(command),
         OckamSubcommand::Message(command) => MessageCommand::run(command),
