@@ -1,13 +1,19 @@
 use crate::util::{embedded_node, multiaddr_to_route};
 use anyhow::{anyhow, Result};
-use clap::Subcommand;
+use clap::{Args, Subcommand};
 use ockam::{Context, TcpTransport};
 use ockam_api::auth;
 use ockam_api::auth::types::Attributes;
 use ockam_multiaddr::MultiAddr;
 
+#[derive(Clone, Debug, Args)]
+pub struct AuthenticatedCommand {
+    #[clap(subcommand)]
+    subcommand: AuthenticatedSubcommand,
+}
+
 #[derive(Clone, Debug, Subcommand)]
-pub enum AuthCommand {
+pub enum AuthenticatedSubcommand {
     /// Set authenticated attributes.
     Set {
         /// Address to connect to.
@@ -52,16 +58,16 @@ pub enum AuthCommand {
     },
 }
 
-impl AuthCommand {
-    pub fn run(c: AuthCommand) {
-        embedded_node(run_impl, c)
+impl AuthenticatedCommand {
+    pub fn run(c: AuthenticatedCommand) {
+        embedded_node(run_impl, c.subcommand)
     }
 }
 
-async fn run_impl(mut ctx: Context, cmd: AuthCommand) -> anyhow::Result<()> {
+async fn run_impl(mut ctx: Context, cmd: AuthenticatedSubcommand) -> anyhow::Result<()> {
     TcpTransport::create(&ctx).await?;
     match &cmd {
-        AuthCommand::Set { addr, id, attrs } => {
+        AuthenticatedSubcommand::Set { addr, id, attrs } => {
             let mut c = client(addr, &ctx).await?;
             let mut a = Attributes::new();
             for entry in attrs.chunks(2) {
@@ -73,12 +79,12 @@ async fn run_impl(mut ctx: Context, cmd: AuthCommand) -> anyhow::Result<()> {
             }
             c.set(id, &a).await?
         }
-        AuthCommand::Get { addr, id, key } => {
+        AuthenticatedSubcommand::Get { addr, id, key } => {
             let mut c = client(addr, &ctx).await?;
             let val = c.get(id, key).await?;
             println!("{val:?}")
         }
-        AuthCommand::Del { addr, id, key } => {
+        AuthenticatedSubcommand::Del { addr, id, key } => {
             let mut c = client(addr, &ctx).await?;
             c.del(id, key).await?;
         }
