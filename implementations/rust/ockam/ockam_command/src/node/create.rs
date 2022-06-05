@@ -7,6 +7,7 @@ use crate::{
     util::{connect_to, embedded_node, DEFAULT_TCP_PORT},
 };
 use ockam::{Context, NodeMan, TcpTransport};
+use ockam_api::auth;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -76,6 +77,10 @@ impl CreateCommand {
 async fn setup(ctx: Context, c: CreateCommand) -> anyhow::Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
     tcp.listen(format!("127.0.0.1:{}", c.port)).await?;
+
+    let s = auth::store::mem::Store::new();
+    ctx.start_worker("authenticated", auth::Server::new(s))
+        .await?;
 
     ctx.start_worker("_internal.nodeman", NodeMan::new(c.node_name))
         .await?;
