@@ -1,0 +1,226 @@
+name: Release Automation
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Commit SHA to create release
+        required: true
+
+permissions:
+  # Contents permission allows us write to this repository.
+  contents: write
+
+jobs:
+  create_release:
+    name: Create Release
+    runs-on: ubuntu-20.04
+    environment: release
+    outputs:
+      upload_url: ${{ steps.release_upload_url.outputs.upload_url }}
+      tag_name: ${{ steps.release_version.outputs.tag_name }}
+    steps:
+      - name: Checkout Ockam
+        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+          fetch-depth: 0
+
+      - name: Get Release Text
+        shell: bash
+        id: release_version
+        run: |
+          cargo install tomlq
+          set -x
+          source tools/scripts/release/crates-to-publish.sh
+          text=""
+
+          for crate in ${updated_crates[@]}; do
+            version=$(eval "tomlq package.version -f implementations/rust/ockam/$crate/Cargo.toml")
+            name=$(eval "tomlq package.name -f implementations/rust/ockam/$crate/Cargo.toml")
+
+            if [[ $name == "ockam" ]]; then
+              echo "Skipping ockam crate"
+              continue
+            fi
+
+            text="$text
+          - \`$name $version\` ([Documentation](https://docs.rs/$name/$version/$name/), \
+            [CHANGELOG](https://github.com/build-trust/ockam/blob/${name}_v$version/implementations/rust/ockam/$name/CHANGELOG.md))";
+          done
+
+          # Add Ockam as first crate
+          version=$(eval "tomlq package.version -f implementations/rust/ockam/ockam/Cargo.toml")
+          name=$(eval "tomlq package.name -f implementations/rust/ockam/ockam/Cargo.toml")          
+
+          text="- \`$name $version\` ([Documentation](https://docs.rs/$name/$version/$name/), \
+            [CHANGELOG](https://github.com/build-trust/ockam/blob/${name}_v$version/implementations/rust/ockam/$name/CHANGELOG.md))$text";
+
+          echo "::set-output name=version::$version"
+          echo "::set-output name=tag_name::ockam_v$version"
+
+          echo "$text" > release_note.md
+          cat release_note.md
+
+      - name: Create GitHub release
+        id: release_upload_url
+        uses: actions/create-release@4c11c9fe1dcd9636620a16455165783b20fc7ea0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_name: 'Ockam ${{ steps.release_version.outputs.version }}'
+          tag_name: '${{ steps.release_version.outputs.tag_name }}'
+          body_path: 'release_note.md'
+
+      - name: Echo Link
+        run: echo "${{ steps.release_upload_url.outputs.html_url }}"
+
+
+  build_release:
+    name: Build Release
+    needs: create_release
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [linux_86, macos, macos_86]
+        include:
+        - build: linux
+          os: ubuntu-18.04
+          rust: stable
+          target: aarch64-unknown-linux-gnu
+        - build: linux_86
+          os: ubuntu-18.04
+          rust: stable
+          target: x86_64-unknown-linux-gnu
+        - build: macos
+          os: macos-latest
+          rust: stable
+          target: aarch64-apple-darwin
+        - build: macos_86
+          os: macos-latest
+          rust: stable
+          target: x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+    - name: Echo Link
+      run: echo "${{ needs.create_release.outputs.upload_url }}"
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        profile: minimal
+        override: true
+        target: ${{ matrix.target }}
+
+    - name: Install packages (Ubuntu)
+      shell: bash
+      if: matrix.os == 'ubuntu-18.04'
+      run: |
+        set -x
+        if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+          cargo install --version 0.1.16 cross 
+        else
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xz-utils liblz4-tool
+        fi
+
+    ## TODO Cache for faster build for different targets
+
+    - name: Build Binary
+      shell: bash
+      run: |
+        set -x
+
+        if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+          cross build --bin ockam --target ${{ matrix.target }} --verbose --release
+        else
+          cargo build --bin ockam --target ${{ matrix.target }} --verbose --release
+        fi
+
+    - name: Build archive
+      shell: bash
+      run: |
+        set -x
+        cp target/${{ matrix.target }}/release/ockam ockam.${{ matrix.target }}
+        echo "ASSET=ockam.${{ matrix.target }}" >> $GITHUB_ENV
+        ls $GITHUB_WORKSPACE
+
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@536b37ec5d5b543420bdfd9b744c5965bd4d8730
+
+    - name: Sign Binary
+      shell: bash
+      env:
+        PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+        COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
+      run: |
+        cosign sign-blob --key env://PRIVATE_KEY ${{ env.ASSET }} > ${{ env.ASSET }}.sig
+
+    - name: Upload release archive
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ${{ env.ASSET }}
+        asset_name: ${{ env.ASSET }}
+        asset_content_type: application/octet-stream
+
+    - name: Upload Signature
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ${{ env.ASSET }}.sig
+        asset_name: ${{ env.ASSET }}.sig
+        asset_content_type: application/octet-stream
+
+  sign_release:
+    name: Sign Release Assets
+    needs: [build_release, create_release]
+    runs-on: ubuntu-20.04
+    environment: release
+    steps:
+      - name: Fetch All Assets
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release download ${{ needs.create_release.outputs.tag_name }} -R build-trust/ockam
+
+      - name: Generate File SHASum
+        shell: bash
+        run: shasum -a 256 ockam.* > sha256sums.txt
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@536b37ec5d5b543420bdfd9b744c5965bd4d8730
+
+      - name: Sign Files
+        shell: bash
+        env:
+          PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
+        run: cosign sign-blob --key env://PRIVATE_KEY sha256sums.txt > sha256sums.txt.sig
+
+      - name: Upload SHASum File
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: sha256sums.txt
+          asset_name: sha256sums.txt
+          asset_content_type: application/octet-stream
+
+      - name: Upload SHASum Signature File
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: sha256sums.txt.sig
+          asset_name: sha256sums.txt.sig
+          asset_content_type: application/octet-stream
