@@ -56,6 +56,47 @@ jobs:
           text="- \`$name $version\` ([Documentation](https://docs.rs/$name/$version/$name/), \
             [CHANGELOG](https://github.com/build-trust/ockam/blob/${name}_v$version/implementations/rust/ockam/$name/CHANGELOG.md))$text";
 
+          # Add information on homebrew package
+
+          text="$text
+
+          ---------------------------
+
+          To install this release using Homebrew
+
+          \`\`\`bash
+          $ brew tap build-trust/ockam
+          $ brew install ockam
+          \`\`\`
+
+          Release repository can be found [here](https://github.com/build-trust/homebrew-ockam)"
+
+          text="$text
+
+          ----------------------
+
+          We also provide a [Terraform implementation](https://github.com/build-trust/terraform-provider-ockam)"
+
+
+          text="$text
+
+          ----------------------
+
+          All binaries and SHASum file are signed using [cosign](https://github.com/sigstore/cosign) with our private key, our public key can be found in the tools/docker/cosign.pub which can be used to verify if a binary was indeed signed by Ockam.
+          To verify that a binary has been signed, download the .sig equivalent of the file and verify using the command below from the Ockam repository root directory
+          
+          \`\`\`bash
+          $ cat tools/docker/cosign.pub
+          -----BEGIN PUBLIC KEY-----
+          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEt/XQMe16Vr/iIDr/ckKws8P3/x5W
+          lu6nc6jxKa/Ue5C6RI6xAbNlvzmpY/KjUU3Jie+3P9UG7TkkrsVRC7Zi0g==
+          -----END PUBLIC KEY-----
+
+          $ cosign verify-blob --key tools/docker/cosign.pub --signature ockam.aarch64-apple-darwin.sig ockam.aarch64-apple-darwin
+          Verified OK
+          \`\`\`
+          "
+
           echo "::set-output name=version::$version"
           echo "::set-output name=tag_name::ockam_v$version"
 
@@ -71,6 +112,7 @@ jobs:
           release_name: 'Ockam ${{ steps.release_version.outputs.version }}'
           tag_name: '${{ steps.release_version.outputs.tag_name }}'
           body_path: 'release_note.md'
+          draft: true
 
       - name: Echo Link
         run: echo "${{ steps.release_upload_url.outputs.html_url }}"
@@ -189,7 +231,7 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release download ${{ needs.create_release.outputs.tag_name }} -R build-trust/ockam
+        run: gh release download ${{ needs.create_release.outputs.tag_name }} -R metaclips/ockam
 
       - name: Generate File SHASum
         shell: bash
