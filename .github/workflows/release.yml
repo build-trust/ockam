@@ -69,18 +69,26 @@ jobs:
           $ brew install ockam
           \`\`\`
 
-          Release repository can be found [here](https://github.com/build-trust/homebrew-ockam)"
+          Ockam Homebrew repository can be found [here](https://github.com/build-trust/homebrew-ockam)"
 
           text="$text
 
           ----------------------
 
-          We also provide a [Terraform implementation](https://github.com/build-trust/terraform-provider-ockam)"
+          We provide a [Terraform implementation](https://github.com/build-trust/terraform-provider-ockam)"
 
 
           text="$text
 
           ----------------------
+
+          To use our docker package
+
+          \`\`\`bash
+          docker pull ghcr.io/build-trust/ockam:$version
+          \`\`\`
+
+          ------------------------
 
           All binaries and SHASum file are signed using [cosign](https://github.com/sigstore/cosign) with our private key, our public key can be found in the tools/docker/cosign.pub which can be used to verify if a binary was indeed signed by Ockam.
           To verify that a binary has been signed, download the .sig equivalent of the file and verify using the command below from the Ockam repository root directory
@@ -327,7 +335,7 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release download ${{ needs.create_release.outputs.tag_name }} -R build-trust/ockam
+        run: gh release download ${{ needs.create_release.outputs.tag_name }} -R metaclips/ockam
 
       - name: Generate File SHASum
         shell: bash
