@@ -58,16 +58,7 @@ Note: Require cargo-release >= version 0.18.6
 
 ## Tagging
 
-We perform tag release using [gh cli](https://cli.github.com) and [tomlq](https://github.com/jamesmunns/tomlq), a toml processor. A commit SHA is provided which all bumped crates are git tagged against.
-To perform `git tag`
-```bash
-COMMIT_SHA=000000000 tools/scripts/release/tagging.sh
-```
-
-We can also only tag a single crate using the below command which only tags the Ockam crate
-```bash
-TAG_SINGLE_CRATE=ockam COMMIT_SHA=000000000 tools/scripts/release/tagging.sh
-```
+We automate Git tagging and binary release over CI
 
 ## Manual Release
 
