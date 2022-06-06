@@ -82,7 +82,8 @@ defmodule Ockam.Services.Proxy do
     forward_route = Map.get(state, :forward_route)
     inner_address = Map.get(state, :inner_address)
 
-    forwarded_message = Message.forward_trace(message, forward_route, inner_address)
+    forwarded_message =
+      Message.set_onward_route(message, forward_route) |> Message.trace(inner_address)
 
     Router.route(forwarded_message)
     {:ok, state}

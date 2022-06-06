@@ -10,7 +10,7 @@ defmodule Hop do
 
     ## Forward mesage to the next address and trace current address
     ## in return route.
-    forwarded_message = Message.forward_trace(message, address)
+    forwarded_message = Message.forward(message) |> Message.trace(address)
 
     Router.route(forwarded_message)
 

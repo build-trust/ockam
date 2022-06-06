@@ -3,6 +3,7 @@ defmodule Ockam.Wire do
   Encodes and decodes messages that can be transported on the wire.
   """
 
+  alias Ockam.Address
   alias Ockam.Message
 
   alias Ockam.Wire.DecodeError
@@ -11,6 +12,8 @@ defmodule Ockam.Wire do
   require DecodeError
   require EncodeError
 
+  @default_implementation Ockam.Wire.Binary.V1
+
   @doc """
   Encodes a message into a binary.
 
@@ -18,6 +21,24 @@ defmodule Ockam.Wire do
   Returns `{:error, error}`, if it fails.
   """
   @callback encode(message :: Message.t()) ::
+              {:ok, encoded :: iodata} | {:error, error :: EncodeError.t()}
+
+  @doc """
+  Encodes a route into a binary.
+
+  Returns `{:ok, iodata}`, if it succeeds.
+  Returns `{:error, error}`, if it fails.
+  """
+  @callback encode_route(route :: Address.route()) ::
+              {:ok, encoded :: iodata} | {:error, error :: EncodeError.t()}
+
+  @doc """
+  Encodes an address into a binary.
+
+  Returns `{:ok, iodata}`, if it succeeds.
+  Returns `{:error, error}`, if it fails.
+  """
+  @callback encode_address(address :: Address.t()) ::
               {:ok, encoded :: iodata} | {:error, error :: EncodeError.t()}
 
   @doc """
@@ -30,31 +51,49 @@ defmodule Ockam.Wire do
               {:ok, message :: Message.t()} | {:error, error :: DecodeError.t()}
 
   @doc """
+  Decodes a route from a binary.
+
+  Returns `{:ok, message}`, if it succeeds.
+  Returns `{:error, error}`, if it fails.
+  """
+  @callback decode_route(encoded :: binary()) ::
+              {:ok, route :: Address.route()} | {:error, error :: DecodeError.t()}
+
+  @doc """
+  Decodes an address from a binary.
+
+  Returns `{:ok, message}`, if it succeeds.
+  Returns `{:error, error}`, if it fails.
+  """
+  @callback decode_address(encoded :: binary()) ::
+              {:ok, address :: Address.t()} | {:error, error :: DecodeError.t()}
+
+  @doc """
   Encode a message to a binary using the provided encoder.
   """
   @spec encode(encoder :: atom, message :: Message.t()) ::
           {:ok, encoded :: iodata} | {:error, error :: EncodeError.t()}
 
-  def encode(encoder \\ nil, message)
-
-  def encode(nil, message) do
-    case default_implementation() do
-      nil -> {:error, EncodeError.new(:encoder_is_nil_and_no_default_encoder)}
-      encoder -> encode(encoder, message)
-    end
+  def encode(encoder \\ nil, message) do
+    with_implementation(encoder, :encode, [message])
   end
 
-  def encode(encoder, message) when is_atom(encoder) do
-    with :ok <- ensure_loaded(:encoder, encoder),
-         :ok <- ensure_exported(encoder, :encode, 1) do
-      encoder.encode(message)
-    else
-      {:error, reason} -> {:error, EncodeError.new(reason)}
-    end
+  @doc """
+  Encode a route to a binary using the provided encoder.
+  """
+  @spec encode_route(encoder :: atom, route :: Address.route()) ::
+          {:ok, encoded :: iodata} | {:error, error :: EncodeError.t()}
+  def encode_route(encoder \\ nil, route) do
+    with_implementation(encoder, :encode_route, [route])
   end
 
-  def encode(encoder, _message) when not is_atom(encoder) do
-    {:error, EncodeError.new({:encoder_is_not_a_module, encoder})}
+  @doc """
+  Encode an address to a binary using the provided encoder.
+  """
+  @spec encode_address(encoder :: atom, message :: Address.t()) ::
+          {:ok, encoded :: iodata} | {:error, error :: EncodeError.t()}
+  def encode_address(encoder \\ nil, address) do
+    with_implementation(encoder, :encode_address, [address])
   end
 
   @doc """
@@ -65,29 +104,86 @@ defmodule Ockam.Wire do
 
   def decode(decoder \\ nil, encoded)
 
-  def decode(nil, encoded) when is_binary(encoded) do
+  def decode(decoder, encoded) when is_binary(encoded) do
+    with_implementation(decoder, :decode, [encoded])
+  end
+
+  def decode(_decoder, encoded) do
+    {:error, error(:decode, {:encoded_input_is_not_binary, encoded})}
+  end
+
+  @doc """
+  Decode a route from binary using the provided decoder.
+  """
+  @spec decode_route(decoder :: atom, encoded :: binary) ::
+          {:ok, route :: Address.route()} | {:error, error :: DecodeError.t()}
+
+  def decode_route(decoder \\ nil, encoded)
+
+  def decode_route(decoder, encoded) when is_binary(encoded) do
+    with_implementation(decoder, :decode_route, [encoded])
+  end
+
+  def decode_route(_decoder, encoded) do
+    {:error, error(:decode_route, {:encoded_input_is_not_binary, encoded})}
+  end
+
+  @doc """
+  Decode an address from binary using the provided decoder.
+  """
+  @spec decode_address(decoder :: atom, encoded :: binary) ::
+          {:ok, address :: Address.t()} | {:error, error :: DecodeError.t()}
+
+  def decode_address(decoder \\ nil, encoded)
+
+  def decode_address(decoder, encoded) when is_binary(encoded) do
+    with_implementation(decoder, :decode_address, [encoded])
+  end
+
+  def decode_address(_decoder, encoded) do
+    {:error, error(:decode_address, {:encoded_input_is_not_binary, encoded})}
+  end
+
+  def with_implementation(nil, fun_name, args) do
     case default_implementation() do
-      nil -> {:error, DecodeError.new(:decoder_is_nil_and_no_default_decoder)}
-      decoder -> decode(decoder, encoded)
+      nil ->
+        error(fun_name, :no_default_implementation)
+
+      module when is_atom(module) ->
+        with :ok <- ensure_loaded(fun_name, module),
+             :ok <- ensure_exported(module, fun_name, Enum.count(args)) do
+          apply(module, fun_name, args)
+        else
+          {:error, reason} -> error(fun_name, reason)
+        end
+
+      other ->
+        error(fun_name, {:implementation_is_not_a_module, other})
     end
   end
 
-  def decode(decoder, encoded) when is_atom(decoder) and is_binary(encoded) do
-    with :ok <- ensure_loaded(:decoder, decoder),
-         :ok <- ensure_exported(decoder, :decode, 1),
-         {:ok, message} <- decoder.decode(encoded) do
-      {:ok, message}
-    else
-      {:error, reason} -> {:error, DecodeError.new(reason)}
-    end
+  def error(:encode, reason) do
+    {:error, EncodeError.new(reason)}
   end
 
-  def decode(decoder, _encoded) when not is_atom(decoder) do
-    {:error, DecodeError.new({:decoder_is_not_a_module, decoder})}
+  def error(:encode_route, reason) do
+    {:error, EncodeError.new(reason)}
   end
 
-  def decode(_decoder, encoded) when not is_binary(encoded) do
-    {:error, DecodeError.new({:encoded_input_is_not_binary, encoded})}
+  def error(:encode_address, reason) do
+    {:error, EncodeError.new(reason)}
+  end
+
+  def error(:decode, reason) do
+    {:error, DecodeError.new(reason)}
+  end
+
+  def error(:decode_route, reason) do
+    {:error, DecodeError.new(reason)}
+  end
+
+  def error(:decode_address, reason) do
+    {:error, DecodeError.new(reason)}
   end
 
   # returns :ok if module is loaded, {:error, reason} otherwise
@@ -108,7 +204,7 @@ defmodule Ockam.Wire do
 
   defp default_implementation do
     module_config = Application.get_env(:ockam, __MODULE__, [])
-    Keyword.get(module_config, :default)
+    Keyword.get(module_config, :default, @default_implementation)
   end
 
   def format_error(%DecodeError{reason: :decoder_is_nil_and_no_default_decoder}),

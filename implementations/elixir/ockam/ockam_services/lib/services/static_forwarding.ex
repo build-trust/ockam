@@ -114,7 +114,7 @@ defmodule Ockam.Services.StaticForwarding.Forwarder do
 
     route = Map.get(state, :route, [])
 
-    Ockam.Router.route(Message.forward(message, route ++ onward_route))
+    Ockam.Router.route(Message.set_onward_route(message, route ++ onward_route))
 
     {:ok, state}
   end

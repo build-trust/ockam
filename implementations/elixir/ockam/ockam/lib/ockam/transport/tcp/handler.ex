@@ -60,7 +60,7 @@ defmodule Ockam.Transport.TCP.Handler do
 
     case Ockam.Wire.decode(data) do
       {:ok, decoded} ->
-        forwarded_message = Message.trace_address(decoded, address)
+        forwarded_message = Message.trace(decoded, address)
         send_to_router(forwarded_message)
         Telemetry.emit_event(function_name, metadata: %{name: "decoded_data"})
 

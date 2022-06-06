@@ -8,9 +8,6 @@ defmodule Ockam.Transport.TCP.Client do
 
   require Logger
 
-  # TODO: modify this for tcp
-  @wire_encoder_decoder Wire.Binary.V2
-
   @impl true
   def address_prefix(_options), do: "TCP_C_"
 
@@ -64,9 +61,9 @@ defmodule Ockam.Transport.TCP.Client do
   @impl true
   def handle_info({:tcp, socket, data}, %{socket: socket} = state) do
     ## TODO: send/receive message in multiple TCP packets
-    case Wire.decode(@wire_encoder_decoder, data) do
+    case Wire.decode(data) do
       {:ok, message} ->
-        forwarded_message = Message.trace_address(message, state.address)
+        forwarded_message = Message.trace(message, state.address)
         Ockam.Router.route(forwarded_message)
 
       {:error, %Wire.DecodeError{} = e} ->
@@ -124,7 +121,7 @@ defmodule Ockam.Transport.TCP.Client do
   defp encode_and_send_over_tcp(message, state) do
     forwarded_message = Message.forward(message)
 
-    with {:ok, encoded_message} <- Wire.encode(@wire_encoder_decoder, forwarded_message) do
+    with {:ok, encoded_message} <- Wire.encode(forwarded_message) do
       ## TODO: send/receive message in multiple TCP packets
       case byte_size(encoded_message) <= TCP.packed_size_limit() do
         true ->

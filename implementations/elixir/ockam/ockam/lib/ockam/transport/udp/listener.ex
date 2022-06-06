@@ -90,7 +90,7 @@ defmodule Ockam.Transport.UDP.Listener do
     {:udp, _socket, from_ip, from_port, packet} = udp_message
 
     with {:ok, decoded} <- Wire.decode(packet),
-         message <- Message.trace_address(decoded, UDPAddress.new(from_ip, from_port)),
+         message <- Message.trace(decoded, UDPAddress.new(from_ip, from_port)),
          :ok <- Router.route(message) do
       Telemetry.emit_event(function_name, metadata: %{name: "successfully_decoded"})
       {:ok, state}

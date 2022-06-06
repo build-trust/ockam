@@ -1,15 +1,15 @@
-defmodule Ockam.Wire.Binary.V2.Tests do
+defmodule Ockam.Wire.Binary.V1.Tests do
   use ExUnit.Case, async: true
 
   alias Ockam.Transport.TCPAddress
   alias Ockam.Transport.UDPAddress
-  alias Ockam.Wire.Binary.V2
+  alias Ockam.Wire.Binary.V1
 
   @localhost <<14, 49, 50, 55, 46, 48, 46, 48, 46, 49>>
   @port_4000 <<58, 52, 48, 48, 48>>
   @port_3000 <<58, 51, 48, 48, 48>>
 
-  describe "Ockam.Wire.V2" do
+  describe "Ockam.Wire.V1" do
     test "encode/1 for TCP" do
       {a, b, c, d} = {127, 0, 0, 1}
 
@@ -34,7 +34,7 @@ defmodule Ockam.Wire.Binary.V2.Tests do
       assert {:ok,
               <<^version, ^onward_route_size, 1, @localhost::binary, @port_4000::binary, 0, 7,
                 112, 114, 105, 110, 116, 101, 114, 1, 1, @localhost::binary, @port_3000::binary,
-                5, 104, 101, 108, 108, 111>>} = V2.encode(message)
+                5, 104, 101, 108, 108, 111>>} = V1.encode(message)
     end
 
     test "encode/1 for UDP" do
@@ -54,7 +54,7 @@ defmodule Ockam.Wire.Binary.V2.Tests do
       assert {:ok,
               <<1, 2, 2, @localhost::binary, @port_4000::binary, 0, 7, 112, 114, 105, 110, 116,
                 101, 114, 1, 2, @localhost::binary, @port_3000::binary, 5, 104, 101, 108, 108,
-                111>>} = V2.encode(message)
+                111>>} = V1.encode(message)
     end
 
     test "encode/1 for TCP (minimal)" do
@@ -73,7 +73,7 @@ defmodule Ockam.Wire.Binary.V2.Tests do
 
       assert {:ok,
               <<^version, ^onward_route_size, 1, @localhost::binary, @port_4000::binary, 0, 0>>} =
-               V2.encode(message)
+               V1.encode(message)
     end
 
     test "encode/1 for UDP (minimal)" do
@@ -87,7 +87,7 @@ defmodule Ockam.Wire.Binary.V2.Tests do
         payload: ""
       }
 
-      assert {:ok, <<1, 1, 2, @localhost::binary, @port_4000::binary, 0, 0>>} = V2.encode(message)
+      assert {:ok, <<1, 1, 2, @localhost::binary, @port_4000::binary, 0, 0>>} = V1.encode(message)
     end
 
     test "decode/1 for UDP" do
@@ -101,7 +101,7 @@ defmodule Ockam.Wire.Binary.V2.Tests do
                 onward_route: onward_route,
                 return_route: return_route,
                 payload: payload
-              }} = V2.decode(encoded)
+              }} = V1.decode(encoded)
 
       assert [UDPAddress.new({127, 0, 0, 1}, 4000), "printer"] ==
                onward_route
@@ -121,7 +121,7 @@ defmodule Ockam.Wire.Binary.V2.Tests do
                 onward_route: onward_route,
                 return_route: return_route,
                 payload: payload
-              }} = V2.decode(encoded)
+              }} = V1.decode(encoded)
 
       assert [TCPAddress.new({a, b, c, d}, 4000)] == onward_route
       assert [] = return_route

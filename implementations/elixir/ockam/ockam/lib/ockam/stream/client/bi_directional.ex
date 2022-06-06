@@ -54,7 +54,7 @@ defmodule Ockam.Stream.Client.BiDirectional do
           stream_options
         )
 
-      forwarded_message = Message.trace_address(message, publisher_address)
+      forwarded_message = Message.trace(message, publisher_address)
 
       Ockam.Router.route(forwarded_message)
       :ok

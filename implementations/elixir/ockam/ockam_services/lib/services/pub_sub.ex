@@ -116,7 +116,7 @@ defmodule Ockam.Services.PubSub.Topic do
     |> Map.get(:routes, MapSet.new())
     |> Enum.each(fn {_name, route} ->
       ## TODO: forward_through
-      Ockam.Router.route(Message.forward(message, route ++ onward_route))
+      Ockam.Router.route(Message.set_onward_route(message, route ++ onward_route))
     end)
 
     {:ok, state}

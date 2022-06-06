@@ -1,4 +1,4 @@
-defmodule Ockam.Wire.Binary.V2 do
+defmodule Ockam.Wire.Binary.V1 do
   @moduledoc false
 
   @behaviour Ockam.Wire
@@ -89,6 +89,40 @@ defmodule Ockam.Wire.Binary.V2 do
 
       <<wrong_version, _rest::binary>> ->
         {:error, {:invalid_version, encoded, wrong_version}}
+    end
+  end
+
+  def encode_route(route) do
+    {:ok, :bare.encode(normalize_route(route), bare_spec(:route))}
+  end
+
+  def decode_route(encoded_route) do
+    case :bare.decode(encoded_route, bare_spec(:route)) do
+      {:ok, route, ""} ->
+        {:ok, denormalize_route(route)}
+
+      {:ok, _decoded, rest} ->
+        {:error, {:too_much_data, encoded_route, rest}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def encode_address(address) do
+    {:ok, :bare.encode(Address.normalize(address), bare_spec(:address))}
+  end
+
+  def decode_address(encoded_address) do
+    case :bare.decode(encoded_address, bare_spec(:address)) do
+      {:ok, address, ""} ->
+        {:ok, Address.denormalize(address)}
+
+      {:ok, _decoded, rest} ->
+        {:error, {:too_much_data, encoded_address, rest}}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

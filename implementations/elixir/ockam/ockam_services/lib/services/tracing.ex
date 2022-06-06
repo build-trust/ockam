@@ -79,7 +79,7 @@ defmodule Ockam.Services.Tracing.Watcher do
         onward_route -> onward_route
       end
 
-    req = Message.forward_trace(message, onward_route, address)
+    req = Message.set_onward_route(message, onward_route) |> Message.trace(address)
 
     Router.route(req)
   end
