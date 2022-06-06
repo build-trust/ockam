@@ -67,7 +67,7 @@ defmodule Ockam.Workers.RemoteForwarder do
 
     forward_to = Map.get(state, :forward_to)
 
-    Router.route(Message.forward(message, forward_to ++ onward_route))
+    Router.route(Message.set_onward_route(message, forward_to ++ onward_route))
 
     {:ok, state}
   end

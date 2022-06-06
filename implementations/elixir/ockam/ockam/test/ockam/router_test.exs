@@ -49,8 +49,8 @@ defmodule Ockam.Router.Tests.Forwarder do
         Logger.info("\nMESSAGE BACK: #{inspect(message)}}")
         {:ok, state}
 
-      [^address | rest] ->
-        forward = Message.forward_trace(message, rest, address)
+      [^address | _rest] ->
+        forward = Message.forward_trace(message)
 
         Logger.info("\nMESSAGE: #{inspect(message)}\nFORWARD: #{inspect(forward)}")
         Router.route(forward)

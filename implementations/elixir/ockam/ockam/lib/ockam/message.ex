@@ -2,7 +2,9 @@ defmodule Ockam.Message do
   @moduledoc """
   Message data structure for routing
   """
-  defstruct [:payload, onward_route: [], return_route: [], version: 1]
+  alias Ockam.Message
+
+  defstruct [:payload, onward_route: [], return_route: [], version: 1, local_metadata: %{}]
 
   @type t() :: %__MODULE__{}
 
@@ -13,7 +15,7 @@ defmodule Ockam.Message do
   return_route is `[my_address]`
   """
   def reply(message, my_address, payload) do
-    %Ockam.Message{
+    %Message{
       onward_route: return_route(message),
       return_route: [my_address],
       payload: payload
@@ -23,60 +25,55 @@ defmodule Ockam.Message do
   @doc """
   Forward to the next address in the onward route
   """
-  def forward(%Ockam.Message{} = message) do
+  def forward(%Message{} = message) do
     [_me | onward_route] = onward_route(message)
-    %{message | onward_route: onward_route}
-  end
-
-  @doc """
-  Forward to a specified route
-  """
-  def forward(%Ockam.Message{} = message, route) when is_list(route) do
-    %{message | onward_route: route}
+    set_onward_route(message, onward_route)
   end
 
   @doc """
   Trace `address` in the return route
   """
-  def trace_address(%Ockam.Message{} = message, address) do
-    %{message | return_route: [address | return_route(message)]}
+  def trace(%Message{} = message, address) do
+    set_return_route(message, [address | return_route(message)])
   end
 
   @doc """
   Forward to the next address in the onward route and trace
   the current address in the return route
   """
-  def forward_trace(%Ockam.Message{} = message) do
+  def forward_trace(%Message{} = message) do
     [me | onward_route] = onward_route(message)
-    message |> forward(onward_route) |> trace_address(me)
-  end
-
-  @doc """
-  Forward to the next address in the onward route and trace
-  the `address` in the return route
-  """
-  def forward_trace(%Ockam.Message{} = message, address) do
-    message |> forward() |> trace_address(address)
-  end
-
-  @doc """
-  Forward to the specified `route` and trace
-  the `address` in the return route
-  """
-  def forward_trace(%Ockam.Message{} = message, route, address) do
-    message |> forward(route) |> trace_address(address)
+    message |> set_onward_route(onward_route) |> trace(me)
   end
 
   @doc "Get onward_route from the message"
-  def onward_route(%Ockam.Message{onward_route: onward_route}) when is_list(onward_route),
+  def onward_route(%Message{onward_route: onward_route}) when is_list(onward_route),
     do: onward_route
 
   @doc "Get return_route from the message"
-  def return_route(%Ockam.Message{return_route: return_route}) when is_list(return_route),
+  def return_route(%Message{return_route: return_route}) when is_list(return_route),
     do: return_route
 
-  def return_route(%Ockam.Message{return_route: nil}), do: []
+  def return_route(%Message{return_route: nil}), do: []
 
   @doc "Get payload from the message"
-  def payload(%Ockam.Message{payload: payload}), do: payload
+  def payload(%Message{payload: payload}), do: payload
+
+  def set_onward_route(%Message{} = message, onward_route) when is_list(onward_route) do
+    %{message | onward_route: onward_route}
+  end
+
+  def set_return_route(%Message{} = message, return_route) when is_list(return_route) do
+    %{message | return_route: return_route}
+  end
+
+  def set_payload(%Message{} = message, payload) when is_list(payload) do
+    %{message | payload: payload}
+  end
+
+  def put_local_metadata(%Message{} = message, key, value) when is_atom(key) do
+    Map.update(message, :local_metadata, %{key => value}, fn metadata ->
+      Map.put(metadata, key, value)
+    end)
+  end
 end

@@ -113,7 +113,7 @@ defmodule Ockam.Session.Separate.Initiator do
         [_me | onward_route] = Message.onward_route(message)
 
         ## TODO: forward_through
-        Router.route(Message.forward(message, [data_worker | onward_route]))
+        Router.route(Message.set_onward_route(message, [data_worker | onward_route]))
 
       _other ->
         Logger.warn("Ignoring message in data stage: #{inspect(message)}. Not implemented")

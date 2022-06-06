@@ -24,7 +24,7 @@ defmodule Ockam.Transport.TCPAddress.Tests do
     test "Encoded address produces expected binary" do
       address = TCPAddress.new("localhost", 4000)
 
-      assert @encoded_localhost == :bare.encode(address, Ockam.Wire.Binary.V2.bare_spec(:address))
+      assert {:ok, @encoded_localhost} == Ockam.Wire.encode_address(address)
     end
   end
 end

@@ -63,7 +63,7 @@ defmodule Ockam.Workers.PubSubSubscriber do
         :ok
 
       route ->
-        Router.route(Message.forward(message, route))
+        Router.route(Message.set_onward_route(message, route))
     end
 
     {:ok, state}

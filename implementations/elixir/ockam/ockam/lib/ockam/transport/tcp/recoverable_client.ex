@@ -55,7 +55,10 @@ defmodule Ockam.Transport.TCP.RecoverableClient do
     [_me | onward_route] = Message.onward_route(message)
 
     ## TODO: forward_through and trace
-    Router.route(Message.forward_trace(message, [client | onward_route], state.inner_address))
+    Router.route(
+      Message.set_onward_route(message, [client | onward_route])
+      |> Message.trace(state.inner_address)
+    )
 
     {:ok, state}
   end

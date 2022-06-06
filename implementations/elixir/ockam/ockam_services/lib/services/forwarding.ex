@@ -74,7 +74,7 @@ defmodule Ockam.Services.Forwarding.Forwarder do
     route_to_forward = route ++ onward_route
     Logger.info("Alias forward #{inspect(message)} to #{inspect(route_to_forward)}")
 
-    Router.route(Message.forward(message, route_to_forward))
+    Router.route(Message.set_onward_route(message, route_to_forward))
 
     {:ok, state}
   end
