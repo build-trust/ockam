@@ -2170,7 +2170,6 @@ dependencies = [
  "ockam_node",
  "ockam_transport_tcp",
  "quickcheck",
- "reqwest",
  "serde",
  "serde_json",
  "tempfile",

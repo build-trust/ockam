@@ -125,15 +125,21 @@ pub(crate) mod auth0 {
                         .send()
                 })
                 .await
-                .map_err(ApiError::from)?;
+                .map_err(|err| ApiError::generic(&err.to_string()))?;
                 match res.status() {
                     StatusCode::OK => {
-                        let res = res.json::<DeviceCode>().await.map_err(ApiError::from)?;
+                        let res = res
+                            .json::<DeviceCode>()
+                            .await
+                            .map_err(|err| ApiError::generic(&err.to_string()))?;
                         debug!("device code received: {res:#?}");
                         res
                     }
                     _ => {
-                        let res = res.text().await.map_err(ApiError::from)?;
+                        let res = res
+                            .text()
+                            .await
+                            .map_err(|err| ApiError::generic(&err.to_string()))?;
                         let err = format!("couldn't get device code [response={:#?}]", res);
                         return Err(ApiError::generic(&err));
                     }
@@ -170,15 +176,21 @@ pub(crate) mod auth0 {
                     ])
                     .send()
                     .await
-                    .map_err(ApiError::from)?;
+                    .map_err(|err| ApiError::generic(&err.to_string()))?;
                 match res.status() {
                     StatusCode::OK => {
-                        tokens_res = res.json::<Auth0Token>().await.map_err(ApiError::from)?;
+                        tokens_res = res
+                            .json::<Auth0Token>()
+                            .await
+                            .map_err(|err| ApiError::generic(&err.to_string()))?;
                         debug!("tokens received [tokens={tokens_res:#?}]");
                         return Ok(tokens_res);
                     }
                     _ => {
-                        let err_res = res.json::<TokensError>().await.map_err(ApiError::from)?;
+                        let err_res = res
+                            .json::<TokensError>()
+                            .await
+                            .map_err(|err| ApiError::generic(&err.to_string()))?;
                         match err_res.error.borrow() {
                             "authorization_pending" | "invalid_request" | "slow_down" => {
                                 debug!("tokens not yet received [err={err_res:#?}]");
