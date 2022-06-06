@@ -51,7 +51,7 @@ jobs:
 
           # Add Ockam as first crate
           version=$(eval "tomlq package.version -f implementations/rust/ockam/ockam/Cargo.toml")
-          name=$(eval "tomlq package.name -f implementations/rust/ockam/ockam/Cargo.toml")          
+          name=$(eval "tomlq package.name -f implementations/rust/ockam/ockam/Cargo.toml")
 
           text="- \`$name $version\` ([Documentation](https://docs.rs/$name/$version/$name/), \
             [CHANGELOG](https://github.com/build-trust/ockam/blob/${name}_v$version/implementations/rust/ockam/$name/CHANGELOG.md))$text";
@@ -84,7 +84,7 @@ jobs:
 
           All binaries and SHASum file are signed using [cosign](https://github.com/sigstore/cosign) with our private key, our public key can be found in the tools/docker/cosign.pub which can be used to verify if a binary was indeed signed by Ockam.
           To verify that a binary has been signed, download the .sig equivalent of the file and verify using the command below from the Ockam repository root directory
-          
+
           \`\`\`bash
           $ cat tools/docker/cosign.pub
           -----BEGIN PUBLIC KEY-----
@@ -146,11 +146,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - name: Echo Link
       run: echo "${{ needs.create_release.outputs.upload_url }}"
     - name: Install Rust
-      uses: actions-rs/toolchain@v1
+      uses: actions-rs/toolchain@b3ea035039aa8cb07d1f4a5168b0f8065c4a2eeb
       with:
         toolchain: ${{ matrix.rust }}
         profile: minimal
@@ -163,7 +163,7 @@ jobs:
       run: |
         set -x
         if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
-          cargo install --version 0.1.16 cross 
+          cargo install --version 0.1.16 cross
         else
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends xz-utils liblz4-tool
@@ -202,7 +202,7 @@ jobs:
         cosign sign-blob --key env://PRIVATE_KEY ${{ env.ASSET }} > ${{ env.ASSET }}.sig
 
     - name: Upload release archive
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -212,7 +212,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     - name: Upload Signature
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -221,9 +221,105 @@ jobs:
         asset_name: ${{ env.ASSET }}.sig
         asset_content_type: application/octet-stream
 
+  build_elixir_nifs:
+    name: Build Elixir NIFs
+    needs: create_release
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [macos, linux]
+        include:
+        - build: macos
+          os: macos-latest
+          release_path: implementations/elixir/ockam/ockam_vault_software/priv/darwin_universal/native
+          release_asset_name: ockam.darwin_universal_elixir_ffi.so
+        - build: linux
+          os: ubuntu-20.04
+          release_path: implementations/elixir/ockam/ockam_vault_software/_build/dev/lib/ockam_vault_software/priv/native
+          release_asset_name: ockam.linux_elixir_ffi.so
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@b3ea035039aa8cb07d1f4a5168b0f8065c4a2eeb
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Setup Erlang
+        run: |
+          if [[ "${{ matrix.build }}" == "macos" ]]; then
+            brew install erlang
+          else
+            # https://elixir-lang.org/install.html#gnulinux
+            cd /tmp
+            wget https://packages.erlang-solutions.com/erlang-solutions_2.0_all.deb && sudo dpkg -i erlang-solutions_2.0_all.deb
+            sudo apt-get update
+            sudo apt-get -y install esl-erlang elixir libdbus-1-dev pkg-config
+          fi
+
+      - name: Build For Ockam Repository
+        if: matrix.build == 'linux'
+        run: cargo build --release
+
+      - name: Install Targets For MacOS
+        if: matrix.build == 'macos'
+        run: |
+          rustup target add aarch64-apple-darwin
+          rustup target add x86_64-apple-darwin
+
+      - name: Build NIF
+        working-directory: implementations/elixir/ockam/ockam_vault_software
+        shell: bash
+        run: |
+          set -x
+
+          if [[ "${{ matrix.build }}" == "macos" ]]; then
+            ./build-elixir-universal-lib.sh
+          else
+            mix recompile.native
+          fi
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@536b37ec5d5b543420bdfd9b744c5965bd4d8730
+
+      - name: Sign NIFs
+        shell: bash
+        working-directory: ${{ matrix.release_path }}
+        env:
+          PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
+        run: |
+          cosign sign-blob --key env://PRIVATE_KEY libockam_elixir_ffi.so > libockam_elixir_ffi.so.sig
+
+      - name: Upload Library
+        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ${{ matrix.release_path }}/libockam_elixir_ffi.so
+          asset_name: ${{ matrix.release_asset_name }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload Signature
+        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ${{ matrix.release_path }}/libockam_elixir_ffi.so.sig
+          asset_name: ${{ matrix.release_asset_name }}.sig
+          asset_content_type: application/octet-stream
+
+
   sign_release:
     name: Sign Release Assets
-    needs: [build_release, create_release]
+    needs: [build_release, create_release, build_elixir_nifs]
     runs-on: ubuntu-20.04
     environment: release
     steps:
@@ -231,7 +327,7 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release download ${{ needs.create_release.outputs.tag_name }} -R metaclips/ockam
+        run: gh release download ${{ needs.create_release.outputs.tag_name }} -R build-trust/ockam
 
       - name: Generate File SHASum
         shell: bash
@@ -248,7 +344,7 @@ jobs:
         run: cosign sign-blob --key env://PRIVATE_KEY sha256sums.txt > sha256sums.txt.sig
 
       - name: Upload SHASum File
-        uses: actions/upload-release-asset@v1.0.1
+        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -258,7 +354,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Upload SHASum Signature File
-        uses: actions/upload-release-asset@v1.0.1
+        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
