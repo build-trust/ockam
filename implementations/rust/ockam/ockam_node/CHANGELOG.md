@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.57.0 - 2022-06-06
+
+### Added
+
+- Add an async_drop mechanism for bare context drop
+- Add dedicated channel types for ockam_node, switch back to bounded channels
+- Add timeout function to context that takes duration
+
+### Changed
+
+- Attempt to cut down memory usage via context drop
+- Rename new_context to new_detached
+- Updated dependencies
+
+### Fixed
+
+- Fix address de-allocation issues for bare contexts
+
 ## 0.56.0 - 2022-05-23
 
 ### Changed

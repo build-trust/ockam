@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.54.0 - 2022-06-06
+
+### Added
+
+- Add doc comments to `SecureChannel`
+
+### Changed
+
+- Rename new_context to new_detached
+- Split worker into `Encryptor` and `Decryptor` in ockam_channel crate
+- Updated dependencies
+
 ## 0.53.0 - 2022-05-23
 
 ### Changed
