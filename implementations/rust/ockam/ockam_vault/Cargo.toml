@@ -72,7 +72,7 @@ service = ["ockam_api", "minicbor"]
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.55.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.15.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.56.0", default_features = false }
+ockam_node = { path = "../ockam_node", version = "^0.57.0", default_features = false }
 ockam_api = { path = "../ockam_api", version = "^0.3.0", default_features = false, optional = true }
 signature_core = { path = "../signature_core", version = "^0.37.0", optional = true }
 signature_bbs_plus = { path = "../signature_bbs_plus", version = "^0.37.0", optional = true }
