@@ -2459,7 +2459,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_websocket"
-version = "0.45.0"
+version = "0.46.0"
 dependencies = [
  "futures-util",
  "ockam_core",
