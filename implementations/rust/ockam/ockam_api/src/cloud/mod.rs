@@ -3,7 +3,6 @@ use tracing::{trace, warn};
 
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{self, Address, Route};
-use ockam_identity::IdentityIdentifier;
 use ockam_node::Context;
 
 use crate::cloud::enroll::auth0::{Auth0Token, AuthorizedAuth0Token};
@@ -40,7 +39,7 @@ impl MessagingClient {
     /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
     pub async fn enroll_auth0<'a, S>(
         &mut self,
-        identifier: IdentityIdentifier,
+        identifier: String,
         mut auth0_service: S,
     ) -> ockam_core::Result<()>
     where
@@ -49,7 +48,7 @@ impl MessagingClient {
         let target = "ockam_api::cloud::enroll_auth0";
         trace!(target = %target, "generating tokens");
 
-        let identity = Identity::from(identifier.to_string());
+        let identity = Identity::from(identifier);
         let token = {
             let token = auth0_service.token(&identity).await?;
             AuthorizedToken::Auth0(AuthorizedAuth0Token::new(identity, token))
@@ -59,14 +58,11 @@ impl MessagingClient {
     }
 
     /// Executes an enrollment process to generate a new set of access tokens using the enrollment token flow.
-    pub async fn enroll_enrollment_token(
-        &mut self,
-        identifier: IdentityIdentifier,
-    ) -> ockam_core::Result<()> {
+    pub async fn enroll_enrollment_token(&mut self, identifier: String) -> ockam_core::Result<()> {
         let target = "ockam_api::cloud::enroll_enrollment_token";
         trace!(target = %target, "generating tokens");
 
-        let identity = Identity::from(identifier.to_string());
+        let identity = Identity::from(identifier);
         let token = {
             let token = self.token(&identity).await?;
             AuthorizedToken::EnrollmentToken(AuthorizedEnrollmentToken::new(identity, token))

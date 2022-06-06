@@ -36,12 +36,6 @@ path             = "../ockam_node"
 default-features = false
 features         = ["std"] # FIXME: required because of unbounded channels in ockam_node
 
-[dependencies.ockam_identity]
-version          = "0.47.0"
-path             = "../ockam_identity"
-default-features = false
-features         = ["std"]
-
 [dev-dependencies]
 cddl-cat            = "0.6.1"
 fake                = { version = "2", features=['derive', 'uuid']}

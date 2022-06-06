@@ -46,10 +46,14 @@ async fn enroll(mut ctx: Context, command: EnrollCommand) -> anyhow::Result<()> 
     match command.authenticator {
         Authenticator::Auth0 => {
             api_client
-                .enroll_auth0(identity.id, auth0::Auth0Service)
+                .enroll_auth0(identity.id.to_string(), auth0::Auth0Service)
                 .await?
         }
-        Authenticator::EnrollmentToken => api_client.enroll_enrollment_token(identity.id).await?,
+        Authenticator::EnrollmentToken => {
+            api_client
+                .enroll_enrollment_token(identity.id.to_string())
+                .await?
+        }
     }
     println!("Enrolled successfully");
 

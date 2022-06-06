@@ -328,7 +328,6 @@ mod tests {
     use ockam_core::compat::rand::{self, Rng};
     use ockam_core::route;
     use ockam_core::{Routed, Worker};
-    use ockam_identity::IdentityIdentifier;
     use ockam_node::Context;
     use ockam_transport_tcp::{TcpTransport, TCP};
 
@@ -491,13 +490,12 @@ mod tests {
         }
     }
 
-    fn random_identifier() -> IdentityIdentifier {
-        let id: String = rand::thread_rng()
+    fn random_identifier() -> String {
+        rand::thread_rng()
             .sample_iter(&rand::distributions::Alphanumeric)
             .take(32)
             .map(char::from)
-            .collect();
-        IdentityIdentifier::from_key_id(id)
+            .collect()
     }
 
     pub struct EnrollHandler;
