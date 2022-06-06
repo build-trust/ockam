@@ -17,7 +17,6 @@ lmdb = ["std", "lmdb-rkv"]
 [dependencies]
 cddl-cat    = { version = "0.6.1", optional = true }
 minicbor    = { version = "0.17.1", features = ["alloc", "derive"] }
-reqwest     = { version = "0.11", default-features = false }
 serde       = { version = "1", features = ["derive"] }
 serde_json  = "1"
 tinyvec     = { version = "1.6.0", features = ["rustc_1_57"] }

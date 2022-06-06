@@ -9,7 +9,7 @@ pub struct ApiError(ErrorImpl);
 
 impl ApiError {
     pub fn generic(cause: &str) -> ockam_core::Error {
-        ockam_core::Error::new(Origin::Application, Kind::Invalid, cause)
+        ockam_core::Error::new(Origin::Application, Kind::Unknown, cause)
     }
 }
 
@@ -18,7 +18,6 @@ enum ErrorImpl {
     CborDecode(minicbor::decode::Error),
     CborEncode(minicbor::encode::Error<io::Error>),
     SerdeJson(serde_json::Error),
-    Http(reqwest::Error),
 }
 
 impl fmt::Display for ApiError {
@@ -27,7 +26,6 @@ impl fmt::Display for ApiError {
             ErrorImpl::CborEncode(e) => e.fmt(f),
             ErrorImpl::CborDecode(e) => e.fmt(f),
             ErrorImpl::SerdeJson(e) => e.fmt(f),
-            ErrorImpl::Http(e) => e.fmt(f),
         }
     }
 }
@@ -39,7 +37,6 @@ impl ockam_core::compat::error::Error for ApiError {
             ErrorImpl::CborDecode(e) => Some(e),
             ErrorImpl::CborEncode(e) => Some(e),
             ErrorImpl::SerdeJson(e) => Some(e),
-            ErrorImpl::Http(e) => Some(e),
         }
     }
 }
@@ -59,12 +56,6 @@ impl From<minicbor::encode::Error<io::Error>> for ApiError {
 impl From<serde_json::Error> for ApiError {
     fn from(e: serde_json::Error) -> Self {
         ApiError(ErrorImpl::SerdeJson(e))
-    }
-}
-
-impl From<reqwest::Error> for ApiError {
-    fn from(e: reqwest::Error) -> Self {
-        ApiError(ErrorImpl::Http(e))
     }
 }
 
