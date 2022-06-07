@@ -33,7 +33,13 @@ jobs:
           cargo install tomlq
           set -x
           source tools/scripts/release/crates-to-publish.sh
-          text=""
+
+          # Add Ockam as first crate
+          ockam_version=$(eval "tomlq package.version -f implementations/rust/ockam/ockam/Cargo.toml")
+          name=$(eval "tomlq package.name -f implementations/rust/ockam/ockam/Cargo.toml")
+
+          text="- \`$name $ockam_version\` ([Documentation](https://docs.rs/$name/$ockam_version/$name/), \
+            [CHANGELOG](https://github.com/build-trust/ockam/blob/ockam_v$ockam_version/implementations/rust/ockam/$name/CHANGELOG.md))";
 
           for crate in ${updated_crates[@]}; do
             version=$(eval "tomlq package.version -f implementations/rust/ockam/$crate/Cargo.toml")
@@ -46,15 +52,8 @@ jobs:
 
             text="$text
           - \`$name $version\` ([Documentation](https://docs.rs/$name/$version/$name/), \
-            [CHANGELOG](https://github.com/build-trust/ockam/blob/${name}_v$version/implementations/rust/ockam/$name/CHANGELOG.md))";
+            [CHANGELOG](https://github.com/build-trust/ockam/blob/ockam_v$ockam_version/implementations/rust/ockam/$name/CHANGELOG.md))";
           done
-
-          # Add Ockam as first crate
-          version=$(eval "tomlq package.version -f implementations/rust/ockam/ockam/Cargo.toml")
-          name=$(eval "tomlq package.name -f implementations/rust/ockam/ockam/Cargo.toml")
-
-          text="- \`$name $version\` ([Documentation](https://docs.rs/$name/$version/$name/), \
-            [CHANGELOG](https://github.com/build-trust/ockam/blob/${name}_v$version/implementations/rust/ockam/$name/CHANGELOG.md))$text";
 
           # Add information on homebrew package
 
@@ -85,7 +84,7 @@ jobs:
           To use our docker package
 
           \`\`\`bash
-          docker pull ghcr.io/build-trust/ockam:$version
+          docker pull ghcr.io/build-trust/ockam:$ockam_version
           \`\`\`
 
           ------------------------
@@ -105,8 +104,8 @@ jobs:
           \`\`\`
           "
 
-          echo "::set-output name=version::$version"
-          echo "::set-output name=tag_name::ockam_v$version"
+          echo "::set-output name=version::$ockam_version"
+          echo "::set-output name=tag_name::ockam_v$ockam_version"
 
           echo "$text" > release_note.md
           cat release_note.md
@@ -335,7 +334,7 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release download ${{ needs.create_release.outputs.tag_name }} -R metaclips/ockam
+        run: gh release download ${{ needs.create_release.outputs.tag_name }} -R build-trust/ockam
 
       - name: Generate File SHASum
         shell: bash
