@@ -26,7 +26,7 @@ task lint_cargo_fmt_check {
   doLast {
     exec {
       if (ci) {
-        environment RUSTFLAGS: "-Dwarnings"
+        environment RUSTFLAGS: "--cfg tokio_unstable -Dwarnings"
       }
 
       commandLine cargo('fmt', '--all', '--', '--check')
@@ -57,7 +57,7 @@ task build_docs {
   doLast {
     exec {
       if (ci) {
-        environment RUSTFLAGS: "-Dwarnings"
+        environment RUSTFLAGS: "--cfg tokio_unstable -Dwarnings"
       }
 
       commandLine cargo('doc', '--no-deps')
@@ -69,7 +69,7 @@ task build {
   doLast {
     exec {
       if (ci) {
-        environment RUSTFLAGS: "-Cdebuginfo=0 -Dwarnings"
+        environment RUSTFLAGS: "--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings"
         environment CARGO_INCREMENTAL: "0"
       }
 
@@ -82,7 +82,7 @@ task build_examples {
   doLast {
     exec {
       if (ci) {
-        environment RUSTFLAGS: "-Cdebuginfo=0 -Dwarnings"
+        environment RUSTFLAGS: "--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings"
         environment CARGO_INCREMENTAL: "0"
       }
 
@@ -98,7 +98,7 @@ task test {
   doLast {
     exec {
       if (ci) {
-        environment RUSTFLAGS: "-Dwarnings"
+        environment RUSTFLAGS: "--cfg tokio_unstable -Dwarnings"
       }
 
       commandLine cargo('--locked', 'test')

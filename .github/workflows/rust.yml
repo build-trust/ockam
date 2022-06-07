@@ -157,7 +157,7 @@ jobs:
       # TODO: re-enable features after no_std has an unbounded channel.
       - run: |
           cd implementations/rust/ockam/ockam
-          RUSTFLAGS='-Dwarnings' cargo check
+          RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_cargo_update:
@@ -176,7 +176,7 @@ jobs:
           cd examples/rust/get_started
           rm -rf Cargo.lock
           cargo update
-          RUSTFLAGS='-Dwarnings' cargo check
+          RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_nightly:
@@ -193,7 +193,7 @@ jobs:
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: rustup default nightly
       - run: rustup update nightly
-      - run: RUSTFLAGS='-Dwarnings' cargo check
+      - run: RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   build_nightly:
