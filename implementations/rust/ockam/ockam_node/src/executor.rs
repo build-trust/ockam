@@ -10,12 +10,12 @@ use core::future::Future;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Result};
 
-#[cfg(feature = "std")]
+#[cfg(feature = "metrics")]
 use crate::metrics::Metrics;
 
 // This import is available on emebedded but we don't use the metrics
 // collector, thus don't need it in scope.
-#[cfg(feature = "std")]
+#[cfg(feature = "metrics")]
 use core::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "std")]
@@ -87,7 +87,9 @@ impl Executor {
         F::Output: Send + 'static,
     {
         // Spawn the metrics collector first
+        #[cfg(feature = "metrics")]
         let alive = Arc::new(AtomicBool::from(true));
+        #[cfg(feature = "metrics")]
         self.rt
             .spawn(Arc::clone(&self.metrics).run(Arc::clone(&alive)));
 
@@ -99,6 +101,7 @@ impl Executor {
         crate::block_future(&rt, async move { self.router.run().await })?;
 
         // Shut down metrics collector
+        #[cfg(feature = "metrics")]
         alive.fetch_or(true, Ordering::Acquire);
 
         // Last join user code

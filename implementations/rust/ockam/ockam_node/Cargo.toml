@@ -25,11 +25,11 @@ publish = true
 rust-version = "1.56.0"
 
 [features]
-default = ["std", "metrics"]
+default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "tokio", "tracing-subscriber", "tracing-error", "alloc", "futures/std"]
+std = ["ockam_core/std", "tokio", "tracing-subscriber", "tracing-error", "alloc", "futures/std", "metrics"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
