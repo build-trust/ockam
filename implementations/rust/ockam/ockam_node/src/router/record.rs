@@ -29,15 +29,18 @@ pub struct InternalMap {
     /// Track stop information
     stopping: BTreeSet<Address>,
     /// Metrics collection and sharing
+    #[cfg(feature = "metrics")]
     metrics: (Arc<AtomicUsize>, Arc<AtomicUsize>),
 }
 
 impl InternalMap {
+    #[cfg(feature = "metrics")]
     pub(super) fn update_metrics(&self) {
         self.metrics.0.store(self.internal.len(), Ordering::Release);
         self.metrics.1.store(self.clusters.len(), Ordering::Release);
     }
 
+    #[cfg(feature = "metrics")]
     pub(super) fn get_metrics(&self) -> (Arc<AtomicUsize>, Arc<AtomicUsize>) {
         (Arc::clone(&self.metrics.0), Arc::clone(&self.metrics.1))
     }

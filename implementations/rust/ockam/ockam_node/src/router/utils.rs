@@ -34,6 +34,7 @@ pub(super) async fn resolve(
     match router.map.internal.get(&primary_address) {
         Some(record) if record.check() => {
             trace!("{} OK", base);
+            record.increment_msg_count();
             reply.send(RouterReply::sender(addr.clone(), record.sender(), wrap))
         }
         Some(_) => {

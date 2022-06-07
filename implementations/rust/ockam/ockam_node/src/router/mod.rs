@@ -72,6 +72,7 @@ impl Router {
         }
     }
 
+    #[cfg(feature = "metrics")]
     pub(crate) fn get_metrics_readout(&self) -> (Arc<AtomicUsize>, Arc<AtomicUsize>) {
         self.map.get_metrics()
     }
@@ -117,6 +118,9 @@ impl Router {
     }
 
     async fn handle_msg(&mut self, msg: NodeMessage) -> Result<bool> {
+        #[cfg(feature = "metrics")]
+        self.map.update_metrics(); // Possibly remove this from the hot path?
+
         use NodeMessage::*;
         debug!(
             "Current router alloc: {} addresses",
