@@ -35,7 +35,7 @@ pub mod compat;
 /// MPSC channel type aliases
 pub mod channel_types;
 
-#[cfg(feature = "std")]
+#[cfg(feature = "metrics")]
 mod metrics;
 
 mod async_drop;
