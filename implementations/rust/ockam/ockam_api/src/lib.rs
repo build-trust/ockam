@@ -353,12 +353,6 @@ impl<'a, T: Encode<()>> RequestBuilder<'a, T> {
         W: Write,
     {
         let mut e = Encoder::new(buf);
-        self.encode_with_encoder(&mut e)
-    }
-    pub fn encode_with_encoder<W>(&self, e: &mut Encoder<W>) -> Result<(), encode::Error<W::Error>>
-    where
-        W: Write,
-    {
         e.encode(&self.header)?;
         if let Some(b) = &self.body {
             e.encode(b)?;
@@ -415,13 +409,6 @@ impl<T: Encode<()>> ResponseBuilder<T> {
         W: Write,
     {
         let mut e = Encoder::new(buf);
-        self.encode_with_encoder(&mut e)
-    }
-
-    pub fn encode_with_encoder<W>(&self, e: &mut Encoder<W>) -> Result<(), encode::Error<W::Error>>
-    where
-        W: Write,
-    {
         e.encode(&self.header)?;
         if let Some(b) = &self.body {
             e.encode(b)?;

@@ -1,7 +1,7 @@
 use crate::service::models::*;
 use crate::Vault;
 use minicbor::encode::Write;
-use minicbor::{Decoder, Encode, Encoder};
+use minicbor::{Decoder, Encode};
 use ockam_api::{CowStr, Error, Id, Method, Request, Response, Status};
 use ockam_core::compat::io;
 use ockam_core::vault::{
@@ -24,7 +24,7 @@ impl VaultService {
 }
 
 impl VaultService {
-    fn response_for_bad_request<W>(req: &Request, msg: &str, enc: &mut Encoder<W>) -> Result<()>
+    fn response_for_bad_request<W>(req: &Request, msg: &str, enc: W) -> Result<()>
     where
         W: Write<Error = io::Error>,
     {
@@ -36,19 +36,17 @@ impl VaultService {
             error
         };
 
-        Response::bad_request(req.id())
-            .body(error)
-            .encode_with_encoder(enc)?;
+        Response::bad_request(req.id()).body(error).encode(enc)?;
 
         Ok(())
     }
 
-    fn ok_response<W, B>(req: &Request, body: Option<B>, enc: &mut Encoder<W>) -> Result<()>
+    fn ok_response<W, B>(req: &Request, body: Option<B>, enc: W) -> Result<()>
     where
         W: Write<Error = io::Error>,
         B: Encode<()>,
     {
-        Response::ok(req.id()).body(body).encode_with_encoder(enc)?;
+        Response::ok(req.id()).body(body).encode(enc)?;
 
         Ok(())
     }
@@ -57,7 +55,7 @@ impl VaultService {
         req: Option<&Request>,
         status: Status,
         error: &str,
-        enc: &mut Encoder<W>,
+        enc: W,
     ) -> Result<()>
     where
         W: Write<Error = io::Error>,
@@ -69,9 +67,7 @@ impl VaultService {
 
         let error = Error::new(path).with_message(error);
 
-        Response::builder(req_id, status)
-            .body(error)
-            .encode_with_encoder(enc)?;
+        Response::builder(req_id, status).body(error).encode(enc)?;
 
         Ok(())
     }
@@ -80,7 +76,7 @@ impl VaultService {
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-        enc: &mut Encoder<W>,
+        enc: W,
     ) -> Result<()>
     where
         W: Write<Error = io::Error>,
@@ -309,34 +305,35 @@ impl VaultService {
         }
     }
 
-    async fn on_request<W>(&mut self, data: &[u8], buf: W) -> Result<()>
-    where
-        W: Write<Error = io::Error>,
-    {
-        let mut enc = Encoder::new(buf);
+    async fn on_request(&mut self, data: &[u8]) -> Result<Vec<u8>> {
+        let mut buf = Vec::new();
 
         let mut dec = Decoder::new(data);
         let req: Request = match dec.decode() {
             Ok(r) => r,
             Err(_) => {
-                return Self::response_with_error(
+                Self::response_with_error(
                     None,
                     Status::BadRequest,
                     "invalid Request structure",
-                    &mut enc,
-                )
+                    &mut buf,
+                )?;
+
+                return Ok(buf);
             }
         };
 
-        match self.handle_request(&req, &mut dec, &mut enc).await {
-            Ok(_) => Ok(()),
+        match self.handle_request(&req, &mut dec, &mut buf).await {
+            Ok(_) => {}
             Err(err) => Self::response_with_error(
                 Some(&req),
                 Status::InternalServerError,
                 &err.to_string(),
-                &mut enc,
-            ),
-        }
+                &mut buf,
+            )?,
+        };
+
+        Ok(buf)
     }
 }
 
@@ -350,8 +347,7 @@ impl Worker for VaultService {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let mut buf = Vec::new();
-        self.on_request(msg.as_body(), &mut buf).await?;
+        let buf = self.on_request(msg.as_body()).await?;
         ctx.send(msg.return_route(), buf).await
     }
 }
