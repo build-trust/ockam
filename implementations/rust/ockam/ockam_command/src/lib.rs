@@ -1,5 +1,24 @@
 //! This library is used by the `ockam` CLI (in `./bin/ockam.rs`).
 
+use clap::{ColorChoice, Parser, Subcommand};
+
+use authenticated::AuthenticatedCommand;
+use enroll::EnrollCommand;
+use invitation::InvitationCommand;
+use message::MessageCommand;
+use node::NodeCommand;
+use old::cmd::identity::IdentityOpts;
+use old::cmd::inlet::InletOpts;
+use old::cmd::outlet::OutletOpts;
+use old::AddTrustedIdentityOpts;
+use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_ockam_dir};
+use project::ProjectCommand;
+use space::SpaceCommand;
+use util::setup_logging;
+
+use crate::config::OckamConfig;
+use crate::enroll::GenerateEnrollmentTokenCommand;
+
 mod authenticated;
 mod config;
 mod enroll;
@@ -10,25 +29,7 @@ mod project;
 mod space;
 mod util;
 
-use clap::{ColorChoice, Parser, Subcommand};
-
-use authenticated::AuthenticatedCommand;
-use enroll::EnrollCommand;
-use invitation::InvitationCommand;
-use message::MessageCommand;
-use node::NodeCommand;
-use project::ProjectCommand;
-use space::SpaceCommand;
-use util::setup_logging;
-
 mod old;
-use old::cmd::identity::IdentityOpts;
-use old::cmd::inlet::InletOpts;
-use old::cmd::outlet::OutletOpts;
-use old::AddTrustedIdentityOpts;
-use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_ockam_dir};
-
-use crate::config::OckamConfig;
 
 const HELP_TEMPLATE: &str = "\
 {before-help}
@@ -94,6 +95,10 @@ pub enum OckamSubcommand {
     /// Enroll with Ockam Orchestrator
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Enroll(EnrollCommand),
+
+    /// Generate an enrollment token
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE, name = "token")]
+    GenerateEnrollmentToken(GenerateEnrollmentTokenCommand),
 
     /// Send or receive messages
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
@@ -167,6 +172,9 @@ pub fn run() {
         OckamSubcommand::Authenticated(command) => AuthenticatedCommand::run(command),
         OckamSubcommand::Invitation(command) => InvitationCommand::run(command),
         OckamSubcommand::Enroll(command) => EnrollCommand::run(command),
+        OckamSubcommand::GenerateEnrollmentToken(command) => {
+            GenerateEnrollmentTokenCommand::run(command)
+        }
         OckamSubcommand::Message(command) => MessageCommand::run(command),
         OckamSubcommand::Node(command) => NodeCommand::run(&mut cfg, command),
         OckamSubcommand::Project(command) => ProjectCommand::run(command),
