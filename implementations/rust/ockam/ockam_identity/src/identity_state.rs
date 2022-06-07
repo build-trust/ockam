@@ -106,6 +106,7 @@ impl<V: IdentityVault> IdentityState<V> {
     }
     /// Create IdentityState
     pub(crate) fn import(vault: V, identity: ExportedIdentity) -> Self {
+        // FIXME: Verify the chain
         Self {
             id: identity.id,
             change_history: identity.change_history,
