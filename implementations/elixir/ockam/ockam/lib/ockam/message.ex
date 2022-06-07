@@ -59,6 +59,14 @@ defmodule Ockam.Message do
   @doc "Get payload from the message"
   def payload(%Message{payload: payload}), do: payload
 
+  @doc "Get local metadata from the message"
+  def local_metadata(%Message{local_metadata: local_metadata}), do: local_metadata
+
+  @doc "Get local metadata value for key from the message"
+  def local_metadata_value(%Message{local_metadata: local_metadata}, key) do
+    Map.get(local_metadata, key)
+  end
+
   def set_onward_route(%Message{} = message, onward_route) when is_list(onward_route) do
     %{message | onward_route: onward_route}
   end

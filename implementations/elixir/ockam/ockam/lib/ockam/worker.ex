@@ -1,7 +1,10 @@
 defmodule Ockam.Worker do
   @moduledoc false
 
+  alias Ockam.Node
   alias Ockam.Telemetry
+
+  require Logger
 
   @callback setup(options :: Keyword.t(), initial_state :: map()) ::
               {:ok, state :: map()} | {:error, reason :: any()}
@@ -10,6 +13,9 @@ defmodule Ockam.Worker do
               {:ok, state :: map()}
               | {:error, reason :: any()}
               | {:stop, reason :: any(), state :: map()}
+
+  @callback is_authorized(message :: Ockam.Message.t(), state :: map()) ::
+              :ok | {:error, reason :: any()}
 
   @callback address_prefix(options :: Keyword.t()) :: String.t()
 
@@ -50,113 +56,48 @@ defmodule Ockam.Worker do
       use GenServer
 
       @behaviour Ockam.Worker
+      @default_timeout 30_000
 
       ## Ignore match errors in handle_info when checking a result of handle_message
       ## handle_message definition may not return {:error, ...} and it shouldn't fail because of that
       @dialyzer {:no_match, handle_info: 2, handle_continue: 2}
 
-      alias Ockam.Node
-      alias Ockam.Router
-
-      def create(options \\ []) when is_list(options) do
-        address_prefix = Keyword.get(options, :address_prefix, address_prefix(options))
-
-        options =
-          Keyword.put_new_lazy(options, :address, fn ->
-            Node.get_random_unregistered_address(address_prefix)
-          end)
-
-        case Node.start_supervised(__MODULE__, options) do
-          {:ok, pid, worker} ->
-            ## TODO: a better way to handle failing start
-            try do
-              :sys.get_state(pid)
-              {:ok, worker}
-            catch
-              _type, err ->
-                {:error, err}
-            end
-
-          error ->
-            error
-        end
+      def create(options \\ [], timeout \\ @default_timeout) when is_list(options) do
+        Ockam.Worker.create(__MODULE__, options, timeout)
       end
 
       def start_link(options) when is_list(options) do
-        with {:ok, address} <- get_from_options(:address, options),
-             {:ok, pid} <- start_link(address, options) do
-          {:ok, pid, address}
-        end
+        Ockam.Worker.start_link(__MODULE__, options)
       end
 
       def start_link(address, options) do
-        GenServer.start_link(__MODULE__, options, name: {:via, Node.process_registry(), address})
+        Ockam.Worker.start_link(__MODULE__, address, options)
+      end
+
+      def register_extra_addresses(addresses, state) do
+        Ockam.Worker.register_extra_addresses(__MODULE__, addresses, state)
+      end
+
+      def register_random_extra_address(state) do
+        Ockam.Worker.register_random_extra_address(__MODULE__, state)
       end
 
       @doc false
       @impl true
       def init(options) do
-        {:ok, options, {:continue, :post_init}}
+        Ockam.Worker.init(options)
       end
 
       @doc false
       @impl true
       def handle_info(%Ockam.Message{} = message, state) do
-        ## TODO: improve metadata
-        metadata = %{message: message, address: Map.get(state, :address), module: __MODULE__}
-
-        start_time = Ockam.Worker.emit_handle_message_start(metadata)
-
-        ## TODO: error handling
-        return_value = handle_message(message, state)
-
-        Ockam.Worker.emit_handle_message_stop(metadata, start_time, return_value)
-
-        last_message_ts = System.os_time(:millisecond)
-
-        case return_value do
-          {:ok, returned_state} ->
-            {:noreply, Map.put(returned_state, :last_message_ts, last_message_ts)}
-
-          {:stop, reason, returned_state} ->
-            {:stop, reason, returned_state}
-
-          {:error, _reason} ->
-            ## TODO: log error
-            {:noreply, Map.put(state, :last_message_ts, last_message_ts)}
-        end
+        Ockam.Worker.handle_message(__MODULE__, message, state)
       end
 
       @doc false
       @impl true
       def handle_continue(:post_init, options) do
-        Node.set_address_module(Keyword.fetch!(options, :address), __MODULE__)
-
-        extra_address = Keyword.get(options, :extra_addresses, [])
-
-        with :ok <- Ockam.Worker.register_extra_addresses(options, __MODULE__),
-             {:ok, address} <- get_from_options(:address, options) do
-          metadata = %{
-            address: Keyword.get(options, :address),
-            options: options,
-            module: __MODULE__
-          }
-
-          start_time = Ockam.Worker.emit_init_start(metadata)
-
-          base_state = %{address: address, module: __MODULE__, last_message_ts: nil}
-          return_value = setup(options, base_state)
-
-          Ockam.Worker.emit_init_stop(metadata, start_time, return_value)
-
-          case return_value do
-            {:ok, state} ->
-              {:noreply, state}
-
-            {:error, reason} ->
-              {:stop, reason, base_state}
-          end
-        end
+        Ockam.Worker.handle_post_init(__MODULE__, options)
       end
 
       @impl true
@@ -165,46 +106,177 @@ defmodule Ockam.Worker do
       end
 
       @doc false
-      def get_from_options(key, options) do
-        case Keyword.get(options, key) do
-          nil -> {:error, {:option_is_nil, key}}
-          value -> {:ok, value}
-        end
-      end
-
-      @doc false
       def setup(_options, state), do: {:ok, state}
 
       @doc false
       def address_prefix(_options), do: ""
 
-      defoverridable setup: 2, address_prefix: 1
+      @doc false
+      def is_authorized(message, state) do
+        Ockam.Worker.Authorization.to_my_address(message, state)
+      end
+
+      defoverridable setup: 2, address_prefix: 1, is_authorized: 2
     end
   end
 
-  def register_extra_addresses(options, module) do
-    extra_addresses = Keyword.get(options, :extra_addresses, [])
+  ## Functions used from __using__ macro
+  ## Moved here for better debugging and to keep the __using__ block short
 
-    failed_addresses =
-      extra_addresses
-      |> Enum.map(fn extra_address ->
-        {extra_address, Ockam.Node.register_address(extra_address, module)}
-      end)
-      |> Enum.filter(fn
-        {_address, :no} -> true
-        _ok -> false
-      end)
-      |> Enum.map(fn {address, _} -> address end)
+  def create(module, options, timeout) when is_list(options) do
+    address_prefix = Keyword.get(options, :address_prefix, module.address_prefix(options))
 
-    case failed_addresses do
-      [] -> :ok
-      failed -> {:error, {:cannot_register_addresses, failed}}
+    options =
+      Keyword.put_new_lazy(options, :address, fn ->
+        Node.get_random_unregistered_address(address_prefix)
+      end)
+
+    case Node.start_supervised(module, options) do
+      {:ok, pid, worker} ->
+        ## TODO: a better way to handle failing start
+        try do
+          :sys.get_state(pid, timeout)
+          {:ok, worker}
+        catch
+          _type, err ->
+            {:error, err}
+        end
+
+      error ->
+        error
+    end
+  end
+
+  def start_link(module, options) when is_list(options) do
+    with {:ok, address} <- Keyword.fetch(options, :address),
+         {:ok, pid} <- start_link(module, address, options) do
+      {:ok, pid, address}
+    else
+      :error ->
+        {:error, {:option_is_nil, :address}}
+    end
+  end
+
+  def start_link(module, address, options) when is_list(options) do
+    GenServer.start_link(module, options, name: {:via, Node.process_registry(), address})
+  end
+
+  def init(options) do
+    {:ok, options, {:continue, :post_init}}
+  end
+
+  def handle_post_init(module, options) do
+    Node.set_address_module(Keyword.fetch!(options, :address), module)
+
+    return_value =
+      Ockam.Worker.with_init_metric(module, options, fn ->
+        case Keyword.fetch(options, :address) do
+          {:ok, address} ->
+            base_state = %{
+              address: address,
+              all_addresses: [address],
+              module: module,
+              last_message_ts: nil
+            }
+
+            with {:ok, state} <-
+                   Ockam.Worker.register_extra_addresses(
+                     module,
+                     Keyword.get(options, :extra_addresses, []),
+                     base_state
+                   ) do
+              module.setup(options, state)
+            end
+
+          :error ->
+            {:error, {:option_is_nil, :address}}
+        end
+      end)
+
+    case return_value do
+      {:ok, state} ->
+        {:noreply, state}
+
+      {:error, reason} ->
+        {:stop, reason, {:post_init, options}}
+    end
+  end
+
+  def handle_message(module, message, state) do
+    return_value =
+      Ockam.Worker.with_handle_message_metric(module, message, state, fn ->
+        with :ok <- module.is_authorized(message, state) do
+          module.handle_message(message, state)
+        end
+      end)
+
+    last_message_ts = System.os_time(:millisecond)
+
+    case return_value do
+      {:ok, returned_state} ->
+        {:noreply, Map.put(returned_state, :last_message_ts, last_message_ts)}
+
+      {:stop, reason, returned_state} ->
+        {:stop, reason, returned_state}
+
+      {:error, reason} ->
+        Logger.warn("Worker #{module} handle_message failed. Reason: #{inspect(reason)}")
+        {:noreply, Map.put(state, :last_message_ts, last_message_ts)}
+    end
+  end
+
+  ## Extra address registration
+
+  def register_extra_addresses(module, extra_addresses, state) do
+    result =
+      Enum.reduce(extra_addresses, :ok, fn
+        extra_address, :ok ->
+          case Ockam.Node.register_address(extra_address, module) do
+            :ok -> :ok
+            {:error, reason} -> {:error, {:cannot_register_address, extra_address, reason}}
+          end
+
+        _address, error ->
+          error
+      end)
+
+    case result do
+      :ok ->
+        {:ok,
+         Map.update(state, :all_addresses, extra_addresses, fn all_addresses ->
+           extra_addresses ++ all_addresses
+         end)}
+
+      error ->
+        error
+    end
+  end
+
+  def register_random_extra_address(module, state) do
+    address = Ockam.Node.get_random_unregistered_address()
+
+    case register_extra_addresses(module, [address], state) do
+      {:ok, state} -> {:ok, address, state}
+      {:error, {:already_registered, _pid}} -> register_random_extra_address(module, state)
+      {:error, reason} -> {:error, reason}
     end
   end
 
   ## Metrics functions
 
-  def emit_handle_message_start(metadata) do
+  def with_handle_message_metric(module, message, state, fun) do
+    ## TODO: improve metadata
+    metadata = %{message: message, address: Map.get(state, :address), module: module}
+
+    start_time = emit_handle_message_start(metadata)
+
+    return_value = fun.()
+
+    emit_handle_message_stop(metadata, start_time, return_value)
+    return_value
+  end
+
+  defp emit_handle_message_start(metadata) do
     start_time =
       Telemetry.emit_start_event([Map.get(metadata, :module), :handle_message], metadata: metadata)
 
@@ -216,7 +288,7 @@ defmodule Ockam.Worker do
     start_time
   end
 
-  def emit_handle_message_stop(metadata, start_time, return_value) do
+  defp emit_handle_message_stop(metadata, start_time, return_value) do
     result =
       case return_value do
         {:ok, _result} -> :ok
@@ -233,7 +305,20 @@ defmodule Ockam.Worker do
     Telemetry.emit_stop_event([Ockam.Worker, :handle_message], start_time, metadata: metadata)
   end
 
-  def emit_init_start(metadata) do
+  def with_init_metric(module, options, fun) do
+    metadata = %{
+      address: Keyword.get(options, :address),
+      options: options,
+      module: module
+    }
+
+    start_time = emit_init_start(metadata)
+    return_value = fun.()
+    emit_init_stop(metadata, start_time, return_value)
+    return_value
+  end
+
+  defp emit_init_start(metadata) do
     start_time =
       Telemetry.emit_start_event([Map.get(metadata, :module), :init], metadata: metadata)
 
@@ -245,7 +330,7 @@ defmodule Ockam.Worker do
     start_time
   end
 
-  def emit_init_stop(metadata, start_time, return_value) do
+  defp emit_init_stop(metadata, start_time, return_value) do
     result =
       case return_value do
         {:ok, _state} -> :ok

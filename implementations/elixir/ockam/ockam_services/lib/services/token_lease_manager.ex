@@ -2,7 +2,7 @@ defmodule Ockam.Services.TokenLeaseManager do
   @moduledoc false
   use Ockam.Worker
 
-  alias Ockam.Node
+  alias Ockam.Router
   alias Ockam.Services.TokenLeaseManager.Lease
 
   require Logger

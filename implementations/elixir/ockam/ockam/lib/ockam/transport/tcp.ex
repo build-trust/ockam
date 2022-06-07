@@ -72,7 +72,8 @@ defmodule Ockam.Transport.TCP do
                  {:destination, destination},
                  {:restart_type, :temporary} | client_options
                ]) do
-          Ockam.Node.send(client_address, message)
+          [_tcp_address | onward_route] = Message.onward_route(message)
+          Router.route(Message.set_onward_route(message, [client_address | onward_route]))
         end
 
       e ->

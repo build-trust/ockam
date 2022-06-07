@@ -8,10 +8,6 @@ defmodule Ockam.SecureChannel.Channel do
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX, as: XXKeyEstablishmentProtocol
   alias Ockam.Telemetry
 
-  ## TODO: do we need this API???
-  @doc false
-  def send(channel, message), do: Node.send(channel, message)
-
   @doc false
   def peer(_channel), do: :ok
 
@@ -40,8 +36,12 @@ defmodule Ockam.SecureChannel.Channel do
     address = Keyword.get(options, :address, Node.get_random_unregistered_address())
     options = Keyword.put(options, :address, address)
 
-    with {:ok, pid} <- start(address, options) do
-      {:ok, pid, address}
+    case start(address, options) do
+      {:ok, pid} ->
+        {:ok, pid, address}
+
+      :error ->
+        {:error, {:option_is_nil, :address}}
     end
   end
 
@@ -122,8 +122,12 @@ defmodule Ockam.SecureChannel.Channel do
 
   # sets vault based on - vault option
   defp setup_vault(options, data) do
-    with {:ok, vault} <- get_from_options(:vault, options) do
-      {:ok, Map.put(data, :vault, vault)}
+    case Keyword.fetch(options, :vault) do
+      {:ok, vault} ->
+        {:ok, Map.put(data, :vault, vault)}
+
+      :error ->
+        {:error, {:option_is_nil, :vault}}
     end
   end
 
@@ -156,13 +160,5 @@ defmodule Ockam.SecureChannel.Channel do
   # sets a encrypted transport protocol and calls its setup
   defp setup_encrypted_transport_protocol(options, initial_state, data) do
     EncryptedTransport.setup(options, initial_state, data)
-  end
-
-  @doc false
-  defp get_from_options(key, options) do
-    case Keyword.get(options, key) do
-      nil -> {:error, {:option_is_nil, key}}
-      value -> {:ok, value}
-    end
   end
 end

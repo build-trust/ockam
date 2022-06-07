@@ -14,6 +14,7 @@ defmodule Ockam.Transport.Portal.InletWorker do
 
   use Ockam.Worker
   alias Ockam.Message
+  alias Ockam.Router
   alias Ockam.Transport.Portal.TunnelProtocol
   require Logger
 
@@ -29,7 +30,7 @@ defmodule Ockam.Transport.Portal.InletWorker do
     # The listener process has set us as the socket' controlling process.
     # From this point on, it's safe to set the socket to active mode at any time.
     :ok =
-      Ockam.Router.route(%Message{
+      Router.route(%Message{
         payload: TunnelProtocol.encode(:ping),
         onward_route: state.peer_route,
         return_route: [state.address]
@@ -50,7 +51,7 @@ defmodule Ockam.Transport.Portal.InletWorker do
     :ok = :inet.setopts(socket, active: :once)
 
     :ok =
-      Ockam.Router.route(%Message{
+      Router.route(%Message{
         payload: TunnelProtocol.encode({:payload, data}),
         onward_route: peer_route
       })
@@ -62,7 +63,7 @@ defmodule Ockam.Transport.Portal.InletWorker do
     Logger.info("Socket closed")
 
     :ok =
-      Ockam.Router.route(%Message{
+      Router.route(%Message{
         payload: TunnelProtocol.encode(:disconnect),
         onward_route: peer_route
       })

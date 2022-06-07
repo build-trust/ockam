@@ -15,11 +15,13 @@ defmodule Ockam.SecureChannel.Listener do
   @doc false
   @impl true
   def setup(options, state) do
-    with {:ok, vault} <- get_from_options(:vault, options),
-         {:ok, identity_keypair} <- get_from_options(:identity_keypair, options) do
+    with {:ok, vault} <- Keyword.fetch(options, :vault),
+         {:ok, identity_keypair} <- Keyword.fetch(options, :identity_keypair) do
       state = Map.put(state, :vault, vault)
       state = Map.put(state, :identity_keypair, identity_keypair)
       {:ok, state}
+    else
+      :error -> {:error, {:required_options_missing, [:vault, :identity_keypair], options}}
     end
   end
 
