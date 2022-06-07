@@ -35,6 +35,7 @@ defmodule Test.Services.EchoTestWorker do
   use Ockam.Worker
 
   alias Ockam.Message
+  alias Ockam.Router
   alias Test.Utils
 
   require Logger

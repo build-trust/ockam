@@ -38,7 +38,13 @@ defmodule Ockam.Node do
   Registers the address of the current process with optional module name
   """
   def register_address(address, module \\ nil) do
-    Registry.register(address, module)
+    self = self()
+
+    case Registry.register(address, module) do
+      :ok -> :ok
+      {:error, {:already_registered, ^self}} -> :ok
+      error -> error
+    end
   end
 
   @spec set_address_module(any(), module()) :: :ok | :error
@@ -125,9 +131,14 @@ defmodule Ockam.Node do
     address = get_random_unregistered_address(prefix, length_in_bytes)
 
     case register_address(address, module) do
-      :ok -> {:ok, address}
-      ## TODO: recursion limit
-      {:error, _reason} -> register_random_address(prefix, module, length_in_bytes)
+      :ok ->
+        {:ok, address}
+
+      {:error, {:already_registered, _pid}} ->
+        register_random_address(prefix, module, length_in_bytes)
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

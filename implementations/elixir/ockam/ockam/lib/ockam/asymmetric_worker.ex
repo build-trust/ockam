@@ -55,8 +55,8 @@ defmodule Ockam.AsymmetricWorker do
 
       @impl true
       def setup(options, state) do
-        with {:ok, inner_address} <- register_inner_address(options, state) do
-          inner_setup(options, Map.put(state, :inner_address, inner_address))
+        with {:ok, state} <- register_inner_address(options, state) do
+          inner_setup(options, state)
         end
       end
 
@@ -75,21 +75,21 @@ defmodule Ockam.AsymmetricWorker do
       end
 
       @doc false
-      def register_inner_address(_options, %{inner_address: inner_address})
+      def register_inner_address(_options, %{inner_address: inner_address} = state)
           when inner_address != nil do
-        {:ok, inner_address}
+        {:ok, state}
       end
 
       def register_inner_address(options, state) do
         case Keyword.get(options, :inner_address) do
           nil ->
-            Ockam.Node.register_random_address(address_prefix(options), __MODULE__)
+            with {:ok, inner_address, state} <-
+                   register_random_extra_address(state) do
+              {:ok, Map.put(state, :inner_address, inner_address)}
+            end
 
           inner_address ->
-            case Ockam.Node.register_address(inner_address, __MODULE__) do
-              :ok -> {:ok, inner_address}
-              {:error, _reason} -> {:error, :inner_address_already_taken}
-            end
+            register_extra_addresses([inner_address], state)
         end
       end
 

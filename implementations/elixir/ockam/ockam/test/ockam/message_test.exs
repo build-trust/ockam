@@ -3,9 +3,6 @@ defmodule Ockam.Message.Tests do
   doctest Ockam.Message
   alias Ockam.Message
 
-  alias Ockam.Transport.TCPAddress
-  alias Ockam.Transport.UDPAddress
-
   describe "Ockam.Message" do
     ## TODO: message tests
   end

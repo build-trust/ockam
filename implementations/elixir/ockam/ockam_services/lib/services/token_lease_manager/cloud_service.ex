@@ -55,6 +55,7 @@ defmodule Ockam.Services.TokenLeaseManager.CloudService do
       def handle_call({:revoke, lease_id}, _from, cloud_configuration),
         do: {:reply, handle_revoke(cloud_configuration, lease_id), cloud_configuration}
 
+      ## TODO: this conflicts with Ockam.Worker :get_address handler
       def handle_call(:get_address, _from, cloud_configuration),
         do: {:reply, handle_get_address(cloud_configuration), cloud_configuration}
     end

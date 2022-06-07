@@ -5,6 +5,7 @@ defmodule Ockam.Transport.Portal.OutletWorker do
 
   use Ockam.Worker
   alias Ockam.Message
+  alias Ockam.Router
   alias Ockam.Transport.Portal.TunnelProtocol
 
   require Logger
