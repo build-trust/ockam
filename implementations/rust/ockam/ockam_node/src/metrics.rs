@@ -93,6 +93,7 @@ impl Metrics {
 }
 
 #[derive(Default)]
+#[allow(unused)]
 pub struct MetricsReport {
     tokio_busy_ms: BTreeMap<usize, u128>,
     router_addr_count: usize,
@@ -102,13 +103,10 @@ pub struct MetricsReport {
 impl MetricsReport {
     /// Generate a line of CSV for this report
     pub fn to_csv(&self) -> String {
-        format!(
-            "{}",
-            self.tokio_busy_ms
-                .iter()
-                .map(|(wid, depth)| format!("({}:{}%)", wid, depth))
-                .collect::<Vec<String>>()
-                .join(",")
-        )
+        self.tokio_busy_ms
+            .iter()
+            .map(|(wid, depth)| format!("({}:{}%)", wid, depth))
+            .collect::<Vec<String>>()
+            .join(",")
     }
 }
