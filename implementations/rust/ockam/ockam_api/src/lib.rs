@@ -359,6 +359,13 @@ impl<'a, T: Encode<()>> RequestBuilder<'a, T> {
         }
         Ok(())
     }
+
+    pub fn to_vec(self) -> Result<Vec<u8>, encode::Error<<Vec<u8> as Write>::Error>> {
+        let mut buf = Vec::new();
+        self.encode(&mut buf)?;
+
+        Ok(buf)
+    }
 }
 
 #[derive(Debug)]
@@ -414,6 +421,13 @@ impl<T: Encode<()>> ResponseBuilder<T> {
             e.encode(b)?;
         }
         Ok(())
+    }
+
+    pub fn to_vec(self) -> Result<Vec<u8>, encode::Error<<Vec<u8> as Write>::Error>> {
+        let mut buf = Vec::new();
+        self.encode(&mut buf)?;
+
+        Ok(buf)
     }
 }
 
