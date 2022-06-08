@@ -1,0 +1,58 @@
+create_response = {
+    ?0: 3500430,
+     1: identity,
+     2: identity_id,
+}
+
+contact_request = {
+    ?0: 9274303,
+     1: identity,
+}
+
+contact_response = {
+    ?0: 3682917,
+     1: contact,
+}
+
+verify_and_add_contact_request = {
+    ?0: 3396927,
+     1: identity,
+     2: contact,
+}
+
+verify_and_add_contact_response = {
+    ?0: 7946005,
+     1: identity,
+}
+
+create_auth_proof_request = {
+    ?0: 1019956,
+     1: identity,
+     2: state,
+}
+
+create_auth_proof_response = {
+    ?0: 2592832,
+     1: proof,
+}
+
+verify_auth_proof_request = {
+    ?0: 7550780,
+     1: identity,
+     2: peer_identity_id,
+     3: state,
+     4: proof,
+}
+
+verify_auth_proof_response = {
+    ?0: 1236745,
+     1: verified: bool,
+}
+
+identity         = bytes
+identity_id      = text
+contact          = bytes
+state            = bytes
+proof            = bytes
+peer_identity_id = text
+verified         = bool
