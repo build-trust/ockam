@@ -1,31 +1,8 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
-use crate::{Context, Message, Result, Routed, Worker};
+use crate::protocols::nodeman::{req::*, resp::*};
+use crate::{Context, Result, Routed, Worker};
 use ockam_core::compat::{boxed::Box, string::String};
-use serde::{Deserialize, Serialize};
-
-/// Messaging commands sent to node manager
-#[derive(Serialize, Deserialize, Message)]
-pub enum NodeManMessage {
-    /// Query this node for its status
-    Status,
-}
-
-/// Reply messages from node manager
-#[derive(Serialize, Deserialize, Message)]
-pub enum NodeManReply {
-    /// Reply with node status information
-    Status {
-        /// Contains the node
-        node_name: String,
-        /// Current runtime status
-        status: String,
-        /// Number of registered workers
-        workers: u32,
-        /// Current pid
-        pid: i32,
-    },
-}
 
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeMan {
@@ -64,6 +41,7 @@ impl Worker for NodeMan {
                 )
                 .await?
             }
+            _ => todo!(),
         }
 
         Ok(())

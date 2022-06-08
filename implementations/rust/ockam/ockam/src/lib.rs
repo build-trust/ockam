@@ -43,7 +43,7 @@ pub use error::OckamError;
 pub use forwarder::ForwardingService;
 pub use lease::Lease;
 pub use metadata::OckamMessage;
-pub use nodeman::{NodeMan, NodeManMessage, NodeManReply};
+pub use nodeman::NodeMan;
 pub use system::{SystemBuilder, SystemHandler, WorkerSystem};
 pub use unique::unique_with_prefix;
 

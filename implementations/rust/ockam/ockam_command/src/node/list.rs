@@ -5,7 +5,10 @@ use crate::util::{self, connect_to};
 use clap::Args;
 use cli_table::{format::Justify, print_stdout, Cell, Style, Table};
 use crossbeam_channel::{bounded, Sender};
-use ockam::{Context, NodeManMessage, NodeManReply, Route};
+use ockam::{
+    protocols::nodeman::{req::NodeManMessage, resp::NodeManReply},
+    Context, Route,
+};
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {}

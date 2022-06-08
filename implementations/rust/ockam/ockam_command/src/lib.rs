@@ -1,24 +1,5 @@
 //! This library is used by the `ockam` CLI (in `./bin/ockam.rs`).
 
-use clap::{ColorChoice, Parser, Subcommand};
-
-use authenticated::AuthenticatedCommand;
-use enroll::EnrollCommand;
-use invitation::InvitationCommand;
-use message::MessageCommand;
-use node::NodeCommand;
-use old::cmd::identity::IdentityOpts;
-use old::cmd::inlet::InletOpts;
-use old::cmd::outlet::OutletOpts;
-use old::AddTrustedIdentityOpts;
-use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_ockam_dir};
-use project::ProjectCommand;
-use space::SpaceCommand;
-use util::setup_logging;
-
-use crate::config::OckamConfig;
-use crate::enroll::GenerateEnrollmentTokenCommand;
-
 mod authenticated;
 mod config;
 mod enroll;
@@ -27,9 +8,31 @@ mod message;
 mod node;
 mod project;
 mod space;
+mod transport;
 mod util;
 
+use authenticated::AuthenticatedCommand;
+use enroll::EnrollCommand;
+use invitation::InvitationCommand;
+use message::MessageCommand;
+use node::NodeCommand;
+use project::ProjectCommand;
+use space::SpaceCommand;
+use transport::TransportCommand;
+
+// to be removed
 mod old;
+
+use old::cmd::identity::IdentityOpts;
+use old::cmd::inlet::InletOpts;
+use old::cmd::outlet::OutletOpts;
+use old::AddTrustedIdentityOpts;
+use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_ockam_dir};
+
+use crate::config::OckamConfig;
+use crate::enroll::GenerateEnrollmentTokenCommand;
+use clap::{ColorChoice, Parser, Subcommand};
+use util::setup_logging;
 
 const HELP_TEMPLATE: &str = "\
 {before-help}
@@ -116,6 +119,10 @@ pub enum OckamSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Space(SpaceCommand),
 
+    /// Create, update, or delete transports
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Transport(TransportCommand),
+
     // OLD
     /// Start an outlet.
     #[clap(display_order = 1000, hide = true)]
@@ -179,6 +186,7 @@ pub fn run() {
         OckamSubcommand::Node(command) => NodeCommand::run(&mut cfg, command),
         OckamSubcommand::Project(command) => ProjectCommand::run(command),
         OckamSubcommand::Space(command) => SpaceCommand::run(command),
+        OckamSubcommand::Transport(command) => TransportCommand::run(&mut cfg, command),
 
         // OLD
         OckamSubcommand::CreateOutlet(arg) => {
