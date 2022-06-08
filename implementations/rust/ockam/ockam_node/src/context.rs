@@ -53,7 +53,7 @@ pub struct Context {
     async_drop_sender: Option<AsyncDropSender>,
     mailbox: MessageReceiver<RelayMessage>,
     access_control: Box<dyn AccessControl>,
-    metrics: Arc<AtomicUsize>,
+    mailbox_count: Arc<AtomicUsize>,
 }
 
 impl Drop for Context {
@@ -86,7 +86,7 @@ impl Context {
                 trace!("{}: received new message!", self.address());
 
                 // First we update the mailbox fill metrics
-                self.metrics.fetch_sub(1, Ordering::Acquire);
+                self.mailbox_count.fetch_sub(1, Ordering::Acquire);
 
                 msg
             } else {
@@ -130,7 +130,7 @@ impl Context {
                 mailbox,
                 async_drop_sender,
                 access_control: Box::new(access_control),
-                metrics: Arc::new(0.into()),
+                mailbox_count: Arc::new(0.into()),
             },
             SenderPair {
                 msgs: mailbox_tx,
@@ -188,7 +188,7 @@ impl Context {
 
         // Create a "detached relay" and register it with the router
         let (msg, mut rx) =
-            NodeMessage::start_worker(addr.into(), sender, true, Arc::clone(&self.metrics));
+            NodeMessage::start_worker(addr.into(), sender, true, Arc::clone(&self.mailbox_count));
         self.sender
             .send(msg)
             .await
@@ -284,7 +284,7 @@ impl Context {
 
         // Send start request to router
         let (msg, mut rx) =
-            NodeMessage::start_worker(address, sender, false, Arc::clone(&self.metrics));
+            NodeMessage::start_worker(address, sender, false, Arc::clone(&self.mailbox_count));
         self.sender
             .send(msg)
             .await

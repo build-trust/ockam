@@ -34,7 +34,12 @@ async fn start(
         addr.clone().into(),
         msgs,
         ctrl,
-        Arc::new(0.into()), // don't track metrics
+        // We don't keep track of the mailbox count for processors
+        // because, while they are able to send and receive messages
+        // via their mailbox, most likely this metric is going to be
+        // irrelevant.  We may want to re-visit this decision in the
+        // future, if the way processors are used changes.
+        Arc::new(0.into()),
         AddressMeta {
             processor: true,
             detached: false,
