@@ -95,7 +95,12 @@ RUN set -xe; \
     curl --proto '=https' --tlsv1.2 -sSOL "https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64"; \
     echo "af986793a515d500ab2d35f8d2aecd656e764504b789b66d7e1a0b727a124c44  jq-linux64" | sha256sum -c; \
     mv jq-linux64 /usr/bin/jq; \
-    chmod +x /usr/bin/jq
+    chmod +x /usr/bin/jq; \
+# Setup Github CLI
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg; \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null; \
+    apt update; \
+    apt install --assume-yes gh
 
 ENV PATH="${JAVA_HOME}/bin:${RUSTUP_HOME}/bin:${CARGO_HOME}/bin:${CMAKE_HOME}/bin:${NODEJS_HOME}/bin:$PATH" \
     AR=/usr/bin/ar \
