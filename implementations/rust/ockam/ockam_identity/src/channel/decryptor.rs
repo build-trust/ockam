@@ -1,5 +1,5 @@
 use crate::{
-    EncryptorWorker, IdentityChannelMessage, IdentityError, IdentityIdentifier,
+    Contact, EncryptorWorker, IdentityChannelMessage, IdentityError, IdentityIdentifier,
     IdentitySecureChannelLocalInfo, IdentityTrait, SecureChannelTrustInfo, TrustPolicy,
 };
 use core::future::Future;
@@ -218,10 +218,8 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
             .identity
             .create_auth_proof(&kex_msg.auth_hash())
             .await?;
-        let msg = IdentityChannelMessage::Request {
-            contact: state.identity.as_contact().await?,
-            proof,
-        };
+        let contact = state.identity.as_contact().await?.export()?;
+        let msg = IdentityChannelMessage::Request { contact, proof };
         ctx.send_from_address(
             route![kex_msg.address().clone(), state.first_responder_address],
             msg,
@@ -260,7 +258,7 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
         if let IdentityChannelMessage::Request { contact, proof } = body {
             debug!("Received Authentication request");
 
-            let their_contact = contact;
+            let their_contact = Contact::import(&contact)?;
             let their_identity_id = their_contact.identifier().clone();
 
             let contact_result = state.identity.get_contact(&their_identity_id).await?;
@@ -297,7 +295,7 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
             );
 
             // Prove we posses our Identity key
-            let contact = state.identity.as_contact().await?;
+            let contact = state.identity.as_contact().await?.export()?;
             let proof = state
                 .identity
                 .create_auth_proof(&state.channel.auth_hash())
@@ -366,7 +364,7 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
         if let IdentityChannelMessage::Response { contact, proof } = body {
             debug!("Received Authentication response");
 
-            let their_contact = contact;
+            let their_contact = Contact::import(&contact)?;
             let their_identity_id = their_contact.identifier().clone();
 
             let contact_result = state.identity.get_contact(&their_identity_id).await?;
