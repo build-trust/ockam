@@ -13,6 +13,7 @@ use core::{
     time::Duration,
 };
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
+use ockam_core::AccessControl;
 use ockam_core::{
     errcode::{Kind, Origin},
     Address, AddressSet, AllowAll, AsyncTryClone, Error, LocalMessage, Mailbox, Mailboxes, Message,
@@ -39,8 +40,13 @@ impl AddressType {
 /// A special sender type that connects a type to an AsyncDrop handler
 pub type AsyncDropSender = crate::tokio::sync::oneshot::Sender<Address>;
 
-/// A special type of `Context` that has no worker relay
+/// A special type of `Context` that has no worker relay and inherits
+/// the parent `Context`'s access control
 pub type DetachedContext = Context;
+
+/// A special type of `Context` that has no worker relay and a custom
+/// access control which is not inherited from its parent `Context.
+pub type RepeaterContext = Context;
 
 /// Context contains Node state and references to the runtime.
 pub struct Context {
@@ -75,6 +81,7 @@ impl Context {
     pub fn runtime(&self) -> Arc<Runtime> {
         self.rt.clone()
     }
+
     /// Wait for the next message from the mailbox
     pub(crate) async fn receiver_next(&mut self) -> Result<Option<RelayMessage>> {
         loop {
@@ -148,13 +155,30 @@ impl Context {
         self.mailboxes.aliases()
     }
 
+    /// Return a reference to the mailboxes of this context
+    pub fn mailboxes(&self) -> &Mailboxes {
+        &self.mailboxes
+    }
+
     /// Utility function to sleep tasks from other crates
     #[doc(hidden)]
     pub async fn sleep(&self, dur: Duration) {
         tokio::time::sleep(dur).await;
     }
 
-    /// Create a new detached context without spawning a full worker
+    /// Create a new detached `Context` that will apply the given
+    /// [`AccessControl`] to any incoming messages it receives
+    pub async fn new_repeater(
+        &self,
+        access_control: Arc<dyn AccessControl>,
+    ) -> Result<RepeaterContext> {
+        let repeater_ctx = self
+            .new_detached_impl(Mailboxes::main(Address::random_local(), access_control))
+            .await?;
+        Ok(repeater_ctx)
+    }
+
+    /// Create a new detached `Context` without spawning a full worker
     ///
     /// Note: this function is very low-level.  For most users
     /// [`start_worker()`](Self::start_worker) is the recommended to
@@ -244,7 +268,7 @@ impl Context {
         NM: Message + Send + 'static,
         NW: Worker<Context = Context, Message = NM>,
     {
-        // Inherit access control
+        // Inherit access control from the current context's main mailbox
         let mailboxes = Mailboxes::from_address_set(
             address.into(),
             self.mailboxes.main_mailbox().access_control().clone(),
@@ -253,8 +277,44 @@ impl Context {
         self.start_worker_impl(mailboxes, worker).await
     }
 
-    /// TODO make private again once TcpTransport::create_outlet_with_access_control has a better solution
-    pub async fn start_worker_impl<NM, NW>(&self, mailboxes: Mailboxes, worker: NW) -> Result<()>
+    /// Start a worker that will apply the given access control to the
+    /// any incoming messages for the given address
+    pub async fn start_worker_with_access_control<A, NM, NW>(
+        &self,
+        address: A,
+        worker: NW,
+        access_control: Arc<dyn AccessControl>,
+    ) -> Result<()>
+    where
+        A: Into<Address>,
+        NM: Message + Send + 'static,
+        NW: Worker<Context = Context, Message = NM>,
+    {
+        let mailboxes = Mailboxes::main(address.into(), access_control);
+        self.start_worker_impl(mailboxes, worker).await
+    }
+
+    /// Start a worker with the given [`Mailboxes`]
+    ///
+    /// This is just a wrapper around the private `start_worker_impl`
+    /// call that allows specification of multiple access control for
+    /// multiple addresses. In the longer run this should probably be
+    /// unified with `start_worker_with_access_control` as well as a
+    /// decision about whether we want to expose the `Mailbox`
+    /// abstraction to higher-level API's at all.
+    pub async fn start_worker_with_mailboxes<NM, NW>(
+        &self,
+        mailboxes: Mailboxes,
+        worker: NW,
+    ) -> Result<()>
+    where
+        NM: Message + Send + 'static,
+        NW: Worker<Context = Context, Message = NM>,
+    {
+        self.start_worker_impl(mailboxes, worker).await
+    }
+
+    async fn start_worker_impl<NM, NW>(&self, mailboxes: Mailboxes, worker: NW) -> Result<()>
     where
         NM: Message + Send + 'static,
         NW: Worker<Context = Context, Message = NM>,
@@ -536,9 +596,11 @@ impl Context {
         let payload = msg.encode().unwrap();
         let mut transport_msg = TransportMessage::v1(route.clone(), Route::new(), payload);
         transport_msg.return_route.modify().append(sending_address);
+
+        // Pack transport message into a LocalMessage wrapper
         let local_msg = LocalMessage::new(transport_msg, Vec::new());
 
-        // Pack transport message into relay message wrapper
+        // Pack local message into a RelayMessage wrapper
         let msg = RelayMessage::new(addr, local_msg, route, needs_wrapping);
 
         // Send the packed user message with associated route

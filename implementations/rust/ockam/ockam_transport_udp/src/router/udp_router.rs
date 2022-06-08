@@ -165,8 +165,7 @@ impl Worker for UdpRouter {
         let msg_addr = msg.msg_addr();
 
         if msg_addr == self.main_addr {
-            let msg = LocalMessage::decode(msg.payload())?;
-            self.handle_route(ctx, msg).await?;
+            self.handle_route(ctx, msg.into_local_message()).await?;
         } else if msg_addr == self.api_addr {
             let msg = UdpRouterMessage::decode(msg.payload())?;
             match msg {

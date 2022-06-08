@@ -53,7 +53,7 @@ impl<S: SessionManager> SessionMaintainer<S> {
         let heartbeat_mailbox = Mailbox::new(heartbeat_addr, Arc::new(LocalOriginOnly));
         let mailboxes = Mailboxes::new(main_mailbox, vec![heartbeat_mailbox]);
 
-        ctx.start_worker_impl(mailboxes, manager).await?;
+        ctx.start_worker_with_mailboxes(mailboxes, manager).await?;
 
         Ok(main_addr)
     }

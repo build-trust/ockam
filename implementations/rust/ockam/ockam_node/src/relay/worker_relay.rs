@@ -1,9 +1,10 @@
 use crate::channel_types::SmallReceiver;
 use crate::relay::CtrlSignal;
+use crate::relay::RelayMessage;
 use crate::tokio::runtime::Runtime;
 use crate::{parser, Context};
 use core::marker::PhantomData;
-use ockam_core::{LocalMessage, Message, Result, Routed, Worker};
+use ockam_core::{Message, Result, Routed, Worker};
 
 /// Worker relay machinery
 ///
@@ -33,13 +34,30 @@ where
         }
     }
 
-    /// Convenience function to handle an incoming direct message
-    #[inline]
-    fn handle_direct(msg: &LocalMessage) -> Result<M> {
-        parser::message::<M>(msg.transport().payload.as_slice()).map_err(|e| {
+    /// Convenience function to parse an incoming direct message and
+    /// wrap it in a [`Routed`]
+    ///
+    /// This provides return route information for workers via a
+    /// composition side-channel.
+    ///
+    /// This is currently called twice, once when the message is
+    /// dispatched to the worker for authorization and again for
+    /// handling. Two unpleasant ways to avoid this are:
+    ///
+    /// 1. Introduce a Sync bound on the Worker trait that allows us
+    ///    to pass the message by reference.
+    ///
+    /// 2. Introduce a Clone bound on the Message trait that allows us
+    ///    to perform a cheaper clone on the message.
+    ///
+    fn wrap_direct_message(relay_msg: &RelayMessage) -> Result<Routed<M>> {
+        let payload = relay_msg.local_msg.transport().payload.as_slice();
+        let msg = parser::message::<M>(payload).map_err(|e| {
             error!("Failed to decode message payload for worker" /* FIXME */);
             e
-        })
+        })?;
+        let routed = Routed::new(msg, relay_msg.addr.clone(), relay_msg.local_msg.clone());
+        Ok(routed)
     }
 
     /// Receive and handle a single message
@@ -55,20 +73,21 @@ where
             }
         };
 
-        // Extract the message type based on the relay message
-        // wrap state.  Messages addressed to a router will be of
-        // type `RouterMessage`, while generic userspace workers
-        // can provide any type they want.
-        let msg = Self::handle_direct(&relay_msg.local_msg)?;
-
-        // Wrap the user message in a `Routed` to provide return
-        // route information via a composition side-channel
-        let routed = Routed::new(msg, relay_msg.addr.clone(), relay_msg.local_msg);
+        // Call the worker authorization function - pass errors up
+        let routed = Self::wrap_direct_message(&relay_msg)?;
+        if !self.worker.is_authorized(&mut self.ctx, routed).await? {
+            warn!(
+                "Message for {} did not pass worker relay access control",
+                relay_msg.addr
+            );
+            return Ok(true);
+        }
 
         // Call the worker handle function - pass errors up
+        let routed = Self::wrap_direct_message(&relay_msg)?;
         self.worker.handle_message(&mut self.ctx, routed).await?;
 
-        // Signal to the outer loop we would like to run again
+        // Signal to the outer loop that we would like to run again
         Ok(true)
     }
 

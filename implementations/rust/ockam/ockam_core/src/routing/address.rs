@@ -13,7 +13,8 @@ use core::str::from_utf8;
 use serde::{Deserialize, Serialize};
 
 /// A `Mailbox` controls the dispatch of incoming messages for a
-/// particular `Address`
+/// particular [`Address`]
+#[derive(Debug)]
 pub struct Mailbox {
     address: Address,
     access_control: Arc<dyn AccessControl>,
@@ -38,13 +39,33 @@ impl Mailbox {
 }
 
 /// A collection of [`Mailbox`]es for a [`Context`]
+#[derive(Debug)]
 pub struct Mailboxes {
     main_mailbox: Mailbox,
     additional_mailboxes: Vec<Mailbox>,
 }
 
 impl Mailboxes {
+    /// Create a new collection of `Mailboxes` from the given [`Mailbox`]es
+    pub fn new(main_mailbox: Mailbox, additional_mailboxes: Vec<Mailbox>) -> Self {
+        Self {
+            main_mailbox,
+            additional_mailboxes,
+        }
+    }
+
+    /// Create a new collection of `Mailboxes` for the given
+    /// [`Address`] with the given [`AccessControl`]
+    pub fn main<A: Into<Address>>(address: A, access_control: Arc<dyn AccessControl>) -> Self {
+        Self {
+            main_mailbox: Mailbox::new(address.into(), access_control),
+            additional_mailboxes: vec![],
+        }
+    }
+
     /// Create a new `Mailboxes` from the given [`AddressSet`] and [`AccessControl`]
+    ///
+    /// Note that all `Mailbox`es will use the same AccessControl.
     pub fn from_address_set(
         address_set: AddressSet,
         access_control: Arc<dyn AccessControl>,
@@ -101,8 +122,15 @@ impl Mailboxes {
         msg_addr: &Address,
         local_msg: &LocalMessage,
     ) -> Result<bool> {
-        let mailbox = self.find_mailbox(msg_addr).unwrap(); // FIXME
-        mailbox.access_control.is_authorized(local_msg).await
+        if let Some(mailbox) = self.find_mailbox(msg_addr) {
+            mailbox.access_control.is_authorized(local_msg).await
+        } else {
+            warn!(
+                "Message for {} does not match any addresses for this destination",
+                msg_addr
+            );
+            crate::deny()
+        }
     }
 
     /// Return the [`AddressSet`] represented by these `Mailboxes`
@@ -110,23 +138,6 @@ impl Mailboxes {
         let mut addresses = vec![self.main_mailbox.address.clone()];
         addresses.append(&mut self.aliases().0);
         AddressSet(addresses)
-    }
-
-    /// Create a new collection of `Mailboxes` from the given [`Mailbox`]es
-    pub fn new(main_mailbox: Mailbox, additional_mailboxes: Vec<Mailbox>) -> Self {
-        Self {
-            main_mailbox,
-            additional_mailboxes,
-        }
-    }
-
-    /// Create a new collection of `Mailboxes` for the given
-    /// [`Address`] with the given [`AccessControl`]
-    pub fn main<A: Into<Address>>(address: A, access_control: Arc<dyn AccessControl>) -> Self {
-        Self {
-            main_mailbox: Mailbox::new(address.into(), access_control),
-            additional_mailboxes: vec![],
-        }
     }
 
     /// Return a reference to the main [`Mailbox`] for this collection
@@ -215,6 +226,12 @@ impl<'a> From<&'a Address> for AddressSet {
 impl<'a> From<&'a str> for AddressSet {
     fn from(a: &'a str) -> Self {
         Self(vec![a.into()])
+    }
+}
+
+impl Display for AddressSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.0)
     }
 }
 
@@ -355,6 +372,11 @@ impl Address {
     /// Get transport type of this address.
     pub fn transport_type(&self) -> TransportType {
         self.tt
+    }
+
+    /// Get address portion of this address
+    pub fn address(&self) -> &str {
+        from_utf8(self.inner.as_slice()).unwrap_or("Invalid UTF-8")
     }
 }
 
