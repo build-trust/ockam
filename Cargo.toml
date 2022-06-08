@@ -16,6 +16,7 @@ members = [
     "examples/rust/*/examples/..",
 
     "tools/docs/example_runner",
+    "tools/docs/example_test_helper",
     "tools/docs/example_blocks",
 ]
 

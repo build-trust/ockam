@@ -1,0 +1,17 @@
+[package]
+name = "example_test_helper"
+license = "Apache-2.0"
+version = "0.1.0"
+edition = "2021"
+publish = false
+rust-version = "1.56.0"
+
+[dependencies]
+duct = "0.13"
+shellwords = "1.1"
+regex = "1.5"
+libc = "0.2"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tempfile = "3"

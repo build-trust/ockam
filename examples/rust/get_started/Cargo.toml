@@ -34,3 +34,5 @@ hex = "0.4"
 
 [dev-dependencies]
 rand = { version = "0.8.4", features = ["std_rng"], default-features = false }
+example_test_helper = { path = "../../../tools/docs/example_test_helper" }
+serial_test = "0.6.0"
