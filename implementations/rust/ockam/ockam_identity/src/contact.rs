@@ -1,7 +1,9 @@
 //! Contact is an abstraction responsible for storing user's public data (mainly - public keys).
 
 use crate::change_history::IdentityChangeHistory;
-use crate::{EventIdentifier, IdentityChangeEvent, IdentityIdentifier, IdentityVault};
+use crate::{
+    EventIdentifier, IdentityChangeEvent, IdentityError, IdentityIdentifier, IdentityVault,
+};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{allow, deny, Result};
 use ockam_vault::PublicKey;
@@ -45,6 +47,16 @@ impl Contact {
             identifier,
             change_history: IdentityChangeHistory::new(change_events),
         }
+    }
+}
+
+impl Contact {
+    pub fn export(&self) -> Result<Vec<u8>> {
+        serde_bare::to_vec(self).map_err(|_| IdentityError::ConsistencyError.into())
+    }
+
+    pub fn import(data: &[u8]) -> Result<Self> {
+        serde_bare::from_slice(data).map_err(|_| IdentityError::ConsistencyError.into())
     }
 }
 
