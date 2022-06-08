@@ -287,7 +287,7 @@ impl<V: IdentityVault> IdentityState<V> {
 
         if !self
             .change_history
-            .verify_all_existing_events(&mut self.vault)
+            .verify_all_existing_events(&self.vault)
             .await?
         {
             return deny();
@@ -324,7 +324,7 @@ impl<V: IdentityVault> IdentityState<V> {
     }
 
     pub async fn verify_contact(&mut self, contact: Contact) -> Result<bool> {
-        contact.verify(&mut self.vault).await?;
+        contact.verify(&self.vault).await?;
 
         allow()
     }
