@@ -65,7 +65,7 @@ mod tests {
         identity: &[u8],
         contact: Vec<u8>,
         service_address: &str,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<(Vec<u8>, String)> {
         let body = VerifyAndAddContactRequest::new(identity, contact);
         let req = Request::post("identities/verify_and_add_contact")
             .body(body)
@@ -83,7 +83,7 @@ mod tests {
 
         let res: VerifyAndAddContactResponse = dec.decode()?;
 
-        Ok(res.identity().to_vec())
+        Ok((res.identity().to_vec(), res.contact_id().to_string()))
     }
 
     async fn create_proof(
@@ -148,15 +148,17 @@ mod tests {
         IdentityService::create(ctx, "1", vault1.async_try_clone().await?).await?;
         IdentityService::create(ctx, "2", vault2.async_try_clone().await?).await?;
 
-        let (identity1, identity_id1) = create_identity(ctx, "1").await?;
-        let (identity2, identity_id2) = create_identity(ctx, "2").await?;
+        let (identity1, _identity_id1) = create_identity(ctx, "1").await?;
+        let (identity2, _identity_id2) = create_identity(ctx, "2").await?;
 
         let contact1 = export_as_contact(ctx, &identity1, "1").await?;
         let contact2 = export_as_contact(ctx, &identity2, "2").await?;
 
         // Identity is updated here
-        let identity1 = verify_and_add_contact(ctx, &identity1, contact2, "1").await?;
-        let identity2 = verify_and_add_contact(ctx, &identity2, contact1, "2").await?;
+        let (identity1, identity_id2) =
+            verify_and_add_contact(ctx, &identity1, contact2, "1").await?;
+        let (identity2, identity_id1) =
+            verify_and_add_contact(ctx, &identity2, contact1, "2").await?;
 
         let state: [u8; 32] = random();
 

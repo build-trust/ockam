@@ -23,6 +23,7 @@ verify_and_add_contact_request = {
 verify_and_add_contact_response = {
     ?0: 7946005,
      1: identity,
+     2: contact_id,
 }
 
 create_auth_proof_request = {
@@ -56,3 +57,4 @@ state            = bytes
 proof            = bytes
 peer_identity_id = text
 verified         = bool
+contact_id       = text
