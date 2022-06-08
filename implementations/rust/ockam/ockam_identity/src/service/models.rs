@@ -12,61 +12,22 @@ use ockam_core::TypeTag;
 pub struct CreateResponse<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3500430>,
-    #[b(1)] identity_id: CowStr<'a>,
+    #[b(1)] identity: CowBytes<'a>,
+    #[b(2)] identity_id: CowStr<'a>,
 }
 
 impl<'a> CreateResponse<'a> {
-    pub fn new(identity_id: impl Into<CowStr<'a>>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            identity_id: identity_id.into(),
-        }
-    }
-    pub fn identity_id(&self) -> &str {
-        &self.identity_id
-    }
-}
-
-#[derive(Debug, Clone, Encode, Decode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct ImportRequest<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<2308772>,
-    #[b(1)] identity: CowBytes<'a>,
-}
-
-impl<'a> ImportRequest<'a> {
-    pub fn new(identity: impl Into<CowBytes<'a>>) -> Self {
+    pub fn new(identity: impl Into<CowBytes<'a>>, identity_id: impl Into<CowStr<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             identity: identity.into(),
+            identity_id: identity_id.into(),
         }
     }
     pub fn identity(&self) -> &[u8] {
         &self.identity
     }
-}
-
-#[derive(Debug, Clone, Encode, Decode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct ImportResponse<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<3219065>,
-    #[b(1)] identity_id: CowStr<'a>,
-}
-
-impl<'a> ImportResponse<'a> {
-    pub fn new(identity_id: impl Into<CowStr<'a>>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            identity_id: identity_id.into(),
-        }
-    }
     pub fn identity_id(&self) -> &str {
         &self.identity_id
     }
@@ -75,13 +36,13 @@ impl<'a> ImportResponse<'a> {
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ExportResponse<'a> {
+pub struct ContactRequest<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<2421306>,
+    #[n(0)] tag: TypeTag<9274303>,
     #[b(1)] identity: CowBytes<'a>,
 }
 
-impl<'a> ExportResponse<'a> {
+impl<'a> ContactRequest<'a> {
     pub fn new(identity: impl Into<CowBytes<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -122,16 +83,21 @@ impl<'a> ContactResponse<'a> {
 pub struct VerifyAndAddContactRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3396927>,
-    #[b(1)] contact: CowBytes<'a>,
+    #[b(1)] identity: CowBytes<'a>,
+    #[b(2)] contact: CowBytes<'a>,
 }
 
 impl<'a> VerifyAndAddContactRequest<'a> {
-    pub fn new(contact: impl Into<CowBytes<'a>>) -> Self {
+    pub fn new(identity: impl Into<CowBytes<'a>>, contact: impl Into<CowBytes<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
+            identity: identity.into(),
             contact: contact.into(),
         }
+    }
+    pub fn identity(&self) -> &[u8] {
+        &self.identity
     }
     pub fn contact(&self) -> &[u8] {
         &self.contact
@@ -141,19 +107,46 @@ impl<'a> VerifyAndAddContactRequest<'a> {
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateAuthProofRequest<'a> {
+pub struct VerifyAndAddContactResponse<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<1019956>,
-    #[b(1)] state: CowBytes<'a>,
+    #[n(0)] tag: TypeTag<7946005>,
+    #[b(1)] identity: CowBytes<'a>,
 }
 
-impl<'a> CreateAuthProofRequest<'a> {
-    pub fn new(state: impl Into<CowBytes<'a>>) -> Self {
+impl<'a> VerifyAndAddContactResponse<'a> {
+    pub fn new(identity: impl Into<CowBytes<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
+            identity: identity.into(),
+        }
+    }
+    pub fn identity(&self) -> &[u8] {
+        &self.identity
+    }
+}
+
+#[derive(Debug, Clone, Encode, Decode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct CreateAuthProofRequest<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<1019956>,
+    #[b(1)] identity: CowBytes<'a>,
+    #[b(2)] state: CowBytes<'a>,
+}
+
+impl<'a> CreateAuthProofRequest<'a> {
+    pub fn new(identity: impl Into<CowBytes<'a>>, state: impl Into<CowBytes<'a>>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            identity: identity.into(),
             state: state.into(),
         }
+    }
+    pub fn identity(&self) -> &[u8] {
+        &self.identity
     }
     pub fn state(&self) -> &[u8] {
         &self.state
@@ -188,27 +181,33 @@ impl<'a> CreateAuthProofResponse<'a> {
 pub struct VerifyAuthProofRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<7550780>,
-    #[b(1)] identity_id: CowStr<'a>,
-    #[b(2)] state: CowBytes<'a>,
-    #[b(3)] proof: CowBytes<'a>,
+    #[b(1)] identity: CowBytes<'a>,
+    #[b(2)] peer_identity_id: CowStr<'a>,
+    #[b(3)] state: CowBytes<'a>,
+    #[b(4)] proof: CowBytes<'a>,
 }
 
 impl<'a> VerifyAuthProofRequest<'a> {
     pub fn new(
-        identity_id: impl Into<CowStr<'a>>,
+        identity: impl Into<CowBytes<'a>>,
+        peer_identity_id: impl Into<CowStr<'a>>,
         state: impl Into<CowBytes<'a>>,
         proof: impl Into<CowBytes<'a>>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            identity_id: identity_id.into(),
+            identity: identity.into(),
+            peer_identity_id: peer_identity_id.into(),
             state: state.into(),
             proof: proof.into(),
         }
     }
-    pub fn identity_id(&self) -> &str {
-        &self.identity_id
+    pub fn identity(&self) -> &[u8] {
+        &self.identity
+    }
+    pub fn peer_identity_id(&self) -> &str {
+        &self.peer_identity_id
     }
     pub fn state(&self) -> &[u8] {
         &self.state
