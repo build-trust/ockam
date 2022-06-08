@@ -105,7 +105,7 @@ impl IdentityChangeHistory {
 impl IdentityChangeHistory {
     pub(crate) async fn verify_all_existing_events(
         &self,
-        vault: &mut impl IdentityVault,
+        vault: &impl IdentityVault,
     ) -> Result<bool> {
         for i in 0..self.0.len() {
             let existing_events = &self.as_ref()[..i];
@@ -121,7 +121,7 @@ impl IdentityChangeHistory {
     pub(crate) async fn verify_event(
         existing_events: &[IdentityChangeEvent],
         new_change_event: &IdentityChangeEvent,
-        vault: &mut impl IdentityVault,
+        vault: &impl IdentityVault,
     ) -> Result<bool> {
         let change_block = new_change_event.change_block();
         let change_block_binary = change_block

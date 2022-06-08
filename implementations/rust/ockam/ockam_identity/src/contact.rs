@@ -50,7 +50,7 @@ impl Contact {
 
 impl Contact {
     /// Verify cryptographically whole event chain. Also verify sequence correctness
-    pub async fn verify(&self, vault: &mut impl IdentityVault) -> Result<bool> {
+    pub async fn verify(&self, vault: &impl IdentityVault) -> Result<bool> {
         if !IdentityChangeHistory::check_consistency(&[], self.change_events()) {
             return deny();
         }
