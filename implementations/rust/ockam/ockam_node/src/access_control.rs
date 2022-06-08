@@ -4,6 +4,7 @@ use ockam_core::{async_trait, compat::boxed::Box, TransportType};
 use ockam_core::{LocalMessage, Result};
 
 /// Allows only messages that originate from this node
+#[derive(Debug)]
 pub struct LocalOriginOnly;
 
 #[async_trait]
@@ -14,6 +15,7 @@ impl AccessControl for LocalOriginOnly {
 }
 
 /// Allows only messages coming from specified set of transport types. Also allows Local messages
+#[derive(Debug)]
 pub struct AllowedTransport {
     allowed_transport: Vec<TransportType>,
 }

@@ -21,6 +21,7 @@ impl IdentityAccessControlBuilder {
     }
 }
 
+#[derive(Debug)]
 pub struct IdentityAnyIdAccessControl;
 
 #[async_trait]
@@ -30,7 +31,7 @@ impl AccessControl for IdentityAnyIdAccessControl {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct IdentityIdAccessControl {
     identity_ids: Vec<IdentityIdentifier>,
 }

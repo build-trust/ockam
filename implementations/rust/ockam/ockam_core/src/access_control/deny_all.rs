@@ -3,6 +3,7 @@ use crate::compat::boxed::Box;
 use crate::{LocalMessage, Result};
 
 /// An Access Control type that blocks all messages from passing through.
+#[derive(Debug)]
 pub struct DenyAll;
 
 #[async_trait]

@@ -2,6 +2,7 @@ use crate::access_control::AccessControl;
 use crate::{async_trait, compat::boxed::Box, LocalMessage, Result};
 
 /// Allows message that are allowed buy either AccessControls
+#[derive(Debug)]
 pub struct AnyAccessControl<F: AccessControl, S: AccessControl> {
     // TODO: Extend for more than 2 policies
     first: F,

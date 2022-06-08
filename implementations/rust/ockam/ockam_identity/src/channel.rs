@@ -19,7 +19,7 @@ mod test {
     use crate::{Identity, IdentityTrait};
     use core::sync::atomic::{AtomicU8, Ordering};
     use ockam_core::compat::sync::Arc;
-    use ockam_core::{route, Any, Mailboxes, Result, Route, Routed, Worker};
+    use ockam_core::{route, Any, Result, Route, Routed, Worker};
     use ockam_node::Context;
     use ockam_vault::Vault;
     use std::time::Duration;
@@ -250,11 +250,8 @@ mod test {
         let bob = Identity::create(ctx, &vault).await?;
 
         let access_control = IdentityAccessControlBuilder::new_with_id(alice.identifier().await?);
-        ctx.start_worker_impl(
-            Mailboxes::main("receiver", Arc::new(access_control)),
-            receiver,
-        )
-        .await?;
+        ctx.start_worker_with_access_control("receiver", receiver, Arc::new(access_control))
+            .await?;
 
         bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
             .await?;
@@ -289,11 +286,8 @@ mod test {
         let bob = Identity::create(ctx, &vault).await?;
 
         let access_control = IdentityAccessControlBuilder::new_with_id(bob.identifier().await?);
-        ctx.start_worker_impl(
-            Mailboxes::main("receiver", Arc::new(access_control)),
-            receiver,
-        )
-        .await?;
+        ctx.start_worker_with_access_control("receiver", receiver, Arc::new(access_control))
+            .await?;
 
         bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
             .await?;
@@ -325,11 +319,8 @@ mod test {
         let access_control = IdentityAccessControlBuilder::new_with_id(
             "P79b26ba2ea5ad9b54abe5bebbcce7c446beda8c948afc0de293250090e5270b6".try_into()?,
         );
-        ctx.start_worker_impl(
-            Mailboxes::main("receiver", Arc::new(access_control)),
-            receiver,
-        )
-        .await?;
+        ctx.start_worker_with_access_control("receiver", receiver, Arc::new(access_control))
+            .await?;
 
         ctx.send(route!["receiver"], "Hello, Bob!".to_string())
             .await?;
