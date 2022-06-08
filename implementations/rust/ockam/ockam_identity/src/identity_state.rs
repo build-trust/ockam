@@ -37,6 +37,16 @@ pub struct ExportedIdentity {
     // pub credentials: Vec<IdentityCredential>,
 }
 
+impl ExportedIdentity {
+    pub fn export(&self) -> Result<Vec<u8>> {
+        serde_bare::to_vec(self).map_err(|_| IdentityError::ConsistencyError.into())
+    }
+
+    pub fn import(data: &[u8]) -> Result<Self> {
+        serde_bare::from_slice(data).map_err(|_| IdentityError::ConsistencyError.into())
+    }
+}
+
 /// Identity implementation
 pub struct IdentityState<V: IdentityVault> {
     id: IdentityIdentifier,
