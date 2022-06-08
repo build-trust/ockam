@@ -148,9 +148,9 @@ impl Router {
                 addrs,
                 senders,
                 detached,
-                metrics,
+                mailbox_count,
                 ref reply,
-            } => start_worker::exec(self, addrs, senders, detached, metrics, reply).await?,
+            } => start_worker::exec(self, addrs, senders, detached, mailbox_count, reply).await?,
             StopWorker(ref addr, ref detached, ref reply) => {
                 stop_worker::exec(self, addr, *detached, reply).await?
             }

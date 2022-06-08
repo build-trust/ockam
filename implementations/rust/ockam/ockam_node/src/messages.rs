@@ -20,7 +20,7 @@ pub enum NodeMessage {
         /// A detached context/ "worker" runs no relay state
         detached: bool,
         /// A mechanism to read channel fill-state for a worker
-        metrics: Arc<AtomicUsize>,
+        mailbox_count: Arc<AtomicUsize>,
         /// Reply channel for command confirmation
         reply: SmallSender<NodeReplyResult>,
     },
@@ -83,7 +83,7 @@ impl NodeMessage {
         addrs: AddressSet,
         senders: SenderPair,
         detached: bool,
-        metrics: Arc<AtomicUsize>,
+        mailbox_count: Arc<AtomicUsize>,
     ) -> (Self, SmallReceiver<NodeReplyResult>) {
         let (reply, rx) = small_channel();
         (
@@ -91,7 +91,7 @@ impl NodeMessage {
                 addrs,
                 senders,
                 detached,
-                metrics,
+                mailbox_count,
                 reply,
             },
             rx,
