@@ -1,9 +1,10 @@
 use crate::service::models::*;
-use crate::{Contact, Identity, IdentityError, IdentityIdentifier, IdentityTrait, IdentityVault};
+use crate::{
+    Contact, ExportedIdentity, Identity, IdentityIdentifier, IdentityTrait, IdentityVault,
+};
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
 use ockam_api::{Error, Id, Method, Request, Response, Status};
-use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::io;
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_node::Context;
@@ -12,7 +13,6 @@ use tracing::trace;
 /// Vault Service Worker
 pub struct IdentityService<V: IdentityVault> {
     ctx: Context,
-    storage: BTreeMap<IdentityIdentifier, Identity<V>>,
     vault: V,
 }
 
@@ -20,7 +20,6 @@ impl<V: IdentityVault> IdentityService<V> {
     pub async fn create(ctx: &Context, address: impl Into<Address>, vault: V) -> Result<()> {
         let s = Self {
             ctx: ctx.new_detached(Address::random_local()).await?,
-            storage: Default::default(),
             vault,
         };
         ctx.start_worker(address.into(), s).await
@@ -102,74 +101,48 @@ impl<V: IdentityVault> IdentityService<V> {
         use Method::*;
 
         match method {
-            Post => match req.path_segments::<3>().as_slice() {
+            Post => match req.path_segments::<2>().as_slice() {
                 ["identities"] => {
                     let identity = Identity::create(&self.ctx, &self.vault).await?;
                     let identifier = identity.identifier().await?;
 
-                    if self.storage.insert(identifier.clone(), identity).is_some() {
-                        return Err(IdentityError::ConsistencyError.into());
-                    }
-
-                    let body = CreateResponse::new(String::from(identifier));
-
-                    Self::ok_response(req, Some(body), enc)
-                }
-                ["identities", "import"] => {
-                    if !req.has_body() {
-                        return Self::response_for_bad_request(req, "empty body", enc);
-                    }
-
-                    let args = dec.decode::<ImportRequest>()?;
-                    let exported_identity = serde_bare::from_slice(args.identity())
-                        .map_err(|_| IdentityError::ConsistencyError)?;
-
-                    let identity =
-                        Identity::import(&self.ctx, &self.vault, exported_identity).await?;
-                    let identifier = identity.identifier().await?;
-
-                    if self.storage.insert(identifier.clone(), identity).is_some() {
-                        return Err(IdentityError::ConsistencyError.into());
-                    }
-
-                    let body = ImportResponse::new(String::from(identifier));
+                    let body = CreateResponse::new(
+                        identity.export().await.export()?,
+                        String::from(identifier),
+                    );
 
                     Self::ok_response(req, Some(body), enc)
                 }
-                ["identities", identity_id, "verify_and_add_contact"] => {
+                ["identities", "verify_and_add_contact"] => {
                     if !req.has_body() {
                         return Self::response_for_bad_request(req, "empty body", enc);
                     }
 
                     let args = dec.decode::<VerifyAndAddContactRequest>()?;
 
-                    let contact: Contact = serde_bare::from_slice(args.contact())
-                        .map_err(|_| IdentityError::ConsistencyError)?;
+                    let identity = ExportedIdentity::import(args.identity())?;
+                    let identity = Identity::import(&self.ctx, &self.vault, identity).await?;
+                    let contact = Contact::import(args.contact())?;
 
-                    let identifier = IdentityIdentifier::try_from(*identity_id)?;
+                    if identity.get_contact(contact.identifier()).await?.is_none() {
+                        identity.verify_and_add_contact(contact).await?;
+                    } else {
+                        // TODO: Support updating
+                    }
 
-                    let identity = self
-                        .storage
-                        .get(&identifier)
-                        .ok_or(IdentityError::ConsistencyError)?;
-
-                    identity.verify_and_add_contact(contact).await?;
+                    let body = VerifyAndAddContactResponse::new(identity.export().await.export()?);
 
                     #[allow(unused_qualifications)]
-                    Self::ok_response(req, Option::<()>::None, enc)
+                    Self::ok_response(req, Some(body), enc)
                 }
-                ["identities", identity_id, "create_auth_proof"] => {
+                ["identities", "create_auth_proof"] => {
                     if !req.has_body() {
                         return Self::response_for_bad_request(req, "empty body", enc);
                     }
 
                     let args = dec.decode::<CreateAuthProofRequest>()?;
-                    let identifier = IdentityIdentifier::try_from(*identity_id)?;
-
-                    let identity = self
-                        .storage
-                        .get(&identifier)
-                        .ok_or(IdentityError::ConsistencyError)?;
+                    let identity = ExportedIdentity::import(args.identity())?;
+                    let identity = Identity::import(&self.ctx, &self.vault, identity).await?;
 
                     let proof = identity.create_auth_proof(args.state()).await?;
 
@@ -177,19 +150,15 @@ impl<V: IdentityVault> IdentityService<V> {
 
                     Self::ok_response(req, Some(body), enc)
                 }
-                ["identities", identity_id, "verify_auth_proof"] => {
+                ["identities", "verify_auth_proof"] => {
                     if !req.has_body() {
                         return Self::response_for_bad_request(req, "empty body", enc);
                     }
 
                     let args = dec.decode::<VerifyAuthProofRequest>()?;
-                    let identifier = IdentityIdentifier::try_from(*identity_id)?;
-                    let peer_identifier = IdentityIdentifier::try_from(args.identity_id())?;
-
-                    let identity = self
-                        .storage
-                        .get(&identifier)
-                        .ok_or(IdentityError::ConsistencyError)?;
+                    let identity = ExportedIdentity::import(args.identity())?;
+                    let identity = Identity::import(&self.ctx, &self.vault, identity).await?;
+                    let peer_identifier = IdentityIdentifier::try_from(args.peer_identity_id())?;
 
                     let verified = identity
                         .verify_auth_proof(args.state(), &peer_identifier, args.proof())
@@ -201,35 +170,18 @@ impl<V: IdentityVault> IdentityService<V> {
                 }
                 _ => Self::response_for_bad_request(req, "unknown path", enc),
             },
-            Get => match req.path_segments::<3>().as_slice() {
-                ["identities", identity_id] => {
-                    let identifier = IdentityIdentifier::try_from(*identity_id)?;
+            Get => match req.path_segments::<2>().as_slice() {
+                ["identities", "contact"] => {
+                    if !req.has_body() {
+                        return Self::response_for_bad_request(req, "empty body", enc);
+                    }
 
-                    let identity = self
-                        .storage
-                        .get(&identifier)
-                        .ok_or(IdentityError::ConsistencyError)?;
+                    let args = dec.decode::<ContactRequest>()?;
 
-                    let exported_identity = identity.export().await;
-                    let identity = serde_bare::to_vec(&exported_identity)
-                        .map_err(|_| IdentityError::ConsistencyError)?;
+                    let identity = ExportedIdentity::import(args.identity())?;
+                    let identity = Identity::import(&self.ctx, &self.vault, identity).await?;
 
-                    let body = ExportResponse::new(identity);
-
-                    Self::ok_response(req, Some(body), enc)
-                }
-                ["identities", identity_id, "contact"] => {
-                    let identifier = IdentityIdentifier::try_from(*identity_id)?;
-
-                    let identity = self
-                        .storage
-                        .get(&identifier)
-                        .ok_or(IdentityError::ConsistencyError)?;
-
-                    let contact = identity.as_contact().await?;
-
-                    let contact = serde_bare::to_vec(&contact)
-                        .map_err(|_| IdentityError::ConsistencyError)?;
+                    let contact = identity.as_contact().await?.export()?;
 
                     let body = ContactResponse::new(contact);
 
