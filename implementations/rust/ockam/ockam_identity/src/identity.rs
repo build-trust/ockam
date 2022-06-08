@@ -1,7 +1,7 @@
 use crate::{
     AuthenticationProof, Changes, Contact, DecryptorWorker, ExportedIdentity, IdentityChangeEvent,
-    IdentityChannelListener, IdentityIdentifier, IdentityState, IdentityTrait, IdentityVault,
-    Lease, TrustPolicy, TTL,
+    IdentityChannelListener, IdentityError, IdentityIdentifier, IdentityState, IdentityTrait,
+    IdentityVault, Lease, TrustPolicy, TTL,
 };
 use core::time::Duration;
 use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
@@ -34,7 +34,14 @@ impl<V: IdentityVault> Identity<V> {
 
     pub async fn import(ctx: &Context, vault: &V, exported: ExportedIdentity) -> Result<Self> {
         let child_ctx = ctx.new_detached(Address::random_local()).await?;
-        let state = IdentityState::import(vault.async_try_clone().await?, exported);
+        let mut state = IdentityState::import(vault.async_try_clone().await?, exported);
+
+        let verified = state.verify_changes().await?;
+
+        if !verified {
+            return Err(IdentityError::VerifyFailed.into());
+        }
+
         Ok(Self {
             ctx: child_ctx,
             state: Arc::new(RwLock::new(state)),
