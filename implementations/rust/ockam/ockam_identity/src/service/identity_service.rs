@@ -123,6 +123,7 @@ impl<V: IdentityVault> IdentityService<V> {
                     let identity = ExportedIdentity::import(args.identity())?;
                     let identity = Identity::import(&self.ctx, &self.vault, identity).await?;
                     let contact = Contact::import(args.contact())?;
+                    let contact_id = String::from(contact.identifier().clone());
 
                     if identity.get_contact(contact.identifier()).await?.is_none() {
                         identity.verify_and_add_contact(contact).await?;
@@ -130,7 +131,10 @@ impl<V: IdentityVault> IdentityService<V> {
                         // TODO: Support updating
                     }
 
-                    let body = VerifyAndAddContactResponse::new(identity.export().await.export()?);
+                    let body = VerifyAndAddContactResponse::new(
+                        identity.export().await.export()?,
+                        contact_id,
+                    );
 
                     #[allow(unused_qualifications)]
                     Self::ok_response(req, Some(body), enc)

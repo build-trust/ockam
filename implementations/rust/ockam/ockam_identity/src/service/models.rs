@@ -111,18 +111,23 @@ pub struct VerifyAndAddContactResponse<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<7946005>,
     #[b(1)] identity: CowBytes<'a>,
+    #[b(2)] contact_id: CowStr<'a>,
 }
 
 impl<'a> VerifyAndAddContactResponse<'a> {
-    pub fn new(identity: impl Into<CowBytes<'a>>) -> Self {
+    pub fn new(identity: impl Into<CowBytes<'a>>, contact_id: impl Into<CowStr<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             identity: identity.into(),
+            contact_id: contact_id.into(),
         }
     }
     pub fn identity(&self) -> &[u8] {
         &self.identity
+    }
+    pub fn contact_id(&self) -> &str {
+        &self.contact_id
     }
 }
 
