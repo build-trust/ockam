@@ -3,7 +3,10 @@ use crate::{
     util::{self, connect_to},
 };
 use clap::Args;
-use ockam::{Context, NodeManMessage, NodeManReply, Route};
+use ockam::{
+    protocols::nodeman::{req::NodeManMessage, resp::NodeManReply},
+    Context, Route,
+};
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
