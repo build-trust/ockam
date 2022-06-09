@@ -1,9 +1,5 @@
 use crate::config::OckamConfig;
 use clap::Args;
-use ockam::{
-    protocols::nodeman::{req::NodeManMessage, resp::NodeManReply},
-    Context, Route,
-};
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {

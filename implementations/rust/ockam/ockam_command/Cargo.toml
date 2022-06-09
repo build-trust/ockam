@@ -50,6 +50,7 @@ tracing = { version = "0.1.31", features = ["attributes"] }
 tracing-error = "0.2"
 tokio-retry = "0.3"
 tracing-subscriber = "0.3.9"
+minicbor = { version = "0.17", features = ["derive"] }
 
 ockam = { path = "../ockam", version = "^0.60.0", features = ["software_vault", "ockam_command"] }
 ockam_api = { path = "../ockam_api", version = "0.3.0", features = ["std"] }

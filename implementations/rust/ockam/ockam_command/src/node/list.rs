@@ -1,14 +1,11 @@
 use std::time::Duration;
 
 use crate::config::OckamConfig;
-use crate::util::{self, connect_to};
+use crate::util::{self, api, connect_to};
 use clap::Args;
 use cli_table::{format::Justify, print_stdout, Cell, Style, Table};
 use crossbeam_channel::{bounded, Sender};
-use ockam::{
-    protocols::nodeman::{req::NodeManMessage, resp::NodeManReply},
-    Context, Route,
-};
+use ockam::{Context, Route};
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {}
@@ -27,6 +24,8 @@ impl ListCommand {
         // record.  If the function fails, then it is assumed not to
         // be up.  Also, if the function returns, but yields a
         // different pid, then we update the pid stored in the config.
+        // This should only happen if the node has failed in the past,
+        // and has been restarted by something that is not this CLI.
         let node_names = nodes.iter().map(|(name, _)| name.clone()).collect();
         verify_pids(cfg, node_names);
 
@@ -62,6 +61,7 @@ impl ListCommand {
     }
 }
 
+// TODO: move to utils directory
 fn verify_pids(cfg: &mut OckamConfig, nodes: Vec<String>) {
     for node_name in nodes {
         let node_cfg = cfg.get_nodes().get(&node_name).unwrap();
@@ -86,12 +86,12 @@ pub async fn query_pid(
 ) -> anyhow::Result<()> {
     ctx.send(
         base_route.modify().append("_internal.nodeman"),
-        NodeManMessage::Status,
+        api::query_status()?,
     )
     .await?;
 
-    let reply = match ctx
-        .receive_duration_timeout::<NodeManReply>(Duration::from_millis(200))
+    let resp = match ctx
+        .receive_duration_timeout::<Vec<u8>>(Duration::from_millis(200))
         .await
     {
         Ok(r) => r.take().body(),
@@ -101,10 +101,7 @@ pub async fn query_pid(
         }
     };
 
-    let pid = match reply {
-        NodeManReply::Status { pid, .. } => pid,
-    };
-
-    tx.send(Some(pid)).unwrap();
+    let status = api::parse_status(&resp)?;
+    tx.send(Some(status.pid)).unwrap();
     util::stop_node(ctx).await
 }

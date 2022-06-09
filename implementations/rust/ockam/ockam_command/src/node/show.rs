@@ -1,12 +1,10 @@
 use crate::{
     config::OckamConfig,
-    util::{self, connect_to},
+    util::{self, api, connect_to},
 };
 use clap::Args;
-use ockam::{
-    protocols::nodeman::{req::NodeManMessage, resp::NodeManReply},
-    Context, Route,
-};
+use ockam::{Context, Route};
+use ockam_api::nodes::types::NodeStatus;
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -29,26 +27,26 @@ impl ShowCommand {
 }
 
 pub async fn query_status(ctx: Context, _: (), mut base_route: Route) -> anyhow::Result<()> {
-    let reply: NodeManReply = ctx
+    let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append("_internal.nodeman"),
-            NodeManMessage::Status,
+            api::query_status()?,
         )
         .await
         .unwrap();
 
-    match reply {
-        NodeManReply::Status {
-            node_name,
-            status,
-            workers,
-            ..
-        } => println!(
-            "Node: {}, Status: {}, Worker count: {}",
-            node_name, status, workers
-        ),
-        // _ => eprintln!("Received invalid reply format!"),
-    }
+    let NodeStatus {
+        node_name,
+        status,
+        workers,
+        pid,
+        ..
+    } = api::parse_status(&resp)?;
+
+    println!(
+        "Node: {}, Status: {}, Worker count: {}, Pid: {}",
+        node_name, status, workers, pid
+    );
 
     util::stop_node(ctx).await
 }
