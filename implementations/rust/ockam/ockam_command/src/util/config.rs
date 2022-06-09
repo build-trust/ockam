@@ -138,6 +138,13 @@ impl OckamConfig {
         Ok(())
     }
 
+    /// Check whether another node has been registered with this API
+    /// port.  This doesn't catch all port collision errors, but will
+    /// get us most of the way there in terms of starting a new node.
+    pub fn port_is_used(&self, port: u16) -> bool {
+        self.nodes.iter().find(|(_, n)| n.port == port).is_some()
+    }
+
     /// Get read-acces to all node configuration
     pub fn get_nodes(&self) -> &BTreeMap<String, NodeConfig> {
         &self.nodes
@@ -163,7 +170,7 @@ impl OckamConfig {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NodeConfig {
     pub port: u16,
     pub pid: Option<i32>,
