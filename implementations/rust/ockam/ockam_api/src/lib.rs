@@ -14,6 +14,9 @@ use ockam_core::compat::rand;
 use std::fmt::{Display, Formatter};
 use tinyvec::ArrayVec;
 
+#[macro_use]
+extern crate tracing;
+
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 

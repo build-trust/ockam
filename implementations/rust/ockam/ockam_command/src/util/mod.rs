@@ -15,6 +15,8 @@ use ockam_core::LOCAL;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Ockam, Tcp};
 use ockam_multiaddr::{MultiAddr, Protocol};
 
+use crate::OckamCommand;
+
 pub const DEFAULT_CLOUD_ADDRESS: &str = "/dnsaddr/cloud.ockam.io/tcp/62526";
 pub const DEFAULT_TCP_PORT: u16 = 62526;
 
@@ -72,7 +74,7 @@ where
     F: FnOnce(ockam::Context, A) -> Fut + Send + Sync + 'static,
     Fut: core::future::Future<Output = anyhow::Result<()>> + Send + 'static,
 {
-    let (ctx, mut executor) = ockam::start_node();
+    let (ctx, mut executor) = ockam::start_node_without_logging();
     let res = executor.execute(async move {
         if let Err(e) = f(ctx, a).await {
             eprintln!("Error {:?}", e);

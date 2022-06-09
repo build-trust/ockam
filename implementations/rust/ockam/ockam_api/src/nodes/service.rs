@@ -1,23 +1,37 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
-use crate::{Context, Result, Routed, Worker};
+use crate::{
+    nodes::types::{NodeStatus, TransportList, TransportMode, TransportStatus, TransportType},
+    Method, Request, Response,
+};
 use minicbor::{encode::Write, Decoder};
-use ockam_api::{nodes::types::NodeStatus, Method, Request, Response};
+use ockam::{Context, Result, Routed, Worker};
 use ockam_core::compat::{boxed::Box, io, string::String};
 
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeMan {
     node_name: String,
+    transports: Vec<(TransportType, TransportMode, String)>,
 }
 
 impl NodeMan {
     /// Create a new NodeMan with the node name from the ockam CLI
-    pub fn new(node_name: String) -> Self {
-        Self { node_name }
+    pub fn new(node_name: String, api_transport: (TransportType, TransportMode, String)) -> Self {
+        Self {
+            node_name,
+            transports: vec![api_transport],
+        }
     }
 }
 
 impl NodeMan {
+    fn get_transports(&self) -> Vec<TransportStatus<'_>> {
+        self.transports
+            .iter()
+            .map(|(tt, tm, addr)| TransportStatus::new(*tt, *tm, &addr))
+            .collect()
+    }
+
     async fn handle_request<W>(
         &mut self,
         ctx: &mut Context,
@@ -51,7 +65,11 @@ impl NodeMan {
                     "[✓]",
                     ctx.list_workers().await?.len() as u32,
                     std::process::id() as i32,
+                    self.transports.len() as u32,
                 ))
+                .encode(enc)?,
+            (Get, "/node/transport") => Response::ok(req.id())
+                .body(TransportList::new(self.get_transports()))
                 .encode(enc)?,
             (method, path) => {
                 warn!("Called invalid endpoint: {} {}", method, path);
@@ -63,7 +81,7 @@ impl NodeMan {
     }
 }
 
-#[crate::worker]
+#[ockam::worker]
 impl Worker for NodeMan {
     type Message = Vec<u8>;
     type Context = Context;

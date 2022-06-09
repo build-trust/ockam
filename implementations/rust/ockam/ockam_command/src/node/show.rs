@@ -37,12 +37,17 @@ pub async fn query_status(ctx: Context, _: (), mut base_route: Route) -> anyhow:
         status,
         workers,
         pid,
+        transports,
         ..
     } = api::parse_status(&resp)?;
 
     println!(
-        "Node: {}, Status: {}, Worker count: {}, Pid: {}",
-        node_name, status, workers, pid
+        "Node: {}, Status: {}, Worker count: {}, Pid: {}, Transport count: {}",
+        node_name,
+        status,
+        workers,
+        pid,
+        transports,
     );
 
     util::stop_node(ctx).await

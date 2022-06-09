@@ -150,6 +150,11 @@ impl OckamConfig {
         &self.nodes
     }
 
+    /// Get the selected node configuration
+    pub fn select_node<'a>(&'a self, o: &'a Option<String>) -> Option<&'a NodeConfig> {
+        self.nodes.get(o.as_ref().unwrap_or(&self.api_node))
+    }
+
     /// Get the log path for a specific node
     pub fn log_path(&self, node_name: &String) -> String {
         self.log_path
