@@ -10,9 +10,18 @@ description = "Ockam's request-response API"
 publish = true
 
 [features]
-std  = ["minicbor/std", "ockam_core/std", "ockam_node/std", "tinyvec/std", "tracing/std"]
-tag  = ["cddl-cat"]
-lmdb = ["std", "lmdb-rkv"]
+std = [
+    "minicbor/std",
+    "ockam_core/std",
+    "ockam_node/std",
+    "ockam_vault/std",
+    "tinyvec/std",
+    "tracing/std"
+]
+bls           = ["ockam_vault/bls"]
+tag           = ["cddl-cat"]
+lmdb          = ["std", "lmdb-rkv"]
+vault-storage = ["ockam_vault/storage"]
 
 [dependencies]
 cddl-cat    = { version = "0.6.1", optional = true }
@@ -33,7 +42,15 @@ features         = ["no_std", "alloc"]
 version          = "0.57.0"
 path             = "../ockam_node"
 default-features = false
-features         = ["std"] # FIXME: required because of unbounded channels in ockam_node
+features         = ["no_std", "alloc"]
+
+[dependencies.ockam_vault]
+version          = "0.50.0"
+path             = "../ockam_vault"
+default-features = false
+# FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
+# breaks building ockam_vault with feature set "no_std,std":
+features         = ["std"]
 
 [dev-dependencies]
 cddl-cat            = "0.6.1"
@@ -41,6 +58,6 @@ fake                = { version = "2", features=['derive', 'uuid']}
 mockall             = "0.11"
 ockam_api           = { path = ".", features = ["std", "tag"] }
 ockam_macros        = { version = "0.15.0", path = "../ockam_macros", features = ["std"] }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.55.0" }
+ockam_transport_tcp = { version = "0.55.0", path = "../ockam_transport_tcp" }
 quickcheck          = "1.0.1"
 tempfile            = "3.3.0"

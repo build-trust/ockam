@@ -1,5 +1,5 @@
+use crate::{CowBytes, CowStr};
 use minicbor::{Decode, Encode};
-use ockam_api::{CowBytes, CowStr};
 use ockam_core::vault::{PublicKey, SecretAttributes};
 
 #[cfg(feature = "tag")]

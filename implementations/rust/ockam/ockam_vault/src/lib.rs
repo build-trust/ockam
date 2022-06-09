@@ -31,10 +31,6 @@ mod signer_impl;
 #[cfg(feature = "storage")]
 pub mod storage;
 
-/// Service
-#[cfg(feature = "service")]
-pub mod service;
-
 mod symmetric_impl;
 mod vault;
 mod verifier_impl;
