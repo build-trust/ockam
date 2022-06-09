@@ -1,14 +1,16 @@
-use crate::service::models::*;
-use crate::Vault;
+pub mod models;
+
+use crate::{CowStr, Error, Id, Method, Request, Response, Status};
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
-use ockam_api::{CowStr, Error, Id, Method, Request, Response, Status};
+use models::*;
 use ockam_core::compat::io;
 use ockam_core::vault::{
     AsymmetricVault, Hasher, KeyId, SecretVault, Signature, Signer, SymmetricVault, Verifier,
 };
 use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
+use ockam_vault::Vault;
 use tracing::trace;
 
 /// Vault Service Worker

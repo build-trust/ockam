@@ -23,7 +23,7 @@ software_vault = [
 ]
 lease_proto_json = ["serde_json"]
 service = ["ockam_api", "minicbor", "serde_bare"]
-tag = ["ockam_api/tag", "ockam_vault/tag"]
+tag = ["ockam_api/tag"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.

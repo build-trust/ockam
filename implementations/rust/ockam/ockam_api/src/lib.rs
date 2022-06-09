@@ -1,8 +1,8 @@
 pub mod auth;
 pub mod cloud;
-pub mod nodes;
-
 pub mod error;
+pub mod nodes;
+pub mod vault;
 
 use core::fmt;
 use core::ops::Deref;

@@ -1,5 +1,5 @@
+use crate::CowStr;
 use minicbor::{Decode, Encode};
-use ockam_api::CowStr;
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
