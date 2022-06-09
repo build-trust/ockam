@@ -24,6 +24,11 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(cfg: &mut OckamConfig, command: CreateCommand) {
+        if cfg.port_is_used(command.port) {
+            eprintln!("Another node is listening on the provided port!");
+            std::process::exit(-1);
+        }
+
         if command.spawn {
             // On systems with non-obvious path setups (or during
             // development) re-executing the current binary is a more
@@ -42,7 +47,7 @@ impl CreateCommand {
             std::env::set_var("OCKAM_LOG", "debug");
             let child = Command::new(ockam)
                 .args([
-                    "--quiet",
+                    "--spawned",
                     "node",
                     "create",
                     "--port",
