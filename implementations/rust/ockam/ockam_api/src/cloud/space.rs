@@ -11,7 +11,7 @@ use crate::TypeTag;
 pub struct Space<'a> {
     #[cfg(feature = "tag")]
     #[n(0)]
-    pub tag: TypeTag<9625590>,
+    pub tag: TypeTag<7574645>,
     #[b(1)]
     pub id: Cow<'a, str>, // TODO: str or Vec<u8>?
     #[b(2)]
@@ -24,7 +24,7 @@ pub struct Space<'a> {
 pub struct CreateSpace<'a> {
     #[cfg(feature = "tag")]
     #[n(0)]
-    pub tag: TypeTag<3663171>,
+    pub tag: TypeTag<3888657>,
     #[b(1)]
     pub name: Cow<'a, str>,
 }
@@ -59,26 +59,27 @@ pub mod tests {
 
     #[ockam_macros::test]
     async fn basic_api_usage(ctx: &mut Context) -> ockam_core::Result<()> {
+        let pubkey = "pubkey";
         ctx.start_worker("spaces", SpaceServer::default()).await?;
         let mut client = MessagingClient::new(Route::new().into(), ctx).await?;
 
-        let s1 = client.create_space(CreateSpace::new("s1")).await?;
+        let s1 = client.create_space(CreateSpace::new("s1"), pubkey).await?;
         assert_eq!(&s1.name, "s1");
         let s1_id = s1.id.to_string();
 
-        let s1_retrieved = client.get_space(&s1_id).await?;
+        let s1_retrieved = client.get_space(&s1_id, pubkey).await?;
         assert_eq!(s1_retrieved.id, s1_id);
 
-        let s2 = client.create_space(CreateSpace::new("s2")).await?;
+        let s2 = client.create_space(CreateSpace::new("s2"), pubkey).await?;
         assert_eq!(&s2.name, "s2");
         let s2_id = s2.id.to_string();
 
-        let list = client.list_spaces().await?;
+        let list = client.list_spaces(pubkey).await?;
         assert_eq!(list.len(), 2);
 
-        client.delete_space(&s1_id).await?;
+        client.delete_space(&s1_id, pubkey).await?;
 
-        let list = client.list_spaces().await?;
+        let list = client.list_spaces(pubkey).await?;
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].id, s2_id);
 
@@ -113,13 +114,13 @@ pub mod tests {
             let mut dec = Decoder::new(data);
             let req: Request = dec.decode()?;
             match req.method() {
-                Some(Method::Get) => match req.path_segments::<2>().as_slice() {
+                Some(Method::Get) => match req.path_segments::<4>().as_slice() {
                     // Get all nodes:
-                    [_, ""] => Response::ok(req.id())
+                    [_, _] => Response::ok(req.id())
                         .body(encode::ArrayIter::new(self.0.values()))
                         .encode(buf)?,
                     // Get a single node:
-                    [_, id] => {
+                    [_, _, id] => {
                         if let Some(n) = self.0.get(*id) {
                             Response::ok(req.id()).body(n).encode(buf)?
                         } else {
@@ -146,8 +147,8 @@ pub mod tests {
                         Response::bad_request(req.id()).encode(buf)?;
                     }
                 }
-                Some(Method::Delete) => match req.path_segments::<2>().as_slice() {
-                    [_, id] => {
+                Some(Method::Delete) => match req.path_segments::<4>().as_slice() {
+                    [_, _, id] => {
                         if self.0.remove(*id).is_some() {
                             Response::ok(req.id()).encode(buf)?
                         } else {

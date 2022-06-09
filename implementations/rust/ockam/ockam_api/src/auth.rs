@@ -61,7 +61,9 @@ impl<S: Storage + Send + Sync + 'static> Server<S> {
 
         match req.method() {
             Some(Method::Get) => match req.path_segments::<5>().as_slice() {
-                ["authenticated", id, "attribute", key] => {
+                //TODO: there are other levels than control_plane. Plus,
+                //      I'm unsure if this level is even useful on the rust node?
+                ["v0", "control_plane", id, key] => {
                     if let Some(a) = self.store.get(id, key).await.map_err(AuthError::storage)? {
                         Response::ok(req.id())
                             .body(Attribute::new(&a))
@@ -77,8 +79,8 @@ impl<S: Storage + Send + Sync + 'static> Server<S> {
                     Response::bad_request(req.id()).body(error).encode(buf)?
                 }
             },
-            Some(Method::Post) => match req.path_segments::<3>().as_slice() {
-                ["authenticated", id] => {
+            Some(Method::Post) => match req.path_segments::<4>().as_slice() {
+                ["v0", "control_plane", id] => {
                     if req.has_body() {
                         let ca: Attributes = dec.decode()?;
                         for (k, v) in ca.attrs() {
@@ -103,7 +105,7 @@ impl<S: Storage + Send + Sync + 'static> Server<S> {
                 }
             },
             Some(Method::Delete) => match req.path_segments::<5>().as_slice() {
-                ["authenticated", id, "attribute", key] => {
+                ["v0", "control_plane", id, key] => {
                     self.store.del(id, key).await.map_err(AuthError::storage)?;
                     Response::ok(req.id()).encode(buf)?
                 }
@@ -158,7 +160,7 @@ impl Client {
     }
 
     pub async fn set(&mut self, id: &str, attrs: &Attributes<'_>) -> ockam_core::Result<()> {
-        let req = Request::post(format!("/authenticated/{id}")).body(attrs);
+        let req = Request::post(format!("v0/control_plane/{id}")).body(attrs);
         self.buf = self.request("set attributes", "attributes", &req).await?;
         assert_response_match(None, &self.buf);
         let mut d = Decoder::new(&self.buf);
@@ -166,12 +168,13 @@ impl Client {
         if res.status() == Some(Status::Ok) {
             Ok(())
         } else {
+            dbg!(&res);
             Err(error("set attributes", &res, &mut d))
         }
     }
 
     pub async fn get(&mut self, id: &str, attr: &str) -> ockam_core::Result<Option<&[u8]>> {
-        let req = Request::get(format!("/authenticated/{id}/attribute/{attr}"));
+        let req = Request::get(format!("v0/control_plane/{id}/{attr}"));
         self.buf = self.request("get attribute", None, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response("get attribute", &mut d)?;
@@ -187,7 +190,7 @@ impl Client {
     }
 
     pub async fn del(&mut self, id: &str, attr: &str) -> ockam_core::Result<()> {
-        let req = Request::delete(format!("/authenticated/{id}/attribute/{attr}"));
+        let req = Request::delete(format!("/v0/control_plane/{id}/{attr}"));
         self.buf = self.request("del attribute", None, &req).await?;
         assert_response_match(None, &self.buf);
         let mut d = Decoder::new(&self.buf);

@@ -59,7 +59,7 @@ impl MessagingClient {
     pub async fn generate_enrollment_token<'a>(
         &mut self,
         identifier: &str,
-        attributes: &[Attribute<'a>],
+        attributes: &[TokenAttribute<'a>],
     ) -> ockam_core::Result<EnrollmentToken<'static>> {
         let target = "ockam_api::cloud::generate_enrollment_token";
         let label = "generate_enrollment_token";
@@ -177,7 +177,7 @@ impl MessagingClient {
 
     pub async fn accept_invitations(
         &mut self,
-        email: &str,
+        pubkey: &str,
         invitation_id: &str,
     ) -> ockam_core::Result<()> {
         let target = "ockam_api::cloud::accept_invitations";
@@ -185,7 +185,7 @@ impl MessagingClient {
         trace!(target = %target, "accept invitation");
 
         let route = self.route.modify().append("invitations").into();
-        let req = Request::put(format!("v0/{}/{}", invitation_id, email));
+        let req = Request::put(format!("v0/{}/{}", invitation_id, pubkey));
         self.buf = self.request(target, label, route, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response(target, label, &mut d)?;
@@ -198,7 +198,7 @@ impl MessagingClient {
 
     pub async fn reject_invitations(
         &mut self,
-        email: &str,
+        pubkey: &str,
         invitation_id: &str,
     ) -> ockam_core::Result<()> {
         let target = "ockam_api::cloud::reject_invitations";
@@ -206,7 +206,7 @@ impl MessagingClient {
         trace!(target = %target, "reject invitation");
 
         let route = self.route.modify().append("invitations").into();
-        let req = Request::delete(format!("v0/{}/{}", invitation_id, email));
+        let req = Request::delete(format!("v0/{}/{}", invitation_id, pubkey));
         self.buf = self.request(target, label, route, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response(target, label, &mut d)?;
@@ -217,13 +217,17 @@ impl MessagingClient {
         }
     }
 
-    pub async fn create_space(&mut self, body: CreateSpace<'_>) -> ockam_core::Result<Space<'_>> {
+    pub async fn create_space(
+        &mut self,
+        body: CreateSpace<'_>,
+        pubkey: &str,
+    ) -> ockam_core::Result<Space<'_>> {
         let target = "ockam_api::cloud::create_space";
         let label = "create_space";
         trace!(target = %target, space = %body.name, "creating space");
 
         let route = self.route.modify().append("spaces").into();
-        let req = Request::post("v0/").body(body);
+        let req = Request::post(format!("v0/{}", pubkey)).body(body);
         self.buf = self.request(target, label, route, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response(target, label, &mut d)?;
@@ -234,13 +238,13 @@ impl MessagingClient {
         }
     }
 
-    pub async fn list_spaces(&mut self) -> ockam_core::Result<Vec<Space<'_>>> {
+    pub async fn list_spaces(&mut self, pubkey: &str) -> ockam_core::Result<Vec<Space<'_>>> {
         let target = "ockam_api::cloud::list_spaces";
         let label = "list_spaces";
         trace!(target = %target, "listing spaces");
 
         let route = self.route.modify().append("spaces").into();
-        let req = Request::get("v0/");
+        let req = Request::get(format!("v0/{}", pubkey));
         self.buf = self.request(target, label, route, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response(target, label, &mut d)?;
@@ -251,13 +255,17 @@ impl MessagingClient {
         }
     }
 
-    pub async fn get_space(&mut self, space_id: &str) -> ockam_core::Result<Space<'_>> {
+    pub async fn get_space(
+        &mut self,
+        space_id: &str,
+        pubkey: &str,
+    ) -> ockam_core::Result<Space<'_>> {
         let target = "ockam_api::cloud::get_space";
         let label = "get_space";
         trace!(target = %target, space = %space_id, space = %space_id, "getting space");
 
         let route = self.route.modify().append("spaces").into();
-        let req = Request::get(format!("v0/{space_id}"));
+        let req = Request::get(format!("v0/{pubkey}/{space_id}"));
         self.buf = self.request(target, label, route, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response(target, label, &mut d)?;
@@ -268,13 +276,17 @@ impl MessagingClient {
         }
     }
 
-    pub async fn get_space_by_name(&mut self, space_name: &str) -> ockam_core::Result<Space<'_>> {
+    pub async fn get_space_by_name(
+        &mut self,
+        space_name: &str,
+        pubkey: &str,
+    ) -> ockam_core::Result<Space<'_>> {
         let target = "ockam_api::cloud::get_space_by_name";
         let label = "get_space_by_name";
         trace!(target = %target, space = %space_name, "getting space");
 
         let route = self.route.modify().append("spaces").into();
-        let req = Request::get(format!("v0/name/{space_name}"));
+        let req = Request::get(format!("v0/{pubkey}/name/{space_name}"));
         self.buf = self.request(target, label, route, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response(target, label, &mut d)?;
@@ -285,13 +297,13 @@ impl MessagingClient {
         }
     }
 
-    pub async fn delete_space(&mut self, space_id: &str) -> ockam_core::Result<()> {
+    pub async fn delete_space(&mut self, space_id: &str, pubkey: &str) -> ockam_core::Result<()> {
         let target = "ockam_api::cloud::delete_space";
         let label = "delete_space";
         trace!(target = %target, space = %space_id, "deleting space");
 
         let route = self.route.modify().append("spaces").into();
-        let req = Request::delete(format!("v0/{space_id}"));
+        let req = Request::delete(format!("v0/{pubkey}/{space_id}"));
         self.buf = self.request(target, label, route, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response(target, label, &mut d)?;
@@ -306,13 +318,14 @@ impl MessagingClient {
         &mut self,
         space_id: &str,
         body: CreateProject<'_>,
+        pubkey: &str,
     ) -> ockam_core::Result<Project<'_>> {
         let target = "ockam_api::cloud::create_project";
         let label = "create_project";
         trace!(target = %target, space = %space_id, project = %body.name, "creating project");
 
         let route = self.route.modify().append("projects").into();
-        let req = Request::post(format!("v0/{space_id}")).body(body);
+        let req = Request::post(format!("v0/{pubkey}/{space_id}")).body(body);
         self.buf = self.request(target, label, route, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response(target, label, &mut d)?;
@@ -323,13 +336,17 @@ impl MessagingClient {
         }
     }
 
-    pub async fn list_projects(&mut self, space_id: &str) -> ockam_core::Result<Vec<Project<'_>>> {
+    pub async fn list_projects(
+        &mut self,
+        space_id: &str,
+        pubkey: &str,
+    ) -> ockam_core::Result<Vec<Project<'_>>> {
         let target = "ockam_api::cloud::list_projects";
         let label = "list_projects";
         trace!(target = %target, space = %space_id, "listing projects");
 
         let route = self.route.modify().append("projects").into();
-        let req = Request::get(format!("v0/{space_id}"));
+        let req = Request::get(format!("v0/{pubkey}/{space_id}"));
         self.buf = self.request(target, label, route, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response(target, label, &mut d)?;
@@ -344,13 +361,14 @@ impl MessagingClient {
         &mut self,
         space_id: &str,
         project_id: &str,
+        pubkey: &str,
     ) -> ockam_core::Result<Project<'_>> {
         let target = "ockam_api::cloud::get_project";
         let label = "get_project";
         trace!(target = %target, space = %space_id, project = %project_id, "getting project");
 
         let route = self.route.modify().append("projects").into();
-        let req = Request::get(format!("v0/{space_id}/{project_id}"));
+        let req = Request::get(format!("v0/{pubkey}/{space_id}/{project_id}"));
         self.buf = self.request(target, label, route, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response(target, label, &mut d)?;
@@ -365,13 +383,14 @@ impl MessagingClient {
         &mut self,
         space_id: &str,
         project_name: &str,
+        pubkey: &str,
     ) -> ockam_core::Result<Project<'_>> {
         let target = "ockam_api::cloud::get_project_by_name";
         let label = "get_project_by_name";
         trace!(target = %target, space = %space_id, project = %project_name, "getting project");
 
         let route = self.route.modify().append("projects").into();
-        let req = Request::get(format!("v0/{space_id}/name/{project_name}"));
+        let req = Request::get(format!("v0/{pubkey}/{space_id}/name/{project_name}"));
         self.buf = self.request(target, label, route, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response(target, label, &mut d)?;
@@ -386,13 +405,14 @@ impl MessagingClient {
         &mut self,
         space_id: &str,
         project_id: &str,
+        pubkey: &str,
     ) -> ockam_core::Result<()> {
         let target = "ockam_api::cloud::delete_project";
         let label = "delete_project";
         trace!(target = %target, space = %space_id, project = %project_id, "deleting project");
 
         let route = self.route.modify().append("projects").into();
-        let req = Request::delete(format!("v0/{space_id}/{project_id}"));
+        let req = Request::delete(format!("v0/{pubkey}/{space_id}/{project_id}"));
         self.buf = self.request(target, label, route, &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response(target, label, &mut d)?;

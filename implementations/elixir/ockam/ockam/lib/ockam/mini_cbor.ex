@@ -10,7 +10,7 @@ defmodule MiniCBOR do
 
     Given data map `%{field1: 100, field2: "hi"}`
     and schema `{:map, [:field1, field2]}` // same as `{:map, [{:field1, :noschema}, {:field2, :noschema}]}`
-    optimizes keys as `%{0 => 100, 1 => "hi"}`
+    optimizes keys as `%{1 => 100, 2 => "hi"}`
 
     Enum atoms optimization:
     Given atom value `:other_thing`
@@ -21,10 +21,15 @@ defmodule MiniCBOR do
 
     With data map `%{path: "/resource", method: :get}`
     and schema `{:map, [:path, {:method, {:enum, [:get, :post]}}`
-    optimizes map as `%{0 => "/resource", 1 => 0}`
+    optimizes map as `%{1 => "/resource", 2 => 0}`
+
+    When encoding a map or struct, the field `0` is reserved for use of type-tags (the tag feature is currently disabled on rust,
+    and not implemented on elixir)
   """
 
   @type schema() :: {:map, [atom() | {atom(), schema()}]} | {:enum, [atom()]} | :noschema
+
+  @reserved_tag_field :minicbor_tag_reserved
 
   def encode(struct, schema) do
     schema_map = struct_schema(schema)
@@ -40,9 +45,15 @@ defmodule MiniCBOR do
     end
   end
 
+  defp reserve_tag_field(keys) when is_list(keys) do
+    # As a workaround, set this unused field at position 0.
+    # Latter we will use position 0 to carry tag information.
+    [@reserved_tag_field | keys]
+  end
+
   def struct_schema({:map, keys}) when is_list(keys) do
     mapping =
-      keys
+      reserve_tag_field(keys)
       |> Enum.with_index(fn
         {key, inner_schema}, index -> {key, {index, struct_schema(inner_schema)}}
         key, index -> {key, index}
@@ -67,7 +78,7 @@ defmodule MiniCBOR do
 
   def optimized_schema({:map, keys}) when is_list(keys) do
     mapping =
-      keys
+      reserve_tag_field(keys)
       |> Enum.with_index(fn
         {key, inner_schema}, index -> {index, {key, optimized_schema(inner_schema)}}
         key, index -> {index, key}
@@ -104,6 +115,8 @@ defmodule MiniCBOR do
     struct
     # because enum is not implemented for structs
     |> as_map()
+    # Just in case
+    |> Map.delete(@reserved_tag_field)
     |> Enum.flat_map(fn {key, val} ->
       case Map.get(schema_map, key) do
         nil ->

@@ -151,11 +151,11 @@ pub mod enrollment_token {
         #[n(1)]
         pub identity: Identity<'a>,
         #[n(2)]
-        pub attributes: Vec<Attribute<'a>>,
+        pub attributes: Vec<TokenAttribute<'a>>,
     }
 
     impl<'a> RequestEnrollmentToken<'a> {
-        pub fn new<I: Into<Identity<'a>>>(identity: I, attributes: &[Attribute<'a>]) -> Self {
+        pub fn new<I: Into<Identity<'a>>>(identity: I, attributes: &[TokenAttribute<'a>]) -> Self {
             Self {
                 #[cfg(feature = "tag")]
                 tag: TypeTag,
@@ -211,19 +211,24 @@ pub mod enrollment_token {
 
     // Auxiliary types
 
-    #[derive(serde::Deserialize, Encode, Debug, Clone)]
-    #[cfg_attr(test, derive(PartialEq, Decode))]
+    #[derive(Debug, Clone, Default, Encode, Decode)]
     #[cbor(map)]
-    pub struct Attribute<'a> {
+    pub struct TokenAttribute<'a> {
+        #[cfg(feature = "tag")]
         #[n(0)]
-        pub name: Cow<'a, str>,
+        pub tag: TypeTag<8463780>,
+
         #[n(1)]
+        pub name: Cow<'a, str>,
+        #[n(2)]
         pub value: Cow<'a, str>,
     }
 
-    impl<'a> Attribute<'a> {
+    impl<'a> TokenAttribute<'a> {
         pub fn new<S: Into<Cow<'a, str>>>(name: S, value: S) -> Self {
             Self {
+                #[cfg(feature = "tag")]
+                tag: TypeTag,
                 name: name.into(),
                 value: value.into(),
             }

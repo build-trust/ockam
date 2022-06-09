@@ -16,12 +16,6 @@ pub struct AuthenticateEnrollmentTokenCommand {
     #[clap(display_order = 1000)]
     address: MultiAddr,
 
-    #[clap(display_order = 1001, long, default_value = "default")]
-    vault: String,
-
-    #[clap(display_order = 1002, long, default_value = "default")]
-    identity: String,
-
     #[clap(display_order = 1003, long)]
     overwrite: bool,
 

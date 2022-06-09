@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context};
 use clap::Args;
 
 use ockam::TcpTransport;
-use ockam_api::cloud::enroll::enrollment_token::Attribute;
+use ockam_api::cloud::enroll::enrollment_token::TokenAttribute;
 use ockam_multiaddr::MultiAddr;
 
 use crate::old::identity::load_or_create_identity;
@@ -55,7 +55,7 @@ async fn generate(
     let route = multiaddr_to_route(&command.address)
         .ok_or_else(|| anyhow!("failed to parse address: {}", command.address))?;
 
-    let attributes: Vec<Attribute> = command
+    let attributes: Vec<TokenAttribute> = command
         .attributes
         .iter()
         .map(|kv| {
@@ -71,10 +71,10 @@ async fn generate(
             } else if v.is_empty() {
                 anyhow::bail!("attribute value can't be empty at pair {kv:?}")
             } else {
-                Ok(Attribute::new(k, v))
+                Ok(TokenAttribute::new(k, v))
             }
         })
-        .collect::<anyhow::Result<Vec<Attribute>>>()?;
+        .collect::<anyhow::Result<Vec<TokenAttribute>>>()?;
 
     let mut api_client = ockam_api::cloud::MessagingClient::new(route, &ctx).await?;
     let token = api_client

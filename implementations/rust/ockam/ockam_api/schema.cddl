@@ -67,15 +67,15 @@ value = bytes
 
 ;;; Space ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO: type tag?
 space = {
-    0: space_id
-    1: space_name
+   ?0: 7574645
+    1: space_id
+    2: space_name
 }
 
-;; TODO: type tag?
 create_space = {
-    0: space_name
+   ?0: 3888657,
+    1: space_name
 }
 
 space_id   = text
@@ -83,26 +83,24 @@ space_name = text
 
 ;;; Projects ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO: type tag?
 project = {
-    0: project_id,
-    1: project_name,
-    2: [+ service_name],
-    3: access_route
+   ?0: 9056532,
+    1: project_id,
+    2: project_name,
+    3: [+ service_name],
+    4: access_route
 }
 
-;; TODO: type tag?
 create_project = {
-    0: project_name,
-    1: [+ service_name]
+    ?0: 8669570,
+    1: project_name,
+    2: [+ service_name]
 }
 
 project_id   = text
 project_name = text
 service_name = text
 access_route = bytes
-
-;;; Identity ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 identity_create_response = {
     ?0: 3500430,
@@ -164,3 +162,62 @@ identity_proof   = bytes
 peer_identity_id = text
 verified         = bool
 contact_id       = text
+
+
+;;; Enroll ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+request_enrollment = {
+    ?0: 5136510,
+     1: identity_id,
+     2: token
+ }
+identity_id     = text
+token        = text
+
+
+token_attribute = {
+    ?0: 8463780,
+     1: attr_name,
+     2: attr_value
+}
+
+attr_value   = text
+attr_name    = text
+
+;;; Invitation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+invitation_scope = 0 ;; Space
+                 / 1 ;; Project
+
+invitation_state = 0 ;; Pending
+                / 1 ;; Accepted
+                / 2 ;; Rejected
+
+create_invitation = {
+    ?0: 1886440,
+     1: identity_id,
+     2: invitee,
+     3: scope,
+     4: space_id,
+    ?5: project_id
+}
+
+invitee = text
+scope = invitation_scope
+
+invitation = {
+    ?0: 7088378,
+     1: invitation_id,
+     3: inviter,
+     4: invitee,
+     5: scope,
+     6: state,
+     7: space_id,
+    ?8: project_id
+}
+
+invitation_id = text
+inviter = text
+state = invitation_state
+
+
