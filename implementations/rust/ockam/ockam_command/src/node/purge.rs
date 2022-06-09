@@ -1,6 +1,6 @@
 //! A simple command to purge existing configuration
 
-use crate::config::OckamConfig;
+use crate::util::OckamConfig;
 use clap::Args;
 
 #[derive(Clone, Debug, Args)]

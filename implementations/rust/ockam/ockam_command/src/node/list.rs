@@ -1,7 +1,6 @@
 use std::time::Duration;
 
-use crate::config::OckamConfig;
-use crate::util::{self, api, connect_to};
+use crate::util::{self, api, connect_to, OckamConfig};
 use clap::Args;
 use cli_table::{format::Justify, print_stdout, Cell, Style, Table};
 use crossbeam_channel::{bounded, Sender};

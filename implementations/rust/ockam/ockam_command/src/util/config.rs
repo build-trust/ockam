@@ -12,6 +12,7 @@ use std::{
 #[derive(Default, Serialize, Deserialize)]
 pub struct OckamConfig {
     pub log_path: PathBuf,
+    pub api_node: String,
     nodes: BTreeMap<String, NodeConfig>,
 }
 
@@ -46,9 +47,15 @@ Otherwise your OS or OS configuration may not be supported!",
 }
 
 impl OckamConfig {
+    /// Return a static set of config values that can be addressed
+    pub fn values() -> Vec<&'static str> {
+        vec!["api-node", "log-path"]
+    }
+
     fn new(log_path: PathBuf) -> Self {
         Self {
             log_path,
+            api_node: "default".into(),
             ..Default::default()
         }
     }
@@ -143,6 +150,16 @@ impl OckamConfig {
             .to_str()
             .unwrap()
             .to_owned()
+    }
+
+    /// Update the api node name on record
+    pub fn set_api_node(&mut self, node_name: &String) {
+        self.api_node = node_name.clone();
+    }
+
+    /// Update the base log path for nodes
+    pub fn set_log_path(&mut self, path: &String) {
+        self.log_path = PathBuf::new().join(path);
     }
 }
 

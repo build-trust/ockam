@@ -1,4 +1,4 @@
-use crate::config::OckamConfig;
+use crate::util::OckamConfig;
 use clap::Args;
 use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
