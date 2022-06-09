@@ -18,9 +18,6 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
-#[cfg(feature = "service")]
-pub mod service;
-
 use cfg_if::cfg_if;
 
 pub use change::*;

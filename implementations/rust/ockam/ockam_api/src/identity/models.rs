@@ -1,7 +1,7 @@
 #![allow(missing_docs)]
 
+use crate::{CowBytes, CowStr};
 use minicbor::{Decode, Encode};
-use ockam_api::{CowBytes, CowStr};
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;

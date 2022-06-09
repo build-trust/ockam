@@ -16,14 +16,12 @@ publish = true
 rust-version = "1.56.0"
 
 [features]
-default = ["std", "software_vault", "noise_xx", "service"]
+default = ["std", "software_vault", "noise_xx"]
 noise_xx = ["ockam_key_exchange_xx"]
 software_vault = [
     "ockam_vault",
 ]
 lease_proto_json = ["serde_json"]
-service = ["ockam_api", "minicbor", "serde_bare"]
-tag = ["ockam_api/tag"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -83,9 +81,7 @@ ockam_vault = { path = "../ockam_vault", version = "^0.50.0", default-features =
 ockam_channel = { path = "../ockam_channel", version = "^0.54.0", default-features = false }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.50.0", default-features = false, optional = true }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.46.0", default-features = false }
-ockam_api = { path = "../ockam_api", version = "^0.3.0", default_features = false, optional = true }
-minicbor = { version = "0.17.1", features = ["derive"], optional = true }
-serde_bare = { version = "0.5.0", default-features = false, optional = true }
+serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
 cfg-if = "1.0.0"
 group = { version = "0.10.0", default-features = false }
 heapless = "0.7"
