@@ -6,7 +6,6 @@ use tracing::debug;
 
 pub(crate) struct EncryptorWorker {
     is_initiator: bool,
-    decryptor_address: Address,
     remote_identity_secure_channel_address: Address,
     local_secure_channel_address: Address,
 }
@@ -14,13 +13,11 @@ pub(crate) struct EncryptorWorker {
 impl EncryptorWorker {
     pub fn new(
         is_initiator: bool,
-        decryptor_address: Address,
         remote_identity_secure_channel_address: Address,
         local_secure_channel_address: Address,
     ) -> Self {
         Self {
             is_initiator,
-            decryptor_address,
             remote_identity_secure_channel_address,
             local_secure_channel_address,
         }
@@ -41,7 +38,7 @@ impl EncryptorWorker {
         );
 
         let mut onward_route = msg.onward_route();
-        let mut return_route = msg.return_route();
+        let return_route = msg.return_route();
         let payload = msg.payload().to_vec();
 
         // Send to the other party using local regular SecureChannel
@@ -50,10 +47,6 @@ impl EncryptorWorker {
             .modify()
             .prepend(self.remote_identity_secure_channel_address.clone())
             .prepend(self.local_secure_channel_address.clone());
-
-        let return_route = return_route
-            .modify()
-            .prepend(self.decryptor_address.clone());
 
         let transport_msg = TransportMessage::v1(onward_route, return_route, payload);
 

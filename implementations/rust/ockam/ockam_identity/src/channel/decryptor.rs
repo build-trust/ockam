@@ -319,7 +319,6 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
 
             let encryptor = EncryptorWorker::new(
                 self.is_initiator,
-                self.self_address.clone(),
                 remote_identity_secure_channel_address,
                 state.channel.address(),
             );
@@ -416,7 +415,6 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
 
             let encryptor = EncryptorWorker::new(
                 self.is_initiator,
-                self.self_address.clone(),
                 remote_identity_secure_channel_address,
                 state.local_secure_channel_address,
             );
@@ -478,7 +476,6 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
 
         let return_route = return_route
             .modify()
-            .pop_front()
             .pop_front()
             .prepend(state.encryptor_address.clone());
 
