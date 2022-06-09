@@ -1,4 +1,7 @@
-pub(crate) mod api;
+pub mod api;
+
+mod config;
+pub use config::{ConfigError, NodeConfig, OckamConfig};
 
 use std::env;
 use std::net::{SocketAddrV4, SocketAddrV6};

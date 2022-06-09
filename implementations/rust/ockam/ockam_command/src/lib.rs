@@ -12,6 +12,7 @@ mod transport;
 mod util;
 
 use authenticated::AuthenticatedCommand;
+use config::ConfigCommand;
 use enroll::EnrollCommand;
 use invitation::InvitationCommand;
 use message::MessageCommand;
@@ -29,8 +30,8 @@ use old::cmd::outlet::OutletOpts;
 use old::AddTrustedIdentityOpts;
 use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_ockam_dir};
 
-use crate::config::OckamConfig;
 use crate::enroll::GenerateEnrollmentTokenCommand;
+use crate::util::OckamConfig;
 use clap::{ColorChoice, Parser, Subcommand};
 use util::setup_logging;
 
@@ -79,6 +80,10 @@ pub struct OckamCommand {
     )]
     verbose: u8,
 
+    /// Specify the API node name to communicate with
+    #[clap(global = true, long, short, default_value = "default")]
+    node: String,
+
     // if test_argument_parser is true, command arguments are checked
     // but the command is not executed.
     #[clap(global = true, long, hide = true)]
@@ -122,6 +127,10 @@ pub enum OckamSubcommand {
     /// Create, update, or delete transports
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Transport(TransportCommand),
+
+    /// Manage ockam CLI configuration values
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Config(ConfigCommand),
 
     // OLD
     /// Start an outlet.
@@ -187,6 +196,7 @@ pub fn run() {
         OckamSubcommand::Project(command) => ProjectCommand::run(command),
         OckamSubcommand::Space(command) => SpaceCommand::run(command),
         OckamSubcommand::Transport(command) => TransportCommand::run(&mut cfg, command),
+        OckamSubcommand::Config(command) => ConfigCommand::run(&mut cfg, command),
 
         // OLD
         OckamSubcommand::CreateOutlet(arg) => {

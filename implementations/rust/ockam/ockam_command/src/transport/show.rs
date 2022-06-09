@@ -1,4 +1,4 @@
-use crate::config::OckamConfig;
+use crate::util::OckamConfig;
 use clap::Args;
 
 #[derive(Clone, Debug, Args)]

@@ -2,9 +2,8 @@ use clap::Args;
 use std::{env::current_exe, fs::OpenOptions, process::Command, time::Duration};
 
 use crate::{
-    config::OckamConfig,
     node::show::query_status,
-    util::{connect_to, embedded_node, DEFAULT_TCP_PORT},
+    util::{connect_to, embedded_node, OckamConfig, DEFAULT_TCP_PORT},
 };
 use ockam::{Context, NodeMan, TcpTransport};
 use ockam_api::auth;

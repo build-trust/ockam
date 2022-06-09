@@ -6,7 +6,7 @@ use create::CreateCommand;
 use list::ListCommand;
 use show::ShowCommand;
 
-use crate::{config::OckamConfig, HELP_TEMPLATE};
+use crate::{util::OckamConfig, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]

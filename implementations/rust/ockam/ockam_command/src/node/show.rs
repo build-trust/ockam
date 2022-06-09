@@ -1,7 +1,4 @@
-use crate::{
-    config::OckamConfig,
-    util::{self, api, connect_to},
-};
+use crate::util::{self, api, connect_to, OckamConfig};
 use clap::Args;
 use ockam::{Context, Route};
 use ockam_api::nodes::types::NodeStatus;
