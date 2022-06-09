@@ -12,7 +12,13 @@ impl ockam_core::Worker for NullWorker {
 
 /// Start a node with [`AllowAll`] access control
 pub fn start_node() -> (Context, Executor) {
+    setup_tracing();
     start_node_with_access_control(AllowAll)
+}
+
+/// Start a node with [`AllowAll`] access control and no logging
+pub fn start_node_without_logging() -> (Context, Executor) {
+    start_node_without_logging_with_access_control(AllowAll)
 }
 
 /// Start a node with the given access control
@@ -20,13 +26,20 @@ pub fn start_node_with_access_control<AC>(access_control: AC) -> (Context, Execu
 where
     AC: AccessControl,
 {
-    setup_tracing();
-
     info!(
         "Initializing ockam node with access control: {:?}",
         access_control
     );
 
+    setup_tracing();
+    start_node_without_logging_with_access_control(access_control)
+}
+
+/// Start a node but without logging
+pub fn start_node_without_logging_with_access_control<AC>(access_control: AC) -> (Context, Executor)
+where
+    AC: AccessControl,
+{
     let mut exe = Executor::new();
     let addr: Address = "app".into();
 

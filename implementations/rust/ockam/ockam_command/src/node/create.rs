@@ -5,8 +5,12 @@ use crate::{
     node::show::query_status,
     util::{connect_to, embedded_node, OckamConfig, DEFAULT_TCP_PORT},
 };
-use ockam::{Context, NodeMan, TcpTransport};
-use ockam_api::auth;
+use ockam::{Context, TcpTransport};
+use ockam_api::{
+    auth,
+    nodes::types::{TransportMode, TransportType},
+    nodes::NodeMan,
+};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -24,11 +28,6 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(cfg: &mut OckamConfig, command: CreateCommand) {
-        if cfg.port_is_used(command.port) {
-            eprintln!("Another node is listening on the provided port!");
-            std::process::exit(-1);
-        }
-
         if command.spawn {
             // On systems with non-obvious path setups (or during
             // development) re-executing the current binary is a more
@@ -73,6 +72,12 @@ impl CreateCommand {
             // Then query the node manager for the status
             connect_to(command.port, (), query_status);
         } else {
+            // FIXME: not really clear why this is causing issues
+            // if cfg.port_is_used(command.port) {
+            //     eprintln!("Another node is listening on the provided port!");
+            //     std::process::exit(-1);
+            // }
+
             embedded_node(setup, command);
         }
     }
@@ -80,14 +85,21 @@ impl CreateCommand {
 
 async fn setup(ctx: Context, c: CreateCommand) -> anyhow::Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
-    tcp.listen(format!("0.0.0.0:{}", c.port)).await?;
+    let bind = format!("0.0.0.0:{}", c.port);
+    tcp.listen(&bind).await?;
 
     let s = auth::store::mem::Store::new();
     ctx.start_worker("authenticated", auth::Server::new(s))
         .await?;
 
-    ctx.start_worker("_internal.nodeman", NodeMan::new(c.node_name))
-        .await?;
+    ctx.start_worker(
+        "_internal.nodeman",
+        NodeMan::new(
+            c.node_name,
+            (TransportType::Tcp, TransportMode::Listen, bind),
+        ),
+    )
+    .await?;
 
     Ok(())
 }

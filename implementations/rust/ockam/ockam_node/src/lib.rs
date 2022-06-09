@@ -62,7 +62,9 @@ pub use executor::*;
 pub use local_info::*;
 pub use messages::*;
 
-pub use node::{start_node, start_node_with_access_control, NullWorker};
+pub use node::{
+    start_node, start_node_with_access_control, start_node_without_logging, NullWorker,
+};
 
 #[cfg(feature = "std")]
 use core::future::Future;

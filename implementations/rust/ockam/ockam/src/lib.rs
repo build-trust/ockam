@@ -38,7 +38,6 @@ mod forwarder;
 mod lease;
 mod metadata;
 mod monotonic;
-mod nodeman;
 mod system;
 mod unique;
 
@@ -46,7 +45,6 @@ pub use error::OckamError;
 pub use forwarder::ForwardingService;
 pub use lease::Lease;
 pub use metadata::OckamMessage;
-pub use nodeman::NodeMan;
 pub use system::{SystemBuilder, SystemHandler, WorkerSystem};
 pub use unique::unique_with_prefix;
 
