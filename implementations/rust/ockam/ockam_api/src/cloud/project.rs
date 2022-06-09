@@ -11,7 +11,7 @@ use crate::TypeTag;
 pub struct Project<'a> {
     #[cfg(feature = "tag")]
     #[n(0)]
-    pub tag: TypeTag<2764235>,
+    pub tag: TypeTag<9056532>,
     #[b(1)]
     pub id: Cow<'a, str>, // TODO: str or Vec<u8>?
     #[b(2)]
@@ -30,7 +30,7 @@ pub struct Project<'a> {
 pub struct CreateProject<'a> {
     #[cfg(feature = "tag")]
     #[n(0)]
-    pub tag: TypeTag<6593388>,
+    pub tag: TypeTag<8669570>,
     #[b(1)]
     pub name: Cow<'a, str>,
     #[b(2)]
@@ -75,30 +75,39 @@ mod tests {
             .await?;
 
         let s_id = "space-id";
+        let pubkey = "pubkey";
         let mut client = MessagingClient::new(Route::new().into(), ctx).await?;
 
         let p1 = client
-            .create_project(s_id, CreateProject::new("p1", &["service".to_string()]))
+            .create_project(
+                s_id,
+                CreateProject::new("p1", &["service".to_string()]),
+                pubkey,
+            )
             .await?;
         assert_eq!(&p1.name, "p1");
         assert_eq!(&p1.services, &["service"]);
         let p1_id = p1.id.to_string();
 
-        let p1_retrieved = client.get_project(s_id, &p1_id).await?;
+        let p1_retrieved = client.get_project(s_id, &p1_id, pubkey).await?;
         assert_eq!(p1_retrieved.id, p1_id);
 
         let p2 = client
-            .create_project(s_id, CreateProject::new("p2", &["service".to_string()]))
+            .create_project(
+                s_id,
+                CreateProject::new("p2", &["service".to_string()]),
+                pubkey,
+            )
             .await?;
         assert_eq!(&p2.name, "p2");
         let p2_id = p2.id.to_string();
 
-        let list = client.list_projects(s_id).await?;
+        let list = client.list_projects(s_id, pubkey).await?;
         assert_eq!(list.len(), 2);
 
-        client.delete_project(s_id, &p1_id).await?;
+        client.delete_project(s_id, &p1_id, pubkey).await?;
 
-        let list = client.list_projects(s_id).await?;
+        let list = client.list_projects(s_id, pubkey).await?;
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].id, p2_id);
 
@@ -133,13 +142,13 @@ mod tests {
             let mut dec = Decoder::new(data);
             let req: Request = dec.decode()?;
             match req.method() {
-                Some(Method::Get) => match req.path_segments::<3>().as_slice() {
+                Some(Method::Get) => match req.path_segments::<4>().as_slice() {
                     // Get all nodes:
-                    [_, _] => Response::ok(req.id())
+                    [_, _, _] => Response::ok(req.id())
                         .body(encode::ArrayIter::new(self.0.values()))
                         .encode(buf)?,
                     // Get a single node:
-                    [_, _, id] => {
+                    [_, _, _, id] => {
                         if let Some(n) = self.0.get(*id) {
                             Response::ok(req.id()).body(n).encode(buf)?
                         } else {
@@ -173,8 +182,8 @@ mod tests {
                         Response::bad_request(req.id()).encode(buf)?;
                     }
                 }
-                Some(Method::Delete) => match req.path_segments::<3>().as_slice() {
-                    [_, _, id] => {
+                Some(Method::Delete) => match req.path_segments::<5>().as_slice() {
+                    [_, _, _, id] => {
                         if self.0.remove(*id).is_some() {
                             Response::ok(req.id()).encode(buf)?
                         } else {

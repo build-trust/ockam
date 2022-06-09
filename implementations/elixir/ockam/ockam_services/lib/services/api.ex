@@ -129,12 +129,12 @@ defmodule Ockam.Services.API do
 
             {:error, reason, state} ->
               ## TODO: handle errors differently to return error response
-              :ok = API.reply_error(request, reason, state)
+              :ok = API.reply_error(request, reason, state.address)
               {:ok, state}
 
             {:error, reason} ->
               ## TODO: handle errors differently to return error response
-              :ok = API.reply_error(request, reason, state)
+              :ok = API.reply_error(request, reason, state.address)
               {:ok, state}
           end
 

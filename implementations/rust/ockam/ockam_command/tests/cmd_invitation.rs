@@ -23,21 +23,15 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
     cmd.assert().success();
 
     let mut cmd = Command::cargo_bin("ockam")?;
-    cmd.args(&prefix_args).arg("list").arg("invitee@test.com");
+    cmd.args(&prefix_args).arg("list");
     cmd.assert().success();
 
     let mut cmd = Command::cargo_bin("ockam")?;
-    cmd.args(&prefix_args)
-        .arg("accept")
-        .arg("invitee@test.com")
-        .arg("invitation-id");
+    cmd.args(&prefix_args).arg("accept").arg("invitation-id");
     cmd.assert().success();
 
     let mut cmd = Command::cargo_bin("ockam")?;
-    cmd.args(&prefix_args)
-        .arg("reject")
-        .arg("invitee@test.com")
-        .arg("invitation-id");
+    cmd.args(&prefix_args).arg("reject").arg("invitation-id");
     cmd.assert().success();
 
     Ok(())
