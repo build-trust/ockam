@@ -1,8 +1,9 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
-use crate::protocols::nodeman::{req::*, resp::*};
 use crate::{Context, Result, Routed, Worker};
-use ockam_core::compat::{boxed::Box, string::String};
+use minicbor::{encode::Write, Decoder};
+use ockam_api::{nodes::types::NodeStatus, Method, Request, Response};
+use ockam_core::compat::{boxed::Box, io, string::String};
 
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeMan {
@@ -16,34 +17,69 @@ impl NodeMan {
     }
 }
 
-#[crate::worker]
-impl Worker for NodeMan {
-    type Message = NodeManMessage;
-    type Context = Context;
-
-    async fn handle_message(
+impl NodeMan {
+    async fn handle_request<W>(
         &mut self,
         ctx: &mut Context,
-        msg: Routed<NodeManMessage>,
-    ) -> Result<()> {
-        let return_route = msg.return_route();
+        req: &Request<'_>,
+        _dec: &mut Decoder<'_>,
+        enc: W,
+    ) -> Result<()>
+    where
+        W: Write<Error = io::Error>,
+    {
+        trace! {
+            target: "ockam::nodeman::service",
+            id     = %req.id(),
+            method = ?req.method(),
+            path   = %req.path(),
+            body   = %req.has_body(),
+            "request"
+        }
 
-        match msg.body() {
-            NodeManMessage::Status => {
-                ctx.send(
-                    return_route,
-                    NodeManReply::Status {
-                        node_name: self.node_name.clone(),
-                        status: "[✓]".into(), // TODO: figure out if the current node is "healthy"
-                        workers: ctx.list_workers().await?.len() as u32,
-                        pid: std::process::id() as i32,
-                    },
-                )
-                .await?
+        use Method::*;
+        let path = req.path();
+        let method = match req.method() {
+            Some(m) => m,
+            None => todo!(),
+        };
+
+        match (method, path) {
+            (Get, "/node") => Response::ok(req.id())
+                .body(NodeStatus::new(
+                    self.node_name.as_str(),
+                    "[✓]",
+                    ctx.list_workers().await?.len() as u32,
+                    std::process::id() as i32,
+                ))
+                .encode(enc)?,
+            (method, path) => {
+                warn!("Called invalid endpoint: {} {}", method, path);
+                todo!()
             }
-            _ => todo!(),
         }
 
         Ok(())
+    }
+}
+
+#[crate::worker]
+impl Worker for NodeMan {
+    type Message = Vec<u8>;
+    type Context = Context;
+
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {
+        let mut buf = vec![];
+        let mut dec = Decoder::new(msg.as_body());
+        let req: Request = match dec.decode() {
+            Ok(r) => r,
+            Err(e) => {
+                error!("failed to decode request: {:?}", e);
+                return Ok(());
+            }
+        };
+
+        self.handle_request(ctx, &req, &mut dec, &mut buf).await?;
+        ctx.send(msg.return_route(), buf).await
     }
 }

@@ -1,3 +1,5 @@
+pub(crate) mod api;
+
 use std::env;
 use std::net::{SocketAddrV4, SocketAddrV6};
 

@@ -11,6 +11,7 @@ use minicbor::encode::{self, Encoder, Write};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
 use ockam_core::compat::rand;
+use std::fmt::{Display, Formatter};
 use tinyvec::ArrayVec;
 
 #[cfg(feature = "tag")]
@@ -87,6 +88,22 @@ pub enum Method {
     #[n(2)] Put,
     #[n(3)] Delete,
     #[n(4)] Patch
+}
+
+impl Display for Method {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Get => "GET",
+                Self::Post => "POST",
+                Self::Put => "PUT",
+                Self::Delete => "DELETE",
+                Self::Patch => "PATCH",
+            }
+        )
+    }
 }
 
 /// The response status codes.
