@@ -76,7 +76,7 @@ impl CreateCommand {
 
 async fn setup(ctx: Context, c: CreateCommand) -> anyhow::Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
-    tcp.listen(format!("127.0.0.1:{}", c.port)).await?;
+    tcp.listen(format!("0.0.0.0:{}", c.port)).await?;
 
     let s = auth::store::mem::Store::new();
     ctx.start_worker("authenticated", auth::Server::new(s))
