@@ -26,7 +26,7 @@ pub use ockam_macros::{node, test};
 // ---
 
 // Export node implementation
-pub use ockam_node::{start_node, Context, DelayedEvent, Executor};
+pub use ockam_node::{start_node, start_node_with_access_control, Context, DelayedEvent, Executor};
 // ---
 
 mod delay;

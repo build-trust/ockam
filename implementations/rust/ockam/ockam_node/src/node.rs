@@ -1,7 +1,6 @@
-use crate::access_control::LocalOriginOnly;
 use crate::{Context, Executor};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, Mailbox, Mailboxes};
+use ockam_core::{AccessControl, Address, AllowAll, Mailbox, Mailboxes};
 
 /// A minimal worker implementation that does nothing
 pub struct NullWorker;
@@ -11,11 +10,22 @@ impl ockam_core::Worker for NullWorker {
     type Message = (); // This message type is never used
 }
 
-/// Start a node
+/// Start a node with [`AllowAll`] access control
 pub fn start_node() -> (Context, Executor) {
+    start_node_with_access_control(AllowAll)
+}
+
+/// Start a node with the given access control
+pub fn start_node_with_access_control<AC>(access_control: AC) -> (Context, Executor)
+where
+    AC: AccessControl,
+{
     setup_tracing();
 
-    info!("Initializing ockam node");
+    info!(
+        "Initializing ockam node with access control: {:?}",
+        access_control
+    );
 
     let mut exe = Executor::new();
     let addr: Address = "app".into();
@@ -25,7 +35,7 @@ pub fn start_node() -> (Context, Executor) {
     let (ctx, sender, _) = Context::new(
         exe.runtime(),
         exe.sender(),
-        Mailboxes::new(Mailbox::new(addr, Arc::new(LocalOriginOnly)), vec![]),
+        Mailboxes::new(Mailbox::new(addr, Arc::new(access_control)), vec![]),
         None,
     );
 
