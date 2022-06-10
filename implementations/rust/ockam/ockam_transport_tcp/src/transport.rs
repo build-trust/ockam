@@ -1,5 +1,5 @@
 use ockam_core::access_control::AccessControl;
-use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
+use ockam_core::compat::{boxed::Box, net::SocketAddr};
 use ockam_core::{Address, AsyncTryClone, Result, Route};
 use ockam_node::Context;
 
@@ -193,12 +193,15 @@ impl TcpTransport {
     }
 
     /// FIXME
-    pub async fn create_outlet_with_access_control(
+    pub async fn create_outlet_with_access_control<AC>(
         &self,
         address: impl Into<Address>,
         peer: impl Into<String>,
-        access_control: Arc<dyn AccessControl>,
-    ) -> Result<()> {
+        access_control: AC,
+    ) -> Result<()>
+    where
+        AC: AccessControl,
+    {
         let worker = TcpOutletListenWorker::new(peer.into());
 
         // TODO all mailboxes get the same access_control?

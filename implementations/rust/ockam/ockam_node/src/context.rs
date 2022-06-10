@@ -168,12 +168,15 @@ impl Context {
 
     /// Create a new detached `Context` that will apply the given
     /// [`AccessControl`] to any incoming messages it receives
-    pub async fn new_repeater(
-        &self,
-        access_control: Arc<dyn AccessControl>,
-    ) -> Result<RepeaterContext> {
+    pub async fn new_repeater<AC>(&self, access_control: AC) -> Result<RepeaterContext>
+    where
+        AC: AccessControl,
+    {
         let repeater_ctx = self
-            .new_detached_impl(Mailboxes::main(Address::random_local(), access_control))
+            .new_detached_impl(Mailboxes::main(
+                Address::random_local(),
+                Arc::new(access_control),
+            ))
             .await?;
         Ok(repeater_ctx)
     }
@@ -279,18 +282,19 @@ impl Context {
 
     /// Start a worker that will apply the given access control to the
     /// any incoming messages for the given address
-    pub async fn start_worker_with_access_control<A, NM, NW>(
+    pub async fn start_worker_with_access_control<A, NM, NW, AC>(
         &self,
         address: A,
         worker: NW,
-        access_control: Arc<dyn AccessControl>,
+        access_control: AC,
     ) -> Result<()>
     where
         A: Into<Address>,
         NM: Message + Send + 'static,
         NW: Worker<Context = Context, Message = NM>,
+        AC: AccessControl,
     {
-        let mailboxes = Mailboxes::main(address.into(), access_control);
+        let mailboxes = Mailboxes::main(address.into(), Arc::new(access_control));
         self.start_worker_impl(mailboxes, worker).await
     }
 

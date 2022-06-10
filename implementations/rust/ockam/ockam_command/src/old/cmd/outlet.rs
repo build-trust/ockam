@@ -31,7 +31,7 @@ pub async fn run(args: OutletOpts, ctx: Context) -> anyhow::Result<()> {
     let exported_ident = identity::load_identity(&ockam_dir)?;
     let (policy, access_control) = storage::load_trust_policy(&ockam_dir)?;
 
-    let access_control = Arc::new(AnyAccessControl::new(access_control, LocalOriginOnly));
+    let access_control = AnyAccessControl::new(access_control, LocalOriginOnly);
 
     // TODO: AccessControl
 

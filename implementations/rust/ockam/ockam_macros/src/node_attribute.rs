@@ -23,6 +23,7 @@ fn output(cont: Container) -> TokenStream {
     let body = &cont.original_fn.block;
     let ret_type = cont.data.ret;
     let ockam_crate = cont.data.attrs.ockam_crate;
+    let access_control = cont.data.attrs.access_control;
 
     // Get the ockam context variable identifier and mutability token extracted
     // from the function arguments, or sets them to their default values.
@@ -56,20 +57,20 @@ fn output(cont: Container) -> TokenStream {
     if !cont.data.attrs.no_main {
         // Assumes the target platform knows about main() functions
         quote! {
-            use #ockam_crate::{start_node, Executor};
-
             fn main() #ret_type {
-                let (#ctx_mut #ctx_ident, mut executor) = start_node() as (#ctx_path, Executor);
+                use #ockam_crate::{start_node_with_access_control, Executor};
+
+                let (#ctx_mut #ctx_ident, mut executor) = start_node_with_access_control(#access_control) as (#ctx_path, Executor);
                 executor.execute(async move #body)#err_handling
             }
         }
     } else {
         // Assumes you will be defining the ockam node inside your own entry point
         quote! {
-            use #ockam_crate::{start_node, Executor};
-
             fn ockam_async_main() #ret_type {
-                let (#ctx_mut #ctx_ident, mut executor) = start_node() as (#ctx_path, Executor);
+                use #ockam_crate::{start_node_with_access_control, Executor};
+
+                let (#ctx_mut #ctx_ident, mut executor) = start_node_with_access_control(#access_control) as (#ctx_path, Executor);
                 executor.execute(async move #body)#err_handling
             }
             // TODO: safe way to print the error before panicking?
@@ -130,16 +131,24 @@ impl<'a> Data<'a> {
 }
 
 struct Attributes {
+    access_control: TokenStream,
     ockam_crate: TokenStream,
     no_main: bool,
 }
 
 impl Attributes {
     fn from_ast(ctx: &Context, attrs: &AttributeArgs) -> Self {
+        let mut access_control = Attr::none(ctx, ACCESS_CONTROL);
         let mut ockam_crate = Attr::none(ctx, OCKAM_CRATE);
         let mut no_main = BoolAttr::none(ctx, NO_MAIN);
         for attr in attrs {
             match attr {
+                // Parse `#[ockam::test(access_control = "LocalOriginOnly")]`
+                NestedMeta::Meta(NameValue(nv)) if nv.path == ACCESS_CONTROL => {
+                    if let Ok(path) = parse_lit_into_path(ctx, ACCESS_CONTROL, &nv.lit) {
+                        access_control.set(&nv.path, quote! { #path });
+                    }
+                }
                 // Parse `#[ockam::test(crate = "ockam")]`
                 NestedMeta::Meta(NameValue(nv)) if nv.path == OCKAM_CRATE => {
                     if let Ok(path) = parse_lit_into_path(ctx, OCKAM_CRATE, &nv.lit) {
@@ -160,6 +169,9 @@ impl Attributes {
             }
         }
         Self {
+            access_control: access_control
+                .get()
+                .unwrap_or(quote! { ockam::access_control::AllowAll }),
             ockam_crate: ockam_crate.get().unwrap_or(quote! { ockam }),
             no_main: no_main.get(),
         }
