@@ -1,4 +1,11 @@
+mod base;
+mod iolets;
 mod service;
-pub mod types;
+
+/// Messaging types for the node manager service
+pub mod types {
+    pub use super::base::*;
+    pub use super::iolets::*;
+}
 
 pub use service::NodeMan;
