@@ -4,43 +4,22 @@ use clap::Args;
 use ockam::{Context, TcpTransport};
 use ockam_api::cloud::enroll::enrollment_token::EnrollmentToken;
 use ockam_api::cloud::enroll::Token;
-use ockam_multiaddr::MultiAddr;
 
+use crate::enroll::EnrollCommand;
 use crate::old::identity::load_or_create_identity;
 use crate::util::{embedded_node, multiaddr_to_route};
 use crate::IdentityOpts;
 
 #[derive(Clone, Debug, Args)]
-pub struct AuthenticateEnrollmentTokenCommand {
-    /// Ockam's cloud address
-    #[clap(display_order = 1000)]
-    address: MultiAddr,
-
-    #[clap(display_order = 1003, long)]
-    overwrite: bool,
-
-    #[clap(display_order = 1004)]
-    token: String,
-}
-
-impl<'a> From<&'a AuthenticateEnrollmentTokenCommand> for IdentityOpts {
-    fn from(other: &'a AuthenticateEnrollmentTokenCommand) -> Self {
-        Self {
-            overwrite: other.overwrite,
-        }
-    }
-}
+pub struct AuthenticateEnrollmentTokenCommand;
 
 impl AuthenticateEnrollmentTokenCommand {
-    pub fn run(command: AuthenticateEnrollmentTokenCommand) {
+    pub fn run(command: EnrollCommand) {
         embedded_node(authenticate, command);
     }
 }
 
-async fn authenticate(
-    mut ctx: Context,
-    command: AuthenticateEnrollmentTokenCommand,
-) -> anyhow::Result<()> {
+async fn authenticate(mut ctx: Context, command: EnrollCommand) -> anyhow::Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
     // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
@@ -49,11 +28,15 @@ async fn authenticate(
     let route = multiaddr_to_route(&command.address)
         .ok_or_else(|| anyhow!("failed to parse address: {}", command.address))?;
 
+    let token = command
+        .token
+        .ok_or_else(|| anyhow!("Token was not passed"))?;
+
     let mut api_client = ockam_api::cloud::MessagingClient::new(route, &ctx).await?;
     api_client
         .authenticate_enrollment_token(
             &identity.id.to_string(),
-            EnrollmentToken::new(Token(command.token.into())),
+            EnrollmentToken::new(Token(token.into())),
         )
         .await?;
     println!("Token authenticated");

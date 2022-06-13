@@ -2247,6 +2247,7 @@ dependencies = [
  "tracing",
  "tracing-error",
  "tracing-subscriber",
+ "validator",
 ]
 
 [[package]]
@@ -4076,6 +4077,21 @@ dependencies = [
  "getrandom 0.2.6",
  "md5",
  "sha1",
+]
+
+[[package]]
+name = "validator"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f07b0a1390e01c0fc35ebb26b28ced33c9a3808f7f9fbe94d3cc01e233bfeed5"
+dependencies = [
+ "idna",
+ "lazy_static",
+ "regex",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "url",
 ]
 
 [[package]]

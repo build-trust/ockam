@@ -1,51 +1,31 @@
-use anyhow::anyhow;
-use clap::Args;
 use std::borrow::Borrow;
 
-use ockam::{Context, TcpTransport};
+use anyhow::anyhow;
+use clap::Args;
 use reqwest::StatusCode;
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{debug, warn};
 
-use crate::old::identity::load_or_create_identity;
-use crate::util::{embedded_node, multiaddr_to_route};
-use crate::IdentityOpts;
+use ockam::{Context, TcpTransport};
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::enroll::Identity;
 use ockam_api::error::ApiError;
-use ockam_multiaddr::MultiAddr;
+
+use crate::enroll::EnrollCommand;
+use crate::old::identity::load_or_create_identity;
+use crate::util::{embedded_node, multiaddr_to_route};
+use crate::IdentityOpts;
 
 #[derive(Clone, Debug, Args)]
-pub struct EnrollAuth0Command {
-    /// Ockam's cloud address
-    #[clap(display_order = 1000)]
-    address: MultiAddr,
-
-    #[clap(display_order = 1001, long, default_value = "default")]
-    vault: String,
-
-    #[clap(display_order = 1002, long, default_value = "default")]
-    identity: String,
-
-    #[clap(display_order = 1003, long)]
-    overwrite: bool,
-}
-
-impl<'a> From<&'a EnrollAuth0Command> for IdentityOpts {
-    fn from(other: &'a EnrollAuth0Command) -> Self {
-        Self {
-            overwrite: other.overwrite,
-        }
-    }
-}
+pub(crate) struct EnrollAuth0Command;
 
 impl EnrollAuth0Command {
-    pub fn run(command: EnrollAuth0Command) {
+    pub fn run(command: EnrollCommand) {
         embedded_node(enroll, command);
     }
 }
 
-async fn enroll(mut ctx: Context, command: EnrollAuth0Command) -> anyhow::Result<()> {
+async fn enroll(mut ctx: Context, command: EnrollCommand) -> anyhow::Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
     // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
