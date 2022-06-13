@@ -1,5 +1,7 @@
 //! Nodemanager API types
 
+// TODO: split up this file into sub modules
+
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
 use std::fmt::{self, Display};
