@@ -18,11 +18,23 @@ pub struct CreateTransport<'a> {
     #[n(0)]
     tag: TypeTag<1407961>,
     /// The type of transport to create
-    #[n(1)] tt: TransportType,
+    #[n(1)] pub tt: TransportType,
     /// The mode the transport should operate in
-    #[n(2)] tm: TransportMode,
+    #[n(2)] pub tm: TransportMode,
     /// The address payload for the transport
-    #[n(3)] addr: Cow<'a, str>,
+    #[n(3)] pub addr: Cow<'a, str>,
+}
+
+impl<'a> CreateTransport<'a> {
+    pub fn new<S: Into<Cow<'a, str>>>(tt: TransportType, tm: TransportMode, addr: S) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            tt,
+            tm,
+            addr: addr.into(),
+        }
+    }
 }
 
 /// Encode which type of transport is being requested
@@ -115,21 +127,21 @@ pub struct TransportStatus<'a> {
     #[n(0)]
     tag: TypeTag<1581592>,
     /// The type of transport to create
-    #[n(1)] pub tt: TransportType,
+    #[n(2)] pub tt: TransportType,
     /// The mode the transport should operate in
-    #[n(2)] pub tm: TransportMode,
-    /// The address payload for the transport
-    #[n(3)] pub addr: Cow<'a, str>,
+    #[n(3)] pub tm: TransportMode,
+    /// The status payload
+    #[n(4)] pub payload: Cow<'a, str>,
 }
 
 impl<'a> TransportStatus<'a> {
-    pub fn new<S: Into<Cow<'a, str>>>(tt: TransportType, tm: TransportMode, addr: S) -> Self {
+    pub fn new<S: Into<Cow<'a, str>>>(tt: TransportType, tm: TransportMode, payload: S) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             tt,
             tm,
-            addr: addr.into(),
+            payload: payload.into(),
         }
     }
 }

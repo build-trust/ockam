@@ -5,7 +5,7 @@ use nix::unistd::Pid;
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
-    /// Name of the node.
+    /// Name of the node to delete
     pub node_name: String,
     /// Should the node be terminated with SIGKILL instead of SIGTERM
     #[clap(display_order = 900, long, short)]

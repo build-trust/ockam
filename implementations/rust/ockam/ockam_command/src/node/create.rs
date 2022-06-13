@@ -97,6 +97,7 @@ async fn setup(ctx: Context, c: CreateCommand) -> anyhow::Result<()> {
         NodeMan::new(
             c.node_name,
             (TransportType::Tcp, TransportMode::Listen, bind),
+            tcp,
         ),
     )
     .await?;

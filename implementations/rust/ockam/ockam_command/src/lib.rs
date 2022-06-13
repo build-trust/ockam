@@ -84,11 +84,11 @@ pub struct OckamCommand {
     #[clap(global = true, long, short, default_value = "default")]
     node: String,
 
-    /// A marker to indicate that this instance was spawned
-    ///
-    /// This is a quick work-around to avoid spamming the user with
-    /// irrelevant log messages from embedded nodes, while letting
-    /// spawned nodes log their full potential into their log files.
+    // A marker to indicate that this instance was spawned
+    //
+    // This is a quick work-around to avoid spamming the user with
+    // irrelevant log messages from embedded nodes, while letting
+    // spawned nodes log their full potential into their log files.
     #[clap(global = true, long, hide = true)]
     spawned: bool,
 
