@@ -37,6 +37,31 @@ impl<'a> CreateTransport<'a> {
     }
 }
 
+/// Request to delete a transport
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct DeleteTransport<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)]
+    tag: TypeTag<1407961>,
+    /// The transport ID to delete
+    #[n(1)] pub tid: Cow<'a, str>,
+    /// The user has indicated that deleting the API transport is A-OK
+    #[n(2)] pub force: bool,
+}
+
+impl<'a> DeleteTransport<'a> {
+    pub fn new<S: Into<Cow<'a, str>>>(tid: S, force: bool) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            tid: tid.into(),
+            force,
+        }
+    }
+}
+
 /// Encode which type of transport is being requested
 // TODO: we have a TransportType in ockam_core.  Do we really want to
 // mirror this kind of type here?
@@ -63,7 +88,7 @@ impl Display for TransportType {
 }
 
 /// Encode which type of transport is being requested
-#[derive(Copy, Clone, Debug, Decode, Encode)]
+#[derive(Copy, Clone, Debug, Decode, Encode, PartialEq)]
 #[rustfmt::skip]
 pub enum TransportMode {
     /// Listen on a set address

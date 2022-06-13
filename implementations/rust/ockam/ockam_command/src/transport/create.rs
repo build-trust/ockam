@@ -66,9 +66,10 @@ pub async fn create_transport(
                 .pop_back()
                 .append_t(TCP, payload.to_string())
                 .into();
+
             eprintln!(
-                "Transport created!\nYou can send messages to it via `{}`",
-                r.to_string()
+                "Transport created! You can send messages to it via this route:\n{}`",
+                r
             )
         }
         _ => {
