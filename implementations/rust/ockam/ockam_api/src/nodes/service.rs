@@ -8,11 +8,12 @@ use minicbor::{encode::Write, Decoder};
 use ockam::{Address, Context, Result, Routed, TcpTransport, Worker};
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, io, string::String};
 
-use super::types::CreateTransport;
+use super::types::{CreateTransport, DeleteTransport};
 
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeMan {
     node_name: String,
+    api_transport_id: Address,
     transports: BTreeMap<Address, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
 }
@@ -24,10 +25,14 @@ impl NodeMan {
         api_transport: (TransportType, TransportMode, String),
         tcp_transport: TcpTransport,
     ) -> Self {
+        let api_transport_id = Address::random_local();
+
         let mut transports = BTreeMap::new();
-        transports.insert(Address::random_local(), api_transport);
+        transports.insert(api_transport_id.clone(), api_transport);
+
         Self {
             node_name,
+            api_transport_id,
             transports,
             tcp_transport,
         }
@@ -57,23 +62,24 @@ impl NodeMan {
             "Handling request to create a new transport: {}, {}, {}",
             tt, tm, addr
         );
+        let addr = addr.to_string();
 
         let res = match (tt, tm) {
             (Tcp, Listen) => self
                 .tcp_transport
-                .listen(addr)
+                .listen(&addr)
                 .await
                 .map(|socket| socket.to_string()),
             (Tcp, Connect) => self
                 .tcp_transport
-                .connect(addr)
+                .connect(&addr)
                 .await
                 .map(|ockam_addr| ockam_addr.to_string()),
             _ => unimplemented!(),
         };
 
         let response = match res {
-            Ok(addr) => {
+            Ok(_) => {
                 let tid = Address::random_local();
                 self.transports.insert(tid.clone(), (tt, tm, addr.clone()));
                 Response::ok(req.id()).body(TransportStatus::new(
@@ -92,6 +98,35 @@ impl NodeMan {
         };
 
         Ok(response)
+    }
+
+    async fn delete_transport(
+        &mut self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<()>> {
+        let body: DeleteTransport = dec.decode()?;
+        info!("Handling request to delete transport: {}", body.tid);
+
+        let tid: Address = format!("0#{}", body.tid).into();
+
+        if self.api_transport_id == tid && !body.force {
+            warn!("User requested to delete the API transport without providing force OP flag...");
+            return Ok(Response::bad_request(req.id()));
+        }
+
+        match self.transports.get(&tid) {
+            Some(t) if t.1 == TransportMode::Listen => {
+                warn!("It is not currently supported to destroy LISTEN transports");
+                Ok(Response::bad_request(req.id()))
+            }
+            Some(t) => {
+                self.tcp_transport.disconnect(&t.2).await?;
+                self.transports.remove(&tid);
+                Ok(Response::ok(req.id()))
+            }
+            None => Ok(Response::bad_request(req.id())),
+        }
     }
 
     async fn handle_request<W>(
@@ -138,6 +173,7 @@ impl NodeMan {
             // TODO: Get all transports
             // == Create a new transport
             (Post, "/node/transport") => self.add_transport(req, dec).await?.encode(enc)?,
+            (Delete, "/node/transport") => self.delete_transport(req, dec).await?.encode(enc)?,
             (method, path) => {
                 warn!("Called invalid endpoint: {} {}", method, path);
                 todo!()

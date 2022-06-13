@@ -1,10 +1,10 @@
 mod create;
+mod delete;
 mod list;
-mod show;
 
 pub(crate) use create::CreateCommand;
+pub(crate) use delete::DeleteCommand;
 use list::ListCommand;
-use show::ShowCommand;
 
 use crate::{util::OckamConfig, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
@@ -17,25 +17,25 @@ pub struct TransportCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum TransportSubCommand {
-    /// Create nodes.
+    /// Create transports on the selected node
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Create(CreateCommand),
 
-    /// List nodes.
+    /// Delete transports on the selected node
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Delete(DeleteCommand),
+
+    /// List transports registered on the selected node
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     List(ListCommand),
-
-    /// Show nodes.
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    Show(ShowCommand),
 }
 
 impl TransportCommand {
     pub fn run(cfg: &mut OckamConfig, command: TransportCommand) {
         match command.subcommand {
             TransportSubCommand::Create(command) => CreateCommand::run(cfg, command),
+            TransportSubCommand::Delete(command) => DeleteCommand::run(cfg, command),
             TransportSubCommand::List(command) => ListCommand::run(cfg, command),
-            TransportSubCommand::Show(command) => ShowCommand::run(cfg, command),
         }
     }
 }

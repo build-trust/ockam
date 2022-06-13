@@ -4,7 +4,8 @@ use minicbor::Decoder;
 use ockam::Result;
 use ockam_api::{
     nodes::types::{
-        CreateTransport, NodeStatus, TransportList, TransportMode, TransportStatus, TransportType,
+        CreateTransport, DeleteTransport, NodeStatus, TransportList, TransportMode,
+        TransportStatus, TransportType,
     },
     Method, Request, Response,
 };
@@ -25,7 +26,7 @@ pub(crate) fn query_transports() -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-/// Construct a request to query node transports
+/// Construct a request to create node transports
 pub(crate) fn create_transport(cmd: &crate::transport::CreateCommand) -> Result<Vec<u8>> {
     let payload = CreateTransport::new(
         TransportType::Tcp,
@@ -44,7 +45,22 @@ pub(crate) fn create_transport(cmd: &crate::transport::CreateCommand) -> Result<
     Ok(buf)
 }
 
+/// Construct a request to delete node transports
+pub(crate) fn delete_transport(cmd: &crate::transport::DeleteCommand) -> Result<Vec<u8>> {
+    let mut buf = vec![];
+    Request::builder(Method::Delete, "/node/transport")
+        .body(DeleteTransport::new(&cmd.id, cmd.force))
+        .encode(&mut buf)?;
+    Ok(buf)
+}
+
 ////////////// !== parsers
+
+/// Parse the base response without the inner payload
+pub(crate) fn parse_response(resp: &[u8]) -> Result<Response> {
+    let mut dec = Decoder::new(resp);
+    Ok(dec.decode::<Response>()?)
+}
 
 /// Parse the returned status response
 pub(crate) fn parse_status(resp: &[u8]) -> Result<NodeStatus> {
