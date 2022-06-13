@@ -42,15 +42,20 @@ pub async fn query_transports(ctx: Context, _: (), mut base_route: Route) -> any
             vec![],
             |mut acc,
              TransportStatus {
-                 tt, tm, payload, ..
+                 tt,
+                 tm,
+                 payload,
+                 tid,
+                 ..
              }| {
-                let row = vec![tt.cell(), tm.cell(), payload.cell()];
+                let row = vec![tid.cell(), tt.cell(), tm.cell(), payload.cell()];
                 acc.push(row);
                 acc
             },
         )
         .table()
         .title(vec![
+            "Transport ID".cell().bold(true),
             "Transport Type".cell().bold(true),
             "Mode".cell().bold(true),
             "Address bind".cell().bold(true),

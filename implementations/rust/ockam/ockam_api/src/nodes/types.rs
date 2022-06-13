@@ -132,16 +132,27 @@ pub struct TransportStatus<'a> {
     #[n(3)] pub tm: TransportMode,
     /// The status payload
     #[n(4)] pub payload: Cow<'a, str>,
+    /// Transport ID inside the node manager
+    ///
+    /// We use this as a kind of URI to be able to address a transport
+    /// by a unique value for specific updates and deletion events.
+    #[n(5)] pub tid: Cow<'a, str>,
 }
 
 impl<'a> TransportStatus<'a> {
-    pub fn new<S: Into<Cow<'a, str>>>(tt: TransportType, tm: TransportMode, payload: S) -> Self {
+    pub fn new<S: Into<Cow<'a, str>>>(
+        tt: TransportType,
+        tm: TransportMode,
+        payload: S,
+        tid: S,
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             tt,
             tm,
             payload: payload.into(),
+            tid: tid.into(),
         }
     }
 }
