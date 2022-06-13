@@ -8,7 +8,7 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(cfg: &mut OckamConfig, command: CreateCommand) {
+    pub fn run(_cfg: &mut OckamConfig, _command: CreateCommand) {
         todo!()
     }
 }

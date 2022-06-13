@@ -9,7 +9,7 @@ pub struct GetCommand {
 
 impl GetCommand {
     pub fn run(cfg: &mut OckamConfig, command: GetCommand) {
-        let msg = match command.value.as_ref().map(|o| o.as_str()) {
+        let msg = match command.value.as_deref() {
             Some("api-node") => cfg.api_node.clone(),
             Some("log-path") => cfg.log_path.to_str().unwrap().to_owned(),
             Some(val) => format!("config value '{}' does not exist", val),

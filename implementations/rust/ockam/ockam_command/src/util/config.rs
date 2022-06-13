@@ -142,7 +142,7 @@ impl OckamConfig {
     /// port.  This doesn't catch all port collision errors, but will
     /// get us most of the way there in terms of starting a new node.
     pub fn port_is_used(&self, port: u16) -> bool {
-        self.nodes.iter().find(|(_, n)| n.port == port).is_some()
+        self.nodes.iter().any(|(_, n)| n.port == port)
     }
 
     /// Get read-acces to all node configuration
@@ -165,7 +165,7 @@ impl OckamConfig {
     }
 
     /// Update the api node name on record
-    pub fn set_api_node(&mut self, node_name: &String) {
+    pub fn set_api_node(&mut self, node_name: &str) {
         self.api_node = node_name.clone();
     }
 

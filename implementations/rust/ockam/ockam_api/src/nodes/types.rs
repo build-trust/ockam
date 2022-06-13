@@ -26,8 +26,11 @@ pub struct CreateTransport<'a> {
 }
 
 /// Encode which type of transport is being requested
+// TODO: we have a TransportType in ockam_core.  Do we really want to
+// mirror this kind of type here?
 #[derive(Copy, Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
+#[cbor(index_only)]
 pub enum TransportType {
     /// Ockam TCP transport
     #[n(0)] Tcp,
@@ -39,15 +42,11 @@ pub enum TransportType {
 
 impl Display for TransportType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Tcp => "TCP",
-                Self::Ble => "BLE",
-                Self::WebSocket => "Websocket",
-            }
-        )
+        f.write_str(match self {
+            Self::Tcp => "TCP",
+            Self::Ble => "BLE",
+            Self::WebSocket => "Websocket",
+        })
     }
 }
 
@@ -63,14 +62,10 @@ pub enum TransportMode {
 
 impl Display for TransportMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Listen => "Listening",
-                Self::Connect => "Remote connection",
-            }
-        )
+        f.write_str(match self {
+            Self::Listen => "Listening",
+            Self::Connect => "Remote connection",
+        })
     }
 }
 
@@ -92,12 +87,18 @@ pub struct NodeStatus<'a> {
 }
 
 impl<'a> NodeStatus<'a> {
-    pub fn new(node_name: &'a str, status: &str, workers: u32, pid: i32, transports: u32) -> Self {
+    pub fn new(
+        node_name: &'a str,
+        status: &'a str,
+        workers: u32,
+        pid: i32,
+        transports: u32,
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             node_name: Cow::Borrowed(node_name),
-            status: Cow::Owned(status.into()),
+            status: Cow::Borrowed(status),
             workers,
             pid,
             transports,
@@ -122,13 +123,13 @@ pub struct TransportStatus<'a> {
 }
 
 impl<'a> TransportStatus<'a> {
-    pub fn new(tt: TransportType, tm: TransportMode, addr: &String) -> Self {
+    pub fn new<S: Into<Cow<'a, str>>>(tt: TransportType, tm: TransportMode, addr: S) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             tt,
             tm,
-            addr: addr.clone().into(),
+            addr: addr.into(),
         }
     }
 }
