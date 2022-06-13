@@ -166,7 +166,7 @@ impl OckamConfig {
 
     /// Update the api node name on record
     pub fn set_api_node(&mut self, node_name: &str) {
-        self.api_node = node_name.clone();
+        self.api_node = node_name.into();
     }
 
     /// Update the base log path for nodes

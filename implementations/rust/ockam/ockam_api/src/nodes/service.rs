@@ -5,15 +5,15 @@ use crate::{
     Method, Request, Response, ResponseBuilder,
 };
 use minicbor::{encode::Write, Decoder};
-use ockam::{Context, Result, Routed, TcpTransport, Worker};
-use ockam_core::compat::{boxed::Box, io, string::String};
+use ockam::{Address, Context, Result, Routed, TcpTransport, Worker};
+use ockam_core::compat::{boxed::Box, collections::BTreeMap, io, string::String};
 
 use super::types::CreateTransport;
 
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeMan {
     node_name: String,
-    transports: Vec<(TransportType, TransportMode, String)>,
+    transports: BTreeMap<Address, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
 }
 
@@ -24,9 +24,11 @@ impl NodeMan {
         api_transport: (TransportType, TransportMode, String),
         tcp_transport: TcpTransport,
     ) -> Self {
+        let mut transports = BTreeMap::new();
+        transports.insert(Address::random_local(), api_transport);
         Self {
             node_name,
-            transports: vec![api_transport],
+            transports,
             tcp_transport,
         }
     }
@@ -36,7 +38,9 @@ impl NodeMan {
     fn get_transports(&self) -> Vec<TransportStatus<'_>> {
         self.transports
             .iter()
-            .map(|(tt, tm, addr)| TransportStatus::new(*tt, *tm, addr))
+            .map(|(tid, (tt, tm, addr))| {
+                TransportStatus::new(*tt, *tm, addr.clone(), tid.without_type().to_string())
+            })
             .collect()
     }
 
@@ -70,12 +74,21 @@ impl NodeMan {
 
         let response = match res {
             Ok(addr) => {
-                self.transports.push((tt, tm, addr.clone()));
-                Response::ok(req.id()).body(TransportStatus::new(tt, tm, addr))
+                let tid = Address::random_local();
+                self.transports.insert(tid.clone(), (tt, tm, addr.clone()));
+                Response::ok(req.id()).body(TransportStatus::new(
+                    tt,
+                    tm,
+                    addr,
+                    tid.without_type().to_string(),
+                ))
             }
-            Err(msg) => {
-                Response::bad_request(req.id()).body(TransportStatus::new(tt, tm, msg.to_string()))
-            }
+            Err(msg) => Response::bad_request(req.id()).body(TransportStatus::new(
+                tt,
+                tm,
+                msg.to_string(),
+                "<none>".to_string(),
+            )),
         };
 
         Ok(response)

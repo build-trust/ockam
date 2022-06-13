@@ -348,6 +348,12 @@ impl Address {
         }
     }
 
+    /// Get the string value of this address without the address type
+    #[doc(hidden)]
+    pub fn without_type(&self) -> &str {
+        from_utf8(&self.inner).unwrap_or("<unprintable>")
+    }
+
     /// Generate a random address with the given transport type.
     ///
     /// # Examples
