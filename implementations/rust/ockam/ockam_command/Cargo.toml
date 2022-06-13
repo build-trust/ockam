@@ -32,7 +32,7 @@ test = false
 anyhow = "1"
 async-recursion = { version = "1.0.0" }
 async-trait = "0.1"
-clap = { version = "3", features = ["derive", "cargo"] }
+clap = { version = "3", features = ["derive", "cargo", "wrap_help"] }
 cli-table = "0.4"
 crossbeam-channel = "0.5"
 directories = "4"

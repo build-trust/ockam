@@ -4,7 +4,8 @@ use clap::Args;
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
     /// Name of the node.
-    pub node_name: String,
+    #[clap(short, long)]
+    pub api_node: Option<String>,
 }
 
 impl ListCommand {

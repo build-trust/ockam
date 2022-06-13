@@ -2,7 +2,7 @@ mod create;
 mod list;
 mod show;
 
-use create::CreateCommand;
+pub(crate) use create::CreateCommand;
 use list::ListCommand;
 use show::ShowCommand;
 

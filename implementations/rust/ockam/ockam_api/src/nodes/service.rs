@@ -2,24 +2,32 @@
 
 use crate::{
     nodes::types::{NodeStatus, TransportList, TransportMode, TransportStatus, TransportType},
-    Method, Request, Response,
+    Method, Request, Response, ResponseBuilder,
 };
 use minicbor::{encode::Write, Decoder};
-use ockam::{Context, Result, Routed, Worker};
+use ockam::{Context, Result, Routed, TcpTransport, Worker};
 use ockam_core::compat::{boxed::Box, io, string::String};
+
+use super::types::CreateTransport;
 
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeMan {
     node_name: String,
     transports: Vec<(TransportType, TransportMode, String)>,
+    tcp_transport: TcpTransport,
 }
 
 impl NodeMan {
     /// Create a new NodeMan with the node name from the ockam CLI
-    pub fn new(node_name: String, api_transport: (TransportType, TransportMode, String)) -> Self {
+    pub fn new(
+        node_name: String,
+        api_transport: (TransportType, TransportMode, String),
+        tcp_transport: TcpTransport,
+    ) -> Self {
         Self {
             node_name,
             transports: vec![api_transport],
+            tcp_transport,
         }
     }
 }
@@ -32,11 +40,52 @@ impl NodeMan {
             .collect()
     }
 
+    async fn add_transport(
+        &mut self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<TransportStatus<'_>>> {
+        let CreateTransport { tt, tm, addr, .. } = dec.decode()?;
+
+        use {TransportMode::*, TransportType::*};
+
+        info!(
+            "Handling request to create a new transport: {}, {}, {}",
+            tt, tm, addr
+        );
+
+        let res = match (tt, tm) {
+            (Tcp, Listen) => self
+                .tcp_transport
+                .listen(addr)
+                .await
+                .map(|socket| socket.to_string()),
+            (Tcp, Connect) => self
+                .tcp_transport
+                .connect(addr)
+                .await
+                .map(|ockam_addr| ockam_addr.to_string()),
+            _ => unimplemented!(),
+        };
+
+        let response = match res {
+            Ok(addr) => {
+                self.transports.push((tt, tm, addr.clone()));
+                Response::ok(req.id()).body(TransportStatus::new(tt, tm, addr))
+            }
+            Err(msg) => {
+                Response::bad_request(req.id()).body(TransportStatus::new(tt, tm, msg.to_string()))
+            }
+        };
+
+        Ok(response)
+    }
+
     async fn handle_request<W>(
         &mut self,
         ctx: &mut Context,
         req: &Request<'_>,
-        _dec: &mut Decoder<'_>,
+        dec: &mut Decoder<'_>,
         enc: W,
     ) -> Result<()>
     where
@@ -59,6 +108,7 @@ impl NodeMan {
         };
 
         match (method, path) {
+            // == Get information about this node
             (Get, "/node") => Response::ok(req.id())
                 .body(NodeStatus::new(
                     self.node_name.as_str(),
@@ -68,9 +118,13 @@ impl NodeMan {
                     self.transports.len() as u32,
                 ))
                 .encode(enc)?,
+            // == Get all transports
             (Get, "/node/transport") => Response::ok(req.id())
                 .body(TransportList::new(self.get_transports()))
                 .encode(enc)?,
+            // TODO: Get all transports
+            // == Create a new transport
+            (Post, "/node/transport") => self.add_transport(req, dec).await?.encode(enc)?,
             (method, path) => {
                 warn!("Called invalid endpoint: {} {}", method, path);
                 todo!()

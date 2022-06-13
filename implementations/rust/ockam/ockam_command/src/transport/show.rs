@@ -7,12 +7,13 @@ use ockam_api::nodes::types::{TransportList, TransportStatus};
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
     /// Name of the node.
-    pub node_name: Option<String>,
+    #[clap(short, long)]
+    pub api_node: Option<String>,
 }
 
 impl ShowCommand {
     pub fn run(cfg: &mut OckamConfig, command: ShowCommand) {
-        let port = match cfg.select_node(&command.node_name) {
+        let port = match cfg.select_node(&command.api_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -33,15 +34,21 @@ pub async fn query_transports(ctx: Context, _: (), mut base_route: Route) -> any
         .await
         .unwrap();
 
-    let TransportList { list, .. } = api::parse_transports(&resp)?;
+    let TransportList { list, .. } = api::parse_transport_list(&resp)?;
 
     let table = list
         .iter()
-        .fold(vec![], |mut acc, TransportStatus { tt, tm, addr, .. }| {
-            let row = vec![tt.cell(), tm.cell(), addr.cell()];
-            acc.push(row);
-            acc
-        })
+        .fold(
+            vec![],
+            |mut acc,
+             TransportStatus {
+                 tt, tm, payload, ..
+             }| {
+                let row = vec![tt.cell(), tm.cell(), payload.cell()];
+                acc.push(row);
+                acc
+            },
+        )
         .table()
         .title(vec![
             "Transport Type".cell().bold(true),
