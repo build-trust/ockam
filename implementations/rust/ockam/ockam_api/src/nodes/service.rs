@@ -28,7 +28,7 @@ impl NodeMan {
     fn get_transports(&self) -> Vec<TransportStatus<'_>> {
         self.transports
             .iter()
-            .map(|(tt, tm, addr)| TransportStatus::new(*tt, *tm, &addr))
+            .map(|(tt, tm, addr)| TransportStatus::new(*tt, *tm, addr))
             .collect()
     }
 

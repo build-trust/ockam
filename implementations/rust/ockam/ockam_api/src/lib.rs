@@ -5,13 +5,12 @@ pub mod identity;
 pub mod nodes;
 pub mod vault;
 
-use core::fmt;
+use core::fmt::{self, Display, Formatter};
 use core::ops::Deref;
 use minicbor::encode::{self, Encoder, Write};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
 use ockam_core::compat::rand;
-use std::fmt::{Display, Formatter};
 use tinyvec::ArrayVec;
 
 #[macro_use]
@@ -95,17 +94,13 @@ pub enum Method {
 
 impl Display for Method {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Get => "GET",
-                Self::Post => "POST",
-                Self::Put => "PUT",
-                Self::Delete => "DELETE",
-                Self::Patch => "PATCH",
-            }
-        )
+        f.write_str(match self {
+            Self::Get => "GET",
+            Self::Post => "POST",
+            Self::Put => "PUT",
+            Self::Delete => "DELETE",
+            Self::Patch => "PATCH",
+        })
     }
 }
 

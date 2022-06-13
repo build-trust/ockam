@@ -15,8 +15,6 @@ use ockam_core::LOCAL;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Ockam, Tcp};
 use ockam_multiaddr::{MultiAddr, Protocol};
 
-use crate::OckamCommand;
-
 pub const DEFAULT_CLOUD_ADDRESS: &str = "/dnsaddr/cloud.ockam.io/tcp/62526";
 pub const DEFAULT_TCP_PORT: u16 = 62526;
 
