@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context};
 use clap::Args;
 
 use ockam::TcpTransport;
-use ockam_api::cloud::enroll::enrollment_token::TokenAttribute;
+use ockam_api::auth::types::Attributes;
 use ockam_multiaddr::MultiAddr;
 
 use crate::old::identity::load_or_create_identity;
@@ -55,30 +55,27 @@ async fn generate(
     let route = multiaddr_to_route(&command.address)
         .ok_or_else(|| anyhow!("failed to parse address: {}", command.address))?;
 
-    let attributes: Vec<TokenAttribute> = command
-        .attributes
-        .iter()
-        .map(|kv| {
-            let mut s = kv.split(',');
-            let k = s.next().context(format!(
-                "failed to parse key from pair: {kv:?}. Expected a \"key,value\" pair."
-            ))?;
-            let v = s
-                .next()
-                .context(format!("no value found on pair: {kv:?}"))?;
-            if k.is_empty() {
-                anyhow::bail!("attribute name can't be empty at pair {kv:?}")
-            } else if v.is_empty() {
-                anyhow::bail!("attribute value can't be empty at pair {kv:?}")
-            } else {
-                Ok(TokenAttribute::new(k, v))
-            }
-        })
-        .collect::<anyhow::Result<Vec<TokenAttribute>>>()?;
+    let mut attributes = Attributes::new();
+    for kv in &command.attributes {
+        let mut s = kv.split(',');
+        let k = s.next().context(format!(
+            "failed to parse key from pair: {kv:?}. Expected a \"key,value\" pair."
+        ))?;
+        let v = s
+            .next()
+            .context(format!("no value found on pair: {kv:?}"))?;
+        if k.is_empty() {
+            anyhow::bail!("attribute name can't be empty at pair {kv:?}")
+        } else if v.is_empty() {
+            anyhow::bail!("attribute value can't be empty at pair {kv:?}")
+        } else {
+            attributes.put(k, v.as_bytes());
+        }
+    }
 
     let mut api_client = ockam_api::cloud::MessagingClient::new(route, &ctx).await?;
     let token = api_client
-        .generate_enrollment_token(&identity.id.to_string(), &attributes)
+        .generate_enrollment_token(identity.id.to_string(), attributes)
         .await?;
     println!("Token generated successfully: {:?}", token.token);
 

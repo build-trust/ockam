@@ -137,30 +137,30 @@ pub mod auth0 {
 }
 
 pub mod enrollment_token {
+    use crate::auth::types::Attributes;
+
     use super::*;
 
     // Main req/res types
 
     #[derive(Encode, Debug)]
     #[cfg_attr(test, derive(Decode, Clone))]
+    #[rustfmt::skip]
     #[cbor(map)]
     pub struct RequestEnrollmentToken<'a> {
         #[cfg(feature = "tag")]
-        #[n(0)]
-        pub tag: TypeTag<8560526>,
-        #[n(1)]
-        pub identity: Identity<'a>,
-        #[n(2)]
-        pub attributes: Vec<TokenAttribute<'a>>,
+        #[n(0)] pub tag: TypeTag<8560526>,
+        #[n(1)] pub identity: Identity<'a>,
+        #[b(2)] pub attributes: Attributes<'a>,
     }
 
     impl<'a> RequestEnrollmentToken<'a> {
-        pub fn new<I: Into<Identity<'a>>>(identity: I, attributes: &[TokenAttribute<'a>]) -> Self {
+        pub fn new<I: Into<Identity<'a>>>(identity: I, attributes: Attributes<'a>) -> Self {
             Self {
                 #[cfg(feature = "tag")]
                 tag: TypeTag,
                 identity: identity.into(),
-                attributes: attributes.to_vec(),
+                attributes,
             }
         }
     }
@@ -205,32 +205,6 @@ pub mod enrollment_token {
                 tag: TypeTag,
                 identity,
                 token: token.token,
-            }
-        }
-    }
-
-    // Auxiliary types
-
-    #[derive(Debug, Clone, Default, Encode, Decode)]
-    #[cbor(map)]
-    pub struct TokenAttribute<'a> {
-        #[cfg(feature = "tag")]
-        #[n(0)]
-        pub tag: TypeTag<8463780>,
-
-        #[n(1)]
-        pub name: Cow<'a, str>,
-        #[n(2)]
-        pub value: Cow<'a, str>,
-    }
-
-    impl<'a> TokenAttribute<'a> {
-        pub fn new<S: Into<Cow<'a, str>>>(name: S, value: S) -> Self {
-            Self {
-                #[cfg(feature = "tag")]
-                tag: TypeTag,
-                name: name.into(),
-                value: value.into(),
             }
         }
     }
@@ -303,6 +277,7 @@ mod tests {
     }
 
     mod enrollment_token {
+        use crate::auth::types::Attributes;
         use crate::cloud::enroll::enrollment_token::*;
 
         use super::*;
@@ -319,7 +294,9 @@ mod tests {
             // Execute token
             let identifier = random_identifier();
             let mut client = MessagingClient::new(server_route, ctx).await?;
-            let res = client.generate_enrollment_token(&identifier, &[]).await?;
+            let res = client
+                .generate_enrollment_token(identifier, Attributes::new())
+                .await?;
             let expected_token = EnrollmentToken::new(Token("ok".into()));
             assert_eq!(res.token, expected_token.token);
 
@@ -354,7 +331,9 @@ mod tests {
             let server_route = route![(TCP, "127.0.0.1:4001")];
             let identity = random_identifier();
             let mut client = MessagingClient::new(server_route, ctx).await?;
-            client.generate_enrollment_token(&identity, &[]).await?;
+            client
+                .generate_enrollment_token(identity, Attributes::new())
+                .await?;
             ctx.stop().await
         }
 
