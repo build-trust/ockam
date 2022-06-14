@@ -55,7 +55,7 @@ default-features = false
 features         = ["std"]
 
 [dependencies.ockam_identity]
-version          = "0.48.0"
+version          = "0.49.0"
 path             = "../ockam_identity"
 default-features = false
 features         = ["std"]
