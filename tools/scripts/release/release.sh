@@ -22,13 +22,13 @@ function ockam_bump() {
 }
 
 function ockam_crate_release() {
-  gh workflow run publish_crates.yml --ref develop \
+  gh workflow run publish-crates.yml --ref develop \
     -F git_tag="$GIT_TAG" -F exclude_crates="$EXCLUDE_CRATES" \
     -F recent_failure="$RECENT_FAILURE" -R $owner/ockam
   # Sleep for 10 seconds to ensure we are not affected by Github API downtime.
   sleep 10
   # Wait for workflow run
-  run_id=$(gh run list --workflow=publish_crates.yml -b develop -u $GITHUB_USERNAME -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=publish-crates.yml -b develop -u $GITHUB_USERNAME -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
   gh run watch $run_id --exit-status -R $owner/ockam
 }
 
