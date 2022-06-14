@@ -84,7 +84,7 @@ pic32mx1xxfxxxb = ["pic32", "pic32-hal/pic32mx1xxfxxxb"]
 pic32mx2xxfxxxb = ["pic32", "pic32-hal/pic32mx2xxfxxxb"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.55.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.56.0", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.57.0", default_features = false }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.28.0", default_features = false }
 
