@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_udp"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
