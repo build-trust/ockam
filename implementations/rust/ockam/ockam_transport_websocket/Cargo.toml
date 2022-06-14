@@ -63,4 +63,4 @@ tokio-tungstenite = { version = "0.17", default-features = false, optional = tru
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
-ockam_macros = { path = "../ockam_macros", version = "^0.15.0"}
+ockam_macros = { path = "../ockam_macros", version = "^0.16.0" }
