@@ -78,7 +78,7 @@ ockam_core = { path = "../ockam_core", version = "^0.56.0", default-features = f
 ockam_macros = { path = "../ockam_macros", version = "^0.16.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.58.0", default-features = false }
 ockam_vault = { path = "../ockam_vault", version = "^0.51.0", default-features = false, optional = true }
-ockam_channel = { path = "../ockam_channel", version = "^0.54.0", default-features = false }
+ockam_channel = { path = "../ockam_channel", version = "^0.55.0", default-features = false }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.51.0", default-features = false, optional = true }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.46.0", default-features = false }
 serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
