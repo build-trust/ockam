@@ -10,7 +10,7 @@ use tracing::error;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
-use ockam::{route, Address, Route, TcpTransport, TCP};
+use ockam::{route, Address, NodeBuilder, Route, TcpTransport, TCP};
 use ockam_core::LOCAL;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Ockam, Tcp};
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -72,7 +72,7 @@ where
     F: FnOnce(ockam::Context, A) -> Fut + Send + Sync + 'static,
     Fut: core::future::Future<Output = anyhow::Result<()>> + Send + 'static,
 {
-    let (ctx, mut executor) = ockam::start_node_without_logging();
+    let (ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
     let res = executor.execute(async move {
         if let Err(e) = f(ctx, a).await {
             eprintln!("Error {:?}", e);

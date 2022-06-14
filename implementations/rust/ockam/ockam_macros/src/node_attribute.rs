@@ -58,9 +58,9 @@ fn output(cont: Container) -> TokenStream {
         // Assumes the target platform knows about main() functions
         quote! {
             fn main() #ret_type {
-                use #ockam_crate::{start_node_with_access_control, Executor};
+                use #ockam_crate::{NodeBuilder, Executor};
 
-                let (#ctx_mut #ctx_ident, mut executor) = start_node_with_access_control(#access_control) as (#ctx_path, Executor);
+                let (#ctx_mut #ctx_ident, mut executor) = NodeBuilder::with_access_control(#access_control).build() as (#ctx_path, Executor);
                 executor.execute(async move #body)#err_handling
             }
         }
@@ -68,9 +68,9 @@ fn output(cont: Container) -> TokenStream {
         // Assumes you will be defining the ockam node inside your own entry point
         quote! {
             fn ockam_async_main() #ret_type {
-                use #ockam_crate::{start_node_with_access_control, Executor};
+                use #ockam_crate::{NodeBuilder, Executor};
 
-                let (#ctx_mut #ctx_ident, mut executor) = start_node_with_access_control(#access_control) as (#ctx_path, Executor);
+                let (#ctx_mut #ctx_ident, mut executor) = NodeBuilder::with_access_control(#access_control).build() as (#ctx_path, Executor);
                 executor.execute(async move #body)#err_handling
             }
             // TODO: safe way to print the error before panicking?

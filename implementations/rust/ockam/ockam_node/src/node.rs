@@ -10,52 +10,79 @@ impl ockam_core::Worker for NullWorker {
     type Message = (); // This message type is never used
 }
 
-/// Start a node with [`AllowAll`] access control
-pub fn start_node() -> (Context, Executor) {
-    setup_tracing();
-    start_node_with_access_control(AllowAll)
-}
-
-/// Start a node with [`AllowAll`] access control and no logging
-pub fn start_node_without_logging() -> (Context, Executor) {
-    start_node_without_logging_with_access_control(AllowAll)
-}
-
-/// Start a node with the given access control
-pub fn start_node_with_access_control<AC>(access_control: AC) -> (Context, Executor)
+/// Start a node with a custom setup configuration
+///
+/// The `start_node()` function wraps this type and simply calls
+/// `NodeBuilder::default()`.  Varying use-cases should use the
+/// builder API to customise the underlying node that is created.
+pub struct NodeBuilder<AC>
 where
     AC: AccessControl,
 {
-    info!(
-        "Initializing ockam node with access control: {:?}",
-        access_control
-    );
-
-    setup_tracing();
-    start_node_without_logging_with_access_control(access_control)
+    access_control: AC,
+    logging: bool,
 }
 
-/// Start a node but without logging
-pub fn start_node_without_logging_with_access_control<AC>(access_control: AC) -> (Context, Executor)
+impl NodeBuilder<AllowAll> {
+    /// Create a node with "AllowAll" access control
+    pub fn without_access_control() -> Self {
+        Self {
+            access_control: AllowAll,
+            logging: true,
+        }
+    }
+}
+
+impl<AC> NodeBuilder<AC>
 where
     AC: AccessControl,
 {
-    let mut exe = Executor::new();
-    let addr: Address = "app".into();
+    /// Create a node with custom access control
+    pub fn with_access_control(access_control: AC) -> Self {
+        Self {
+            access_control,
+            logging: true,
+        }
+    }
 
-    // The root application worker needs a mailbox and relay to accept
-    // messages from workers, and to buffer incoming transcoded data.
-    let (ctx, sender, _) = Context::new(
-        exe.runtime(),
-        exe.sender(),
-        Mailboxes::new(Mailbox::new(addr, Arc::new(access_control)), vec![]),
-        None,
-    );
+    /// Disable logging on this node
+    pub fn no_logging(self) -> Self {
+        Self {
+            logging: false,
+            ..self
+        }
+    }
 
-    // Register this mailbox handle with the executor
-    exe.initialize_system("app", sender);
+    /// Consume this builder and yield a new Ockam Node
+    #[inline]
+    pub fn build(self) -> (Context, Executor) {
+        if self.logging {
+            setup_tracing();
+        }
 
-    (ctx, exe)
+        info!(
+            "Initializing ockam node with access control: {:?}",
+            self.access_control
+        );
+
+        let mut exe = Executor::new();
+        let addr: Address = "app".into();
+
+        // The root application worker needs a mailbox and relay to accept
+        // messages from workers, and to buffer incoming transcoded data.
+        let (ctx, sender, _) = Context::new(
+            exe.runtime(),
+            exe.sender(),
+            Mailboxes::new(Mailbox::new(addr, Arc::new(self.access_control)), vec![]),
+            None,
+        );
+
+        // Register this mailbox handle with the executor
+        exe.initialize_system("app", sender);
+
+        // Then return the root context and executor
+        (ctx, exe)
+    }
 }
 
 /// Utility to setup tracing-subscriber from the environment.

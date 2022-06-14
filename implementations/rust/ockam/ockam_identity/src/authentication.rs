@@ -242,7 +242,7 @@ mod test {
 
     #[test]
     fn authentication_tests() {
-        let (mut ctx, mut exe) = ockam_node::start_node();
+        let (mut ctx, mut exe) = ockam_node::NodeBuilder::without_access_control().build();
         exe.execute(async move {
             let mut results = Vec::new();
 

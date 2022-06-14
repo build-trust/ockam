@@ -2,7 +2,7 @@ use anyhow::Context;
 use anyhow::Result;
 use clap::Args;
 use identity::load_identity;
-use ockam::identity::IdentityIdentifier;
+use ockam::{identity::IdentityIdentifier, NodeBuilder};
 use std::collections::BTreeSet;
 use storage::{ensure_identity_exists, get_ockam_dir};
 
@@ -142,7 +142,7 @@ where
     F: FnOnce(A, ockam::Context) -> Fut + Send + Sync + 'static,
     Fut: core::future::Future<Output = anyhow::Result<()>> + Send + 'static,
 {
-    let (ctx, mut executor) = ockam::start_node();
+    let (ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
     let res = executor.execute(async move {
         if let Err(e) = f(arg, ctx).await {
             print_error_and_exit(verbose, e);

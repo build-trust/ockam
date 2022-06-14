@@ -12,7 +12,7 @@ async fn test(ctx: Context) -> Result<()> {
 }
 
 fn main() {
-    let (ctx, mut exec) = ockam_node::start_node();
+    let (ctx, mut exec) = ockam_node::NodeBuilder::without_access_control().build();
     exec.execute(async move { test(ctx).await })
         .unwrap()
         .unwrap();
