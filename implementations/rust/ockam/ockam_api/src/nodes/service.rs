@@ -1,8 +1,11 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
-use core::convert::Infallible;
-
-use minicbor::{encode::Write, Decoder};
+use super::{
+    iolets::{IoletList, IoletStatus},
+    types::{CreateTransport, DeleteTransport},
+};
+use crate::error::ApiError;
+use crate::{nodes::types::*, Method, Request, Response, ResponseBuilder, Status};
 
 use ockam::remote::RemoteForwarder;
 use ockam::{Address, Context, Result, Routed, TcpTransport, Worker};
@@ -13,10 +16,16 @@ use ockam_identity::{Identity, TrustEveryonePolicy};
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
 
-use crate::error::ApiError;
-use crate::{nodes::types::*, Method, Request, Response, ResponseBuilder, Status};
+use core::convert::Infallible;
+use minicbor::{encode::Write, Decoder};
 
-use super::types::{CreateTransport, DeleteTransport};
+type Alias = String;
+
+/// Generate a new alias for some user created extension
+#[inline]
+fn random_alias() -> String {
+    Address::random_local().without_type().to_owned()
+}
 
 // TODO: Move to multiaddr implementation
 fn invalid_multiaddr_error() -> ockam_core::Error {
@@ -31,9 +40,10 @@ fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Error {
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeMan {
     node_name: String,
-    api_transport_id: Address,
-    transports: BTreeMap<Address, (TransportType, TransportMode, String)>,
+    api_transport_id: Alias,
+    transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
+    iolets: BTreeMap<(Alias, IoletType), String>,
 }
 
 impl NodeMan {
@@ -43,8 +53,8 @@ impl NodeMan {
         api_transport: (TransportType, TransportMode, String),
         tcp_transport: TcpTransport,
     ) -> Self {
-        let api_transport_id = Address::random_local();
-
+        let api_transport_id = random_alias();
+        let iolets = BTreeMap::new();
         let mut transports = BTreeMap::new();
         transports.insert(api_transport_id.clone(), api_transport);
 
@@ -53,17 +63,19 @@ impl NodeMan {
             api_transport_id,
             transports,
             tcp_transport,
+            iolets,
         }
     }
 }
 
 impl NodeMan {
+    //////// Transports API ////////
+
+    // FIXME: return a ResponseBuilder here too!
     fn get_transports(&self) -> Vec<TransportStatus<'_>> {
         self.transports
             .iter()
-            .map(|(tid, (tt, tm, addr))| {
-                TransportStatus::new(*tt, *tm, addr.clone(), tid.without_type().to_string())
-            })
+            .map(|(tid, (tt, tm, addr))| TransportStatus::new(*tt, *tm, addr, tid))
             .collect()
     }
 
@@ -98,14 +110,9 @@ impl NodeMan {
 
         let response = match res {
             Ok(_) => {
-                let tid = Address::random_local();
+                let tid = random_alias();
                 self.transports.insert(tid.clone(), (tt, tm, addr.clone()));
-                Response::ok(req.id()).body(TransportStatus::new(
-                    tt,
-                    tm,
-                    addr,
-                    tid.without_type().to_string(),
-                ))
+                Response::ok(req.id()).body(TransportStatus::new(tt, tm, addr, tid))
             }
             Err(msg) => Response::bad_request(req.id()).body(TransportStatus::new(
                 tt,
@@ -126,7 +133,7 @@ impl NodeMan {
         let body: DeleteTransport = dec.decode()?;
         info!("Handling request to delete transport: {}", body.tid);
 
-        let tid: Address = format!("0#{}", body.tid).into();
+        let tid: Alias = body.tid.into();
 
         if self.api_transport_id == tid && !body.force {
             warn!("User requested to delete the API transport without providing force OP flag...");
@@ -147,6 +154,8 @@ impl NodeMan {
         }
     }
 
+    //////// Forwarder API ////////
+    
     async fn create_forwarder<W>(
         &mut self,
         ctx: &mut Context,
@@ -184,6 +193,8 @@ impl NodeMan {
         Ok(())
     }
 
+    //////// Secure channel API ////////
+    
     async fn create_secure_channel(
         &mut self,
         ctx: &Context,
@@ -244,6 +255,43 @@ impl NodeMan {
         Ok(response)
     }
 
+    //////// Inlet and Outlet portal API ////////
+
+    fn get_iolets(&self, req: &Request<'_>) -> ResponseBuilder<IoletList<'_>> {
+        Response::ok(req.id()).body(IoletList::new(
+            self.iolets
+                .iter()
+                .map(|((alias, tt), addr)| IoletStatus::new(*tt, addr, alias))
+                .collect(),
+        ))
+    }
+
+    async fn create_iolet(
+        &mut self,
+        _ctx: &mut Context,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<IoletStatus<'_>>> {
+        let CreateIolet {
+            addr, alias, tt, ..
+        } = dec.decode()?;
+        let addr = addr.to_string();
+        let alias = alias.map(|a| a.into()).unwrap_or_else(random_alias);
+
+        match tt {
+            IoletType::Inlet => {
+                info!("Handling request to create inlet portal");
+            }
+            IoletType::Outlet => {
+                info!("Handling request to create outlet portal");
+            }
+        }
+
+        Ok(Response::ok(req.id()).body(IoletStatus::new(tt, addr, alias)))
+    }
+
+    //////// Request matching and response handling ////////
+
     async fn handle_request<W>(
         &mut self,
         ctx: &mut Context,
@@ -271,7 +319,9 @@ impl NodeMan {
         };
 
         match (method, path) {
-            // == Get information about this node
+            // ==*== Basic node information ==*==
+
+            // TODO: create, delete, destroy remote nodes
             (Get, "/node") => Response::ok(req.id())
                 .body(NodeStatus::new(
                     self.node_name.as_str(),
@@ -281,15 +331,17 @@ impl NodeMan {
                     self.transports.len() as u32,
                 ))
                 .encode(enc)?,
-            // == Get all transports
+
+            // ==*== Transports ==*==
+
+            // TODO: Get all transports
             (Get, "/node/transport") => Response::ok(req.id())
                 .body(TransportList::new(self.get_transports()))
                 .encode(enc)?,
-            // TODO: Get all transports
-            // == Create a new transport
             (Post, "/node/transport") => self.add_transport(req, dec).await?.encode(enc)?,
             (Delete, "/node/transport") => self.delete_transport(req, dec).await?.encode(enc)?,
-            // == Secure channels
+
+            // ==*== Secure channels
             (Post, "/node/secure_channel") => self
                 .create_secure_channel(ctx, req, dec)
                 .await?
@@ -298,8 +350,16 @@ impl NodeMan {
                 .create_secure_channel_listener(ctx, req, dec)
                 .await?
                 .encode(enc)?,
-            // == Create a new forwarder
+
+            // ==*== Forwarder commands
             (Post, "/node/forwarder") => self.create_forwarder(ctx, req, dec, enc).await?,
+
+            // ==*== Inlets & Outlets ==*==
+            (Get, "/node/iolets") => self.get_iolets(req).encode(enc)?,
+            (Post, "/node/iolets") => self.create_iolet(ctx, req, dec).await?.encode(enc)?,
+            (Delete, "/node/iolets") => todo!(),
+
+            // ==*== Catch-all for Unimplemented APIs ==*==
             (method, path) => {
                 warn!("Called invalid endpoint: {} {}", method, path);
                 todo!()

@@ -192,7 +192,6 @@ pub struct TransportList<'a> {
     #[cfg(feature = "tag")]
     #[n(0)]
     tag: TypeTag<5212817>,
-    /// The type of transport to create
     #[n(1)] pub list: Vec<TransportStatus<'a>>
 }
 
