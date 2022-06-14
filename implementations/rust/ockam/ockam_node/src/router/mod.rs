@@ -124,7 +124,7 @@ impl Router {
 
         use NodeMessage::*;
         #[cfg(feature = "metrics")]
-        debug!(
+        trace!(
             "Current router alloc: {} addresses",
             self.map.get_addr_count()
         );
@@ -193,7 +193,7 @@ impl Router {
             }
 
             StopAck(addr) if self.state.running() => {
-                debug!("Received shutdown ACK for address {}", addr);
+                trace!("Received shutdown ACK for address {}", addr);
                 if let Some(rec) = self.map.internal.remove(&addr) {
                     rec.address_set().iter().for_each(|addr| {
                         self.map.addr_map.remove(addr);

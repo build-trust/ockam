@@ -61,7 +61,7 @@ pub struct Context {
 impl Drop for Context {
     fn drop(&mut self) {
         if let Some(sender) = self.async_drop_sender.take() {
-            debug!("De-allocated detached context {}", self.address());
+            trace!("De-allocated detached context {}", self.address());
             if let Err(e) = sender.send(self.address()) {
                 warn!("Encountered error while dropping detached context: {}", e);
             }
