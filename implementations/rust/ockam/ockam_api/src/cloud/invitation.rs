@@ -5,65 +5,48 @@ use std::borrow::Cow;
 use crate::TypeTag;
 
 #[derive(serde::Deserialize, Encode, Decode, Debug)]
+#[rustfmt::skip]
 #[cbor(index_only)]
 pub enum Scope {
-    #[n(0)]
-    SpaceScope,
-    #[n(1)]
-    ProjectScope,
+    #[n(0)] SpaceScope,
+    #[n(1)] ProjectScope,
 }
 
 #[derive(serde::Deserialize, Encode, Decode, Debug)]
+#[rustfmt::skip]
 #[cbor(index_only)]
 pub enum State {
-    #[n(0)]
-    Pending,
-    #[n(1)]
-    Accepted,
-    #[n(2)]
-    Rejected,
+    #[n(0)] Pending,
+    #[n(1)] Accepted,
+    #[n(2)] Rejected,
 }
 
 #[derive(Decode, Encode, Debug)]
+#[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateInvitation<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    tag: TypeTag<1886440>,
-
-    #[b(1)]
-    pub identity: Cow<'a, str>,
-    #[b(2)]
-    pub invitee: Cow<'a, str>,
-    #[b(3)]
-    pub scope: Scope,
-    #[b(4)]
-    pub space_id: Cow<'a, str>,
-    #[b(5)]
-    pub project_id: Option<Cow<'a, str>>,
+    #[n(0)] tag: TypeTag<1886440>,
+    #[b(1)] pub identity: Cow<'a, str>,
+    #[b(2)] pub invitee: Cow<'a, str>,
+    #[b(3)] pub scope: Scope,
+    #[b(4)] pub space_id: Cow<'a, str>,
+    #[b(5)] pub project_id: Option<Cow<'a, str>>,
 }
 
 #[derive(Decode, Encode, Debug)]
+#[rustfmt::skip]
 #[cbor(map)]
 pub struct Invitation<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    tag: TypeTag<7088378>,
-
-    #[b(1)]
-    pub id: Cow<'a, str>,
-    #[b(2)]
-    pub inviter: Cow<'a, str>,
-    #[b(3)]
-    pub invitee: Cow<'a, str>,
-    #[b(4)]
-    pub scope: Scope,
-    #[b(5)]
-    pub state: State,
-    #[b(6)]
-    pub space_id: Cow<'a, str>,
-    #[b(7)]
-    pub project_id: Option<Cow<'a, str>>,
+    #[n(0)] tag: TypeTag<7088378>,
+    #[b(1)] pub id: Cow<'a, str>,
+    #[b(2)] pub inviter: Cow<'a, str>,
+    #[b(3)] pub invitee: Cow<'a, str>,
+    #[b(4)] pub scope: Scope,
+    #[b(5)] pub state: State,
+    #[b(6)] pub space_id: Cow<'a, str>,
+    #[b(7)] pub project_id: Option<Cow<'a, str>>,
 }
 
 impl<'a> CreateInvitation<'a> {

@@ -7,34 +7,27 @@ use crate::TypeTag;
 
 #[derive(Decode, Debug)]
 #[cfg_attr(test, derive(Encode))]
+#[rustfmt::skip]
 #[cbor(map)]
 pub struct Project<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    pub tag: TypeTag<9056532>,
-    #[b(1)]
-    pub id: Cow<'a, str>, // TODO: str or Vec<u8>?
-    #[b(2)]
-    pub name: Cow<'a, str>,
-    #[b(3)]
-    pub space_name: Cow<'a, str>,
-    #[b(4)]
-    pub services: Vec<Cow<'a, str>>,
-    #[b(5)]
-    pub access_route: Vec<u8>,
+    #[n(0)] pub tag: TypeTag<9056532>,
+    #[b(1)] pub id: Cow<'a, str>,
+    #[b(2)] pub name: Cow<'a, str>,
+    #[b(3)] pub space_name: Cow<'a, str>,
+    #[b(4)] pub services: Vec<Cow<'a, str>>,
+    #[b(5)] pub access_route: Vec<u8>,
 }
 
 #[derive(Encode)]
 #[cfg_attr(test, derive(Decode))]
+#[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateProject<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    pub tag: TypeTag<8669570>,
-    #[b(1)]
-    pub name: Cow<'a, str>,
-    #[b(2)]
-    pub services: Vec<Cow<'a, str>>,
+    #[n(0)] pub tag: TypeTag<8669570>,
+    #[b(1)] pub name: Cow<'a, str>,
+    #[b(2)] pub services: Vec<Cow<'a, str>>,
 }
 
 impl<'a> CreateProject<'a> {

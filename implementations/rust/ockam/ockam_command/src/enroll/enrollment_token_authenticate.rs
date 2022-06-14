@@ -35,7 +35,7 @@ async fn authenticate(mut ctx: Context, command: EnrollCommand) -> anyhow::Resul
     let mut api_client = ockam_api::cloud::MessagingClient::new(route, &ctx).await?;
     api_client
         .authenticate_enrollment_token(
-            &identity.id.to_string(),
+            identity.id.to_string(),
             EnrollmentToken::new(Token(token.into())),
         )
         .await?;

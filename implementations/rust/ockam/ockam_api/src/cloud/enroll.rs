@@ -9,15 +9,13 @@ use crate::TypeTag;
 
 #[derive(Encode, Debug)]
 #[cfg_attr(test, derive(Clone))]
+#[rustfmt::skip]
 #[cbor(map)]
 pub struct RequestEnrollment<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    pub tag: TypeTag<5136510>,
-    #[n(1)]
-    pub identity: Identity<'a>,
-    #[n(2)]
-    pub token: Token<'a>,
+    #[n(0)] pub tag: TypeTag<5136510>,
+    #[n(1)] pub identity: Identity<'a>,
+    #[n(2)] pub token: Token<'a>,
 }
 
 impl<'a> RequestEnrollment<'a> {
@@ -100,17 +98,14 @@ pub mod auth0 {
 
     #[derive(Encode, Debug)]
     #[cfg_attr(test, derive(Decode, Clone))]
+    #[rustfmt::skip]
     #[cbor(map)]
     pub struct AuthenticateAuth0Token<'a> {
         #[cfg(feature = "tag")]
-        #[n(0)]
-        pub tag: TypeTag<1058055>,
-        #[n(1)]
-        pub identity: Identity<'a>,
-        #[n(2)]
-        pub token_type: TokenType,
-        #[n(3)]
-        pub access_token: Token<'a>,
+        #[n(0)] pub tag: TypeTag<1058055>,
+        #[n(1)] pub identity: Identity<'a>,
+        #[n(2)] pub token_type: TokenType,
+        #[n(3)] pub access_token: Token<'a>,
     }
 
     impl<'a> AuthenticateAuth0Token<'a> {
@@ -129,10 +124,10 @@ pub mod auth0 {
 
     #[derive(serde::Deserialize, Encode, Debug)]
     #[cfg_attr(test, derive(PartialEq, Decode, Clone))]
+    #[rustfmt::skip]
     #[cbor(index_only)]
     pub enum TokenType {
-        #[n(0)]
-        Bearer,
+        #[n(0)] Bearer,
     }
 }
 
@@ -167,13 +162,12 @@ pub mod enrollment_token {
 
     #[derive(Decode, Debug)]
     #[cfg_attr(test, derive(Encode, Clone))]
+    #[rustfmt::skip]
     #[cbor(map)]
     pub struct EnrollmentToken<'a> {
         #[cfg(feature = "tag")]
-        #[n(0)]
-        pub tag: TypeTag<8932763>,
-        #[n(1)]
-        pub token: Token<'a>,
+        #[n(0)] pub tag: TypeTag<8932763>,
+        #[n(1)] pub token: Token<'a>,
     }
 
     impl<'a> EnrollmentToken<'a> {
@@ -187,15 +181,13 @@ pub mod enrollment_token {
     }
     #[derive(Encode, Debug)]
     #[cfg_attr(test, derive(Decode, Clone))]
+    #[rustfmt::skip]
     #[cbor(map)]
     pub struct AuthenticateEnrollmentToken<'a> {
         #[cfg(feature = "tag")]
-        #[n(0)]
-        pub tag: TypeTag<9463780>,
-        #[n(1)]
-        pub identity: Identity<'a>,
-        #[n(2)]
-        pub token: Token<'a>,
+        #[n(0)] pub tag: TypeTag<9463780>,
+        #[n(1)] pub identity: Identity<'a>,
+        #[n(2)] pub token: Token<'a>,
     }
 
     impl<'a> AuthenticateEnrollmentToken<'a> {
@@ -318,7 +310,7 @@ mod tests {
             let token = EnrollmentToken::new(Token::arbitrary(&mut rng));
             let mut client = MessagingClient::new(server_route, ctx).await?;
             client
-                .authenticate_enrollment_token(&identifier, token)
+                .authenticate_enrollment_token(identifier, token)
                 .await?;
 
             ctx.stop().await
