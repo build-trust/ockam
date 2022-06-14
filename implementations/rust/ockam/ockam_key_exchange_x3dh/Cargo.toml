@@ -43,4 +43,4 @@ hex = { version = "0.4", default-features = false }
 
 [dev-dependencies]
 ockam_vault = { path = "../ockam_vault", version = "^0.50.0" }
-ockam_node = { path = "../ockam_node", version = "^0.57.0" }
+ockam_node = { path = "../ockam_node", version = "^0.58.0" }
