@@ -2286,7 +2286,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_executor"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "crossbeam-queue",
  "futures 0.3.21",
