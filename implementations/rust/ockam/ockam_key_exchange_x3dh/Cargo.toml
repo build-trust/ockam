@@ -42,5 +42,5 @@ zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 hex = { version = "0.4", default-features = false }
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", version = "^0.50.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.51.0" }
 ockam_node = { path = "../ockam_node", version = "^0.58.0" }

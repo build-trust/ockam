@@ -47,7 +47,7 @@ default-features = false
 features         = ["no_std", "alloc"]
 
 [dependencies.ockam_vault]
-version          = "0.50.0"
+version          = "0.51.0"
 path             = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
