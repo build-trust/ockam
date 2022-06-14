@@ -7,26 +7,23 @@ use crate::TypeTag;
 
 #[derive(Decode, Debug)]
 #[cfg_attr(test, derive(Encode))]
+#[rustfmt::skip]
 #[cbor(map)]
 pub struct Space<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    pub tag: TypeTag<7574645>,
-    #[b(1)]
-    pub id: Cow<'a, str>, // TODO: str or Vec<u8>?
-    #[b(2)]
-    pub name: Cow<'a, str>,
+    #[n(0)] pub tag: TypeTag<7574645>,
+    #[b(1)] pub id: Cow<'a, str>,
+    #[b(2)] pub name: Cow<'a, str>,
 }
 
 #[derive(Encode)]
 #[cfg_attr(test, derive(Decode))]
+#[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSpace<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    pub tag: TypeTag<3888657>,
-    #[b(1)]
-    pub name: Cow<'a, str>,
+    #[n(0)] pub tag: TypeTag<3888657>,
+    #[b(1)] pub name: Cow<'a, str>,
 }
 
 impl<'a> CreateSpace<'a> {
