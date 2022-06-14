@@ -5,6 +5,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{self, Address, Route};
 use ockam_node::Context;
 
+use crate::auth::types::Attributes;
 use crate::cloud::enroll::{auth0::*, enrollment_token::*, *};
 use crate::cloud::invitation::{CreateInvitation, Invitation};
 use crate::cloud::project::{CreateProject, Project};
@@ -58,8 +59,8 @@ impl MessagingClient {
     /// Generates a token that will be associated to the passed attributes.
     pub async fn generate_enrollment_token<'a>(
         &mut self,
-        identifier: &str,
-        attributes: &[TokenAttribute<'a>],
+        identifier: String,
+        attributes: Attributes<'a>,
     ) -> ockam_core::Result<EnrollmentToken<'static>> {
         let target = "ockam_api::cloud::generate_enrollment_token";
         let label = "generate_enrollment_token";
@@ -71,7 +72,7 @@ impl MessagingClient {
             .modify()
             .append("enrollment_token_authenticator")
             .into();
-        let body = RequestEnrollmentToken::new(identity.clone(), attributes);
+        let body = RequestEnrollmentToken::new(identity, attributes);
         let req = Request::post("v0/").body(body);
         self.buf = self.request(target, label, route, &req).await?;
 
