@@ -23,7 +23,6 @@ permissions:
 
 jobs:
   publish_crates:
-    needs: bump_crates
     runs-on: ubuntu-20.04
     environment: release
     container:
