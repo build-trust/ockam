@@ -68,3 +68,41 @@ For a manual release to be done, we should
 - Generate Changelogs
 - Publish Crates
 - Tag Crates
+
+## CI Release
+
+Ockam release can also be done over CI either manually using the provided workflows, or automatically using the `release.sh` script. Release consists of
+
+- Crate Bump
+- Crates IO Release
+- Binary Release
+- Homebrew Repo Bump
+- Terraform Repo Bump
+- Terraform Binary Release
+
+To release, we call the script also indicating the Github username of the executor
+
+```bash
+GITHUB_USERNAME=metaclips release.sh
+```
+
+Indicating username ensures we only watch workflows that are created by the executor. The release script also allows for modifications provided by the `bump` and `publish` scripts, for example to create a release that uses a `RELEASE_VERSION` different from the default (minor)
+
+```bash
+RELEASE_VERSION=major GITHUB_USERNAME=metaclips release.sh
+```
+
+We can skip steps during a release by defining variable below as `true`
+- SKIP_OCKAM_BUMP - Skips Ockam bump
+- SKIP_CRATES_IO_PUBLISH - Skips crates.io publish
+- SKIP_OCKAM_BINARY_RELEASE - Skips binary release
+- SKIP_HOMEBREW_BUMP - Skips Homebrew version bump
+- SKIP_TERRAFORM_BUMP - Skips Terraform version bump
+- SKIP_TERRAFORM_BINARY_RELEASE - Skips Terraform binary release
+
+To skip Ockam bump
+```bash
+SKIP_OCKAM_BUMP=true GITHUB_USERNAME=metaclips release.sh
+```
+
+The release script can be called from any path.

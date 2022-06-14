@@ -1,0 +1,95 @@
+name: Crate Bump
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_tag:
+        description: Git Tag To Release From. Last Git Tag Is Used If Omitted
+        required: false
+      modified_release:
+        description: Crates That Are To Follow A Different Release Version
+        required: false
+      release_version:
+        description: Release Version
+        type: choice
+        default: minor
+        options:
+        - major
+        - minor
+        - patch
+      bumped_dep_crates_version:
+        description: Crates That Are Bumped Due To Being Transitive Deps
+        type: choice
+        default: minor
+        options:
+        - major
+        - minor
+        - patch
+
+permissions:
+  # Contents permission allows us write to this repository.
+  contents: write
+  # Pull request write ability
+  pull-requests: write
+
+jobs:
+  bump_crates:
+    name: Bump Crate
+    runs-on: ubuntu-20.04
+    environment: release
+    container:
+      image: ghcr.io/build-trust/ockam-builder@sha256:a04b6a0aa01a93ba9a5c67392872893b261772dedfcd58f72a1addacf7535c09
+    steps:
+      - name: Checkout Ockam
+        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+        with:
+          fetch-depth: 0
+
+      - name: Set Branch Name
+        id: branch
+        run: echo "::set-output name=name::release_$(date +'%d-%m-%Y')"
+
+      - name: Checkout To New Release Branch
+        run: git checkout -B ${{ steps.branch.outputs.name }}
+
+      - name: Import GPG key
+        id: import_gpg
+        uses: hashicorp/ghaction-import-gpg@78437f97569a473e42b227be84d4084c2dfb49ba
+        env:
+          GPG_PRIVATE_KEY: '${{ secrets.GPG_PRIVATE_KEY }}'
+          PASSPHRASE: '${{ secrets.GPG_PASSPHRASE }}'
+
+      - name: Add GPG Key
+        run: |
+          git config --global user.email "${{ secrets.GPG_EMAIL }}"
+          git config --global user.name "${{ secrets.GPG_USER_NAME }}"
+          git config --global user.signingkey "${{ steps.import_gpg.outputs.fingerprint }}"
+
+      - name: Bump Ockam
+        shell: bash
+        env:
+          RELEASE_VERSION: '${{ github.event.inputs.release_version }}'
+          MODIFIED_RELEASE: '${{ github.event.inputs.modified_release }}'
+          BUMPED_DEP_CRATES_VERSION: '${{ github.event.inputs.bumped_dep_crates_version }}'
+          GIT_TAG: '${{ github.event.inputs.git_tag }}'
+        run: bash -ex ./tools/scripts/release/crate-bump.sh
+
+      - name: Generate Changelogs
+        shell: bash
+        env:
+          GIT_TAG: '${{ github.event.inputs.git_tag }}'
+        run: bash -ex ./tools/scripts/release/changelog.sh
+
+      - name: Push Update
+        shell: bash
+        run: |
+          git add .
+          git commit -S -m "ci: add release changelogs"
+          git push --set-upstream origin ${{ steps.branch.outputs.name }}
+
+      - name: Create Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create --title "${{ steps.branch.outputs.name }}" --body "Ockam release"\
+            --base develop -H ${{ steps.branch.outputs.name }} -r mrinalwadhwa
