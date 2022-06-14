@@ -20,6 +20,12 @@ if [[ ! -z $GIT_TAG ]]; then
 fi
 
 for crate in $(ls "implementations/rust/ockam"); do
+    is_publish=$(tomlq package.publish -f implementations/rust/ockam/$crate/Cargo.toml)
+    if [[ is_publish == false ]]; then
+        echo "$crate indicate as not-publish"
+        continue
+    fi
+
     if git diff $last_git_tag --quiet --name-status -- implementations/rust/ockam/$crate/src; then
         git diff $last_git_tag --quiet --name-status -- implementations/rust/ockam/$crate/Cargo.toml || updated_crates="$updated_crates $crate"
     else

@@ -1,0 +1,45 @@
+name: Crates Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_tag:
+        description: Git Tag To Release From. Last Git Tag Is Used If Omitted
+        required: false
+      exclude_crates:
+        description: Exclude Specific Crates From Being Published
+        required: false
+      recent_failure:
+        description: Indicate A Recent Failure
+        type: choice
+        default: false
+        options:
+        - false
+        - true
+
+permissions:
+  # Contents permission allows us read this repository.
+  contents: read
+
+jobs:
+  publish_crates:
+    needs: bump_crates
+    runs-on: ubuntu-20.04
+    environment: release
+    container:
+      image: ghcr.io/build-trust/ockam-builder@sha256:a04b6a0aa01a93ba9a5c67392872893b261772dedfcd58f72a1addacf7535c09
+    steps:
+      - name: Checkout Ockam
+        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+        with:
+          fetch-depth: 0
+
+      - name: Publish Ockam Crates
+        shell: bash
+        env:
+          GIT_TAG: '${{ github.event.inputs.git_tag }}'
+          PUBLISH_TOKEN: '${{ secrets.CRATES_IO_PUBLISH_TOKEN }}'
+          RECENT_FAILURE: '${{ github.event.inputs.recent_failure }}'
+          EXCLUDE_CRATES: '${{ github.event.inputs.exclude_crates }}'
+        run: |
+          bash -ex ./tools/scripts/release/crate-publish.sh

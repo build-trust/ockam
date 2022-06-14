@@ -1,7 +1,0 @@
-[dep-ws-path-vers]
-match=':[[crate]] = {:[_]path = ":[path]", version = ":[version]":[rest]:[~\s*]}'
-rewrite=':[crate] = { path = ":[path]", version = ":[version]":[rest] }'
-
-[dep-ws-path-vers-opt]
-match=':[[crate]] = {:[_]path = ":[path]", version = ":[version]", optional = :[opt]:[~\s*]}'
-rewrite=':[crate] = { path = ":[path]", version = ":[version]", optional = :[opt] }'

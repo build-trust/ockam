@@ -1,11 +1,11 @@
-name: Release Automation
+name: Binary Release
 
 on:
   workflow_dispatch:
     inputs:
-      commit_sha:
-        description: Commit SHA to create release
-        required: true
+      git_tag:
+        description: Git Tag To Release From. Last Git Tag Is Used If Omitted
+        required: false
 
 permissions:
   # Contents permission allows us write to this repository.
@@ -23,12 +23,13 @@ jobs:
       - name: Checkout Ockam
         uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
         with:
-          ref: ${{ github.event.inputs.commit_sha }}
           fetch-depth: 0
 
       - name: Get Release Text
         shell: bash
         id: release_version
+        env:
+          GIT_TAG: '${{ github.event.inputs.git_tag }}'
         run: |
           cargo install tomlq
           set -x
@@ -38,8 +39,95 @@ jobs:
           ockam_version=$(eval "tomlq package.version -f implementations/rust/ockam/ockam/Cargo.toml")
           name=$(eval "tomlq package.name -f implementations/rust/ockam/ockam/Cargo.toml")
 
-          text="- \`$name $ockam_version\` ([Documentation](https://docs.rs/$name/$ockam_version/$name/), \
-            [CHANGELOG](https://github.com/build-trust/ockam/blob/ockam_v$ockam_version/implementations/rust/ockam/$name/CHANGELOG.md))";
+          text="Ockam $ockam_version"
+
+
+          text="$text
+
+          # Homebrew
+
+          To install this release using Homebrew:
+
+          \`\`\`bash
+          $ brew tap build-trust/ockam
+          $ brew install ockam
+          \`\`\`"
+
+          # Install Docker image
+          text="$text
+
+          # Docker
+
+          To use the Docker OCI package:
+
+          \`\`\`bash
+          docker pull ghcr.io/build-trust/ockam:$ockam_version
+          \`\`\`"
+
+          text="$text
+
+          # Precompiled Binaries
+
+          \`\`\`bash
+          # download sha256sums.txt
+          curl --proto \'=https\' --tlsv1.2 -sSfL -O \
+            https://github.com/build-trust/ockam/releases/download/ockam_v${ockam_version}/sha256sums.txt
+
+          # download sha256sums.txt.sig
+          curl --proto \'=https\' --tlsv1.2 -sSfL -O \
+            https://github.com/build-trust/ockam/releases/download/ockam_v${ockam_version}/sha256sums.txt.sig
+
+          # download our release public key
+          curl --proto \'=https\' --tlsv1.2 -sSfL -o ockam.pub \
+            https://raw.githubusercontent.com/build-trust/ockam/develop/tools/docker/cosign.pub
+
+          # verify signatures
+          cosign verify-blob --key ockam.pub --signature sha256sums.txt.sig sha256sums.txt
+
+          # download ockam command binary for your architecture
+          curl --proto \'=https\' --tlsv1.2 -sSfL -O \
+            https://github.com/build-trust/ockam/releases/download/ockam_v${ockam_version}/ockam.x86_64-unknown-linux-gnu
+
+          # verify that the sha256 hash of the downloaded binary is the same as
+          # the corresponding hash mentioned in sha256sums.txt
+          cat sha256sums.txt | grep ockam.x86_64-unknown-linux-gnu | sha256sum -c
+
+          # rename the download binary and give it permission to execure
+          mv ockam.x86_64-unknown-linux-gnu ockam
+          chmod u+x ockam
+          \`\`\`"
+
+          text="$text
+
+          # Terraform
+
+          To install the [Ockam Terraform Provider](https://registry.terraform.io/providers/build-trust/ockam/$ockam_version), copy and paste this code into your Terraform configuration. Then, run \`terraform init\`.
+
+          \`\`\`
+          terraform {
+            required_providers {
+              ockam = {
+                source = \"build-trust/ockam\"
+                version = \"$ockam_version\"
+              }
+            }
+          }
+          provider "ockam" {}
+          \`\`\`"
+
+          text="$text
+
+          # Rust Crates
+
+          To use Ockam as a Rust library, add the following line to your Cargo.toml file:
+
+          \`\`\`
+          ockam = \"$ockam_version\"
+          \`\`\`
+
+          The following crates were published as part of this release:
+          - \`$name $ockam_version\` ([Documentation](https://docs.rs/$name/$ockam_version/$name/), \
+            [CHANGELOG](https://github.com/build-trust/ockam/blob/ockam_v$ockam_version/implementations/rust/ockam/$name/CHANGELOG.md))"
 
           for crate in ${updated_crates[@]}; do
             version=$(eval "tomlq package.version -f implementations/rust/ockam/$crate/Cargo.toml")
@@ -55,60 +143,21 @@ jobs:
             [CHANGELOG](https://github.com/build-trust/ockam/blob/ockam_v$ockam_version/implementations/rust/ockam/$name/CHANGELOG.md))";
           done
 
-          # Add information on homebrew package
-
-          text="$text
-
-          ---------------------------
-
-          To install this release using Homebrew
-
-          \`\`\`bash
-          $ brew tap build-trust/ockam
-          $ brew install ockam
-          \`\`\`
-
-          Ockam Homebrew repository can be found [here](https://github.com/build-trust/homebrew-ockam)"
-
-          text="$text
-
-          ----------------------
-
-          We provide a [Terraform implementation](https://github.com/build-trust/terraform-provider-ockam)"
-
-
-          text="$text
-
-          ----------------------
-
-          To use our docker package
-
-          \`\`\`bash
-          docker pull ghcr.io/build-trust/ockam:$ockam_version
-          \`\`\`
-
-          ------------------------
-
-          All binaries and SHASum file are signed using [cosign](https://github.com/sigstore/cosign) with our private key, our public key can be found in the tools/docker/cosign.pub which can be used to verify if a binary was indeed signed by Ockam.
-          To verify that a binary has been signed, download the .sig equivalent of the file and verify using the command below from the Ockam repository root directory
-
-          \`\`\`bash
-          $ cat tools/docker/cosign.pub
-          -----BEGIN PUBLIC KEY-----
-          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEt/XQMe16Vr/iIDr/ckKws8P3/x5W
-          lu6nc6jxKa/Ue5C6RI6xAbNlvzmpY/KjUU3Jie+3P9UG7TkkrsVRC7Zi0g==
-          -----END PUBLIC KEY-----
-
-          $ cosign verify-blob --key tools/docker/cosign.pub --signature ockam.aarch64-apple-darwin.sig ockam.aarch64-apple-darwin
-          Verified OK
-          \`\`\`
-          "
-
           echo "::set-output name=version::$ockam_version"
           echo "::set-output name=tag_name::ockam_v$ockam_version"
 
           echo "$text" > release_note.md
           cat release_note.md
+
+      - name: Import GPG key
+        id: import_gpg
+        uses: hashicorp/ghaction-import-gpg@78437f97569a473e42b227be84d4084c2dfb49ba
+        env:
+          GPG_PRIVATE_KEY: '${{ secrets.GPG_PRIVATE_KEY }}'
+          PASSPHRASE: '${{ secrets.GPG_PASSPHRASE }}'
+
+      - name: Ensure Tags Are Signed
+        run: git config --global commit.gpgsign true
 
       - name: Create GitHub release
         id: release_upload_url
