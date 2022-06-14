@@ -6,7 +6,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_transport_udp = "0.2.0"
+ockam_transport_udp = "0.3.0"
 ```
 
 ## Test
