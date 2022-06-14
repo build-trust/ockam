@@ -70,22 +70,22 @@ jobs:
 
           \`\`\`bash
           # download sha256sums.txt
-          curl --proto \'=https\' --tlsv1.2 -sSfL -O \
+          curl --proto '=https' --tlsv1.2 -sSfL -O \\
             https://github.com/build-trust/ockam/releases/download/ockam_v${ockam_version}/sha256sums.txt
 
           # download sha256sums.txt.sig
-          curl --proto \'=https\' --tlsv1.2 -sSfL -O \
+          curl --proto '=https' --tlsv1.2 -sSfL -O \\
             https://github.com/build-trust/ockam/releases/download/ockam_v${ockam_version}/sha256sums.txt.sig
 
           # download our release public key
-          curl --proto \'=https\' --tlsv1.2 -sSfL -o ockam.pub \
+          curl --proto '=https' --tlsv1.2 -sSfL -o ockam.pub \\
             https://raw.githubusercontent.com/build-trust/ockam/develop/tools/docker/cosign.pub
 
           # verify signatures
           cosign verify-blob --key ockam.pub --signature sha256sums.txt.sig sha256sums.txt
 
           # download ockam command binary for your architecture
-          curl --proto \'=https\' --tlsv1.2 -sSfL -O \
+          curl --proto '=https' --tlsv1.2 -sSfL -O \\
             https://github.com/build-trust/ockam/releases/download/ockam_v${ockam_version}/ockam.x86_64-unknown-linux-gnu
 
           # verify that the sha256 hash of the downloaded binary is the same as
