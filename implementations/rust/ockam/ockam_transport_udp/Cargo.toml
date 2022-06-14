@@ -30,7 +30,7 @@ alloc = []
 [dependencies]
 bytes = "1.1.0"
 futures-util = "0.3"
-ockam_core = { path = "../ockam_core", version = "^0.55.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.56.0", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.57.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.28.0" }
 rand = "0.7"
