@@ -36,7 +36,7 @@ alloc = ["ockam_core/alloc", "ockam_key_exchange_core/alloc", "hex/alloc"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.56.0", default_features = false }
-ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.46.0", default_features = false }
+ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.47.0", default_features = false }
 arrayref = "0.3"
 zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 hex = { version = "0.4", default-features = false }
