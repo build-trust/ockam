@@ -137,7 +137,7 @@ mod tests {
     #[allow(non_snake_case)]
     #[test]
     fn full_flow__correct_credentials__keys_should_match() {
-        let (mut ctx, mut exec) = ockam_node::start_node();
+        let (mut ctx, mut exec) = ockam_node::NodeBuilder::without_access_control().build();
         exec.execute(async move {
             let vault = Vault::create();
 

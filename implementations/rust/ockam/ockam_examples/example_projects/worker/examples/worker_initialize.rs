@@ -14,7 +14,7 @@ impl Worker for Nothing {
 }
 
 fn main() {
-    let (mut app, mut exe) = ockam::start_node();
+    let (mut app, mut exe) = ockam::NodeBuilder::without_access_control().build();
 
     exe.execute(async move {
         app.start_worker("io.ockam.nothing", Nothing).await.unwrap();

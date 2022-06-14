@@ -1,4 +1,4 @@
-use crate::{start_node, Context};
+use crate::{Context, NodeBuilder};
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::time::Duration;
 use ockam_core::compat::{
@@ -16,7 +16,7 @@ use tokio::time::sleep;
 #[test]
 fn start_and_shutdown_node__many_iterations__should_not_fail() {
     for _ in 0..100 {
-        let (mut ctx, mut executor) = start_node();
+        let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
         executor
             .execute(async move {
                 let mut child_ctx = ctx.new_detached("child").await?;
@@ -76,7 +76,7 @@ fn simple_worker__run_node_lifecycle__worker_lifecycle_should_be_full() {
     let initialize_was_called_clone = initialize_was_called.clone();
     let shutdown_was_called_clone = shutdown_was_called.clone();
 
-    let (mut ctx, mut executor) = start_node();
+    let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
     executor
         .execute(async move {
             let worker = SimpleWorker {
@@ -147,7 +147,7 @@ fn counting_processor__run_node_lifecycle__processor_lifecycle_should_be_full() 
     let shutdown_was_called_clone = shutdown_was_called.clone();
     let run_called_count_clone = run_called_count.clone();
 
-    let (mut ctx, mut executor) = start_node();
+    let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
     executor
         .execute(async move {
             let processor = CountingProcessor {
@@ -210,7 +210,7 @@ fn waiting_processor__shutdown__should_be_interrupted() {
     let initialize_was_called_clone = initialize_was_called.clone();
     let shutdown_was_called_clone = shutdown_was_called.clone();
 
-    let (mut ctx, mut executor) = start_node();
+    let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
     executor
         .execute(async move {
             let processor = WaitingProcessor {
@@ -288,7 +288,7 @@ fn waiting_processor__messaging__should_work() {
     let initialize_was_called_clone = initialize_was_called.clone();
     let shutdown_was_called_clone = shutdown_was_called.clone();
 
-    let (mut ctx, mut executor) = start_node();
+    let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
     executor
         .execute(async move {
             let processor = MessagingProcessor {
@@ -344,7 +344,7 @@ impl Worker for BadWorker {
 #[test]
 fn abort_blocked_shutdown() {
     // Create an executor
-    let (mut ctx, mut executor) = start_node();
+    let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
     executor
         .execute(async move {
             ctx.start_worker("bad", BadWorker).await?;
@@ -446,7 +446,7 @@ impl Worker for StopFromHandleMessageWorker {
 /// See https://github.com/build-trust/ockam/issues/2280
 #[test]
 fn worker_calls_stopworker_from_handlemessage() {
-    let (mut ctx, mut executor) = start_node();
+    let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
 
     let counter_a = Arc::new(AtomicU32::new(0));
     let counter_b = Arc::new(AtomicU32::new(0));
@@ -529,7 +529,7 @@ enum SendReceiveResponse {
 /// See https://github.com/build-trust/ockam/issues/2628.
 #[test]
 fn use_context_send_and_receive() {
-    let (mut ctx, mut executor) = start_node();
+    let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
     executor
         .execute(async move {
             ctx.start_worker("SendReceiveWorker", SendReceiveWorker)

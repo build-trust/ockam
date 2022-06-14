@@ -394,7 +394,7 @@ mod tests {
 
     #[test]
     fn prologue() {
-        let (mut ctx, mut exec) = ockam_node::start_node();
+        let (mut ctx, mut exec) = ockam_node::NodeBuilder::without_access_control().build();
         exec.execute(async move {
             let vault = Vault::create();
 
@@ -437,7 +437,7 @@ mod tests {
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
         const MSG_3_PAYLOAD: &str = "";
 
-        let (mut ctx, mut exec) = ockam_node::start_node();
+        let (mut ctx, mut exec) = ockam_node::NodeBuilder::without_access_control().build();
         exec.execute(async move {
             let mut vault = Vault::create();
 
@@ -528,7 +528,7 @@ mod tests {
         const MSG_3_PAYLOAD: &str = "746573745f6d73675f32";
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40232c55cd96d1350af861f6a04978f7d5e070c07602c6b84d25a331242a71c50ae31dd4c164267fd48bd2";
 
-        let (mut ctx, mut exec) = ockam_node::start_node();
+        let (mut ctx, mut exec) = ockam_node::NodeBuilder::without_access_control().build();
         exec.execute(async move {
             let mut vault = Vault::create();
 
@@ -568,7 +568,7 @@ mod tests {
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
         const MSG_3_PAYLOAD: &str = "";
 
-        let (mut ctx, mut exec) = ockam_node::start_node();
+        let (mut ctx, mut exec) = ockam_node::NodeBuilder::without_access_control().build();
         exec.execute(async move {
             let mut vault = Vault::create();
 

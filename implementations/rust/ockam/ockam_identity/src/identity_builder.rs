@@ -30,7 +30,7 @@ mod test {
 
     #[test]
     fn test_builder() {
-        let (mut ctx, mut ex) = ockam_node::start_node();
+        let (mut ctx, mut ex) = ockam_node::NodeBuilder::without_access_control().build();
         ex.execute(async move {
             let vault = Vault::create();
             let builder = IdentityBuilder::new(&ctx, &vault).await.unwrap();

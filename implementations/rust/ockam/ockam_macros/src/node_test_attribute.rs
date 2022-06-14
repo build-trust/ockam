@@ -26,8 +26,8 @@ use crate::internals::{ast, ast::FnVariable, check, ctx::Context, symbol::*};
 ///
 /// fn expand() {
 ///     use core::time::Duration;
-///     use ockam_node::{start_node, tokio::time::timeout};
-///     let (mut ctx, mut executor) = start_node();
+///     use ockam_node::{NodeBuilder, tokio::time::timeout};
+///     let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
 ///     executor
 ///         .execute(async move {
 ///             match timeout(Duration::from_millis(30000usize as u64), _expand(&mut ctx)).await {
@@ -78,9 +78,9 @@ fn output(mut cont: Container) -> TokenStream {
     cont.original_fn.block = parse2(quote! {
         {
             use core::time::Duration;
-            use #ockam_crate::{start_node, compat::tokio::time::timeout};
+            use #ockam_crate::{NodeBuilder, compat::tokio::time::timeout};
 
-            let (mut #ctx_ident, mut executor) = start_node();
+            let (mut #ctx_ident, mut executor) = NodeBuilder::without_access_control().build();
             executor
                 .execute(async move {
                     match timeout(Duration::from_millis(#timeout_ms), #test_fn_ident(&mut #ctx_ident)).await {

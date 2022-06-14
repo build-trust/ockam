@@ -80,7 +80,7 @@ impl<M: Message + Clone> DelayedEvent<M> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{start_node, Context, DelayedEvent};
+    use crate::{Context, DelayedEvent, NodeBuilder};
     use core::sync::atomic::Ordering;
     use core::time::Duration;
     use ockam_core::compat::{boxed::Box, string::ToString, sync::Arc};
@@ -112,7 +112,7 @@ mod tests {
     #[allow(non_snake_case)]
     #[test]
     fn scheduled_3_times__counting_worker__messages_count_matches() -> Result<()> {
-        let (mut ctx, mut executor) = start_node();
+        let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
         executor
             .execute(async move {
                 let msgs_count = Arc::new(AtomicI8::new(0));
@@ -155,7 +155,7 @@ mod tests {
     #[allow(non_snake_case)]
     #[test]
     fn rescheduling__counting_worker__aborts_existing() -> Result<()> {
-        let (mut ctx, mut executor) = start_node();
+        let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
         executor
             .execute(async move {
                 let msgs_count = Arc::new(AtomicI8::new(0));
@@ -196,7 +196,7 @@ mod tests {
     #[allow(non_snake_case)]
     #[test]
     fn cancel__counting_worker__aborts_existing() -> Result<()> {
-        let (mut ctx, mut executor) = start_node();
+        let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
         executor
             .execute(async move {
                 let msgs_count = Arc::new(AtomicI8::new(0));
@@ -236,7 +236,7 @@ mod tests {
     #[allow(non_snake_case)]
     #[test]
     fn drop__counting_worker__aborts_existing() -> Result<()> {
-        let (mut ctx, mut executor) = start_node();
+        let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
         executor
             .execute(async move {
                 let msgs_count = Arc::new(AtomicI8::new(0));
