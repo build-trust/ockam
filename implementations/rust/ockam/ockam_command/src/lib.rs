@@ -3,6 +3,7 @@
 mod authenticated;
 mod config;
 mod enroll;
+mod forwarder;
 mod invitation;
 mod message;
 mod node;
@@ -15,6 +16,7 @@ mod util;
 use authenticated::AuthenticatedCommand;
 use config::ConfigCommand;
 use enroll::EnrollCommand;
+use forwarder::ForwarderCommand;
 use invitation::InvitationCommand;
 use message::MessageCommand;
 use node::NodeCommand;
@@ -82,10 +84,6 @@ pub struct OckamCommand {
     )]
     verbose: u8,
 
-    /// Specify the API node name to communicate with
-    #[clap(global = true, long, short, default_value = "default")]
-    node: String,
-
     // if test_argument_parser is true, command arguments are checked
     // but the command is not executed.
     #[clap(global = true, long, hide = true)]
@@ -112,6 +110,10 @@ pub enum OckamSubcommand {
     /// Generate an enrollment token
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, name = "token")]
     GenerateEnrollmentToken(GenerateEnrollmentTokenCommand),
+
+    /// Create forwarders
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Forwarder(ForwarderCommand),
 
     /// Send or receive messages
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
@@ -177,18 +179,18 @@ pub enum OckamSubcommand {
 pub fn run() {
     let ockam_command: OckamCommand = OckamCommand::parse();
 
+    let verbose = ockam_command.verbose;
+    if !ockam_command.quiet {
+        setup_logging(verbose);
+    }
+    tracing::debug!("Parsed {:?}", ockam_command);
+
     // If test_argument_parser is true, command arguments are checked
     // but the command is not executed. This is useful to test arguments
     // without having to execute their logic.
     if ockam_command.test_argument_parser {
         return;
     }
-
-    let verbose = ockam_command.verbose;
-    if !ockam_command.quiet {
-        setup_logging(verbose);
-    }
-    tracing::debug!("Parsed {:?}", ockam_command);
 
     let mut cfg = OckamConfig::load();
 
@@ -199,6 +201,7 @@ pub fn run() {
         OckamSubcommand::GenerateEnrollmentToken(command) => {
             GenerateEnrollmentTokenCommand::run(command)
         }
+        OckamSubcommand::Forwarder(command) => ForwarderCommand::run(&mut cfg, command),
         OckamSubcommand::Message(command) => MessageCommand::run(command),
         OckamSubcommand::Node(command) => NodeCommand::run(&mut cfg, command),
         OckamSubcommand::Project(command) => ProjectCommand::run(command),

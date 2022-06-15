@@ -4,7 +4,7 @@ mod list;
 mod purge;
 mod show;
 
-use create::CreateCommand;
+pub(crate) use create::CreateCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
 use purge::PurgeCommand;

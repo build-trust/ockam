@@ -100,6 +100,11 @@ impl OckamConfig {
             .expect("failed to write config");
     }
 
+    /// Checks if node exists
+    pub fn has_node(&mut self, name: &str) -> bool {
+        self.nodes.contains_key(name)
+    }
+
     /// Add a new node to the configuration for future lookup
     pub fn create_node(&mut self, name: &str, port: u16, pid: i32) -> Result<(), ConfigError> {
         if self.nodes.contains_key(name) {

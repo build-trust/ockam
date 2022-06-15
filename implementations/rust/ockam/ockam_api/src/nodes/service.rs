@@ -1,17 +1,10 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
-use super::types::{CreateTransport, DeleteTransport};
-use crate::error::ApiError;
-use crate::nodes::secure_channel::{
-    CreateSecureChannelListenerRequest, CreateSecureChannelResponse,
-};
-use crate::nodes::types::CreateSecureChannelRequest;
-use crate::{
-    nodes::types::{NodeStatus, TransportList, TransportMode, TransportStatus, TransportType},
-    Method, Request, Response, ResponseBuilder,
-};
 use core::convert::Infallible;
+
 use minicbor::{encode::Write, Decoder};
+
+use ockam::remote::RemoteForwarder;
 use ockam::{Address, Context, Result, Routed, TcpTransport, Worker};
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 use ockam_core::errcode::{Kind, Origin};
@@ -19,6 +12,11 @@ use ockam_identity::authenticated_storage::mem::InMemoryStorage;
 use ockam_identity::{Identity, TrustEveryonePolicy};
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
+
+use crate::error::ApiError;
+use crate::{nodes::types::*, Method, Request, Response, ResponseBuilder, Status};
+
+use super::types::{CreateTransport, DeleteTransport};
 
 // TODO: Move to multiaddr implementation
 fn invalid_multiaddr_error() -> ockam_core::Error {
@@ -149,6 +147,43 @@ impl NodeMan {
         }
     }
 
+    async fn create_forwarder<W>(
+        &mut self,
+        ctx: &mut Context,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+        enc: W,
+    ) -> Result<()>
+    where
+        W: Write<Error = Infallible>,
+    {
+        let CreateForwarder { address, alias, .. } = dec.decode()?;
+        let address = Address::from_string(address.to_string());
+        debug!(%address, ?alias, "Handling CreateForwarder request");
+        let forwarder = match alias {
+            Some(alias) => RemoteForwarder::create_static(ctx, address, alias.to_string()).await,
+            None => RemoteForwarder::create(ctx, address).await,
+        };
+        match forwarder {
+            Ok(info) => {
+                let b = ForwarderInfo::from(info);
+                debug!(
+                    forwarding_route = %b.forwarding_route(),
+                    remote_address = %b.remote_address(),
+                    "CreateForwarder request processed, sending back response"
+                );
+                Response::ok(req.id()).body(b).encode(enc)?;
+            }
+            Err(err) => {
+                error!(?err, "Failed to create forwarder");
+                Response::builder(req.id(), Status::InternalServerError)
+                    .body(err.to_string())
+                    .encode(enc)?;
+            }
+        };
+        Ok(())
+    }
+
     async fn create_secure_channel(
         &mut self,
         ctx: &Context,
@@ -254,6 +289,7 @@ impl NodeMan {
             // == Create a new transport
             (Post, "/node/transport") => self.add_transport(req, dec).await?.encode(enc)?,
             (Delete, "/node/transport") => self.delete_transport(req, dec).await?.encode(enc)?,
+            // == Secure channels
             (Post, "/node/secure_channel") => self
                 .create_secure_channel(ctx, req, dec)
                 .await?
@@ -262,6 +298,8 @@ impl NodeMan {
                 .create_secure_channel_listener(ctx, req, dec)
                 .await?
                 .encode(enc)?,
+            // == Create a new forwarder
+            (Post, "/node/forwarder") => self.create_forwarder(ctx, req, dec, enc).await?,
             (method, path) => {
                 warn!("Called invalid endpoint: {} {}", method, path);
                 todo!()
