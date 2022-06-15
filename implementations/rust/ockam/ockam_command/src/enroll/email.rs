@@ -38,7 +38,7 @@ fn read_user_input() -> anyhow::Result<String> {
 }
 
 async fn enroll(mut ctx: ockam::Context, args: (EnrollCommand, String)) -> anyhow::Result<()> {
-    let (_command, email) = args;
+    let (_cmd, email) = args;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).take(5);
     let res = Retry::spawn(retry_strategy, move || {

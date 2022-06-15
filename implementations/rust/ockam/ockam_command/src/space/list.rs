@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use clap::Args;
 
+use ockam::identity::IdentityTrait;
 use ockam::{Context, TcpTransport};
 use ockam_api::cloud::MessagingClient;
 use ockam_multiaddr::MultiAddr;
@@ -15,16 +16,8 @@ pub struct ListCommand {
     #[clap(hide = true, display_order = 1100, default_value = DEFAULT_CLOUD_ADDRESS)]
     address: MultiAddr,
 
-    #[clap(display_order = 1101, long)]
-    overwrite: bool,
-}
-
-impl<'a> From<&'a ListCommand> for IdentityOpts {
-    fn from(other: &'a ListCommand) -> Self {
-        Self {
-            overwrite: other.overwrite,
-        }
-    }
+    #[clap(flatten)]
+    identity_opts: IdentityOpts,
 }
 
 impl ListCommand {
@@ -37,12 +30,13 @@ async fn list(mut ctx: Context, cmd: ListCommand) -> anyhow::Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
     // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
-    let identity = load_or_create_identity(&IdentityOpts::from(&cmd), &ctx).await?;
+    let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
+    let identifier = identity.identifier().await?;
 
     let route =
         multiaddr_to_route(&cmd.address).ok_or_else(|| anyhow!("failed to parse address"))?;
     let mut api = MessagingClient::new(route, &ctx).await?;
-    let res = api.list_spaces(&identity.id.to_string()).await?;
+    let res = api.list_spaces(identifier.key_id()).await?;
     println!("{res:#?}");
 
     ctx.stop().await?;

@@ -220,7 +220,7 @@ pub fn run() {
             node_subcommand(verbose > 0, arg, old::cmd::identity::run)
         }
         OckamSubcommand::AddTrustedIdentity(arg) => exit_with_result(verbose > 0, add_trusted(arg)),
-        OckamSubcommand::PrintIdentity => exit_with_result(verbose > 0, print_identity()),
+        OckamSubcommand::PrintIdentity => node_subcommand(verbose > 0, (), print_identity),
         OckamSubcommand::PrintPath => exit_with_result(verbose > 0, print_ockam_dir()),
     }
 }

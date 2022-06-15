@@ -1,16 +1,17 @@
-mod accept;
-mod create;
-mod list;
-mod reject;
+use clap::{Args, Subcommand};
 
 use accept::AcceptCommand;
 use create::CreateCommand;
 use list::ListCommand;
+use ockam_multiaddr::MultiAddr;
 use reject::RejectCommand;
 
 use crate::HELP_TEMPLATE;
-use clap::{Args, Subcommand};
-use ockam_multiaddr::MultiAddr;
+
+mod accept;
+mod create;
+mod list;
+mod reject;
 
 #[derive(Clone, Debug, Args)]
 pub struct InvitationCommand {

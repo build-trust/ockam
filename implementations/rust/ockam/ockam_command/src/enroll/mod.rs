@@ -28,16 +28,16 @@ pub struct EnrollCommand {
     #[clap(display_order = 1002, long, default_value = "default")]
     identity: String,
 
-    #[clap(display_order = 1003, long)]
-    overwrite: bool,
-
     /// Authenticates an enrollment token
-    #[clap(display_order = 1004, long, group = "enroll_params")]
+    #[clap(display_order = 1003, long, group = "enroll_params")]
     token: Option<String>,
 
     /// Enroll using the Auth0 flow
     #[clap(display_order = 1004, long, group = "enroll_params")]
     auth0: bool,
+
+    #[clap(flatten)]
+    identity_opts: IdentityOpts,
 }
 
 impl EnrollCommand {
@@ -48,14 +48,6 @@ impl EnrollCommand {
             EnrollAuth0Command::run(command)
         } else {
             EnrollEmailCommand::run(command)
-        }
-    }
-}
-
-impl<'a> From<&'a EnrollCommand> for IdentityOpts {
-    fn from(other: &'a EnrollCommand) -> Self {
-        Self {
-            overwrite: other.overwrite,
         }
     }
 }

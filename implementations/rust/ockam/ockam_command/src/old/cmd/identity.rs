@@ -18,7 +18,7 @@ pub struct IdentityOpts {
 }
 
 pub async fn run(args: IdentityOpts, mut ctx: Context) -> anyhow::Result<()> {
-    create_identity(&args, &ctx).await?;
+    create_identity(&ctx, args.overwrite).await?;
     ctx.stop().await?;
     Ok(())
 }

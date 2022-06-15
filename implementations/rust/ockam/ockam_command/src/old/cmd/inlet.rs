@@ -1,13 +1,15 @@
-use crate::old::session::initiator::{SessionMaintainer, SessionManager};
-use crate::old::{identity, storage, OckamVault};
+use std::sync::Arc;
+use std::time::Duration;
+
 use clap::Args;
+
 use ockam::access_control::LocalOriginOnly;
 use ockam::{identity::*, route, Context, Result, TcpTransport, TCP};
 use ockam_core::access_control::{AccessControl, AnyAccessControl};
 use ockam_core::{Address, AsyncTryClone, Route};
-use ockam_vault::storage::FileStorage;
-use std::sync::Arc;
-use std::time::Duration;
+
+use crate::old::session::initiator::{SessionMaintainer, SessionManager};
+use crate::old::{identity, storage, OckamVault};
 
 #[derive(Clone, Debug, Args)]
 pub struct InletOpts {
@@ -98,23 +100,14 @@ impl SessionManager for InletSessionManager {
 
 pub async fn run(args: InletOpts, ctx: Context) -> anyhow::Result<()> {
     storage::ensure_identity_exists(true)?;
+
     let ockam_dir = storage::get_ockam_dir()?;
-
-    let vault_storage = FileStorage::create(
-        &ockam_dir.join("vault.json"),
-        &ockam_dir.join("vault.json.temp"),
-    )
-    .await?;
-    let vault = OckamVault::new(Some(Arc::new(vault_storage)));
-
-    let exported_id = identity::load_identity(&ockam_dir)?;
     let (policy, access_control) = storage::load_trust_policy(&ockam_dir)?;
-
     let access_control = Arc::new(AnyAccessControl::new(access_control, LocalOriginOnly));
 
     let tcp = TcpTransport::create(&ctx).await?;
-    let identity = Identity::import(&ctx, &vault, exported_id).await?;
 
+    let identity = identity::load_identity(&ctx, &ockam_dir).await?;
     let session_manager = InletSessionManager::new(
         args,
         tcp,
