@@ -1,7 +1,7 @@
 use ockam_core::access_control::AccessControl;
 use ockam_core::compat::{boxed::Box, net::SocketAddr};
 use ockam_core::{Address, AsyncTryClone, Result, Route};
-use ockam_node::Context;
+use ockam_node::{Context, WorkerBuilder};
 
 use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
 
@@ -204,12 +204,8 @@ impl TcpTransport {
     {
         let worker = TcpOutletListenWorker::new(peer.into());
 
-        // TODO all mailboxes get the same access_control?
-        //let mailboxes = Mailboxes::from_address_set(address.into().into(), access_control);
-
-        self.router_handle
-            .ctx()
-            .start_worker_with_access_control(address.into(), worker, access_control)
+        WorkerBuilder::with_access_control(access_control, address.into(), worker)
+            .start(self.router_handle.ctx())
             .await?;
 
         Ok(())

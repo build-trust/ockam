@@ -4,9 +4,9 @@ use crate::tokio::{self, runtime::Runtime, time::timeout};
 use crate::{
     error::*,
     parser,
-    relay::{CtrlSignal, ProcessorRelay, RelayMessage, WorkerRelay},
+    relay::{CtrlSignal, ProcessorRelay, RelayMessage},
     router::SenderPair,
-    Cancel, NodeMessage, ShutdownType,
+    Cancel, NodeMessage, ShutdownType, WorkerBuilder,
 };
 use core::{
     sync::atomic::{AtomicUsize, Ordering},
@@ -80,6 +80,16 @@ impl Context {
     /// Return runtime clone
     pub fn runtime(&self) -> Arc<Runtime> {
         self.rt.clone()
+    }
+
+    /// Return mailbox_count clone
+    pub(crate) fn mailbox_count(&self) -> Arc<AtomicUsize> {
+        self.mailbox_count.clone()
+    }
+
+    /// Return a reference to sender
+    pub(crate) fn sender(&self) -> &SmallSender<NodeMessage> {
+        &self.sender
     }
 
     /// Wait for the next message from the mailbox
@@ -249,6 +259,10 @@ impl Context {
     /// of your worker to complete you can use
     /// [`wait_for()`](Self::wait_for).
     ///
+    /// The worker will inherit its [`AccessControl`] from this
+    /// context. Use [`WorkerBuilder`] to start a worker with custom
+    /// access control.
+    ///
     /// ```rust
     /// use ockam_core::{Result, Worker, worker};
     /// use ockam_node::Context;
@@ -271,81 +285,9 @@ impl Context {
         NM: Message + Send + 'static,
         NW: Worker<Context = Context, Message = NM>,
     {
-        // Inherit access control from the current context's main mailbox
-        let mailboxes = Mailboxes::from_address_set(
-            address.into(),
-            self.mailboxes.main_mailbox().access_control().clone(),
-        );
-
-        self.start_worker_impl(mailboxes, worker).await
-    }
-
-    /// Start a worker that will apply the given access control to the
-    /// any incoming messages for the given address
-    pub async fn start_worker_with_access_control<A, NM, NW, AC>(
-        &self,
-        address: A,
-        worker: NW,
-        access_control: AC,
-    ) -> Result<()>
-    where
-        A: Into<Address>,
-        NM: Message + Send + 'static,
-        NW: Worker<Context = Context, Message = NM>,
-        AC: AccessControl,
-    {
-        let mailboxes = Mailboxes::main(address.into(), Arc::new(access_control));
-        self.start_worker_impl(mailboxes, worker).await
-    }
-
-    /// Start a worker with the given [`Mailboxes`]
-    ///
-    /// This is just a wrapper around the private `start_worker_impl`
-    /// call that allows specification of multiple access control for
-    /// multiple addresses. In the longer run this should probably be
-    /// unified with `start_worker_with_access_control` as well as a
-    /// decision about whether we want to expose the `Mailbox`
-    /// abstraction to higher-level API's at all.
-    pub async fn start_worker_with_mailboxes<NM, NW>(
-        &self,
-        mailboxes: Mailboxes,
-        worker: NW,
-    ) -> Result<()>
-    where
-        NM: Message + Send + 'static,
-        NW: Worker<Context = Context, Message = NM>,
-    {
-        self.start_worker_impl(mailboxes, worker).await
-    }
-
-    async fn start_worker_impl<NM, NW>(&self, mailboxes: Mailboxes, worker: NW) -> Result<()>
-    where
-        NM: Message + Send + 'static,
-        NW: Worker<Context = Context, Message = NM>,
-    {
-        let addresses = mailboxes.addresses();
-
-        // Pass it to the context
-        let (ctx, sender, ctrl_rx) =
-            Context::new(self.rt.clone(), self.sender.clone(), mailboxes, None);
-
-        // Then initialise the worker message relay
-        WorkerRelay::<NW, NM>::init(self.rt.as_ref(), worker, ctx, ctrl_rx);
-
-        // Send start request to router
-        let (msg, mut rx) =
-            NodeMessage::start_worker(addresses, sender, false, Arc::clone(&self.mailbox_count));
-        self.sender
-            .send(msg)
+        WorkerBuilder::with_inherited_access_control(self, address, worker)
+            .start(self)
             .await
-            .map_err(|e| Error::new(Origin::Node, Kind::Invalid, e))?;
-
-        // Wait for the actual return code
-        rx.recv()
-            .await
-            .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??;
-
-        Ok(())
     }
 
     /// Start a new processor instance at the given address set
