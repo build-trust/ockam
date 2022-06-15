@@ -3,8 +3,8 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use ockam::access_control::IdentityIdAccessControl;
 
+use ockam::access_control::IdentityIdAccessControl;
 use ockam::identity::*;
 
 fn config_home() -> Option<PathBuf> {

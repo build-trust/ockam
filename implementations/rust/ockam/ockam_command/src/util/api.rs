@@ -1,17 +1,9 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 
 use minicbor::Decoder;
-use ockam::Result;
-use ockam_api::nodes::types::{
-    CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
-};
-use ockam_api::{
-    nodes::types::{
-        CreateTransport, DeleteTransport, NodeStatus, TransportList, TransportMode,
-        TransportStatus, TransportType,
-    },
-    Method, Request, Response,
-};
+
+use ockam::{Error, Result};
+use ockam_api::{multiaddr_to_route, nodes::types::*, Method, Request, Response};
 
 ////////////// !== generators
 
@@ -53,6 +45,22 @@ pub(crate) fn delete_transport(cmd: &crate::transport::DeleteCommand) -> Result<
     let mut buf = vec![];
     Request::builder(Method::Delete, "/node/transport")
         .body(DeleteTransport::new(&cmd.id, cmd.force))
+        .encode(&mut buf)?;
+    Ok(buf)
+}
+
+/// Construct a request to create a forwarder
+pub(crate) fn create_forwarder(cmd: &crate::forwarder::CreateCommand) -> Result<Vec<u8>> {
+    let route = multiaddr_to_route(cmd.address()).ok_or_else(|| {
+        Error::new(
+            ockam::errcode::Origin::Other,
+            ockam::errcode::Kind::Invalid,
+            "failed to parse address",
+        )
+    })?;
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node/forwarder")
+        .body(CreateForwarder::new(route, cmd.alias()))
         .encode(&mut buf)?;
     Ok(buf)
 }
