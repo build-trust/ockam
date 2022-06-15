@@ -164,7 +164,7 @@ defmodule Ockam.Services.Provider do
 
   def parse_services_list(services) do
     services
-    |> String.split(",")
+    |> String.split(",", trim: true)
     |> Enum.map(fn service_name -> service_name |> String.trim() |> String.to_atom() end)
     |> parse_services_config()
   end
