@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use minicbor::bytes::ByteSlice;
 use minicbor::{Decode, Encode};
 
 #[cfg(feature = "tag")]
@@ -16,7 +17,7 @@ pub struct Project<'a> {
     #[b(2)] pub name: Cow<'a, str>,
     #[b(3)] pub space_name: Cow<'a, str>,
     #[b(4)] pub services: Vec<Cow<'a, str>>,
-    #[b(5)] pub access_route: Vec<u8>,
+    #[b(5)] pub access_route: &'a ByteSlice,
 }
 
 #[derive(Encode)]
@@ -166,7 +167,7 @@ mod tests {
                                 .iter()
                                 .map(|x| x.to_string().into())
                                 .collect(),
-                            access_route: vec![],
+                            access_route: b"route"[..].into(),
                         };
                         Response::ok(req.id()).body(&obj).encode(buf)?;
                         self.0.insert(obj.id.to_string(), obj);
