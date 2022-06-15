@@ -20,7 +20,7 @@ mod test {
     use core::sync::atomic::{AtomicU8, Ordering};
     use ockam_core::compat::sync::Arc;
     use ockam_core::{route, Any, Result, Route, Routed, Worker};
-    use ockam_node::Context;
+    use ockam_node::{Context, WorkerBuilder};
     use ockam_vault::Vault;
     use std::time::Duration;
     use tokio::time::sleep;
@@ -250,7 +250,8 @@ mod test {
         let bob = Identity::create(ctx, &vault).await?;
 
         let access_control = IdentityAccessControlBuilder::new_with_id(alice.identifier().await?);
-        ctx.start_worker_with_access_control("receiver", receiver, access_control)
+        WorkerBuilder::with_access_control(access_control, "receiver", receiver)
+            .start(ctx)
             .await?;
 
         bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
@@ -286,7 +287,8 @@ mod test {
         let bob = Identity::create(ctx, &vault).await?;
 
         let access_control = IdentityAccessControlBuilder::new_with_id(bob.identifier().await?);
-        ctx.start_worker_with_access_control("receiver", receiver, access_control)
+        WorkerBuilder::with_access_control(access_control, "receiver", receiver)
+            .start(ctx)
             .await?;
 
         bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
@@ -319,7 +321,8 @@ mod test {
         let access_control = IdentityAccessControlBuilder::new_with_id(
             "P79b26ba2ea5ad9b54abe5bebbcce7c446beda8c948afc0de293250090e5270b6".try_into()?,
         );
-        ctx.start_worker_with_access_control("receiver", receiver, access_control)
+        WorkerBuilder::with_access_control(access_control, "receiver", receiver)
+            .start(ctx)
             .await?;
 
         ctx.send(route!["receiver"], "Hello, Bob!".to_string())

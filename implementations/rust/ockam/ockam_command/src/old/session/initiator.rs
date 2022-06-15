@@ -1,7 +1,7 @@
 use crate::old::session::error::SessionManagementError;
 use crate::old::session::msg::{RequestId, SessionMsg};
 use ockam::access_control::{AccessControl, LocalOriginOnly};
-use ockam::{Address, Context, DelayedEvent, Result, Route, Routed, Worker};
+use ockam::{Address, Context, DelayedEvent, Result, Route, Routed, Worker, WorkerBuilder};
 use ockam_core::{Mailbox, Mailboxes};
 use std::sync::Arc;
 use std::time::Duration;
@@ -53,7 +53,9 @@ impl<S: SessionManager> SessionMaintainer<S> {
         let heartbeat_mailbox = Mailbox::new(heartbeat_addr, Arc::new(LocalOriginOnly));
         let mailboxes = Mailboxes::new(main_mailbox, vec![heartbeat_mailbox]);
 
-        ctx.start_worker_with_mailboxes(mailboxes, manager).await?;
+        WorkerBuilder::with_mailboxes(mailboxes, manager)
+            .start(ctx)
+            .await?;
 
         Ok(main_addr)
     }

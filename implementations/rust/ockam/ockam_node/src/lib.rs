@@ -53,6 +53,7 @@ mod node;
 mod parser;
 mod relay;
 mod router;
+mod worker_builder;
 
 pub use cancel::*;
 pub use context::*;
@@ -61,6 +62,7 @@ pub use error::*;
 pub use executor::*;
 pub use local_info::*;
 pub use messages::*;
+pub use worker_builder::WorkerBuilder;
 
 pub use node::{NodeBuilder, NullWorker};
 

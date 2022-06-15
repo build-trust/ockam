@@ -3,7 +3,7 @@
 
 use hello_ockam::Echoer;
 use ockam::access_control::{AllowedTransport, LocalOriginOnly};
-use ockam::{Context, Result, TcpTransport, TCP};
+use ockam::{Context, Result, TcpTransport, WorkerBuilder, TCP};
 
 #[ockam::node(access_control = "LocalOriginOnly")]
 async fn main(ctx: Context) -> Result<()> {
@@ -14,7 +14,8 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.listen("127.0.0.1:4000").await?;
 
     // Create an echoer worker
-    ctx.start_worker_with_access_control("echoer", Echoer, AllowedTransport::single(TCP))
+    WorkerBuilder::with_access_control(AllowedTransport::single(TCP), "echoer", Echoer)
+        .start(&ctx)
         .await?;
 
     // Don't call ctx.stop() here so this node runs forever.

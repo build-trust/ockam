@@ -28,7 +28,8 @@ async fn main(ctx: Context) -> Result<()> {
     let vault_address = vault.address();
 
     let access_control = IdentityAccessControlBuilder::new_with_any_id();
-    ctx.start_worker_with_access_control(ECHOER, Echoer, access_control)
+    WorkerBuilder::with_access_control(access_control, ECHOER, Echoer)
+        .start(ctx)
         .await?;
 
     let mut bob = Identity::create(&ctx, &vault_address).await?;
