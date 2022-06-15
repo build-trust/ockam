@@ -61,9 +61,12 @@ defmodule Ockam.Transport.TCP.Client do
   @impl true
   def handle_info({:tcp, socket, data}, %{socket: socket} = state) do
     ## TODO: send/receive message in multiple TCP packets
-    case Wire.decode(data) do
+    case Wire.decode(data, :tcp) do
       {:ok, message} ->
-        forwarded_message = Message.trace(message, state.address)
+        forwarded_message =
+          message
+          |> Message.trace(state.address)
+
         Ockam.Router.route(forwarded_message)
 
       {:error, %Wire.DecodeError{} = e} ->

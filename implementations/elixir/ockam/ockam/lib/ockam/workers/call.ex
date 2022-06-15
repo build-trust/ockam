@@ -67,11 +67,8 @@ defmodule Ockam.Workers.Call do
   end
 
   def send_call(call, state) do
-    Ockam.Router.route(%{
-      payload: Map.get(call, :payload),
-      onward_route: Map.get(call, :onward_route),
-      return_route: [state.address]
-    })
+    call = struct(Ockam.Message, call)
+    Ockam.Router.route(Ockam.Message.set_return_route(call, [state.address]))
   end
 
   @impl true

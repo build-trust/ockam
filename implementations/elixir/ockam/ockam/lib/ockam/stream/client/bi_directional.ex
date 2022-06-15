@@ -88,7 +88,7 @@ defmodule Ockam.Stream.Client.BiDirectional do
   def decode_message(data) do
     case :bare.decode(data, @bare_message) do
       {:ok, %{return_stream: stream, message: wire_message}, ""} ->
-        case Ockam.Wire.decode(wire_message) do
+        case Ockam.Wire.decode(wire_message, :stream) do
           {:ok, message} ->
             {:ok, %{return_stream: stream, message: message}}
 

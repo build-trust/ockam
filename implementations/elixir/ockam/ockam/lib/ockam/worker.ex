@@ -3,6 +3,7 @@ defmodule Ockam.Worker do
 
   alias Ockam.Node
   alias Ockam.Telemetry
+  alias Ockam.Worker.Authorization
 
   require Logger
 
@@ -113,7 +114,7 @@ defmodule Ockam.Worker do
 
       @doc false
       def is_authorized(message, state) do
-        Ockam.Worker.Authorization.to_my_address(message, state)
+        Ockam.Worker.Authorization.with_config(message, state)
       end
 
       defoverridable setup: 2, address_prefix: 1, is_authorized: 2
@@ -169,27 +170,32 @@ defmodule Ockam.Worker do
     Node.set_address_module(Keyword.fetch!(options, :address), module)
 
     return_value =
-      Ockam.Worker.with_init_metric(module, options, fn ->
-        case Keyword.fetch(options, :address) do
-          {:ok, address} ->
-            base_state = %{
-              address: address,
-              all_addresses: [address],
-              module: module,
-              last_message_ts: nil
-            }
+      with_init_metric(module, options, fn ->
+        with {:ok, address} <- Keyword.fetch(options, :address),
+             authorization when is_list(authorization) <-
+               Keyword.get(options, :authorization, [:to_my_address]) do
+          base_state = %{
+            address: address,
+            all_addresses: [address],
+            module: module,
+            last_message_ts: nil,
+            authorization: Authorization.expand_config(authorization)
+          }
 
-            with {:ok, state} <-
-                   Ockam.Worker.register_extra_addresses(
-                     module,
-                     Keyword.get(options, :extra_addresses, []),
-                     base_state
-                   ) do
-              module.setup(options, state)
-            end
-
+          with {:ok, state} <-
+                 register_extra_addresses(
+                   module,
+                   Keyword.get(options, :extra_addresses, []),
+                   base_state
+                 ) do
+            module.setup(options, state)
+          end
+        else
           :error ->
             {:error, {:option_is_nil, :address}}
+
+          false ->
+            {:error, {:option_invalid, :authorization, :not_a_list}}
         end
       end)
 
@@ -204,7 +210,7 @@ defmodule Ockam.Worker do
 
   def handle_message(module, message, state) do
     return_value =
-      Ockam.Worker.with_handle_message_metric(module, message, state, fn ->
+      with_handle_message_metric(module, message, state, fn ->
         with :ok <- module.is_authorized(message, state) do
           module.handle_message(message, state)
         end

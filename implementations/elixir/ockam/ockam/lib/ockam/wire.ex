@@ -71,76 +71,80 @@ defmodule Ockam.Wire do
   @doc """
   Encode a message to a binary using the provided encoder.
   """
-  @spec encode(encoder :: atom, message :: Message.t()) ::
+  @spec encode(message :: Message.t(), encoder :: atom) ::
           {:ok, encoded :: iodata} | {:error, error :: EncodeError.t()}
 
-  def encode(encoder \\ nil, message) do
+  def encode(message, encoder \\ nil) do
     with_implementation(encoder, :encode, [message])
   end
 
   @doc """
   Encode a route to a binary using the provided encoder.
   """
-  @spec encode_route(encoder :: atom, route :: Address.route()) ::
+  @spec encode_route(route :: Address.route(), encoder :: atom) ::
           {:ok, encoded :: iodata} | {:error, error :: EncodeError.t()}
-  def encode_route(encoder \\ nil, route) do
+  def encode_route(route, encoder \\ nil) do
     with_implementation(encoder, :encode_route, [route])
   end
 
   @doc """
   Encode an address to a binary using the provided encoder.
   """
-  @spec encode_address(encoder :: atom, message :: Address.t()) ::
+  @spec encode_address(message :: Address.t(), encoder :: atom) ::
           {:ok, encoded :: iodata} | {:error, error :: EncodeError.t()}
-  def encode_address(encoder \\ nil, address) do
+  def encode_address(address, encoder \\ nil) do
     with_implementation(encoder, :encode_address, [address])
   end
 
   @doc """
   Decode a message from binary using the provided decoder.
+  Sets local metadata :channel key to channel
   """
-  @spec decode(decoder :: atom, encoded :: binary) ::
-          {:ok, message :: Message.t()} | {:error, error :: DecodeError.t()}
+  @spec decode(encoded :: binary(), channel :: atom(), decoder :: atom()) ::
+          {:ok, message :: Message.t()} | {:error, reason :: DecodeError.t()}
 
-  def decode(decoder \\ nil, encoded)
+  def decode(encoded, channel \\ :unknown, decoder \\ nil)
 
-  def decode(decoder, encoded) when is_binary(encoded) do
-    with_implementation(decoder, :decode, [encoded])
+  def decode(encoded, channel, decoder) when is_binary(encoded) do
+    with {:ok, message} <- with_implementation(decoder, :decode, [encoded]) do
+      metadata = %{source: :channel, channel: channel}
+      {:ok, Message.set_local_metadata(message, metadata)}
+    end
   end
 
-  def decode(_decoder, encoded) do
+  def decode(encoded, _channel, _decoder) do
     {:error, error(:decode, {:encoded_input_is_not_binary, encoded})}
   end
 
   @doc """
   Decode a route from binary using the provided decoder.
   """
-  @spec decode_route(decoder :: atom, encoded :: binary) ::
+  @spec decode_route(encoded :: binary, decoder :: atom) ::
           {:ok, route :: Address.route()} | {:error, error :: DecodeError.t()}
 
-  def decode_route(decoder \\ nil, encoded)
+  def decode_route(encoded, decoder \\ nil)
 
-  def decode_route(decoder, encoded) when is_binary(encoded) do
+  def decode_route(encoded, decoder) when is_binary(encoded) do
     with_implementation(decoder, :decode_route, [encoded])
   end
 
-  def decode_route(_decoder, encoded) do
+  def decode_route(encoded, _decoder) do
     {:error, error(:decode_route, {:encoded_input_is_not_binary, encoded})}
   end
 
   @doc """
   Decode an address from binary using the provided decoder.
   """
-  @spec decode_address(decoder :: atom, encoded :: binary) ::
+  @spec decode_address(encoded :: binary, decoder :: atom) ::
           {:ok, address :: Address.t()} | {:error, error :: DecodeError.t()}
 
-  def decode_address(decoder \\ nil, encoded)
+  def decode_address(encoded, decoder \\ nil)
 
-  def decode_address(decoder, encoded) when is_binary(encoded) do
+  def decode_address(encoded, decoder) when is_binary(encoded) do
     with_implementation(decoder, :decode_address, [encoded])
   end
 
-  def decode_address(_decoder, encoded) do
+  def decode_address(encoded, _decoder) do
     {:error, error(:decode_address, {:encoded_input_is_not_binary, encoded})}
   end
 
@@ -150,15 +154,19 @@ defmodule Ockam.Wire do
         error(fun_name, :no_default_implementation)
 
       module when is_atom(module) ->
-        with :ok <- ensure_loaded(fun_name, module),
-             :ok <- ensure_exported(module, fun_name, Enum.count(args)) do
-          apply(module, fun_name, args)
-        else
-          {:error, reason} -> error(fun_name, reason)
-        end
+        with_implementation(module, fun_name, args)
 
       other ->
         error(fun_name, {:implementation_is_not_a_module, other})
+    end
+  end
+
+  def with_implementation(module, fun_name, args) when is_atom(module) do
+    with :ok <- ensure_loaded(fun_name, module),
+         :ok <- ensure_exported(module, fun_name, Enum.count(args)) do
+      apply(module, fun_name, args)
+    else
+      {:error, reason} -> error(fun_name, reason)
     end
   end
 

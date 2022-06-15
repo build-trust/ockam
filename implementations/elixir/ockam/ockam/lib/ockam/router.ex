@@ -32,6 +32,8 @@ defmodule Ockam.Router do
 
   def route(%Ockam.Message{payload: pl, onward_route: o_r, return_route: r_r} = message)
       when is_binary(pl) and is_list(o_r) and is_list(r_r) do
+    message = prepare_local_metadata(message)
+
     metadata = %{message: message}
     start_time = Telemetry.emit_start_event([__MODULE__, :route], metadata: metadata)
 
@@ -62,8 +64,37 @@ defmodule Ockam.Router do
   @doc """
   Routes a message with given payload, onward_route and return_route
   """
-  def route(payload, onward_route, return_route \\ []) do
-    route(%Message{onward_route: onward_route, return_route: return_route, payload: payload})
+  def route(payload, onward_route, return_route \\ [], local_metadata \\ %{}) do
+    route(%Message{
+      onward_route: onward_route,
+      return_route: return_route,
+      payload: payload,
+      local_metadata: local_metadata
+    })
+  end
+
+  defp prepare_local_metadata(message) do
+    metadata =
+      case Message.local_metadata(message) do
+        %{source: :channel, channel: _channel} = md ->
+          md
+
+        ## Make sure metadata with channel has source: channel
+        %{channel: _channel} = md ->
+          Map.put(md, :source, :channel)
+
+        %{source: _source} = md ->
+          md
+
+        ## If there is no source or channel - message is local
+        %{} = md ->
+          Map.put(md, :source, :local)
+
+        nil ->
+          %{source: :local}
+      end
+
+    Message.set_local_metadata(message, metadata)
   end
 
   def raise_invalid_message(message) do

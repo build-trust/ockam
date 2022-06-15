@@ -79,6 +79,10 @@ defmodule Ockam.Message do
     %{message | payload: payload}
   end
 
+  def set_local_metadata(%Message{} = message, metadata) when is_map(metadata) do
+    %{message | local_metadata: metadata}
+  end
+
   def put_local_metadata(%Message{} = message, key, value) when is_atom(key) do
     Map.update(message, :local_metadata, %{key => value}, fn metadata ->
       Map.put(metadata, key, value)

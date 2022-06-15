@@ -86,7 +86,6 @@ defmodule Ockam.SecureChannel.Channel do
     return_value
   end
 
-  ## TODO: better name to not collide with Ockam.Worker.handle_message
   defp handle_message({:call, from}, :established?, state, data) do
     established = {:encrypted_transport, :ready} === state
     {:next_state, state, data, [{:reply, from, established}]}
