@@ -334,7 +334,9 @@ mod tests {
 
     #[test]
     fn curl_http_ockam() {
-        let (exitcode, stdout) = CmdBuilder::new("curl -s http://ockam.io/").run().unwrap();
+        let (exitcode, stdout) = CmdBuilder::new("curl -s -L http://ockam.io/")
+            .run()
+            .unwrap();
         assert_eq!(Some(0), exitcode);
         assert!(stdout.to_lowercase().contains("<html"));
     }
