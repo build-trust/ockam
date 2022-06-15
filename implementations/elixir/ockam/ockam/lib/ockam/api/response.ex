@@ -4,12 +4,26 @@ defmodule Ockam.API.Response do
   """
 
   alias Ockam.API.Request
+  alias Ockam.API.Response
 
   defstruct [:id, :request_id, :status, :body, from_route: [], to_route: []]
 
   @max_id 65_534
 
-  @schema {:map, [:id, :request_id, :status, :has_body]}
+  defmodule Header do
+    @moduledoc """
+    Response header, minicbor schema definition
+    """
+    use TypedStruct
+
+    typedstruct do
+      plugin(Ockam.TypedCBOR.Plugin)
+      field(:id, integer(), minicbor: [key: 1])
+      field(:request_id, integer(), minicbor: [key: 2])
+      field(:status, integer(), minicbor: [key: 3])
+      field(:has_body, boolean(), minicbor: [key: 4])
+    end
+  end
 
   def encode(response) when is_map(response) do
     body = response.body
@@ -21,9 +35,13 @@ defmodule Ockam.API.Response do
         other -> raise "Body is not binary: #{inspect(other)}"
       end
 
-    response = Map.put(response, :has_body, has_body)
-
-    base = MiniCBOR.encode(response, @schema)
+    base =
+      Header.encode(%Header{
+        id: response.id,
+        request_id: response.request_id,
+        status: response.status,
+        has_body: has_body
+      })
 
     payload =
       case has_body do
@@ -37,17 +55,28 @@ defmodule Ockam.API.Response do
   def decode(data) when is_binary(data) do
     {:ok, payload, ""} = :bare.decode(data, :data)
 
-    case MiniCBOR.decode(payload, @schema) do
-      {:ok, decoded, body} ->
-        has_body = Map.get(decoded, :has_body)
+    case Header.decode(payload) do
+      {:ok, header, body} ->
         body_present = byte_size(body) > 0
 
-        case {has_body, body_present} do
+        case {header.has_body, body_present} do
           {true, _} ->
-            {:ok, struct(__MODULE__, Map.put(decoded, :body, body))}
+            {:ok,
+             %Response{
+               id: header.id,
+               request_id: header.request_id,
+               status: header.status,
+               body: body
+             }}
 
           {false, false} ->
-            {:ok, struct(__MODULE__, Map.put(decoded, :body, nil))}
+            {:ok,
+             %Response{
+               id: header.id,
+               request_id: header.request_id,
+               status: header.status,
+               body: nil
+             }}
 
           {false, true} ->
             {:error, {:decode_error, :unexpected_body, data}}

@@ -64,7 +64,8 @@ features         = ["std"]
 cddl-cat            = "0.6.1"
 fake                = { version = "2", features=['derive', 'uuid']}
 mockall             = "0.11"
-ockam_api           = { path = ".", features = ["std", "tag"] }
+# TODO enable "tag" feature once implemented on elixir side
+ockam_api           = { path = ".", features = ["std"] }
 ockam_macros        = { version = "0.16.0", path = "../ockam_macros", features = ["std"] }
 ockam_transport_tcp = { version = "0.56.0", path = "../ockam_transport_tcp" }
 quickcheck          = "1.0.1"

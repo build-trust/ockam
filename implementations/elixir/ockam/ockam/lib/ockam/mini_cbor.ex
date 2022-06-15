@@ -31,12 +31,14 @@ defmodule MiniCBOR do
 
   @reserved_tag_field :minicbor_tag_reserved
 
+  @deprecated "Use Ockam.TypedCBOR instead"
   def encode(struct, schema) do
     schema_map = struct_schema(schema)
     optimized = rekey_struct(struct, schema_map)
     CBOR.encode(optimized)
   end
 
+  @deprecated "Use Ockam.TypedCBOR instead"
   def decode(binary, schema) do
     with {:ok, optimized, rest} <- CBOR.decode(binary) do
       schema_map = optimized_schema(schema)

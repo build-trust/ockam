@@ -3,12 +3,29 @@ defmodule Ockam.API.Request do
   Ockam request-response API request
   """
 
+  alias Ockam.API.Request
   defstruct [:id, :path, :method, :body, from_route: [], to_route: []]
 
   @max_id 65_534
 
-  @method_schema {:enum, [:get, :post, :put, :delete, :patch]}
-  @schema {:map, [:id, :path, {:method, @method_schema}, :has_body]}
+  defmodule Header do
+    @moduledoc """
+    Request header, minicbor schema definition
+    """
+    use TypedStruct
+
+    typedstruct do
+      plugin(Ockam.TypedCBOR.Plugin)
+      field(:id, integer(), minicbor: [key: 1])
+      field(:path, String.t(), minicbor: [key: 2])
+
+      field(:method, :get | :post | :put | :delete | :patch,
+        minicbor: [key: 3, schema: {:enum, [get: 0, post: 1, put: 2, delete: 3, patch: 4]}]
+      )
+
+      field(:has_body, boolean(), minicbor: [key: 4])
+    end
+  end
 
   def encode(request) when is_map(request) do
     body = request.body
@@ -20,9 +37,13 @@ defmodule Ockam.API.Request do
         other -> raise "Body is not binary: #{inspect(other)}"
       end
 
-    request = Map.put(request, :has_body, has_body)
-
-    base = MiniCBOR.encode(request, @schema)
+    base =
+      Header.encode(%Header{
+        id: request.id,
+        path: request.path,
+        method: request.method,
+        has_body: has_body
+      })
 
     payload =
       case has_body do
@@ -36,17 +57,16 @@ defmodule Ockam.API.Request do
   def decode(data) when is_binary(data) do
     {:ok, payload, ""} = :bare.decode(data, :data)
 
-    case MiniCBOR.decode(payload, @schema) do
-      {:ok, decoded, body} ->
-        has_body = Map.get(decoded, :has_body)
+    case Header.decode(payload) do
+      {:ok, header, body} ->
         body_present = byte_size(body) > 0
 
-        case {has_body, body_present} do
+        case {header.has_body, body_present} do
           {true, _} ->
-            {:ok, struct(__MODULE__, Map.put(decoded, :body, body))}
+            {:ok, %Request{id: header.id, method: header.method, path: header.path, body: body}}
 
           {false, false} ->
-            {:ok, struct(__MODULE__, Map.put(decoded, :body, nil))}
+            {:ok, %Request{id: header.id, method: header.method, path: header.path, body: nil}}
 
           {false, true} ->
             {:error, {:decode_error, :unexpected_body, data}}
