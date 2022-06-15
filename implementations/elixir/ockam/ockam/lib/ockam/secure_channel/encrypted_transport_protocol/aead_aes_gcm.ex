@@ -69,8 +69,10 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
     {:ok, encrypted, ""} = :bare.decode(payload, :data)
 
     with {:ok, decrypted, data} <- decrypt(encrypted, data),
-         {:ok, decoded} <- Wire.decode(decrypted) do
-      message = Message.trace(decoded, data.plaintext_address)
+         {:ok, decoded} <- Wire.decode(decrypted, :secure_channel) do
+      message =
+        decoded
+        |> Message.trace(data.plaintext_address)
 
       Router.route(message)
 

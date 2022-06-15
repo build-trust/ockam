@@ -7,6 +7,7 @@ defmodule Ockam.Services.Provider.Routing do
   @behaviour Ockam.Services.Provider
 
   alias Ockam.Services.API.StaticForwarding, as: StaticForwardingAPI
+  alias Ockam.Services.AuthorizationConfig
   alias Ockam.Services.Echo, as: EchoService
   alias Ockam.Services.Forwarding, as: ForwardingService
   alias Ockam.Services.PubSub, as: PubSubService
@@ -54,7 +55,8 @@ defmodule Ockam.Services.Provider.Routing do
     {StaticForwardingAPI,
      Keyword.merge(args,
        address: "static_forwarding_api",
-       prefix: "forward_to"
+       prefix: "forward_to",
+       authorization: AuthorizationConfig.secure_channel()
      )}
   end
 

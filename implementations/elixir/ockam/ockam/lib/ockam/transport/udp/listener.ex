@@ -89,13 +89,20 @@ defmodule Ockam.Transport.UDP.Listener do
     {function_name, _} = __ENV__.function
     {:udp, _socket, from_ip, from_port, packet} = udp_message
 
-    with {:ok, decoded} <- Wire.decode(packet),
-         message <- Message.trace(decoded, UDPAddress.new(from_ip, from_port)),
-         :ok <- Router.route(message) do
-      Telemetry.emit_event(function_name, metadata: %{name: "successfully_decoded"})
-      {:ok, state}
-    else
-      {:error, reason} -> {:error, Telemetry.emit_event(function_name, metadata: %{name: reason})}
+    case Wire.decode(packet, :udp) do
+      {:ok, decoded} ->
+        Telemetry.emit_event(function_name, metadata: %{name: "successfully_decoded"})
+
+        message =
+          decoded
+          |> Message.trace(UDPAddress.new(from_ip, from_port))
+
+        with :ok <- Router.route(message) do
+          {:ok, state}
+        end
+
+      {:error, reason} ->
+        {:error, Telemetry.emit_event(function_name, metadata: %{name: reason})}
     end
   end
 

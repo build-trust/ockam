@@ -23,7 +23,7 @@ defmodule Ockam.Messaging.IndexPipe.Wrapper do
   def unwrap_message(payload) do
     with {:ok, %{index: index, message: encoded_message}, ""} <-
            :bare.decode(payload, @schema),
-         {:ok, message} <- Ockam.Wire.decode(encoded_message) do
+         {:ok, message} <- Ockam.Wire.decode(encoded_message, :index_pipe) do
       {:ok, index, message}
     else
       {:ok, _decoded, _rest} = bare_result ->

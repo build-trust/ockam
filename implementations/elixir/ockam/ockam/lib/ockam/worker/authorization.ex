@@ -19,6 +19,8 @@ defmodule Ockam.Worker.Authorization do
   """
   alias Ockam.Message
 
+  require Logger
+
   @doc """
   Allow any messages to be handled by the worker
   """
@@ -96,12 +98,12 @@ defmodule Ockam.Worker.Authorization do
   Allow messages which have `channel: :secure_channel` in their local metadata
   to be handled by the worker.
   """
-  def is_secure(prev \\ :ok, message) do
+  def is_secure(prev \\ :ok, message, _state) do
     chain(prev, fn ->
-      case Message.local_metadata_value(message, :channel) do
-        :secure_channel -> :ok
-        ## TODO: error explanation
-        other -> {:error, {:is_secure, :invalid_channel, other}}
+      case Message.local_metadata(message) do
+        %{source: :channel, channel: :secure_channel} -> :ok
+        %{source: :channel, channel: other} -> {:error, {:is_secure, :invalid_channel, other}}
+        other -> {:error, {:is_secure, :invalid_metadata, other}}
       end
     end)
   end
@@ -116,6 +118,82 @@ defmodule Ockam.Worker.Authorization do
         ^identity -> :ok
         other -> {:error, {:from_identity, :invalid_identity, other}}
       end
+    end)
+  end
+
+  def is_local(prev \\ :ok, message, _state) do
+    chain(prev, fn ->
+      case Message.local_metadata_value(message, :source) do
+        :local -> :ok
+        other -> {:error, {:is_local, :message_source_not_local, other}}
+      end
+    end)
+  end
+
+  @doc """
+  Combine multiple authorization steps in the state :authorization field
+
+  Each step can be:
+  - function :: atom - a function from `Ockam.Worker.Authorization` taking message and state as arguments
+  - {function :: atom, args :: list} - a function from `Ockam.Worker.Authorization` taking args
+  - {module :: atom, function :: atom, args :: list} - function taking args
+
+  If args contain atoms `:message` or `:state`, they are replaced
+  with the checked message or the current state of the worker
+
+  config `:to_my_address` is same as `{:to_my_address, [:message, :state]}` and
+  `{Ockam.Worker.Authorization, :to_my_address, [:message, :state]}`
+  """
+  def with_config(prev \\ :ok, message, state) do
+    chain(prev, fn ->
+      Map.get(state, :authorization, [:to_my_address])
+      |> expand_config(message, state)
+      |> check_with_config()
+    end)
+  end
+
+  defp check_with_config(prev \\ :ok, config)
+
+  defp check_with_config(prev, []) do
+    prev
+  end
+
+  defp check_with_config(prev, [{m, f, a} | rest]) do
+    chain(prev, fn ->
+      apply(m, f, a) |> check_with_config(rest)
+    end)
+  end
+
+  def expand_config(config) do
+    expand_config(config, :message, :state)
+  end
+
+  defp expand_config(config, message, state) do
+    Enum.map(config, &expand_config_fun(&1, message, state))
+  end
+
+  defp expand_config_fun(function, message, state) when is_atom(function) do
+    args = expand_args([:message, :state], message, state)
+    {__MODULE__, function, args}
+  end
+
+  defp expand_config_fun({function, args}, message, state)
+       when is_atom(function) and is_list(args) do
+    args = expand_args(args, message, state)
+    {__MODULE__, function, args}
+  end
+
+  defp expand_config_fun({module, function, args}, message, state)
+       when is_atom(module) and is_atom(function) and is_list(args) do
+    args = expand_args(args, message, state)
+    {module, function, args}
+  end
+
+  defp expand_args(args, message, state) do
+    Enum.map(args, fn
+      :message -> message
+      :state -> state
+      other -> other
     end)
   end
 

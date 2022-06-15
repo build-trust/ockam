@@ -21,7 +21,7 @@ defmodule Ockam.Messaging.ConfirmPipe.Wrapper do
 
   def unwrap_message(wrapped) do
     with {:ok, %{ref: ref, data: encoded_message}, ""} <- :bare.decode(wrapped, @bare_schema),
-         {:ok, message} <- Ockam.Wire.decode(encoded_message) do
+         {:ok, message} <- Ockam.Wire.decode(encoded_message, :confirm_pipe) do
       {:ok, ref, message}
     else
       {:ok, _decoded, _rest} = bare_result ->
