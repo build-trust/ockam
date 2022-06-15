@@ -1,5 +1,3 @@
-use std::io::{self, Write};
-
 use clap::Args;
 use reqwest::StatusCode;
 use serde_json::json;
@@ -10,9 +8,7 @@ use validator::validate_email;
 use ockam_api::error::ApiError;
 
 use crate::enroll::EnrollCommand;
-use crate::old::identity::load_or_create_identity;
 use crate::util::embedded_node;
-use crate::IdentityOpts;
 
 const API_SECRET: &str = "DNYsEfhe]ms]ET]yQIthmhSOIvCkWOnb";
 
@@ -29,25 +25,20 @@ Please tell us your email and we'll let you know when we're ready to enroll new 
 }
 
 fn read_user_input() -> anyhow::Result<String> {
-    let mut buffer = String::new();
     loop {
-        print!("Email: ");
-        io::stdout().flush()?;
-        io::stdin().read_line(&mut buffer)?;
-        let email = buffer.trim();
-        if validate_email(email) {
-            return Ok(email.to_string());
+        let email: String = dialoguer::Input::new()
+            .with_prompt("Email")
+            .interact_text()?;
+        if validate_email(&email) {
+            return Ok(email);
         } else {
             println!("\nThe email address is not valid, try again.\n");
-            buffer.clear();
         }
     }
 }
 
 async fn enroll(mut ctx: ockam::Context, args: (EnrollCommand, String)) -> anyhow::Result<()> {
-    let (command, email) = args;
-
-    let _identity = load_or_create_identity(&IdentityOpts::from(&command), &ctx).await?;
+    let (_command, email) = args;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).take(5);
     let res = Retry::spawn(retry_strategy, move || {
@@ -63,7 +54,7 @@ async fn enroll(mut ctx: ockam::Context, args: (EnrollCommand, String)) -> anyho
     .map_err(|err| ApiError::generic(&err.to_string()))?;
     match res.status() {
         StatusCode::NO_CONTENT => {
-            println!("Enrolled successfully");
+            println!("Thank you.");
             ctx.stop().await?;
             Ok(())
         }
