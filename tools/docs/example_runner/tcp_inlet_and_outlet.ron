@@ -10,7 +10,7 @@
         [
             "01-inlet-outlet 127.0.0.1:4001 ockam.io:80",
             "match Initializing ockam node",
-            "cmd curl -s http://127.0.0.1:4001",
+            "cmd curl -s -L http://127.0.0.1:4001",
             "match <html",
         ],
         [
@@ -18,7 +18,7 @@
             "match Initializing ockam node",
             "02-inlet 127.0.0.1:4001",
             "match Initializing ockam node",
-            "cmd curl -s http://127.0.0.1:4001",
+            "cmd curl -s -L http://127.0.0.1:4001",
             "match <html",
         ],
         [
@@ -26,7 +26,7 @@
             "match Initializing ockam node",
             "03-inlet 127.0.0.1:4001",
             "match Initialized IdentitySecureChannel",
-            "cmd curl -s http://127.0.0.1:4001",
+            "cmd curl -s -L http://127.0.0.1:4001",
             "match <html",
         ],
         [
@@ -35,7 +35,7 @@
             "arg 0",
             "04-inlet 127.0.0.1:4001",
             "match Initialized IdentitySecureChannel",
-            "cmd curl -s http://127.0.0.1:4001",
+            "cmd curl -s -L http://127.0.0.1:4001",
             "match <html",
         ],
     ]

@@ -9,7 +9,7 @@ fn run_01_inlet_outlet_one_process() -> Result<(), Error> {
     runner.match_stdout(r"(?i)Starting new processor")?;
 
     // Run curl and check for a successful run
-    let (exitcode, stdout) = CmdBuilder::new("curl -s -H \"Host: ockam.io\" http://127.0.0.1:4001/").run()?;
+    let (exitcode, stdout) = CmdBuilder::new("curl -s -L -H \"Host: ockam.io\" http://127.0.0.1:4001/").run()?;
     assert_eq!(Some(0), exitcode);
     println!("curl stdout...");
     println!("{stdout}");
@@ -29,7 +29,7 @@ fn run_02_inlet_outlet_seperate_processes() -> Result<(), Error> {
     inlet.match_stdout(r"(?i)Binding \w+ to 127.0.0.1:4001")?;
 
     // Run curl and check for a successful run
-    let (exitcode, stdout) = CmdBuilder::new("curl -s -H \"Host: ockam.io\" http://127.0.0.1:4001/").run()?;
+    let (exitcode, stdout) = CmdBuilder::new("curl -s -L -H \"Host: ockam.io\" http://127.0.0.1:4001/").run()?;
     assert_eq!(Some(0), exitcode);
     println!("curl stdout...");
     println!("{stdout}");
@@ -49,7 +49,7 @@ fn run_03_inlet_outlet_seperate_processes_secure_channel() -> Result<(), Error> 
     inlet.match_stdout(r"(?i)Binding \w+ to 127.0.0.1:4001")?;
 
     // Run curl and check for a successful run
-    let (exitcode, stdout) = CmdBuilder::new("curl -s -H \"Host: ockam.io\" http://127.0.0.1:4001/").run()?;
+    let (exitcode, stdout) = CmdBuilder::new("curl -s -L -H \"Host: ockam.io\" http://127.0.0.1:4001/").run()?;
     assert_eq!(Some(0), exitcode);
     println!("curl stdout...");
     println!("{stdout}");
@@ -71,7 +71,7 @@ fn run_04_inlet_outlet_seperate_processes_secure_channel_via_ockam_hub() -> Resu
     inlet.match_stdout(r"(?i)Binding \w+ to 127.0.0.1:4001")?;
 
     // // Run curl and check for a successful run
-    let (exitcode, stdout) = CmdBuilder::new("curl -s -H \"Host: ockam.io\" http://127.0.0.1:4001/").run()?;
+    let (exitcode, stdout) = CmdBuilder::new("curl -s -L -H \"Host: ockam.io\" http://127.0.0.1:4001/").run()?;
     assert_eq!(Some(0), exitcode);
     println!("curl stdout...");
     println!("{stdout}");
