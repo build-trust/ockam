@@ -1,12 +1,14 @@
+use anyhow::anyhow;
 use clap::Args;
+
+use ockam::identity::IdentityTrait;
+use ockam::{route, Context, TcpTransport};
+use ockam_api::cloud::{invitation::CreateInvitation, MessagingClient};
+use ockam_multiaddr::MultiAddr;
 
 use crate::old::identity::load_or_create_identity;
 use crate::util::{embedded_node, multiaddr_to_route};
 use crate::IdentityOpts;
-use anyhow::anyhow;
-use ockam::{route, Context, TcpTransport};
-use ockam_api::cloud::{invitation::CreateInvitation, MessagingClient};
-use ockam_multiaddr::MultiAddr;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -22,16 +24,8 @@ pub struct CreateCommand {
     #[clap(display_order = 1002, long)]
     project_id: Option<String>,
 
-    #[clap(display_order = 1101, long)]
-    overwrite: bool,
-}
-
-impl<'a> From<&'a CreateCommand> for IdentityOpts {
-    fn from(other: &'a CreateCommand) -> Self {
-        Self {
-            overwrite: other.overwrite,
-        }
-    }
+    #[clap(flatten)]
+    identity_opts: IdentityOpts,
 }
 
 impl CreateCommand {
@@ -45,15 +39,19 @@ async fn create(mut ctx: Context, args: (MultiAddr, CreateCommand)) -> anyhow::R
     let _tcp = TcpTransport::create(&ctx).await?;
 
     // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
-    let identity = load_or_create_identity(&IdentityOpts::from(&cmd), &ctx).await?;
+    let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
+    let identifier = identity.identifier().await?;
 
     let r = multiaddr_to_route(&cloud_addr)
         .ok_or_else(|| anyhow!("failed to parse address: {}", cloud_addr))?;
     let route = route![r.to_string(), "invitations"];
     let mut api = MessagingClient::new(route, &ctx).await?;
-    let pubkey = identity.id.to_string();
-    let request =
-        CreateInvitation::new(&pubkey, &cmd.email, &cmd.space_id, cmd.project_id.as_ref());
+    let request = CreateInvitation::new(
+        identifier.key_id(),
+        &cmd.email,
+        &cmd.space_id,
+        cmd.project_id.as_ref(),
+    );
     let res = api.create_invitation(request).await?;
     println!("{res:?}");
     ctx.stop().await?;

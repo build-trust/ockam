@@ -1,11 +1,12 @@
 use anyhow::Context;
+use std::path::Path;
 use std::sync::Arc;
 
 use ockam::identity::*;
 use ockam_vault::storage::FileStorage;
+use ockam_vault::Vault;
 
 use crate::old::{storage, OckamVault};
-use crate::IdentityOpts;
 
 const VERSION: u32 = 1;
 
@@ -16,13 +17,13 @@ pub struct IdentityFile {
 }
 
 pub async fn create_identity(
-    args: &IdentityOpts,
     ctx: &ockam::Context,
-) -> anyhow::Result<ExportedIdentity> {
+    overwrite: bool,
+) -> anyhow::Result<Identity<Vault>> {
     let ockam_dir = storage::init_ockam_dir()?;
     let id_path = ockam_dir.join("identity.json");
     if id_path.exists() {
-        if !args.overwrite {
+        if !overwrite {
             anyhow::bail!(
                 "An identity or vault already exists in {:?}. Pass `--overwrite` to continue anyway",
                 ockam_dir
@@ -33,12 +34,7 @@ pub async fn create_identity(
                 .with_context(|| format!("Failed to remove {:?}", id_path))?;
         }
     }
-    let vault_storage = FileStorage::create(
-        &ockam_dir.join("vault.json"),
-        &ockam_dir.join("vault.json.temp"),
-    )
-    .await?;
-    let vault = OckamVault::new(Some(Arc::new(vault_storage)));
+    let vault = vault(&ockam_dir).await?;
     let identity = Identity::create(ctx, &vault).await?;
     let exported = identity.export().await;
     let identifier = exported.id.clone();
@@ -49,21 +45,23 @@ pub async fn create_identity(
         ockam_dir,
         identifier.key_id()
     );
-    Ok(exported)
+    Ok(identity)
 }
 
 pub async fn load_or_create_identity(
-    args: &IdentityOpts,
     ctx: &ockam::Context,
-) -> anyhow::Result<ExportedIdentity> {
-    match load_identity(&storage::get_ockam_dir()?) {
+    overwrite: bool,
+) -> anyhow::Result<Identity<Vault>> {
+    match load_identity(ctx, &storage::get_ockam_dir()?).await {
         Ok(identity) => Ok(identity),
-        Err(_) => create_identity(args, ctx).await,
+        Err(_) => create_identity(ctx, overwrite).await,
     }
 }
 
-#[tracing::instrument(level = "debug", err)]
-pub fn load_identity(ockam_dir: &std::path::Path) -> anyhow::Result<ExportedIdentity> {
+pub async fn load_identity(
+    ctx: &ockam::Context,
+    ockam_dir: &Path,
+) -> anyhow::Result<Identity<Vault>> {
     let identity_json = ockam_dir.join("identity.json");
     let ident_bytes = std::fs::read(&identity_json)
         .with_context(|| format!("Failed to open identity.json from {identity_json:?}"))?;
@@ -78,7 +76,9 @@ pub fn load_identity(ockam_dir: &std::path::Path) -> anyhow::Result<ExportedIden
         stored_ident.identity.id,
         identity_json
     );
-    Ok(stored_ident.identity)
+    let vault = vault(ockam_dir).await?;
+    let identity = Identity::import(ctx, &vault, stored_ident.identity).await?;
+    Ok(identity)
 }
 
 #[tracing::instrument(level = "debug", skip_all, err, fields(id = ?i.id.key_id()))]
@@ -143,4 +143,13 @@ pub fn read_trusted_idents_from_file(
         idents.push(ident);
     }
     Ok(idents)
+}
+
+pub async fn vault(ockam_dir: &Path) -> ockam_core::Result<Vault> {
+    let storage = FileStorage::create(
+        &ockam_dir.join("vault.json"),
+        &ockam_dir.join("vault.json.temp"),
+    )
+    .await?;
+    Ok(OckamVault::new(Some(Arc::new(storage))))
 }

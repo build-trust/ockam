@@ -2,6 +2,7 @@ use anyhow::Context;
 use anyhow::Result;
 use clap::Args;
 use identity::load_identity;
+use ockam::identity::IdentityTrait;
 use ockam::{identity::IdentityIdentifier, NodeBuilder};
 use std::collections::BTreeSet;
 use storage::{ensure_identity_exists, get_ockam_dir};
@@ -26,11 +27,13 @@ pub mod session {
 
 pub type OckamVault = ockam::vault::Vault;
 
-pub fn print_identity() -> anyhow::Result<()> {
+pub async fn print_identity(_arg: (), mut ctx: ockam::Context) -> anyhow::Result<()> {
     ensure_identity_exists(false)?;
     let dir = get_ockam_dir()?;
-    let identity = load_identity(&dir)?;
-    println!("{}", identity.id.key_id());
+    let identity = load_identity(&ctx, &dir).await?;
+    let identifier = identity.identifier().await?;
+    println!("{}", identifier.key_id());
+    ctx.stop().await?;
     Ok(())
 }
 
