@@ -51,6 +51,7 @@ defmodule Ockam.MixProject do
     [
       {:bare, "~> 0.1.1"},
       {:cbor, "~> 1.0.0"},
+      {:ockam_typed_cbor, path: "../ockam_typed_cbor"},
       {:gen_state_machine, "~> 3.0"},
       {:ockam_vault_software, path: "../ockam_vault_software", optional: true},
       {:telemetry, "~> 1.0", optional: true},
