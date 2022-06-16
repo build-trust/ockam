@@ -1,4 +1,4 @@
-["setup.exs", "waiter.exs"] |> Enum.map(&Code.require_file/1)
+["setup.exs"] |> Enum.map(&Code.require_file/1)
 
 # Register this process as worker address "app".
 Ockam.Node.register_address("app")
@@ -14,9 +14,6 @@ Ockam.Transport.TCP.start()
 alias Ockam.Transport.TCPAddress
 r = [TCPAddress.new("localhost", 3000), "h1", TCPAddress.new("localhost", 4000), "secure_channel_listener"]
 {:ok, c} = Ockam.SecureChannel.create(route: r, vault: vault, identity_keypair: identity)
-
-# Wait for the secure channel to be established.
-Waiter.wait(fn -> Ockam.SecureChannel.established?(c) end)
 
 # Prepare the message.
 message = %{onward_route: [c, "echoer"], return_route: ["app"], payload: "Hello Ockam!"}

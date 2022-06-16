@@ -34,6 +34,7 @@ defmodule Ockam.SecureChannel.Listener do
   defp create_channel(message, state) do
     payload = Message.payload(message)
 
+    ## TODO: is there any other options possible?
     base_channel_options =
       [role: :responder]
       |> Keyword.put(:vault, state.vault)

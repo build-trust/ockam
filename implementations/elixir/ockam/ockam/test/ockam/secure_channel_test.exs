@@ -1,7 +1,3 @@
-defmodule Ockam.SecureChannel.Tests.Wait do
-  def until(f), do: f.() || until(f)
-end
-
 defmodule Ockam.SecureChannel.Tests do
   use ExUnit.Case, async: true
   doctest Ockam.SecureChannel
@@ -9,7 +5,6 @@ defmodule Ockam.SecureChannel.Tests do
   alias Ockam.Node
   alias Ockam.Router
   alias Ockam.SecureChannel
-  alias Ockam.SecureChannel.Tests.Wait
   alias Ockam.Tests.Helpers.Echoer
   alias Ockam.Vault
   alias Ockam.Vault.Software, as: SoftwareVault
@@ -120,7 +115,6 @@ defmodule Ockam.SecureChannel.Tests do
     {:ok, c} =
       SecureChannel.create(route: route_to_listener, vault: vault, identity_keypair: identity)
 
-    Wait.until(fn -> SecureChannel.established?(c) end)
     {:ok, c}
   end
 end

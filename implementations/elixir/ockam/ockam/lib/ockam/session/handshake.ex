@@ -28,7 +28,7 @@ defmodule Ockam.Session.Handshake do
   Called by session initiator
   """
   @callback init(options :: Keyword.t(), handshake_state()) ::
-              {:next, message(), handshake_state()} | {:error, any()}
+              {:next, handshake_state()} | {:next, message(), handshake_state()} | {:error, any()}
 
   ## TODO: error result
   @doc """
@@ -54,6 +54,7 @@ defmodule Ockam.Session.Handshake do
               | {:next, message(), handshake_state()}
               | {:ready, worker_options :: Keyword.t(), handshake_state()}
               | {:ready, message(), worker_options :: Keyword.t(), handshake_state()}
+              | {:error, reason :: any()}
 
   @doc """
   Handle handshake on session responder
@@ -69,4 +70,5 @@ defmodule Ockam.Session.Handshake do
               | {:next, message(), handshake_state()}
               | {:ready, worker_options :: Keyword.t(), handshake_state()}
               | {:ready, message(), worker_options :: Keyword.t(), handshake_state()}
+              | {:error, reason :: any()}
 end

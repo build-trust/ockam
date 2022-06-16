@@ -15,11 +15,7 @@ defmodule Ockam.Message do
   return_route is `[my_address]`
   """
   def reply(message, my_address, payload) do
-    %Message{
-      onward_route: return_route(message),
-      return_route: [my_address],
-      payload: payload
-    }
+    %{message | onward_route: return_route(message), return_route: [my_address], payload: payload}
   end
 
   @doc """
@@ -44,6 +40,10 @@ defmodule Ockam.Message do
   def forward_trace(%Message{} = message) do
     [me | onward_route] = onward_route(message)
     message |> set_onward_route(onward_route) |> trace(me)
+  end
+
+  def with_local_metadata(%Ockam.Message{} = message, %{} = metadata) do
+    %{message | local_metadata: Map.merge(message.local_metadata, metadata)}
   end
 
   @doc "Get onward_route from the message"

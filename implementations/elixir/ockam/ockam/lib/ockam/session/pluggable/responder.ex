@@ -69,6 +69,7 @@ defmodule Ockam.Session.Pluggable.Responder do
         ## Stay in the handshake stage, wait for init message
         {:ok, state}
 
+      ## TODO: match Ockam.Message?
       %{payload: _} = message ->
         handle_handshake_message(message, state)
     end
@@ -98,59 +99,24 @@ defmodule Ockam.Session.Pluggable.Responder do
 
     case handshake.handle_responder(handshake_options, message, handshake_state) do
       {:ready, response, options, handshake_state} ->
-        switch_to_data_stage(response, options, handshake_state, state)
+        RoutingSession.switch_to_data_stage(response, options, handshake_state, state)
 
       {:ready, options, handshake_state} ->
-        switch_to_data_stage(options, handshake_state, state)
+        RoutingSession.switch_to_data_stage(options, handshake_state, state)
 
       {:next, response, handshake_state} ->
-        send_handshake_response(response)
-        {:ok, Map.put(state, :handshake_state, handshake_state)}
+        case response do
+          nil -> :ok
+          %{} -> Ockam.Router.route(response)
+        end
+
+        {:ok, RoutingSession.update_handshake_state(state, handshake_state)}
 
       {:next, handshake_state} ->
-        {:ok, Map.put(state, :handshake_state, handshake_state)}
+        {:ok, RoutingSession.update_handshake_state(state, handshake_state)}
 
       {:error, err} ->
-        {:error, err}
-    end
-  end
-
-  defp switch_to_data_stage(response \\ nil, handshake_options, handshake_state, state) do
-    worker_mod = Map.fetch!(state, :worker_mod)
-    worker_options = Map.fetch!(state, :worker_options)
-    base_state = Map.fetch!(state, :base_state)
-
-    options = Keyword.merge(worker_options, handshake_options)
-
-    case worker_mod.setup(options, base_state) do
-      {:ok, data_state} ->
-        send_handshake_response(response)
-
-        {:ok,
-         Map.merge(state, %{
-           data_state: data_state,
-           handshake_state: handshake_state,
-           stage: :data
-         })}
-
-      {:error, err} ->
-        Logger.error(
-          "Error starting responder data module: #{worker_mod}, reason: #{inspect(err)}"
-        )
-
-        ## TODO: should we send handshake error?
-        {:error, err}
-    end
-  end
-
-  def send_handshake_response(response) do
-    case response do
-      nil ->
-        :ok
-
-      %{} ->
-        Logger.info("Send handshake #{inspect(response)}")
-        Ockam.Router.route(response)
+        {:stop, {:handshake_error, err}, state}
     end
   end
 end
