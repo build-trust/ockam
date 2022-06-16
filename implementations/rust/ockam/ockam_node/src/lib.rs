@@ -41,6 +41,7 @@ mod metrics;
 /// Access Control
 pub mod access_control;
 
+mod abac;
 mod async_drop;
 mod cancel;
 mod context;
@@ -54,6 +55,7 @@ mod parser;
 mod relay;
 mod router;
 
+pub use abac::*;
 pub use cancel::*;
 pub use context::*;
 pub use delayed::*;
