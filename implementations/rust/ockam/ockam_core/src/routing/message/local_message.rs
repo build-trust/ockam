@@ -87,6 +87,26 @@ impl LocalMessage {
 }
 
 impl LocalMessage {
+    /// Append a new [`LocalInfo`] entry.
+    pub fn append_local_info(&mut self, local_info: LocalInfo) {
+        self.local_info.push(local_info)
+    }
+
+    /// Replace all [`LocalInfo`] entries matching the type identifier
+    /// of the given `LocalInfo` with itself.
+    pub fn replace_local_info(&mut self, local_info: LocalInfo) {
+        self.clear_local_info(local_info.type_identifier());
+        self.local_info.push(local_info)
+    }
+
+    /// Clear all [`LocalInfo`] entries with the given type identifier.
+    pub fn clear_local_info(&mut self, type_identifier: &str) {
+        self.local_info
+            .retain(|x| x.type_identifier() != type_identifier)
+    }
+}
+
+impl LocalMessage {
     /// Create a new `LocalMessage` from the provided transport message and local information.
     pub fn new(transport_message: TransportMessage, local_info: Vec<LocalInfo>) -> Self {
         LocalMessage {

@@ -13,12 +13,12 @@ use core::{
     time::Duration,
 };
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
-use ockam_core::AccessControl;
 use ockam_core::{
     errcode::{Kind, Origin},
     Address, AddressSet, AllowAll, AsyncTryClone, Error, LocalMessage, Mailbox, Mailboxes, Message,
     Processor, Result, Route, TransportMessage, TransportType, Worker,
 };
+use ockam_core::{AccessControl, LocalInfo};
 
 /// A default timeout in seconds
 pub const DEFAULT_TIMEOUT: u64 = 30;
@@ -208,8 +208,7 @@ impl Context {
         self.new_detached_impl(mailboxes).await
     }
 
-    /// TODO FIXME this needs to be made private again after the examples have been refactored
-    pub async fn new_detached_impl(&self, mailboxes: Mailboxes) -> Result<DetachedContext> {
+    async fn new_detached_impl(&self, mailboxes: Mailboxes) -> Result<DetachedContext> {
         // A detached Context exists without a worker relay, which
         // requires special shutdown handling.  To allow the Drop
         // handler to interact with the Node runtime, we use an
@@ -287,7 +286,8 @@ impl Context {
     {
         WorkerBuilder::with_inherited_access_control(self, address, worker)
             .start(self)
-            .await
+            .await?;
+        Ok(())
     }
 
     /// Start a new processor instance at the given address set
@@ -484,6 +484,22 @@ impl Context {
     }
 
     /// Send a message to an address or via a fully-qualified route
+    /// after attaching the given [`LocalInfo`] to the message.
+    pub async fn send_with_local_info<R, M>(
+        &self,
+        route: R,
+        msg: M,
+        local_info: Vec<LocalInfo>,
+    ) -> Result<()>
+    where
+        R: Into<Route>,
+        M: Message + Send + 'static,
+    {
+        self.send_from_address_impl(route.into(), msg, self.address(), local_info)
+            .await
+    }
+
+    /// Send a message to an address or via a fully-qualified route
     ///
     /// Routes can be constructed from a set of [`Address`]es, or via
     /// the [`RouteBuilder`] type.  Routes can contain middleware
@@ -506,7 +522,7 @@ impl Context {
         R: Into<Route>,
         M: Message + Send + 'static,
     {
-        self.send_from_address_impl(route.into(), msg, sending_address)
+        self.send_from_address_impl(route.into(), msg, sending_address, Vec::new())
             .await
     }
 
@@ -515,6 +531,7 @@ impl Context {
         route: Route,
         msg: M,
         sending_address: Address,
+        local_info: Vec<LocalInfo>,
     ) -> Result<()>
     where
         M: Message + Send + 'static,
@@ -544,7 +561,7 @@ impl Context {
         transport_msg.return_route.modify().append(sending_address);
 
         // Pack transport message into a LocalMessage wrapper
-        let local_msg = LocalMessage::new(transport_msg, Vec::new());
+        let local_msg = LocalMessage::new(transport_msg, local_info);
 
         // Pack local message into a RelayMessage wrapper
         let msg = RelayMessage::new(addr, local_msg, route, needs_wrapping);

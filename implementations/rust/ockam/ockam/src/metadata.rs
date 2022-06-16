@@ -29,7 +29,7 @@ use serde::{Deserialize, Serialize};
 /// generic metadata.  This data is passed around for every nested
 /// scope and must be re-attached to the outest-most scope when
 /// peeling a nested message stack.
-#[derive(Clone, Message, Serialize, Deserialize)]
+#[derive(Clone, Debug, Message, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct OckamMessage {
     /// Main data section of this message

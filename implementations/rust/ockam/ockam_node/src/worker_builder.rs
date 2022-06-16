@@ -78,7 +78,7 @@ where
 
     /// Consume this builder and start a new Ockam [`Worker`] from the given context
     #[inline]
-    pub async fn start(self, context: &Context) -> Result<()> {
+    pub async fn start(self, context: &Context) -> Result<Address> {
         info!(
             "Initializing ockam worker with access control: {:?}",
             self.mailboxes.main_mailbox().access_control(),
@@ -86,6 +86,7 @@ where
 
         let mailboxes = self.mailboxes;
         let addresses = mailboxes.addresses();
+        let main_address = mailboxes.main_address().clone();
 
         // Pass it to the context
         let (ctx, sender, ctrl_rx) =
@@ -108,6 +109,6 @@ where
             .await
             .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??;
 
-        Ok(())
+        Ok(main_address)
     }
 }

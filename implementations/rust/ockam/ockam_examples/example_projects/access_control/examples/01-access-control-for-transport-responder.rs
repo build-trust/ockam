@@ -1,7 +1,7 @@
 // This node starts a tcp listener and an echoer worker.
 // It then runs forever waiting for messages.
 
-use hello_ockam::Echoer;
+use abac_examples::Echoer;
 use ockam::access_control::{AllowedTransport, LocalOriginOnly};
 use ockam::{Context, Result, TcpTransport, WorkerBuilder, TCP};
 
