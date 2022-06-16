@@ -74,24 +74,31 @@ defmodule Ockam.Session.Separate.Initiator do
       handshake_address: state.inner_address
     }
 
-    hanshake_state = send_handshake(handshake, handshake_options, hanshake_state)
+    with {:ok, hanshake_state} <- send_handshake(handshake, handshake_options, hanshake_state) do
+      state =
+        Map.merge(state, %{
+          hanshake_state: hanshake_state,
+          handshake: handshake,
+          handshake_options: handshake_options,
+          data_worker: pre_worker
+        })
 
-    state =
-      Map.merge(state, %{
-        hanshake_state: hanshake_state,
-        handshake: handshake,
-        handshake_options: handshake_options,
-        data_worker: pre_worker
-      })
-
-    {:ok, Map.put(state, :stage, :handshake)}
+      {:ok, Map.put(state, :stage, :handshake)}
+    end
   end
 
   def send_handshake(handshake, handshake_options, hanshake_state) do
-    {:next, handshake_msg, hanshake_state} = handshake.init(handshake_options, hanshake_state)
-    Logger.info("handshake_msg: #{inspect(handshake_msg)}")
-    Router.route(handshake_msg)
-    hanshake_state
+    case handshake.init(handshake_options, hanshake_state) do
+      {:next, handshake_msg, hanshake_state} ->
+        Router.route(handshake_msg)
+        {:ok, hanshake_state}
+
+      {:next, handshake_state} ->
+        {:ok, handshake_state}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   @impl true

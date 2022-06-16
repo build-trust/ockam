@@ -3,6 +3,7 @@ defmodule Ockam.Session.Separate do
   Session implementation with separate data worker.
 
   WIP, not all session handshake is implemented
+  Please use `Ockam.Session.Pluggable`
   """
   def initiator() do
     Ockam.Session.Separate.Initiator

@@ -2,16 +2,20 @@ defmodule Ockam.Services.Authorization.Tests do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ockam.Identity
+
   alias Ockam.Message
   alias Ockam.Router
 
   alias Ockam.Services.AuthorizationConfig
   alias Ockam.Services.Echo
 
+  alias Ockam.Vault.Software, as: SoftwareVault
+
   require Logger
 
   setup_all do
-    {:ok, vault} = Ockam.Vault.Software.init()
+    {:ok, vault} = SoftwareVault.init()
     {:ok, identity} = Ockam.Vault.secret_generate(vault, type: :curve25519)
 
     {:ok, channel_listener} =
@@ -51,8 +55,6 @@ defmodule Ockam.Services.Authorization.Tests do
     {:ok, channel} =
       Ockam.SecureChannel.create(vault: vault, route: [channel_listener], identity_keypair: kp)
 
-    wait_for_channel(channel)
-
     Router.route(%Message{
       payload: "Hello secure channel",
       onward_route: [channel, echoer],
@@ -89,8 +91,6 @@ defmodule Ockam.Services.Authorization.Tests do
     {:ok, channel} =
       Ockam.SecureChannel.create(vault: vault, route: [channel_listener], identity_keypair: kp)
 
-    wait_for_channel(channel)
-
     Router.route(%Message{
       payload: "Hello secure channel",
       onward_route: [channel, echoer],
@@ -100,14 +100,34 @@ defmodule Ockam.Services.Authorization.Tests do
     refute_receive(%Message{onward_route: [^me], payload: "Hello secure channel"}, 500)
   end
 
-  def wait_for_channel(channel) do
-    case Ockam.SecureChannel.established?(channel) do
-      true ->
-        :ok
+  test "Identity secure channel authorization" do
+    {:ok, vault} = SoftwareVault.init()
+    {:ok, listener_identity, _id} = Identity.create(Ockam.Identity.Stub)
 
-      false ->
-        :timer.sleep(100)
-        wait_for_channel(channel)
-    end
+    {:ok, listener} =
+      Ockam.Identity.SecureChannel.create_listener(
+        identity: listener_identity,
+        encryption_options: [vault: vault]
+      )
+
+    {:ok, bob, _bob_id} = Identity.create(Ockam.Identity.Stub)
+
+    {:ok, bob_channel} =
+      Ockam.Identity.SecureChannel.create_channel(
+        identity: bob,
+        encryption_options: [vault: vault],
+        route: [listener]
+      )
+
+    {:ok, echoer} = Echo.create(authorization: AuthorizationConfig.identity_secure_channel())
+
+    {:ok, me} = Ockam.Node.register_random_address()
+    Ockam.Router.route("VIA CHANNEL", [bob_channel, echoer], [me])
+
+    assert_receive %Ockam.Message{onward_route: [^me], payload: "VIA CHANNEL"}
+
+    Ockam.Router.route("WITHOUT CHANNEL", [echoer], [me])
+
+    refute_receive %Ockam.Message{onward_route: [^me], payload: "WITHOUT CHANNEL"}
   end
 end

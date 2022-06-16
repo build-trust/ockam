@@ -53,6 +53,19 @@ defmodule MiniCBOR do
     [@reserved_tag_field | keys]
   end
 
+  def decode_strict(binary, schema) do
+    case decode(binary, schema) do
+      {:ok, decoded, ""} ->
+        {:ok, decoded}
+
+      {:ok, decoded, rest} ->
+        {:error, {:decode_error, {:extra_data, rest, decoded}, binary}}
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
   def struct_schema({:map, keys}) when is_list(keys) do
     mapping =
       reserve_tag_field(keys)

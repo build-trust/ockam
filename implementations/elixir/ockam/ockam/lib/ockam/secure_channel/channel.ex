@@ -1,6 +1,7 @@
 defmodule Ockam.SecureChannel.Channel do
   @moduledoc false
 
+  ## TODO: make that Ockam.Worker
   use GenStateMachine
 
   alias Ockam.Node
@@ -16,7 +17,11 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   @doc false
-  def create(options) when is_list(options) do
+  @spec create(options :: Keyword.t(), timeout :: integer()) ::
+          {:ok, address :: Ockam.Address.t()}
+          | {:error, {:init_timeout, {pid :: pid(), address :: Ockam.Address.t()}}}
+          | {:error, reason :: any()}
+  def create(options, timeout \\ 30_000) when is_list(options) do
     ## TODO: why secure channel is not a worker?
     address_prefix = Keyword.get(options, :address_prefix, "")
 
@@ -26,8 +31,42 @@ defmodule Ockam.SecureChannel.Channel do
       end)
 
     case Node.start_supervised(__MODULE__, options) do
-      {:ok, _pid, address} -> {:ok, address}
-      error -> error
+      {:ok, pid, address} ->
+        with {:ok, _pid, address} <- wait_for_channel(pid, address, timeout) do
+          {:ok, address}
+        end
+
+      error ->
+        error
+    end
+  end
+
+  def wait_for_channel(pid, address, timeout, interval \\ 100)
+
+  def wait_for_channel(pid, address, timeout, _interval)
+      when is_integer(timeout) and timeout < 0 do
+    {:error, {:init_channel, :timeout, {pid, address}}}
+  end
+
+  def wait_for_channel(pid, address, timeout, interval) when is_integer(timeout) do
+    case established?(address) do
+      false ->
+        :timer.sleep(interval)
+        wait_for_channel(pid, address, timeout - interval, interval)
+
+      true ->
+        {:ok, pid, address}
+    end
+  end
+
+  def wait_for_channel(pid, address, :infinity, interval) do
+    case established?(address) do
+      false ->
+        :timer.sleep(interval)
+        wait_for_channel(pid, address, :infinity, interval)
+
+      true ->
+        {:ok, pid, address}
     end
   end
 
@@ -36,16 +75,12 @@ defmodule Ockam.SecureChannel.Channel do
     address = Keyword.get(options, :address, Node.get_random_unregistered_address())
     options = Keyword.put(options, :address, address)
 
-    case start(address, options) do
-      {:ok, pid} ->
-        {:ok, pid, address}
-
-      :error ->
-        {:error, {:option_is_nil, :address}}
+    with {:ok, pid} <- start_link(address, options) do
+      {:ok, pid, address}
     end
   end
 
-  defp start(address, options) do
+  defp start_link(address, options) do
     name = {:via, Node.process_registry(), address}
     GenStateMachine.start_link(__MODULE__, options, name: name)
   end
@@ -61,6 +96,8 @@ defmodule Ockam.SecureChannel.Channel do
          {:ok, data} <- setup_vault(options, data),
          {:ok, data} <- setup_peer(options, data),
          {:ok, data} <- setup_initiating_message(options, data),
+         {:ok, data} <- setup_callback_route(options, data),
+         {:ok, data} <- setup_extra_init_payload(options, data),
          {:ok, initial, data, next_events} <- setup_key_establishment_protocol(options, data),
          {:ok, initial, data} <- setup_encrypted_transport_protocol(options, initial, data) do
       return_value = {:ok, initial, data, next_events}
@@ -93,11 +130,29 @@ defmodule Ockam.SecureChannel.Channel do
 
   defp handle_message(:info, event, {:key_establishment, _role, _role_state} = state, data) do
     key_establishment_protocol = Map.get(data, :key_establishment_protocol)
-    key_establishment_protocol.handle_message(event, state, data)
+
+    with {:next_state, {:encrypted_transport, :ready}, data} <-
+           key_establishment_protocol.handle_message(event, state, data) do
+      notify_callback_route(data)
+      {:next_state, {:encrypted_transport, :ready}, data}
+    end
   end
 
   defp handle_message(:info, event, {:encrypted_transport, :ready} = state, data) do
     EncryptedTransport.handle_message(event, state, data)
+  end
+
+  defp notify_callback_route(%{
+         encrypted_transport: %{h: h},
+         callback_route: callback_route,
+         plaintext_address: address
+       })
+       when is_list(callback_route) do
+    Ockam.Router.route(%{payload: h, onward_route: callback_route, return_route: [address]})
+  end
+
+  defp notify_callback_route(_data) do
+    :ok
   end
 
   # application facing address is plaintext address
@@ -141,6 +196,23 @@ defmodule Ockam.SecureChannel.Channel do
     case Keyword.get(options, :initiating_message) do
       nil -> {:ok, data}
       initiating_message -> {:ok, Map.put(data, :initiating_message, initiating_message)}
+    end
+  end
+
+  defp setup_callback_route(options, data) do
+    case Keyword.get(options, :callback_route) do
+      nil ->
+        {:ok, data}
+
+      callback_route when is_list(callback_route) ->
+        {:ok, Map.put(data, :callback_route, callback_route)}
+    end
+  end
+
+  defp setup_extra_init_payload(options, data) do
+    case Keyword.get(options, :extra_init_payload) do
+      nil -> {:ok, data}
+      extra_init_payload -> {:ok, Map.put(data, :extra_init_payload, extra_init_payload)}
     end
   end
 

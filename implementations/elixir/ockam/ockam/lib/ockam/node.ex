@@ -10,6 +10,8 @@ defmodule Ockam.Node do
   alias Ockam.Router
   alias Ockam.Telemetry
 
+  require Logger
+
   # `get_random_unused_address/1` uses this as the length of the new address
   # that will be generated.
   @default_address_length_in_bytes 8

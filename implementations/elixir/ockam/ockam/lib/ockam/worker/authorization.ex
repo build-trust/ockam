@@ -47,6 +47,8 @@ defmodule Ockam.Worker.Authorization do
   end
 
   def from_addresses(message, addresses) do
+    Logger.debug("check from addresses #{inspect(message)} #{inspect(addresses)}")
+
     case Message.return_route(message) do
       [return_address | _rest] ->
         case Enum.member?(addresses, return_address) do
@@ -98,12 +100,40 @@ defmodule Ockam.Worker.Authorization do
   Allow messages which have `channel: :secure_channel` in their local metadata
   to be handled by the worker.
   """
-  def is_secure(prev \\ :ok, message, _state) do
+  def from_secure_channel(prev \\ :ok, message, _state) do
+    Logger.debug("check is secure #{inspect(message)}")
+
     chain(prev, fn ->
       case Message.local_metadata(message) do
-        %{source: :channel, channel: :secure_channel} -> :ok
-        %{source: :channel, channel: other} -> {:error, {:is_secure, :invalid_channel, other}}
-        other -> {:error, {:is_secure, :invalid_metadata, other}}
+        %{source: :channel, channel: :secure_channel} ->
+          :ok
+
+        %{source: :channel, channel: other} ->
+          {:error, {:from_secure_channel, :invalid_channel, other}}
+
+        other ->
+          {:error, {:from_secure_channel, :invalid_metadata, other}}
+      end
+    end)
+  end
+
+  @doc """
+  Allow messages which have `channel: :identity_secure_channel` in their local metadata
+  to be handled by the worker.
+  """
+  def from_identiy_secure_channel(prev \\ :ok, message, _state) do
+    Logger.debug("check from identity channel #{inspect(message)}")
+
+    chain(prev, fn ->
+      case Message.local_metadata(message) do
+        %{source: :channel, channel: :identity_secure_channel} ->
+          :ok
+
+        %{source: :channel, channel: other} ->
+          {:error, {:from_identiy_secure_channel, :invalid_channel, other}}
+
+        other ->
+          {:error, {:from_identiy_secure_channel, :invalid_metadata, other}}
       end
     end)
   end
@@ -133,6 +163,13 @@ defmodule Ockam.Worker.Authorization do
   @doc """
   Combine multiple authorization steps in the state :authorization field
 
+  :authorization field can be either
+  - a list of steps
+  - a map of %{address => list of steps}
+
+  When steps are in a list - they are checked to all addresses.
+  When steps are in a map - only the current address (first in onward_route) steps are checked
+
   Each step can be:
   - function :: atom - a function from `Ockam.Worker.Authorization` taking message and state as arguments
   - {function :: atom, args :: list} - a function from `Ockam.Worker.Authorization` taking args
@@ -144,12 +181,30 @@ defmodule Ockam.Worker.Authorization do
   config `:to_my_address` is same as `{:to_my_address, [:message, :state]}` and
   `{Ockam.Worker.Authorization, :to_my_address, [:message, :state]}`
   """
-  def with_config(prev \\ :ok, message, state) do
+  def with_config(prev, message, state) do
     chain(prev, fn ->
-      Map.get(state, :authorization, [:to_my_address])
-      |> expand_config(message, state)
-      |> check_with_config()
+      with_config(message, state)
     end)
+  end
+
+  def with_config(message, state) do
+    config = Map.get(state, :authorization, [:to_my_address])
+
+    case config do
+      list when is_list(list) ->
+        expand_config(config, message, state) |> check_with_config()
+
+      map when is_map(map) ->
+        [destination | _] = Message.onward_route(message)
+
+        case Map.get(config, destination) do
+          nil ->
+            :ok
+
+          address_config ->
+            expand_config(address_config, message, state) |> check_with_config()
+        end
+    end
   end
 
   defp check_with_config(prev \\ :ok, config)

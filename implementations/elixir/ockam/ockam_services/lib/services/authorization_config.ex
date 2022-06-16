@@ -3,7 +3,11 @@ defmodule Ockam.Services.AuthorizationConfig do
   Predefined configs for services authorization
   """
   def secure_channel() do
-    [:to_my_address, :is_secure]
+    [:to_my_address, :from_secure_channel]
+  end
+
+  def identity_secure_channel() do
+    [:to_my_address, :from_identiy_secure_channel]
   end
 
   def local() do

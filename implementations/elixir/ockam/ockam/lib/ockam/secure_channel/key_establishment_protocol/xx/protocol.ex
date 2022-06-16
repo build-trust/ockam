@@ -67,7 +67,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
 
   defp setup_s(options, state) do
     case Keyword.get(options, :identity_keypair) do
-      nil -> {:error, :identity_keypair_option_is_nil}
+      nil -> generate_key(:s, state)
       %{private: _priv, public: _pub} = s -> {:ok, %{state | s: s}}
       vault_handle -> turn_vault_private_key_handle_to_keypair(:s, vault_handle, state)
     end
@@ -75,7 +75,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
 
   defp setup_e(options, state) do
     case Keyword.get(options, :ephemeral_keypair) do
-      nil -> generate_e(state)
+      nil -> generate_key(:e, state)
       %{private: _priv, public: _pub} = e -> {:ok, %{state | e: e}}
       vault_handle -> turn_vault_private_key_handle_to_keypair(:e, vault_handle, state)
     end
@@ -88,13 +88,13 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  defp generate_e(%{vault: vault} = state) do
-    with {:ok, private_key} <- Vault.secret_generate(vault, type: :curve25519),
-         {:ok, public_key} <- Vault.secret_publickey_get(vault, private_key) do
-      e = %{private: private_key, public: public_key}
-      {:ok, %{state | e: e}}
-    else
-      {:error, reason} -> {:error, {:could_not_setup_e, reason}}
+  defp generate_key(key_type, %{vault: vault} = state) do
+    case Ockam.Vault.secret_generate(vault, type: :curve25519) do
+      {:ok, key_handle} ->
+        turn_vault_private_key_handle_to_keypair(key_type, key_handle, state)
+
+      {:error, reason} ->
+        {:error, {:could_not_setup_key, key_type, reason}}
     end
   end
 

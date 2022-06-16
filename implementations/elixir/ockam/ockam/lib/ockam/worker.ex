@@ -127,6 +127,16 @@ defmodule Ockam.Worker do
   def create(module, options, timeout) when is_list(options) do
     address_prefix = Keyword.get(options, :address_prefix, module.address_prefix(options))
 
+    ## Make sure there is no `nil` address in there
+    ## TODO: validate address format
+    ## TODO: better way to set address than `put_new_lazy`
+    options =
+      case Keyword.fetch(options, :address) do
+        {:ok, nil} -> Keyword.delete(options, :address)
+        {:ok, _address} -> options
+        :error -> options
+      end
+
     options =
       Keyword.put_new_lazy(options, :address, fn ->
         Node.get_random_unregistered_address(address_prefix)
@@ -140,7 +150,7 @@ defmodule Ockam.Worker do
           {:ok, worker}
         catch
           _type, err ->
-            {:error, err}
+            {:error, {:worker_init, worker, err}}
         end
 
       error ->

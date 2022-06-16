@@ -170,7 +170,6 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
     {:ok, c} =
       SecureChannel.create(route: route_to_listener, vault: vault, identity_keypair: identity)
 
-    wait(fn -> SecureChannel.established?(c) end)
     {:ok, c}
   end
 

@@ -42,11 +42,11 @@ defmodule Ockam.Session.Pluggable.Initiator do
 
   def wait_for_session(worker, interval \\ 100, timeout \\ 5000)
 
-  def wait_for_session(_worker, _interval, expire) when expire < 0 do
-    {:error, :timeout}
+  def wait_for_session(worker, _interval, expire) when is_integer(expire) and expire < 0 do
+    {:error, {:timeout, worker}}
   end
 
-  def wait_for_session(worker, interval, timeout) do
+  def wait_for_session(worker, interval, timeout) when is_integer(timeout) do
     case get_stage(worker) do
       :data ->
         :ok
@@ -54,6 +54,17 @@ defmodule Ockam.Session.Pluggable.Initiator do
       :handshake ->
         :timer.sleep(interval)
         wait_for_session(worker, interval, timeout - interval)
+    end
+  end
+
+  def wait_for_session(worker, interval, :infinity) do
+    case get_stage(worker) do
+      :data ->
+        :ok
+
+      :handshake ->
+        :timer.sleep(interval)
+        wait_for_session(worker, interval, :infinity)
     end
   end
 
@@ -91,27 +102,30 @@ defmodule Ockam.Session.Pluggable.Initiator do
       Map.merge(state, %{
         worker_mod: worker_mod,
         worker_options: worker_options,
-        base_state: base_state
-      })
-
-    handshake_state = send_handshake(handshake, handshake_options, handshake_state)
-
-    state =
-      Map.merge(state, %{
+        base_state: base_state,
         handshake: handshake,
         handshake_options: handshake_options,
-        handshake_state: handshake_state,
         stage: :handshake
       })
 
-    {:ok, state}
+    with {:ok, handshake_state} <- init_handshake(handshake, handshake_options, handshake_state) do
+      state = RoutingSession.update_handshake_state(state, handshake_state)
+      {:ok, state}
+    end
   end
 
-  def send_handshake(handshake, handshake_options, handshake_state) do
-    {:next, handshake_msg, handshake_state} = handshake.init(handshake_options, handshake_state)
-    send_message(handshake_msg)
+  def init_handshake(handshake, handshake_options, handshake_state) do
+    case handshake.init(handshake_options, handshake_state) do
+      {:next, handshake_msg, handshake_state} ->
+        maybe_send_message(handshake_msg)
+        {:ok, handshake_state}
 
-    handshake_state
+      {:next, handshake_state} ->
+        {:ok, handshake_state}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @impl true
@@ -142,54 +156,29 @@ defmodule Ockam.Session.Pluggable.Initiator do
 
     case handshake.handle_initiator(handshake_options, message, handshake_state) do
       {:ready, options, handshake_state} ->
-        switch_to_data_stage(options, handshake_state, state)
+        RoutingSession.switch_to_data_stage(options, handshake_state, state)
 
       {:ready, message, options, handshake_state} ->
-        switch_to_data_stage(message, options, handshake_state, state)
+        RoutingSession.switch_to_data_stage(message, options, handshake_state, state)
 
       {:next, message, handshake_state} ->
-        send_message(message)
-        {:ok, Map.put(state, :handshake_state, handshake_state)}
+        maybe_send_message(message)
+        {:ok, RoutingSession.update_handshake_state(state, handshake_state)}
 
       {:next, handshake_state} ->
-        {:ok, Map.put(state, :handshake_state, handshake_state)}
+        {:ok, RoutingSession.update_handshake_state(state, handshake_state)}
 
       {:error, err} ->
-        ## TODO: error handling in Ockam.Worker
-        {:error, err}
+        {:stop, {:handshake_error, err}, state}
     end
   end
 
-  def switch_to_data_stage(message \\ nil, handshake_options, handshake_state, state) do
-    base_state = Map.get(state, :base_state)
-    worker_mod = Map.fetch!(state, :worker_mod)
-    worker_options = Map.fetch!(state, :worker_options)
-
-    options = Keyword.merge(worker_options, handshake_options)
-
-    case worker_mod.setup(options, base_state) do
-      {:ok, data_state} ->
-        send_message(message)
-
-        {:ok,
-         Map.merge(state, %{
-           data_state: data_state,
-           handshake_state: handshake_state,
-           stage: :data
-         })}
-
-      {:error, err} ->
-        {:stop, {:cannot_start_data_worker, {:error, err}, options, handshake_state, base_state},
-         state}
-    end
-  end
-
-  def send_message(nil) do
+  def maybe_send_message(nil) do
     :ok
   end
 
-  def send_message(message) do
-    Logger.info("Sending handshake #{inspect(message)}")
+  def maybe_send_message(%{} = message) do
+    Logger.debug("Sending handshake #{inspect(message)}")
     Router.route(message)
   end
 end
