@@ -1,11 +1,11 @@
 use crate::ExternalLocalInfo;
 use ockam_core::access_control::AccessControl;
+use ockam_core::{allow, LocalMessage, Result};
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, vec::Vec},
     TransportType,
 };
-use ockam_core::{LocalMessage, Result};
 
 /// Allows only messages that originate from this node
 #[derive(Debug)]
@@ -50,6 +50,6 @@ impl AccessControl for AllowedTransport {
             }
         }
 
-        Ok(true)
+        allow()
     }
 }
