@@ -67,6 +67,6 @@ mockall             = "0.11"
 # TODO enable "tag" feature once implemented on elixir side
 ockam_api           = { path = ".", features = ["std"] }
 ockam_macros        = { version = "0.16.0", path = "../ockam_macros", features = ["std"] }
-ockam_transport_tcp = { version = "0.56.0", path = "../ockam_transport_tcp" }
+ockam_transport_tcp = { version = "0.57.0", path = "../ockam_transport_tcp" }
 quickcheck          = "1.0.1"
 tempfile            = "3.3.0"
