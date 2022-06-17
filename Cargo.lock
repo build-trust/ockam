@@ -2194,7 +2194,7 @@ dependencies = [
 
 [[package]]
 name = "ockam-ffi"
-version = "0.47.0"
+version = "0.48.0"
 dependencies = [
  "futures 0.3.21",
  "lazy_static",
