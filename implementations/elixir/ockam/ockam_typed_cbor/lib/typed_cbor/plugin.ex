@@ -74,42 +74,25 @@ defmodule Ockam.TypedCBOR.Plugin do
   @impl true
   def after_definition(_) do
     quote do
-      import Ockam.TypedCBOR, only: [from_cbor_term: 2, to_cbor_term: 2]
-
       def minicbor_schema(), do: {:struct, __MODULE__, @tt_fields |> Enum.into(%{})}
 
-      def encode!(%__MODULE__{} = d),
-        do: CBOR.encode(to_cbor_term(minicbor_schema(), d))
+      def encode!(%__MODULE__{} = d), do: Ockam.TypedCBOR.encode!(minicbor_schema(), d)
 
-      def encode(%__MODULE__{} = d), do: wrap_exception(&encode!/1, d)
+      def encode(%__MODULE__{} = d), do: Ockam.TypedCBOR.encode(minicbor_schema(), d)
 
-      def decode!(data) do
-        with {:ok, map, rest} <- CBOR.decode(data) do
-          {:ok, from_cbor_term(minicbor_schema(), map), rest}
-        end
-      end
+      def decode!(data), do: Ockam.TypedCBOR.decode!(minicbor_schema(), data)
 
-      def decode(data), do: wrap_exception(&decode!/1, data)
+      def decode(data), do: Ockam.TypedCBOR.decode(minicbor_schema(), data)
 
-      def encode_list!(l),
-        do: CBOR.encode(to_cbor_term({:list, minicbor_schema()}, l))
+      def decode_strict(data), do: Ockam.TypedCBOR.decode_strict(minicbor_schema(), data)
 
-      def encode_list(l), do: wrap_exception(&encode_list!/1, l)
+      def encode_list!(l), do: Ockam.TypedCBOR.encode!({:list, minicbor_schema()}, l)
 
-      def decode_list!(data) do
-        with {:ok, l, rest} <- CBOR.decode(data) do
-          {:ok, from_cbor_term({:list, minicbor_schema()}, l), rest}
-        end
-      end
+      def encode_list(l), do: Ockam.TypedCBOR.encode({:list, minicbor_schema()}, l)
 
-      def decode_list(l), do: wrap_exception(&decode_list!/1, l)
+      def decode_list!(data), do: Ockam.TypedCBOR.decode!({:list, minicbor_schema()}, data)
 
-      defp wrap_exception(f, arg) do
-        f.(arg)
-      rescue
-        e in Ockam.TypedCBOR.Exception ->
-          {:error, e.message}
-      end
+      def decode_list(data), do: Ockam.TypedCBOR.decode({:list, minicbor_schema()}, data)
     end
   end
 end

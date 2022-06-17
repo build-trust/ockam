@@ -259,4 +259,32 @@ defmodule Ockam.TypedCBOR do
         [{key, to_cbor_term(schema, val)} | to_cbor_fields(rest, struct)]
     end
   end
+
+  def encode!(schema, d),
+    do: CBOR.encode(to_cbor_term(schema, d))
+
+  def encode(schema, d), do: wrap_exception(&encode!(schema, &1), d)
+
+  def decode!(schema, data) do
+    with {:ok, map, rest} <- CBOR.decode(data) do
+      {:ok, from_cbor_term(schema, map), rest}
+    end
+  end
+
+  def decode(schema, data), do: wrap_exception(&decode!(schema, &1), data)
+
+  def decode_strict(schema, data) do
+    case decode(schema, data) do
+      {:ok, decoded, ""} -> {:ok, decoded}
+      {:ok, decoded, rest} -> {:error, {:decode_error, {:extra_data, rest, decoded}, data}}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp wrap_exception(f, arg) do
+    f.(arg)
+  rescue
+    e in Ockam.TypedCBOR.Exception ->
+      {:error, e.message}
+  end
 end
