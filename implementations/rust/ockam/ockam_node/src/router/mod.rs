@@ -7,6 +7,7 @@ mod stop_processor;
 mod stop_worker;
 mod utils;
 
+#[cfg(feature = "metrics")]
 use std::sync::atomic::AtomicUsize;
 
 use record::{AddressMeta, AddressRecord, InternalMap};
@@ -122,6 +123,7 @@ impl Router {
         self.map.update_metrics(); // Possibly remove this from the hot path?
 
         use NodeMessage::*;
+        #[cfg(feature = "metrics")]
         debug!(
             "Current router alloc: {} addresses",
             self.map.get_addr_count()

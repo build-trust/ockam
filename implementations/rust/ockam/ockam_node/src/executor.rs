@@ -35,6 +35,7 @@ pub struct Executor {
     /// Main worker and application router
     router: Router,
     /// Metrics collection endpoint
+    #[cfg(feature = "metrics")]
     metrics: Arc<Metrics>,
 }
 
@@ -42,10 +43,12 @@ impl Default for Executor {
     fn default() -> Self {
         let rt = Arc::new(Runtime::new().unwrap());
         let router = Router::new();
+        #[cfg(feature = "metrics")]
         let metrics = Metrics::new(&rt, router.get_metrics_readout());
         Self {
             rt,
             router,
+            #[cfg(feature = "metrics")]
             metrics,
         }
     }

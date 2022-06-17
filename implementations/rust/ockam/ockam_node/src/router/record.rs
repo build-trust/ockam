@@ -45,6 +45,7 @@ impl InternalMap {
         (Arc::clone(&self.metrics.0), Arc::clone(&self.metrics.1))
     }
 
+    #[cfg(feature = "metrics")]
     pub(super) fn get_addr_count(&self) -> usize {
         self.metrics.0.load(Ordering::Acquire)
     }
