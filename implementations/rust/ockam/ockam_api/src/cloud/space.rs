@@ -38,7 +38,7 @@ impl<'a> CreateSpace<'a> {
 
 #[cfg(test)]
 pub mod tests {
-    use std::io;
+    use core::convert::Infallible;
 
     use minicbor::encode::Write;
     use minicbor::{encode, Decoder};
@@ -105,7 +105,7 @@ pub mod tests {
     impl SpaceServer {
         fn on_request<W>(&mut self, data: &[u8], buf: W) -> ockam_core::Result<()>
         where
-            W: Write<Error = io::Error>,
+            W: Write<Error = Infallible>,
         {
             let mut rng = Gen::new(32);
             let mut dec = Decoder::new(data);

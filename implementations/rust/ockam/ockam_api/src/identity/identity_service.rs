@@ -1,8 +1,9 @@
+use core::convert::Infallible;
+
 use crate::identity::models::*;
 use crate::{Error, Id, Method, Request, Response, Status};
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
-use ockam_core::compat::io;
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_identity::{
     Contact, ExportedIdentity, Identity, IdentityIdentifier, IdentityTrait, IdentityVault,
@@ -29,7 +30,7 @@ impl<V: IdentityVault> IdentityService<V> {
 impl<V: IdentityVault> IdentityService<V> {
     fn response_for_bad_request<W>(req: &Request, msg: &str, enc: W) -> Result<()>
     where
-        W: Write<Error = io::Error>,
+        W: Write<Error = Infallible>,
     {
         let error = Error::new(req.path()).with_message(msg);
 
@@ -46,7 +47,7 @@ impl<V: IdentityVault> IdentityService<V> {
 
     fn ok_response<W, B>(req: &Request, body: Option<B>, enc: W) -> Result<()>
     where
-        W: Write<Error = io::Error>,
+        W: Write<Error = Infallible>,
         B: Encode<()>,
     {
         Response::ok(req.id()).body(body).encode(enc)?;
@@ -61,7 +62,7 @@ impl<V: IdentityVault> IdentityService<V> {
         enc: W,
     ) -> Result<()>
     where
-        W: Write<Error = io::Error>,
+        W: Write<Error = Infallible>,
     {
         let (path, req_id) = match req {
             None => ("", Id::fresh()),
@@ -82,7 +83,7 @@ impl<V: IdentityVault> IdentityService<V> {
         enc: W,
     ) -> Result<()>
     where
-        W: Write<Error = io::Error>,
+        W: Write<Error = Infallible>,
     {
         trace! {
             target: "ockam_identity::service",

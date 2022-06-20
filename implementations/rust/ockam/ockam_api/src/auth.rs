@@ -8,7 +8,6 @@ use core::fmt;
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
 use ockam_core::compat::error::Error as StdError;
-use ockam_core::compat::io;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{self, Address, Route, Routed, Worker};
 use ockam_node::Context;
@@ -45,7 +44,7 @@ impl<S: Storage + Send + Sync + 'static> Server<S> {
 
     async fn on_request<W>(&mut self, data: &[u8], buf: W) -> Result<(), AuthError>
     where
-        W: Write<Error = io::Error>,
+        W: Write<Error = Infallible>,
     {
         let mut dec = Decoder::new(data);
         let req: Request = dec.decode()?;
@@ -276,7 +275,7 @@ impl AuthError {
 #[derive(Debug)]
 enum ErrorImpl {
     Decode(minicbor::decode::Error),
-    Encode(minicbor::encode::Error<io::Error>),
+    Encode(minicbor::encode::Error<Infallible>),
     Storage(Box<dyn StdError + Send + Sync>),
 }
 
@@ -307,8 +306,8 @@ impl From<minicbor::decode::Error> for AuthError {
     }
 }
 
-impl From<minicbor::encode::Error<io::Error>> for AuthError {
-    fn from(e: minicbor::encode::Error<io::Error>) -> Self {
+impl From<minicbor::encode::Error<Infallible>> for AuthError {
+    fn from(e: minicbor::encode::Error<Infallible>) -> Self {
         AuthError(ErrorImpl::Encode(e))
     }
 }

@@ -1,10 +1,11 @@
 pub mod models;
 
+use core::convert::Infallible;
+
 use crate::{CowStr, Error, Id, Method, Request, Response, Status};
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
 use models::*;
-use ockam_core::compat::io;
 use ockam_core::vault::{
     AsymmetricVault, Hasher, KeyId, SecretVault, Signature, Signer, SymmetricVault, Verifier,
 };
@@ -28,7 +29,7 @@ impl VaultService {
 impl VaultService {
     fn response_for_bad_request<W>(req: &Request, msg: &str, enc: W) -> Result<()>
     where
-        W: Write<Error = io::Error>,
+        W: Write<Error = Infallible>,
     {
         let error = Error::new(req.path()).with_message(msg);
 
@@ -45,7 +46,7 @@ impl VaultService {
 
     fn ok_response<W, B>(req: &Request, body: Option<B>, enc: W) -> Result<()>
     where
-        W: Write<Error = io::Error>,
+        W: Write<Error = Infallible>,
         B: Encode<()>,
     {
         Response::ok(req.id()).body(body).encode(enc)?;
@@ -60,7 +61,7 @@ impl VaultService {
         enc: W,
     ) -> Result<()>
     where
-        W: Write<Error = io::Error>,
+        W: Write<Error = Infallible>,
     {
         let (path, req_id) = match req {
             None => ("", Id::fresh()),
@@ -81,7 +82,7 @@ impl VaultService {
         enc: W,
     ) -> Result<()>
     where
-        W: Write<Error = io::Error>,
+        W: Write<Error = Infallible>,
     {
         trace! {
             target: "ockam_vault::service",
