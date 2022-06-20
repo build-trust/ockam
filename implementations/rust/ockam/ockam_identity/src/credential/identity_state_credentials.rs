@@ -2,8 +2,8 @@ use crate::{
     identity::Identity, BbsCredential, BlsPublicKey, BlsSecretKey, Credential, CredentialAttribute,
     CredentialAttributeType, CredentialError, CredentialFragment1, CredentialFragment2,
     CredentialHolder, CredentialIssuer, CredentialOffer, CredentialPresentation, CredentialRequest,
-    CredentialSchema, CredentialVerifier, ExtPokSignatureProof, IdentityCredential, IdentityError,
-    IdentityState, OfferId, PresentationManifest, ProofBytes, ProofRequestId, SigningPublicKey,
+    CredentialSchema, CredentialVerifier, ExtPokSignatureProof, Identity, IdentityCredential,
+    IdentityError, OfferId, PresentationManifest, ProofBytes, ProofRequestId, SigningPublicKey,
 };
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::vault::SecretVault;
@@ -16,7 +16,7 @@ use signature_bbs_plus::{MessageGenerators, ProofOfPossession};
 use signature_core::challenge::Challenge;
 use signature_core::lib::{HiddenMessage, Message, Nonce, ProofMessage};
 
-impl IdentityState {
+impl Identity {
     pub fn add_credential(&mut self, credential: IdentityCredential) -> Result<()> {
         if let Some(_) = self
             .credentials
@@ -44,7 +44,7 @@ impl IdentityState {
 }
 
 #[async_trait]
-impl CredentialIssuer for IdentityState {
+impl CredentialIssuer for Identity {
     async fn get_signing_key(&mut self) -> Result<BlsSecretKey> {
         let secret = self
             .get_secret_key(Identity::CREDENTIALS_ISSUE.into())
@@ -180,7 +180,7 @@ impl CredentialIssuer for IdentityState {
 pub const SECRET_ID: &str = "secret_id";
 
 #[async_trait]
-impl CredentialHolder for IdentityState {
+impl CredentialHolder for Identity {
     async fn accept_credential_offer(
         &mut self,
         offer: &CredentialOffer,
@@ -337,7 +337,7 @@ impl CredentialHolder for IdentityState {
 }
 
 #[async_trait]
-impl CredentialVerifier for IdentityState {
+impl CredentialVerifier for Identity {
     async fn create_proof_request_id(&mut self) -> Result<ProofRequestId> {
         Ok(Nonce::random(thread_rng()).to_bytes())
     }

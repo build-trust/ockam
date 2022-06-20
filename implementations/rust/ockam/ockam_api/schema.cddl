@@ -102,67 +102,62 @@ project_name = text
 service_name = text
 access_route = bytes
 
+;;; Identity ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 identity_create_response = {
     ?0: 3500430,
      1: identity,
-     2: identity_id
+     2: identity_id,
 }
 
-identity_contact_request = {
-    ?0: 9274303,
-     1: identity
-}
-
-identity_contact_response = {
-    ?0: 3682917,
-     1: contact
-}
-
-identity_verify_and_add_contact_request = {
-    ?0: 3396927,
+validate_identity_change_history_request = {
+    ?0: 4245404,
      1: identity,
-     2: contact
 }
 
-identity_verify_and_add_contact_response = {
-    ?0: 7946005,
-     1: identity,
-     2: contact_id
+validate_identity_change_history_response = {
+    ?0: 3500430,
+     1: identity_id,
 }
 
-identity_create_auth_proof_request = {
+compare_identity_change_history_request = {
+    ?0: 7300740,
+     1: current_identity,
+     2: known_identity,
+}
+
+create_signature_request = {
     ?0: 1019956,
      1: identity,
-     2: identity_state
+     2: data,
 }
 
-identity_create_auth_proof_response = {
+create_signature_response = {
     ?0: 2592832,
-     1: identity_proof
+     1: signature,
 }
 
-identity_verify_auth_proof_request = {
+verify_signature_request = {
     ?0: 7550780,
-     1: identity,
-     2: peer_identity_id,
-     3: identity_state,
-     4: identity_proof
+     1: signer_identity,
+     2: data,
+     3: signature,
 }
 
-identity_verify_auth_proof_response = {
+verify_signature_response = {
     ?0: 1236745,
-     1: verified
+     1: verified,
 }
 
 identity         = bytes
+current_identity = bytes
+known_identity   = bytes
+signer_identity  = bytes
 identity_id      = text
-contact          = bytes
-identity_state   = bytes
-identity_proof   = bytes
+signature        = bytes
 peer_identity_id = text
+data             = bytes
 verified         = bool
-contact_id       = text
-
 
 ;;; Enroll ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

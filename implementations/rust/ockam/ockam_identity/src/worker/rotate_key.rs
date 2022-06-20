@@ -1,8 +1,10 @@
+use crate::change::{
+    ChangeBlock, IdentityChange, IdentityChangeEvent, IdentityChangeType, Signature, SignatureType,
+};
 use crate::change_history::IdentityChangeHistory;
 use crate::{
-    ChangeBlock, EventIdentifier, IdentityChange, IdentityChangeEvent, IdentityChangeType,
-    IdentityError, IdentityEventAttributes, IdentityState, IdentityStateConst, IdentityVault,
-    KeyAttributes, MetaKeyAttributes, Signature, SignatureType,
+    EventIdentifier, Identity, IdentityError, IdentityEventAttributes, IdentityStateConst,
+    IdentityVault, KeyAttributes, MetaKeyAttributes,
 };
 use ockam_core::vault::PublicKey;
 use ockam_core::vault::Signature as OckamVaultSignature;
@@ -75,23 +77,24 @@ impl RotateKeyChange {
     }
 }
 
-impl<V: IdentityVault> IdentityState<V> {
+impl<V: IdentityVault> Identity<V> {
     /// Rotate key event
     pub(crate) async fn make_rotate_key_event(
-        &mut self,
+        &self,
         key_attributes: KeyAttributes,
         attributes: IdentityEventAttributes,
     ) -> Result<IdentityChangeEvent> {
-        let prev_event_id = self.change_history().get_last_event_id()?;
+        let change_history = self.change_history.read().await;
+        let prev_event_id = change_history.get_last_event_id()?;
 
         let last_event_in_chain = IdentityChangeHistory::find_last_key_event(
-            self.change_history().as_ref(),
+            change_history.as_ref(),
             key_attributes.label(),
         )?
         .clone();
 
         let last_key_in_chain =
-            Self::get_secret_key_from_event(&last_event_in_chain, &mut self.vault).await?;
+            Self::get_secret_key_from_event(&last_event_in_chain, &self.vault).await?;
 
         let secret_attributes = match key_attributes.meta() {
             MetaKeyAttributes::SecretAttributes(secret_attributes) => *secret_attributes,

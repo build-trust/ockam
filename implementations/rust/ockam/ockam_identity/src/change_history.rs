@@ -1,25 +1,69 @@
 //! Identity history
-use crate::IdentityChangeType::{CreateKey, RotateKey};
+use crate::change::IdentityChangeType::{CreateKey, RotateKey};
+use crate::change::{IdentityChangeEvent, SignatureType};
 use crate::{
-    EventIdentifier, IdentityChangeEvent, IdentityError, IdentityStateConst, IdentityVault,
-    SignatureType,
+    EventIdentifier, IdentityError, IdentityIdentifier, IdentityStateConst, IdentityVault,
 };
+use minicbor::{Decode, Encode};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{allow, deny, Encodable, Result};
 use ockam_vault::PublicKey;
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
+
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
+#[cbor(index_only)]
+pub enum IdentityHistoryComparison {
+    #[n(1)]
+    Equal,
+    /// Some changes don't match between current identity and known identity
+    #[n(2)]
+    Conflict,
+    /// Current identity is more recent than known identity
+    #[n(3)]
+    Newer,
+    /// Known identity is more recent
+    #[n(4)]
+    Older,
+}
 
 /// Full history of [`Identity`] changes. History and corresponding secret keys are enough to recreate [`Identity`]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IdentityChangeHistory(Vec<IdentityChangeEvent>);
 
 impl IdentityChangeHistory {
-    pub(crate) fn new(change_events: Vec<IdentityChangeEvent>) -> Self {
-        Self(change_events)
+    pub fn export(&self) -> Result<Vec<u8>> {
+        serde_bare::to_vec(self).map_err(|_| IdentityError::ConsistencyError.into())
     }
 
-    pub(crate) fn push_event(&mut self, event: IdentityChangeEvent) {
-        self.0.push(event)
+    pub fn import(data: &[u8]) -> Result<Self> {
+        let s: Self = serde_bare::from_slice(data).map_err(|_| IdentityError::ConsistencyError)?;
+
+        if !s.check_entire_consistency() {
+            return Err(IdentityError::ConsistencyError.into());
+        }
+
+        Ok(s)
+    }
+}
+
+impl IdentityChangeHistory {
+    pub(crate) fn new(first_event: IdentityChangeEvent) -> Self {
+        Self(vec![first_event])
+    }
+
+    pub(crate) fn check_consistency_and_add_event(
+        &mut self,
+        event: IdentityChangeEvent,
+    ) -> Result<()> {
+        let slice = core::slice::from_ref(&event);
+        if !Self::check_consistency(self.as_ref(), slice) {
+            return Err(IdentityError::IdentityVerificationFailed.into());
+        }
+
+        self.0.push(event);
+
+        Ok(())
     }
 }
 
@@ -29,12 +73,78 @@ impl AsRef<[IdentityChangeEvent]> for IdentityChangeHistory {
     }
 }
 
-impl Default for IdentityChangeHistory {
-    fn default() -> Self {
-        Self::new(Vec::new())
+// Public API
+impl IdentityChangeHistory {
+    pub fn compare(&self, known: &Self) -> IdentityHistoryComparison {
+        for event_pair in self.0.iter().zip(known.0.iter()) {
+            if event_pair.0.identifier() != event_pair.1.identifier() {
+                return IdentityHistoryComparison::Conflict;
+            }
+        }
+
+        match self.0.len().cmp(&known.0.len()) {
+            Ordering::Less => IdentityHistoryComparison::Older,
+            Ordering::Equal => IdentityHistoryComparison::Equal,
+            Ordering::Greater => IdentityHistoryComparison::Newer,
+        }
+    }
+
+    pub async fn compute_identity_id(
+        &self,
+        vault: &impl IdentityVault,
+    ) -> Result<IdentityIdentifier> {
+        let root_public_key = self.get_first_root_public_key()?;
+
+        let key_id = vault
+            .compute_key_id_for_public_key(&root_public_key)
+            .await?;
+
+        Ok(IdentityIdentifier::from_key_id(key_id))
+    }
+
+    pub fn get_public_key(&self, label: &str) -> Result<PublicKey> {
+        Self::get_public_key_static(self.as_ref(), label)
+    }
+
+    pub fn get_first_root_public_key(&self) -> Result<PublicKey> {
+        // TODO: Support root key rotation
+        let root_event = match self.as_ref().first() {
+            Some(event) => event,
+            None => return Err(IdentityError::InvalidInternalState.into()),
+        };
+
+        let root_change = root_event.change_block().change();
+
+        let root_create_key_change = match root_change.change_type() {
+            CreateKey(c) => c,
+            _ => return Err(IdentityError::InvalidInternalState.into()),
+        };
+
+        Ok(root_create_key_change.data().public_key().clone())
+    }
+
+    pub fn get_root_public_key(&self) -> Result<PublicKey> {
+        self.get_public_key(IdentityStateConst::ROOT_LABEL)
+    }
+
+    pub async fn verify_all_existing_events(&self, vault: &impl IdentityVault) -> Result<bool> {
+        for i in 0..self.0.len() {
+            let existing_events = &self.as_ref()[..i];
+            let new_event = &self.as_ref()[i];
+            if !Self::verify_event(existing_events, new_event, vault).await? {
+                return deny();
+            }
+        }
+        allow()
+    }
+
+    /// Check consistency of events that are been added
+    pub fn check_entire_consistency(&self) -> bool {
+        Self::check_consistency(&[], &self.0)
     }
 }
 
+// Pub crate API
 impl IdentityChangeHistory {
     pub(crate) fn get_last_event_id(&self) -> Result<EventIdentifier> {
         if let Some(e) = self.0.last() {
@@ -63,30 +173,11 @@ impl IdentityChangeHistory {
 
         last_key_event.change_block().change().public_key()
     }
-}
 
-impl IdentityChangeHistory {
     pub(crate) fn get_current_root_public_key(
         existing_events: &[IdentityChangeEvent],
     ) -> Result<PublicKey> {
         Self::find_last_key_event_public_key(existing_events, IdentityStateConst::ROOT_LABEL)
-    }
-
-    pub(crate) fn get_first_root_public_key(&self) -> Result<PublicKey> {
-        // TODO: Support root key rotation
-        let root_event = match self.as_ref().first() {
-            Some(event) => event,
-            None => return Err(IdentityError::InvalidInternalState.into()),
-        };
-
-        let root_change = root_event.change_block().change();
-
-        let root_create_key_change = match root_change.change_type() {
-            CreateKey(c) => c,
-            _ => return Err(IdentityError::InvalidInternalState.into()),
-        };
-
-        Ok(root_create_key_change.data().public_key().clone())
     }
 
     pub(crate) fn get_public_key_static(
@@ -97,25 +188,6 @@ impl IdentityChangeHistory {
         event.change_block().change().public_key()
     }
 
-    pub(crate) fn get_public_key(&self, label: &str) -> Result<PublicKey> {
-        Self::get_public_key_static(self.as_ref(), label)
-    }
-}
-
-impl IdentityChangeHistory {
-    pub(crate) async fn verify_all_existing_events(
-        &self,
-        vault: &impl IdentityVault,
-    ) -> Result<bool> {
-        for i in 0..self.0.len() {
-            let existing_events = &self.as_ref()[..i];
-            let new_event = &self.as_ref()[i];
-            if !Self::verify_event(existing_events, new_event, vault).await? {
-                return deny();
-            }
-        }
-        allow()
-    }
     /// WARNING: This function assumes all existing events in chain are verified.
     /// WARNING: Correctness of events sequence is not verified here.
     pub(crate) async fn verify_event(

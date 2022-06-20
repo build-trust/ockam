@@ -1,9 +1,11 @@
+use crate::change::{
+    ChangeBlock, IdentityChange, IdentityChangeEvent, IdentityChangeType, Signature, SignatureType,
+};
 use crate::change_history::IdentityChangeHistory;
 use crate::IdentityError::InvalidInternalState;
 use crate::{
-    ChangeBlock, EventIdentifier, IdentityChange, IdentityChangeEvent, IdentityChangeType,
-    IdentityError, IdentityEventAttributes, IdentityState, IdentityStateConst, IdentityVault,
-    KeyAttributes, MetaKeyAttributes, Signature, SignatureType,
+    EventIdentifier, Identity, IdentityError, IdentityEventAttributes, IdentityStateConst,
+    IdentityVault, KeyAttributes, MetaKeyAttributes,
 };
 use ockam_core::vault::Signature as OckamVaultSignature;
 use ockam_core::vault::{KeyId, PublicKey};
@@ -66,11 +68,11 @@ impl CreateKeyChange {
     }
 }
 
-impl<V: IdentityVault> IdentityState<V> {
+impl<V: IdentityVault> Identity<V> {
     async fn generate_key_if_needed(
         secret: Option<&KeyId>,
         key_attributes: &KeyAttributes,
-        vault: &mut V,
+        vault: &V,
     ) -> Result<KeyId> {
         if let Some(s) = secret {
             Ok(s.clone())
@@ -88,7 +90,7 @@ impl<V: IdentityVault> IdentityState<V> {
         key_attributes: KeyAttributes,
         attributes: IdentityEventAttributes,
         root_key: Option<&KeyId>,
-        vault: &mut V,
+        vault: &V,
     ) -> Result<IdentityChangeEvent> {
         let secret_key = Self::generate_key_if_needed(secret, &key_attributes, vault).await?;
 
@@ -135,14 +137,15 @@ impl<V: IdentityVault> IdentityState<V> {
 
     /// Create a new key
     pub(crate) async fn make_create_key_event(
-        &mut self,
+        &self,
         secret: Option<&KeyId>,
         key_attributes: KeyAttributes,
         attributes: IdentityEventAttributes,
     ) -> Result<IdentityChangeEvent> {
+        let change_history = self.change_history.read().await;
         // Creating key after it was revoked is forbidden
         if IdentityChangeHistory::find_last_key_event(
-            self.change_history().as_ref(),
+            change_history.as_ref(),
             key_attributes.label(),
         )
         .is_ok()
@@ -150,9 +153,9 @@ impl<V: IdentityVault> IdentityState<V> {
             return Err(InvalidInternalState.into());
         }
 
-        let prev_id = match self.change_history().get_last_event_id() {
+        let prev_id = match change_history.get_last_event_id() {
             Ok(prev_id) => prev_id,
-            Err(_) => EventIdentifier::initial(&mut self.vault).await,
+            Err(_) => EventIdentifier::initial(&self.vault).await,
         };
 
         let root_secret = self.get_root_secret_key().await?;
@@ -164,7 +167,7 @@ impl<V: IdentityVault> IdentityState<V> {
             key_attributes,
             attributes,
             root_key,
-            &mut self.vault,
+            &self.vault,
         )
         .await
     }

@@ -11,6 +11,7 @@ use ockam_api::{
     nodes::types::{TransportMode, TransportType},
     nodes::NodeMan,
 };
+use ockam_core::authenticated_table::mem::InMemoryTable;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -88,7 +89,7 @@ async fn setup(ctx: Context, c: CreateCommand) -> anyhow::Result<()> {
     let bind = format!("0.0.0.0:{}", c.port);
     tcp.listen(&bind).await?;
 
-    let s = auth::store::mem::Store::new();
+    let s = InMemoryTable::new();
     ctx.start_worker("authenticated", auth::Server::new(s))
         .await?;
 

@@ -1,7 +1,6 @@
 use anyhow::anyhow;
 use clap::Args;
 
-use ockam::identity::IdentityTrait;
 use ockam::{route, Context, TcpTransport};
 use ockam_api::cloud::MessagingClient;
 use ockam_multiaddr::MultiAddr;
@@ -31,7 +30,7 @@ async fn accept(mut ctx: Context, args: (MultiAddr, AcceptCommand)) -> anyhow::R
 
     // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
     let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
-    let identifier = identity.identifier().await?;
+    let identifier = identity.identifier()?;
 
     let r = multiaddr_to_route(&cloud_addr)
         .ok_or_else(|| anyhow!("failed to parse address: {}", cloud_addr))?;

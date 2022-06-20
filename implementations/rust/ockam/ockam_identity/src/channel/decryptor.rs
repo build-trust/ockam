@@ -1,6 +1,8 @@
+use crate::authenticated_storage::AuthenticatedStorage;
+use crate::change_history::IdentityChangeHistory;
 use crate::{
-    Contact, EncryptorWorker, IdentityChannelMessage, IdentityError, IdentityIdentifier,
-    IdentitySecureChannelLocalInfo, IdentityTrait, SecureChannelTrustInfo, TrustPolicy,
+    EncryptorWorker, Identity, IdentityChannelMessage, IdentityError, IdentityIdentifier,
+    IdentitySecureChannelLocalInfo, IdentityVault, SecureChannelTrustInfo, TrustPolicy,
 };
 use core::future::Future;
 use core::pin::Pin;
@@ -12,12 +14,13 @@ use ockam_channel::{
 use ockam_core::async_trait;
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, sync::Arc, vec::Vec};
+use ockam_core::vault::Signature;
 use ockam_core::{
     route, Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
     TransportMessage, Worker,
 };
 use ockam_key_exchange_core::NewKeyExchanger;
-use ockam_key_exchange_xx::{XXNewKeyExchanger, XXVault};
+use ockam_key_exchange_xx::XXNewKeyExchanger;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
@@ -32,31 +35,23 @@ impl<T> StartSecureChannelFuture for T where
 {
 }
 
-struct InitiatorStartChannel<I: IdentityTrait> {
+struct InitiatorStartChannel {
     channel_future: Pin<Box<dyn StartSecureChannelFuture>>, // TODO: Replace with generic
     callback_address: Address,
-    identity: I,
-    trust_policy: Arc<dyn TrustPolicy>,
 }
 
-struct ResponderWaitForKex<I: IdentityTrait> {
+struct ResponderWaitForKex {
     first_responder_address: Address,
-    identity: I,
-    trust_policy: Arc<dyn TrustPolicy>,
 }
 
-struct InitiatorSendIdentity<I: IdentityTrait> {
+struct InitiatorSendIdentity {
     channel: SecureChannelInfo,
     callback_address: Address,
-    identity: I,
-    trust_policy: Arc<dyn TrustPolicy>,
 }
 
-struct ResponderWaitForIdentity<I: IdentityTrait> {
+struct ResponderWaitForIdentity {
     auth_hash: [u8; 32],
     local_secure_channel_address: Address,
-    identity: I,
-    trust_policy: Arc<dyn TrustPolicy>,
 }
 
 #[derive(Clone)]
@@ -66,28 +61,31 @@ struct Initialized {
     encryptor_address: Address,
 }
 
-enum State<I: IdentityTrait> {
-    InitiatorStartChannel(InitiatorStartChannel<I>),
-    ResponderWaitForKex(ResponderWaitForKex<I>),
-    InitiatorSendIdentity(InitiatorSendIdentity<I>),
-    ResponderWaitForIdentity(ResponderWaitForIdentity<I>),
+enum State {
+    InitiatorStartChannel(InitiatorStartChannel),
+    ResponderWaitForKex(ResponderWaitForKex),
+    InitiatorSendIdentity(InitiatorSendIdentity),
+    ResponderWaitForIdentity(ResponderWaitForIdentity),
     Initialized(Initialized),
 }
 
-pub(crate) struct DecryptorWorker<I: IdentityTrait> {
+pub(crate) struct DecryptorWorker<V: IdentityVault, S: AuthenticatedStorage> {
     is_initiator: bool,
     self_address: Address,
     kex_callback_address: Option<Address>,
-    state: Option<State<I>>,
+    identity: Identity<V>,
+    storage: S,
+    trust_policy: Arc<dyn TrustPolicy>,
+    state: Option<State>,
 }
 
-impl<I: IdentityTrait> DecryptorWorker<I> {
+impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
     pub async fn create_initiator(
         ctx: &Context,
         route: Route,
-        identity: I,
+        identity: Identity<V>,
+        storage: S,
         trust_policy: Arc<dyn TrustPolicy>,
-        vault: impl XXVault,
         timeout: Duration,
     ) -> Result<Address> {
         let child_address = Address::random_local();
@@ -95,6 +93,7 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
 
         let self_address: Address = random();
 
+        let vault = identity.vault.async_try_clone().await?;
         let initiator = XXNewKeyExchanger::new(vault.async_try_clone().await?)
             .initiator()
             .await?;
@@ -109,14 +108,15 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
         let state = State::InitiatorStartChannel(InitiatorStartChannel {
             channel_future,
             callback_address: child_address,
-            identity,
-            trust_policy,
         });
 
         let worker = DecryptorWorker {
             is_initiator: true,
             self_address: self_address.clone(),
             kex_callback_address: None,
+            identity,
+            trust_policy,
+            storage,
             state: Some(state),
         };
 
@@ -139,9 +139,9 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
 
     pub(crate) async fn create_responder(
         ctx: &Context,
-        identity: I,
+        identity: Identity<V>,
+        storage: S,
         trust_policy: Arc<dyn TrustPolicy>,
-        vault: impl XXVault,
         msg: Routed<CreateResponderChannelMessage>,
     ) -> Result<()> {
         let return_route = msg.return_route();
@@ -156,16 +156,18 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
 
         let self_address: Address = random();
 
+        let vault = identity.vault.async_try_clone().await?;
         let state = State::ResponderWaitForKex(ResponderWaitForKex {
             first_responder_address,
-            identity,
-            trust_policy,
         });
 
         let kex_callback_address = Address::random_local();
         let worker = DecryptorWorker {
             is_initiator: false,
             self_address: self_address.clone(),
+            identity,
+            trust_policy,
+            storage,
             kex_callback_address: Some(kex_callback_address.clone()),
             state: Some(state),
         };
@@ -209,17 +211,17 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
         &mut self,
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
-        state: ResponderWaitForKex<I>,
+        state: ResponderWaitForKex,
     ) -> Result<()> {
         let kex_msg = KeyExchangeCompleted::decode(msg.payload())?;
 
         // Prove we posses Identity key
-        let proof = state
-            .identity
-            .create_auth_proof(&kex_msg.auth_hash())
-            .await?;
-        let contact = state.identity.as_contact().await?.export()?;
-        let msg = IdentityChannelMessage::Request { contact, proof };
+        let signature = self.identity.create_signature(&kex_msg.auth_hash()).await?;
+        let identity = self.identity.export().await?;
+        let msg = IdentityChannelMessage::Request {
+            identity,
+            signature: signature.as_ref().to_vec(),
+        };
         ctx.send_from_address(
             route![kex_msg.address().clone(), state.first_responder_address],
             msg,
@@ -231,8 +233,6 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
         self.state = Some(State::ResponderWaitForIdentity(ResponderWaitForIdentity {
             auth_hash: kex_msg.auth_hash(),
             local_secure_channel_address: kex_msg.address().clone(),
-            identity: state.identity,
-            trust_policy: Arc::clone(&state.trust_policy),
         }));
 
         Ok(())
@@ -242,7 +242,7 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
         &mut self,
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
-        state: InitiatorSendIdentity<I>,
+        state: InitiatorSendIdentity,
     ) -> Result<()> {
         let return_route = msg.return_route();
 
@@ -255,29 +255,46 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
 
         // Wait for responder to send us his Identity and Identity Proof.
         // In case of using Noise XX this is m4 message.
-        if let IdentityChannelMessage::Request { contact, proof } = body {
+        if let IdentityChannelMessage::Request {
+            identity,
+            signature,
+        } = body
+        {
             debug!("Received Authentication request");
 
-            let their_contact = Contact::import(&contact)?;
-            let their_identity_id = their_contact.identifier().clone();
-
-            let contact_result = state.identity.get_contact(&their_identity_id).await?;
-
-            if contact_result.is_some() {
-                // TODO: We're creating SecureChannel with known Identity. Need to update their Identity.
-            } else {
-                state.identity.verify_and_add_contact(their_contact).await?;
+            let their_identity = IdentityChangeHistory::import(&identity)?;
+            if !their_identity
+                .verify_all_existing_events(&self.identity.vault)
+                .await?
+            {
+                return Err(IdentityError::IdentityVerificationFailed.into());
             }
 
+            let their_identity_id = their_identity
+                .compute_identity_id(&self.identity.vault)
+                .await?;
+
+            let public_key = their_identity.get_root_public_key()?;
+
             // Verify responder posses their Identity key
-            let verified = state
+            let verified = self
                 .identity
-                .verify_auth_proof(&state.channel.auth_hash(), &their_identity_id, &proof)
+                .vault
+                .verify(
+                    &Signature::new(signature),
+                    &public_key,
+                    &state.channel.auth_hash(),
+                )
                 .await?;
 
             if !verified {
                 return Err(IdentityError::SecureChannelVerificationFailed.into());
             }
+
+            self.identity
+                .update_known_identity(&their_identity_id, &their_identity, &self.storage)
+                .await?;
+
             info!(
                 "Initiator verified SecureChannel from: {}",
                 their_identity_id
@@ -285,7 +302,7 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
 
             // Check our TrustPolicy
             let trust_info = SecureChannelTrustInfo::new(their_identity_id.clone());
-            let trusted = state.trust_policy.check(&trust_info).await?;
+            let trusted = self.trust_policy.check(&trust_info).await?;
             if !trusted {
                 return Err(IdentityError::SecureChannelTrustCheckFailed.into());
             }
@@ -295,13 +312,16 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
             );
 
             // Prove we posses our Identity key
-            let contact = state.identity.as_contact().await?.export()?;
-            let proof = state
+            let identity = self.identity.export().await?;
+            let signature = self
                 .identity
-                .create_auth_proof(&state.channel.auth_hash())
+                .create_signature(&state.channel.auth_hash())
                 .await?;
 
-            let auth_msg = IdentityChannelMessage::Response { contact, proof };
+            let auth_msg = IdentityChannelMessage::Response {
+                identity,
+                signature: signature.as_ref().to_vec(),
+            };
 
             let remote_identity_secure_channel_address = return_route.recipient();
 
@@ -347,7 +367,7 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
         &mut self,
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
-        state: ResponderWaitForIdentity<I>,
+        state: ResponderWaitForIdentity,
     ) -> Result<()> {
         let return_route = msg.return_route();
 
@@ -360,32 +380,40 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
 
         // Wait for responder to send us his Identity and Identity Proof.
         // In case of using Noise XX this is m4 message.
-        if let IdentityChannelMessage::Response { contact, proof } = body {
+        if let IdentityChannelMessage::Response {
+            identity,
+            signature,
+        } = body
+        {
             debug!("Received Authentication response");
 
-            let their_contact = Contact::import(&contact)?;
-            let their_identity_id = their_contact.identifier().clone();
-
-            let contact_result = state.identity.get_contact(&their_identity_id).await?;
-
-            if contact_result.is_some() {
-                // TODO: We're creating SecureChannel with known Identity. Need to update their Identity.
-            } else {
-                state
-                    .identity
-                    .verify_and_add_contact(their_contact.clone())
-                    .await?;
+            let their_identity = IdentityChangeHistory::import(&identity)?;
+            if !their_identity
+                .verify_all_existing_events(&self.identity.vault)
+                .await?
+            {
+                return Err(IdentityError::IdentityVerificationFailed.into());
             }
+            let their_identity_id = their_identity
+                .compute_identity_id(&self.identity.vault)
+                .await?;
+
+            let public_key = their_identity.get_root_public_key()?;
 
             // Verify initiator posses their Identity key
-            let verified = state
+            let verified = self
                 .identity
-                .verify_auth_proof(&state.auth_hash, &their_identity_id, &proof)
+                .vault
+                .verify(&Signature::new(signature), &public_key, &state.auth_hash)
                 .await?;
 
             if !verified {
                 return Err(IdentityError::SecureChannelVerificationFailed.into());
             }
+
+            self.identity
+                .update_known_identity(&their_identity_id, &their_identity, &self.storage)
+                .await?;
 
             info!(
                 "Responder verified SecureChannel from: {}",
@@ -394,7 +422,7 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
 
             // Check our TrustPolicy
             let trust_info = SecureChannelTrustInfo::new(their_identity_id.clone());
-            let trusted = state.trust_policy.check(&trust_info).await?;
+            let trusted = self.trust_policy.check(&trust_info).await?;
             if !trusted {
                 return Err(IdentityError::SecureChannelTrustCheckFailed.into());
             }
@@ -434,7 +462,7 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
     }
 
     // FIXME: Avoid situation where we take state but don't put it back because of an error
-    fn take_state(&mut self) -> Result<State<I>> {
+    fn take_state(&mut self) -> Result<State> {
         if let Some(s) = self.state.take() {
             Ok(s)
         } else {
@@ -502,7 +530,7 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
 }
 
 #[async_trait]
-impl<I: IdentityTrait> Worker for DecryptorWorker<I> {
+impl<V: IdentityVault, S: AuthenticatedStorage> Worker for DecryptorWorker<V, S> {
     type Message = Any;
     type Context = Context;
 
@@ -515,8 +543,6 @@ impl<I: IdentityTrait> Worker for DecryptorWorker<I> {
                     self.state = Some(State::InitiatorSendIdentity(InitiatorSendIdentity {
                         channel,
                         callback_address: s.callback_address,
-                        identity: s.identity,
-                        trust_policy: s.trust_policy,
                     }));
                 }
                 _ => return Err(IdentityError::InvalidSecureChannelInternalState.into()),
