@@ -32,7 +32,7 @@ pub enum IdentityError {
     UnknownChannelMsgOrigin,
     InvalidLocalInfoType,
     InvalidSecureChannelInternalState,
-    ContactVerificationFailed,
+    IdentityVerificationFailed,
     InvalidIdentityId,
     DuplicateCredential,
     CredentialNotFound,

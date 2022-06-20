@@ -9,6 +9,7 @@ use ockam_core::{
 /// An enumeration of different error types emitted by this library.
 ///
 /// Most user code should use [`crate::Error`] instead.
+// FIXME: Duplication from ockam_identity::IdentityError
 #[derive(Clone, Copy, Debug)]
 pub enum OckamError {
     BareError = 1,

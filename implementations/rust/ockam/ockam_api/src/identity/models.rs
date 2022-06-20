@@ -36,13 +36,13 @@ impl<'a> CreateResponse<'a> {
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ContactRequest<'a> {
+pub struct ValidateIdentityChangeHistoryRequest<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<9274303>,
+    #[n(0)] tag: TypeTag<2556809>,
     #[b(1)] identity: CowBytes<'a>,
 }
 
-impl<'a> ContactRequest<'a> {
+impl<'a> ValidateIdentityChangeHistoryRequest<'a> {
     pub fn new(identity: impl Into<CowBytes<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -58,180 +58,150 @@ impl<'a> ContactRequest<'a> {
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ContactResponse<'a> {
+pub struct ValidateIdentityChangeHistoryResponse<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<3682917>,
-    #[b(1)] contact: CowBytes<'a>,
+    #[n(0)] tag: TypeTag<4245404>,
+    #[b(1)] identity_id: CowStr<'a>,
 }
 
-impl<'a> ContactResponse<'a> {
-    pub fn new(contact: impl Into<CowBytes<'a>>) -> Self {
+impl<'a> ValidateIdentityChangeHistoryResponse<'a> {
+    pub fn new(identity_id: impl Into<CowStr<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            contact: contact.into(),
+            identity_id: identity_id.into(),
         }
     }
-    pub fn contact(&self) -> &[u8] {
-        &self.contact
+    pub fn identity_id(&self) -> &str {
+        &self.identity_id
     }
 }
 
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct VerifyAndAddContactRequest<'a> {
+pub struct CompareIdentityChangeHistoryRequest<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<3396927>,
-    #[b(1)] identity: CowBytes<'a>,
-    #[b(2)] contact: CowBytes<'a>,
+    #[n(0)] tag: TypeTag<7300740>,
+    #[b(1)] current_identity: CowBytes<'a>,
+    #[b(2)] known_identity: CowBytes<'a>,
 }
 
-impl<'a> VerifyAndAddContactRequest<'a> {
-    pub fn new(identity: impl Into<CowBytes<'a>>, contact: impl Into<CowBytes<'a>>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            identity: identity.into(),
-            contact: contact.into(),
-        }
-    }
-    pub fn identity(&self) -> &[u8] {
-        &self.identity
-    }
-    pub fn contact(&self) -> &[u8] {
-        &self.contact
-    }
-}
-
-#[derive(Debug, Clone, Encode, Decode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct VerifyAndAddContactResponse<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<7946005>,
-    #[b(1)] identity: CowBytes<'a>,
-    #[b(2)] contact_id: CowStr<'a>,
-}
-
-impl<'a> VerifyAndAddContactResponse<'a> {
-    pub fn new(identity: impl Into<CowBytes<'a>>, contact_id: impl Into<CowStr<'a>>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            identity: identity.into(),
-            contact_id: contact_id.into(),
-        }
-    }
-    pub fn identity(&self) -> &[u8] {
-        &self.identity
-    }
-    pub fn contact_id(&self) -> &str {
-        &self.contact_id
-    }
-}
-
-#[derive(Debug, Clone, Encode, Decode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct CreateAuthProofRequest<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<1019956>,
-    #[b(1)] identity: CowBytes<'a>,
-    #[b(2)] state: CowBytes<'a>,
-}
-
-impl<'a> CreateAuthProofRequest<'a> {
-    pub fn new(identity: impl Into<CowBytes<'a>>, state: impl Into<CowBytes<'a>>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            identity: identity.into(),
-            state: state.into(),
-        }
-    }
-    pub fn identity(&self) -> &[u8] {
-        &self.identity
-    }
-    pub fn state(&self) -> &[u8] {
-        &self.state
-    }
-}
-
-#[derive(Debug, Clone, Encode, Decode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct CreateAuthProofResponse<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<2592832>,
-    #[b(1)] proof: CowBytes<'a>,
-}
-
-impl<'a> CreateAuthProofResponse<'a> {
-    pub fn new(proof: impl Into<CowBytes<'a>>) -> Self {
-        Self {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            proof: proof.into(),
-        }
-    }
-    pub fn proof(&self) -> &[u8] {
-        &self.proof
-    }
-}
-
-#[derive(Debug, Clone, Encode, Decode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct VerifyAuthProofRequest<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<7550780>,
-    #[b(1)] identity: CowBytes<'a>,
-    #[b(2)] peer_identity_id: CowStr<'a>,
-    #[b(3)] state: CowBytes<'a>,
-    #[b(4)] proof: CowBytes<'a>,
-}
-
-impl<'a> VerifyAuthProofRequest<'a> {
+impl<'a> CompareIdentityChangeHistoryRequest<'a> {
     pub fn new(
-        identity: impl Into<CowBytes<'a>>,
-        peer_identity_id: impl Into<CowStr<'a>>,
-        state: impl Into<CowBytes<'a>>,
-        proof: impl Into<CowBytes<'a>>,
+        current_identity: impl Into<CowBytes<'a>>,
+        known_identity: impl Into<CowBytes<'a>>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            identity: identity.into(),
-            peer_identity_id: peer_identity_id.into(),
-            state: state.into(),
-            proof: proof.into(),
+            current_identity: current_identity.into(),
+            known_identity: known_identity.into(),
         }
     }
-    pub fn identity(&self) -> &[u8] {
-        &self.identity
+    pub fn current_identity(&self) -> &[u8] {
+        &self.current_identity
     }
-    pub fn peer_identity_id(&self) -> &str {
-        &self.peer_identity_id
-    }
-    pub fn state(&self) -> &[u8] {
-        &self.state
-    }
-    pub fn proof(&self) -> &[u8] {
-        &self.proof
+    pub fn known_identity(&self) -> &[u8] {
+        &self.known_identity
     }
 }
 
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct VerifyAuthProofResponse {
+pub struct CreateSignatureRequest<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<1019956>,
+    #[b(1)] identity: CowBytes<'a>,
+    #[b(2)] data: CowBytes<'a>,
+}
+
+impl<'a> CreateSignatureRequest<'a> {
+    pub fn new(identity: impl Into<CowBytes<'a>>, data: impl Into<CowBytes<'a>>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            identity: identity.into(),
+            data: data.into(),
+        }
+    }
+    pub fn identity(&self) -> &[u8] {
+        &self.identity
+    }
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+}
+
+#[derive(Debug, Clone, Encode, Decode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct CreateSignatureResponse<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<2592832>,
+    #[b(1)] signature: CowBytes<'a>,
+}
+
+impl<'a> CreateSignatureResponse<'a> {
+    pub fn new(signature: impl Into<CowBytes<'a>>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            signature: signature.into(),
+        }
+    }
+    pub fn signature(&self) -> &[u8] {
+        &self.signature
+    }
+}
+
+#[derive(Debug, Clone, Encode, Decode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct VerifySignatureRequest<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<7550780>,
+    #[b(1)] signer_identity: CowBytes<'a>,
+    #[b(2)] data: CowBytes<'a>,
+    #[b(3)] signature: CowBytes<'a>,
+}
+
+impl<'a> VerifySignatureRequest<'a> {
+    pub fn new(
+        signer_identity: impl Into<CowBytes<'a>>,
+        data: impl Into<CowBytes<'a>>,
+        signature: impl Into<CowBytes<'a>>,
+    ) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            signer_identity: signer_identity.into(),
+            data: data.into(),
+            signature: signature.into(),
+        }
+    }
+    pub fn signer_identity(&self) -> &[u8] {
+        &self.signer_identity
+    }
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+    pub fn signature(&self) -> &[u8] {
+        &self.signature
+    }
+}
+
+#[derive(Debug, Clone, Encode, Decode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct VerifySignatureResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<1236745>,
     #[n(1)] verified: bool,
 }
 
-impl VerifyAuthProofResponse {
+impl VerifySignatureResponse {
     pub fn new(verified: bool) -> Self {
         Self {
             #[cfg(feature = "tag")]

@@ -1,5 +1,4 @@
 use ockam_api::auth;
-use ockam_api::auth::store;
 use ockam_api::auth::types::Attributes;
 use ockam_core::Result;
 use ockam_node::Context;
@@ -8,7 +7,7 @@ use ockam_node::Context;
 async fn auth_smoke(ctx: &mut Context) -> Result<()> {
     #[cfg(not(feature = "lmdb"))]
     {
-        let s = store::mem::Store::new();
+        let s = ockam::authenticated_table::InMemoryTable::new();
         ctx.start_worker("auth", auth::Server::new(s)).await?;
     }
 
@@ -20,7 +19,7 @@ async fn auth_smoke(ctx: &mut Context) -> Result<()> {
 
     #[cfg(feature = "lmdb")]
     {
-        let s = store::lmdb::Store::new(tempfile.path()).await?;
+        let s = ockam::authenticated_table::LmdbTable::new(tempfile.path()).await?;
         ctx.start_worker("auth", auth::Server::new(s)).await?;
     }
 

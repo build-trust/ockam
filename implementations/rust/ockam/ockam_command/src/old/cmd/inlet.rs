@@ -1,9 +1,9 @@
+use clap::Args;
 use std::sync::Arc;
 use std::time::Duration;
 
-use clap::Args;
-
 use ockam::access_control::LocalOriginOnly;
+use ockam::authenticated_storage::InMemoryStorage;
 use ockam::{identity::*, route, Context, Result, TcpTransport, TCP};
 use ockam_core::access_control::{AccessControl, AnyAccessControl};
 use ockam_core::{Address, AsyncTryClone, Route};
@@ -68,6 +68,7 @@ impl SessionManager for InletSessionManager {
                     "secure_channel_listener"
                 ],
                 self.policy.async_try_clone().await?,
+                &InMemoryStorage::new(),
                 timeout,
             )
             .await?;

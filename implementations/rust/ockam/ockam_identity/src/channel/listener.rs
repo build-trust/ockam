@@ -1,28 +1,28 @@
-use crate::{DecryptorWorker, IdentityTrait, TrustPolicy};
+use crate::authenticated_storage::AuthenticatedStorage;
+use crate::{DecryptorWorker, Identity, IdentityVault, TrustPolicy};
 use ockam_channel::CreateResponderChannelMessage;
 use ockam_core::compat::{boxed::Box, sync::Arc};
-use ockam_core::{Result, Routed, Worker};
-use ockam_key_exchange_xx::XXVault;
+use ockam_core::{AsyncTryClone, Result, Routed, Worker};
 use ockam_node::Context;
 
-pub(crate) struct IdentityChannelListener<I: IdentityTrait, V: XXVault> {
+pub(crate) struct IdentityChannelListener<V: IdentityVault, S: AuthenticatedStorage> {
     trust_policy: Arc<dyn TrustPolicy>,
-    identity: I,
-    vault: V,
+    identity: Identity<V>,
+    storage: S,
 }
 
-impl<I: IdentityTrait, V: XXVault> IdentityChannelListener<I, V> {
-    pub fn new(trust_policy: impl TrustPolicy, identity: I, vault: V) -> Self {
+impl<V: IdentityVault, S: AuthenticatedStorage> IdentityChannelListener<V, S> {
+    pub fn new(trust_policy: impl TrustPolicy, identity: Identity<V>, storage: S) -> Self {
         IdentityChannelListener {
             trust_policy: Arc::new(trust_policy),
             identity,
-            vault,
+            storage,
         }
     }
 }
 
 #[ockam_core::worker]
-impl<I: IdentityTrait, V: XXVault> Worker for IdentityChannelListener<I, V> {
+impl<V: IdentityVault, S: AuthenticatedStorage> Worker for IdentityChannelListener<V, S> {
     type Message = CreateResponderChannelMessage;
     type Context = Context;
 
@@ -33,7 +33,13 @@ impl<I: IdentityTrait, V: XXVault> Worker for IdentityChannelListener<I, V> {
     ) -> Result<()> {
         let trust_policy = Arc::clone(&self.trust_policy);
         let identity = self.identity.async_try_clone().await?;
-        let vault = self.vault.async_try_clone().await?;
-        DecryptorWorker::create_responder(ctx, identity, trust_policy, vault, msg).await
+        DecryptorWorker::create_responder(
+            ctx,
+            identity,
+            self.storage.async_try_clone().await?,
+            trust_policy,
+            msg,
+        )
+        .await
     }
 }

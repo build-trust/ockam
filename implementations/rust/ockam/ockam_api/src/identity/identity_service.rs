@@ -4,10 +4,11 @@ use crate::identity::models::*;
 use crate::{Error, Id, Method, Request, Response, Status};
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
+use ockam_core::vault::Signature;
 use ockam_core::{Address, Result, Routed, Worker};
-use ockam_identity::{
-    Contact, ExportedIdentity, Identity, IdentityIdentifier, IdentityTrait, IdentityVault,
-};
+use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
+use ockam_identity::error::IdentityError;
+use ockam_identity::{Identity, IdentityVault};
 use ockam_node::Context;
 use tracing::trace;
 
@@ -103,98 +104,109 @@ impl<V: IdentityVault> IdentityService<V> {
 
         match method {
             Post => match req.path_segments::<2>().as_slice() {
-                ["identities"] => {
+                [""] => {
                     let identity = Identity::create(&self.ctx, &self.vault).await?;
-                    let identifier = identity.identifier().await?;
+                    let identifier = identity.identifier()?;
 
-                    let body = CreateResponse::new(
-                        identity.export().await.export()?,
-                        String::from(identifier),
-                    );
+                    let body =
+                        CreateResponse::new(identity.export().await?, String::from(identifier));
 
                     Self::ok_response(req, Some(body), enc)
                 }
-                ["identities", "verify_and_add_contact"] => {
+                ["actions", "validate_identity_change_history"] => {
                     if !req.has_body() {
                         return Self::response_for_bad_request(req, "empty body", enc);
                     }
 
-                    let args = dec.decode::<VerifyAndAddContactRequest>()?;
+                    let args = dec.decode::<ValidateIdentityChangeHistoryRequest>()?;
+                    let identity =
+                        Identity::import(&self.ctx, args.identity(), &self.vault).await?;
 
-                    let identity = ExportedIdentity::import(args.identity())?;
-                    let identity = Identity::import(&self.ctx, &self.vault, identity).await?;
-                    let contact = Contact::import(args.contact())?;
-                    let contact_id = String::from(contact.identifier().clone());
+                    let body = ValidateIdentityChangeHistoryResponse::new(String::from(
+                        identity.identifier()?,
+                    ));
 
-                    if identity.get_contact(contact.identifier()).await?.is_none() {
-                        identity.verify_and_add_contact(contact).await?;
-                    } else {
-                        // TODO: Support updating
-                    }
-
-                    let body = VerifyAndAddContactResponse::new(
-                        identity.export().await.export()?,
-                        contact_id,
-                    );
-
-                    #[allow(unused_qualifications)]
                     Self::ok_response(req, Some(body), enc)
                 }
-                ["identities", "create_auth_proof"] => {
+                ["actions", "create_signature"] => {
                     if !req.has_body() {
                         return Self::response_for_bad_request(req, "empty body", enc);
                     }
 
-                    let args = dec.decode::<CreateAuthProofRequest>()?;
-                    let identity = ExportedIdentity::import(args.identity())?;
-                    let identity = Identity::import(&self.ctx, &self.vault, identity).await?;
+                    let args = dec.decode::<CreateSignatureRequest>()?;
+                    let identity =
+                        Identity::import(&self.ctx, args.identity(), &self.vault).await?;
 
-                    let proof = identity.create_auth_proof(args.state()).await?;
+                    let signature = identity.create_signature(args.data()).await?;
 
-                    let body = CreateAuthProofResponse::new(proof);
+                    let body = CreateSignatureResponse::new(signature.as_ref());
 
                     Self::ok_response(req, Some(body), enc)
                 }
-                ["identities", "verify_auth_proof"] => {
+                ["actions", "verify_signature"] => {
                     if !req.has_body() {
                         return Self::response_for_bad_request(req, "empty body", enc);
                     }
 
-                    let args = dec.decode::<VerifyAuthProofRequest>()?;
-                    let identity = ExportedIdentity::import(args.identity())?;
-                    let identity = Identity::import(&self.ctx, &self.vault, identity).await?;
-                    let peer_identifier = IdentityIdentifier::try_from(args.peer_identity_id())?;
+                    let args = dec.decode::<VerifySignatureRequest>()?;
+                    let peer_identity = IdentityChangeHistory::import(args.signer_identity())?;
+                    if !peer_identity
+                        .verify_all_existing_events(&self.vault)
+                        .await?
+                    {
+                        return Err(IdentityError::ConsistencyError.into());
+                    }
+                    let public_key = peer_identity.get_first_root_public_key()?;
 
-                    let verified = identity
-                        .verify_auth_proof(args.state(), &peer_identifier, args.proof())
+                    let verified = self
+                        .vault
+                        .verify(
+                            &Signature::new(args.signature().to_vec()),
+                            &public_key,
+                            args.data(),
+                        )
                         .await?;
 
-                    let body = VerifyAuthProofResponse::new(verified);
+                    let body = VerifySignatureResponse::new(verified);
 
                     Self::ok_response(req, Some(body), enc)
                 }
-                _ => Self::response_for_bad_request(req, "unknown path", enc),
-            },
-            Get => match req.path_segments::<2>().as_slice() {
-                ["identities", "contact"] => {
+                ["actions", "compare_identity_change_history"] => {
                     if !req.has_body() {
                         return Self::response_for_bad_request(req, "empty body", enc);
                     }
 
-                    let args = dec.decode::<ContactRequest>()?;
+                    let args = dec.decode::<CompareIdentityChangeHistoryRequest>()?;
 
-                    let identity = ExportedIdentity::import(args.identity())?;
-                    let identity = Identity::import(&self.ctx, &self.vault, identity).await?;
+                    let current_identity = IdentityChangeHistory::import(args.current_identity())?;
+                    if !current_identity
+                        .verify_all_existing_events(&self.vault)
+                        .await?
+                    {
+                        return Err(IdentityError::ConsistencyError.into());
+                    }
 
-                    let contact = identity.as_contact().await?.export()?;
+                    let body = if args.known_identity().is_empty() {
+                        IdentityHistoryComparison::Newer
+                    } else {
+                        let known_identity = IdentityChangeHistory::import(args.known_identity())?;
+                        if !known_identity
+                            .verify_all_existing_events(&self.vault)
+                            .await?
+                        {
+                            return Err(IdentityError::ConsistencyError.into());
+                        }
 
-                    let body = ContactResponse::new(contact);
+                        current_identity.compare(&known_identity)
+                    };
 
                     Self::ok_response(req, Some(body), enc)
                 }
                 _ => Self::response_for_bad_request(req, "unknown path", enc),
             },
-            Put | Patch | Delete => Self::response_for_bad_request(req, "unknown method", enc),
+            Get | Put | Patch | Delete => {
+                Self::response_for_bad_request(req, "unknown method", enc)
+            }
         }
     }
 

@@ -12,17 +12,80 @@ pub mod access_control;
 mod local_info;
 pub use local_info::*;
 
+use crate::authenticated_storage::AuthenticatedStorage;
+use crate::{Identity, IdentityVault};
+use core::time::Duration;
+use ockam_core::compat::sync::Arc;
+use ockam_core::{Address, AsyncTryClone, Result, Route};
+
+impl<V: IdentityVault> Identity<V> {
+    pub async fn create_secure_channel_listener(
+        &self,
+        address: impl Into<Address>,
+        trust_policy: impl TrustPolicy,
+        storage: &impl AuthenticatedStorage,
+    ) -> Result<()> {
+        let identity_clone = self.async_try_clone().await?;
+        let storage_clone = storage.async_try_clone().await?;
+        let listener = IdentityChannelListener::new(trust_policy, identity_clone, storage_clone);
+        self.ctx.start_worker(address.into(), listener).await?;
+        Ok(())
+    }
+
+    pub async fn create_secure_channel(
+        &self,
+        route: impl Into<Route>,
+        trust_policy: impl TrustPolicy,
+        storage: &impl AuthenticatedStorage,
+    ) -> Result<Address> {
+        let identity_clone = self.async_try_clone().await?;
+        let storage_clone = storage.async_try_clone().await?;
+
+        DecryptorWorker::create_initiator(
+            &self.ctx,
+            route.into(),
+            identity_clone,
+            storage_clone,
+            Arc::new(trust_policy),
+            Duration::from_secs(120),
+        )
+        .await
+    }
+
+    pub async fn create_secure_channel_extended(
+        &self,
+        route: impl Into<Route>,
+        trust_policy: impl TrustPolicy,
+        storage: &impl AuthenticatedStorage,
+        timeout: Duration,
+    ) -> Result<Address> {
+        let identity_clone = self.async_try_clone().await?;
+        let storage_clone = storage.async_try_clone().await?;
+
+        DecryptorWorker::create_initiator(
+            &self.ctx,
+            route.into(),
+            identity_clone,
+            storage_clone,
+            Arc::new(trust_policy),
+            timeout,
+        )
+        .await
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::access_control::IdentityAccessControlBuilder;
-    use crate::{Identity, IdentityTrait};
+    use crate::authenticated_storage::mem::InMemoryStorage;
+    use crate::Identity;
     use core::sync::atomic::{AtomicU8, Ordering};
+    use core::time::Duration;
     use ockam_core::compat::sync::Arc;
     use ockam_core::{route, Any, Result, Route, Routed, Worker};
     use ockam_node::{Context, WorkerBuilder};
     use ockam_vault::Vault;
-    use std::time::Duration;
     use tokio::time::sleep;
 
     #[ockam_macros::test]
@@ -30,17 +93,20 @@ mod test {
         let alice_vault = Vault::create();
         let bob_vault = Vault::create();
 
+        let alice_storage = InMemoryStorage::new();
+        let bob_storage = InMemoryStorage::new();
+
         let alice = Identity::create(ctx, &alice_vault).await?;
         let bob = Identity::create(ctx, &bob_vault).await?;
 
-        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
-        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
+        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier()?);
+        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier()?);
 
-        bob.create_secure_channel_listener("bob_listener", bob_trust_policy)
+        bob.create_secure_channel_listener("bob_listener", bob_trust_policy, &bob_storage)
             .await?;
 
         let alice_channel = alice
-            .create_secure_channel(route!["bob_listener"], alice_trust_policy)
+            .create_secure_channel(route!["bob_listener"], alice_trust_policy, &alice_storage)
             .await?;
 
         ctx.send(
@@ -52,7 +118,7 @@ mod test {
         let msg = ctx.receive::<String>().await?.take();
 
         let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
-        assert_eq!(local_info.their_identity_id(), &alice.identifier().await?);
+        assert_eq!(local_info.their_identity_id(), &alice.identifier()?);
 
         let return_route = msg.return_route();
         assert_eq!("Hello, Bob!", msg.body());
@@ -62,7 +128,7 @@ mod test {
         let msg = ctx.receive::<String>().await?.take();
 
         let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
-        assert_eq!(local_info.their_identity_id(), &bob.identifier().await?);
+        assert_eq!(local_info.their_identity_id(), &bob.identifier()?);
 
         assert_eq!("Hello, Alice!", msg.body());
 
@@ -73,26 +139,34 @@ mod test {
     async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
 
+        let alice_storage = InMemoryStorage::new();
+        let bob_storage = InMemoryStorage::new();
+
         let alice = Identity::create(ctx, &vault).await?;
         let bob = Identity::create(ctx, &vault).await?;
 
-        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
-        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
+        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier()?);
+        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier()?);
 
-        bob.create_secure_channel_listener("bob_listener", bob_trust_policy.clone())
+        bob.create_secure_channel_listener("bob_listener", bob_trust_policy.clone(), &bob_storage)
             .await?;
 
         let alice_channel = alice
-            .create_secure_channel(route!["bob_listener"], alice_trust_policy.clone())
+            .create_secure_channel(
+                route!["bob_listener"],
+                alice_trust_policy.clone(),
+                &alice_storage,
+            )
             .await?;
 
-        bob.create_secure_channel_listener("bob_another_listener", bob_trust_policy)
+        bob.create_secure_channel_listener("bob_another_listener", bob_trust_policy, &bob_storage)
             .await?;
 
         let alice_another_channel = alice
             .create_secure_channel(
                 route![alice_channel, "bob_another_listener"],
                 alice_trust_policy,
+                &alice_storage,
             )
             .await?;
 
@@ -118,36 +192,53 @@ mod test {
     async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
 
+        let alice_storage = InMemoryStorage::new();
+        let bob_storage = InMemoryStorage::new();
+
         let alice = Identity::create(ctx, &vault).await?;
         let bob = Identity::create(ctx, &vault).await?;
 
-        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
-        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
+        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier()?);
+        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier()?);
 
-        bob.create_secure_channel_listener("bob_listener", bob_trust_policy.clone())
+        bob.create_secure_channel_listener("bob_listener", bob_trust_policy.clone(), &bob_storage)
             .await?;
 
         let alice_channel = alice
-            .create_secure_channel(route!["bob_listener"], alice_trust_policy.clone())
+            .create_secure_channel(
+                route!["bob_listener"],
+                alice_trust_policy.clone(),
+                &alice_storage,
+            )
             .await?;
 
-        bob.create_secure_channel_listener("bob_another_listener", bob_trust_policy.clone())
-            .await?;
+        bob.create_secure_channel_listener(
+            "bob_another_listener",
+            bob_trust_policy.clone(),
+            &bob_storage,
+        )
+        .await?;
 
         let alice_another_channel = alice
             .create_secure_channel(
                 route![alice_channel, "bob_another_listener"],
                 alice_trust_policy.clone(),
+                &alice_storage,
             )
             .await?;
 
-        bob.create_secure_channel_listener("bob_yet_another_listener", bob_trust_policy)
-            .await?;
+        bob.create_secure_channel_listener(
+            "bob_yet_another_listener",
+            bob_trust_policy,
+            &bob_storage,
+        )
+        .await?;
 
         let alice_yet_another_channel = alice
             .create_secure_channel(
                 route![alice_another_channel, "bob_yet_another_listener"],
                 alice_trust_policy,
+                &alice_storage,
             )
             .await?;
 
@@ -173,17 +264,24 @@ mod test {
     async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
 
+        let alice_storage = InMemoryStorage::new();
+        let bob_storage = InMemoryStorage::new();
+
         let alice = Identity::create(ctx, &vault).await?;
         let bob = Identity::create(ctx, &vault).await?;
 
-        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().await?);
-        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().await?);
+        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier()?);
+        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier()?);
 
         let n = rand::random::<u8>() % 5 + 4;
         let mut channels = vec![];
         for i in 0..n {
-            bob.create_secure_channel_listener(i.to_string(), bob_trust_policy.clone())
-                .await?;
+            bob.create_secure_channel_listener(
+                i.to_string(),
+                bob_trust_policy.clone(),
+                &bob_storage,
+            )
+            .await?;
             let channel_route: Route;
             if i > 0 {
                 channel_route = route![channels.pop().unwrap(), i.to_string()];
@@ -191,7 +289,7 @@ mod test {
                 channel_route = route![i.to_string()];
             }
             let alice_channel = alice
-                .create_secure_channel(channel_route, alice_trust_policy.clone())
+                .create_secure_channel(channel_route, alice_trust_policy.clone(), &alice_storage)
                 .await?;
             channels.push(alice_channel);
         }
@@ -246,19 +344,22 @@ mod test {
 
         let vault = Vault::create();
 
+        let alice_storage = InMemoryStorage::new();
+        let bob_storage = InMemoryStorage::new();
+
         let alice = Identity::create(ctx, &vault).await?;
         let bob = Identity::create(ctx, &vault).await?;
 
-        let access_control = IdentityAccessControlBuilder::new_with_id(alice.identifier().await?);
+        let access_control = IdentityAccessControlBuilder::new_with_id(alice.identifier()?);
         WorkerBuilder::with_access_control(access_control, "receiver", receiver)
             .start(ctx)
             .await?;
 
-        bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
+        bob.create_secure_channel_listener("listener", TrustEveryonePolicy, &bob_storage)
             .await?;
 
         let alice_channel = alice
-            .create_secure_channel("listener", TrustEveryonePolicy)
+            .create_secure_channel("listener", TrustEveryonePolicy, &alice_storage)
             .await?;
 
         ctx.send(route![alice_channel, "receiver"], "Hello, Bob!".to_string())
@@ -283,19 +384,22 @@ mod test {
 
         let vault = Vault::create();
 
+        let alice_storage = InMemoryStorage::new();
+        let bob_storage = InMemoryStorage::new();
+
         let alice = Identity::create(ctx, &vault).await?;
         let bob = Identity::create(ctx, &vault).await?;
 
-        let access_control = IdentityAccessControlBuilder::new_with_id(bob.identifier().await?);
+        let access_control = IdentityAccessControlBuilder::new_with_id(bob.identifier()?);
         WorkerBuilder::with_access_control(access_control, "receiver", receiver)
             .start(ctx)
             .await?;
 
-        bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
+        bob.create_secure_channel_listener("listener", TrustEveryonePolicy, &bob_storage)
             .await?;
 
         let alice_channel = alice
-            .create_secure_channel("listener", TrustEveryonePolicy)
+            .create_secure_channel("listener", TrustEveryonePolicy, &alice_storage)
             .await?;
 
         ctx.send(route![alice_channel, "receiver"], "Hello, Bob!".to_string())
