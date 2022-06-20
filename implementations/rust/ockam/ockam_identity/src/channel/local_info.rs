@@ -52,8 +52,18 @@ impl IdentitySecureChannelLocalInfo {
 }
 
 impl IdentitySecureChannelLocalInfo {
-    /// Constructor
-    pub fn new(their_identity_id: IdentityIdentifier) -> Self {
-        Self { their_identity_id }
+    /// Mark a `LocalInfo` vector with `IdentitySecureChannLocalInfo`
+    /// replacing any pre-existing entries
+    pub fn mark(
+        mut local_info: Vec<LocalInfo>,
+        their_identity_id: IdentityIdentifier,
+    ) -> Result<Vec<LocalInfo>> {
+        // strip out any pre-existing IdentitySecureChannLocalInfo
+        local_info.retain(|x| x.type_identifier() != IDENTITY_SECURE_CHANNEL_IDENTIFIER);
+
+        // mark the vector
+        local_info.push(Self { their_identity_id }.to_local_info()?);
+
+        Ok(local_info)
     }
 }
