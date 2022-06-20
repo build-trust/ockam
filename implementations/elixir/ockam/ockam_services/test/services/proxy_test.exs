@@ -9,10 +9,6 @@ defmodule Test.Services.ProxyTest do
   alias Ockam.Services.Echo, as: EchoService
   alias Ockam.Services.Proxy
 
-  alias Ockam.Workers.Call
-
-  alias Test.Utils
-
   @tcp_port 5000
 
   ## Helper function to count TCP clients
@@ -38,14 +34,13 @@ defmodule Test.Services.ProxyTest do
       Ockam.Node.stop(proxy_address)
     end)
 
-    my_address = "test_me"
     {:ok, my_address} = Ockam.Node.register_random_address()
 
     Router.route("Hi echo proxy!", [proxy_address], [my_address])
 
     assert_receive %Message{
-                     onward_route: [my_address],
-                     return_route: [proxy_address],
+                     onward_route: [^my_address],
+                     return_route: [^proxy_address],
                      payload: "Hi echo proxy!"
                    },
                    2000
@@ -58,7 +53,7 @@ defmodule Test.Services.ProxyTest do
       Ockam.Node.stop(echo_address)
     end)
 
-    {:ok, listener} = Ockam.Transport.TCP.start(listen: [port: @tcp_port])
+    {:ok, _listener} = Ockam.Transport.TCP.start(listen: [port: @tcp_port])
 
     tcp_clients_count = Enum.count(tcp_clients())
 
@@ -75,8 +70,8 @@ defmodule Test.Services.ProxyTest do
     Router.route("Hi echo proxy!", [proxy_address], [my_address])
 
     assert_receive %Message{
-                     onward_route: [my_address],
-                     return_route: [proxy_address],
+                     onward_route: [^my_address],
+                     return_route: [^proxy_address],
                      payload: "Hi echo proxy!"
                    },
                    2000
@@ -87,8 +82,8 @@ defmodule Test.Services.ProxyTest do
     Router.route("Hi echo proxy take2!", [proxy_address], [my_address])
 
     assert_receive %Message{
-                     onward_route: [my_address],
-                     return_route: [proxy_address],
+                     onward_route: [^my_address],
+                     return_route: [^proxy_address],
                      payload: "Hi echo proxy take2!"
                    },
                    2000
