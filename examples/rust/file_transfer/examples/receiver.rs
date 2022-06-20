@@ -1,6 +1,7 @@
 // examples/receiver.rs
 
 use file_transfer::FileData;
+use ockam::authenticated_storage::InMemoryStorage;
 use ockam::{
     errcode::{Kind, Origin},
     identity::{Identity, TrustEveryonePolicy},
@@ -99,10 +100,13 @@ async fn main(ctx: Context) -> Result<()> {
     // Create an Identity to represent Receiver.
     let receiver = Identity::create(&ctx, &vault).await?;
 
+    // Create an AuthenticatedStorage to store info about Receiver's known Identities.
+    let storage = InMemoryStorage::new();
+
     // Create a secure channel listener for Receiver that will wait for requests to
     // initiate an Authenticated Key Exchange.
     receiver
-        .create_secure_channel_listener("listener", TrustEveryonePolicy)
+        .create_secure_channel_listener("listener", TrustEveryonePolicy, &storage)
         .await?;
 
     // The computer that is running this program is likely within a private network and

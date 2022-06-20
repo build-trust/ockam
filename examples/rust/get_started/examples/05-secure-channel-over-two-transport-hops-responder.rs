@@ -2,6 +2,7 @@
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
+use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{vault::Vault, Context, Result, TcpTransport};
 
@@ -21,9 +22,12 @@ async fn main(ctx: Context) -> Result<()> {
     // Create an Identity to represent Bob.
     let bob = Identity::create(&ctx, &vault).await?;
 
+    // Create an AuthenticatedStorage to store info about Bob's known Identities.
+    let storage = InMemoryStorage::new();
+
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy)
+    bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy, &storage)
         .await?;
 
     // Don't call ctx.stop() here so this node runs forever.

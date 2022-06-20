@@ -1,3 +1,4 @@
+use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
 use std::io;
@@ -26,10 +27,13 @@ async fn main(mut ctx: Context) -> Result<()> {
     // to Bob's secure channel listener.
     let route_to_bob_listener = route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "listener"];
 
+    // Create an AuthenticatedStorage to store info about Alice's known Identities.
+    let storage = InMemoryStorage::new();
+
     // As Alice, connect to Bob's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
     let channel = alice
-        .create_secure_channel(route_to_bob_listener, TrustEveryonePolicy)
+        .create_secure_channel(route_to_bob_listener, TrustEveryonePolicy, &storage)
         .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
