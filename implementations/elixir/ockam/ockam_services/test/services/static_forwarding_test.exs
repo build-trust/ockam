@@ -8,11 +8,7 @@ defmodule Test.Services.StaticForwardingTest do
   alias Ockam.Router
 
   test "static forwarding" do
-    {:ok, _forwarding, service_address} =
-      StaticForwardingService.start_link(
-        address: "static_forwarding_service_address",
-        prefix: "forward_to"
-      )
+    {:ok, service_address} = StaticForwardingService.create(prefix: "forward_to")
 
     {:ok, test_address} = Node.register_random_address()
 
@@ -57,11 +53,7 @@ defmodule Test.Services.StaticForwardingTest do
   end
 
   test "forwarding route override" do
-    {:ok, _forwarding, service_address} =
-      StaticForwardingService.start_link(
-        address: "static_forwarding_service_address",
-        prefix: "forward_to"
-      )
+    {:ok, service_address} = StaticForwardingService.create(prefix: "forward_to")
 
     {:ok, test_address} = Node.register_random_address()
 
