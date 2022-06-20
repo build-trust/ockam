@@ -35,6 +35,10 @@ pub mod compat;
 /// MPSC channel type aliases
 pub mod channel_types;
 
+/// Lmdb impl
+#[cfg(feature = "lmdb")]
+pub mod lmdb;
+
 #[cfg(feature = "metrics")]
 mod metrics;
 

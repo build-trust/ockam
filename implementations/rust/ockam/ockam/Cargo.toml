@@ -31,7 +31,7 @@ all-features = false
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["std", "ockam_transport_tcp", "software_vault", "software_vault_storage", "noise_xx"]
+default = ["std", "ockam_transport_tcp", "software_vault", "software_vault_storage", "noise_xx", "lmdb"]
 software_vault = [
     "ockam_vault",
     "ockam_channel/software_vault",
@@ -87,6 +87,8 @@ alloc = [
     "ockam_identity/alloc",
     "serde/alloc",
 ]
+
+lmdb = ["ockam_node/lmdb"]
 
 [[test]]
 name = "tests"
