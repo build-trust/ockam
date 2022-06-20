@@ -6,4 +6,4 @@ RUN cargo build --bin ockam --verbose --release
 
 FROM gcr.io/distroless/cc@sha256:3ca297cd5426268b5ad21e3fbe5c568411e0dec49dbae8e2967d33207bc99773
 COPY --from=executable /app/target/release/ockam /
-CMD ["./ockam"]
+ENTRYPOINT ["./ockam"]
