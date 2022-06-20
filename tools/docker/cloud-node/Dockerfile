@@ -1,5 +1,5 @@
 # Stage 1 - Download neccesary packages
-FROM debian:11.1-slim@sha256:312218c8dae688bae4e9d12926704fa9af6f7307a6edb4f66e479702a9af5a0c as debian-packages
+FROM debian:11.1-slim@sha256:656b29915fc8a8c6d870a1247aad7796ce296729b0ae95e168d1cfe30dd2fb3c as debian-packages
 
 # Download all debian packages into this image so we can later copy them into the final runtime image.
 WORKDIR /tmp
@@ -21,7 +21,7 @@ RUN find /dpkg/ -type d -empty -delete && \
 
 
 # Stage 2 - Build elixir release of ockam_cloud_node elixir app
-FROM ghcr.io/build-trust/ockam-builder@sha256:2d776ca29c80d080433ee255668b7897b8efd3a0773b80674cb345bda6d6b67e as elixir-app-release-build
+FROM ghcr.io/build-trust/ockam-builder@sha256:84bda332c6f87eecaf5418f403053cb868eb007d7931de557f1f692a8a95cc8b as elixir-app-release-build
 COPY . /work
 RUN set -xe; \
     cd implementations/elixir; \
