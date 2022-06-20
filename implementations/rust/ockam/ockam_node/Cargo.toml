@@ -25,7 +25,7 @@ publish = true
 rust-version = "1.56.0"
 
 [features]
-default = ["std"]
+default = ["std", "lmdb"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -37,6 +37,8 @@ no_std = ["ockam_core/no_std", "heapless"]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["ockam_core/alloc", "ockam_executor/alloc", "futures/alloc"]
+
+lmdb = ["std", "lmdb-rkv"]
 
 # Feature: "dump_internals" when set, will dump the internal state of
 # workers at startup via the trace! macro.
@@ -65,3 +67,4 @@ heapless = { version = "0.7", features = ["mpmc_large"], optional = true }
 ockam_executor = { path = "../ockam_executor", version = "^0.24.0", default-features = false, optional = true }
 serde_bare = { version = "0.5.0", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
+lmdb-rkv = { version = "0.14.0", optional = true }

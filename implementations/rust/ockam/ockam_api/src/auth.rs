@@ -1,4 +1,3 @@
-pub mod store;
 pub mod types;
 
 use crate::{assert_request_match, assert_response_match};
@@ -7,11 +6,11 @@ use core::convert::Infallible;
 use core::fmt;
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
+use ockam_core::authenticated_table::AuthenticatedTable;
 use ockam_core::compat::error::Error as StdError;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{self, Address, Route, Routed, Worker};
 use ockam_node::Context;
-use store::Storage;
 use tracing::{trace, warn};
 use types::{Attribute, Attributes};
 
@@ -22,7 +21,7 @@ pub struct Server<S> {
 }
 
 #[ockam_core::worker]
-impl<S: Storage + Send + Sync + 'static> Worker for Server<S> {
+impl<S: AuthenticatedTable> Worker for Server<S> {
     type Context = Context;
     type Message = Vec<u8>;
 
@@ -37,7 +36,7 @@ impl<S: Storage + Send + Sync + 'static> Worker for Server<S> {
     }
 }
 
-impl<S: Storage + Send + Sync + 'static> Server<S> {
+impl<S: AuthenticatedTable> Server<S> {
     pub fn new(s: S) -> Self {
         Server { store: s }
     }

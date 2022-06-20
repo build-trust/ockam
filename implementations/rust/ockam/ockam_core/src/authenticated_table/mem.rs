@@ -1,29 +1,27 @@
-use super::Storage;
-use core::convert::Infallible;
-use ockam_core::async_trait;
-use ockam_core::compat::collections::BTreeMap;
-use ockam_core::compat::sync::{Arc, RwLock};
+use super::AuthenticatedTable;
+use crate::async_trait;
+use crate::compat::collections::BTreeMap;
+use crate::compat::sync::{Arc, RwLock};
+use crate::Result;
 
 type Attributes = BTreeMap<String, Vec<u8>>;
 
+/// Non-persistent table stored in RAM
 #[derive(Clone, Default)]
-pub struct Store {
+pub struct InMemoryTable {
     map: Arc<RwLock<BTreeMap<String, Attributes>>>,
 }
 
-impl Store {
+impl InMemoryTable {
+    /// Constructor
     pub fn new() -> Self {
-        Store {
-            map: Arc::new(RwLock::new(BTreeMap::new())),
-        }
+        Default::default()
     }
 }
 
 #[async_trait]
-impl Storage for Store {
-    type Error = Infallible;
-
-    async fn get(&self, id: &str, key: &str) -> Result<Option<Vec<u8>>, Self::Error> {
+impl AuthenticatedTable for InMemoryTable {
+    async fn get(&self, id: &str, key: &str) -> Result<Option<Vec<u8>>> {
         let m = self.map.read().unwrap();
         if let Some(a) = m.get(id) {
             return Ok(a.get(key).cloned());
@@ -31,7 +29,7 @@ impl Storage for Store {
         Ok(None)
     }
 
-    async fn set(&self, id: &str, key: String, val: Vec<u8>) -> Result<(), Self::Error> {
+    async fn set(&self, id: &str, key: String, val: Vec<u8>) -> Result<()> {
         let mut m = self.map.write().unwrap();
         match m.get_mut(id) {
             Some(a) => {
@@ -44,7 +42,7 @@ impl Storage for Store {
         Ok(())
     }
 
-    async fn del(&self, id: &str, key: &str) -> Result<(), Self::Error> {
+    async fn del(&self, id: &str, key: &str) -> Result<()> {
         let mut m = self.map.write().unwrap();
         if let Some(a) = m.get_mut(id) {
             a.remove(key);

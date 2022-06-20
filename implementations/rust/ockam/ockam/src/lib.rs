@@ -115,5 +115,13 @@ pub mod vault {
     }
 }
 
+/// Authenticated Table
+pub mod authenticated_table {
+    pub use ockam_core::authenticated_table::*;
+
+    pub use ockam_core::authenticated_table::mem::*;
+    pub use ockam_node::lmdb::*;
+}
+
 #[cfg(feature = "ockam_transport_tcp")]
 pub use ockam_transport_tcp::{TcpTransport, TCP};
