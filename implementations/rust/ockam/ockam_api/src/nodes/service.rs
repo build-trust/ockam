@@ -1,12 +1,14 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
+use core::convert::Infallible;
+
 use crate::{
     nodes::types::{NodeStatus, TransportList, TransportMode, TransportStatus, TransportType},
     Method, Request, Response, ResponseBuilder,
 };
 use minicbor::{encode::Write, Decoder};
 use ockam::{Address, Context, Result, Routed, TcpTransport, Worker};
-use ockam_core::compat::{boxed::Box, collections::BTreeMap, io, string::String};
+use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 
 use super::types::{CreateTransport, DeleteTransport};
 
@@ -137,7 +139,7 @@ impl NodeMan {
         enc: W,
     ) -> Result<()>
     where
-        W: Write<Error = io::Error>,
+        W: Write<Error = Infallible>,
     {
         trace! {
             target: "ockam::nodeman::service",
