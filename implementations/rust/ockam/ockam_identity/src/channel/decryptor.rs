@@ -468,7 +468,7 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
         }
 
         let local_msg = msg.into_local_message();
-        let mut local_info = local_msg.local_info().to_vec();
+        let local_info = local_msg.local_info().to_vec();
         let payload = local_msg.into_transport_message().payload;
 
         // Forward to local workers
@@ -481,9 +481,10 @@ impl<I: IdentityTrait> DecryptorWorker<I> {
 
         let transport_msg = TransportMessage::v1(onward_route, return_route, payload);
 
-        local_info.push(
-            IdentitySecureChannelLocalInfo::new(state.their_identity_id.clone()).to_local_info()?,
-        );
+        // Mark message LocalInfo with IdentitySecureChannelLocalInfo,
+        // replacing any pre-existing entries
+        let local_info =
+            IdentitySecureChannelLocalInfo::mark(local_info, state.their_identity_id.clone())?;
 
         let msg = LocalMessage::new(transport_msg, local_info);
 
