@@ -38,6 +38,7 @@ Add the following code to this file:
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
+use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{vault::Vault, Context, Result, TcpTransport};
 
@@ -57,9 +58,12 @@ async fn main(ctx: Context) -> Result<()> {
     // Create an Identity to represent Bob.
     let bob = Identity::create(&ctx, &vault).await?;
 
+    // Create an AuthenticatedStorage to store info about Bob's known Identities.
+    let storage = InMemoryStorage::new();
+
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy)
+    bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy, &storage)
         .await?;
 
     // Don't call ctx.stop() here so this node runs forever.
@@ -116,6 +120,7 @@ Add the following code to this file:
 // This node creates an end-to-end encrypted secure channel over two tcp transport hops.
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
+use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
 
@@ -130,9 +135,12 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create an Identity to represent Alice.
     let alice = Identity::create(&ctx, &vault).await?;
 
+    // Create an AuthenticatedStorage to store info about Alice's known Identities.
+    let storage = InMemoryStorage::new();
+
     // Connect to a secure channel listener and perform a handshake.
     let r = route![(TCP, "localhost:3000"), (TCP, "localhost:4000"), "bob_listener"];
-    let channel = alice.create_secure_channel(r, TrustEveryonePolicy).await?;
+    let channel = alice.create_secure_channel(r, TrustEveryonePolicy, &storage).await?;
 
     // Send a message to the echoer worker via the channel.
     ctx.send(route![channel, "echoer"], "Hello Ockam!".to_string()).await?;

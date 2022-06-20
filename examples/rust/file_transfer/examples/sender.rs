@@ -12,6 +12,7 @@ use ockam::{TcpTransport, TCP};
 use std::path::PathBuf;
 
 use anyhow::Result;
+use ockam::authenticated_storage::InMemoryStorage;
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -55,10 +56,13 @@ async fn main(ctx: Context) -> Result<()> {
     // to Receiver's secure channel listener.
     let route_to_receiver_listener = route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "listener"];
 
+    // Create an AuthenticatedStorage to store info about Sender's known Identities.
+    let storage = InMemoryStorage::new();
+
     // As Sender, connect to the Receiver's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Receiver.
     let channel = sender
-        .create_secure_channel(route_to_receiver_listener, TrustEveryonePolicy)
+        .create_secure_channel(route_to_receiver_listener, TrustEveryonePolicy, &storage)
         .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");

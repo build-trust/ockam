@@ -1,3 +1,4 @@
+use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{vault::Vault, Context, Result, TcpTransport};
 
@@ -14,7 +15,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     let vault = Vault::create();
     let e = Identity::create(&ctx, &vault).await?;
-    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
+    let storage = InMemoryStorage::new();
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &storage)
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
