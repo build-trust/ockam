@@ -165,7 +165,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          release_name: 'Ockam ${{ steps.release_version.outputs.version }}'
+          release_name: 'Ockam v${{ steps.release_version.outputs.version }}'
           tag_name: '${{ steps.release_version.outputs.tag_name }}'
           body_path: 'release_note.md'
           draft: true
