@@ -5,6 +5,8 @@ use minicbor::Decoder;
 use ockam::{Error, Result};
 use ockam_api::{multiaddr_to_route, nodes::types::*, Method, Request, Response};
 
+use crate::transport::CreateTypeCommand;
+
 ////////////// !== generators
 
 /// Construct a request to query node status
@@ -24,22 +26,18 @@ pub(crate) fn query_transports() -> Result<Vec<u8>> {
 /// Construct a request to create node transports
 pub(crate) fn create_transport(cmd: &crate::transport::CreateCommand) -> Result<Vec<u8>> {
     // FIXME: this should not rely on CreateCommand internals!
-    // let payload = CreateTransport::new(
-    //     TransportType::Tcp,
-    //     if cmd.connect {
-    //         TransportMode::Connect
-    //     } else {
-    //         TransportMode::Listen
-    //     },
-    //     &cmd.address,
-    // );
+    let (tt, addr) = match &cmd.create_subcommand {
+        CreateTypeCommand::TcpConnector { address } => (TransportMode::Connect, address),
+        CreateTypeCommand::TcpListener { bind } => (TransportMode::Listen, bind),
+    };
 
-    // let mut buf = vec![];
-    // Request::builder(Method::Post, "/node/transport")
-    //     .body(payload)
-    //     .encode(&mut buf)?;
-    // Ok(buf)
-    todo!()
+    let payload = CreateTransport::new(TransportType::Tcp, tt, addr);
+
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node/transport")
+        .body(payload)
+        .encode(&mut buf)?;
+    Ok(buf)
 }
 
 /// Construct a request to delete node transports

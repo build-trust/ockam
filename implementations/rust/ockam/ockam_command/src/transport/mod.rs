@@ -2,7 +2,7 @@ mod create;
 mod delete;
 mod list;
 
-pub(crate) use create::CreateCommand;
+pub(crate) use create::{CreateCommand, CreateTypeCommand};
 pub(crate) use delete::DeleteCommand;
 use list::ListCommand;
 

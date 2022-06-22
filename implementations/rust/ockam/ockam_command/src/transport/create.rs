@@ -1,34 +1,31 @@
-use crate::util::{api, connect_to, stop_node, OckamConfig, AddonCommand};
-use clap::Args;
+use crate::util::{api, connect_to, stop_node, OckamConfig};
+use clap::{Args, Subcommand};
 use ockam::{Context, Route, TCP};
 use ockam_api::{nodes::types::TransportStatus, Status};
 
-// Creating transports has two sub-commands
-//
-// tcp-listener
-// tcp-connection
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     /// Override the default API node
     #[clap(short, long)]
     pub api_node: Option<String>,
 
-    /// Specify the type of transport to create
-    pub addon_command: AddonCommand,
-    // /// Create a listening transport
-    // #[clap(short, long, conflicts_with("connect"))]
-    // pub listen: bool,
+    /// Select a creation variant
+    #[clap(subcommand)]
+    pub create_subcommand: CreateTypeCommand,
+}
 
-    // /// Create a connection transport
-    // #[clap(short, long, conflicts_with("listen"))]
-    // pub connect: bool,
-
-    // /// Create a TCP transport
-    // #[clap(long)]
-    // pub tcp: bool,
-
-    // /// Transport connection or bind address
-    // pub address: String,
+#[derive(Clone, Debug, Subcommand)]
+pub enum CreateTypeCommand {
+    /// Create a TCP listener transport
+    TcpListener {
+        /// Transport connection or bind address
+        bind: String,
+    },
+    /// Create a TCP connector transport
+    TcpConnector {
+        /// Transport connection or bind address
+        address: String,
+    },
 }
 
 impl CreateCommand {
@@ -41,14 +38,7 @@ impl CreateCommand {
             }
         };
 
-        // if !command.connect && !command.listen {
-        //     eprintln!("Either --connect or --listen must be provided!");
-        //     std::process::exit(-1);
-        // }
-
-        println!("Self: {:?}", command);
-
-        // connect_to(port, command, create_transport);
+        connect_to(port, command, create_transport);
     }
 }
 
