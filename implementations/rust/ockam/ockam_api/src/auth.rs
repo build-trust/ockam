@@ -6,10 +6,10 @@ use core::convert::Infallible;
 use core::fmt;
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
-use ockam_core::authenticated_table::AuthenticatedTable;
 use ockam_core::compat::error::Error as StdError;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{self, Address, Route, Routed, Worker};
+use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_node::Context;
 use tracing::{trace, warn};
 use types::{Attribute, Attributes};
@@ -21,7 +21,7 @@ pub struct Server<S> {
 }
 
 #[ockam_core::worker]
-impl<S: AuthenticatedTable> Worker for Server<S> {
+impl<S: AuthenticatedStorage> Worker for Server<S> {
     type Context = Context;
     type Message = Vec<u8>;
 
@@ -36,7 +36,7 @@ impl<S: AuthenticatedTable> Worker for Server<S> {
     }
 }
 
-impl<S: AuthenticatedTable> Server<S> {
+impl<S: AuthenticatedStorage> Server<S> {
     pub fn new(s: S) -> Self {
         Server { store: s }
     }

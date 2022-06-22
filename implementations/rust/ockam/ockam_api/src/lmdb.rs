@@ -1,27 +1,27 @@
-use crate::tokio::task::{self, JoinError};
 use lmdb::{Database, Environment, Transaction};
 use ockam_core::async_trait;
-use ockam_core::authenticated_table::AuthenticatedTable;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
+use ockam_identity::authenticated_storage::AuthenticatedStorage;
+use ockam_node::tokio::task::{self, JoinError};
 use std::fmt;
 use std::path::Path;
 use std::sync::Arc;
 
-/// Lmdb AuthenticatedTable implementation
+/// Lmdb AuthenticatedStorage implementation
 #[derive(Clone)]
-pub struct LmdbTable {
+pub struct LmdbStorage {
     env: Arc<Environment>,
     map: Database,
 }
 
-impl fmt::Debug for LmdbTable {
+impl fmt::Debug for LmdbStorage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("Store")
     }
 }
 
-impl LmdbTable {
+impl LmdbStorage {
     /// Constructor
     pub async fn new<P: AsRef<Path>>(p: P) -> Result<Self> {
         let p = p.as_ref().to_path_buf();
@@ -34,7 +34,7 @@ impl LmdbTable {
             let map = env
                 .create_db(Some("map"), lmdb::DatabaseFlags::empty())
                 .map_err(map_lmdb_err)?;
-            Ok(LmdbTable {
+            Ok(LmdbStorage {
                 env: Arc::new(env),
                 map,
             })
@@ -44,7 +44,7 @@ impl LmdbTable {
 }
 
 #[async_trait]
-impl AuthenticatedTable for LmdbTable {
+impl AuthenticatedStorage for LmdbStorage {
     async fn get(&self, id: &str, key: &str) -> Result<Option<Vec<u8>>> {
         let d = self.clone();
         let k = format!("{id}:{key}");

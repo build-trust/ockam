@@ -5,6 +5,9 @@ pub mod identity;
 pub mod nodes;
 pub mod vault;
 
+#[cfg(feature = "lmdb")]
+pub mod lmdb;
+
 use core::fmt::{self, Display, Formatter};
 use core::ops::Deref;
 use minicbor::encode::{self, Encoder, Write};

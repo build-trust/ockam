@@ -1,18 +1,18 @@
-use super::AuthenticatedTable;
-use crate::async_trait;
-use crate::compat::collections::BTreeMap;
-use crate::compat::sync::{Arc, RwLock};
-use crate::Result;
+use super::AuthenticatedStorage;
+use ockam_core::async_trait;
+use ockam_core::compat::collections::BTreeMap;
+use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::Result;
 
 type Attributes = BTreeMap<String, Vec<u8>>;
 
 /// Non-persistent table stored in RAM
 #[derive(Clone, Default)]
-pub struct InMemoryTable {
+pub struct InMemoryStorage {
     map: Arc<RwLock<BTreeMap<String, Attributes>>>,
 }
 
-impl InMemoryTable {
+impl InMemoryStorage {
     /// Constructor
     pub fn new() -> Self {
         Default::default()
@@ -20,7 +20,7 @@ impl InMemoryTable {
 }
 
 #[async_trait]
-impl AuthenticatedTable for InMemoryTable {
+impl AuthenticatedStorage for InMemoryStorage {
     async fn get(&self, id: &str, key: &str) -> Result<Option<Vec<u8>>> {
         let m = self.map.read().unwrap();
         if let Some(a) = m.get(id) {

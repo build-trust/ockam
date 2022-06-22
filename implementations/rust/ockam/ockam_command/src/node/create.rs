@@ -5,13 +5,13 @@ use crate::{
     node::show::query_status,
     util::{connect_to, embedded_node, OckamConfig, DEFAULT_TCP_PORT},
 };
+use ockam::authenticated_storage::InMemoryStorage;
 use ockam::{Context, TcpTransport};
 use ockam_api::{
     auth,
     nodes::types::{TransportMode, TransportType},
     nodes::NodeMan,
 };
-use ockam_core::authenticated_table::mem::InMemoryTable;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -89,7 +89,7 @@ async fn setup(ctx: Context, c: CreateCommand) -> anyhow::Result<()> {
     let bind = format!("0.0.0.0:{}", c.port);
     tcp.listen(&bind).await?;
 
-    let s = InMemoryTable::new();
+    let s = InMemoryStorage::new();
     ctx.start_worker("authenticated", auth::Server::new(s))
         .await?;
 
