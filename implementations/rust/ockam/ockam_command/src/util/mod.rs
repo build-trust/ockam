@@ -1,5 +1,8 @@
 pub mod api;
 
+mod addon;
+pub use addon::AddonCommand;
+
 mod config;
 pub use config::{ConfigError, NodeConfig, OckamConfig};
 
