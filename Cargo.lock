@@ -2209,6 +2209,7 @@ version = "0.5.0"
 dependencies = [
  "cddl-cat",
  "fake",
+ "lmdb-rkv",
  "minicbor",
  "mockall",
  "ockam",
@@ -2431,7 +2432,6 @@ version = "0.59.0"
 dependencies = [
  "futures 0.3.21",
  "heapless",
- "lmdb-rkv",
  "ockam_core",
  "ockam_executor",
  "ockam_macros",

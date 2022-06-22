@@ -51,9 +51,6 @@ extern crate futures_util;
 /// Access control
 pub mod access_control;
 
-/// Authenticated Table
-pub mod authenticated_table;
-
 pub mod compat;
 mod error;
 mod message;

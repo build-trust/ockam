@@ -1,9 +1,9 @@
-use crate::async_trait;
-use crate::{AsyncTryClone, Result};
+use ockam_core::async_trait;
+use ockam_core::{AsyncTryClone, Result};
 
 /// Storage for Authenticated data
 #[async_trait]
-pub trait AuthenticatedTable: AsyncTryClone + Send + Sync + 'static {
+pub trait AuthenticatedStorage: AsyncTryClone + Send + Sync + 'static {
     /// Get entry
     async fn get(&self, id: &str, key: &str) -> Result<Option<Vec<u8>>>;
 

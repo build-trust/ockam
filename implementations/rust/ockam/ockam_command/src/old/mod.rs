@@ -26,7 +26,7 @@ pub mod session {
 }
 
 pub type OckamVault = ockam::vault::Vault;
-pub type OckamStorage = ockam::authenticated_table::InMemoryTable;
+pub type OckamStorage = ockam::authenticated_storage::InMemoryStorage;
 
 pub async fn print_identity(_arg: (), mut ctx: ockam::Context) -> anyhow::Result<()> {
     ensure_identity_exists(false)?;
