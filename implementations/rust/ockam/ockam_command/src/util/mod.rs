@@ -140,24 +140,24 @@ pub fn setup_logging(verbose: u8) {
         "ockam_vault_sync_core",
     ];
     let builder = EnvFilter::builder();
-    let filter = match env::var("OCKAM_LOG") {
-        Ok(s) if !s.is_empty() => builder.with_env_var("OCKAM_LOG").from_env_lossy(),
-        _ => match verbose {
-            0 => builder
-                .with_default_directive(LevelFilter::WARN.into())
-                .parse_lossy(ockam_crates.map(|c| format!("{c}=info")).join(",")),
-            1 => builder
-                .with_default_directive(LevelFilter::INFO.into())
-                .parse_lossy(""),
-            2 => builder
-                .with_default_directive(LevelFilter::DEBUG.into())
-                .parse_lossy(""),
-            _ => builder
-                .with_default_directive(LevelFilter::TRACE.into())
-                .parse_lossy(""),
+    // If `verbose` is not set, try to read the log level from the OCKAM_LOG env variable.
+    // If both `verbose` and OCKAM_LOG are not set, logging will not be enabled.
+    // Otherwise, use `verbose` to define the log level.
+    let filter = match verbose {
+        0 => match env::var("OCKAM_LOG") {
+            Ok(s) if !s.is_empty() => builder.with_env_var("OCKAM_LOG").from_env_lossy(),
+            _ => return,
         },
+        1 => builder
+            .with_default_directive(LevelFilter::INFO.into())
+            .parse_lossy(ockam_crates.map(|c| format!("{c}=info")).join(",")),
+        2 => builder
+            .with_default_directive(LevelFilter::DEBUG.into())
+            .parse_lossy(ockam_crates.map(|c| format!("{c}=debug")).join(",")),
+        _ => builder
+            .with_default_directive(LevelFilter::TRACE.into())
+            .parse_lossy(ockam_crates.map(|c| format!("{c}=trace")).join(",")),
     };
-
     let result = tracing_subscriber::registry()
         .with(filter)
         .with(tracing_error::ErrorLayer::default())

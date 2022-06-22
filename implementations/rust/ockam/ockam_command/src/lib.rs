@@ -84,14 +84,6 @@ pub struct OckamCommand {
     #[clap(global = true, long, short, default_value = "default")]
     node: String,
 
-    // A marker to indicate that this instance was spawned
-    //
-    // This is a quick work-around to avoid spamming the user with
-    // irrelevant log messages from embedded nodes, while letting
-    // spawned nodes log their full potential into their log files.
-    #[clap(global = true, long, hide = true)]
-    spawned: bool,
-
     // if test_argument_parser is true, command arguments are checked
     // but the command is not executed.
     #[clap(global = true, long, hide = true)]
@@ -178,7 +170,7 @@ pub enum OckamSubcommand {
 }
 
 pub fn run() {
-    let ockam_command = OckamCommand::parse();
+    let ockam_command: OckamCommand = OckamCommand::parse();
 
     // If test_argument_parser is true, command arguments are checked
     // but the command is not executed. This is useful to test arguments
@@ -188,10 +180,10 @@ pub fn run() {
     }
 
     let verbose = ockam_command.verbose;
-    if ockam_command.spawned {
+    if !ockam_command.quiet {
         setup_logging(verbose);
-        tracing::debug!("Parsed {:?}", ockam_command);
     }
+    tracing::debug!("Parsed {:?}", ockam_command);
 
     let mut cfg = OckamConfig::load();
 

@@ -42,12 +42,9 @@ impl CreateCommand {
                 .open(&cfg.log_path.join(format!("{}.log", command.node_name)))
                 .expect("failed to open log path");
 
-            // Override the log level for spawned nodes because debug
-            // logs are significantly more useful for debugging
-            std::env::set_var("OCKAM_LOG", "debug");
             let child = Command::new(ockam)
                 .args([
-                    "--spawned",
+                    "-vv", // Enable logs at DEBUG level
                     "node",
                     "create",
                     "--port",
