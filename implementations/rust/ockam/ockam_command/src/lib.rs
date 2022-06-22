@@ -7,6 +7,7 @@ mod forwarder;
 mod invitation;
 mod message;
 mod node;
+mod portal;
 mod project;
 mod secure_channel;
 mod space;
@@ -20,6 +21,7 @@ use forwarder::ForwarderCommand;
 use invitation::InvitationCommand;
 use message::MessageCommand;
 use node::NodeCommand;
+use portal::PortalCommand;
 use project::ProjectCommand;
 use secure_channel::SecureChannelCommand;
 use space::SpaceCommand;
@@ -135,6 +137,10 @@ pub enum OckamSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Transport(TransportCommand),
 
+    /// Create, update, or delete portal endpoints
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Portal(PortalCommand),
+
     /// Manage ockam CLI configuration values
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Config(ConfigCommand),
@@ -207,6 +213,7 @@ pub fn run() {
         OckamSubcommand::Project(command) => ProjectCommand::run(command),
         OckamSubcommand::Space(command) => SpaceCommand::run(command),
         OckamSubcommand::Transport(command) => TransportCommand::run(&mut cfg, command),
+        OckamSubcommand::Portal(command) => PortalCommand::run(&mut cfg, command),
         OckamSubcommand::Config(command) => ConfigCommand::run(&mut cfg, command),
         OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(&mut cfg, command),
 
