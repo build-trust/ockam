@@ -9,11 +9,11 @@ pub struct CreateCommand {
     #[clap(short, long)]
     pub api_node: Option<String>,
 
-    /// Create a listening transport
+    /// Create an inlet portal
     #[clap(short, long, conflicts_with("outlet"))]
     pub inlet: bool,
 
-    /// Create a connection transport
+    /// Create an outlet portal
     #[clap(short, long, conflicts_with("inlet"))]
     pub outlet: bool,
 

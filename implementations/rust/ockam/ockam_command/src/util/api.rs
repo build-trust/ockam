@@ -23,21 +23,23 @@ pub(crate) fn query_transports() -> Result<Vec<u8>> {
 
 /// Construct a request to create node transports
 pub(crate) fn create_transport(cmd: &crate::transport::CreateCommand) -> Result<Vec<u8>> {
-    let payload = CreateTransport::new(
-        TransportType::Tcp,
-        if cmd.connect {
-            TransportMode::Connect
-        } else {
-            TransportMode::Listen
-        },
-        &cmd.address,
-    );
+    // FIXME: this should not rely on CreateCommand internals!
+    // let payload = CreateTransport::new(
+    //     TransportType::Tcp,
+    //     if cmd.connect {
+    //         TransportMode::Connect
+    //     } else {
+    //         TransportMode::Listen
+    //     },
+    //     &cmd.address,
+    // );
 
-    let mut buf = vec![];
-    Request::builder(Method::Post, "/node/transport")
-        .body(payload)
-        .encode(&mut buf)?;
-    Ok(buf)
+    // let mut buf = vec![];
+    // Request::builder(Method::Post, "/node/transport")
+    //     .body(payload)
+    //     .encode(&mut buf)?;
+    // Ok(buf)
+    todo!()
 }
 
 /// Construct a request to delete node transports
