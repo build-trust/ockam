@@ -10,7 +10,11 @@ COPY entrypoint.sh /docker-entrypoint.sh
 
 RUN set -xe; \
     apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends ca-certificates curl locales; \
+    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends \
+      ca-certificates \
+      curl \
+      locales \
+      netcat; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*; \
 # Setup locale
