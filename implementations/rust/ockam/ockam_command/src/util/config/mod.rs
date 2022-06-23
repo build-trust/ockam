@@ -1,19 +1,55 @@
 //! Handle local node configuration
 
+mod atomic;
+
+use atomic::AtomicUpdater;
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     fs::{create_dir_all, File, OpenOptions},
     io::{Read, Write},
+    ops::Deref,
     path::PathBuf,
 };
 
-#[derive(Default, Serialize, Deserialize)]
+/// Wraps around ProjectDirs in a serde friendly manner
+#[derive(Clone)]
+struct OckamDirectories(ProjectDirs);
+
+impl Default for OckamDirectories {
+    fn default() -> Self {
+        Self(OckamConfig::get_paths())
+    }
+}
+
+impl Deref for OckamDirectories {
+    type Target = ProjectDirs;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct OckamConfig {
+    #[serde(skip, default)]
+    #[allow(unused)]
+    dirs: OckamDirectories,
     pub log_path: PathBuf,
     pub api_node: String,
     nodes: BTreeMap<String, NodeConfig>,
+}
+
+impl Default for OckamConfig {
+    fn default() -> Self {
+        Self {
+            dirs: OckamDirectories::default(),
+            log_path: PathBuf::new(),
+            api_node: "default".into(),
+            nodes: BTreeMap::new(),
+        }
+    }
 }
 
 /// A set of errors that occur when trying to update the configuration
@@ -30,12 +66,10 @@ pub enum ConfigError {
     NodeNotFound(String),
 }
 
+// TODO: add wrappers specific to each path type
+#[deprecated]
 fn get_paths() -> (PathBuf, PathBuf) {
-    let proj = ProjectDirs::from("io", "ockam", "ockam-cli").expect(
-        "failed to determine configuration storage location.
-Verify that your XDG_CONFIG_HOME and XDG_DATA_HOME environment variables are correctly set.
-Otherwise your OS or OS configuration may not be supported!",
-    );
+    let proj = OckamConfig::get_paths();
 
     let cfg_home = proj.config_dir();
     let _ = create_dir_all(&cfg_home);
@@ -47,6 +81,14 @@ Otherwise your OS or OS configuration may not be supported!",
 }
 
 impl OckamConfig {
+    fn get_paths() -> ProjectDirs {
+        ProjectDirs::from("io", "ockam", "ockam-cli").expect(
+            "failed to determine configuration storage location.
+Verify that your XDG_CONFIG_HOME and XDG_DATA_HOME environment variables are correctly set.
+Otherwise your OS or OS configuration may not be supported!",
+        )
+    }
+
     /// Return a static set of config values that can be addressed
     pub fn values() -> Vec<&'static str> {
         vec!["api-node", "log-path"]
@@ -85,6 +127,9 @@ impl OckamConfig {
     }
 
     /// Save the current config state
+    ///
+    /// Please use `Self::atomic_update` instead!
+    #[deprecated]
     pub fn save(&self) {
         let (config_path, _) = get_paths();
 
@@ -103,6 +148,11 @@ impl OckamConfig {
     /// Checks if node exists
     pub fn has_node(&mut self, name: &str) -> bool {
         self.nodes.contains_key(name)
+    }
+
+    /// Atomically update the configuration
+    pub fn atomic_update(&self) -> AtomicUpdater {
+        AtomicUpdater::new(self)
     }
 
     /// Add a new node to the configuration for future lookup
@@ -180,7 +230,7 @@ impl OckamConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NodeConfig {
     pub port: u16,
     pub pid: Option<i32>,
