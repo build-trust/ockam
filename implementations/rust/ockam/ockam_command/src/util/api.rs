@@ -1,11 +1,11 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 
+// TODO: maybe we can remove this cross-dependency inside the CLI?
+use crate::{portal, transport};
 use minicbor::Decoder;
 
 use ockam::{Error, Result};
 use ockam_api::{multiaddr_to_route, nodes::types::*, Method, Request, Response};
-
-use crate::transport::CreateTypeCommand;
 
 ////////////// !== generators
 
@@ -27,8 +27,8 @@ pub(crate) fn query_transports() -> Result<Vec<u8>> {
 pub(crate) fn create_transport(cmd: &crate::transport::CreateCommand) -> Result<Vec<u8>> {
     // FIXME: this should not rely on CreateCommand internals!
     let (tt, addr) = match &cmd.create_subcommand {
-        CreateTypeCommand::TcpConnector { address } => (TransportMode::Connect, address),
-        CreateTypeCommand::TcpListener { bind } => (TransportMode::Listen, bind),
+        transport::CreateTypeCommand::TcpConnector { address } => (TransportMode::Connect, address),
+        transport::CreateTypeCommand::TcpListener { bind } => (TransportMode::Listen, bind),
     };
 
     let payload = CreateTransport::new(TransportType::Tcp, tt, addr);
@@ -41,7 +41,7 @@ pub(crate) fn create_transport(cmd: &crate::transport::CreateCommand) -> Result<
 }
 
 /// Construct a request to delete node transports
-pub(crate) fn delete_transport(cmd: &crate::transport::DeleteCommand) -> Result<Vec<u8>> {
+pub(crate) fn delete_transport(cmd: &transport::DeleteCommand) -> Result<Vec<u8>> {
     let mut buf = vec![];
     Request::builder(Method::Delete, "/node/transport")
         .body(DeleteTransport::new(&cmd.id, cmd.force))
@@ -89,6 +89,26 @@ pub(crate) fn create_secure_channel_listener(
     Ok(buf)
 }
 
+/// Construct a request to create node transports
+pub(crate) fn create_portal(cmd: &portal::CreateCommand) -> Result<Vec<u8>> {
+    // FIXME: this should not rely on CreateCommand internals!
+    let (tt, addr, fwd) = match &cmd.create_subcommand {
+        portal::CreateTypeCommand::TcpInlet { bind, forward } => {
+            (IoletType::Inlet, bind, Some(forward))
+        }
+        portal::CreateTypeCommand::TcpOutlet { address } => (IoletType::Outlet, address, None),
+    };
+    let alias = cmd.alias.as_ref().map(Into::into);
+    let fwd = fwd.map(Into::into);
+    let payload = CreateIolet::new(tt, addr, fwd, alias);
+
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node/portal")
+        .body(payload)
+        .encode(&mut buf)?;
+    Ok(buf)
+}
+
 ////////////// !== parsers
 
 /// Parse the base response without the inner payload
@@ -130,4 +150,11 @@ pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Resu
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
     Ok(response)
+}
+
+/// Parse the returned status response
+pub(crate) fn parse_portal_status(resp: &[u8]) -> Result<(Response, IoletStatus<'_>)> {
+    let mut dec = Decoder::new(resp);
+    let response = dec.decode::<Response>()?;
+    Ok((response, dec.decode::<IoletStatus>()?))
 }

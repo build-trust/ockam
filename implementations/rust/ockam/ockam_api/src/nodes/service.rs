@@ -8,7 +8,7 @@ use crate::error::ApiError;
 use crate::{nodes::types::*, Method, Request, Response, ResponseBuilder, Status};
 
 use ockam::remote::RemoteForwarder;
-use ockam::{Address, Context, Result, Routed, TcpTransport, Worker};
+use ockam::{Address, Context, Result, Route, Routed, TcpTransport, Worker};
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_identity::authenticated_storage::mem::InMemoryStorage;
@@ -43,7 +43,8 @@ pub struct NodeMan {
     api_transport_id: Alias,
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
-    iolets: BTreeMap<(Alias, IoletType), String>,
+    // FIXME: wow this is a terrible way to store data
+    iolets: BTreeMap<(Alias, IoletType), (String, Option<Route>)>,
 }
 
 impl NodeMan {
@@ -155,7 +156,7 @@ impl NodeMan {
     }
 
     //////// Forwarder API ////////
-    
+
     async fn create_forwarder<W>(
         &mut self,
         ctx: &mut Context,
@@ -194,7 +195,7 @@ impl NodeMan {
     }
 
     //////// Secure channel API ////////
-    
+
     async fn create_secure_channel(
         &mut self,
         ctx: &Context,
@@ -261,7 +262,14 @@ impl NodeMan {
         Response::ok(req.id()).body(IoletList::new(
             self.iolets
                 .iter()
-                .map(|((alias, tt), addr)| IoletStatus::new(*tt, addr, alias))
+                .map(|((alias, tt), (addr, route))| {
+                    IoletStatus::new(
+                        *tt,
+                        addr,
+                        alias,
+                        route.as_ref().map(|r| r.to_string().into()),
+                    )
+                })
                 .collect(),
         ))
     }
@@ -273,21 +281,45 @@ impl NodeMan {
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<IoletStatus<'_>>> {
         let CreateIolet {
-            addr, alias, tt, ..
+            addr,
+            alias,
+            fwd,
+            tt,
+            ..
         } = dec.decode()?;
         let addr = addr.to_string();
         let alias = alias.map(|a| a.into()).unwrap_or_else(random_alias);
 
-        match tt {
+        let res = match tt {
             IoletType::Inlet => {
                 info!("Handling request to create inlet portal");
+                let outlet_route = Route::parse(fwd.unwrap()).unwrap();
+                self.tcp_transport
+                    .create_inlet(addr.clone(), outlet_route)
+                    .await
+                    .map(|(addr, _)| addr)
             }
             IoletType::Outlet => {
                 info!("Handling request to create outlet portal");
+                let self_addr = Address::random_local();
+                self.tcp_transport
+                    .create_outlet(self_addr.clone(), addr.clone())
+                    .await
+                    .map(|_| self_addr)
             }
-        }
+        };
 
-        Ok(Response::ok(req.id()).body(IoletStatus::new(tt, addr, alias)))
+        Ok(match res {
+            Ok(addr) => {
+                Response::ok(req.id()).body(IoletStatus::new(tt, addr.to_string(), alias, None))
+            }
+            Err(e) => Response::bad_request(req.id()).body(IoletStatus::new(
+                tt,
+                addr,
+                alias,
+                Some(e.to_string().into()),
+            )),
+        })
     }
 
     //////// Request matching and response handling ////////

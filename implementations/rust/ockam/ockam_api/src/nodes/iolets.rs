@@ -7,7 +7,7 @@ use ockam_core::compat::borrow::Cow;
 use ockam_core::TypeTag;
 
 /// Distinguish between inlet and outlet portals in the API
-#[derive(Copy, Clone, Debug, Decode, Encode)]
+#[derive(Copy, Clone, Debug, Decode, Encode, PartialEq)]
 #[rustfmt::skip]
 #[cbor(index_only)]
 pub enum IoletType {
@@ -23,9 +23,37 @@ pub struct CreateIolet<'a> {
     #[cfg(feature = "tag")]
     #[n(0)]
     tag: TypeTag<1407961>,
+    /// The type of portal endpoint to create
     #[n(1)] pub tt: IoletType,
+    /// The address the portal should connect or bind to
     #[n(2)] pub addr: Cow<'a, str>,
-    #[n(3)] pub alias: Option<Cow<'a, str>>,
+    /// The forwarding address (must be ockam routing address)
+    ///
+    /// This field will be disregarded for portal outlets.  Portal
+    /// inlets MUST set this value to configure their forwarding
+    /// behaviour.  This can either be the address of an already
+    /// created outlet, or a forwarding mechanism via ockam cloud.
+    #[n(3)] pub fwd: Option<Cow<'a, str>>,
+    /// A human-friendly alias for this portal endpoint
+    #[n(4)] pub alias: Option<Cow<'a, str>>,
+}
+
+impl<'a> CreateIolet<'a> {
+    pub fn new(
+        tt: IoletType,
+        addr: impl Into<Cow<'a, str>>,
+        fwd: impl Into<Option<Cow<'a, str>>>,
+        alias: impl Into<Option<Cow<'a, str>>>,
+    ) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            tt,
+            addr: addr.into(),
+            fwd: fwd.into(),
+            alias: alias.into(),
+        }
+    }
 }
 
 /// Respons body when interacting with an inlet or outlet
@@ -39,16 +67,24 @@ pub struct IoletStatus<'a> {
     #[n(1)] pub tt: IoletType,
     #[n(2)] pub addr: Cow<'a, str>,
     #[n(3)] pub alias: Cow<'a, str>,
+    /// An optional status payload
+    #[n(4)] pub payload: Option<Cow<'a, str>>,
 }
 
 impl<'a> IoletStatus<'a> {
-    pub fn new<S: Into<Cow<'a, str>>>(tt: IoletType, addr: S, alias: S) -> Self {
+    pub fn new(
+        tt: IoletType,
+        addr: impl Into<Cow<'a, str>>,
+        alias: impl Into<Cow<'a, str>>,
+        payload: impl Into<Option<Cow<'a, str>>>,
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             tt,
             addr: addr.into(),
             alias: alias.into(),
+            payload: payload.into(),
         }
     }
 }
