@@ -47,7 +47,23 @@ impl CreateCommand {
             }
         };
 
-        connect_to(port, command, create_transport);
+        connect_to(port, command.clone(), create_transport);
+
+        // Update the config.  We can probably assume that everything
+        // went OK if we reach this point because embedded_node
+        // crashes the process if something went wrong?  But idk,
+        // still bad and should be fixed
+        let node = command.api_node.unwrap_or_else(|| cfg.api_node.clone());
+        match command.create_subcommand {
+            CreateTypeCommand::TcpConnector { address } => {
+                cfg.add_transport(&node, false, true, address)
+            }
+            CreateTypeCommand::TcpListener { bind } => cfg.add_transport(&node, true, true, bind),
+        };
+
+        if let Err(e) = cfg.atomic_update().run() {
+            eprintln!("failed to update configuration: {}", e);
+        }
     }
 }
 
