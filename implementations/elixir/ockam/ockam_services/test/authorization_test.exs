@@ -124,10 +124,10 @@ defmodule Ockam.Services.Authorization.Tests do
     {:ok, me} = Ockam.Node.register_random_address()
     Ockam.Router.route("VIA CHANNEL", [bob_channel, echoer], [me])
 
-    assert_receive %Ockam.Message{onward_route: [^me], payload: "VIA CHANNEL"}
+    assert_receive(%Ockam.Message{onward_route: [^me], payload: "VIA CHANNEL"}, 500)
 
     Ockam.Router.route("WITHOUT CHANNEL", [echoer], [me])
 
-    refute_receive %Ockam.Message{onward_route: [^me], payload: "WITHOUT CHANNEL"}
+    refute_receive(%Ockam.Message{onward_route: [^me], payload: "WITHOUT CHANNEL"}, 500)
   end
 end
