@@ -13,10 +13,12 @@ impl SetCommand {
     pub fn run(cfg: &mut OckamConfig, command: SetCommand) {
         match command.value.as_str() {
             "api-node" => cfg.set_api_node(&command.payload),
-            "log-path" => cfg.set_log_path(&command.payload),
+            //"log-path" => cfg.set_log_path(&command.payload),
             val => eprintln!("config value '{}' does not exist", val),
         };
 
-        cfg.save();
+        if let Err(e) = cfg.atomic_update().run() {
+            eprintln!("failed to update configuration: {}", e);
+        }
     }
 }

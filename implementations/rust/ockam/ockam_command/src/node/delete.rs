@@ -44,6 +44,8 @@ pub fn delete_node(cfg: &mut OckamConfig, node_name: &String, sigkill: bool) {
         eprintln!("failed to remove node from config: {}", e);
     }
 
-    cfg.save();
+    if let Err(e) = cfg.atomic_update().run() {
+        eprintln!("failed to update configuration: {}", e);
+    }
     println!("Deleted node '{}'", node_name);
 }
