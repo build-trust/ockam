@@ -1,9 +1,16 @@
 defmodule Ockam.Vault.Software.MixProject do
   use Mix.Project
 
-  @version "0.10.1"
+  @version "0.62.0"
 
-  @elixir_requirement "~> 1.10"
+  @elixir_requirement "~> 1.12"
+
+  @ockam_release_url "https://github.com/build-trust/ockam/releases"
+  @download_libs [
+    {"ockam.linux_elixir_ffi.so", ["linux_x86_64_gnu", "native", "libockam_elixir_ffi.so"]},
+    {"ockam.darwin_universal_elixir_ffi.so",
+     ["darwin_universal", "native", "libockam_elixir_ffi.so"]}
+  ]
 
   @ockam_github_repo "https://github.com/build-trust/ockam"
   @ockam_github_repo_path "implementations/elixir/ockam/ockam_vault_software"
@@ -11,7 +18,7 @@ defmodule Ockam.Vault.Software.MixProject do
   def project do
     [
       app: :ockam_vault_software,
-      version: @version,
+      version: package_version(),
       elixir: @elixir_requirement,
       consolidate_protocols: Mix.env() != :test,
       elixirc_options: [warnings_as_errors: true],
@@ -55,7 +62,8 @@ defmodule Ockam.Vault.Software.MixProject do
   defp package do
     [
       links: %{"GitHub" => @ockam_github_repo},
-      licenses: ["Apache-2.0"]
+      licenses: ["Apache-2.0"],
+      source_url: @ockam_github_repo
     ]
   end
 
@@ -64,16 +72,19 @@ defmodule Ockam.Vault.Software.MixProject do
     [
       main: "Ockam.Vault.Software",
       source_url_pattern:
-        "#{@ockam_github_repo}/blob/v#{@version}/#{@ockam_github_repo_path}/%{path}#L%{line}"
+        "#{@ockam_github_repo}/blob/v#{package_version()}/#{@ockam_github_repo_path}/%{path}#L%{line}"
     ]
   end
 
   defp aliases do
     [
-      "compile.native": &compile_native/1,
+      "check.native": &check_native/1,
+      "download.native": &download_native/1,
       "recompile.native": &recompile_native/1,
       "clean.native": &clean_native/1,
-      compile: ["compile.native", "compile"],
+      "hex.build": ["download.native --version=#{package_version()}", "hex.build"],
+      "hex.publish": ["download.native --version=#{package_version()}", "hex.publish"],
+      compile: ["check.native", "compile"],
       clean: ["clean", "clean.native"],
       docs: "docs --output _build/docs --formatter html",
       "test.cover": "test --no-start --cover",
@@ -90,28 +101,79 @@ defmodule Ockam.Vault.Software.MixProject do
     Path.join([Mix.Project.app_path(), "priv", "native"])
   end
 
-  defp compile_native(args) do
-    case need_recompile_native?() do
-      true -> recompile_native(args)
-      false -> :ok
-    end
-  end
-
-  def need_recompile_native?() do
-    case {prebuilt_lib_exists?(), test_recompile?()} do
-      {true, false} ->
-        false
+  defp check_native(args) do
+    case test_recompile?() do
+      true ->
+        recompile_native(args)
 
       _ ->
-        true
+        case prebuilt_lib_exists?() do
+          true -> :ok
+          false -> download_native(args)
+        end
     end
   end
 
-  def test_recompile?() do
+  defp download_native(args) do
+    version_path =
+      case ockam_version(args) do
+        "latest" -> "/latest/download"
+        other -> "/download/ockam_" <> other
+      end
+
+    base_url = @ockam_release_url <> version_path
+
+    ## To donwload files we need inets and ssl
+    :inets.start()
+    :ssl.start()
+
+    Enum.each(@download_libs, fn {from, to} ->
+      download_url = base_url <> "/" <> from
+      dest_path = ["priv" | to]
+
+      dest_file = Path.join(dest_path)
+      dest_dir = Path.join(Enum.take(dest_path, length(dest_path) - 1))
+
+      File.mkdir_p!(dest_dir)
+
+      IO.puts("Downloading lib from #{download_url} to #{dest_file}")
+      File.rm_rf(dest_file)
+
+      {:ok, :saved_to_file} =
+        :httpc.request(
+          :get,
+          {to_charlist(download_url), []},
+          [],
+          stream: to_charlist(dest_file)
+        )
+    end)
+  end
+
+  defp package_version() do
+    case System.get_env("VERSION") do
+      nil -> @version
+      version -> version
+    end
+  end
+
+  defp ockam_version(args) do
+    case OptionParser.parse(args, switches: [version: :string]) do
+      {[version: version], _, _} ->
+        "v" <> version
+
+      _ ->
+        case Mix.env() do
+          :dev -> "latest"
+          :prod -> "v" <> package_version()
+        end
+    end
+  end
+
+  defp test_recompile?() do
     Mix.env() == :test and System.get_env("NO_RECOMPILE_NATIVE") != "true"
   end
 
-  def prebuilt_lib_exists?() do
+  defp prebuilt_lib_exists?() do
     case prebuilt_lib_path() do
       {:ok, _path} -> true
       _ -> false
@@ -131,9 +193,20 @@ defmodule Ockam.Vault.Software.MixProject do
   ## we need to run this both in compile-time and in runtime
   defp os_subdir() do
     case {:os.type(), to_string(:erlang.system_info(:system_architecture))} do
-      ## Linux libs only built for x86_64
-      {{:unix, :linux}, "x86_64" <> _} ->
-        {:ok, "linux_x86_64"}
+      ## Linux libs only built for GNU
+      {{:unix, :linux}, "x86_64" <> type} ->
+        if String.ends_with?(type, "gnu") do
+          {:ok, "linux_x86_64_gnu"}
+        else
+          :error
+        end
+
+      {{:unix, :linux}, "aarch64" <> type} ->
+        if String.ends_with?(type, "gnu") do
+          {:ok, "linux_aarch64_gnu"}
+        else
+          :error
+        end
 
       ## MacOS libs are multi-arch
       {{:unix, :darwin}, "x86_64" <> _} ->

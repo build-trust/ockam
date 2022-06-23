@@ -71,9 +71,20 @@ defmodule Ockam.Vault.Software do
 
   defp os_subdir() do
     case {:os.type(), to_string(:erlang.system_info(:system_architecture))} do
-      ## Linux libs only built for x86_64
-      {{:unix, :linux}, "x86_64" <> _} ->
-        {:ok, "linux_x86_64"}
+      ## Linux libs only built for GNU
+      {{:unix, :linux}, "x86_64" <> type} ->
+        if String.ends_with?(type, "gnu") do
+          {:ok, "linux_x86_64_gnu"}
+        else
+          :error
+        end
+
+      {{:unix, :linux}, "aarch64" <> type} ->
+        if String.ends_with?(type, "gnu") do
+          {:ok, "linux_aarch64_gnu"}
+        else
+          :error
+        end
 
       ## MacOS libs are multi-arch
       {{:unix, :darwin}, "x86_64" <> _} ->
