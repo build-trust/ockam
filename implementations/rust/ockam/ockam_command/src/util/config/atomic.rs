@@ -12,8 +12,8 @@ use crate::util::OckamConfig;
 use std::{
     fs::{self, File},
     io::Write,
+    time::Duration,
 };
-use tempfile::tempfile_in;
 
 /// Takes a version of the OckamConfig and persists it to disk
 #[must_use]
@@ -31,7 +31,17 @@ impl<'cfg> AtomicUpdater<'cfg> {
     pub fn run(self) -> anyhow::Result<()> {
         let cfg_dir = self.inner.dirs.config_dir();
 
-        let mut new_f = File::create(cfg_dir.join("__temp.cfg"))?;
+        // Repeatedly try to create this file, in case another
+        // instance is _also_ trying to currently update the
+        // configuration
+        let mut new_f = loop {
+            match File::create(cfg_dir.join("__temp.cfg")) {
+                Ok(f) => break f,
+                Err(_) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+            }
+        };
 
         // First write the file
         let json: String =

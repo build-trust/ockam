@@ -6,7 +6,8 @@ pub use addon::AddonCommand;
 mod config;
 pub use config::{ConfigError, NodeConfig, OckamConfig};
 
-use std::env;
+use std::net::{SocketAddrV4, SocketAddrV6};
+use std::{env, path::PathBuf};
 
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
@@ -121,4 +122,8 @@ pub fn setup_logging(verbose: u8) {
     if result.is_err() {
         eprintln!("Failed to initialise tracing logging.");
     }
+}
+
+pub fn print_path(p: &PathBuf) -> String {
+    p.to_str().unwrap_or("<unprintable>").to_string()
 }

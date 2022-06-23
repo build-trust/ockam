@@ -5,12 +5,13 @@ mod atomic;
 use atomic::AtomicUpdater;
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
+use slug::slugify;
 use std::{
     collections::BTreeMap,
-    fs::{create_dir_all, File, OpenOptions},
+    fs::{create_dir_all, File},
     io::{Read, Write},
     ops::Deref,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 /// Wraps around ProjectDirs in a serde friendly manner
@@ -36,7 +37,6 @@ pub struct OckamConfig {
     #[serde(skip, default)]
     #[allow(unused)]
     dirs: OckamDirectories,
-    pub log_path: PathBuf,
     pub api_node: String,
     nodes: BTreeMap<String, NodeConfig>,
 }
@@ -45,7 +45,6 @@ impl Default for OckamConfig {
     fn default() -> Self {
         Self {
             dirs: OckamDirectories::default(),
-            log_path: PathBuf::new(),
             api_node: "default".into(),
             nodes: BTreeMap::new(),
         }
@@ -66,20 +65,6 @@ pub enum ConfigError {
     NodeNotFound(String),
 }
 
-// TODO: add wrappers specific to each path type
-#[deprecated]
-fn get_paths() -> (PathBuf, PathBuf) {
-    let proj = OckamConfig::get_paths();
-
-    let cfg_home = proj.config_dir();
-    let _ = create_dir_all(&cfg_home);
-
-    let data_home = proj.data_local_dir();
-    let _ = create_dir_all(&data_home);
-
-    (cfg_home.join("config.json"), data_home.to_path_buf())
-}
-
 impl OckamConfig {
     fn get_paths() -> ProjectDirs {
         ProjectDirs::from("io", "ockam", "ockam-cli").expect(
@@ -89,32 +74,37 @@ Otherwise your OS or OS configuration may not be supported!",
         )
     }
 
+    fn config_dir(&self) -> &Path {
+        self.dirs.config_dir()
+    }
+
+    fn local_data_dir(&self) -> &Path {
+        self.dirs.data_local_dir()
+    }
+
     /// Return a static set of config values that can be addressed
     pub fn values() -> Vec<&'static str> {
         vec!["api-node", "log-path"]
     }
 
-    fn new(log_path: PathBuf) -> Self {
-        Self {
-            log_path,
-            api_node: "default".into(),
-            ..Default::default()
-        }
-    }
-
     /// Attempt to load an ockam config.  If none exists, one is
     /// created and then returned.
     pub fn load() -> Self {
-        let (config_path, log_path) = get_paths();
+        let cfg_dir = Self::default().config_dir().to_path_buf();
+        if let Err(e) = create_dir_all(&cfg_dir) {
+            eprintln!("failed to create configuration directory: {}", e);
+            std::process::exit(-1);
+        }
 
+        let config_path = cfg_dir.join("config.json");
         match File::open(&config_path) {
             Ok(ref mut f) => {
                 let mut buf = String::new();
                 f.read_to_string(&mut buf).expect("failed to read config");
-                serde_json::from_str(&buf).expect("failed to parse config")
+                serde_json::from_str(&buf).expect("failed to parse config.  Try deleting the file $HOME/.config/ockam-cli/config.json")
             }
             Err(_) => {
-                let new = Self::new(log_path);
+                let new = Self::default();
                 let json: String =
                     serde_json::to_string_pretty(&new).expect("failed to serialise config");
                 let mut f =
@@ -124,30 +114,6 @@ Otherwise your OS or OS configuration may not be supported!",
                 new
             }
         }
-    }
-
-    /// Save the current config state
-    ///
-    /// Please use `Self::atomic_update` instead!
-    #[deprecated]
-    pub fn save(&self) {
-        let (config_path, _) = get_paths();
-
-        let mut file = OpenOptions::new()
-            .create(false)
-            .truncate(true)
-            .write(true)
-            .open(config_path)
-            .expect("failed to open config for writing");
-
-        let json: String = serde_json::to_string_pretty(self).expect("failed to serialise config");
-        file.write_all(json.as_bytes())
-            .expect("failed to write config");
-    }
-
-    /// Checks if node exists
-    pub fn has_node(&mut self, name: &str) -> bool {
-        self.nodes.contains_key(name)
     }
 
     /// Atomically update the configuration
@@ -161,10 +127,21 @@ Otherwise your OS or OS configuration may not be supported!",
             return Err(ConfigError::NodeExists(name.to_string()));
         }
 
+        // Setup logging directory and store it
+        let log_dir = self
+            .local_data_dir()
+            .join(slugify(&format!("node-{}", name)));
+
+        if let Err(e) = create_dir_all(&log_dir) {
+            eprintln!("failed to create new node state directory: {}", e);
+            std::process::exit(-1);
+        }
+
         self.nodes.insert(
             name.to_string(),
             NodeConfig {
                 port,
+                log_dir,
                 pid: Some(pid),
             },
         );
@@ -211,22 +188,21 @@ Otherwise your OS or OS configuration may not be supported!",
     }
 
     /// Get the log path for a specific node
-    pub fn log_path(&self, node_name: &String) -> String {
-        self.log_path
-            .join(format!("{}.log", node_name))
-            .to_str()
-            .unwrap()
-            .to_owned()
+    ///
+    /// The convention is to name the main log `node-name.log` and the
+    /// supplimentary log `nod-name.log.stderr`
+    pub fn log_paths_for_node(&self, node_name: &String) -> Option<(PathBuf, PathBuf)> {
+        let base = &self.nodes.get(node_name)?.log_dir;
+        // TODO: sluggify node names
+        Some((
+            base.join(format!("{}.log", node_name)),
+            base.join(format!("{}.log.stderr", node_name)),
+        ))
     }
 
     /// Update the api node name on record
     pub fn set_api_node(&mut self, node_name: &str) {
         self.api_node = node_name.into();
-    }
-
-    /// Update the base log path for nodes
-    pub fn set_log_path(&mut self, path: &String) {
-        self.log_path = PathBuf::new().join(path);
     }
 }
 
@@ -234,4 +210,5 @@ Otherwise your OS or OS configuration may not be supported!",
 pub struct NodeConfig {
     pub port: u16,
     pub pid: Option<i32>,
+    pub log_dir: PathBuf,
 }

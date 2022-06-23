@@ -36,12 +36,30 @@ impl CreateCommand {
             // deterministic way of starting a node.
             let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
 
-            let log_file = OpenOptions::new()
+            // First we create a new node in the configuration so that
+            // we can ask it for the correct log path, as well as
+            // making sure the watchdog can do its job later on.
+            if let Err(e) = cfg.create_node(&command.node_name, command.port, 0) {
+                eprintln!(
+                    "failed to update node configuration for '{}': {:?}",
+                    command.node_name, e
+                );
+                std::process::exit(-1);
+            }
+
+            let (mlog, elog) = cfg.log_paths_for_node(&command.node_name).unwrap();
+
+            let main_log_file = OpenOptions::new()
                 .create(true)
                 .append(true)
-                // FIXME: slugify the node name
-                .open(&cfg.log_path.join(format!("{}.log", command.node_name)))
+                .open(mlog)
                 .expect("failed to open log path");
+
+            let stderr_log_file = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(elog)
+                .expect("failed to open stderr log path");
 
             let child = Command::new(ockam)
                 .args([
@@ -52,18 +70,19 @@ impl CreateCommand {
                     &command.port.to_string(),
                     &command.node_name,
                 ])
-                .stdout(log_file)
+                .stdout(main_log_file)
+                .stderr(stderr_log_file)
                 .spawn()
                 .expect("could not spawn node");
 
-            if let Err(e) = cfg.create_node(&command.node_name, command.port, child.id() as i32) {
-                eprintln!(
-                    "failed to update node configuration for '{}': {:?}",
-                    command.node_name, e
-                );
-                std::process::exit(-1);
+            // Update the pid in the config (should we remove this?)
+            cfg.update_pid(&command.node_name, child.id() as i32)
+                .expect("should never panic");
+
+            // Save the config update
+            if let Err(e) = cfg.atomic_update().run() {
+                eprintln!("failed to update configuration: {}", e);
             }
-            cfg.save();
 
             // Wait a bit
             std::thread::sleep(Duration::from_millis(500));

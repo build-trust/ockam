@@ -33,6 +33,8 @@ impl ListCommand {
             .get_nodes()
             .iter()
             .fold(vec![], |mut acc, (name, node_cfg)| {
+                let (mlog, _) = cfg.log_paths_for_node(name).unwrap();
+
                 let row = vec![
                     name.cell(),
                     node_cfg.port.cell().justify(Justify::Right),
@@ -42,7 +44,7 @@ impl ListCommand {
                     }
                     .cell()
                     .justify(Justify::Left),
-                    cfg.log_path(name).cell(),
+                    util::print_path(&mlog).cell(),
                 ];
                 acc.push(row);
                 acc
