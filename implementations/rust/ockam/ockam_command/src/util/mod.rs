@@ -6,13 +6,10 @@ pub use addon::AddonCommand;
 mod config;
 pub use config::{ConfigError, NodeConfig, OckamConfig};
 
-use std::net::{SocketAddrV4, SocketAddrV6};
-use std::{env, path::PathBuf};
-
+use ockam::{route, NodeBuilder, Route, TcpTransport, TCP};
+use std::{env, path::Path};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
-
-use ockam::{route, NodeBuilder, Route, TcpTransport, TCP};
 
 pub const DEFAULT_CLOUD_ADDRESS: &str = "/dnsaddr/cloud.ockam.io/tcp/62526";
 pub const DEFAULT_TCP_PORT: u16 = 62526;
@@ -124,6 +121,6 @@ pub fn setup_logging(verbose: u8) {
     }
 }
 
-pub fn print_path(p: &PathBuf) -> String {
+pub fn print_path(p: &Path) -> String {
     p.to_str().unwrap_or("<unprintable>").to_string()
 }

@@ -1,13 +1,16 @@
 //! Handle local node configuration
 
 mod atomic;
+mod snippets;
 
 use atomic::AtomicUpdater;
+use snippets::{ComposableSnippet, Operation};
+
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use slug::slugify;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, VecDeque},
     fs::{create_dir_all, File},
     io::{Read, Write},
     ops::Deref,
@@ -143,6 +146,15 @@ Otherwise your OS or OS configuration may not be supported!",
                 port,
                 log_dir,
                 pid: Some(pid),
+                composites: vec![ComposableSnippet {
+                    id: "_start".into(),
+                    op: Operation::Node {
+                        port,
+                        node_name: name.to_string(),
+                    },
+                    params: vec![],
+                }]
+                .into(),
             },
         );
         Ok(())
@@ -204,6 +216,26 @@ Otherwise your OS or OS configuration may not be supported!",
     pub fn set_api_node(&mut self, node_name: &str) {
         self.api_node = node_name.into();
     }
+
+    //////// Config composition functions
+    // TODO: maybe these should be somewhere else?
+
+    pub fn add_transport(&mut self, node: &str, listen: bool, tcp: bool, addr: String) {
+        self.nodes
+            .get_mut(node)
+            .unwrap()
+            .composites
+            .push_back(ComposableSnippet {
+                id: format!(
+                    "_transport_{}_{}_{}",
+                    if listen { "listen" } else { "connect" },
+                    if tcp { "tcp" } else { "unknown" },
+                    addr
+                ),
+                op: Operation::Transport { listen, tcp, addr },
+                params: vec![],
+            })
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -211,4 +243,5 @@ pub struct NodeConfig {
     pub port: u16,
     pub pid: Option<i32>,
     pub log_dir: PathBuf,
+    pub composites: VecDeque<ComposableSnippet>,
 }
