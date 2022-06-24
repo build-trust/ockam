@@ -3,6 +3,8 @@ defmodule Ockam.Identity.SecureChannel do
   Functions to start identity secure channel and listener
   """
 
+  alias Ockam.Identity
+
   alias Ockam.Message
 
   alias Ockam.Session.Pluggable.Initiator
@@ -42,7 +44,6 @@ defmodule Ockam.Identity.SecureChannel do
   end
 
   defp spawner_options(options) do
-    _identity = Keyword.fetch!(options, :identity)
     listener_keys = [:address, :inner_address, :restart_type]
     worker_options = Keyword.drop(options, listener_keys)
 
@@ -85,6 +86,29 @@ defmodule Ockam.Identity.SecureChannel do
   """
   def create_channel(options, timeout \\ 30_000) do
     init_route = Keyword.fetch!(options, :route)
+
+    encryption_options =
+      case Keyword.fetch(options, :encryption_options) do
+        {:ok, encryption_options} ->
+          encryption_options
+
+        :error ->
+          {:ok, vault} = Ockam.Vault.Software.init()
+          [vault: vault]
+      end
+
+    identity =
+      case Keyword.get(options, :identity) do
+        nil ->
+          module = Keyword.get(options, :identity_module, Identity.default_implementation())
+          {:ok, identity, _id} = Identity.create(module)
+          identity
+
+        identity ->
+          identity
+      end
+
+    options = Keyword.merge(options, identity: identity, encryption_options: encryption_options)
 
     create =
       Initiator.create(
@@ -212,6 +236,17 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
 
   def handle_responder_init(handshake_options, message, handshake_state) do
     identity = Keyword.fetch!(handshake_options, :identity)
+
+    identity =
+      case identity do
+        :ephemeral ->
+          identity_module = Keyword.fetch!(handshake_options, :identity_module)
+          {:ok, identity, _id} = Identity.create(identity_module)
+          identity
+
+        other ->
+          other
+      end
 
     init_handshake_payload = Message.payload(message)
 

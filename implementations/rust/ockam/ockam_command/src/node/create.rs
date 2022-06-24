@@ -6,9 +6,10 @@ use crate::{
     util::{connect_to, embedded_node, OckamConfig, DEFAULT_TCP_PORT},
 };
 use ockam::authenticated_storage::InMemoryStorage;
-use ockam::{Context, TcpTransport};
+use ockam::{vault::Vault, AsyncTryClone, Context, TcpTransport};
 use ockam_api::{
     auth,
+    identity::IdentityService,
     nodes::types::{TransportMode, TransportType},
     nodes::NodeMan,
 };
@@ -89,6 +90,10 @@ async fn setup(ctx: Context, c: CreateCommand) -> anyhow::Result<()> {
     let s = InMemoryStorage::new();
     ctx.start_worker("authenticated", auth::Server::new(s))
         .await?;
+
+    // TODO: put that behind some flag or configuration
+    let vault = Vault::create();
+    IdentityService::create(&ctx, "identity_service", vault.async_try_clone().await?).await?;
 
     ctx.start_worker(
         "_internal.nodeman",

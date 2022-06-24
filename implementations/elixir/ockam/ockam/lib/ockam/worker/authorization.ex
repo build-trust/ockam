@@ -163,7 +163,24 @@ defmodule Ockam.Worker.Authorization do
   @doc """
   Combine multiple authorization steps in the state :authorization field
 
-  :authorization field can be either
+  See `with_config/3`
+  """
+  def with_state_config(prev, message, state) do
+    chain(prev, fn ->
+      with_state_config(message, state)
+    end)
+  end
+
+  def with_state_config(message, state) do
+    config = Map.get(state, :authorization, [:to_my_address])
+
+    with_config(config, message, state)
+  end
+
+  @doc """
+  Combine multiple authorization steps in config
+
+  config can be either:
   - a list of steps
   - a map of %{address => list of steps}
 
@@ -173,6 +190,7 @@ defmodule Ockam.Worker.Authorization do
   Each step can be:
   - function :: atom - a function from `Ockam.Worker.Authorization` taking message and state as arguments
   - {function :: atom, args :: list} - a function from `Ockam.Worker.Authorization` taking args
+  - {module :: atom, function :: atom} - a function form module taking message and state as arguments
   - {module :: atom, function :: atom, args :: list} - function taking args
 
   If args contain atoms `:message` or `:state`, they are replaced
@@ -181,15 +199,7 @@ defmodule Ockam.Worker.Authorization do
   config `:to_my_address` is same as `{:to_my_address, [:message, :state]}` and
   `{Ockam.Worker.Authorization, :to_my_address, [:message, :state]}`
   """
-  def with_config(prev, message, state) do
-    chain(prev, fn ->
-      with_config(message, state)
-    end)
-  end
-
-  def with_config(message, state) do
-    config = Map.get(state, :authorization, [:to_my_address])
-
+  def with_config(config, message, state) do
     case config do
       list when is_list(list) ->
         expand_config(config, message, state) |> check_with_config()
@@ -236,6 +246,12 @@ defmodule Ockam.Worker.Authorization do
        when is_atom(function) and is_list(args) do
     args = expand_args(args, message, state)
     {__MODULE__, function, args}
+  end
+
+  defp expand_config_fun({module, function}, message, state)
+       when is_atom(module) and is_atom(function) do
+    args = [message, state]
+    {module, function, args}
   end
 
   defp expand_config_fun({module, function, args}, message, state)

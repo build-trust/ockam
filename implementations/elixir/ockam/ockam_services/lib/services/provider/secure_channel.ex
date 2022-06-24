@@ -25,12 +25,10 @@ defmodule Ockam.Services.Provider.SecureChannel do
     Ockam.Identity.SecureChannel.listener_child_spec(options)
   end
 
-  def service_mod(:identity_secure_channel), do: Ockam.Identity.SecureChannel
-
-  def service_options(:secure_channel, _args) do
+  def service_options(:secure_channel, args) do
     with {:ok, vault} <- SoftwareVault.init(),
          {:ok, keypair} <- Ockam.Vault.secret_generate(vault, type: :curve25519) do
-      [vault: vault, identity_keypair: keypair, address: "secure_channel"]
+      Keyword.merge([vault: vault, identity_keypair: keypair, address: "secure_channel"], args)
     else
       error ->
         IO.puts("error starting service options for secure channel: #{inspect(error)}")
@@ -52,15 +50,20 @@ defmodule Ockam.Services.Provider.SecureChannel do
         {:cached_identity, [Ockam.Identity.TrustPolicy.KnownIdentitiesEts]}
       ])
 
+    other_args = Keyword.drop(args, [:identity_module, :trust_policies])
+
     with {:ok, vault} <- SoftwareVault.init(),
-         {:ok, keypair} <- Ockam.Vault.secret_generate(vault, type: :curve25519),
-         {:ok, identity, _id} <- Ockam.Identity.create(identity_module) do
-      [
-        identity: identity,
-        encryption_options: [vault: vault, identity_keypair: keypair],
-        address: "identity_secure_channel",
-        trust_policies: trust_policies
-      ]
+         {:ok, keypair} <- Ockam.Vault.secret_generate(vault, type: :curve25519) do
+      Keyword.merge(
+        [
+          identity: :ephemeral,
+          identity_module: identity_module,
+          encryption_options: [vault: vault, identity_keypair: keypair],
+          address: "identity_secure_channel",
+          trust_policies: trust_policies
+        ],
+        other_args
+      )
     else
       error ->
         IO.puts("error starting service options for identity secure channel: #{inspect(error)}")

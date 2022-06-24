@@ -114,7 +114,7 @@ defmodule Ockam.Worker do
 
       @doc false
       def is_authorized(message, state) do
-        Ockam.Worker.Authorization.with_config(message, state)
+        Ockam.Worker.Authorization.with_state_config(message, state)
       end
 
       defoverridable setup: 2, address_prefix: 1, is_authorized: 2

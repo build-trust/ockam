@@ -13,6 +13,10 @@ defmodule Ockam.Identity do
 
   @default_implementation Ockam.Identity.Sidecar
 
+  def default_implementation() do
+    @default_implementation
+  end
+
   @spec create(module :: atom()) ::
           {:ok, identity :: t(), identity_id :: binary()} | {:error, reason :: any()}
   def create(module \\ @default_implementation) do
