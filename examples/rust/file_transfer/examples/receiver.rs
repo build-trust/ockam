@@ -9,7 +9,6 @@ use ockam::{
     vault::Vault,
     Context, Error, Result, Routed, TcpTransport, Worker, TCP,
 };
-use std::str;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
@@ -55,17 +54,7 @@ impl Worker for FileReception {
                     ));
                 }
                 if let Some(file) = &mut self.file {
-                    match file
-                        .write(
-                            str::from_utf8(data)
-                                .map_err(|e| {
-                                    Error::new_without_cause(Origin::Application, Kind::Unknown)
-                                        .context("msg", e.to_string())
-                                })?
-                                .as_bytes(),
-                        )
-                        .await
-                    {
+                    match file.write(data).await {
                         Ok(n) => {
                             self.written_size += n;
                             if self.written_size == self.size {

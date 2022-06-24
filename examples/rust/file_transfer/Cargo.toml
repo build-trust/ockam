@@ -13,3 +13,8 @@ structopt = { version = "0.3.25", default-features = false }
 tokio = { version = "1.8.0", features = ["fs", "io-util"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 anyhow = "1.0.45"
+
+[dev-dependencies]
+example_test_helper = { path = "../../../tools/docs/example_test_helper" }
+file_diff = "1"
+rand = "0.8.5"
