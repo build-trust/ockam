@@ -25,7 +25,7 @@ pub enum SecureChannelSubcommand {
 }
 
 impl SecureChannelCommand {
-    pub fn run(cfg: &mut OckamConfig, command: SecureChannelCommand) {
+    pub fn run(cfg: &OckamConfig, command: SecureChannelCommand) {
         match command.subcommand {
             SecureChannelSubcommand::Create(command) => CreateCommand::run(cfg, command),
             SecureChannelSubcommand::CreateListener(command) => {

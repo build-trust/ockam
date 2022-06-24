@@ -11,9 +11,10 @@ pub struct PurgeCommand {
 }
 
 impl PurgeCommand {
-    pub fn run(cfg: &mut OckamConfig, command: PurgeCommand) {
+    pub fn run(cfg: &OckamConfig, command: PurgeCommand) {
         let nodes: Vec<_> = cfg
-            .get_nodes()
+            .get_inner()
+            .nodes
             .iter()
             .map(|(name, _)| name.clone())
             .collect();

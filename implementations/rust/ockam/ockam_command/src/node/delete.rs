@@ -13,21 +13,21 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(cfg: &mut OckamConfig, command: DeleteCommand) {
+    pub fn run(cfg: &OckamConfig, command: DeleteCommand) {
         delete_node(cfg, &command.node_name, command.sigkill);
     }
 }
 
-pub fn delete_node(cfg: &mut OckamConfig, node_name: &String, sigkill: bool) {
-    let node_cfg = match cfg.get_nodes().get(node_name) {
-        Some(node_cfg) => node_cfg,
-        None => {
-            eprintln!("No such node registired");
+pub fn delete_node(cfg: &OckamConfig, node_name: &String, sigkill: bool) {
+    let pid = match cfg.get_node_pid(node_name) {
+        Ok(pid) => pid,
+        Err(e) => {
+            eprintln!("Failed to delete node: {}", e);
             std::process::exit(-1);
         }
     };
 
-    if let Some(pid) = node_cfg.pid {
+    if let Some(pid) = pid {
         if let Err(e) = signal::kill(
             Pid::from_raw(pid),
             if sigkill {
@@ -47,5 +47,6 @@ pub fn delete_node(cfg: &mut OckamConfig, node_name: &String, sigkill: bool) {
     if let Err(e) = cfg.atomic_update().run() {
         eprintln!("failed to update configuration: {}", e);
     }
-    println!("Deleted node '{}'", node_name);
+
+    eprintln!("Deleted node '{}'", node_name);
 }

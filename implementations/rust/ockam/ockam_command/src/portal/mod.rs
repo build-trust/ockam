@@ -20,7 +20,7 @@ pub enum PortalSubCommand {
 }
 
 impl PortalCommand {
-    pub fn run(cfg: &mut OckamConfig, cmd: PortalCommand) {
+    pub fn run(cfg: &OckamConfig, cmd: PortalCommand) {
         match cmd.subcommand {
             PortalSubCommand::Create(cmd) => CreateCommand::run(cfg, cmd),
         }

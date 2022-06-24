@@ -31,7 +31,7 @@ pub enum ConfigSubcommand {
 }
 
 impl ConfigCommand {
-    pub fn run(cfg: &mut OckamConfig, command: ConfigCommand) {
+    pub fn run(cfg: &OckamConfig, command: ConfigCommand) {
         match command.subcommand {
             ConfigSubcommand::Set(command) => SetCommand::run(cfg, command),
             ConfigSubcommand::Get(command) => GetCommand::run(cfg, command),

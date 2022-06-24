@@ -31,7 +31,7 @@ pub enum TransportSubCommand {
 }
 
 impl TransportCommand {
-    pub fn run(cfg: &mut OckamConfig, command: TransportCommand) {
+    pub fn run(cfg: &OckamConfig, command: TransportCommand) {
         match command.subcommand {
             TransportSubCommand::Create(command) => CreateCommand::run(cfg, command),
             TransportSubCommand::Delete(command) => DeleteCommand::run(cfg, command),

@@ -11,26 +11,29 @@ use ockam_api::nodes::NODEMAN_ADDR;
 pub struct ListCommand {}
 
 impl ListCommand {
-    pub fn run(cfg: &mut OckamConfig, _: ListCommand) {
-        let nodes = cfg.get_nodes();
+    pub fn run(cfg: &OckamConfig, _: ListCommand) {
+        let node_names = {
+            let inner = cfg.get_inner();
 
-        if nodes.is_empty() {
-            println!("No nodes registered on this system!");
-            std::process::exit(0);
-        }
+            if inner.nodes.is_empty() {
+                println!("No nodes registered on this system!");
+                std::process::exit(0);
+            }
 
-        // Before printing node state we have to verify it.  This
-        // happens by sending a QueryStatus request to every node on
-        // record.  If the function fails, then it is assumed not to
-        // be up.  Also, if the function returns, but yields a
-        // different pid, then we update the pid stored in the config.
-        // This should only happen if the node has failed in the past,
-        // and has been restarted by something that is not this CLI.
-        let node_names = nodes.iter().map(|(name, _)| name.clone()).collect();
+            // Before printing node state we have to verify it.  This
+            // happens by sending a QueryStatus request to every node on
+            // record.  If the function fails, then it is assumed not to
+            // be up.  Also, if the function returns, but yields a
+            // different pid, then we update the pid stored in the config.
+            // This should only happen if the node has failed in the past,
+            // and has been restarted by something that is not this CLI.
+            inner.nodes.iter().map(|(name, _)| name.clone()).collect()
+        };
         verify_pids(cfg, node_names);
 
         let table = cfg
-            .get_nodes()
+            .get_inner()
+            .nodes
             .iter()
             .fold(vec![], |mut acc, (name, node_cfg)| {
                 let (mlog, _) = cfg.log_paths_for_node(name).unwrap();
@@ -64,9 +67,9 @@ impl ListCommand {
 }
 
 // TODO: move to utils directory
-fn verify_pids(cfg: &mut OckamConfig, nodes: Vec<String>) {
+fn verify_pids(cfg: &OckamConfig, nodes: Vec<String>) {
     for node_name in nodes {
-        let node_cfg = cfg.get_nodes().get(&node_name).unwrap();
+        let node_cfg = cfg.get_node(&node_name).unwrap();
 
         let (tx, rx) = bounded(1);
         println!("Checking state for node '{}'", node_name);

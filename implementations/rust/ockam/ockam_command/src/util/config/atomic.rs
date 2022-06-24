@@ -8,28 +8,34 @@
 //! To update the configuration call `Config::atomic_update`, which
 //! generates an AtomicUpdater.
 
-use crate::util::OckamConfig;
+use directories::ProjectDirs;
+
+use crate::util::SyncConfig;
 use std::{
     fs::{self, File},
     io::Write,
+    sync::{Arc, RwLock},
     time::Duration,
 };
 
 /// Takes a version of the OckamConfig and persists it to disk
 #[must_use]
-pub struct AtomicUpdater<'cfg> {
-    inner: &'cfg OckamConfig,
+pub struct AtomicUpdater {
+    dirs: ProjectDirs,
+    inner: Arc<RwLock<SyncConfig>>,
 }
 
-impl<'cfg> AtomicUpdater<'cfg> {
+impl AtomicUpdater {
     /// Create a new atomic updater
-    pub fn new(inner: &'cfg OckamConfig) -> Self {
-        Self { inner }
+    pub fn new(dirs: ProjectDirs, inner: Arc<RwLock<SyncConfig>>) -> Self {
+        Self { dirs, inner }
     }
 
     /// Do the thing that we said it was gonna do
     pub fn run(self) -> anyhow::Result<()> {
-        let cfg_dir = self.inner.dirs.config_dir();
+        let inner = self.inner.read().unwrap();
+
+        let cfg_dir = self.dirs.config_dir();
 
         // Repeatedly try to create this file, in case another
         // instance is _also_ trying to currently update the
@@ -45,7 +51,7 @@ impl<'cfg> AtomicUpdater<'cfg> {
 
         // First write the file
         let json: String =
-            serde_json::to_string_pretty(self.inner).expect("failed to serialise config");
+            serde_json::to_string_pretty(&*inner).expect("failed to serialise config");
         new_f
             .write_all(json.as_bytes())
             .expect("failed to write config");

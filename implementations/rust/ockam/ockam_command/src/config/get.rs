@@ -8,14 +8,14 @@ pub struct GetCommand {
 }
 
 impl GetCommand {
-    pub fn run(cfg: &mut OckamConfig, command: GetCommand) {
+    pub fn run(cfg: &OckamConfig, command: GetCommand) {
         let msg = match command.value.as_deref() {
-            Some("api-node") => cfg.api_node.clone(),
+            Some("api-node") => cfg.get_api_node(),
             // FIXME: needs to take an additional parameter
             // Some("log-path") => cfg.log_path.to_str().unwrap().to_owned(),
             Some(val) => format!("config value '{}' does not exist", val),
             None => vec![
-                ("api-node", cfg.api_node.as_str()),
+                ("api-node", cfg.get_api_node().as_str()),
                 // ("log-path", cfg.log_path.to_str().unwrap()),
             ]
             .iter()

@@ -27,7 +27,7 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(cfg: &mut OckamConfig, cmd: CreateCommand) {
+    pub fn run(cfg: &OckamConfig, cmd: CreateCommand) {
         let port = match cfg.select_node(&cmd.node_name) {
             Some(cfg) => cfg.port,
             None => {

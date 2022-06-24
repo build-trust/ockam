@@ -17,7 +17,7 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(cfg: &mut OckamConfig, command: CreateCommand) -> anyhow::Result<()> {
+    pub fn run(cfg: &OckamConfig, command: CreateCommand) -> anyhow::Result<()> {
         let port = cfg.select_node(&command.api_node).unwrap().port;
 
         connect_to(port, command, create_channel);

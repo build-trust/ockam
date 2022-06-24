@@ -198,7 +198,7 @@ pub fn run() {
         return;
     }
 
-    let mut cfg = OckamConfig::load();
+    let cfg = OckamConfig::load();
 
     match ockam_command.subcommand {
         OckamSubcommand::Authenticated(command) => AuthenticatedCommand::run(command),
@@ -207,15 +207,15 @@ pub fn run() {
         OckamSubcommand::GenerateEnrollmentToken(command) => {
             GenerateEnrollmentTokenCommand::run(command)
         }
-        OckamSubcommand::Forwarder(command) => ForwarderCommand::run(&mut cfg, command),
+        OckamSubcommand::Forwarder(command) => ForwarderCommand::run(&cfg, command),
         OckamSubcommand::Message(command) => MessageCommand::run(command),
-        OckamSubcommand::Node(command) => NodeCommand::run(&mut cfg, command),
+        OckamSubcommand::Node(command) => NodeCommand::run(&cfg, command),
         OckamSubcommand::Project(command) => ProjectCommand::run(command),
         OckamSubcommand::Space(command) => SpaceCommand::run(command),
-        OckamSubcommand::Transport(command) => TransportCommand::run(&mut cfg, command),
-        OckamSubcommand::Portal(command) => PortalCommand::run(&mut cfg, command),
-        OckamSubcommand::Config(command) => ConfigCommand::run(&mut cfg, command),
-        OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(&mut cfg, command),
+        OckamSubcommand::Transport(command) => TransportCommand::run(&cfg, command),
+        OckamSubcommand::Portal(command) => PortalCommand::run(&cfg, command),
+        OckamSubcommand::Config(command) => ConfigCommand::run(&cfg, command),
+        OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(&cfg, command),
 
         // OLD
         OckamSubcommand::CreateOutlet(arg) => {
