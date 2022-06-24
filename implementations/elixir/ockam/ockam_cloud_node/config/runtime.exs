@@ -36,8 +36,7 @@ tcp_port = String.to_integer(System.get_env("TCP_PORT", "4000"))
 udp_port = String.to_integer(System.get_env("UDP_PORT", "7000"))
 
 config :ockam_services,
-  tcp_transport_port: tcp_port,
-  udp_transport_port: udp_port
+  tcp_transport: [listen: [port: tcp_port]]
 
 ## Kafka default config
 

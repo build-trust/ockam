@@ -86,7 +86,7 @@ defmodule Ockam.Identity.Sidecar do
     end
   end
 
-  defp api_route() do
+  def api_route() do
     @api_route
   end
 

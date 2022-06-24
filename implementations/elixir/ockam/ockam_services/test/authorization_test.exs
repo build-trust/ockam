@@ -7,7 +7,6 @@ defmodule Ockam.Services.Authorization.Tests do
   alias Ockam.Message
   alias Ockam.Router
 
-  alias Ockam.Services.AuthorizationConfig
   alias Ockam.Services.Echo
 
   alias Ockam.Vault.Software, as: SoftwareVault
@@ -29,7 +28,7 @@ defmodule Ockam.Services.Authorization.Tests do
   end
 
   test "Worker requiring secure channel", %{vault: vault, channel_listener: channel_listener} do
-    {:ok, echoer} = Echo.create(authorization: AuthorizationConfig.secure_channel())
+    {:ok, echoer} = Echo.create(authorization: [:from_secure_channel])
 
     {:ok, me} = Ockam.Node.register_random_address()
 
@@ -65,7 +64,7 @@ defmodule Ockam.Services.Authorization.Tests do
   end
 
   test "Worker requiring local message", %{vault: vault, channel_listener: channel_listener} do
-    {:ok, echoer} = Echo.create(authorization: AuthorizationConfig.local())
+    {:ok, echoer} = Echo.create(authorization: [:is_local])
 
     {:ok, me} = Ockam.Node.register_random_address()
 
@@ -119,7 +118,7 @@ defmodule Ockam.Services.Authorization.Tests do
         route: [listener]
       )
 
-    {:ok, echoer} = Echo.create(authorization: AuthorizationConfig.identity_secure_channel())
+    {:ok, echoer} = Echo.create(authorization: [:from_identiy_secure_channel])
 
     {:ok, me} = Ockam.Node.register_random_address()
     Ockam.Router.route("VIA CHANNEL", [bob_channel, echoer], [me])

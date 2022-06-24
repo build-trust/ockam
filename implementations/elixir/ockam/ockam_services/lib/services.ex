@@ -13,20 +13,28 @@ defmodule Ockam.Services do
 
   @doc false
   def start(_type, _args) do
-    tcp_transport_port = Application.get_env(:ockam_services, :tcp_transport_port, 4000)
-    udp_transport_port = Application.get_env(:ockam_services, :udp_transport_port, 7000)
+    tcp_transport_options = Application.get_env(:ockam_services, :tcp_transport)
+    udp_transport_options = Application.get_env(:ockam_services, :udp_transport)
 
-    children = [
-      # Add a TCP listener
-      {Ockam.Transport.TCP, [listen: [port: tcp_transport_port]]},
-      # Add a UDP listener
-      ## TODO: use same module format as TCP
-      {Ockam.Transport.UDP.Listener,
-       [
-         port: udp_transport_port
-       ]},
-      Ockam.Services.Provider
-    ]
+    tcp_transport =
+      case tcp_transport_options do
+        nil -> []
+        _options -> [{Ockam.Transport.TCP, tcp_transport_options}]
+      end
+
+    udp_transport =
+      case udp_transport_options do
+        nil -> []
+        ## TODO: use same module format as TCP
+        _options -> [{Ockam.Transport.UDP.Listener, udp_transport_options}]
+      end
+
+    children =
+      tcp_transport ++
+        udp_transport ++
+        [
+          Ockam.Services.Provider
+        ]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
   end

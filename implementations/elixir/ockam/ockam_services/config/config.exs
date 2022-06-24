@@ -4,8 +4,8 @@
 import Config
 
 config :ockam_services,
-  tcp_transport_port: 4000,
-  udp_transport_port: 7000
+  tcp_transport: [listen: [port: 4000]],
+  udp_transport: [port: 7000]
 
 config :ockam_services,
   service_providers: [
@@ -18,7 +18,9 @@ config :ockam_services,
     # secure channel services
     Ockam.Services.Provider.SecureChannel,
     # discovery service
-    Ockam.Services.Provider.Discovery
+    Ockam.Services.Provider.Discovery,
+    # Rust sidecar services
+    Ockam.Services.Provider.Sidecar
   ]
 
 import_config "#{Mix.env()}.exs"

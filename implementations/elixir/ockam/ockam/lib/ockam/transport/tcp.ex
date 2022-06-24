@@ -45,16 +45,29 @@ defmodule Ockam.Transport.TCP do
 
   ## Parameters
   - options:
-      listen: t:Listener.options()
+      listen: t:Listener.options() - TCP listener options, default is empty (no listener is started)
+      implicit_clients: boolean() - start client on receiving TCPAddress message, default is true
+      client_options: list() - additional options to pass to implicit clients
   """
   @spec start(Keyword.t()) :: :ignore | {:error, any} | {:ok, any}
   def start(options \\ []) do
     client_options = Keyword.get(options, :client_options, [])
-    ## TODO: do we want to stop transports?
-    Router.set_message_handler(
-      TCPAddress.type(),
-      {__MODULE__, :handle_transport_message, [client_options]}
-    )
+    implicit_clients = Keyword.get(options, :implicit_clients, true)
+
+    case implicit_clients do
+      true ->
+        ## TODO: do we want to stop transports?
+        Router.set_message_handler(
+          TCPAddress.type(),
+          {__MODULE__, :handle_transport_message, [client_options]}
+        )
+
+      false ->
+        Router.set_message_handler(
+          TCPAddress.type(),
+          {__MODULE__, :implicit_connections_disabled, []}
+        )
+    end
 
     case Keyword.fetch(options, :listen) do
       {:ok, listen} -> Listener.start_link(listen)
@@ -81,6 +94,10 @@ defmodule Ockam.Transport.TCP do
           "Cannot forward message to tcp client: #{inspect(message)} reason: #{inspect(e)}"
         )
     end
+  end
+
+  def implicit_connections_disabled(_message) do
+    {:error, {:tcp_transport, :implicit_connections_disabled}}
   end
 
   defp get_destination(message) do
