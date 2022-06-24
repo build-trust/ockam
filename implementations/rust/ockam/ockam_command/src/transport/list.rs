@@ -15,7 +15,7 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(cfg: &mut OckamConfig, command: ListCommand) {
+    pub fn run(cfg: &OckamConfig, command: ListCommand) {
         let port = match cfg.select_node(&command.api_node) {
             Some(cfg) => cfg.port,
             None => {

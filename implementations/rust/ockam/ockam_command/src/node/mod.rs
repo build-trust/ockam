@@ -43,7 +43,7 @@ pub enum NodeSubcommand {
 }
 
 impl NodeCommand {
-    pub fn run(cfg: &mut OckamConfig, command: NodeCommand) {
+    pub fn run(cfg: &OckamConfig, command: NodeCommand) {
         match command.subcommand {
             NodeSubcommand::Create(command) => CreateCommand::run(cfg, command),
             NodeSubcommand::Delete(command) => DeleteCommand::run(cfg, command),

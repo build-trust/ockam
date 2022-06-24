@@ -10,8 +10,8 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(cfg: &mut OckamConfig, command: ShowCommand) {
-        let port = match cfg.get_nodes().get(&command.node_name) {
+    pub fn run(cfg: &OckamConfig, command: ShowCommand) {
+        let port = match cfg.get_inner().nodes.get(&command.node_name) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");

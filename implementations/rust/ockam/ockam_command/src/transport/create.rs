@@ -38,7 +38,7 @@ pub enum CreateTypeCommand {
 }
 
 impl CreateCommand {
-    pub fn run(cfg: &mut OckamConfig, command: CreateCommand) {
+    pub fn run(cfg: &OckamConfig, command: CreateCommand) {
         let port = match cfg.select_node(&command.api_node) {
             Some(cfg) => cfg.port,
             None => {
@@ -53,7 +53,7 @@ impl CreateCommand {
         // went OK if we reach this point because embedded_node
         // crashes the process if something went wrong?  But idk,
         // still bad and should be fixed
-        let node = command.api_node.unwrap_or_else(|| cfg.api_node.clone());
+        let node = command.api_node.unwrap_or_else(|| cfg.get_api_node());
         match command.create_subcommand {
             CreateTypeCommand::TcpConnector { address } => {
                 cfg.add_transport(&node, false, true, address)

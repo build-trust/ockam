@@ -18,7 +18,7 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(cfg: &mut OckamConfig, command: DeleteCommand) {
+    pub fn run(cfg: &OckamConfig, command: DeleteCommand) {
         let port = match cfg.select_node(&command.api_node) {
             Some(cfg) => cfg.port,
             None => {

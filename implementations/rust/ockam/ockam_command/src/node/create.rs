@@ -29,7 +29,7 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(cfg: &mut OckamConfig, command: CreateCommand) {
+    pub fn run(cfg: &OckamConfig, command: CreateCommand) {
         if command.spawn {
             // On systems with non-obvious path setups (or during
             // development) re-executing the current binary is a more
