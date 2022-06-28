@@ -387,9 +387,9 @@ impl NodeMan {
             (Post, "/node/forwarder") => self.create_forwarder(ctx, req, dec, enc).await?,
 
             // ==*== Inlets & Outlets ==*==
-            (Get, "/node/iolets") => self.get_iolets(req).encode(enc)?,
-            (Post, "/node/iolets") => self.create_iolet(ctx, req, dec).await?.encode(enc)?,
-            (Delete, "/node/iolets") => todo!(),
+            (Get, "/node/portal") => self.get_iolets(req).encode(enc)?,
+            (Post, "/node/portal") => self.create_iolet(ctx, req, dec).await?.encode(enc)?,
+            (Delete, "/node/portal") => todo!(),
 
             // ==*== Catch-all for Unimplemented APIs ==*==
             (method, path) => {

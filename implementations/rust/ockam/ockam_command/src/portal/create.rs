@@ -5,7 +5,6 @@ use ockam_api::{
     nodes::types::{IoletStatus, IoletType},
     Status,
 };
-use ockam_core::LOCAL;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -19,7 +18,6 @@ pub struct CreateCommand {
 
     /// Give this portal endpoint a name.  If none is provided a
     /// random one will be generated.
-    #[clap(short, long)]
     pub alias: Option<String>,
 }
 
@@ -84,7 +82,7 @@ pub async fn create_portal(
             let r: Route = base_route
                 .modify()
                 .pop_back()
-                .append_t(LOCAL, addr.to_string())
+                .append(addr.to_string())
                 .into();
             eprintln!(
                 "Portal outlet '{}' created! You can send messages through it via this route:\n{}`",
