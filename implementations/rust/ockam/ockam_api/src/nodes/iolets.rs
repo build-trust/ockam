@@ -26,16 +26,16 @@ pub struct CreateIolet<'a> {
     /// The type of portal endpoint to create
     #[n(1)] pub tt: IoletType,
     /// The address the portal should connect or bind to
-    #[n(2)] pub addr: Cow<'a, str>,
+    #[b(2)] pub addr: Cow<'a, str>,
     /// The forwarding address (must be ockam routing address)
     ///
     /// This field will be disregarded for portal outlets.  Portal
     /// inlets MUST set this value to configure their forwarding
     /// behaviour.  This can either be the address of an already
     /// created outlet, or a forwarding mechanism via ockam cloud.
-    #[n(3)] pub fwd: Option<Cow<'a, str>>,
+    #[b(3)] pub fwd: Option<Cow<'a, str>>,
     /// A human-friendly alias for this portal endpoint
-    #[n(4)] pub alias: Option<Cow<'a, str>>,
+    #[b(4)] pub alias: Option<Cow<'a, str>>,
 }
 
 impl<'a> CreateIolet<'a> {
@@ -65,10 +65,10 @@ pub struct IoletStatus<'a> {
     #[n(0)]
     tag: TypeTag<1581592>,
     #[n(1)] pub tt: IoletType,
-    #[n(2)] pub addr: Cow<'a, str>,
-    #[n(3)] pub alias: Cow<'a, str>,
+    #[b(2)] pub addr: Cow<'a, str>,
+    #[b(3)] pub alias: Cow<'a, str>,
     /// An optional status payload
-    #[n(4)] pub payload: Option<Cow<'a, str>>,
+    #[b(4)] pub payload: Option<Cow<'a, str>>,
 }
 
 impl<'a> IoletStatus<'a> {
@@ -97,7 +97,7 @@ pub struct IoletList<'a> {
     #[cfg(feature = "tag")]
     #[n(0)]
     tag: TypeTag<8401504>,
-    #[n(1)] pub list: Vec<IoletStatus<'a>>
+    #[b(1)] pub list: Vec<IoletStatus<'a>>
 }
 
 impl<'a> IoletList<'a> {
