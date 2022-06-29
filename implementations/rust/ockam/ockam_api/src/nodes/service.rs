@@ -1,16 +1,34 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
-use core::convert::Infallible;
-
+use super::types::{CreateTransport, DeleteTransport};
+use crate::error::ApiError;
+use crate::nodes::secure_channel::{
+    CreateSecureChannelListenerRequest, CreateSecureChannelResponse,
+};
+use crate::nodes::types::CreateSecureChannelRequest;
 use crate::{
     nodes::types::{NodeStatus, TransportList, TransportMode, TransportStatus, TransportType},
     Method, Request, Response, ResponseBuilder,
 };
+use core::convert::Infallible;
 use minicbor::{encode::Write, Decoder};
 use ockam::{Address, Context, Result, Routed, TcpTransport, Worker};
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_identity::authenticated_storage::mem::InMemoryStorage;
+use ockam_identity::{Identity, TrustEveryonePolicy};
+use ockam_multiaddr::MultiAddr;
+use ockam_vault::Vault;
 
-use super::types::{CreateTransport, DeleteTransport};
+// TODO: Move to multiaddr implementation
+fn invalid_multiaddr_error() -> ockam_core::Error {
+    ockam_core::Error::new(Origin::Core, Kind::Invalid, "Invalid multiaddr")
+}
+
+// TODO: Move to multiaddr implementation
+fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Error {
+    invalid_multiaddr_error()
+}
 
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeMan {
@@ -131,6 +149,66 @@ impl NodeMan {
         }
     }
 
+    async fn create_secure_channel(
+        &mut self,
+        ctx: &Context,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'_>>> {
+        let CreateSecureChannelRequest { addr, .. } = dec.decode()?;
+
+        info!("Handling request to create a new secure channel: {}", addr);
+
+        // TODO: Improve error handling
+        let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
+        let route = crate::multiaddr_to_route(&addr)
+            .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+
+        // TODO: Load Vault and Identity from the Storage. Possibly move this part from ockam_command
+        let identity = Identity::create(ctx, &Vault::create()).await?;
+
+        let channel = identity
+            .create_secure_channel(route, TrustEveryonePolicy, &InMemoryStorage::new())
+            .await?;
+
+        // TODO: Create Secure Channels Registry
+
+        let response =
+            Response::ok(req.id()).body(CreateSecureChannelResponse::new(channel.to_string()));
+
+        Ok(response)
+    }
+
+    async fn create_secure_channel_listener(
+        &mut self,
+        ctx: &Context,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<()>> {
+        let CreateSecureChannelListenerRequest { addr, .. } = dec.decode()?;
+
+        info!(
+            "Handling request to create a new secure channel listener: {}",
+            addr
+        );
+
+        // TODO: Should we check if Address is LOCAL?
+        let addr = Address::from(addr.as_ref());
+
+        // TODO: Load Vault and Identity from the Storage. Possibly move this part from ockam_command
+        let identity = Identity::create(ctx, &Vault::create()).await?;
+
+        identity
+            .create_secure_channel_listener(addr, TrustEveryonePolicy, &InMemoryStorage::new())
+            .await?;
+
+        // TODO: Create Secure Channel Listeners Registry
+
+        let response = Response::ok(req.id());
+
+        Ok(response)
+    }
+
     async fn handle_request<W>(
         &mut self,
         ctx: &mut Context,
@@ -176,6 +254,14 @@ impl NodeMan {
             // == Create a new transport
             (Post, "/node/transport") => self.add_transport(req, dec).await?.encode(enc)?,
             (Delete, "/node/transport") => self.delete_transport(req, dec).await?.encode(enc)?,
+            (Post, "/node/secure_channel") => self
+                .create_secure_channel(ctx, req, dec)
+                .await?
+                .encode(enc)?,
+            (Post, "/node/secure_channel_listener") => self
+                .create_secure_channel_listener(ctx, req, dec)
+                .await?
+                .encode(enc)?,
             (method, path) => {
                 warn!("Called invalid endpoint: {} {}", method, path);
                 todo!()

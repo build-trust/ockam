@@ -7,6 +7,7 @@ mod invitation;
 mod message;
 mod node;
 mod project;
+mod secure_channel;
 mod space;
 mod transport;
 mod util;
@@ -18,6 +19,7 @@ use invitation::InvitationCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use project::ProjectCommand;
+use secure_channel::SecureChannelCommand;
 use space::SpaceCommand;
 use transport::TransportCommand;
 
@@ -135,6 +137,9 @@ pub enum OckamSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Config(ConfigCommand),
 
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    SecureChannel(SecureChannelCommand),
+
     // OLD
     /// Start an outlet.
     #[clap(display_order = 1000, hide = true)]
@@ -200,6 +205,7 @@ pub fn run() {
         OckamSubcommand::Space(command) => SpaceCommand::run(command),
         OckamSubcommand::Transport(command) => TransportCommand::run(&mut cfg, command),
         OckamSubcommand::Config(command) => ConfigCommand::run(&mut cfg, command),
+        OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(&mut cfg, command),
 
         // OLD
         OckamSubcommand::CreateOutlet(arg) => {
