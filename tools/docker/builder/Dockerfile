@@ -5,6 +5,7 @@ ARG RUST_VERSION=1.61.0
 ARG ERLANG_VERSION=24.1.7-1~debian~buster
 ARG ELIXIR_VERSION=1.12.2-1~debian~buster
 ARG NODEJS_VERSION=16.13.1
+ARG COSIGN_VERSION=1.9.0
 
 ARG ELIXIR_SHA256=5e8251c5d2557373ecfab986fa481844a2f659597abbfb623f45ad3a1974bb1f
 
@@ -17,6 +18,7 @@ RUN set -xe; \
     case $(dpkg --print-architecture) in \
       "amd64") \
         echo "Using AMD64"; \
+        COSIGN_SHA256="47e2596a38e619b72e736fd171eeeaadaf6bd22d6e87a767b339168a87b62761" && COSIGN_OS="amd64"; \
         RUSTUP_INIT_SHA256="3dc5ef50861ee18657f9db2eeb7392f9c2a6c95c90ab41e45ab4ca71476b4338"; \
         NODEJS_SHA256="a3721f87cecc0b52b0be8587c20776ac7305db413751db02c55aa2bffac15198" && NODEJS_OS="linux-x64"; \
         ERLANG_SHA256="89c98e177f70593a9f64f3c9962393a51e6730d16071820600d19d4aaa732412" && ERLANG_OS="amd64"; \
@@ -27,6 +29,7 @@ RUN set -xe; \
       "arm64") \
         export CARGO_NET_GIT_FETCH_WITH_CLI=true; \
         echo "Using ARM64"; \
+        COSIGN_SHA256="abd7ec116dd7e7980f08e67d2c7478ae1cdc97adf778aff76d8a737a908670d8" && COSIGN_OS="arm64"; \
         RUSTUP_INIT_SHA256="32a1532f7cef072a667bac53f1a5542c99666c4071af0c9549795bbdb2069ec1"; \
         NODEJS_SHA256="af1127594d6dae96d3f1d307174daa5084d9c9027eb6fc02548022257f4b0a6a" && NODEJS_OS="linux-arm64"; \
         ERLANG_SHA256="80e95df44cba03f9abefa54ab1452d97b9969a6d164792e827e59a1116377bbd" && ERLANG_OS="arm64"; \
@@ -37,6 +40,7 @@ RUN set -xe; \
       "armhf") \
         export CARGO_NET_GIT_FETCH_WITH_CLI=true; \
         echo "Using ARM"; \
+        COSIGN_SHA256="53410c1f40aded9511b5512044790b454b4cdf68233beee49082868b75e78c5b" && COSIGN_OS="arm"; \
         RUSTUP_INIT_SHA256="67777ac3bc17277102f2ed73fd5f14c51f4ca5963adadf7f174adf4ebc38747b"; \
         NODEJS_SHA256="0816ba8750651a49a5b1bf4fa82d0e080bddc00c01c4316948b82a146b2ec18a" && NODEJS_OS="linux-armv7l"; \
         ERLANG_SHA256="8ebbf86d304d7c533269ebd543c24a76a67f9f6459856c036615e71a3ca41c60" && ERLANG_OS="armhf"; \
@@ -117,9 +121,16 @@ RUN set -xe; \
 # Setup jq
     cd /tmp; \
     curl --proto '=https' --tlsv1.2 -sSOL "https://github.com/stedolan/jq/releases/download/jq-1.6/jq-${JQ_OS}"; \
-    echo "af986793a515d500ab2d35f8d2aecd656e764504b789b66d7e1a0b727a124c44  jq-${JQ_OS}" | sha256sum -c; \
+    echo "${JQ_SHA256}  jq-${JQ_OS}" | sha256sum -c; \
     mv jq-${JQ_OS} /usr/bin/jq; \
     chmod +x /usr/bin/jq; \
+# Setup cosign
+    cd /tmp; \
+    COSIGN_PACKAGE="cosign-linux-${COSIGN_OS}"; \
+    curl --proto '=https' --tlsv1.2 -sSOL "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/${COSIGN_PACKAGE}"; \
+    echo "${COSIGN_SHA256}  ${COSIGN_PACKAGE}" | sha256sum -c; \
+    mv ${COSIGN_PACKAGE} /usr/bin/cosign; \
+    chmod +x /usr/bin/cosign; \
 # Cleanup
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
@@ -129,4 +140,7 @@ ENV PATH="${JAVA_HOME}/bin:${RUSTUP_HOME}/bin:${CARGO_HOME}/bin:${CMAKE_HOME}/bi
     AS=/usr/bin/as \
     CC=/usr/local/bin/gcc \
     CPP=/usr/local/bin/cpp \
-    CXX=/usr/local/bin/g++
+    CXX=/usr/local/bin/g++ \
+    LANG=en_US.UTF-8
+
+WORKDIR /work
