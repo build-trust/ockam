@@ -2,6 +2,9 @@
 
 use minicbor::Decoder;
 use ockam::Result;
+use ockam_api::nodes::types::{
+    CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
+};
 use ockam_api::{
     nodes::types::{
         CreateTransport, DeleteTransport, NodeStatus, TransportList, TransportMode,
@@ -54,6 +57,30 @@ pub(crate) fn delete_transport(cmd: &crate::transport::DeleteCommand) -> Result<
     Ok(buf)
 }
 
+/// Construct a request to create Secure Channels
+pub(crate) fn create_secure_channel(cmd: &crate::secure_channel::CreateCommand) -> Result<Vec<u8>> {
+    let payload = CreateSecureChannelRequest::new(cmd.addr.to_string());
+
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node/secure_channel")
+        .body(payload)
+        .encode(&mut buf)?;
+    Ok(buf)
+}
+
+/// Construct a request to create Secure Channel Listeners
+pub(crate) fn create_secure_channel_listener(
+    cmd: &crate::secure_channel::CreateListenerCommand,
+) -> Result<Vec<u8>> {
+    let payload = CreateSecureChannelListenerRequest::new(cmd.addr.to_string());
+
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node/secure_channel_listener")
+        .body(payload)
+        .encode(&mut buf)?;
+    Ok(buf)
+}
+
 ////////////// !== parsers
 
 /// Parse the base response without the inner payload
@@ -81,4 +108,18 @@ pub(crate) fn parse_transport_status(resp: &[u8]) -> Result<(Response, Transport
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
     Ok((response, dec.decode::<TransportStatus>()?))
+}
+
+pub(crate) fn parse_create_secure_channel_response(
+    resp: &[u8],
+) -> Result<(Response, CreateSecureChannelResponse<'_>)> {
+    let mut dec = Decoder::new(resp);
+    let response = dec.decode::<Response>()?;
+    Ok((response, dec.decode::<CreateSecureChannelResponse>()?))
+}
+
+pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Result<Response> {
+    let mut dec = Decoder::new(resp);
+    let response = dec.decode::<Response>()?;
+    Ok(response)
 }
