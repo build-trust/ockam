@@ -41,21 +41,70 @@ defmodule Ockam.Identity.TrustPolicy do
   @doc """
   Check contact identity using known identities storage via `Ockam.Identity.TrustPolicy.KnownIdentities` module
 
-  If the contact is not present in known identities - add it as a new contact
+  If the contact is not present in known identities - refuse
   If the contact with the same ID exists in known identities - check the idenity history
     If history is equal - contact is trusted
     If history is newer - update the known contact
     If history is older of in conflict - refuse to trust the contact
   """
-  def cached_identity(_my_info, %{id: contact_id, identity: contact}, known_identities_mod) do
-    case get_authorized_contact(known_identities_mod, contact_id) do
+  def known_identity(
+        _my_info,
+        %{id: contact_id, identity: contact},
+        known_identities_mod,
+        extra_args \\ []
+      ) do
+    case known_identities_mod.get_identity(contact_id, extra_args) do
       {:ok, known_contact} ->
         case Identity.compare_identity_change_history(contact, known_contact) do
           {:ok, :equal} ->
             :ok
 
           {:ok, :newer} ->
-            update_authorized_contact(known_identities_mod, contact_id, contact)
+            ## TODO: do we want to update the contact if it's changed?
+            known_identities_mod.set_identity(contact_id, contact, extra_args)
+
+          {:ok, :conflict} ->
+            {:error,
+             {:trust_policy, :known_identity, {:identity_conflict, contact, known_contact}}}
+
+          {:ok, :older} ->
+            {:error, {:trust_policy, :known_identity, {:identity_is_old, contact, known_contact}}}
+
+          {:error, err} ->
+            {:error, {:trust_policy, :known_identity, {:api_error, err}}}
+        end
+
+      {:error, :not_found} ->
+        {:error, {:trust_policy, :known_identity, :unknown_identity}}
+
+      {:error, reason} ->
+        {:error, {:trust_policy, :known_identity, reason}}
+    end
+  end
+
+  @doc """
+  Check contact identity using known identities storage via `Ockam.Identity.TrustPolicy.KnownIdentities` module
+
+  If the contact is not present in known identities - add it as a new contact
+  If the contact with the same ID exists in known identities - check the idenity history
+    If history is equal - contact is trusted
+    If history is newer - update the known contact
+    If history is older of in conflict - refuse to trust the contact
+  """
+  def cached_identity(
+        _my_info,
+        %{id: contact_id, identity: contact},
+        known_identities_mod,
+        extra_args \\ []
+      ) do
+    case known_identities_mod.get_identity(contact_id, extra_args) do
+      {:ok, known_contact} ->
+        case Identity.compare_identity_change_history(contact, known_contact) do
+          {:ok, :equal} ->
+            :ok
+
+          {:ok, :newer} ->
+            known_identities_mod.set_identity(contact_id, contact, extra_args)
 
           {:ok, :conflict} ->
             {:error,
@@ -70,21 +119,10 @@ defmodule Ockam.Identity.TrustPolicy do
         end
 
       {:error, :not_found} ->
-        update_authorized_contact(known_identities_mod, contact_id, contact)
+        known_identities_mod.set_identity(contact_id, contact, extra_args)
 
       {:error, reason} ->
         {:error, {:trust_policy, :cached_identity, reason}}
-    end
-  end
-
-  defp get_authorized_contact(known_identities_mod, contact_id) do
-    known_identities_mod.get_identity(contact_id)
-  end
-
-  defp update_authorized_contact(known_identities_mod, contact_id, contact) do
-    case known_identities_mod.set_identity(contact_id, contact) do
-      {:ok, _identity} -> :ok
-      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -126,10 +164,10 @@ defmodule Ockam.Identity.TrustPolicy.KnownIdentities do
   @moduledoc """
   Behaviour to implement modules to manage trust policy known identities table
   """
-  @callback get_identity(contact_id :: binary()) ::
+  @callback get_identity(contact_id :: binary(), args :: list()) ::
               {:ok, contact :: binary()} | {:error, :not_found} | {:error, reason :: any()}
-  @callback set_identity(contact_id :: binary(), contact :: binary()) ::
-              {:ok, contact :: binary()} | {:error, reason :: any()}
+  @callback set_identity(contact_id :: binary(), contact :: binary(), args :: list()) ::
+              :ok | {:error, reason :: any()}
 end
 
 defmodule Ockam.Identity.TrustPolicy.KnownIdentitiesEts do
@@ -142,7 +180,7 @@ defmodule Ockam.Identity.TrustPolicy.KnownIdentitiesEts do
   @behaviour Ockam.Identity.TrustPolicy.KnownIdentities
 
   @table __MODULE__
-  def get_identity(contact_id) do
+  def get_identity(contact_id, _args) do
     ensure_table()
 
     case :ets.lookup(@table, contact_id) do
@@ -151,7 +189,7 @@ defmodule Ockam.Identity.TrustPolicy.KnownIdentitiesEts do
     end
   end
 
-  def set_identity(contact_id, contact) do
+  def set_identity(contact_id, contact, _args) do
     ensure_table()
     true = :ets.insert(@table, {contact_id, contact})
     {:ok, contact}
