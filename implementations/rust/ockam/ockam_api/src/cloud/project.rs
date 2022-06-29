@@ -54,9 +54,11 @@ mod tests {
     use minicbor::{encode, Decoder};
     use quickcheck::{Arbitrary, Gen};
 
+    use ockam::identity::Identity;
     use ockam_core::compat::collections::HashMap;
     use ockam_core::{Route, Routed, Worker};
     use ockam_node::Context;
+    use ockam_vault::Vault;
 
     use crate::cloud::MessagingClient;
     use crate::{Method, Request, Response};
@@ -65,43 +67,43 @@ mod tests {
 
     #[ockam_macros::test]
     async fn basic_api_usage(ctx: &mut Context) -> ockam_core::Result<()> {
-        ctx.start_worker("projects", ProjectServer::default())
+        // Create a Vault to safely store secret keys for Receiver.
+        let vault = Vault::create();
+
+        // Create an Identity to represent the ockam-command client.
+        let client_identity = Identity::create(&ctx, &vault).await?;
+
+        // Starts a secure channel listener at "api", with a freshly created
+        // identity, and a ProjectServer worker registered at "projects"
+        crate::util::tests::start_api_listener(ctx, &vault, "projects", ProjectServer::default())
             .await?;
 
         let s_id = "space-id";
-        let pubkey = "pubkey";
-        let mut client = MessagingClient::new(Route::new().into(), ctx).await?;
+        let mut client =
+            MessagingClient::new(Route::new().append("api").into(), client_identity, ctx).await?;
 
         let p1 = client
-            .create_project(
-                s_id,
-                CreateProject::new("p1", &["service".to_string()]),
-                pubkey,
-            )
+            .create_project(s_id, CreateProject::new("p1", &["service".to_string()]))
             .await?;
         assert_eq!(&p1.name, "p1");
         assert_eq!(&p1.services, &["service"]);
         let p1_id = p1.id.to_string();
 
-        let p1_retrieved = client.get_project(s_id, &p1_id, pubkey).await?;
+        let p1_retrieved = client.get_project(s_id, &p1_id).await?;
         assert_eq!(p1_retrieved.id, p1_id);
 
         let p2 = client
-            .create_project(
-                s_id,
-                CreateProject::new("p2", &["service".to_string()]),
-                pubkey,
-            )
+            .create_project(s_id, CreateProject::new("p2", &["service".to_string()]))
             .await?;
         assert_eq!(&p2.name, "p2");
         let p2_id = p2.id.to_string();
 
-        let list = client.list_projects(s_id, pubkey).await?;
+        let list = client.list_projects(s_id).await?;
         assert_eq!(list.len(), 2);
 
-        client.delete_project(s_id, &p1_id, pubkey).await?;
+        client.delete_project(s_id, &p1_id).await?;
 
-        let list = client.list_projects(s_id, pubkey).await?;
+        let list = client.list_projects(s_id).await?;
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].id, p2_id);
 
@@ -136,13 +138,13 @@ mod tests {
             let mut dec = Decoder::new(data);
             let req: Request = dec.decode()?;
             match req.method() {
-                Some(Method::Get) => match req.path_segments::<4>().as_slice() {
+                Some(Method::Get) => match req.path_segments::<3>().as_slice() {
                     // Get all projects:
-                    [_, _, _] => Response::ok(req.id())
+                    [_, _] => Response::ok(req.id())
                         .body(encode::ArrayIter::new(self.0.values()))
                         .encode(buf)?,
                     // Get a single project:
-                    [_, _, _, id] => {
+                    [_, _, id] => {
                         if let Some(n) = self.0.get(*id) {
                             Response::ok(req.id()).body(n).encode(buf)?
                         } else {
@@ -176,8 +178,8 @@ mod tests {
                         Response::bad_request(req.id()).encode(buf)?;
                     }
                 }
-                Some(Method::Delete) => match req.path_segments::<5>().as_slice() {
-                    [_, _, _, id] => {
+                Some(Method::Delete) => match req.path_segments::<4>().as_slice() {
+                    [_, _, id] => {
                         if self.0.remove(*id).is_some() {
                             Response::ok(req.id()).encode(buf)?
                         } else {

@@ -23,7 +23,7 @@ pub struct InvitationCommand {
         global = true,
         display_order = 1000,
         long,
-        default_value = "/dnsaddr/cloud.ockam.io/tcp/62526"
+        default_value = "/dnsaddr/cloud.ockam.io/tcp/62526/ockam/api"
     )]
     pub cloud_addr: MultiAddr,
 }

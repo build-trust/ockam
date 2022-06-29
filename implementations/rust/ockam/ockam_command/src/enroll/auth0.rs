@@ -8,7 +8,6 @@ use tracing::{debug, warn};
 
 use ockam::{Context, TcpTransport};
 use ockam_api::cloud::enroll::auth0::*;
-use ockam_api::cloud::enroll::Identity;
 use ockam_api::error::ApiError;
 
 use crate::enroll::EnrollCommand;
@@ -27,17 +26,13 @@ impl EnrollAuth0Command {
 async fn enroll(mut ctx: Context, cmd: EnrollCommand) -> anyhow::Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
     let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
-    let identifier = identity.identifier()?;
 
     let route = ockam_api::multiaddr_to_route(&cmd.address)
         .ok_or_else(|| anyhow!("failed to parse address: {}", cmd.address))?;
 
-    let mut api_client = ockam_api::cloud::MessagingClient::new(route, &ctx).await?;
-    api_client
-        .enroll_auth0(identifier.key_id(), Auth0Service)
-        .await?;
+    let mut api_client = ockam_api::cloud::MessagingClient::new(route, identity, &ctx).await?;
+    api_client.enroll_auth0(Auth0Service).await?;
     println!("Enrolled successfully");
 
     ctx.stop().await?;
@@ -50,7 +45,7 @@ pub struct Auth0Service;
 impl<'a> Auth0TokenProvider<'a> for Auth0Service {
     type T = Auth0Token<'a>;
 
-    async fn token(&mut self, _identity: &Identity) -> ockam_core::Result<Self::T> {
+    async fn token(&mut self) -> ockam_core::Result<Self::T> {
         // Request device code
         // More on how to use scope and audience in https://auth0.com/docs/quickstart/native/device#device-code-parameters
         let device_code_res = {

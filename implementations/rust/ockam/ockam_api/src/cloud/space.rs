@@ -51,32 +51,43 @@ pub mod tests {
     use crate::cloud::space::CreateSpace;
     use crate::cloud::MessagingClient;
     use crate::{Method, Request, Response};
+    use ockam::identity::Identity;
+    use ockam_vault::Vault;
 
     use super::*;
 
     #[ockam_macros::test]
     async fn basic_api_usage(ctx: &mut Context) -> ockam_core::Result<()> {
-        let pubkey = "pubkey";
-        ctx.start_worker("spaces", SpaceServer::default()).await?;
-        let mut client = MessagingClient::new(Route::new().into(), ctx).await?;
+        let vault = Vault::create();
 
-        let s1 = client.create_space(CreateSpace::new("s1"), pubkey).await?;
+        // Create an Identity to represent the ockam-command client.
+        let client_identity = Identity::create(&ctx, &vault).await?;
+
+        // Starts a secure channel listener at "api", with a freshly created
+        // identity, and a SpaceServer worker registered at "spaces"
+        crate::util::tests::start_api_listener(ctx, &vault, "spaces", SpaceServer::default())
+            .await?;
+
+        let mut client =
+            MessagingClient::new(Route::new().append("api").into(), client_identity, ctx).await?;
+
+        let s1 = client.create_space(CreateSpace::new("s1")).await?;
         assert_eq!(&s1.name, "s1");
         let s1_id = s1.id.to_string();
 
-        let s1_retrieved = client.get_space(&s1_id, pubkey).await?;
+        let s1_retrieved = client.get_space(&s1_id).await?;
         assert_eq!(s1_retrieved.id, s1_id);
 
-        let s2 = client.create_space(CreateSpace::new("s2"), pubkey).await?;
+        let s2 = client.create_space(CreateSpace::new("s2")).await?;
         assert_eq!(&s2.name, "s2");
         let s2_id = s2.id.to_string();
 
-        let list = client.list_spaces(pubkey).await?;
+        let list = client.list_spaces().await?;
         assert_eq!(list.len(), 2);
 
-        client.delete_space(&s1_id, pubkey).await?;
+        client.delete_space(&s1_id).await?;
 
-        let list = client.list_spaces(pubkey).await?;
+        let list = client.list_spaces().await?;
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].id, s2_id);
 
@@ -111,13 +122,13 @@ pub mod tests {
             let mut dec = Decoder::new(data);
             let req: Request = dec.decode()?;
             match req.method() {
-                Some(Method::Get) => match req.path_segments::<4>().as_slice() {
+                Some(Method::Get) => match req.path_segments::<3>().as_slice() {
                     // Get all nodes:
-                    [_, _] => Response::ok(req.id())
+                    ["v0", ""] => Response::ok(req.id())
                         .body(encode::ArrayIter::new(self.0.values()))
                         .encode(buf)?,
                     // Get a single node:
-                    [_, _, id] => {
+                    ["v0", id] => {
                         if let Some(n) = self.0.get(*id) {
                             Response::ok(req.id()).body(n).encode(buf)?
                         } else {
@@ -144,8 +155,8 @@ pub mod tests {
                         Response::bad_request(req.id()).encode(buf)?;
                     }
                 }
-                Some(Method::Delete) => match req.path_segments::<4>().as_slice() {
-                    [_, _, id] => {
+                Some(Method::Delete) => match req.path_segments::<3>().as_slice() {
+                    [_, id] => {
                         if self.0.remove(*id).is_some() {
                             Response::ok(req.id()).encode(buf)?
                         } else {

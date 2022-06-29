@@ -101,3 +101,36 @@ pub fn route_to_multiaddr(r: &Route) -> Option<MultiAddr> {
     }
     Some(ma)
 }
+
+#[cfg(test)]
+pub mod tests {
+    use ockam::authenticated_storage::InMemoryStorage;
+    use ockam::identity::{Identity, TrustEveryonePolicy};
+    use ockam_core::Worker;
+    use ockam_node::Context;
+    use ockam_vault::Vault;
+
+    pub async fn start_api_listener<W: Worker<Context = Context>>(
+        ctx: &mut Context,
+        vault: &Vault,
+        address: &str,
+        worker: W,
+    ) -> ockam_core::Result<()> {
+        // Create an Identity to represent Receiver.
+        let receiver = Identity::create(ctx, vault).await?;
+
+        // Create an AuthenticatedStorage to store info about Receiver's known Identities.
+        let storage = InMemoryStorage::new();
+
+        // Create a secure channel listener for Receiver that will wait for requests to
+        // initiate an Authenticated Key Exchange.
+        receiver
+            .create_secure_channel_listener("api", TrustEveryonePolicy, &storage)
+            .await?;
+
+        //TODO: ensure that worker can't be accessed if not throught the secure channel
+        //      would help catch up errors on badly setup test cases.
+        ctx.start_worker(address, worker).await?;
+        ockam_core::Result::Ok(())
+    }
+}

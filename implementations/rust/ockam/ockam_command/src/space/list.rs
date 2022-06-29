@@ -30,12 +30,11 @@ async fn list(mut ctx: Context, cmd: ListCommand) -> anyhow::Result<()> {
 
     // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
     let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
-    let identifier = identity.identifier()?;
 
     let route = ockam_api::multiaddr_to_route(&cmd.address)
         .ok_or_else(|| anyhow!("failed to parse address"))?;
-    let mut api = MessagingClient::new(route, &ctx).await?;
-    let res = api.list_spaces(identifier.key_id()).await?;
+    let mut api = MessagingClient::new(route, identity, &ctx).await?;
+    let res = api.list_spaces().await?;
     println!("{res:#?}");
 
     ctx.stop().await?;
