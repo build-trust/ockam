@@ -7,7 +7,7 @@ use ockam_api::cloud::MessagingClient;
 use ockam_multiaddr::MultiAddr;
 
 use crate::old::identity::load_or_create_identity;
-use crate::util::{embedded_node, multiaddr_to_route};
+use crate::util::embedded_node;
 use crate::IdentityOpts;
 
 #[derive(Clone, Debug, Args)]
@@ -30,7 +30,7 @@ async fn list(mut ctx: Context, args: (MultiAddr, ListCommand)) -> anyhow::Resul
     let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
     let identifier = identity.identifier()?;
 
-    let cloud_addr = multiaddr_to_route(&cloud_addr)
+    let cloud_addr = ockam_api::multiaddr_to_route(&cloud_addr)
         .ok_or_else(|| anyhow!("failed to parse address: {}", cloud_addr))?;
     let route = route![cloud_addr.to_string(), "invitations"];
     let mut api = MessagingClient::new(route, &ctx).await?;

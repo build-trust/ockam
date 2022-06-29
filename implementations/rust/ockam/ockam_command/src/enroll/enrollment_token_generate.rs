@@ -7,7 +7,7 @@ use ockam_api::auth::types::Attributes;
 use ockam_multiaddr::MultiAddr;
 
 use crate::old::identity::load_or_create_identity;
-use crate::util::{embedded_node, multiaddr_to_route};
+use crate::util::embedded_node;
 
 #[derive(Clone, Debug, Args)]
 pub struct GenerateEnrollmentTokenCommand {
@@ -45,7 +45,7 @@ async fn generate(
     let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
     let identifier = identity.identifier()?;
 
-    let route = multiaddr_to_route(&cmd.address)
+    let route = ockam_api::multiaddr_to_route(&cmd.address)
         .ok_or_else(|| anyhow!("failed to parse address: {}", cmd.address))?;
 
     let mut attributes = Attributes::new();

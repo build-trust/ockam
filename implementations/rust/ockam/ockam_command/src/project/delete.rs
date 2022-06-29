@@ -6,7 +6,7 @@ use ockam_api::cloud::MessagingClient;
 use ockam_multiaddr::MultiAddr;
 
 use crate::old::identity::load_or_create_identity;
-use crate::util::{embedded_node, multiaddr_to_route, DEFAULT_CLOUD_ADDRESS};
+use crate::util::{embedded_node, DEFAULT_CLOUD_ADDRESS};
 use crate::IdentityOpts;
 
 #[derive(Clone, Debug, Args)]
@@ -40,8 +40,8 @@ async fn delete(mut ctx: Context, cmd: DeleteCommand) -> anyhow::Result<()> {
     let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
     let identifier = identity.identifier()?;
 
-    let route =
-        multiaddr_to_route(&cmd.address).ok_or_else(|| anyhow!("failed to parse address"))?;
+    let route = ockam_api::multiaddr_to_route(&cmd.address)
+        .ok_or_else(|| anyhow!("failed to parse address"))?;
     let mut api = MessagingClient::new(route, &ctx).await?;
     let res = api
         .delete_project(&cmd.space_id, &cmd.project_id, identifier.key_id())
