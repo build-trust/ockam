@@ -73,7 +73,10 @@ pub async fn create_transport(
             )
         }
         _ => {
-            eprintln!("An error occured while creating the transport: {}", payload)
+            eprintln!(
+                "An error occurred while creating the transport: {}",
+                payload
+            )
         }
     }
 

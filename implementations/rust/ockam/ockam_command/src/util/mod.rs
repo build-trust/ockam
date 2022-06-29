@@ -20,7 +20,7 @@ pub const DEFAULT_TCP_PORT: u16 = 62526;
 /// TODO: We may want to change this behaviour in the future.
 pub async fn stop_node(mut ctx: ockam::Context) -> anyhow::Result<()> {
     if let Err(e) = ctx.stop().await {
-        eprintln!("an error occured while shutting down local node: {}", e);
+        eprintln!("an error occurred while shutting down local node: {}", e);
     }
     Ok(())
 }

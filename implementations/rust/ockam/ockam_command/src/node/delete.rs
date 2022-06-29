@@ -36,7 +36,7 @@ pub fn delete_node(cfg: &mut OckamConfig, node_name: &String, sigkill: bool) {
                 Signal::SIGTERM
             },
         ) {
-            eprintln!("Error occured while terminating node process: {}", e);
+            eprintln!("Error occurred while terminating node process: {}", e);
         }
     }
 
