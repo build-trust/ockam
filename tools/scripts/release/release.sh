@@ -7,6 +7,11 @@ if [[ -z $GITHUB_USERNAME ]]; then
 fi
 
 owner="build-trust"
+release_name="release_$(date +'%d-%m-%Y')"
+
+if [[ -z $RECENT_FAILURE ]]; then
+  RECENT_FAILURE=false
+fi
 
 function ockam_bump() {
   gh workflow run create-release-pull-request.yml --ref develop\
@@ -19,6 +24,10 @@ function ockam_bump() {
   # Wait for workflow run
   run_id=$(gh run list --workflow=create-release-pull-request.yml -b develop -u $GITHUB_USERNAME -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
   gh run watch $run_id --exit-status -R $owner/ockam
+
+  # Merge PR to a new branch to kickstart workflow
+  gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release"\
+    --base develop -H ${release_name} -r mrinalwadhwa -R $owner/ockam
 }
 
 function ockam_crate_release() {
@@ -40,12 +49,24 @@ function release_ockam_binaries() {
   gh run watch $run_id --exit-status -R $owner/ockam
 }
 
+function release_ockam_package() {
+  gh workflow run docker_ockam.yml --ref docker -F tag=$1 -R $owner/artifacts
+  # Wait for workflow run
+  sleep 10
+  run_id=$(gh run list --workflow=docker_ockam.yml -b docker -u $GITHUB_USERNAME -L 1 -R $owner/artifacts --json databaseId | jq -r .[0].databaseId)
+  gh run watch $run_id --exit-status -R $owner/artifacts
+}
+
 function homebrew_repo_bump() {
   gh workflow run create-release-pull-request.yml --ref main -F tag=$1 -R $owner/homebrew-ockam
   # Wait for workflow run
   sleep 10
   run_id=$(gh run list --workflow=create-release-pull-request.yml -b main -u $GITHUB_USERNAME -L 1 -R $owner/homebrew-ockam --json databaseId | jq -r .[0].databaseId)
   gh run watch $run_id --exit-status -R $owner/homebrew-ockam
+
+  # Create PR to kickstart workflow
+  gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release"\
+    --base main -H ${release_name} -r mrinalwadhwa $owner/homebrew-ockam
 }
 
 function terraform_repo_bump() {
@@ -54,6 +75,10 @@ function terraform_repo_bump() {
   sleep 10
   run_id=$(gh run list --workflow=create-release-pull-request.yml -b main -u $GITHUB_USERNAME -L 1 -R $owner/terraform-provider-ockam  --json databaseId | jq -r .[0].databaseId)
   gh run watch $run_id --exit-status -R $owner/terraform-provider-ockam
+
+  # Create PR to kickstart workflow
+  gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release"\
+    --base main -H ${release_name} -r mrinalwadhwa $owner/terraform-provider-ockam
 }
 
 function terraform_binaries_release() {
@@ -96,7 +121,12 @@ if [[ -z $LATEST_TAG_NAME ]]; then
   latest_tag_name=$(curl -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/${owner}/ockam/releases/latest | jq -r .tag_name)
   dialog_info "Latest tag is $latest_tag_name press enter if correct"
 else
-  latest_tag_name=$LATEST_TAG_NAME
+  latest_tag_name="$LATEST_TAG_NAME"
+fi
+
+if [[ -z $SKIP_OCKAM_PACKAGE_RELEASE || $SKIP_OCKAM_PACKAGE_RELEASE  == false ]]; then
+  release_ockam_package $latest_tag_name
+  success_info "Ockam package release successful."
 fi
 
 # Homebrew Release
