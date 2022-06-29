@@ -2,6 +2,7 @@ use crate::util::embedded_node;
 use clap::Args;
 use ockam::{Context, TcpTransport};
 use ockam_multiaddr::MultiAddr;
+use std::time::Duration;
 
 #[derive(Clone, Debug, Args)]
 pub struct SendCommand {
@@ -15,7 +16,7 @@ impl SendCommand {
     }
 }
 
-async fn send_message(ctx: Context, command: SendCommand) -> anyhow::Result<()> {
+async fn send_message(mut ctx: Context, command: SendCommand) -> anyhow::Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
     if let Some(route) = ockam_api::multiaddr_to_route(&command.address) {
@@ -23,6 +24,9 @@ async fn send_message(ctx: Context, command: SendCommand) -> anyhow::Result<()> 
     }
 
     // TODO: find a way to wait for send to complete
-    // ctx.stop().await
+    ctx.sleep(Duration::from_millis(500)).await;
+
+    ctx.stop().await?;
+
     Ok(())
 }
