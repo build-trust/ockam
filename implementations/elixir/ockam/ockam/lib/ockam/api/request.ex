@@ -4,7 +4,7 @@ defmodule Ockam.API.Request do
   """
 
   alias Ockam.API.Request
-  defstruct [:id, :path, :method, :body, from_route: [], to_route: []]
+  defstruct [:id, :path, :method, :body, from_route: [], to_route: [], local_metadata: %{}]
 
   @max_id 65_534
 
@@ -84,18 +84,34 @@ defmodule Ockam.API.Request do
   def from_message(%Ockam.Message{
         payload: payload,
         onward_route: onward_route,
-        return_route: return_route
+        return_route: return_route,
+        local_metadata: local_metadata
       }) do
     with {:ok, %__MODULE__{} = request} <- decode(payload) do
-      {:ok, %{request | from_route: return_route, to_route: onward_route}}
+      {:ok,
+       %{
+         request
+         | from_route: return_route,
+           to_route: onward_route,
+           local_metadata: local_metadata
+       }}
     end
   end
 
-  def to_message(%__MODULE__{to_route: to_route} = request, return_route) do
+  def to_message(
+        %__MODULE__{to_route: to_route, local_metadata: local_metadata} = request,
+        return_route
+      ) do
     %Ockam.Message{
       payload: encode(request),
       onward_route: to_route,
-      return_route: return_route
+      return_route: return_route,
+      local_metadata: local_metadata
     }
+  end
+
+  @spec caller_identity(%__MODULE__{}) :: :error | {:ok, identity :: String.t()}
+  def caller_identity(%__MODULE__{local_metadata: meta}) do
+    Map.fetch(meta, :identity)
   end
 end

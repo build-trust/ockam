@@ -14,35 +14,16 @@ use crate::TypeTag;
 pub struct RequestEnrollment<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<5136510>,
-    #[n(1)] pub identity: Identity<'a>,
-    #[n(2)] pub token: Token<'a>,
+    #[n(1)] pub token: Token<'a>,
 }
 
 impl<'a> RequestEnrollment<'a> {
-    pub fn new<I: Into<Identity<'a>>>(identity: I, token: Token<'a>) -> Self {
+    pub fn new(token: Token<'a>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            identity: identity.into(),
             token,
         }
-    }
-}
-
-#[derive(serde::Deserialize, Encode, Debug, Clone)]
-#[cfg_attr(test, derive(PartialEq, Decode))]
-#[cbor(transparent)]
-pub struct Identity<'a>(#[n(0)] Cow<'a, str>);
-
-impl<'a> From<&'static str> for Identity<'a> {
-    fn from(v: &'static str) -> Self {
-        Self(v.into())
-    }
-}
-
-impl<'a> From<String> for Identity<'a> {
-    fn from(v: String) -> Self {
-        Self(v.into())
     }
 }
 
@@ -68,7 +49,7 @@ pub mod auth0 {
     pub trait Auth0TokenProvider<'a> {
         type T;
 
-        async fn token(&mut self, identity: &Identity<'a>) -> ockam_core::Result<Self::T>;
+        async fn token(&mut self) -> ockam_core::Result<Self::T>;
     }
 
     // Req/Res types
@@ -103,17 +84,15 @@ pub mod auth0 {
     pub struct AuthenticateAuth0Token<'a> {
         #[cfg(feature = "tag")]
         #[n(0)] pub tag: TypeTag<1058055>,
-        #[n(1)] pub identity: Identity<'a>,
-        #[n(2)] pub token_type: TokenType,
-        #[n(3)] pub access_token: Token<'a>,
+        #[n(1)] pub token_type: TokenType,
+        #[n(2)] pub access_token: Token<'a>,
     }
 
     impl<'a> AuthenticateAuth0Token<'a> {
-        pub fn new(identity: Identity<'a>, token: Auth0Token<'a>) -> Self {
+        pub fn new(token: Auth0Token<'a>) -> Self {
             Self {
                 #[cfg(feature = "tag")]
                 tag: TypeTag,
-                identity,
                 token_type: token.token_type,
                 access_token: token.access_token,
             }
@@ -145,16 +124,14 @@ pub mod enrollment_token {
     pub struct RequestEnrollmentToken<'a> {
         #[cfg(feature = "tag")]
         #[n(0)] pub tag: TypeTag<8560526>,
-        #[n(1)] pub identity: Identity<'a>,
-        #[b(2)] pub attributes: Attributes<'a>,
+        #[b(1)] pub attributes: Attributes<'a>,
     }
 
     impl<'a> RequestEnrollmentToken<'a> {
-        pub fn new<I: Into<Identity<'a>>>(identity: I, attributes: Attributes<'a>) -> Self {
+        pub fn new(attributes: Attributes<'a>) -> Self {
             Self {
                 #[cfg(feature = "tag")]
                 tag: TypeTag,
-                identity: identity.into(),
                 attributes,
             }
         }
@@ -186,16 +163,14 @@ pub mod enrollment_token {
     pub struct AuthenticateEnrollmentToken<'a> {
         #[cfg(feature = "tag")]
         #[n(0)] pub tag: TypeTag<9463780>,
-        #[n(1)] pub identity: Identity<'a>,
-        #[n(2)] pub token: Token<'a>,
+        #[n(1)] pub token: Token<'a>,
     }
 
     impl<'a> AuthenticateEnrollmentToken<'a> {
-        pub fn new(identity: Identity<'a>, token: EnrollmentToken<'a>) -> Self {
+        pub fn new(token: EnrollmentToken<'a>) -> Self {
             Self {
                 #[cfg(feature = "tag")]
                 tag: TypeTag,
-                identity,
                 token: token.token,
             }
         }
@@ -208,7 +183,6 @@ mod tests {
     use minicbor::Decoder;
     use quickcheck::{Arbitrary, Gen};
 
-    use ockam_core::compat::rand::{self, Rng};
     use ockam_core::route;
     use ockam_core::{Routed, Worker};
     use ockam_node::Context;
@@ -221,6 +195,8 @@ mod tests {
     use crate::cloud::enroll::Token;
     use crate::cloud::MessagingClient;
     use crate::{Method, Request, Response};
+    use ockam::identity::Identity;
+    use ockam_vault::Vault;
 
     use super::*;
 
@@ -236,17 +212,31 @@ mod tests {
 
         #[ockam_macros::test]
         async fn authenticate__happy_path(ctx: &mut Context) -> ockam_core::Result<()> {
+            // Create a Vault to safely store secret keys for Receiver.
+            let vault = Vault::create();
+            // Create an Identity to represent the ockam-command client.
+            let client_identity = Identity::create(&ctx, &vault).await?;
             // Initiate cloud TCP listener
+
+            // Starts a secure channel listener at "api", with a freshly created
+            // identity, and a EnrollHandler worker registered at "auth0_authenticator"
+            crate::util::tests::start_api_listener(
+                ctx,
+                &vault,
+                "auth0_authenticator",
+                EnrollHandler,
+            )
+            .await?;
+
             let transport = TcpTransport::create(ctx).await?;
             let server_address = transport.listen("127.0.0.1:0").await?.to_string();
-            let server_route = route![(TCP, server_address), "cloud"];
-            ctx.start_worker("cloud", EnrollHandler).await?;
+            let server_route = route![(TCP, server_address), "api"];
 
             // Execute token
             let mut rng = Gen::new(32);
             let t = RandomAuthorizedAuth0Token::arbitrary(&mut rng);
             let token = AuthenticateToken::Auth0(t.0);
-            let mut client = MessagingClient::new(server_route, ctx).await?;
+            let mut client = MessagingClient::new(server_route, client_identity, ctx).await?;
             client.authenticate_token(token).await?;
 
             ctx.stop().await
@@ -257,13 +247,10 @@ mod tests {
 
         impl Arbitrary for RandomAuthorizedAuth0Token {
             fn arbitrary(g: &mut Gen) -> Self {
-                RandomAuthorizedAuth0Token(AuthenticateAuth0Token::new(
-                    Identity::arbitrary(g),
-                    Auth0Token {
-                        token_type: TokenType::Bearer,
-                        access_token: Token::arbitrary(g),
-                    },
-                ))
+                RandomAuthorizedAuth0Token(AuthenticateAuth0Token::new(Auth0Token {
+                    token_type: TokenType::Bearer,
+                    access_token: Token::arbitrary(g),
+                }))
             }
         }
     }
@@ -277,18 +264,28 @@ mod tests {
         #[ockam_macros::test]
         async fn token__happy_path(ctx: &mut Context) -> ockam_core::Result<()> {
             // Initiate cloud TCP listener
+            // Create a Vault to safely store secret keys for Receiver.
+            let vault = Vault::create();
+            // Create an Identity to represent the ockam-command client.
+            let client_identity = Identity::create(&ctx, &vault).await?;
+
+            // Starts a secure channel listener at "api", with a freshly created
+            // identity, and a EnrollHandler worker registered at "enrollment_token_authenticator"
+            crate::util::tests::start_api_listener(
+                ctx,
+                &vault,
+                "enrollment_token_authenticator",
+                EnrollHandler,
+            )
+            .await?;
+
             let transport = TcpTransport::create(ctx).await?;
             let server_address = transport.listen("127.0.0.1:0").await?.to_string();
-            let server_route = route![(TCP, server_address)];
-            ctx.start_worker("enrollment_token_authenticator", EnrollHandler)
-                .await?;
+            let server_route = route![(TCP, server_address), "api"];
 
             // Execute token
-            let identifier = random_identifier();
-            let mut client = MessagingClient::new(server_route, ctx).await?;
-            let res = client
-                .generate_enrollment_token(identifier, Attributes::new())
-                .await?;
+            let mut client = MessagingClient::new(server_route, client_identity, ctx).await?;
+            let res = client.generate_enrollment_token(Attributes::new()).await?;
             let expected_token = EnrollmentToken::new(Token("ok".into()));
             assert_eq!(res.token, expected_token.token);
 
@@ -297,21 +294,31 @@ mod tests {
 
         #[ockam_macros::test]
         async fn authenticate__happy_path(ctx: &mut Context) -> ockam_core::Result<()> {
+            // Create a Vault to safely store secret keys for Receiver.
+            let vault = Vault::create();
+            // Create an Identity to represent the ockam-command client.
+            let client_identity = Identity::create(&ctx, &vault).await?;
+
+            // Starts a secure channel listener at "api", with a freshly created
+            // identity, and a EnrollHandler worker registered at "enrollment_token_authenticator"
+            crate::util::tests::start_api_listener(
+                ctx,
+                &vault,
+                "enrollment_token_authenticator",
+                EnrollHandler,
+            )
+            .await?;
+
             // Initiate cloud TCP listener
             let transport = TcpTransport::create(ctx).await?;
             let server_address = transport.listen("127.0.0.1:0").await?.to_string();
-            let server_route = route![(TCP, server_address)];
-            ctx.start_worker("enrollment_token_authenticator", EnrollHandler)
-                .await?;
+            let server_route = route![(TCP, server_address), "api"];
 
             // Execute token
-            let identifier = random_identifier();
             let mut rng = Gen::new(32);
             let token = EnrollmentToken::new(Token::arbitrary(&mut rng));
-            let mut client = MessagingClient::new(server_route, ctx).await?;
-            client
-                .authenticate_enrollment_token(identifier, token)
-                .await?;
+            let mut client = MessagingClient::new(server_route, client_identity, ctx).await?;
+            client.authenticate_enrollment_token(token).await?;
 
             ctx.stop().await
         }
@@ -319,25 +326,30 @@ mod tests {
         #[ockam_macros::test]
         #[ignore]
         async fn cloud__token(ctx: &mut Context) -> ockam_core::Result<()> {
+            // Create a Vault to safely store secret keys for Receiver.
+            let vault = Vault::create();
+            // Create an Identity to represent the ockam-command client.
+            let client_identity = Identity::create(&ctx, &vault).await?;
             TcpTransport::create(ctx).await?;
             let server_route = route![(TCP, "127.0.0.1:4001")];
-            let identity = random_identifier();
-            let mut client = MessagingClient::new(server_route, ctx).await?;
-            client
-                .generate_enrollment_token(identity, Attributes::new())
-                .await?;
+            let mut client = MessagingClient::new(server_route, client_identity, ctx).await?;
+            client.generate_enrollment_token(Attributes::new()).await?;
             ctx.stop().await
         }
 
         #[ockam_macros::test]
         #[ignore]
         async fn cloud__authenticate(ctx: &mut Context) -> ockam_core::Result<()> {
+            // Create a Vault to safely store secret keys for Receiver.
+            let vault = Vault::create();
+            // Create an Identity to represent the ockam-command client.
+            let client_identity = Identity::create(&ctx, &vault).await?;
             TcpTransport::create(ctx).await?;
             let server_route = route![(TCP, "127.0.0.1:4001")];
             let mut rng = Gen::new(32);
             let t = RandomAuthorizedEnrollmentToken::arbitrary(&mut rng);
             let token = AuthenticateToken::EnrollmentToken(t.0);
-            let mut client = MessagingClient::new(server_route, ctx).await?;
+            let mut client = MessagingClient::new(server_route, client_identity, ctx).await?;
             client.authenticate_token(token).await?;
             ctx.stop().await
         }
@@ -348,16 +360,9 @@ mod tests {
         impl Arbitrary for RandomAuthorizedEnrollmentToken {
             fn arbitrary(g: &mut Gen) -> Self {
                 RandomAuthorizedEnrollmentToken(AuthenticateEnrollmentToken::new(
-                    Identity::arbitrary(g),
                     EnrollmentToken::new(Token::arbitrary(g)),
                 ))
             }
-        }
-    }
-
-    impl Arbitrary for Identity<'static> {
-        fn arbitrary(g: &mut Gen) -> Self {
-            Identity(String::arbitrary(g).into())
         }
     }
 
@@ -365,14 +370,6 @@ mod tests {
         fn arbitrary(g: &mut Gen) -> Self {
             Token(String::arbitrary(g).into())
         }
-    }
-
-    fn random_identifier() -> String {
-        rand::thread_rng()
-            .sample_iter(&rand::distributions::Alphanumeric)
-            .take(32)
-            .map(char::from)
-            .collect()
     }
 
     pub struct EnrollHandler;

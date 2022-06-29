@@ -34,13 +34,12 @@ async fn create(mut ctx: Context, cmd: CreateCommand) -> anyhow::Result<()> {
 
     // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
     let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
-    let identifier = identity.identifier()?;
 
     let route = ockam_api::multiaddr_to_route(&cmd.address)
         .ok_or_else(|| anyhow!("failed to parse address"))?;
-    let mut api = MessagingClient::new(route, &ctx).await?;
+    let mut api = MessagingClient::new(route, identity, &ctx).await?;
     let request = CreateSpace::new(cmd.name);
-    let res = api.create_space(request, identifier.key_id()).await?;
+    let res = api.create_space(request).await?;
     println!("{res:#?}");
 
     ctx.stop().await?;

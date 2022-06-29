@@ -37,20 +37,13 @@ async fn create(mut ctx: Context, args: (MultiAddr, CreateCommand)) -> anyhow::R
     let (cloud_addr, cmd) = args;
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
     let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
-    let identifier = identity.identifier()?;
 
     let r = ockam_api::multiaddr_to_route(&cloud_addr)
         .ok_or_else(|| anyhow!("failed to parse address: {}", cloud_addr))?;
     let route = route![r.to_string(), "invitations"];
-    let mut api = MessagingClient::new(route, &ctx).await?;
-    let request = CreateInvitation::new(
-        identifier.key_id().as_str(),
-        &cmd.email,
-        &cmd.space_id,
-        cmd.project_id.as_deref(),
-    );
+    let mut api = MessagingClient::new(route, identity, &ctx).await?;
+    let request = CreateInvitation::new(cmd.email, cmd.space_id, cmd.project_id);
     let res = api.create_invitation(request).await?;
     println!("{res:?}");
     ctx.stop().await?;

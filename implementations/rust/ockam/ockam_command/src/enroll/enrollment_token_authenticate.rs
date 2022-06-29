@@ -21,21 +21,16 @@ impl AuthenticateEnrollmentTokenCommand {
 async fn authenticate(mut ctx: Context, cmd: EnrollCommand) -> anyhow::Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
     let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
-    let identifier = identity.identifier()?;
 
     let route = ockam_api::multiaddr_to_route(&cmd.address)
         .ok_or_else(|| anyhow!("failed to parse address: {}", cmd.address))?;
 
     let token = cmd.token.ok_or_else(|| anyhow!("Token was not passed"))?;
 
-    let mut api_client = ockam_api::cloud::MessagingClient::new(route, &ctx).await?;
+    let mut api_client = ockam_api::cloud::MessagingClient::new(route, identity, &ctx).await?;
     api_client
-        .authenticate_enrollment_token(
-            identifier.key_id().to_string(),
-            EnrollmentToken::new(Token(token.into())),
-        )
+        .authenticate_enrollment_token(EnrollmentToken::new(Token(token.into())))
         .await?;
     println!("Token authenticated");
 

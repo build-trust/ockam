@@ -163,10 +163,8 @@ verified         = bool
 
 request_enrollment = {
     ?0: 5136510,
-     1: identity_id,
-     2: token
+     1: token
  }
-identity_id     = text
 token        = text
 
 
@@ -190,11 +188,10 @@ invitation_state = 0 ;; Pending
 
 create_invitation = {
     ?0: 1886440,
-     1: identity_id,
-     2: invitee,
-     3: scope,
-     4: space_id,
-    ?5: project_id
+     1: invitee,
+     2: scope,
+     3: space_id,
+    ?4: project_id
 }
 
 invitee = text

@@ -30,11 +30,10 @@ pub enum State {
 pub struct CreateInvitation<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<1886440>,
-    #[b(1)] pub identity: CowStr<'a>,
-    #[b(2)] pub invitee: CowStr<'a>,
-    #[b(3)] pub scope: Scope,
-    #[b(4)] pub space_id: CowStr<'a>,
-    #[b(5)] pub project_id: Option<CowStr<'a>>,
+    #[b(1)] pub invitee: CowStr<'a>,
+    #[b(2)] pub scope: Scope,
+    #[b(3)] pub space_id: CowStr<'a>,
+    #[b(4)] pub project_id: Option<CowStr<'a>>,
 }
 
 #[derive(Decode, Encode, Debug)]
@@ -54,16 +53,11 @@ pub struct Invitation<'a> {
 }
 
 impl<'a> CreateInvitation<'a> {
-    pub fn new<S: Into<CowStr<'a>>>(
-        identity: S,
-        invitee: S,
-        space_id: S,
-        project_id: Option<S>,
-    ) -> Self {
+    pub fn new<S: Into<CowStr<'a>>>(invitee: S, space_id: S, project_id: Option<S>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            identity: identity.into(),
+
             invitee: invitee.into(),
             scope: project_id
                 .as_ref()
@@ -82,9 +76,11 @@ mod tests {
     use minicbor::Decoder;
     use quickcheck::{Arbitrary, Gen};
 
+    use ockam::identity::Identity;
     use ockam_core::compat::collections::HashMap;
     use ockam_core::{Route, Routed, Worker};
     use ockam_node::Context;
+    use ockam_vault::Vault;
 
     use crate::cloud::MessagingClient;
     use crate::{Method, Request, Response};
@@ -93,40 +89,52 @@ mod tests {
 
     #[ockam_macros::test]
     async fn accept(ctx: &mut Context) -> ockam_core::Result<()> {
-        ctx.start_worker("invitations", InvitationServer::default())
-            .await?;
+        // Create a Vault to safely store secret keys for Receiver.
+        let vault = Vault::create();
 
-        let mut client = MessagingClient::new(Route::new().into(), ctx).await?;
-        let pubkey = "pubkey";
+        // Create an Identity to represent the ockam-command client.
+        let client_identity = Identity::create(&ctx, &vault).await?;
+
+        // Starts a secure channel listener at "api", with a freshly created
+        // identity, and a InvitationServer worker registered at "invitations"
+        crate::util::tests::start_api_listener(
+            ctx,
+            &vault,
+            "invitations",
+            InvitationServer::default(),
+        )
+        .await?;
+
+        let mut client =
+            MessagingClient::new(Route::new().append("api").into(), client_identity, ctx).await?;
 
         // Create invitation
-        let req = CreateInvitation::new("idt1", "invitee1", "space", Some("project"));
+        let req = CreateInvitation::new("invitee1", "space", Some("project"));
         let i = client.create_invitation(req.clone()).await?;
-        assert_eq!(&i.inviter, &req.identity);
+        // TODO: the inviter must be the `client_identity` created, as that's the identity invoking
+        //       the API. But the simple test server here doesn't retrieve the peer identity from the
+        //       secure channel metadata.
+        //assert_eq!(&i.inviter, client_identity.id);
         assert_eq!(&i.invitee, &req.invitee);
         assert_eq!(&i.space_id, &req.space_id);
         assert_eq!(&i.project_id, &req.project_id);
         assert_eq!(&i.state, &State::Pending);
         assert_eq!(&i.scope, &req.scope);
 
-        let email = i.invitee.to_string();
         let invitation_id = i.id.to_string();
 
         // Check default state of invitation.
-        let retrieved = client.list_invitations(&email).await?;
+        let retrieved = client.list_invitations().await?;
         assert_eq!(retrieved.len(), 1);
         assert_eq!(&retrieved[0].id.to_string(), &invitation_id);
 
         // Accept invitation
-        client.accept_invitations(pubkey, &invitation_id).await?;
-        let i1_retrieved = client.list_invitations(&email).await?;
+        client.accept_invitations(&invitation_id).await?;
+        let i1_retrieved = client.list_invitations().await?;
         assert_eq!(&i1_retrieved[0].state, &State::Accepted);
 
-        // Accepting the same invitation again should not fail.
-        client.accept_invitations(pubkey, &invitation_id).await?;
-
         // Rejecting an accepted invitation should fail.
-        let res = client.reject_invitations(pubkey, &invitation_id).await;
+        let res = client.reject_invitations(&invitation_id).await;
         assert!(res.is_err());
 
         ctx.stop().await
@@ -134,40 +142,48 @@ mod tests {
 
     #[ockam_macros::test]
     async fn reject(ctx: &mut Context) -> ockam_core::Result<()> {
-        ctx.start_worker("invitations", InvitationServer::default())
-            .await?;
+        // Create a Vault to safely store secret keys for Receiver.
+        let vault = Vault::create();
 
-        let mut client = MessagingClient::new(Route::new().into(), ctx).await?;
-        let pubkey = "pubkey";
+        // Create an Identity to represent the ockam-command client.
+        let client_identity = Identity::create(&ctx, &vault).await?;
+
+        // Starts a secure channel listener at "api", with a freshly created
+        // identity, and a InvitationServer worker registered at "invitations"
+        crate::util::tests::start_api_listener(
+            ctx,
+            &vault,
+            "invitations",
+            InvitationServer::default(),
+        )
+        .await?;
+
+        let mut client =
+            MessagingClient::new(Route::new().append("api").into(), client_identity, ctx).await?;
 
         // Create invitation.
-        let req = CreateInvitation::new("idt1", "invitee1", "space", Some("project"));
+        let req = CreateInvitation::new("invitee1", "space", Some("project"));
         let i = client.create_invitation(req.clone()).await?;
-        assert_eq!(&i.inviter, &req.identity);
         assert_eq!(&i.invitee, &req.invitee);
         assert_eq!(&i.space_id, &req.space_id);
         assert_eq!(&i.project_id, &req.project_id);
         assert_eq!(&i.state, &State::Pending);
         assert_eq!(&i.scope, &req.scope);
 
-        let email = i.invitee.to_string();
         let invitation_id = i.id.to_string();
 
         // Check default state of invitation.
-        let retrieved = client.list_invitations(&email).await?;
+        let retrieved = client.list_invitations().await?;
         assert_eq!(retrieved.len(), 1);
         assert_eq!(&retrieved[0].id.to_string(), &invitation_id);
 
         // Reject invitation.
-        client.reject_invitations(pubkey, &invitation_id).await?;
-        let retrieved = client.list_invitations(&email).await?;
+        client.reject_invitations(&invitation_id).await?;
+        let retrieved = client.list_invitations().await?;
         assert_eq!(&retrieved[0].state, &State::Rejected);
 
-        // Rejecting the same invitation again should not fail.
-        client.reject_invitations(pubkey, &invitation_id).await?;
-
         // Accepting a rejected invitation should fail.
-        let res = client.accept_invitations(pubkey, &invitation_id).await;
+        let res = client.accept_invitations(&invitation_id).await;
         assert!(res.is_err());
 
         ctx.stop().await
@@ -175,7 +191,6 @@ mod tests {
 
     #[derive(Debug, Default)]
     pub struct InvitationServer {
-        by_email: HashMap<String, Vec<String>>,
         by_id: HashMap<String, Invitation<'static>>,
     }
 
@@ -210,7 +225,7 @@ mod tests {
                             #[cfg(feature = "tag")]
                             tag: TypeTag,
                             id: u32::arbitrary(&mut rng).to_string().into(),
-                            inviter: invitation.identity.to_string().into(),
+                            inviter: "inviter-id".into(),
                             invitee: invitation.invitee.to_string().into(),
                             scope: invitation.scope.clone(),
                             state: State::Pending,
@@ -220,44 +235,20 @@ mod tests {
                         Response::ok(req.id()).body(&obj).encode(buf)?;
                         let id = obj.id.to_string();
                         self.by_id.insert(id.clone(), obj);
-                        match self.by_email.get_mut(&invitation.invitee.to_string()) {
-                            Some(invitations) => {
-                                invitations.push(id);
-                            }
-                            None => {
-                                self.by_email
-                                    .insert(invitation.invitee.to_string(), vec![id]);
-                            }
-                        };
                     } else {
                         dbg!(&req);
                         Response::bad_request(req.id()).encode(buf)?;
                     }
                 }
-                Some(Method::Get) => match req.path_segments::<2>().as_slice() {
-                    // List invitations by email:
-                    [_, email] => {
-                        if let Some(invitation_ids) = self.by_email.get(*email) {
-                            let invitations = invitation_ids
-                                .iter()
-                                .map(|id| self.by_id.get(id).unwrap())
-                                .collect::<Vec<_>>();
-                            Response::ok(req.id()).body(invitations).encode(buf)?
-                        } else {
-                            dbg!(&req);
-                            Response::not_found(req.id()).encode(buf)?
-                        }
-                    }
-                    _ => {
-                        dbg!(&req);
-                        Response::bad_request(req.id()).encode(buf)?;
-                    }
-                },
-                Some(Method::Put) => match req.path_segments::<3>().as_slice() {
+                Some(Method::Get) => {
+                    let invitations = self.by_id.values().collect::<Vec<_>>();
+                    Response::ok(req.id()).body(invitations).encode(buf)?
+                }
+                Some(Method::Put) => match req.path_segments::<2>().as_slice() {
                     // Accept invitation:
-                    [_, id, _pubkey] => {
+                    [_, id] => {
                         if let Some(invitation) = self.by_id.get_mut(*id) {
-                            if invitation.state != State::Rejected {
+                            if invitation.state == State::Pending {
                                 invitation.state = State::Accepted;
                                 Response::ok(req.id()).encode(buf)?;
                             } else {
@@ -273,11 +264,11 @@ mod tests {
                         Response::bad_request(req.id()).encode(buf)?;
                     }
                 },
-                Some(Method::Delete) => match req.path_segments::<3>().as_slice() {
+                Some(Method::Delete) => match req.path_segments::<2>().as_slice() {
                     // Reject invitation:
-                    [_, id, _pubkey] => {
+                    [_, id] => {
                         if let Some(invitation) = self.by_id.get_mut(*id) {
-                            if invitation.state != State::Accepted {
+                            if invitation.state == State::Pending {
                                 invitation.state = State::Rejected;
                                 Response::ok(req.id()).encode(buf)?;
                             } else {
