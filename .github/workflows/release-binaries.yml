@@ -337,7 +337,7 @@ jobs:
 
           rustup target add aarch64-apple-darwin
           rustup target add x86_64-apple-darwin
-          
+
           ./build-elixir-universal-lib.sh
 
       - name: Install Cosign

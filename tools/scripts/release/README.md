@@ -94,6 +94,7 @@ RELEASE_VERSION=major GITHUB_USERNAME=metaclips release.sh
 
 We can skip steps during a release by defining variable below as `true`
 - SKIP_OCKAM_BUMP - Skips Ockam bump
+- SKIP_OCKAM_PACKAGE_RELEASE - Skips Ockam Docker package release
 - SKIP_CRATES_IO_PUBLISH - Skips crates.io publish
 - SKIP_OCKAM_BINARY_RELEASE - Skips binary release
 - SKIP_HOMEBREW_BUMP - Skips Homebrew version bump

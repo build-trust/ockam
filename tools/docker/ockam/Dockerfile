@@ -1,4 +1,4 @@
-FROM ghcr.io/build-trust/ockam-builder@sha256:84bda332c6f87eecaf5418f403053cb868eb007d7931de557f1f692a8a95cc8b as executable
+FROM ghcr.io/build-trust/ockam-builder@sha256:d560cb1ed32124e68cb4dc5fc2902240090f122864715756ace06e99e38e6cb2 as executable
 
 WORKDIR /app
 COPY . /app
