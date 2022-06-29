@@ -5,6 +5,9 @@ pub mod identity;
 pub mod nodes;
 pub mod vault;
 
+mod util;
+pub use util::*;
+
 #[cfg(feature = "lmdb")]
 pub mod lmdb;
 

@@ -1,4 +1,4 @@
-use crate::util::{embedded_node, multiaddr_to_route};
+use crate::util::embedded_node;
 use anyhow::{anyhow, Result};
 use clap::{Args, Subcommand};
 use ockam::{Context, TcpTransport};
@@ -94,7 +94,8 @@ async fn run_impl(mut ctx: Context, cmd: AuthenticatedSubcommand) -> anyhow::Res
 }
 
 async fn client(addr: &MultiAddr, ctx: &Context) -> Result<auth::Client> {
-    let to = multiaddr_to_route(addr).ok_or_else(|| anyhow!("failed to parse address: {addr}"))?;
+    let to = ockam_api::multiaddr_to_route(addr)
+        .ok_or_else(|| anyhow!("failed to parse address: {addr}"))?;
     let cl = auth::Client::new(to, ctx).await?;
     Ok(cl)
 }

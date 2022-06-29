@@ -2217,6 +2217,7 @@ dependencies = [
  "ockam_core",
  "ockam_identity",
  "ockam_macros",
+ "ockam_multiaddr",
  "ockam_node",
  "ockam_transport_tcp",
  "ockam_vault",
