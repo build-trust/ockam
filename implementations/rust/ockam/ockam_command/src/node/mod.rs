@@ -21,11 +21,11 @@ pub struct NodeCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum NodeSubcommand {
-    /// Create nodes.
+    /// Create a node.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Create(CreateCommand),
 
-    /// Delete nodes.
+    /// Delete a node.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Delete(DeleteCommand),
 
@@ -33,7 +33,7 @@ pub enum NodeSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     List(ListCommand),
 
-    /// Show nodes.
+    /// Show a node.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Show(ShowCommand),
 

@@ -145,7 +145,7 @@ impl OckamConfig {
         self.nodes.iter().any(|(_, n)| n.port == port)
     }
 
-    /// Get read-acces to all node configuration
+    /// Get read access to all node configuration
     pub fn get_nodes(&self) -> &BTreeMap<String, NodeConfig> {
         &self.nodes
     }
