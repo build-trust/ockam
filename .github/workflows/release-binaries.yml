@@ -157,7 +157,16 @@ jobs:
           PASSPHRASE: '${{ secrets.GPG_PASSPHRASE }}'
 
       - name: Ensure Tags Are Signed
-        run: git config --global commit.gpgsign true
+        run: |
+          git config --global user.email "${{ secrets.GPG_EMAIL }}"
+          git config --global user.name "${{ secrets.GPG_USER_NAME }}"
+          git config --global user.signingkey "${{ steps.import_gpg.outputs.fingerprint }}"
+          git config --global commit.gpgsign true
+
+      - name: Create Signed Tag
+        run: |
+          git tag -s ${{ steps.release_version.outputs.tag_name }} -m "Ockam Release"
+          git push --tags
 
       - name: Create GitHub release
         id: release_upload_url
@@ -284,13 +293,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build: [macos, linux]
+        build: [macos, linux_x86_64]
         include:
         - build: macos
           os: macos-latest
           release_path: implementations/elixir/ockam/ockam_vault_software/priv/darwin_universal/native
           release_asset_name: ockam.darwin_universal_elixir_ffi.so
-        - build: linux
+        - build: linux_x86_64
           os: ubuntu-20.04
           release_path: implementations/elixir/ockam/ockam_vault_software/_build/dev/lib/ockam_vault_software/priv/native
           release_asset_name: ockam.linux_elixir_ffi.so
@@ -306,44 +315,37 @@ jobs:
           profile: minimal
           override: true
 
-      - name: Setup Erlang
-        run: |
-          if [[ "${{ matrix.build }}" == "macos" ]]; then
-            brew install erlang
-          else
-            # https://elixir-lang.org/install.html#gnulinux
-            cd /tmp
-            wget https://packages.erlang-solutions.com/erlang-solutions_2.0_all.deb && sudo dpkg -i erlang-solutions_2.0_all.deb
-            sudo apt-get update
-            sudo apt-get -y install esl-erlang elixir libdbus-1-dev pkg-config
-          fi
+      - name: Build NIF For Linux AMD64
+        if: matrix.build == 'linux_x86_64'
+        uses: docker://ghcr.io/build-trust/ockam-builder@sha256:dac128554a96b302b6907bda7b677b1832d7952b35e0b35c4f6402cf15fe03e3
+        with:
+          args: |
+            bash -c "export PRIVATE_KEY='${{ secrets.COSIGN_PRIVATE_KEY }}' && export COSIGN_PASSWORD='${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}';
+            set -xe && pwd && uname -a && ls && cargo clean && cargo build --release;
+            cd implementations/elixir/ockam/ockam_vault_software;
+            mix recompile.native;
+            cd _build/dev/lib/ockam_vault_software/priv/native;
+            cosign sign-blob --key env://PRIVATE_KEY libockam_elixir_ffi.so > libockam_elixir_ffi.so.sig;"
 
-      - name: Build For Ockam Repository
-        if: matrix.build == 'linux'
-        run: cargo build --release
-
-      - name: Install Targets For MacOS
+      - name: Build NIF For MacOS
         if: matrix.build == 'macos'
-        run: |
-          rustup target add aarch64-apple-darwin
-          rustup target add x86_64-apple-darwin
-
-      - name: Build NIF
         working-directory: implementations/elixir/ockam/ockam_vault_software
         shell: bash
         run: |
           set -x
+          brew install erlang
 
-          if [[ "${{ matrix.build }}" == "macos" ]]; then
-            ./build-elixir-universal-lib.sh
-          else
-            mix recompile.native
-          fi
+          rustup target add aarch64-apple-darwin
+          rustup target add x86_64-apple-darwin
+          
+          ./build-elixir-universal-lib.sh
 
       - name: Install Cosign
+        if: matrix.build == 'macos'
         uses: sigstore/cosign-installer@7e0881f8fe90b25e305bbf0309761e9314607e25
 
       - name: Sign NIFs
+        if: matrix.build == 'macos'
         shell: bash
         working-directory: ${{ matrix.release_path }}
         env:
@@ -371,7 +373,6 @@ jobs:
           asset_path: ${{ matrix.release_path }}/libockam_elixir_ffi.so.sig
           asset_name: ${{ matrix.release_asset_name }}.sig
           asset_content_type: application/octet-stream
-
 
   sign_release:
     name: Sign Release Assets

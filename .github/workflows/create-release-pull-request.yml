@@ -50,7 +50,12 @@ jobs:
         run: echo "::set-output name=name::release_$(date +'%d-%m-%Y')"
 
       - name: Checkout To New Release Branch
-        run: git checkout -B ${{ steps.branch.outputs.name }}
+        id: commit
+        run: |
+          git checkout -B ${{ steps.branch.outputs.name }}
+          sha=$(git rev-parse HEAD)
+          echo "::set-output name=sha::$sha"
+
 
       - name: Import GPG key
         id: import_gpg
@@ -83,13 +88,9 @@ jobs:
       - name: Push Update
         shell: bash
         run: |
+          # Squash commits
+          git reset ${{ steps.commit.outputs.sha }}
           git add .
-          git commit -S -m "ci: add release changelogs"
-          git push --set-upstream origin ${{ steps.branch.outputs.name }}
+          git commit -S -m "ci: crate release $(date +'%d-%m-%Y')"
 
-      - name: Create Pull Request
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh pr create --title "${{ steps.branch.outputs.name }}" --body "Ockam release"\
-            --base develop -H ${{ steps.branch.outputs.name }} -r mrinalwadhwa
+          git push --set-upstream origin ${{ steps.branch.outputs.name }}
