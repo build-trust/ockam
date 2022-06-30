@@ -87,6 +87,8 @@ mod tests {
             }
         };
 
+        let node_dir = tempfile::tempdir().unwrap();
+
         // Create node manager to handle requests
         let node_manager = "manager";
         let transport = TcpTransport::create(ctx).await?;
@@ -95,6 +97,7 @@ mod tests {
             node_manager,
             NodeMan::new(
                 "node".to_string(),
+                node_dir.into_path(),
                 (
                     TransportType::Tcp,
                     TransportMode::Listen,

@@ -18,6 +18,7 @@ use ockam_vault::Vault;
 
 use core::convert::Infallible;
 use minicbor::{encode::Write, Decoder};
+use std::path::PathBuf;
 
 type Alias = String;
 
@@ -40,6 +41,7 @@ fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Error {
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeMan {
     node_name: String,
+    _node_dir: PathBuf,
     api_transport_id: Alias,
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
@@ -51,6 +53,7 @@ impl NodeMan {
     /// Create a new NodeMan with the node name from the ockam CLI
     pub fn new(
         node_name: String,
+        _node_dir: PathBuf,
         api_transport: (TransportType, TransportMode, String),
         tcp_transport: TcpTransport,
     ) -> Self {
@@ -61,6 +64,7 @@ impl NodeMan {
 
         Self {
             node_name,
+            _node_dir,
             api_transport_id,
             transports,
             tcp_transport,
