@@ -66,7 +66,7 @@ function homebrew_repo_bump() {
 
   # Create PR to kickstart workflow
   gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release"\
-    --base main -H ${release_name} -r mrinalwadhwa $owner/homebrew-ockam
+    --base main -H ${release_name} -r mrinalwadhwa -R $owner/homebrew-ockam
 }
 
 function terraform_repo_bump() {
@@ -78,7 +78,7 @@ function terraform_repo_bump() {
 
   # Create PR to kickstart workflow
   gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release"\
-    --base main -H ${release_name} -r mrinalwadhwa $owner/terraform-provider-ockam
+    --base main -H ${release_name} -r mrinalwadhwa -R $owner/terraform-provider-ockam
 }
 
 function terraform_binaries_release() {
