@@ -2,7 +2,7 @@ use crate::util::{api, connect_to, stop_node, OckamConfig};
 use clap::{Args, Subcommand};
 use ockam::{Context, Route};
 use ockam_api::{
-    nodes::types::{IoletStatus, IoletType},
+    nodes::types::{PortalStatus, PortalType},
     Status,
 };
 
@@ -61,24 +61,23 @@ pub async fn create_portal(
             base_route.modify().append("_internal.nodeman"),
             api::create_portal(&cmd)?,
         )
-        .await
-        .unwrap();
+        .await?;
 
     let (
         response,
-        IoletStatus {
+        PortalStatus {
             tt, addr, alias, ..
         },
     ) = api::parse_portal_status(&resp)?;
 
     match response.status() {
-        Some(Status::Ok) if tt == IoletType::Inlet => {
+        Some(Status::Ok) if tt == PortalType::Inlet => {
             eprintln!(
                 "Portal inlet '{}' created! You can send messages to it on this bind:\n{}`",
                 alias, addr
             )
         }
-        Some(Status::Ok) if tt == IoletType::Outlet => {
+        Some(Status::Ok) if tt == PortalType::Outlet => {
             let r: Route = base_route
                 .modify()
                 .pop_back()

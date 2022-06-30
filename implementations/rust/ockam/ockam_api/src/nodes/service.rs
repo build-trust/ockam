@@ -1,7 +1,7 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
 use super::{
-    iolets::{IoletList, IoletStatus},
+    portal::{PortalList, PortalStatus},
     types::{CreateTransport, DeleteTransport},
 };
 use crate::error::ApiError;
@@ -44,7 +44,7 @@ pub struct NodeMan {
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
     // FIXME: wow this is a terrible way to store data
-    iolets: BTreeMap<(Alias, IoletType), (String, Option<Route>)>,
+    portals: BTreeMap<(Alias, PortalType), (String, Option<Route>)>,
 }
 
 impl NodeMan {
@@ -55,7 +55,7 @@ impl NodeMan {
         tcp_transport: TcpTransport,
     ) -> Self {
         let api_transport_id = random_alias();
-        let iolets = BTreeMap::new();
+        let portals = BTreeMap::new();
         let mut transports = BTreeMap::new();
         transports.insert(api_transport_id.clone(), api_transport);
 
@@ -64,7 +64,7 @@ impl NodeMan {
             api_transport_id,
             transports,
             tcp_transport,
-            iolets,
+            portals,
         }
     }
 }
@@ -258,12 +258,12 @@ impl NodeMan {
 
     //////// Inlet and Outlet portal API ////////
 
-    fn get_iolets(&self, req: &Request<'_>) -> ResponseBuilder<IoletList<'_>> {
-        Response::ok(req.id()).body(IoletList::new(
-            self.iolets
+    fn get_portals(&self, req: &Request<'_>) -> ResponseBuilder<PortalList<'_>> {
+        Response::ok(req.id()).body(PortalList::new(
+            self.portals
                 .iter()
                 .map(|((alias, tt), (addr, route))| {
-                    IoletStatus::new(
+                    PortalStatus::new(
                         *tt,
                         addr,
                         alias,
@@ -279,11 +279,11 @@ impl NodeMan {
         _ctx: &mut Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<IoletStatus<'_>>> {
-        let CreateIolet {
+    ) -> Result<ResponseBuilder<PortalStatus<'_>>> {
+        let CreatePortal {
             addr,
             alias,
-            fwd,
+            peer: fwd,
             tt,
             ..
         } = dec.decode()?;
@@ -291,15 +291,30 @@ impl NodeMan {
         let alias = alias.map(|a| a.into()).unwrap_or_else(random_alias);
 
         let res = match tt {
-            IoletType::Inlet => {
+            PortalType::Inlet => {
                 info!("Handling request to create inlet portal");
-                let outlet_route = Route::parse(fwd.unwrap()).unwrap();
+                let fwd = match fwd {
+                    Some(f) => f,
+                    None => {
+                        return Ok(Response::bad_request(req.id())
+                            .body(PortalStatus::bad_request(tt, "invalid request payload")))
+                    }
+                };
+
+                let outlet_route = match Route::parse(fwd) {
+                    Some(route) => route,
+                    None => {
+                        return Ok(Response::bad_request(req.id())
+                            .body(PortalStatus::bad_request(tt, "invalid forward route")))
+                    }
+                };
+
                 self.tcp_transport
                     .create_inlet(addr.clone(), outlet_route)
                     .await
                     .map(|(addr, _)| addr)
             }
-            IoletType::Outlet => {
+            PortalType::Outlet => {
                 info!("Handling request to create outlet portal");
                 let self_addr = Address::random_local();
                 self.tcp_transport
@@ -311,9 +326,9 @@ impl NodeMan {
 
         Ok(match res {
             Ok(addr) => {
-                Response::ok(req.id()).body(IoletStatus::new(tt, addr.to_string(), alias, None))
+                Response::ok(req.id()).body(PortalStatus::new(tt, addr.to_string(), alias, None))
             }
-            Err(e) => Response::bad_request(req.id()).body(IoletStatus::new(
+            Err(e) => Response::bad_request(req.id()).body(PortalStatus::new(
                 tt,
                 addr,
                 alias,
@@ -387,7 +402,7 @@ impl NodeMan {
             (Post, "/node/forwarder") => self.create_forwarder(ctx, req, dec, enc).await?,
 
             // ==*== Inlets & Outlets ==*==
-            (Get, "/node/portal") => self.get_iolets(req).encode(enc)?,
+            (Get, "/node/portal") => self.get_portals(req).encode(enc)?,
             (Post, "/node/portal") => self.create_iolet(ctx, req, dec).await?.encode(enc)?,
             (Delete, "/node/portal") => todo!(),
 
