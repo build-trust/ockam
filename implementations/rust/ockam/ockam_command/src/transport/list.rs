@@ -2,7 +2,10 @@ use crate::util::{api, connect_to, stop_node, OckamConfig};
 use clap::Args;
 use cli_table::{print_stdout, Cell, Style, Table};
 use ockam::{Context, Route};
-use ockam_api::nodes::types::{TransportList, TransportStatus};
+use ockam_api::nodes::{
+    types::{TransportList, TransportStatus},
+    NODEMAN_ADDR,
+};
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
@@ -28,7 +31,7 @@ impl ListCommand {
 pub async fn query_transports(ctx: Context, _: (), mut base_route: Route) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append("_internal.nodeman"),
+            base_route.modify().append(NODEMAN_ADDR),
             api::query_transports()?,
         )
         .await

@@ -1,7 +1,10 @@
 use crate::util::{api, connect_to, stop_node, OckamConfig};
 use clap::{Args, Subcommand};
 use ockam::{Context, Route, TCP};
-use ockam_api::{nodes::types::TransportStatus, Status};
+use ockam_api::{
+    nodes::{types::TransportStatus, NODEMAN_ADDR},
+    Status,
+};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -55,7 +58,7 @@ pub async fn create_transport(
 ) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append("_internal.nodeman"),
+            base_route.modify().append(NODEMAN_ADDR),
             api::create_transport(&cmd)?,
         )
         .await

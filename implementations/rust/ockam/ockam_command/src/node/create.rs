@@ -11,7 +11,7 @@ use ockam_api::{
     auth,
     identity::IdentityService,
     nodes::types::{TransportMode, TransportType},
-    nodes::NodeMan,
+    nodes::{NodeMan, NODEMAN_ADDR},
 };
 
 #[derive(Clone, Debug, Args)]
@@ -96,7 +96,7 @@ async fn setup(ctx: Context, c: CreateCommand) -> anyhow::Result<()> {
     IdentityService::create(&ctx, "identity_service", vault.async_try_clone().await?).await?;
 
     ctx.start_worker(
-        "_internal.nodeman",
+        NODEMAN_ADDR,
         NodeMan::new(
             c.node_name,
             (TransportType::Tcp, TransportMode::Listen, bind),
