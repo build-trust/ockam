@@ -111,6 +111,16 @@ defmodule Ockam.Vault.Software.MixProject do
           true -> :ok
           false -> download_native(args)
         end
+
+        ## Check again if download failed or file is missing
+        case prebuilt_lib_exists?() do
+          true ->
+            :ok
+
+          false ->
+            IO.puts("Could not download prebuilt lib. Recompiling.")
+            recompile_native(args)
+        end
     end
   end
 
