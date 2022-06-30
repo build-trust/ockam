@@ -4,7 +4,7 @@
 use crate::{portal, transport};
 use minicbor::Decoder;
 
-use ockam::{Error, Result};
+use ockam::{Error, OckamError, Result};
 use ockam_api::{multiaddr_to_route, nodes::types::*, Method, Request, Response};
 
 ////////////// !== generators
@@ -94,12 +94,13 @@ pub(crate) fn create_portal(cmd: &portal::CreateCommand) -> Result<Vec<u8>> {
     // FIXME: this should not rely on CreateCommand internals!
     let (tt, addr, fwd) = match &cmd.create_subcommand {
         portal::CreateTypeCommand::TcpInlet { bind, forward } => {
-            (PortalType::Inlet, bind, Some(forward))
+            let route = multiaddr_to_route(forward).ok_or(OckamError::InvalidParameter)?;
+            (PortalType::Inlet, bind, Some(route))
         }
         portal::CreateTypeCommand::TcpOutlet { address } => (PortalType::Outlet, address, None),
     };
     let alias = cmd.alias.as_ref().map(Into::into);
-    let fwd = fwd.map(Into::into);
+    let fwd = fwd.map(|route| route.to_string().into());
     let payload = CreatePortal::new(tt, addr, fwd, alias);
 
     let mut buf = vec![];

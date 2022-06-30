@@ -48,26 +48,51 @@ pub fn multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
     Some(rb.into())
 }
 
+/// Try to convert a multiaddr to an Ockam Address
+pub fn multiaddr_to_addr(ma: &MultiAddr) -> Option<Address> {
+    let mut it = ma.iter().peekable();
+
+    let proto = it.next()?;
+    match proto.code() {
+        DnsAddr::CODE => {
+            let host = proto.cast::<DnsAddr>()?;
+            if let Some(p) = it.peek() {
+                if p.code() == Tcp::CODE {
+                    let tcp = proto.cast::<Tcp>()?;
+                    return Some(Address::new(TCP, format!("{}:{}", &*host, *tcp)));
+                }
+            }
+        }
+        Ockam::CODE => {
+            let local = proto.cast::<Ockam>()?;
+            return Some(Address::new(LOCAL, &*local));
+        }
+        _ => {}
+    };
+
+    None
+}
+
 /// Try to convert an Ockam Route into a MultiAddr.
 pub fn route_to_multiaddr(r: &Route) -> Option<MultiAddr> {
     let mut ma = MultiAddr::default();
     for a in r.iter() {
         match a.transport_type() {
-            TCP => if let Ok(sa) = SocketAddrV4::from_str(a.address()) {
-                ma.push_back(Ip4::new(*sa.ip())).ok()?;
-                ma.push_back(Tcp::new(sa.port())).ok()?
-            } else if let Ok(sa) = SocketAddrV6::from_str(a.address()) {
-                ma.push_back(Ip6::new(*sa.ip())).ok()?;
-                ma.push_back(Tcp::new(sa.port())).ok()?
-            } else if let Some((host, port)) = a.address().split_once(':') {
-                ma.push_back(DnsAddr::new(host)).ok()?;
-                ma.push_back(Tcp::new(u16::from_str(port).ok()?)).ok()?
-            } else {
-                ma.push_back(DnsAddr::new(a.address())).ok()?
+            TCP => {
+                if let Ok(sa) = SocketAddrV4::from_str(a.address()) {
+                    ma.push_back(Ip4::new(*sa.ip())).ok()?;
+                    ma.push_back(Tcp::new(sa.port())).ok()?
+                } else if let Ok(sa) = SocketAddrV6::from_str(a.address()) {
+                    ma.push_back(Ip6::new(*sa.ip())).ok()?;
+                    ma.push_back(Tcp::new(sa.port())).ok()?
+                } else if let Some((host, port)) = a.address().split_once(':') {
+                    ma.push_back(DnsAddr::new(host)).ok()?;
+                    ma.push_back(Tcp::new(u16::from_str(port).ok()?)).ok()?
+                } else {
+                    ma.push_back(DnsAddr::new(a.address())).ok()?
+                }
             }
-            LOCAL => {
-                ma.push_back(Ockam::new(a.address())).ok()?
-            }
+            LOCAL => ma.push_back(Ockam::new(a.address())).ok()?,
             other => {
                 error!(target: "ockam_api", transport = %other, "unsupported transport type");
                 return None;
