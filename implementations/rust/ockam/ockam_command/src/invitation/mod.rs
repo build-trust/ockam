@@ -34,13 +34,15 @@ pub enum InvitationSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Create(CreateCommand),
 
-    // list invitations
+    /// List pending invitations
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     List(ListCommand),
 
+    /// Accept an invitation
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Accept(AcceptCommand),
 
+    /// Reject an invitation
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Reject(RejectCommand),
 }

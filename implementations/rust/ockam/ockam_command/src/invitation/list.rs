@@ -39,10 +39,10 @@ async fn list(mut ctx: Context, args: (MultiAddr, ListCommand)) -> anyhow::Resul
         .iter()
         .map(|i| {
             vec![
-                format!("{}", i.id).cell(),
-                format!("{}", i.space_id).cell(),
+                format!("{:?}", i.id).cell(),
+                format!("{:?}", i.space_id).cell(),
                 format!("{:?}", i.project_id).cell(),
-                format!("{}", i.inviter).cell(),
+                format!("{:?}", i.inviter).cell(),
                 format!("{:?}", i.state).cell(),
             ]
         })
