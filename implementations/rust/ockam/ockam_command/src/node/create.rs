@@ -96,12 +96,12 @@ impl CreateCommand {
             //     std::process::exit(-1);
             // }
 
-            embedded_node(setup, command);
+            embedded_node(setup, (command, cfg.clone()));
         }
     }
 }
 
-async fn setup(ctx: Context, c: CreateCommand) -> anyhow::Result<()> {
+async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = format!("0.0.0.0:{}", c.port);
     tcp.listen(&bind).await?;
@@ -118,6 +118,7 @@ async fn setup(ctx: Context, c: CreateCommand) -> anyhow::Result<()> {
         NODEMAN_ADDR,
         NodeMan::new(
             c.node_name,
+            cfg.get_node_dir(&c.node_name).unwrap(), // can't fail because we already checked it
             (TransportType::Tcp, TransportMode::Listen, bind),
             tcp,
         ),
