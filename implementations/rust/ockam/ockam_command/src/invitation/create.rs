@@ -46,10 +46,10 @@ async fn create(mut ctx: Context, args: (MultiAddr, CreateCommand)) -> anyhow::R
     let route = route![r.to_string(), "invitations"];
     let mut api = MessagingClient::new(route, &ctx).await?;
     let request = CreateInvitation::new(
-        identifier.key_id(),
+        identifier.key_id().as_str(),
         &cmd.email,
         &cmd.space_id,
-        cmd.project_id.as_ref(),
+        cmd.project_id.as_deref(),
     );
     let res = api.create_invitation(request).await?;
     println!("{res:?}");

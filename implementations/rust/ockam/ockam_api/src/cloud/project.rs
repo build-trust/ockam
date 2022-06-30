@@ -137,11 +137,11 @@ mod tests {
             let req: Request = dec.decode()?;
             match req.method() {
                 Some(Method::Get) => match req.path_segments::<4>().as_slice() {
-                    // Get all nodes:
+                    // Get all projects:
                     [_, _, _] => Response::ok(req.id())
                         .body(encode::ArrayIter::new(self.0.values()))
                         .encode(buf)?,
-                    // Get a single node:
+                    // Get a single project:
                     [_, _, _, id] => {
                         if let Some(n) = self.0.get(*id) {
                             Response::ok(req.id()).body(n).encode(buf)?
