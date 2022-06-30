@@ -190,6 +190,11 @@ impl Route {
             .cloned()
             .expect("Route::recipient failed on invalid Route!")
     }
+
+    /// Iterate over all addresses of this route.
+    pub fn iter(&self) -> impl Iterator<Item = &Address> {
+        self.inner.iter()
+    }
 }
 
 impl Display for Route {
