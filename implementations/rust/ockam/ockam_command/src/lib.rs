@@ -91,7 +91,7 @@ pub struct OckamCommand {
     // if test_argument_parser is true, command arguments are checked
     // but the command is not executed.
     #[clap(global = true, long, hide = true)]
-    pub test_argument_parser: bool,
+    test_argument_parser: bool,
 }
 
 #[derive(Clone, Debug, Subcommand)]

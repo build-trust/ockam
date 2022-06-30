@@ -1,6 +1,7 @@
-use anyhow::Context;
 use std::path::Path;
 use std::sync::Arc;
+
+use anyhow::Context;
 
 use ockam::identity::change_history::IdentityChangeHistory;
 use ockam::identity::*;

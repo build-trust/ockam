@@ -3,6 +3,7 @@ use std::process::Command;
 
 #[test]
 fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
+    // email
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.arg("--test-argument-parser")
         .arg("enroll")
@@ -14,6 +15,7 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
         .arg("--overwrite");
     cmd.assert().success();
 
+    // auth0
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.arg("--test-argument-parser")
         .arg("enroll")
@@ -26,6 +28,7 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
         .arg("--auth0");
     cmd.assert().success();
 
+    // token
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.arg("--test-argument-parser")
         .arg("enroll")

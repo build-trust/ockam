@@ -38,12 +38,12 @@ pub enum ProjectSubcommand {
 }
 
 impl ProjectCommand {
-    pub fn run(command: ProjectCommand) {
-        match command.subcommand {
-            ProjectSubcommand::Create(command) => CreateCommand::run(command),
-            ProjectSubcommand::Delete(command) => DeleteCommand::run(command),
-            ProjectSubcommand::List(command) => ListCommand::run(command),
-            ProjectSubcommand::Show(command) => ShowCommand::run(command),
+    pub fn run(cmd: ProjectCommand) {
+        match cmd.subcommand {
+            ProjectSubcommand::Create(cmd) => CreateCommand::run(cmd),
+            ProjectSubcommand::Delete(cmd) => DeleteCommand::run(cmd),
+            ProjectSubcommand::List(cmd) => ListCommand::run(cmd),
+            ProjectSubcommand::Show(cmd) => ShowCommand::run(cmd),
         }
     }
 }

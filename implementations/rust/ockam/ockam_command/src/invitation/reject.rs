@@ -19,8 +19,8 @@ pub struct RejectCommand {
 }
 
 impl RejectCommand {
-    pub fn run(command: RejectCommand, cloud_addr: MultiAddr) {
-        embedded_node(reject, (cloud_addr, command));
+    pub fn run(cmd: RejectCommand, cloud_addr: MultiAddr) {
+        embedded_node(reject, (cloud_addr, cmd));
     }
 }
 

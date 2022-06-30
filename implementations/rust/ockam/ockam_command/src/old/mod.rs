@@ -1,10 +1,11 @@
+use std::collections::BTreeSet;
+
 use anyhow::Context;
 use anyhow::Result;
 use clap::Args;
-use identity::load_identity;
 
+use identity::load_identity;
 use ockam::{identity::IdentityIdentifier, NodeBuilder};
-use std::collections::BTreeSet;
 use storage::{ensure_identity_exists, get_ockam_dir};
 
 pub mod identity;
@@ -161,7 +162,7 @@ where
     }
 }
 
-pub(crate) fn print_error_and_exit(v: bool, e: anyhow::Error) -> ! {
+pub fn print_error_and_exit(v: bool, e: anyhow::Error) -> ! {
     tracing::trace!("Exiting with error {:?}", e);
     eprintln!("Error: {}", message(v, &e));
     for cause in e.chain().skip(1) {
@@ -170,7 +171,7 @@ pub(crate) fn print_error_and_exit(v: bool, e: anyhow::Error) -> ! {
     std::process::exit(1);
 }
 
-pub(crate) fn exit_with_result(verbose: bool, result: Result<()>) -> ! {
+pub fn exit_with_result(verbose: bool, result: Result<()>) -> ! {
     if let Err(e) = result {
         print_error_and_exit(verbose, e);
     } else {

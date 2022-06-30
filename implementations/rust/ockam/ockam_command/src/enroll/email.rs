@@ -13,14 +13,14 @@ use crate::util::embedded_node;
 const API_SECRET: &str = "DNYsEfhe]ms]ET]yQIthmhSOIvCkWOnb";
 
 #[derive(Clone, Debug, Args)]
-pub(crate) struct EnrollEmailCommand;
+pub struct EnrollEmailCommand;
 
 impl EnrollEmailCommand {
-    pub fn run(command: EnrollCommand) {
+    pub fn run(cmd: EnrollCommand) {
         println!("\nThank you for trying Ockam. We are working towards a developer release of Ockam Orchestrator in September.
 Please tell us your email and we'll let you know when we're ready to enroll new users to Ockam Orchestrator.\n");
         let email = read_user_input().expect("couldn't read user input");
-        embedded_node(enroll, (command, email));
+        embedded_node(enroll, (cmd, email));
     }
 }
 

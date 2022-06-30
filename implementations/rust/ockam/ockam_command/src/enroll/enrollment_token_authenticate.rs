@@ -13,8 +13,8 @@ use crate::util::embedded_node;
 pub struct AuthenticateEnrollmentTokenCommand;
 
 impl AuthenticateEnrollmentTokenCommand {
-    pub fn run(command: EnrollCommand) {
-        embedded_node(authenticate, command);
+    pub fn run(cmd: EnrollCommand) {
+        embedded_node(authenticate, cmd);
     }
 }
 

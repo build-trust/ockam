@@ -13,8 +13,8 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
         .arg("idt")
         .arg("--overwrite")
         .arg("--")
-        .arg("k1,v1")
-        .arg("k2,v2");
+        .arg("k1=v1")
+        .arg("k2=v2");
     cmd.assert().success();
 
     Ok(())
