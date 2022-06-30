@@ -33,7 +33,7 @@ pub enum CreateTypeCommand {
     /// the given peer address and port
     TcpConnector {
         /// Transport connection or bind address
-        address: String,
+        addr: String,
     },
 }
 
@@ -55,9 +55,7 @@ impl CreateCommand {
         // still bad and should be fixed
         let node = command.api_node.unwrap_or_else(|| cfg.get_api_node());
         match command.create_subcommand {
-            CreateTypeCommand::TcpConnector { address } => {
-                cfg.add_transport(&node, false, true, address)
-            }
+            CreateTypeCommand::TcpConnector { addr } => cfg.add_transport(&node, false, true, addr),
             CreateTypeCommand::TcpListener { bind } => cfg.add_transport(&node, true, true, bind),
         };
 

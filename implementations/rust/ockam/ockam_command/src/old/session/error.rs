@@ -1,8 +1,9 @@
 #![deny(missing_docs)]
 #![allow(missing_docs)] // Contents are self describing for now.
 
-use ockam_core::errcode::{Kind, Origin};
 use std::{error::Error as StdError, fmt};
+
+use ockam_core::errcode::{Kind, Origin};
 
 #[derive(Clone, Copy, Debug)]
 pub enum SessionManagementError {

@@ -28,8 +28,8 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(command: CreateCommand, cloud_addr: MultiAddr) {
-        embedded_node(create, (cloud_addr, command));
+    pub fn run(cmd: CreateCommand, cloud_addr: MultiAddr) {
+        embedded_node(create, (cloud_addr, cmd));
     }
 }
 

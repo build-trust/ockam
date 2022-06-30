@@ -17,8 +17,8 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(command: ListCommand, cloud_addr: MultiAddr) {
-        embedded_node(list, (cloud_addr, command));
+    pub fn run(cmd: ListCommand, cloud_addr: MultiAddr) {
+        embedded_node(list, (cloud_addr, cmd));
     }
 }
 

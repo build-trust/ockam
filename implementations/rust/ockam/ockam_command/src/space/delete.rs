@@ -17,15 +17,15 @@ pub struct DeleteCommand {
 
     /// Ockam's cloud address. Argument used for testing purposes.
     #[clap(hide = true, display_order = 1100, default_value = DEFAULT_CLOUD_ADDRESS)]
-    address: MultiAddr,
+    addr: MultiAddr,
 
     #[clap(flatten)]
     identity_opts: IdentityOpts,
 }
 
 impl DeleteCommand {
-    pub fn run(command: DeleteCommand) {
-        embedded_node(delete, command);
+    pub fn run(cmd: DeleteCommand) {
+        embedded_node(delete, cmd);
     }
 }
 
@@ -35,12 +35,11 @@ async fn delete(mut ctx: Context, cmd: DeleteCommand) -> anyhow::Result<()> {
     // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
     let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
 
-    let route = ockam_api::multiaddr_to_route(&cmd.address)
+    let route = ockam_api::multiaddr_to_route(&cmd.addr)
         .ok_or_else(|| anyhow!("failed to parse address"))?;
     let mut api = MessagingClient::new(route, identity, &ctx).await?;
     api.delete_space(&cmd.id).await?;
     println!("Space deleted");
-
     ctx.stop().await?;
     Ok(())
 }

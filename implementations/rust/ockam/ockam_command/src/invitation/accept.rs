@@ -19,8 +19,8 @@ pub struct AcceptCommand {
 }
 
 impl AcceptCommand {
-    pub fn run(command: AcceptCommand, cloud_addr: MultiAddr) {
-        embedded_node(accept, (cloud_addr, command));
+    pub fn run(cmd: AcceptCommand, cloud_addr: MultiAddr) {
+        embedded_node(accept, (cloud_addr, cmd));
     }
 }
 

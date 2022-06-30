@@ -48,18 +48,12 @@ pub enum InvitationSubcommand {
 }
 
 impl InvitationCommand {
-    pub fn run(inv_cmd: InvitationCommand) {
-        match inv_cmd.subcommand {
-            InvitationSubcommand::Create(command) => {
-                CreateCommand::run(command, inv_cmd.cloud_addr)
-            }
-            InvitationSubcommand::List(command) => ListCommand::run(command, inv_cmd.cloud_addr),
-            InvitationSubcommand::Accept(command) => {
-                AcceptCommand::run(command, inv_cmd.cloud_addr)
-            }
-            InvitationSubcommand::Reject(command) => {
-                RejectCommand::run(command, inv_cmd.cloud_addr)
-            }
+    pub fn run(cmd: InvitationCommand) {
+        match cmd.subcommand {
+            InvitationSubcommand::Create(command) => CreateCommand::run(command, cmd.cloud_addr),
+            InvitationSubcommand::List(command) => ListCommand::run(command, cmd.cloud_addr),
+            InvitationSubcommand::Accept(command) => AcceptCommand::run(command, cmd.cloud_addr),
+            InvitationSubcommand::Reject(command) => RejectCommand::run(command, cmd.cloud_addr),
         }
     }
 }

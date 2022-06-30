@@ -13,15 +13,15 @@ use crate::IdentityOpts;
 pub struct ListCommand {
     /// Ockam's cloud address. Argument used for testing purposes.
     #[clap(hide = true, display_order = 1100, default_value = DEFAULT_CLOUD_ADDRESS)]
-    address: MultiAddr,
+    addr: MultiAddr,
 
     #[clap(flatten)]
     identity_opts: IdentityOpts,
 }
 
 impl ListCommand {
-    pub fn run(command: ListCommand) {
-        embedded_node(list, command);
+    pub fn run(cmd: ListCommand) {
+        embedded_node(list, cmd);
     }
 }
 
@@ -31,7 +31,7 @@ async fn list(mut ctx: Context, cmd: ListCommand) -> anyhow::Result<()> {
     // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
     let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
 
-    let route = ockam_api::multiaddr_to_route(&cmd.address)
+    let route = ockam_api::multiaddr_to_route(&cmd.addr)
         .ok_or_else(|| anyhow!("failed to parse address"))?;
     let mut api = MessagingClient::new(route, identity, &ctx).await?;
     let res = api.list_spaces().await?;

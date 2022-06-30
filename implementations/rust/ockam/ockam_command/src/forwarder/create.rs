@@ -14,7 +14,7 @@ use crate::OckamConfig;
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     /// Ockam's cloud node address.
-    address: MultiAddr,
+    addr: MultiAddr,
 
     /// Forwarder alias. Optional{n}
     /// If set, a static forwarder named after the passed alias will be created{n}
@@ -39,7 +39,7 @@ impl CreateCommand {
     }
 
     pub fn address(&self) -> &MultiAddr {
-        &self.address
+        &self.addr
     }
 
     pub fn alias(&self) -> Option<&str> {

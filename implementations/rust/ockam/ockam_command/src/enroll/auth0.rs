@@ -15,11 +15,11 @@ use crate::old::identity::load_or_create_identity;
 use crate::util::embedded_node;
 
 #[derive(Clone, Debug, Args)]
-pub(crate) struct EnrollAuth0Command;
+pub struct EnrollAuth0Command;
 
 impl EnrollAuth0Command {
-    pub fn run(command: EnrollCommand) {
-        embedded_node(enroll, command);
+    pub fn run(cmd: EnrollCommand) {
+        embedded_node(enroll, cmd);
     }
 }
 

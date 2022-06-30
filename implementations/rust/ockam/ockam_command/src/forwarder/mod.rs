@@ -20,9 +20,9 @@ pub enum ForwarderSubCommand {
 }
 
 impl ForwarderCommand {
-    pub fn run(cfg: &OckamConfig, command: ForwarderCommand) {
-        match command.subcommand {
-            ForwarderSubCommand::Create(command) => CreateCommand::run(cfg, command),
+    pub fn run(cfg: &OckamConfig, cmd: ForwarderCommand) {
+        match cmd.subcommand {
+            ForwarderSubCommand::Create(cmd) => CreateCommand::run(cfg, cmd),
         }
     }
 }

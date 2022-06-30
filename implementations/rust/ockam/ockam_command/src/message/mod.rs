@@ -1,8 +1,8 @@
-mod send;
-
 use crate::HELP_TEMPLATE;
 use clap::{Args, Subcommand};
 use send::SendCommand;
+
+mod send;
 
 #[derive(Clone, Debug, Args)]
 pub struct MessageCommand {
@@ -18,9 +18,9 @@ pub enum MessageSubcommand {
 }
 
 impl MessageCommand {
-    pub fn run(command: MessageCommand) {
-        match command.subcommand {
-            MessageSubcommand::Send(command) => SendCommand::run(command),
+    pub fn run(cmd: MessageCommand) {
+        match cmd.subcommand {
+            MessageSubcommand::Send(cmd) => SendCommand::run(cmd),
         }
     }
 }

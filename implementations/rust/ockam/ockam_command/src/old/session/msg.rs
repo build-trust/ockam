@@ -1,6 +1,7 @@
-use ockam::Message;
 use rand::random;
 use serde::{Deserialize, Serialize};
+
+use ockam::Message;
 
 #[derive(Serialize, Deserialize, Message, Debug, Clone, PartialEq)]
 pub struct RequestId(pub String);

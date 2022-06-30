@@ -41,13 +41,13 @@ pub struct EnrollCommand {
 }
 
 impl EnrollCommand {
-    pub fn run(command: EnrollCommand) {
-        if command.token.is_some() {
-            AuthenticateEnrollmentTokenCommand::run(command)
-        } else if command.auth0 {
-            EnrollAuth0Command::run(command)
+    pub fn run(cmd: EnrollCommand) {
+        if cmd.token.is_some() {
+            AuthenticateEnrollmentTokenCommand::run(cmd)
+        } else if cmd.auth0 {
+            EnrollAuth0Command::run(cmd)
         } else {
-            EnrollEmailCommand::run(command)
+            EnrollEmailCommand::run(cmd)
         }
     }
 }

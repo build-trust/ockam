@@ -38,12 +38,12 @@ pub enum SpaceSubcommand {
 }
 
 impl SpaceCommand {
-    pub fn run(command: SpaceCommand) {
-        match command.subcommand {
-            SpaceSubcommand::Create(command) => CreateCommand::run(command),
-            SpaceSubcommand::Delete(command) => DeleteCommand::run(command),
-            SpaceSubcommand::List(command) => ListCommand::run(command),
-            SpaceSubcommand::Show(command) => ShowCommand::run(command),
+    pub fn run(cmd: SpaceCommand) {
+        match cmd.subcommand {
+            SpaceSubcommand::Create(cmd) => CreateCommand::run(cmd),
+            SpaceSubcommand::Delete(cmd) => DeleteCommand::run(cmd),
+            SpaceSubcommand::List(cmd) => ListCommand::run(cmd),
+            SpaceSubcommand::Show(cmd) => ShowCommand::run(cmd),
         }
     }
 }

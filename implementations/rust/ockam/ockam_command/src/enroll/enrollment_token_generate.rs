@@ -1,13 +1,13 @@
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use clap::Args;
 
-use crate::IdentityOpts;
 use ockam::TcpTransport;
 use ockam_api::auth::types::Attributes;
 use ockam_multiaddr::MultiAddr;
 
 use crate::old::identity::load_or_create_identity;
 use crate::util::embedded_node;
+use crate::IdentityOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct GenerateEnrollmentTokenCommand {
@@ -21,17 +21,17 @@ pub struct GenerateEnrollmentTokenCommand {
     #[clap(display_order = 1002, long, default_value = "default")]
     identity: String,
 
-    /// Comma-separated list of attributes
-    #[clap(last = true, required = true)]
-    attributes: Vec<String>,
+    /// Attributes (use '=' to separate key from value)
+    #[clap(value_delimiter('='), last = true, required = true)]
+    attrs: Vec<String>,
 
     #[clap(flatten)]
     identity_opts: IdentityOpts,
 }
 
 impl GenerateEnrollmentTokenCommand {
-    pub fn run(command: GenerateEnrollmentTokenCommand) {
-        embedded_node(generate, command);
+    pub fn run(cmd: GenerateEnrollmentTokenCommand) {
+        embedded_node(generate, cmd);
     }
 }
 
@@ -47,20 +47,11 @@ async fn generate(
         .ok_or_else(|| anyhow!("failed to parse address: {}", cmd.address))?;
 
     let mut attributes = Attributes::new();
-    for kv in &cmd.attributes {
-        let mut s = kv.split(',');
-        let k = s.next().context(format!(
-            "failed to parse key from pair: {kv:?}. Expected a \"key,value\" pair."
-        ))?;
-        let v = s
-            .next()
-            .context(format!("no value found on pair: {kv:?}"))?;
-        if k.is_empty() {
-            anyhow::bail!("attribute name can't be empty at pair {kv:?}")
-        } else if v.is_empty() {
-            anyhow::bail!("attribute value can't be empty at pair {kv:?}")
-        } else {
+    for entry in cmd.attrs.chunks(2) {
+        if let [k, v] = entry {
             attributes.put(k, v.as_bytes());
+        } else {
+            return Err(anyhow!("{entry:?} is not a key-value pair"));
         }
     }
 
