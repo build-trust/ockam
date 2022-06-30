@@ -24,10 +24,13 @@ pub struct CreateCommand {
     #[clap(display_order = 900, long, short)]
     spawn: bool,
 
+    /// Specify the API port
     #[clap(default_value_t = DEFAULT_TCP_PORT, long, short)]
     port: u16,
-}
 
+    #[clap(long, hide = true)]
+    no_watchdog: bool,
+}
 impl CreateCommand {
     pub fn run(cfg: &OckamConfig, command: CreateCommand) {
         if command.spawn {
@@ -79,6 +82,10 @@ impl CreateCommand {
             cfg.update_pid(&command.node_name, child.id() as i32)
                 .expect("should never panic");
 
+            // Unless this CLI was called from another watchdog we
+            // start the watchdog here
+            if !command.no_watchdog {}
+
             // Save the config update
             if let Err(e) = cfg.atomic_update().run() {
                 eprintln!("failed to update configuration: {}", e);
@@ -114,11 +121,12 @@ async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::
     let vault = Vault::create();
     IdentityService::create(&ctx, "identity_service", vault.async_try_clone().await?).await?;
 
+    let node_dir = cfg.get_node_dir(&c.node_name).unwrap(); // can't fail because we already checked it
     ctx.start_worker(
         NODEMAN_ADDR,
         NodeMan::new(
             c.node_name,
-            cfg.get_node_dir(&c.node_name).unwrap(), // can't fail because we already checked it
+            node_dir,
             (TransportType::Tcp, TransportMode::Listen, bind),
             tcp,
         ),
