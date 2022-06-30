@@ -67,7 +67,7 @@ pub(crate) fn create_forwarder(cmd: &crate::forwarder::CreateCommand) -> Result<
 
 /// Construct a request to create Secure Channels
 pub(crate) fn create_secure_channel(cmd: &crate::secure_channel::CreateCommand) -> Result<Vec<u8>> {
-    let payload = CreateSecureChannelRequest::new(cmd.addr.to_string());
+    let payload = CreateSecureChannelRequest::new(cmd.addr().to_string());
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/secure_channel")
@@ -78,9 +78,9 @@ pub(crate) fn create_secure_channel(cmd: &crate::secure_channel::CreateCommand) 
 
 /// Construct a request to create Secure Channel Listeners
 pub(crate) fn create_secure_channel_listener(
-    cmd: &crate::secure_channel::CreateListenerCommand,
+    cmd: &crate::secure_channel::CreateCommand,
 ) -> Result<Vec<u8>> {
-    let payload = CreateSecureChannelListenerRequest::new(cmd.addr.to_string());
+    let payload = CreateSecureChannelListenerRequest::new(cmd.addr().to_string());
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/secure_channel_listener")
