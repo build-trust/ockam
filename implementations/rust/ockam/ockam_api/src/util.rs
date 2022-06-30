@@ -1,3 +1,4 @@
+use core::str::FromStr;
 use ockam::{Address, TCP};
 use ockam_core::{Route, LOCAL};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Ockam, Tcp};
@@ -39,10 +40,39 @@ pub fn multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
                 rb = rb.append(Address::new(LOCAL, &*local))
             }
             other => {
-                error!(target: "ockam_command", code = %other, "unsupported protocol");
+                error!(target: "ockam_api", code = %other, "unsupported protocol");
                 return None;
             }
         }
     }
     Some(rb.into())
+}
+
+/// Try to convert an Ockam Route into a MultiAddr.
+pub fn route_to_multiaddr(r: &Route) -> Option<MultiAddr> {
+    let mut ma = MultiAddr::default();
+    for a in r.iter() {
+        match a.transport_type() {
+            TCP => if let Ok(sa) = SocketAddrV4::from_str(a.address()) {
+                ma.push_back(Ip4::new(*sa.ip())).ok()?;
+                ma.push_back(Tcp::new(sa.port())).ok()?
+            } else if let Ok(sa) = SocketAddrV6::from_str(a.address()) {
+                ma.push_back(Ip6::new(*sa.ip())).ok()?;
+                ma.push_back(Tcp::new(sa.port())).ok()?
+            } else if let Some((host, port)) = a.address().split_once(':') {
+                ma.push_back(DnsAddr::new(host)).ok()?;
+                ma.push_back(Tcp::new(u16::from_str(port).ok()?)).ok()?
+            } else {
+                ma.push_back(DnsAddr::new(a.address())).ok()?
+            }
+            LOCAL => {
+                ma.push_back(Ockam::new(a.address())).ok()?
+            }
+            other => {
+                error!(target: "ockam_api", transport = %other, "unsupported transport type");
+                return None;
+            }
+        }
+    }
+    Some(ma)
 }
