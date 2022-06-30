@@ -3,7 +3,7 @@ use clap::{Args, Subcommand};
 use ockam::{Context, Route, TCP};
 use ockam_api::{
     nodes::{types::TransportStatus, NODEMAN_ADDR},
-    Status,
+    route_to_multiaddr, Status,
 };
 
 #[derive(Clone, Debug, Args)]
@@ -92,7 +92,7 @@ pub async fn create_transport(
 
             eprintln!(
                 "Transport created! You can send messages to it via this route:\n{}`",
-                r
+                route_to_multiaddr(&r).unwrap(),
             )
         }
         _ => {

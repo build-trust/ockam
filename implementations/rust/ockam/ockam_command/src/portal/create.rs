@@ -6,6 +6,7 @@ use ockam_api::{
     nodes::NODEMAN_ADDR,
     Status,
 };
+use ockam_multiaddr::MultiAddr;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -29,7 +30,7 @@ pub enum CreateTypeCommand {
         /// Portal inlet bind address
         bind: String,
         /// Forwarding point for the portal (ockam routing address)
-        forward: String,
+        forward: MultiAddr,
     },
     /// Create a TCP portal outlet
     TcpOutlet {
@@ -85,8 +86,9 @@ pub async fn create_portal(
                 .append(addr.to_string())
                 .into();
             eprintln!(
-                "Portal outlet '{}' created! You can send messages through it via this route:\n{}`",
-                alias, r
+                "Portal outlet '{}' created! You can send messages through it via this route:\n{}",
+                alias,
+                ockam_api::route_to_multiaddr(&r).unwrap()
             );
         }
 
