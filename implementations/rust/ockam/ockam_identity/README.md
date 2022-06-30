@@ -22,7 +22,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_identity = "0.50.0"
+ockam_identity = "0.51.0"
 ```
 
 ## License

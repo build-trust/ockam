@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.60.0 - 2022-06-30
+
+### Changed
+
+- Create worker builder for cleaner worker access control initialisation
+- `Storage` -> `AuthenticatedTable`
+- `AuthenticatedTable` -> `AuthenticatedStorage`
+- Partially implemented node watchdog
+
+### Fixed
+
+- Making ockam_node a bit less spammy on debug
+
 ## 0.59.0 - 2022-06-17
 
 ### Changed
