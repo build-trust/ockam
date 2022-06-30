@@ -59,7 +59,7 @@ pub type Attribute = (String, Value);
 
 /// Primitive value types used to construct ABAC attributes and
 /// conditionals.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Value {
     /// A string
     S(String),
@@ -85,7 +85,7 @@ pub fn bool(b: bool) -> Value {
 }
 
 /// Pimitive conditional operators used to construct ABAC policies.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Conditional {
     /// Equality condition
     Eq(String, Value),
