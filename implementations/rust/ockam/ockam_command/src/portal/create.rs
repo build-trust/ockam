@@ -3,6 +3,7 @@ use clap::{Args, Subcommand};
 use ockam::{Context, Route};
 use ockam_api::{
     nodes::types::{PortalStatus, PortalType},
+    nodes::NODEMAN_ADDR,
     Status,
 };
 
@@ -58,7 +59,7 @@ pub async fn create_portal(
 ) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append("_internal.nodeman"),
+            base_route.modify().append(NODEMAN_ADDR),
             api::create_portal(&cmd)?,
         )
         .await?;
