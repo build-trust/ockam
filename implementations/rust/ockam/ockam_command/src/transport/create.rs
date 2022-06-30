@@ -16,12 +16,18 @@ pub struct CreateCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum CreateTypeCommand {
-    /// Create a TCP listener transport
+    /// Create a TCP transport listener
+    ///
+    /// Listens for incoming TCP connections on the given bind address
+    /// and port
     TcpListener {
         /// Transport connection or bind address
         bind: String,
     },
-    /// Create a TCP connector transport
+    /// Create a TCP transport connector
+    ///
+    /// Attempts to connect to an existing TCP transport listener on
+    /// the given peer address and port
     TcpConnector {
         /// Transport connection or bind address
         address: String,

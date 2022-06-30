@@ -94,13 +94,13 @@ pub(crate) fn create_portal(cmd: &portal::CreateCommand) -> Result<Vec<u8>> {
     // FIXME: this should not rely on CreateCommand internals!
     let (tt, addr, fwd) = match &cmd.create_subcommand {
         portal::CreateTypeCommand::TcpInlet { bind, forward } => {
-            (IoletType::Inlet, bind, Some(forward))
+            (PortalType::Inlet, bind, Some(forward))
         }
-        portal::CreateTypeCommand::TcpOutlet { address } => (IoletType::Outlet, address, None),
+        portal::CreateTypeCommand::TcpOutlet { address } => (PortalType::Outlet, address, None),
     };
     let alias = cmd.alias.as_ref().map(Into::into);
     let fwd = fwd.map(Into::into);
-    let payload = CreateIolet::new(tt, addr, fwd, alias);
+    let payload = CreatePortal::new(tt, addr, fwd, alias);
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/portal")
@@ -153,8 +153,8 @@ pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Resu
 }
 
 /// Parse the returned status response
-pub(crate) fn parse_portal_status(resp: &[u8]) -> Result<(Response, IoletStatus<'_>)> {
+pub(crate) fn parse_portal_status(resp: &[u8]) -> Result<(Response, PortalStatus<'_>)> {
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
-    Ok((response, dec.decode::<IoletStatus>()?))
+    Ok((response, dec.decode::<PortalStatus>()?))
 }

@@ -1,10 +1,7 @@
 mod create;
-// mod delete;
-// mod list;
-
 pub(crate) use create::{CreateCommand, CreateTypeCommand};
-// pub(crate) use delete::DeleteCommand;
-// use list::ListCommand;
+
+// TODO: add delete, list, show subcommands
 
 use crate::{util::OckamConfig, HELP_TEMPLATE};
 use clap::{Args, Subcommand};

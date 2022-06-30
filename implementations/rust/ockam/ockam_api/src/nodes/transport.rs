@@ -112,8 +112,7 @@ impl Display for TransportMode {
 #[cbor(map)]
 pub struct TransportStatus<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    tag: TypeTag<1581592>,
+    #[n(0)] tag: TypeTag<1581592>,
     /// The type of transport to create
     #[n(2)] pub tt: TransportType,
     /// The mode the transport should operate in
@@ -151,8 +150,7 @@ impl<'a> TransportStatus<'a> {
 #[cbor(map)]
 pub struct TransportList<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    tag: TypeTag<5212817>,
+    #[n(0)] tag: TypeTag<5212817>,
     #[n(1)] pub list: Vec<TransportStatus<'a>>
 }
 

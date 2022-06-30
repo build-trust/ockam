@@ -10,7 +10,7 @@ use ockam_core::TypeTag;
 #[derive(Copy, Clone, Debug, Decode, Encode, PartialEq)]
 #[rustfmt::skip]
 #[cbor(index_only)]
-pub enum IoletType {
+pub enum PortalType {
     #[n(0)] Inlet,
     #[n(1)] Outlet,
 }
@@ -19,30 +19,29 @@ pub enum IoletType {
 #[derive(Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateIolet<'a> {
+pub struct CreatePortal<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    tag: TypeTag<1407961>,
+    #[n(0)] tag: TypeTag<1407961>,
     /// The type of portal endpoint to create
-    #[n(1)] pub tt: IoletType,
+    #[n(1)] pub tt: PortalType,
     /// The address the portal should connect or bind to
     #[b(2)] pub addr: Cow<'a, str>,
-    /// The forwarding address (must be ockam routing address)
+    /// The peer address (must be ockam routing address)
     ///
     /// This field will be disregarded for portal outlets.  Portal
     /// inlets MUST set this value to configure their forwarding
     /// behaviour.  This can either be the address of an already
     /// created outlet, or a forwarding mechanism via ockam cloud.
-    #[b(3)] pub fwd: Option<Cow<'a, str>>,
+    #[b(3)] pub peer: Option<Cow<'a, str>>,
     /// A human-friendly alias for this portal endpoint
     #[b(4)] pub alias: Option<Cow<'a, str>>,
 }
 
-impl<'a> CreateIolet<'a> {
+impl<'a> CreatePortal<'a> {
     pub fn new(
-        tt: IoletType,
+        tt: PortalType,
         addr: impl Into<Cow<'a, str>>,
-        fwd: impl Into<Option<Cow<'a, str>>>,
+        peer: impl Into<Option<Cow<'a, str>>>,
         alias: impl Into<Option<Cow<'a, str>>>,
     ) -> Self {
         Self {
@@ -50,30 +49,40 @@ impl<'a> CreateIolet<'a> {
             tag: TypeTag,
             tt,
             addr: addr.into(),
-            fwd: fwd.into(),
+            peer: peer.into(),
             alias: alias.into(),
         }
     }
 }
 
-/// Respons body when interacting with an inlet or outlet
+/// Response body when interacting with a portal endpoint
 #[derive(Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct IoletStatus<'a> {
+pub struct PortalStatus<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    tag: TypeTag<1581592>,
-    #[n(1)] pub tt: IoletType,
+    #[n(0)] tag: TypeTag<1581592>,
+    #[n(1)] pub tt: PortalType,
     #[b(2)] pub addr: Cow<'a, str>,
     #[b(3)] pub alias: Cow<'a, str>,
     /// An optional status payload
     #[b(4)] pub payload: Option<Cow<'a, str>>,
 }
 
-impl<'a> IoletStatus<'a> {
+impl<'a> PortalStatus<'a> {
+    pub fn bad_request(tt: PortalType, reason: &'static str) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            tt,
+            addr: "".into(),
+            alias: "".into(),
+            payload: Some(reason.into()),
+        }
+    }
+
     pub fn new(
-        tt: IoletType,
+        tt: PortalType,
         addr: impl Into<Cow<'a, str>>,
         alias: impl Into<Cow<'a, str>>,
         payload: impl Into<Option<Cow<'a, str>>>,
@@ -89,19 +98,19 @@ impl<'a> IoletStatus<'a> {
     }
 }
 
-/// Responsebody when returning a list of Iolets
+/// Responsebody when returning a list of Portals
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct IoletList<'a> {
+pub struct PortalList<'a> {
     #[cfg(feature = "tag")]
     #[n(0)]
     tag: TypeTag<8401504>,
-    #[b(1)] pub list: Vec<IoletStatus<'a>>
+    #[b(1)] pub list: Vec<PortalStatus<'a>>
 }
 
-impl<'a> IoletList<'a> {
-    pub fn new(list: Vec<IoletStatus<'a>>) -> Self {
+impl<'a> PortalList<'a> {
+    pub fn new(list: Vec<PortalStatus<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
