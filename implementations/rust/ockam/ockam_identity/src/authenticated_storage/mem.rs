@@ -1,7 +1,12 @@
 use super::AuthenticatedStorage;
 use ockam_core::async_trait;
-use ockam_core::compat::collections::BTreeMap;
-use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::compat::{
+    boxed::Box,
+    collections::BTreeMap,
+    string::{String, ToString},
+    sync::{Arc, RwLock},
+    vec::Vec,
+};
 use ockam_core::Result;
 
 type Attributes = BTreeMap<String, Vec<u8>>;

@@ -1,4 +1,5 @@
 use ockam_core::async_trait;
+use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::{AsyncTryClone, Result};
 
 /// Storage for Authenticated data

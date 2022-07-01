@@ -1,4 +1,5 @@
 use crate::{IdentityError, IdentityIdentifier};
+use ockam_core::compat::vec::Vec;
 use ockam_core::{Decodable, Encodable, LocalInfo, LocalMessage, Result};
 use serde::{Deserialize, Serialize};
 

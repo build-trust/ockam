@@ -1,5 +1,6 @@
 use crate::{IdentityIdentifier, IdentitySecureChannelLocalInfo};
 use ockam_core::access_control::AccessControl;
+use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{LocalMessage, Result};
 
