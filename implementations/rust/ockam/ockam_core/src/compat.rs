@@ -210,7 +210,41 @@ pub mod sync {
     use core::convert::Infallible;
 
     pub use alloc::sync::Arc;
-    pub use spin::RwLock;
+
+    /// Wrap `spin::RwLock` as it does not return LockResult<Guard> like `std::sync::Mutex`.
+    pub struct RwLock<T>(spin::RwLock<T>);
+    impl<T> RwLock<T> {
+        /// Creates a new spinlock wrapping the supplied data.
+        pub fn new(value: T) -> Self {
+            RwLock(spin::RwLock::new(value))
+        }
+        /// Locks this rwlock with shared read access, blocking the current thread
+        /// until it can be acquired.
+        pub fn read(&self) -> Result<spin::RwLockReadGuard<'_, T>, Infallible> {
+            Ok(self.0.read())
+        }
+        /// Lock this rwlock with exclusive write access, blocking the current
+        /// thread until it can be acquired.
+        pub fn write(&self) -> Result<spin::RwLockWriteGuard<'_, T>, Infallible> {
+            Ok(self.0.write())
+        }
+    }
+    impl<T: Default> Default for RwLock<T> {
+        fn default() -> Self {
+            Self::new(Default::default())
+        }
+    }
+    impl<T> core::ops::Deref for RwLock<T> {
+        type Target = spin::RwLock<T>;
+        fn deref(&self) -> &spin::RwLock<T> {
+            &self.0
+        }
+    }
+    impl<T> core::ops::DerefMut for RwLock<T> {
+        fn deref_mut(&mut self) -> &mut spin::RwLock<T> {
+            &mut self.0
+        }
+    }
 
     /// Wrap `spin::Mutex.lock()` as it does not return LockResult<Guard> like `std::sync::Mutex`.
     pub struct Mutex<T>(spin::Mutex<T>);

@@ -4,12 +4,12 @@ use crate::change::{IdentityChangeEvent, SignatureType};
 use crate::{
     EventIdentifier, IdentityError, IdentityIdentifier, IdentityStateConst, IdentityVault,
 };
+use core::cmp::Ordering;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{allow, deny, Encodable, Result};
 use ockam_vault::PublicKey;
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 #[cbor(index_only)]

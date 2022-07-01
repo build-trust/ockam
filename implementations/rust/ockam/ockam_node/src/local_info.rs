@@ -1,4 +1,5 @@
 use ockam_core::{
+    compat::vec::Vec,
     errcode::{Kind, Origin},
     Decodable, Encodable, Error, LocalInfo, LocalMessage, Result, TransportType,
 };

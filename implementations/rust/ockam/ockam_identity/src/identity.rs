@@ -5,10 +5,11 @@ use crate::{
     EventIdentifier, IdentityError, IdentityEventAttributes, IdentityIdentifier, IdentityVault,
     KeyAttributes, MetaKeyAttributes,
 };
-use ockam_core::compat::rand::{thread_rng, CryptoRng, RngCore};
-use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{
+    boxed::Box,
+    rand::{thread_rng, CryptoRng, RngCore},
     string::{String, ToString},
+    sync::Arc,
     vec::Vec,
 };
 use ockam_core::vault::{SecretPersistence, SecretType, Signature, CURVE25519_SECRET_LENGTH};
