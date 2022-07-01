@@ -103,6 +103,20 @@ impl CreateCommand {
             //     std::process::exit(-1);
             // }
 
+            // HACK: try to get the current node dir.  If it doesn't
+            // exist the user PROBABLY started a non-detached node.
+            // Thus we need to create the node dir so that subsequent
+            // calls to it don't fail
+            if cfg.get_node_dir(&command.node_name).is_err() {
+                if let Err(e) = cfg.create_node(&command.node_name, command.port, 0) {
+                    eprintln!(
+                        "failed to update node configuration for '{}': {:?}",
+                        command.node_name, e
+                    );
+                    std::process::exit(-1);
+                }
+            }
+
             embedded_node(setup, (command, cfg.clone()));
         }
     }
