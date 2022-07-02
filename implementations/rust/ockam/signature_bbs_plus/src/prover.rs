@@ -115,21 +115,21 @@ fn blind_signature_context_test() {
     // let secret_id = Message::random(&mut rng);
 
     // try with zero, just means a blinded signature but issuer knows all messages
-    let mut blind_messages = [];
+    let blind_messages = [];
 
     let res =
-        Prover::new_blind_signature_context(&mut blind_messages[..], &generators, nonce, &mut rng);
+        Prover::new_blind_signature_context(&blind_messages[..], &generators, nonce, &mut rng);
     assert!(res.is_ok());
 
     let (ctx, blinding) = res.unwrap();
 
-    let mut messages = [
+    let messages = [
         (0, Message::hash(b"firstname")),
         (1, Message::hash(b"lastname")),
         (2, Message::hash(b"age")),
         (3, Message::hash(b"allowed")),
     ];
-    let res = Issuer::blind_sign(&ctx, &sk, &generators, &mut messages[..], nonce);
+    let res = Issuer::blind_sign(&ctx, &sk, &generators, &messages[..], nonce);
     assert!(res.is_ok());
     let blind_signature = res.unwrap();
     let signature = blind_signature.to_unblinded(blinding);

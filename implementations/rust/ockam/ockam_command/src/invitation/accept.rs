@@ -36,10 +36,9 @@ async fn accept(mut ctx: Context, args: (MultiAddr, AcceptCommand)) -> anyhow::R
         .ok_or_else(|| anyhow!("failed to parse address: {}", cloud_addr))?;
     let route = route![r.to_string(), "invitations"];
     let mut api = MessagingClient::new(route, &ctx).await?;
-    let res = api
-        .accept_invitations(identifier.key_id(), &cmd.invitation)
+    api.accept_invitations(identifier.key_id(), &cmd.invitation)
         .await?;
-    println!("{res:?}");
+    println!("Invitation accepted");
     ctx.stop().await?;
     Ok(())
 }

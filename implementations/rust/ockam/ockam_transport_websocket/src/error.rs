@@ -76,13 +76,8 @@ mod test {
         .collect::<HashMap<_, _>>();
         for (_expected_code, ws_err) in ws_errors_map {
             let _err: Error = ws_err.into();
-            match ws_err {
-                WebSocketError::Transport(_) => {
-                    // assert_eq!(err.code(), TransportError::DOMAIN_CODE + expected_code);
-                }
-                _ => {
-                    // assert_eq!(err.code(), WebSocketError::DOMAIN_CODE + expected_code);
-                }
+            if let WebSocketError::Transport(_) = ws_err {
+                // assert_eq!(err.code(), TransportError::DOMAIN_CODE + expected_code);
             }
         }
     }

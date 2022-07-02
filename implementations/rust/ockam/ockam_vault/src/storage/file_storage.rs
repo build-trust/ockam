@@ -233,9 +233,9 @@ mod tests {
         let attributes3 =
             SecretAttributes::new(SecretType::X25519, SecretPersistence::Ephemeral, 0);
 
-        let key_id1 = vault.secret_generate(attributes10.clone()).await.unwrap();
-        let key_id2 = vault.secret_generate(attributes20.clone()).await.unwrap();
-        let key_id3 = vault.secret_generate(attributes3.clone()).await.unwrap();
+        let key_id1 = vault.secret_generate(attributes10).await.unwrap();
+        let key_id2 = vault.secret_generate(attributes20).await.unwrap();
+        let key_id3 = vault.secret_generate(attributes3).await.unwrap();
 
         let vault = Vault::new(Some(storage.clone()));
 

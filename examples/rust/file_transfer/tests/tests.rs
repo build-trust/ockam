@@ -1,6 +1,7 @@
 use example_test_helper::{CmdBuilder, Error};
 use file_diff::diff;
 use rand::Rng;
+use std::fmt::Write as _;
 use std::fs::{remove_file, OpenOptions};
 use std::io::{BufWriter, Write};
 use std::path;
@@ -67,7 +68,7 @@ fn do_file_transfer(file_size: u32, chunk_size: Option<u32>) -> Result<(), Error
         let mut writer = BufWriter::new(f);
         let mut rng = rand::thread_rng();
         for _ in 0..file_size {
-            writer.write(&[rng.gen::<u8>()])?;
+            writer.write_all(&[rng.gen::<u8>()])?;
         }
         writer.flush()?;
     }
@@ -75,7 +76,7 @@ fn do_file_transfer(file_size: u32, chunk_size: Option<u32>) -> Result<(), Error
     // Spawn sender
     let mut cmd_line = format!("cargo run --example sender {source_path} --address {fwd_address}");
     if let Some(val) = chunk_size {
-        cmd_line.push_str(&format!(" --chunk-size {val}"));
+        let _ = write!(cmd_line, " --chunk-size {val}");
     }
     let sender = CmdBuilder::new(&cmd_line).spawn()?;
     sender.match_stdout(r"(?i)End-to-end encrypted secure channel was established")?;

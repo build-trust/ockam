@@ -111,7 +111,7 @@ mod test {
     }
     impl Drop for AutoVar {
         fn drop(&mut self) {
-            force_var(&self.name, self.val.as_ref().map(|v| &**v));
+            force_var(&self.name, self.val.as_deref());
         }
     }
     // like env::set_var, but takes an option and unsets the var on `None`
