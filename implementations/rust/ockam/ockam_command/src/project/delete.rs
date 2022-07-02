@@ -43,10 +43,9 @@ async fn delete(mut ctx: Context, cmd: DeleteCommand) -> anyhow::Result<()> {
     let route = ockam_api::multiaddr_to_route(&cmd.address)
         .ok_or_else(|| anyhow!("failed to parse address"))?;
     let mut api = MessagingClient::new(route, &ctx).await?;
-    let res = api
-        .delete_project(&cmd.space_id, &cmd.project_id, identifier.key_id())
+    api.delete_project(&cmd.space_id, &cmd.project_id, identifier.key_id())
         .await?;
-    println!("{res:#?}");
+    println!("Project deleted");
 
     ctx.stop().await?;
     Ok(())

@@ -113,7 +113,7 @@ where
 
         #[cfg(feature = "std")]
         loop {
-            let _ = crate::tokio::select! {
+            crate::tokio::select! {
                 result = self.recv_message() => {
                     match result {
                         // Successful message handling -- keep running

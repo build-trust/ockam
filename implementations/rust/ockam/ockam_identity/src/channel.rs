@@ -83,7 +83,7 @@ mod test {
     use core::sync::atomic::{AtomicU8, Ordering};
     use core::time::Duration;
     use ockam_core::compat::sync::Arc;
-    use ockam_core::{route, Any, Result, Route, Routed, Worker};
+    use ockam_core::{route, Any, Result, Routed, Worker};
     use ockam_node::{Context, WorkerBuilder};
     use ockam_vault::Vault;
     use tokio::time::sleep;
@@ -282,12 +282,11 @@ mod test {
                 &bob_storage,
             )
             .await?;
-            let channel_route: Route;
-            if i > 0 {
-                channel_route = route![channels.pop().unwrap(), i.to_string()];
+            let channel_route = if i > 0 {
+                route![channels.pop().unwrap(), i.to_string()]
             } else {
-                channel_route = route![i.to_string()];
-            }
+                route![i.to_string()]
+            };
             let alice_channel = alice
                 .create_secure_channel(channel_route, alice_trust_policy.clone(), &alice_storage)
                 .await?;

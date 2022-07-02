@@ -132,7 +132,7 @@ mod tests {
         };
 
         // Send message to forwarder
-        let _sender = {
+        {
             let msg: String = rand::thread_rng()
                 .sample_iter(&rand::distributions::Alphanumeric)
                 .take(256)

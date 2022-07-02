@@ -32,8 +32,8 @@ fn ex_blinding() -> ExampleResult {
     let nonce = Nonce::random(&mut rng);
 
     let (context, blinding) =
-        Prover::new_blind_signature_context(&mut [][..], &generators, nonce, &mut rng)?;
-    let mut messages = [
+        Prover::new_blind_signature_context(&[][..], &generators, nonce, &mut rng)?;
+    let messages = [
         (0, Message::hash(b"firstname")),
         (1, Message::hash(b"lastname")),
         (2, Message::hash(b"age")),
@@ -41,7 +41,7 @@ fn ex_blinding() -> ExampleResult {
     ];
 
     let blind_signature =
-        Issuer::blind_sign(&context, &secret_key, &generators, &mut messages[..], nonce)?;
+        Issuer::blind_sign(&context, &secret_key, &generators, &messages[..], nonce)?;
 
     Ok(())
 }
@@ -54,8 +54,8 @@ fn ex_unblind_and_verify() -> ExampleResult {
     let nonce = Nonce::random(&mut rng);
 
     let (context, blinding) =
-        Prover::new_blind_signature_context(&mut [][..], &generators, nonce, &mut rng)?;
-    let mut messages = [
+        Prover::new_blind_signature_context(&[][..], &generators, nonce, &mut rng)?;
+    let messages = [
         (0, Message::hash(b"firstname")),
         (1, Message::hash(b"lastname")),
         (2, Message::hash(b"age")),
@@ -63,7 +63,7 @@ fn ex_unblind_and_verify() -> ExampleResult {
     ];
 
     let blind_signature =
-        Issuer::blind_sign(&context, &secret_key, &generators, &mut messages[..], nonce)?;
+        Issuer::blind_sign(&context, &secret_key, &generators, &messages[..], nonce)?;
 
     let signature = blind_signature.to_unblinded(blinding);
 

@@ -39,8 +39,8 @@ async fn delete(mut ctx: Context, cmd: DeleteCommand) -> anyhow::Result<()> {
     let route = ockam_api::multiaddr_to_route(&cmd.address)
         .ok_or_else(|| anyhow!("failed to parse address"))?;
     let mut api = MessagingClient::new(route, &ctx).await?;
-    let res = api.delete_space(&cmd.id, identifier.key_id()).await?;
-    println!("{res:#?}");
+    api.delete_space(&cmd.id, identifier.key_id()).await?;
+    println!("Space deleted");
 
     ctx.stop().await?;
     Ok(())

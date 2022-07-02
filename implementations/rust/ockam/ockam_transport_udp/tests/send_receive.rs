@@ -11,13 +11,15 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
     let bind_address = format!("127.0.0.1:{}", rand_port);
     let bind_address = bind_address.as_str();
 
-    let _listener = {
+    // Listener
+    {
         let transport = UdpTransport::create(ctx).await?;
         transport.listen(bind_address).await?;
         ctx.start_worker("echoer", Echoer).await?;
     };
 
-    let _sender = {
+    // Sender
+    {
         let mut ctx = ctx.new_detached(Address::random_local()).await?;
         let msg: String = rand::thread_rng()
             .sample_iter(&rand::distributions::Alphanumeric)

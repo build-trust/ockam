@@ -150,7 +150,7 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
 #[ockam_macros::test]
 async fn add_key(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
-    let e = Identity::create(&ctx, &vault).await?;
+    let e = Identity::create(ctx, &vault).await?;
 
     let key = vault
         .secret_generate(SecretAttributes::new(

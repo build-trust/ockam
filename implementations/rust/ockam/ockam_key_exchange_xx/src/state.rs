@@ -461,6 +461,7 @@ mod tests {
         .unwrap();
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn mock_handshake<V: XXVault>(
         vault: &mut V,
         init_static: &'static str,
