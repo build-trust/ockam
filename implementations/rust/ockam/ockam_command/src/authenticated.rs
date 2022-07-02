@@ -17,11 +17,10 @@ pub enum AuthenticatedSubcommand {
     /// Set authenticated attributes.
     Set {
         /// Address to connect to.
-        #[clap(long)]
         addr: MultiAddr,
 
         /// Subject identifier
-        #[clap(long, validator(non_empty))]
+        #[clap(long, forbid_empty_values = true)]
         id: String,
 
         /// Attributes (use '=' to separate key from value).
@@ -31,29 +30,27 @@ pub enum AuthenticatedSubcommand {
     /// Get attribute value.
     Get {
         /// Address to connect to.
-        #[clap(long)]
         addr: MultiAddr,
 
         /// Subject identifier
-        #[clap(long, validator(non_empty))]
+        #[clap(long, forbid_empty_values = true)]
         id: String,
 
         /// Attribute key.
-        #[clap(validator(non_empty))]
+        #[clap(forbid_empty_values = true)]
         key: String,
     },
     /// Delete attribute
     Del {
         /// Address to connect to.
-        #[clap(long)]
         addr: MultiAddr,
 
         /// Subject identifier
-        #[clap(long, validator(non_empty))]
+        #[clap(long, forbid_empty_values = true)]
         id: String,
 
         /// Attribute key.
-        #[clap(validator(non_empty))]
+        #[clap(forbid_empty_values = true)]
         key: String,
     },
 }
@@ -98,11 +95,4 @@ async fn client(addr: &MultiAddr, ctx: &Context) -> Result<auth::Client> {
         .ok_or_else(|| anyhow!("failed to parse address: {addr}"))?;
     let cl = auth::Client::new(to, ctx).await?;
     Ok(cl)
-}
-
-fn non_empty(arg: &str) -> Result<(), String> {
-    if arg.is_empty() {
-        return Err("value must not be empty".to_string());
-    }
-    Ok(())
 }
