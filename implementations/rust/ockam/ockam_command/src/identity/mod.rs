@@ -2,7 +2,7 @@ mod create;
 
 pub(crate) use create::CreateCommand;
 
-use crate::{util::OckamConfig, HELP_TEMPLATE};
+use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
@@ -19,9 +19,9 @@ pub enum IdentitySubcommand {
 }
 
 impl IdentityCommand {
-    pub fn run(cfg: &OckamConfig, command: IdentityCommand) {
+    pub fn run(opts: CommandGlobalOpts, command: IdentityCommand) {
         match command.subcommand {
-            IdentitySubcommand::Create(command) => CreateCommand::run(cfg, command),
+            IdentitySubcommand::Create(command) => CreateCommand::run(opts, command),
         }
         .unwrap()
     }

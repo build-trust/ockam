@@ -6,7 +6,7 @@ use get::GetCommand;
 use list::ListCommand;
 use set::SetCommand;
 
-use crate::{util::OckamConfig, HELP_TEMPLATE};
+use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
@@ -31,11 +31,11 @@ pub enum ConfigSubcommand {
 }
 
 impl ConfigCommand {
-    pub fn run(cfg: &OckamConfig, command: ConfigCommand) {
+    pub fn run(opts: CommandGlobalOpts, command: ConfigCommand) {
         match command.subcommand {
-            ConfigSubcommand::Set(command) => SetCommand::run(cfg, command),
-            ConfigSubcommand::Get(command) => GetCommand::run(cfg, command),
-            ConfigSubcommand::List(command) => ListCommand::run(cfg, command),
+            ConfigSubcommand::Set(command) => SetCommand::run(opts, command),
+            ConfigSubcommand::Get(command) => GetCommand::run(opts, command),
+            ConfigSubcommand::List(command) => ListCommand::run(opts, command),
         }
     }
 }

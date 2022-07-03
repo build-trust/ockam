@@ -1,6 +1,7 @@
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use clap::Args;
 use minicbor::Decoder;
+use serde_json::json;
 use tracing::debug;
 
 use ockam_api::nodes::types::ForwarderInfo;
@@ -9,7 +10,7 @@ use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 
 use crate::util::{api, connect_to, stop_node};
-use crate::OckamConfig;
+use crate::{CommandGlobalOpts, MessageFormat};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -27,7 +28,8 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(cfg: &OckamConfig, cmd: CreateCommand) {
+    pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
+        let cfg = &opts.config;
         let port = match cfg.select_node(&cmd.node_name) {
             Some(cfg) => cfg.port,
             None => {
@@ -35,7 +37,7 @@ impl CreateCommand {
                 std::process::exit(-1);
             }
         };
-        connect_to(port, cmd, create);
+        connect_to(port, (cmd, opts), create);
     }
 
     pub fn address(&self) -> &MultiAddr {
@@ -49,11 +51,13 @@ impl CreateCommand {
 
 async fn create(
     ctx: ockam::Context,
-    cmd: CreateCommand,
+    args: (CreateCommand, CommandGlobalOpts),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
+    let (cmd, opts) = args;
     let route: Route = base_route.modify().append("_internal.nodeman").into();
     debug!(?cmd, %route, "Sending request to create forwarder");
+
     let response: Vec<u8> = ctx
         .send_and_receive(route, api::create_forwarder(&cmd)?)
         .await
@@ -61,22 +65,36 @@ async fn create(
     let mut dec = Decoder::new(&response);
     let header = dec.decode::<Response>()?;
     debug!(?header, "Received CreateForwarder response");
-    match header.status() {
+
+    let res = match header.status() {
         Some(Status::Ok) => {
             let body = dec.decode::<ForwarderInfo>()?;
-            println!(
-                "Forwarder created! You can send messages to it via this address:\n{}",
-                body.remote_address()
-            );
+            let output = match opts.global_args.message_format {
+                MessageFormat::Plain => format!(
+                    "Forwarder created! You can send messages to it via this address:\n{}",
+                    body.remote_address()
+                ),
+                MessageFormat::Json => json!({
+                    "remote_address": body.remote_address(),
+                })
+                .to_string(),
+            };
+            Ok(output)
         }
         Some(Status::InternalServerError) => {
-            let err = dec.decode::<String>()?;
-            eprintln!("An error occurred while creating the forwarder: {err}")
+            let err = dec
+                .decode::<String>()
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            Err(anyhow!(
+                "An error occurred while creating the forwarder: {err}"
+            ))
         }
-        _ => {
-            eprintln!("Unexpected response received from node")
-        }
-    }
+        _ => Err(anyhow!("Unexpected response received from node")),
+    };
+    match res {
+        Ok(o) => println!("{o}"),
+        Err(err) => eprintln!("{err}"),
+    };
 
     stop_node(ctx).await
 }

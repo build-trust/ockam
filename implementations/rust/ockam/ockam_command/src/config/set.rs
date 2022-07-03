@@ -1,4 +1,4 @@
-use crate::util::OckamConfig;
+use crate::CommandGlobalOpts;
 use clap::Args;
 
 #[derive(Clone, Debug, Args)]
@@ -10,7 +10,8 @@ pub struct SetCommand {
 }
 
 impl SetCommand {
-    pub fn run(cfg: &OckamConfig, command: SetCommand) {
+    pub fn run(opts: CommandGlobalOpts, command: SetCommand) {
+        let cfg = &opts.config;
         match command.value.as_str() {
             "api-node" => cfg.set_api_node(&command.payload),
             //"log-path" => cfg.set_log_path(&command.payload),

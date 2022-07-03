@@ -2,7 +2,7 @@ use clap::{Args, Subcommand};
 
 pub(crate) use create::CreateCommand;
 
-use crate::{OckamConfig, HELP_TEMPLATE};
+use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 
 mod create;
 
@@ -20,9 +20,9 @@ pub enum ForwarderSubCommand {
 }
 
 impl ForwarderCommand {
-    pub fn run(cfg: &OckamConfig, cmd: ForwarderCommand) {
-        match cmd.subcommand {
-            ForwarderSubCommand::Create(cmd) => CreateCommand::run(cfg, cmd),
+    pub fn run(opts: CommandGlobalOpts, command: ForwarderCommand) {
+        match command.subcommand {
+            ForwarderSubCommand::Create(command) => CreateCommand::run(opts, command),
         }
     }
 }

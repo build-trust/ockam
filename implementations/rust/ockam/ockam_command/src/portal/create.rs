@@ -1,4 +1,5 @@
-use crate::util::{api, connect_to, stop_node, OckamConfig};
+use crate::util::{api, connect_to, stop_node};
+use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 use ockam::{Context, Route};
 use ockam_api::{
@@ -40,7 +41,8 @@ pub enum CreateTypeCommand {
 }
 
 impl CreateCommand {
-    pub fn run(cfg: &OckamConfig, command: CreateCommand) {
+    pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
+        let cfg = &opts.config;
         let port = match cfg.select_node(&command.api_node) {
             Some(cfg) => cfg.port,
             None => {
@@ -48,7 +50,6 @@ impl CreateCommand {
                 std::process::exit(-1);
             }
         };
-
         connect_to(port, command, create_portal)
     }
 }

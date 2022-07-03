@@ -1,7 +1,8 @@
 pub(crate) mod create;
 
-use crate::secure_channel::create::CreateCommand;
-use crate::{util::OckamConfig, HELP_TEMPLATE};
+pub(crate) use create::CreateCommand;
+
+use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
@@ -18,9 +19,9 @@ pub enum SecureChannelSubcommand {
 }
 
 impl SecureChannelCommand {
-    pub fn run(cfg: &OckamConfig, command: SecureChannelCommand) {
+    pub fn run(opts: CommandGlobalOpts, command: SecureChannelCommand) {
         match command.subcommand {
-            SecureChannelSubcommand::Create(command) => CreateCommand::run(cfg, command),
+            SecureChannelSubcommand::Create(command) => CreateCommand::run(opts, command),
         }
         .unwrap()
     }

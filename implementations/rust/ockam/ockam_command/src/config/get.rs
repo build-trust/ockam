@@ -1,4 +1,4 @@
-use crate::util::OckamConfig;
+use crate::CommandGlobalOpts;
 use clap::Args;
 
 #[derive(Clone, Debug, Args)]
@@ -8,7 +8,8 @@ pub struct GetCommand {
 }
 
 impl GetCommand {
-    pub fn run(cfg: &OckamConfig, command: GetCommand) {
+    pub fn run(opts: CommandGlobalOpts, command: GetCommand) {
+        let cfg = &opts.config;
         let msg = match command.value.as_deref() {
             Some("api-node") => cfg.get_api_node(),
             // FIXME: needs to take an additional parameter

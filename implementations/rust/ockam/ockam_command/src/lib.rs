@@ -40,7 +40,7 @@ use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_
 use crate::enroll::GenerateEnrollmentTokenCommand;
 use crate::identity::IdentityCommand;
 use crate::util::OckamConfig;
-use clap::{ColorChoice, Parser, Subcommand};
+use clap::{ArgEnum, Args, ColorChoice, Parser, Subcommand};
 use util::setup_logging;
 
 const HELP_TEMPLATE: &str = "\
@@ -62,7 +62,7 @@ FEEDBACK
 ";
 
 /// Work seamlessly with Ockam from the command line.
-#[derive(Clone, Debug, Parser)]
+#[derive(Debug, Parser)]
 #[clap(
     name = "ockam",
     version,
@@ -74,6 +74,12 @@ pub struct OckamCommand {
     #[clap(subcommand)]
     subcommand: OckamSubcommand,
 
+    #[clap(flatten)]
+    global_args: GlobalArgs,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct GlobalArgs {
     /// Do not print trace messages.
     #[clap(global = true, long, short, conflicts_with("verbose"))]
     quiet: bool,
@@ -88,13 +94,37 @@ pub struct OckamCommand {
     )]
     verbose: u8,
 
+    #[clap(global = true, long, short, value_enum, default_value = "plain")]
+    message_format: MessageFormat,
+
     // if test_argument_parser is true, command arguments are checked
     // but the command is not executed.
     #[clap(global = true, long, hide = true)]
     test_argument_parser: bool,
 }
 
-#[derive(Clone, Debug, Subcommand)]
+#[derive(Debug, Clone, ArgEnum)]
+pub enum MessageFormat {
+    Plain,
+    Json,
+}
+
+#[derive(Clone)]
+pub struct CommandGlobalOpts {
+    pub global_args: GlobalArgs,
+    pub config: OckamConfig,
+}
+
+impl CommandGlobalOpts {
+    fn new(global_args: GlobalArgs, config: OckamConfig) -> Self {
+        Self {
+            global_args,
+            config,
+        }
+    }
+}
+
+#[derive(Debug, Subcommand)]
 pub enum OckamSubcommand {
     /// Manage authenticated attributes.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
@@ -191,21 +221,23 @@ pub enum OckamSubcommand {
 
 pub fn run() {
     let ockam_command: OckamCommand = OckamCommand::parse();
+    let cfg = OckamConfig::load();
 
-    let verbose = ockam_command.verbose;
-    if !ockam_command.quiet {
-        setup_logging(verbose);
+    if !ockam_command.global_args.quiet {
+        setup_logging(ockam_command.global_args.verbose);
+        tracing::debug!("Parsed {:?}", &ockam_command);
     }
-    tracing::debug!("Parsed {:?}", ockam_command);
+
+    let opts = CommandGlobalOpts::new(ockam_command.global_args, cfg);
 
     // If test_argument_parser is true, command arguments are checked
     // but the command is not executed. This is useful to test arguments
     // without having to execute their logic.
-    if ockam_command.test_argument_parser {
+    if opts.global_args.test_argument_parser {
         return;
     }
 
-    let cfg = OckamConfig::load();
+    let verbose = opts.global_args.verbose;
 
     match ockam_command.subcommand {
         OckamSubcommand::Authenticated(command) => AuthenticatedCommand::run(command),
@@ -214,16 +246,16 @@ pub fn run() {
         OckamSubcommand::GenerateEnrollmentToken(command) => {
             GenerateEnrollmentTokenCommand::run(command)
         }
-        OckamSubcommand::Forwarder(command) => ForwarderCommand::run(&cfg, command),
+        OckamSubcommand::Forwarder(command) => ForwarderCommand::run(opts, command),
         OckamSubcommand::Message(command) => MessageCommand::run(command),
-        OckamSubcommand::Node(command) => NodeCommand::run(&cfg, command),
+        OckamSubcommand::Node(command) => NodeCommand::run(opts, command),
         OckamSubcommand::Project(command) => ProjectCommand::run(command),
         OckamSubcommand::Space(command) => SpaceCommand::run(command),
-        OckamSubcommand::Transport(command) => TransportCommand::run(&cfg, command),
-        OckamSubcommand::Portal(command) => PortalCommand::run(&cfg, command),
-        OckamSubcommand::Config(command) => ConfigCommand::run(&cfg, command),
-        OckamSubcommand::Identity(command) => IdentityCommand::run(&cfg, command),
-        OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(&cfg, command),
+        OckamSubcommand::Transport(command) => TransportCommand::run(opts, command),
+        OckamSubcommand::Portal(command) => PortalCommand::run(opts, command),
+        OckamSubcommand::Config(command) => ConfigCommand::run(opts, command),
+        OckamSubcommand::Identity(command) => IdentityCommand::run(opts, command),
+        OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(opts, command),
 
         // OLD
         OckamSubcommand::CreateOutlet(arg) => {

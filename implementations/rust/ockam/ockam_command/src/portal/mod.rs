@@ -3,7 +3,7 @@ pub(crate) use create::{CreateCommand, CreateTypeCommand};
 
 // TODO: add delete, list, show subcommands
 
-use crate::{util::OckamConfig, HELP_TEMPLATE};
+use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
@@ -20,9 +20,9 @@ pub enum PortalSubCommand {
 }
 
 impl PortalCommand {
-    pub fn run(cfg: &OckamConfig, cmd: PortalCommand) {
+    pub fn run(opts: CommandGlobalOpts, cmd: PortalCommand) {
         match cmd.subcommand {
-            PortalSubCommand::Create(cmd) => CreateCommand::run(cfg, cmd),
+            PortalSubCommand::Create(cmd) => CreateCommand::run(opts, cmd),
         }
     }
 }

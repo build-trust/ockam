@@ -6,7 +6,7 @@ pub(crate) use create::{CreateCommand, CreateTypeCommand};
 pub(crate) use delete::DeleteCommand;
 use list::ListCommand;
 
-use crate::{util::OckamConfig, HELP_TEMPLATE};
+use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
@@ -31,11 +31,11 @@ pub enum TransportSubCommand {
 }
 
 impl TransportCommand {
-    pub fn run(cfg: &OckamConfig, command: TransportCommand) {
+    pub fn run(opts: CommandGlobalOpts, command: TransportCommand) {
         match command.subcommand {
-            TransportSubCommand::Create(command) => CreateCommand::run(cfg, command),
-            TransportSubCommand::Delete(command) => DeleteCommand::run(cfg, command),
-            TransportSubCommand::List(command) => ListCommand::run(cfg, command),
+            TransportSubCommand::Create(command) => CreateCommand::run(opts, command),
+            TransportSubCommand::Delete(command) => DeleteCommand::run(opts, command),
+            TransportSubCommand::List(command) => ListCommand::run(opts, command),
         }
     }
 }

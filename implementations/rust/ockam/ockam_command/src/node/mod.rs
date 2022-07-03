@@ -10,7 +10,7 @@ use list::ListCommand;
 use purge::PurgeCommand;
 use show::ShowCommand;
 
-use crate::{util::OckamConfig, HELP_TEMPLATE};
+use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
@@ -43,13 +43,13 @@ pub enum NodeSubcommand {
 }
 
 impl NodeCommand {
-    pub fn run(cfg: &OckamConfig, command: NodeCommand) {
+    pub fn run(opts: CommandGlobalOpts, command: NodeCommand) {
         match command.subcommand {
-            NodeSubcommand::Create(command) => CreateCommand::run(cfg, command),
-            NodeSubcommand::Delete(command) => DeleteCommand::run(cfg, command),
-            NodeSubcommand::List(command) => ListCommand::run(cfg, command),
-            NodeSubcommand::Show(command) => ShowCommand::run(cfg, command),
-            NodeSubcommand::Purge(command) => PurgeCommand::run(cfg, command),
+            NodeSubcommand::Create(command) => CreateCommand::run(opts, command),
+            NodeSubcommand::Delete(command) => DeleteCommand::run(opts, command),
+            NodeSubcommand::List(command) => ListCommand::run(opts, command),
+            NodeSubcommand::Show(command) => ShowCommand::run(opts, command),
+            NodeSubcommand::Purge(command) => PurgeCommand::run(opts, command),
         }
     }
 }

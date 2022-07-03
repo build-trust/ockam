@@ -8,7 +8,8 @@ use clap::Args;
 use std::path::PathBuf;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-pub fn socket_path(cfg: &OckamConfig, node_name: &str) -> PathBuf {
+pub fn socket_path(opts: CommandGlobalOpts, node_name: &str) -> PathBuf {
+    let cfg = &opts.config;
     let node_dir = cfg
         .get_node_dir(node_name)
         .expect("this shouldn't happen, is there a race condition? (there always is)");
@@ -21,7 +22,8 @@ pub struct WatchdogCommand {
 }
 
 impl WatchdogCommand {
-    pub fn run(cfg: &OckamConfig, cmd: WatchdogCommand) {
+    pub fn run(opts: CommandGlobalOpts, cmd: WatchdogCommand) {
+        let cfg = &opts.config;
         let socket_path = socket_path(cfg, &cmd.node_name);
 
         Watchdog { socket_path }.run()
