@@ -4,6 +4,7 @@ use std::{env::current_exe, fs::OpenOptions, process::Command, time::Duration};
 use crate::{
     node::show::query_status,
     util::{connect_to, embedded_node, OckamConfig, DEFAULT_TCP_PORT},
+    CommandGlobalOpts,
 };
 use ockam::{Context, TcpTransport};
 use ockam_api::{
@@ -29,7 +30,8 @@ pub struct CreateCommand {
     no_watchdog: bool,
 }
 impl CreateCommand {
-    pub fn run(cfg: &OckamConfig, command: CreateCommand) {
+    pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
+        let cfg = &opts.config;
         if command.foreground {
             // HACK: try to get the current node dir.  If it doesn't
             // exist the user PROBABLY started a non-detached node.

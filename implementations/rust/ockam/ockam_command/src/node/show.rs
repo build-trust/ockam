@@ -1,4 +1,5 @@
-use crate::util::{self, api, connect_to, OckamConfig};
+use crate::util::{self, api, connect_to};
+use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::{Context, Route};
 use ockam_api::nodes::{types::NodeStatus, NODEMAN_ADDR};
@@ -10,7 +11,8 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(cfg: &OckamConfig, command: ShowCommand) {
+    pub fn run(opts: CommandGlobalOpts, command: ShowCommand) {
+        let cfg = &opts.config;
         let port = match cfg.get_inner().nodes.get(&command.node_name) {
             Some(cfg) => cfg.port,
             None => {
@@ -18,7 +20,6 @@ impl ShowCommand {
                 std::process::exit(-1);
             }
         };
-
         connect_to(port, (), query_status);
     }
 }

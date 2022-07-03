@@ -1,6 +1,6 @@
 //! A simple command to purge existing configuration
 
-use crate::util::OckamConfig;
+use crate::CommandGlobalOpts;
 use clap::Args;
 
 #[derive(Clone, Debug, Args)]
@@ -11,7 +11,8 @@ pub struct PurgeCommand {
 }
 
 impl PurgeCommand {
-    pub fn run(cfg: &OckamConfig, command: PurgeCommand) {
+    pub fn run(opts: CommandGlobalOpts, command: PurgeCommand) {
+        let cfg = &opts.config;
         let nodes: Vec<_> = cfg
             .get_inner()
             .nodes
@@ -20,7 +21,7 @@ impl PurgeCommand {
             .collect();
 
         for node_name in nodes {
-            crate::node::delete::delete_node(cfg, &node_name, command.sigkill);
+            crate::node::delete::delete_node(&opts, &node_name, command.sigkill);
         }
     }
 }

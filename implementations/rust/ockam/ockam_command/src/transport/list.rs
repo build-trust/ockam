@@ -1,4 +1,5 @@
-use crate::util::{api, connect_to, stop_node, OckamConfig};
+use crate::util::{api, connect_to, stop_node};
+use crate::CommandGlobalOpts;
 use clap::Args;
 use cli_table::{print_stdout, Cell, Style, Table};
 use ockam::{Context, Route};
@@ -15,7 +16,8 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(cfg: &OckamConfig, command: ListCommand) {
+    pub fn run(opts: CommandGlobalOpts, command: ListCommand) {
+        let cfg = &opts.config;
         let port = match cfg.select_node(&command.api_node) {
             Some(cfg) => cfg.port,
             None => {
@@ -23,7 +25,6 @@ impl ListCommand {
                 std::process::exit(-1);
             }
         };
-
         connect_to(port, (), query_transports);
     }
 }

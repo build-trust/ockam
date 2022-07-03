@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use crate::util::{self, api, connect_to, OckamConfig};
+use crate::util::{self, api, connect_to};
+use crate::{CommandGlobalOpts, OckamConfig};
 use clap::Args;
 use cli_table::{format::Justify, print_stdout, Cell, Style, Table};
 use crossbeam_channel::{bounded, Sender};
@@ -11,7 +12,8 @@ use ockam_api::nodes::NODEMAN_ADDR;
 pub struct ListCommand {}
 
 impl ListCommand {
-    pub fn run(cfg: &OckamConfig, _: ListCommand) {
+    pub fn run(opts: CommandGlobalOpts, _: ListCommand) {
+        let cfg = &opts.config;
         let node_names = {
             let inner = cfg.get_inner();
 

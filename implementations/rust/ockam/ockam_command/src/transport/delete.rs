@@ -1,4 +1,5 @@
-use crate::util::{api, connect_to, stop_node, OckamConfig};
+use crate::util::{api, connect_to, stop_node};
+use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::{Context, Route};
 use ockam_api::{nodes::NODEMAN_ADDR, Response, Status};
@@ -18,7 +19,8 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(cfg: &OckamConfig, command: DeleteCommand) {
+    pub fn run(opts: CommandGlobalOpts, command: DeleteCommand) {
+        let cfg = &opts.config;
         let port = match cfg.select_node(&command.api_node) {
             Some(cfg) => cfg.port,
             None => {
@@ -26,7 +28,6 @@ impl DeleteCommand {
                 std::process::exit(-1);
             }
         };
-
         connect_to(port, command, delete_transport);
     }
 }

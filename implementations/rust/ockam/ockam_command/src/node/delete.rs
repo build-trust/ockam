@@ -1,4 +1,4 @@
-use crate::util::OckamConfig;
+use crate::CommandGlobalOpts;
 use clap::Args;
 use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
@@ -13,12 +13,13 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(cfg: &OckamConfig, command: DeleteCommand) {
-        delete_node(cfg, &command.node_name, command.sigkill);
+    pub fn run(opts: CommandGlobalOpts, command: DeleteCommand) {
+        delete_node(&opts, &command.node_name, command.sigkill);
     }
 }
 
-pub fn delete_node(cfg: &OckamConfig, node_name: &String, sigkill: bool) {
+pub fn delete_node(opts: &CommandGlobalOpts, node_name: &String, sigkill: bool) {
+    let cfg = &opts.config;
     let pid = match cfg.get_node_pid(node_name) {
         Ok(pid) => pid,
         Err(e) => {
