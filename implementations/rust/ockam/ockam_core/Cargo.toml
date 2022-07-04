@@ -50,7 +50,6 @@ alloc = [
     "serde/alloc",
     "serde_bare/alloc",
 ]
-bls = []
 
 # Error traces cover whether not our errors capture backtraces and/or spantraces
 # by default.
