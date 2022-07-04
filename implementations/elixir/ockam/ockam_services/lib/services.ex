@@ -40,6 +40,6 @@ defmodule Ockam.Services do
   end
 
   def start_service(name, options \\ []) do
-    Ockam.Services.Provider.start_service({name, options}, __MODULE__)
+    Ockam.Services.Provider.start_service({name, options}, Ockam.Services.Provider)
   end
 end

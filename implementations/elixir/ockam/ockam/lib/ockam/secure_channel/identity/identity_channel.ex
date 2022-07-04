@@ -191,7 +191,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
   end
 
   @impl true
-  def handle_initiator(_handshake_options, message, state) do
+  def handle_initiator(handshake_options, message, state) do
     %{identity: identity, auth_hash: auth_hash, encryption_channel: enc_channel} = state
 
     payload = Message.payload(message)
@@ -209,11 +209,14 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
           identity: identity
         })
 
+      additional_metadata = Keyword.get(handshake_options, :additional_metadata, %{})
+
       data_options = [
         peer_address: peer_address,
         encryption_channel: enc_channel,
         identity: identity,
-        contact_id: contact_id
+        contact_id: contact_id,
+        additional_metadata: additional_metadata
       ]
 
       {:ready, identity_handshake(IdentityChannelMessage.Response, state), data_options, state}
@@ -239,7 +242,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
 
     identity =
       case identity do
-        :ephemeral ->
+        :dynamic ->
           identity_module = Keyword.fetch!(handshake_options, :identity_module)
           {:ok, identity, _id} = Identity.create(identity_module)
           identity
@@ -284,7 +287,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
     end
   end
 
-  def handle_responder_handshake(_handshake_options, message, state) do
+  def handle_responder_handshake(handshake_options, message, state) do
     %{identity: identity, auth_hash: auth_hash} = state
     payload = Message.payload(message)
 
@@ -296,11 +299,14 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
          {:ok, peer_address} <- get_peer_address(message) do
       enc_channel = Map.get(state, :encryption_channel)
 
+      additional_metadata = Keyword.get(handshake_options, :additional_metadata, %{})
+
       data_options = [
         peer_address: peer_address,
         encryption_channel: enc_channel,
         identity: identity,
-        contact_id: contact_id
+        contact_id: contact_id,
+        additional_metadata: additional_metadata
       ]
 
       state =
@@ -406,6 +412,7 @@ defmodule Ockam.Identity.SecureChannel.Data do
     encryption_channel = Keyword.fetch!(options, :encryption_channel)
     identity = Keyword.fetch!(options, :identity)
     contact_id = Keyword.fetch!(options, :contact_id)
+    additional_metadata = Keyword.get(options, :additional_metadata, %{})
 
     inner_address = Map.fetch!(state, :inner_address)
 
@@ -417,6 +424,7 @@ defmodule Ockam.Identity.SecureChannel.Data do
          encryption_channel: encryption_channel,
          identity: identity,
          contact_id: contact_id,
+         additional_metadata: additional_metadata,
          authorization: %{
            inner_address => [
              :from_secure_channel,
@@ -428,7 +436,11 @@ defmodule Ockam.Identity.SecureChannel.Data do
   end
 
   @impl true
-  def handle_inner_message(message, %{address: address, contact_id: contact_id} = state) do
+  def handle_inner_message(
+        message,
+        %{address: address, contact_id: contact_id, additional_metadata: additional_metadata} =
+          state
+      ) do
     with [_me | onward_route] <- Message.onward_route(message),
          [_channel | return_route] <- Message.return_route(message) do
       payload = Message.payload(message)
@@ -436,17 +448,21 @@ defmodule Ockam.Identity.SecureChannel.Data do
       ## Assertion. This should be checked by authorization
       %{channel: :secure_channel, source: :channel} = Message.local_metadata(message)
 
+      metadata =
+        Map.merge(additional_metadata, %{
+          channel: :identity_secure_channel,
+          source: :channel,
+          ## TODO: rename that to identity_id?
+          identity: contact_id
+        })
+
       forwarded_message =
         %Message{
           payload: payload,
           onward_route: onward_route,
           return_route: [address | return_route]
         }
-        |> Message.set_local_metadata(%{
-          channel: :identity_secure_channel,
-          source: :channel,
-          identity: contact_id
-        })
+        |> Message.set_local_metadata(metadata)
 
       Router.route(forwarded_message)
       {:ok, state}

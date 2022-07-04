@@ -82,15 +82,20 @@ defmodule Ockam.Services.Provider do
         {:error, {:unknown_service, service_name}}
 
       provider_mod ->
-        case provider_mod.child_spec(service_name, service_args) do
-          multiple_specs when is_list(multiple_specs) ->
-            {:ok, multiple_specs}
+        try do
+          case provider_mod.child_spec(service_name, service_args) do
+            multiple_specs when is_list(multiple_specs) ->
+              {:ok, multiple_specs}
 
-          %{id: _id} = single_spec_map ->
-            {:ok, [single_spec_map]}
+            %{id: _id} = single_spec_map ->
+              {:ok, [single_spec_map]}
 
-          single_spec ->
-            {:ok, [Supervisor.child_spec(single_spec, id: service_name)]}
+            single_spec ->
+              {:ok, [Supervisor.child_spec(single_spec, id: service_name)]}
+          end
+        rescue
+          err ->
+            {:error, err}
         end
     end
   end
