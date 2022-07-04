@@ -6,13 +6,15 @@ ARG ERLANG_VERSION=24.1.7-1~debian~buster
 ARG ELIXIR_VERSION=1.12.2-1~debian~buster
 ARG NODEJS_VERSION=16.13.1
 ARG COSIGN_VERSION=1.9.0
+ARG MOLD_VERSION=1.3.1
 
 ARG ELIXIR_SHA256=5e8251c5d2557373ecfab986fa481844a2f659597abbfb623f45ad3a1974bb1f
 
 ENV RUSTUP_HOME=/opt/rust/rustup \
     CARGO_HOME=/usr/rust/cargo \
     JAVA_HOME=/opt/java/openjdk \
-    NODEJS_HOME=/opt/nodejs
+    NODEJS_HOME=/opt/nodejs \
+    MOLD_HOME=/opt/mold
 
 RUN set -xe; \
     case $(dpkg --print-architecture) in \
@@ -24,6 +26,7 @@ RUN set -xe; \
         ERLANG_SHA256="89c98e177f70593a9f64f3c9962393a51e6730d16071820600d19d4aaa732412" && ERLANG_OS="amd64"; \
         JDK_SHA256="81f5bed21077f9fbb04909b50391620c78b9a3c376593c0992934719c0de6b73" && JDK_OS="x64"; \
         JQ_SHA256="af986793a515d500ab2d35f8d2aecd656e764504b789b66d7e1a0b727a124c44" && JQ_OS="linux64"; \
+        MOLD_SHA256="3893f89e5e0dcddcecc9f2ee17f14ad94fbf8b324eca45974b965353a50dac37" && MOLD_OS="x86_64-linux"; \
         OS="x86_64-unknown-linux-gnu"; \
       ;; \
       "arm64") \
@@ -35,18 +38,8 @@ RUN set -xe; \
         ERLANG_SHA256="80e95df44cba03f9abefa54ab1452d97b9969a6d164792e827e59a1116377bbd" && ERLANG_OS="arm64"; \
         JDK_SHA256="2e3c19c1707205c6b90cc04b416e8d83078ed98417d5a69dce3cf7dc0d7cfbca" && JDK_OS="aarch64"; \
         JQ_SHA256="af986793a515d500ab2d35f8d2aecd656e764504b789b66d7e1a0b727a124c44" && JQ_OS="linux64"; \
+        MOLD_SHA256="24ea75ada4337c5f509ad2eecf1a82d6047ab58c415a78374dfa7e6d69b06737" && MOLD_OS="aarch64-linux"; \
         OS="aarch64-unknown-linux-gnu"; \
-      ;; \
-      "armhf") \
-        export CARGO_NET_GIT_FETCH_WITH_CLI=true; \
-        echo "Using ARM"; \
-        COSIGN_SHA256="53410c1f40aded9511b5512044790b454b4cdf68233beee49082868b75e78c5b" && COSIGN_OS="arm"; \
-        RUSTUP_INIT_SHA256="67777ac3bc17277102f2ed73fd5f14c51f4ca5963adadf7f174adf4ebc38747b"; \
-        NODEJS_SHA256="0816ba8750651a49a5b1bf4fa82d0e080bddc00c01c4316948b82a146b2ec18a" && NODEJS_OS="linux-armv7l"; \
-        ERLANG_SHA256="8ebbf86d304d7c533269ebd543c24a76a67f9f6459856c036615e71a3ca41c60" && ERLANG_OS="armhf"; \
-        JDK_SHA256="d76c462f44c9f306a0fe4468a0218a261ab152f358a8fb55ec80865bf35e2c41" && JDK_OS="arm"; \
-        JQ_SHA256="319af6123aaccb174f768a1a89fb586d471e891ba217fe518f81ef05af51edd9" && JQ_OS="jq-linux32"; \
-        OS="armv7-unknown-linux-gnueabihf"; \
       ;; \
       *) \
         echo "unknown arch:" \
@@ -131,11 +124,23 @@ RUN set -xe; \
     echo "${COSIGN_SHA256}  ${COSIGN_PACKAGE}" | sha256sum -c; \
     mv ${COSIGN_PACKAGE} /usr/bin/cosign; \
     chmod +x /usr/bin/cosign; \
+# Setup mold linker
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends clang; \
+    cd /tmp; \
+    MOLD_PACKAGE="mold-${MOLD_VERSION}-${MOLD_OS}.tar.gz"; \
+    curl --proto '=https' --tlsv1.2 -sSOL "https://github.com/rui314/mold/releases/download/v${MOLD_VERSION}/${MOLD_PACKAGE}"; \
+    echo "${MOLD_SHA256}  ${MOLD_PACKAGE}" | sha256sum -c; \
+    mkdir -p "${MOLD_HOME}"; \
+    cd "${MOLD_HOME}"; \
+    tar -xf /tmp/${MOLD_PACKAGE} --strip-components=1; \
+    rm -rf /tmp/${MOLD_PACKAGE}; \
+    chown -Rh root:root ${MOLD_HOME}/*; \
 # Cleanup
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
-ENV PATH="${JAVA_HOME}/bin:${RUSTUP_HOME}/bin:${CARGO_HOME}/bin:${CMAKE_HOME}/bin:${NODEJS_HOME}/bin:$PATH" \
+ENV PATH="${JAVA_HOME}/bin:${RUSTUP_HOME}/bin:${CARGO_HOME}/bin:${CMAKE_HOME}/bin:${NODEJS_HOME}/bin:${MOLD_HOME}/bin:$PATH" \
     AR=/usr/bin/ar \
     AS=/usr/bin/as \
     CC=/usr/local/bin/gcc \
