@@ -41,7 +41,7 @@ defmodule Ockam.Services.Provider.Sidecar do
     options = Keyword.merge(extra_options, forward_route: forward_route, address: api_address)
 
     %{
-      id: __MODULE__,
+      id: :identity_sidecar,
       start: {Ockam.Services.Proxy, :start_link, [options]}
     }
   end

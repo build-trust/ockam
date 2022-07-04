@@ -22,7 +22,18 @@ defmodule Ockam.Services.Provider.SecureChannel do
 
   def child_spec(:identity_secure_channel, args) do
     options = service_options(:identity_secure_channel, args)
-    Ockam.Identity.SecureChannel.listener_child_spec(options)
+    ## TODO: make this more standard approach
+    id =
+      case Keyword.fetch(args, :address) do
+        {:ok, address} ->
+          id_str = "identity_secure_channel_" <> address
+          String.to_atom(id_str)
+
+        :error ->
+          :identity_secure_channel
+      end
+
+    Supervisor.child_spec(Ockam.Identity.SecureChannel.listener_child_spec(options), %{id: id})
   end
 
   def service_options(:secure_channel, args) do
@@ -31,13 +42,8 @@ defmodule Ockam.Services.Provider.SecureChannel do
       Keyword.merge([vault: vault, identity_keypair: keypair, address: "secure_channel"], args)
     else
       error ->
-        IO.puts("error starting service options for secure channel: #{inspect(error)}")
-        []
+        raise "error starting service options for secure channel: #{inspect(error)}"
     end
-  rescue
-    error ->
-      IO.puts("error starting service options for secure channel: #{inspect(error)}")
-      []
   end
 
   def service_options(:identity_secure_channel, args) do
@@ -56,7 +62,7 @@ defmodule Ockam.Services.Provider.SecureChannel do
          {:ok, keypair} <- Ockam.Vault.secret_generate(vault, type: :curve25519) do
       Keyword.merge(
         [
-          identity: :ephemeral,
+          identity: :dynamic,
           identity_module: identity_module,
           encryption_options: [vault: vault, identity_keypair: keypair],
           address: "identity_secure_channel",
@@ -66,12 +72,7 @@ defmodule Ockam.Services.Provider.SecureChannel do
       )
     else
       error ->
-        IO.puts("error starting service options for identity secure channel: #{inspect(error)}")
-        []
+        raise "error starting service options for identity secure channel: #{inspect(error)}"
     end
-  rescue
-    error ->
-      IO.puts("error starting service options for identity secure channel: #{inspect(error)}")
-      []
   end
 end

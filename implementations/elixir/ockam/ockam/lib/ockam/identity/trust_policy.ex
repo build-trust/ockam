@@ -51,9 +51,9 @@ defmodule Ockam.Identity.TrustPolicy do
         _my_info,
         %{id: contact_id, identity: contact},
         known_identities_mod,
-        extra_args \\ []
+        extra_arg \\ nil
       ) do
-    case known_identities_mod.get_identity(contact_id, extra_args) do
+    case known_identities_mod.get_identity(contact_id, extra_arg) do
       {:ok, known_contact} ->
         case Identity.compare_identity_change_history(contact, known_contact) do
           {:ok, :equal} ->
@@ -61,7 +61,7 @@ defmodule Ockam.Identity.TrustPolicy do
 
           {:ok, :newer} ->
             ## TODO: do we want to update the contact if it's changed?
-            known_identities_mod.set_identity(contact_id, contact, extra_args)
+            known_identities_mod.set_identity(contact_id, contact, extra_arg)
 
           {:ok, :conflict} ->
             {:error,
@@ -95,16 +95,16 @@ defmodule Ockam.Identity.TrustPolicy do
         _my_info,
         %{id: contact_id, identity: contact},
         known_identities_mod,
-        extra_args \\ []
+        extra_arg \\ nil
       ) do
-    case known_identities_mod.get_identity(contact_id, extra_args) do
+    case known_identities_mod.get_identity(contact_id, extra_arg) do
       {:ok, known_contact} ->
         case Identity.compare_identity_change_history(contact, known_contact) do
           {:ok, :equal} ->
             :ok
 
           {:ok, :newer} ->
-            known_identities_mod.set_identity(contact_id, contact, extra_args)
+            known_identities_mod.set_identity(contact_id, contact, extra_arg)
 
           {:ok, :conflict} ->
             {:error,
@@ -119,7 +119,7 @@ defmodule Ockam.Identity.TrustPolicy do
         end
 
       {:error, :not_found} ->
-        known_identities_mod.set_identity(contact_id, contact, extra_args)
+        known_identities_mod.set_identity(contact_id, contact, extra_arg)
 
       {:error, reason} ->
         {:error, {:trust_policy, :cached_identity, reason}}
@@ -164,9 +164,9 @@ defmodule Ockam.Identity.TrustPolicy.KnownIdentities do
   @moduledoc """
   Behaviour to implement modules to manage trust policy known identities table
   """
-  @callback get_identity(contact_id :: binary(), args :: list()) ::
+  @callback get_identity(contact_id :: binary(), extra_arg :: any()) ::
               {:ok, contact :: binary()} | {:error, :not_found} | {:error, reason :: any()}
-  @callback set_identity(contact_id :: binary(), contact :: binary(), args :: list()) ::
+  @callback set_identity(contact_id :: binary(), contact :: binary(), extra_arg :: any()) ::
               :ok | {:error, reason :: any()}
 end
 
@@ -180,7 +180,7 @@ defmodule Ockam.Identity.TrustPolicy.KnownIdentitiesEts do
   @behaviour Ockam.Identity.TrustPolicy.KnownIdentities
 
   @table __MODULE__
-  def get_identity(contact_id, _args) do
+  def get_identity(contact_id, _arg) do
     ensure_table()
 
     case :ets.lookup(@table, contact_id) do
@@ -189,7 +189,7 @@ defmodule Ockam.Identity.TrustPolicy.KnownIdentitiesEts do
     end
   end
 
-  def set_identity(contact_id, contact, _args) do
+  def set_identity(contact_id, contact, _arg) do
     ensure_table()
     true = :ets.insert(@table, {contact_id, contact})
     {:ok, contact}
