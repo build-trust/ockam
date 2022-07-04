@@ -25,7 +25,6 @@ crate-type = ["staticlib"]
 
 [features]
 default = []
-bls = ["ockam_core/bls"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.57.0" }

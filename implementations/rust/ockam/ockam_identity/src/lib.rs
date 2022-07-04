@@ -18,8 +18,6 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
-use cfg_if::cfg_if;
-
 pub use channel::*;
 pub use error::*;
 pub use identifiers::*;
@@ -27,7 +25,6 @@ pub use identity::*;
 pub use identity::*;
 pub use identity_builder::*;
 pub use key_attributes::*;
-pub use lease::*;
 use ockam_channel::SecureChannelVault;
 use ockam_core::compat::{collections::HashMap, string::String};
 use ockam_core::AsyncTryClone;
@@ -45,16 +42,8 @@ mod identifiers;
 mod identity;
 mod identity_builder;
 mod key_attributes;
-mod lease;
 mod signature;
 mod worker;
-
-cfg_if! {
-    if #[cfg(feature = "credentials")] {
-        mod credential;
-        pub use credential::*;
-    }
-}
 
 /// Traits required for a Vault implementation suitable for use in an Identity
 pub trait IdentityVault:
@@ -76,8 +65,3 @@ impl<D> IdentityVault for D where
 
 /// Identity event attributes
 pub type IdentityEventAttributes = HashMap<String, String>;
-
-#[cfg(feature = "credentials")]
-pub use signature_bbs_plus::{PublicKey as BbsPublicKey, SecretKey as BbsSecretKey};
-#[cfg(feature = "credentials")]
-pub use signature_bls::{PublicKey as BlsPublicKey, SecretKey as BlsSecretKey};

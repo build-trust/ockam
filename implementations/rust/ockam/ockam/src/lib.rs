@@ -32,7 +32,6 @@ pub use ockam_node::{Context, DelayedEvent, Executor, NodeBuilder, WorkerBuilder
 mod delay;
 mod error;
 mod forwarder;
-mod lease;
 mod metadata;
 mod monotonic;
 mod system;
@@ -40,7 +39,6 @@ mod unique;
 
 pub use error::OckamError;
 pub use forwarder::ForwardingService;
-pub use lease::Lease;
 pub use metadata::OckamMessage;
 pub use system::{SystemBuilder, SystemHandler, WorkerSystem};
 pub use unique::unique_with_prefix;

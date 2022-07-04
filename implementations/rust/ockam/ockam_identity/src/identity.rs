@@ -3,9 +3,8 @@ use crate::change::IdentityChangeEvent;
 use crate::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use crate::{
     EventIdentifier, IdentityError, IdentityEventAttributes, IdentityIdentifier, IdentityVault,
-    KeyAttributes, Lease, MetaKeyAttributes, TTL,
+    KeyAttributes, MetaKeyAttributes,
 };
-use cfg_if::cfg_if;
 use ockam_core::compat::rand::{thread_rng, CryptoRng, RngCore};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{
@@ -14,17 +13,10 @@ use ockam_core::compat::{
 };
 use ockam_core::vault::{SecretPersistence, SecretType, Signature, CURVE25519_SECRET_LENGTH};
 use ockam_core::AsyncTryClone;
-use ockam_core::{Address, Result, Route};
+use ockam_core::{Address, Result};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
 use ockam_vault::{KeyId, PublicKey, SecretAttributes};
-
-cfg_if! {
-    if #[cfg(feature = "credentials")] {
-        use signature_core::message::Message;
-        use crate::credential::IdentityCredential;
-    }
-}
 
 /// Identity implementation
 #[derive(AsyncTryClone)]
@@ -34,11 +26,6 @@ pub struct Identity<V: IdentityVault> {
     pub(crate) change_history: Arc<RwLock<IdentityChangeHistory>>,
     pub(crate) ctx: Context,
     pub(crate) vault: V,
-    #[cfg(feature = "credentials")]
-    pub(crate) rand_msg: Message,
-    #[cfg(feature = "credentials")]
-    pub(crate) credentials: Vec<IdentityCredential>,
-    lease: Option<Lease>,
 }
 
 pub struct IdentityStateConst;
@@ -49,9 +36,6 @@ impl IdentityStateConst {
     pub const NO_EVENT: &'static [u8] = "OCKAM_NO_EVENT".as_bytes();
     /// Label for [`crate::Identity`] update key
     pub const ROOT_LABEL: &'static str = "OCKAM_RK";
-    /// Label for key used to issue credentials
-    #[cfg(feature = "credentials")]
-    pub const CREDENTIALS_ISSUE: &'static str = "OCKAM_CIK";
     /// Current version of change structure
     pub const CURRENT_CHANGE_VERSION: u8 = 1;
     /// Change history key for AuthenticatedStorage
@@ -75,11 +59,6 @@ impl<V: IdentityVault> Identity<V> {
             change_history: Arc::new(RwLock::new(change_history)),
             ctx,
             vault,
-            #[cfg(feature = "credentials")]
-            rand_msg: Message::random(rng),
-            #[cfg(feature = "credentials")]
-            credentials: vec![],
-            lease: None,
         }
     }
 
@@ -162,14 +141,6 @@ impl<V: IdentityVault> Identity<V> {
         let identity = Self::new(id, change_history, child_ctx, vault, thread_rng());
 
         Ok(identity)
-    }
-
-    pub fn has_lease(&self) -> bool {
-        self.lease.is_some()
-    }
-
-    pub fn lease(&self) -> Option<&Lease> {
-        self.lease.as_ref()
     }
 }
 
@@ -338,29 +309,6 @@ impl<V: IdentityVault> Identity<V> {
                 .await?;
         }
 
-        Ok(())
-    }
-
-    pub async fn get_lease(
-        &self,
-        _lease_manager_route: &Route,
-        _org_id: String,
-        _bucket: String,
-        _ttl: TTL,
-    ) -> Result<Lease> {
-        if let Some(lease) = self.lease.clone() {
-            Ok(lease)
-        } else {
-            Err(IdentityError::InvalidInternalState.into())
-        }
-    }
-
-    pub async fn revoke_lease(&mut self, _lease_manager_route: &Route, lease: Lease) -> Result<()> {
-        if let Some(existing_lease) = &self.lease {
-            if existing_lease == &lease {
-                self.lease = None
-            }
-        }
         Ok(())
     }
 }

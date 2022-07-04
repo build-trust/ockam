@@ -19,7 +19,6 @@ std = [
     "tinyvec/std",
     "tracing/std"
 ]
-bls           = ["ockam_vault/bls"]
 tag           = ["cddl-cat"]
 vault-storage = ["ockam_vault/storage"]
 lmdb          = ["std", "lmdb-rkv"]
