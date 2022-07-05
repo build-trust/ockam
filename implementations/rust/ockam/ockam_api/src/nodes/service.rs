@@ -11,14 +11,18 @@ use ockam::remote::RemoteForwarder;
 use ockam::{Address, Context, Result, Route, Routed, TcpTransport, Worker};
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_identity::authenticated_storage::mem::InMemoryStorage;
 use ockam_identity::{Identity, TrustEveryonePolicy};
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
 
+use crate::auth::Server;
+use crate::lmdb::LmdbStorage;
+use crate::old::identity::{create_identity, load_identity};
 use core::convert::Infallible;
 use minicbor::{encode::Write, Decoder};
+use ockam_vault::storage::FileStorage;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 type Alias = String;
 
@@ -41,35 +45,61 @@ fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Error {
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeMan {
     node_name: String,
-    _node_dir: PathBuf,
+    node_dir: PathBuf,
     api_transport_id: Alias,
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
     // FIXME: wow this is a terrible way to store data
     portals: BTreeMap<(Alias, PortalType), (String, Option<Route>)>,
+
+    vault: Option<Vault>,
+    identity: Option<Identity<Vault>>,
+    authenticated_storage: LmdbStorage,
 }
 
 impl NodeMan {
     /// Create a new NodeMan with the node name from the ockam CLI
-    pub fn new(
+    pub async fn create(
+        ctx: &Context,
         node_name: String,
-        _node_dir: PathBuf,
+        node_dir: PathBuf,
         api_transport: (TransportType, TransportMode, String),
         tcp_transport: TcpTransport,
-    ) -> Self {
+    ) -> Result<Self> {
         let api_transport_id = random_alias();
         let portals = BTreeMap::new();
         let mut transports = BTreeMap::new();
         transports.insert(api_transport_id.clone(), api_transport);
 
-        Self {
+        let authenticated_storage =
+            LmdbStorage::new(&node_dir.join("authenticated_storage.lmdb")).await?;
+
+        let mut s = Self {
             node_name,
-            _node_dir,
+            node_dir,
             api_transport_id,
             transports,
             tcp_transport,
             portals,
+            vault: None,
+            identity: None,
+            authenticated_storage,
+        };
+
+        // Each node by default has Vault, with storage inside its directory
+        let _ = s.create_vault().await?;
+
+        let vault = s
+            .vault
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Vault doesn't exist"))?;
+
+        // Try to load identity, in case it was already created
+        if let Ok(identity) = load_identity(ctx, &s.node_dir, vault).await {
+            s.identity = Some(identity);
         }
+
+        Ok(s)
     }
 }
 
@@ -198,11 +228,55 @@ impl NodeMan {
         Ok(())
     }
 
+    //////// Vault API ////////
+
+    async fn create_vault(&mut self) -> Result<()> {
+        if self.vault.is_some() {
+            return Err(ApiError::generic("Vault already exists"));
+        }
+
+        let vault_storage = FileStorage::create(
+            &self.node_dir.join("vault.json"),
+            &self.node_dir.join("vault.json.temp"),
+        )
+        .await?;
+        let vault = Vault::new(Some(Arc::new(vault_storage)));
+
+        self.vault = Some(vault);
+
+        Ok(())
+    }
+
+    //////// Identity API ////////
+
+    async fn create_identity(
+        &mut self,
+        ctx: &Context,
+        req: &Request<'_>,
+    ) -> Result<ResponseBuilder> {
+        if self.identity.is_some() {
+            return Ok(Response::bad_request(req.id()));
+        }
+
+        let vault = self
+            .vault
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Vault doesn't exist"))?;
+
+        let identity = create_identity(ctx, &self.node_dir, vault, true).await?;
+
+        self.identity = Some(identity);
+
+        let response = Response::ok(req.id());
+
+        Ok(response)
+    }
+
     //////// Secure channel API ////////
 
     async fn create_secure_channel(
         &mut self,
-        ctx: &Context,
+        _ctx: &Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'_>>> {
@@ -215,11 +289,13 @@ impl NodeMan {
         let route = crate::multiaddr_to_route(&addr)
             .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
-        // TODO: Load Vault and Identity from the Storage. Possibly move this part from ockam_command
-        let identity = Identity::create(ctx, &Vault::create()).await?;
+        let identity = self
+            .identity
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))?;
 
         let channel = identity
-            .create_secure_channel(route, TrustEveryonePolicy, &InMemoryStorage::new())
+            .create_secure_channel(route, TrustEveryonePolicy, &self.authenticated_storage)
             .await?;
 
         // TODO: Create Secure Channels Registry
@@ -232,7 +308,7 @@ impl NodeMan {
 
     async fn create_secure_channel_listener(
         &mut self,
-        ctx: &Context,
+        _ctx: &Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<()>> {
@@ -246,11 +322,13 @@ impl NodeMan {
         // TODO: Should we check if Address is LOCAL?
         let addr = Address::from(addr.as_ref());
 
-        // TODO: Load Vault and Identity from the Storage. Possibly move this part from ockam_command
-        let identity = Identity::create(ctx, &Vault::create()).await?;
+        let identity = self
+            .identity
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))?;
 
         identity
-            .create_secure_channel_listener(addr, TrustEveryonePolicy, &InMemoryStorage::new())
+            .create_secure_channel_listener(addr, TrustEveryonePolicy, &self.authenticated_storage)
             .await?;
 
         // TODO: Create Secure Channel Listeners Registry
@@ -392,7 +470,13 @@ impl NodeMan {
             (Post, "/node/transport") => self.add_transport(req, dec).await?.encode(enc)?,
             (Delete, "/node/transport") => self.delete_transport(req, dec).await?.encode(enc)?,
 
-            // ==*== Secure channels
+            // ==*== Vault ==*==
+            // (Post, "/node/vault") => self.create_vault().await?,
+
+            // ==*== Identity ==*==
+            (Post, "/node/identity") => self.create_identity(ctx, req).await?.encode(enc)?,
+
+            // ==*== Secure channels ==*==
             (Post, "/node/secure_channel") => self
                 .create_secure_channel(ctx, req, dec)
                 .await?
@@ -402,7 +486,7 @@ impl NodeMan {
                 .await?
                 .encode(enc)?,
 
-            // ==*== Forwarder commands
+            // ==*== Forwarder commands ==*==
             (Post, "/node/forwarder") => self.create_forwarder(ctx, req, dec, enc).await?,
 
             // ==*== Inlets & Outlets ==*==
@@ -425,6 +509,12 @@ impl NodeMan {
 impl Worker for NodeMan {
     type Message = Vec<u8>;
     type Context = Context;
+
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
+        let server = Server::new(self.authenticated_storage.clone());
+
+        ctx.start_worker("authenticated_storage", server).await
+    }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {
         let mut buf = vec![];
