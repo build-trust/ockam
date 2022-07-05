@@ -31,7 +31,7 @@ impl CreateCommand {
         let port = match cfg.select_node(&cmd.node_name) {
             Some(cfg) => cfg.port,
             None => {
-                eprintln!("No such node available. Run `ockam node list` to list available nodes");
+                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
                 std::process::exit(-1);
             }
         };
