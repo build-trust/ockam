@@ -13,7 +13,13 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(cfg: &OckamConfig, command: CreateCommand) -> anyhow::Result<()> {
-        let port = cfg.select_node(&command.api_node).unwrap().port;
+        let port = match cfg.select_node(&command.api_node) {
+            Some(cfg) => cfg.port,
+            None => {
+                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
+                std::process::exit(-1);
+            }
+        };
 
         connect_to(port, command, create_identity);
 
