@@ -87,7 +87,12 @@ Otherwise your OS or OS configuration may not be supported!",
             Ok(ref mut f) => {
                 let mut buf = String::new();
                 f.read_to_string(&mut buf).expect("failed to read config");
-                serde_json::from_str(&buf).expect("failed to parse config.  Try deleting the file $HOME/.config/ockam-cli/config.json")
+                serde_json::from_str(&buf).unwrap_or_else(|_| {
+                    panic!(
+                        "failed to parse config.  Try deleting {}",
+                        config_path.display()
+                    )
+                })
             }
             Err(_) => {
                 let new_inner = SyncConfig::default();

@@ -65,6 +65,13 @@ pub(crate) fn create_forwarder(cmd: &crate::forwarder::CreateCommand) -> Result<
     Ok(buf)
 }
 
+/// Construct a request to create Identity
+pub(crate) fn create_identity() -> Result<Vec<u8>> {
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node/identity").encode(&mut buf)?;
+    Ok(buf)
+}
+
 /// Construct a request to create Secure Channels
 pub(crate) fn create_secure_channel(cmd: &crate::secure_channel::CreateCommand) -> Result<Vec<u8>> {
     let payload = CreateSecureChannelRequest::new(cmd.addr().to_string());
@@ -137,6 +144,12 @@ pub(crate) fn parse_transport_status(resp: &[u8]) -> Result<(Response, Transport
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
     Ok((response, dec.decode::<TransportStatus>()?))
+}
+
+pub(crate) fn parse_create_identity_response(resp: &[u8]) -> Result<Response> {
+    let mut dec = Decoder::new(resp);
+    let response = dec.decode::<Response>()?;
+    Ok(response)
 }
 
 pub(crate) fn parse_create_secure_channel_response(

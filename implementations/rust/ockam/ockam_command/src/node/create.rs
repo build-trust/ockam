@@ -136,16 +136,15 @@ async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::
     IdentityService::create(&ctx, "identity_service", vault.async_try_clone().await?).await?;
 
     let node_dir = cfg.get_node_dir(&c.node_name).unwrap(); // can't fail because we already checked it
-    ctx.start_worker(
-        NODEMAN_ADDR,
-        NodeMan::new(
-            c.node_name,
-            node_dir,
-            (TransportType::Tcp, TransportMode::Listen, bind),
-            tcp,
-        ),
+    let node_man = NodeMan::create(
+        &ctx,
+        c.node_name,
+        node_dir,
+        (TransportType::Tcp, TransportMode::Listen, bind),
+        tcp,
     )
     .await?;
+    ctx.start_worker(NODEMAN_ADDR, node_man).await?;
 
     Ok(())
 }

@@ -4,6 +4,7 @@ mod authenticated;
 mod config;
 mod enroll;
 mod forwarder;
+mod identity;
 mod invitation;
 mod message;
 mod node;
@@ -37,6 +38,7 @@ use old::AddTrustedIdentityOpts;
 use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_ockam_dir};
 
 use crate::enroll::GenerateEnrollmentTokenCommand;
+use crate::identity::IdentityCommand;
 use crate::util::OckamConfig;
 use clap::{ColorChoice, Parser, Subcommand};
 use util::setup_logging;
@@ -145,6 +147,11 @@ pub enum OckamSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Config(ConfigCommand),
 
+    /// Manage Identities
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Identity(IdentityCommand),
+
+    /// Manage Secure Channels
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     SecureChannel(SecureChannelCommand),
 
@@ -215,6 +222,7 @@ pub fn run() {
         OckamSubcommand::Transport(command) => TransportCommand::run(&cfg, command),
         OckamSubcommand::Portal(command) => PortalCommand::run(&cfg, command),
         OckamSubcommand::Config(command) => ConfigCommand::run(&cfg, command),
+        OckamSubcommand::Identity(command) => IdentityCommand::run(&cfg, command),
         OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(&cfg, command),
 
         // OLD
