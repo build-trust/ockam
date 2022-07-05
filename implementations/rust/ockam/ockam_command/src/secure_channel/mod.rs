@@ -1,7 +1,6 @@
-mod create;
+pub(crate) mod create;
 
-pub(crate) use create::CreateCommand;
-
+use crate::secure_channel::create::CreateCommand;
 use crate::{util::OckamConfig, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
 
