@@ -16,10 +16,12 @@ use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
 
 use crate::auth::Server;
+use crate::identity::IdentityService;
 use crate::lmdb::LmdbStorage;
 use crate::old::identity::{create_identity, load_identity};
 use core::convert::Infallible;
 use minicbor::{encode::Write, Decoder};
+use ockam_identity::authenticated_storage::mem::InMemoryStorage;
 use ockam_vault::storage::FileStorage;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -511,9 +513,19 @@ impl Worker for NodeMan {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let server = Server::new(self.authenticated_storage.clone());
+        // By default we start identity and authenticated services
 
-        ctx.start_worker("authenticated_storage", server).await
+        // TODO: Use existent storage `self.authenticated_storage`
+        let s = InMemoryStorage::new();
+        let server = Server::new(s);
+        ctx.start_worker("authenticated", server).await?;
+
+        // TODO: put that behind some flag or configuration
+        // TODO: Use existent vault `self.vault`
+        let vault = Vault::create();
+        IdentityService::create(ctx, "identity_service", vault).await?;
+
+        Ok(())
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {
