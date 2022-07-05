@@ -15,16 +15,6 @@ pub struct CreateCommand {
     pub create_subcommand: CreateSubCommand,
 }
 
-impl CreateCommand {
-    /// Get the peer/bind payload from this create command
-    pub(crate) fn addr(&self) -> MultiAddr {
-        match self.create_subcommand {
-            CreateSubCommand::Connector { ref addr, .. } => addr.clone(),
-            CreateSubCommand::Listener { ref bind, .. } => bind.clone(),
-        }
-    }
-}
-
 #[derive(Clone, Debug, Subcommand)]
 pub enum CreateSubCommand {
     /// Connect to an existing secure channel listener
@@ -37,7 +27,7 @@ pub enum CreateSubCommand {
     /// Create a new secure channel listener
     Listener {
         /// Specify an address for this listener
-        bind: MultiAddr,
+        bind: String,
         /// Give this portal endpoint a name
         alias: Option<String>,
     },
@@ -70,7 +60,7 @@ pub async fn create_connector(
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append("_internal.nodeman"),
-            api::create_secure_channel(&cmd)?,
+            api::create_secure_channel(&cmd.create_subcommand)?,
         )
         .await?;
 
@@ -99,7 +89,7 @@ pub async fn create_listener(
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append("_internal.nodeman"),
-            api::create_secure_channel_listener(&cmd)?,
+            api::create_secure_channel_listener(&cmd.create_subcommand)?,
         )
         .await?;
 
@@ -107,10 +97,7 @@ pub async fn create_listener(
 
     match response.status() {
         Some(Status::Ok) => {
-            eprintln!(
-                "Secure Channel Listener created! You can send messages to it via this address:\n{}",
-                cmd.addr()
-            )
+            eprintln!("Secure Channel Listener created!")
         }
         _ => {
             eprintln!("An error occurred while creating secure channel listener",)

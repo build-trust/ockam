@@ -73,8 +73,15 @@ pub(crate) fn create_identity() -> Result<Vec<u8>> {
 }
 
 /// Construct a request to create Secure Channels
-pub(crate) fn create_secure_channel(cmd: &crate::secure_channel::CreateCommand) -> Result<Vec<u8>> {
-    let payload = CreateSecureChannelRequest::new(cmd.addr().to_string());
+pub(crate) fn create_secure_channel(
+    cmd: &crate::secure_channel::create::CreateSubCommand,
+) -> Result<Vec<u8>> {
+    let addr = match cmd {
+        crate::secure_channel::create::CreateSubCommand::Connector { addr, .. } => addr,
+        crate::secure_channel::create::CreateSubCommand::Listener { .. } => panic!(),
+    };
+
+    let payload = CreateSecureChannelRequest::new(addr.to_string());
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/secure_channel")
@@ -85,9 +92,14 @@ pub(crate) fn create_secure_channel(cmd: &crate::secure_channel::CreateCommand) 
 
 /// Construct a request to create Secure Channel Listeners
 pub(crate) fn create_secure_channel_listener(
-    cmd: &crate::secure_channel::CreateCommand,
+    cmd: &crate::secure_channel::create::CreateSubCommand,
 ) -> Result<Vec<u8>> {
-    let payload = CreateSecureChannelListenerRequest::new(cmd.addr().to_string());
+    let addr = match cmd {
+        crate::secure_channel::create::CreateSubCommand::Connector { .. } => panic!(),
+        crate::secure_channel::create::CreateSubCommand::Listener { bind, .. } => bind,
+    };
+
+    let payload = CreateSecureChannelListenerRequest::new(addr);
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/secure_channel_listener")
