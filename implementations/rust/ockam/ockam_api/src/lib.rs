@@ -3,6 +3,7 @@ pub mod cloud;
 pub mod error;
 pub mod identity;
 pub mod nodes;
+pub mod old;
 pub mod vault;
 
 mod util;

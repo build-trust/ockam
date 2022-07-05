@@ -93,20 +93,19 @@ mod tests {
         let node_manager = "manager";
         let transport = TcpTransport::create(ctx).await?;
         let node_address = transport.listen("127.0.0.1:0").await?;
-        ctx.start_worker(
-            node_manager,
-            NodeMan::new(
-                "node".to_string(),
-                node_dir.into_path(),
-                (
-                    TransportType::Tcp,
-                    TransportMode::Listen,
-                    node_address.to_string(),
-                ),
-                transport,
+        let node_man = NodeMan::create(
+            ctx,
+            "node".to_string(),
+            node_dir.into_path(),
+            (
+                TransportType::Tcp,
+                TransportMode::Listen,
+                node_address.to_string(),
             ),
+            transport,
         )
         .await?;
+        ctx.start_worker(node_manager, node_man).await?;
 
         // Start Echoer worker
         ctx.start_worker("echoer", Echoer).await?;
