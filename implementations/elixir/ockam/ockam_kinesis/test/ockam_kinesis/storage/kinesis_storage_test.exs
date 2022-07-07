@@ -176,4 +176,65 @@ defmodule Ockam.Stream.Storage.KinesisTest do
                Kinesis.init_partition(stream_name, partition, state, options)
     end
   end
+
+  describe "save/4" do
+    test "puts message to an AWS Kinesis stream, returns sequence number and stores it in state" do
+      stream_name = "stream_name"
+      partition = 0
+      sequence_number_for_ordering = "49592407930728695436502186699740292765095159714163982338"
+      hash_key = "0"
+
+      state = %State{
+        hash_key: hash_key,
+        sequence_number_for_ordering: sequence_number_for_ordering
+      }
+
+      message = "message"
+      new_sequence_number = "49596124085897508159438713510240079964989152308217511954"
+
+      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+        assert {"x-amz-target", "Kinesis_20131202.PutRecord"} in headers
+
+        expected_data = Base.encode64(message)
+
+        assert %{
+                 "Data" => ^expected_data,
+                 "ExplicitHashKey" => ^hash_key,
+                 "SequenceNumberForOrdering" => ^sequence_number_for_ordering,
+                 "StreamName" => ^stream_name
+               } = Jason.decode!(body)
+
+        {:ok,
+         %{
+           status_code: 200,
+           body: Jason.encode!(%{"SequenceNumber" => new_sequence_number})
+         }}
+      end)
+
+      assert {{:ok, String.to_integer(new_sequence_number)},
+              %{state | sequence_number_for_ordering: new_sequence_number}} ==
+               Kinesis.save(stream_name, partition, message, state)
+    end
+
+    test "propagates error and state if call to AWS fails" do
+      stream_name = "stream_name"
+      partition = 0
+      state = %State{}
+      message = "message"
+
+      error_type = "ResourceNotFoundException"
+      error_message = "Stream stream_name under account 000000000000 not found."
+
+      expect(ExAwsMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
+        {:ok,
+         %{
+           status_code: 400,
+           body: Jason.encode!(%{"__type" => error_type, "message" => error_message})
+         }}
+      end)
+
+      assert {{:error, {error_type, error_message}}, state} ==
+               Kinesis.save(stream_name, partition, message, state)
+    end
+  end
 end

@@ -88,4 +88,31 @@ defmodule Ockam.Stream.Storage.Kinesis do
         error
     end
   end
+
+  @impl true
+  @spec save(String.t(), integer(), binary(), state()) ::
+          {{:ok, integer()} | {:error, any()}, state()}
+  def save(
+        stream_name,
+        partition,
+        message,
+        %State{
+          hash_key: hash_key,
+          sequence_number_for_ordering: sequence_number_for_ordering
+        } = state
+      ) do
+    Logger.debug("Save. stream_name: #{stream_name}, partition: #{partition}")
+
+    case Kinesis.put_record(stream_name, message, nil,
+           explicit_hash_key: hash_key,
+           sequence_number_for_ordering: sequence_number_for_ordering
+         ) do
+      {:ok, sequence_number} ->
+        state = %{state | sequence_number_for_ordering: sequence_number}
+        {{:ok, String.to_integer(sequence_number)}, state}
+
+      error ->
+        {error, state}
+    end
+  end
 end
