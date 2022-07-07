@@ -7,8 +7,21 @@ if(project.hasProperty('mode')) {
 }
 
 ext {
-  ci = System.getenv('CI') == 'true'
+  // Environment variables for CI tasks
+  // See...
+  //  https://github.com/build-trust/ockam/issues/2822
+  //  https://github.com/build-trust/ockam/issues/2342
+  environmentCI = { ->
+    env = [
+      RUSTFLAGS: "--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings -C link-arg=-fuse-ld=/opt/mold/bin/mold",
+      CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: "clang",
+      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: "clang",
+      CARGO_INCREMENTAL: "0"
+    ]
+    return System.getenv('CI') == 'true' ? env : [:]
+  }
 
+  // Cargo command
   cargo = { String... arguments ->
     command = ['cargo']
     command.addAll(arguments)
@@ -25,10 +38,7 @@ ext {
 task lint_cargo_fmt_check {
   doLast {
     exec {
-      if (ci) {
-        environment RUSTFLAGS: "--cfg tokio_unstable -Dwarnings"
-      }
-
+      environment environmentCI()
       commandLine cargo('fmt', '--all', '--', '--check')
     }
   }
@@ -36,13 +46,19 @@ task lint_cargo_fmt_check {
 
 task lint_cargo_clippy {
   doLast {
-    exec { commandLine cargo('clippy', '--no-deps', '--', '-D', 'warnings') }
+    exec {
+      environment environmentCI()
+      commandLine cargo('clippy', '--no-deps', '--', '-D', 'warnings')
+    }
   }
 }
 
 task lint_cargo_deny {
   doLast {
-    exec { commandLine cargo('deny', '--all-features', '--manifest-path=../../Cargo.toml', 'check', 'licenses', 'advisories') }
+    exec {
+      environment environmentCI()
+      commandLine cargo('deny', '--all-features', '--manifest-path=../../Cargo.toml', 'check', 'licenses', 'advisories')
+    }
   }
 }
 
@@ -56,10 +72,7 @@ task lint {
 task build_docs {
   doLast {
     exec {
-      if (ci) {
-        environment RUSTFLAGS: "--cfg tokio_unstable -Dwarnings"
-      }
-
+      environment environmentCI()
       commandLine cargo('doc', '--no-deps')
     }
   }
@@ -68,11 +81,7 @@ task build_docs {
 task build {
   doLast {
     exec {
-      if (ci) {
-        environment RUSTFLAGS: "--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings"
-        environment CARGO_INCREMENTAL: "0"
-      }
-
+      environment environmentCI()
       commandLine cargo('--locked', 'build')
     }
   }
@@ -81,11 +90,7 @@ task build {
 task build_examples {
   doLast {
     exec {
-      if (ci) {
-        environment RUSTFLAGS: "--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings"
-        environment CARGO_INCREMENTAL: "0"
-      }
-
+      environment environmentCI()
       commandLine cargo('--locked', 'build', '--examples')
     }
   }
@@ -97,10 +102,7 @@ task test {
 
   doLast {
     exec {
-      if (ci) {
-        environment RUSTFLAGS: "--cfg tokio_unstable -Dwarnings"
-      }
-
+      environment environmentCI()
       commandLine cargo('--locked', 'test')
     }
   }
@@ -111,7 +113,10 @@ task clean {
   description 'Clean the project.'
 
   doLast {
-    exec { commandLine cargo('clean') }
+    exec {
+      environment environmentCI()
+      commandLine cargo('clean')
+    }
   }
 }
 
