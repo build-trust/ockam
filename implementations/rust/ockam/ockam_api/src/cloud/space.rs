@@ -61,7 +61,7 @@ pub mod tests {
         let vault = Vault::create();
 
         // Create an Identity to represent the ockam-command client.
-        let client_identity = Identity::create(&ctx, &vault).await?;
+        let client_identity = Identity::create(ctx, &vault).await?;
 
         // Starts a secure channel listener at "api", with a freshly created
         // identity, and a SpaceServer worker registered at "spaces"

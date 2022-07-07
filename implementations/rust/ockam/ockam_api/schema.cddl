@@ -73,6 +73,8 @@ space = {
     2: space_name
 }
 
+spaces = [* space]
+
 create_space = {
    ?0: 3888657,
     1: space_name
@@ -87,9 +89,12 @@ project = {
    ?0: 9056532,
     1: project_id,
     2: project_name,
-    3: [+ service_name],
-    4: access_route
+    3: space_name,
+    4: [+ service_name],
+    5: access_route
 }
+
+projects = [* project]
 
 create_project = {
     ?0: 8669570,
@@ -207,6 +212,8 @@ invitation = {
      7: space_id,
     ?8: project_id
 }
+
+invitations = [* invitation]
 
 invitation_id = text
 inviter = text
