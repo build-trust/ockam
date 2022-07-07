@@ -121,6 +121,8 @@ config :ockam_services,
     Ockam.Services.Provider.Stream,
     # kafka services
     Ockam.Services.Kafka.Provider,
+    # kinesis services
+    Ockam.Services.Kinesis.Provider,
     # token lease services
     Ockam.Services.TokenLeaseManager.Provider,
     # secure channel services
