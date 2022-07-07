@@ -255,9 +255,10 @@ impl NodeMan {
         &mut self,
         ctx: &Context,
         req: &Request<'_>,
-    ) -> Result<ResponseBuilder> {
+    ) -> Result<ResponseBuilder<CreateIdentityResponse<'_>>> {
         if self.identity.is_some() {
-            return Ok(Response::bad_request(req.id()));
+            // TODO: Improve body
+            return Ok(Response::bad_request(req.id()).body(CreateIdentityResponse::new("")));
         }
 
         let vault = self
@@ -266,10 +267,11 @@ impl NodeMan {
             .ok_or_else(|| ApiError::generic("Vault doesn't exist"))?;
 
         let identity = create_identity(ctx, &self.node_dir, vault, true).await?;
+        let identifier = identity.identifier()?.to_string();
 
         self.identity = Some(identity);
 
-        let response = Response::ok(req.id());
+        let response = Response::ok(req.id()).body(CreateIdentityResponse::new(identifier));
 
         Ok(response)
     }

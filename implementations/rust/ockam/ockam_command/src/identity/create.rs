@@ -39,11 +39,11 @@ pub async fn create_identity(
         )
         .await?;
 
-    let response = api::parse_create_identity_response(&resp)?;
+    let (response, result) = api::parse_create_identity_response(&resp)?;
 
     match response.status() {
         Some(Status::Ok) => {
-            eprintln!("Identity created!",)
+            eprintln!("Identity {} created!", result.identity_id)
         }
         _ => {
             eprintln!("An error occurred while creating Identity",)
