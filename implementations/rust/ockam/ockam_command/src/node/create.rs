@@ -19,7 +19,7 @@ pub struct CreateCommand {
 
     /// Spawn a node in the background.
     #[clap(display_order = 900, long, short)]
-    spawn: bool,
+    foreground: bool,
 
     /// Specify the API port
     #[clap(default_value_t = DEFAULT_TCP_PORT, long, short)]
@@ -30,7 +30,23 @@ pub struct CreateCommand {
 }
 impl CreateCommand {
     pub fn run(cfg: &OckamConfig, command: CreateCommand) {
-        if command.spawn {
+        if command.foreground {
+            // HACK: try to get the current node dir.  If it doesn't
+            // exist the user PROBABLY started a non-detached node.
+            // Thus we need to create the node dir so that subsequent
+            // calls to it don't fail
+            if cfg.get_node_dir(&command.node_name).is_err() {
+                if let Err(e) = cfg.create_node(&command.node_name, command.port, 0) {
+                    eprintln!(
+                        "failed to update node configuration for '{}': {:?}",
+                        command.node_name, e
+                    );
+                    std::process::exit(-1);
+                }
+            }
+
+            embedded_node(setup, (command, cfg.clone()));
+        } else {
             // On systems with non-obvious path setups (or during
             // development) re-executing the current binary is a more
             // deterministic way of starting a node.
@@ -74,6 +90,7 @@ impl CreateCommand {
                     "create",
                     "--port",
                     &command.port.to_string(),
+                    "--foreground",
                     &command.node_name,
                 ])
                 .stdout(main_log_file)
@@ -99,22 +116,6 @@ impl CreateCommand {
 
             // Then query the node manager for the status
             connect_to(command.port, (), query_status);
-        } else {
-            // HACK: try to get the current node dir.  If it doesn't
-            // exist the user PROBABLY started a non-detached node.
-            // Thus we need to create the node dir so that subsequent
-            // calls to it don't fail
-            if cfg.get_node_dir(&command.node_name).is_err() {
-                if let Err(e) = cfg.create_node(&command.node_name, command.port, 0) {
-                    eprintln!(
-                        "failed to update node configuration for '{}': {:?}",
-                        command.node_name, e
-                    );
-                    std::process::exit(-1);
-                }
-            }
-
-            embedded_node(setup, (command, cfg.clone()));
         }
     }
 }
