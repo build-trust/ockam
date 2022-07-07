@@ -169,27 +169,29 @@ verified         = bool
 request_enrollment = {
     ?0: 5136510,
      1: token
- }
-token        = text
-
-
-token_attribute = {
-    ?0: 8463780,
-     1: attr_name,
-     2: attr_value
 }
 
-attr_value   = text
-attr_name    = text
+token = text
+
+request_enrollment_token = {
+    ?0: 8560526,
+     1: attributes
+}
 
 ;;; Invitation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-invitation_scope = 0 ;; Space
-                 / 1 ;; Project
+invitation = {
+    ?0: 7088378,
+     1: invitation_id,
+     2: inviter,
+     3: invitee,
+     4: scope,
+     5: state,
+     6: space_id,
+    ?7: project_id
+}
 
-invitation_state = 0 ;; Pending
-                / 1 ;; Accepted
-                / 2 ;; Rejected
+invitations = [* invitation]
 
 create_invitation = {
     ?0: 1886440,
@@ -199,24 +201,17 @@ create_invitation = {
     ?4: project_id
 }
 
-invitee = text
-scope = invitation_scope
-
-invitation = {
-    ?0: 7088378,
-     1: invitation_id,
-     3: inviter,
-     4: invitee,
-     5: scope,
-     6: state,
-     7: space_id,
-    ?8: project_id
-}
-
-invitations = [* invitation]
-
 invitation_id = text
-inviter = text
-state = invitation_state
+inviter       = text
+invitee       = text
+scope         = invitation_scope
+state         = invitation_state
+
+invitation_scope = 0 ;; Space
+                 / 1 ;; Project
+
+invitation_state = 0 ;; Pending
+                / 1 ;; Accepted
+                / 2 ;; Rejected
 
 

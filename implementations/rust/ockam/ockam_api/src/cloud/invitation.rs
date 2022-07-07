@@ -4,6 +4,22 @@ use crate::CowStr;
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 
+#[derive(Decode, Encode, Debug)]
+#[cfg_attr(test, derive(Clone))]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct Invitation<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<7088378>,
+    #[b(1)] pub id: CowStr<'a>,
+    #[b(2)] pub inviter: CowStr<'a>,
+    #[b(3)] pub invitee: CowStr<'a>,
+    #[b(4)] pub scope: Scope,
+    #[b(5)] pub state: State,
+    #[b(6)] pub space_id: CowStr<'a>,
+    #[b(7)] pub project_id: Option<CowStr<'a>>,
+}
+
 #[derive(serde::Deserialize, Encode, Decode, Debug)]
 #[cfg_attr(test, derive(Clone, PartialEq))]
 #[rustfmt::skip]
@@ -36,28 +52,11 @@ pub struct CreateInvitation<'a> {
     #[b(4)] pub project_id: Option<CowStr<'a>>,
 }
 
-#[derive(Decode, Encode, Debug)]
-#[cfg_attr(test, derive(Clone))]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct Invitation<'a> {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<7088378>,
-    #[b(1)] pub id: CowStr<'a>,
-    #[b(2)] pub inviter: CowStr<'a>,
-    #[b(3)] pub invitee: CowStr<'a>,
-    #[b(4)] pub scope: Scope,
-    #[b(5)] pub state: State,
-    #[b(6)] pub space_id: CowStr<'a>,
-    #[b(7)] pub project_id: Option<CowStr<'a>>,
-}
-
 impl<'a> CreateInvitation<'a> {
     pub fn new<S: Into<CowStr<'a>>>(invitee: S, space_id: S, project_id: Option<S>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-
             invitee: invitee.into(),
             scope: project_id
                 .as_ref()
@@ -86,6 +85,102 @@ mod tests {
     use crate::{Method, Request, Response};
 
     use super::*;
+
+    mod schema {
+        use cddl_cat::validate_cbor_bytes;
+        use quickcheck::{quickcheck, TestResult};
+
+        use crate::SCHEMA;
+
+        use super::*;
+
+        #[derive(Debug, Clone)]
+        struct In(Invitation<'static>);
+
+        impl Arbitrary for In {
+            fn arbitrary(g: &mut Gen) -> Self {
+                let project_id: CowStr = String::arbitrary(g).into();
+                In(Invitation {
+                    #[cfg(feature = "tag")]
+                    tag: Default::default(),
+                    id: String::arbitrary(g).into(),
+                    inviter: String::arbitrary(g).into(),
+                    invitee: String::arbitrary(g).into(),
+                    scope: Scope::arbitrary(g),
+                    state: State::arbitrary(g),
+                    space_id: String::arbitrary(g).into(),
+                    project_id: g.choose(&[None, Some(project_id)]).unwrap().clone(),
+                })
+            }
+        }
+
+        impl Arbitrary for State {
+            fn arbitrary(g: &mut Gen) -> Self {
+                g.choose(&[State::Pending, State::Accepted, State::Rejected])
+                    .unwrap()
+                    .clone()
+            }
+        }
+
+        impl Arbitrary for Scope {
+            fn arbitrary(g: &mut Gen) -> Self {
+                g.choose(&[Scope::SpaceScope, Scope::ProjectScope])
+                    .unwrap()
+                    .clone()
+            }
+        }
+
+        #[derive(Debug, Clone)]
+        struct CIn(CreateInvitation<'static>);
+
+        impl Arbitrary for CIn {
+            fn arbitrary(g: &mut Gen) -> Self {
+                let project_id: CowStr = String::arbitrary(g).into();
+                CIn(CreateInvitation {
+                    #[cfg(feature = "tag")]
+                    tag: Default::default(),
+                    invitee: String::arbitrary(g).into(),
+                    scope: Scope::arbitrary(g),
+                    space_id: String::arbitrary(g).into(),
+                    project_id: g.choose(&[None, Some(project_id)]).unwrap().clone(),
+                })
+            }
+        }
+
+        quickcheck! {
+            fn invitation(o: In) -> TestResult {
+                let cbor = minicbor::to_vec(&o.0).unwrap();
+                if let Err(e) = validate_cbor_bytes("invitation", SCHEMA, &cbor) {
+                    return TestResult::error(e.to_string())
+                }
+                TestResult::passed()
+            }
+
+            fn invitations(o: Vec<In>) -> TestResult {
+                let empty: Vec<Invitation> = vec![];
+                let cbor = minicbor::to_vec(&empty).unwrap();
+                if let Err(e) = validate_cbor_bytes("invitations", SCHEMA, &cbor) {
+                    return TestResult::error(e.to_string())
+                }
+                TestResult::passed();
+
+                let o: Vec<Invitation> = o.into_iter().map(|p| p.0).collect();
+                let cbor = minicbor::to_vec(&o).unwrap();
+                if let Err(e) = validate_cbor_bytes("invitations", SCHEMA, &cbor) {
+                    return TestResult::error(e.to_string())
+                }
+                TestResult::passed()
+            }
+
+            fn create_invitation(o: CIn) -> TestResult {
+                let cbor = minicbor::to_vec(&o.0).unwrap();
+                if let Err(e) = validate_cbor_bytes("create_invitation", SCHEMA, &cbor) {
+                    return TestResult::error(e.to_string())
+                }
+                TestResult::passed()
+            }
+        }
+    }
 
     #[ockam_macros::test]
     async fn accept(ctx: &mut Context) -> ockam_core::Result<()> {

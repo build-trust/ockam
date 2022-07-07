@@ -192,7 +192,10 @@ impl MessagingClient {
         decode(label, "space", &self.buf)
     }
 
-    pub async fn get_space_by_name(&mut self, space_name: &str) -> ockam_core::Result<Space<'_>> {
+    pub async fn get_space_by_name(
+        &'_ mut self,
+        space_name: &str,
+    ) -> ockam_core::Result<Space<'_>> {
         let label = "get_space_by_name";
         trace!(target: TARGET, space = %space_name, "getting space");
 

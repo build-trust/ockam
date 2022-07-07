@@ -506,6 +506,18 @@ impl<'a> Deref for CowStr<'a> {
     }
 }
 
+impl<'a> Display for CowStr<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl<'a, S: ?Sized + AsRef<str>> PartialEq<S> for CowStr<'a> {
+    fn eq(&self, other: &S) -> bool {
+        self.0 == other.as_ref()
+    }
+}
+
 /// A newtype around `Cow<'_, [u8]>` that borrows from input.
 ///
 /// Contrary to `Cow<_, [u8]>` the `Decode` impl for this type will always borrow
