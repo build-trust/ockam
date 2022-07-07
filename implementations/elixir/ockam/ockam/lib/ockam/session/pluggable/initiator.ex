@@ -73,6 +73,10 @@ defmodule Ockam.Session.Pluggable.Initiator do
          :ok <- wait_for_session(address, interval, timeout) do
       {:ok, address}
     end
+  catch
+    type, reason ->
+      ## TODO: match Worker not found error?
+      {:error, {type, reason}}
   end
 
   @impl true
@@ -169,6 +173,8 @@ defmodule Ockam.Session.Pluggable.Initiator do
         {:ok, RoutingSession.update_handshake_state(state, handshake_state)}
 
       {:error, err} ->
+        ## TODO: should we return :shutdown error here?
+        ## Non-shutdown error will cause a resstart
         {:stop, {:handshake_error, err}, state}
     end
   end
