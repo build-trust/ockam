@@ -45,20 +45,43 @@ defmodule Ockam.Identity.SecureChannel do
 
   defp spawner_options(options) do
     listener_keys = [:address, :inner_address, :restart_type]
-    worker_options = Keyword.drop(options, listener_keys)
+    handshake_options = Keyword.drop(options, listener_keys)
 
     responder_options = [
       address_prefix: "ISC_R_",
       worker_mod: Ockam.Identity.SecureChannel.Data,
       handshake: Ockam.Identity.SecureChannel.Handshake,
-      handshake_options: worker_options
+      handshake_options: handshake_options,
+      ## TODO: probably all spawners should do that
+      restart_type: :temporary
     ]
 
     Keyword.take(options, listener_keys)
     |> Keyword.merge(
       worker_mod: Responder,
-      worker_options: responder_options
+      worker_options: responder_options,
+      spawner_setup: &spawner_setup/2
     )
+  end
+
+  def spawner_setup(options, state) do
+    worker_options = Keyword.fetch!(options, :worker_options)
+    handshake_options = Keyword.fetch!(worker_options, :handshake_options)
+
+    identity =
+      case Keyword.fetch!(handshake_options, :identity) do
+        :dynamic ->
+          identity_module = Keyword.fetch!(handshake_options, :identity_module)
+          {:ok, new_identity, _id} = Identity.create(identity_module)
+          new_identity
+
+        other ->
+          other
+      end
+
+    new_handshake_options = Keyword.put(handshake_options, :identity, identity)
+    new_worker_options = Keyword.put(worker_options, :handshake_options, new_handshake_options)
+    {Keyword.put(options, :worker_options, new_worker_options), state}
   end
 
   @doc """
@@ -110,20 +133,16 @@ defmodule Ockam.Identity.SecureChannel do
 
     options = Keyword.merge(options, identity: identity, encryption_options: encryption_options)
 
-    create =
-      Initiator.create(
-        address_prefix: "ISC_I_",
-        address: Keyword.get(options, :address),
-        worker_mod: Ockam.Identity.SecureChannel.Data,
-        init_route: init_route,
-        handshake: Ockam.Identity.SecureChannel.Handshake,
-        handshake_options: options
-      )
+    initiator_options = [
+      address_prefix: "ISC_I_",
+      address: Keyword.get(options, :address),
+      worker_mod: Ockam.Identity.SecureChannel.Data,
+      init_route: init_route,
+      handshake: Ockam.Identity.SecureChannel.Handshake,
+      handshake_options: options
+    ]
 
-    with {:ok, worker} <- create,
-         :ok <- Initiator.wait_for_session(worker, 100, timeout) do
-      {:ok, worker}
-    end
+    Initiator.create_and_wait(initiator_options, 100, timeout)
   end
 end
 
@@ -170,8 +189,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
         role: :initiator,
         route: init_route,
         extra_init_payload: extra_payload,
-        callback_route: [handshake_address],
-        restart_type: :temporary
+        callback_route: [handshake_address]
       )
 
     with {:ok, _pid, enc_channel} <- SecureChannel.start_link(encryption_options),
@@ -223,6 +241,8 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
     end
   end
 
+  ## TODO: stop responders if handshake is not done in limited time
+  ## if initiator fails to handshake, responder will be left hanging
   @impl true
   def handle_responder(handshake_options, message, handshake_state) do
     ## TODO: maybe we need some separate handle_init_message for responder?
@@ -239,17 +259,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
 
   def handle_responder_init(handshake_options, message, handshake_state) do
     identity = Keyword.fetch!(handshake_options, :identity)
-
-    identity =
-      case identity do
-        :dynamic ->
-          identity_module = Keyword.fetch!(handshake_options, :identity_module)
-          {:ok, identity, _id} = Identity.create(identity_module)
-          identity
-
-        other ->
-          other
-      end
+    trust_policies = Keyword.get(handshake_options, :trust_policies, [])
 
     init_handshake_payload = Message.payload(message)
 
@@ -264,8 +274,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
         |> Keyword.merge(
           role: :responder,
           initiating_message: encryption_init,
-          callback_route: [handshake_address],
-          restart_type: :temporary
+          callback_route: [handshake_address]
         )
 
       with {:ok, _pid, enc_channel} <- SecureChannel.start_link(encryption_options),
@@ -278,6 +287,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
             auth_hash: auth_hash,
             expected_message: :handshake,
             identity: identity,
+            trust_policies: trust_policies,
             authorization: [:from_secure_channel, {:from_addresses, [:message, [enc_channel]]}]
           })
 

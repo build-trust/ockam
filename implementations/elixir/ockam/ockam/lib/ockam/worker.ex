@@ -125,23 +125,6 @@ defmodule Ockam.Worker do
   ## Moved here for better debugging and to keep the __using__ block short
 
   def create(module, options, timeout) when is_list(options) do
-    address_prefix = Keyword.get(options, :address_prefix, module.address_prefix(options))
-
-    ## Make sure there is no `nil` address in there
-    ## TODO: validate address format
-    ## TODO: better way to set address than `put_new_lazy`
-    options =
-      case Keyword.fetch(options, :address) do
-        {:ok, nil} -> Keyword.delete(options, :address)
-        {:ok, _address} -> options
-        :error -> options
-      end
-
-    options =
-      Keyword.put_new_lazy(options, :address, fn ->
-        Node.get_random_unregistered_address(address_prefix)
-      end)
-
     case Node.start_supervised(module, options) do
       {:ok, pid, worker} ->
         ## TODO: a better way to handle failing start
@@ -159,6 +142,23 @@ defmodule Ockam.Worker do
   end
 
   def start_link(module, options) when is_list(options) do
+    address_prefix = Keyword.get(options, :address_prefix, module.address_prefix(options))
+
+    ## Make sure there is no `nil` address in there
+    ## TODO: validate address format
+    ## TODO: better way to set address than `put_new_lazy`
+    options =
+      case Keyword.fetch(options, :address) do
+        {:ok, nil} -> Keyword.delete(options, :address)
+        {:ok, _address} -> options
+        :error -> options
+      end
+
+    options =
+      Keyword.put_new_lazy(options, :address, fn ->
+        Node.get_random_unregistered_address(address_prefix)
+      end)
+
     with {:ok, address} <- Keyword.fetch(options, :address),
          {:ok, pid} <- start_link(module, address, options) do
       {:ok, pid, address}
@@ -168,7 +168,7 @@ defmodule Ockam.Worker do
     end
   end
 
-  def start_link(module, address, options) when is_list(options) do
+  def start_link(module, address, options) when is_list(options) and address != nil do
     GenServer.start_link(module, options, name: {:via, Node.process_registry(), address})
   end
 

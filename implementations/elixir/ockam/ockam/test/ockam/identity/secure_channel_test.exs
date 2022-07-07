@@ -126,4 +126,59 @@ defmodule Ockam.Identity.SecureChannel.Tests do
       local_metadata: %{identity: _id, channel: :identity_secure_channel, bar: :foo}
     }
   end
+
+  test "initiator trust policy" do
+    {:ok, vault} = SoftwareVault.init()
+    {:ok, alice, _alice_id} = Identity.create(@identity_impl)
+
+    {:ok, listener} =
+      SecureChannel.create_listener(
+        identity: alice,
+        encryption_options: [vault: vault],
+        additional_metadata: %{foo: :bar}
+      )
+
+    {:ok, bob, _bob_id} = Identity.create(@identity_impl)
+
+    {:error, _reason} =
+      SecureChannel.create_channel(
+        identity: bob,
+        encryption_options: [vault: vault],
+        route: [listener],
+        additional_metadata: %{bar: :foo},
+        trust_policies: [fn _me, _contact -> {:error, :test} end]
+      )
+  end
+
+  test "responder trust policy" do
+    {:ok, vault} = SoftwareVault.init()
+    {:ok, alice, _alice_id} = Identity.create(@identity_impl)
+
+    {:ok, listener} =
+      SecureChannel.create_listener(
+        identity: alice,
+        encryption_options: [vault: vault],
+        additional_metadata: %{foo: :bar},
+        trust_policies: [fn _me, _contact -> {:error, :test} end]
+      )
+
+    {:ok, bob, _bob_id} = Identity.create(@identity_impl)
+
+    {:ok, channel} =
+      SecureChannel.create_channel(
+        identity: bob,
+        encryption_options: [vault: vault],
+        route: [listener],
+        additional_metadata: %{bar: :foo}
+      )
+
+    {:ok, me} = Ockam.Node.register_random_address()
+    Logger.info("Channel: #{inspect(channel)} me: #{inspect(me)}")
+    Ockam.Router.route("PING!", [channel, me], [me])
+
+    refute_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PING!"
+    }
+  end
 end
