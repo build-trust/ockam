@@ -237,4 +237,297 @@ defmodule Ockam.Stream.Storage.KinesisTest do
                Kinesis.save(stream_name, partition, message, state)
     end
   end
+
+  describe "fetch/5" do
+    setup do
+      state = %State{
+        initial_sequence_number:
+          49_631_158_273_630_243_944_238_988_867_078_862_282_663_492_862_412_324_866
+      }
+
+      %{
+        stream_name: "stream_name",
+        limit: 1,
+        partition: 1,
+        message: "message",
+        state: state,
+        shard_iterator:
+          "AAAAAAAAAAG99G9ASBqrYT9HilCAttTeDqzfuoFqqufxbFVoHwc1tKEPkjD6OtvGQR4Lxi5eocHDJeYD+xizBtF3KN1jy+wy7CzU14KwMWoOxKsHInDpqXKyopkeSHL6QkoSrkjIMtHGRkweqcsBlcEfCK5uMzS8h03fRX6UzzYusMGIJFjubgKS4qsd75aD7xA0VCZltyhpzNclBj047VPE3y8RtDLjcPWskASaBKbi1A4DT7mi/g=="
+      }
+    end
+
+    test "with index lower than or equal to initial sequence number reads from the stream start",
+         %{
+           stream_name: stream_name,
+           limit: limit,
+           partition: partition,
+           message: message,
+           state: state,
+           shard_iterator: shard_iterator
+         } do
+      index = 0
+      sequence_number = 49_631_158_273_630_243_944_238_988_869_702_231_311_227_243_256_766_005_250
+
+      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+        expected_shard_id = "shardId-00000000000#{partition}"
+        expected_sequence_number = to_string(state.initial_sequence_number)
+
+        assert %{
+                 "StreamName" => ^stream_name,
+                 "ShardId" => ^expected_shard_id,
+                 "ShardIteratorType" => "AFTER_SEQUENCE_NUMBER",
+                 "StartingSequenceNumber" => ^expected_sequence_number
+               } = Jason.decode!(body)
+
+        assert {"x-amz-target", "Kinesis_20131202.GetShardIterator"} in headers
+
+        {:ok,
+         %{
+           status_code: 200,
+           body: Jason.encode!(%{"ShardIterator" => shard_iterator})
+         }}
+      end)
+
+      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+        assert %{
+                 "ShardIterator" => shard_iterator,
+                 "Limit" => limit
+               } == Jason.decode!(body)
+
+        assert {"x-amz-target", "Kinesis_20131202.GetRecords"} in headers
+
+        response_body = %{
+          "MillisBehindLatest" => 0,
+          "NextShardIterator" =>
+            "AAAAAAAAAAE54atsZujXQa7v1OfgGKakwXhL3M915YyqTj6KbFkEDOQLhdkoDIfA0Nrhl62zLYKCaF8MtqMUDMYFL8h/8rGWhYmjbS+RcZ0EKF6iNM+HWtncwLvp8fEjlXXFh+rlLUuV0bbKhz6fN6jfdD8uZPefZyF/+gmgZuAN+gs1YeaYWZ4S1eZS2WXYw5DEowuY8obSnnrcnNGhMhhmDv4R4Mr0XnxNqkn3D8xsgQ8MKo+7yQ==",
+          "Records" => [
+            %{
+              "ApproximateArrivalTimestamp" => 1_657_178_345.737,
+              "Data" => Base.encode64(message),
+              "PartitionKey" => "ukurk2jp3qea7r7m66q2xypwgy3xa6oa",
+              "SequenceNumber" => "#{sequence_number}"
+            }
+          ]
+        }
+
+        {:ok,
+         %{
+           status_code: 200,
+           body: Jason.encode!(response_body)
+         }}
+      end)
+
+      new_state = %{state | previous_index: index, previous_sequence_number: sequence_number}
+
+      assert {{:ok, [%{index: sequence_number, data: message}]}, new_state} ==
+               Kinesis.fetch(stream_name, partition, index, limit, state)
+    end
+
+    test "with index larger than initial sequence number returns message at index",
+         %{
+           stream_name: stream_name,
+           limit: limit,
+           partition: partition,
+           message: message,
+           state: state,
+           shard_iterator: shard_iterator
+         } do
+      index = 49_631_158_273_630_243_944_238_988_869_702_231_311_227_243_256_766_005_250
+
+      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+        expected_shard_id = "shardId-00000000000#{partition}"
+        expected_sequence_number = "#{index}"
+
+        assert %{
+                 "StreamName" => ^stream_name,
+                 "ShardId" => ^expected_shard_id,
+                 "ShardIteratorType" => "AT_SEQUENCE_NUMBER",
+                 "StartingSequenceNumber" => ^expected_sequence_number
+               } = Jason.decode!(body)
+
+        assert {"x-amz-target", "Kinesis_20131202.GetShardIterator"} in headers
+
+        {:ok,
+         %{
+           status_code: 200,
+           body: Jason.encode!(%{"ShardIterator" => shard_iterator})
+         }}
+      end)
+
+      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+        assert %{
+                 "ShardIterator" => shard_iterator,
+                 "Limit" => limit
+               } == Jason.decode!(body)
+
+        assert {"x-amz-target", "Kinesis_20131202.GetRecords"} in headers
+
+        response_body = %{
+          "MillisBehindLatest" => 0,
+          "NextShardIterator" =>
+            "AAAAAAAAAAE54atsZujXQa7v1OfgGKakwXhL3M915YyqTj6KbFkEDOQLhdkoDIfA0Nrhl62zLYKCaF8MtqMUDMYFL8h/8rGWhYmjbS+RcZ0EKF6iNM+HWtncwLvp8fEjlXXFh+rlLUuV0bbKhz6fN6jfdD8uZPefZyF/+gmgZuAN+gs1YeaYWZ4S1eZS2WXYw5DEowuY8obSnnrcnNGhMhhmDv4R4Mr0XnxNqkn3D8xsgQ8MKo+7yQ==",
+          "Records" => [
+            %{
+              "ApproximateArrivalTimestamp" => 1_657_178_345.737,
+              "Data" => Base.encode64(message),
+              "PartitionKey" => "ukurk2jp3qea7r7m66q2xypwgy3xa6oa",
+              "SequenceNumber" => "#{index}"
+            }
+          ]
+        }
+
+        {:ok,
+         %{
+           status_code: 200,
+           body: Jason.encode!(response_body)
+         }}
+      end)
+
+      new_state = %{state | previous_index: index, previous_sequence_number: index}
+
+      assert {{:ok, [%{index: index, data: message}]}, new_state} ==
+               Kinesis.fetch(stream_name, partition, index, limit, state)
+    end
+
+    test "with index larger than previous sequence number returns next message",
+         %{
+           stream_name: stream_name,
+           limit: limit,
+           partition: partition,
+           message: message,
+           state: state,
+           shard_iterator: shard_iterator
+         } do
+      index = 49_631_158_273_630_243_944_238_988_869_702_231_311_227_243_256_766_005_251
+      previous_sequence_number = index - 1
+
+      new_sequence_number =
+        49_631_158_273_630_243_944_238_988_869_966_986_065_722_869_104_978_690_050
+
+      state = %{state | previous_sequence_number: previous_sequence_number}
+
+      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+        expected_shard_id = "shardId-00000000000#{partition}"
+        expected_sequence_number = "#{previous_sequence_number}"
+
+        assert %{
+                 "StreamName" => ^stream_name,
+                 "ShardId" => ^expected_shard_id,
+                 "ShardIteratorType" => "AFTER_SEQUENCE_NUMBER",
+                 "StartingSequenceNumber" => ^expected_sequence_number
+               } = Jason.decode!(body)
+
+        assert {"x-amz-target", "Kinesis_20131202.GetShardIterator"} in headers
+
+        {:ok,
+         %{
+           status_code: 200,
+           body: Jason.encode!(%{"ShardIterator" => shard_iterator})
+         }}
+      end)
+
+      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+        assert %{
+                 "ShardIterator" => shard_iterator,
+                 "Limit" => limit
+               } == Jason.decode!(body)
+
+        assert {"x-amz-target", "Kinesis_20131202.GetRecords"} in headers
+
+        response_body = %{
+          "MillisBehindLatest" => 0,
+          "NextShardIterator" =>
+            "AAAAAAAAAAE54atsZujXQa7v1OfgGKakwXhL3M915YyqTj6KbFkEDOQLhdkoDIfA0Nrhl62zLYKCaF8MtqMUDMYFL8h/8rGWhYmjbS+RcZ0EKF6iNM+HWtncwLvp8fEjlXXFh+rlLUuV0bbKhz6fN6jfdD8uZPefZyF/+gmgZuAN+gs1YeaYWZ4S1eZS2WXYw5DEowuY8obSnnrcnNGhMhhmDv4R4Mr0XnxNqkn3D8xsgQ8MKo+7yQ==",
+          "Records" => [
+            %{
+              "ApproximateArrivalTimestamp" => 1_657_178_345.737,
+              "Data" => Base.encode64(message),
+              "PartitionKey" => "ukurk2jp3qea7r7m66q2xypwgy3xa6oa",
+              "SequenceNumber" => "#{new_sequence_number}"
+            }
+          ]
+        }
+
+        {:ok,
+         %{
+           status_code: 200,
+           body: Jason.encode!(response_body)
+         }}
+      end)
+
+      new_state = %{
+        state
+        | previous_index: index,
+          previous_sequence_number: new_sequence_number
+      }
+
+      assert {{:ok, [%{index: new_sequence_number, data: message}]}, new_state} ==
+               Kinesis.fetch(stream_name, partition, index, limit, state)
+    end
+
+    test "at the end of the stream fetches records using persisted shard iterator",
+         %{
+           stream_name: stream_name,
+           limit: limit,
+           partition: partition,
+           state: state,
+           shard_iterator: shard_iterator
+         } do
+      index = 49_631_158_273_630_243_944_238_988_869_702_231_311_227_243_256_766_005_251
+      state = %{state | previous_index: index, next_shard_iterator: shard_iterator}
+
+      next_shard_iterator =
+        "AAAAAAAAAAE54atsZujXQa7v1OfgGKakwXhL3M915YyqTj6KbFkEDOQLhdkoDIfA0Nrhl62zLYKCaF8MtqMUDMYFL8h/8rGWhYmjbS+RcZ0EKF6iNM+HWtncwLvp8fEjlXXFh+rlLUuV0bbKhz6fN6jfdD8uZPefZyF/+gmgZuAN+gs1YeaYWZ4S1eZS2WXYw5DEowuY8obSnnrcnNGhMhhmDv4R4Mr0XnxNqkn3D8xsgQ8MKo+7yQ=="
+
+      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+        assert %{
+                 "ShardIterator" => shard_iterator,
+                 "Limit" => limit
+               } == Jason.decode!(body)
+
+        assert {"x-amz-target", "Kinesis_20131202.GetRecords"} in headers
+
+        response_body = %{
+          "MillisBehindLatest" => 0,
+          "NextShardIterator" => next_shard_iterator,
+          "Records" => []
+        }
+
+        {:ok,
+         %{
+           status_code: 200,
+           body: Jason.encode!(response_body)
+         }}
+      end)
+
+      new_state = %{
+        state
+        | previous_index: index,
+          next_shard_iterator: next_shard_iterator
+      }
+
+      assert {{:ok, []}, new_state} == Kinesis.fetch(stream_name, partition, index, limit, state)
+    end
+
+    test "propagates error and state if call to AWS fails", %{
+      stream_name: stream_name,
+      limit: limit,
+      partition: partition,
+      state: state
+    } do
+      error_type = "ResourceNotFoundException"
+      error_message = "Stream #{stream_name} under account 000000000000 not found."
+
+      expect(ExAwsMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
+        {:ok,
+         %{
+           status_code: 400,
+           body: Jason.encode!(%{"__type" => error_type, "message" => error_message})
+         }}
+      end)
+
+      assert {{:error, {error_type, error_message}}, state} ==
+               Kinesis.fetch(stream_name, partition, 0, limit, state)
+    end
+  end
 end
