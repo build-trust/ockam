@@ -1,33 +1,32 @@
-use std::borrow::Cow;
-
 use minicbor::{Decode, Encode};
 
+use crate::CowStr;
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 
 #[derive(Decode, Debug)]
-#[cfg_attr(test, derive(Encode))]
+#[cfg_attr(test, derive(Encode, Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Space<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<7574645>,
-    #[b(1)] pub id: Cow<'a, str>,
-    #[b(2)] pub name: Cow<'a, str>,
+    #[b(1)] pub id: CowStr<'a>,
+    #[b(2)] pub name: CowStr<'a>,
 }
 
-#[derive(Encode)]
-#[cfg_attr(test, derive(Decode))]
+#[derive(Encode, Debug)]
+#[cfg_attr(test, derive(Decode, Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSpace<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<3888657>,
-    #[b(1)] pub name: Cow<'a, str>,
+    #[b(1)] pub name: CowStr<'a>,
 }
 
 impl<'a> CreateSpace<'a> {
-    pub fn new<S: Into<Cow<'a, str>>>(name: S) -> Self {
+    pub fn new<S: Into<CowStr<'a>>>(name: S) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -44,17 +43,87 @@ pub mod tests {
     use minicbor::{encode, Decoder};
     use quickcheck::{Arbitrary, Gen};
 
+    use ockam::identity::Identity;
     use ockam_core::compat::collections::HashMap;
     use ockam_core::{Route, Routed, Worker};
     use ockam_node::Context;
+    use ockam_vault::Vault;
 
     use crate::cloud::space::CreateSpace;
     use crate::cloud::MessagingClient;
     use crate::{Method, Request, Response};
-    use ockam::identity::Identity;
-    use ockam_vault::Vault;
 
     use super::*;
+
+    mod schema {
+        use cddl_cat::validate_cbor_bytes;
+        use quickcheck::{quickcheck, TestResult};
+
+        use crate::SCHEMA;
+
+        use super::*;
+
+        #[derive(Debug, Clone)]
+        struct Sp(Space<'static>);
+
+        impl Arbitrary for Sp {
+            fn arbitrary(g: &mut Gen) -> Self {
+                Sp(Space {
+                    #[cfg(feature = "tag")]
+                    tag: Default::default(),
+                    id: String::arbitrary(g).into(),
+                    name: String::arbitrary(g).into(),
+                })
+            }
+        }
+
+        #[derive(Debug, Clone)]
+        struct CSp(CreateSpace<'static>);
+
+        impl Arbitrary for CSp {
+            fn arbitrary(g: &mut Gen) -> Self {
+                CSp(CreateSpace {
+                    #[cfg(feature = "tag")]
+                    tag: Default::default(),
+                    name: String::arbitrary(g).into(),
+                })
+            }
+        }
+
+        quickcheck! {
+            fn space(o: Sp) -> TestResult {
+                let cbor = minicbor::to_vec(&o.0).unwrap();
+                if let Err(e) = validate_cbor_bytes("space", SCHEMA, &cbor) {
+                    return TestResult::error(e.to_string())
+                }
+                TestResult::passed()
+            }
+
+            fn spaces(o: Vec<Sp>) -> TestResult {
+                let empty: Vec<Space> = vec![];
+                let cbor = minicbor::to_vec(&empty).unwrap();
+                if let Err(e) = validate_cbor_bytes("spaces", SCHEMA, &cbor) {
+                    return TestResult::error(e.to_string())
+                }
+                TestResult::passed();
+
+                let o: Vec<Space> = o.into_iter().map(|p| p.0).collect();
+                let cbor = minicbor::to_vec(&o).unwrap();
+                if let Err(e) = validate_cbor_bytes("spaces", SCHEMA, &cbor) {
+                    return TestResult::error(e.to_string())
+                }
+                TestResult::passed()
+            }
+
+            fn create_space(o: CSp) -> TestResult {
+                let cbor = minicbor::to_vec(&o.0).unwrap();
+                if let Err(e) = validate_cbor_bytes("create_space", SCHEMA, &cbor) {
+                    return TestResult::error(e.to_string())
+                }
+                TestResult::passed()
+            }
+        }
+    }
 
     #[ockam_macros::test]
     async fn basic_api_usage(ctx: &mut Context) -> ockam_core::Result<()> {

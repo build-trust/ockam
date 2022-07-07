@@ -14,8 +14,6 @@ use ockam_node::Context;
 use tracing::trace;
 use types::{Attribute, Attributes};
 
-const TARGET: &str = "ockam_api::auth::client";
-
 /// Auth API server.
 #[derive(Debug)]
 pub struct Server<S> {

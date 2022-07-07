@@ -1,38 +1,37 @@
-use std::borrow::Cow;
-
 use minicbor::bytes::ByteSlice;
 use minicbor::{Decode, Encode};
 
+use crate::CowStr;
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 
 #[derive(Decode, Debug)]
-#[cfg_attr(test, derive(Encode))]
+#[cfg_attr(test, derive(Encode, Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Project<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<9056532>,
-    #[b(1)] pub id: Cow<'a, str>,
-    #[b(2)] pub name: Cow<'a, str>,
-    #[b(3)] pub space_name: Cow<'a, str>,
-    #[b(4)] pub services: Vec<Cow<'a, str>>,
+    #[b(1)] pub id: CowStr<'a>,
+    #[b(2)] pub name: CowStr<'a>,
+    #[b(3)] pub space_name: CowStr<'a>,
+    #[b(4)] pub services: Vec<CowStr<'a>>,
     #[b(5)] pub access_route: &'a ByteSlice,
 }
 
-#[derive(Encode)]
-#[cfg_attr(test, derive(Decode))]
+#[derive(Encode, Debug)]
+#[cfg_attr(test, derive(Decode, Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateProject<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<8669570>,
-    #[b(1)] pub name: Cow<'a, str>,
-    #[b(2)] pub services: Vec<Cow<'a, str>>,
+    #[b(1)] pub name: CowStr<'a>,
+    #[b(2)] pub services: Vec<CowStr<'a>>,
 }
 
 impl<'a> CreateProject<'a> {
-    pub fn new<S: Into<Cow<'a, str>>>(name: S, services: &'a [String]) -> Self {
+    pub fn new<S: Into<CowStr<'a>>>(name: S, services: &'a [String]) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -40,7 +39,7 @@ impl<'a> CreateProject<'a> {
             services: services
                 .iter()
                 .map(String::as_str)
-                .map(Cow::Borrowed)
+                .map(CowStr::from)
                 .collect(),
         }
     }
@@ -64,6 +63,80 @@ mod tests {
     use crate::{Method, Request, Response};
 
     use super::*;
+
+    mod schema {
+        use cddl_cat::validate_cbor_bytes;
+        use quickcheck::{quickcheck, TestResult};
+
+        use crate::SCHEMA;
+
+        use super::*;
+
+        #[derive(Debug, Clone)]
+        struct Pr(Project<'static>);
+
+        impl Arbitrary for Pr {
+            fn arbitrary(g: &mut Gen) -> Self {
+                Pr(Project {
+                    #[cfg(feature = "tag")]
+                    tag: Default::default(),
+                    id: String::arbitrary(g).into(),
+                    name: String::arbitrary(g).into(),
+                    space_name: String::arbitrary(g).into(),
+                    services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
+                    access_route: b"route"[..].into(),
+                })
+            }
+        }
+
+        #[derive(Debug, Clone)]
+        struct CPr(CreateProject<'static>);
+
+        impl Arbitrary for CPr {
+            fn arbitrary(g: &mut Gen) -> Self {
+                CPr(CreateProject {
+                    #[cfg(feature = "tag")]
+                    tag: Default::default(),
+                    name: String::arbitrary(g).into(),
+                    services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
+                })
+            }
+        }
+
+        quickcheck! {
+            fn project(o: Pr) -> TestResult {
+                let cbor = minicbor::to_vec(&o.0).unwrap();
+                if let Err(e) = validate_cbor_bytes("project", SCHEMA, &cbor) {
+                    return TestResult::error(e.to_string())
+                }
+                TestResult::passed()
+            }
+
+            fn projects(o: Vec<Pr>) -> TestResult {
+                let empty: Vec<Project> = vec![];
+                let cbor = minicbor::to_vec(&empty).unwrap();
+                if let Err(e) = validate_cbor_bytes("projects", SCHEMA, &cbor) {
+                    return TestResult::error(e.to_string())
+                }
+                TestResult::passed();
+
+                let o: Vec<Project> = o.into_iter().map(|p| p.0).collect();
+                let cbor = minicbor::to_vec(&o).unwrap();
+                if let Err(e) = validate_cbor_bytes("projects", SCHEMA, &cbor) {
+                    return TestResult::error(e.to_string())
+                }
+                TestResult::passed()
+            }
+
+            fn create_project(o: CPr) -> TestResult {
+                let cbor = minicbor::to_vec(&o.0).unwrap();
+                if let Err(e) = validate_cbor_bytes("create_project", SCHEMA, &cbor) {
+                    return TestResult::error(e.to_string())
+                }
+                TestResult::passed()
+            }
+        }
+    }
 
     #[ockam_macros::test]
     async fn basic_api_usage(ctx: &mut Context) -> ockam_core::Result<()> {
