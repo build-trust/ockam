@@ -1,5 +1,6 @@
 mod base;
 mod forwarder;
+mod identity;
 mod portal;
 mod secure_channel;
 mod service;
@@ -12,6 +13,7 @@ mod transport;
 pub mod types {
     pub use super::base::*;
     pub use super::forwarder::*;
+    pub use super::identity::*;
     pub use super::portal::*;
     pub use super::secure_channel::*;
     pub use super::transport::*;

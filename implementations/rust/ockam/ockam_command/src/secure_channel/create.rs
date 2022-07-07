@@ -1,8 +1,9 @@
 use crate::util::{api, connect_to, stop_node, OckamConfig};
 use clap::{Args, Subcommand};
 use ockam::Context;
-use ockam_api::Status;
-use ockam_core::Route;
+use ockam_api::error::ApiError;
+use ockam_api::{route_to_multiaddr, Status};
+use ockam_core::{route, Route};
 use ockam_multiaddr::MultiAddr;
 
 #[derive(Clone, Debug, Args)]
@@ -57,10 +58,17 @@ pub async fn create_connector(
     cmd: CreateCommand,
     mut base_route: Route,
 ) -> anyhow::Result<()> {
+    let addr = match cmd.create_subcommand {
+        CreateSubCommand::Connector { addr, .. } => addr,
+        CreateSubCommand::Listener { .. } => {
+            return Err(ApiError::generic("Internal logic error").into())
+        }
+    };
+
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append("_internal.nodeman"),
-            api::create_secure_channel(&cmd.create_subcommand)?,
+            api::create_secure_channel(&addr)?,
         )
         .await?;
 
@@ -68,9 +76,11 @@ pub async fn create_connector(
 
     match response.status() {
         Some(Status::Ok) => {
+            let addr = route_to_multiaddr(&route![result.addr.to_string()])
+                .ok_or_else(|| ApiError::generic("Invalid Secure Channel Address"))?;
             eprintln!(
                 "Secure Channel created! You can send messages to it via this address:\n{}",
-                result.addr
+                addr
             )
         }
         _ => {
@@ -86,10 +96,17 @@ pub async fn create_listener(
     cmd: CreateCommand,
     mut base_route: Route,
 ) -> anyhow::Result<()> {
+    let addr = match cmd.create_subcommand {
+        CreateSubCommand::Connector { .. } => {
+            return Err(ApiError::generic("Internal logic error").into())
+        }
+        CreateSubCommand::Listener { bind, .. } => bind,
+    };
+
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append("_internal.nodeman"),
-            api::create_secure_channel_listener(&cmd.create_subcommand)?,
+            api::create_secure_channel_listener(&addr)?,
         )
         .await?;
 
@@ -97,7 +114,7 @@ pub async fn create_listener(
 
     match response.status() {
         Some(Status::Ok) => {
-            eprintln!("Secure Channel Listener created!")
+            eprintln!("Secure Channel Listener created at {}!", addr)
         }
         _ => {
             eprintln!("An error occurred while creating secure channel listener",)

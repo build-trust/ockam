@@ -6,6 +6,7 @@ use minicbor::Decoder;
 
 use ockam::{Error, OckamError, Result};
 use ockam_api::{multiaddr_to_route, nodes::types::*, Method, Request, Response};
+use ockam_multiaddr::MultiAddr;
 
 ////////////// !== generators
 
@@ -73,14 +74,7 @@ pub(crate) fn create_identity() -> Result<Vec<u8>> {
 }
 
 /// Construct a request to create Secure Channels
-pub(crate) fn create_secure_channel(
-    cmd: &crate::secure_channel::create::CreateSubCommand,
-) -> Result<Vec<u8>> {
-    let addr = match cmd {
-        crate::secure_channel::create::CreateSubCommand::Connector { addr, .. } => addr,
-        crate::secure_channel::create::CreateSubCommand::Listener { .. } => panic!(),
-    };
-
+pub(crate) fn create_secure_channel(addr: &MultiAddr) -> Result<Vec<u8>> {
     let payload = CreateSecureChannelRequest::new(addr.to_string());
 
     let mut buf = vec![];
@@ -91,14 +85,7 @@ pub(crate) fn create_secure_channel(
 }
 
 /// Construct a request to create Secure Channel Listeners
-pub(crate) fn create_secure_channel_listener(
-    cmd: &crate::secure_channel::create::CreateSubCommand,
-) -> Result<Vec<u8>> {
-    let addr = match cmd {
-        crate::secure_channel::create::CreateSubCommand::Connector { .. } => panic!(),
-        crate::secure_channel::create::CreateSubCommand::Listener { bind, .. } => bind,
-    };
-
+pub(crate) fn create_secure_channel_listener(addr: &str) -> Result<Vec<u8>> {
     let payload = CreateSecureChannelListenerRequest::new(addr);
 
     let mut buf = vec![];
@@ -158,10 +145,12 @@ pub(crate) fn parse_transport_status(resp: &[u8]) -> Result<(Response, Transport
     Ok((response, dec.decode::<TransportStatus>()?))
 }
 
-pub(crate) fn parse_create_identity_response(resp: &[u8]) -> Result<Response> {
+pub(crate) fn parse_create_identity_response(
+    resp: &[u8],
+) -> Result<(Response, CreateIdentityResponse<'_>)> {
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
-    Ok(response)
+    Ok((response, dec.decode::<CreateIdentityResponse>()?))
 }
 
 pub(crate) fn parse_create_secure_channel_response(
