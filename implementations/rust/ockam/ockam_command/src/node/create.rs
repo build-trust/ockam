@@ -36,6 +36,12 @@ impl CreateCommand {
             // deterministic way of starting a node.
             let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
 
+            // FIXME: not really clear why this is causing issues
+            if cfg.port_is_used(command.port) {
+                eprintln!("Another node is listening on the provided port!");
+                std::process::exit(-1);
+            }
+
             // First we create a new node in the configuration so that
             // we can ask it for the correct log path, as well as
             // making sure the watchdog can do its job later on.
@@ -94,12 +100,6 @@ impl CreateCommand {
             // Then query the node manager for the status
             connect_to(command.port, (), query_status);
         } else {
-            // FIXME: not really clear why this is causing issues
-            // if cfg.port_is_used(command.port) {
-            //     eprintln!("Another node is listening on the provided port!");
-            //     std::process::exit(-1);
-            // }
-
             // HACK: try to get the current node dir.  If it doesn't
             // exist the user PROBABLY started a non-detached node.
             // Thus we need to create the node dir so that subsequent
