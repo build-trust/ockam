@@ -45,4 +45,47 @@ defmodule Ockam.Stream.Storage.Kinesis do
       {:ok, %State{options: options}}
     end
   end
+
+  @impl true
+  @spec init_partition(String.t(), integer(), state(), options()) ::
+          {:ok, state()} | {:error, any()}
+  def init_partition(stream_name, partition, state, options) do
+    Logger.debug(
+      "Init partition. stream_name: #{stream_name}, partition: #{partition}, state: #{inspect(state)}"
+    )
+
+    options = Keyword.merge(state.options, options)
+
+    # NOTE: We're retrieving shard hash key to ensure that producer will
+    #       put messages to a particular shard.
+    #       We're also storing initial sequence number to keep a reference to
+    #       the beginning of the shard.
+    previous_shard_id = Kinesis.shard_id(partition - 1)
+
+    case Kinesis.describe_stream(stream_name,
+           exclusive_start_shard_id: previous_shard_id,
+           limit: 1
+         ) do
+      {:ok,
+       %{
+         "StreamDescription" => %{
+           "Shards" => [
+             %{
+               "HashKeyRange" => %{"StartingHashKey" => hash_key},
+               "SequenceNumberRange" => %{"StartingSequenceNumber" => initial_sequence_number}
+             }
+           ]
+         }
+       }} ->
+        {:ok,
+         %State{
+           hash_key: hash_key,
+           initial_sequence_number: String.to_integer(initial_sequence_number),
+           options: options
+         }}
+
+      error ->
+        error
+    end
+  end
 end
