@@ -71,7 +71,7 @@ mod tests {
         let vault = Vault::create();
 
         // Create an Identity to represent the ockam-command client.
-        let client_identity = Identity::create(&ctx, &vault).await?;
+        let client_identity = Identity::create(ctx, &vault).await?;
 
         // Starts a secure channel listener at "api", with a freshly created
         // identity, and a ProjectServer worker registered at "projects"
@@ -88,8 +88,12 @@ mod tests {
         assert_eq!(&p1.name, "p1");
         assert_eq!(&p1.services, &["service"]);
         let p1_id = p1.id.to_string();
+        let p1_name = p1.name.to_string();
 
         let p1_retrieved = client.get_project(s_id, &p1_id).await?;
+        assert_eq!(p1_retrieved.id, p1_id);
+
+        let p1_retrieved = client.get_project_by_name(s_id, &p1_name).await?;
         assert_eq!(p1_retrieved.id, p1_id);
 
         let p2 = client
@@ -138,7 +142,7 @@ mod tests {
             let mut dec = Decoder::new(data);
             let req: Request = dec.decode()?;
             match req.method() {
-                Some(Method::Get) => match req.path_segments::<3>().as_slice() {
+                Some(Method::Get) => match req.path_segments::<4>().as_slice() {
                     // Get all projects:
                     [_, _] => Response::ok(req.id())
                         .body(encode::ArrayIter::new(self.0.values()))
@@ -146,6 +150,14 @@ mod tests {
                     // Get a single project:
                     [_, _, id] => {
                         if let Some(n) = self.0.get(*id) {
+                            Response::ok(req.id()).body(n).encode(buf)?
+                        } else {
+                            Response::not_found(req.id()).encode(buf)?
+                        }
+                    }
+                    // Get a single project by name:
+                    [_, _, _, name] => {
+                        if let Some((_, n)) = self.0.iter().find(|(_, n)| n.name == *name) {
                             Response::ok(req.id()).body(n).encode(buf)?
                         } else {
                             Response::not_found(req.id()).encode(buf)?

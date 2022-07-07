@@ -1,17 +1,17 @@
 pub mod types;
 
-use crate::{assert_request_match, assert_response_match};
-use crate::{Error, Method, Request, RequestBuilder, Response, Status};
+use crate::{decode_option, is_ok, request};
+use crate::{Error, Method, Request, Response, Status};
 use core::convert::Infallible;
 use core::fmt;
 use minicbor::encode::Write;
-use minicbor::{Decoder, Encode};
+use minicbor::Decoder;
 use ockam_core::compat::error::Error as StdError;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{self, Address, Route, Routed, Worker};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_node::Context;
-use tracing::{trace, warn};
+use tracing::trace;
 use types::{Attribute, Attributes};
 
 /// Auth API server.
@@ -158,107 +158,25 @@ impl Client {
     }
 
     pub async fn set(&mut self, id: &str, attrs: &Attributes<'_>) -> ockam_core::Result<()> {
+        let label = "set attributes";
         let req = Request::post(format!("v0/control_plane/{id}")).body(attrs);
-        self.buf = self.request("set attributes", "attributes", &req).await?;
-        assert_response_match(None, &self.buf);
-        let mut d = Decoder::new(&self.buf);
-        let res = response("set attributes", &mut d)?;
-        if res.status() == Some(Status::Ok) {
-            Ok(())
-        } else {
-            dbg!(&res);
-            Err(error("set attributes", &res, &mut d))
-        }
+        self.buf = request(&mut self.ctx, label, "attributes", self.route.clone(), &req).await?;
+        is_ok(label, &self.buf)
     }
 
     pub async fn get(&mut self, id: &str, attr: &str) -> ockam_core::Result<Option<&[u8]>> {
+        let label = "get attribute";
         let req = Request::get(format!("v0/control_plane/{id}/{attr}"));
-        self.buf = self.request("get attribute", None, &req).await?;
-        let mut d = Decoder::new(&self.buf);
-        let res = response("get attribute", &mut d)?;
-        match res.status() {
-            Some(Status::Ok) => {
-                assert_response_match("attribute", &self.buf);
-                let a: Attribute = d.decode()?;
-                Ok(Some(a.value()))
-            }
-            Some(Status::NotFound) => Ok(None),
-            _ => Err(error("get attribute", &res, &mut d)),
-        }
+        self.buf = request(&mut self.ctx, label, None, self.route.clone(), &req).await?;
+        let a: Option<Attribute> = decode_option(label, "attribute", &self.buf)?;
+        Ok(a.map(|a| a.value()))
     }
 
     pub async fn del(&mut self, id: &str, attr: &str) -> ockam_core::Result<()> {
+        let label = "del attribute";
         let req = Request::delete(format!("/v0/control_plane/{id}/{attr}"));
-        self.buf = self.request("del attribute", None, &req).await?;
-        assert_response_match(None, &self.buf);
-        let mut d = Decoder::new(&self.buf);
-        let res = response("del attribute", &mut d)?;
-        if res.status() == Some(Status::Ok) {
-            Ok(())
-        } else {
-            Err(error("del attribute", &res, &mut d))
-        }
-    }
-
-    /// Encode request header and body (if any) and send the package to the server.
-    async fn request<T>(
-        &mut self,
-        label: &str,
-        schema: impl Into<Option<&str>>,
-        req: &RequestBuilder<'_, T>,
-    ) -> ockam_core::Result<Vec<u8>>
-    where
-        T: Encode<()>,
-    {
-        let mut buf = Vec::new();
-        req.encode(&mut buf)?;
-        assert_request_match(schema, &buf);
-        trace! {
-            target: "ockam_api::auth::client",
-            id     = %req.header().id(),
-            method = ?req.header().method(),
-            path   = %req.header().path(),
-            body   = %req.header().has_body(),
-            "-> {label}"
-        };
-        let vec: Vec<u8> = self.ctx.send_and_receive(self.route.clone(), buf).await?;
-        Ok(vec)
-    }
-}
-
-/// Decode and log response header.
-fn response(label: &str, dec: &mut Decoder<'_>) -> ockam_core::Result<Response> {
-    let res: Response = dec.decode()?;
-    trace! {
-        target: "ockam_api::auth::client",
-        re     = %res.re(),
-        id     = %res.id(),
-        status = ?res.status(),
-        body   = %res.has_body(),
-        "<- {label}"
-    }
-    Ok(res)
-}
-
-/// Decode, log and mape response error to ockam_core error.
-fn error(label: &str, res: &Response, dec: &mut Decoder<'_>) -> ockam_core::Error {
-    if res.has_body() {
-        let err = match dec.decode::<Error>() {
-            Ok(e) => e,
-            Err(e) => return e.into(),
-        };
-        warn! {
-            target: "ockam_api::auth::client",
-            id     = %res.id(),
-            re     = %res.re(),
-            status = ?res.status(),
-            error  = ?err.message(),
-            "<- {label}"
-        }
-        let msg = err.message().unwrap_or(label);
-        ockam_core::Error::new(Origin::Application, Kind::Protocol, msg)
-    } else {
-        ockam_core::Error::new(Origin::Application, Kind::Protocol, label)
+        self.buf = request(&mut self.ctx, label, None, self.route.clone(), &req).await?;
+        is_ok(label, &self.buf)
     }
 }
 

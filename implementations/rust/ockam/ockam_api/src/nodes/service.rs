@@ -89,7 +89,7 @@ impl NodeMan {
         };
 
         // Each node by default has Vault, with storage inside its directory
-        let _ = s.create_vault().await?;
+        s.create_vault().await?;
 
         let vault = s
             .vault
@@ -116,11 +116,11 @@ impl NodeMan {
             .collect()
     }
 
-    async fn add_transport(
+    async fn add_transport<'a>(
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<TransportStatus<'_>>> {
+    ) -> Result<ResponseBuilder<TransportStatus<'a>>> {
         let CreateTransport { tt, tm, addr, .. } = dec.decode()?;
 
         use {TransportMode::*, TransportType::*};
@@ -278,12 +278,12 @@ impl NodeMan {
 
     //////// Secure channel API ////////
 
-    async fn create_secure_channel(
+    async fn create_secure_channel<'a>(
         &mut self,
         _ctx: &Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'_>>> {
+    ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'a>>> {
         let CreateSecureChannelRequest { addr, .. } = dec.decode()?;
 
         info!("Handling request to create a new secure channel: {}", addr);
@@ -360,12 +360,12 @@ impl NodeMan {
         ))
     }
 
-    async fn create_iolet(
+    async fn create_iolet<'a>(
         &mut self,
         _ctx: &mut Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<PortalStatus<'_>>> {
+    ) -> Result<ResponseBuilder<PortalStatus<'a>>> {
         let CreatePortal {
             addr,
             alias,

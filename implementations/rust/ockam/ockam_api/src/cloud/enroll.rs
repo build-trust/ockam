@@ -215,7 +215,7 @@ mod tests {
             // Create a Vault to safely store secret keys for Receiver.
             let vault = Vault::create();
             // Create an Identity to represent the ockam-command client.
-            let client_identity = Identity::create(&ctx, &vault).await?;
+            let client_identity = Identity::create(ctx, &vault).await?;
             // Initiate cloud TCP listener
 
             // Starts a secure channel listener at "api", with a freshly created
@@ -267,7 +267,7 @@ mod tests {
             // Create a Vault to safely store secret keys for Receiver.
             let vault = Vault::create();
             // Create an Identity to represent the ockam-command client.
-            let client_identity = Identity::create(&ctx, &vault).await?;
+            let client_identity = Identity::create(ctx, &vault).await?;
 
             // Starts a secure channel listener at "api", with a freshly created
             // identity, and a EnrollHandler worker registered at "enrollment_token_authenticator"
@@ -297,7 +297,7 @@ mod tests {
             // Create a Vault to safely store secret keys for Receiver.
             let vault = Vault::create();
             // Create an Identity to represent the ockam-command client.
-            let client_identity = Identity::create(&ctx, &vault).await?;
+            let client_identity = Identity::create(ctx, &vault).await?;
 
             // Starts a secure channel listener at "api", with a freshly created
             // identity, and a EnrollHandler worker registered at "enrollment_token_authenticator"
@@ -329,7 +329,7 @@ mod tests {
             // Create a Vault to safely store secret keys for Receiver.
             let vault = Vault::create();
             // Create an Identity to represent the ockam-command client.
-            let client_identity = Identity::create(&ctx, &vault).await?;
+            let client_identity = Identity::create(ctx, &vault).await?;
             TcpTransport::create(ctx).await?;
             let server_route = route![(TCP, "127.0.0.1:4001")];
             let mut client = MessagingClient::new(server_route, client_identity, ctx).await?;
@@ -343,7 +343,7 @@ mod tests {
             // Create a Vault to safely store secret keys for Receiver.
             let vault = Vault::create();
             // Create an Identity to represent the ockam-command client.
-            let client_identity = Identity::create(&ctx, &vault).await?;
+            let client_identity = Identity::create(ctx, &vault).await?;
             TcpTransport::create(ctx).await?;
             let server_route = route![(TCP, "127.0.0.1:4001")];
             let mut rng = Gen::new(32);

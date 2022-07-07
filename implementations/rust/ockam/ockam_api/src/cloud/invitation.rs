@@ -93,7 +93,7 @@ mod tests {
         let vault = Vault::create();
 
         // Create an Identity to represent the ockam-command client.
-        let client_identity = Identity::create(&ctx, &vault).await?;
+        let client_identity = Identity::create(ctx, &vault).await?;
 
         // Starts a secure channel listener at "api", with a freshly created
         // identity, and a InvitationServer worker registered at "invitations"
@@ -146,7 +146,7 @@ mod tests {
         let vault = Vault::create();
 
         // Create an Identity to represent the ockam-command client.
-        let client_identity = Identity::create(&ctx, &vault).await?;
+        let client_identity = Identity::create(ctx, &vault).await?;
 
         // Starts a secure channel listener at "api", with a freshly created
         // identity, and a InvitationServer worker registered at "invitations"
@@ -234,7 +234,7 @@ mod tests {
                         };
                         Response::ok(req.id()).body(&obj).encode(buf)?;
                         let id = obj.id.to_string();
-                        self.by_id.insert(id.clone(), obj);
+                        self.by_id.insert(id, obj);
                     } else {
                         dbg!(&req);
                         Response::bad_request(req.id()).encode(buf)?;

@@ -15,9 +15,12 @@ pub mod lmdb;
 use core::fmt::{self, Display, Formatter};
 use core::ops::Deref;
 use minicbor::encode::{self, Encoder, Write};
-use minicbor::{Decode, Encode};
+use minicbor::{Decode, Decoder, Encode};
 use ockam_core::compat::borrow::Cow;
 use ockam_core::compat::rand;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::Route;
+use ockam_node::Context;
 use tinyvec::ArrayVec;
 
 #[macro_use]
@@ -557,7 +560,6 @@ pub(crate) fn assert_request_match<'a>(schema: impl Into<Option<&'a str>>, cbor:
     #[cfg(feature = "tag")]
     {
         use cddl_cat::validate_cbor_bytes;
-        use minicbor::decode::Decoder;
 
         let mut dec = Decoder::new(cbor);
         dec.decode::<Request>().expect("header");
@@ -579,7 +581,6 @@ pub(crate) fn assert_response_match<'a>(schema: impl Into<Option<&'a str>>, cbor
     #[cfg(feature = "tag")]
     {
         use cddl_cat::validate_cbor_bytes;
-        use minicbor::decode::Decoder;
 
         let mut dec = Decoder::new(cbor);
         dec.decode::<Response>().expect("header");
@@ -593,5 +594,114 @@ pub(crate) fn assert_response_match<'a>(schema: impl Into<Option<&'a str>>, cbor
                 tracing::error!(%schema, error = %e, "response body mismatch")
             }
         }
+    }
+}
+
+/// Encode request header and body (if any), send the package to the server and returns its response.
+async fn request<T, R>(
+    ctx: &mut Context,
+    label: &str,
+    schema: impl Into<Option<&str>>,
+    route: R,
+    req: &RequestBuilder<'_, T>,
+) -> ockam_core::Result<Vec<u8>>
+where
+    T: Encode<()>,
+    R: Into<Route> + Display,
+{
+    let mut buf = Vec::new();
+    req.encode(&mut buf)?;
+    assert_request_match(schema, &buf);
+    trace! {
+        target:  "ockam_api",
+        id     = %req.header().id(),
+        method = ?req.header().method(),
+        path   = %req.header().path(),
+        body   = %req.header().has_body(),
+        "-> {label}"
+    };
+    let vec: Vec<u8> = ctx.send_and_receive(route, buf).await?;
+    Ok(vec)
+}
+
+/// Decode response header only, without processing the message body.
+pub(crate) fn is_ok(label: &str, buf: &[u8]) -> ockam_core::Result<()> {
+    let mut d = Decoder::new(buf);
+    let res = response(label, &mut d)?;
+    assert_response_match(None, buf);
+    if res.status() == Some(Status::Ok) {
+        Ok(())
+    } else {
+        Err(error(label, &res, &mut d))
+    }
+}
+
+/// Decode response and body.
+pub(crate) fn decode<'a, 'b, T: Decode<'b, ()>>(
+    label: &'a str,
+    schema: impl Into<Option<&'a str>>,
+    buf: &'b [u8],
+) -> ockam_core::Result<T> {
+    let mut d = Decoder::new(buf);
+    let res = response(label, &mut d)?;
+    if res.status() == Some(Status::Ok) {
+        assert_response_match(schema, buf);
+        d.decode().map_err(|e| e.into())
+    } else {
+        Err(error(label, &res, &mut d))
+    }
+}
+
+/// Decode response and an optional body.
+pub(crate) fn decode_option<'a, 'b, T: Decode<'b, ()>>(
+    label: &'a str,
+    schema: impl Into<Option<&'a str>>,
+    buf: &'b [u8],
+) -> ockam_core::Result<Option<T>> {
+    let mut d = Decoder::new(buf);
+    let res = response(label, &mut d)?;
+    match res.status() {
+        Some(Status::Ok) => {
+            assert_response_match(schema, buf);
+            Ok(Some(d.decode()?))
+        }
+        Some(Status::NotFound) => Ok(None),
+        _ => Err(error(label, &res, &mut d)),
+    }
+}
+
+/// Decode and log response header.
+pub(crate) fn response(label: &str, dec: &mut Decoder<'_>) -> ockam_core::Result<Response> {
+    let res: Response = dec.decode()?;
+    trace! {
+        target:  "ockam_api",
+        id     = %res.id(),
+        re     = %res.re(),
+        status = ?res.status(),
+        body   = %res.has_body(),
+        "<- {label}"
+    }
+    Ok(res)
+}
+
+/// Decode, log and map response error to ockam_core error.
+pub(crate) fn error(label: &str, res: &Response, dec: &mut Decoder<'_>) -> ockam_core::Error {
+    if res.has_body() {
+        let err = match dec.decode::<Error>() {
+            Ok(e) => e,
+            Err(e) => return e.into(),
+        };
+        warn! {
+            target:  "ockam_api",
+            id     = %res.id(),
+            re     = %res.re(),
+            status = ?res.status(),
+            error  = ?err.message(),
+            "<- {label}"
+        }
+        let msg = err.message().unwrap_or(label);
+        ockam_core::Error::new(Origin::Application, Kind::Protocol, msg)
+    } else {
+        ockam_core::Error::new(Origin::Application, Kind::Protocol, label)
     }
 }
