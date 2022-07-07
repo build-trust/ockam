@@ -28,16 +28,18 @@ pub fn delete_node(cfg: &OckamConfig, node_name: &String, sigkill: bool) {
     };
 
     if let Some(pid) = pid {
-        if let Err(e) = signal::kill(
+        let _ = signal::kill(
             Pid::from_raw(pid),
             if sigkill {
                 Signal::SIGKILL
             } else {
                 Signal::SIGTERM
             },
-        ) {
-            eprintln!("Error occurred while terminating node process: {}", e);
-        }
+        );
+    }
+
+    if let Err(e) = cfg.get_node_dir(node_name).map(std::fs::remove_dir_all) {
+        eprintln!("Failed to delete node directory: {}", e);
     }
 
     if let Err(e) = cfg.delete_node(node_name) {
