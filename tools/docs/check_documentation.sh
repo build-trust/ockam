@@ -48,7 +48,8 @@ function check_readme {
   page=$1
   export EXAMPLES_DIR=$2
 
-  if [[ ! -z $($TOOLS_DIR/verify_md.sh $page) ]]; then
+  $TOOLS_DIR/verify_md.sh $page
+  if [[ $? -ne 0 ]]; then
     echo "$page has outdated examples differing from $EXAMPLES_DIR"
     ERR=1
   fi
@@ -61,4 +62,7 @@ check_directory $INLET_DOCS $INLET_EXAMPLES
 
 check_readme $HELLO_DOC $HELLO_EXAMPLE
 
+if [[ $ERR -eq 0 ]]; then
+  echo "All okay"
+fi
 exit $ERR
