@@ -218,3 +218,8 @@ config :logger, :console,
   metadata: [:module, :line, :pid],
   format_string: "$dateT$time $metadata[$level] $message\n",
   format: {Ockam.CloudNode.LogFormatter, :format}
+
+config :ockam_kinesis,
+  access_key_id: System.get_env("AWS_ACCESS_KEY_ID"),
+  secret_access_key: System.get_env("AWS_SECRET_ACCESS_KEY"),
+  region: System.get_env("AWS_DEFAULT_REGION")

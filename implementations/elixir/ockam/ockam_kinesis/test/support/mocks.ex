@@ -1,1 +1,1 @@
-Mox.defmock(ExAwsMock, for: ExAws.Request.HttpClient)
+Mox.defmock(AWSMock, for: AWS.HTTPClient)

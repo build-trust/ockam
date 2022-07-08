@@ -26,11 +26,8 @@ defmodule OckamKinesis.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:aws, "~> 0.11.0"},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:ex_aws, "~> 2.3"},
-      {:ex_aws_kinesis,
-       git: "https://github.com/ex-aws/ex_aws_kinesis.git",
-       ref: "2b1a13967e8dd3c05a8c275852923eb8037da85d"},
       {:ex_doc, "~> 0.25", only: :dev, runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
       {:hackney, "~> 1.18"},

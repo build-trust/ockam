@@ -12,9 +12,9 @@ defmodule Ockam.KinesisTest do
       stream_name = "stream_name"
       partitions = 5
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+      expect(AWSMock, :request, 1, fn :post, _url, body, headers, _opts ->
         assert %{"ShardCount" => ^partitions, "StreamName" => ^stream_name} = Jason.decode!(body)
-        assert {"x-amz-target", "Kinesis_20131202.CreateStream"} in headers
+        assert {"X-Amz-Target", "Kinesis_20131202.CreateStream"} in headers
 
         {:ok, %{status_code: 200, body: "{}"}}
       end)
@@ -26,7 +26,7 @@ defmodule Ockam.KinesisTest do
       stream_name = "stream_name"
       partitions = 5
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
+      expect(AWSMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
         response_body = %{
           "__type" => "ResourceInUseException",
           "message" => "Stream #{stream_name} under account 00000000000000 already exists."
@@ -42,21 +42,17 @@ defmodule Ockam.KinesisTest do
       stream_name = "stream_name"
       partitions = 500
 
-      error_type = "LimitExceededException"
+      error = %{
+        "__type" => "LimitExceededException",
+        "message" =>
+          "This request would exceed the shard limit for the account 000000000000 in us-east-1."
+      }
 
-      error_message =
-        "This request would exceed the shard limit for the account 000000000000 in us-east-1."
-
-      expect(ExAwsMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
-        response_body = %{
-          "__type" => error_type,
-          "message" => error_message
-        }
-
-        {:ok, %{status_code: 400, body: Jason.encode!(response_body)}}
+      expect(AWSMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
+        {:ok, %{status_code: 400, body: Jason.encode!(error)}}
       end)
 
-      assert {:error, {error_type, error_message}} ==
+      assert {:error, error} ==
                Kinesis.create_stream(stream_name, partitions)
     end
   end
@@ -92,9 +88,9 @@ defmodule Ockam.KinesisTest do
         }
       }
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+      expect(AWSMock, :request, 1, fn :post, _url, body, headers, _opts ->
         assert %{"StreamName" => ^stream_name} = Jason.decode!(body)
-        assert {"x-amz-target", "Kinesis_20131202.DescribeStream"} in headers
+        assert {"X-Amz-Target", "Kinesis_20131202.DescribeStream"} in headers
 
         {:ok, %{status_code: 200, body: Jason.encode!(response)}}
       end)
@@ -104,18 +100,17 @@ defmodule Ockam.KinesisTest do
 
     test "propagates error if call to AWS fails" do
       stream_name = "stream_name"
-      error_type = "ResourceNotFoundException"
-      error_message = "Stream #{stream_name} under account 000000000000 not found."
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
-        {:ok,
-         %{
-           status_code: 400,
-           body: Jason.encode!(%{"__type" => error_type, "message" => error_message})
-         }}
+      error = %{
+        "__type" => "ResourceNotFoundException",
+        "message" => "Stream #{stream_name} under account 000000000000 not found."
+      }
+
+      expect(AWSMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
+        {:ok, %{status_code: 400, body: Jason.encode!(error)}}
       end)
 
-      assert {:error, {error_type, error_message}} == Kinesis.describe_stream(stream_name, [])
+      assert {:error, error} == Kinesis.describe_stream(stream_name, [])
     end
   end
 
@@ -138,9 +133,9 @@ defmodule Ockam.KinesisTest do
         }
       }
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+      expect(AWSMock, :request, 1, fn :post, _url, body, headers, _opts ->
         assert %{"StreamName" => ^stream_name} = Jason.decode!(body)
-        assert {"x-amz-target", "Kinesis_20131202.DescribeStreamSummary"} in headers
+        assert {"X-Amz-Target", "Kinesis_20131202.DescribeStreamSummary"} in headers
 
         {:ok, %{status_code: 200, body: Jason.encode!(response)}}
       end)
@@ -150,18 +145,21 @@ defmodule Ockam.KinesisTest do
 
     test "propagates error if call to AWS fails" do
       stream_name = "stream_name"
-      error_type = "ResourceNotFoundException"
-      error_message = "Stream #{stream_name} under account 000000000000 not found."
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
+      error = %{
+        "__type" => "ResourceNotFoundException",
+        "message" => "Stream #{stream_name} under account 000000000000 not found."
+      }
+
+      expect(AWSMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
         {:ok,
          %{
            status_code: 400,
-           body: Jason.encode!(%{"__type" => error_type, "message" => error_message})
+           body: Jason.encode!(error)
          }}
       end)
 
-      assert {:error, {error_type, error_message}} == Kinesis.describe_stream_summary(stream_name)
+      assert {:error, error} == Kinesis.describe_stream_summary(stream_name)
     end
   end
 
@@ -173,7 +171,7 @@ defmodule Ockam.KinesisTest do
       shard_iterator =
         "AAAAAAAAAAG99G9ASBqrYT9HilCAttTeDqzfuoFqqufxbFVoHwc1tKEPkjD6OtvGQR4Lxi5eocHDJeYD+xizBtF3KN1jy+wy7CzU14KwMWoOxKsHInDpqXKyopkeSHL6QkoSrkjIMtHGRkweqcsBlcEfCK5uMzS8h03fRX6UzzYusMGIJFjubgKS4qsd75aD7xA0VCZltyhpzNclBj047VPE3y8RtDLjcPWskASaBKbi1A4DT7mi/g=="
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+      expect(AWSMock, :request, 1, fn :post, _url, body, headers, _opts ->
         expected_shard_id = "shardId-000000000010"
 
         assert %{
@@ -181,7 +179,7 @@ defmodule Ockam.KinesisTest do
                  "ShardId" => ^expected_shard_id
                } = Jason.decode!(body)
 
-        assert {"x-amz-target", "Kinesis_20131202.GetShardIterator"} in headers
+        assert {"X-Amz-Target", "Kinesis_20131202.GetShardIterator"} in headers
 
         {:ok,
          %{
@@ -198,18 +196,16 @@ defmodule Ockam.KinesisTest do
       stream_name = "stream_name"
       partition = 10
 
-      error_type = "ResourceNotFoundException"
-      error_message = "Stream #{stream_name} under account 000000000000 not found."
+      error = %{
+        "__type" => "ResourceNotFoundException",
+        "message" => "Stream #{stream_name} under account 000000000000 not found."
+      }
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
-        {:ok,
-         %{
-           status_code: 400,
-           body: Jason.encode!(%{"__type" => error_type, "message" => error_message})
-         }}
+      expect(AWSMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
+        {:ok, %{status_code: 400, body: Jason.encode!(error)}}
       end)
 
-      assert {:error, {error_type, error_message}} ==
+      assert {:error, error} ==
                Kinesis.get_shard_iterator(stream_name, partition, :trim_horizon, [])
     end
   end
@@ -246,13 +242,13 @@ defmodule Ockam.KinesisTest do
         ]
       }
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+      expect(AWSMock, :request, 1, fn :post, _url, body, headers, _opts ->
         assert %{
                  "ShardIterator" => shard_iterator,
                  "Limit" => limit
                } == Jason.decode!(body)
 
-        assert {"x-amz-target", "Kinesis_20131202.GetRecords"} in headers
+        assert {"X-Amz-Target", "Kinesis_20131202.GetRecords"} in headers
 
         {:ok, %{status_code: 200, body: Jason.encode!(response)}}
       end)
@@ -286,13 +282,13 @@ defmodule Ockam.KinesisTest do
         "Records" => []
       }
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+      expect(AWSMock, :request, 1, fn :post, _url, body, headers, _opts ->
         assert %{
                  "ShardIterator" => shard_iterator,
                  "Limit" => limit
                } == Jason.decode!(body)
 
-        assert {"x-amz-target", "Kinesis_20131202.GetRecords"} in headers
+        assert {"X-Amz-Target", "Kinesis_20131202.GetRecords"} in headers
 
         {:ok, %{status_code: 200, body: Jason.encode!(first_response)}}
       end)
@@ -317,13 +313,13 @@ defmodule Ockam.KinesisTest do
         ]
       }
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+      expect(AWSMock, :request, 1, fn :post, _url, body, headers, _opts ->
         assert %{
                  "ShardIterator" => next_shard_iterator,
                  "Limit" => limit
                } == Jason.decode!(body)
 
-        assert {"x-amz-target", "Kinesis_20131202.GetRecords"} in headers
+        assert {"X-Amz-Target", "Kinesis_20131202.GetRecords"} in headers
 
         {:ok, %{status_code: 200, body: Jason.encode!(second_response)}}
       end)
@@ -352,13 +348,13 @@ defmodule Ockam.KinesisTest do
         "Records" => []
       }
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
+      expect(AWSMock, :request, 1, fn :post, _url, body, headers, _opts ->
         assert %{
                  "ShardIterator" => shard_iterator,
                  "Limit" => limit
                } == Jason.decode!(body)
 
-        assert {"x-amz-target", "Kinesis_20131202.GetRecords"} in headers
+        assert {"X-Amz-Target", "Kinesis_20131202.GetRecords"} in headers
 
         {:ok, %{status_code: 200, body: Jason.encode!(response)}}
       end)
@@ -373,19 +369,20 @@ defmodule Ockam.KinesisTest do
 
       limit = 2
 
-      error_type = "ExpiredIteratorException"
-      error_message = "Iterator expired."
+      error = %{
+        "__type" => "ExpiredIteratorException",
+        "message" => "Iterator expired."
+      }
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
+      expect(AWSMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
         {:ok,
          %{
            status_code: 400,
-           body: Jason.encode!(%{"__type" => error_type, "message" => error_message})
+           body: Jason.encode!(error)
          }}
       end)
 
-      assert {:error, {error_type, error_message}} ==
-               Ockam.Kinesis.get_records(shard_iterator, limit)
+      assert {:error, error} == Ockam.Kinesis.get_records(shard_iterator, limit)
     end
   end
 
@@ -396,8 +393,8 @@ defmodule Ockam.KinesisTest do
       partition_key = "partition_key"
       sequence_number = "49631158273630243944238988869702231311227243256766005250"
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, body, headers, _opts ->
-        assert {"x-amz-target", "Kinesis_20131202.PutRecord"} in headers
+      expect(AWSMock, :request, 1, fn :post, _url, body, headers, _opts ->
+        assert {"X-Amz-Target", "Kinesis_20131202.PutRecord"} in headers
 
         expected_data = Base.encode64(message)
 
@@ -425,7 +422,7 @@ defmodule Ockam.KinesisTest do
       message = "message"
       partition_key = nil
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, body, _headers, _opts ->
+      expect(AWSMock, :request, 1, fn :post, _url, body, _headers, _opts ->
         assert %{"PartitionKey" => partition_key} = Jason.decode!(body)
 
         assert is_binary(partition_key)
@@ -447,19 +444,16 @@ defmodule Ockam.KinesisTest do
       message = "message"
       partition_key = "partition_key"
 
-      error_type = "ResourceNotFoundException"
-      error_message = "Stream #{stream_name} under account 000000000000 not found."
+      error = %{
+        "__type" => "ResourceNotFoundException",
+        "message" => "Stream #{stream_name} under account 000000000000 not found."
+      }
 
-      expect(ExAwsMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
-        {:ok,
-         %{
-           status_code: 400,
-           body: Jason.encode!(%{"__type" => error_type, "message" => error_message})
-         }}
+      expect(AWSMock, :request, 1, fn :post, _url, _body, _headers, _opts ->
+        {:ok, %{status_code: 400, body: Jason.encode!(error)}}
       end)
 
-      assert {:error, {error_type, error_message}} ==
-               Ockam.Kinesis.put_record(stream_name, message, partition_key, [])
+      assert {:error, error} == Ockam.Kinesis.put_record(stream_name, message, partition_key, [])
     end
   end
 
