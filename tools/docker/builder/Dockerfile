@@ -80,6 +80,7 @@ RUN set -xe; \
     rustup install nightly; \
     rustup component add clippy; \
     cargo install --locked cargo-deny; \
+    cargo install --locked cargo-nextest; \
     chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME"; \
 # Setup erlang
     apt-get update; \
