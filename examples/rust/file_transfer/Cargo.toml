@@ -17,4 +17,4 @@ anyhow = "1.0.45"
 [dev-dependencies]
 example_test_helper = { path = "../../../tools/docs/example_test_helper" }
 file_diff = "1"
-rand = "0.8.5"
+rand = "0.8"

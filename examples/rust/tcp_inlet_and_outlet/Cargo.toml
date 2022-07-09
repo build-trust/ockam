@@ -12,4 +12,3 @@ ockam = { path = "../../../implementations/rust/ockam/ockam" }
 
 [dev-dependencies]
 example_test_helper = { path = "../../../tools/docs/example_test_helper" }
-serial_test = "0.6.0"

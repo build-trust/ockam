@@ -25,7 +25,11 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.create_outlet("outlet", outlet_target).await?;
 
     // Create a TCP listener to receive Ockam Routing Messages from other ockam nodes.
-    tcp.listen("127.0.0.1:4000").await?;
+    //
+    // Use port 4000, unless otherwise specified by second command line argument.
+
+    let port = std::env::args().nth(2).unwrap_or("4000".to_string());
+    tcp.listen(format!("127.0.0.1:{port}")).await?;
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
