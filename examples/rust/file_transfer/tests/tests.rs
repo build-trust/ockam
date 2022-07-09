@@ -5,7 +5,6 @@ use std::fmt::Write as _;
 use std::fs::{remove_file, OpenOptions};
 use std::io::{BufWriter, Write};
 use std::path;
-use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
 
 // These are all in bytes
 const SMALL_CHUNK_SIZE: u32 = 32;
@@ -38,9 +37,6 @@ fn medium_file_transfer_large_chunks() -> Result<(), Error> {
     do_file_transfer(MEDIUM_FILE_SIZE, Some(LARGE_CHUNK_SIZE))
 }
 
-// Use an atomic to allow tests to have unique IDs when run in parallel
-static TMP_ID: AtomicU32 = AtomicU32::new(0);
-
 fn do_file_transfer(file_size: u32, chunk_size: Option<u32>) -> Result<(), Error> {
     // Spawn receiver, wait for & grab dynamic forwarding address
     let receiver = CmdBuilder::new("cargo run --example receiver").spawn()?;
@@ -49,12 +45,10 @@ fn do_file_transfer(file_size: u32, chunk_size: Option<u32>) -> Result<(), Error
 
     // Create temporary binary file to transfer
     // Use unique filenames to stop tests clashing when run in parallel
-    let filename = format!(
-        "{:x}_{}_{}_test.bin",
-        TMP_ID.fetch_add(1, Relaxed),
-        file_size,
-        chunk_size.unwrap_or(0)
-    );
+    //
+    // THIS ASSUMES NO TWO TESTS CALL THIS FUNCTION WITH THE SAME ARGUMENTS
+    //
+    let filename = format!("{}_{}_test.bin", file_size, chunk_size.unwrap_or(0));
     let source_path = format!("tests{}{}", path::MAIN_SEPARATOR, filename);
     let target_path = filename;
     // Scope file and its writer so they are dropped before we continue

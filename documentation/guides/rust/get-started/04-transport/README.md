@@ -37,7 +37,9 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a TCP listener and wait for incoming connections.
-    tcp.listen("127.0.0.1:4000").await?;
+    // Use port 4000, unless otherwise specified by command line argument.
+    let port = std::env::args().nth(1).unwrap_or("4000".to_string());
+    tcp.listen(format!("127.0.0.1:{port}")).await?;
 
     // Create an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
@@ -70,7 +72,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
     // Send a message to the "echoer" worker, on a different node, over a tcp transport.
-    let r = route![(TCP, "localhost:4000"), "echoer"];
+    // Use port 4000, unless otherwise specified by command line argument.
+    let port = std::env::args().nth(1).unwrap_or("4000".to_string());
+    let r = route![(TCP, &format!("localhost:{port}")), "echoer"];
     ctx.send(r, "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a reply and print it.
@@ -128,7 +132,9 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a TCP listener and wait for incoming connections.
-    tcp.listen("127.0.0.1:4000").await?;
+    // Use port 4000, unless otherwise specified by command line argument.
+    let port = std::env::args().nth(1).unwrap_or("4000".to_string());
+    tcp.listen(format!("127.0.0.1:{port}")).await?;
 
     // Create an echoer worker
     ctx.start_worker("echoer", Echoer).await?;
@@ -163,7 +169,9 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a TCP listener and wait for incoming connections.
-    tcp.listen("127.0.0.1:3000").await?;
+    // Use port 3000, unless otherwise specified by command line argument.
+    let port = std::env::args().nth(1).unwrap_or("3000".to_string());
+    tcp.listen(format!("127.0.0.1:{port}")).await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())
@@ -193,7 +201,14 @@ async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
     // Send a message to the "echoer" worker, on a different node, over two tcp hops.
-    let r = route![(TCP, "localhost:3000"), (TCP, "localhost:4000"), "echoer"];
+    // Use ports 3000 & 4000, unless otherwise specified by command line arguments.
+    let port_middle = std::env::args().nth(1).unwrap_or("3000".to_string());
+    let port_responder = std::env::args().nth(2).unwrap_or("4000".to_string());
+    let r = route![
+        (TCP, &format!("localhost:{port_middle}")),
+        (TCP, &format!("localhost:{port_responder}")),
+        "echoer"
+    ];
     ctx.send(r, "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a reply and print it.
