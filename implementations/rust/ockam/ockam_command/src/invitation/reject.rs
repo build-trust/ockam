@@ -1,42 +1,71 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use clap::Args;
+use minicbor::Decoder;
+use tracing::debug;
 
-use ockam::{route, Context, TcpTransport};
-use ockam_api::cloud::MessagingClient;
-use ockam_multiaddr::MultiAddr;
+use ockam_api::{Response, Status};
+use ockam_core::Route;
 
-use crate::old::identity::load_or_create_identity;
-use crate::util::embedded_node;
-use crate::IdentityOpts;
+use crate::node::NodeOpts;
+use crate::util::{api, connect_to, stop_node};
+use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct RejectCommand {
+    /// The invitation id.
     #[clap(display_order = 1002)]
-    invitation: String,
+    pub id: String,
 
     #[clap(flatten)]
-    identity_opts: IdentityOpts,
+    node_opts: NodeOpts,
 }
 
 impl RejectCommand {
-    pub fn run(cmd: RejectCommand, cloud_addr: MultiAddr) {
-        embedded_node(reject, (cloud_addr, cmd));
+    pub fn run(opts: CommandGlobalOpts, cmd: RejectCommand) {
+        let cfg = &opts.config;
+        let port = match cfg.select_node(&cmd.node_opts.api_node) {
+            Some(cfg) => cfg.port,
+            None => {
+                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
+                std::process::exit(-1);
+            }
+        };
+        connect_to(port, (opts, cmd), reject);
     }
 }
 
-async fn reject(mut ctx: Context, args: (MultiAddr, RejectCommand)) -> anyhow::Result<()> {
-    let (cloud_addr, cmd) = args;
-    let _tcp = TcpTransport::create(&ctx).await?;
+async fn reject(
+    ctx: ockam::Context,
+    (_opts, cmd): (CommandGlobalOpts, RejectCommand),
+    mut base_route: Route,
+) -> anyhow::Result<()> {
+    let route: Route = base_route.modify().append("_internal.nodeman").into();
+    debug!(?cmd, %route, "Sending request");
 
-    // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
-    let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
+    let response: Vec<u8> = ctx
+        .send_and_receive(route, api::invitations::reject(&cmd)?)
+        .await
+        .context("Failed to process request")?;
+    let mut dec = Decoder::new(&response);
+    let header = dec.decode::<Response>()?;
+    debug!(?header, "Received response");
 
-    let r = ockam_api::multiaddr_to_route(&cloud_addr)
-        .ok_or_else(|| anyhow!("failed to parse address: {}", cloud_addr))?;
-    let route = route![r.to_string(), "invitations"];
-    let mut api = MessagingClient::new(route, identity, &ctx).await?;
-    api.reject_invitations(&cmd.invitation).await?;
-    println!("Invitation rejected");
-    ctx.stop().await?;
-    Ok(())
+    let res = match header.status() {
+        Some(Status::Ok) => Ok("Invitation rejected".to_string()),
+        Some(Status::InternalServerError) => {
+            let err = dec
+                .decode::<String>()
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            Err(anyhow!(
+                "An error occurred while processing the request: {err}"
+            ))
+        }
+        _ => Err(anyhow!("Unexpected response received from node")),
+    };
+    match res {
+        Ok(o) => println!("{o}"),
+        Err(err) => eprintln!("{err}"),
+    };
+
+    stop_node(ctx).await
 }

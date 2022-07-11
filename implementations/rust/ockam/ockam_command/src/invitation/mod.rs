@@ -1,12 +1,12 @@
 use clap::{Args, Subcommand};
 
-use accept::AcceptCommand;
-use create::CreateCommand;
-use list::ListCommand;
+pub use accept::AcceptCommand;
+pub use create::CreateCommand;
+pub use list::ListCommand;
 use ockam_multiaddr::MultiAddr;
-use reject::RejectCommand;
+pub use reject::RejectCommand;
 
-use crate::HELP_TEMPLATE;
+use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 
 mod accept;
 mod create;
@@ -48,12 +48,12 @@ pub enum InvitationSubcommand {
 }
 
 impl InvitationCommand {
-    pub fn run(cmd: InvitationCommand) {
+    pub fn run(opts: CommandGlobalOpts, cmd: InvitationCommand) {
         match cmd.subcommand {
-            InvitationSubcommand::Create(command) => CreateCommand::run(command, cmd.cloud_addr),
-            InvitationSubcommand::List(command) => ListCommand::run(command, cmd.cloud_addr),
-            InvitationSubcommand::Accept(command) => AcceptCommand::run(command, cmd.cloud_addr),
-            InvitationSubcommand::Reject(command) => RejectCommand::run(command, cmd.cloud_addr),
+            InvitationSubcommand::Create(command) => CreateCommand::run(opts, command),
+            InvitationSubcommand::List(command) => ListCommand::run(opts, command),
+            InvitationSubcommand::Accept(command) => AcceptCommand::run(opts, command),
+            InvitationSubcommand::Reject(command) => RejectCommand::run(opts, command),
         }
     }
 }

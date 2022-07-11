@@ -65,16 +65,6 @@ pub async fn create_identity(
     Ok(identity)
 }
 
-pub async fn load_or_create_identity(
-    ctx: &ockam::Context,
-    overwrite: bool,
-) -> anyhow::Result<Identity<OckamVault>> {
-    match load_identity(ctx, &storage::get_ockam_dir()?).await {
-        Ok(identity) => Ok(identity),
-        Err(_) => create_identity(ctx, overwrite).await,
-    }
-}
-
 pub async fn load_identity(
     ctx: &ockam::Context,
     ockam_dir: &Path,

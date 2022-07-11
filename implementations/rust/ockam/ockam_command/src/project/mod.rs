@@ -1,11 +1,11 @@
 use clap::{Args, Subcommand};
 
-use create::CreateCommand;
-use delete::DeleteCommand;
-use list::ListCommand;
-use show::ShowCommand;
+pub use create::CreateCommand;
+pub use delete::DeleteCommand;
+pub use list::ListCommand;
+pub use show::ShowCommand;
 
-use crate::HELP_TEMPLATE;
+use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 
 mod create;
 mod delete;
@@ -38,12 +38,12 @@ pub enum ProjectSubcommand {
 }
 
 impl ProjectCommand {
-    pub fn run(cmd: ProjectCommand) {
+    pub fn run(opts: CommandGlobalOpts, cmd: ProjectCommand) {
         match cmd.subcommand {
-            ProjectSubcommand::Create(cmd) => CreateCommand::run(cmd),
-            ProjectSubcommand::Delete(cmd) => DeleteCommand::run(cmd),
-            ProjectSubcommand::List(cmd) => ListCommand::run(cmd),
-            ProjectSubcommand::Show(cmd) => ShowCommand::run(cmd),
+            ProjectSubcommand::Create(cmd) => CreateCommand::run(opts, cmd),
+            ProjectSubcommand::Delete(cmd) => DeleteCommand::run(opts, cmd),
+            ProjectSubcommand::List(cmd) => ListCommand::run(opts, cmd),
+            ProjectSubcommand::Show(cmd) => ShowCommand::run(opts, cmd),
         }
     }
 }

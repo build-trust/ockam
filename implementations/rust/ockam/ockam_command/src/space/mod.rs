@@ -1,11 +1,11 @@
 use clap::{Args, Subcommand};
 
-use create::CreateCommand;
-use delete::DeleteCommand;
-use list::ListCommand;
-use show::ShowCommand;
+pub use create::CreateCommand;
+pub use delete::DeleteCommand;
+pub use list::ListCommand;
+pub use show::ShowCommand;
 
-use crate::HELP_TEMPLATE;
+use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 
 mod create;
 mod delete;
@@ -38,12 +38,12 @@ pub enum SpaceSubcommand {
 }
 
 impl SpaceCommand {
-    pub fn run(cmd: SpaceCommand) {
+    pub fn run(opts: CommandGlobalOpts, cmd: SpaceCommand) {
         match cmd.subcommand {
-            SpaceSubcommand::Create(cmd) => CreateCommand::run(cmd),
-            SpaceSubcommand::Delete(cmd) => DeleteCommand::run(cmd),
-            SpaceSubcommand::List(cmd) => ListCommand::run(cmd),
-            SpaceSubcommand::Show(cmd) => ShowCommand::run(cmd),
+            SpaceSubcommand::Create(cmd) => CreateCommand::run(opts, cmd),
+            SpaceSubcommand::Delete(cmd) => DeleteCommand::run(opts, cmd),
+            SpaceSubcommand::List(cmd) => ListCommand::run(opts, cmd),
+            SpaceSubcommand::Show(cmd) => ShowCommand::run(opts, cmd),
         }
     }
 }

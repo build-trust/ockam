@@ -1,3 +1,4 @@
+use crate::node::NodeOpts;
 use crate::util::{api, connect_to, stop_node};
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
@@ -9,9 +10,8 @@ use ockam_api::{
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
-    /// Override the default API node
-    #[clap(short, long)]
-    pub api_node: Option<String>,
+    #[clap(flatten)]
+    node_opts: NodeOpts,
 
     /// Select a creation variant
     #[clap(subcommand)]
@@ -41,7 +41,7 @@ pub enum CreateTypeCommand {
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
         let cfg = &opts.config;
-        let port = match cfg.select_node(&command.api_node) {
+        let port = match cfg.select_node(&command.node_opts.api_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -55,7 +55,7 @@ impl CreateCommand {
         // went OK if we reach this point because embedded_node
         // crashes the process if something went wrong?  But idk,
         // still bad and should be fixed
-        let node = command.api_node.unwrap_or_else(|| cfg.get_api_node());
+        let node = command.node_opts.api_node;
         match command.create_subcommand {
             CreateTypeCommand::TcpConnector { addr } => cfg.add_transport(&node, false, true, addr),
             CreateTypeCommand::TcpListener { bind } => cfg.add_transport(&node, true, true, bind),

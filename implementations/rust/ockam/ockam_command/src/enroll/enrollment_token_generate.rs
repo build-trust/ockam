@@ -1,13 +1,16 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use clap::Args;
+use minicbor::Decoder;
+use tracing::debug;
 
-use ockam::TcpTransport;
-use ockam_api::auth::types::Attributes;
+use ockam_api::cloud::enroll::enrollment_token::EnrollmentToken;
+use ockam_api::{Response, Status};
+use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 
-use crate::old::identity::load_or_create_identity;
-use crate::util::embedded_node;
-use crate::IdentityOpts;
+use crate::node::NodeOpts;
+use crate::util::{api, connect_to, stop_node};
+use crate::{CommandGlobalOpts, MessageFormat};
 
 #[derive(Clone, Debug, Args)]
 pub struct GenerateEnrollmentTokenCommand {
@@ -15,50 +18,67 @@ pub struct GenerateEnrollmentTokenCommand {
     #[clap(display_order = 1000)]
     address: MultiAddr,
 
-    #[clap(display_order = 1001, long, default_value = "default")]
-    vault: String,
-
-    #[clap(display_order = 1002, long, default_value = "default")]
-    identity: String,
-
     /// Attributes (use '=' to separate key from value)
     #[clap(value_delimiter('='), last = true, required = true)]
-    attrs: Vec<String>,
+    pub attrs: Vec<String>,
 
     #[clap(flatten)]
-    identity_opts: IdentityOpts,
+    node_opts: NodeOpts,
 }
 
 impl GenerateEnrollmentTokenCommand {
-    pub fn run(cmd: GenerateEnrollmentTokenCommand) {
-        embedded_node(generate, cmd);
+    pub fn run(opts: CommandGlobalOpts, cmd: GenerateEnrollmentTokenCommand) {
+        let cfg = &opts.config;
+        let port = match cfg.select_node(&cmd.node_opts.api_node) {
+            Some(cfg) => cfg.port,
+            None => {
+                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
+                std::process::exit(-1);
+            }
+        };
+        connect_to(port, (opts, cmd), generate);
     }
 }
 
 async fn generate(
-    mut ctx: ockam::Context,
-    cmd: GenerateEnrollmentTokenCommand,
+    ctx: ockam::Context,
+    (opts, cmd): (CommandGlobalOpts, GenerateEnrollmentTokenCommand),
+    mut base_route: Route,
 ) -> anyhow::Result<()> {
-    let _tcp = TcpTransport::create(&ctx).await?;
+    let route: Route = base_route.modify().append("_internal.nodeman").into();
+    debug!(?cmd, %route, "Sending request");
 
-    let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
+    let response: Vec<u8> = ctx
+        .send_and_receive(route, api::enroll::token_generate(&cmd)?)
+        .await
+        .context("Failed to process request")?;
+    let mut dec = Decoder::new(&response);
+    let header = dec.decode::<Response>()?;
+    debug!(?header, "Received response");
 
-    let route = ockam_api::multiaddr_to_route(&cmd.address)
-        .ok_or_else(|| anyhow!("failed to parse address: {}", cmd.address))?;
-
-    let mut attributes = Attributes::new();
-    for entry in cmd.attrs.chunks(2) {
-        if let [k, v] = entry {
-            attributes.put(k, v.as_bytes());
-        } else {
-            return Err(anyhow!("{entry:?} is not a key-value pair"));
+    let res = match header.status() {
+        Some(Status::Ok) => {
+            let body = dec.decode::<EnrollmentToken>()?;
+            let output = match opts.global_args.message_format {
+                MessageFormat::Plain => format!("Token generated successfully: {:?}", body.token),
+                MessageFormat::Json => serde_json::to_string(&body)?,
+            };
+            Ok(output)
         }
-    }
+        Some(Status::InternalServerError) => {
+            let err = dec
+                .decode::<String>()
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            Err(anyhow!(
+                "An error occurred while processing the request: {err}"
+            ))
+        }
+        _ => Err(anyhow!("Unexpected response received from node")),
+    };
+    match res {
+        Ok(o) => println!("{o}"),
+        Err(err) => eprintln!("{err}"),
+    };
 
-    let mut api_client = ockam_api::cloud::MessagingClient::new(route, identity, &ctx).await?;
-    let token = api_client.generate_enrollment_token(attributes).await?;
-    println!("Token generated successfully: {:?}", token.token);
-
-    ctx.stop().await?;
-    Ok(())
+    stop_node(ctx).await
 }

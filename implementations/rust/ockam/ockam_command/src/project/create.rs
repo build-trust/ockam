@@ -1,55 +1,92 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use clap::Args;
+use minicbor::Decoder;
+use tracing::debug;
 
-use ockam::{Context, TcpTransport};
-use ockam_api::cloud::{project::CreateProject, MessagingClient};
+use ockam_api::cloud::project::Project;
+use ockam_api::{Response, Status};
+use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 
-use crate::old::identity::load_or_create_identity;
-use crate::util::{embedded_node, DEFAULT_CLOUD_ADDRESS};
-use crate::IdentityOpts;
+use crate::node::NodeOpts;
+use crate::util::{api, connect_to, stop_node, DEFAULT_CLOUD_ADDRESS};
+use crate::{CommandGlobalOpts, MessageFormat};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     /// Id of the space the project belongs to.
     #[clap(display_order = 1001)]
-    space_id: String,
+    pub space_id: String,
 
     /// Name of the project.
     #[clap(display_order = 1002)]
-    project_name: String,
+    pub project_name: String,
 
     /// Services enabled for this project.
     #[clap(display_order = 1003)]
-    services: Vec<String>,
+    pub services: Vec<String>,
+
+    #[clap(flatten)]
+    node_opts: NodeOpts,
 
     /// Ockam's cloud address. Argument used for testing purposes.
     #[clap(hide = true, last = true, display_order = 1100, default_value = DEFAULT_CLOUD_ADDRESS)]
     addr: MultiAddr,
-
-    #[clap(flatten)]
-    identity_opts: IdentityOpts,
 }
 
 impl CreateCommand {
-    pub fn run(cmd: CreateCommand) {
-        embedded_node(create, cmd);
+    pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
+        let cfg = &opts.config;
+        let port = match cfg.select_node(&cmd.node_opts.api_node) {
+            Some(cfg) => cfg.port,
+            None => {
+                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
+                std::process::exit(-1);
+            }
+        };
+        connect_to(port, (opts, cmd), create);
     }
 }
 
-async fn create(mut ctx: Context, cmd: CreateCommand) -> anyhow::Result<()> {
-    let _tcp = TcpTransport::create(&ctx).await?;
+async fn create(
+    ctx: ockam::Context,
+    (opts, cmd): (CommandGlobalOpts, CreateCommand),
+    mut base_route: Route,
+) -> anyhow::Result<()> {
+    let route: Route = base_route.modify().append("_internal.nodeman").into();
+    debug!(?cmd, %route, "Sending request");
 
-    // TODO: The identity below will be used to create a secure channel when cloud nodes support it.
-    let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
+    let response: Vec<u8> = ctx
+        .send_and_receive(route, api::project::create(&cmd)?)
+        .await
+        .context("Failed to process request")?;
+    let mut dec = Decoder::new(&response);
+    let header = dec.decode::<Response>()?;
+    debug!(?header, "Received response");
 
-    let route = ockam_api::multiaddr_to_route(&cmd.addr)
-        .ok_or_else(|| anyhow!("failed to parse address"))?;
-    let mut api = MessagingClient::new(route, identity, &ctx).await?;
-    let request = CreateProject::new(cmd.project_name, &cmd.services);
-    let res = api.create_project(&cmd.space_id, request).await?;
-    println!("{res:#?}");
+    let res = match header.status() {
+        Some(Status::Ok) => {
+            let body = dec.decode::<Project>()?;
+            let output = match opts.global_args.message_format {
+                MessageFormat::Plain => "Project created".to_string(),
+                MessageFormat::Json => serde_json::to_string(&body)?,
+            };
+            Ok(output)
+        }
+        Some(Status::InternalServerError) => {
+            let err = dec
+                .decode::<String>()
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            Err(anyhow!(
+                "An error occurred while processing the request: {err}"
+            ))
+        }
+        _ => Err(anyhow!("Unexpected response received from node")),
+    };
+    match res {
+        Ok(o) => println!("{o}"),
+        Err(err) => eprintln!("{err}"),
+    };
 
-    ctx.stop().await?;
-    Ok(())
+    stop_node(ctx).await
 }

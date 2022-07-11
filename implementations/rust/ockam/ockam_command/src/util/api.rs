@@ -116,6 +116,164 @@ pub(crate) fn create_portal(cmd: &portal::CreateCommand) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
+/// Helpers to create enroll API requests
+pub(crate) mod enroll {
+    use crate::enroll::*;
+    use anyhow::anyhow;
+    use ockam_api::auth::types::Attributes;
+    use ockam_api::cloud::enroll::*;
+
+    use super::*;
+
+    pub(crate) fn auth0(_cmd: &EnrollCommand) -> anyhow::Result<Vec<u8>> {
+        let mut buf = vec![];
+        Request::builder(Method::Post, "v0/enroll/auth0").encode(&mut buf)?;
+        Ok(buf)
+    }
+
+    pub(crate) fn token_generate(cmd: &GenerateEnrollmentTokenCommand) -> anyhow::Result<Vec<u8>> {
+        let mut attributes = Attributes::new();
+        for entry in cmd.attrs.chunks(2) {
+            if let [k, v] = entry {
+                attributes.put(k, v.as_bytes());
+            } else {
+                return Err(anyhow!("{entry:?} is not a key-value pair"));
+            }
+        }
+
+        let mut buf = vec![];
+        Request::builder(Method::Get, "v0/enroll/token")
+            .body(attributes)
+            .encode(&mut buf)?;
+        Ok(buf)
+    }
+
+    pub(crate) fn token_authenticate(cmd: &EnrollCommand) -> anyhow::Result<Vec<u8>> {
+        // Option checked that is Some at enroll/mod/EnrollCommand::run
+        let token = cmd.token.as_ref().expect("required");
+        let mut buf = vec![];
+        Request::builder(Method::Put, "v0/enroll/token")
+            .body(Token::new(token))
+            .encode(&mut buf)?;
+        Ok(buf)
+    }
+}
+
+/// Helpers to create spaces API requests
+pub(crate) mod space {
+    use crate::space::*;
+    use ockam_api::cloud::space::*;
+
+    use super::*;
+
+    pub(crate) fn create(cmd: &CreateCommand) -> anyhow::Result<Vec<u8>> {
+        let mut buf = vec![];
+        Request::builder(Method::Post, "v0/spaces")
+            .body(CreateSpace::new(cmd.name.as_str()))
+            .encode(&mut buf)?;
+        Ok(buf)
+    }
+
+    pub(crate) fn list(_cmd: &ListCommand) -> anyhow::Result<Vec<u8>> {
+        let mut buf = vec![];
+        Request::builder(Method::Get, "v0/spaces").encode(&mut buf)?;
+        Ok(buf)
+    }
+
+    pub(crate) fn show(cmd: &ShowCommand) -> anyhow::Result<Vec<u8>> {
+        let mut buf = vec![];
+        Request::builder(Method::Get, format!("v0/spaces/{}", cmd.id)).encode(&mut buf)?;
+        Ok(buf)
+    }
+
+    pub(crate) fn delete(cmd: &DeleteCommand) -> anyhow::Result<Vec<u8>> {
+        let mut buf = vec![];
+        Request::builder(Method::Delete, format!("v0/spaces/{}", cmd.id)).encode(&mut buf)?;
+        Ok(buf)
+    }
+}
+
+/// Helpers to create projects API requests
+pub(crate) mod project {
+    use crate::project::*;
+    use ockam_api::cloud::project::*;
+
+    use super::*;
+
+    pub(crate) fn create(cmd: &CreateCommand) -> anyhow::Result<Vec<u8>> {
+        let mut buf = vec![];
+        Request::builder(Method::Post, format!("v0/spaces/{}/projects", cmd.space_id))
+            .body(CreateProject::new(cmd.project_name.as_str(), &cmd.services))
+            .encode(&mut buf)?;
+        Ok(buf)
+    }
+
+    pub(crate) fn list(cmd: &ListCommand) -> anyhow::Result<Vec<u8>> {
+        let mut buf = vec![];
+        Request::builder(Method::Get, format!("v0/spaces/{}/projects", cmd.space_id))
+            .encode(&mut buf)?;
+        Ok(buf)
+    }
+
+    pub(crate) fn show(cmd: &ShowCommand) -> anyhow::Result<Vec<u8>> {
+        let mut buf = vec![];
+        Request::builder(
+            Method::Get,
+            format!("v0/spaces/{}/projects/{}", cmd.space_id, cmd.project_id),
+        )
+        .encode(&mut buf)?;
+        Ok(buf)
+    }
+
+    pub(crate) fn delete(cmd: &DeleteCommand) -> anyhow::Result<Vec<u8>> {
+        let mut buf = vec![];
+        Request::builder(
+            Method::Delete,
+            format!("v0/spaces/{}/projects/{}", cmd.space_id, cmd.project_id),
+        )
+        .encode(&mut buf)?;
+        Ok(buf)
+    }
+}
+
+/// Helpers to create invitations API requests
+pub(crate) mod invitations {
+    use crate::invitation::*;
+    use ockam_api::cloud::invitation::*;
+
+    use super::*;
+
+    pub(crate) fn create(cmd: CreateCommand) -> anyhow::Result<Vec<u8>> {
+        let mut buf = vec![];
+        Request::builder(Method::Post, "v0/invitations")
+            .body(CreateInvitation::new(
+                cmd.email,
+                cmd.space_id,
+                cmd.project_id,
+            ))
+            .encode(&mut buf)?;
+        Ok(buf)
+    }
+
+    pub(crate) fn list(_cmd: &ListCommand) -> anyhow::Result<Vec<u8>> {
+        let mut buf = vec![];
+        Request::builder(Method::Get, "v0/invitations").encode(&mut buf)?;
+        Ok(buf)
+    }
+
+    pub(crate) fn accept(cmd: &AcceptCommand) -> anyhow::Result<Vec<u8>> {
+        let mut buf = vec![];
+        Request::builder(Method::Put, format!("v0/invitations/{}", cmd.id)).encode(&mut buf)?;
+        Ok(buf)
+    }
+
+    pub(crate) fn reject(cmd: &RejectCommand) -> anyhow::Result<Vec<u8>> {
+        let mut buf = vec![];
+        Request::builder(Method::Delete, format!("v0/invitations/{}", cmd.id)).encode(&mut buf)?;
+        Ok(buf)
+    }
+}
+
 ////////////// !== parsers
 
 /// Parse the base response without the inner payload
@@ -151,14 +309,6 @@ pub(crate) fn parse_create_identity_response(
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
     Ok((response, dec.decode::<CreateIdentityResponse>()?))
-}
-
-pub(crate) fn parse_create_secure_channel_response(
-    resp: &[u8],
-) -> Result<(Response, CreateSecureChannelResponse<'_>)> {
-    let mut dec = Decoder::new(resp);
-    let response = dec.decode::<Response>()?;
-    Ok((response, dec.decode::<CreateSecureChannelResponse>()?))
 }
 
 pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Result<Response> {

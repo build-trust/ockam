@@ -175,12 +175,9 @@ Otherwise your OS or OS configuration may not be supported!",
     }
 
     /// Get the current version the selected node configuration
-    pub fn select_node<'a>(&'a self, o: &'a Option<String>) -> Option<NodeConfig> {
+    pub fn select_node<'a>(&'a self, o: &'a str) -> Option<NodeConfig> {
         let inner = self.inner.read().unwrap();
-        inner
-            .nodes
-            .get(o.as_ref().unwrap_or(&inner.api_node))
-            .map(Clone::clone)
+        inner.nodes.get(o).map(Clone::clone)
     }
 
     /// Get the log path for a specific node

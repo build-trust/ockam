@@ -9,6 +9,7 @@ use ockam_api::{Response, Status};
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 
+use crate::node::NodeOpts;
 use crate::util::{api, connect_to, stop_node};
 use crate::{CommandGlobalOpts, MessageFormat};
 
@@ -22,22 +23,21 @@ pub struct CreateCommand {
     /// Otherwise, it will create an ephemeral forwarder (default)
     alias: Option<String>,
 
-    /// The API node name to communicate with.
-    #[clap(short, long)]
-    node_name: Option<String>,
+    #[clap(flatten)]
+    node_opts: NodeOpts,
 }
 
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
         let cfg = &opts.config;
-        let port = match cfg.select_node(&cmd.node_name) {
+        let port = match cfg.select_node(&cmd.node_opts.api_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
                 std::process::exit(-1);
             }
         };
-        connect_to(port, (cmd, opts), create);
+        connect_to(port, (opts, cmd), create);
     }
 
     pub fn address(&self) -> &MultiAddr {
@@ -51,20 +51,19 @@ impl CreateCommand {
 
 async fn create(
     ctx: ockam::Context,
-    args: (CreateCommand, CommandGlobalOpts),
+    (opts, cmd): (CommandGlobalOpts, CreateCommand),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
-    let (cmd, opts) = args;
     let route: Route = base_route.modify().append("_internal.nodeman").into();
-    debug!(?cmd, %route, "Sending request to create forwarder");
+    debug!(?cmd, %route, "Sending request");
 
     let response: Vec<u8> = ctx
         .send_and_receive(route, api::create_forwarder(&cmd)?)
         .await
-        .context("failed to create forwarder")?;
+        .context("Failed to process request")?;
     let mut dec = Decoder::new(&response);
     let header = dec.decode::<Response>()?;
-    debug!(?header, "Received CreateForwarder response");
+    debug!(?header, "Received response");
 
     let res = match header.status() {
         Some(Status::Ok) => {
@@ -86,7 +85,7 @@ async fn create(
                 .decode::<String>()
                 .unwrap_or_else(|_| "Unknown error".to_string());
             Err(anyhow!(
-                "An error occurred while creating the forwarder: {err}"
+                "An error occurred while processing the request: {err}"
             ))
         }
         _ => Err(anyhow!("Unexpected response received from node")),

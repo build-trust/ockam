@@ -24,7 +24,7 @@ pub struct WatchdogCommand {
 impl WatchdogCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: WatchdogCommand) {
         let cfg = &opts.config;
-        let socket_path = socket_path(cfg, &cmd.node_name);
+        let socket_path = socket_path(cfg, &cmd.node_opts.api_node);
 
         Watchdog { socket_path }.run()
 
