@@ -1,6 +1,7 @@
 use clap::Args;
 use std::{env::current_exe, fs::OpenOptions, process::Command, time::Duration};
 
+use crate::enroll::Auth0Service;
 use crate::{
     node::show::query_status,
     util::{connect_to, embedded_node, OckamConfig, DEFAULT_TCP_PORT},
@@ -134,6 +135,7 @@ async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::
         node_dir,
         (TransportType::Tcp, TransportMode::Listen, bind),
         tcp,
+        Auth0Service,
     )
     .await?;
     ctx.start_worker(NODEMAN_ADDR, node_man).await?;

@@ -1,22 +1,24 @@
 use minicbor::{Decode, Encode};
+use serde::Serialize;
 
 use crate::CowStr;
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 
-#[derive(Decode, Debug)]
-#[cfg_attr(test, derive(Encode, Clone))]
+#[derive(Encode, Decode, Serialize, Debug)]
+#[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Space<'a> {
     #[cfg(feature = "tag")]
+    #[serde(skip_serializing)]
     #[n(0)] pub tag: TypeTag<7574645>,
     #[b(1)] pub id: CowStr<'a>,
     #[b(2)] pub name: CowStr<'a>,
 }
 
-#[derive(Encode, Debug)]
-#[cfg_attr(test, derive(Decode, Clone))]
+#[derive(Encode, Decode, Debug)]
+#[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSpace<'a> {
@@ -31,6 +33,180 @@ impl<'a> CreateSpace<'a> {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             name: name.into(),
+        }
+    }
+}
+
+mod node {
+    use std::convert::Infallible;
+
+    use minicbor::{encode::Write, Decoder};
+    use tracing::trace;
+
+    use ockam_core::{self, Result};
+    use ockam_node::Context;
+
+    use crate::cloud::enroll::auth0::Auth0TokenProvider;
+    use crate::cloud::space::{CreateSpace, Space};
+    use crate::nodes::NodeMan;
+    use crate::{decode, is_ok, request};
+    use crate::{Request, Response, Status};
+
+    const TARGET: &str = "ockam_api::cloud::space";
+
+    impl<A> NodeMan<A>
+    where
+        A: Auth0TokenProvider,
+    {
+        pub(crate) async fn create_space<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            dec: &mut Decoder<'_>,
+            enc: W,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let req_body: CreateSpace = dec.decode()?;
+
+            let label = "create_space";
+            trace!(target: TARGET, space = %req_body.name, "creating space");
+
+            let route = self.api_service_route("spaces");
+            let req_builder = Request::post("v0/").body(req_body);
+            match request(ctx, label, "create_space", route, req_builder).await {
+                Ok(r) => {
+                    let res_body: Space = decode(label, "space", &r)?;
+                    Response::ok(req.id()).body(res_body).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to create space");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
+        }
+
+        pub(crate) async fn list_spaces<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            enc: W,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let label = "list_spaces";
+            trace!(target: TARGET, "listing spaces");
+
+            let route = self.api_service_route("spaces");
+            let req_builder = Request::post("v0/");
+            match request(ctx, label, None, route, req_builder).await {
+                Ok(r) => {
+                    let res_body: Vec<Space> = decode(label, "spaces", &r)?;
+                    Response::ok(req.id()).body(res_body).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to retrieve spaces");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
+        }
+
+        pub(crate) async fn get_space<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            enc: W,
+            id: &str,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let label = "get_space";
+            trace!(target: TARGET, space = %id, space = %id, "getting space");
+
+            let route = self.api_service_route("spaces");
+            let req_builder = Request::get(format!("v0/{id}"));
+            match request(ctx, label, None, route, req_builder).await {
+                Ok(r) => {
+                    let res_body: Space = decode(label, "space", &r)?;
+                    Response::ok(req.id()).body(res_body).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to retrieve space");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
+        }
+
+        pub(crate) async fn get_space_by_name<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            enc: W,
+            name: &str,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let label = "get_space_by_name";
+            trace!(target: TARGET, space = %name, "getting space");
+
+            let route = self.api_service_route("spaces");
+            let req_builder = Request::get(format!("v0/name/{name}"));
+            match request(ctx, label, None, route, req_builder).await {
+                Ok(r) => {
+                    let res_body: Space = decode(label, "space", &r)?;
+                    Response::ok(req.id()).body(res_body).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to retrieve space");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
+        }
+
+        pub(crate) async fn delete_space<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            enc: W,
+            id: &str,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let label = "delete_space";
+            trace!(target: TARGET, space = %id, "deleting space");
+
+            let route = self.api_service_route("spaces");
+            let req_builder = Request::delete(format!("v0/{id}"));
+            match request(ctx, label, None, route, req_builder).await {
+                Ok(r) => {
+                    is_ok(label, &r)?;
+                    Response::ok(req.id()).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to retrieve space");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
         }
     }
 }

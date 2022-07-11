@@ -1,5 +1,6 @@
 use clap::Args;
 
+pub use auth0::Auth0Service;
 use auth0::*;
 use enrollment_token_authenticate::*;
 pub use enrollment_token_generate::GenerateEnrollmentTokenCommand;

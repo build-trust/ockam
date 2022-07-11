@@ -72,6 +72,7 @@ mod tests {
     use ockam::{Context, TcpTransport, TCP};
     use ockam_core::{compat::rand::Rng, route, Address, Result, Routed, Worker};
 
+    use crate::cloud::enroll::tests::auth0::MockAuth0Service;
     use crate::nodes::{types::*, NodeMan};
     use crate::*;
 
@@ -103,6 +104,7 @@ mod tests {
                 node_address.to_string(),
             ),
             transport,
+            MockAuth0Service,
         )
         .await?;
         ctx.start_worker(node_manager, node_man).await?;

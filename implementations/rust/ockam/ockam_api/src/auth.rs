@@ -160,14 +160,14 @@ impl Client {
     pub async fn set(&mut self, id: &str, attrs: &Attributes<'_>) -> ockam_core::Result<()> {
         let label = "set attributes";
         let req = Request::post(format!("v0/control_plane/{id}")).body(attrs);
-        self.buf = request(&mut self.ctx, label, "attributes", self.route.clone(), &req).await?;
+        self.buf = request(&mut self.ctx, label, "attributes", self.route.clone(), req).await?;
         is_ok(label, &self.buf)
     }
 
     pub async fn get(&mut self, id: &str, attr: &str) -> ockam_core::Result<Option<&[u8]>> {
         let label = "get attribute";
         let req = Request::get(format!("v0/control_plane/{id}/{attr}"));
-        self.buf = request(&mut self.ctx, label, None, self.route.clone(), &req).await?;
+        self.buf = request(&mut self.ctx, label, None, self.route.clone(), req).await?;
         let a: Option<Attribute> = decode_option(label, "attribute", &self.buf)?;
         Ok(a.map(|a| a.value()))
     }
@@ -175,7 +175,7 @@ impl Client {
     pub async fn del(&mut self, id: &str, attr: &str) -> ockam_core::Result<()> {
         let label = "del attribute";
         let req = Request::delete(format!("/v0/control_plane/{id}/{attr}"));
-        self.buf = request(&mut self.ctx, label, None, self.route.clone(), &req).await?;
+        self.buf = request(&mut self.ctx, label, None, self.route.clone(), req).await?;
         is_ok(label, &self.buf)
     }
 }
