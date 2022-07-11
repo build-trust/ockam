@@ -1,15 +1,17 @@
 use minicbor::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 
 use crate::CowStr;
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 
-#[derive(Decode, Encode, Debug)]
+#[derive(Encode, Decode, Serialize, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Invitation<'a> {
     #[cfg(feature = "tag")]
+    #[serde(skip_serializing)]
     #[n(0)] tag: TypeTag<7088378>,
     #[b(1)] pub id: CowStr<'a>,
     #[b(2)] pub inviter: CowStr<'a>,
@@ -20,7 +22,7 @@ pub struct Invitation<'a> {
     #[b(7)] pub project_id: Option<CowStr<'a>>,
 }
 
-#[derive(serde::Deserialize, Encode, Decode, Debug)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
 #[cfg_attr(test, derive(Clone, PartialEq))]
 #[rustfmt::skip]
 #[cbor(index_only)]
@@ -29,7 +31,7 @@ pub enum Scope {
     #[n(1)] ProjectScope,
 }
 
-#[derive(serde::Deserialize, Encode, Decode, Debug)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
 #[cfg_attr(test, derive(Clone, PartialEq))]
 #[rustfmt::skip]
 #[cbor(index_only)]
@@ -39,7 +41,7 @@ pub enum State {
     #[n(2)] Rejected,
 }
 
-#[derive(Decode, Encode, Debug)]
+#[derive(Encode, Decode, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
@@ -63,6 +65,156 @@ impl<'a> CreateInvitation<'a> {
                 .map_or_else(|| Scope::SpaceScope, |_| Scope::ProjectScope),
             space_id: space_id.into(),
             project_id: project_id.map(|s| s.into()),
+        }
+    }
+}
+
+mod node {
+    use std::convert::Infallible;
+
+    use minicbor::{encode::Write, Decoder};
+    use tracing::trace;
+
+    use ockam_core::{self, Result};
+    use ockam_node::Context;
+
+    use crate::cloud::enroll::auth0::Auth0TokenProvider;
+    use crate::nodes::NodeMan;
+    use crate::{decode, is_ok, request};
+    use crate::{Request, Response, Status};
+
+    use super::*;
+
+    const TARGET: &str = "ockam_api::cloud::invitation";
+
+    impl<A> NodeMan<A>
+    where
+        A: Auth0TokenProvider,
+    {
+        pub(crate) async fn create_invitation<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            dec: &mut Decoder<'_>,
+            enc: W,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let req_body: CreateInvitation = dec.decode()?;
+            let label = "create_invitation";
+            trace! {
+                target: TARGET,
+                invitee = %req_body.invitee,
+                space_id = %req_body.space_id,
+                project_id = %req_body.project_id.clone().unwrap_or_else(|| "None".into()),
+                "creating invitation"
+            };
+
+            let route = self.api_service_route("invitations");
+            let req_builder = Request::post("v0/").body(req_body);
+            match request(ctx, label, "create_invitation", route, req_builder).await {
+                Ok(r) => {
+                    let res_body: Invitation = decode(label, "invitation", &r)?;
+                    Response::ok(req.id()).body(res_body).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to create invitation");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
+        }
+
+        pub(crate) async fn list_invitations<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            enc: W,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let label = "list_invitations";
+            trace!(target: TARGET, "listing invitations");
+
+            let route = self.api_service_route("invitations");
+            let req_builder = Request::post("v0/");
+            match request(ctx, label, None, route, req_builder).await {
+                Ok(r) => {
+                    let res_body: Vec<Invitation> = decode(label, "invitations", &r)?;
+                    Response::ok(req.id()).body(res_body).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to retrieve invitations");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
+        }
+
+        pub(crate) async fn accept_invitation<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            enc: W,
+            id: &str,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let label = "accept_invitation";
+            trace!(target: TARGET, %id, "accepting invitation");
+
+            let route = self.api_service_route("invitations");
+            let req_builder = Request::put(format!("v0/{id}"));
+            match request(ctx, label, None, route, req_builder).await {
+                Ok(r) => {
+                    is_ok(label, &r)?;
+                    Response::ok(req.id()).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to accept invitation");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
+        }
+
+        pub(crate) async fn reject_invitation<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            enc: W,
+            id: &str,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let label = "reject_invitation";
+            trace!(target: TARGET, %id, "rejecting invitation");
+
+            let route = self.api_service_route("invitations");
+            let req_builder = Request::delete(format!("v0/{id}"));
+            match request(ctx, label, None, route, req_builder).await {
+                Ok(r) => {
+                    is_ok(label, &r)?;
+                    Response::ok(req.id()).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to reject invitation");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
         }
     }
 }

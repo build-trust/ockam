@@ -21,6 +21,7 @@ use ockam_core::compat::rand;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Route;
 use ockam_node::Context;
+use serde::{Serialize, Serializer};
 use tinyvec::ArrayVec;
 
 #[macro_use]
@@ -518,6 +519,15 @@ impl<'a, S: ?Sized + AsRef<str>> PartialEq<S> for CowStr<'a> {
     }
 }
 
+impl<'a> Serialize for CowStr<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.0.as_ref())
+    }
+}
+
 /// A newtype around `Cow<'_, [u8]>` that borrows from input.
 ///
 /// Contrary to `Cow<_, [u8]>` the `Decode` impl for this type will always borrow
@@ -615,7 +625,7 @@ async fn request<T, R>(
     label: &str,
     schema: impl Into<Option<&str>>,
     route: R,
-    req: &RequestBuilder<'_, T>,
+    req: RequestBuilder<'_, T>,
 ) -> ockam_core::Result<Vec<u8>>
 where
     T: Encode<()>,

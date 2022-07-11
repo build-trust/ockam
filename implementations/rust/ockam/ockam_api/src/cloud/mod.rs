@@ -58,9 +58,9 @@ impl MessagingClient {
     }
 
     /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
-    pub async fn enroll_auth0<'a, S>(&mut self, mut auth0_service: S) -> ockam_core::Result<()>
+    pub async fn enroll_auth0<S>(&mut self, auth0_service: S) -> ockam_core::Result<()>
     where
-        S: Auth0TokenProvider<'a, T = Auth0Token<'a>>,
+        S: Auth0TokenProvider,
     {
         trace!(target: TARGET, "executing auth0 flow");
         let token = {
@@ -83,7 +83,7 @@ impl MessagingClient {
         let req = Request::post("v0/").body(body);
         let route = self.api_service_route("enrollment_token_authenticator");
         // TODO: change `schema` to `attributes` after secure channels are enabled (identifier arg is not used)
-        self.buf = request(&mut self.ctx, label, None, route, &req).await?;
+        self.buf = request(&mut self.ctx, label, None, route, req).await?;
         decode(label, None, &self.buf)
     }
 
@@ -107,13 +107,13 @@ impl MessagingClient {
                 label = "auth0_authenticator";
                 let route = self.api_service_route(label);
                 let req = Request::post("v0/enroll").body(body);
-                self.buf = request(&mut self.ctx, label, schema, route, &req).await?;
+                self.buf = request(&mut self.ctx, label, schema, route, req).await?;
             }
             AuthenticateToken::EnrollmentToken(body) => {
                 label = "enrollment_token_authenticator";
                 let route = self.api_service_route(label);
                 let req = Request::post("v0/enroll").body(body);
-                self.buf = request(&mut self.ctx, label, schema, route, &req).await?;
+                self.buf = request(&mut self.ctx, label, schema, route, req).await?;
             }
         };
         is_ok(label, &self.buf)
@@ -128,7 +128,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("invitations");
         let req = Request::post("v0/").body(body);
-        self.buf = request(&mut self.ctx, label, "create_invitation", route, &req).await?;
+        self.buf = request(&mut self.ctx, label, "create_invitation", route, req).await?;
         decode(label, "invitation", &self.buf)
     }
 
@@ -138,7 +138,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("invitations");
         let req = Request::get("v0/");
-        self.buf = request(&mut self.ctx, label, None, route, &req).await?;
+        self.buf = request(&mut self.ctx, label, None, route, req).await?;
         decode(label, "invitations", &self.buf)
     }
 
@@ -148,7 +148,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("invitations");
         let req = Request::put(format!("v0/{invitation_id}"));
-        self.buf = request(&mut self.ctx, label, None, route, &req).await?;
+        self.buf = request(&mut self.ctx, label, None, route, req).await?;
         is_ok(label, &self.buf)
     }
 
@@ -158,7 +158,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("invitations");
         let req = Request::delete(format!("v0/{invitation_id}"));
-        self.buf = request(&mut self.ctx, label, None, route, &req).await?;
+        self.buf = request(&mut self.ctx, label, None, route, req).await?;
         is_ok(label, &self.buf)
     }
 
@@ -168,7 +168,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("spaces");
         let req = Request::post("v0/").body(body);
-        self.buf = request(&mut self.ctx, label, "create_space", route, &req).await?;
+        self.buf = request(&mut self.ctx, label, "create_space", route, req).await?;
         decode(label, "space", &self.buf)
     }
 
@@ -178,7 +178,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("spaces");
         let req = Request::get("v0/");
-        self.buf = request(&mut self.ctx, label, None, route, &req).await?;
+        self.buf = request(&mut self.ctx, label, None, route, req).await?;
         decode(label, "spaces", &self.buf)
     }
 
@@ -188,7 +188,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("spaces");
         let req = Request::get(format!("v0/{space_id}"));
-        self.buf = request(&mut self.ctx, label, None, route, &req).await?;
+        self.buf = request(&mut self.ctx, label, None, route, req).await?;
         decode(label, "space", &self.buf)
     }
 
@@ -201,7 +201,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("spaces");
         let req = Request::get(format!("v0/name/{space_name}"));
-        self.buf = request(&mut self.ctx, label, None, route, &req).await?;
+        self.buf = request(&mut self.ctx, label, None, route, req).await?;
         decode(label, "space", &self.buf)
     }
 
@@ -211,7 +211,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("spaces");
         let req = Request::delete(format!("v0/{space_id}"));
-        self.buf = request(&mut self.ctx, label, None, route, &req).await?;
+        self.buf = request(&mut self.ctx, label, None, route, req).await?;
         is_ok(label, &self.buf)
     }
 
@@ -225,7 +225,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("projects");
         let req = Request::post(format!("v0/{space_id}")).body(body);
-        self.buf = request(&mut self.ctx, label, "create_project", route, &req).await?;
+        self.buf = request(&mut self.ctx, label, "create_project", route, req).await?;
         decode(label, "project", &self.buf)
     }
 
@@ -235,7 +235,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("projects");
         let req = Request::get(format!("v0/{space_id}"));
-        self.buf = request(&mut self.ctx, label, None, route, &req).await?;
+        self.buf = request(&mut self.ctx, label, None, route, req).await?;
         decode(label, "projects", &self.buf)
     }
 
@@ -249,7 +249,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("projects");
         let req = Request::get(format!("v0/{space_id}/{project_id}"));
-        self.buf = request(&mut self.ctx, label, None, route, &req).await?;
+        self.buf = request(&mut self.ctx, label, None, route, req).await?;
         decode(label, "project", &self.buf)
     }
 
@@ -263,7 +263,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("projects");
         let req = Request::get(format!("v0/{space_id}/name/{project_name}"));
-        self.buf = request(&mut self.ctx, label, None, route, &req).await?;
+        self.buf = request(&mut self.ctx, label, None, route, req).await?;
         decode(label, "project", &self.buf)
     }
 
@@ -277,7 +277,7 @@ impl MessagingClient {
 
         let route = self.api_service_route("projects");
         let req = Request::delete(format!("v0/{space_id}/{project_id}"));
-        self.buf = request(&mut self.ctx, label, None, route, &req).await?;
+        self.buf = request(&mut self.ctx, label, None, route, req).await?;
         is_ok(label, &self.buf)
     }
 

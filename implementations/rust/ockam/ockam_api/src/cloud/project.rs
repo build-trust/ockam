@@ -1,26 +1,29 @@
 use minicbor::bytes::ByteSlice;
 use minicbor::{Decode, Encode};
+use serde::Serialize;
 
 use crate::CowStr;
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 
-#[derive(Decode, Debug)]
-#[cfg_attr(test, derive(Encode, Clone))]
+#[derive(Encode, Decode, Serialize, Debug)]
+#[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Project<'a> {
     #[cfg(feature = "tag")]
+    #[serde(skip_serializing)]
     #[n(0)] pub tag: TypeTag<9056532>,
     #[b(1)] pub id: CowStr<'a>,
     #[b(2)] pub name: CowStr<'a>,
     #[b(3)] pub space_name: CowStr<'a>,
     #[b(4)] pub services: Vec<CowStr<'a>>,
+    #[serde(skip_serializing)]
     #[b(5)] pub access_route: &'a ByteSlice,
 }
 
-#[derive(Encode, Debug)]
-#[cfg_attr(test, derive(Decode, Clone))]
+#[derive(Encode, Decode, Debug)]
+#[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateProject<'a> {
@@ -41,6 +44,186 @@ impl<'a> CreateProject<'a> {
                 .map(String::as_str)
                 .map(CowStr::from)
                 .collect(),
+        }
+    }
+}
+
+mod node {
+    use std::convert::Infallible;
+
+    use minicbor::{encode::Write, Decoder};
+    use tracing::trace;
+
+    use ockam_core::{self, Result};
+    use ockam_node::Context;
+
+    use crate::cloud::enroll::auth0::Auth0TokenProvider;
+    use crate::nodes::NodeMan;
+    use crate::{decode, is_ok, request};
+    use crate::{Request, Response, Status};
+
+    use super::*;
+
+    const TARGET: &str = "ockam_api::cloud::project";
+
+    impl<A> NodeMan<A>
+    where
+        A: Auth0TokenProvider,
+    {
+        pub(crate) async fn create_project<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            dec: &mut Decoder<'_>,
+            enc: W,
+            space_id: &str,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let req_body: CreateProject = dec.decode()?;
+
+            let label = "create_project";
+            trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
+
+            let route = self.api_service_route("projects");
+            let req_builder = Request::post("v0/").body(req_body);
+            match request(ctx, label, "create_project", route, req_builder).await {
+                Ok(r) => {
+                    let res_body: Project = decode(label, "project", &r)?;
+                    Response::ok(req.id()).body(res_body).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to create project");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
+        }
+
+        pub(crate) async fn list_projects<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            enc: W,
+            space_id: &str,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let label = "list_projects";
+            trace!(target: TARGET, %space_id, "listing projects");
+
+            let route = self.api_service_route("projects");
+            let req_builder = Request::post("v0/");
+            match request(ctx, label, None, route, req_builder).await {
+                Ok(r) => {
+                    let res_body: Vec<Project> = decode(label, "projects", &r)?;
+                    Response::ok(req.id()).body(res_body).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to retrieve projects");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
+        }
+
+        pub(crate) async fn get_project<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            enc: W,
+            space_id: &str,
+            project_id: &str,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let label = "get_project";
+            trace!(target: TARGET, %space_id, %project_id, "getting project");
+
+            let route = self.api_service_route("projects");
+            let req_builder = Request::get(format!("v0/{project_id}"));
+            match request(ctx, label, None, route, req_builder).await {
+                Ok(r) => {
+                    let res_body: Project = decode(label, "project", &r)?;
+                    Response::ok(req.id()).body(res_body).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to retrieve project");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
+        }
+
+        pub(crate) async fn get_project_by_name<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            enc: W,
+            space_id: &str,
+            project_name: &str,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let label = "get_project_by_name";
+            trace!(target: TARGET, %space_id, %project_name, "getting project");
+
+            let route = self.api_service_route("projects");
+            let req_builder = Request::get(format!("v0/name/{project_name}"));
+            match request(ctx, label, None, route, req_builder).await {
+                Ok(r) => {
+                    let res_body: Project = decode(label, "project", &r)?;
+                    Response::ok(req.id()).body(res_body).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to retrieve project");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
+        }
+
+        pub(crate) async fn delete_project<W>(
+            &mut self,
+            ctx: &mut Context,
+            req: &Request<'_>,
+            enc: W,
+            space_id: &str,
+            project_id: &str,
+        ) -> Result<()>
+        where
+            W: Write<Error = Infallible>,
+        {
+            let label = "delete_project";
+            trace!(target: TARGET, %space_id, %project_id, "deleting project");
+
+            let route = self.api_service_route("projects");
+            let req_builder = Request::delete(format!("v0/{project_id}"));
+            match request(ctx, label, None, route, req_builder).await {
+                Ok(r) => {
+                    is_ok(label, &r)?;
+                    Response::ok(req.id()).encode(enc)?;
+                }
+                Err(err) => {
+                    error!(?err, "Failed to retrieve project");
+                    Response::builder(req.id(), Status::InternalServerError)
+                        .body(err.to_string())
+                        .encode(enc)?;
+                }
+            };
+            Ok(())
         }
     }
 }

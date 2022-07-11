@@ -42,10 +42,8 @@ async fn enroll(mut ctx: Context, cmd: EnrollCommand) -> anyhow::Result<()> {
 pub struct Auth0Service;
 
 #[async_trait::async_trait]
-impl<'a> Auth0TokenProvider<'a> for Auth0Service {
-    type T = Auth0Token<'a>;
-
-    async fn token(&mut self) -> ockam_core::Result<Self::T> {
+impl Auth0TokenProvider for Auth0Service {
+    async fn token(&self) -> ockam_core::Result<Auth0Token> {
         // Request device code
         // More on how to use scope and audience in https://auth0.com/docs/quickstart/native/device#device-code-parameters
         let device_code_res = {
