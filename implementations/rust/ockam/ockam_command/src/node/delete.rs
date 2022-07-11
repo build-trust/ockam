@@ -1,3 +1,4 @@
+use crate::node::NodeOpts;
 use crate::CommandGlobalOpts;
 use clap::Args;
 use nix::sys::signal::{self, Signal};
@@ -5,8 +6,9 @@ use nix::unistd::Pid;
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
-    /// Name of the node to delete
-    pub node_name: String,
+    #[clap(flatten)]
+    node_opts: NodeOpts,
+
     /// Should the node be terminated with SIGKILL instead of SIGTERM
     #[clap(display_order = 900, long, short)]
     sigkill: bool,
@@ -14,7 +16,7 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(opts: CommandGlobalOpts, command: DeleteCommand) {
-        delete_node(&opts, &command.node_name, command.sigkill);
+        delete_node(&opts, &command.node_opts.api_node, command.sigkill);
     }
 }
 

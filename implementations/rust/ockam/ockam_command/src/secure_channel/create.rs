@@ -1,17 +1,20 @@
+use crate::node::NodeOpts;
 use crate::util::{api, connect_to, stop_node};
 use crate::CommandGlobalOpts;
+use anyhow::{anyhow, Context};
 use clap::{Args, Subcommand};
-use ockam::Context;
+use minicbor::Decoder;
 use ockam_api::error::ApiError;
-use ockam_api::{route_to_multiaddr, Status};
+use ockam_api::nodes::types::CreateSecureChannelResponse;
+use ockam_api::{route_to_multiaddr, Response, Status};
 use ockam_core::{route, Route};
 use ockam_multiaddr::MultiAddr;
+use tracing::debug;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
-    /// Override the default API node
-    #[clap(short, long)]
-    pub api_node: Option<String>,
+    #[clap(flatten)]
+    node_opts: NodeOpts,
 
     #[clap(subcommand)]
     pub create_subcommand: CreateSubCommand,
@@ -38,7 +41,7 @@ pub enum CreateSubCommand {
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) -> anyhow::Result<()> {
         let cfg = opts.config;
-        let port = match cfg.select_node(&command.api_node) {
+        let port = match cfg.select_node(&command.node_opts.api_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -56,7 +59,7 @@ impl CreateCommand {
 }
 
 pub async fn create_connector(
-    ctx: Context,
+    ctx: ockam::Context,
     cmd: CreateCommand,
     mut base_route: Route,
 ) -> anyhow::Result<()> {
@@ -67,34 +70,47 @@ pub async fn create_connector(
         }
     };
 
-    let resp: Vec<u8> = ctx
+    let response: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append("_internal.nodeman"),
             api::create_secure_channel(&addr)?,
         )
-        .await?;
+        .await
+        .context("Failed to process request")?;
+    let mut dec = Decoder::new(&response);
+    let header = dec.decode::<Response>()?;
+    debug!(?header, "Received response");
 
-    let (response, result) = api::parse_create_secure_channel_response(&resp)?;
-
-    match response.status() {
+    let res = match header.status() {
         Some(Status::Ok) => {
-            let addr = route_to_multiaddr(&route![result.addr.to_string()])
+            let body = dec.decode::<CreateSecureChannelResponse>()?;
+            let addr = route_to_multiaddr(&route![body.addr.to_string()])
                 .ok_or_else(|| ApiError::generic("Invalid Secure Channel Address"))?;
-            eprintln!(
+            Ok(format!(
                 "Secure Channel created! You can send messages to it via this address:\n{}",
                 addr
-            )
+            ))
         }
-        _ => {
-            eprintln!("An error occurred while creating secure channel",)
+        Some(Status::InternalServerError) => {
+            let err = dec
+                .decode::<String>()
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            Err(anyhow!(
+                "An error occurred while processing the request: {err}"
+            ))
         }
-    }
+        _ => Err(anyhow!("Unexpected response received from node")),
+    };
+    match res {
+        Ok(o) => println!("{o}"),
+        Err(err) => eprintln!("{err}"),
+    };
 
     stop_node(ctx).await
 }
 
 pub async fn create_listener(
-    ctx: Context,
+    ctx: ockam::Context,
     cmd: CreateCommand,
     mut base_route: Route,
 ) -> anyhow::Result<()> {

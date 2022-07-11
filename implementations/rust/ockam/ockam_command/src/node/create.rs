@@ -2,6 +2,7 @@ use clap::Args;
 use std::{env::current_exe, fs::OpenOptions, process::Command, time::Duration};
 
 use crate::enroll::Auth0Service;
+use crate::node::NodeOpts;
 use crate::{
     node::show::query_status,
     util::{connect_to, embedded_node, OckamConfig, DEFAULT_TCP_PORT},
@@ -15,9 +16,8 @@ use ockam_api::{
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
-    /// Name of the node.
-    #[clap(default_value_t = String::from("default"))]
-    node_name: String,
+    #[clap(flatten)]
+    node_opts: NodeOpts,
 
     /// Spawn a node in the background.
     #[clap(display_order = 900, long, short)]
@@ -38,11 +38,11 @@ impl CreateCommand {
             // exist the user PROBABLY started a non-detached node.
             // Thus we need to create the node dir so that subsequent
             // calls to it don't fail
-            if cfg.get_node_dir(&command.node_name).is_err() {
-                if let Err(e) = cfg.create_node(&command.node_name, command.port, 0) {
+            if cfg.get_node_dir(&command.node_opts.api_node).is_err() {
+                if let Err(e) = cfg.create_node(&command.node_opts.api_node, command.port, 0) {
                     eprintln!(
                         "failed to update node configuration for '{}': {:?}",
-                        command.node_name, e
+                        command.node_opts.api_node, e
                     );
                     std::process::exit(-1);
                 }
@@ -64,15 +64,15 @@ impl CreateCommand {
             // First we create a new node in the configuration so that
             // we can ask it for the correct log path, as well as
             // making sure the watchdog can do its job later on.
-            if let Err(e) = cfg.create_node(&command.node_name, command.port, 0) {
+            if let Err(e) = cfg.create_node(&command.node_opts.api_node, command.port, 0) {
                 eprintln!(
                     "failed to update node configuration for '{}': {:?}",
-                    command.node_name, e
+                    command.node_opts.api_node, e
                 );
                 std::process::exit(-1);
             }
 
-            let (mlog, elog) = cfg.log_paths_for_node(&command.node_name).unwrap();
+            let (mlog, elog) = cfg.log_paths_for_node(&command.node_opts.api_node).unwrap();
 
             let main_log_file = OpenOptions::new()
                 .create(true)
@@ -94,7 +94,8 @@ impl CreateCommand {
                     "--port",
                     &command.port.to_string(),
                     "--foreground",
-                    &command.node_name,
+                    "-a",
+                    &command.node_opts.api_node,
                 ])
                 .stdout(main_log_file)
                 .stderr(stderr_log_file)
@@ -102,7 +103,7 @@ impl CreateCommand {
                 .expect("could not spawn node");
 
             // Update the pid in the config (should we remove this?)
-            cfg.update_pid(&command.node_name, child.id() as i32)
+            cfg.update_pid(&command.node_opts.api_node, child.id() as i32)
                 .expect("should never panic");
 
             // Unless this CLI was called from another watchdog we
@@ -128,10 +129,10 @@ async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::
     let bind = format!("0.0.0.0:{}", c.port);
     tcp.listen(&bind).await?;
 
-    let node_dir = cfg.get_node_dir(&c.node_name).unwrap(); // can't fail because we already checked it
+    let node_dir = cfg.get_node_dir(&c.node_opts.api_node).unwrap(); // can't fail because we already checked it
     let node_man = NodeMan::create(
         &ctx,
-        c.node_name,
+        c.node_opts.api_node,
         node_dir,
         (TransportType::Tcp, TransportMode::Listen, bind),
         tcp,

@@ -1,3 +1,4 @@
+use crate::node::NodeOpts;
 use crate::util::{api, connect_to, stop_node};
 use crate::CommandGlobalOpts;
 use clap::Args;
@@ -10,15 +11,14 @@ use ockam_api::nodes::{
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
-    /// Name of the node.
-    #[clap(short, long)]
-    pub api_node: Option<String>,
+    #[clap(flatten)]
+    node_opts: NodeOpts,
 }
 
 impl ListCommand {
     pub fn run(opts: CommandGlobalOpts, command: ListCommand) {
         let cfg = &opts.config;
-        let port = match cfg.select_node(&command.api_node) {
+        let port = match cfg.select_node(&command.node_opts.api_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");

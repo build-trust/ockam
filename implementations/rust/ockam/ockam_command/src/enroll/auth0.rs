@@ -1,42 +1,73 @@
-use std::borrow::Borrow;
-
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use clap::Args;
+use minicbor::Decoder;
 use reqwest::StatusCode;
+use std::borrow::Borrow;
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{debug, warn};
 
-use ockam::{Context, TcpTransport};
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::error::ApiError;
+use ockam_api::{Response, Status};
+use ockam_core::Route;
 
-use crate::enroll::EnrollCommand;
-use crate::old::identity::load_or_create_identity;
-use crate::util::embedded_node;
+use crate::util::{api, connect_to, stop_node};
+use crate::{CommandGlobalOpts, EnrollCommand};
 
 #[derive(Clone, Debug, Args)]
 pub struct EnrollAuth0Command;
 
 impl EnrollAuth0Command {
-    pub fn run(cmd: EnrollCommand) {
-        embedded_node(enroll, cmd);
+    pub fn run(opts: CommandGlobalOpts, cmd: EnrollCommand) {
+        let cfg = &opts.config;
+        let port = match cfg.select_node(&cmd.node_opts.api_node) {
+            Some(cfg) => cfg.port,
+            None => {
+                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
+                std::process::exit(-1);
+            }
+        };
+        connect_to(port, (opts, cmd), enroll);
     }
 }
 
-async fn enroll(mut ctx: Context, cmd: EnrollCommand) -> anyhow::Result<()> {
-    let _tcp = TcpTransport::create(&ctx).await?;
+async fn enroll(
+    ctx: ockam::Context,
+    (_opts, cmd): (CommandGlobalOpts, EnrollCommand),
+    mut base_route: Route,
+) -> anyhow::Result<()> {
+    let route: Route = base_route.modify().append("_internal.nodeman").into();
+    debug!(?cmd, %route, "Sending request");
 
-    let identity = load_or_create_identity(&ctx, cmd.identity_opts.overwrite).await?;
+    let response: Vec<u8> = ctx
+        .send_and_receive(route, api::enroll::auth0(&cmd)?)
+        .await
+        .context("Failed to process request")?;
+    let mut dec = Decoder::new(&response);
+    let header = dec.decode::<Response>()?;
+    debug!(?header, "Received response");
 
-    let route = ockam_api::multiaddr_to_route(&cmd.address)
-        .ok_or_else(|| anyhow!("failed to parse address: {}", cmd.address))?;
+    let res = match header.status() {
+        Some(Status::Ok) => {
+            let output = "Enrolled successfully".to_string();
+            Ok(output)
+        }
+        Some(Status::InternalServerError) => {
+            let err = dec
+                .decode::<String>()
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            Err(anyhow!(
+                "An error occurred while processing the request: {err}"
+            ))
+        }
+        _ => Err(anyhow!("Unexpected response received from node")),
+    };
+    match res {
+        Ok(o) => println!("{o}"),
+        Err(err) => eprintln!("{err}"),
+    };
 
-    let mut api_client = ockam_api::cloud::MessagingClient::new(route, identity, &ctx).await?;
-    api_client.enroll_auth0(Auth0Service).await?;
-    println!("Enrolled successfully");
-
-    ctx.stop().await?;
-    Ok(())
+    stop_node(ctx).await
 }
 
 pub struct Auth0Service;

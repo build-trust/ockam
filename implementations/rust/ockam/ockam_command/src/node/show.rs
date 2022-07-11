@@ -1,19 +1,21 @@
+use crate::node::NodeOpts;
 use crate::util::{self, api, connect_to};
 use crate::CommandGlobalOpts;
+use anyhow::Context;
 use clap::Args;
-use ockam::{Context, Route};
+use ockam::Route;
 use ockam_api::nodes::{types::NodeStatus, NODEMAN_ADDR};
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
-    /// Name of the node.
-    pub node_name: String,
+    #[clap(flatten)]
+    node_opts: NodeOpts,
 }
 
 impl ShowCommand {
     pub fn run(opts: CommandGlobalOpts, command: ShowCommand) {
         let cfg = &opts.config;
-        let port = match cfg.get_inner().nodes.get(&command.node_name) {
+        let port = match cfg.get_inner().nodes.get(&command.node_opts.api_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -24,14 +26,14 @@ impl ShowCommand {
     }
 }
 
-pub async fn query_status(ctx: Context, _: (), mut base_route: Route) -> anyhow::Result<()> {
+pub async fn query_status(ctx: ockam::Context, _: (), mut base_route: Route) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append(NODEMAN_ADDR),
             api::query_status()?,
         )
         .await
-        .unwrap();
+        .context("Failed to process request")?;
 
     let NodeStatus {
         node_name,

@@ -7,16 +7,20 @@ use validator::validate_email;
 
 use ockam_api::error::ApiError;
 
-use crate::enroll::EnrollCommand;
+use crate::node::NodeOpts;
 use crate::util::embedded_node;
+use crate::{CommandGlobalOpts, EnrollCommand};
 
 const API_SECRET: &str = "DNYsEfhe]ms]ET]yQIthmhSOIvCkWOnb";
 
 #[derive(Clone, Debug, Args)]
-pub struct EnrollEmailCommand;
+pub struct EnrollEmailCommand {
+    #[clap(flatten)]
+    node_opts: NodeOpts,
+}
 
 impl EnrollEmailCommand {
-    pub fn run(cmd: EnrollCommand) {
+    pub fn run(_opts: CommandGlobalOpts, cmd: EnrollCommand) {
         println!("\nThank you for trying Ockam. We are working towards a developer release of Ockam Orchestrator in September.
 Please tell us your email and we'll let you know when we're ready to enroll new users to Ockam Orchestrator.\n");
         let email = read_user_input().expect("couldn't read user input");
@@ -37,9 +41,10 @@ fn read_user_input() -> anyhow::Result<String> {
     }
 }
 
-async fn enroll(mut ctx: ockam::Context, args: (EnrollCommand, String)) -> anyhow::Result<()> {
-    let (_cmd, email) = args;
-
+async fn enroll(
+    mut ctx: ockam::Context,
+    (_cmd, email): (EnrollCommand, String),
+) -> anyhow::Result<()> {
     let retry_strategy = ExponentialBackoff::from_millis(10).take(5);
     let res = Retry::spawn(retry_strategy, move || {
         let client = reqwest::Client::new();

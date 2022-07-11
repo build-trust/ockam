@@ -241,16 +241,16 @@ pub fn run() {
 
     match ockam_command.subcommand {
         OckamSubcommand::Authenticated(command) => AuthenticatedCommand::run(command),
-        OckamSubcommand::Invitation(command) => InvitationCommand::run(command),
-        OckamSubcommand::Enroll(command) => EnrollCommand::run(command),
+        OckamSubcommand::Invitation(command) => InvitationCommand::run(opts, command),
+        OckamSubcommand::Enroll(command) => EnrollCommand::run(opts, command),
         OckamSubcommand::GenerateEnrollmentToken(command) => {
-            GenerateEnrollmentTokenCommand::run(command)
+            GenerateEnrollmentTokenCommand::run(opts, command)
         }
         OckamSubcommand::Forwarder(command) => ForwarderCommand::run(opts, command),
         OckamSubcommand::Message(command) => MessageCommand::run(command),
         OckamSubcommand::Node(command) => NodeCommand::run(opts, command),
-        OckamSubcommand::Project(command) => ProjectCommand::run(command),
-        OckamSubcommand::Space(command) => SpaceCommand::run(command),
+        OckamSubcommand::Project(command) => ProjectCommand::run(opts, command),
+        OckamSubcommand::Space(command) => SpaceCommand::run(opts, command),
         OckamSubcommand::Transport(command) => TransportCommand::run(opts, command),
         OckamSubcommand::Portal(command) => PortalCommand::run(opts, command),
         OckamSubcommand::Config(command) => ConfigCommand::run(opts, command),
