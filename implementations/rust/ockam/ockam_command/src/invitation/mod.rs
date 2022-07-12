@@ -3,9 +3,10 @@ use clap::{Args, Subcommand};
 pub use accept::AcceptCommand;
 pub use create::CreateCommand;
 pub use list::ListCommand;
-use ockam_multiaddr::MultiAddr;
 pub use reject::RejectCommand;
 
+use crate::node::NodeOpts;
+use crate::util::api::CloudOpts;
 use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 
 mod accept;
@@ -18,14 +19,11 @@ pub struct InvitationCommand {
     #[clap(subcommand)]
     subcommand: InvitationSubcommand,
 
-    /// Ockam's cloud node address
-    #[clap(
-        global = true,
-        display_order = 1000,
-        long,
-        default_value = "/dnsaddr/cloud.ockam.io/tcp/62526/ockam/api"
-    )]
-    pub cloud_addr: MultiAddr,
+    #[clap(flatten)]
+    node_opts: NodeOpts,
+
+    #[clap(flatten)]
+    cloud_opts: CloudOpts,
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -50,10 +48,18 @@ pub enum InvitationSubcommand {
 impl InvitationCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: InvitationCommand) {
         match cmd.subcommand {
-            InvitationSubcommand::Create(command) => CreateCommand::run(opts, command),
-            InvitationSubcommand::List(command) => ListCommand::run(opts, command),
-            InvitationSubcommand::Accept(command) => AcceptCommand::run(opts, command),
-            InvitationSubcommand::Reject(command) => RejectCommand::run(opts, command),
+            InvitationSubcommand::Create(scmd) => {
+                CreateCommand::run(opts, (cmd.cloud_opts, cmd.node_opts), scmd)
+            }
+            InvitationSubcommand::List(scmd) => {
+                ListCommand::run(opts, (cmd.cloud_opts, cmd.node_opts), scmd)
+            }
+            InvitationSubcommand::Accept(scmd) => {
+                AcceptCommand::run(opts, (cmd.cloud_opts, cmd.node_opts), scmd)
+            }
+            InvitationSubcommand::Reject(scmd) => {
+                RejectCommand::run(opts, (cmd.cloud_opts, cmd.node_opts), scmd)
+            }
         }
     }
 }

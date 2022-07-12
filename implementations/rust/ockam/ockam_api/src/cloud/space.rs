@@ -48,6 +48,7 @@ mod node {
 
     use crate::cloud::enroll::auth0::Auth0TokenProvider;
     use crate::cloud::space::{CreateSpace, Space};
+    use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeMan;
     use crate::{decode, is_ok, request};
     use crate::{Request, Response, Status};
@@ -68,12 +69,14 @@ mod node {
         where
             W: Write<Error = Infallible>,
         {
-            let req_body: CreateSpace = dec.decode()?;
+            let req_wrapper: CloudRequestWrapper<CreateSpace> = dec.decode()?;
+            let req_body = req_wrapper.req;
+            let cloud_address = req_wrapper.cloud_address;
 
             let label = "create_space";
             trace!(target: TARGET, space = %req_body.name, "creating space");
 
-            let route = self.api_service_route("spaces");
+            let route = self.api_service_route(&cloud_address, "spaces");
             let req_builder = Request::post("v0/").body(req_body);
             match request(ctx, label, "create_space", route, req_builder).await {
                 Ok(r) => {
@@ -94,15 +97,19 @@ mod node {
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
+            dec: &mut Decoder<'_>,
             enc: W,
         ) -> Result<()>
         where
             W: Write<Error = Infallible>,
         {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_address = req_wrapper.cloud_address;
+
             let label = "list_spaces";
             trace!(target: TARGET, "listing spaces");
 
-            let route = self.api_service_route("spaces");
+            let route = self.api_service_route(&cloud_address, "spaces");
             let req_builder = Request::post("v0/");
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => {
@@ -123,16 +130,20 @@ mod node {
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
+            dec: &mut Decoder<'_>,
             enc: W,
             id: &str,
         ) -> Result<()>
         where
             W: Write<Error = Infallible>,
         {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_address = req_wrapper.cloud_address;
+
             let label = "get_space";
             trace!(target: TARGET, space = %id, space = %id, "getting space");
 
-            let route = self.api_service_route("spaces");
+            let route = self.api_service_route(&cloud_address, "spaces");
             let req_builder = Request::get(format!("v0/{id}"));
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => {
@@ -153,16 +164,20 @@ mod node {
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
+            dec: &mut Decoder<'_>,
             enc: W,
             name: &str,
         ) -> Result<()>
         where
             W: Write<Error = Infallible>,
         {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_address = req_wrapper.cloud_address;
+
             let label = "get_space_by_name";
             trace!(target: TARGET, space = %name, "getting space");
 
-            let route = self.api_service_route("spaces");
+            let route = self.api_service_route(&cloud_address, "spaces");
             let req_builder = Request::get(format!("v0/name/{name}"));
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => {
@@ -183,16 +198,20 @@ mod node {
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
+            dec: &mut Decoder<'_>,
             enc: W,
             id: &str,
         ) -> Result<()>
         where
             W: Write<Error = Infallible>,
         {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_address = req_wrapper.cloud_address;
+
             let label = "delete_space";
             trace!(target: TARGET, space = %id, "deleting space");
 
-            let route = self.api_service_route("spaces");
+            let route = self.api_service_route(&cloud_address, "spaces");
             let req_builder = Request::delete(format!("v0/{id}"));
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => {

@@ -7,17 +7,13 @@ use validator::validate_email;
 
 use ockam_api::error::ApiError;
 
-use crate::node::NodeOpts;
 use crate::util::embedded_node;
 use crate::{CommandGlobalOpts, EnrollCommand};
 
 const API_SECRET: &str = "DNYsEfhe]ms]ET]yQIthmhSOIvCkWOnb";
 
 #[derive(Clone, Debug, Args)]
-pub struct EnrollEmailCommand {
-    #[clap(flatten)]
-    node_opts: NodeOpts,
-}
+pub struct EnrollEmailCommand;
 
 impl EnrollEmailCommand {
     pub fn run(_opts: CommandGlobalOpts, cmd: EnrollCommand) {

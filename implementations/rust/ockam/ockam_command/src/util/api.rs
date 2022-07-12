@@ -4,8 +4,12 @@
 use crate::{portal, transport};
 use minicbor::Decoder;
 
+use clap::Args;
 use ockam::{Error, OckamError, Result};
-use ockam_api::{multiaddr_to_route, nodes::types::*, Method, Request, Response};
+use ockam_api::{
+    cloud::CloudRequestWrapper, multiaddr_to_route, nodes::types::*, Method, Request, Response,
+};
+use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
 
 ////////////// !== generators
@@ -74,8 +78,8 @@ pub(crate) fn create_identity() -> Result<Vec<u8>> {
 }
 
 /// Construct a request to create Secure Channels
-pub(crate) fn create_secure_channel(addr: &MultiAddr) -> Result<Vec<u8>> {
-    let payload = CreateSecureChannelRequest::new(addr.to_string());
+pub(crate) fn create_secure_channel(addr: MultiAddr) -> Result<Vec<u8>> {
+    let payload = CreateSecureChannelRequest::new(addr);
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/secure_channel")
@@ -125,13 +129,15 @@ pub(crate) mod enroll {
 
     use super::*;
 
-    pub(crate) fn auth0(_cmd: &EnrollCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn auth0(cmd: EnrollCommand) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
-        Request::builder(Method::Post, "v0/enroll/auth0").encode(&mut buf)?;
+        Request::builder(Method::Post, "v0/enroll/auth0")
+            .body(CloudRequestWrapper::bare(cmd.cloud_opts.addr))
+            .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn token_generate(cmd: &GenerateEnrollmentTokenCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn token_generate(cmd: GenerateEnrollmentTokenCommand) -> anyhow::Result<Vec<u8>> {
         let mut attributes = Attributes::new();
         for entry in cmd.attrs.chunks(2) {
             if let [k, v] = entry {
@@ -143,17 +149,18 @@ pub(crate) mod enroll {
 
         let mut buf = vec![];
         Request::builder(Method::Get, "v0/enroll/token")
-            .body(attributes)
+            .body(CloudRequestWrapper::new(attributes, cmd.cloud_opts.addr))
             .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn token_authenticate(cmd: &EnrollCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn token_authenticate(cmd: EnrollCommand) -> anyhow::Result<Vec<u8>> {
         // Option checked that is Some at enroll/mod/EnrollCommand::run
         let token = cmd.token.as_ref().expect("required");
+        let b = Token::new(token);
         let mut buf = vec![];
         Request::builder(Method::Put, "v0/enroll/token")
-            .body(Token::new(token))
+            .body(CloudRequestWrapper::new(b, cmd.cloud_opts.addr))
             .encode(&mut buf)?;
         Ok(buf)
     }
@@ -166,29 +173,36 @@ pub(crate) mod space {
 
     use super::*;
 
-    pub(crate) fn create(cmd: &CreateCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn create(cmd: CreateCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
+        let b = CreateSpace::new(cmd.name.as_str());
         let mut buf = vec![];
         Request::builder(Method::Post, "v0/spaces")
-            .body(CreateSpace::new(cmd.name.as_str()))
+            .body(CloudRequestWrapper::new(b, cloud_opts.addr))
             .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn list(_cmd: &ListCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn list(_cmd: ListCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
-        Request::builder(Method::Get, "v0/spaces").encode(&mut buf)?;
+        Request::builder(Method::Get, "v0/spaces")
+            .body(CloudRequestWrapper::bare(cloud_opts.addr))
+            .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn show(cmd: &ShowCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn show(cmd: ShowCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
-        Request::builder(Method::Get, format!("v0/spaces/{}", cmd.id)).encode(&mut buf)?;
+        Request::builder(Method::Get, format!("v0/spaces/{}", cmd.id))
+            .body(CloudRequestWrapper::bare(cloud_opts.addr))
+            .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn delete(cmd: &DeleteCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn delete(cmd: DeleteCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
-        Request::builder(Method::Delete, format!("v0/spaces/{}", cmd.id)).encode(&mut buf)?;
+        Request::builder(Method::Delete, format!("v0/spaces/{}", cmd.id))
+            .body(CloudRequestWrapper::bare(cloud_opts.addr))
+            .encode(&mut buf)?;
         Ok(buf)
     }
 }
@@ -200,37 +214,41 @@ pub(crate) mod project {
 
     use super::*;
 
-    pub(crate) fn create(cmd: &CreateCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn create(cmd: CreateCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
+        let b = CreateProject::new(cmd.project_name.as_str(), &cmd.services);
         let mut buf = vec![];
         Request::builder(Method::Post, format!("v0/spaces/{}/projects", cmd.space_id))
-            .body(CreateProject::new(cmd.project_name.as_str(), &cmd.services))
+            .body(CloudRequestWrapper::new(b, cloud_opts.addr))
             .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn list(cmd: &ListCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn list(cmd: ListCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
         Request::builder(Method::Get, format!("v0/spaces/{}/projects", cmd.space_id))
+            .body(CloudRequestWrapper::bare(cloud_opts.addr))
             .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn show(cmd: &ShowCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn show(cmd: ShowCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
         Request::builder(
             Method::Get,
             format!("v0/spaces/{}/projects/{}", cmd.space_id, cmd.project_id),
         )
+        .body(CloudRequestWrapper::bare(cloud_opts.addr))
         .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn delete(cmd: &DeleteCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn delete(cmd: DeleteCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
         Request::builder(
             Method::Delete,
             format!("v0/spaces/{}/projects/{}", cmd.space_id, cmd.project_id),
         )
+        .body(CloudRequestWrapper::bare(cloud_opts.addr))
         .encode(&mut buf)?;
         Ok(buf)
     }
@@ -243,33 +261,36 @@ pub(crate) mod invitations {
 
     use super::*;
 
-    pub(crate) fn create(cmd: CreateCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn create(cmd: CreateCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
+        let b = CreateInvitation::new(cmd.email, cmd.space_id, cmd.project_id);
         Request::builder(Method::Post, "v0/invitations")
-            .body(CreateInvitation::new(
-                cmd.email,
-                cmd.space_id,
-                cmd.project_id,
-            ))
+            .body(CloudRequestWrapper::new(b, cloud_opts.addr))
             .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn list(_cmd: &ListCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn list(_cmd: ListCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
-        Request::builder(Method::Get, "v0/invitations").encode(&mut buf)?;
+        Request::builder(Method::Get, "v0/invitations")
+            .body(CloudRequestWrapper::bare(cloud_opts.addr))
+            .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn accept(cmd: &AcceptCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn accept(cmd: AcceptCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
-        Request::builder(Method::Put, format!("v0/invitations/{}", cmd.id)).encode(&mut buf)?;
+        Request::builder(Method::Put, format!("v0/invitations/{}", cmd.id))
+            .body(CloudRequestWrapper::bare(cloud_opts.addr))
+            .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn reject(cmd: &RejectCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn reject(cmd: RejectCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
-        Request::builder(Method::Delete, format!("v0/invitations/{}", cmd.id)).encode(&mut buf)?;
+        Request::builder(Method::Delete, format!("v0/invitations/{}", cmd.id))
+            .body(CloudRequestWrapper::bare(cloud_opts.addr))
+            .encode(&mut buf)?;
         Ok(buf)
     }
 }
@@ -322,4 +343,13 @@ pub(crate) fn parse_portal_status(resp: &[u8]) -> Result<(Response, PortalStatus
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
     Ok((response, dec.decode::<PortalStatus>()?))
+}
+
+////////////// !== share CLI args
+
+#[derive(Clone, Debug, Args)]
+pub struct CloudOpts {
+    /// Ockam cloud node's secure channel address
+    #[clap(long, default_value = "listener")]
+    pub addr: Address,
 }

@@ -7,6 +7,7 @@ use ockam_api::{Response, Status};
 use ockam_core::Route;
 
 use crate::node::NodeOpts;
+use crate::util::api::CloudOpts;
 use crate::util::{api, connect_to, stop_node};
 use crate::CommandGlobalOpts;
 
@@ -15,35 +16,36 @@ pub struct RejectCommand {
     /// The invitation id.
     #[clap(display_order = 1002)]
     pub id: String,
-
-    #[clap(flatten)]
-    node_opts: NodeOpts,
 }
 
 impl RejectCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: RejectCommand) {
+    pub fn run(
+        opts: CommandGlobalOpts,
+        (cloud_opts, node_opts): (CloudOpts, NodeOpts),
+        cmd: RejectCommand,
+    ) {
         let cfg = &opts.config;
-        let port = match cfg.select_node(&cmd.node_opts.api_node) {
+        let port = match cfg.select_node(&node_opts.api_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
                 std::process::exit(-1);
             }
         };
-        connect_to(port, (opts, cmd), reject);
+        connect_to(port, (opts, cloud_opts, cmd), reject);
     }
 }
 
 async fn reject(
     ctx: ockam::Context,
-    (_opts, cmd): (CommandGlobalOpts, RejectCommand),
+    (_opts, cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, RejectCommand),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     let route: Route = base_route.modify().append("_internal.nodeman").into();
     debug!(?cmd, %route, "Sending request");
 
     let response: Vec<u8> = ctx
-        .send_and_receive(route, api::invitations::reject(&cmd)?)
+        .send_and_receive(route, api::invitations::reject(cmd, cloud_opts)?)
         .await
         .context("Failed to process request")?;
     let mut dec = Decoder::new(&response);

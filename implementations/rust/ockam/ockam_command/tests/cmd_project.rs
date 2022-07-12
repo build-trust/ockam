@@ -3,16 +3,21 @@ use std::process::Command;
 
 #[test]
 fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
-    let prefix_args = ["--test-argument-parser", "project"];
+    let prefix_args = [
+        "--test-argument-parser",
+        "project",
+        "--addr",
+        "/dnsaddr/localhost/tcp/4000",
+        "-a",
+        "node-name",
+    ];
 
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.args(&prefix_args)
         .arg("create")
         .arg("space-id")
         .arg("project-name")
-        .arg("service-a service-b")
-        .arg("--")
-        .arg("/ip4/127.0.0.1/tcp/8080");
+        .arg("service-a service-b");
     cmd.assert().success();
 
     let mut cmd = Command::cargo_bin("ockam")?;
@@ -23,16 +28,14 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
     cmd.args(&prefix_args)
         .arg("show")
         .arg("space-id")
-        .arg("project-id")
-        .arg("/ip4/127.0.0.1/tcp/8080");
+        .arg("project-id");
     cmd.assert().success();
 
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.args(&prefix_args)
         .arg("delete")
         .arg("space-id")
-        .arg("project-id")
-        .arg("/ip4/127.0.0.1/tcp/8080");
+        .arg("project-id");
     cmd.assert().success();
 
     Ok(())

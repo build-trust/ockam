@@ -39,6 +39,7 @@ mod node {
     use crate::cloud::enroll::enrollment_token::{
         AuthenticateEnrollmentToken, EnrollmentToken, RequestEnrollmentToken,
     };
+    use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeMan;
     use crate::{decode, is_ok, request};
     use crate::{Request, Response, Status};
@@ -56,6 +57,7 @@ mod node {
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
+            dec: &mut Decoder<'_>,
             enc: W,
         ) -> Result<()>
         where
@@ -66,7 +68,7 @@ mod node {
                 let token = self.auth0_service.token().await?;
                 AuthenticateToken::Auth0(AuthenticateAuth0Token::new(token))
             };
-            self.authenticate_token(ctx, req, enc, token).await?;
+            self.authenticate_token(ctx, req, dec, enc, token).await?;
             Ok(())
         }
 
@@ -81,13 +83,15 @@ mod node {
         where
             W: Write<Error = Infallible>,
         {
-            let req_body: Attributes = dec.decode()?;
+            let req_wrapper: CloudRequestWrapper<Attributes> = dec.decode()?;
+            let cloud_address = req_wrapper.cloud_address;
+            let req_body: Attributes = req_wrapper.req;
             let req_body = RequestEnrollmentToken::new(req_body);
 
             let label = "enrollment_token_generator";
             trace!(target: TARGET, "generating tokens");
 
-            let route = self.api_service_route("enrollment_token_authenticator");
+            let route = self.api_service_route(&cloud_address, "enrollment_token_authenticator");
             let req_builder = Request::post("v0/").body(req_body);
             match request(ctx, label, "request_enrollment_token", route, req_builder).await {
                 Ok(r) => {
@@ -119,7 +123,7 @@ mod node {
             trace!(target: TARGET, "authenticating token");
             let token =
                 AuthenticateToken::EnrollmentToken(AuthenticateEnrollmentToken::new(req_body));
-            self.authenticate_token(ctx, req, enc, token).await?;
+            self.authenticate_token(ctx, req, dec, enc, token).await?;
             Ok(())
         }
 
@@ -127,25 +131,29 @@ mod node {
             &self,
             ctx: &mut Context,
             req: &Request<'_>,
+            dec: &mut Decoder<'_>,
             enc: W,
             body: AuthenticateToken<'_>,
         ) -> Result<()>
         where
             W: Write<Error = Infallible>,
         {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_address = req_wrapper.cloud_address;
+
             // TODO: add AuthenticateAuth0Token to schema.cddl and use it here
             let schema = None;
             let label;
             let r = match body {
                 AuthenticateToken::Auth0(body) => {
                     label = "auth0_authenticator";
-                    let route = self.api_service_route(label);
+                    let route = self.api_service_route(&cloud_address, label);
                     let req_builder = Request::post("v0/enroll").body(body);
                     request(ctx, label, schema, route, req_builder).await
                 }
                 AuthenticateToken::EnrollmentToken(body) => {
                     label = "enrollment_token_authenticator";
-                    let route = self.api_service_route(label);
+                    let route = self.api_service_route(&cloud_address, label);
                     let req_builder = Request::post("v0/enroll").body(body);
                     request(ctx, label, schema, route, req_builder).await
                 }

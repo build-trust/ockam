@@ -10,12 +10,13 @@ use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::NodeOpts;
-use crate::util::{api, connect_to, stop_node};
+use crate::util::{api, connect_to, stop_node, DEFAULT_CLOUD_ADDRESS};
 use crate::{CommandGlobalOpts, MessageFormat};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
-    /// Ockam's cloud node address.
+    /// Ockam's cloud address.
+    #[clap(default_value = DEFAULT_CLOUD_ADDRESS)]
     addr: MultiAddr,
 
     /// Forwarder alias. Optional{n}

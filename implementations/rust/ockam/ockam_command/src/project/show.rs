@@ -6,10 +6,10 @@ use tracing::debug;
 use ockam_api::cloud::project::Project;
 use ockam_api::{Response, Status};
 use ockam_core::Route;
-use ockam_multiaddr::MultiAddr;
 
 use crate::node::NodeOpts;
-use crate::util::{api, connect_to, stop_node, DEFAULT_CLOUD_ADDRESS};
+use crate::util::api::CloudOpts;
+use crate::util::{api, connect_to, stop_node};
 use crate::{CommandGlobalOpts, MessageFormat};
 
 #[derive(Clone, Debug, Args)]
@@ -21,44 +21,41 @@ pub struct ShowCommand {
     /// Id of the project.
     #[clap(display_order = 1002)]
     pub project_id: String,
-
     // TODO: add project_name arg that conflicts with project_id
     //  so we can call the get_project_by_name api method
     // /// Name of the project.
     // #[clap(display_order = 1002)]
     // pub project_name: String,
-    #[clap(flatten)]
-    node_opts: NodeOpts,
-
-    /// Ockam's cloud address. Argument used for testing purposes.
-    #[clap(hide = true, display_order = 1100, default_value = DEFAULT_CLOUD_ADDRESS)]
-    addr: MultiAddr,
 }
 
 impl ShowCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: ShowCommand) {
+    pub fn run(
+        opts: CommandGlobalOpts,
+        (cloud_opts, node_opts): (CloudOpts, NodeOpts),
+        cmd: ShowCommand,
+    ) {
         let cfg = &opts.config;
-        let port = match cfg.select_node(&cmd.node_opts.api_node) {
+        let port = match cfg.select_node(&node_opts.api_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
                 std::process::exit(-1);
             }
         };
-        connect_to(port, (opts, cmd), show);
+        connect_to(port, (opts, cloud_opts, cmd), show);
     }
 }
 
 async fn show(
     ctx: ockam::Context,
-    (opts, cmd): (CommandGlobalOpts, ShowCommand),
+    (opts, cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, ShowCommand),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     let route: Route = base_route.modify().append("_internal.nodeman").into();
     debug!(?cmd, %route, "Sending request");
 
     let response: Vec<u8> = ctx
-        .send_and_receive(route, api::project::show(&cmd)?)
+        .send_and_receive(route, api::project::show(cmd, cloud_opts)?)
         .await
         .context("Failed to process request")?;
     let mut dec = Decoder::new(&response);

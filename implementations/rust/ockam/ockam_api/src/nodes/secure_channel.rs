@@ -1,8 +1,10 @@
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
+use ockam_core::Address;
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use ockam_multiaddr::MultiAddr;
 
 /// Request body when instructing a node to create a Secure Channel
 #[derive(Debug, Clone, Decode, Encode)]
@@ -15,11 +17,11 @@ pub struct CreateSecureChannelRequest<'a> {
 }
 
 impl<'a> CreateSecureChannelRequest<'a> {
-    pub fn new(addr: impl Into<Cow<'a, str>>) -> Self {
+    pub fn new(addr: MultiAddr) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr: addr.into(),
+            addr: addr.to_string().into(),
         }
     }
 }
@@ -35,11 +37,11 @@ pub struct CreateSecureChannelResponse<'a> {
 }
 
 impl<'a> CreateSecureChannelResponse<'a> {
-    pub fn new(addr: impl Into<Cow<'a, str>>) -> Self {
+    pub fn new(addr: Address) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr: addr.into(),
+            addr: addr.to_string().into(),
         }
     }
 }
