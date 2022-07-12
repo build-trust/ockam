@@ -40,7 +40,7 @@ async fn enroll(
     debug!(?cmd, %route, "Sending request");
 
     let response: Vec<u8> = ctx
-        .send_and_receive(route, api::enroll::auth0(&cmd)?)
+        .send_and_receive(route, api::enroll::auth0(cmd)?)
         .await
         .context("Failed to process request")?;
     let mut dec = Decoder::new(&response);

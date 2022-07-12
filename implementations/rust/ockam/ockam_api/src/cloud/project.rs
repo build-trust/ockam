@@ -58,6 +58,7 @@ mod node {
     use ockam_node::Context;
 
     use crate::cloud::enroll::auth0::Auth0TokenProvider;
+    use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeMan;
     use crate::{decode, is_ok, request};
     use crate::{Request, Response, Status};
@@ -81,12 +82,14 @@ mod node {
         where
             W: Write<Error = Infallible>,
         {
-            let req_body: CreateProject = dec.decode()?;
+            let req_wrapper: CloudRequestWrapper<CreateProject> = dec.decode()?;
+            let cloud_address = req_wrapper.cloud_address;
+            let req_body = req_wrapper.req;
 
             let label = "create_project";
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
 
-            let route = self.api_service_route("projects");
+            let route = self.api_service_route(&cloud_address, "projects");
             let req_builder = Request::post("v0/").body(req_body);
             match request(ctx, label, "create_project", route, req_builder).await {
                 Ok(r) => {
@@ -107,16 +110,20 @@ mod node {
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
+            dec: &mut Decoder<'_>,
             enc: W,
             space_id: &str,
         ) -> Result<()>
         where
             W: Write<Error = Infallible>,
         {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_address = req_wrapper.cloud_address;
+
             let label = "list_projects";
             trace!(target: TARGET, %space_id, "listing projects");
 
-            let route = self.api_service_route("projects");
+            let route = self.api_service_route(&cloud_address, "projects");
             let req_builder = Request::post("v0/");
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => {
@@ -137,6 +144,7 @@ mod node {
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
+            dec: &mut Decoder<'_>,
             enc: W,
             space_id: &str,
             project_id: &str,
@@ -144,10 +152,13 @@ mod node {
         where
             W: Write<Error = Infallible>,
         {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_address = req_wrapper.cloud_address;
+
             let label = "get_project";
             trace!(target: TARGET, %space_id, %project_id, "getting project");
 
-            let route = self.api_service_route("projects");
+            let route = self.api_service_route(&cloud_address, "projects");
             let req_builder = Request::get(format!("v0/{project_id}"));
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => {
@@ -168,6 +179,7 @@ mod node {
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
+            dec: &mut Decoder<'_>,
             enc: W,
             space_id: &str,
             project_name: &str,
@@ -175,10 +187,13 @@ mod node {
         where
             W: Write<Error = Infallible>,
         {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_address = req_wrapper.cloud_address;
+
             let label = "get_project_by_name";
             trace!(target: TARGET, %space_id, %project_name, "getting project");
 
-            let route = self.api_service_route("projects");
+            let route = self.api_service_route(&cloud_address, "projects");
             let req_builder = Request::get(format!("v0/name/{project_name}"));
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => {
@@ -199,6 +214,7 @@ mod node {
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
+            dec: &mut Decoder<'_>,
             enc: W,
             space_id: &str,
             project_id: &str,
@@ -206,10 +222,13 @@ mod node {
         where
             W: Write<Error = Infallible>,
         {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_address = req_wrapper.cloud_address;
+
             let label = "delete_project";
             trace!(target: TARGET, %space_id, %project_id, "deleting project");
 
-            let route = self.api_service_route("projects");
+            let route = self.api_service_route(&cloud_address, "projects");
             let req_builder = Request::delete(format!("v0/{project_id}"));
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => {

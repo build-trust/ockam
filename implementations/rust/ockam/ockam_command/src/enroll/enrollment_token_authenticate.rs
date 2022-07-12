@@ -6,15 +6,11 @@ use tracing::debug;
 use ockam_api::{Response, Status};
 use ockam_core::Route;
 
-use crate::node::NodeOpts;
 use crate::util::{api, connect_to, stop_node};
 use crate::{CommandGlobalOpts, EnrollCommand};
 
 #[derive(Clone, Debug, Args)]
-pub struct AuthenticateEnrollmentTokenCommand {
-    #[clap(flatten)]
-    node_opts: NodeOpts,
-}
+pub struct AuthenticateEnrollmentTokenCommand;
 
 impl AuthenticateEnrollmentTokenCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: EnrollCommand) {
@@ -39,7 +35,7 @@ async fn authenticate(
     debug!(?cmd, %route, "Sending request");
 
     let response: Vec<u8> = ctx
-        .send_and_receive(route, api::enroll::token_authenticate(&cmd)?)
+        .send_and_receive(route, api::enroll::token_authenticate(cmd)?)
         .await
         .context("Failed to process request")?;
     let mut dec = Decoder::new(&response);

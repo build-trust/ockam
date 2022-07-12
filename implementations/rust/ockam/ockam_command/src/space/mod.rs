@@ -5,6 +5,8 @@ pub use delete::DeleteCommand;
 pub use list::ListCommand;
 pub use show::ShowCommand;
 
+use crate::node::NodeOpts;
+use crate::util::api::CloudOpts;
 use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 
 mod create;
@@ -16,6 +18,12 @@ mod show;
 pub struct SpaceCommand {
     #[clap(subcommand)]
     subcommand: SpaceSubcommand,
+
+    #[clap(flatten)]
+    node_opts: NodeOpts,
+
+    #[clap(flatten)]
+    cloud_opts: CloudOpts,
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -40,10 +48,18 @@ pub enum SpaceSubcommand {
 impl SpaceCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: SpaceCommand) {
         match cmd.subcommand {
-            SpaceSubcommand::Create(cmd) => CreateCommand::run(opts, cmd),
-            SpaceSubcommand::Delete(cmd) => DeleteCommand::run(opts, cmd),
-            SpaceSubcommand::List(cmd) => ListCommand::run(opts, cmd),
-            SpaceSubcommand::Show(cmd) => ShowCommand::run(opts, cmd),
+            SpaceSubcommand::Create(scmd) => {
+                CreateCommand::run(opts, (cmd.cloud_opts, cmd.node_opts), scmd)
+            }
+            SpaceSubcommand::Delete(scmd) => {
+                DeleteCommand::run(opts, (cmd.cloud_opts, cmd.node_opts), scmd)
+            }
+            SpaceSubcommand::List(scmd) => {
+                ListCommand::run(opts, (cmd.cloud_opts, cmd.node_opts), scmd)
+            }
+            SpaceSubcommand::Show(scmd) => {
+                ShowCommand::run(opts, (cmd.cloud_opts, cmd.node_opts), scmd)
+            }
         }
     }
 }

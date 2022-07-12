@@ -3,7 +3,14 @@ use std::process::Command;
 
 #[test]
 fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
-    let prefix_args = ["--test-argument-parser", "invitation"];
+    let prefix_args = [
+        "--test-argument-parser",
+        "invitation",
+        "--addr",
+        "/dnsaddr/localhost/tcp/4000",
+        "-a",
+        "node-name",
+    ];
 
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.args(&prefix_args)
@@ -15,8 +22,6 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
     // With custom cloud address
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.args(&prefix_args)
-        .arg("--cloud-addr")
-        .arg("/dnsaddr/localhost/tcp/4000")
         .arg("create")
         .arg("space-id")
         .arg("invitee@test.com");

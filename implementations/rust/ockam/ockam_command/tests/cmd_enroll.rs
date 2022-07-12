@@ -3,34 +3,28 @@ use std::process::Command;
 
 #[test]
 fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
+    let prefix_args = [
+        "--test-argument-parser",
+        "enroll",
+        "--addr",
+        "/dnsaddr/localhost/tcp/4000",
+        "-a",
+        "node-name",
+    ];
+
     // email
     let mut cmd = Command::cargo_bin("ockam")?;
-    cmd.arg("--test-argument-parser")
-        .arg("enroll")
-        .arg("/ip4/127.0.0.1/tcp/8080")
-        .arg("-a")
-        .arg("node-name");
+    cmd.args(&prefix_args);
     cmd.assert().success();
 
     // auth0
     let mut cmd = Command::cargo_bin("ockam")?;
-    cmd.arg("--test-argument-parser")
-        .arg("enroll")
-        .arg("/ip4/127.0.0.1/tcp/8080")
-        .arg("-a")
-        .arg("node-name")
-        .arg("--auth0");
+    cmd.args(&prefix_args).arg("--auth0");
     cmd.assert().success();
 
     // token
     let mut cmd = Command::cargo_bin("ockam")?;
-    cmd.arg("--test-argument-parser")
-        .arg("enroll")
-        .arg("/ip4/127.0.0.1/tcp/8080")
-        .arg("-a")
-        .arg("node-name")
-        .arg("--token")
-        .arg("token-value");
+    cmd.args(&prefix_args).arg("--token").arg("token-value");
     cmd.assert().success();
 
     Ok(())

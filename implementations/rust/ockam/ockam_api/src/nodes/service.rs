@@ -121,9 +121,8 @@ impl<A> NodeMan<A>
 where
     A: Auth0TokenProvider,
 {
-    pub(crate) fn api_service_route(&self, api_service: &str) -> Route {
-        // TODO: add secure channel to the route. It needs changes on the commands side.
-        route![api_service]
+    pub(crate) fn api_service_route(&self, cloud_address: &str, api_service: &str) -> Route {
+        route![cloud_address, api_service]
     }
 
     //////// Transports API ////////
@@ -306,7 +305,7 @@ where
 
         info!("Handling request to create a new secure channel: {}", addr);
 
-        // TODO: Improve error handling
+        // TODO: Improve error handling + move logic into CreateSecureChannelRequest
         let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
         let route = crate::multiaddr_to_route(&addr)
             .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
@@ -322,8 +321,7 @@ where
 
         // TODO: Create Secure Channels Registry
 
-        let response =
-            Response::ok(req.id()).body(CreateSecureChannelResponse::new(channel.to_string()));
+        let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(channel));
 
         Ok(response)
     }
@@ -519,43 +517,45 @@ where
 
             // ==*== Spaces ==*==
             (Post, ["v0", "spaces"]) => self.create_space(ctx, req, dec, enc).await?,
-            (Get, ["v0", "spaces"]) => self.list_spaces(ctx, req, enc).await?,
-            (Get, ["v0", "spaces", id]) => self.get_space(ctx, req, enc, id).await?,
+            (Get, ["v0", "spaces"]) => self.list_spaces(ctx, req, dec, enc).await?,
+            (Get, ["v0", "spaces", id]) => self.get_space(ctx, req, dec, enc, id).await?,
             (Get, ["v0", "spaces", "name", name]) => {
-                self.get_space_by_name(ctx, req, enc, name).await?
+                self.get_space_by_name(ctx, req, dec, enc, name).await?
             }
-            (Delete, ["v0", "spaces", id]) => self.delete_space(ctx, req, enc, id).await?,
+            (Delete, ["v0", "spaces", id]) => self.delete_space(ctx, req, dec, enc, id).await?,
 
             // ==*== Projects ==*==
             (Post, ["v0", "spaces", space_id, "projects"]) => {
                 self.create_project(ctx, req, dec, enc, space_id).await?
             }
             (Get, ["v0", "spaces", space_id, "projects"]) => {
-                self.list_projects(ctx, req, enc, space_id).await?
+                self.list_projects(ctx, req, dec, enc, space_id).await?
             }
             (Get, ["v0", "spaces", space_id, "projects", project_id]) => {
-                self.get_project(ctx, req, enc, space_id, project_id)
+                self.get_project(ctx, req, dec, enc, space_id, project_id)
                     .await?
             }
             (Get, ["v0", "spaces", space_id, "projects", "name", project_name]) => {
-                self.get_project_by_name(ctx, req, enc, space_id, project_name)
+                self.get_project_by_name(ctx, req, dec, enc, space_id, project_name)
                     .await?
             }
             (Delete, ["v0", "spaces", space_id, "projects", project_id]) => {
-                self.delete_project(ctx, req, enc, space_id, project_id)
+                self.delete_project(ctx, req, dec, enc, space_id, project_id)
                     .await?
             }
 
             // ==*== Invitations ==*==
             (Post, ["v0", "invitations"]) => self.create_invitation(ctx, req, dec, enc).await?,
-            (Get, ["v0", "invitations"]) => self.list_invitations(ctx, req, enc).await?,
-            (Put, ["v0", "invitations", id]) => self.accept_invitation(ctx, req, enc, id).await?,
+            (Get, ["v0", "invitations"]) => self.list_invitations(ctx, req, dec, enc).await?,
+            (Put, ["v0", "invitations", id]) => {
+                self.accept_invitation(ctx, req, dec, enc, id).await?
+            }
             (Delete, ["v0", "invitations", id]) => {
-                self.reject_invitation(ctx, req, enc, id).await?
+                self.reject_invitation(ctx, req, dec, enc, id).await?
             }
 
             // ==*== Enroll ==*==
-            (Post, ["v0", "enroll", "auth0"]) => self.enroll_auth0(ctx, req, enc).await?,
+            (Post, ["v0", "enroll", "auth0"]) => self.enroll_auth0(ctx, req, dec, enc).await?,
             (Get, ["v0", "enroll", "token"]) => {
                 self.generate_enrollment_token(ctx, req, dec, enc).await?
             }

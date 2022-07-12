@@ -73,7 +73,7 @@ pub async fn create_connector(
     let response: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append("_internal.nodeman"),
-            api::create_secure_channel(&addr)?,
+            api::create_secure_channel(addr)?,
         )
         .await
         .context("Failed to process request")?;

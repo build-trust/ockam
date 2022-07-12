@@ -6,24 +6,23 @@ use tracing::debug;
 use ockam_api::cloud::enroll::enrollment_token::EnrollmentToken;
 use ockam_api::{Response, Status};
 use ockam_core::Route;
-use ockam_multiaddr::MultiAddr;
 
 use crate::node::NodeOpts;
+use crate::util::api::CloudOpts;
 use crate::util::{api, connect_to, stop_node};
 use crate::{CommandGlobalOpts, MessageFormat};
 
 #[derive(Clone, Debug, Args)]
 pub struct GenerateEnrollmentTokenCommand {
-    /// Ockam's cloud address
-    #[clap(display_order = 1000)]
-    address: MultiAddr,
-
     /// Attributes (use '=' to separate key from value)
     #[clap(value_delimiter('='), last = true, required = true)]
     pub attrs: Vec<String>,
 
     #[clap(flatten)]
     node_opts: NodeOpts,
+
+    #[clap(flatten)]
+    pub cloud_opts: CloudOpts,
 }
 
 impl GenerateEnrollmentTokenCommand {
@@ -49,7 +48,7 @@ async fn generate(
     debug!(?cmd, %route, "Sending request");
 
     let response: Vec<u8> = ctx
-        .send_and_receive(route, api::enroll::token_generate(&cmd)?)
+        .send_and_receive(route, api::enroll::token_generate(cmd)?)
         .await
         .context("Failed to process request")?;
     let mut dec = Decoder::new(&response);

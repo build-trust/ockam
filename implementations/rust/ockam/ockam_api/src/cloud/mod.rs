@@ -1,5 +1,6 @@
 use tracing::trace;
 
+use minicbor::{Decode, Encode};
 use ockam::{
     authenticated_storage::InMemoryStorage,
     identity::{Identity, IdentityVault, TrustEveryonePolicy},
@@ -13,13 +14,47 @@ use crate::cloud::enroll::{auth0::*, enrollment_token::*, *};
 use crate::cloud::invitation::{CreateInvitation, Invitation};
 use crate::cloud::project::{CreateProject, Project};
 use crate::cloud::space::{CreateSpace, Space};
-use crate::Request;
+#[cfg(feature = "tag")]
+use crate::TypeTag;
 use crate::{decode, is_ok, request};
+use crate::{CowStr, Request};
 
 pub mod enroll;
 pub mod invitation;
 pub mod project;
 pub mod space;
+
+/// A wrapper around a cloud request with extra fields.
+#[derive(Encode, Decode, Debug)]
+#[cfg_attr(test, derive(Clone))]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct CloudRequestWrapper<'a, T> {
+    #[cfg(feature = "tag")]
+    #[n(0)] pub tag: TypeTag<8956240>,
+    #[b(1)] pub req: T,
+    #[b(2)] pub cloud_address: CowStr<'a>,
+}
+
+impl<'a, T> CloudRequestWrapper<'a, T> {
+    pub fn new(req: T, cloud_node_address: Address) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            req,
+            cloud_address: cloud_node_address.to_string().into(),
+        }
+    }
+}
+
+/// A CloudRequestWrapper without an internal request.
+pub type BareCloudRequestWrapper<'a> = CloudRequestWrapper<'a, ()>;
+
+impl<'a> BareCloudRequestWrapper<'a> {
+    pub fn bare(cloud_node_address: Address) -> Self {
+        Self::new((), cloud_node_address)
+    }
+}
 
 const TARGET: &str = "ockam_api::cloud::client";
 
