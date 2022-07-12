@@ -9,6 +9,10 @@ defmodule Test.Services.ProviderTest do
     assert [{:my_service, service_pid, _, _}] = Supervisor.which_children(sup_pid)
 
     assert service_pid == Ockam.Node.whereis("my_service")
+
+    :ok = Ockam.Services.stop_service("my_service")
+
+    assert nil == Ockam.Node.whereis("my_service")
   end
 
   test "provider parses json config" do

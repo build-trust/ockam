@@ -114,6 +114,30 @@ defmodule Ockam.Services.Provider do
     end
   end
 
+  @spec stop_service(Ockam.Address.t(), atom()) :: :ok | {:error, :not_found}
+  def stop_service(address, supervisor) do
+    with {:ok, child_id} <- find_child_id(supervisor, address) do
+      Supervisor.terminate_child(supervisor, child_id)
+    end
+  end
+
+  defp find_child_id(supervisor, address) do
+    ## TODO: easier way to find services child_ids by address
+    ## Use addresses for child ids?
+    case Ockam.Node.whereis(address) do
+      nil ->
+        {:error, :not_found}
+
+      pid ->
+        children = Supervisor.which_children(supervisor)
+
+        case List.keyfind(children, pid, 1) do
+          {id, ^pid, _type, _modules} -> {:ok, id}
+          nil -> {:error, :not_found}
+        end
+    end
+  end
+
   @spec get_service_providers_map(nil | list()) :: map()
   def get_service_providers_map(providers) when is_list(providers) or providers == nil do
     providers

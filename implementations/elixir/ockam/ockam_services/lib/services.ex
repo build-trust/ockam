@@ -9,6 +9,8 @@ defmodule Ockam.Services do
 
   use Application
 
+  alias Ockam.Services.Provider
+
   require Logger
 
   @doc false
@@ -40,6 +42,10 @@ defmodule Ockam.Services do
   end
 
   def start_service(name, options \\ []) do
-    Ockam.Services.Provider.start_service({name, options}, Ockam.Services.Provider)
+    Provider.start_service({name, options}, Provider)
+  end
+
+  def stop_service(address) do
+    Provider.stop_service(address, Provider)
   end
 end
