@@ -7,6 +7,9 @@ if(project.hasProperty('mode')) {
 }
 
 ext {
+  // Are we running as part of Continuous Integration?
+  ci = System.getenv('CI') == 'true'
+
   // Environment variables for CI tasks
   // See...
   //  https://github.com/build-trust/ockam/issues/2822
@@ -18,7 +21,7 @@ ext {
       CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: "clang",
       CARGO_INCREMENTAL: "0"
     ]
-    return System.getenv('CI') == 'true' ? env : [:]
+    return ci ? env : [:]
   }
 
   // Cargo command
@@ -103,7 +106,13 @@ task test {
   doLast {
     exec {
       environment environmentCI()
-      commandLine cargo('--locked', 'test')
+
+      if (ci) {
+        // Use cargo nextest in CI
+        commandLine cargo('--locked', 'nextest', 'run')
+      } else {
+        commandLine cargo('--locked', 'test')
+      }
     }
   }
 }

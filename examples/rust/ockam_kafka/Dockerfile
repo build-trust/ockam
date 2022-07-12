@@ -1,4 +1,4 @@
-FROM ghcr.io/build-trust/ockam-builder@sha256:1930541843c0533f5f862432e2f293590f1832de3210b7c1ef27a1e9a3979650 AS builder
+FROM ghcr.io/build-trust/ockam-builder@sha256:e43dd94652096b03cc472a3c709c7335e8b166cab77b7a7b56f88fa38f3d24cc AS builder
 
 WORKDIR /build
 
