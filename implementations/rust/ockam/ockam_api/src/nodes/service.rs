@@ -8,7 +8,7 @@ use crate::error::ApiError;
 use crate::{nodes::types::*, Method, Request, Response, ResponseBuilder, Status};
 
 use ockam::remote::RemoteForwarder;
-use ockam::{Address, Context, Result, Route, Routed, TcpTransport, Worker};
+use ockam::{Address, AsyncTryClone, Context, Result, Route, Routed, TcpTransport, Worker};
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_identity::{Identity, TrustEveryonePolicy};
@@ -19,6 +19,7 @@ use crate::auth::Server;
 use crate::identity::IdentityService;
 use crate::lmdb::LmdbStorage;
 use crate::old::identity::{create_identity, load_identity};
+use crate::signer;
 use core::convert::Infallible;
 use minicbor::{encode::Write, Decoder};
 use ockam_identity::authenticated_storage::mem::InMemoryStorage;
@@ -516,6 +517,15 @@ impl Worker for NodeMan {
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         // By default we start identity and authenticated services
+
+        // If we have an identity, start a signer.
+        // TODO: Add a way to explicitly start a signer service.
+        if let Some(i) = &self.identity {
+            let this = i.async_try_clone().await?;
+            let store = self.authenticated_storage.async_try_clone().await?;
+            let signer = signer::Server::new(this, store);
+            ctx.start_worker("signer", signer).await?;
+        }
 
         // TODO: Use existent storage `self.authenticated_storage`
         let s = InMemoryStorage::new();
