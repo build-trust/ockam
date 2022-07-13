@@ -38,19 +38,17 @@ impl<'a> CreateSpace<'a> {
 }
 
 mod node {
-    use std::convert::Infallible;
-
-    use minicbor::{encode::Write, Decoder};
+    use minicbor::Decoder;
     use tracing::trace;
 
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
     use crate::cloud::enroll::auth0::Auth0TokenProvider;
-    use crate::cloud::space::{CreateSpace, Space};
+    use crate::cloud::space::CreateSpace;
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeMan;
-    use crate::{decode, is_ok, request};
+    use crate::request;
     use crate::{Request, Response, Status};
 
     const TARGET: &str = "ockam_api::cloud::space";
@@ -59,16 +57,12 @@ mod node {
     where
         A: Auth0TokenProvider,
     {
-        pub(crate) async fn create_space<W>(
+        pub(crate) async fn create_space(
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
             dec: &mut Decoder<'_>,
-            enc: W,
-        ) -> Result<()>
-        where
-            W: Write<Error = Infallible>,
-        {
+        ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<CreateSpace> = dec.decode()?;
             let req_body = req_wrapper.req;
             let cloud_address = req_wrapper.cloud_address;
@@ -79,30 +73,22 @@ mod node {
             let route = self.api_service_route(&cloud_address, "spaces");
             let req_builder = Request::post("v0/").body(req_body);
             match request(ctx, label, "create_space", route, req_builder).await {
-                Ok(r) => {
-                    let res_body: Space = decode(label, "space", &r)?;
-                    Response::ok(req.id()).body(res_body).encode(enc)?;
-                }
+                Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to create space");
-                    Response::builder(req.id(), Status::InternalServerError)
+                    Ok(Response::builder(req.id(), Status::InternalServerError)
                         .body(err.to_string())
-                        .encode(enc)?;
+                        .to_vec()?)
                 }
-            };
-            Ok(())
+            }
         }
 
-        pub(crate) async fn list_spaces<W>(
+        pub(crate) async fn list_spaces(
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
             dec: &mut Decoder<'_>,
-            enc: W,
-        ) -> Result<()>
-        where
-            W: Write<Error = Infallible>,
-        {
+        ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_address = req_wrapper.cloud_address;
 
@@ -110,33 +96,25 @@ mod node {
             trace!(target: TARGET, "listing spaces");
 
             let route = self.api_service_route(&cloud_address, "spaces");
-            let req_builder = Request::post("v0/");
+            let req_builder = Request::get("v0/");
             match request(ctx, label, None, route, req_builder).await {
-                Ok(r) => {
-                    let res_body: Vec<Space> = decode(label, "spaces", &r)?;
-                    Response::ok(req.id()).body(res_body).encode(enc)?;
-                }
+                Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to retrieve spaces");
-                    Response::builder(req.id(), Status::InternalServerError)
+                    Ok(Response::builder(req.id(), Status::InternalServerError)
                         .body(err.to_string())
-                        .encode(enc)?;
+                        .to_vec()?)
                 }
-            };
-            Ok(())
+            }
         }
 
-        pub(crate) async fn get_space<W>(
+        pub(crate) async fn get_space(
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
             dec: &mut Decoder<'_>,
-            enc: W,
             id: &str,
-        ) -> Result<()>
-        where
-            W: Write<Error = Infallible>,
-        {
+        ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_address = req_wrapper.cloud_address;
 
@@ -146,31 +124,23 @@ mod node {
             let route = self.api_service_route(&cloud_address, "spaces");
             let req_builder = Request::get(format!("v0/{id}"));
             match request(ctx, label, None, route, req_builder).await {
-                Ok(r) => {
-                    let res_body: Space = decode(label, "space", &r)?;
-                    Response::ok(req.id()).body(res_body).encode(enc)?;
-                }
+                Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to retrieve space");
-                    Response::builder(req.id(), Status::InternalServerError)
+                    Ok(Response::builder(req.id(), Status::InternalServerError)
                         .body(err.to_string())
-                        .encode(enc)?;
+                        .to_vec()?)
                 }
-            };
-            Ok(())
+            }
         }
 
-        pub(crate) async fn get_space_by_name<W>(
+        pub(crate) async fn get_space_by_name(
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
             dec: &mut Decoder<'_>,
-            enc: W,
             name: &str,
-        ) -> Result<()>
-        where
-            W: Write<Error = Infallible>,
-        {
+        ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_address = req_wrapper.cloud_address;
 
@@ -180,31 +150,23 @@ mod node {
             let route = self.api_service_route(&cloud_address, "spaces");
             let req_builder = Request::get(format!("v0/name/{name}"));
             match request(ctx, label, None, route, req_builder).await {
-                Ok(r) => {
-                    let res_body: Space = decode(label, "space", &r)?;
-                    Response::ok(req.id()).body(res_body).encode(enc)?;
-                }
+                Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to retrieve space");
-                    Response::builder(req.id(), Status::InternalServerError)
+                    Ok(Response::builder(req.id(), Status::InternalServerError)
                         .body(err.to_string())
-                        .encode(enc)?;
+                        .to_vec()?)
                 }
-            };
-            Ok(())
+            }
         }
 
-        pub(crate) async fn delete_space<W>(
+        pub(crate) async fn delete_space(
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
             dec: &mut Decoder<'_>,
-            enc: W,
             id: &str,
-        ) -> Result<()>
-        where
-            W: Write<Error = Infallible>,
-        {
+        ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_address = req_wrapper.cloud_address;
 
@@ -214,38 +176,28 @@ mod node {
             let route = self.api_service_route(&cloud_address, "spaces");
             let req_builder = Request::delete(format!("v0/{id}"));
             match request(ctx, label, None, route, req_builder).await {
-                Ok(r) => {
-                    is_ok(label, &r)?;
-                    Response::ok(req.id()).encode(enc)?;
-                }
+                Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to retrieve space");
-                    Response::builder(req.id(), Status::InternalServerError)
+                    Ok(Response::builder(req.id(), Status::InternalServerError)
                         .body(err.to_string())
-                        .encode(enc)?;
+                        .to_vec()?)
                 }
-            };
-            Ok(())
+            }
         }
     }
 }
 
 #[cfg(test)]
 pub mod tests {
-    use core::convert::Infallible;
-
-    use minicbor::encode::Write;
     use minicbor::{encode, Decoder};
     use quickcheck::{Arbitrary, Gen};
 
-    use ockam::identity::Identity;
     use ockam_core::compat::collections::HashMap;
-    use ockam_core::{Route, Routed, Worker};
+    use ockam_core::{Routed, Worker};
     use ockam_node::Context;
-    use ockam_vault::Vault;
 
     use crate::cloud::space::CreateSpace;
-    use crate::cloud::MessagingClient;
     use crate::{Method, Request, Response};
 
     use super::*;
@@ -320,42 +272,97 @@ pub mod tests {
         }
     }
 
-    #[ockam_macros::test]
-    async fn basic_api_usage(ctx: &mut Context) -> ockam_core::Result<()> {
-        let vault = Vault::create();
+    mod node_api {
+        use crate::cloud::CloudRequestWrapper;
+        use crate::nodes::NodeMan;
+        use crate::Status;
+        use ockam_core::Address;
 
-        // Create an Identity to represent the ockam-command client.
-        let client_identity = Identity::create(ctx, &vault).await?;
+        use super::*;
 
-        // Starts a secure channel listener at "api", with a freshly created
-        // identity, and a SpaceServer worker registered at "spaces"
-        crate::util::tests::start_api_listener(ctx, &vault, "spaces", SpaceServer::default())
-            .await?;
+        #[ockam_macros::test]
+        async fn basic_api_usage(ctx: &mut Context) -> ockam_core::Result<()> {
+            // Create spaces server
+            let cloud_server = Address::from_string("spaces".to_string());
+            ctx.start_worker(&cloud_server, SpaceServer::default())
+                .await?;
 
-        let mut client =
-            MessagingClient::new(Route::new().append("api").into(), client_identity, ctx).await?;
+            // Create node manager to handle requests
+            let route = NodeMan::test_create(ctx).await?;
 
-        let s1 = client.create_space(CreateSpace::new("s1")).await?;
-        assert_eq!(&s1.name, "s1");
-        let s1_id = s1.id.to_string();
+            // Create space
+            let req = CreateSpace::new("s1");
+            let mut buf = vec![];
+            Request::builder(Method::Post, "v0/spaces")
+                .body(CloudRequestWrapper::new(req, &cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::Ok));
+            let s = dec.decode::<Space>()?;
+            assert_eq!(&s.name, "s1");
+            let s_id = s.id.to_string();
 
-        let s1_retrieved = client.get_space(&s1_id).await?;
-        assert_eq!(s1_retrieved.id, s1_id);
+            // Retrieve it
+            let mut buf = vec![];
+            Request::builder(Method::Get, format!("v0/spaces/{s_id}"))
+                .body(CloudRequestWrapper::bare(&cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::Ok));
+            let s = dec.decode::<Space>()?;
+            assert_eq!(&s.id, &s_id);
 
-        let s2 = client.create_space(CreateSpace::new("s2")).await?;
-        assert_eq!(&s2.name, "s2");
-        let s2_id = s2.id.to_string();
+            // List it
+            let mut buf = vec![];
+            Request::builder(Method::Get, "v0/spaces")
+                .body(CloudRequestWrapper::bare(&cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::Ok));
+            let list = dec.decode::<Vec<Space>>()?;
+            assert_eq!(list.len(), 1);
+            assert_eq!(&list[0].id.to_string(), &s_id);
 
-        let list = client.list_spaces().await?;
-        assert_eq!(list.len(), 2);
+            // Remove it
+            let mut buf = vec![];
+            Request::builder(Method::Delete, format!("v0/spaces/{s_id}"))
+                .body(CloudRequestWrapper::bare(&cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::Ok));
 
-        client.delete_space(&s1_id).await?;
+            // Check list returns empty vec
+            let mut buf = vec![];
+            Request::builder(Method::Get, "v0/spaces")
+                .body(CloudRequestWrapper::bare(&cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::Ok));
+            let list = dec.decode::<Vec<Space>>()?;
+            assert!(list.is_empty());
 
-        let list = client.list_spaces().await?;
-        assert_eq!(list.len(), 1);
-        assert_eq!(list[0].id, s2_id);
+            // Check that retrieving it returns a not found error
+            let mut buf = vec![];
+            Request::builder(Method::Get, format!("v0/spaces/{s_id}"))
+                .body(CloudRequestWrapper::bare(&cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::NotFound));
 
-        ctx.stop().await
+            ctx.stop().await
+        }
     }
 
     #[derive(Debug, Default)]
@@ -371,37 +378,33 @@ pub mod tests {
             ctx: &mut Context,
             msg: Routed<Self::Message>,
         ) -> ockam_core::Result<()> {
-            let mut buf = Vec::new();
-            self.on_request(msg.as_body(), &mut buf)?;
-            ctx.send(msg.return_route(), buf).await
+            let r = self.on_request(msg.as_body())?;
+            ctx.send(msg.return_route(), r).await
         }
     }
 
     impl SpaceServer {
-        fn on_request<W>(&mut self, data: &[u8], buf: W) -> ockam_core::Result<()>
-        where
-            W: Write<Error = Infallible>,
-        {
+        fn on_request(&mut self, data: &[u8]) -> ockam_core::Result<Vec<u8>> {
             let mut rng = Gen::new(32);
             let mut dec = Decoder::new(data);
             let req: Request = dec.decode()?;
-            match req.method() {
+            let r = match req.method() {
                 Some(Method::Get) => match req.path_segments::<3>().as_slice() {
                     // Get all nodes:
                     ["v0", ""] => Response::ok(req.id())
                         .body(encode::ArrayIter::new(self.0.values()))
-                        .encode(buf)?,
+                        .to_vec()?,
                     // Get a single node:
                     ["v0", id] => {
                         if let Some(n) = self.0.get(*id) {
-                            Response::ok(req.id()).body(n).encode(buf)?
+                            Response::ok(req.id()).body(n).to_vec()?
                         } else {
-                            Response::not_found(req.id()).encode(buf)?
+                            Response::not_found(req.id()).to_vec()?
                         }
                     }
                     _ => {
-                        dbg!(&req);
-                        Response::bad_request(req.id()).encode(buf)?;
+                        error!("Invalid request: {req:#?}");
+                        Response::bad_request(req.id()).to_vec()?
                     }
                 },
                 Some(Method::Post) if req.has_body() => {
@@ -412,32 +415,32 @@ pub mod tests {
                             id: u32::arbitrary(&mut rng).to_string().into(),
                             name: space.name.to_string().into(),
                         };
-                        Response::ok(req.id()).body(&obj).encode(buf)?;
-                        self.0.insert(obj.id.to_string(), obj);
+                        self.0.insert(obj.id.to_string(), obj.clone());
+                        Response::ok(req.id()).body(&obj).to_vec()?
                     } else {
-                        dbg!(&req);
-                        Response::bad_request(req.id()).encode(buf)?;
+                        error!("Invalid request: {req:#?}");
+                        Response::bad_request(req.id()).to_vec()?
                     }
                 }
                 Some(Method::Delete) => match req.path_segments::<3>().as_slice() {
                     [_, id] => {
                         if self.0.remove(*id).is_some() {
-                            Response::ok(req.id()).encode(buf)?
+                            Response::ok(req.id()).to_vec()?
                         } else {
-                            Response::not_found(req.id()).encode(buf)?
+                            Response::not_found(req.id()).to_vec()?
                         }
                     }
                     _ => {
-                        dbg!(&req);
-                        Response::bad_request(req.id()).encode(buf)?;
+                        error!("Invalid request: {req:#?}");
+                        Response::bad_request(req.id()).to_vec()?
                     }
                 },
                 _ => {
-                    dbg!(&req);
-                    Response::bad_request(req.id()).encode(buf)?;
+                    error!("Invalid request: {req:#?}");
+                    Response::bad_request(req.id()).to_vec()?
                 }
-            }
-            Ok(())
+            };
+            Ok(r)
         }
     }
 }

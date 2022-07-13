@@ -69,11 +69,10 @@ impl<'a> From<RemoteForwarderInfo> for ForwarderInfo<'a> {
 mod tests {
     use minicbor::Decoder;
 
-    use ockam::{Context, TcpTransport, TCP};
+    use ockam::{Context, TCP};
     use ockam_core::{compat::rand::Rng, route, Address, Result, Routed, Worker};
 
-    use crate::cloud::enroll::tests::auth0::MockAuth0Service;
-    use crate::nodes::{types::*, NodeMan};
+    use crate::nodes::NodeMan;
     use crate::*;
 
     use super::*;
@@ -88,26 +87,8 @@ mod tests {
             }
         };
 
-        let node_dir = tempfile::tempdir().unwrap();
-
         // Create node manager to handle requests
-        let node_manager = "manager";
-        let transport = TcpTransport::create(ctx).await?;
-        let node_address = transport.listen("127.0.0.1:0").await?;
-        let node_man = NodeMan::create(
-            ctx,
-            "node".to_string(),
-            node_dir.into_path(),
-            (
-                TransportType::Tcp,
-                TransportMode::Listen,
-                node_address.to_string(),
-            ),
-            transport,
-            MockAuth0Service,
-        )
-        .await?;
-        ctx.start_worker(node_manager, node_man).await?;
+        let node_manager = NodeMan::test_create(ctx).await?;
 
         // Start Echoer worker
         ctx.start_worker("echoer", Echoer).await?;

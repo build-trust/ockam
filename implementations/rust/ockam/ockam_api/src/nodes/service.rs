@@ -1,32 +1,33 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
-use super::{
-    portal::{PortalList, PortalStatus},
-    types::{CreateTransport, DeleteTransport},
-};
-use crate::error::ApiError;
-use crate::{nodes::types::*, Method, Request, Response, ResponseBuilder, Status};
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use minicbor::Decoder;
 
 use ockam::remote::RemoteForwarder;
 use ockam::{Address, Context, Result, Route, Routed, TcpTransport, Worker};
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::route;
+use ockam_identity::authenticated_storage::mem::InMemoryStorage;
 use ockam_identity::{Identity, TrustEveryonePolicy};
 use ockam_multiaddr::MultiAddr;
+use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
 use crate::auth::Server;
 use crate::cloud::enroll::auth0::Auth0TokenProvider;
+use crate::error::ApiError;
 use crate::identity::IdentityService;
 use crate::lmdb::LmdbStorage;
 use crate::old::identity::{create_identity, load_identity};
-use core::convert::Infallible;
-use minicbor::{encode::Write, Decoder};
-use ockam_core::route;
-use ockam_identity::authenticated_storage::mem::InMemoryStorage;
-use ockam_vault::storage::FileStorage;
-use std::path::PathBuf;
-use std::sync::Arc;
+use crate::{nodes::types::*, Method, Request, Response, ResponseBuilder, Status};
+
+use super::{
+    portal::{PortalList, PortalStatus},
+    types::{CreateTransport, DeleteTransport},
+};
 
 type Alias = String;
 
@@ -212,16 +213,12 @@ where
 
     //////// Forwarder API ////////
 
-    async fn create_forwarder<W>(
+    async fn create_forwarder(
         &mut self,
         ctx: &mut Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-        enc: W,
-    ) -> Result<()>
-    where
-        W: Write<Error = Infallible>,
-    {
+    ) -> Result<Vec<u8>> {
         let CreateForwarder { address, alias, .. } = dec.decode()?;
         let address = Address::from_string(address.to_string());
         debug!(%address, ?alias, "Handling CreateForwarder request");
@@ -237,16 +234,15 @@ where
                     remote_address = %b.remote_address(),
                     "CreateForwarder request processed, sending back response"
                 );
-                Response::ok(req.id()).body(b).encode(enc)?;
+                Ok(Response::ok(req.id()).body(b).to_vec()?)
             }
             Err(err) => {
                 error!(?err, "Failed to create forwarder");
-                Response::builder(req.id(), Status::InternalServerError)
+                Ok(Response::builder(req.id(), Status::InternalServerError)
                     .body(err.to_string())
-                    .encode(enc)?;
+                    .to_vec()?)
             }
-        };
-        Ok(())
+        }
     }
 
     //////// Vault API ////////
@@ -441,16 +437,12 @@ where
 
     //////// Request matching and response handling ////////
 
-    async fn handle_request<W>(
+    async fn handle_request(
         &mut self,
         ctx: &mut Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-        enc: W,
-    ) -> Result<()>
-    where
-        W: Write<Error = Infallible>,
-    {
+    ) -> Result<Vec<u8>> {
         trace! {
             target: "ockam::nodeman::service",
             id     = %req.id(),
@@ -468,7 +460,7 @@ where
             None => todo!(),
         };
 
-        match (method, path_segments.as_slice()) {
+        let r = match (method, path_segments.as_slice()) {
             // ==*== Basic node information ==*==
             // TODO: create, delete, destroy remote nodes
             (Get, ["node"]) => Response::ok(req.id())
@@ -479,98 +471,94 @@ where
                     std::process::id() as i32,
                     self.transports.len() as u32,
                 ))
-                .encode(enc)?,
+                .to_vec()?,
 
             // ==*== Transports ==*==
             // TODO: Get all transports
             (Get, ["node", "transport"]) => Response::ok(req.id())
                 .body(TransportList::new(self.get_transports()))
-                .encode(enc)?,
-            (Post, ["node", "transport"]) => self.add_transport(req, dec).await?.encode(enc)?,
-            (Delete, ["node", "transport"]) => {
-                self.delete_transport(req, dec).await?.encode(enc)?
-            }
+                .to_vec()?,
+            (Post, ["node", "transport"]) => self.add_transport(req, dec).await?.to_vec()?,
+            (Delete, ["node", "transport"]) => self.delete_transport(req, dec).await?.to_vec()?,
 
             // ==*== Vault ==*==
             // (Post, ["node", "vault"]) => self.create_vault().await?,
 
             // ==*== Identity ==*==
-            (Post, ["node", "identity"]) => self.create_identity(ctx, req).await?.encode(enc)?,
+            (Post, ["node", "identity"]) => self.create_identity(ctx, req).await?.to_vec()?,
 
             // ==*== Secure channels ==*==
-            (Post, ["node", "secure_channel"]) => self
-                .create_secure_channel(ctx, req, dec)
-                .await?
-                .encode(enc)?,
+            (Post, ["node", "secure_channel"]) => {
+                self.create_secure_channel(ctx, req, dec).await?.to_vec()?
+            }
             (Post, ["node", "secure_channel_listener"]) => self
                 .create_secure_channel_listener(ctx, req, dec)
                 .await?
-                .encode(enc)?,
+                .to_vec()?,
 
             // ==*== Forwarder commands ==*==
-            (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req, dec, enc).await?,
+            (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req, dec).await?,
 
             // ==*== Inlets & Outlets ==*==
-            (Get, ["node", "portal"]) => self.get_portals(req).encode(enc)?,
-            (Post, ["node", "portal"]) => self.create_iolet(ctx, req, dec).await?.encode(enc)?,
+            (Get, ["node", "portal"]) => self.get_portals(req).to_vec()?,
+            (Post, ["node", "portal"]) => self.create_iolet(ctx, req, dec).await?.to_vec()?,
             (Delete, ["node", "portal"]) => todo!(),
 
             // ==*== Spaces ==*==
-            (Post, ["v0", "spaces"]) => self.create_space(ctx, req, dec, enc).await?,
-            (Get, ["v0", "spaces"]) => self.list_spaces(ctx, req, dec, enc).await?,
-            (Get, ["v0", "spaces", id]) => self.get_space(ctx, req, dec, enc, id).await?,
+            (Post, ["v0", "spaces"]) => self.create_space(ctx, req, dec).await?,
+            (Get, ["v0", "spaces"]) => self.list_spaces(ctx, req, dec).await?,
+            (Get, ["v0", "spaces", id]) => self.get_space(ctx, req, dec, id).await?,
             (Get, ["v0", "spaces", "name", name]) => {
-                self.get_space_by_name(ctx, req, dec, enc, name).await?
+                self.get_space_by_name(ctx, req, dec, name).await?
             }
-            (Delete, ["v0", "spaces", id]) => self.delete_space(ctx, req, dec, enc, id).await?,
+            (Delete, ["v0", "spaces", id]) => self.delete_space(ctx, req, dec, id).await?,
 
             // ==*== Projects ==*==
             (Post, ["v0", "spaces", space_id, "projects"]) => {
-                self.create_project(ctx, req, dec, enc, space_id).await?
+                self.create_project(ctx, req, dec, space_id).await?
             }
             (Get, ["v0", "spaces", space_id, "projects"]) => {
-                self.list_projects(ctx, req, dec, enc, space_id).await?
+                self.list_projects(ctx, req, dec, space_id).await?
             }
             (Get, ["v0", "spaces", space_id, "projects", project_id]) => {
-                self.get_project(ctx, req, dec, enc, space_id, project_id)
+                self.get_project(ctx, req, dec, space_id, project_id)
                     .await?
             }
             (Get, ["v0", "spaces", space_id, "projects", "name", project_name]) => {
-                self.get_project_by_name(ctx, req, dec, enc, space_id, project_name)
+                self.get_project_by_name(ctx, req, dec, space_id, project_name)
                     .await?
             }
             (Delete, ["v0", "spaces", space_id, "projects", project_id]) => {
-                self.delete_project(ctx, req, dec, enc, space_id, project_id)
+                self.delete_project(ctx, req, dec, space_id, project_id)
                     .await?
             }
 
             // ==*== Invitations ==*==
-            (Post, ["v0", "invitations"]) => self.create_invitation(ctx, req, dec, enc).await?,
-            (Get, ["v0", "invitations"]) => self.list_invitations(ctx, req, dec, enc).await?,
-            (Put, ["v0", "invitations", id]) => {
-                self.accept_invitation(ctx, req, dec, enc, id).await?
-            }
+            (Post, ["v0", "invitations"]) => self.create_invitation(ctx, req, dec).await?,
+            (Get, ["v0", "invitations"]) => self.list_invitations(ctx, req, dec).await?,
+            (Put, ["v0", "invitations", id]) => self.accept_invitation(ctx, req, dec, id).await?,
             (Delete, ["v0", "invitations", id]) => {
-                self.reject_invitation(ctx, req, dec, enc, id).await?
+                self.reject_invitation(ctx, req, dec, id).await?
             }
 
             // ==*== Enroll ==*==
-            (Post, ["v0", "enroll", "auth0"]) => self.enroll_auth0(ctx, req, dec, enc).await?,
+            (Post, ["v0", "enroll", "auth0"]) => self.enroll_auth0(ctx, req, dec).await?,
             (Get, ["v0", "enroll", "token"]) => {
-                self.generate_enrollment_token(ctx, req, dec, enc).await?
+                self.generate_enrollment_token(ctx, req, dec).await?
             }
             (Put, ["v0", "enroll", "token"]) => {
-                self.authenticate_enrollment_token(ctx, req, dec, enc)
-                    .await?
+                self.authenticate_enrollment_token(ctx, req, dec).await?
             }
 
             // ==*== Catch-all for Unimplemented APIs ==*==
             _ => {
                 warn!(%method, %path, "Called invalid endpoint");
+                Response::bad_request(req.id())
+                    .body(format!("Invalid endpoint: {}", path))
+                    .to_vec()?
             }
-        }
-
-        Ok(())
+        };
+        Ok(r)
     }
 }
 
@@ -599,7 +587,6 @@ where
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {
-        let mut buf = vec![];
         let mut dec = Decoder::new(msg.as_body());
         let req: Request = match dec.decode() {
             Ok(r) => r,
@@ -609,14 +596,49 @@ where
             }
         };
 
-        // If an error occurs, send a response with the error code so the listener can
-        // fail fast instead of failing silently here and force the listener to timeout.
-        if let Err(err) = self.handle_request(ctx, &req, &mut dec, &mut buf).await {
-            error!(?err, "Failed to handle message");
-            Response::builder(req.id(), Status::InternalServerError)
-                .body(err.to_string())
-                .encode(&mut buf)?;
+        let r = match self.handle_request(ctx, &req, &mut dec).await {
+            Ok(r) => r,
+            // If an error occurs, send a response with the error code so the listener can
+            // fail fast instead of failing silently here and force the listener to timeout.
+            Err(err) => {
+                error!(?err, "Failed to handle message");
+                Response::builder(req.id(), Status::InternalServerError)
+                    .body(err.to_string())
+                    .to_vec()?
+            }
+        };
+        ctx.send(msg.return_route(), r).await
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use crate::cloud::enroll::tests::auth0::MockAuth0Service;
+    use crate::nodes::NodeMan;
+
+    use super::*;
+
+    impl NodeMan<MockAuth0Service> {
+        pub(crate) async fn test_create(ctx: &Context) -> Result<Route> {
+            let node_dir = tempfile::tempdir().unwrap();
+            let node_manager = "manager";
+            let transport = TcpTransport::create(ctx).await?;
+            let node_address = transport.listen("127.0.0.1:0").await?;
+            let node_man = NodeMan::create(
+                ctx,
+                "node".to_string(),
+                node_dir.into_path(),
+                (
+                    TransportType::Tcp,
+                    TransportMode::Listen,
+                    node_address.to_string(),
+                ),
+                transport,
+                MockAuth0Service,
+            )
+            .await?;
+            ctx.start_worker(node_manager, node_man).await?;
+            Ok(route![node_manager])
         }
-        ctx.send(msg.return_route(), buf).await
     }
 }
