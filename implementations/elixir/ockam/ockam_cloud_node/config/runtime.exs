@@ -103,6 +103,23 @@ config :ockam_kafka,
   password: kafka_password,
   stream_prefix: kafka_stream_prefix
 
+## Identity secure channel config
+
+identity_module =
+  case System.get_env("IDENTITY_IMPLEMENTATION", "stub") do
+    "sidecar" ->
+      Ockam.Identity.Sidecar
+
+    "stub" ->
+      Ockam.Identity.Stub
+
+    other ->
+      IO.puts(:stderr, "Unknown identity implementation: #{inspect(other)}")
+      exit(:invalid_config)
+  end
+
+config :ockam_services, identity_module: identity_module
+
 ## Services config
 
 services_json = System.get_env("SERVICES_JSON")
