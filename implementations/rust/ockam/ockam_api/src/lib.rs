@@ -658,22 +658,6 @@ pub(crate) fn is_ok(label: &str, buf: &[u8]) -> ockam_core::Result<()> {
     }
 }
 
-/// Decode response and body.
-pub(crate) fn decode<'a, 'b, T: Decode<'b, ()>>(
-    label: &'a str,
-    schema: impl Into<Option<&'a str>>,
-    buf: &'b [u8],
-) -> ockam_core::Result<T> {
-    let mut d = Decoder::new(buf);
-    let res = response(label, &mut d)?;
-    if res.status() == Some(Status::Ok) {
-        assert_response_match(schema, buf);
-        d.decode().map_err(|e| e.into())
-    } else {
-        Err(error(label, &res, &mut d))
-    }
-}
-
 /// Decode response and an optional body.
 pub(crate) fn decode_option<'a, 'b, T: Decode<'b, ()>>(
     label: &'a str,
@@ -724,6 +708,13 @@ pub(crate) fn error(label: &str, res: &Response, dec: &mut Decoder<'_>) -> ockam
         let msg = err.message().unwrap_or(label);
         ockam_core::Error::new(Origin::Application, Kind::Protocol, msg)
     } else {
+        warn! {
+            target:  "ockam_api",
+            id     = %res.id(),
+            re     = %res.re(),
+            status = ?res.status(),
+            "<- {label}"
+        }
         ockam_core::Error::new(Origin::Application, Kind::Protocol, label)
     }
 }

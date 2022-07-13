@@ -70,9 +70,7 @@ impl<'a> CreateInvitation<'a> {
 }
 
 mod node {
-    use std::convert::Infallible;
-
-    use minicbor::{encode::Write, Decoder};
+    use minicbor::Decoder;
     use tracing::trace;
 
     use ockam_core::{self, Result};
@@ -81,7 +79,7 @@ mod node {
     use crate::cloud::enroll::auth0::Auth0TokenProvider;
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeMan;
-    use crate::{decode, is_ok, request};
+    use crate::request;
     use crate::{Request, Response, Status};
 
     use super::*;
@@ -92,16 +90,12 @@ mod node {
     where
         A: Auth0TokenProvider,
     {
-        pub(crate) async fn create_invitation<W>(
+        pub(crate) async fn create_invitation(
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
             dec: &mut Decoder<'_>,
-            enc: W,
-        ) -> Result<()>
-        where
-            W: Write<Error = Infallible>,
-        {
+        ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<CreateInvitation> = dec.decode()?;
             let cloud_address = req_wrapper.cloud_address;
             let req_body = req_wrapper.req;
@@ -118,30 +112,22 @@ mod node {
             let route = self.api_service_route(&cloud_address, "invitations");
             let req_builder = Request::post("v0/").body(req_body);
             match request(ctx, label, "create_invitation", route, req_builder).await {
-                Ok(r) => {
-                    let res_body: Invitation = decode(label, "invitation", &r)?;
-                    Response::ok(req.id()).body(res_body).encode(enc)?;
-                }
+                Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to create invitation");
-                    Response::builder(req.id(), Status::InternalServerError)
+                    Ok(Response::builder(req.id(), Status::InternalServerError)
                         .body(err.to_string())
-                        .encode(enc)?;
+                        .to_vec()?)
                 }
-            };
-            Ok(())
+            }
         }
 
-        pub(crate) async fn list_invitations<W>(
+        pub(crate) async fn list_invitations(
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
             dec: &mut Decoder<'_>,
-            enc: W,
-        ) -> Result<()>
-        where
-            W: Write<Error = Infallible>,
-        {
+        ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_address = req_wrapper.cloud_address;
 
@@ -149,33 +135,25 @@ mod node {
             trace!(target: TARGET, "listing invitations");
 
             let route = self.api_service_route(&cloud_address, "invitations");
-            let req_builder = Request::post("v0/");
+            let req_builder = Request::get("v0/");
             match request(ctx, label, None, route, req_builder).await {
-                Ok(r) => {
-                    let res_body: Vec<Invitation> = decode(label, "invitations", &r)?;
-                    Response::ok(req.id()).body(res_body).encode(enc)?;
-                }
+                Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to retrieve invitations");
-                    Response::builder(req.id(), Status::InternalServerError)
+                    Ok(Response::builder(req.id(), Status::InternalServerError)
                         .body(err.to_string())
-                        .encode(enc)?;
+                        .to_vec()?)
                 }
-            };
-            Ok(())
+            }
         }
 
-        pub(crate) async fn accept_invitation<W>(
+        pub(crate) async fn accept_invitation(
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
             dec: &mut Decoder<'_>,
-            enc: W,
             id: &str,
-        ) -> Result<()>
-        where
-            W: Write<Error = Infallible>,
-        {
+        ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_address = req_wrapper.cloud_address;
 
@@ -185,31 +163,23 @@ mod node {
             let route = self.api_service_route(&cloud_address, "invitations");
             let req_builder = Request::put(format!("v0/{id}"));
             match request(ctx, label, None, route, req_builder).await {
-                Ok(r) => {
-                    is_ok(label, &r)?;
-                    Response::ok(req.id()).encode(enc)?;
-                }
+                Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to accept invitation");
-                    Response::builder(req.id(), Status::InternalServerError)
+                    Ok(Response::builder(req.id(), Status::InternalServerError)
                         .body(err.to_string())
-                        .encode(enc)?;
+                        .to_vec()?)
                 }
-            };
-            Ok(())
+            }
         }
 
-        pub(crate) async fn reject_invitation<W>(
+        pub(crate) async fn reject_invitation(
             &mut self,
             ctx: &mut Context,
             req: &Request<'_>,
             dec: &mut Decoder<'_>,
-            enc: W,
             id: &str,
-        ) -> Result<()>
-        where
-            W: Write<Error = Infallible>,
-        {
+        ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_address = req_wrapper.cloud_address;
 
@@ -219,37 +189,27 @@ mod node {
             let route = self.api_service_route(&cloud_address, "invitations");
             let req_builder = Request::delete(format!("v0/{id}"));
             match request(ctx, label, None, route, req_builder).await {
-                Ok(r) => {
-                    is_ok(label, &r)?;
-                    Response::ok(req.id()).encode(enc)?;
-                }
+                Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to reject invitation");
-                    Response::builder(req.id(), Status::InternalServerError)
+                    Ok(Response::builder(req.id(), Status::InternalServerError)
                         .body(err.to_string())
-                        .encode(enc)?;
+                        .to_vec()?)
                 }
-            };
-            Ok(())
+            }
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use core::convert::Infallible;
-
-    use minicbor::encode::Write;
     use minicbor::Decoder;
     use quickcheck::{Arbitrary, Gen};
 
-    use ockam::identity::Identity;
     use ockam_core::compat::collections::HashMap;
-    use ockam_core::{Route, Routed, Worker};
+    use ockam_core::{Routed, Worker};
     use ockam_node::Context;
-    use ockam_vault::Vault;
 
-    use crate::cloud::MessagingClient;
     use crate::{Method, Request, Response};
 
     use super::*;
@@ -350,106 +310,177 @@ mod tests {
         }
     }
 
-    #[ockam_macros::test]
-    async fn accept(ctx: &mut Context) -> ockam_core::Result<()> {
-        // Create a Vault to safely store secret keys for Receiver.
-        let vault = Vault::create();
+    mod node_api {
+        use crate::cloud::CloudRequestWrapper;
+        use crate::nodes::NodeMan;
+        use crate::Status;
+        use ockam_core::Address;
 
-        // Create an Identity to represent the ockam-command client.
-        let client_identity = Identity::create(ctx, &vault).await?;
+        use super::*;
 
-        // Starts a secure channel listener at "api", with a freshly created
-        // identity, and a InvitationServer worker registered at "invitations"
-        crate::util::tests::start_api_listener(
-            ctx,
-            &vault,
-            "invitations",
-            InvitationServer::default(),
-        )
-        .await?;
+        #[ockam_macros::test]
+        async fn accept(ctx: &mut Context) -> ockam_core::Result<()> {
+            // Create invitations server
+            let cloud_server = Address::from_string("invitations".to_string());
+            ctx.start_worker(&cloud_server, InvitationServer::default())
+                .await?;
 
-        let mut client =
-            MessagingClient::new(Route::new().append("api").into(), client_identity, ctx).await?;
+            // Create node manager to handle requests
+            let route = NodeMan::test_create(ctx).await?;
 
-        // Create invitation
-        let req = CreateInvitation::new("invitee1", "space", Some("project"));
-        let i = client.create_invitation(req.clone()).await?;
-        // TODO: the inviter must be the `client_identity` created, as that's the identity invoking
-        //       the API. But the simple test server here doesn't retrieve the peer identity from the
-        //       secure channel metadata.
-        //assert_eq!(&i.inviter, client_identity.id);
-        assert_eq!(&i.invitee, &req.invitee);
-        assert_eq!(&i.space_id, &req.space_id);
-        assert_eq!(&i.project_id, &req.project_id);
-        assert_eq!(&i.state, &State::Pending);
-        assert_eq!(&i.scope, &req.scope);
+            // Create invitation
+            let req = CreateInvitation::new("invitee", "s1", Some("p1"));
+            let mut buf = vec![];
+            Request::builder(Method::Post, "v0/invitations")
+                .body(CloudRequestWrapper::new(req.clone(), &cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::Ok));
+            let i = dec.decode::<Invitation>()?;
+            // TODO: the inviter must be the `client_identity` created, as that's the identity invoking
+            //       the API. But the simple test server here doesn't retrieve the peer identity from the
+            //       secure channel metadata.
+            //assert_eq!(&i.inviter, client_identity.id);
+            assert_eq!(&i.invitee, &req.invitee);
+            assert_eq!(&i.space_id, &req.space_id);
+            assert_eq!(&i.project_id, &req.project_id);
+            assert_eq!(&i.state, &State::Pending);
+            assert_eq!(&i.scope, &req.scope);
+            let i_id = i.id.to_string();
 
-        let invitation_id = i.id.to_string();
+            // List it
+            let mut buf = vec![];
+            Request::builder(Method::Get, "v0/invitations")
+                .body(CloudRequestWrapper::bare(&cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::Ok));
+            let list = dec.decode::<Vec<Invitation>>()?;
+            assert_eq!(list.len(), 1);
+            assert_eq!(&list[0].id.to_string(), &i_id);
 
-        // Check default state of invitation.
-        let retrieved = client.list_invitations().await?;
-        assert_eq!(retrieved.len(), 1);
-        assert_eq!(&retrieved[0].id.to_string(), &invitation_id);
+            // Accept invitation
+            let mut buf = vec![];
+            Request::builder(Method::Put, format!("v0/invitations/{i_id}"))
+                .body(CloudRequestWrapper::bare(&cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::Ok));
 
-        // Accept invitation
-        client.accept_invitations(&invitation_id).await?;
-        let i1_retrieved = client.list_invitations().await?;
-        assert_eq!(&i1_retrieved[0].state, &State::Accepted);
+            // Check that status has changed
+            let mut buf = vec![];
+            Request::builder(Method::Get, "v0/invitations")
+                .body(CloudRequestWrapper::bare(&cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::Ok));
+            let list = dec.decode::<Vec<Invitation>>()?;
+            assert_eq!(list.len(), 1);
+            assert_eq!(&list[0].id.to_string(), &i_id);
+            assert_eq!(&list[0].state, &State::Accepted);
 
-        // Rejecting an accepted invitation should fail.
-        let res = client.reject_invitations(&invitation_id).await;
-        assert!(res.is_err());
+            // Rejecting an accepted invitation should fail
+            let mut buf = vec![];
+            Request::builder(Method::Delete, format!("v0/invitations/{i_id}"))
+                .body(CloudRequestWrapper::bare(&cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::BadRequest));
 
-        ctx.stop().await
-    }
+            ctx.stop().await
+        }
 
-    #[ockam_macros::test]
-    async fn reject(ctx: &mut Context) -> ockam_core::Result<()> {
-        // Create a Vault to safely store secret keys for Receiver.
-        let vault = Vault::create();
+        #[ockam_macros::test]
+        async fn reject(ctx: &mut Context) -> ockam_core::Result<()> {
+            // Create invitations server
+            let cloud_server = Address::from_string("invitations".to_string());
+            ctx.start_worker(&cloud_server, InvitationServer::default())
+                .await?;
 
-        // Create an Identity to represent the ockam-command client.
-        let client_identity = Identity::create(ctx, &vault).await?;
+            // Create node manager to handle requests
+            let route = NodeMan::test_create(ctx).await?;
 
-        // Starts a secure channel listener at "api", with a freshly created
-        // identity, and a InvitationServer worker registered at "invitations"
-        crate::util::tests::start_api_listener(
-            ctx,
-            &vault,
-            "invitations",
-            InvitationServer::default(),
-        )
-        .await?;
+            // Create invitation
+            let req = CreateInvitation::new("invitee", "s1", Some("p1"));
+            let mut buf = vec![];
+            Request::builder(Method::Post, "v0/invitations")
+                .body(CloudRequestWrapper::new(req.clone(), &cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::Ok));
+            let i = dec.decode::<Invitation>()?;
+            // TODO: the inviter must be the `client_identity` created, as that's the identity invoking
+            //       the API. But the simple test server here doesn't retrieve the peer identity from the
+            //       secure channel metadata.
+            //assert_eq!(&i.inviter, client_identity.id);
+            assert_eq!(&i.invitee, &req.invitee);
+            assert_eq!(&i.space_id, &req.space_id);
+            assert_eq!(&i.project_id, &req.project_id);
+            assert_eq!(&i.state, &State::Pending);
+            assert_eq!(&i.scope, &req.scope);
+            let i_id = i.id.to_string();
 
-        let mut client =
-            MessagingClient::new(Route::new().append("api").into(), client_identity, ctx).await?;
+            // List it
+            let mut buf = vec![];
+            Request::builder(Method::Get, "v0/invitations")
+                .body(CloudRequestWrapper::bare(&cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::Ok));
+            let list = dec.decode::<Vec<Invitation>>()?;
+            assert_eq!(list.len(), 1);
+            assert_eq!(&list[0].id.to_string(), &i_id);
 
-        // Create invitation.
-        let req = CreateInvitation::new("invitee1", "space", Some("project"));
-        let i = client.create_invitation(req.clone()).await?;
-        assert_eq!(&i.invitee, &req.invitee);
-        assert_eq!(&i.space_id, &req.space_id);
-        assert_eq!(&i.project_id, &req.project_id);
-        assert_eq!(&i.state, &State::Pending);
-        assert_eq!(&i.scope, &req.scope);
+            // Reject invitation
+            let mut buf = vec![];
+            Request::builder(Method::Delete, format!("v0/invitations/{i_id}"))
+                .body(CloudRequestWrapper::bare(&cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::Ok));
 
-        let invitation_id = i.id.to_string();
+            // Check that status has changed
+            let mut buf = vec![];
+            Request::builder(Method::Get, "v0/invitations")
+                .body(CloudRequestWrapper::bare(&cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::Ok));
+            let list = dec.decode::<Vec<Invitation>>()?;
+            assert_eq!(list.len(), 1);
+            assert_eq!(&list[0].id.to_string(), &i_id);
+            assert_eq!(&list[0].state, &State::Rejected);
 
-        // Check default state of invitation.
-        let retrieved = client.list_invitations().await?;
-        assert_eq!(retrieved.len(), 1);
-        assert_eq!(&retrieved[0].id.to_string(), &invitation_id);
+            // Accepting a rejected invitation should fail
+            let mut buf = vec![];
+            Request::builder(Method::Put, format!("v0/invitations/{i_id}"))
+                .body(CloudRequestWrapper::bare(&cloud_server))
+                .encode(&mut buf)?;
+            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
+            let mut dec = Decoder::new(&response);
+            let header = dec.decode::<Response>()?;
+            assert_eq!(header.status, Some(Status::BadRequest));
 
-        // Reject invitation.
-        client.reject_invitations(&invitation_id).await?;
-        let retrieved = client.list_invitations().await?;
-        assert_eq!(&retrieved[0].state, &State::Rejected);
-
-        // Accepting a rejected invitation should fail.
-        let res = client.accept_invitations(&invitation_id).await;
-        assert!(res.is_err());
-
-        ctx.stop().await
+            ctx.stop().await
+        }
     }
 
     #[derive(Debug, Default)]
@@ -467,21 +498,17 @@ mod tests {
             ctx: &mut Context,
             msg: Routed<Self::Message>,
         ) -> ockam_core::Result<()> {
-            let mut buf = Vec::new();
-            self.on_request(msg.as_body(), &mut buf)?;
-            ctx.send(msg.return_route(), buf).await
+            let r = self.on_request(msg.as_body())?;
+            ctx.send(msg.return_route(), r).await
         }
     }
 
     impl InvitationServer {
-        fn on_request<W>(&mut self, data: &[u8], buf: W) -> ockam_core::Result<()>
-        where
-            W: Write<Error = Infallible>,
-        {
+        fn on_request(&mut self, data: &[u8]) -> ockam_core::Result<Vec<u8>> {
             let mut rng = Gen::new(32);
             let mut dec = Decoder::new(data);
             let req: Request = dec.decode()?;
-            match req.method() {
+            let r = match req.method() {
                 Some(Method::Post) if req.has_body() => {
                     if let Ok(invitation) = dec.decode::<CreateInvitation>() {
                         let obj = Invitation {
@@ -495,17 +522,17 @@ mod tests {
                             space_id: invitation.space_id.to_string().into(),
                             project_id: invitation.project_id.map(|s| s.to_string().into()),
                         };
-                        Response::ok(req.id()).body(&obj).encode(buf)?;
                         let id = obj.id.to_string();
-                        self.by_id.insert(id, obj);
+                        self.by_id.insert(id, obj.clone());
+                        Response::ok(req.id()).body(&obj).to_vec()?
                     } else {
-                        dbg!(&req);
-                        Response::bad_request(req.id()).encode(buf)?;
+                        error!("Invalid request: {req:#?}");
+                        Response::bad_request(req.id()).to_vec()?
                     }
                 }
                 Some(Method::Get) => {
                     let invitations = self.by_id.values().collect::<Vec<_>>();
-                    Response::ok(req.id()).body(invitations).encode(buf)?
+                    Response::ok(req.id()).body(invitations).to_vec()?
                 }
                 Some(Method::Put) => match req.path_segments::<2>().as_slice() {
                     // Accept invitation:
@@ -513,18 +540,18 @@ mod tests {
                         if let Some(invitation) = self.by_id.get_mut(*id) {
                             if invitation.state == State::Pending {
                                 invitation.state = State::Accepted;
-                                Response::ok(req.id()).encode(buf)?;
+                                Response::ok(req.id()).to_vec()?
                             } else {
-                                Response::bad_request(req.id()).encode(buf)?;
+                                Response::bad_request(req.id()).to_vec()?
                             }
                         } else {
-                            dbg!(&req);
-                            Response::not_found(req.id()).encode(buf)?;
+                            error!("Invalid request: {req:#?}");
+                            Response::not_found(req.id()).to_vec()?
                         }
                     }
                     _ => {
-                        dbg!(&req);
-                        Response::bad_request(req.id()).encode(buf)?;
+                        error!("Invalid request: {req:#?}");
+                        Response::bad_request(req.id()).to_vec()?
                     }
                 },
                 Some(Method::Delete) => match req.path_segments::<2>().as_slice() {
@@ -533,26 +560,26 @@ mod tests {
                         if let Some(invitation) = self.by_id.get_mut(*id) {
                             if invitation.state == State::Pending {
                                 invitation.state = State::Rejected;
-                                Response::ok(req.id()).encode(buf)?;
+                                Response::ok(req.id()).to_vec()?
                             } else {
-                                Response::bad_request(req.id()).encode(buf)?;
+                                Response::bad_request(req.id()).to_vec()?
                             }
                         } else {
-                            dbg!(&req);
-                            Response::not_found(req.id()).encode(buf)?;
+                            error!("Invalid request: {req:#?}");
+                            Response::not_found(req.id()).to_vec()?
                         }
                     }
                     _ => {
-                        dbg!(&req);
-                        Response::bad_request(req.id()).encode(buf)?;
+                        error!("Invalid request: {req:#?}");
+                        Response::bad_request(req.id()).to_vec()?
                     }
                 },
                 _ => {
-                    dbg!(&req);
-                    Response::bad_request(req.id()).encode(buf)?;
+                    error!("Invalid request: {req:#?}");
+                    Response::bad_request(req.id()).to_vec()?
                 }
-            }
-            Ok(())
+            };
+            Ok(r)
         }
     }
 }
