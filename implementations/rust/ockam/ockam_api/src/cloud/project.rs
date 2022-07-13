@@ -1,4 +1,3 @@
-use minicbor::bytes::ByteSlice;
 use minicbor::{Decode, Encode};
 
 use crate::CowStr;
@@ -16,7 +15,7 @@ pub struct Project<'a> {
     #[b(2)] pub name: CowStr<'a>,
     #[b(3)] pub space_name: CowStr<'a>,
     #[b(4)] pub services: Vec<CowStr<'a>>,
-    #[b(5)] pub access_route: &'a ByteSlice,
+    #[b(5)] pub access_route: CowStr<'a>,
 }
 
 #[derive(Encode, Debug)]
@@ -84,7 +83,7 @@ mod tests {
                     name: String::arbitrary(g).into(),
                     space_name: String::arbitrary(g).into(),
                     services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
-                    access_route: b"route"[..].into(),
+                    access_route: String::arbitrary(g).into(),
                 })
             }
         }
@@ -254,7 +253,7 @@ mod tests {
                                 .iter()
                                 .map(|x| x.to_string().into())
                                 .collect(),
-                            access_route: b"route"[..].into(),
+                            access_route: String::arbitrary(&mut rng).into(),
                         };
                         Response::ok(req.id()).body(&obj).encode(buf)?;
                         self.0.insert(obj.id.to_string(), obj);

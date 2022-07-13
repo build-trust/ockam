@@ -142,10 +142,10 @@ defmodule Ockam.Worker.Authorization do
   Allow messages which have `identity: identity` in their local metadata
   to be handled by the worker.
   """
-  def from_identity(prev \\ :ok, message, identity) do
+  def from_identity(prev \\ :ok, message, identity_id) do
     chain(prev, fn ->
-      case Message.local_metadata_value(message, :identity) do
-        ^identity -> :ok
+      case Message.local_metadata_value(message, :identity_id) do
+        ^identity_id -> :ok
         other -> {:error, {:from_identity, :invalid_identity, other}}
       end
     end)

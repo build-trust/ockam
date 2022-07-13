@@ -13,6 +13,8 @@ pub struct Space<'a> {
     #[n(0)] pub tag: TypeTag<7574645>,
     #[b(1)] pub id: CowStr<'a>,
     #[b(2)] pub name: CowStr<'a>,
+    #[b(3)] pub gateway_route: CowStr<'a>,
+    #[b(4)] pub identity_id: CowStr<'a>,
 }
 
 #[derive(Encode, Debug)]
@@ -73,6 +75,8 @@ pub mod tests {
                     tag: Default::default(),
                     id: String::arbitrary(g).into(),
                     name: String::arbitrary(g).into(),
+                    gateway_route: String::arbitrary(g).into(),
+                    identity_id: String::arbitrary(g).into(),
                 })
             }
         }
@@ -216,6 +220,8 @@ pub mod tests {
                             tag: TypeTag,
                             id: u32::arbitrary(&mut rng).to_string().into(),
                             name: space.name.to_string().into(),
+                            identity_id: u32::arbitrary(&mut rng).to_string().into(),
+                            gateway_route: "api".into(),
                         };
                         Response::ok(req.id()).body(&obj).encode(buf)?;
                         self.0.insert(obj.id.to_string(), obj);

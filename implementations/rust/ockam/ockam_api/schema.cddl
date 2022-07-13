@@ -71,7 +71,11 @@ space = {
    ?0: 7574645
     1: space_id
     2: space_name
+    3: identity_id
+    4: gateway_route
 }
+
+gateway_route = text
 
 spaces = [* space]
 
@@ -105,7 +109,7 @@ create_project = {
 project_id   = text
 project_name = text
 service_name = text
-access_route = bytes
+access_route = text
 
 ;;; Identity ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
