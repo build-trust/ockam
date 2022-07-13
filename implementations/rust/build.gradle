@@ -6,6 +6,12 @@ if(project.hasProperty('mode')) {
   ext.mode = gradle.parent != null ? 'release' : 'debug'
 }
 
+if(project.hasProperty('partition')) {
+  ext.partition = partition
+} else {
+  ext.partition = "hash:1/1"
+}
+
 ext {
   // Are we running as part of Continuous Integration?
   ci = System.getenv('CI') == 'true'
@@ -109,7 +115,7 @@ task test {
 
       if (ci) {
         // Use cargo nextest in CI
-        commandLine cargo('--locked', 'nextest', 'run')
+        commandLine cargo('--locked', 'nextest', 'run', '--partition', partition)
       } else {
         commandLine cargo('--locked', 'test')
       }

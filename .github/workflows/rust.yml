@@ -127,6 +127,9 @@ jobs:
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/build-trust/ockam-builder@sha256:e43dd94652096b03cc472a3c709c7335e8b166cab77b7a7b56f88fa38f3d24cc
+    strategy:
+      matrix:
+        partition: [1, 2, 3]
     services:
       ockam_cloud:
         image: ghcr.io/build-trust/ockam-cloud-node@sha256:518314876a5b07c263b88995792335c4426d940c10e5e638a60e66776d86cff5
@@ -139,7 +142,7 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - run: cd implementations/rust && ../../gradlew test
+      - run: cd implementations/rust && ../../gradlew test -Ppartition=hash:${{ matrix.partition }}/3
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_no_std:
@@ -217,6 +220,9 @@ jobs:
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/build-trust/ockam-builder@sha256:e43dd94652096b03cc472a3c709c7335e8b166cab77b7a7b56f88fa38f3d24cc
+    strategy:
+      matrix:
+        partition: [1, 2, 3]
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
         with:
@@ -226,7 +232,7 @@ jobs:
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: rustup default nightly
       - run: rustup update nightly
-      - run: cd implementations/rust && ../../gradlew test
+      - run: cd implementations/rust && ../../gradlew test -Ppartition=hash:${{ matrix.partition }}/3
         env:
           NIGHTLY_CI: 1
       - uses: ./.github/actions/cargo_target_dir_pre_cache
