@@ -1,0 +1,142 @@
+name: Ockam Package Publish
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Ockam tag to build'
+        required: true
+      binaries_sha:
+        description: 'Ockam Release Assets SHA'
+        required: false
+      is_release:
+        description: 'Indicate If Workflow Is To Release Ockam Package Or Be A Draft'
+        type: choice
+        default: false
+        options:
+        - false
+        - true
+
+permissions: write-all
+  # contents: read
+
+env:
+  DEPLOYMENT_NAME: ockam
+  ARTIFACT_NAME: ockam
+
+jobs:
+  build-and-publish-artifact:
+    if: github.event.inputs.is_release == 'false'
+    name: "Build & publish Artifact"
+    runs-on: ubuntu-20.04
+    environment: release
+
+    steps:
+      - name: Checker
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -ex
+          mkdir assets && cd assets
+          gh release download ${{ github.event.inputs.tag }} -R build-trust/ockam
+
+      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+        with:
+          path: ockam
+
+      - id: image
+        shell: bash
+        run: |
+          tag_name="${{ github.event.inputs.tag }}"
+          version=${tag_name:6}
+          echo ::set-output name=image::"ghcr.io/build-trust/$ARTIFACT_NAME:${version}-draft"
+
+      - name: Update Docker Template
+        shell: bash
+        run: |
+          set -x
+          temp_dir=$(mktemp -d)
+          cp ./ockam/tools/templates/ockam.dockerfile $temp_dir/Dockerfile
+          cd $temp_dir
+
+          binaries=(${{ github.event.inputs.binaries_sha }})
+
+          for binary in ${binaries[@]}; do
+            echo "$binary"
+            file=(${binary//:/ })
+            echo "${file[@]}"
+
+            if [[ ${file[0]} == *".so"* || ${file[0]} == *".sig"* ]]; then
+              echo "elixir nif library found, skipping."
+              continue
+            fi
+
+            sed -i "s/${file[0]}_sha256_value/${file[1]}/g" Dockerfile
+          done
+
+          cat Dockerfile
+          cp Dockerfile $GITHUB_WORKSPACE/ockam/tools/templates
+
+      - uses: docker/login-action@25c0ca8bab9893f0962d4ffd043f2b7ab90e9a3f
+        with:
+          registry: ghcr.io
+          username: build-trust
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-qemu-action@v2
+
+      - id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build And Publish As Draft
+        run: |
+          tag_name="${{ github.event.inputs.tag }}"
+          version=${tag_name:6}
+
+          docker buildx build --push \
+            --tag ghcr.io/build-trust/ockam:${version}-draft \
+            --file ./ockam/tools/templates/Dockerfile \
+            --platform linux/amd64,linux/arm64/v8 .
+
+
+  make-latest:
+    if: github.event.inputs.is_release == 'true'
+    name: "Make version of ockam also latest"
+    runs-on: ubuntu-20.04
+    environment: release
+    steps:
+      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+
+      - uses: docker/login-action@25c0ca8bab9893f0962d4ffd043f2b7ab90e9a3f
+        with:
+          registry: ghcr.io
+          username: build-trust
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get Version
+        id: image
+        run: |
+          tag_name="${{ github.event.inputs.tag }}"
+          version=${tag_name:6}
+          echo ::set-output name=version::"${version}"
+
+      - name: Deploy Latest Image
+        shell: bash
+        run: |
+          set -o xtrace
+
+          docker pull ghcr.io/build-trust/ockam:${{ steps.image.outputs.version }}-draft
+
+          manifest=$(docker manifest inspect -v ghcr.io/build-trust/ockam:${{ steps.image.outputs.version }}-draft)
+          refs=$(echo $manifest | jq -r .[].Descriptor.digest)
+
+          amended_refs=""
+          for ref in ${refs[@]}; do
+            amended_refs=" ${amended_refs[@]} --amend ghcr.io/build-trust/ockam@$ref"
+          done
+
+          docker manifest create ghcr.io/build-trust/ockam:${{ steps.image.outputs.version }} $amended_refs
+          docker manifest push ghcr.io/build-trust/ockam:${{ steps.image.outputs.version }}
+
+          docker manifest create ghcr.io/build-trust/ockam:latest $amended_refs
+          docker manifest push ghcr.io/build-trust/ockam:latest

@@ -9,6 +9,9 @@ on:
       exclude_crates:
         description: Exclude Specific Crates From Being Published
         required: false
+      release_branch:
+        description: Release Branch Where Recent Bump Occured
+        required: true
       recent_failure:
         description: Indicate A Recent Failure
         type: choice
@@ -24,14 +27,15 @@ permissions:
 jobs:
   publish_crates:
     runs-on: ubuntu-20.04
-    environment: release
     container:
       image: ghcr.io/build-trust/ockam-builder@sha256:a04b6a0aa01a93ba9a5c67392872893b261772dedfcd58f72a1addacf7535c09
+    environment: release
     steps:
       - name: Checkout Ockam
         uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
         with:
           fetch-depth: 0
+          ref: ${{ github.event.inputs.release_branch }}
 
       - name: Publish Ockam Crates
         shell: bash

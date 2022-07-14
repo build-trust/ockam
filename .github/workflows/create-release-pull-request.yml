@@ -6,6 +6,9 @@ on:
       git_tag:
         description: Git Tag To Release From. Last Git Tag Is Used If Omitted
         required: false
+      branch_name:
+        description: New Branch To Bump Crates
+        required: true
       modified_release:
         description: Crates That Are To Follow A Different Release Version
         required: false
@@ -45,30 +48,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set Branch Name
-        id: branch
-        run: echo "::set-output name=name::release_$(date +'%d-%m-%Y')"
-
       - name: Checkout To New Release Branch
         id: commit
         run: |
-          git checkout -B ${{ steps.branch.outputs.name }}
+          git checkout -B ${{ github.event.inputs.branch_name }}
           sha=$(git rev-parse HEAD)
           echo "::set-output name=sha::$sha"
 
-
       - name: Import GPG key
-        id: import_gpg
-        uses: hashicorp/ghaction-import-gpg@78437f97569a473e42b227be84d4084c2dfb49ba
-        env:
-          GPG_PRIVATE_KEY: '${{ secrets.GPG_PRIVATE_KEY }}'
-          PASSPHRASE: '${{ secrets.GPG_PASSPHRASE }}'
-
-      - name: Add GPG Key
-        run: |
-          git config --global user.email "${{ secrets.GPG_EMAIL }}"
-          git config --global user.name "${{ secrets.GPG_USER_NAME }}"
-          git config --global user.signingkey "${{ steps.import_gpg.outputs.fingerprint }}"
+        uses: build-trust/.github/actions/import_gpg@custom-actions
+        with:
+          gpg_private_key: '${{ secrets.GPG_PRIVATE_KEY }}'
+          gpg_password: '${{ secrets.GPG_PASSPHRASE }}'
+          gpg_name: '${{ secrets.GPG_USER_NAME }}'
+          gpg_email: '${{ secrets.GPG_EMAIL }}'
 
       - name: Bump Ockam
         shell: bash
@@ -93,4 +86,4 @@ jobs:
           git add .
           git commit -S -m "ci: crate release $(date +'%d-%m-%Y')"
 
-          git push --set-upstream origin ${{ steps.branch.outputs.name }}
+          git push --set-upstream origin ${{ github.event.inputs.branch_name }}
