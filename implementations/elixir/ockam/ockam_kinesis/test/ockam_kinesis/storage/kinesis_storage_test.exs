@@ -255,13 +255,11 @@ defmodule Ockam.Stream.Storage.KinesisTest do
 
       expect(AWSMock, :request, 1, fn :post, _url, body, headers, _opts ->
         expected_shard_id = "shardId-00000000000#{partition}"
-        expected_sequence_number = to_string(state.initial_sequence_number)
 
         assert %{
                  "StreamName" => ^stream_name,
                  "ShardId" => ^expected_shard_id,
-                 "ShardIteratorType" => "AFTER_SEQUENCE_NUMBER",
-                 "StartingSequenceNumber" => ^expected_sequence_number
+                 "ShardIteratorType" => "TRIM_HORIZON"
                } = Jason.decode!(body)
 
         assert {"X-Amz-Target", "Kinesis_20131202.GetShardIterator"} in headers
