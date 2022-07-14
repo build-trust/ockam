@@ -6,6 +6,9 @@ on:
       git_tag:
         description: Git Tag To Release From. Last Git Tag Is Used If Omitted
         required: false
+      release_branch:
+        description: Release Branch Where Recent Bump Occured
+        required: true
 
 permissions:
   # Contents permission allows us write to this repository.
@@ -24,6 +27,15 @@ jobs:
         uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
         with:
           fetch-depth: 0
+          ref: ${{ github.event.inputs.release_branch }}
+
+      - name: Import GPG key
+        uses: build-trust/.github/actions/import_gpg@custom-actions
+        with:
+          gpg_private_key: '${{ secrets.GPG_PRIVATE_KEY }}'
+          gpg_password: '${{ secrets.GPG_PASSPHRASE }}'
+          gpg_name: '${{ secrets.GPG_USER_NAME }}'
+          gpg_email: '${{ secrets.GPG_EMAIL }}'
 
       - name: Get Release Text
         shell: bash
@@ -149,23 +161,8 @@ jobs:
           echo "$text" > release_note.md
           cat release_note.md
 
-      - name: Import GPG key
-        id: import_gpg
-        uses: hashicorp/ghaction-import-gpg@78437f97569a473e42b227be84d4084c2dfb49ba
-        env:
-          GPG_PRIVATE_KEY: '${{ secrets.GPG_PRIVATE_KEY }}'
-          PASSPHRASE: '${{ secrets.GPG_PASSPHRASE }}'
-
-      - name: Ensure Tags Are Signed
-        run: |
-          git config --global user.email "${{ secrets.GPG_EMAIL }}"
-          git config --global user.name "${{ secrets.GPG_USER_NAME }}"
-          git config --global user.signingkey "${{ steps.import_gpg.outputs.fingerprint }}"
-          git config --global commit.gpgsign true
-
-      - name: Create Signed Tag
-        run: |
-          git tag -s ${{ steps.release_version.outputs.tag_name }} -m "Ockam Release"
+          # Add tag
+          git tag -s ockam_v$ockam_version -m "Ockam Release"
           git push --tags
 
       - name: Create GitHub release
@@ -212,8 +209,12 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      with:
+        ref: ${{ github.event.inputs.release_branch }}
+
     - name: Echo Link
       run: echo "${{ needs.create_release.outputs.upload_url }}"
+
     - name: Install Rust
       uses: actions-rs/toolchain@b3ea035039aa8cb07d1f4a5168b0f8065c4a2eeb
       with:
@@ -307,6 +308,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+        with:
+          ref: ${{ github.event.inputs.release_branch }}
 
       - name: Install Rust
         uses: actions-rs/toolchain@b3ea035039aa8cb07d1f4a5168b0f8065c4a2eeb
@@ -384,7 +387,7 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release download ${{ needs.create_release.outputs.tag_name }} -R build-trust/ockam
+        run: gh release download ${{ needs.create_release.outputs.tag_name }} -R ${{ github.repository_owner }}/ockam
 
       - name: Generate File SHASum
         shell: bash
