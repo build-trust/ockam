@@ -1,7 +1,8 @@
 pub mod types;
 
+use crate::util::response;
 use crate::{decode_option, is_ok, request};
-use crate::{Error, Method, Request, Response, Status};
+use crate::{Method, Request, Response};
 use core::fmt;
 use minicbor::Decoder;
 use ockam_core::{self, Address, Result, Route, Routed, Worker};
@@ -58,35 +59,16 @@ impl<S: AuthenticatedStorage> Server<S> {
                         Response::not_found(req.id()).to_vec()?
                     }
                 }
-                _ => {
-                    let error = Error::new(req.path())
-                        .with_method(Method::Post)
-                        .with_message("unknown path");
-                    Response::bad_request(req.id()).body(error).to_vec()?
-                }
+                _ => response::unknown_path(&req).to_vec()?,
             },
             Some(Method::Delete) => match req.path_segments::<5>().as_slice() {
                 ["authenticated", id, "attribute", key] => {
                     self.store.del(id, key).await?;
                     Response::ok(req.id()).to_vec()?
                 }
-                _ => {
-                    let error = Error::new(req.path())
-                        .with_method(Method::Post)
-                        .with_message("unknown path");
-                    Response::bad_request(req.id()).body(error).to_vec()?
-                }
+                _ => response::unknown_path(&req).to_vec()?,
             },
-            Some(m) => {
-                let error = Error::new(req.path()).with_method(m);
-                Response::builder(req.id(), Status::MethodNotAllowed)
-                    .body(error)
-                    .to_vec()?
-            }
-            None => {
-                let error = Error::new(req.path()).with_message("unknown method");
-                Response::not_implemented(req.id()).body(error).to_vec()?
-            }
+            _ => response::invalid_method(&req).to_vec()?,
         };
 
         Ok(res)
