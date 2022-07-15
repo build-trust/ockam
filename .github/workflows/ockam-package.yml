@@ -77,7 +77,7 @@ jobs:
           cat Dockerfile
           cp Dockerfile $GITHUB_WORKSPACE/ockam/tools/templates
 
-      - uses: docker/login-action@25c0ca8bab9893f0962d4ffd043f2b7ab90e9a3f
+      - uses: docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b
         with:
           registry: ghcr.io
           username: build-trust
@@ -107,7 +107,7 @@ jobs:
     steps:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
 
-      - uses: docker/login-action@25c0ca8bab9893f0962d4ffd043f2b7ab90e9a3f
+      - uses: docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b
         with:
           registry: ghcr.io
           username: build-trust
