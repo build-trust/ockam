@@ -16,7 +16,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_transport_core = "0.30.0"
+ockam_transport_core = "0.31.0"
 ```
 
 This crate requires the rust standard library `"std"`.

@@ -1,6 +1,6 @@
 [package]
 name = "ockam_command"
-version = "0.63.0"
+version = "0.64.0"
 edition = "2021"
 license = "Apache-2.0"
 publish = true
@@ -56,11 +56,11 @@ tracing-error = "0.2"
 tracing-subscriber = "0.3.9"
 validator = "0.15"
 
-ockam = { path = "../ockam", version = "^0.63.0", features = ["software_vault"] }
-ockam_api = { path = "../ockam_api", version = "0.6.0", features = ["std"] }
+ockam = { path = "../ockam", version = "^0.64.0", features = ["software_vault"] }
+ockam_api = { path = "../ockam_api", version = "0.7.0", features = ["std"] }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.2.0", features = ["std"] }
-ockam_vault = { path = "../ockam_vault", version = "^0.53.0", features = ["storage"] }
-ockam_core = { path = "../ockam_core", version = "^0.57.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.54.0", features = ["storage"] }
+ockam_core = { path = "../ockam_core", version = "^0.58.0" }
 
 [dev-dependencies]
 assert_cmd = "2"
