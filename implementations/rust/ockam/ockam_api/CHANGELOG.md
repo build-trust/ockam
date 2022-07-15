@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.8.0 - 2022-07-15
+
+### Added
+
+- Add `Identity` basic functionality to `ockam_api`
+- Add schema validation tests for cloud api types
+- Add tests for api cloud endpoints + fixes error handling
+
+### Changed
+
+- Use identity secure channels to communicate with orchestrator
+- Extract common utils to process api services req/res/err
+- Extract common utils to process api services req/res/err
+- Move cloud api endpoints to run through the nodes service
+
 ## 0.7.0 - 2022-07-15
 
 ### Added
