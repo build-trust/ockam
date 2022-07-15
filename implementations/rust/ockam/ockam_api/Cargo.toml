@@ -19,11 +19,12 @@ std = [
     "tinyvec/std",
     "tracing/std"
 ]
-tag           = ["cddl-cat"]
-vault-storage = ["ockam_vault/storage"]
-lmdb          = ["std", "lmdb-rkv"]
-
-default = ["lmdb"]
+tag                  = ["cddl-cat"]
+vault-storage        = ["ockam_vault/storage"]
+lmdb                 = ["std", "lmdb-rkv"]
+authenticators       = ["direct-authenticator"]
+direct-authenticator = ["lmdb", "std"]
+default              = ["lmdb", "authenticators"] # TODO: remove authenticators
 
 [dependencies]
 ockam           = { path = "../ockam", version = "^0.68.0", features = ["software_vault"] }

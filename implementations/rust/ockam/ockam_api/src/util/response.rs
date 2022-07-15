@@ -22,3 +22,12 @@ pub(crate) fn invalid_method<'a>(r: &'a Request) -> ResponseBuilder<Error<'a>> {
         }
     }
 }
+
+/// Create an error response with status forbidden and the given message.
+pub(crate) fn forbidden<'a>(r: &'a Request, m: &'a str) -> ResponseBuilder<Error<'a>> {
+    let mut e = Error::new(r.path()).with_message(m);
+    if let Some(m) = r.method() {
+        e = e.with_method(m)
+    }
+    Response::builder(r.id(), Status::Forbidden).body(e)
+}

@@ -190,3 +190,25 @@ request_enrollment_token = {
     ?0: 8560526,
      1: attributes
 }
+
+;;; Signer ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+credential_request = [0, identity_credential_request]
+
+identity_credential_request = {
+    0: bytes ;; identity id bytes
+}
+
+credential = [0, identity_credential]
+
+identity_credential = {
+    0: bytes, ;; identity id bytes
+    1: signer_signature
+}
+
+signer_signature = [
+    0: identity_id,
+    1: signer_signature_bytes
+]
+
+signer_signature_bytes = bytes
