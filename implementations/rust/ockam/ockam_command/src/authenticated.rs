@@ -3,7 +3,6 @@ use anyhow::{anyhow, Result};
 use clap::{Args, Subcommand};
 use ockam::{Context, TcpTransport};
 use ockam_api::auth;
-use ockam_api::auth::types::Attributes;
 use ockam_multiaddr::MultiAddr;
 
 #[derive(Clone, Debug, Args)]
@@ -14,19 +13,6 @@ pub struct AuthenticatedCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum AuthenticatedSubcommand {
-    /// Set authenticated attributes.
-    Set {
-        /// Address to connect to.
-        addr: MultiAddr,
-
-        /// Subject identifier
-        #[clap(long, forbid_empty_values = true)]
-        id: String,
-
-        /// Attributes (use '=' to separate key from value).
-        #[clap(value_delimiter('='))]
-        attrs: Vec<String>,
-    },
     /// Get attribute value.
     Get {
         /// Address to connect to.
@@ -64,18 +50,6 @@ impl AuthenticatedCommand {
 async fn run_impl(mut ctx: Context, cmd: AuthenticatedSubcommand) -> anyhow::Result<()> {
     TcpTransport::create(&ctx).await?;
     match &cmd {
-        AuthenticatedSubcommand::Set { addr, id, attrs } => {
-            let mut c = client(addr, &ctx).await?;
-            let mut a = Attributes::new();
-            for entry in attrs.chunks(2) {
-                if let [k, v] = entry {
-                    a.put(k, v.as_bytes());
-                } else {
-                    return Err(anyhow!("{entry:?} is not a key-value pair"));
-                }
-            }
-            c.set(id, &a).await?
-        }
         AuthenticatedSubcommand::Get { addr, id, key } => {
             let mut c = client(addr, &ctx).await?;
             let val = c.get(id, key).await?;
