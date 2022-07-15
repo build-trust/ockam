@@ -370,7 +370,9 @@ Create a file at `examples/03-outlet.rs` and copy the below code snippet to it.
 ```rust
 // examples/03-outlet.rs
 use ockam::{Context, Result, TcpTransport};
-use ockam::{Identity, TrustEveryonePolicy, Vault};
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::vault::Vault;
+use ockam::authenticated_storage::InMemoryStorage;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -384,8 +386,9 @@ async fn main(ctx: Context) -> Result<()> {
     //      that will wait for requests to start an Authenticated Key Exchange.
 
     let vault = Vault::create();
-    let mut e = Identity::create(&ctx, &vault).await?;
-    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy).await?;
+    let e = Identity::create(&ctx, &vault).await?;
+    let ockam_storage = InMemoryStorage::new();
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &ockam_storage).await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:5000
@@ -421,7 +424,9 @@ Create a file at `examples/03-inlet.rs` and copy the below code snippet to it.
 ```rust
 // examples/03-inlet.rs
 use ockam::{route, Context, Result, TcpTransport, TCP};
-use ockam::{Identity, TrustEveryonePolicy, Vault};
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::vault::Vault;
+use ockam::authenticated_storage::InMemoryStorage;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -437,9 +442,10 @@ async fn main(ctx: Context) -> Result<()> {
     // at address: "secure_channel_listener".
 
     let vault = Vault::create();
-    let mut e = Identity::create(&ctx, &vault).await?;
+    let e = Identity::create(&ctx, &vault).await?;
     let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"];
-    let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
+    let ockam_storage = InMemoryStorage::new();
+    let channel = e.create_secure_channel(r, TrustEveryonePolicy, &ockam_storage).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.
