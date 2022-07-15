@@ -7,7 +7,7 @@ if [[ -z $GITHUB_USERNAME ]]; then
 fi
 
 owner="build-trust"
-release_name="release_$(date +'%d-%m-%Y')"
+release_name="release_$(date +'%d-%m-%Y')_$(date +'%s')"
 
 if [[ -z $RECENT_FAILURE ]]; then
   RECENT_FAILURE=false
