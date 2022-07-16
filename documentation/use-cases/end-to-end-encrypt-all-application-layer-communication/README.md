@@ -545,6 +545,7 @@ use ockam::{
     remote::RemoteForwarder,
     vault::Vault,
     Context, Result, TcpTransport, TCP,
+    authenticated_storage::InMemoryStorage,
 };
 
 #[ockam::node]
@@ -553,8 +554,9 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     let vault = Vault::create();
-    let mut e = Identity::create(&ctx, &vault).await?;
-    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
+    let e = Identity::create(&ctx, &vault).await?;
+    let ockam_storage = InMemoryStorage::new();
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &ockam_storage)
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
@@ -600,7 +602,9 @@ Create a file at `examples/04-inlet.rs` and copy the below code snippet to it.
 ```rust
 // examples/04-inlet.rs
 use ockam::{route, Context, Result, Route, TcpTransport, TCP};
-use ockam::{Identity, TrustEveryonePolicy, Vault};
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::vault::Vault;
+use ockam::authenticated_storage::InMemoryStorage;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -615,12 +619,13 @@ async fn main(ctx: Context) -> Result<()> {
     // through a Remote Forwarder at "1.node.ockam.network:4000" and its forwarder address
     // points to secure channel listener.
     let vault = Vault::create();
-    let mut e = Identity::create(&ctx, &vault).await?;
+    let e = Identity::create(&ctx, &vault).await?;
 
     // Expect second command line argument to be the Outlet node forwarder address
     let forwarding_address = std::env::args().nth(2).expect("no outlet forwarding address given");
     let r = route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "secure_channel_listener"];
-    let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
+    let ockam_storage = InMemoryStorage::new();
+    let channel = e.create_secure_channel(r, TrustEveryonePolicy, &ockam_storage).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.
