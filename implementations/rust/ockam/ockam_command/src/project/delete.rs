@@ -4,6 +4,7 @@ use minicbor::Decoder;
 use serde_json::json;
 use tracing::debug;
 
+use ockam_api::nodes::NODEMAN_ADDR;
 use ockam_api::{Response, Status};
 use ockam_core::Route;
 
@@ -46,7 +47,7 @@ async fn delete(
     (opts, cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, DeleteCommand),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
-    let route: Route = base_route.modify().append("_internal.nodeman").into();
+    let route: Route = base_route.modify().append(NODEMAN_ADDR).into();
     debug!(?cmd, %route, "Sending request");
     let project_id = cmd.project_id.clone();
 

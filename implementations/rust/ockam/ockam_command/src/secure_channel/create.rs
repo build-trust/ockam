@@ -6,6 +6,7 @@ use clap::{Args, Subcommand};
 use minicbor::Decoder;
 use ockam_api::error::ApiError;
 use ockam_api::nodes::types::CreateSecureChannelResponse;
+use ockam_api::nodes::NODEMAN_ADDR;
 use ockam_api::{route_to_multiaddr, Response, Status};
 use ockam_core::{route, Route};
 use ockam_multiaddr::MultiAddr;
@@ -72,7 +73,7 @@ pub async fn create_connector(
 
     let response: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append("_internal.nodeman"),
+            base_route.modify().append(NODEMAN_ADDR),
             api::create_secure_channel(addr)?,
         )
         .await
@@ -123,7 +124,7 @@ pub async fn create_listener(
 
     let resp: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append("_internal.nodeman"),
+            base_route.modify().append(NODEMAN_ADDR),
             api::create_secure_channel_listener(&addr)?,
         )
         .await?;

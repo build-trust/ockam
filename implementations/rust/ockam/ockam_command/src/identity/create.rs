@@ -3,6 +3,7 @@ use crate::util::{api, connect_to, stop_node};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
+use ockam_api::nodes::NODEMAN_ADDR;
 use ockam_api::Status;
 use ockam_core::Route;
 
@@ -36,7 +37,7 @@ pub async fn create_identity(
 ) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append("_internal.nodeman"),
+            base_route.modify().append(NODEMAN_ADDR),
             api::create_identity()?,
         )
         .await?;
