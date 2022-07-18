@@ -55,10 +55,4 @@ jobs:
       - name: Check that example source and guide code blocks match
         run: OCKAM_HOME=$PWD tools/docs/check_documentation.sh
 
-      - name: Run Get Started examples
-        run: OCKAM_HOME=$PWD tools/docs/run_examples.sh
-
-      - name: Run Kafka examples
-        run: OCKAM_HOME=$PWD tools/docs/run_kafka_example.sh
-
       - uses: ./.github/actions/cargo_target_dir_pre_cache
