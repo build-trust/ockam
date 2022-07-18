@@ -1128,17 +1128,6 @@ name = "example_blocks"
 version = "0.1.0"
 
 [[package]]
-name = "example_runner"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "duct",
- "rand 0.8.5",
- "ron",
- "serde",
-]
-
-[[package]]
 name = "example_test_helper"
 version = "0.1.0"
 dependencies = [
@@ -2977,17 +2966,6 @@ checksum = "88aa938cda42a0cf62a20cfe8d139ff1af20c2e681212b5b34adb5a58333f222"
 dependencies = [
  "lazy_static",
  "regex",
-]
-
-[[package]]
-name = "ron"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b861ecaade43ac97886a512b360d01d66be9f41f3c61088b42cedf92e03d678"
-dependencies = [
- "base64",
- "bitflags",
- "serde",
 ]
 
 [[package]]
