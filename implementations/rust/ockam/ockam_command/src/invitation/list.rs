@@ -4,6 +4,7 @@ use minicbor::Decoder;
 use tracing::debug;
 
 use ockam_api::cloud::invitation::Invitation;
+use ockam_api::nodes::NODEMAN_ADDR;
 use ockam_api::{Response, Status};
 use ockam_core::Route;
 
@@ -38,7 +39,7 @@ async fn list(
     (opts, cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, ListCommand),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
-    let route: Route = base_route.modify().append("_internal.nodeman").into();
+    let route: Route = base_route.modify().append(NODEMAN_ADDR).into();
     debug!(?cmd, %route, "Sending request");
 
     let response: Vec<u8> = ctx

@@ -8,6 +8,7 @@ use tracing::{debug, warn};
 
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::error::ApiError;
+use ockam_api::nodes::NODEMAN_ADDR;
 use ockam_api::{Response, Status};
 use ockam_core::Route;
 
@@ -36,7 +37,7 @@ async fn enroll(
     (_opts, cmd): (CommandGlobalOpts, EnrollCommand),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
-    let route: Route = base_route.modify().append("_internal.nodeman").into();
+    let route: Route = base_route.modify().append(NODEMAN_ADDR).into();
     debug!(?cmd, %route, "Sending request");
 
     let response: Vec<u8> = ctx
