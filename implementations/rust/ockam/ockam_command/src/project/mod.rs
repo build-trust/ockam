@@ -16,14 +16,14 @@ mod show;
 
 #[derive(Clone, Debug, Args)]
 pub struct ProjectCommand {
-    #[clap(subcommand)]
-    subcommand: ProjectSubcommand,
-
     #[clap(flatten)]
     node_opts: NodeOpts,
 
     #[clap(flatten)]
     cloud_opts: CloudOpts,
+
+    #[clap(subcommand)]
+    subcommand: ProjectSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]

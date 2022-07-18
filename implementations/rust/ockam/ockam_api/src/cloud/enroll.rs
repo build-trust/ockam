@@ -73,14 +73,14 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<Attributes> = dec.decode()?;
-            let cloud_address = req_wrapper.cloud_address;
+            let cloud_address = req_wrapper.route;
             let req_body: Attributes = req_wrapper.req;
             let req_body = RequestEnrollmentToken::new(req_body);
 
             let label = "enrollment_token_generator";
             trace!(target: TARGET, "generating tokens");
 
-            let route = self.api_service_route(&cloud_address, "enrollment_token_authenticator");
+            let route = self.api_service_route(&cloud_address, "enrollment_token_authenticator")?;
             let req_builder = Request::post("v0/").body(req_body);
             match request(ctx, label, "request_enrollment_token", route, req_builder).await {
                 Ok(r) => Ok(r),
@@ -115,7 +115,7 @@ mod node {
             body: AuthenticateToken<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.cloud_address;
+            let cloud_address = req_wrapper.route;
 
             // TODO: add AuthenticateAuth0Token to schema.cddl and use it here
             let schema = None;
@@ -123,13 +123,13 @@ mod node {
             let r = match body {
                 AuthenticateToken::Auth0(body) => {
                     label = "auth0_authenticator";
-                    let route = self.api_service_route(&cloud_address, label);
+                    let route = self.api_service_route(&cloud_address, label)?;
                     let req_builder = Request::post("v0/enroll").body(body);
                     request(ctx, label, schema, route, req_builder).await
                 }
                 AuthenticateToken::EnrollmentToken(body) => {
                     label = "enrollment_token_authenticator";
-                    let route = self.api_service_route(&cloud_address, label);
+                    let route = self.api_service_route(&cloud_address, label)?;
                     let req_builder = Request::post("v0/enroll").body(body);
                     request(ctx, label, schema, route, req_builder).await
                 }

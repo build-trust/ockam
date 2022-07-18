@@ -17,6 +17,12 @@ mod enrollment_token_generate;
 
 #[derive(Clone, Debug, Args)]
 pub struct EnrollCommand {
+    #[clap(flatten)]
+    node_opts: NodeOpts,
+
+    #[clap(flatten)]
+    pub cloud_opts: CloudOpts,
+
     /// Authenticates an enrollment token
     #[clap(display_order = 1003, long, group = "enroll_params")]
     pub token: Option<String>,
@@ -24,12 +30,6 @@ pub struct EnrollCommand {
     /// Enroll using the Auth0 flow
     #[clap(display_order = 1004, long, group = "enroll_params")]
     auth0: bool,
-
-    #[clap(flatten)]
-    node_opts: NodeOpts,
-
-    #[clap(flatten)]
-    pub cloud_opts: CloudOpts,
 }
 
 impl EnrollCommand {

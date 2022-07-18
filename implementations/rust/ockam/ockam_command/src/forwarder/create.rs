@@ -15,6 +15,9 @@ use crate::{CommandGlobalOpts, MessageFormat};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
+    #[clap(flatten)]
+    node_opts: NodeOpts,
+
     /// Ockam's cloud address.
     #[clap(default_value = DEFAULT_CLOUD_ADDRESS)]
     addr: MultiAddr,
@@ -23,9 +26,6 @@ pub struct CreateCommand {
     /// If set, a static forwarder named after the passed alias will be created{n}
     /// Otherwise, it will create an ephemeral forwarder (default)
     alias: Option<String>,
-
-    #[clap(flatten)]
-    node_opts: NodeOpts,
 }
 
 impl CreateCommand {

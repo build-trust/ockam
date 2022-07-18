@@ -6,7 +6,6 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
     let prefix_args = [
         "--test-argument-parser",
         "space",
-        "--addr",
         "/dnsaddr/localhost/tcp/4000",
         "-a",
         "node-name",

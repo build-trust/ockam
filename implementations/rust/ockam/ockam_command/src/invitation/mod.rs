@@ -16,14 +16,14 @@ mod reject;
 
 #[derive(Clone, Debug, Args)]
 pub struct InvitationCommand {
-    #[clap(subcommand)]
-    subcommand: InvitationSubcommand,
-
     #[clap(flatten)]
     node_opts: NodeOpts,
 
     #[clap(flatten)]
     cloud_opts: CloudOpts,
+
+    #[clap(subcommand)]
+    subcommand: InvitationSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]

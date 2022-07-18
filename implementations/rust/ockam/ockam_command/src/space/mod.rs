@@ -16,14 +16,14 @@ mod show;
 
 #[derive(Clone, Debug, Args)]
 pub struct SpaceCommand {
-    #[clap(subcommand)]
-    subcommand: SpaceSubcommand,
-
     #[clap(flatten)]
     node_opts: NodeOpts,
 
     #[clap(flatten)]
     cloud_opts: CloudOpts,
+
+    #[clap(subcommand)]
+    subcommand: SpaceSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]

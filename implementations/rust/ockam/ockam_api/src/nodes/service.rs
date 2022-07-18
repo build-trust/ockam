@@ -9,7 +9,6 @@ use ockam::remote::RemoteForwarder;
 use ockam::{Address, Context, Result, Route, Routed, TcpTransport, Worker};
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::route;
 use ockam_identity::authenticated_storage::mem::InMemoryStorage;
 use ockam_identity::{Identity, TrustEveryonePolicy};
 use ockam_multiaddr::MultiAddr;
@@ -122,8 +121,11 @@ impl<A> NodeMan<A>
 where
     A: Auth0TokenProvider,
 {
-    pub(crate) fn api_service_route(&self, cloud_address: &str, api_service: &str) -> Route {
-        route![cloud_address, api_service]
+    pub(crate) fn api_service_route(&self, route: &str, api_service: &str) -> Result<Route> {
+        let mut route = Route::parse(route)
+            .ok_or_else(|| ApiError::generic(&format!("Invalid route: {route}")))?;
+        let route: Route = route.modify().append(api_service).into();
+        Ok(route)
     }
 
     //////// Transports API ////////
@@ -615,6 +617,7 @@ where
 pub(crate) mod tests {
     use crate::cloud::enroll::tests::auth0::MockAuth0Service;
     use crate::nodes::NodeMan;
+    use ockam::route;
 
     use super::*;
 
