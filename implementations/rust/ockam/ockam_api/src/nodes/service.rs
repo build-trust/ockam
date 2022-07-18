@@ -360,8 +360,10 @@ impl NodeMan {
             addr
         );
 
-        // TODO: Should we check if Address is LOCAL?
         let addr = Address::from(addr.as_ref());
+        if !addr.is_local() {
+            return Ok(Response::bad_request(req.id()));
+        }
 
         let identity = self
             .identity
