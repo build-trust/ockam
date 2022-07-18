@@ -384,6 +384,11 @@ impl Address {
     pub fn address(&self) -> &str {
         from_utf8(self.inner.as_slice()).unwrap_or("Invalid UTF-8")
     }
+
+    /// Check if address is local
+    pub fn is_local(&self) -> bool {
+        self.tt == LOCAL
+    }
 }
 
 impl core::str::FromStr for Address {
