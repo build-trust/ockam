@@ -1,27 +1,27 @@
 #!/usr/bin/env bash -e
 
 # This script bumps all crates that have been updated compared to
-# last git tag. RELEASE_VERSION value is to be set to indicate the
+# last git tag. OCKAM_BUMP_RELEASE_VERSION value is to be set to indicate the
 # release version of all crates (usually minor). If there are crates
-# that are not to follow the RELEASE_VERSION value, we can further
+# that are not to follow the OCKAM_BUMP_RELEASE_VERSION value, we can further
 # set MODIFIED_RELEASE value to indicates individual crates and how
 # they are to be bumped "signature_core:minor ockam:major" signature_core
 # crate will be bumped as a minor and ockam crate will be bumped as
 # major.
 
-if [[ -z $RELEASE_VERSION ]]; then
-    echo "please set RELEASE_VERSION variable"
+if [[ -z $OCKAM_BUMP_RELEASE_VERSION ]]; then
+    echo "please set OCKAM_BUMP_RELEASE_VERSION variable"
     exit 1
 fi
 
-if [[ -z $BUMPED_DEP_CRATES_VERSION ]]; then
+if [[ -z $OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION ]]; then
     echo "Version of bumped transitive dependencies set to minor"
     BUMPED_DEP_CRATES_VERSION="minor"
 fi
 
 declare -A specified_crate_version
 
-crate_array=($MODIFIED_RELEASE)
+crate_array=($OCKAM_BUMP_MODIFIED_RELEASE)
 
 for word in ${crate_array[@]}; do
     key="${word%%:*}"
@@ -68,9 +68,9 @@ while [[ $updated_crates != $recently_updated_crates ]]; do
             continue
         fi
 
-        version=$RELEASE_VERSION
+        version=$OCKAM_BUMP_RELEASE_VERSION
         if [[ $bumping_transitive_deps == true ]]; then
-            version=$BUMPED_DEP_CRATES_VERSION
+            version=$OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION
             echo "Bumping transitive dependent crate $crate version to $version"
         fi
 

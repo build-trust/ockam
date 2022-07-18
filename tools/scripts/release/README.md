@@ -16,23 +16,23 @@ RELEASE_VERSION=minor tools/scripts/release/crate-bump.sh
 ```
 where RELEASE_VERSION is the [version](https://github.com/crate-ci/cargo-release/blob/master/docs/reference.md#bump-level) all crates are to be bumped to.
 
-We can also indicate crates to follow a different release version, ignoring `RELEASE_VERSION`. To bump a crate to a different version, we indicate crates and the bumped version in `MODIFIED_RELEASE`
+We can also indicate crates to follow a different release version, ignoring `OCKAM_BUMP_RELEASE_VERSION`. To bump a crate to a different version, we indicate crates and the bumped version in `OCKAM_BUMP_MODIFIED_RELEASE`
 ```bash
-MODIFIED_RELEASE="signature_core:patch ockam_entity:major" RELEASE_VERSION=minor tools/scripts/release/crate-bump.sh
+OCKAM_BUMP_MODIFIED_RELEASE="signature_core:patch ockam_entity:major" OCKAM_BUMP_RELEASE_VERSION=minor tools/scripts/release/crate-bump.sh
 ```
 this bumps `signature_core` as a `patch`, `ockam_entity` as `major` and every other crate as `minor`.
 
-If we indicate `RELEASE_VERSION` as a [release](https://github.com/crate-ci/cargo-release/blob/master/docs/reference.md#bump-level)
+If we indicate `OCKAM_BUMP_RELEASE_VERSION` as a [release](https://github.com/crate-ci/cargo-release/blob/master/docs/reference.md#bump-level)
 ```bash
-MODIFIED_RELEASE="signature_core:patch ockam_entity:major" RELEASE_VERSION=release tools/scripts/release/crate-bump.sh
+OCKAM_BUMP_MODIFIED_RELEASE="signature_core:patch ockam_entity:major" OCKAM_BUMP_RELEASE_VERSION=release tools/scripts/release/crate-bump.sh
 ```
 only signature_core and ockam_entity crates are bumped.
 
-Crates whose transitive dependencies were `only` bumped can be version-bumped with a specified version using the `BUMPED_DEP_CRATES_VERSION` definition so as to follow a different release version
+Crates whose transitive dependencies were `only` bumped can be version-bumped with a specified version using the `OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION` definition so as to follow a different release version
 ```bash
-BUMPED_DEP_CRATES_VERSION=patch RELEASE_VERSION=minor tools/scripts/release/crate-bump.sh
+OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION=patch RELEASE_VERSION=minor tools/scripts/release/crate-bump.sh
 ```
-If `BUMPED_DEP_CRATES_VERSION` is not defined then transitive dependent crates are bumped as `minor`.
+If `OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION` is not defined then transitive dependent crates are bumped as `minor`.
 
 ## Changelog Generation (Requires zsh)
 
@@ -46,13 +46,13 @@ We can also generate changelog from a referenced `git tag`, changelog should be 
 
 ## Crate Publish
 
-Crates are published to `crates.io` using [cargo-release](https://github.com/crate-ci/cargo-release) right after bump. Only crates that have been updated (comparing `git diff` with last git tag) are published. Crates can also be excluded from being published using the `EXCLUDE_CRATES` variable, to exclude crates, we can optionally specify crates that are to be excluded `EXCLUDE_CRATES="signature_core ockam_core"`, where `signature_core` and `ockam_core` are excluded. Publish script can also be rerun after a recent fail, recently successfully published crates will automatically be detected and excluded. To indicate a script rerun we set the `RECENT_FAILURE` env to a `true`.
+Crates are published to `crates.io` using [cargo-release](https://github.com/crate-ci/cargo-release) right after bump. Only crates that have been updated (comparing `git diff` with last git tag) are published. Crates can also be excluded from being published using the `OCKAM_PUBLISH_EXCLUDE_CRATES` variable, to exclude crates, we can optionally specify crates that are to be excluded `OCKAM_PUBLISH_EXCLUDE_CRATES="signature_core ockam_core"`, where `signature_core` and `ockam_core` are excluded. Publish script can also be rerun after a recent fail, recently successfully published crates will automatically be detected and excluded. To indicate a script rerun we set the `OCKAM_PUBLISH_RECENT_FAILURE` env to a `true`.
 
-`RECENT_FAILURE="true"`.
+`OCKAM_PUBLISH_RECENT_FAILURE="true"`.
 
 To publish crates
 ```bash
-PUBLISH_TOKEN=my_crates.io_token EXCLUDE_CRATES="signature_core ockam_core" tools/scripts/release/crate-publish.sh
+OCKAM_PUBLISH_PUBLISH_TOKEN=my_crates.io_token OCKAM_PUBLISH_EXCLUDE_CRATES="signature_core ockam_core" tools/scripts/release/crate-publish.sh
 ```
 Note: Require cargo-release >= version 0.18.6
 

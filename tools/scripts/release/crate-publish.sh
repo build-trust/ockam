@@ -3,7 +3,7 @@
 # This script publishes crates to crates.io. Crates that are
 # not updated are excluded from cargo release.
 
-if [[ -z $PUBLISH_TOKEN ]]; then
+if [[ -z $OCKAM_PUBLISH_TOKEN ]]; then
     echo "Publish token variable PUBLISH_TOKEN not set"
     exit 1
 fi
@@ -18,7 +18,7 @@ for crate in ${updated_crates[@]}; do
     bumped_crates[$name]=true
 done
 
-crates_specified_to_be_excluded=( $EXCLUDE_CRATES )
+crates_specified_to_be_excluded=( $OCKAM_PUBLISH_EXCLUDE_CRATES )
 exclude_string=""
 
 # Get crates that are indicated to be excluded.
@@ -47,7 +47,7 @@ for crate in $(ls "implementations/rust/ockam"); do
 done
 
 # Check if this is a re-run...
-if [[ $RECENT_FAILURE == true ]]; then
+if [[ $OCKAM_PUBLISH_RECENT_FAILURE == true ]]; then
     echo "Script rerun on recent failure..."
     echo "Checking recently successfully published crates..."
 
@@ -64,4 +64,4 @@ if [[ $RECENT_FAILURE == true ]]; then
     done
 fi
 
-echo y | cargo release release --no-tag --no-verify --no-dev-version $exclude_string --token $PUBLISH_TOKEN --execute;
+echo y | cargo release release --no-tag --no-verify --no-dev-version $exclude_string --token $OCKAM_PUBLISH_TOKEN --execute;
