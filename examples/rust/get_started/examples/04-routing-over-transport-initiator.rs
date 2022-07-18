@@ -9,7 +9,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Send a message to the "echoer" worker, on a different node, over a tcp transport.
     // Use port 4000, unless otherwise specified by command line argument.
-    let port = std::env::args().nth(1).unwrap_or("4000".to_string());
+    let port = std::env::args().nth(1).unwrap_or_else(|| "4000".to_string());
     let r = route![(TCP, &format!("localhost:{port}")), "echoer"];
     ctx.send(r, "Hello Ockam!".to_string()).await?;
 
