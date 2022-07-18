@@ -94,7 +94,6 @@ impl CreateCommand {
                     "--port",
                     &command.port.to_string(),
                     "--foreground",
-                    "-a",
                     &command.node_name,
                 ])
                 .stdout(main_log_file)
