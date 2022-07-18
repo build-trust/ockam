@@ -16,6 +16,7 @@ use ockam_multiaddr::MultiAddr;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
+use super::registry::Registry;
 use crate::auth::Server;
 use crate::error::ApiError;
 use crate::identity::IdentityService;
@@ -56,11 +57,14 @@ pub struct NodeMan {
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
     // FIXME: wow this is a terrible way to store data
+    // TODO: Move to Registry?
     portals: BTreeMap<(Alias, PortalType), (String, Option<Route>)>,
 
     vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
     authenticated_storage: LmdbStorage,
+
+    registry: Registry,
 }
 
 impl NodeMan {
@@ -90,6 +94,7 @@ impl NodeMan {
             vault: None,
             identity: None,
             authenticated_storage,
+            registry: Registry::default(),
         };
 
         // Each node by default has Vault, with storage inside its directory
@@ -333,7 +338,9 @@ impl NodeMan {
             .create_secure_channel(route, TrustEveryonePolicy, &self.authenticated_storage)
             .await?;
 
-        // TODO: Create Secure Channels Registry
+        self.registry
+            .secure_channels
+            .insert(channel.clone(), Default::default());
 
         let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(channel));
 
@@ -362,10 +369,16 @@ impl NodeMan {
             .ok_or_else(|| ApiError::generic("Identity doesn't exist"))?;
 
         identity
-            .create_secure_channel_listener(addr, TrustEveryonePolicy, &self.authenticated_storage)
+            .create_secure_channel_listener(
+                addr.clone(),
+                TrustEveryonePolicy,
+                &self.authenticated_storage,
+            )
             .await?;
 
-        // TODO: Create Secure Channel Listeners Registry
+        self.registry
+            .secure_channel_listeners
+            .insert(addr, Default::default());
 
         let response = Response::ok(req.id());
 

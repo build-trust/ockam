@@ -2,6 +2,7 @@ mod base;
 mod forwarder;
 mod identity;
 mod portal;
+mod registry;
 mod secure_channel;
 pub(crate) mod service;
 mod transport;
