@@ -21,7 +21,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_node = "0.63.0"
+ockam_node = "0.64.0"
 ```
 
 ## License
