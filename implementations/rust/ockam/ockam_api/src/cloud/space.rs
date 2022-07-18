@@ -65,12 +65,12 @@ mod node {
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<CreateSpace> = dec.decode()?;
             let req_body = req_wrapper.req;
-            let cloud_address = req_wrapper.cloud_address;
+            let cloud_address = req_wrapper.route;
 
             let label = "create_space";
             trace!(target: TARGET, space = %req_body.name, "creating space");
 
-            let route = self.api_service_route(&cloud_address, "spaces");
+            let route = self.api_service_route(&cloud_address, "spaces")?;
             let req_builder = Request::post("v0/").body(req_body);
             match request(ctx, label, "create_space", route, req_builder).await {
                 Ok(r) => Ok(r),
@@ -90,12 +90,12 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.cloud_address;
+            let cloud_address = req_wrapper.route;
 
             let label = "list_spaces";
             trace!(target: TARGET, "listing spaces");
 
-            let route = self.api_service_route(&cloud_address, "spaces");
+            let route = self.api_service_route(&cloud_address, "spaces")?;
             let req_builder = Request::get("v0/");
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
@@ -116,12 +116,12 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.cloud_address;
+            let cloud_address = req_wrapper.route;
 
             let label = "get_space";
             trace!(target: TARGET, space = %id, space = %id, "getting space");
 
-            let route = self.api_service_route(&cloud_address, "spaces");
+            let route = self.api_service_route(&cloud_address, "spaces")?;
             let req_builder = Request::get(format!("v0/{id}"));
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
@@ -142,12 +142,12 @@ mod node {
             name: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.cloud_address;
+            let cloud_address = req_wrapper.route;
 
             let label = "get_space_by_name";
             trace!(target: TARGET, space = %name, "getting space");
 
-            let route = self.api_service_route(&cloud_address, "spaces");
+            let route = self.api_service_route(&cloud_address, "spaces")?;
             let req_builder = Request::get(format!("v0/name/{name}"));
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
@@ -168,12 +168,12 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.cloud_address;
+            let cloud_address = req_wrapper.route;
 
             let label = "delete_space";
             trace!(target: TARGET, space = %id, "deleting space");
 
-            let route = self.api_service_route(&cloud_address, "spaces");
+            let route = self.api_service_route(&cloud_address, "spaces")?;
             let req_builder = Request::delete(format!("v0/{id}"));
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
@@ -276,7 +276,7 @@ pub mod tests {
         use crate::cloud::CloudRequestWrapper;
         use crate::nodes::NodeMan;
         use crate::Status;
-        use ockam_core::Address;
+        use ockam_core::{Address, Route};
 
         use super::*;
 
@@ -284,6 +284,7 @@ pub mod tests {
         async fn basic_api_usage(ctx: &mut Context) -> ockam_core::Result<()> {
             // Create spaces server
             let cloud_server = Address::from_string("spaces".to_string());
+            let cloud_route: Route = cloud_server.clone().into();
             ctx.start_worker(&cloud_server, SpaceServer::default())
                 .await?;
 
@@ -294,7 +295,7 @@ pub mod tests {
             let req = CreateSpace::new("s1");
             let mut buf = vec![];
             Request::builder(Method::Post, "v0/spaces")
-                .body(CloudRequestWrapper::new(req, &cloud_server))
+                .body(CloudRequestWrapper::new(req, &cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -307,7 +308,7 @@ pub mod tests {
             // Retrieve it
             let mut buf = vec![];
             Request::builder(Method::Get, format!("v0/spaces/{s_id}"))
-                .body(CloudRequestWrapper::bare(&cloud_server))
+                .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -319,7 +320,7 @@ pub mod tests {
             // List it
             let mut buf = vec![];
             Request::builder(Method::Get, "v0/spaces")
-                .body(CloudRequestWrapper::bare(&cloud_server))
+                .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -332,7 +333,7 @@ pub mod tests {
             // Remove it
             let mut buf = vec![];
             Request::builder(Method::Delete, format!("v0/spaces/{s_id}"))
-                .body(CloudRequestWrapper::bare(&cloud_server))
+                .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -342,7 +343,7 @@ pub mod tests {
             // Check list returns empty vec
             let mut buf = vec![];
             Request::builder(Method::Get, "v0/spaces")
-                .body(CloudRequestWrapper::bare(&cloud_server))
+                .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -354,7 +355,7 @@ pub mod tests {
             // Check that retrieving it returns a not found error
             let mut buf = vec![];
             Request::builder(Method::Get, format!("v0/spaces/{s_id}"))
-                .body(CloudRequestWrapper::bare(&cloud_server))
+                .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);

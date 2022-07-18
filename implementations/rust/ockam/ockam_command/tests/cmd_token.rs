@@ -6,7 +6,6 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.arg("--test-argument-parser")
         .arg("token")
-        .arg("--addr")
         .arg("/ip4/127.0.0.1/tcp/8080")
         .arg("-a")
         .arg("node-name")

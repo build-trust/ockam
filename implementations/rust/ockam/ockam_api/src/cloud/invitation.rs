@@ -97,7 +97,7 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<CreateInvitation> = dec.decode()?;
-            let cloud_address = req_wrapper.cloud_address;
+            let cloud_address = req_wrapper.route;
             let req_body = req_wrapper.req;
 
             let label = "create_invitation";
@@ -109,7 +109,7 @@ mod node {
                 "creating invitation"
             };
 
-            let route = self.api_service_route(&cloud_address, "invitations");
+            let route = self.api_service_route(&cloud_address, "invitations")?;
             let req_builder = Request::post("v0/").body(req_body);
             match request(ctx, label, "create_invitation", route, req_builder).await {
                 Ok(r) => Ok(r),
@@ -129,12 +129,12 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.cloud_address;
+            let cloud_address = req_wrapper.route;
 
             let label = "list_invitations";
             trace!(target: TARGET, "listing invitations");
 
-            let route = self.api_service_route(&cloud_address, "invitations");
+            let route = self.api_service_route(&cloud_address, "invitations")?;
             let req_builder = Request::get("v0/");
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
@@ -155,12 +155,12 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.cloud_address;
+            let cloud_address = req_wrapper.route;
 
             let label = "accept_invitation";
             trace!(target: TARGET, %id, "accepting invitation");
 
-            let route = self.api_service_route(&cloud_address, "invitations");
+            let route = self.api_service_route(&cloud_address, "invitations")?;
             let req_builder = Request::put(format!("v0/{id}"));
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
@@ -181,12 +181,12 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.cloud_address;
+            let cloud_address = req_wrapper.route;
 
             let label = "reject_invitation";
             trace!(target: TARGET, %id, "rejecting invitation");
 
-            let route = self.api_service_route(&cloud_address, "invitations");
+            let route = self.api_service_route(&cloud_address, "invitations")?;
             let req_builder = Request::delete(format!("v0/{id}"));
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
@@ -314,7 +314,7 @@ mod tests {
         use crate::cloud::CloudRequestWrapper;
         use crate::nodes::NodeMan;
         use crate::Status;
-        use ockam_core::Address;
+        use ockam_core::{Address, Route};
 
         use super::*;
 
@@ -322,6 +322,7 @@ mod tests {
         async fn accept(ctx: &mut Context) -> ockam_core::Result<()> {
             // Create invitations server
             let cloud_server = Address::from_string("invitations".to_string());
+            let cloud_route: Route = cloud_server.clone().into();
             ctx.start_worker(&cloud_server, InvitationServer::default())
                 .await?;
 
@@ -332,7 +333,7 @@ mod tests {
             let req = CreateInvitation::new("invitee", "s1", Some("p1"));
             let mut buf = vec![];
             Request::builder(Method::Post, "v0/invitations")
-                .body(CloudRequestWrapper::new(req.clone(), &cloud_server))
+                .body(CloudRequestWrapper::new(req.clone(), &cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -353,7 +354,7 @@ mod tests {
             // List it
             let mut buf = vec![];
             Request::builder(Method::Get, "v0/invitations")
-                .body(CloudRequestWrapper::bare(&cloud_server))
+                .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -366,7 +367,7 @@ mod tests {
             // Accept invitation
             let mut buf = vec![];
             Request::builder(Method::Put, format!("v0/invitations/{i_id}"))
-                .body(CloudRequestWrapper::bare(&cloud_server))
+                .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -376,7 +377,7 @@ mod tests {
             // Check that status has changed
             let mut buf = vec![];
             Request::builder(Method::Get, "v0/invitations")
-                .body(CloudRequestWrapper::bare(&cloud_server))
+                .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -390,7 +391,7 @@ mod tests {
             // Rejecting an accepted invitation should fail
             let mut buf = vec![];
             Request::builder(Method::Delete, format!("v0/invitations/{i_id}"))
-                .body(CloudRequestWrapper::bare(&cloud_server))
+                .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -404,6 +405,7 @@ mod tests {
         async fn reject(ctx: &mut Context) -> ockam_core::Result<()> {
             // Create invitations server
             let cloud_server = Address::from_string("invitations".to_string());
+            let cloud_route: Route = cloud_server.clone().into();
             ctx.start_worker(&cloud_server, InvitationServer::default())
                 .await?;
 
@@ -414,7 +416,7 @@ mod tests {
             let req = CreateInvitation::new("invitee", "s1", Some("p1"));
             let mut buf = vec![];
             Request::builder(Method::Post, "v0/invitations")
-                .body(CloudRequestWrapper::new(req.clone(), &cloud_server))
+                .body(CloudRequestWrapper::new(req.clone(), &cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -435,7 +437,7 @@ mod tests {
             // List it
             let mut buf = vec![];
             Request::builder(Method::Get, "v0/invitations")
-                .body(CloudRequestWrapper::bare(&cloud_server))
+                .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -448,7 +450,7 @@ mod tests {
             // Reject invitation
             let mut buf = vec![];
             Request::builder(Method::Delete, format!("v0/invitations/{i_id}"))
-                .body(CloudRequestWrapper::bare(&cloud_server))
+                .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -458,7 +460,7 @@ mod tests {
             // Check that status has changed
             let mut buf = vec![];
             Request::builder(Method::Get, "v0/invitations")
-                .body(CloudRequestWrapper::bare(&cloud_server))
+                .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
@@ -472,7 +474,7 @@ mod tests {
             // Accepting a rejected invitation should fail
             let mut buf = vec![];
             Request::builder(Method::Put, format!("v0/invitations/{i_id}"))
-                .body(CloudRequestWrapper::bare(&cloud_server))
+                .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);

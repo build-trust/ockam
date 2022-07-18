@@ -14,15 +14,15 @@ use crate::{CommandGlobalOpts, MessageFormat};
 
 #[derive(Clone, Debug, Args)]
 pub struct GenerateEnrollmentTokenCommand {
-    /// Attributes (use '=' to separate key from value)
-    #[clap(value_delimiter('='), last = true, required = true)]
-    pub attrs: Vec<String>,
+    #[clap(flatten)]
+    pub cloud_opts: CloudOpts,
 
     #[clap(flatten)]
     node_opts: NodeOpts,
 
-    #[clap(flatten)]
-    pub cloud_opts: CloudOpts,
+    /// Attributes (use '=' to separate key from value)
+    #[clap(value_delimiter('='), last = true, required = true)]
+    pub attrs: Vec<String>,
 }
 
 impl GenerateEnrollmentTokenCommand {
