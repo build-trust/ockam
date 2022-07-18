@@ -206,7 +206,7 @@ fi
 if [[ -z $LATEST_TAG_NAME ]]; then
   latest_tag_name=$(gh api -H "Accept: application/vnd.github+json" /repos/$owner/ockam/releases | jq -r .[0].tag_name)
   if [[ $latest_tag_name != *"ockam_v"* ]]; then
-    echo "Invalid Git Tag gotten"
+    echo "Invalid Git Tag retrieved"
   fi
 
   success_info "Latest tag is $latest_tag_name press enter if correct"
@@ -280,5 +280,5 @@ if [[ -z $SKIP_CRATES_IO_PUBLISH || $SKIP_CRATES_IO_PUBLISH == false ]]; then
   success_info "Crates.io publish successful.... Starting Ockam binary release."
 fi
 
-success_info "Release Done 🚀🚀🚀"
+success_info "Release Done 🚀🚀🚀."
 exit 0
