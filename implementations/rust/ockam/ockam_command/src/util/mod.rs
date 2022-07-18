@@ -9,6 +9,7 @@ pub use config::{ConfigError, NodeConfig, OckamConfig};
 
 use ockam::{route, NodeBuilder, Route, TcpTransport, TCP};
 use std::{env, path::Path};
+use tracing::error;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
@@ -45,18 +46,25 @@ where
 {
     embedded_node(
         move |ctx, a| async move {
-            let tcp = TcpTransport::create(&ctx)
-                .await
-                .expect("failed to create TcpTransport");
-            tcp.connect(format!("localhost:{}", port))
-                .await
-                .expect("failed to connect to node");
+            let tcp = match TcpTransport::create(&ctx).await {
+                Ok(tcp) => tcp,
+                Err(e) => {
+                    eprintln!("failed to create TcpTransport");
+                    error!(%e);
+                    std::process::exit(1);
+                }
+            };
+            if let Err(e) = tcp.connect(format!("localhost:{}", port)).await {
+                eprintln!("failed to connect to node");
+                error!(%e);
+                std::process::exit(1);
+            }
             let route = route![(TCP, format!("localhost:{}", port))];
-
-            lambda(ctx, a, route)
-                .await
-                .expect("encountered an error in command handler code");
-
+            if let Err(e) = lambda(ctx, a, route).await {
+                eprintln!("encountered an error in command handler code");
+                error!(%e);
+                std::process::exit(1);
+            }
             Ok(())
         },
         a,
