@@ -2129,7 +2129,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_api"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "cddl-cat",
  "fake",
@@ -2174,7 +2174,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_command"
-version = "0.65.0"
+version = "0.66.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
