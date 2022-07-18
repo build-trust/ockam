@@ -9,10 +9,10 @@ on:
       branch_name:
         description: New Branch To Bump Crates
         required: true
-      modified_release:
+      ockam_bump_modified_release:
         description: Crates That Are To Follow A Different Release Version
         required: false
-      release_version:
+      ockam_bump_release_version:
         description: Release Version
         type: choice
         default: minor
@@ -20,7 +20,7 @@ on:
         - major
         - minor
         - patch
-      bumped_dep_crates_version:
+      ockam_bump_bumped_dep_crates_version:
         description: Crates That Are Bumped Due To Being Transitive Deps
         type: choice
         default: minor
@@ -66,9 +66,9 @@ jobs:
       - name: Bump Ockam
         shell: bash
         env:
-          RELEASE_VERSION: '${{ github.event.inputs.release_version }}'
-          MODIFIED_RELEASE: '${{ github.event.inputs.modified_release }}'
-          BUMPED_DEP_CRATES_VERSION: '${{ github.event.inputs.bumped_dep_crates_version }}'
+          OCKAM_BUMP_RELEASE_VERSION: '${{ github.event.inputs.ockam_bump_release_version }}'
+          OCKAM_BUMP_MODIFIED_RELEASE: '${{ github.event.inputs.ockam_bump_modified_release }}'
+          OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION: '${{ github.event.inputs.ockam_bump_bumped_dep_crates_version }}'
           GIT_TAG: '${{ github.event.inputs.git_tag }}'
         run: bash -ex ./tools/scripts/release/crate-bump.sh
 

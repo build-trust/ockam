@@ -6,13 +6,13 @@ on:
       git_tag:
         description: Git Tag To Release From. Last Git Tag Is Used If Omitted
         required: false
-      exclude_crates:
+      ockam_publish_exclude_crates:
         description: Exclude Specific Crates From Being Published
         required: false
       release_branch:
         description: Release Branch Where Recent Bump Occured
         required: true
-      recent_failure:
+      ockam_publish_recent_failure:
         description: Indicate A Recent Failure
         type: choice
         default: false
@@ -40,8 +40,8 @@ jobs:
         shell: bash
         env:
           GIT_TAG: '${{ github.event.inputs.git_tag }}'
-          PUBLISH_TOKEN: '${{ secrets.CRATES_IO_PUBLISH_TOKEN }}'
-          RECENT_FAILURE: '${{ github.event.inputs.recent_failure }}'
-          EXCLUDE_CRATES: '${{ github.event.inputs.exclude_crates }}'
+          OCKAM_PUBLISH_TOKEN: '${{ secrets.CRATES_IO_PUBLISH_TOKEN }}'
+          OCKAM_PUBLISH_RECENT_FAILURE: '${{ github.event.inputs.ockam_publish_recent_failure }}'
+          OCKAM_PUBLISH_EXCLUDE_CRATES: '${{ github.event.inputs.ockam_publish_exclude_crates }}'
         run: |
           bash -ex ./tools/scripts/release/crate-publish.sh

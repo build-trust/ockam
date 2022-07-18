@@ -9,8 +9,8 @@ fi
 owner="build-trust"
 release_name="release_$(date +'%d-%m-%Y')_$(date +'%s')"
 
-if [[ -z $RECENT_FAILURE ]]; then
-  RECENT_FAILURE=false
+if [[ -z $OCKAM_PUBLISH_RECENT_FAILURE ]]; then
+  OCKAM_PUBLISH_RECENT_FAILURE=false
 fi
 
 function approve_deployment() {
@@ -53,8 +53,8 @@ function approve_deployment() {
 function ockam_bump() {
   set -e
   gh workflow run create-release-pull-request.yml --ref develop\
-    -F branch_name="$release_name" -F git_tag="$GIT_TAG" -F modified_release="$MODIFIED_RELEASE"\
-    -F release_version="$RELEASE_VERSION" -F bumped_dep_crates_version="$BUMPED_DEP_CRATES_VERSION"\
+    -F branch_name="$release_name" -F git_tag="$GIT_TAG" -F modified_release="$OCKAM_BUMP_MODIFIED_RELEASE"\
+    -F release_version="$OCKAM_BUMP_RELEASE_VERSION" -F bumped_dep_crates_version="$OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION"\
     -R $owner/ockam
 
   workflow_file_name="create-release-pull-request.yml"
@@ -74,8 +74,8 @@ function ockam_bump() {
 function ockam_crate_release() {
   set -e
   gh workflow run publish-crates.yml --ref develop \
-    -F release_branch="$release_name" -F git_tag="$GIT_TAG" -F exclude_crates="$EXCLUDE_CRATES" \
-    -F recent_failure="$RECENT_FAILURE" -R $owner/ockam
+    -F release_branch="$release_name" -F git_tag="$GIT_TAG" -F ockam_publish_exclude_crates="$OCKAM_PUBLISH_EXCLUDE_CRATES" \
+    -F ockam_publish_recent_failure="$OCKAM_PUBLISH_RECENT_FAILURE" -R $owner/ockam
   # Sleep for 10 seconds to ensure we are not affected by Github API downtime.
   sleep 10
   # Wait for workflow run
