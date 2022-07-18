@@ -208,7 +208,7 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // Use port 4000, unless otherwise specified by second command line argument.
 
-    let port = std::env::args().nth(2).unwrap_or("4000".to_string());
+    let port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     tcp.listen(format!("127.0.0.1:{port}")).await?;
 
     // We won't call ctx.stop() here,
@@ -235,7 +235,7 @@ async fn main(ctx: Context) -> Result<()> {
     // We assume the Outlet node is listening on port 4000, unless otherwise specified
     // by a second command line argument.
 
-    let outlet_port = std::env::args().nth(2).unwrap_or("4000".to_string());
+    let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     let route_to_outlet = route![(TCP, &format!("127.0.0.1:{outlet_port}")), "outlet"];
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
@@ -355,7 +355,7 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // Use port 4000, unless otherwise specified by second command line argument.
 
-    let port = std::env::args().nth(2).unwrap_or("4000".to_string());
+    let port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     tcp.listen(format!("127.0.0.1:{port}")).await?;
 
     // We won't call ctx.stop() here,
@@ -390,7 +390,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let vault = Vault::create();
     let e = Identity::create(&ctx, &vault).await?;
-    let outlet_port = std::env::args().nth(2).unwrap_or("4000".to_string());
+    let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     let r = route![(TCP, &format!("127.0.0.1:{outlet_port}")), "secure_channel_listener"];
     let storage = InMemoryStorage::new();
     let channel = e.create_secure_channel(r, TrustEveryonePolicy, &storage).await?;

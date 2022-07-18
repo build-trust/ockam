@@ -11,7 +11,7 @@ async fn main(ctx: Context) -> Result<()> {
     // We assume the Outlet node is listening on port 4000, unless otherwise specified
     // by a second command line argument.
 
-    let outlet_port = std::env::args().nth(2).unwrap_or("4000".to_string());
+    let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     let route_to_outlet = route![(TCP, &format!("127.0.0.1:{outlet_port}")), "outlet"];
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
