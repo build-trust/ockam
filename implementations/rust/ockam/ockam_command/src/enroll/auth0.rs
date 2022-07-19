@@ -37,11 +37,14 @@ async fn enroll(
     (_opts, cmd): (CommandGlobalOpts, EnrollCommand),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
+    let auth0 = Auth0Service;
+    let token = auth0.token().await?;
+
     let route: Route = base_route.modify().append(NODEMAN_ADDR).into();
     debug!(?cmd, %route, "Sending request");
 
     let response: Vec<u8> = ctx
-        .send_and_receive(route, api::enroll::auth0(cmd)?)
+        .send_and_receive(route, api::enroll::auth0(cmd, token)?)
         .await
         .context("Failed to process request")?;
     let mut dec = Decoder::new(&response);
@@ -73,6 +76,13 @@ async fn enroll(
 
 pub struct Auth0Service;
 
+impl Auth0Service {
+    const DOMAIN: &'static str = "dev-w5hdnpc2.us.auth0.com";
+    const CLIENT_ID: &'static str = "sGyXBwQfU6fjfW1gopphdV9vCLec060b";
+    const API_AUDIENCE: &'static str = "https://dev-w5hdnpc2.us.auth0.com/api/v2/";
+    const SCOPES: &'static str = "profile openid email";
+}
+
 #[async_trait::async_trait]
 impl Auth0TokenProvider for Auth0Service {
     async fn token(&self) -> ockam_core::Result<Auth0Token> {
@@ -83,12 +93,12 @@ impl Auth0TokenProvider for Auth0Service {
             let res = Retry::spawn(retry_strategy, move || {
                 let client = reqwest::Client::new();
                 client
-                    .post(format!("https://{}/oauth/device/code", DOMAIN))
+                    .post(format!("https://{}/oauth/device/code", Self::DOMAIN))
                     .header("content-type", "application/x-www-form-urlencoded")
                     .form(&[
-                        ("client_id", CLIENT_ID),
-                        ("scope", SCOPES),
-                        ("audience", API_AUDIENCE),
+                        ("client_id", Self::CLIENT_ID),
+                        ("scope", Self::SCOPES),
+                        ("audience", Self::API_AUDIENCE),
                     ])
                     .send()
             })
@@ -135,10 +145,10 @@ impl Auth0TokenProvider for Auth0Service {
         let tokens_res;
         loop {
             let res = client
-                .post(format!("https://{}/oauth/token", DOMAIN))
+                .post(format!("https://{}/oauth/token", Self::DOMAIN))
                 .header("content-type", "application/x-www-form-urlencoded")
                 .form(&[
-                    ("client_id", CLIENT_ID),
+                    ("client_id", Self::CLIENT_ID),
                     ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
                     ("device_code", &device_code_res.device_code),
                 ])

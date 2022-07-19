@@ -16,7 +16,6 @@ use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
 use crate::auth::Server;
-use crate::cloud::enroll::auth0::Auth0TokenProvider;
 use crate::error::ApiError;
 use crate::identity::IdentityService;
 use crate::lmdb::LmdbStorage;
@@ -47,10 +46,7 @@ fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Error {
 }
 
 /// Node manager provides a messaging API to interact with the current node
-pub struct NodeMan<A>
-where
-    A: Auth0TokenProvider,
-{
+pub struct NodeMan {
     node_name: String,
     node_dir: PathBuf,
     api_transport_id: Alias,
@@ -62,14 +58,9 @@ where
     vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
     authenticated_storage: LmdbStorage,
-
-    pub(crate) auth0_service: A,
 }
 
-impl<A> NodeMan<A>
-where
-    A: Auth0TokenProvider,
-{
+impl NodeMan {
     /// Create a new NodeMan with the node name from the ockam CLI
     pub async fn create(
         ctx: &Context,
@@ -77,7 +68,6 @@ where
         node_dir: PathBuf,
         api_transport: (TransportType, TransportMode, String),
         tcp_transport: TcpTransport,
-        auth0_service: A,
     ) -> Result<Self> {
         let api_transport_id = random_alias();
         let portals = BTreeMap::new();
@@ -97,7 +87,6 @@ where
             vault: None,
             identity: None,
             authenticated_storage,
-            auth0_service,
         };
 
         // Each node by default has Vault, with storage inside its directory
@@ -117,10 +106,7 @@ where
     }
 }
 
-impl<A> NodeMan<A>
-where
-    A: Auth0TokenProvider,
-{
+impl NodeMan {
     pub(crate) fn api_service_route(&self, route: &str, api_service: &str) -> Result<Route> {
         let mut route = Route::parse(route)
             .ok_or_else(|| ApiError::generic(&format!("Invalid route: {route}")))?;
@@ -565,10 +551,7 @@ where
 }
 
 #[ockam::worker]
-impl<A> Worker for NodeMan<A>
-where
-    A: Auth0TokenProvider,
-{
+impl Worker for NodeMan {
     type Message = Vec<u8>;
     type Context = Context;
 
@@ -615,13 +598,12 @@ where
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::cloud::enroll::tests::auth0::MockAuth0Service;
     use crate::nodes::NodeMan;
     use ockam::route;
 
     use super::*;
 
-    impl NodeMan<MockAuth0Service> {
+    impl NodeMan {
         pub(crate) async fn test_create(ctx: &Context) -> Result<Route> {
             let node_dir = tempfile::tempdir().unwrap();
             let node_manager = "manager";
@@ -637,7 +619,6 @@ pub(crate) mod tests {
                     node_address.to_string(),
                 ),
                 transport,
-                MockAuth0Service,
             )
             .await?;
             ctx.start_worker(node_manager, node_man).await?;

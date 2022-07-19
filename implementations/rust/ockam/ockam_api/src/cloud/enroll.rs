@@ -33,23 +33,20 @@ mod node {
     use ockam_node::Context;
 
     use crate::auth::types::Attributes;
-    use crate::cloud::enroll::auth0::{Auth0TokenProvider, AuthenticateAuth0Token};
+    use crate::cloud::enroll::auth0::AuthenticateAuth0Token;
     use crate::cloud::enroll::enrollment_token::{
         AuthenticateEnrollmentToken, EnrollmentToken, RequestEnrollmentToken,
     };
-    use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
+    use crate::cloud::CloudRequestWrapper;
     use crate::nodes::NodeMan;
-    use crate::request;
+    use crate::{request, CowStr, Id};
     use crate::{Request, Response, Status};
 
     use super::*;
 
     const TARGET: &str = "ockam_api::cloud::enroll";
 
-    impl<A> NodeMan<A>
-    where
-        A: Auth0TokenProvider,
-    {
+    impl NodeMan {
         /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
         pub(crate) async fn enroll_auth0(
             &mut self,
@@ -57,12 +54,14 @@ mod node {
             req: &Request<'_>,
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
+            let req_wrapper: CloudRequestWrapper<AuthenticateAuth0Token> = dec.decode()?;
+            let cloud_address = req_wrapper.route;
+            let req_body: AuthenticateAuth0Token = req_wrapper.req;
+            let req_body = AuthenticateToken::Auth0(req_body);
+
             trace!(target: TARGET, "executing auth0 flow");
-            let token = {
-                let token = self.auth0_service.token().await?;
-                AuthenticateToken::Auth0(AuthenticateAuth0Token::new(token))
-            };
-            self.authenticate_token(ctx, req, dec, token).await
+            self.authenticate_token(ctx, req.id(), cloud_address, req_body)
+                .await
         }
 
         /// Generates a token that will be associated to the passed attributes.
@@ -100,23 +99,24 @@ mod node {
             req: &Request<'_>,
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
-            let req_body: EnrollmentToken = dec.decode()?;
-            trace!(target: TARGET, "authenticating token");
-            let token =
+            let req_wrapper: CloudRequestWrapper<EnrollmentToken> = dec.decode()?;
+            let cloud_address = req_wrapper.route;
+            let req_body: EnrollmentToken = req_wrapper.req;
+            let req_body =
                 AuthenticateToken::EnrollmentToken(AuthenticateEnrollmentToken::new(req_body));
-            self.authenticate_token(ctx, req, dec, token).await
+
+            trace!(target: TARGET, "authenticating token");
+            self.authenticate_token(ctx, req.id(), cloud_address, req_body)
+                .await
         }
 
         async fn authenticate_token(
             &self,
             ctx: &mut Context,
-            req: &Request<'_>,
-            dec: &mut Decoder<'_>,
+            req_id: Id,
+            cloud_address: CowStr<'_>,
             body: AuthenticateToken<'_>,
         ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.route;
-
             // TODO: add AuthenticateAuth0Token to schema.cddl and use it here
             let schema = None;
             let label;
@@ -138,7 +138,7 @@ mod node {
                 Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to authenticate token");
-                    Ok(Response::builder(req.id(), Status::InternalServerError)
+                    Ok(Response::builder(req_id, Status::InternalServerError)
                         .body(err.to_string())
                         .to_vec()?)
                 }
@@ -149,11 +149,6 @@ mod node {
 
 pub mod auth0 {
     use super::*;
-
-    pub const DOMAIN: &str = "dev-w5hdnpc2.us.auth0.com";
-    pub const CLIENT_ID: &str = "sGyXBwQfU6fjfW1gopphdV9vCLec060b";
-    pub const API_AUDIENCE: &str = "https://dev-w5hdnpc2.us.auth0.com/api/v2/";
-    pub const SCOPES: &str = "profile openid email";
 
     #[async_trait::async_trait]
     pub trait Auth0TokenProvider: Send + Sync + 'static {
@@ -185,8 +180,8 @@ pub mod auth0 {
         pub access_token: Token<'a>,
     }
 
-    #[derive(Encode, Debug)]
-    #[cfg_attr(test, derive(Decode, Clone))]
+    #[derive(Encode, Decode, Debug)]
+    #[cfg_attr(test, derive(Clone))]
     #[rustfmt::skip]
     #[cbor(map)]
     pub struct AuthenticateAuth0Token<'a> {
@@ -209,8 +204,8 @@ pub mod auth0 {
 
     // Auxiliary types
 
-    #[derive(serde::Deserialize, Encode, Debug)]
-    #[cfg_attr(test, derive(PartialEq, Decode, Clone))]
+    #[derive(serde::Deserialize, Encode, Decode, Debug)]
+    #[cfg_attr(test, derive(PartialEq, Clone))]
     #[rustfmt::skip]
     #[cbor(index_only)]
     pub enum TokenType {
