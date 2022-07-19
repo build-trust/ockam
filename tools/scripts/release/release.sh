@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
-set -ex
+set -e
+
+# Pipe set -x log to a file https://stackoverflow.com/questions/25593034/capture-x-debug-commands-into-a-file-in-bash
+log=$(mktemp)
+echo "Log directory is $log"
+
+exec 5> $log
+BASH_XTRACEFD="5"
+
+set -x
 
 GITHUB_USERNAME=$(gh api user | jq -r '.login')
 
@@ -8,6 +17,11 @@ release_name="release_$(date +'%d-%m-%Y')_$(date +'%s')"
 
 if [[ -z $OCKAM_PUBLISH_RECENT_FAILURE ]]; then
   OCKAM_PUBLISH_RECENT_FAILURE=false
+fi
+
+if [[ -z $IS_DRAFT_RELEASE ]]; then
+  echo "Please set IS_DRAFT_RELEASE env to \`true\` or \`false\` if to release as \`draft\` or to \`production\`"
+  exit 1
 fi
 
 function approve_deployment() {

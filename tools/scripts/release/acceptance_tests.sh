@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
-set -ex
+set -e
+
+# Pipe set -x log to a file https://stackoverflow.com/questions/25593034/capture-x-debug-commands-into-a-file-in-bash
+log=$(mktemp)
+echo "Log directory is $log"
+
+exec 5> $log
+BASH_XTRACEFD="5"
+
+set -x
 
 GITHUB_USERNAME=$(gh api user | jq -r '.login')
+owner="build-trust"
 
 if [[ ! -z $RELEASE_VERSION && $RELEASE_VERSION != *"ockam_v"* ]]; then
     echo "Please set RELEASE_VERSION variable, e.g. ockam_v0.63.0"
     exit 1
 fi
-
-owner="build-trust"
 
 if [[ -z $RELEASE_VERSION ]]; then
     echo "Getting latest release"
