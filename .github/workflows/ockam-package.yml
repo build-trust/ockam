@@ -1,4 +1,4 @@
-name: Ockam Package Publish
+name: Ockam Container Release
 on:
   workflow_dispatch:
     inputs:
@@ -26,7 +26,7 @@ env:
 jobs:
   build-and-publish-artifact:
     if: github.event.inputs.is_release == 'false'
-    name: "Build & publish Artifact"
+    name: "Build And Publish Ockam Container As Draft"
     runs-on: ubuntu-20.04
     environment: release
 
@@ -101,7 +101,7 @@ jobs:
 
   make-latest:
     if: github.event.inputs.is_release == 'true'
-    name: "Make version of ockam also latest"
+    name: "Make Draft Release Latest"
     runs-on: ubuntu-20.04
     environment: release
     steps:
