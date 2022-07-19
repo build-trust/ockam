@@ -127,14 +127,16 @@ pub(crate) mod enroll {
     use crate::enroll::*;
     use anyhow::anyhow;
     use ockam_api::auth::types::Attributes;
+    use ockam_api::cloud::enroll::auth0::{Auth0Token, AuthenticateAuth0Token};
     use ockam_api::cloud::enroll::*;
 
     use super::*;
 
-    pub(crate) fn auth0(cmd: EnrollCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn auth0(cmd: EnrollCommand, token: Auth0Token) -> anyhow::Result<Vec<u8>> {
+        let token = AuthenticateAuth0Token::new(token);
         let mut buf = vec![];
         Request::builder(Method::Post, "v0/enroll/auth0")
-            .body(CloudRequestWrapper::bare(&cmd.cloud_opts.route()?))
+            .body(CloudRequestWrapper::new(token, &cmd.cloud_opts.route()?))
             .encode(&mut buf)?;
         Ok(buf)
     }

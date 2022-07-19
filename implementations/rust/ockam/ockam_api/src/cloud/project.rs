@@ -55,7 +55,6 @@ mod node {
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
-    use crate::cloud::enroll::auth0::Auth0TokenProvider;
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeMan;
     use crate::request;
@@ -65,10 +64,7 @@ mod node {
 
     const TARGET: &str = "ockam_api::cloud::project";
 
-    impl<A> NodeMan<A>
-    where
-        A: Auth0TokenProvider,
-    {
+    impl NodeMan {
         pub(crate) async fn create_project(
             &mut self,
             ctx: &mut Context,
