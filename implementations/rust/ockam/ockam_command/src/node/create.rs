@@ -86,9 +86,16 @@ impl CreateCommand {
                 .open(elog)
                 .expect("failed to open stderr log path");
 
+            let verbose = match opts.global_args.verbose {
+                // Enable logs at DEBUG level by default
+                0 => "-vv".to_string(),
+                // Pass the provided verbosity level to the background node
+                v => format!("-{}", "v".repeat(v as usize)),
+            };
+
             let child = Command::new(ockam)
                 .args([
-                    "-vv", // Enable logs at DEBUG level
+                    &verbose,
                     "node",
                     "create",
                     "--port",
