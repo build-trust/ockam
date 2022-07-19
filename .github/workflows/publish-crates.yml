@@ -1,4 +1,4 @@
-name: Crates Publish
+name: Crates IO Publish
 
 on:
   workflow_dispatch:
@@ -30,6 +30,7 @@ jobs:
     container:
       image: ghcr.io/build-trust/ockam-builder@sha256:a04b6a0aa01a93ba9a5c67392872893b261772dedfcd58f72a1addacf7535c09
     environment: release
+    name: "Publish Crates To Crates IO"
     steps:
       - name: Checkout Ockam
         uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b

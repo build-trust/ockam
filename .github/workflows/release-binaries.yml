@@ -1,4 +1,4 @@
-name: Binary Release
+name: Create Draft Release
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   create_release:
-    name: Create Release
+    name: Initiate Draft Release
     runs-on: ubuntu-20.04
     environment: release
     outputs:
@@ -181,7 +181,7 @@ jobs:
 
 
   build_release:
-    name: Build Release
+    name: Build Binaries
     needs: create_release
     environment: release
     strategy:
@@ -378,7 +378,7 @@ jobs:
           asset_content_type: application/octet-stream
 
   sign_release:
-    name: Sign Release Assets
+    name: Sign All Assets
     needs: [build_release, create_release, build_elixir_nifs]
     runs-on: ubuntu-20.04
     environment: release

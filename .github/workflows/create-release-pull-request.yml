@@ -1,4 +1,4 @@
-name: Crate Bump
+name: Create Release Pull Request
 
 on:
   workflow_dispatch:
@@ -37,7 +37,7 @@ permissions:
 
 jobs:
   bump_crates:
-    name: Bump Crate
+    name: Bump Crates And Create PR
     runs-on: ubuntu-20.04
     environment: release
     container:
