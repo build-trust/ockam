@@ -135,7 +135,7 @@ impl Auth0TokenProvider for Auth0Service {
             warn!("couldn't open verification url automatically [url={uri}]",);
         }
 
-        println!(
+        eprintln!(
             "Open the following url in your browser to authorize your device with code {}:\n{}",
             device_code_res.user_code, device_code_res.verification_uri_complete,
         );
@@ -162,6 +162,7 @@ impl Auth0TokenProvider for Auth0Service {
                         .await
                         .map_err(|err| ApiError::generic(&err.to_string()))?;
                     debug!("tokens received [tokens={tokens_res:#?}]");
+                    eprintln!("Tokens received, processing...",);
                     return Ok(tokens_res);
                 }
                 _ => {

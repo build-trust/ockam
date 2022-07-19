@@ -88,7 +88,7 @@ mod tests {
         };
 
         // Create node manager to handle requests
-        let node_manager = NodeMan::test_create(ctx).await?;
+        let node_manager = NodeMan::test_create_old(ctx).await?;
 
         // Start Echoer worker
         ctx.start_worker("echoer", Echoer).await?;

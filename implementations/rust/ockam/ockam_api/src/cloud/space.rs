@@ -60,23 +60,27 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<CreateSpace> = dec.decode()?;
+            let cloud_route = req_wrapper.route()?;
             let req_body = req_wrapper.req;
-            let cloud_address = req_wrapper.route;
 
             let label = "create_space";
             trace!(target: TARGET, space = %req_body.name, "creating space");
 
-            let route = self.api_service_route(&cloud_address, "spaces")?;
+            let sc = self.secure_channel(cloud_route).await?;
+            let route = self.cloud_service_route(sc.clone(), "spaces");
+
             let req_builder = Request::post("v0/").body(req_body);
-            match request(ctx, label, "create_space", route, req_builder).await {
+            let res = match request(ctx, label, "create_space", route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
-                    error!(?err, "Failed to create space");
+                    error!(target: TARGET, ?err, "Failed to create space");
                     Ok(Response::builder(req.id(), Status::InternalServerError)
                         .body(err.to_string())
                         .to_vec()?)
                 }
-            }
+            };
+            self.delete_secure_channel(ctx, sc).await?;
+            res
         }
 
         pub(crate) async fn list_spaces(
@@ -86,14 +90,16 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.route;
+            let cloud_route = req_wrapper.route()?;
 
             let label = "list_spaces";
             trace!(target: TARGET, "listing spaces");
 
-            let route = self.api_service_route(&cloud_address, "spaces")?;
+            let sc = self.secure_channel(cloud_route).await?;
+            let route = self.cloud_service_route(&sc.to_string(), "spaces");
+
             let req_builder = Request::get("v0/");
-            match request(ctx, label, None, route, req_builder).await {
+            let res = match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to retrieve spaces");
@@ -101,7 +107,9 @@ mod node {
                         .body(err.to_string())
                         .to_vec()?)
                 }
-            }
+            };
+            self.delete_secure_channel(ctx, sc).await?;
+            res
         }
 
         pub(crate) async fn get_space(
@@ -112,14 +120,16 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.route;
+            let cloud_route = req_wrapper.route()?;
 
             let label = "get_space";
             trace!(target: TARGET, space = %id, space = %id, "getting space");
 
-            let route = self.api_service_route(&cloud_address, "spaces")?;
+            let sc = self.secure_channel(cloud_route).await?;
+            let route = self.cloud_service_route(&sc.to_string(), "spaces");
+
             let req_builder = Request::get(format!("v0/{id}"));
-            match request(ctx, label, None, route, req_builder).await {
+            let res = match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to retrieve space");
@@ -127,7 +137,9 @@ mod node {
                         .body(err.to_string())
                         .to_vec()?)
                 }
-            }
+            };
+            self.delete_secure_channel(ctx, sc).await?;
+            res
         }
 
         pub(crate) async fn get_space_by_name(
@@ -138,14 +150,16 @@ mod node {
             name: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.route;
+            let cloud_route = req_wrapper.route()?;
 
             let label = "get_space_by_name";
             trace!(target: TARGET, space = %name, "getting space");
 
-            let route = self.api_service_route(&cloud_address, "spaces")?;
+            let sc = self.secure_channel(cloud_route).await?;
+            let route = self.cloud_service_route(&sc.to_string(), "spaces");
+
             let req_builder = Request::get(format!("v0/name/{name}"));
-            match request(ctx, label, None, route, req_builder).await {
+            let res = match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to retrieve space");
@@ -153,7 +167,9 @@ mod node {
                         .body(err.to_string())
                         .to_vec()?)
                 }
-            }
+            };
+            self.delete_secure_channel(ctx, sc).await?;
+            res
         }
 
         pub(crate) async fn delete_space(
@@ -164,14 +180,16 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.route;
+            let cloud_route = req_wrapper.route()?;
 
             let label = "delete_space";
             trace!(target: TARGET, space = %id, "deleting space");
 
-            let route = self.api_service_route(&cloud_address, "spaces")?;
+            let sc = self.secure_channel(cloud_route).await?;
+            let route = self.cloud_service_route(&sc.to_string(), "spaces");
+
             let req_builder = Request::delete(format!("v0/{id}"));
-            match request(ctx, label, None, route, req_builder).await {
+            let res = match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to retrieve space");
@@ -179,7 +197,9 @@ mod node {
                         .body(err.to_string())
                         .to_vec()?)
                 }
-            }
+            };
+            self.delete_secure_channel(ctx, sc).await?;
+            res
         }
     }
 }
@@ -271,21 +291,16 @@ pub mod tests {
     mod node_api {
         use crate::cloud::CloudRequestWrapper;
         use crate::nodes::NodeMan;
-        use crate::Status;
-        use ockam_core::{Address, Route};
+        use crate::{route_to_multiaddr, Status};
+        use ockam_core::route;
 
         use super::*;
 
         #[ockam_macros::test]
         async fn basic_api_usage(ctx: &mut Context) -> ockam_core::Result<()> {
-            // Create spaces server
-            let cloud_server = Address::from_string("spaces".to_string());
-            let cloud_route: Route = cloud_server.clone().into();
-            ctx.start_worker(&cloud_server, SpaceServer::default())
-                .await?;
-
             // Create node manager to handle requests
-            let route = NodeMan::test_create(ctx).await?;
+            let route = NodeMan::test_create(ctx, "spaces", SpaceServer::default()).await?;
+            let cloud_route = route_to_multiaddr(&route!["cloud"]).unwrap();
 
             // Create space
             let req = CreateSpace::new("s1");

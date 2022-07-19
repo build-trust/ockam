@@ -125,6 +125,7 @@ pub enum Status {
     #[n(400)] BadRequest,
     #[n(401)] Unauthorized,
     #[n(404)] NotFound,
+    #[n(409)] Conflict,
     #[n(405)] MethodNotAllowed,
     #[n(500)] InternalServerError,
     #[n(501)] NotImplemented
