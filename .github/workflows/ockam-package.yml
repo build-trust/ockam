@@ -48,7 +48,7 @@ jobs:
         shell: bash
         run: |
           tag_name="${{ github.event.inputs.tag }}"
-          version=${tag_name:6}
+          version=${tag_name:7}
           echo ::set-output name=image::"ghcr.io/build-trust/$ARTIFACT_NAME:${version}-draft"
 
       - name: Update Docker Template
@@ -91,7 +91,7 @@ jobs:
       - name: Build And Publish As Draft
         run: |
           tag_name="${{ github.event.inputs.tag }}"
-          version=${tag_name:6}
+          version=${tag_name:7}
 
           docker buildx build --push \
             --tag ghcr.io/build-trust/ockam:${version}-draft \
@@ -117,7 +117,7 @@ jobs:
         id: image
         run: |
           tag_name="${{ github.event.inputs.tag }}"
-          version=${tag_name:6}
+          version=${tag_name:7}
           echo ::set-output name=version::"${version}"
 
       - name: Deploy Latest Image
