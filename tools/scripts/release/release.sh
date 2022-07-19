@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 set -ex
 
-if [[ -z $GITHUB_USERNAME ]]; then
-  echo "Please set your github username"
-  exit 1
-fi
+GITHUB_USERNAME=$(gh api user | jq -r '.login')
 
 owner="build-trust"
 release_name="release_$(date +'%d-%m-%Y')_$(date +'%s')"
