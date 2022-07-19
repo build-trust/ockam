@@ -24,7 +24,7 @@ pub struct CreateCommand {
     pub project_name: String,
 
     /// Services enabled for this project.
-    #[clap(display_order = 1003)]
+    #[clap(display_order = 1003, last = true)]
     pub services: Vec<String>,
 }
 

@@ -357,7 +357,7 @@ pub(crate) fn parse_portal_status(resp: &[u8]) -> Result<(Response, PortalStatus
 #[derive(Clone, Debug, Args)]
 pub struct CloudOpts {
     /// Ockam cloud node's address
-    #[clap(default_value = "listener")]
+    #[clap(global = true, default_value = "listener")]
     pub addr: String,
 }
 
