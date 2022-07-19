@@ -51,24 +51,29 @@ async fn create(
         .await
         .context("Failed to process request")?;
     let mut dec = Decoder::new(&response);
-    let header = dec.decode::<Response>()?;
+    let header = dec
+        .decode::<Response>()
+        .context("Failed to decode Response")?;
     debug!(?header, "Received response");
 
-    let res = match header.status() {
-        Some(Status::Ok) => {
-            let body = dec.decode::<Space>()?;
+    let res = match (header.status(), header.has_body()) {
+        (Some(Status::Ok), true) => {
+            let body = dec
+                .decode::<Space>()
+                .context("Failed to decode response body")?;
             let output = match opts.global_args.message_format {
                 MessageFormat::Plain => "Space created".to_string(),
-                MessageFormat::Json => serde_json::to_string(&body)?,
+                MessageFormat::Json => serde_json::to_string(&body)
+                    .context("Failed to serialize command output as json")?,
             };
             Ok(output)
         }
-        Some(Status::InternalServerError) => {
+        (Some(status), true) => {
             let err = dec
                 .decode::<String>()
                 .unwrap_or_else(|_| "Unknown error".to_string());
             Err(anyhow!(
-                "An error occurred while processing the request: {err}"
+                "An error occurred while processing the request with status code {status:?}: {err}"
             ))
         }
         _ => Err(anyhow!("Unexpected response received from node")),

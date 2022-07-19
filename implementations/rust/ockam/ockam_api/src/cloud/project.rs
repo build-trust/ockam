@@ -73,15 +73,17 @@ mod node {
             space_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<CreateProject> = dec.decode()?;
-            let cloud_address = req_wrapper.route;
+            let cloud_route = req_wrapper.route()?;
             let req_body = req_wrapper.req;
 
             let label = "create_project";
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
 
-            let route = self.api_service_route(&cloud_address, "projects")?;
+            let sc = self.secure_channel(cloud_route).await?;
+            let route = self.cloud_service_route(&sc.to_string(), "projects");
+
             let req_builder = Request::post(format!("v0/{space_id}")).body(req_body);
-            match request(ctx, label, "create_project", route, req_builder).await {
+            let res = match request(ctx, label, "create_project", route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to create project");
@@ -89,7 +91,9 @@ mod node {
                         .body(err.to_string())
                         .to_vec()?)
                 }
-            }
+            };
+            self.delete_secure_channel(ctx, sc).await?;
+            res
         }
 
         pub(crate) async fn list_projects(
@@ -100,14 +104,16 @@ mod node {
             space_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.route;
+            let cloud_route = req_wrapper.route()?;
 
             let label = "list_projects";
             trace!(target: TARGET, %space_id, "listing projects");
 
-            let route = self.api_service_route(&cloud_address, "projects")?;
+            let sc = self.secure_channel(cloud_route).await?;
+            let route = self.cloud_service_route(&sc.to_string(), "projects");
+
             let req_builder = Request::get(format!("v0/{space_id}"));
-            match request(ctx, label, None, route, req_builder).await {
+            let res = match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to retrieve projects");
@@ -115,7 +121,9 @@ mod node {
                         .body(err.to_string())
                         .to_vec()?)
                 }
-            }
+            };
+            self.delete_secure_channel(ctx, sc).await?;
+            res
         }
 
         pub(crate) async fn get_project(
@@ -127,14 +135,16 @@ mod node {
             project_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.route;
+            let cloud_route = req_wrapper.route()?;
 
             let label = "get_project";
             trace!(target: TARGET, %space_id, %project_id, "getting project");
 
-            let route = self.api_service_route(&cloud_address, "projects")?;
+            let sc = self.secure_channel(cloud_route).await?;
+            let route = self.cloud_service_route(&sc.to_string(), "projects");
+
             let req_builder = Request::get(format!("v0/{space_id}/{project_id}"));
-            match request(ctx, label, None, route, req_builder).await {
+            let res = match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to retrieve project");
@@ -142,7 +152,9 @@ mod node {
                         .body(err.to_string())
                         .to_vec()?)
                 }
-            }
+            };
+            self.delete_secure_channel(ctx, sc).await?;
+            res
         }
 
         pub(crate) async fn get_project_by_name(
@@ -154,14 +166,16 @@ mod node {
             project_name: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.route;
+            let cloud_route = req_wrapper.route()?;
 
             let label = "get_project_by_name";
             trace!(target: TARGET, %space_id, %project_name, "getting project");
 
-            let route = self.api_service_route(&cloud_address, "projects")?;
+            let sc = self.secure_channel(cloud_route).await?;
+            let route = self.cloud_service_route(&sc.to_string(), "projects");
+
             let req_builder = Request::get(format!("v0/{space_id}/name/{project_name}"));
-            match request(ctx, label, None, route, req_builder).await {
+            let res = match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to retrieve project");
@@ -169,7 +183,9 @@ mod node {
                         .body(err.to_string())
                         .to_vec()?)
                 }
-            }
+            };
+            self.delete_secure_channel(ctx, sc).await?;
+            res
         }
 
         pub(crate) async fn delete_project(
@@ -181,14 +197,16 @@ mod node {
             project_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_address = req_wrapper.route;
+            let cloud_route = req_wrapper.route()?;
 
             let label = "delete_project";
             trace!(target: TARGET, %space_id, %project_id, "deleting project");
 
-            let route = self.api_service_route(&cloud_address, "projects")?;
+            let sc = self.secure_channel(cloud_route).await?;
+            let route = self.cloud_service_route(&sc.to_string(), "projects");
+
             let req_builder = Request::delete(format!("v0/{space_id}/{project_id}"));
-            match request(ctx, label, None, route, req_builder).await {
+            let res = match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
                     error!(?err, "Failed to retrieve project");
@@ -196,7 +214,9 @@ mod node {
                         .body(err.to_string())
                         .to_vec()?)
                 }
-            }
+            };
+            self.delete_secure_channel(ctx, sc).await?;
+            res
         }
     }
 }
@@ -291,21 +311,16 @@ mod tests {
     mod node_api {
         use crate::cloud::CloudRequestWrapper;
         use crate::nodes::NodeMan;
-        use crate::Status;
-        use ockam_core::{Address, Route};
+        use crate::{route_to_multiaddr, Status};
+        use ockam_core::route;
 
         use super::*;
 
         #[ockam_macros::test]
         async fn basic_api_usage(ctx: &mut Context) -> ockam_core::Result<()> {
-            // Create projects server
-            let cloud_server = Address::from_string("projects".to_string());
-            let cloud_route: Route = cloud_server.clone().into();
-            ctx.start_worker(&cloud_server, ProjectServer::default())
-                .await?;
-
             // Create node manager to handle requests
-            let route = NodeMan::test_create(ctx).await?;
+            let route = NodeMan::test_create(ctx, "projects", ProjectServer::default()).await?;
+            let cloud_route = route_to_multiaddr(&route!["cloud"]).unwrap();
 
             let s_id = "space-id";
 

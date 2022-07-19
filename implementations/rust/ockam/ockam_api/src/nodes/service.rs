@@ -9,6 +9,7 @@ use ockam::remote::RemoteForwarder;
 use ockam::{Address, Context, Result, Route, Routed, TcpTransport, Worker};
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::route;
 use ockam_identity::authenticated_storage::mem::InMemoryStorage;
 use ockam_identity::{Identity, TrustEveryonePolicy};
 use ockam_multiaddr::MultiAddr;
@@ -27,6 +28,8 @@ use super::{
     types::{CreateTransport, DeleteTransport},
 };
 
+const TARGET: &str = "ockam_api::nodeman::service";
+
 type Alias = String;
 
 /// Generate a new alias for some user created extension
@@ -36,12 +39,12 @@ fn random_alias() -> String {
 }
 
 // TODO: Move to multiaddr implementation
-fn invalid_multiaddr_error() -> ockam_core::Error {
+pub(crate) fn invalid_multiaddr_error() -> ockam_core::Error {
     ockam_core::Error::new(Origin::Core, Kind::Invalid, "Invalid multiaddr")
 }
 
 // TODO: Move to multiaddr implementation
-fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Error {
+pub(crate) fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Error {
     invalid_multiaddr_error()
 }
 
@@ -104,14 +107,41 @@ impl NodeMan {
 
         Ok(s)
     }
+
+    pub(crate) fn identity(&self) -> Result<&Identity<Vault>> {
+        self.identity
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))
+    }
 }
 
 impl NodeMan {
-    pub(crate) fn api_service_route(&self, route: &str, api_service: &str) -> Result<Route> {
-        let mut route = Route::parse(route)
-            .ok_or_else(|| ApiError::generic(&format!("Invalid route: {route}")))?;
-        let route: Route = route.modify().append(api_service).into();
-        Ok(route)
+    pub(crate) async fn secure_channel(&self, route: impl Into<Route>) -> Result<Address> {
+        let route = route.into();
+        println!("ddd route {}", route);
+        trace!(target: TARGET, %route, "Creating temporary secure channel");
+        let channel = self
+            .identity()?
+            .create_secure_channel(route, TrustEveryonePolicy, &self.authenticated_storage)
+            .await?;
+        debug!(target: TARGET, %channel, "Temporary secure channel created");
+        Ok(channel)
+    }
+
+    pub(crate) async fn delete_secure_channel(
+        &self,
+        ctx: &Context,
+        addr: impl Into<Address>,
+    ) -> Result<()> {
+        ctx.stop_worker(addr).await
+    }
+
+    pub(crate) fn cloud_service_route(
+        &self,
+        address: impl Into<Address>,
+        api_service: &str,
+    ) -> Route {
+        route![address, api_service]
     }
 
     //////// Transports API ////////
@@ -432,7 +462,7 @@ impl NodeMan {
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
         trace! {
-            target: "ockam::nodeman::service",
+            target: TARGET,
             id     = %req.id(),
             method = ?req.method(),
             path   = %req.path(),
@@ -604,12 +634,12 @@ pub(crate) mod tests {
     use super::*;
 
     impl NodeMan {
-        pub(crate) async fn test_create(ctx: &Context) -> Result<Route> {
+        pub(crate) async fn test_create_old(ctx: &Context) -> Result<Route> {
             let node_dir = tempfile::tempdir().unwrap();
             let node_manager = "manager";
             let transport = TcpTransport::create(ctx).await?;
             let node_address = transport.listen("127.0.0.1:0").await?;
-            let node_man = NodeMan::create(
+            let mut node_man = NodeMan::create(
                 ctx,
                 "node".to_string(),
                 node_dir.into_path(),
@@ -621,6 +651,56 @@ pub(crate) mod tests {
                 transport,
             )
             .await?;
+
+            // Initialize identity
+            let vault = node_man.vault.as_ref().unwrap();
+            let identity = create_identity(ctx, &node_man.node_dir, vault, true).await?;
+            node_man.identity = Some(identity);
+
+            // Initialize node_man worker and return its route
+            ctx.start_worker(node_manager, node_man).await?;
+            Ok(route![node_manager])
+        }
+
+        pub(crate) async fn test_create<W: Worker<Context = Context>>(
+            ctx: &Context,
+            cloud_address: &str,
+            cloud_worker: W,
+        ) -> Result<Route> {
+            let node_dir = tempfile::tempdir().unwrap();
+            let node_manager = "manager";
+            let transport = TcpTransport::create(ctx).await?;
+            let node_address = transport.listen("127.0.0.1:0").await?;
+            let mut node_man = NodeMan::create(
+                ctx,
+                "node".to_string(),
+                node_dir.into_path(),
+                (
+                    TransportType::Tcp,
+                    TransportMode::Listen,
+                    node_address.to_string(),
+                ),
+                transport,
+            )
+            .await?;
+
+            // Initialize identity
+            let vault = node_man.vault.as_ref().unwrap();
+            let identity = create_identity(ctx, &node_man.node_dir, vault, true).await?;
+            node_man.identity = Some(identity);
+
+            // Initialize secure channel listener on the mock cloud worker
+            node_man
+                .identity()?
+                .create_secure_channel_listener(
+                    "cloud",
+                    TrustEveryonePolicy,
+                    &node_man.authenticated_storage,
+                )
+                .await?;
+            ctx.start_worker(cloud_address, cloud_worker).await?;
+
+            // Initialize node_man worker and return its route
             ctx.start_worker(node_manager, node_man).await?;
             Ok(route![node_manager])
         }

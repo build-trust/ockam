@@ -6,7 +6,7 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
     let prefix_args = [
         "--test-argument-parser",
         "enroll",
-        "secure-channel-address",
+        "/dnsaddr/cloud.ockam.io/tcp/62526",
         "-a",
         "node-name",
     ];

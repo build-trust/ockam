@@ -3,7 +3,7 @@ mod forwarder;
 mod identity;
 mod portal;
 mod secure_channel;
-mod service;
+pub(crate) mod service;
 mod transport;
 
 /// Messaging types for the node manager service
