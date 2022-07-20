@@ -234,6 +234,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
         encryption_channel: enc_channel,
         identity: identity,
         contact_id: contact_id,
+        contact: contact,
         additional_metadata: additional_metadata
       ]
 
@@ -316,6 +317,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
         encryption_channel: enc_channel,
         identity: identity,
         contact_id: contact_id,
+        contact: contact,
         additional_metadata: additional_metadata
       ]
 
@@ -409,6 +411,7 @@ defmodule Ockam.Identity.SecureChannel.Data do
   - encryption_channel - address of local end of encryption channel
   - identity - own identity
   - contact_id - ID of remote identity
+  - contact - remote identity
   """
   use Ockam.AsymmetricWorker
 
@@ -422,6 +425,7 @@ defmodule Ockam.Identity.SecureChannel.Data do
     encryption_channel = Keyword.fetch!(options, :encryption_channel)
     identity = Keyword.fetch!(options, :identity)
     contact_id = Keyword.fetch!(options, :contact_id)
+    contact = Keyword.fetch!(options, :contact)
     additional_metadata = Keyword.get(options, :additional_metadata, %{})
 
     inner_address = Map.fetch!(state, :inner_address)
@@ -434,6 +438,7 @@ defmodule Ockam.Identity.SecureChannel.Data do
          encryption_channel: encryption_channel,
          identity: identity,
          contact_id: contact_id,
+         contact: contact,
          additional_metadata: additional_metadata,
          authorization: %{
            inner_address => [
@@ -448,8 +453,12 @@ defmodule Ockam.Identity.SecureChannel.Data do
   @impl true
   def handle_inner_message(
         message,
-        %{address: address, contact_id: contact_id, additional_metadata: additional_metadata} =
-          state
+        %{
+          address: address,
+          contact_id: contact_id,
+          contact: contact,
+          additional_metadata: additional_metadata
+        } = state
       ) do
     with [_me | onward_route] <- Message.onward_route(message),
          [_channel | return_route] <- Message.return_route(message) do
@@ -462,8 +471,8 @@ defmodule Ockam.Identity.SecureChannel.Data do
         Map.merge(additional_metadata, %{
           channel: :identity_secure_channel,
           source: :channel,
-          ## TODO: rename that to identity_id?
-          identity: contact_id
+          identity_id: contact_id,
+          identity: contact
         })
 
       forwarded_message =

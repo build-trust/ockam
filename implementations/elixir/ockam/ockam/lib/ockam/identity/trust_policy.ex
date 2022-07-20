@@ -54,7 +54,7 @@ defmodule Ockam.Identity.TrustPolicy do
         extra_arg \\ nil
       ) do
     case known_identities_mod.get_identity(contact_id, extra_arg) do
-      {:ok, known_contact} ->
+      {:ok, known_contact, _known_contact_id} ->
         case Identity.compare_identity_change_history(contact, known_contact) do
           {:ok, :equal} ->
             :ok
@@ -165,7 +165,9 @@ defmodule Ockam.Identity.TrustPolicy.KnownIdentities do
   Behaviour to implement modules to manage trust policy known identities table
   """
   @callback get_identity(contact_id :: binary(), extra_arg :: any()) ::
-              {:ok, contact :: binary()} | {:error, :not_found} | {:error, reason :: any()}
+              {:ok, contact :: Ockam.Identity.t(), contact_id :: binary()}
+              | {:error, :not_found}
+              | {:error, reason :: any()}
   @callback set_identity(contact_id :: binary(), contact :: binary(), extra_arg :: any()) ::
               :ok | {:error, reason :: any()}
 end
