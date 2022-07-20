@@ -89,16 +89,22 @@ impl FileStorage {
         serde_json::to_vec(&v).map_err(|_| VaultError::StorageError.into())
     }
 
+    fn get_temp_path(path: &Path) -> PathBuf {
+        let tmp_ext = match path.extension() {
+            None => ".tmp".to_string(),
+            Some(e) => format!("{}.tmp", e.to_str().unwrap()),
+        };
+
+        path.with_extension(tmp_ext)
+    }
+
     async fn flush_to_file(&self) -> Result<()> {
         let data = self.serialize().await?;
-
-        let path = &self.path;
-        let temp_path = &self.temp_path;
 
         use std::io::prelude::*;
         use std::os::unix::prelude::*;
 
-        let _ = std::fs::remove_file(temp_path);
+        let _ = std::fs::remove_file(&self.temp_path);
 
         let mut file = std::fs::OpenOptions::new()
             .write(true)
@@ -107,14 +113,14 @@ impl FileStorage {
             // file)
             .create_new(true)
             .mode(0o600) // TODO: not portable, what about windows?
-            .open(temp_path)
+            .open(&self.temp_path)
             .map_err(|_| VaultError::StorageError)?;
         file.write_all(&data)
             .map_err(|_| VaultError::StorageError)?;
         file.flush().map_err(|_| VaultError::StorageError)?;
         file.sync_all().map_err(|_| VaultError::StorageError)?;
 
-        std::fs::rename(temp_path, path).map_err(|_| VaultError::StorageError)?;
+        std::fs::rename(&self.temp_path, &self.path).map_err(|_| VaultError::StorageError)?;
 
         Ok(())
     }
@@ -122,32 +128,35 @@ impl FileStorage {
     /// Create FileStorage using file at given Path
     /// If file doesn't exist, it will be created
     pub async fn init(&mut self) -> Result<()> {
-        let path = &self.path;
-        self.data = if !path.exists() {
+        self.data = if !self.path.exists() {
             Default::default()
         } else {
-            let vault_bytes = std::fs::read(path).map_err(|_| VaultError::StorageError)?;
+            let vault_bytes = std::fs::read(&self.path).map_err(|_| VaultError::StorageError)?;
             Self::deserialize(&vault_bytes).await?
         };
 
         let _ = std::fs::remove_file(&self.temp_path);
+
+        self.flush_to_file().await?;
 
         Ok(())
     }
 
     /// Constructor.
     /// NOTE: Doesn't initialize the storage. Call [`FileStorage::init()`] or use [`FileStorage::create()`]
-    pub fn new(path: &Path, temp_path: &Path) -> Self {
+    pub fn new(path: PathBuf) -> Self {
+        let tmp_path = Self::get_temp_path(&path);
+
         Self {
-            path: path.to_path_buf(),
-            temp_path: temp_path.to_path_buf(),
+            path,
+            temp_path: tmp_path,
             data: Default::default(),
         }
     }
 
     /// Create and init Storage
-    pub async fn create(path: &Path, temp_path: &Path) -> Result<Self> {
-        let mut s = Self::new(path, temp_path);
+    pub async fn create(path: PathBuf) -> Result<Self> {
+        let mut s = Self::new(path);
         s.init().await?;
 
         Ok(s)
@@ -156,7 +165,7 @@ impl FileStorage {
     /// Clear the Storage
     pub async fn clear(&self) {
         if self.path.exists() {
-            debug!("Note: removing previous file at {:?}", self.path);
+            debug!("Note: removing previous file at {:?}", &self.path);
             let _ = std::fs::remove_file(&self.path);
         }
 
@@ -217,12 +226,9 @@ mod tests {
         let rand_id1 = hex::encode(&rand_id);
 
         rng.fill_bytes(&mut rand_id);
-        let rand_id2 = hex::encode(&rand_id);
 
         let dir = std::env::temp_dir();
-        let storage = FileStorage::create(&dir.join(rand_id1), &dir.join(rand_id2))
-            .await
-            .unwrap();
+        let storage = FileStorage::create(dir.join(rand_id1)).await.unwrap();
         let storage = Arc::new(storage);
         let vault = Vault::new(Some(storage.clone()));
 
