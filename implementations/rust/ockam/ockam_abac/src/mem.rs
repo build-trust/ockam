@@ -194,8 +194,8 @@ impl AbacAuthorization for Memory {
 
 #[cfg(test)]
 mod tests {
-    use crate::abac::mem::Memory;
-    use crate::abac::{eq, gt, int, string, Action, Resource, Subject};
+    use crate::mem::Memory;
+    use crate::{eq, gt, int, string, Action, Resource, Subject};
 
     #[test]
     fn example1() {

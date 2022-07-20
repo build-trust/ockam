@@ -2087,6 +2087,7 @@ dependencies = [
  "arrayref",
  "dyn-clone",
  "hex",
+ "ockam_abac",
  "ockam_channel",
  "ockam_core",
  "ockam_identity",
@@ -2114,6 +2115,15 @@ dependencies = [
  "ockam_core",
  "ockam_vault",
  "tokio",
+]
+
+[[package]]
+name = "ockam_abac"
+version = "0.1.0"
+dependencies = [
+ "ockam_core",
+ "ockam_identity",
+ "serde",
 ]
 
 [[package]]

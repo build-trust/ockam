@@ -1,4 +1,6 @@
-use super::{error::AbacError, AbacMetadata, Action, Resource, Subject};
+use crate::access_control::AbacMetadata;
+
+use ockam::abac::{error::AbacError, Action, Resource, Subject};
 use ockam_core::{Decodable, Encodable, LocalInfo, LocalMessage, Result};
 
 use serde::{Deserialize, Serialize};
@@ -52,7 +54,7 @@ impl From<AbacMetadata> for AbacLocalInfo {
 }
 
 impl TryFrom<LocalInfo> for AbacLocalInfo {
-    type Error = crate::Error;
+    type Error = ockam::Error;
     fn try_from(local_info: LocalInfo) -> Result<Self, Self::Error> {
         if local_info.type_identifier() != ABAC_LOCAL_INFO_IDENTIFIER {
             return Err(AbacError::InvalidLocalInfoType.into());
@@ -66,7 +68,7 @@ impl TryFrom<LocalInfo> for AbacLocalInfo {
 }
 
 impl TryInto<LocalInfo> for AbacLocalInfo {
-    type Error = crate::Error;
+    type Error = ockam::Error;
     fn try_into(self) -> Result<LocalInfo, Self::Error> {
         match self.encode() {
             Ok(data) => Ok(LocalInfo::new(ABAC_LOCAL_INFO_IDENTIFIER.into(), data)),

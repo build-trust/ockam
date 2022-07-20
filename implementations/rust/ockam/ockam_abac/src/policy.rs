@@ -1,4 +1,4 @@
-use crate::abac::{Action, Key, Resource, Subject, Value};
+use crate::{Action, Key, Resource, Subject, Value};
 
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use serde::{Deserialize, Serialize};

@@ -1,5 +1,5 @@
-use crate::abac::policy::Conditional;
-use crate::abac::types::*;
+use crate::policy::Conditional;
+use crate::types::*;
 
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};

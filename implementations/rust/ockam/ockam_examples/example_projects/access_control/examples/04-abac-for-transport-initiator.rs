@@ -1,6 +1,8 @@
 // This node routes a message, to a worker on a different node, over the tcp transport.
 
-use ockam::abac::{AbacLocalInfo, AbacWrapperWorker, Action, Resource, Subject};
+use abac_examples::access_control::{AbacLocalInfo, AbacWrapperWorker};
+
+use ockam::abac::{Action, Resource, Subject};
 use ockam::access_control::{AllowedTransport, LocalOriginOnly};
 use ockam::{route, Context, Result, TcpTransport, WorkerBuilder, TCP};
 
