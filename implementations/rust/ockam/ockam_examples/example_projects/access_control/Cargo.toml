@@ -28,6 +28,7 @@ ockam = { path = "../../../ockam", default_features = false, features = [
 ] }
 ockam_core = { path = "../../../ockam_core" }
 serde = { version = "1", default_features = false, features = ["derive"] }
+tracing = { version = "0.1", default_features = false }
 
 [dev-dependencies]
 example_test_helper = { path = "../../../../../../tools/docs/example_test_helper" }

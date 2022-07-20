@@ -1,12 +1,14 @@
 //! [`AccessControl`] implementation which uses [`AbacAuthorization`]
 //! to resolve authorization requests.
 
-use core::fmt::{self, Debug, Formatter};
+use crate::access_control::AbacLocalInfo;
 
-use crate::abac::{AbacAuthorization, AbacLocalInfo};
+use ockam::abac::AbacAuthorization;
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::{AccessControl, LocalMessage, Result};
+
+use core::fmt::{self, Debug, Formatter};
 
 /// Allows only messages that pass attribute based access control.
 pub struct AttributeBasedAccessControl<A> {

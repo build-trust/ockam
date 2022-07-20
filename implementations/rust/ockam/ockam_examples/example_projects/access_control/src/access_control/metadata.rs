@@ -1,5 +1,7 @@
-use super::{error::AbacError, AbacLocalInfo, Action, Resource, Subject};
-use crate::OckamMessage;
+use crate::access_control::AbacLocalInfo;
+
+use ockam::abac::{error::AbacError, Action, Resource, Subject};
+use ockam::OckamMessage;
 use ockam_core::{Decodable, Encodable, Message, Result};
 
 use serde::{Deserialize, Serialize};

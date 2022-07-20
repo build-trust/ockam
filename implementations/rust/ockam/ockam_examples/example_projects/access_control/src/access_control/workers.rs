@@ -1,7 +1,6 @@
-use crate::{
-    abac::{AbacLocalInfo, AbacMetadata, ABAC_LOCAL_INFO_IDENTIFIER},
-    Any, Context, OckamMessage, Result, Route, Routed, Worker,
-};
+use crate::access_control::{AbacLocalInfo, AbacMetadata, ABAC_LOCAL_INFO_IDENTIFIER};
+
+use ockam::{Any, Context, OckamMessage, Result, Route, Routed, Worker};
 use ockam_core::compat::boxed::Box;
 use ockam_core::{Decodable, LocalMessage};
 
@@ -21,7 +20,7 @@ impl AbacWrapperWorker {
     }
 }
 
-#[crate::worker]
+#[ockam::worker]
 impl Worker for AbacWrapperWorker {
     type Context = Context;
     type Message = Any;
@@ -61,7 +60,7 @@ impl Worker for AbacWrapperWorker {
 /// [`Metadata`] received from another Ockam node.
 pub struct AbacUnwrapperWorker;
 
-#[crate::worker]
+#[ockam::worker]
 impl Worker for AbacUnwrapperWorker {
     type Context = Context;
     type Message = OckamMessage;
