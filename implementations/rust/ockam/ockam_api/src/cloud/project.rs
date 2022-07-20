@@ -106,7 +106,7 @@ mod node {
             trace!(target: TARGET, %space_id, "listing projects");
 
             let route = self.api_service_route(&cloud_address, "projects")?;
-            let req_builder = Request::get("v0/{space_id}");
+            let req_builder = Request::get(format!("v0/{}", space_id));
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
