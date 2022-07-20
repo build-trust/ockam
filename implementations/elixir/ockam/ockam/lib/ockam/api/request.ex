@@ -110,8 +110,13 @@ defmodule Ockam.API.Request do
     }
   end
 
-  @spec caller_identity(%__MODULE__{}) :: :error | {:ok, identity :: String.t()}
+  @spec caller_identity(%__MODULE__{}) :: :error | {:ok, identity :: Ockam.Identity.t()}
   def caller_identity(%__MODULE__{local_metadata: meta}) do
     Map.fetch(meta, :identity)
+  end
+
+  @spec caller_identity_id(%__MODULE__{}) :: :error | {:ok, identity_id :: String.t()}
+  def caller_identity_id(%__MODULE__{local_metadata: meta}) do
+    Map.fetch(meta, :identity_id)
   end
 end

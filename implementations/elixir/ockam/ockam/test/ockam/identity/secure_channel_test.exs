@@ -37,7 +37,7 @@ defmodule Ockam.Identity.SecureChannel.Tests do
       onward_route: [^me],
       payload: "PING!",
       return_route: return_route,
-      local_metadata: %{identity: id, channel: :identity_secure_channel}
+      local_metadata: %{identity_id: id, identity: _identity, channel: :identity_secure_channel}
     }
 
     assert id == bob_id
@@ -48,7 +48,7 @@ defmodule Ockam.Identity.SecureChannel.Tests do
       onward_route: [^me],
       payload: "PONG!",
       return_route: [^channel | _],
-      local_metadata: %{identity: id, channel: :identity_secure_channel}
+      local_metadata: %{identity_id: id, identity: _identity, channel: :identity_secure_channel}
     }
 
     assert id == alice_id
@@ -114,7 +114,12 @@ defmodule Ockam.Identity.SecureChannel.Tests do
       onward_route: [^me],
       payload: "PING!",
       return_route: return_route,
-      local_metadata: %{identity: _id, channel: :identity_secure_channel, foo: :bar}
+      local_metadata: %{
+        identity_id: _id,
+        identity: _identity,
+        channel: :identity_secure_channel,
+        foo: :bar
+      }
     }
 
     Ockam.Router.route("PONG!", return_route, [me])
@@ -123,7 +128,12 @@ defmodule Ockam.Identity.SecureChannel.Tests do
       onward_route: [^me],
       payload: "PONG!",
       return_route: [^channel | _],
-      local_metadata: %{identity: _id, channel: :identity_secure_channel, bar: :foo}
+      local_metadata: %{
+        identity_id: _id,
+        identity: _identity,
+        channel: :identity_secure_channel,
+        bar: :foo
+      }
     }
   end
 

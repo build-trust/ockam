@@ -173,9 +173,8 @@ defmodule Ockam.Session.Pluggable.Initiator do
         {:ok, RoutingSession.update_handshake_state(state, handshake_state)}
 
       {:error, err} ->
-        ## TODO: should we return :shutdown error here?
-        ## Non-shutdown error will cause a resstart
-        {:stop, {:handshake_error, err}, state}
+        ## Use a {:shutdown, term()} reason, so we don't get restarted in loop
+        {:stop, {:shutdown, {:handshake_error, err}}, state}
     end
   end
 
