@@ -80,7 +80,7 @@ mod node {
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
 
             let route = self.api_service_route(&cloud_address, "projects")?;
-            let req_builder = Request::post("v0/{space_id}").body(req_body);
+            let req_builder = Request::post(format!("v0/{space_id}")).body(req_body);
             match request(ctx, label, "create_project", route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
@@ -106,7 +106,7 @@ mod node {
             trace!(target: TARGET, %space_id, "listing projects");
 
             let route = self.api_service_route(&cloud_address, "projects")?;
-            let req_builder = Request::get(format!("v0/{}", space_id));
+            let req_builder = Request::get(format!("v0/{space_id}"));
             match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
