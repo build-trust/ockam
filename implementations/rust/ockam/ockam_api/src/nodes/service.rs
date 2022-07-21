@@ -11,7 +11,7 @@ use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::route;
 use ockam_identity::authenticated_storage::mem::InMemoryStorage;
-use ockam_identity::{Identity, TrustEveryonePolicy};
+use ockam_identity::{Identity, IdentityIdentifier, TrustEveryonePolicy};
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
@@ -307,21 +307,12 @@ impl NodeMan {
 
     //////// Vault API ////////
 
-    async fn create_vault(
-        &mut self,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
+    async fn create_vault_impl(&mut self, path: Option<PathBuf>) -> Result<()> {
         if self.vault.is_some() {
-            return Ok(Response::bad_request(req.id()));
+            return Err(ApiError::generic("Vault already exists"))?;
         }
 
-        let req_body: CreateVaultRequest = dec.decode()?;
-
-        let path = match req_body.path.as_ref() {
-            Some(path) => PathBuf::from(path.0.as_ref()),
-            None => self.node_dir.join("vault.json"),
-        };
+        let path = path.unwrap_or_else(|| self.node_dir.join("vault.json"));
 
         let vault_storage = FileStorage::create(path.clone()).await?;
         let vault = Vault::new(Some(Arc::new(vault_storage)));
@@ -331,6 +322,20 @@ impl NodeMan {
 
         self.vault = Some(vault);
 
+        Ok(())
+    }
+
+    async fn create_vault(
+        &mut self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let req_body: CreateVaultRequest = dec.decode()?;
+
+        let path = req_body.path.map(|p| PathBuf::from(p.0.as_ref()));
+
+        self.create_vault_impl(path).await?;
+
         let response = Response::ok(req.id());
 
         Ok(response)
@@ -338,14 +343,9 @@ impl NodeMan {
 
     //////// Identity API ////////
 
-    async fn create_identity(
-        &mut self,
-        ctx: &Context,
-        req: &Request<'_>,
-    ) -> Result<ResponseBuilder<CreateIdentityResponse<'_>>> {
+    async fn create_identity_impl(&mut self, ctx: &Context) -> Result<IdentityIdentifier> {
         if self.identity.is_some() {
-            // TODO: Improve body
-            return Ok(Response::bad_request(req.id()).body(CreateIdentityResponse::new("")));
+            return Err(ApiError::generic("Identity already exists"))?;
         }
 
         let vault = self
@@ -354,7 +354,7 @@ impl NodeMan {
             .ok_or_else(|| ApiError::generic("Vault doesn't exist"))?;
 
         let identity = Identity::create(ctx, vault).await?;
-        let identifier = identity.identifier()?.to_string();
+        let identifier = identity.identifier()?;
         let exported_identity = identity.export().await?;
 
         self.config.inner().write().unwrap().identity = Some(exported_identity);
@@ -362,11 +362,39 @@ impl NodeMan {
 
         self.identity = Some(identity);
 
-        let response = Response::ok(req.id()).body(CreateIdentityResponse::new(identifier));
+        Ok(identifier)
+    }
+
+    async fn create_identity(
+        &mut self,
+        ctx: &Context,
+        req: &Request<'_>,
+    ) -> Result<ResponseBuilder<CreateIdentityResponse<'_>>> {
+        let identifier = self.create_identity_impl(ctx).await?;
+
+        let response =
+            Response::ok(req.id()).body(CreateIdentityResponse::new(identifier.to_string()));
         Ok(response)
     }
 
     //////// Secure channel API ////////
+
+    async fn create_secure_channel_impl<'a>(&mut self, route: Route) -> Result<Address> {
+        let identity = self
+            .identity
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))?;
+
+        let channel = identity
+            .create_secure_channel(route, TrustEveryonePolicy, &self.authenticated_storage)
+            .await?;
+
+        self.registry
+            .secure_channels
+            .insert(channel.clone(), Default::default());
+
+        Ok(channel)
+    }
 
     async fn create_secure_channel<'a>(
         &mut self,
@@ -383,41 +411,18 @@ impl NodeMan {
         let route = crate::multiaddr_to_route(&addr)
             .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
-        let identity = self
-            .identity
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))?;
-
-        let channel = identity
-            .create_secure_channel(route, TrustEveryonePolicy, &self.authenticated_storage)
-            .await?;
-
-        self.registry
-            .secure_channels
-            .insert(channel.clone(), Default::default());
+        let channel = self.create_secure_channel_impl(route).await?;
 
         let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(channel));
 
         Ok(response)
     }
 
-    async fn create_secure_channel_listener(
-        &mut self,
-        _ctx: &Context,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<()>> {
-        let CreateSecureChannelListenerRequest { addr, .. } = dec.decode()?;
-
+    async fn create_secure_channel_listener_impl(&mut self, addr: Address) -> Result<()> {
         info!(
             "Handling request to create a new secure channel listener: {}",
             addr
         );
-
-        let addr = Address::from(addr.as_ref());
-        if !addr.is_local() {
-            return Ok(Response::bad_request(req.id()));
-        }
 
         let identity = self
             .identity
@@ -435,6 +440,24 @@ impl NodeMan {
         self.registry
             .secure_channel_listeners
             .insert(addr, Default::default());
+
+        Ok(())
+    }
+
+    async fn create_secure_channel_listener(
+        &mut self,
+        _ctx: &Context,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<()>> {
+        let CreateSecureChannelListenerRequest { addr, .. } = dec.decode()?;
+
+        let addr = Address::from(addr.as_ref());
+        if !addr.is_local() {
+            return Ok(Response::bad_request(req.id()));
+        }
+
+        self.create_secure_channel_listener_impl(addr).await?;
 
         let response = Response::ok(req.id());
 
@@ -698,7 +721,6 @@ impl Worker for NodeMan {
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::nodes::NodeMan;
-    use crate::old::identity::create_identity;
     use ockam::route;
 
     use super::*;
@@ -723,9 +745,8 @@ pub(crate) mod tests {
             .await?;
 
             // Initialize identity
-            let vault = node_man.vault.as_ref().unwrap();
-            let identity = create_identity(ctx, &node_man.node_dir, vault, true).await?;
-            node_man.identity = Some(identity);
+            node_man.create_vault_impl(None).await?;
+            node_man.create_identity_impl(ctx).await?;
 
             // Initialize node_man worker and return its route
             ctx.start_worker(node_manager, node_man).await?;
@@ -754,19 +775,12 @@ pub(crate) mod tests {
             )
             .await?;
 
-            // Initialize identity
-            let vault = node_man.vault.as_ref().unwrap();
-            let identity = create_identity(ctx, &node_man.node_dir, vault, true).await?;
-            node_man.identity = Some(identity);
+            node_man.create_vault_impl(None).await?;
+            node_man.create_identity_impl(ctx).await?;
 
             // Initialize secure channel listener on the mock cloud worker
             node_man
-                .identity()?
-                .create_secure_channel_listener(
-                    "cloud",
-                    TrustEveryonePolicy,
-                    &node_man.authenticated_storage,
-                )
+                .create_secure_channel_listener_impl("cloud".into())
                 .await?;
             ctx.start_worker(cloud_address, cloud_worker).await?;
 
