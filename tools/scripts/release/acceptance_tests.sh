@@ -26,7 +26,7 @@ fi
 
 function test_published_crates_io_release() {
   set -e
-  ockam_version=${RELEASE_VERSION:7}
+  ockam_version=${RELEASE_VERSION}
   gh workflow run test_published_package.yml --ref docker -R $owner/artifacts -F ockam_version=$ockam_version
 
   # Wait for workflow run
