@@ -70,6 +70,15 @@ pub(crate) fn create_forwarder(cmd: &crate::forwarder::CreateCommand) -> Result<
     Ok(buf)
 }
 
+/// Construct a request to create a Vault
+pub(crate) fn create_vault(path: Option<String>) -> Result<Vec<u8>> {
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node/vault")
+        .body(CreateVaultRequest::new(path))
+        .encode(&mut buf)?;
+    Ok(buf)
+}
+
 /// Construct a request to create Identity
 pub(crate) fn create_identity() -> Result<Vec<u8>> {
     let mut buf = vec![];
@@ -324,6 +333,12 @@ pub(crate) fn parse_transport_status(resp: &[u8]) -> Result<(Response, Transport
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
     Ok((response, dec.decode::<TransportStatus>()?))
+}
+
+pub(crate) fn parse_create_vault_response(resp: &[u8]) -> Result<Response> {
+    let mut dec = Decoder::new(resp);
+    let response = dec.decode::<Response>()?;
+    Ok(response)
 }
 
 pub(crate) fn parse_create_identity_response(

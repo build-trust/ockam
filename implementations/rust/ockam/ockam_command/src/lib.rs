@@ -14,6 +14,7 @@ mod secure_channel;
 mod space;
 mod transport;
 mod util;
+mod vault;
 
 use authenticated::AuthenticatedCommand;
 use config::ConfigCommand;
@@ -40,6 +41,7 @@ use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_
 use crate::enroll::GenerateEnrollmentTokenCommand;
 use crate::identity::IdentityCommand;
 use crate::util::OckamConfig;
+use crate::vault::VaultCommand;
 use clap::{ArgEnum, Args, ColorChoice, Parser, Subcommand};
 use util::setup_logging;
 
@@ -177,6 +179,10 @@ pub enum OckamSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Config(ConfigCommand),
 
+    /// Manage Vault
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Vault(VaultCommand),
+
     /// Manage Identities
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Identity(IdentityCommand),
@@ -254,6 +260,7 @@ pub fn run() {
         OckamSubcommand::Transport(command) => TransportCommand::run(opts, command),
         OckamSubcommand::Portal(command) => PortalCommand::run(opts, command),
         OckamSubcommand::Config(command) => ConfigCommand::run(opts, command),
+        OckamSubcommand::Vault(command) => VaultCommand::run(opts, command),
         OckamSubcommand::Identity(command) => IdentityCommand::run(opts, command),
         OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(opts, command),
 
