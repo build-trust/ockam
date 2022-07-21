@@ -163,7 +163,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Expect second command line argument to be the TCP address of a target TCP server.
-    // For example: 127.0.0.1:5000
+    // For example: 127.0.0.1:4002
     //
     // Create a TCP Transport Outlet - at Ockam Worker address "outlet" -
     // that will connect, as a TCP client, to the target TCP server.
@@ -189,7 +189,7 @@ async fn main(ctx: Context) -> Result<()> {
     // The Inlet will:
     // 1. Wrap any raw TCP data it receives from a TCP client as payload of a new
     //    Ockam Routing Message. This Ockam Routing Message will have its onward_route
-    //    be set to the route to a TCP Transport Outlet. This route is provided as the 2nd
+    //    be set to the route to a TCP Transport Outlet. This route is provided as the second
     //    argument of the create_inlet() function.
     //
     // 2. Unwrap the payload of any Ockam Routing Message it receives back from the Outlet
@@ -253,7 +253,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
-    // For example: 127.0.0.1:5000
+    // For example: 127.0.0.1:4002
     //
     // Create a TCP Transport Outlet - at Ockam Worker address "outlet" -
     // that will connect, as a TCP client, to the target TCP server.
@@ -272,7 +272,11 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.create_outlet("outlet", outlet_target).await?;
 
     // Create a TCP listener to receive Ockam Routing Messages from other ockam nodes.
-    tcp.listen("127.0.0.1:4000").await?;
+    //
+    // Use port 4000, unless otherwise specified by second command line argument.
+
+    let port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
+    tcp.listen(format!("127.0.0.1:{port}")).await?;
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
@@ -292,10 +296,14 @@ async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
-    // We know the network address of the node with an Outlet, we also know that the Outlet is
-    // running at Ockam Worker address "outlet" on that node.
+    // We know that the Outlet node is listening for Ockam Routing Messages
+    // over TCP and is running at Ockam Worker address "outlet".
+    //
+    // We assume the Outlet node is listening on port 4000, unless otherwise specified
+    // by a second command line argument.
 
-    let route_to_outlet = route![(TCP, "127.0.0.1:4000"), "outlet"];
+    let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
+    let route_to_outlet = route![(TCP, &format!("127.0.0.1:{outlet_port}")), "outlet"];
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
     // For example: 127.0.0.1:4001
@@ -306,7 +314,7 @@ async fn main(ctx: Context) -> Result<()> {
     // 1. Wrap any raw TCP data it receives from a TCP client as payload of a new
     //    Ockam Routing Message. This Ockam Routing Message will have its onward_route
     //    be set to the route to a TCP Transport Outlet. This route_to_outlet is provided as
-    //    the 2nd argument of the create_inlet() function.
+    //    the second argument of the create_inlet() function.
     //
     // 2. Unwrap the payload of any Ockam Routing Message it receives back from the Outlet
     //    and send it as raw TCP data to q connected TCP client.
@@ -369,10 +377,9 @@ Create a file at `examples/03-outlet.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/03-outlet.rs
-use ockam::{Context, Result, TcpTransport};
-use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::vault::Vault;
 use ockam::authenticated_storage::InMemoryStorage;
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::{vault::Vault, Context, Result, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -387,11 +394,12 @@ async fn main(ctx: Context) -> Result<()> {
 
     let vault = Vault::create();
     let e = Identity::create(&ctx, &vault).await?;
-    let ockam_storage = InMemoryStorage::new();
-    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &ockam_storage).await?;
+    let storage = InMemoryStorage::new();
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &storage)
+        .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
-    // For example: 127.0.0.1:5000
+    // For example: 127.0.0.1:4002
     //
     // Create a TCP Transport Outlet - at Ockam Worker address "outlet" -
     // that will connect, as a TCP client, to the target TCP server.
@@ -410,7 +418,11 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.create_outlet("outlet", outlet_target).await?;
 
     // Create a TCP listener to receive Ockam Routing Messages from other ockam nodes.
-    tcp.listen("127.0.0.1:4000").await?;
+    //
+    // Use port 4000, unless otherwise specified by second command line argument.
+
+    let port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
+    tcp.listen(format!("127.0.0.1:{port}")).await?;
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
@@ -423,10 +435,9 @@ Create a file at `examples/03-inlet.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/03-inlet.rs
-use ockam::{route, Context, Result, TcpTransport, TCP};
-use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::vault::Vault;
 use ockam::authenticated_storage::InMemoryStorage;
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -438,14 +449,17 @@ async fn main(ctx: Context) -> Result<()> {
     // TCP Transport Outlet.
     //
     // For this example, we know that the Outlet node is listening for Ockam Routing Messages
-    // over TCP at "127.0.0.1:4000" and its secure channel listener is
-    // at address: "secure_channel_listener".
+    // over TCP and its secure channel listener is at address: "secure_channel_listener".
+    //
+    // We assume the Outlet node is listening on port 4000, unless otherwise specified
+    // by a second command line argument.
 
     let vault = Vault::create();
     let e = Identity::create(&ctx, &vault).await?;
-    let r = route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"];
-    let ockam_storage = InMemoryStorage::new();
-    let channel = e.create_secure_channel(r, TrustEveryonePolicy, &ockam_storage).await?;
+    let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
+    let r = route![(TCP, &format!("127.0.0.1:{outlet_port}")), "secure_channel_listener"];
+    let storage = InMemoryStorage::new();
+    let channel = e.create_secure_channel(r, TrustEveryonePolicy, &storage).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.
@@ -461,7 +475,7 @@ async fn main(ctx: Context) -> Result<()> {
     // 1. Wrap any raw TCP data it receives from a TCP client as payload of a new
     //    Ockam Routing Message. This Ockam Routing Message will have its onward_route
     //    be set to the route to a TCP Transport Outlet. This route_to_outlet is provided as
-    //    the 2nd argument of the create_inlet() function.
+    //    the second argument of the create_inlet() function.
     //
     // 2. Unwrap the payload of any Ockam Routing Message it receives back from the Outlet
     //    and send it as raw TCP data to q connected TCP client.
@@ -541,6 +555,7 @@ Create a file at `examples/04-outlet.rs` and copy the below code snippet to it.
 ```rust
 // examples/04-outlet.rs
 use ockam::{
+    authenticated_storage::InMemoryStorage,
     identity::{Identity, TrustEveryonePolicy},
     remote::RemoteForwarder,
     vault::Vault,
@@ -553,8 +568,9 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     let vault = Vault::create();
-    let mut e = Identity::create(&ctx, &vault).await?;
-    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
+    let e = Identity::create(&ctx, &vault).await?;
+    let storage = InMemoryStorage::new();
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &storage)
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
@@ -599,8 +615,9 @@ Create a file at `examples/04-inlet.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/04-inlet.rs
-use ockam::{route, Context, Result, Route, TcpTransport, TCP};
-use ockam::{Identity, TrustEveryonePolicy, Vault};
+use ockam::authenticated_storage::InMemoryStorage;
+use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::{route, vault::Vault, Context, Result, Route, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -615,12 +632,17 @@ async fn main(ctx: Context) -> Result<()> {
     // through a Remote Forwarder at "1.node.ockam.network:4000" and its forwarder address
     // points to secure channel listener.
     let vault = Vault::create();
-    let mut e = Identity::create(&ctx, &vault).await?;
+    let e = Identity::create(&ctx, &vault).await?;
 
     // Expect second command line argument to be the Outlet node forwarder address
     let forwarding_address = std::env::args().nth(2).expect("no outlet forwarding address given");
-    let r = route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "secure_channel_listener"];
-    let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
+    let r = route![
+        (TCP, "1.node.ockam.network:4000"),
+        forwarding_address,
+        "secure_channel_listener"
+    ];
+    let storage = InMemoryStorage::new();
+    let channel = e.create_secure_channel(r, TrustEveryonePolicy, &storage).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.
@@ -635,7 +657,7 @@ async fn main(ctx: Context) -> Result<()> {
     // 1. Wrap any raw TCP data it receives from a TCP client as payload of a new
     //    Ockam Routing Message. This Ockam Routing Message will have its onward_route
     //    be set to the route to a TCP Transport Outlet. This route_to_outlet is provided as
-    //    the 2nd argument of the create_inlet() function.
+    //    the second argument of the create_inlet() function.
     //
     // 2. Unwrap the payload of any Ockam Routing Message it receives back from the Outlet
     //    and send it as raw TCP data to q connected TCP client.

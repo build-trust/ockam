@@ -21,11 +21,21 @@ export KAFKA_EXAMPLES="$OCKAM_HOME/examples/rust/ockam_kafka/examples"
 export E2E_DOCS="$OCKAM_HOME/documentation/use-cases/end-to-end-encryption-with-rust"
 export E2E_EXAMPLES="$OCKAM_HOME/examples/rust/get_started/examples" # TODO
 
+# documentation/use-cases/secure-remote-access-tunnels
 export INLET_DOCS="$OCKAM_HOME/documentation/use-cases/secure-remote-access-tunnels"
 export INLET_EXAMPLES="$OCKAM_HOME/examples/rust/tcp_inlet_and_outlet/examples"
 
+# documentation/use-cases/end-to-end-encrypt-all-application-layer-communication
+export E2EAALC_DOCS="$OCKAM_HOME/documentation/use-cases/end-to-end-encrypt-all-application-layer-communication"
+export E2EAALC_EXAMPLES="$OCKAM_HOME/examples/rust/tcp_inlet_and_outlet/examples"
+
+# documentation/use-cases/run-ockam-on-riscv
+# This documentation is not using compiled code, it could drift from the current Ockam API.
+
+# Tools home
 export TOOLS_DIR="$OCKAM_HOME/tools/docs"
 
+# Install example_blocks binary, if needed
 if [ -z $(which example_blocks) ]; then
     echo "Building example_blocks utility"
     pushd "$TOOLS_DIR/example_blocks" &>/dev/null
@@ -59,6 +69,7 @@ check_directory $GUIDE_DOCS $GUIDE_EXAMPLES
 check_directory $KAFKA_DOCS $KAFKA_EXAMPLES
 check_directory $E2E_DOCS $E2E_EXAMPLES
 check_directory $INLET_DOCS $INLET_EXAMPLES
+check_directory $E2EAALC_DOCS $E2EAALC_EXAMPLES
 
 check_readme $HELLO_DOC $HELLO_EXAMPLE
 
