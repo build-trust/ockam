@@ -42,11 +42,7 @@ pub async fn create_identity(
         }
     }
 
-    let vault_storage = FileStorage::create(
-        &ockam_dir.join("vault.json"),
-        &ockam_dir.join("vault.json.temp"),
-    )
-    .await?;
+    let vault_storage = FileStorage::create(ockam_dir.join("vault.json")).await?;
     let vault = OckamVault::new(Some(Arc::new(vault_storage)));
     let identity = Identity::create(ctx, &vault).await?;
     let exported = IdentityData {
@@ -150,10 +146,6 @@ pub fn read_trusted_idents_from_file(
 }
 
 pub async fn vault(ockam_dir: &Path) -> ockam_core::Result<OckamVault> {
-    let storage = FileStorage::create(
-        &ockam_dir.join("vault.json"),
-        &ockam_dir.join("vault.json.temp"),
-    )
-    .await?;
+    let storage = FileStorage::create(ockam_dir.join("vault.json")).await?;
     Ok(OckamVault::new(Some(Arc::new(storage))))
 }

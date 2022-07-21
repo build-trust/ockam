@@ -4,7 +4,6 @@ mod addon;
 pub use addon::AddonCommand;
 
 mod config;
-pub(self) use config::SyncConfig;
 pub use config::{ConfigError, NodeConfig, OckamConfig};
 
 use ockam::{route, NodeBuilder, Route, TcpTransport, TCP};

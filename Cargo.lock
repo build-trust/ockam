@@ -2120,6 +2120,7 @@ dependencies = [
 name = "ockam_api"
 version = "0.10.0"
 dependencies = [
+ "anyhow",
  "cddl-cat",
  "fake",
  "lmdb-rkv",

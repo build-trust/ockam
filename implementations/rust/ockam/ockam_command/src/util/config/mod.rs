@@ -1,26 +1,25 @@
 //! Handle local node configuration
 
-mod atomic;
 mod snippets;
 
-use atomic::AtomicUpdater;
 use snippets::{ComposableSnippet, Operation};
 
 use directories::ProjectDirs;
+use ockam_api::config::atomic::AtomicUpdater;
+use ockam_api::config::{Config, ConfigValues};
 use serde::{Deserialize, Serialize};
 use slug::slugify;
 use std::{
     collections::{BTreeMap, VecDeque},
-    fs::{create_dir_all, File},
-    io::{Read, Write},
+    fs::create_dir_all,
     path::{Path, PathBuf},
-    sync::{Arc, RwLock, RwLockReadGuard},
+    sync::RwLockReadGuard,
 };
 
 #[derive(Clone)]
 pub struct OckamConfig {
     pub(super) dirs: ProjectDirs,
-    inner: Arc<RwLock<SyncConfig>>,
+    config: Config<SyncConfig>,
 }
 
 /// The inner type that actually gets synced to disk
@@ -30,8 +29,8 @@ pub struct SyncConfig {
     pub nodes: BTreeMap<String, NodeConfig>,
 }
 
-impl Default for SyncConfig {
-    fn default() -> Self {
+impl ConfigValues for SyncConfig {
+    fn default_values(_node_dir: &Path) -> Self {
         Self {
             api_node: "default".into(),
             nodes: BTreeMap::new(),
@@ -77,56 +76,30 @@ Otherwise your OS or OS configuration may not be supported!",
         let dirs = Self::get_paths();
 
         let cfg_dir = dirs.config_dir().to_path_buf();
-        if let Err(e) = create_dir_all(&cfg_dir) {
-            eprintln!("failed to create configuration directory: {}", e);
-            std::process::exit(-1);
-        }
+        let config = Config::load(cfg_dir);
 
-        let config_path = cfg_dir.join("config.json");
-        let inner = match File::open(&config_path) {
-            Ok(ref mut f) => {
-                let mut buf = String::new();
-                f.read_to_string(&mut buf).expect("failed to read config");
-                serde_json::from_str(&buf).unwrap_or_else(|_| {
-                    panic!(
-                        "failed to parse config.  Try deleting {}",
-                        config_path.display()
-                    )
-                })
-            }
-            Err(_) => {
-                let new_inner = SyncConfig::default();
-                let json: String =
-                    serde_json::to_string_pretty(&new_inner).expect("failed to serialise config");
-                let mut f =
-                    File::create(config_path).expect("failed to create default config file");
-                f.write_all(json.as_bytes())
-                    .expect("failed to write config");
-                new_inner
-            }
-        };
-
-        Self {
-            dirs,
-            inner: Arc::new(RwLock::new(inner)),
-        }
+        Self { dirs, config }
     }
 
     /// Atomically update the configuration
-    pub fn atomic_update(&self) -> AtomicUpdater {
-        AtomicUpdater::new(self.dirs.clone(), self.inner.clone())
+    pub fn atomic_update(&self) -> AtomicUpdater<SyncConfig> {
+        AtomicUpdater::new(
+            self.dirs.config_dir().to_path_buf(),
+            "config".to_string(),
+            self.config.inner().clone(),
+        )
     }
 
     ///////////////////// READ ACCESSORS //////////////////////////////
 
     /// Get the current value of the API node
     pub fn get_api_node(&self) -> String {
-        self.inner.read().unwrap().api_node.clone()
+        self.config.inner().read().unwrap().api_node.clone()
     }
 
     /// Get the node state directory
     pub fn get_node_dir(&self, name: &str) -> Result<PathBuf, ConfigError> {
-        let inner = self.inner.read().unwrap();
+        let inner = self.config.inner().read().unwrap();
         let n = inner
             .nodes
             .get(name)
@@ -136,7 +109,7 @@ Otherwise your OS or OS configuration may not be supported!",
 
     /// Get the API port used by a node
     pub fn get_node_port(&self, name: &str) -> Result<u16, ConfigError> {
-        let inner = self.inner.read().unwrap();
+        let inner = self.config.inner().read().unwrap();
         Ok(inner
             .nodes
             .get(name)
@@ -147,7 +120,7 @@ Otherwise your OS or OS configuration may not be supported!",
     /// In the future this will actually refer to the watchdog pid or
     /// no pid at all but we'll see
     pub fn get_node_pid(&self, name: &str) -> Result<Option<i32>, ConfigError> {
-        let inner = self.inner.read().unwrap();
+        let inner = self.config.inner().read().unwrap();
         Ok(inner
             .nodes
             .get(name)
@@ -159,14 +132,14 @@ Otherwise your OS or OS configuration may not be supported!",
     /// port.  This doesn't catch all port collision errors, but will
     /// get us most of the way there in terms of starting a new node.
     pub fn port_is_used(&self, port: u16) -> bool {
-        let inner = self.inner.read().unwrap();
+        let inner = self.config.inner().read().unwrap();
 
         inner.nodes.iter().any(|(_, n)| n.port == port)
     }
 
     /// Get only a single node configuration
     pub fn get_node(&self, node: &str) -> Result<NodeConfig, ConfigError> {
-        let inner = self.inner.read().unwrap();
+        let inner = self.config.inner().read().unwrap();
         inner
             .nodes
             .get(node)
@@ -176,16 +149,16 @@ Otherwise your OS or OS configuration may not be supported!",
 
     /// Get the current version the selected node configuration
     pub fn select_node<'a>(&'a self, o: &'a str) -> Option<NodeConfig> {
-        let inner = self.inner.read().unwrap();
+        let inner = self.config.inner().read().unwrap();
         inner.nodes.get(o).map(Clone::clone)
     }
 
     /// Get the log path for a specific node
     ///
     /// The convention is to name the main log `node-name.log` and the
-    /// supplimentary log `nod-name.log.stderr`
+    /// supplementary log `nod-name.log.stderr`
     pub fn log_paths_for_node(&self, node_name: &String) -> Option<(PathBuf, PathBuf)> {
-        let inner = self.inner.read().unwrap();
+        let inner = self.config.inner().read().unwrap();
 
         let base = &inner.nodes.get(node_name)?.state_dir;
         // TODO: sluggify node names
@@ -197,14 +170,14 @@ Otherwise your OS or OS configuration may not be supported!",
 
     /// Get read access to the inner raw configuration
     pub fn get_inner(&self) -> RwLockReadGuard<'_, SyncConfig> {
-        self.inner.read().unwrap()
+        self.config.inner().read().unwrap()
     }
 
     ///////////////////// WRITE ACCESSORS //////////////////////////////
 
     /// Add a new node to the configuration for future lookup
     pub fn create_node(&self, name: &str, port: u16, pid: i32) -> Result<(), ConfigError> {
-        let mut inner = self.inner.write().unwrap();
+        let mut inner = self.config.inner().write().unwrap();
 
         if inner.nodes.contains_key(name) {
             return Err(ConfigError::NodeExists(name.to_string()));
@@ -242,7 +215,7 @@ Otherwise your OS or OS configuration may not be supported!",
 
     /// Delete an existing node
     pub fn delete_node(&self, name: &str) -> Result<(), ConfigError> {
-        let mut inner = self.inner.write().unwrap();
+        let mut inner = self.config.inner().write().unwrap();
         match inner.nodes.remove(name) {
             Some(_) => Ok(()),
             None => Err(ConfigError::NodeExists(name.to_string())),
@@ -251,7 +224,7 @@ Otherwise your OS or OS configuration may not be supported!",
 
     /// Update the pid of an existing node process
     pub fn update_pid(&self, name: &str, pid: impl Into<Option<i32>>) -> Result<(), ConfigError> {
-        let mut inner = self.inner.write().unwrap();
+        let mut inner = self.config.inner().write().unwrap();
 
         if !inner.nodes.contains_key(name) {
             return Err(ConfigError::NodeNotFound(name.to_string()));
@@ -263,14 +236,14 @@ Otherwise your OS or OS configuration may not be supported!",
 
     /// Update the api node name on record
     pub fn set_api_node(&self, node_name: &str) {
-        let mut inner = self.inner.write().unwrap();
+        let mut inner = self.config.inner().write().unwrap();
         inner.api_node = node_name.into();
     }
 
     ///////////////////// COMPOSITION CONSTRUCTORS //////////////////////////////
 
     pub fn add_transport(&self, node: &str, listen: bool, tcp: bool, addr: String) {
-        let mut inner = self.inner.write().unwrap();
+        let mut inner = self.config.inner().write().unwrap();
         inner
             .nodes
             .get_mut(node)

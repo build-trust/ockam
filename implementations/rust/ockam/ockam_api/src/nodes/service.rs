@@ -18,10 +18,11 @@ use ockam_vault::Vault;
 
 use super::registry::Registry;
 use crate::auth::Server;
+use crate::config::Config;
 use crate::error::ApiError;
 use crate::identity::IdentityService;
 use crate::lmdb::LmdbStorage;
-use crate::old::identity::{create_identity, load_identity};
+use crate::nodes::config::NodeManConfig;
 use crate::{nodes::types::*, Method, Request, Response, ResponseBuilder, Status};
 
 use super::{
@@ -53,6 +54,7 @@ pub(crate) fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Err
 pub struct NodeMan {
     node_name: String,
     node_dir: PathBuf,
+    config: Config<NodeManConfig>,
     api_transport_id: Alias,
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
@@ -81,34 +83,69 @@ impl NodeMan {
         let mut transports = BTreeMap::new();
         transports.insert(api_transport_id.clone(), api_transport);
 
-        let authenticated_storage =
-            LmdbStorage::new(&node_dir.join("authenticated_storage.lmdb")).await?;
+        let config = Config::<NodeManConfig>::load(node_dir.clone());
 
-        let mut s = Self {
+        // Check if we had existing AuthenticatedStorage, create with default location otherwise
+        let authenticated_storage_path = config
+            .inner()
+            .read()
+            .unwrap()
+            .authenticated_storage_path
+            .clone();
+        let authenticated_storage = {
+            let authenticated_storage_path = match authenticated_storage_path {
+                Some(p) => p,
+                None => {
+                    let default_location = node_dir.join("authenticated_storage.lmdb");
+
+                    config.inner().write().unwrap().authenticated_storage_path =
+                        Some(default_location.clone());
+                    config.atomic_update().run().unwrap();
+
+                    default_location
+                }
+            };
+
+            let storage = LmdbStorage::new(&authenticated_storage_path).await?;
+
+            storage
+        };
+
+        // Check if we had existing Vault
+        let vault_path = config.inner().read().unwrap().vault_path.clone();
+        let vault = match vault_path {
+            Some(vault_path) => {
+                let vault_storage = FileStorage::create(vault_path).await?;
+                let vault = Vault::new(Some(Arc::new(vault_storage)));
+
+                Some(vault)
+            }
+            None => None,
+        };
+
+        // Check if we had existing Identity
+        let identity_info = config.inner().read().unwrap().identity.clone();
+        let identity = match identity_info {
+            Some(identity) => match vault.as_ref() {
+                Some(vault) => Some(Identity::import(ctx, &identity, vault).await?),
+                None => None,
+            },
+            None => None,
+        };
+
+        let s = Self {
             node_name,
             node_dir,
+            config,
             api_transport_id,
             transports,
             tcp_transport,
             portals,
-            vault: None,
-            identity: None,
+            vault,
+            identity,
             authenticated_storage,
-            registry: Registry::default(),
+            registry: Default::default(),
         };
-
-        // Each node by default has Vault, with storage inside its directory
-        s.create_vault().await?;
-
-        let vault = s
-            .vault
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Vault doesn't exist"))?;
-
-        // Try to load identity, in case it was already created
-        if let Ok(identity) = load_identity(ctx, &s.node_dir, vault).await {
-            s.identity = Some(identity);
-        }
 
         Ok(s)
     }
@@ -270,21 +307,33 @@ impl NodeMan {
 
     //////// Vault API ////////
 
-    async fn create_vault(&mut self) -> Result<()> {
+    async fn create_vault(
+        &mut self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
         if self.vault.is_some() {
-            return Err(ApiError::generic("Vault already exists"));
+            return Ok(Response::bad_request(req.id()));
         }
 
-        let vault_storage = FileStorage::create(
-            &self.node_dir.join("vault.json"),
-            &self.node_dir.join("vault.json.temp"),
-        )
-        .await?;
+        let req_body: CreateVaultRequest = dec.decode()?;
+
+        let path = match req_body.path.as_ref() {
+            Some(path) => PathBuf::from(path.0.as_ref()),
+            None => self.node_dir.join("vault.json"),
+        };
+
+        let vault_storage = FileStorage::create(path.clone()).await?;
         let vault = Vault::new(Some(Arc::new(vault_storage)));
+
+        self.config.inner().write().unwrap().vault_path = Some(path);
+        self.config.atomic_update().run().unwrap();
 
         self.vault = Some(vault);
 
-        Ok(())
+        let response = Response::ok(req.id());
+
+        Ok(response)
     }
 
     //////// Identity API ////////
@@ -304,8 +353,13 @@ impl NodeMan {
             .as_ref()
             .ok_or_else(|| ApiError::generic("Vault doesn't exist"))?;
 
-        let identity = create_identity(ctx, &self.node_dir, vault, true).await?;
+        let identity = Identity::create(ctx, vault).await?;
         let identifier = identity.identifier()?.to_string();
+        let exported_identity = identity.export().await?;
+
+        self.config.inner().write().unwrap().identity = Some(exported_identity);
+        self.config.atomic_update().run().unwrap();
+
         self.identity = Some(identity);
 
         let response = Response::ok(req.id()).body(CreateIdentityResponse::new(identifier));
@@ -515,7 +569,7 @@ impl NodeMan {
             (Delete, ["node", "transport"]) => self.delete_transport(req, dec).await?.to_vec()?,
 
             // ==*== Vault ==*==
-            // (Post, ["node", "vault"]) => self.create_vault().await?,
+            (Post, ["node", "vault"]) => self.create_vault(req, dec).await?.to_vec()?,
 
             // ==*== Identity ==*==
             (Post, ["node", "identity"]) => self.create_identity(ctx, req).await?.to_vec()?,
@@ -644,6 +698,7 @@ impl Worker for NodeMan {
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::nodes::NodeMan;
+    use crate::old::identity::create_identity;
     use ockam::route;
 
     use super::*;

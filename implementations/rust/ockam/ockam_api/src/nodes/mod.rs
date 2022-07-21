@@ -1,4 +1,5 @@
 mod base;
+mod config;
 mod forwarder;
 mod identity;
 mod portal;
@@ -6,6 +7,7 @@ mod registry;
 mod secure_channel;
 pub(crate) mod service;
 mod transport;
+mod vault;
 
 /// Messaging types for the node manager service
 ///
@@ -18,6 +20,7 @@ pub mod types {
     pub use super::portal::*;
     pub use super::secure_channel::*;
     pub use super::transport::*;
+    pub use super::vault::*;
 }
 
 /// A const address to bind and send messages to
