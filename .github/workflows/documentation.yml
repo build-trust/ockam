@@ -53,6 +53,14 @@ jobs:
       - uses: ./.github/actions/cargo_target_dir_cache
 
       - name: Check that example source and guide code blocks match
-        run: OCKAM_HOME=$PWD tools/docs/check_documentation.sh
+        id: cache
+        run: |
+          OCKAM_HOME=$PWD bash -ex tools/docs/check_documentation.sh
+
+          # Only cache rust build if example blocks code was built
+          if [[ ls target ]]; then
+            echo "::set-output name=is_cached::true"
+          fi
 
       - uses: ./.github/actions/cargo_target_dir_pre_cache
+        if: steps.cache.outputs.is_cached
