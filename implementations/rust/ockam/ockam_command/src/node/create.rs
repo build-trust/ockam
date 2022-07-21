@@ -22,6 +22,10 @@ pub struct CreateCommand {
     #[clap(display_order = 900, long, short)]
     foreground: bool,
 
+    /// Skip creation of default Vault and Identity
+    #[clap(display_order = 901, long, short)]
+    skip_defaults: bool,
+
     /// Specify the API port
     #[clap(default_value_t = DEFAULT_TCP_PORT, long, short)]
     port: u16,
@@ -92,16 +96,23 @@ impl CreateCommand {
                 v => format!("-{}", "v".repeat(v as usize)),
             };
 
+            let mut args = vec![
+                verbose,
+                "node".to_string(),
+                "create".to_string(),
+                "--port".to_string(),
+                command.port.to_string(),
+                "--foreground".to_string(),
+            ];
+
+            if command.skip_defaults {
+                args.push("--skip-defaults".to_string());
+            }
+
+            args.push(command.node_name.clone());
+
             let child = Command::new(ockam)
-                .args([
-                    &verbose,
-                    "node",
-                    "create",
-                    "--port",
-                    &command.port.to_string(),
-                    "--foreground",
-                    &command.node_name,
-                ])
+                .args(args)
                 .stdout(main_log_file)
                 .stderr(stderr_log_file)
                 .spawn()
@@ -139,6 +150,7 @@ async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::
         &ctx,
         c.node_name,
         node_dir,
+        c.skip_defaults,
         (TransportType::Tcp, TransportMode::Listen, bind),
         tcp,
     )

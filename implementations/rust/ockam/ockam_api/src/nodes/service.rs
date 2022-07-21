@@ -50,6 +50,10 @@ pub(crate) fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Err
     invalid_multiaddr_error()
 }
 
+fn map_anyhow_err(err: anyhow::Error) -> ockam_core::Error {
+    ockam_core::Error::new(Origin::Application, Kind::Internal, err)
+}
+
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeMan {
     node_name: String,
@@ -75,6 +79,7 @@ impl NodeMan {
         ctx: &Context,
         node_name: String,
         node_dir: PathBuf,
+        skip_defaults: bool,
         api_transport: (TransportType, TransportMode, String),
         tcp_transport: TcpTransport,
     ) -> Result<Self> {
@@ -100,7 +105,6 @@ impl NodeMan {
 
                     config.inner().write().unwrap().authenticated_storage_path =
                         Some(default_location.clone());
-                    config.atomic_update().run().unwrap();
 
                     default_location
                 }
@@ -133,7 +137,9 @@ impl NodeMan {
             None => None,
         };
 
-        let s = Self {
+        config.atomic_update().run().map_err(map_anyhow_err)?;
+
+        let mut s = Self {
             node_name,
             node_dir,
             config,
@@ -147,7 +153,18 @@ impl NodeMan {
             registry: Default::default(),
         };
 
+        if !skip_defaults {
+            s.create_defaults(ctx).await?;
+        }
+
         Ok(s)
+    }
+
+    async fn create_defaults(&mut self, ctx: &Context) -> Result<()> {
+        self.create_vault_impl(None).await?;
+        self.create_identity_impl(ctx).await?;
+
+        Ok(())
     }
 
     pub(crate) fn identity(&self) -> Result<&Identity<Vault>> {
@@ -318,7 +335,7 @@ impl NodeMan {
         let vault = Vault::new(Some(Arc::new(vault_storage)));
 
         self.config.inner().write().unwrap().vault_path = Some(path);
-        self.config.atomic_update().run().unwrap();
+        self.config.atomic_update().run().map_err(map_anyhow_err)?;
 
         self.vault = Some(vault);
 
@@ -358,7 +375,7 @@ impl NodeMan {
         let exported_identity = identity.export().await?;
 
         self.config.inner().write().unwrap().identity = Some(exported_identity);
-        self.config.atomic_update().run().unwrap();
+        self.config.atomic_update().run().map_err(map_anyhow_err)?;
 
         self.identity = Some(identity);
 
@@ -735,6 +752,7 @@ pub(crate) mod tests {
                 ctx,
                 "node".to_string(),
                 node_dir.into_path(),
+                true,
                 (
                     TransportType::Tcp,
                     TransportMode::Listen,
@@ -766,6 +784,7 @@ pub(crate) mod tests {
                 ctx,
                 "node".to_string(),
                 node_dir.into_path(),
+                true,
                 (
                     TransportType::Tcp,
                     TransportMode::Listen,
