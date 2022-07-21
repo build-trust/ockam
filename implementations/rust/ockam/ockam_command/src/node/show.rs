@@ -1,4 +1,3 @@
-use crate::node::NodeOpts;
 use crate::util::{self, api, connect_to};
 use crate::CommandGlobalOpts;
 use anyhow::Context;
@@ -8,14 +7,15 @@ use ockam_api::nodes::{types::NodeStatus, NODEMAN_ADDR};
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
-    #[clap(flatten)]
-    node_opts: NodeOpts,
+    /// Name of the node.
+    #[clap(default_value = "default")]
+    node_name: String,
 }
 
 impl ShowCommand {
     pub fn run(opts: CommandGlobalOpts, command: ShowCommand) {
         let cfg = &opts.config;
-        let port = match cfg.get_inner().nodes.get(&command.node_opts.api_node) {
+        let port = match cfg.get_inner().nodes.get(&command.node_name) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
