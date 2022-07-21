@@ -18,7 +18,7 @@ pub struct CreateCommand {
     #[clap(default_value = "default")]
     node_name: String,
 
-    /// Spawn a node in the background.
+    /// Spawn a node in the foreground.
     #[clap(display_order = 900, long, short)]
     foreground: bool,
 
