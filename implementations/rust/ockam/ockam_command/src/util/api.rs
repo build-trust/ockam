@@ -185,7 +185,8 @@ pub(crate) mod space {
     use super::*;
 
     pub(crate) fn create(cmd: CreateCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
-        let b = CreateSpace::new(cmd.name.as_str());
+        let users: Vec<String> = vec![];
+        let b = CreateSpace::new(cmd.name.as_str(), &users);
         let mut buf = vec![];
         Request::builder(Method::Post, "v0/spaces")
             .body(CloudRequestWrapper::new(b, cloud_opts.route()))
@@ -226,7 +227,7 @@ pub(crate) mod project {
     use super::*;
 
     pub(crate) fn create(cmd: CreateCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
-        let b = CreateProject::new(cmd.project_name.as_str(), &cmd.services);
+        let b = CreateProject::new(cmd.project_name.as_str(), &cmd.services, &[]);
         let mut buf = vec![];
         Request::builder(Method::Post, format!("v0/spaces/{}/projects", cmd.space_id))
             .body(CloudRequestWrapper::new(b, cloud_opts.route()))

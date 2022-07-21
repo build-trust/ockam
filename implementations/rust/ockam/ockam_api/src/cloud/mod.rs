@@ -1,7 +1,9 @@
+use std::str::FromStr;
+
 use minicbor::{Decode, Encode};
+
 use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
-use std::str::FromStr;
 
 use crate::error::ApiError;
 use crate::CowStr;
@@ -49,5 +51,39 @@ pub type BareCloudRequestWrapper<'a> = CloudRequestWrapper<'a, ()>;
 impl<'a> BareCloudRequestWrapper<'a> {
     pub fn bare(route: &MultiAddr) -> Self {
         Self::new((), route)
+    }
+}
+
+mod node {
+    use minicbor::Encode;
+
+    use ockam_core::{self, Result, Route};
+    use ockam_node::Context;
+
+    use crate::nodes::NodeMan;
+    use crate::{request, RequestBuilder};
+
+    impl NodeMan {
+        pub(crate) async fn request_cloud<T>(
+            &self,
+            ctx: &mut Context,
+            label: &str,
+            schema: impl Into<Option<&str>>,
+            cloud_route: impl Into<Route>,
+            api_service: &str,
+            req: RequestBuilder<'_, T>,
+        ) -> Result<Vec<u8>>
+        where
+            T: Encode<()>,
+        {
+            let sc = self.secure_channel(cloud_route).await?;
+            let route = self.cloud_service_route(&sc.to_string(), api_service);
+            let bytes = {
+                let b = request(ctx, label, schema, route, req).await;
+                self.delete_secure_channel(ctx, sc).await?;
+                b?
+            };
+            Ok(bytes)
+        }
     }
 }

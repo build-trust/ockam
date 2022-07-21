@@ -71,17 +71,22 @@ space = {
    ?0: 7574645
     1: space_id
     2: space_name
+    3: gateway_route
+    4: identity_id
+    5: [+ user]
 }
 
 spaces = [* space]
 
 create_space = {
    ?0: 3888657,
-    1: space_name
+    1: space_name,
+    2: [+ user]
 }
 
-space_id   = text
-space_name = text
+space_id      = text
+space_name    = text
+gateway_route = text
 
 ;;; Projects ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -91,7 +96,11 @@ project = {
     2: project_name,
     3: space_name,
     4: [+ service_name],
-    5: access_route
+    5: access_route,
+    6: [+ user],
+    7: route,
+    8: identity_id,
+    9: space_id
 }
 
 projects = [* project]
@@ -99,13 +108,16 @@ projects = [* project]
 create_project = {
     ?0: 8669570,
     1: project_name,
-    2: [+ service_name]
+    2: [+ service_name],
+    3: [+ user]
 }
 
 project_id   = text
 project_name = text
 service_name = text
-access_route = bytes
+user = text
+access_route = text
+route = text
 
 ;;; Identity ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

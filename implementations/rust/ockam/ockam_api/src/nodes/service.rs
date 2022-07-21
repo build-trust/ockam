@@ -177,7 +177,6 @@ impl NodeMan {
 impl NodeMan {
     pub(crate) async fn secure_channel(&self, route: impl Into<Route>) -> Result<Address> {
         let route = route.into();
-        println!("ddd route {}", route);
         trace!(target: TARGET, %route, "Creating temporary secure channel");
         let channel = self
             .identity()?
@@ -802,6 +801,60 @@ pub(crate) mod tests {
                 .create_secure_channel_listener_impl("cloud".into())
                 .await?;
             ctx.start_worker(cloud_address, cloud_worker).await?;
+
+            // Initialize node_man worker and return its route
+            ctx.start_worker(node_manager, node_man).await?;
+            Ok(route![node_manager])
+        }
+
+        pub(crate) async fn test_create_projects<
+            S: Worker<Context = Context>,
+            P: Worker<Context = Context>,
+        >(
+            ctx: &Context,
+            cloud_address_worker_spaces: (&str, S),
+            cloud_address_worker_projects: (&str, P),
+        ) -> Result<Route> {
+            let node_dir = tempfile::tempdir().unwrap();
+            let node_manager = "manager";
+            let transport = TcpTransport::create(ctx).await?;
+            let node_address = transport.listen("127.0.0.1:0").await?;
+            let mut node_man = NodeMan::create(
+                ctx,
+                "node".to_string(),
+                node_dir.into_path(),
+                true,
+                (
+                    TransportType::Tcp,
+                    TransportMode::Listen,
+                    node_address.to_string(),
+                ),
+                transport,
+            )
+            .await?;
+
+            node_man.create_vault_impl(None).await?;
+            node_man.create_identity_impl(ctx).await?;
+
+            // Initialize secure channel listener on the mock cloud workers
+            node_man
+                .create_secure_channel_listener_impl(
+                    format!("cloud_{}", cloud_address_worker_spaces.0).into(),
+                )
+                .await?;
+            ctx.start_worker(cloud_address_worker_spaces.0, cloud_address_worker_spaces.1)
+                .await?;
+
+            node_man
+                .create_secure_channel_listener_impl(
+                    format!("cloud_{}", cloud_address_worker_projects.0).into(),
+                )
+                .await?;
+            ctx.start_worker(
+                cloud_address_worker_projects.0,
+                cloud_address_worker_projects.1,
+            )
+            .await?;
 
             // Initialize node_man worker and return its route
             ctx.start_worker(node_manager, node_man).await?;
