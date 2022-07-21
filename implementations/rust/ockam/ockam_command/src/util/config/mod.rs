@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use slug::slugify;
 use std::{
     collections::{BTreeMap, VecDeque},
+    env,
     fs::create_dir_all,
     path::{Path, PathBuf},
     sync::RwLockReadGuard,
@@ -54,11 +55,20 @@ pub enum ConfigError {
 
 impl OckamConfig {
     fn get_paths() -> ProjectDirs {
-        ProjectDirs::from("io", "ockam", "ockam-cli").expect(
-            "failed to determine configuration storage location.
+        match env::var("OCKAM_PROJECT_PATH") {
+            Ok(dir) => {
+                let dir = PathBuf::from(&dir);
+                ProjectDirs::from_path(dir).expect(
+                    "failed to determine configuration storage location.
+Verify that your OCKAM_PROJECT_PATH environment variable is valid.",
+                )
+            }
+            Err(_) => ProjectDirs::from("io", "ockam", "ockam-cli").expect(
+                "failed to determine configuration storage location.
 Verify that your XDG_CONFIG_HOME and XDG_DATA_HOME environment variables are correctly set.
 Otherwise your OS or OS configuration may not be supported!",
-        )
+            ),
+        }
     }
 
     fn local_data_dir(&self) -> &Path {
