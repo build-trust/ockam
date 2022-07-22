@@ -3,6 +3,8 @@ use crate::{Action, Key, Resource, Subject, Value};
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use serde::{Deserialize, Serialize};
 
+use alloc::vec;
+
 /// Pimitive conditional operators used to construct ABAC policies.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Conditional {

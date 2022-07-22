@@ -1,10 +1,13 @@
-use core::fmt;
 use ockam_core::compat::{
     collections::BTreeMap,
     string::{String, ToString},
 };
 use ockam_identity::IdentityIdentifier;
+
 use serde::{Deserialize, Serialize};
+
+use alloc::format;
+use core::fmt;
 
 /// TODO ockam_identity::IdentityIdentifier ?
 pub type Identity = String;
