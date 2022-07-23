@@ -9,6 +9,10 @@ pub struct DeleteCommand {
     #[clap(flatten)]
     node_opts: NodeOpts,
 
+    /// Terminate all nodes
+    #[clap(long)]
+    all: bool,
+
     /// Should the node be terminated with SIGKILL instead of SIGTERM
     #[clap(display_order = 900, long, short)]
     sigkill: bool,
@@ -16,7 +20,24 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(opts: CommandGlobalOpts, command: DeleteCommand) {
-        delete_node(&opts, &command.node_opts.api_node, command.sigkill);
+        if command.all {
+            let cfg = &opts.config;
+            let node_names: Vec<String> = {
+                let inner = cfg.get_inner();
+
+                if inner.nodes.is_empty() {
+                    eprintln!("No nodes registered on this system!");
+                    std::process::exit(0);
+                }
+
+                inner.nodes.iter().map(|(name, _)| name.clone()).collect()
+            };
+            for node in node_names {
+                delete_node(&opts, &node, command.sigkill);
+            }
+        } else {
+            delete_node(&opts, &command.node_opts.api_node, command.sigkill);
+        }
     }
 }
 
