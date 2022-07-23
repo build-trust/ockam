@@ -218,7 +218,7 @@ pub(crate) mod space {
     use super::*;
 
     pub(crate) fn create(cmd: CreateCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
-        let b = CreateSpace::new(cmd.name.as_str());
+        let b = CreateSpace::new(cmd.name.as_str(), &cmd.admins);
         let mut buf = vec![];
         Request::builder(Method::Post, "v0/spaces")
             .body(CloudRequestWrapper::new(b, cloud_opts.route()))
@@ -259,17 +259,17 @@ pub(crate) mod project {
     use super::*;
 
     pub(crate) fn create(cmd: CreateCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
-        let b = CreateProject::new(cmd.project_name.as_str(), &cmd.services);
+        let b = CreateProject::new(cmd.project_name.as_str(), &[], &cmd.services);
         let mut buf = vec![];
-        Request::builder(Method::Post, format!("v0/spaces/{}/projects", cmd.space_id))
+        Request::builder(Method::Post, format!("v0/projects/{}", cmd.space_id))
             .body(CloudRequestWrapper::new(b, cloud_opts.route()))
             .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn list(cmd: ListCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn list(_cmd: ListCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
-        Request::builder(Method::Get, format!("v0/spaces/{}/projects", cmd.space_id))
+        Request::builder(Method::Get, "v0/projects")
             .body(CloudRequestWrapper::bare(cloud_opts.route()))
             .encode(&mut buf)?;
         Ok(buf)
@@ -277,12 +277,9 @@ pub(crate) mod project {
 
     pub(crate) fn show(cmd: ShowCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
-        Request::builder(
-            Method::Get,
-            format!("v0/spaces/{}/projects/{}", cmd.space_id, cmd.project_id),
-        )
-        .body(CloudRequestWrapper::bare(cloud_opts.route()))
-        .encode(&mut buf)?;
+        Request::builder(Method::Get, format!("v0/projects/{}", cmd.project_id))
+            .body(CloudRequestWrapper::bare(cloud_opts.route()))
+            .encode(&mut buf)?;
         Ok(buf)
     }
 
@@ -290,7 +287,7 @@ pub(crate) mod project {
         let mut buf = vec![];
         Request::builder(
             Method::Delete,
-            format!("v0/spaces/{}/projects/{}", cmd.space_id, cmd.project_id),
+            format!("v0/projects/{}/{}", cmd.space_id, cmd.project_id),
         )
         .body(CloudRequestWrapper::bare(cloud_opts.route()))
         .encode(&mut buf)?;

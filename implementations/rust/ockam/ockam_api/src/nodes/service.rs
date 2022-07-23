@@ -335,21 +335,19 @@ impl NodeMan {
             (Delete, ["v0", "spaces", id]) => self.delete_space(ctx, req, dec, id).await?,
 
             // ==*== Projects ==*==
-            (Post, ["v0", "spaces", space_id, "projects"]) => {
+            (Post, ["v0", "projects", space_id]) => {
                 self.create_project(ctx, req, dec, space_id).await?
             }
-            (Get, ["v0", "spaces", space_id, "projects"]) => {
-                self.list_projects(ctx, req, dec, space_id).await?
+            (Get, ["v0", "projects"]) => self.list_projects(ctx, req, dec).await?,
+            (Get, ["v0", "projects", project_id]) => {
+                self.get_project(ctx, req, dec, project_id).await?
             }
-            (Get, ["v0", "spaces", space_id, "projects", project_id]) => {
-                self.get_project(ctx, req, dec, space_id, project_id)
-                    .await?
-            }
-            (Get, ["v0", "spaces", space_id, "projects", "name", project_name]) => {
+            // TODO: ockam_command doesn't use this really yet
+            (Get, ["v0", "projects", space_id, project_name]) => {
                 self.get_project_by_name(ctx, req, dec, space_id, project_name)
                     .await?
             }
-            (Delete, ["v0", "spaces", space_id, "projects", project_id]) => {
+            (Delete, ["v0", "projects", space_id, project_id]) => {
                 self.delete_project(ctx, req, dec, space_id, project_id)
                     .await?
             }
@@ -417,6 +415,7 @@ impl Worker for NodeMan {
                     .to_vec()?
             }
         };
+        warn!("** sending response");
         ctx.send(msg.return_route(), r).await
     }
 }
