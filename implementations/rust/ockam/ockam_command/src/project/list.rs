@@ -14,11 +14,7 @@ use crate::util::{api, connect_to, stop_node};
 use crate::{CommandGlobalOpts, MessageFormat};
 
 #[derive(Clone, Debug, Args)]
-pub struct ListCommand {
-    /// Id of the space.
-    #[clap(display_order = 1001)]
-    pub space_id: String,
-}
+pub struct ListCommand;
 
 impl ListCommand {
     pub fn run(

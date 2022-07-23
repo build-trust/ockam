@@ -1,4 +1,3 @@
-use minicbor::bytes::ByteSlice;
 use minicbor::{Decode, Encode};
 use serde::Serialize;
 
@@ -19,7 +18,9 @@ pub struct Project<'a> {
     #[b(3)] pub space_name: CowStr<'a>,
     #[b(4)] pub services: Vec<CowStr<'a>>,
     #[serde(skip_serializing)]
-    #[b(5)] pub access_route: &'a ByteSlice,
+    #[b(5)] pub access_route: CowStr<'a>,
+    #[b(6)] pub users: Vec<CowStr<'a>>,
+    #[b(7)] pub space_id: CowStr<'a>,
 }
 
 #[derive(Encode, Decode, Debug)]
@@ -31,15 +32,25 @@ pub struct CreateProject<'a> {
     #[n(0)] pub tag: TypeTag<8669570>,
     #[b(1)] pub name: CowStr<'a>,
     #[b(2)] pub services: Vec<CowStr<'a>>,
+    #[b(3)] pub users: Vec<CowStr<'a>>,
 }
 
 impl<'a> CreateProject<'a> {
-    pub fn new<S: Into<CowStr<'a>>, T: AsRef<str>>(name: S, services: &'a [T]) -> Self {
+    pub fn new<S: Into<CowStr<'a>>, T: AsRef<str>>(
+        name: S,
+        users: &'a [T],
+        services: &'a [T],
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             name: name.into(),
             services: services
+                .iter()
+                .map(|x| x.as_ref().to_string())
+                .map(CowStr::from)
+                .collect(),
+            users: users
                 .iter()
                 .map(|x| x.as_ref().to_string())
                 .map(CowStr::from)
@@ -82,7 +93,7 @@ mod node {
             let sc = self.secure_channel(cloud_route).await?;
             let route = self.cloud_service_route(&sc.to_string(), "projects");
 
-            let req_builder = Request::post(format!("v0/{space_id}")).body(req_body);
+            let req_builder = Request::post(format!("/v0/{space_id}")).body(req_body);
             let res = match request(ctx, label, "create_project", route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
@@ -101,18 +112,17 @@ mod node {
             ctx: &mut Context,
             req: &Request<'_>,
             dec: &mut Decoder<'_>,
-            space_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_route = req_wrapper.route()?;
 
             let label = "list_projects";
-            trace!(target: TARGET, %space_id, "listing projects");
+            trace!(target: TARGET, "listing projects");
 
             let sc = self.secure_channel(cloud_route).await?;
             let route = self.cloud_service_route(&sc.to_string(), "projects");
 
-            let req_builder = Request::get(format!("v0/{space_id}"));
+            let req_builder = Request::get("/v0");
             let res = match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
@@ -131,19 +141,18 @@ mod node {
             ctx: &mut Context,
             req: &Request<'_>,
             dec: &mut Decoder<'_>,
-            space_id: &str,
             project_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
             let cloud_route = req_wrapper.route()?;
 
             let label = "get_project";
-            trace!(target: TARGET, %space_id, %project_id, "getting project");
+            trace!(target: TARGET, %project_id, "getting project");
 
             let sc = self.secure_channel(cloud_route).await?;
             let route = self.cloud_service_route(&sc.to_string(), "projects");
 
-            let req_builder = Request::get(format!("v0/{space_id}/{project_id}"));
+            let req_builder = Request::get(format!("/v0/{project_id}"));
             let res = match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
@@ -174,9 +183,33 @@ mod node {
             let sc = self.secure_channel(cloud_route).await?;
             let route = self.cloud_service_route(&sc.to_string(), "projects");
 
-            let req_builder = Request::get(format!("v0/{space_id}/name/{project_name}"));
+            let req_builder = Request::get("/v0");
             let res = match request(ctx, label, None, route, req_builder).await {
-                Ok(r) => Ok(r),
+                Ok(r) => {
+                    let mut dec = Decoder::new(&r);
+                    let header = dec.decode::<Response>()?;
+                    match header.status() {
+                        Some(Status::Ok) => {
+                            let projects = dec.decode::<Vec<Project>>()?;
+                            match projects
+                                .iter()
+                                .find(|n| n.name == *project_name && n.space_id == *space_id)
+                            {
+                                Some(project) => Ok(Response::builder(req.id(), Status::Ok)
+                                    .body(project)
+                                    .to_vec()?),
+                                None => Ok(Response::builder(req.id(), Status::NotFound).to_vec()?),
+                            }
+                        }
+                        _ => {
+                            error!("Failed to retrieve project");
+                            Ok(
+                                Response::builder(req.id(), Status::InternalServerError)
+                                    .to_vec()?,
+                            )
+                        }
+                    }
+                }
                 Err(err) => {
                     error!(?err, "Failed to retrieve project");
                     Ok(Response::builder(req.id(), Status::InternalServerError)
@@ -205,7 +238,7 @@ mod node {
             let sc = self.secure_channel(cloud_route).await?;
             let route = self.cloud_service_route(&sc.to_string(), "projects");
 
-            let req_builder = Request::delete(format!("v0/{space_id}/{project_id}"));
+            let req_builder = Request::delete(format!("/v0/{space_id}/{project_id}"));
             let res = match request(ctx, label, None, route, req_builder).await {
                 Ok(r) => Ok(r),
                 Err(err) => {
@@ -254,7 +287,9 @@ mod tests {
                     name: String::arbitrary(g).into(),
                     space_name: String::arbitrary(g).into(),
                     services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
-                    access_route: b"route"[..].into(),
+                    access_route: String::arbitrary(g).into(),
+                    users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
+                    space_id: String::arbitrary(g).into(),
                 })
             }
         }
@@ -269,6 +304,7 @@ mod tests {
                     tag: Default::default(),
                     name: String::arbitrary(g).into(),
                     services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
+                    users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
                 })
             }
         }
@@ -325,9 +361,9 @@ mod tests {
             let s_id = "space-id";
 
             // Create project
-            let req = CreateProject::new("p1", &["service"]);
+            let req = CreateProject::new("p1", &[], &["service"]);
             let mut buf = vec![];
-            Request::builder(Method::Post, format!("v0/spaces/{s_id}/projects"))
+            Request::builder(Method::Post, format!("v0/projects/{s_id}"))
                 .body(CloudRequestWrapper::new(req, &cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -342,7 +378,7 @@ mod tests {
 
             // Retrieve it
             let mut buf = vec![];
-            Request::builder(Method::Get, format!("v0/spaces/{s_id}/projects/{p_id}"))
+            Request::builder(Method::Get, format!("v0/projects/{p_id}"))
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -354,12 +390,9 @@ mod tests {
 
             // Retrieve it by name
             let mut buf = vec![];
-            Request::builder(
-                Method::Get,
-                format!("v0/spaces/{s_id}/projects/name/{p_name}"),
-            )
-            .body(CloudRequestWrapper::bare(&cloud_route))
-            .encode(&mut buf)?;
+            Request::builder(Method::Get, format!("v0/projects/{s_id}/{p_name}"))
+                .body(CloudRequestWrapper::bare(&cloud_route))
+                .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
@@ -369,7 +402,7 @@ mod tests {
 
             // List it
             let mut buf = vec![];
-            Request::builder(Method::Get, format!("v0/spaces/{s_id}/projects"))
+            Request::builder(Method::Get, format!("v0/projects"))
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -382,7 +415,7 @@ mod tests {
 
             // Remove it
             let mut buf = vec![];
-            Request::builder(Method::Delete, format!("v0/spaces/{s_id}/projects/{p_id}"))
+            Request::builder(Method::Delete, format!("v0/projects/{s_id}/{p_id}"))
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -392,7 +425,7 @@ mod tests {
 
             // Check list returns empty vec
             let mut buf = vec![];
-            Request::builder(Method::Get, format!("v0/spaces/{s_id}/projects"))
+            Request::builder(Method::Get, format!("v0/projects"))
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -404,7 +437,7 @@ mod tests {
 
             // Check that retrieving it returns a not found error
             let mut buf = vec![];
-            Request::builder(Method::Get, format!("v0/spaces/{s_id}/projects/{p_id}"))
+            Request::builder(Method::Get, format!("v0/projects/{p_id}"))
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -442,11 +475,11 @@ mod tests {
             let r = match req.method() {
                 Some(Method::Get) => match req.path_segments::<4>().as_slice() {
                     // Get all projects:
-                    [_, _] => Response::ok(req.id())
+                    [_] => Response::ok(req.id())
                         .body(encode::ArrayIter::new(self.0.values()))
                         .to_vec()?,
                     // Get a single project:
-                    [_, _, id] => {
+                    [_, id] => {
                         if let Some(n) = self.0.get(*id) {
                             Response::ok(req.id()).body(n).to_vec()?
                         } else {
@@ -454,7 +487,7 @@ mod tests {
                         }
                     }
                     // Get a single project by name:
-                    [_, _, _, name] => {
+                    [_, _, name] => {
                         if let Some((_, n)) = self.0.iter().find(|(_, n)| n.name == *name) {
                             Response::ok(req.id()).body(n).to_vec()?
                         } else {
@@ -479,7 +512,9 @@ mod tests {
                                 .iter()
                                 .map(|x| x.to_string().into())
                                 .collect(),
-                            access_route: b"route"[..].into(),
+                            access_route: String::arbitrary(&mut rng).into(),
+                            users: project.users.iter().map(|x| x.to_string().into()).collect(),
+                            space_id: "space-id".into(),
                         };
                         self.0.insert(obj.id.to_string(), obj.clone());
                         Response::ok(req.id()).body(&obj).to_vec()?

@@ -18,6 +18,10 @@ pub struct CreateCommand {
     /// Name of the space.
     #[clap(display_order = 1001)]
     pub name: String,
+
+    /// Administrators for this space
+    #[clap(display_order = 1002, last = true)]
+    pub admins: Vec<String>,
 }
 
 impl CreateCommand {

@@ -71,13 +71,19 @@ space = {
    ?0: 7574645
     1: space_id
     2: space_name
+    3: [+ user]
 }
+user = text
+
 
 spaces = [* space]
+
+
 
 create_space = {
    ?0: 3888657,
     1: space_name
+    2: [+ user]
 }
 
 space_id   = text
@@ -91,7 +97,9 @@ project = {
     2: project_name,
     3: space_name,
     4: [+ service_name],
-    5: access_route
+    5: access_route,
+    6: [+ user],
+    7: space_id,
 }
 
 projects = [* project]
@@ -100,12 +108,13 @@ create_project = {
     ?0: 8669570,
     1: project_name,
     2: [+ service_name]
+    3: [+ user]
 }
 
 project_id   = text
 project_name = text
 service_name = text
-access_route = bytes
+access_route = text
 
 ;;; Identity ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
