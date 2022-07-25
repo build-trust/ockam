@@ -6,6 +6,7 @@ mod portal;
 mod registry;
 mod secure_channel;
 pub(crate) mod service;
+mod services;
 mod transport;
 mod vault;
 
@@ -19,6 +20,7 @@ pub mod types {
     pub use super::identity::*;
     pub use super::portal::*;
     pub use super::secure_channel::*;
+    pub use super::services::*;
     pub use super::transport::*;
     pub use super::vault::*;
 }

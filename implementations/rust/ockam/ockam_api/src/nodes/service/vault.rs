@@ -11,6 +11,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 impl NodeMan {
+    pub(crate) fn vault(&self) -> Result<&Vault> {
+        self.vault
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Vault doesn't exist"))
+    }
+
     pub(super) async fn create_vault_impl(&mut self, path: Option<PathBuf>) -> Result<()> {
         if self.vault.is_some() {
             return Err(ApiError::generic("Vault already exists"))?;

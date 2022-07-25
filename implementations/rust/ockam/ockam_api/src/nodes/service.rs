@@ -10,16 +10,12 @@ use ockam::{Address, Context, Result, Route, Routed, TcpTransport, Worker};
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::route;
-use ockam_identity::authenticated_storage::mem::InMemoryStorage;
 use ockam_identity::{Identity, TrustEveryonePolicy};
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
 use super::registry::Registry;
-use crate::auth::Server;
 use crate::config::Config;
-use crate::error::ApiError;
-use crate::identity::IdentityService;
 use crate::lmdb::LmdbStorage;
 use crate::nodes::config::NodeManConfig;
 use crate::{nodes::types::*, Method, Request, Response, Status};
@@ -27,6 +23,7 @@ use crate::{nodes::types::*, Method, Request, Response, Status};
 mod channel;
 mod identity;
 mod portals;
+mod services;
 mod transport;
 mod vault;
 
@@ -65,6 +62,8 @@ pub struct NodeMan {
     // FIXME: wow this is a terrible way to store data
     // TODO: Move to Registry?
     portals: BTreeMap<(Alias, PortalType), (String, Option<Route>)>,
+
+    skip_defaults: bool,
 
     vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
@@ -147,6 +146,7 @@ impl NodeMan {
             transports,
             tcp_transport,
             portals,
+            skip_defaults,
             vault,
             identity,
             authenticated_storage,
@@ -161,16 +161,23 @@ impl NodeMan {
     }
 
     async fn create_defaults(&mut self, ctx: &Context) -> Result<()> {
+        // Create default vault and identity
         self.create_vault_impl(None).await?;
         self.create_identity_impl(ctx).await?;
 
         Ok(())
     }
 
-    pub(crate) fn identity(&self) -> Result<&Identity<Vault>> {
-        self.identity
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))
+    async fn initialize_defaults(&mut self, ctx: &Context) -> Result<()> {
+        // Start services
+        self.start_vault_service_impl(ctx, "vault_service".into())
+            .await?;
+        self.start_identity_service_impl(ctx, "identity_service".into())
+            .await?;
+        self.start_authenticated_service_impl(ctx, "authenticated".into())
+            .await?;
+
+        Ok(())
     }
 }
 
@@ -298,6 +305,18 @@ impl NodeMan {
                 .await?
                 .to_vec()?,
 
+            // ==*== Services ==*==
+            (Post, ["node", "services", "vault"]) => {
+                self.start_vault_service(ctx, req, dec).await?.to_vec()?
+            }
+            (Post, ["node", "services", "identity"]) => {
+                self.start_identity_service(ctx, req, dec).await?.to_vec()?
+            }
+            (Post, ["node", "services", "authenticated"]) => self
+                .start_authenticated_service(ctx, req, dec)
+                .await?
+                .to_vec()?,
+
             // ==*== Forwarder commands ==*==
             (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req, dec).await?,
 
@@ -370,17 +389,9 @@ impl Worker for NodeMan {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        // By default we start identity and authenticated services
-
-        // TODO: Use existent storage `self.authenticated_storage`
-        let s = InMemoryStorage::new();
-        let server = Server::new(s);
-        ctx.start_worker("authenticated", server).await?;
-
-        // TODO: put that behind some flag or configuration
-        // TODO: Use existent vault `self.vault`
-        let vault = Vault::create();
-        IdentityService::create(ctx, "identity_service", vault).await?;
+        if !self.skip_defaults {
+            self.initialize_defaults(ctx).await?;
+        }
 
         Ok(())
     }
