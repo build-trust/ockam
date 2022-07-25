@@ -1,7 +1,7 @@
 //! Registration with Ockam Hub, and forwarding to local workers.
 #![deny(missing_docs)]
 
-use crate::{route, Context, Message, OckamError};
+use crate::{Context, Message, OckamError};
 use core::time::Duration;
 use ockam_core::compat::rand::random;
 use ockam_core::compat::{
@@ -93,10 +93,10 @@ impl RemoteForwarder {
         }
     }
 
-    /// Create and start static RemoteForwarder at predefined address with given Ockam Hub address
+    /// Create and start static RemoteForwarder at predefined address with given Ockam Hub route
     pub async fn create_static(
         ctx: &Context,
-        hub_addr: impl Into<Address>,
+        hub_route: impl Into<Route>,
         alias: impl Into<String>,
     ) -> Result<RemoteForwarderInfo> {
         let address: Address = random();
@@ -104,11 +104,17 @@ impl RemoteForwarder {
 
         let addresses: Addresses = random();
 
+        let registration_route = hub_route
+            .into()
+            .modify()
+            .append("static_forwarding_service")
+            .into();
+
         let heartbeat =
             DelayedEvent::create(ctx, addresses.heartbeat_address.clone(), vec![]).await?;
         let forwarder = Self::new(
             addresses.clone(),
-            route![hub_addr.into(), "static_forwarding_service"],
+            registration_route,
             alias.into(),
             child_ctx.address(),
             Some(heartbeat),
@@ -130,19 +136,22 @@ impl RemoteForwarder {
         Ok(resp)
     }
 
-    /// Create and start new ephemeral RemoteForwarder at random address with given Ockam Hub address
-    pub async fn create(
-        ctx: &Context,
-        hub_addr: impl Into<Address>,
-    ) -> Result<RemoteForwarderInfo> {
+    /// Create and start new ephemeral RemoteForwarder at random address with given Ockam Hub route
+    pub async fn create(ctx: &Context, hub_route: impl Into<Route>) -> Result<RemoteForwarderInfo> {
         let address: Address = random();
         let mut child_ctx = ctx.new_detached(address).await?;
 
         let addresses: Addresses = random();
 
+        let registration_route = hub_route
+            .into()
+            .modify()
+            .append("forwarding_service")
+            .into();
+
         let forwarder = Self::new(
             addresses.clone(),
-            route![hub_addr.into(), "forwarding_service"],
+            registration_route,
             "register".to_string(),
             child_ctx.address(),
             None,
@@ -265,6 +274,7 @@ impl Worker for RemoteForwarder {
 mod test {
     use super::*;
     use crate::workers::Echoer;
+    use ockam_core::route;
     use ockam_transport_tcp::{TcpTransport, TCP};
     use std::env;
 
