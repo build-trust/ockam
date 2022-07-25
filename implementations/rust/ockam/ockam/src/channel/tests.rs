@@ -4,7 +4,7 @@ use crate::{
     pipe::{ReceiverConfirm, ReceiverOrdering, SenderConfirm},
     Context,
 };
-use ockam_core::Result;
+use ockam_core::{route, Result};
 
 #[crate::test]
 async fn simple_channel(ctx: &mut Context) -> Result<()> {
@@ -17,7 +17,7 @@ async fn simple_channel(ctx: &mut Context) -> Result<()> {
 
     // Create a channel via the listener.  We re-use the
     // ChannelBuilder here but could also use a new one
-    let ch = builder.connect(vec!["my-channel-listener"]).await?;
+    let ch = builder.connect(route!["my-channel-listener"]).await?;
 
     // Send a message through the channel
     let msg = "Hello through the channel!".to_string();
@@ -46,7 +46,7 @@ async fn reliable_channel(ctx: &mut Context) -> Result<()> {
 
     // Create a channel via the listener.  We re-use the
     // ChannelBuilder here but could also use a new one
-    let ch = builder.connect(vec!["my-channel-listener"]).await?;
+    let ch = builder.connect("my-channel-listener").await?;
 
     // Send a message through the channel
     let msg = "Hello through the channel!".to_string();

@@ -3,22 +3,22 @@ use crate::{
     protocols::pipe::{internal::InternalCmd, PipeMessage},
     Context,
 };
-use ockam_core::{async_trait, Address, Result, Route};
+use ockam_core::{async_trait, route, Address, Result, Route};
 
 use super::behavior::ReceiverOrdering;
 
 #[crate::test]
 async fn static_simple_pipe(ctx: &mut Context) -> Result<()> {
     receiver(ctx, "pipe-receiver").await?;
-    let tx = connect_static(ctx, vec!["pipe-receiver"]).await?;
+    let tx = connect_static(ctx, "pipe-receiver").await?;
 
     let sent_msg = String::from("Hello Ockam!");
     info!("Sending message '{}' through pipe sender {}", sent_msg, tx);
-    ctx.send(vec![tx.clone(), "app".into()], sent_msg.clone())
+    ctx.send(route![tx.clone(), "app"], sent_msg.clone())
         .await?;
 
     let msg = ctx.receive().await?;
-    info!("App reiceved msg: '{}'", msg);
+    info!("App received msg: '{}'", msg);
     assert_eq!(msg, sent_msg);
 
     ctx.stop().await
@@ -29,18 +29,18 @@ async fn static_confirm_pipe(ctx: &mut Context) -> Result<()> {
     receiver_with_behavior(ctx, "pipe-receiver", PipeBehavior::with(ReceiverConfirm)).await?;
     let tx = connect_static_with_behavior(
         ctx,
-        vec!["pipe-receiver"],
+        "pipe-receiver",
         PipeBehavior::with(SenderConfirm::new()),
     )
     .await?;
 
     let sent_msg = String::from("Hello Ockam!");
     info!("Sending message '{}' through pipe sender {}", sent_msg, tx);
-    ctx.send(vec![tx.clone(), "app".into()], sent_msg.clone())
+    ctx.send(route![tx.clone(), "app"], sent_msg.clone())
         .await?;
 
     let msg = ctx.receive().await?;
-    info!("App reiceved msg: '{}'", msg);
+    info!("App received msg: '{}'", msg);
     assert_eq!(msg, sent_msg);
 
     ctx.stop().await
@@ -111,18 +111,18 @@ async fn fails_static_confirm_pipe(ctx: &mut Context) -> Result<()> {
     receiver_with_behavior(ctx, "pipe-receiver", DropDelivery).await?;
     let tx = connect_static_with_behavior(
         ctx,
-        vec!["pipe-receiver"],
+        "pipe-receiver",
         PipeBehavior::with(SenderConfirm::new()).attach(ConfirmTimeout),
     )
     .await?;
 
     let sent_msg = String::from("Hello Ockam!");
     info!("Sending message '{}' through pipe sender {}", sent_msg, tx);
-    ctx.send(vec![tx.clone(), "app".into()], sent_msg.clone())
+    ctx.send(route![tx.clone(), "app"], sent_msg.clone())
         .await?;
 
     let invalid = ctx.receive::<String>().await?;
-    warn!("App reiceved msg: '{}'", invalid);
+    warn!("App received msg: '{}'", invalid);
     assert_eq!(invalid, "Shut it down...".to_string());
 
     ctx.stop().await
@@ -136,20 +136,20 @@ async fn static_ordering_pipe(ctx: &mut Context) -> Result<()> {
 
     let sent_msg1 = String::from("Message number one");
     info!("Sending message '{}' through pipe sender {}", sent_msg1, tx);
-    ctx.send(vec![tx.clone(), "app".into()], sent_msg1.clone())
+    ctx.send(route![tx.clone(), "app"], sent_msg1.clone())
         .await?;
 
     let sent_msg2 = String::from("Message number two");
     info!("Sending message '{}' through pipe sender {}", sent_msg2, tx);
-    ctx.send(vec![tx.clone(), "app".into()], sent_msg2.clone())
+    ctx.send(route![tx.clone(), "app"], sent_msg2.clone())
         .await?;
 
     let msg1 = ctx.receive().await?;
-    info!("App reiceved msg: '{}'", msg1);
+    info!("App received msg: '{}'", msg1);
     assert_eq!(msg1, sent_msg1);
 
     let msg2 = ctx.receive().await?;
-    info!("App reiceved msg: '{}'", msg2);
+    info!("App received msg: '{}'", msg2);
     assert_eq!(msg2, sent_msg2);
 
     ctx.stop().await
@@ -174,20 +174,20 @@ async fn static_confirm_ordering_pipe(ctx: &mut Context) -> Result<()> {
 
     let sent_msg1 = String::from("Message number one");
     info!("Sending message '{}' through pipe sender {}", sent_msg1, tx);
-    ctx.send(vec![tx.clone(), "app".into()], sent_msg1.clone())
+    ctx.send(route![tx.clone(), "app"], sent_msg1.clone())
         .await?;
 
     let sent_msg2 = String::from("Message number two");
     info!("Sending message '{}' through pipe sender {}", sent_msg2, tx);
-    ctx.send(vec![tx.clone(), "app".into()], sent_msg2.clone())
+    ctx.send(route![tx.clone(), "app"], sent_msg2.clone())
         .await?;
 
     let msg1 = ctx.receive().await?;
-    info!("App reiceved msg: '{}'", msg1);
+    info!("App received msg: '{}'", msg1);
     assert_eq!(msg1, sent_msg1);
 
     let msg2 = ctx.receive().await?;
-    info!("App reiceved msg: '{}'", msg2);
+    info!("App received msg: '{}'", msg2);
     assert_eq!(msg2, sent_msg2);
 
     ctx.stop().await
@@ -213,20 +213,20 @@ async fn static_confirm_ordering_pipe_reversed(ctx: &mut Context) -> Result<()> 
 
     let sent_msg1 = String::from("Message number one");
     info!("Sending message '{}' through pipe sender {}", sent_msg1, tx);
-    ctx.send(vec![tx.clone(), "app".into()], sent_msg1.clone())
+    ctx.send(route![tx.clone(), "app"], sent_msg1.clone())
         .await?;
 
     let sent_msg2 = String::from("Message number two");
     info!("Sending message '{}' through pipe sender {}", sent_msg2, tx);
-    ctx.send(vec![tx.clone(), "app".into()], sent_msg2.clone())
+    ctx.send(route![tx.clone(), "app"], sent_msg2.clone())
         .await?;
 
     let msg1 = ctx.receive().await?;
-    info!("App reiceved msg: '{}'", msg1);
+    info!("App received msg: '{}'", msg1);
     assert_eq!(msg1, sent_msg1);
 
     let msg2 = ctx.receive().await?;
-    info!("App reiceved msg: '{}'", msg2);
+    info!("App received msg: '{}'", msg2);
     assert_eq!(msg2, sent_msg2);
 
     ctx.stop().await
@@ -240,7 +240,7 @@ async fn simple_pipe_handshake(ctx: &mut Context) -> Result<()> {
 
     let msg_sent = String::from("Message for my best friend");
     info!("Sending message '{}' through pipe sender {}", msg_sent, tx);
-    ctx.send(vec![tx, "app".into()], msg_sent.clone()).await?;
+    ctx.send(route![tx, "app"], msg_sent.clone()).await?;
 
     let msg = ctx.receive().await?;
     info!("App received msg: '{}'", msg);
@@ -266,12 +266,11 @@ async fn layered_pipe(ctx: &mut Context) -> Result<()> {
 
     // Then create the confirm pipe pair
     receiver_with_behavior(ctx, "confirm-receiver", ReceiverOrdering::new()).await?;
-    let confirm_tx = connect_static(ctx, vec![ord_tx.clone(), "confirm-receiver".into()]).await?;
+    let confirm_tx = connect_static(ctx, route![ord_tx.clone(), "confirm-receiver"]).await?;
 
     // Then we can send a message through this concoction
     let msg = "Hello through nested pipes!".to_string();
-    ctx.send(vec![confirm_tx, "app".into()], msg.clone())
-        .await?;
+    ctx.send(route![confirm_tx, "app"], msg.clone()).await?;
 
     // Wait for the message to arrive
     let msg_recv = ctx.receive().await?;

@@ -1,5 +1,5 @@
 use crate::{pipe2::PipeBuilder, Context};
-use ockam_core::{compat::string::String, Address, Result};
+use ockam_core::{compat::string::String, route, Address, Result};
 
 #[crate::test]
 async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
@@ -14,15 +14,11 @@ async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
     info!("Created receiver pipe: {}", rx.addr());
 
     // Connect to a static receiver
-    let sender = PipeBuilder::fixed()
-        .connect(vec![rx_addr])
-        .build(ctx)
-        .await?;
+    let sender = PipeBuilder::fixed().connect(rx_addr).build(ctx).await?;
     info!("Created sender pipe: {}", sender.addr());
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
@@ -43,8 +39,7 @@ async fn handshake_pipe(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
@@ -66,7 +61,7 @@ async fn fixed_delivery_pipe(ctx: &mut Context) -> Result<()> {
 
     // Connect to a static receiver
     let sender = PipeBuilder::fixed()
-        .connect(vec![rx_addr])
+        .connect(rx_addr)
         .delivery_ack()
         .build(ctx)
         .await?;
@@ -74,8 +69,7 @@ async fn fixed_delivery_pipe(ctx: &mut Context) -> Result<()> {
     info!("Created sender pipe: {}", sender.addr());
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
@@ -98,8 +92,7 @@ async fn dynamic_delivery_pipe(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
@@ -121,7 +114,7 @@ async fn fixed_ordering_pipe(ctx: &mut Context) -> Result<()> {
 
     // Connect to a static receiver
     let sender = PipeBuilder::fixed()
-        .connect(vec![rx_addr])
+        .connect(rx_addr)
         .enforce_ordering()
         .build(ctx)
         .await?;
@@ -129,8 +122,7 @@ async fn fixed_ordering_pipe(ctx: &mut Context) -> Result<()> {
     info!("Created sender pipe: {}", sender.addr());
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
@@ -152,7 +144,7 @@ async fn fixed_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
 
     // Connect to a static receiver
     let sender = PipeBuilder::fixed()
-        .connect(vec![rx_addr])
+        .connect(rx_addr)
         .delivery_ack()
         .enforce_ordering()
         .build(ctx)
@@ -161,8 +153,7 @@ async fn fixed_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
     info!("Created sender pipe: {}", sender.addr());
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
@@ -187,8 +178,7 @@ async fn dynamic_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let msg = String::from("Hello through the pipe");
-    ctx.send(vec![sender.addr(), "app".into()], msg.clone())
-        .await?;
+    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
 
     let msg2 = ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);

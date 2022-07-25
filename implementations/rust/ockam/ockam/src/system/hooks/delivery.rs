@@ -70,7 +70,7 @@ impl SystemHandler<Context, OckamMessage> for SenderConfirm {
                 // Register a delayed event to check whether we
                 // received an ACK for this message.  TODO: replace
                 // this with ockam_core::Heartbeat?
-                DelayedEvent::new(ctx, vec![self_addr.clone()].into(), {
+                DelayedEvent::new(ctx, self_addr.clone().into(), {
                     OckamMessage::new(Any)?.generic_data(
                         "ockam.pipe.type",
                         "ockam.pipe.resend_notify".as_bytes().to_vec(),
