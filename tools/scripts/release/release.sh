@@ -15,6 +15,22 @@ GITHUB_USERNAME=$(gh api user | jq -r '.login')
 owner="build-trust"
 release_name="release_$(date +'%d-%m-%Y')_$(date +'%s')"
 
+# Ensure all executables are installed
+executables_installed=true
+if ! command -v jq &> /dev/null; then
+  echo "JQ executable not installed. Please install at https://stedolan.github.io/jq/"
+  executables_installed=false
+fi
+if ! command -v gh &> /dev/null; then
+  echo "Github CLI not installed. Please install at https://cli.github.com"
+  executables_installed=false
+fi
+
+if [[ $executables_installed == false ]]; then
+  echo "Required executables not installed. Exiting now."
+  exit 1
+fi
+
 if [[ -z $OCKAM_PUBLISH_RECENT_FAILURE ]]; then
   OCKAM_PUBLISH_RECENT_FAILURE=false
 fi
