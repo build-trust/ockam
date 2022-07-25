@@ -11,8 +11,7 @@ use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::route;
 use ockam_identity::authenticated_storage::mem::InMemoryStorage;
-use ockam_identity::{Identity, IdentityIdentifier, TrustEveryonePolicy};
-use ockam_multiaddr::MultiAddr;
+use ockam_identity::{Identity, TrustEveryonePolicy};
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
@@ -23,12 +22,13 @@ use crate::error::ApiError;
 use crate::identity::IdentityService;
 use crate::lmdb::LmdbStorage;
 use crate::nodes::config::NodeManConfig;
-use crate::{nodes::types::*, Method, Request, Response, ResponseBuilder, Status};
+use crate::{nodes::types::*, Method, Request, Response, Status};
 
-use super::{
-    portal::{PortalList, PortalStatus},
-    types::{CreateTransport, DeleteTransport},
-};
+mod channel;
+mod identity;
+mod portals;
+mod transport;
+mod vault;
 
 const TARGET: &str = "ockam_api::nodeman::service";
 
@@ -203,91 +203,6 @@ impl NodeMan {
         route![address, api_service]
     }
 
-    //////// Transports API ////////
-
-    // FIXME: return a ResponseBuilder here too!
-    fn get_transports(&self) -> Vec<TransportStatus<'_>> {
-        self.transports
-            .iter()
-            .map(|(tid, (tt, tm, addr))| TransportStatus::new(*tt, *tm, addr, tid))
-            .collect()
-    }
-
-    async fn add_transport<'a>(
-        &mut self,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<TransportStatus<'a>>> {
-        let CreateTransport { tt, tm, addr, .. } = dec.decode()?;
-
-        use {TransportMode::*, TransportType::*};
-
-        info!(
-            "Handling request to create a new transport: {}, {}, {}",
-            tt, tm, addr
-        );
-        let addr = addr.to_string();
-
-        let res = match (tt, tm) {
-            (Tcp, Listen) => self
-                .tcp_transport
-                .listen(&addr)
-                .await
-                .map(|socket| socket.to_string()),
-            (Tcp, Connect) => self
-                .tcp_transport
-                .connect(&addr)
-                .await
-                .map(|ockam_addr| ockam_addr.to_string()),
-            _ => unimplemented!(),
-        };
-
-        let response = match res {
-            Ok(_) => {
-                let tid = random_alias();
-                self.transports.insert(tid.clone(), (tt, tm, addr.clone()));
-                Response::ok(req.id()).body(TransportStatus::new(tt, tm, addr, tid))
-            }
-            Err(msg) => Response::bad_request(req.id()).body(TransportStatus::new(
-                tt,
-                tm,
-                msg.to_string(),
-                "<none>".to_string(),
-            )),
-        };
-
-        Ok(response)
-    }
-
-    async fn delete_transport(
-        &mut self,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<()>> {
-        let body: DeleteTransport = dec.decode()?;
-        info!("Handling request to delete transport: {}", body.tid);
-
-        let tid: Alias = body.tid.into();
-
-        if self.api_transport_id == tid && !body.force {
-            warn!("User requested to delete the API transport without providing force OP flag...");
-            return Ok(Response::bad_request(req.id()));
-        }
-
-        match self.transports.get(&tid) {
-            Some(t) if t.1 == TransportMode::Listen => {
-                warn!("It is not currently supported to destroy LISTEN transports");
-                Ok(Response::bad_request(req.id()))
-            }
-            Some(t) => {
-                self.tcp_transport.disconnect(&t.2).await?;
-                self.transports.remove(&tid);
-                Ok(Response::ok(req.id()))
-            }
-            None => Ok(Response::bad_request(req.id())),
-        }
-    }
-
     //////// Forwarder API ////////
 
     async fn create_forwarder(
@@ -320,246 +235,6 @@ impl NodeMan {
                     .to_vec()?)
             }
         }
-    }
-
-    //////// Vault API ////////
-
-    async fn create_vault_impl(&mut self, path: Option<PathBuf>) -> Result<()> {
-        if self.vault.is_some() {
-            return Err(ApiError::generic("Vault already exists"))?;
-        }
-
-        let path = path.unwrap_or_else(|| self.node_dir.join("vault.json"));
-
-        let vault_storage = FileStorage::create(path.clone()).await?;
-        let vault = Vault::new(Some(Arc::new(vault_storage)));
-
-        self.config.inner().write().unwrap().vault_path = Some(path);
-        self.config.atomic_update().run().map_err(map_anyhow_err)?;
-
-        self.vault = Some(vault);
-
-        Ok(())
-    }
-
-    async fn create_vault(
-        &mut self,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        let req_body: CreateVaultRequest = dec.decode()?;
-
-        let path = req_body.path.map(|p| PathBuf::from(p.0.as_ref()));
-
-        self.create_vault_impl(path).await?;
-
-        let response = Response::ok(req.id());
-
-        Ok(response)
-    }
-
-    //////// Identity API ////////
-
-    async fn create_identity_impl(&mut self, ctx: &Context) -> Result<IdentityIdentifier> {
-        if self.identity.is_some() {
-            return Err(ApiError::generic("Identity already exists"))?;
-        }
-
-        let vault = self
-            .vault
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Vault doesn't exist"))?;
-
-        let identity = Identity::create(ctx, vault).await?;
-        let identifier = identity.identifier()?;
-        let exported_identity = identity.export().await?;
-
-        self.config.inner().write().unwrap().identity = Some(exported_identity);
-        self.config.atomic_update().run().map_err(map_anyhow_err)?;
-
-        self.identity = Some(identity);
-
-        Ok(identifier)
-    }
-
-    async fn create_identity(
-        &mut self,
-        ctx: &Context,
-        req: &Request<'_>,
-    ) -> Result<ResponseBuilder<CreateIdentityResponse<'_>>> {
-        let identifier = self.create_identity_impl(ctx).await?;
-
-        let response =
-            Response::ok(req.id()).body(CreateIdentityResponse::new(identifier.to_string()));
-        Ok(response)
-    }
-
-    //////// Secure channel API ////////
-
-    async fn create_secure_channel_impl<'a>(&mut self, route: Route) -> Result<Address> {
-        let identity = self
-            .identity
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))?;
-
-        let channel = identity
-            .create_secure_channel(route, TrustEveryonePolicy, &self.authenticated_storage)
-            .await?;
-
-        self.registry
-            .secure_channels
-            .insert(channel.clone(), Default::default());
-
-        Ok(channel)
-    }
-
-    async fn create_secure_channel<'a>(
-        &mut self,
-        _ctx: &Context,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'a>>> {
-        let CreateSecureChannelRequest { addr, .. } = dec.decode()?;
-
-        info!("Handling request to create a new secure channel: {}", addr);
-
-        // TODO: Improve error handling + move logic into CreateSecureChannelRequest
-        let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
-        let route = crate::multiaddr_to_route(&addr)
-            .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
-
-        let channel = self.create_secure_channel_impl(route).await?;
-
-        let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(channel));
-
-        Ok(response)
-    }
-
-    async fn create_secure_channel_listener_impl(&mut self, addr: Address) -> Result<()> {
-        info!(
-            "Handling request to create a new secure channel listener: {}",
-            addr
-        );
-
-        let identity = self
-            .identity
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))?;
-
-        identity
-            .create_secure_channel_listener(
-                addr.clone(),
-                TrustEveryonePolicy,
-                &self.authenticated_storage,
-            )
-            .await?;
-
-        self.registry
-            .secure_channel_listeners
-            .insert(addr, Default::default());
-
-        Ok(())
-    }
-
-    async fn create_secure_channel_listener(
-        &mut self,
-        _ctx: &Context,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<()>> {
-        let CreateSecureChannelListenerRequest { addr, .. } = dec.decode()?;
-
-        let addr = Address::from(addr.as_ref());
-        if !addr.is_local() {
-            return Ok(Response::bad_request(req.id()));
-        }
-
-        self.create_secure_channel_listener_impl(addr).await?;
-
-        let response = Response::ok(req.id());
-
-        Ok(response)
-    }
-
-    //////// Inlet and Outlet portal API ////////
-
-    fn get_portals(&self, req: &Request<'_>) -> ResponseBuilder<PortalList<'_>> {
-        Response::ok(req.id()).body(PortalList::new(
-            self.portals
-                .iter()
-                .map(|((alias, tt), (addr, route))| {
-                    PortalStatus::new(
-                        *tt,
-                        addr,
-                        alias,
-                        route.as_ref().map(|r| r.to_string().into()),
-                    )
-                })
-                .collect(),
-        ))
-    }
-
-    async fn create_iolet<'a>(
-        &mut self,
-        _ctx: &mut Context,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<PortalStatus<'a>>> {
-        let CreatePortal {
-            addr,
-            alias,
-            peer: fwd,
-            tt,
-            ..
-        } = dec.decode()?;
-        let addr = addr.to_string();
-        let alias = alias.map(|a| a.into()).unwrap_or_else(random_alias);
-
-        let res = match tt {
-            PortalType::Inlet => {
-                info!("Handling request to create inlet portal");
-                let fwd = match fwd {
-                    Some(f) => f,
-                    None => {
-                        return Ok(Response::bad_request(req.id())
-                            .body(PortalStatus::bad_request(tt, "invalid request payload")))
-                    }
-                };
-
-                let outlet_route = match Route::parse(fwd) {
-                    Some(route) => route,
-                    None => {
-                        return Ok(Response::bad_request(req.id())
-                            .body(PortalStatus::bad_request(tt, "invalid forward route")))
-                    }
-                };
-
-                self.tcp_transport
-                    .create_inlet(addr.clone(), outlet_route)
-                    .await
-                    .map(|(addr, _)| addr)
-            }
-            PortalType::Outlet => {
-                info!("Handling request to create outlet portal");
-                let self_addr = Address::random_local();
-                self.tcp_transport
-                    .create_outlet(self_addr.clone(), addr.clone())
-                    .await
-                    .map(|_| self_addr)
-            }
-        };
-
-        Ok(match res {
-            Ok(addr) => {
-                Response::ok(req.id()).body(PortalStatus::new(tt, addr.to_string(), alias, None))
-            }
-            Err(e) => Response::bad_request(req.id()).body(PortalStatus::new(
-                tt,
-                addr,
-                alias,
-                Some(e.to_string().into()),
-            )),
-        })
     }
 
     //////// Request matching and response handling ////////
@@ -616,10 +291,10 @@ impl NodeMan {
 
             // ==*== Secure channels ==*==
             (Post, ["node", "secure_channel"]) => {
-                self.create_secure_channel(ctx, req, dec).await?.to_vec()?
+                self.create_secure_channel(req, dec).await?.to_vec()?
             }
             (Post, ["node", "secure_channel_listener"]) => self
-                .create_secure_channel_listener(ctx, req, dec)
+                .create_secure_channel_listener(req, dec)
                 .await?
                 .to_vec()?,
 
@@ -628,7 +303,7 @@ impl NodeMan {
 
             // ==*== Inlets & Outlets ==*==
             (Get, ["node", "portal"]) => self.get_portals(req).to_vec()?,
-            (Post, ["node", "portal"]) => self.create_iolet(ctx, req, dec).await?.to_vec()?,
+            (Post, ["node", "portal"]) => self.create_portal(req, dec).await?.to_vec()?,
             (Delete, ["node", "portal"]) => todo!(),
 
             // ==*== Spaces ==*==
