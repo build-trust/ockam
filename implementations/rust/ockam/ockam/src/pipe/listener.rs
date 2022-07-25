@@ -34,7 +34,7 @@ impl Worker for PipeListener {
 
                 // Then send it the handshake message
                 ctx.send(
-                    vec![int_addr],
+                    int_addr,
                     InternalCmd::Handshake(Handshake { route_to_sender }),
                 )
                 .await?;

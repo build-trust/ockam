@@ -1,6 +1,6 @@
 use crate::{
     compat::{collections::VecDeque, string::String, vec::Vec},
-    Address, Result, RouteError, TransportType,
+    route, Address, Result, RouteError, TransportType,
 };
 use core::fmt::{self, Display};
 use serde::{Deserialize, Serialize};
@@ -36,14 +36,13 @@ impl Route {
     /// # Examples
     ///
     /// ```
-    /// # use ockam_core::{Address, Route, TransportType};
+    /// # use ockam_core::{Address, route, TransportType};
     /// # pub const TCP: TransportType = TransportType::new(1);
     /// // ["1#alice", "0#bob"]
-    /// let route: Route = vec![
+    /// let route = route![
     ///     Address::new(TCP, "alice"),
     ///     "bob".into(),
-    /// ]
-    /// .into();
+    /// ];
     /// ```
     ///
     pub fn create<T: Into<Address>>(vt: Vec<T>) -> Self {
@@ -211,7 +210,7 @@ impl Display for Route {
     }
 }
 
-// Convert a `RouteBuilder` into a `Route`.
+/// Convert a `RouteBuilder` into a `Route`.
 impl From<RouteBuilder<'_>> for Route {
     fn from(RouteBuilder { ref inner, .. }: RouteBuilder) -> Self {
         Self {
@@ -220,38 +219,12 @@ impl From<RouteBuilder<'_>> for Route {
     }
 }
 
-// Convert an `Address` into a `Route`.
-//
-// A single address can represent a valid route.
-impl From<Address> for Route {
-    fn from(address: Address) -> Self {
-        let addr: Address = address;
-        Route::new().append(addr).into()
-    }
-}
-
-// Convert a `&str` into a `Route`.
-//
-// A string-slice reference can represent a valid route.
-impl From<&str> for Route {
-    fn from(s: &str) -> Self {
-        Address::from(s).into()
-    }
-}
-
-/// Convert a A `Vec` of `Address`es into a `Route`.
+/// Convert an `Address` into a `Route`.
 ///
-/// A vector of addresses can represent a valid route.
-///
-/// Note that this only holds if the vector index order is in the same
-/// order as the expected route.
-impl<T: Into<Address>> From<Vec<T>> for Route {
-    fn from(vt: Vec<T>) -> Self {
-        let mut route = Route::new();
-        for t in vt {
-            route = route.append(t.into());
-        }
-        route.into()
+/// A single address can represent a valid route.
+impl<T: Into<Address>> From<T> for Route {
+    fn from(addr: T) -> Self {
+        route![addr]
     }
 }
 
@@ -432,7 +405,7 @@ impl Drop for RouteBuilder<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Address, Error, Route};
+    use crate::{route, Address, Error, Route};
 
     fn validate_error(_err: Error) {
         // assert_eq!(err.domain(), RouteError::DOMAIN_NAME);
@@ -441,9 +414,9 @@ mod tests {
     }
 
     #[test]
-    fn test_route_from_vec() {
+    fn test_route_macro() {
         let address = Address::from_string("a");
-        let mut route: Route = vec![address, "b".into()].into();
+        let mut route = route![address, "b"];
         assert_eq!(route.next().unwrap(), &Address::from_string("0#a"));
         assert_eq!(route.next().unwrap(), &Address::from_string("0#a"));
         assert_eq!(route.recipient(), Address::from_string("0#b"));
@@ -454,7 +427,7 @@ mod tests {
     #[test]
     fn test_route_create() {
         let addresses = vec!["node-1", "node-2"];
-        let route: Route = Route::create(addresses);
+        let route = Route::create(addresses);
         assert_eq!(route.recipient(), Address::from_string("0#node-2"));
     }
 
@@ -493,10 +466,10 @@ mod tests {
 
     #[test]
     fn test_route_prepend_route() {
-        let mut r1: Route = vec!["a", "b", "c"].into();
-        let r2: Route = vec!["1", "2", "3"].into();
+        let mut r1 = route!["a", "b", "c"];
+        let r2 = route!["1", "2", "3"];
 
         r1.modify().prepend_route(r2);
-        assert_eq!(r1, vec!["1", "2", "3", "a", "b", "c"].into());
+        assert_eq!(r1, route!["1", "2", "3", "a", "b", "c"]);
     }
 }
