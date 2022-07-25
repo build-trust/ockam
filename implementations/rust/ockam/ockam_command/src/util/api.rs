@@ -108,6 +108,39 @@ pub(crate) fn create_secure_channel_listener(addr: &str) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
+/// Construct a request to start a Vault Service
+pub(crate) fn start_vault_service(addr: &str) -> Result<Vec<u8>> {
+    let payload = StartVaultServiceRequest::new(addr);
+
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node/services/vault")
+        .body(payload)
+        .encode(&mut buf)?;
+    Ok(buf)
+}
+
+/// Construct a request to start an Identity Service
+pub(crate) fn start_identity_service(addr: &str) -> Result<Vec<u8>> {
+    let payload = StartIdentityServiceRequest::new(addr);
+
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node//services/identity")
+        .body(payload)
+        .encode(&mut buf)?;
+    Ok(buf)
+}
+
+/// Construct a request to start an Authenticated Service
+pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
+    let payload = StartAuthenticatedServiceRequest::new(addr);
+
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node//services/authenticated")
+        .body(payload)
+        .encode(&mut buf)?;
+    Ok(buf)
+}
+
 /// Construct a request to create node transports
 pub(crate) fn create_portal(cmd: &portal::CreateCommand) -> Result<Vec<u8>> {
     // FIXME: this should not rely on CreateCommand internals!

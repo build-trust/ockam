@@ -4,9 +4,16 @@ use crate::nodes::identity::CreateIdentityResponse;
 use crate::nodes::NodeMan;
 use crate::{Request, Response, ResponseBuilder};
 use ockam::identity::{Identity, IdentityIdentifier};
+use ockam::vault::Vault;
 use ockam::{Context, Result};
 
 impl NodeMan {
+    pub(crate) fn identity(&self) -> Result<&Identity<Vault>> {
+        self.identity
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))
+    }
+
     pub(super) async fn create_identity_impl(
         &mut self,
         ctx: &Context,
@@ -15,10 +22,7 @@ impl NodeMan {
             return Err(ApiError::generic("Identity already exists"))?;
         }
 
-        let vault = self
-            .vault
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Vault doesn't exist"))?;
+        let vault = self.vault()?;
 
         let identity = Identity::create(ctx, vault).await?;
         let identifier = identity.identifier()?;

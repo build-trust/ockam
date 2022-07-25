@@ -11,6 +11,7 @@ mod node;
 mod portal;
 mod project;
 mod secure_channel;
+mod service;
 mod space;
 mod transport;
 mod util;
@@ -40,6 +41,7 @@ use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_
 
 use crate::enroll::GenerateEnrollmentTokenCommand;
 use crate::identity::IdentityCommand;
+use crate::service::ServiceCommand;
 use crate::util::OckamConfig;
 use crate::vault::VaultCommand;
 use clap::{ArgEnum, Args, ColorChoice, Parser, Subcommand};
@@ -191,6 +193,10 @@ pub enum OckamSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     SecureChannel(SecureChannelCommand),
 
+    /// Manage Services
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Service(ServiceCommand),
+
     // OLD
     /// Start an outlet.
     #[clap(display_order = 1000, hide = true)]
@@ -263,6 +269,7 @@ pub fn run() {
         OckamSubcommand::Vault(command) => VaultCommand::run(opts, command),
         OckamSubcommand::Identity(command) => IdentityCommand::run(opts, command),
         OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(opts, command),
+        OckamSubcommand::Service(command) => ServiceCommand::run(opts, command),
 
         // OLD
         OckamSubcommand::CreateOutlet(arg) => {
