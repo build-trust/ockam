@@ -1,7 +1,7 @@
 //! This library is used by the `ockam` CLI (in `./bin/ockam.rs`).
 
 mod authenticated;
-mod config;
+mod configuration;
 mod enroll;
 mod forwarder;
 mod identity;
@@ -17,7 +17,7 @@ mod util;
 mod vault;
 
 use authenticated::AuthenticatedCommand;
-use config::ConfigCommand;
+use configuration::ConfigurationCommand;
 use enroll::EnrollCommand;
 use forwarder::ForwarderCommand;
 use invitation::InvitationCommand;
@@ -177,7 +177,7 @@ pub enum OckamSubcommand {
 
     /// Manage ockam CLI configuration values
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    Config(ConfigCommand),
+    Configuration(ConfigurationCommand),
 
     /// Manage Vault
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
@@ -259,7 +259,7 @@ pub fn run() {
         OckamSubcommand::Space(command) => SpaceCommand::run(opts, command),
         OckamSubcommand::Transport(command) => TransportCommand::run(opts, command),
         OckamSubcommand::Portal(command) => PortalCommand::run(opts, command),
-        OckamSubcommand::Config(command) => ConfigCommand::run(opts, command),
+        OckamSubcommand::Configuration(command) => ConfigurationCommand::run(opts, command),
         OckamSubcommand::Vault(command) => VaultCommand::run(opts, command),
         OckamSubcommand::Identity(command) => IdentityCommand::run(opts, command),
         OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(opts, command),
