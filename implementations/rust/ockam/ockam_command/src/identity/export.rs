@@ -8,12 +8,12 @@ use ockam_api::Status;
 use ockam_core::Route;
 
 #[derive(Clone, Debug, Args)]
-pub struct CreateCommand {
+pub struct ExportCommand {
     #[clap(flatten)]
     node_opts: NodeOpts,
 }
 
-impl CreateCommand {
+impl ExportCommand {
     pub fn run(opts: CommandGlobalOpts, command: Self) -> anyhow::Result<()> {
         let cfg = opts.config;
         let port = match cfg.select_node(&command.node_opts.api_node) {
@@ -24,32 +24,32 @@ impl CreateCommand {
             }
         };
 
-        connect_to(port, command, create_identity);
+        connect_to(port, command, export_identity);
 
         Ok(())
     }
 }
 
-pub async fn create_identity(
+pub async fn export_identity(
     ctx: Context,
-    _cmd: CreateCommand,
+    _cmd: ExportCommand,
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append(NODEMAN_ADDR),
-            api::create_identity()?,
+            api::export_identity()?,
         )
         .await?;
 
-    let (response, result) = api::parse_create_identity_response(&resp)?;
+    let (response, result) = api::parse_export_identity_response(&resp)?;
 
     match response.status() {
         Some(Status::Ok) => {
-            eprintln!("Identity {} created!", result.identity_id)
+            eprintln!("Identity is: {}", hex::encode(result.identity.0.as_ref()))
         }
         _ => {
-            eprintln!("An error occurred while creating Identity",)
+            eprintln!("An error occurred while exporting Identity",)
         }
     }
 

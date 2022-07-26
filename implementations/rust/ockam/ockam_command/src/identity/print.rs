@@ -8,12 +8,12 @@ use ockam_api::Status;
 use ockam_core::Route;
 
 #[derive(Clone, Debug, Args)]
-pub struct CreateCommand {
+pub struct PrintCommand {
     #[clap(flatten)]
     node_opts: NodeOpts,
 }
 
-impl CreateCommand {
+impl PrintCommand {
     pub fn run(opts: CommandGlobalOpts, command: Self) -> anyhow::Result<()> {
         let cfg = opts.config;
         let port = match cfg.select_node(&command.node_opts.api_node) {
@@ -24,32 +24,32 @@ impl CreateCommand {
             }
         };
 
-        connect_to(port, command, create_identity);
+        connect_to(port, command, print_identity);
 
         Ok(())
     }
 }
 
-pub async fn create_identity(
+pub async fn print_identity(
     ctx: Context,
-    _cmd: CreateCommand,
+    _cmd: PrintCommand,
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append(NODEMAN_ADDR),
-            api::create_identity()?,
+            api::print_identity()?,
         )
         .await?;
 
-    let (response, result) = api::parse_create_identity_response(&resp)?;
+    let (response, result) = api::parse_print_identity_response(&resp)?;
 
     match response.status() {
         Some(Status::Ok) => {
-            eprintln!("Identity {} created!", result.identity_id)
+            eprintln!("Identity id is: {}!", result.identity_id)
         }
         _ => {
-            eprintln!("An error occurred while creating Identity",)
+            eprintln!("An error occurred while getting Identity",)
         }
     }
 
