@@ -131,6 +131,6 @@ Ask a question on [Github Discussions](https://github.com/build-trust/ockam/disc
 
 
 
-[conduct]: https://www.ockam.io/learn/how-to-guides/high-performance-team/conduct
-[contributing]: https://www.ockam.io/learn/how-to-guides/contributing/CONTRIBUTING
+[conduct]: https://github.com/build-trust/.github/blob/main/CODE_OF_CONDUCT.md
+[contributing]: https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md
 [rustup-manage-versions]: https://doc.rust-lang.org/nightly/edition-guide/rust-2018/rustup-for-managing-rust-versions.html#rustup-for-managing-rust-versions
