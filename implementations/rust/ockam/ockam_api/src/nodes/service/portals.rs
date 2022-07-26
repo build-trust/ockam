@@ -1,4 +1,4 @@
-use crate::nodes::portal::{CreatePortal, PortalList, PortalStatus, PortalType};
+use crate::nodes::models::portal::{CreatePortal, PortalList, PortalStatus, PortalType};
 use crate::nodes::service::random_alias;
 use crate::nodes::NodeMan;
 use crate::{Request, Response, ResponseBuilder};

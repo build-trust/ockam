@@ -18,11 +18,15 @@ use super::registry::Registry;
 use crate::config::Config;
 use crate::lmdb::LmdbStorage;
 use crate::nodes::config::NodeManConfig;
-use crate::{nodes::types::*, Method, Request, Response, Status};
+use crate::nodes::models::base::NodeStatus;
+use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
+use crate::nodes::models::portal::PortalType;
+use crate::nodes::models::transport::{TransportList, TransportMode, TransportType};
+use crate::{Method, Request, Response, Status};
 
-mod channel;
 mod identity;
 mod portals;
+mod secure_channel;
 mod services;
 mod transport;
 mod vault;

@@ -7,9 +7,8 @@ use minicbor::Decoder;
 
 use clap::Args;
 use ockam::{Error, OckamError, Result};
-use ockam_api::{
-    cloud::CloudRequestWrapper, multiaddr_to_route, nodes::types::*, Method, Request, Response,
-};
+use ockam_api::nodes::*;
+use ockam_api::{cloud::CloudRequestWrapper, multiaddr_to_route, Method, Request, Response};
 use ockam_multiaddr::MultiAddr;
 
 ////////////// !== generators
@@ -32,11 +31,16 @@ pub(crate) fn query_transports() -> Result<Vec<u8>> {
 pub(crate) fn create_transport(cmd: &crate::transport::CreateCommand) -> Result<Vec<u8>> {
     // FIXME: this should not rely on CreateCommand internals!
     let (tt, addr) = match &cmd.create_subcommand {
-        transport::CreateTypeCommand::TcpConnector { addr } => (TransportMode::Connect, addr),
-        transport::CreateTypeCommand::TcpListener { bind } => (TransportMode::Listen, bind),
+        transport::CreateTypeCommand::TcpConnector { addr } => {
+            (models::transport::TransportMode::Connect, addr)
+        }
+        transport::CreateTypeCommand::TcpListener { bind } => {
+            (models::transport::TransportMode::Listen, bind)
+        }
     };
 
-    let payload = CreateTransport::new(TransportType::Tcp, tt, addr);
+    let payload =
+        models::transport::CreateTransport::new(models::transport::TransportType::Tcp, tt, addr);
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/transport")
@@ -49,7 +53,7 @@ pub(crate) fn create_transport(cmd: &crate::transport::CreateCommand) -> Result<
 pub(crate) fn delete_transport(cmd: &transport::DeleteCommand) -> Result<Vec<u8>> {
     let mut buf = vec![];
     Request::builder(Method::Delete, "/node/transport")
-        .body(DeleteTransport::new(&cmd.id, cmd.force))
+        .body(models::transport::DeleteTransport::new(&cmd.id, cmd.force))
         .encode(&mut buf)?;
     Ok(buf)
 }
@@ -65,7 +69,7 @@ pub(crate) fn create_forwarder(cmd: &crate::forwarder::CreateCommand) -> Result<
     })?;
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/forwarder")
-        .body(CreateForwarder::new(route, cmd.alias()))
+        .body(models::forwarder::CreateForwarder::new(route, cmd.alias()))
         .encode(&mut buf)?;
     Ok(buf)
 }
@@ -74,7 +78,7 @@ pub(crate) fn create_forwarder(cmd: &crate::forwarder::CreateCommand) -> Result<
 pub(crate) fn create_vault(path: Option<String>) -> Result<Vec<u8>> {
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/vault")
-        .body(CreateVaultRequest::new(path))
+        .body(models::vault::CreateVaultRequest::new(path))
         .encode(&mut buf)?;
     Ok(buf)
 }
@@ -88,7 +92,7 @@ pub(crate) fn create_identity() -> Result<Vec<u8>> {
 
 /// Construct a request to create Secure Channels
 pub(crate) fn create_secure_channel(addr: MultiAddr) -> Result<Vec<u8>> {
-    let payload = CreateSecureChannelRequest::new(addr);
+    let payload = models::secure_channel::CreateSecureChannelRequest::new(addr);
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/secure_channel")
@@ -99,7 +103,7 @@ pub(crate) fn create_secure_channel(addr: MultiAddr) -> Result<Vec<u8>> {
 
 /// Construct a request to create Secure Channel Listeners
 pub(crate) fn create_secure_channel_listener(addr: &str) -> Result<Vec<u8>> {
-    let payload = CreateSecureChannelListenerRequest::new(addr);
+    let payload = models::secure_channel::CreateSecureChannelListenerRequest::new(addr);
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/secure_channel_listener")
@@ -110,7 +114,7 @@ pub(crate) fn create_secure_channel_listener(addr: &str) -> Result<Vec<u8>> {
 
 /// Construct a request to start a Vault Service
 pub(crate) fn start_vault_service(addr: &str) -> Result<Vec<u8>> {
-    let payload = StartVaultServiceRequest::new(addr);
+    let payload = models::services::StartVaultServiceRequest::new(addr);
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/services/vault")
@@ -121,7 +125,7 @@ pub(crate) fn start_vault_service(addr: &str) -> Result<Vec<u8>> {
 
 /// Construct a request to start an Identity Service
 pub(crate) fn start_identity_service(addr: &str) -> Result<Vec<u8>> {
-    let payload = StartIdentityServiceRequest::new(addr);
+    let payload = models::services::StartIdentityServiceRequest::new(addr);
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node//services/identity")
@@ -132,7 +136,7 @@ pub(crate) fn start_identity_service(addr: &str) -> Result<Vec<u8>> {
 
 /// Construct a request to start an Authenticated Service
 pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
-    let payload = StartAuthenticatedServiceRequest::new(addr);
+    let payload = models::services::StartAuthenticatedServiceRequest::new(addr);
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node//services/authenticated")
@@ -147,13 +151,15 @@ pub(crate) fn create_portal(cmd: &portal::CreateCommand) -> Result<Vec<u8>> {
     let (tt, addr, fwd) = match &cmd.create_subcommand {
         portal::CreateTypeCommand::TcpInlet { bind, forward } => {
             let route = multiaddr_to_route(forward).ok_or(OckamError::InvalidParameter)?;
-            (PortalType::Inlet, bind, Some(route))
+            (models::portal::PortalType::Inlet, bind, Some(route))
         }
-        portal::CreateTypeCommand::TcpOutlet { address } => (PortalType::Outlet, address, None),
+        portal::CreateTypeCommand::TcpOutlet { address } => {
+            (models::portal::PortalType::Outlet, address, None)
+        }
     };
     let alias = cmd.alias.as_ref().map(Into::into);
     let fwd = fwd.map(|route| route.to_string().into());
-    let payload = CreatePortal::new(tt, addr, fwd, alias);
+    let payload = models::portal::CreatePortal::new(tt, addr, fwd, alias);
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/portal")
@@ -345,24 +351,29 @@ pub(crate) fn parse_response(resp: &[u8]) -> Result<Response> {
 }
 
 /// Parse the returned status response
-pub(crate) fn parse_status(resp: &[u8]) -> Result<NodeStatus> {
+pub(crate) fn parse_status(resp: &[u8]) -> Result<models::base::NodeStatus> {
     let mut dec = Decoder::new(resp);
     let _ = dec.decode::<Response>()?;
-    Ok(dec.decode::<NodeStatus>()?)
+    Ok(dec.decode::<models::base::NodeStatus>()?)
 }
 
 /// Parse the returned status response
-pub(crate) fn parse_transport_list(resp: &[u8]) -> Result<TransportList> {
+pub(crate) fn parse_transport_list(resp: &[u8]) -> Result<models::transport::TransportList> {
     let mut dec = Decoder::new(resp);
     let _ = dec.decode::<Response>()?;
-    Ok(dec.decode::<TransportList>()?)
+    Ok(dec.decode::<models::transport::TransportList>()?)
 }
 
 /// Parse the returned status response
-pub(crate) fn parse_transport_status(resp: &[u8]) -> Result<(Response, TransportStatus<'_>)> {
+pub(crate) fn parse_transport_status(
+    resp: &[u8],
+) -> Result<(Response, models::transport::TransportStatus<'_>)> {
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
-    Ok((response, dec.decode::<TransportStatus>()?))
+    Ok((
+        response,
+        dec.decode::<models::transport::TransportStatus>()?,
+    ))
 }
 
 pub(crate) fn parse_create_vault_response(resp: &[u8]) -> Result<Response> {
@@ -373,10 +384,13 @@ pub(crate) fn parse_create_vault_response(resp: &[u8]) -> Result<Response> {
 
 pub(crate) fn parse_create_identity_response(
     resp: &[u8],
-) -> Result<(Response, CreateIdentityResponse<'_>)> {
+) -> Result<(Response, models::identity::CreateIdentityResponse<'_>)> {
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
-    Ok((response, dec.decode::<CreateIdentityResponse>()?))
+    Ok((
+        response,
+        dec.decode::<models::identity::CreateIdentityResponse>()?,
+    ))
 }
 
 pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Result<Response> {
@@ -386,10 +400,12 @@ pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Resu
 }
 
 /// Parse the returned status response
-pub(crate) fn parse_portal_status(resp: &[u8]) -> Result<(Response, PortalStatus<'_>)> {
+pub(crate) fn parse_portal_status(
+    resp: &[u8],
+) -> Result<(Response, models::portal::PortalStatus<'_>)> {
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
-    Ok((response, dec.decode::<PortalStatus>()?))
+    Ok((response, dec.decode::<models::portal::PortalStatus>()?))
 }
 
 ////////////// !== share CLI args

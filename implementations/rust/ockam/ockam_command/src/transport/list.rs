@@ -5,7 +5,7 @@ use clap::Args;
 use cli_table::{print_stdout, Cell, Style, Table};
 use ockam::{Context, Route};
 use ockam_api::nodes::{
-    types::{TransportList, TransportStatus},
+    models::transport::{TransportList, TransportStatus},
     NODEMAN_ADDR,
 };
 

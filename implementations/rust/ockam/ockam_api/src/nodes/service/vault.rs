@@ -1,6 +1,6 @@
 use super::map_anyhow_err;
 use crate::error::ApiError;
-use crate::nodes::types::CreateVaultRequest;
+use crate::nodes::models::vault::CreateVaultRequest;
 use crate::nodes::NodeMan;
 use crate::{Request, Response, ResponseBuilder};
 use minicbor::Decoder;

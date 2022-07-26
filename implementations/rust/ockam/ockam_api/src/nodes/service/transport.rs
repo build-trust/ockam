@@ -1,5 +1,7 @@
+use crate::nodes::models::transport::{
+    CreateTransport, DeleteTransport, TransportMode, TransportStatus,
+};
 use crate::nodes::service::{random_alias, Alias};
-use crate::nodes::transport::{CreateTransport, DeleteTransport, TransportMode, TransportStatus};
 use crate::nodes::NodeMan;
 use crate::{Request, Response, ResponseBuilder};
 use minicbor::Decoder;

@@ -4,7 +4,7 @@ use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 use ockam::{Context, Route};
 use ockam_api::{
-    nodes::types::{PortalStatus, PortalType},
+    nodes::models::portal::{PortalStatus, PortalType},
     nodes::NODEMAN_ADDR,
     Status,
 };

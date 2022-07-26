@@ -4,7 +4,7 @@ use minicbor::Decoder;
 use serde_json::json;
 use tracing::debug;
 
-use ockam_api::nodes::types::ForwarderInfo;
+use ockam_api::nodes::models::forwarder::ForwarderInfo;
 use ockam_api::nodes::NODEMAN_ADDR;
 use ockam_api::{Response, Status};
 use ockam_core::Route;
