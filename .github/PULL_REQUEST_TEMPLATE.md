@@ -1,6 +1,6 @@
 <!-- Thank you for sending a pull request :heart: -->
 
-## Current Behaviour
+## Current Behavior
 
 <!-- Please describe the current behavior of the code before the changes in this pull request is applied. -->
 
@@ -15,7 +15,7 @@
 
 - [ ] All commits in this Pull Request are [signed](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits).
 - [ ] All commits in this Pull Request follow the Ockam [commit message convention](https://www.ockam.io/learn/how-to-guides/contributing/CONTRIBUTING#commit-messages).
-- [ ] I accept the Ockam Community [Code of Conduct](https://www.ockam.io/learn/how-to-guides/high-performance-team/conduct/).
-- [ ] I have accepted the Ockam [Contributor License Agreement](https://www.ockam.io/learn/how-to-guides/contributing/cla/) by adding my Git/Github details in a row at the end of the [CONTRIBUTORS.csv](https://github.com/build-trust/contributors/blob/main/CONTRIBUTORS.csv) file in a separate pull request to the [build-trust/contributors](https://github.com/build-trust/contributors) repository.
+- [ ] I accept the Ockam Community [Code of Conduct](https://github.com/build-trust/.github/blob/main/CODE_OF_CONDUCT.md).
+- [ ] I have accepted the Ockam [Contributor License Agreement](https://github.com/build-trust/.github/blob/main/CLA.md) by adding my Git/Github details in a row at the end of the [CONTRIBUTORS.csv](https://github.com/build-trust/ockam-contributors/blob/main/CONTRIBUTORS.csv) file in a separate pull request to the [build-trust/contributors](https://github.com/build-trust/ockam-contributors) repository.
 
 <!-- Looking forward to merging your contribution!! -->
