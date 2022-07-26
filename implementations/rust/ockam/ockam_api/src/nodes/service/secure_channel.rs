@@ -1,6 +1,6 @@
 use super::map_multiaddr_err;
 use crate::error::ApiError;
-use crate::nodes::secure_channel::{
+use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
 };
 use crate::nodes::NodeMan;

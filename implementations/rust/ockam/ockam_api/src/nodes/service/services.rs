@@ -1,6 +1,6 @@
 use crate::auth::Server;
 use crate::identity::IdentityService;
-use crate::nodes::types::{
+use crate::nodes::models::services::{
     StartAuthenticatedServiceRequest, StartIdentityServiceRequest, StartVaultServiceRequest,
 };
 use crate::nodes::NodeMan;

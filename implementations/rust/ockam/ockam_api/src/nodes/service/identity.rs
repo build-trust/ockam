@@ -1,6 +1,6 @@
 use super::map_anyhow_err;
 use crate::error::ApiError;
-use crate::nodes::identity::CreateIdentityResponse;
+use crate::nodes::models::identity::CreateIdentityResponse;
 use crate::nodes::NodeMan;
 use crate::{Request, Response, ResponseBuilder};
 use ockam::identity::{Identity, IdentityIdentifier};

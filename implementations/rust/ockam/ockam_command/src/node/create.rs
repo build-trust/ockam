@@ -10,7 +10,7 @@ use crate::{
 };
 use ockam::{Context, TcpTransport};
 use ockam_api::{
-    nodes::types::{TransportMode, TransportType},
+    nodes::models::transport::{TransportMode, TransportType},
     nodes::{NodeMan, NODEMAN_ADDR},
 };
 

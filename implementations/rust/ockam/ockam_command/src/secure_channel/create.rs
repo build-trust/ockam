@@ -5,7 +5,7 @@ use anyhow::{anyhow, Context};
 use clap::{Args, Subcommand};
 use minicbor::Decoder;
 use ockam_api::error::ApiError;
-use ockam_api::nodes::types::CreateSecureChannelResponse;
+use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
 use ockam_api::nodes::NODEMAN_ADDR;
 use ockam_api::{route_to_multiaddr, Response, Status};
 use ockam_core::{route, Route};

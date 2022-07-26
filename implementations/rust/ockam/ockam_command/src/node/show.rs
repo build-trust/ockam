@@ -3,7 +3,7 @@ use crate::CommandGlobalOpts;
 use anyhow::Context;
 use clap::Args;
 use ockam::Route;
-use ockam_api::nodes::{types::NodeStatus, NODEMAN_ADDR};
+use ockam_api::nodes::{models::base::NodeStatus, NODEMAN_ADDR};
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {

@@ -4,7 +4,7 @@ use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 use ockam::{Context, Route, TCP};
 use ockam_api::{
-    nodes::{types::TransportStatus, NODEMAN_ADDR},
+    nodes::{models::transport::TransportStatus, NODEMAN_ADDR},
     route_to_multiaddr, Status,
 };
 
