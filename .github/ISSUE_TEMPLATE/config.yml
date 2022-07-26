@@ -1,17 +1,14 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
-  - name: Bug and Issues
+  - name: Report a bug or an issue
     url: https://github.com/build-trust/ockam/issues/new/
-    about: Report a bug or issue
-  - name: Feature Request
+    about: Report a bug or an issue in Ockam
+  - name: Request a feature
     url: https://github.com/build-trust/ockam/discussions/new
-    about: Request a feature to be added to the platform
-  - name: Ask a Question
+    about: Request a new feature to be added to Ockam
+  - name: Ask a question
     url: https://github.com/build-trust/ockam/discussions/new
-    about: Ask questions and discuss with other community members
-  - name: Learn how to Contribute
-    url: https://www.ockam.io/learn/how-to-guides/contributing/CONTRIBUTING/
-    about: Read Ockam's Library of How-to guides
-  - name: Review or submit a design proposal
-    url: https://www.ockam.io/learn/proposals/0001-proposal-process/
-    about: Read Ockam's formal Proposal Process
+    about: Ask questions and discuss with other Ockam community members
+  - name: Learn how to contribute
+    url: https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md
+    about: Learn how to contribute to Ockam
