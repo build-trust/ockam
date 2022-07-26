@@ -6,6 +6,7 @@ use crate::{portal, transport};
 use minicbor::Decoder;
 
 use clap::Args;
+use ockam::identity::IdentityIdentifier;
 use ockam::{OckamError, Result};
 use ockam_api::nodes::*;
 use ockam_api::{cloud::CloudRequestWrapper, multiaddr_to_route, Method, Request, Response};
@@ -101,8 +102,14 @@ pub(crate) fn print_identity() -> Result<Vec<u8>> {
 }
 
 /// Construct a request to create Secure Channels
-pub(crate) fn create_secure_channel(addr: MultiAddr) -> Result<Vec<u8>> {
-    let payload = models::secure_channel::CreateSecureChannelRequest::new(addr);
+pub(crate) fn create_secure_channel(
+    addr: MultiAddr,
+    known_identifier: Option<IdentityIdentifier>,
+) -> Result<Vec<u8>> {
+    let payload = models::secure_channel::CreateSecureChannelRequest::new(
+        addr,
+        known_identifier.map(|x| x.to_string()),
+    );
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/secure_channel")
@@ -112,8 +119,14 @@ pub(crate) fn create_secure_channel(addr: MultiAddr) -> Result<Vec<u8>> {
 }
 
 /// Construct a request to create Secure Channel Listeners
-pub(crate) fn create_secure_channel_listener(addr: &str) -> Result<Vec<u8>> {
-    let payload = models::secure_channel::CreateSecureChannelListenerRequest::new(addr);
+pub(crate) fn create_secure_channel_listener(
+    addr: &str,
+    known_identifier: Option<IdentityIdentifier>,
+) -> Result<Vec<u8>> {
+    let payload = models::secure_channel::CreateSecureChannelListenerRequest::new(
+        addr,
+        known_identifier.map(|x| x.to_string()),
+    );
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/secure_channel_listener")

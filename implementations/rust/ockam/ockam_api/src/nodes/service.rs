@@ -498,7 +498,7 @@ pub(crate) mod tests {
 
             // Initialize secure channel listener on the mock cloud worker
             node_man
-                .create_secure_channel_listener_impl("cloud".into())
+                .create_secure_channel_listener_impl("cloud".into(), None)
                 .await?;
             ctx.start_worker(cloud_address, cloud_worker).await?;
 
