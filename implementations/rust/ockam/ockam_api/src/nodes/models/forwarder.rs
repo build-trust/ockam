@@ -1,11 +1,11 @@
 use minicbor::{Decode, Encode};
 
+use crate::CowStr;
 use ockam::remote::RemoteForwarderInfo;
-use ockam_core::Route;
+use ockam_multiaddr::MultiAddr;
+
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-
-use crate::CowStr;
 
 /// Request body when instructing a node to create a forwarder
 #[derive(Debug, Clone, Decode, Encode)]
@@ -21,7 +21,7 @@ pub struct CreateForwarder<'a> {
 }
 
 impl<'a> CreateForwarder<'a> {
-    pub fn new(address: Route, alias: Option<&'a str>) -> Self {
+    pub fn new(address: &MultiAddr, alias: Option<&'a str>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: Default::default(),
@@ -98,7 +98,10 @@ mod tests {
             let route = route![(TCP, &cloud_address)];
             let mut buf = vec![];
             Request::builder(Method::Post, "/node/forwarder")
-                .body(CreateForwarder::new(route, None))
+                .body(CreateForwarder::new(
+                    &route_to_multiaddr(&route).unwrap(),
+                    None,
+                ))
                 .encode(&mut buf)?;
             buf
         };
