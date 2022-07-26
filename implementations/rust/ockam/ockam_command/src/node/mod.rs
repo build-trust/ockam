@@ -1,13 +1,11 @@
 mod create;
 mod delete;
 mod list;
-mod purge;
 mod show;
 
 pub(crate) use create::CreateCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
-use purge::PurgeCommand;
 use show::ShowCommand;
 
 use crate::{CommandGlobalOpts, HELP_TEMPLATE};
@@ -36,10 +34,6 @@ pub enum NodeSubcommand {
     /// Show a node.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Show(ShowCommand),
-
-    /// Purge all node configuration (great for development)
-    #[clap(display_order = 1005, hide = true)]
-    Purge(PurgeCommand),
 }
 
 impl NodeCommand {
@@ -49,7 +43,6 @@ impl NodeCommand {
             NodeSubcommand::Delete(command) => DeleteCommand::run(opts, command),
             NodeSubcommand::List(command) => ListCommand::run(opts, command),
             NodeSubcommand::Show(command) => ShowCommand::run(opts, command),
-            NodeSubcommand::Purge(command) => PurgeCommand::run(opts, command),
         }
     }
 }
