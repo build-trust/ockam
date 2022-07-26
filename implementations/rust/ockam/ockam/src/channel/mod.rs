@@ -38,7 +38,7 @@ impl ChannelBuilder {
     /// builder.create_channel_listener("my-channel-listener").await?;
     ///
     /// // Connect a channel to the listener
-    /// let ch = builder.connect(vec!["my-channel-listener"]).await?;
+    /// let ch = builder.connect("my-channel-listener").await?;
     /// ctx.send(ch.tx().append("app"), String::from("Hello via channel!")).await?;
     ///
     /// // Wait for the reply message

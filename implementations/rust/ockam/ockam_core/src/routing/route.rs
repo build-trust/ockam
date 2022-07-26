@@ -41,7 +41,7 @@ impl Route {
     /// // ["1#alice", "0#bob"]
     /// let route = route![
     ///     Address::new(TCP, "alice"),
-    ///     "bob".into(),
+    ///     "bob",
     /// ];
     /// ```
     ///
