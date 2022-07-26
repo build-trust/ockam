@@ -6,7 +6,7 @@ use crate::{portal, transport};
 use minicbor::Decoder;
 
 use clap::Args;
-use ockam::{Error, OckamError, Result};
+use ockam::{OckamError, Result};
 use ockam_api::nodes::*;
 use ockam_api::{cloud::CloudRequestWrapper, multiaddr_to_route, Method, Request, Response};
 use ockam_multiaddr::MultiAddr;
@@ -60,16 +60,12 @@ pub(crate) fn delete_transport(cmd: &transport::DeleteCommand) -> Result<Vec<u8>
 
 /// Construct a request to create a forwarder
 pub(crate) fn create_forwarder(cmd: &crate::forwarder::CreateCommand) -> Result<Vec<u8>> {
-    let route = multiaddr_to_route(cmd.address()).ok_or_else(|| {
-        Error::new(
-            ockam::errcode::Origin::Other,
-            ockam::errcode::Kind::Invalid,
-            "failed to parse address",
-        )
-    })?;
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/forwarder")
-        .body(models::forwarder::CreateForwarder::new(route, cmd.alias()))
+        .body(models::forwarder::CreateForwarder::new(
+            cmd.address(),
+            cmd.alias(),
+        ))
         .encode(&mut buf)?;
     Ok(buf)
 }

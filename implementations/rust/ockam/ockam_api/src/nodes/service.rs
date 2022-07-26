@@ -11,11 +11,13 @@ use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::route;
 use ockam_identity::{Identity, TrustEveryonePolicy};
+use ockam_multiaddr::MultiAddr;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
 use super::registry::Registry;
 use crate::config::Config;
+use crate::error::ApiError;
 use crate::lmdb::LmdbStorage;
 use crate::nodes::config::NodeManConfig;
 use crate::nodes::models::base::NodeStatus;
@@ -223,11 +225,13 @@ impl NodeMan {
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
         let CreateForwarder { address, alias, .. } = dec.decode()?;
-        let address = Address::from_string(address.to_string());
-        debug!(%address, ?alias, "Handling CreateForwarder request");
+        let addr = MultiAddr::try_from(address.0.as_ref()).map_err(map_multiaddr_err)?;
+        let route = crate::multiaddr_to_route(&addr)
+            .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+        debug!(%addr, ?alias, "Handling CreateForwarder request");
         let forwarder = match alias {
-            Some(alias) => RemoteForwarder::create_static(ctx, address, alias.to_string()).await,
-            None => RemoteForwarder::create(ctx, address).await,
+            Some(alias) => RemoteForwarder::create_static(ctx, route, alias.to_string()).await,
+            None => RemoteForwarder::create(ctx, route).await,
         };
         match forwarder {
             Ok(info) => {
