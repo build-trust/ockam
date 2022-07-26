@@ -90,6 +90,20 @@ pub(crate) fn create_identity() -> Result<Vec<u8>> {
     Ok(buf)
 }
 
+/// Construct a request to export Identity
+pub(crate) fn export_identity() -> Result<Vec<u8>> {
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node/identity/actions/export").encode(&mut buf)?;
+    Ok(buf)
+}
+
+/// Construct a request to print Identity Id
+pub(crate) fn print_identity() -> Result<Vec<u8>> {
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node/identity/actions/print").encode(&mut buf)?;
+    Ok(buf)
+}
+
 /// Construct a request to create Secure Channels
 pub(crate) fn create_secure_channel(addr: MultiAddr) -> Result<Vec<u8>> {
     let payload = models::secure_channel::CreateSecureChannelRequest::new(addr);
@@ -390,6 +404,28 @@ pub(crate) fn parse_create_identity_response(
     Ok((
         response,
         dec.decode::<models::identity::CreateIdentityResponse>()?,
+    ))
+}
+
+pub(crate) fn parse_export_identity_response(
+    resp: &[u8],
+) -> Result<(Response, models::identity::ExportIdentityResponse<'_>)> {
+    let mut dec = Decoder::new(resp);
+    let response = dec.decode::<Response>()?;
+    Ok((
+        response,
+        dec.decode::<models::identity::ExportIdentityResponse>()?,
+    ))
+}
+
+pub(crate) fn parse_print_identity_response(
+    resp: &[u8],
+) -> Result<(Response, models::identity::PrintIdentityResponse<'_>)> {
+    let mut dec = Decoder::new(resp);
+    let response = dec.decode::<Response>()?;
+    Ok((
+        response,
+        dec.decode::<models::identity::PrintIdentityResponse>()?,
     ))
 }
 

@@ -1,6 +1,8 @@
 use super::map_anyhow_err;
 use crate::error::ApiError;
-use crate::nodes::models::identity::CreateIdentityResponse;
+use crate::nodes::models::identity::{
+    CreateIdentityResponse, ExportIdentityResponse, PrintIdentityResponse,
+};
 use crate::nodes::NodeMan;
 use crate::{Request, Response, ResponseBuilder};
 use ockam::identity::{Identity, IdentityIdentifier};
@@ -45,6 +47,29 @@ impl NodeMan {
 
         let response =
             Response::ok(req.id()).body(CreateIdentityResponse::new(identifier.to_string()));
+        Ok(response)
+    }
+
+    pub(super) async fn export_identity(
+        &mut self,
+        req: &Request<'_>,
+    ) -> Result<ResponseBuilder<ExportIdentityResponse<'_>>> {
+        let identity = self.identity()?;
+        let identity = identity.export().await?;
+
+        let response = Response::ok(req.id()).body(ExportIdentityResponse::new(identity));
+        Ok(response)
+    }
+
+    pub(super) async fn print_identity(
+        &mut self,
+        req: &Request<'_>,
+    ) -> Result<ResponseBuilder<PrintIdentityResponse<'_>>> {
+        let identity = self.identity()?;
+        let identifier = identity.identifier()?;
+
+        let response =
+            Response::ok(req.id()).body(PrintIdentityResponse::new(identifier.to_string()));
         Ok(response)
     }
 }
