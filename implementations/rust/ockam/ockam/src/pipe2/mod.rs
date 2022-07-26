@@ -56,16 +56,16 @@ enum Mode {
 /// Code on machine A:
 ///
 /// ```rust
-/// # use ockam::{Context, Result, Address, pipe2::PipeBuilder};
+/// # use ockam::{Context, Result, Address, pipe2::PipeBuilder, route};
 /// # async fn pipes_example_no_run(ctx: &mut Context) -> Result<()> {
 /// # let (tcp_connection, my_pipe) = (Address::random_local(), Address::random_local());
 /// let result = PipeBuilder::fixed()
-///     .connect(vec![tcp_connection, my_pipe])
+///     .connect(route![tcp_connection, my_pipe])
 ///     .build(ctx)
 ///     .await?;
 ///
 /// ctx.send(
-///     vec![result.addr(), "app".into()], // Send a message through the pipe to "app"
+///     route![result.addr(), "app"], // Send a message through the pipe to "app"
 ///     String::from("Hello you on the other end of this pipe!"),
 /// )
 /// .await?;
