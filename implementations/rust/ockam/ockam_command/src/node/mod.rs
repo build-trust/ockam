@@ -50,6 +50,6 @@ impl NodeCommand {
 #[derive(Clone, Debug, Args)]
 pub struct NodeOpts {
     /// Override the default API node
-    #[clap(global = true, short, long, default_value = "default")]
+    #[clap(global = true, name = "node", short, long, default_value = "default")]
     pub api_node: String,
 }
