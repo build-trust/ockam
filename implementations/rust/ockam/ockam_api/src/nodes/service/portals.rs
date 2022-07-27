@@ -1,83 +1,131 @@
-use crate::nodes::models::portal::{CreatePortal, PortalList, PortalStatus, PortalType};
-use crate::nodes::service::random_alias;
+use crate::nodes::models::portal::{
+    CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
+};
+use crate::nodes::service::{map_multiaddr_err, random_alias};
 use crate::nodes::NodeMan;
-use crate::{Request, Response, ResponseBuilder};
+use crate::{multiaddr_to_route, Request, Response, ResponseBuilder};
 use minicbor::Decoder;
-use ockam::{Address, Result, Route};
+use ockam::{Address, Result};
+use ockam_multiaddr::MultiAddr;
+use std::str::FromStr;
 
 impl NodeMan {
-    pub(super) fn get_portals(&self, req: &Request<'_>) -> ResponseBuilder<PortalList<'_>> {
-        Response::ok(req.id()).body(PortalList::new(
-            self.portals
+    pub(super) fn get_inlets(&self, req: &Request<'_>) -> ResponseBuilder<InletList<'_>> {
+        Response::ok(req.id()).body(InletList::new(
+            self.registry
+                .inlets
                 .iter()
-                .map(|((alias, tt), (addr, route))| {
-                    PortalStatus::new(
-                        *tt,
-                        addr,
+                .map(|(alias, info)| {
+                    InletStatus::new(
+                        &info.bind_addr,
+                        info.worker_address.to_string(),
                         alias,
-                        route.as_ref().map(|r| r.to_string().into()),
+                        None,
+                        // FIXME route.as_ref().map(|r| r.to_string().into()),
                     )
                 })
                 .collect(),
         ))
     }
 
-    pub(super) async fn create_portal<'a>(
+    pub(super) fn get_outlets(&self, req: &Request<'_>) -> ResponseBuilder<OutletList<'_>> {
+        Response::ok(req.id()).body(OutletList::new(
+            self.registry
+                .outlets
+                .iter()
+                .map(|(alias, info)| {
+                    OutletStatus::new(
+                        &info.tcp_addr,
+                        info.worker_addr.to_string(),
+                        alias,
+                        None,
+                        // FIXME route.as_ref().map(|r| r.to_string().into()),
+                    )
+                })
+                .collect(),
+        ))
+    }
+
+    pub(super) async fn create_inlet<'a>(
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder<PortalStatus<'a>>> {
-        let CreatePortal {
-            addr,
+    ) -> Result<ResponseBuilder<InletStatus<'a>>> {
+        let CreateInlet {
+            bind_addr,
+            outlet_route,
             alias,
-            peer: fwd,
-            tt,
             ..
         } = dec.decode()?;
-        let addr = addr.to_string();
-        let alias = alias.map(|a| a.into()).unwrap_or_else(random_alias);
+        let bind_addr = bind_addr.to_string();
+        // FIXME: Not used
+        let alias = alias.map(|a| a.0.into()).unwrap_or_else(random_alias);
 
-        let res = match tt {
-            PortalType::Inlet => {
-                info!("Handling request to create inlet portal");
-                let fwd = match fwd {
-                    Some(f) => f,
-                    None => {
-                        return Ok(Response::bad_request(req.id())
-                            .body(PortalStatus::bad_request(tt, "invalid request payload")))
-                    }
-                };
+        info!("Handling request to create inlet portal");
 
-                let outlet_route = match Route::parse(fwd) {
-                    Some(route) => route,
-                    None => {
-                        return Ok(Response::bad_request(req.id())
-                            .body(PortalStatus::bad_request(tt, "invalid forward route")))
-                    }
-                };
-
-                self.tcp_transport
-                    .create_inlet(addr.clone(), outlet_route)
-                    .await
-                    .map(|(addr, _)| addr)
-            }
-            PortalType::Outlet => {
-                info!("Handling request to create outlet portal");
-                let self_addr = Address::random_local();
-                self.tcp_transport
-                    .create_outlet(self_addr.clone(), addr.clone())
-                    .await
-                    .map(|_| self_addr)
+        let outlet_route = MultiAddr::from_str(&outlet_route).map_err(map_multiaddr_err)?;
+        let outlet_route = match multiaddr_to_route(&outlet_route) {
+            Some(route) => route,
+            None => {
+                return Ok(Response::bad_request(req.id())
+                    .body(InletStatus::bad_request("invalid outlet route")))
             }
         };
 
+        let res = self
+            .tcp_transport
+            .create_inlet(bind_addr.clone(), outlet_route)
+            .await;
+
         Ok(match res {
-            Ok(addr) => {
-                Response::ok(req.id()).body(PortalStatus::new(tt, addr.to_string(), alias, None))
-            }
-            Err(e) => Response::bad_request(req.id()).body(PortalStatus::new(
-                tt,
-                addr,
+            Ok((worker_addr, _)) => Response::ok(req.id()).body(InletStatus::new(
+                bind_addr,
+                worker_addr.to_string(),
+                alias,
+                None,
+            )),
+            Err(e) => Response::bad_request(req.id()).body(InletStatus::new(
+                bind_addr,
+                "",
+                alias,
+                Some(e.to_string().into()),
+            )),
+        })
+    }
+
+    pub(super) async fn create_outlet<'a>(
+        &mut self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
+        let CreateOutlet {
+            tcp_addr,
+            worker_addr,
+            alias,
+            ..
+        } = dec.decode()?;
+        let tcp_addr = tcp_addr.to_string();
+
+        // FIXME: Not used
+        let alias = alias.map(|a| a.0.into()).unwrap_or_else(random_alias);
+
+        info!("Handling request to create outlet portal");
+        let worker_addr = Address::from(worker_addr.as_ref());
+        let res = self
+            .tcp_transport
+            .create_outlet(worker_addr.clone(), tcp_addr.clone())
+            .await;
+
+        Ok(match res {
+            Ok(_) => Response::ok(req.id()).body(OutletStatus::new(
+                tcp_addr,
+                worker_addr.to_string(),
+                alias,
+                None,
+            )),
+            Err(e) => Response::bad_request(req.id()).body(OutletStatus::new(
+                tcp_addr,
+                worker_addr.to_string(),
                 alias,
                 Some(e.to_string().into()),
             )),

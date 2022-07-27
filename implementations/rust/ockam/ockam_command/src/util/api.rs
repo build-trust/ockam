@@ -2,14 +2,15 @@
 
 use crate::util::DEFAULT_CLOUD_ADDRESS;
 // TODO: maybe we can remove this cross-dependency inside the CLI?
-use crate::{portal, transport};
+use crate::transport;
 use minicbor::Decoder;
 
 use clap::Args;
 use ockam::identity::IdentityIdentifier;
-use ockam::{OckamError, Result};
+use ockam::Result;
 use ockam_api::nodes::*;
-use ockam_api::{cloud::CloudRequestWrapper, multiaddr_to_route, Method, Request, Response};
+use ockam_api::{cloud::CloudRequestWrapper, Method, Request, Response};
+use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
 
 ////////////// !== generators
@@ -107,7 +108,7 @@ pub(crate) fn create_secure_channel(
     known_identifier: Option<IdentityIdentifier>,
 ) -> Result<Vec<u8>> {
     let payload = models::secure_channel::CreateSecureChannelRequest::new(
-        addr,
+        &addr,
         known_identifier.map(|x| x.to_string()),
     );
 
@@ -120,7 +121,7 @@ pub(crate) fn create_secure_channel(
 
 /// Construct a request to create Secure Channel Listeners
 pub(crate) fn create_secure_channel_listener(
-    addr: &str,
+    addr: &Address,
     known_identifier: Option<IdentityIdentifier>,
 ) -> Result<Vec<u8>> {
     let payload = models::secure_channel::CreateSecureChannelListenerRequest::new(
@@ -168,24 +169,39 @@ pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-/// Construct a request to create node transports
-pub(crate) fn create_portal(cmd: &portal::CreateCommand) -> Result<Vec<u8>> {
-    // FIXME: this should not rely on CreateCommand internals!
-    let (tt, addr, fwd) = match &cmd.create_subcommand {
-        portal::CreateTypeCommand::TcpInlet { bind, forward } => {
-            let route = multiaddr_to_route(forward).ok_or(OckamError::InvalidParameter)?;
-            (models::portal::PortalType::Inlet, bind, Some(route))
-        }
-        portal::CreateTypeCommand::TcpOutlet { address } => {
-            (models::portal::PortalType::Outlet, address, None)
-        }
-    };
-    let alias = cmd.alias.as_ref().map(Into::into);
-    let fwd = fwd.map(|route| route.to_string().into());
-    let payload = models::portal::CreatePortal::new(tt, addr, fwd, alias);
+/// Construct a request to create a tcp inlet
+pub(crate) fn create_inlet(
+    bind_addr: &str,
+    outlet_route: &MultiAddr,
+    alias: &Option<String>,
+) -> Result<Vec<u8>> {
+    let payload = models::portal::CreateInlet::new(
+        bind_addr,
+        outlet_route.to_string(),
+        alias.as_ref().map(|x| x.as_str().into()),
+    );
 
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/portal")
+    Request::builder(Method::Post, "/node/inlet")
+        .body(payload)
+        .encode(&mut buf)?;
+    Ok(buf)
+}
+
+/// Construct a request to create a tcp outlet
+pub(crate) fn create_outlet(
+    tcp_addr: &str,
+    worker_addr: String,
+    alias: &Option<String>,
+) -> Result<Vec<u8>> {
+    let payload = models::portal::CreateOutlet::new(
+        tcp_addr,
+        worker_addr,
+        alias.as_ref().map(|x| x.as_str().into()),
+    );
+
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node/outlet")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)
@@ -445,12 +461,21 @@ pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Resu
 }
 
 /// Parse the returned status response
-pub(crate) fn parse_portal_status(
+pub(crate) fn parse_inlet_status(
     resp: &[u8],
-) -> Result<(Response, models::portal::PortalStatus<'_>)> {
+) -> Result<(Response, models::portal::InletStatus<'_>)> {
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
-    Ok((response, dec.decode::<models::portal::PortalStatus>()?))
+    Ok((response, dec.decode::<models::portal::InletStatus>()?))
+}
+
+/// Parse the returned status response
+pub(crate) fn parse_outlet_status(
+    resp: &[u8],
+) -> Result<(Response, models::portal::OutletStatus<'_>)> {
+    let mut dec = Decoder::new(resp);
+    let response = dec.decode::<Response>()?;
+    Ok((response, dec.decode::<models::portal::OutletStatus>()?))
 }
 
 ////////////// !== share CLI args

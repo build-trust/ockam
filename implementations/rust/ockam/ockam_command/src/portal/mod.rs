@@ -1,5 +1,5 @@
 mod create;
-pub(crate) use create::{CreateCommand, CreateTypeCommand};
+pub(crate) use create::CreateCommand;
 
 // TODO: add delete, list, show subcommands
 

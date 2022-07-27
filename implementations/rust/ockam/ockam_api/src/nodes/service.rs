@@ -22,7 +22,6 @@ use crate::lmdb::LmdbStorage;
 use crate::nodes::config::NodeManConfig;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
-use crate::nodes::models::portal::PortalType;
 use crate::nodes::models::transport::{TransportList, TransportMode, TransportType};
 use crate::{Method, Request, Response, Status};
 
@@ -35,7 +34,7 @@ mod vault;
 
 const TARGET: &str = "ockam_api::nodeman::service";
 
-type Alias = String;
+pub(crate) type Alias = String;
 
 /// Generate a new alias for some user created extension
 #[inline]
@@ -65,9 +64,6 @@ pub struct NodeMan {
     api_transport_id: Alias,
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
-    // FIXME: wow this is a terrible way to store data
-    // TODO: Move to Registry?
-    portals: BTreeMap<(Alias, PortalType), (String, Option<Route>)>,
 
     skip_defaults: bool,
 
@@ -89,7 +85,6 @@ impl NodeMan {
         tcp_transport: TcpTransport,
     ) -> Result<Self> {
         let api_transport_id = random_alias();
-        let portals = BTreeMap::new();
         let mut transports = BTreeMap::new();
         transports.insert(api_transport_id.clone(), api_transport);
 
@@ -151,7 +146,6 @@ impl NodeMan {
             api_transport_id,
             transports,
             tcp_transport,
-            portals,
             skip_defaults,
             vault,
             identity,
@@ -335,8 +329,10 @@ impl NodeMan {
             (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req, dec).await?,
 
             // ==*== Inlets & Outlets ==*==
-            (Get, ["node", "portal"]) => self.get_portals(req).to_vec()?,
-            (Post, ["node", "portal"]) => self.create_portal(req, dec).await?.to_vec()?,
+            (Get, ["node", "inlet"]) => self.get_inlets(req).to_vec()?,
+            (Get, ["node", "outlet"]) => self.get_outlets(req).to_vec()?,
+            (Post, ["node", "inlet"]) => self.create_inlet(req, dec).await?.to_vec()?,
+            (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "portal"]) => todo!(),
 
             // ==*== Spaces ==*==

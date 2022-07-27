@@ -19,7 +19,7 @@ pub struct CreateSecureChannelRequest<'a> {
 }
 
 impl<'a> CreateSecureChannelRequest<'a> {
-    pub fn new(addr: MultiAddr, known_identifier: Option<impl Into<CowStr<'a>>>) -> Self {
+    pub fn new(addr: &MultiAddr, known_identifier: Option<impl Into<CowStr<'a>>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -40,7 +40,7 @@ pub struct CreateSecureChannelResponse<'a> {
 }
 
 impl<'a> CreateSecureChannelResponse<'a> {
-    pub fn new(addr: Address) -> Self {
+    pub fn new(addr: &Address) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -61,14 +61,11 @@ pub struct CreateSecureChannelListenerRequest<'a> {
 }
 
 impl<'a> CreateSecureChannelListenerRequest<'a> {
-    pub fn new(
-        addr: impl Into<Cow<'a, str>>,
-        known_identifier: Option<impl Into<CowStr<'a>>>,
-    ) -> Self {
+    pub fn new(addr: &Address, known_identifier: Option<impl Into<CowStr<'a>>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr: addr.into(),
+            addr: addr.to_string().into(),
             known_identifier: known_identifier.map(Into::into),
         }
     }
