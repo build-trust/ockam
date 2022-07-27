@@ -1,11 +1,12 @@
 use clap::Args;
 use rand::prelude::random;
 
+use std::net::SocketAddr;
 use std::{env::current_exe, fs::OpenOptions, process::Command, time::Duration};
 
 use crate::{
     node::show::query_status,
-    util::{connect_to, embedded_node, OckamConfig, DEFAULT_TCP_PORT},
+    util::{connect_to, embedded_node, OckamConfig, DEFAULT_API_ADDRESS},
     CommandGlobalOpts,
 };
 use ockam::{Context, TcpTransport};
@@ -28,9 +29,9 @@ pub struct CreateCommand {
     #[clap(display_order = 901, long, short)]
     skip_defaults: bool,
 
-    /// Specify the API port
-    #[clap(default_value_t = DEFAULT_TCP_PORT, long, short)]
-    port: u16,
+    /// Specify the API address
+    #[clap(default_value = DEFAULT_API_ADDRESS, long, short)]
+    api_address: String,
 
     #[clap(long, hide = true)]
     no_watchdog: bool,
@@ -38,13 +39,18 @@ pub struct CreateCommand {
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
         let cfg = &opts.config;
+        let address: SocketAddr = command
+            .api_address
+            .parse()
+            .expect("failed to parse api address");
+
         if command.foreground {
             // HACK: try to get the current node dir.  If it doesn't
             // exist the user PROBABLY started a non-detached node.
             // Thus we need to create the node dir so that subsequent
             // calls to it don't fail
             if cfg.get_node_dir(&command.node_name).is_err() {
-                if let Err(e) = cfg.create_node(&command.node_name, command.port, 0) {
+                if let Err(e) = cfg.create_node(&command.node_name, address.port(), 0) {
                     eprintln!(
                         "failed to update node configuration for '{}': {:?}",
                         command.node_name, e
@@ -61,7 +67,7 @@ impl CreateCommand {
             let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
 
             // FIXME: not really clear why this is causing issues
-            if cfg.port_is_used(command.port) {
+            if cfg.port_is_used(address.port()) {
                 eprintln!("Another node is listening on the provided port!");
                 std::process::exit(-1);
             }
@@ -69,7 +75,7 @@ impl CreateCommand {
             // First we create a new node in the configuration so that
             // we can ask it for the correct log path, as well as
             // making sure the watchdog can do its job later on.
-            if let Err(e) = cfg.create_node(&command.node_name, command.port, 0) {
+            if let Err(e) = cfg.create_node(&command.node_name, address.port(), 0) {
                 eprintln!(
                     "failed to update node configuration for '{}': {:?}",
                     command.node_name, e
@@ -102,8 +108,8 @@ impl CreateCommand {
                 verbose,
                 "node".to_string(),
                 "create".to_string(),
-                "--port".to_string(),
-                command.port.to_string(),
+                "--api-address".to_string(),
+                command.api_address,
                 "--foreground".to_string(),
             ];
 
@@ -137,14 +143,14 @@ impl CreateCommand {
             std::thread::sleep(Duration::from_millis(500));
 
             // Then query the node manager for the status
-            connect_to(command.port, (), query_status);
+            connect_to(address.port(), (), query_status);
         }
     }
 }
 
 async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
-    let bind = format!("0.0.0.0:{}", c.port);
+    let bind = c.api_address;
     tcp.listen(&bind).await?;
 
     let node_dir = cfg.get_node_dir(&c.node_name).unwrap(); // can't fail because we already checked it
