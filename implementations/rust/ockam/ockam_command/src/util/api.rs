@@ -151,7 +151,7 @@ pub(crate) fn start_identity_service(addr: &str) -> Result<Vec<u8>> {
     let payload = models::services::StartIdentityServiceRequest::new(addr);
 
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node//services/identity")
+    Request::builder(Method::Post, "/node/services/identity")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)
@@ -162,7 +162,7 @@ pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
     let payload = models::services::StartAuthenticatedServiceRequest::new(addr);
 
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node//services/authenticated")
+    Request::builder(Method::Post, "/node/services/authenticated")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)
