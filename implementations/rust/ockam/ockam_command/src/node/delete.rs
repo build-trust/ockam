@@ -10,7 +10,7 @@ pub struct DeleteCommand {
     node_opts: NodeOpts,
 
     /// Terminate all nodes
-    #[clap(long)]
+    #[clap(long, short)]
     all: bool,
 
     /// Should the node be terminated with SIGKILL instead of SIGTERM
