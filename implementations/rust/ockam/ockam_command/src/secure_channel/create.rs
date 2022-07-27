@@ -9,7 +9,7 @@ use ockam_api::error::ApiError;
 use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
 use ockam_api::nodes::NODEMAN_ADDR;
 use ockam_api::{route_to_multiaddr, Response, Status};
-use ockam_core::{route, Route};
+use ockam_core::{route, Address, Route};
 use ockam_multiaddr::MultiAddr;
 use tracing::debug;
 
@@ -34,7 +34,7 @@ pub enum CreateSubCommand {
     /// Create a new secure channel listener
     Listener {
         /// Specify an address for this listener
-        bind: String,
+        bind: Address,
         /// Pre-known Identifier of the other side
         known_identifier: Option<IdentityIdentifier>,
     },

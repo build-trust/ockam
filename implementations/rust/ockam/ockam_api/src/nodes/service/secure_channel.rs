@@ -73,7 +73,7 @@ impl NodeMan {
             .create_secure_channel_impl(route, known_identifier)
             .await?;
 
-        let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(channel));
+        let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(&channel));
 
         Ok(response)
     }
