@@ -1,4 +1,6 @@
 use clap::Args;
+use rand::prelude::random;
+
 use std::{env::current_exe, fs::OpenOptions, process::Command, time::Duration};
 
 use crate::{
@@ -15,7 +17,7 @@ use ockam_api::{
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     /// Name of the node.
-    #[clap(default_value = "default")]
+    #[clap(default_value_t = hex::encode(&random::<[u8;4]>()))]
     node_name: String,
 
     /// Spawn a node in the foreground.
