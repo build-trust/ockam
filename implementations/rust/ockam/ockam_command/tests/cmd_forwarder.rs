@@ -9,7 +9,7 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
         .arg("create")
         .arg("/ip4/127.0.0.1/tcp/8080")
         .arg("forwarder_alias")
-        .arg("-a")
+        .arg("-n")
         .arg("node-name");
     cmd.assert().success();
 

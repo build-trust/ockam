@@ -7,7 +7,7 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg("--test-argument-parser")
         .arg("token")
         .arg("/ip4/127.0.0.1/tcp/8080")
-        .arg("-a")
+        .arg("-n")
         .arg("node-name")
         .arg("--")
         .arg("k1=v1")
