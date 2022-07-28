@@ -89,14 +89,14 @@ pub(crate) fn create_identity() -> Result<Vec<u8>> {
 }
 
 /// Construct a request to export Identity
-pub(crate) fn export_identity() -> Result<Vec<u8>> {
+pub(crate) fn long_identity() -> Result<Vec<u8>> {
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/identity/actions/export").encode(&mut buf)?;
     Ok(buf)
 }
 
 /// Construct a request to print Identity Id
-pub(crate) fn print_identity() -> Result<Vec<u8>> {
+pub(crate) fn short_identity() -> Result<Vec<u8>> {
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/identity/actions/print").encode(&mut buf)?;
     Ok(buf)
@@ -430,25 +430,25 @@ pub(crate) fn parse_create_identity_response(
     ))
 }
 
-pub(crate) fn parse_export_identity_response(
+pub(crate) fn parse_long_identity_response(
     resp: &[u8],
-) -> Result<(Response, models::identity::ExportIdentityResponse<'_>)> {
+) -> Result<(Response, models::identity::LongIdentityResponse<'_>)> {
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
     Ok((
         response,
-        dec.decode::<models::identity::ExportIdentityResponse>()?,
+        dec.decode::<models::identity::LongIdentityResponse>()?,
     ))
 }
 
-pub(crate) fn parse_print_identity_response(
+pub(crate) fn parse_short_identity_response(
     resp: &[u8],
-) -> Result<(Response, models::identity::PrintIdentityResponse<'_>)> {
+) -> Result<(Response, models::identity::ShortIdentityResponse<'_>)> {
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
     Ok((
         response,
-        dec.decode::<models::identity::PrintIdentityResponse>()?,
+        dec.decode::<models::identity::ShortIdentityResponse>()?,
     ))
 }
 
