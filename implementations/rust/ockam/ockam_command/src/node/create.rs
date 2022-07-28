@@ -66,12 +66,6 @@ impl CreateCommand {
             // deterministic way of starting a node.
             let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
 
-            // FIXME: not really clear why this is causing issues
-            if cfg.port_is_used(address.port()) {
-                eprintln!("Another node is listening on the provided port!");
-                std::process::exit(-1);
-            }
-
             // First we create a new node in the configuration so that
             // we can ask it for the correct log path, as well as
             // making sure the watchdog can do its job later on.
@@ -150,8 +144,7 @@ impl CreateCommand {
 
 async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
-    let bind = c.api_address;
-    tcp.listen(&bind).await?;
+    let address = tcp.listen(c.api_address).await?;
 
     let node_dir = cfg.get_node_dir(&c.node_name).unwrap(); // can't fail because we already checked it
     let node_man = NodeMan::create(
@@ -159,10 +152,15 @@ async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::
         c.node_name,
         node_dir,
         c.skip_defaults,
-        (TransportType::Tcp, TransportMode::Listen, bind),
+        (
+            TransportType::Tcp,
+            TransportMode::Listen,
+            address.to_string(),
+        ),
         tcp,
     )
     .await?;
+
     ctx.start_worker(NODEMAN_ADDR, node_man).await?;
 
     Ok(())
