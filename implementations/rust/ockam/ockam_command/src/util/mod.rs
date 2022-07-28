@@ -1,4 +1,5 @@
 pub mod api;
+pub mod setup;
 
 mod addon;
 pub use addon::AddonCommand;

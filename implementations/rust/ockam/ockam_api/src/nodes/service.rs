@@ -66,6 +66,7 @@ pub struct NodeManager {
     tcp_transport: TcpTransport,
 
     skip_defaults: bool,
+    foreground: bool,
 
     vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
@@ -81,6 +82,7 @@ impl NodeManager {
         node_name: String,
         node_dir: PathBuf,
         skip_defaults: bool,
+        foreground: bool,
         api_transport: (TransportType, TransportMode, String),
         tcp_transport: TcpTransport,
     ) -> Result<Self> {
@@ -147,6 +149,7 @@ impl NodeManager {
             transports,
             tcp_transport,
             skip_defaults,
+            foreground,
             vault,
             identity,
             authenticated_storage,
@@ -154,7 +157,14 @@ impl NodeManager {
         };
 
         if !skip_defaults {
-            s.create_defaults(ctx).await?;
+            match (s.foreground, s.create_defaults(ctx).await) {
+                (_, Ok(())) => {}
+                (true, e) => trace!(
+                    "Ignoring error because node is running in foreground (sidecar?): {:?}",
+                    e
+                ),
+                (false, e @ Err(_)) => e?,
+            }
         }
 
         Ok(s)
@@ -448,6 +458,7 @@ pub(crate) mod tests {
                 "node".to_string(),
                 node_dir.into_path(),
                 true,
+                false,
                 (
                     TransportType::Tcp,
                     TransportMode::Listen,
@@ -480,6 +491,7 @@ pub(crate) mod tests {
                 "node".to_string(),
                 node_dir.into_path(),
                 true,
+                false,
                 (
                     TransportType::Tcp,
                     TransportMode::Listen,

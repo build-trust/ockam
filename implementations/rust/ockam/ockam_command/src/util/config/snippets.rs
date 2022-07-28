@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{collections::VecDeque, fmt};
 
 /// A composable snippet run against an existing node
 ///
@@ -21,6 +21,7 @@ pub struct ComposableSnippet {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum Operation {
     /// The node was created with a
     Node {
@@ -102,4 +103,9 @@ impl fmt::Display for PortalMode {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Protocol {
     Tcp,
+}
+
+/// Take a JSON encoded configuration and decode it into a series of composable snippets
+pub fn decode(s: &str) -> anyhow::Result<VecDeque<ComposableSnippet>> {
+    Ok(serde_json::from_str(s)?)
 }
