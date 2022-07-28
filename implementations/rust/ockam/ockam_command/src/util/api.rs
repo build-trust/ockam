@@ -105,12 +105,10 @@ pub(crate) fn print_identity() -> Result<Vec<u8>> {
 /// Construct a request to create Secure Channels
 pub(crate) fn create_secure_channel(
     addr: MultiAddr,
-    known_identifier: Option<IdentityIdentifier>,
+    authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 ) -> Result<Vec<u8>> {
-    let payload = models::secure_channel::CreateSecureChannelRequest::new(
-        &addr,
-        known_identifier.map(|x| x.to_string()),
-    );
+    let payload =
+        models::secure_channel::CreateSecureChannelRequest::new(&addr, authorized_identifiers);
 
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/secure_channel")
@@ -122,11 +120,11 @@ pub(crate) fn create_secure_channel(
 /// Construct a request to create Secure Channel Listeners
 pub(crate) fn create_secure_channel_listener(
     addr: &Address,
-    known_identifier: Option<IdentityIdentifier>,
+    authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 ) -> Result<Vec<u8>> {
     let payload = models::secure_channel::CreateSecureChannelListenerRequest::new(
         addr,
-        known_identifier.map(|x| x.to_string()),
+        authorized_identifiers,
     );
 
     let mut buf = vec![];
