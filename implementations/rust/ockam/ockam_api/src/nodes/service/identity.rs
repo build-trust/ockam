@@ -1,7 +1,7 @@
 use super::map_anyhow_err;
 use crate::error::ApiError;
 use crate::nodes::models::identity::{
-    CreateIdentityResponse, ExportIdentityResponse, PrintIdentityResponse,
+    CreateIdentityResponse, LongIdentityResponse, ShortIdentityResponse,
 };
 use crate::nodes::NodeManager;
 use crate::{Request, Response, ResponseBuilder};
@@ -53,23 +53,23 @@ impl NodeManager {
     pub(super) async fn export_identity(
         &mut self,
         req: &Request<'_>,
-    ) -> Result<ResponseBuilder<ExportIdentityResponse<'_>>> {
+    ) -> Result<ResponseBuilder<LongIdentityResponse<'_>>> {
         let identity = self.identity()?;
         let identity = identity.export().await?;
 
-        let response = Response::ok(req.id()).body(ExportIdentityResponse::new(identity));
+        let response = Response::ok(req.id()).body(LongIdentityResponse::new(identity));
         Ok(response)
     }
 
     pub(super) async fn print_identity(
         &mut self,
         req: &Request<'_>,
-    ) -> Result<ResponseBuilder<PrintIdentityResponse<'_>>> {
+    ) -> Result<ResponseBuilder<ShortIdentityResponse<'_>>> {
         let identity = self.identity()?;
         let identifier = identity.identifier()?;
 
         let response =
-            Response::ok(req.id()).body(PrintIdentityResponse::new(identifier.to_string()));
+            Response::ok(req.id()).body(ShortIdentityResponse::new(identifier.to_string()));
         Ok(response)
     }
 }

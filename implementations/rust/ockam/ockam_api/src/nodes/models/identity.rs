@@ -29,13 +29,13 @@ impl<'a> CreateIdentityResponse<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct ExportIdentityResponse<'a> {
+pub struct LongIdentityResponse<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<7961643>,
     #[b(1)] pub identity: CowBytes<'a>,
 }
 
-impl<'a> ExportIdentityResponse<'a> {
+impl<'a> LongIdentityResponse<'a> {
     pub fn new(identity: impl Into<Cow<'a, [u8]>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -48,13 +48,13 @@ impl<'a> ExportIdentityResponse<'a> {
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct PrintIdentityResponse<'a> {
+pub struct ShortIdentityResponse<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<5773131>,
     #[b(1)] pub identity_id: Cow<'a, str>,
 }
 
-impl<'a> PrintIdentityResponse<'a> {
+impl<'a> ShortIdentityResponse<'a> {
     pub fn new(identity_id: impl Into<Cow<'a, str>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
