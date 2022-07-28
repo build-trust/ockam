@@ -1,8 +1,7 @@
 //! Handle local node configuration
 
-mod snippets;
-
-use snippets::{ComposableSnippet, Operation};
+pub mod snippets;
+use snippets::ComposableSnippet;
 
 use directories::ProjectDirs;
 use ockam_api::config::atomic::AtomicUpdater;
@@ -186,7 +185,12 @@ Otherwise your OS or OS configuration may not be supported!",
     ///////////////////// WRITE ACCESSORS //////////////////////////////
 
     /// Add a new node to the configuration for future lookup
-    pub fn create_node(&self, name: &str, port: u16, pid: i32) -> Result<(), ConfigError> {
+    pub fn create_node(
+        &self,
+        name: &str,
+        port: u16,
+        start_composite: ComposableSnippet,
+    ) -> Result<(), ConfigError> {
         let mut inner = self.config.inner().write().unwrap();
 
         if inner.nodes.contains_key(name) {
@@ -208,16 +212,8 @@ Otherwise your OS or OS configuration may not be supported!",
             NodeConfig {
                 port,
                 state_dir,
-                pid: Some(pid),
-                composites: vec![ComposableSnippet {
-                    id: "_start".into(),
-                    op: Operation::Node {
-                        port,
-                        node_name: name.to_string(),
-                    },
-                    params: vec![],
-                }]
-                .into(),
+                pid: Some(0),
+                composites: vec![start_composite].into(),
             },
         );
         Ok(())
@@ -252,23 +248,15 @@ Otherwise your OS or OS configuration may not be supported!",
 
     ///////////////////// COMPOSITION CONSTRUCTORS //////////////////////////////
 
-    pub fn add_transport(&self, node: &str, listen: bool, tcp: bool, addr: String) {
+    /// Add a new composite command to a node
+    pub fn add_composite(&self, node: &str, composite: ComposableSnippet) {
         let mut inner = self.config.inner().write().unwrap();
         inner
             .nodes
             .get_mut(node)
             .unwrap()
             .composites
-            .push_back(ComposableSnippet {
-                id: format!(
-                    "_transport_{}_{}_{}",
-                    if listen { "listen" } else { "connect" },
-                    if tcp { "tcp" } else { "unknown" },
-                    addr
-                ),
-                op: Operation::Transport { listen, tcp, addr },
-                params: vec![],
-            })
+            .push_back(composite);
     }
 }
 
