@@ -5,6 +5,7 @@ use ockam_core::Address;
 use crate::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 
 /// Request body when instructing a node to create a Secure Channel
@@ -15,16 +16,17 @@ pub struct CreateSecureChannelRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6300395>,
     #[b(1)] pub addr: Cow<'a, str>,
-    #[b(2)] pub known_identifier: Option<CowStr<'a>>,
+    #[b(2)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
 }
 
 impl<'a> CreateSecureChannelRequest<'a> {
-    pub fn new(addr: &MultiAddr, known_identifier: Option<impl Into<CowStr<'a>>>) -> Self {
+    pub fn new(addr: &MultiAddr, authorized_identifiers: Option<Vec<IdentityIdentifier>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             addr: addr.to_string().into(),
-            known_identifier: known_identifier.map(Into::into),
+            authorized_identifiers: authorized_identifiers
+                .map(|x| x.into_iter().map(|y| y.to_string().into()).collect()),
         }
     }
 }
@@ -57,16 +59,17 @@ pub struct CreateSecureChannelListenerRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8112242>,
     #[b(1)] pub addr: Cow<'a, str>,
-    #[b(2)] pub known_identifier: Option<CowStr<'a>>,
+    #[b(2)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
 }
 
 impl<'a> CreateSecureChannelListenerRequest<'a> {
-    pub fn new(addr: &Address, known_identifier: Option<impl Into<CowStr<'a>>>) -> Self {
+    pub fn new(addr: &Address, authorized_identifiers: Option<Vec<IdentityIdentifier>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             addr: addr.to_string().into(),
-            known_identifier: known_identifier.map(Into::into),
+            authorized_identifiers: authorized_identifiers
+                .map(|x| x.into_iter().map(|y| y.to_string().into()).collect()),
         }
     }
 }

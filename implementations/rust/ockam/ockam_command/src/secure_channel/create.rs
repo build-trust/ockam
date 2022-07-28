@@ -28,15 +28,17 @@ pub enum CreateSubCommand {
     Connector {
         /// What address to connect to
         addr: MultiAddr,
-        /// Pre-known Identifier of the other side
-        known_identifier: Option<IdentityIdentifier>,
+        /// Pre-known Identifiers of the other side
+        #[clap(short, long)]
+        authorized_identifier: Option<Vec<IdentityIdentifier>>,
     },
     /// Create a new secure channel listener
     Listener {
         /// Specify an address for this listener
         bind: Address,
-        /// Pre-known Identifier of the other side
-        known_identifier: Option<IdentityIdentifier>,
+        /// Pre-known Identifiers of the other side
+        #[clap(short, long)]
+        authorized_identifier: Option<Vec<IdentityIdentifier>>,
     },
 }
 
@@ -65,11 +67,11 @@ pub async fn create_connector(
     cmd: CreateCommand,
     mut base_route: Route,
 ) -> anyhow::Result<()> {
-    let (addr, known_identifier) = match cmd.create_subcommand {
+    let (addr, authorized_identifiers) = match cmd.create_subcommand {
         CreateSubCommand::Connector {
             addr,
-            known_identifier,
-        } => (addr, known_identifier),
+            authorized_identifier,
+        } => (addr, authorized_identifier),
         CreateSubCommand::Listener { .. } => {
             return Err(ApiError::generic("Internal logic error").into())
         }
@@ -78,7 +80,7 @@ pub async fn create_connector(
     let response: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append(NODEMAN_ADDR),
-            api::create_secure_channel(addr, known_identifier)?,
+            api::create_secure_channel(addr, authorized_identifiers)?,
         )
         .await
         .context("Failed to process request")?;
@@ -119,20 +121,20 @@ pub async fn create_listener(
     cmd: CreateCommand,
     mut base_route: Route,
 ) -> anyhow::Result<()> {
-    let (addr, known_identifier) = match cmd.create_subcommand {
+    let (addr, authorized_identifiers) = match cmd.create_subcommand {
         CreateSubCommand::Connector { .. } => {
             return Err(ApiError::generic("Internal logic error").into())
         }
         CreateSubCommand::Listener {
             bind,
-            known_identifier,
-        } => (bind, known_identifier),
+            authorized_identifier,
+        } => (bind, authorized_identifier),
     };
 
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append(NODEMAN_ADDR),
-            api::create_secure_channel_listener(&addr, known_identifier)?,
+            api::create_secure_channel_listener(&addr, authorized_identifiers)?,
         )
         .await?;
 
