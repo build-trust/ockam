@@ -32,7 +32,18 @@ pub enum Operation {
         protocol: Protocol,
         address: String,
     },
-    Portal,
+    Portal {
+        mode: PortalMode,
+        protocol: Protocol,
+        /// Socket or address to bind to.  For the inlet this is a
+        /// `$Protocol` socket.  For the outlet this is an Ockam
+        /// MultiAddr.
+        bind: String,
+        /// The peer of this portal endpoint.  For an outlet this is
+        /// the target remote.  For the inlet this is the outlet
+        /// route.
+        peer: String,
+    },
     SecureChannel,
     Forwarder,
 }
@@ -63,6 +74,26 @@ impl fmt::Display for RemoteMode {
                 Self::Connector => "connector",
                 Self::Receiver => "receiver",
                 Self::Listener => "listener",
+            }
+        )
+    }
+}
+
+/// Mode of a particular portal structure
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum PortalMode {
+    Inlet,
+    Outlet,
+}
+
+impl fmt::Display for PortalMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Inlet => "inlet",
+                Self::Outlet => "outlet",
             }
         )
     }
