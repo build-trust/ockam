@@ -1,4 +1,5 @@
 use crate::node::NodeOpts;
+use crate::util::snippets::{ComposableSnippet, Operation, PortalMode, Protocol};
 use crate::util::{api, connect_to, stop_node};
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
@@ -26,6 +27,25 @@ pub struct CreateCommand {
     pub alias: Option<String>,
 }
 
+impl From<&'_ CreateCommand> for ComposableSnippet {
+    fn from(cc: &'_ CreateCommand) -> Self {
+        let bind = cc.create_subcommand.bind();
+        let peer = cc.create_subcommand.peer();
+        let mode = cc.create_subcommand.mode();
+
+        Self {
+            id: format!("_portal_{}_{}_{}_{}", mode, "tcp", bind, peer,),
+            op: Operation::Portal {
+                mode,
+                protocol: Protocol::Tcp,
+                bind,
+                peer,
+            },
+            params: vec![],
+        }
+    }
+}
+
 #[derive(Clone, Debug, Subcommand)]
 pub enum CreateTypeCommand {
     /// Create a TCP portal inlet
@@ -44,6 +64,29 @@ pub enum CreateTypeCommand {
     },
 }
 
+impl CreateTypeCommand {
+    fn mode(&self) -> PortalMode {
+        match self {
+            Self::TcpInlet { .. } => PortalMode::Inlet,
+            Self::TcpOutlet { .. } => PortalMode::Outlet,
+        }
+    }
+
+    fn bind(&self) -> String {
+        match self {
+            Self::TcpInlet { bind, .. } => bind.clone(),
+            Self::TcpOutlet { worker_address, .. } => worker_address.to_string(),
+        }
+    }
+
+    fn peer(&self) -> String {
+        match self {
+            Self::TcpInlet { outlet_addr, .. } => outlet_addr.to_string(),
+            Self::TcpOutlet { tcp_address, .. } => tcp_address.clone(),
+        }
+    }
+}
+
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
         let cfg = &opts.config;
@@ -55,10 +98,16 @@ impl CreateCommand {
             }
         };
 
+        let composite = (&command).into();
+        let node = command.node_opts.api_node.clone();
+
         match command.create_subcommand {
             CreateTypeCommand::TcpInlet { .. } => connect_to(port, command, create_inlet),
             CreateTypeCommand::TcpOutlet { .. } => connect_to(port, command, create_outlet),
         }
+
+        // Update the config
+        cfg.add_composite(&node, composite);
     }
 }
 
