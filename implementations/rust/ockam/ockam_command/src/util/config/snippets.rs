@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 /// A composable snippet run against an existing node
 ///
@@ -23,15 +24,51 @@ pub struct ComposableSnippet {
 pub enum Operation {
     /// The node was created with a
     Node {
-        port: u16,
+        api_addr: String,
         node_name: String,
     },
     Transport {
-        listen: bool,
-        tcp: bool,
-        addr: String,
+        mode: RemoteMode,
+        protocol: Protocol,
+        address: String,
     },
     Portal,
     SecureChannel,
     Forwarder,
+}
+
+/// The mode a remote operation is using
+///
+/// * A `Connector` is a connection initiator.  It can either contact a
+/// `Socket` or a `Listener`
+///
+/// * A `Receiver` is a fully fledged, static responder, meaning it only
+/// handles a connection from a single `Connector`
+///
+/// * A `Listener` spawns `Receiver`s for any incoming `Connector`
+/// handshake
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum RemoteMode {
+    Connector,
+    Receiver,
+    Listener,
+}
+
+impl fmt::Display for RemoteMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Connector => "connector",
+                Self::Receiver => "receiver",
+                Self::Listener => "listener",
+            }
+        )
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum Protocol {
+    Tcp,
 }

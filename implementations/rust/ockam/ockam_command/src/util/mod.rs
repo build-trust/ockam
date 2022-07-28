@@ -4,6 +4,7 @@ mod addon;
 pub use addon::AddonCommand;
 
 mod config;
+pub use config::snippets;
 pub use config::{ConfigError, NodeConfig, OckamConfig};
 
 use anyhow::Context;

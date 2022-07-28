@@ -14,7 +14,7 @@ use crate::{
     node::echoer::Echoer,
     node::show::query_status,
     node::uppercase::Uppercase,
-    util::{connect_to, embedded_node, find_available_port, OckamConfig},
+    util::{connect_to, embedded_node, find_available_port, snippets, OckamConfig},
     CommandGlobalOpts,
 };
 use ockam::{Context, TcpTransport};
@@ -44,6 +44,20 @@ pub struct CreateCommand {
     #[clap(long, hide = true)]
     no_watchdog: bool,
 }
+
+impl From<&'_ CreateCommand> for snippets::ComposableSnippet {
+    fn from(cc: &'_ CreateCommand) -> Self {
+        Self {
+            id: "_start".into(),
+            op: snippets::Operation::Node {
+                api_addr: cc.api_address.clone(),
+                node_name: cc.node_name.clone(),
+            },
+            params: vec![],
+        }
+    }
+}
+
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
         let cfg = &opts.config;
@@ -62,13 +76,16 @@ impl CreateCommand {
             ..command
         };
 
+        let composite = (&command).into();
+
         if command.foreground {
+            let composite = (&command).into();
             // HACK: try to get the current node dir.  If it doesn't
             // exist the user PROBABLY started a non-detached node.
             // Thus we need to create the node dir so that subsequent
             // calls to it don't fail
             if cfg.get_node_dir(&command.node_name).is_err() {
-                if let Err(e) = cfg.create_node(&command.node_name, address.port(), 0) {
+                if let Err(e) = cfg.create_node(&command.node_name, address.port(), composite) {
                     eprintln!(
                         "failed to update node configuration for '{}': {:?}",
                         command.node_name, e
@@ -99,7 +116,7 @@ impl CreateCommand {
             // First we create a new node in the configuration so that
             // we can ask it for the correct log path, as well as
             // making sure the watchdog can do its job later on.
-            if let Err(e) = cfg.create_node(&command.node_name, address.port(), 0) {
+            if let Err(e) = cfg.create_node(&command.node_name, address.port(), composite) {
                 eprintln!(
                     "failed to update node configuration for '{}': {:?}",
                     command.node_name, e
