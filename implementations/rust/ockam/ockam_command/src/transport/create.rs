@@ -1,4 +1,5 @@
 use crate::node::NodeOpts;
+use crate::util::snippets::{ComposableSnippet, Operation, Protocol, RemoteMode};
 use crate::util::{api, connect_to, stop_node};
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
@@ -18,6 +19,30 @@ pub struct CreateCommand {
     pub create_subcommand: CreateTypeCommand,
 }
 
+impl From<&'_ CreateCommand> for ComposableSnippet {
+    fn from(cc: &'_ CreateCommand) -> Self {
+        let mode = cc.create_subcommand.mode();
+        // In the future we need to support other transport types
+        let tcp = true;
+        let address = cc.create_subcommand.address();
+
+        Self {
+            id: format!(
+                "_transport_{}_{}_{}",
+                mode,
+                if tcp { "tcp" } else { "unknown" },
+                address
+            ),
+            op: Operation::Transport {
+                protocol: Protocol::Tcp,
+                address,
+                mode,
+            },
+            params: vec![],
+        }
+    }
+}
+
 #[derive(Clone, Debug, Subcommand)]
 pub enum CreateTypeCommand {
     /// Create a TCP transport listener
@@ -34,8 +59,23 @@ pub enum CreateTypeCommand {
     /// the given peer address and port
     TcpConnector {
         /// Transport connection or bind address
-        addr: String,
+        address: String,
     },
+}
+
+impl CreateTypeCommand {
+    fn mode(&self) -> RemoteMode {
+        match self {
+            Self::TcpListener { .. } => RemoteMode::Listener,
+            Self::TcpConnector { .. } => RemoteMode::Connector,
+        }
+    }
+    fn address(&self) -> String {
+        match self {
+            Self::TcpListener { bind } => bind.clone(),
+            Self::TcpConnector { address } => address.clone(),
+        }
+    }
 }
 
 impl CreateCommand {
@@ -55,11 +95,9 @@ impl CreateCommand {
         // went OK if we reach this point because embedded_node
         // crashes the process if something went wrong?  But idk,
         // still bad and should be fixed
+        let composite = (&command).into();
         let node = command.node_opts.api_node;
-        match command.create_subcommand {
-            CreateTypeCommand::TcpConnector { addr } => cfg.add_transport(&node, false, true, addr),
-            CreateTypeCommand::TcpListener { bind } => cfg.add_transport(&node, true, true, bind),
-        };
+        cfg.add_composite(&node, composite);
 
         if let Err(e) = cfg.atomic_update().run() {
             eprintln!("failed to update configuration: {}", e);

@@ -33,8 +33,8 @@ pub(crate) fn query_transports() -> Result<Vec<u8>> {
 pub(crate) fn create_transport(cmd: &crate::transport::CreateCommand) -> Result<Vec<u8>> {
     // FIXME: this should not rely on CreateCommand internals!
     let (tt, addr) = match &cmd.create_subcommand {
-        transport::CreateTypeCommand::TcpConnector { addr } => {
-            (models::transport::TransportMode::Connect, addr)
+        transport::CreateTypeCommand::TcpConnector { address } => {
+            (models::transport::TransportMode::Connect, address)
         }
         transport::CreateTypeCommand::TcpListener { bind } => {
             (models::transport::TransportMode::Listen, bind)
