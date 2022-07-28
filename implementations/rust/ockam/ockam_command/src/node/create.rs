@@ -41,6 +41,13 @@ pub struct CreateCommand {
     #[clap(default_value = "127.0.0.1:0", long, short)]
     api_address: String,
 
+    /// JSON encoded composable state arguments to configure this node
+    // This argument is currently ignored on background nodes.  Node
+    // configuration is run asynchronously and may take several
+    // seconds to complete.
+    #[clap(long, hide = true)]
+    launch_state: Option<String>,
+
     #[clap(long, hide = true)]
     no_watchdog: bool,
 }
@@ -71,7 +78,7 @@ impl CreateCommand {
                 .expect("failed to parse api address")
         };
 
-        let command = CreateCommand {
+        let mut command = CreateCommand {
             api_address: address.to_string(),
             ..command
         };
@@ -85,6 +92,7 @@ impl CreateCommand {
             // Thus we need to create the node dir so that subsequent
             // calls to it don't fail
             if cfg.get_node_dir(&command.node_name).is_err() {
+                println!("Creating node directory...");
                 if let Err(e) = cfg.create_node(&command.node_name, address.port(), composite) {
                     eprintln!(
                         "failed to update node configuration for '{}': {:?}",
@@ -98,6 +106,25 @@ impl CreateCommand {
                     eprintln!("failed to update configuration: {}", e);
                     std::process::exit(-1);
                 }
+            }
+
+            if let Some(state) = command.launch_state.take() {
+                std::thread::spawn(move || {
+                    // Wait for the regular node to be ready for us
+                    std::thread::sleep(Duration::from_millis(666));
+
+                    let vec = match snippets::decode(&state) {
+                        Ok(vec) => vec,
+                        Err(e) => {
+                            eprintln!("failed to parse `--launch-state` data: {}", e);
+                            std::process::exit(-1);
+                        }
+                    };
+
+                    println!("Executing snippets: {:?}", vec);
+                    crate::util::setup::run_foreground("foo", &vec);
+                    println!("Done!");
+                });
             }
 
             embedded_node(setup, (command, cfg.clone()));
