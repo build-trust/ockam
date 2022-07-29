@@ -5,11 +5,13 @@ use std::{
     env::current_exe,
     fs::OpenOptions,
     net::{IpAddr, SocketAddr},
+    path::PathBuf,
     process::Command,
     str::FromStr,
     time::Duration,
 };
 
+use crate::util::snippets::LaunchConfig;
 use crate::{
     node::echoer::Echoer,
     node::show::query_status,
@@ -41,12 +43,13 @@ pub struct CreateCommand {
     #[clap(default_value = "127.0.0.1:0", long, short)]
     api_address: String,
 
-    /// JSON encoded composable state arguments to configure this node
-    // This argument is currently ignored on background nodes.  Node
-    // configuration is run asynchronously and may take several
-    // seconds to complete.
-    #[clap(long, hide = true)]
-    launch_state: Option<String>,
+    /// JSON config to setup a foreground node
+    ///
+    /// This argument is currently ignored on background nodes.  Node
+    /// configuration is run asynchronously and may take several
+    /// seconds to complete.
+    #[clap(long)]
+    launch_config: Option<PathBuf>,
 
     #[clap(long, hide = true)]
     no_watchdog: bool,
@@ -78,7 +81,7 @@ impl CreateCommand {
                 .expect("failed to parse api address")
         };
 
-        let mut command = CreateCommand {
+        let command = CreateCommand {
             api_address: address.to_string(),
             ..command
         };
@@ -108,22 +111,22 @@ impl CreateCommand {
                 }
             }
 
-            if let Some(state) = command.launch_state.take() {
+            if let Some(ref path) = command.launch_config {
+                let cfg = match LaunchConfig::load(path) {
+                    Ok(cfg) => cfg,
+                    Err(e) => {
+                        eprintln!("failed to read launch configuration: {}", e);
+                        std::process::exit(-1);
+                    }
+                };
+
                 std::thread::spawn(move || {
                     // Wait for the regular node to be ready for us
                     std::thread::sleep(Duration::from_millis(666));
 
-                    let vec = match snippets::decode(&state) {
-                        Ok(vec) => vec,
-                        Err(e) => {
-                            eprintln!("failed to parse `--launch-state` data: {}", e);
-                            std::process::exit(-1);
-                        }
-                    };
-
-                    println!("Executing snippets: {:?}", vec);
-                    crate::util::setup::run_foreground("foo", &vec);
-                    println!("Done!");
+                    eprintln!("Executing snippets: {:?}", cfg.vec);
+                    crate::util::setup::run_foreground("foo", &cfg.vec);
+                    eprintln!("Done!");
                 });
             }
 

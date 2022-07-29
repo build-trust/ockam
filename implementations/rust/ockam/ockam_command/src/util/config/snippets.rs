@@ -1,5 +1,21 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::VecDeque, fmt};
+use std::{collections::VecDeque, fmt, fs::File, io::Read, path::Path};
+
+/// A stand-alone configuration file to setup a foreground node
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LaunchConfig {
+    pub vec: VecDeque<ComposableSnippet>,
+}
+
+impl LaunchConfig {
+    pub fn load(p: &Path) -> anyhow::Result<Self> {
+        let mut buf = String::new();
+        let mut f = File::open(p)?;
+        f.read_to_string(&mut buf)?;
+        let this = serde_json::from_str(&buf)?;
+        Ok(this)
+    }
+}
 
 /// A composable snippet run against an existing node
 ///
@@ -103,9 +119,4 @@ impl fmt::Display for PortalMode {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Protocol {
     Tcp,
-}
-
-/// Take a JSON encoded configuration and decode it into a series of composable snippets
-pub fn decode(s: &str) -> anyhow::Result<VecDeque<ComposableSnippet>> {
-    Ok(serde_json::from_str(s)?)
 }
