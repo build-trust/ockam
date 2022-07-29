@@ -14,7 +14,7 @@ use crate::{
 use ockam::{Context, TcpTransport};
 use ockam_api::{
     nodes::models::transport::{TransportMode, TransportType},
-    nodes::{NodeMan, NODEMAN_ADDR},
+    nodes::{NodeManager, NODEMAN_ADDR},
 };
 
 #[derive(Clone, Debug, Args)]
@@ -156,7 +156,7 @@ async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::
     tcp.listen(&bind).await?;
 
     let node_dir = cfg.get_node_dir(&c.node_name).unwrap(); // can't fail because we already checked it
-    let node_man = NodeMan::create(
+    let node_man = NodeManager::create(
         &ctx,
         c.node_name,
         node_dir,

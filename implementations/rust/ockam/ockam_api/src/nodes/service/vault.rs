@@ -1,7 +1,7 @@
 use super::map_anyhow_err;
 use crate::error::ApiError;
 use crate::nodes::models::vault::CreateVaultRequest;
-use crate::nodes::NodeMan;
+use crate::nodes::NodeManager;
 use crate::{Request, Response, ResponseBuilder};
 use minicbor::Decoder;
 use ockam::vault::storage::FileStorage;
@@ -10,7 +10,7 @@ use ockam::Result;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-impl NodeMan {
+impl NodeManager {
     pub(crate) fn vault(&self) -> Result<&Vault> {
         self.vault
             .as_ref()

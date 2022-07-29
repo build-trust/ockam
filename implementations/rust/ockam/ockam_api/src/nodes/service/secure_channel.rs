@@ -3,7 +3,7 @@ use crate::error::ApiError;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
 };
-use crate::nodes::NodeMan;
+use crate::nodes::NodeManager;
 use crate::{Request, Response, ResponseBuilder};
 use minicbor::Decoder;
 use ockam::identity::TrustEveryonePolicy;
@@ -11,7 +11,7 @@ use ockam::{Address, Result, Route};
 use ockam_identity::{IdentityIdentifier, TrustMultiIdentifiersPolicy};
 use ockam_multiaddr::MultiAddr;
 
-impl NodeMan {
+impl NodeManager {
     pub(super) async fn create_secure_channel_impl<'a>(
         &mut self,
         route: Route,
