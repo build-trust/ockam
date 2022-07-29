@@ -2,7 +2,7 @@ use crate::node::NodeOpts;
 use crate::util::{api, connect_to, stop_node};
 use crate::CommandGlobalOpts;
 use anyhow::{anyhow, Context};
-use clap::{Args, Subcommand};
+use clap::Args;
 use minicbor::Decoder;
 use ockam::identity::IdentityIdentifier;
 use ockam_api::error::ApiError;
@@ -18,28 +18,23 @@ pub struct CreateCommand {
     #[clap(flatten)]
     node_opts: NodeOpts,
 
-    #[clap(subcommand)]
-    pub create_subcommand: CreateSubCommand,
+    /// What address to connect to
+    addr: MultiAddr,
+    /// Pre-known Identifiers of the other side
+    #[clap(short, long)]
+    authorized_identifier: Option<Vec<IdentityIdentifier>>,
 }
 
-#[derive(Clone, Debug, Subcommand)]
-pub enum CreateSubCommand {
-    /// Connect to an existing secure channel listener
-    Connector {
-        /// What address to connect to
-        addr: MultiAddr,
-        /// Pre-known Identifiers of the other side
-        #[clap(short, long)]
-        authorized_identifier: Option<Vec<IdentityIdentifier>>,
-    },
-    /// Create a new secure channel listener
-    Listener {
-        /// Specify an address for this listener
-        bind: Address,
-        /// Pre-known Identifiers of the other side
-        #[clap(short, long)]
-        authorized_identifier: Option<Vec<IdentityIdentifier>>,
-    },
+#[derive(Clone, Debug, Args)]
+pub struct CreateListenerCommand {
+    #[clap(flatten)]
+    node_opts: NodeOpts,
+
+    /// Specify an address for this listener
+    bind: Address,
+    /// Pre-known Identifiers of the other side
+    #[clap(short, long)]
+    authorized_identifier: Option<Vec<IdentityIdentifier>>,
 }
 
 impl CreateCommand {
@@ -53,10 +48,24 @@ impl CreateCommand {
             }
         };
 
-        match command.create_subcommand {
-            CreateSubCommand::Connector { .. } => connect_to(port, command, create_connector),
-            CreateSubCommand::Listener { .. } => connect_to(port, command, create_listener),
-        }
+        connect_to(port, command, create_connector);
+
+        Ok(())
+    }
+}
+
+impl CreateListenerCommand {
+    pub fn run(opts: CommandGlobalOpts, command: CreateListenerCommand) -> anyhow::Result<()> {
+        let cfg = opts.config;
+        let port = match cfg.select_node(&command.node_opts.api_node) {
+            Some(cfg) => cfg.port,
+            None => {
+                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
+                std::process::exit(-1);
+            }
+        };
+
+        connect_to(port, command, create_listener);
 
         Ok(())
     }
@@ -67,15 +76,11 @@ pub async fn create_connector(
     cmd: CreateCommand,
     mut base_route: Route,
 ) -> anyhow::Result<()> {
-    let (addr, authorized_identifiers) = match cmd.create_subcommand {
-        CreateSubCommand::Connector {
-            addr,
-            authorized_identifier,
-        } => (addr, authorized_identifier),
-        CreateSubCommand::Listener { .. } => {
-            return Err(ApiError::generic("Internal logic error").into())
-        }
-    };
+    let CreateCommand {
+        addr,
+        authorized_identifier: authorized_identifiers,
+        ..
+    } = cmd;
 
     let response: Vec<u8> = ctx
         .send_and_receive(
@@ -118,18 +123,14 @@ pub async fn create_connector(
 
 pub async fn create_listener(
     ctx: ockam::Context,
-    cmd: CreateCommand,
+    cmd: CreateListenerCommand,
     mut base_route: Route,
 ) -> anyhow::Result<()> {
-    let (addr, authorized_identifiers) = match cmd.create_subcommand {
-        CreateSubCommand::Connector { .. } => {
-            return Err(ApiError::generic("Internal logic error").into())
-        }
-        CreateSubCommand::Listener {
-            bind,
-            authorized_identifier,
-        } => (bind, authorized_identifier),
-    };
+    let CreateListenerCommand {
+        bind: addr,
+        authorized_identifier: authorized_identifiers,
+        ..
+    } = cmd;
 
     let resp: Vec<u8> = ctx
         .send_and_receive(
