@@ -3,7 +3,7 @@ use crate::CommandGlobalOpts;
 use anyhow::Context;
 use clap::Args;
 use ockam::Route;
-use ockam_api::nodes::{models::base::NodeStatus, NODEMAN_ADDR};
+use ockam_api::nodes::{models::base::NodeStatus, NODEMANAGER_ADDR};
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -29,7 +29,7 @@ impl ShowCommand {
 pub async fn query_status(ctx: ockam::Context, _: (), mut base_route: Route) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append(NODEMAN_ADDR),
+            base_route.modify().append(NODEMANAGER_ADDR),
             api::query_status()?,
         )
         .await

@@ -3,7 +3,7 @@ use clap::Args;
 use minicbor::Decoder;
 use tracing::debug;
 
-use ockam_api::nodes::NODEMAN_ADDR;
+use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_api::{Response, Status};
 use ockam_core::Route;
 
@@ -32,7 +32,7 @@ async fn authenticate(
     (_opts, cmd): (CommandGlobalOpts, EnrollCommand),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
-    let route: Route = base_route.modify().append(NODEMAN_ADDR).into();
+    let route: Route = base_route.modify().append(NODEMANAGER_ADDR).into();
     debug!(?cmd, %route, "Sending request");
 
     let response: Vec<u8> = ctx

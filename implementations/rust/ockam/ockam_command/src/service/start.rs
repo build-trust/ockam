@@ -5,7 +5,7 @@ use anyhow::{anyhow, Context};
 use clap::{Args, Subcommand};
 use minicbor::Decoder;
 use ockam_api::error::ApiError;
-use ockam_api::nodes::NODEMAN_ADDR;
+use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_api::{Response, Status};
 use ockam_core::Route;
 use tracing::debug;
@@ -63,7 +63,7 @@ pub async fn start_vault_service(
 
     let response: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append(NODEMAN_ADDR),
+            base_route.modify().append(NODEMANAGER_ADDR),
             api::start_vault_service(&addr)?,
         )
         .await
@@ -110,7 +110,7 @@ pub async fn start_identity_service(
 
     let response: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append(NODEMAN_ADDR),
+            base_route.modify().append(NODEMANAGER_ADDR),
             api::start_identity_service(&addr)?,
         )
         .await
@@ -157,7 +157,7 @@ pub async fn start_authenticated_service(
 
     let response: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append(NODEMAN_ADDR),
+            base_route.modify().append(NODEMANAGER_ADDR),
             api::start_authenticated_service(&addr)?,
         )
         .await

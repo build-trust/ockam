@@ -6,7 +6,7 @@ use clap::Args;
 use cli_table::{format::Justify, print_stdout, Cell, Style, Table};
 use crossbeam_channel::{bounded, Sender};
 use ockam::{Context, Route};
-use ockam_api::nodes::NODEMAN_ADDR;
+use ockam_api::nodes::NODEMANAGER_ADDR;
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {}
@@ -92,7 +92,7 @@ pub async fn query_pid(
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     ctx.send(
-        base_route.modify().append(NODEMAN_ADDR),
+        base_route.modify().append(NODEMANAGER_ADDR),
         api::query_status()?,
     )
     .await?;
