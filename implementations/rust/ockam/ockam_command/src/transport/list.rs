@@ -6,7 +6,7 @@ use cli_table::{print_stdout, Cell, Style, Table};
 use ockam::{Context, Route};
 use ockam_api::nodes::{
     models::transport::{TransportList, TransportStatus},
-    NODEMAN_ADDR,
+    NODEMANAGER_ADDR,
 };
 
 #[derive(Clone, Debug, Args)]
@@ -32,7 +32,7 @@ impl ListCommand {
 pub async fn query_transports(ctx: Context, _: (), mut base_route: Route) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append(NODEMAN_ADDR),
+            base_route.modify().append(NODEMANAGER_ADDR),
             api::query_transports()?,
         )
         .await
