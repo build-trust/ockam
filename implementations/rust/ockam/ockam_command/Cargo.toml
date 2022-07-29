@@ -1,14 +1,30 @@
 [package]
-name = "ockam_command"
-version = "0.67.0"
-edition = "2021"
-license = "Apache-2.0"
-publish = true
-rust-version = "1.58.1"
 authors = ["Ockam Developers"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "network-programming",
+    "embedded",
+]
+description = "End-to-end encryption and mutual authentication for distributed applications."
+edition = "2021"
+exclude = ["tests/**"]
 homepage = "https://github.com/build-trust/ockam"
+keywords = [
+    "ockam",
+    "crypto",
+    "cryptography",
+    "network-programming",
+    "encryption",
+]
+license = "Apache-2.0"
+name = "ockam_command"
+readme = "README.md"
 repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/ockam_command"
-description = ""
+rust-version = "1.58.1"
+publish = true
+version = "0.67.0"
 
 [[bin]]
 # You may be wondering "Why are the tests and docs disabled?". The long and
