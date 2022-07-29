@@ -57,7 +57,7 @@ fn map_anyhow_err(err: anyhow::Error) -> ockam_core::Error {
 }
 
 /// Node manager provides a messaging API to interact with the current node
-pub struct NodeMan {
+pub struct NodeManager {
     node_name: String,
     node_dir: PathBuf,
     config: Config<NodeManConfig>,
@@ -74,8 +74,8 @@ pub struct NodeMan {
     registry: Registry,
 }
 
-impl NodeMan {
-    /// Create a new NodeMan with the node name from the ockam CLI
+impl NodeManager {
+    /// Create a new NodeManager with the node name from the ockam CLI
     pub async fn create(
         ctx: &Context,
         node_name: String,
@@ -181,7 +181,7 @@ impl NodeMan {
     }
 }
 
-impl NodeMan {
+impl NodeManager {
     pub(crate) async fn secure_channel(&self, route: impl Into<Route>) -> Result<Address> {
         let route = route.into();
         println!("ddd route {}", route);
@@ -392,7 +392,7 @@ impl NodeMan {
 }
 
 #[ockam::worker]
-impl Worker for NodeMan {
+impl Worker for NodeManager {
     type Message = Vec<u8>;
     type Context = Context;
 
@@ -432,18 +432,18 @@ impl Worker for NodeMan {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::nodes::NodeMan;
+    use crate::nodes::NodeManager;
     use ockam::route;
 
     use super::*;
 
-    impl NodeMan {
+    impl NodeManager {
         pub(crate) async fn test_create_old(ctx: &Context) -> Result<Route> {
             let node_dir = tempfile::tempdir().unwrap();
             let node_manager = "manager";
             let transport = TcpTransport::create(ctx).await?;
             let node_address = transport.listen("127.0.0.1:0").await?;
-            let mut node_man = NodeMan::create(
+            let mut node_man = NodeManager::create(
                 ctx,
                 "node".to_string(),
                 node_dir.into_path(),
@@ -475,7 +475,7 @@ pub(crate) mod tests {
             let node_manager = "manager";
             let transport = TcpTransport::create(ctx).await?;
             let node_address = transport.listen("127.0.0.1:0").await?;
-            let mut node_man = NodeMan::create(
+            let mut node_man = NodeManager::create(
                 ctx,
                 "node".to_string(),
                 node_dir.into_path(),

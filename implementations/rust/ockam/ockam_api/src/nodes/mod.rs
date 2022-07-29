@@ -9,4 +9,4 @@ pub mod models;
 pub const NODEMAN_ADDR: &str = "_internal.nodeman";
 
 /// The main node-manager service running on remote nodes
-pub use service::NodeMan;
+pub use service::NodeManager;

@@ -54,13 +54,13 @@ mod node {
     use crate::cloud::space::CreateSpace;
     use crate::cloud::space::Space;
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
-    use crate::nodes::NodeMan;
+    use crate::nodes::NodeManager;
     use crate::request;
     use crate::{Request, Response, Status};
 
     const TARGET: &str = "ockam_api::cloud::space";
 
-    impl NodeMan {
+    impl NodeManager {
         pub(crate) async fn create_space(
             &mut self,
             ctx: &mut Context,
@@ -326,7 +326,7 @@ pub mod tests {
 
     mod node_api {
         use crate::cloud::CloudRequestWrapper;
-        use crate::nodes::NodeMan;
+        use crate::nodes::NodeManager;
         use crate::{route_to_multiaddr, Status};
         use ockam_core::route;
 
@@ -337,7 +337,7 @@ pub mod tests {
             //TODO:  what's the purpose of testing what the fake SpaceServer does?
 
             // Create node manager to handle requests
-            let route = NodeMan::test_create(ctx, "spaces", SpaceServer::default()).await?;
+            let route = NodeManager::test_create(ctx, "spaces", SpaceServer::default()).await?;
             let cloud_route = route_to_multiaddr(&route!["cloud"]).unwrap();
 
             // Create space

@@ -3,13 +3,13 @@ use crate::identity::IdentityService;
 use crate::nodes::models::services::{
     StartAuthenticatedServiceRequest, StartIdentityServiceRequest, StartVaultServiceRequest,
 };
-use crate::nodes::NodeMan;
+use crate::nodes::NodeManager;
 use crate::vault::VaultService;
 use crate::{Request, Response, ResponseBuilder};
 use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
 
-impl NodeMan {
+impl NodeManager {
     pub(super) async fn start_vault_service_impl(
         &mut self,
         ctx: &Context,

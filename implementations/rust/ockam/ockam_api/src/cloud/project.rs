@@ -67,7 +67,7 @@ mod node {
     use ockam_node::Context;
 
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
-    use crate::nodes::NodeMan;
+    use crate::nodes::NodeManager;
     use crate::request;
     use crate::{Request, Response, Status};
 
@@ -75,7 +75,7 @@ mod node {
 
     const TARGET: &str = "ockam_api::cloud::project";
 
-    impl NodeMan {
+    impl NodeManager {
         pub(crate) async fn create_project(
             &mut self,
             ctx: &mut Context,
@@ -346,7 +346,7 @@ mod tests {
 
     mod node_api {
         use crate::cloud::CloudRequestWrapper;
-        use crate::nodes::NodeMan;
+        use crate::nodes::NodeManager;
         use crate::{route_to_multiaddr, Status};
         use ockam_core::route;
 
@@ -355,7 +355,7 @@ mod tests {
         #[ockam_macros::test]
         async fn basic_api_usage(ctx: &mut Context) -> ockam_core::Result<()> {
             // Create node manager to handle requests
-            let route = NodeMan::test_create(ctx, "projects", ProjectServer::default()).await?;
+            let route = NodeManager::test_create(ctx, "projects", ProjectServer::default()).await?;
             let cloud_route = route_to_multiaddr(&route!["cloud"]).unwrap();
 
             let s_id = "space-id";

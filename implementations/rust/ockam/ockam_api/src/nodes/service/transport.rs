@@ -2,12 +2,12 @@ use crate::nodes::models::transport::{
     CreateTransport, DeleteTransport, TransportMode, TransportStatus,
 };
 use crate::nodes::service::{random_alias, Alias};
-use crate::nodes::NodeMan;
+use crate::nodes::NodeManager;
 use crate::{Request, Response, ResponseBuilder};
 use minicbor::Decoder;
 use ockam::Result;
 
-impl NodeMan {
+impl NodeManager {
     // FIXME: return a ResponseBuilder here too!
     pub(super) fn get_transports(&self) -> Vec<TransportStatus<'_>> {
         self.transports
