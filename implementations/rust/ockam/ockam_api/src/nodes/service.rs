@@ -32,7 +32,7 @@ mod services;
 mod transport;
 mod vault;
 
-const TARGET: &str = "ockam_api::nodeman::service";
+const TARGET: &str = "ockam_api::nodemanager::service";
 
 pub(crate) type Alias = String;
 
