@@ -72,7 +72,7 @@ mod tests {
     use ockam::{Context, TCP};
     use ockam_core::{compat::rand::Rng, route, Address, Result, Routed, Worker};
 
-    use crate::nodes::NodeMan;
+    use crate::nodes::NodeManager;
     use crate::*;
 
     use super::*;
@@ -88,7 +88,7 @@ mod tests {
         };
 
         // Create node manager to handle requests
-        let node_manager = NodeMan::test_create_old(ctx).await?;
+        let node_manager = NodeManager::test_create_old(ctx).await?;
 
         // Start Echoer worker
         ctx.start_worker("echoer", Echoer).await?;

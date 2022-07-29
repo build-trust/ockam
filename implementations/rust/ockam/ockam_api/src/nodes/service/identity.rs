@@ -3,13 +3,13 @@ use crate::error::ApiError;
 use crate::nodes::models::identity::{
     CreateIdentityResponse, ExportIdentityResponse, PrintIdentityResponse,
 };
-use crate::nodes::NodeMan;
+use crate::nodes::NodeManager;
 use crate::{Request, Response, ResponseBuilder};
 use ockam::identity::{Identity, IdentityIdentifier};
 use ockam::vault::Vault;
 use ockam::{Context, Result};
 
-impl NodeMan {
+impl NodeManager {
     pub(crate) fn identity(&self) -> Result<&Identity<Vault>> {
         self.identity
             .as_ref()

@@ -77,7 +77,7 @@ mod node {
     use ockam_node::Context;
 
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
-    use crate::nodes::NodeMan;
+    use crate::nodes::NodeManager;
     use crate::request;
     use crate::{Request, Response, Status};
 
@@ -85,7 +85,7 @@ mod node {
 
     const TARGET: &str = "ockam_api::cloud::invitation";
 
-    impl NodeMan {
+    impl NodeManager {
         pub(crate) async fn create_invitation(
             &mut self,
             ctx: &mut Context,
@@ -324,7 +324,7 @@ mod tests {
 
     mod node_api {
         use crate::cloud::CloudRequestWrapper;
-        use crate::nodes::NodeMan;
+        use crate::nodes::NodeManager;
         use crate::{route_to_multiaddr, Status};
         use ockam_core::route;
 
@@ -334,7 +334,7 @@ mod tests {
         async fn accept(ctx: &mut Context) -> ockam_core::Result<()> {
             // Create node manager to handle requests
             let route =
-                NodeMan::test_create(ctx, "invitations", InvitationServer::default()).await?;
+                NodeManager::test_create(ctx, "invitations", InvitationServer::default()).await?;
             let cloud_route = route_to_multiaddr(&route!["cloud"]).unwrap();
 
             // Create invitation
@@ -413,7 +413,7 @@ mod tests {
         async fn reject(ctx: &mut Context) -> ockam_core::Result<()> {
             // Create node manager to handle requests
             let route =
-                NodeMan::test_create(ctx, "invitations", InvitationServer::default()).await?;
+                NodeManager::test_create(ctx, "invitations", InvitationServer::default()).await?;
             let cloud_route = route_to_multiaddr(&route!["cloud"]).unwrap();
 
             // Create invitation

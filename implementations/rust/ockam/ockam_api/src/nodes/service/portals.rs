@@ -2,14 +2,14 @@ use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
 };
 use crate::nodes::service::{map_multiaddr_err, random_alias};
-use crate::nodes::NodeMan;
+use crate::nodes::NodeManager;
 use crate::{multiaddr_to_route, Request, Response, ResponseBuilder};
 use minicbor::Decoder;
 use ockam::{Address, Result};
 use ockam_multiaddr::MultiAddr;
 use std::str::FromStr;
 
-impl NodeMan {
+impl NodeManager {
     pub(super) fn get_inlets(&self, req: &Request<'_>) -> ResponseBuilder<InletList<'_>> {
         Response::ok(req.id()).body(InletList::new(
             self.registry
