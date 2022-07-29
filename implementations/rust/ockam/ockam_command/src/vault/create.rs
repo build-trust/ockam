@@ -40,7 +40,7 @@ pub async fn create_vault(
 ) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append("_internal.nodeman"),
+            base_route.modify().append("_internal.nodemanager"),
             api::create_vault(cmd.path)?,
         )
         .await?;
