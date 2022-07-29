@@ -3,7 +3,7 @@ use crate::util::{api, connect_to, stop_node};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::{Context, Route};
-use ockam_api::{nodes::NODEMAN_ADDR, Response, Status};
+use ockam_api::{nodes::NODEMANAGER_ADDR, Response, Status};
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
@@ -39,7 +39,7 @@ pub async fn delete_transport(
 ) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append(NODEMAN_ADDR),
+            base_route.modify().append(NODEMANAGER_ADDR),
             api::delete_transport(&cmd)?,
         )
         .await

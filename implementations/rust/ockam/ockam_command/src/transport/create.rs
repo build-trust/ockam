@@ -4,7 +4,7 @@ use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 use ockam::{Context, Route, TCP};
 use ockam_api::{
-    nodes::{models::transport::TransportStatus, NODEMAN_ADDR},
+    nodes::{models::transport::TransportStatus, NODEMANAGER_ADDR},
     route_to_multiaddr, Status,
 };
 
@@ -74,7 +74,7 @@ pub async fn create_transport(
 ) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append(NODEMAN_ADDR),
+            base_route.modify().append(NODEMANAGER_ADDR),
             api::create_transport(&cmd)?,
         )
         .await

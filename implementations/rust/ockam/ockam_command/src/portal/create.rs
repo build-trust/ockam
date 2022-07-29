@@ -6,7 +6,7 @@ use ockam::{Context, Route};
 use ockam_api::error::ApiError;
 use ockam_api::{
     nodes::models::portal::{InletStatus, OutletStatus},
-    nodes::NODEMAN_ADDR,
+    nodes::NODEMANAGER_ADDR,
     Status,
 };
 use ockam_core::Address;
@@ -76,7 +76,7 @@ pub async fn create_inlet(
 
     let resp: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append(NODEMAN_ADDR),
+            base_route.modify().append(NODEMANAGER_ADDR),
             api::create_inlet(&bind, &outlet_addr, &cmd.alias)?,
         )
         .await?;
@@ -119,7 +119,7 @@ pub async fn create_outlet(
 
     let resp: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append(NODEMAN_ADDR),
+            base_route.modify().append(NODEMANAGER_ADDR),
             api::create_outlet(&tcp_address, worker_address.to_string(), &cmd.alias)?,
         )
         .await?;

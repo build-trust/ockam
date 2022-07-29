@@ -14,7 +14,7 @@ use crate::{
 use ockam::{Context, TcpTransport};
 use ockam_api::{
     nodes::models::transport::{TransportMode, TransportType},
-    nodes::{NodeManager, NODEMAN_ADDR},
+    nodes::{NodeManager, NODEMANAGER_ADDR},
 };
 
 #[derive(Clone, Debug, Args)]
@@ -165,7 +165,7 @@ async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::
         tcp,
     )
     .await?;
-    ctx.start_worker(NODEMAN_ADDR, node_man).await?;
+    ctx.start_worker(NODEMANAGER_ADDR, node_man).await?;
 
     ctx.start_worker("uppercase", Uppercase).await?;
     ctx.start_worker("echoer", Echoer).await?;
