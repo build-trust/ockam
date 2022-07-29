@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use clap::Args;
 
 use ockam::{Context, TcpTransport};
@@ -23,11 +21,10 @@ async fn send_message(mut ctx: Context, cmd: SendCommand) -> anyhow::Result<()> 
     let _tcp = TcpTransport::create(&ctx).await?;
 
     if let Some(route) = ockam_api::multiaddr_to_route(&cmd.addr) {
-        ctx.send(route, cmd.message).await?
+        ctx.send(route, cmd.message).await?;
+        let message = ctx.receive::<String>().await?;
+        println!("{}", message);
     }
-
-    // TODO: find a way to wait for send to complete
-    ctx.sleep(Duration::from_millis(500)).await;
 
     ctx.stop().await?;
 
