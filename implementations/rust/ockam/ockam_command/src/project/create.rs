@@ -11,7 +11,7 @@ use ockam_core::Route;
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::{api, connect_to, stop_node};
-use crate::{CommandGlobalOpts, MessageFormat};
+use crate::{CommandGlobalOpts, OutputFormat};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -66,9 +66,9 @@ async fn create(
     let res = match header.status() {
         Some(Status::Ok) => {
             let body = dec.decode::<Project>()?;
-            let output = match opts.global_args.message_format {
-                MessageFormat::Plain => "Project created".to_string(),
-                MessageFormat::Json => serde_json::to_string(&body)?,
+            let output = match opts.global_args.output_format {
+                OutputFormat::Plain => "Project created".to_string(),
+                OutputFormat::Json => serde_json::to_string(&body)?,
             };
             Ok(output)
         }
