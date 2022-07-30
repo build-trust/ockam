@@ -6,14 +6,14 @@ pub use addon::AddonCommand;
 mod config;
 pub use config::{ConfigError, NodeConfig, OckamConfig};
 
+use anyhow::Context;
 use ockam::{route, NodeBuilder, Route, TcpTransport, TCP};
-use std::{env, path::Path};
+use std::{env, net::TcpListener, path::Path};
 use tracing::error;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 pub const DEFAULT_CLOUD_ADDRESS: &str = "/dnsaddr/cloud.ockam.io/tcp/62526";
-pub const DEFAULT_API_ADDRESS: &str = "127.0.0.1:62526";
 
 /// A simple wrapper for shutting down the local embedded node (for
 /// the client side of the CLI).  Swallows errors and turns them into
@@ -86,6 +86,14 @@ where
     if let Err(e) = res {
         eprintln!("Ockam node failed: {:?}", e,);
     }
+}
+
+pub fn find_available_port() -> anyhow::Result<u16> {
+    let listener = TcpListener::bind("127.0.0.1:0").context("Unable to bind to an open port")?;
+    let address = listener
+        .local_addr()
+        .context("Unable to get local address")?;
+    Ok(address.port())
 }
 
 pub fn setup_logging(verbose: u8) {
