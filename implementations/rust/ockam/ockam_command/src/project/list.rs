@@ -11,7 +11,7 @@ use ockam_core::Route;
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::{api, connect_to, stop_node};
-use crate::{CommandGlobalOpts, MessageFormat};
+use crate::{CommandGlobalOpts, OutputFormat};
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand;
@@ -53,9 +53,9 @@ async fn list(
     let res = match header.status() {
         Some(Status::Ok) => {
             let body = dec.decode::<Vec<Project>>()?;
-            let output = match opts.global_args.message_format {
-                MessageFormat::Plain => format!("{body:#?}"),
-                MessageFormat::Json => serde_json::to_string(&body)?,
+            let output = match opts.global_args.output_format {
+                OutputFormat::Plain => format!("{body:#?}"),
+                OutputFormat::Json => serde_json::to_string(&body)?,
             };
             Ok(output)
         }

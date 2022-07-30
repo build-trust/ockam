@@ -98,8 +98,14 @@ pub struct GlobalArgs {
     )]
     verbose: u8,
 
-    #[clap(global = true, long, short, value_enum, default_value = "plain")]
-    message_format: MessageFormat,
+    #[clap(
+        global = true,
+        long = "format",
+        short = 'f',
+        value_enum,
+        default_value = "plain"
+    )]
+    output_format: OutputFormat,
 
     // if test_argument_parser is true, command arguments are checked
     // but the command is not executed.
@@ -108,7 +114,7 @@ pub struct GlobalArgs {
 }
 
 #[derive(Debug, Clone, ArgEnum)]
-pub enum MessageFormat {
+pub enum OutputFormat {
     Plain,
     Json,
 }
