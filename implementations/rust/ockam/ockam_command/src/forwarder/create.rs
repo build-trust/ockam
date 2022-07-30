@@ -12,7 +12,7 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::node::NodeOpts;
 use crate::util::{api, connect_to, stop_node, DEFAULT_CLOUD_ADDRESS};
-use crate::{CommandGlobalOpts, MessageFormat};
+use crate::{CommandGlobalOpts, OutputFormat};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -70,12 +70,12 @@ async fn create(
     let res = match header.status() {
         Some(Status::Ok) => {
             let body = dec.decode::<ForwarderInfo>()?;
-            let output = match opts.global_args.message_format {
-                MessageFormat::Plain => format!(
+            let output = match opts.global_args.output_format {
+                OutputFormat::Plain => format!(
                     "Forwarder created! You can send messages to it via this address:\n{}",
                     body.remote_address()
                 ),
-                MessageFormat::Json => json!({
+                OutputFormat::Json => json!({
                     "remote_address": body.remote_address(),
                 })
                 .to_string(),
