@@ -38,8 +38,8 @@ pub struct CreateCommand {
     skip_defaults: bool,
 
     /// Specify the API address
-    #[clap(long, short)]
-    api_address: Option<String>,
+    #[clap(default_value = "127.0.0.1:0", long, short)]
+    api_address: String,
 
     #[clap(long, hide = true)]
     no_watchdog: bool,
@@ -47,18 +47,18 @@ pub struct CreateCommand {
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
         let cfg = &opts.config;
-        let address: SocketAddr = match &command.api_address {
-            Some(address) => address
-                .parse::<SocketAddr>()
-                .expect("failed to parse api address"),
-            None => {
-                let port = find_available_port().expect("failed to acquire available port");
-                SocketAddr::new(IpAddr::from_str("127.0.0.1").unwrap(), port)
-            }
+        let address: SocketAddr = if &command.api_address == "127.0.0.1:0" {
+            let port = find_available_port().expect("failed to acquire available port");
+            SocketAddr::new(IpAddr::from_str("127.0.0.1").unwrap(), port)
+        } else {
+            command
+                .api_address
+                .parse()
+                .expect("failed to parse api address")
         };
 
         let command = CreateCommand {
-            api_address: Some(address.to_string()),
+            api_address: address.to_string(),
             ..command
         };
 
@@ -168,9 +168,7 @@ impl CreateCommand {
 
 async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
-    // We can unwrap `c.api_address` as by this point,
-    // an available port was found, and used to create an api_address in `run`
-    let bind = c.api_address.unwrap();
+    let bind = c.api_address;
     tcp.listen(&bind).await?;
 
     let node_dir = cfg.get_node_dir(&c.node_name).unwrap(); // can't fail because we already checked it
