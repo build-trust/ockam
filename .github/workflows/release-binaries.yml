@@ -131,10 +131,10 @@ jobs:
 
           # Rust Crates
 
-          To use Ockam as a Rust library, add the following line to your Cargo.toml file:
+          To use Ockam as a Rust library, run the following command within your project directory:
 
-          \`\`\`
-          ockam = \"$ockam_version\"
+          \`\`\`bash
+          cargo add ockam@$ockam_version
           \`\`\`
 
           The following crates were published as part of this release:
