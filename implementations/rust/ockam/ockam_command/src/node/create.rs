@@ -1,14 +1,20 @@
 use clap::Args;
 use rand::prelude::random;
 
-use std::net::SocketAddr;
-use std::{env::current_exe, fs::OpenOptions, process::Command, time::Duration};
+use std::{
+    env::current_exe,
+    fs::OpenOptions,
+    net::{IpAddr, SocketAddr},
+    process::Command,
+    str::FromStr,
+    time::Duration,
+};
 
 use crate::{
     node::echoer::Echoer,
     node::show::query_status,
     node::uppercase::Uppercase,
-    util::{connect_to, embedded_node, OckamConfig, DEFAULT_API_ADDRESS},
+    util::{connect_to, embedded_node, find_available_port, OckamConfig},
     CommandGlobalOpts,
 };
 use ockam::{Context, TcpTransport};
@@ -32,8 +38,8 @@ pub struct CreateCommand {
     skip_defaults: bool,
 
     /// Specify the API address
-    #[clap(default_value = DEFAULT_API_ADDRESS, long, short)]
-    api_address: String,
+    #[clap(long, short)]
+    api_address: Option<String>,
 
     #[clap(long, hide = true)]
     no_watchdog: bool,
@@ -41,10 +47,20 @@ pub struct CreateCommand {
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
         let cfg = &opts.config;
-        let address: SocketAddr = command
-            .api_address
-            .parse()
-            .expect("failed to parse api address");
+        let address: SocketAddr = match &command.api_address {
+            Some(address) => address
+                .parse::<SocketAddr>()
+                .expect("failed to parse api address"),
+            None => {
+                let port = find_available_port().expect("failed to acquire available port");
+                SocketAddr::new(IpAddr::from_str("127.0.0.1").unwrap(), port)
+            }
+        };
+
+        let command = CreateCommand {
+            api_address: Some(address.to_string()),
+            ..command
+        };
 
         if command.foreground {
             // HACK: try to get the current node dir.  If it doesn't
@@ -111,7 +127,7 @@ impl CreateCommand {
                 "node".to_string(),
                 "create".to_string(),
                 "--api-address".to_string(),
-                command.api_address,
+                address.to_string(),
                 "--foreground".to_string(),
             ];
 
@@ -152,7 +168,9 @@ impl CreateCommand {
 
 async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
-    let bind = c.api_address;
+    // We can unwrap `c.api_address` as by this point,
+    // an available port was found, and used to create an api_address in `run`
+    let bind = c.api_address.unwrap();
     tcp.listen(&bind).await?;
 
     let node_dir = cfg.get_node_dir(&c.node_name).unwrap(); // can't fail because we already checked it
