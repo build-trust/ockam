@@ -80,7 +80,7 @@ impl<M: Message + Clone> DelayedEvent<M> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Context, DelayedEvent, NodeBuilder};
+    use crate::{Context, DelayedEvent};
     use core::sync::atomic::Ordering;
     use core::time::Duration;
     use ockam_core::compat::{boxed::Box, string::ToString, sync::Arc};
@@ -110,166 +110,99 @@ mod tests {
     }
 
     #[allow(non_snake_case)]
-    #[test]
-    fn scheduled_3_times__counting_worker__messages_count_matches() -> Result<()> {
-        let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
-        executor
-            .execute(async move {
-                let msgs_count = Arc::new(AtomicI8::new(0));
-                let mut heartbeat =
-                    DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
-                        .await
-                        .unwrap();
+    #[ockam_macros::test(crate = "crate")]
+    async fn scheduled_3_times__counting_worker__messages_count_matches(
+        ctx: &mut Context,
+    ) -> Result<()> {
+        let msgs_count = Arc::new(AtomicI8::new(0));
+        let mut heartbeat =
+            DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string()).await?;
 
-                let worker = CountingWorker {
-                    msgs_count: msgs_count.clone(),
-                };
+        let worker = CountingWorker {
+            msgs_count: msgs_count.clone(),
+        };
 
-                ctx.start_worker("counting_worker", worker).await.unwrap();
+        ctx.start_worker("counting_worker", worker).await?;
 
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(150)).await;
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(150)).await;
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(150)).await;
+        heartbeat.schedule(Duration::from_millis(100)).await?;
+        sleep(Duration::from_millis(150)).await;
+        heartbeat.schedule(Duration::from_millis(100)).await?;
+        sleep(Duration::from_millis(150)).await;
+        heartbeat.schedule(Duration::from_millis(100)).await?;
+        sleep(Duration::from_millis(150)).await;
 
-                assert_eq!(3, msgs_count.load(Ordering::Relaxed));
-
-                ctx.stop().await.unwrap();
-            })
-            .unwrap();
-
-        Ok(())
+        assert_eq!(3, msgs_count.load(Ordering::Relaxed));
+        ctx.stop().await
     }
 
     #[allow(non_snake_case)]
-    #[test]
-    fn rescheduling__counting_worker__aborts_existing() -> Result<()> {
-        let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
-        executor
-            .execute(async move {
-                let msgs_count = Arc::new(AtomicI8::new(0));
-                let mut heartbeat =
-                    DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
-                        .await
-                        .unwrap();
+    #[ockam_macros::test(crate = "crate")]
+    async fn rescheduling__counting_worker__aborts_existing(ctx: &mut Context) -> Result<()> {
+        let msgs_count = Arc::new(AtomicI8::new(0));
+        let mut heartbeat =
+            DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string()).await?;
 
-                let worker = CountingWorker {
-                    msgs_count: msgs_count.clone(),
-                };
+        let worker = CountingWorker {
+            msgs_count: msgs_count.clone(),
+        };
 
-                ctx.start_worker("counting_worker", worker).await.unwrap();
+        ctx.start_worker("counting_worker", worker).await?;
 
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(150)).await;
+        heartbeat.schedule(Duration::from_millis(100)).await?;
+        heartbeat.schedule(Duration::from_millis(100)).await?;
+        heartbeat.schedule(Duration::from_millis(100)).await?;
+        sleep(Duration::from_millis(150)).await;
 
-                assert_eq!(1, msgs_count.load(Ordering::Relaxed));
-
-                ctx.stop().await.unwrap();
-            })
-            .unwrap();
-
-        Ok(())
+        assert_eq!(1, msgs_count.load(Ordering::Relaxed));
+        ctx.stop().await
     }
 
     #[allow(non_snake_case)]
-    #[test]
-    fn cancel__counting_worker__aborts_existing() -> Result<()> {
-        let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
-        executor
-            .execute(async move {
-                let msgs_count = Arc::new(AtomicI8::new(0));
-                let mut heartbeat =
-                    DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
-                        .await
-                        .unwrap();
+    #[ockam_macros::test(crate = "crate")]
+    async fn cancel__counting_worker__aborts_existing(ctx: &mut Context) -> Result<()> {
+        let msgs_count = Arc::new(AtomicI8::new(0));
+        let mut heartbeat =
+            DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string()).await?;
 
-                let worker = CountingWorker {
-                    msgs_count: msgs_count.clone(),
-                };
+        let worker = CountingWorker {
+            msgs_count: msgs_count.clone(),
+        };
 
-                ctx.start_worker("counting_worker", worker).await.unwrap();
+        ctx.start_worker("counting_worker", worker).await?;
 
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(150)).await;
-                heartbeat
-                    .schedule(Duration::from_millis(200))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(100)).await;
-                heartbeat.cancel();
-                sleep(Duration::from_millis(300)).await;
+        heartbeat.schedule(Duration::from_millis(100)).await?;
+        sleep(Duration::from_millis(150)).await;
+        heartbeat.schedule(Duration::from_millis(200)).await?;
+        sleep(Duration::from_millis(100)).await;
+        heartbeat.cancel();
+        sleep(Duration::from_millis(300)).await;
 
-                assert_eq!(1, msgs_count.load(Ordering::Relaxed));
-
-                ctx.stop().await.unwrap();
-            })
-            .unwrap();
-
-        Ok(())
+        assert_eq!(1, msgs_count.load(Ordering::Relaxed));
+        ctx.stop().await
     }
 
     #[allow(non_snake_case)]
-    #[test]
-    fn drop__counting_worker__aborts_existing() -> Result<()> {
-        let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
-        executor
-            .execute(async move {
-                let msgs_count = Arc::new(AtomicI8::new(0));
-                let mut heartbeat =
-                    DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
-                        .await
-                        .unwrap();
+    #[ockam_macros::test(crate = "crate")]
+    async fn drop__counting_worker__aborts_existing(ctx: &mut Context) -> Result<()> {
+        let msgs_count = Arc::new(AtomicI8::new(0));
+        let mut heartbeat =
+            DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string()).await?;
 
-                let worker = CountingWorker {
-                    msgs_count: msgs_count.clone(),
-                };
+        let worker = CountingWorker {
+            msgs_count: msgs_count.clone(),
+        };
 
-                ctx.start_worker("counting_worker", worker).await.unwrap();
+        ctx.start_worker("counting_worker", worker).await?;
 
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(150)).await;
-                heartbeat
-                    .schedule(Duration::from_millis(200))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(100)).await;
-                drop(heartbeat);
-                sleep(Duration::from_millis(300)).await;
+        heartbeat.schedule(Duration::from_millis(100)).await?;
+        sleep(Duration::from_millis(150)).await;
+        heartbeat.schedule(Duration::from_millis(200)).await?;
+        sleep(Duration::from_millis(100)).await;
+        drop(heartbeat);
+        sleep(Duration::from_millis(300)).await;
 
-                assert_eq!(1, msgs_count.load(Ordering::Relaxed));
+        assert_eq!(1, msgs_count.load(Ordering::Relaxed));
 
-                ctx.stop().await.unwrap();
-            })
-            .unwrap();
-
-        Ok(())
+        ctx.stop().await
     }
 }
