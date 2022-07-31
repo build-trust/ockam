@@ -11,6 +11,7 @@ mod node;
 mod portal;
 mod project;
 mod secure_channel;
+mod secure_channel_listener;
 mod service;
 mod space;
 mod transport;
@@ -27,6 +28,7 @@ use node::NodeCommand;
 use portal::PortalCommand;
 use project::ProjectCommand;
 use secure_channel::SecureChannelCommand;
+use secure_channel_listener::SecureChannelListenerCommand;
 use space::SpaceCommand;
 use transport::TransportCommand;
 
@@ -193,6 +195,10 @@ pub enum OckamSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     SecureChannel(SecureChannelCommand),
 
+    /// Manage Secure Channel Listeners
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    SecureChannelListener(SecureChannelListenerCommand),
+
     /// Manage Services
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Service(ServiceCommand),
@@ -269,6 +275,9 @@ pub fn run() {
         OckamSubcommand::Vault(command) => VaultCommand::run(opts, command),
         OckamSubcommand::Identity(command) => IdentityCommand::run(opts, command),
         OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(opts, command),
+        OckamSubcommand::SecureChannelListener(command) => {
+            SecureChannelListenerCommand::run(opts, command)
+        }
         OckamSubcommand::Service(command) => ServiceCommand::run(opts, command),
 
         // OLD
