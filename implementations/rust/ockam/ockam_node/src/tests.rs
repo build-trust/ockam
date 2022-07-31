@@ -1,6 +1,7 @@
 use crate::{Context, NodeBuilder};
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::time::Duration;
+use futures::FutureExt;
 use ockam_core::compat::{
     boxed::Box,
     string::{String, ToString},
@@ -19,17 +20,25 @@ fn start_and_shutdown_node__many_iterations__should_not_fail() {
         let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
         executor
             .execute(async move {
-                let mut child_ctx = ctx.new_detached("child").await?;
-                ctx.send(route!["child"], "Hello".to_string()).await?;
+                let res = std::panic::AssertUnwindSafe(async {
+                    let mut child_ctx = ctx.new_detached("child").await?;
+                    ctx.send(route!["child"], "Hello".to_string()).await?;
 
-                let m = child_ctx.receive::<String>().await?.take().body();
+                    let m = child_ctx.receive::<String>().await?.take().body();
 
-                assert_eq!(m, "Hello");
+                    assert_eq!(m, "Hello");
+                    Result::<()>::Ok(())
+                })
+                .catch_unwind()
+                .await;
 
-                ctx.stop().await
+                ctx.stop().await.unwrap();
+
+                res
             })
             .unwrap()
-            .unwrap();
+            .unwrap()
+            .unwrap()
     }
 }
 
@@ -79,22 +88,31 @@ fn simple_worker__run_node_lifecycle__worker_lifecycle_should_be_full() {
     let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
     executor
         .execute(async move {
-            let worker = SimpleWorker {
-                initialize_was_called: initialize_was_called_clone,
-                shutdown_was_called: shutdown_was_called_clone,
-            };
+            let res = std::panic::AssertUnwindSafe(async {
+                let worker = SimpleWorker {
+                    initialize_was_called: initialize_was_called_clone,
+                    shutdown_was_called: shutdown_was_called_clone,
+                };
 
-            ctx.start_worker("simple_worker", worker).await.unwrap();
+                ctx.start_worker("simple_worker", worker).await.unwrap();
 
-            ctx.send(route!["simple_worker"], "Hello".to_string())
-                .await
-                .unwrap();
+                ctx.send(route!["simple_worker"], "Hello".to_string())
+                    .await
+                    .unwrap();
 
-            let msg = ctx.receive::<String>().await.unwrap().take().body();
-            assert_eq!(msg, "Hello");
+                let msg = ctx.receive::<String>().await.unwrap().take().body();
+                assert_eq!(msg, "Hello");
+
+                Result::<()>::Ok(())
+            })
+            .catch_unwind()
+            .await;
 
             ctx.stop().await.unwrap();
+            res
         })
+        .unwrap()
+        .unwrap()
         .unwrap();
 
     // Wait till tokio Runtime is shut down
@@ -150,23 +168,32 @@ fn counting_processor__run_node_lifecycle__processor_lifecycle_should_be_full() 
     let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
     executor
         .execute(async move {
-            let processor = CountingProcessor {
-                initialize_was_called: initialize_was_called_clone,
-                shutdown_was_called: shutdown_was_called_clone,
-                run_called_count: run_called_count_clone,
-            };
+            let res = std::panic::AssertUnwindSafe(async {
+                let processor = CountingProcessor {
+                    initialize_was_called: initialize_was_called_clone,
+                    shutdown_was_called: shutdown_was_called_clone,
+                    run_called_count: run_called_count_clone,
+                };
 
-            ctx.start_processor("counting_processor", processor)
-                .await
-                .unwrap();
-            sleep(Duration::new(1, 0)).await;
+                ctx.start_processor("counting_processor", processor)
+                    .await
+                    .unwrap();
+                sleep(Duration::new(1, 0)).await;
 
-            assert!(initialize_was_called.load(Ordering::Relaxed));
-            assert!(shutdown_was_called.load(Ordering::Relaxed));
-            assert_eq!(5, run_called_count.load(Ordering::Relaxed));
+                assert!(initialize_was_called.load(Ordering::Relaxed));
+                assert!(shutdown_was_called.load(Ordering::Relaxed));
+                assert_eq!(5, run_called_count.load(Ordering::Relaxed));
+
+                Result::<()>::Ok(())
+            })
+            .catch_unwind()
+            .await;
 
             ctx.stop().await.unwrap();
+            res
         })
+        .unwrap()
+        .unwrap()
         .unwrap();
 }
 
@@ -213,20 +240,29 @@ fn waiting_processor__shutdown__should_be_interrupted() {
     let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
     executor
         .execute(async move {
-            let processor = WaitingProcessor {
-                initialize_was_called: initialize_was_called_clone,
-                shutdown_was_called: shutdown_was_called_clone,
-            };
+            let res = std::panic::AssertUnwindSafe(async {
+                let processor = WaitingProcessor {
+                    initialize_was_called: initialize_was_called_clone,
+                    shutdown_was_called: shutdown_was_called_clone,
+                };
 
-            ctx.start_processor("waiting_processor", processor)
-                .await
-                .unwrap();
-            sleep(Duration::new(1, 0)).await;
+                ctx.start_processor("waiting_processor", processor)
+                    .await
+                    .unwrap();
+                sleep(Duration::new(1, 0)).await;
 
-            ctx.stop_processor("waiting_processor").await.unwrap();
+                ctx.stop_processor("waiting_processor").await.unwrap();
+
+                Result::<()>::Ok(())
+            })
+            .catch_unwind()
+            .await;
 
             ctx.stop().await.unwrap();
+            res
         })
+        .unwrap()
+        .unwrap()
         .unwrap();
 
     // Wait till tokio Runtime is shut down
@@ -291,37 +327,46 @@ fn waiting_processor__messaging__should_work() {
     let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
     executor
         .execute(async move {
-            let processor = MessagingProcessor {
-                initialize_was_called: initialize_was_called_clone,
-                shutdown_was_called: shutdown_was_called_clone,
-            };
+            let res = std::panic::AssertUnwindSafe(async {
+                let processor = MessagingProcessor {
+                    initialize_was_called: initialize_was_called_clone,
+                    shutdown_was_called: shutdown_was_called_clone,
+                };
 
-            ctx.start_processor("messaging_processor", processor)
-                .await
-                .unwrap();
-            sleep(Duration::new(1, 0)).await;
+                ctx.start_processor("messaging_processor", processor)
+                    .await
+                    .unwrap();
+                sleep(Duration::new(1, 0)).await;
 
-            ctx.send(route!["messaging_processor"], "Keep working".to_string())
-                .await
-                .unwrap();
-            assert_eq!("OK", ctx.receive::<String>().await.unwrap().take().body());
+                ctx.send(route!["messaging_processor"], "Keep working".to_string())
+                    .await
+                    .unwrap();
+                assert_eq!("OK", ctx.receive::<String>().await.unwrap().take().body());
 
-            assert!(initialize_was_called.load(Ordering::Relaxed));
-            assert!(!shutdown_was_called.load(Ordering::Relaxed));
+                assert!(initialize_was_called.load(Ordering::Relaxed));
+                assert!(!shutdown_was_called.load(Ordering::Relaxed));
 
-            ctx.send(route!["messaging_processor"], "Stop working".to_string())
-                .await
-                .unwrap();
-            assert_eq!(
-                "I go home",
-                ctx.receive::<String>().await.unwrap().take().body()
-            );
+                ctx.send(route!["messaging_processor"], "Stop working".to_string())
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    "I go home",
+                    ctx.receive::<String>().await.unwrap().take().body()
+                );
 
-            assert!(initialize_was_called.load(Ordering::Relaxed));
-            assert!(shutdown_was_called.load(Ordering::Relaxed));
+                assert!(initialize_was_called.load(Ordering::Relaxed));
+                assert!(shutdown_was_called.load(Ordering::Relaxed));
+
+                Result::<()>::Ok(())
+            })
+            .catch_unwind()
+            .await;
 
             ctx.stop().await.unwrap();
+            res
         })
+        .unwrap()
+        .unwrap()
         .unwrap();
 }
 
@@ -455,32 +500,41 @@ fn worker_calls_stopworker_from_handlemessage() {
 
     executor
         .execute(async move {
-            const RUNS: u32 = 1000;
-            const WORKERS: u32 = 10;
-            for _ in 0..RUNS {
-                let mut addrs = Vec::new();
-                for _ in 0..WORKERS {
-                    let worker = StopFromHandleMessageWorker {
-                        counter_a: counter_a_clone.clone(),
-                        counter_b: counter_b_clone.clone(),
-                    };
-                    let addr = Address::random(LOCAL);
-                    ctx.start_worker(&addr, worker).await.unwrap();
-                    addrs.push(addr);
-                }
+            let res = std::panic::AssertUnwindSafe(async {
+                const RUNS: u32 = 1000;
+                const WORKERS: u32 = 10;
+                for _ in 0..RUNS {
+                    let mut addrs = Vec::new();
+                    for _ in 0..WORKERS {
+                        let worker = StopFromHandleMessageWorker {
+                            counter_a: counter_a_clone.clone(),
+                            counter_b: counter_b_clone.clone(),
+                        };
+                        let addr = Address::random(LOCAL);
+                        ctx.start_worker(&addr, worker).await.unwrap();
+                        addrs.push(addr);
+                    }
 
-                let mut join_handles = Vec::new();
-                for addr in addrs {
-                    join_handles.push(ctx.send(route![addr], String::from("Testing. 1. 2. 3.")));
-                }
+                    let mut join_handles = Vec::new();
+                    for addr in addrs {
+                        join_handles
+                            .push(ctx.send(route![addr], String::from("Testing. 1. 2. 3.")));
+                    }
 
-                for h in join_handles {
-                    h.await.unwrap();
+                    for h in join_handles {
+                        h.await.unwrap();
+                    }
                 }
-            }
+                Result::<()>::Ok(())
+            })
+            .catch_unwind()
+            .await;
 
             ctx.stop().await.unwrap();
+            res
         })
+        .unwrap()
+        .unwrap()
         .unwrap();
 
     // Wait till tokio Runtime is shut down
@@ -532,18 +586,70 @@ fn use_context_send_and_receive() {
     let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
     executor
         .execute(async move {
-            ctx.start_worker("SendReceiveWorker", SendReceiveWorker)
-                .await?;
+            let res = std::panic::AssertUnwindSafe(async {
+                ctx.start_worker("SendReceiveWorker", SendReceiveWorker)
+                    .await?;
 
-            let msg_tx = SendReceiveRequest::Connect();
-            let msg_rx = ctx.send_and_receive("SendReceiveWorker", msg_tx).await?;
+                let msg_tx = SendReceiveRequest::Connect();
+                let msg_rx = ctx.send_and_receive("SendReceiveWorker", msg_tx).await?;
 
-            if let SendReceiveResponse::Connect(Err(e)) = msg_rx {
-                panic!("test failure: {}", e)
-            }
+                if let SendReceiveResponse::Connect(Err(e)) = msg_rx {
+                    panic!("test failure: {}", e)
+                }
 
-            ctx.stop().await
+                Result::<()>::Ok(())
+            })
+            .catch_unwind()
+            .await;
+
+            ctx.stop().await.unwrap();
+            res
         })
         .unwrap()
+        .unwrap()
         .unwrap();
+}
+
+#[test]
+#[should_panic]
+fn dummy_catch_unwind_in_inner() {
+    let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
+    executor
+        .execute(async move {
+            //  don't introduce potentially panicking code in this gap,
+            //  will still hang because ctx.stop() is not going to run.
+            //  The entire test logic is to be run inside 'AssertUnwindSafe' block.
+            //  Uncomment below to demostrate hanging
+            //            panic!("Panic in executor");
+            let res = std::panic::AssertUnwindSafe(async {
+                panic!("Panic in inner");
+            })
+            .catch_unwind()
+            .await;
+            // this teardown code must always run no matter the inner code panics or not
+            ctx.stop().await.unwrap();
+
+            res
+        })
+        .expect("Executor should not fail")
+        .expect("Test function should not fail");
+}
+
+#[test]
+#[should_panic]
+fn dummy_normal_error_in_inner() {
+    let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
+    executor
+        .execute(async move {
+            let _res = std::panic::AssertUnwindSafe(async {}).catch_unwind().await;
+
+            ctx.stop().await.unwrap();
+
+            Result::<()>::Err(ockam_core::Error::new_without_cause(
+                ockam_core::errcode::Origin::Node,
+                ockam_core::errcode::Kind::Invalid,
+            ))
+        })
+        .expect("Executor should not fail")
+        .expect("Test function should not fail");
 }

@@ -83,6 +83,7 @@ mod tests {
     use crate::{Context, DelayedEvent, NodeBuilder};
     use core::sync::atomic::Ordering;
     use core::time::Duration;
+    use futures::FutureExt;
     use ockam_core::compat::{boxed::Box, string::ToString, sync::Arc};
     use ockam_core::{async_trait, Any};
     use ockam_core::{Result, Routed, Worker};
@@ -115,38 +116,45 @@ mod tests {
         let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
         executor
             .execute(async move {
-                let msgs_count = Arc::new(AtomicI8::new(0));
-                let mut heartbeat =
-                    DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
+                let res = std::panic::AssertUnwindSafe(async {
+                    let msgs_count = Arc::new(AtomicI8::new(0));
+                    let mut heartbeat =
+                        DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string()).await?;
+
+                    let worker = CountingWorker {
+                        msgs_count: msgs_count.clone(),
+                    };
+
+                    ctx.start_worker("counting_worker", worker).await?;
+
+                    heartbeat
+                        .schedule(Duration::from_millis(100))
                         .await
                         .unwrap();
+                    sleep(Duration::from_millis(150)).await;
+                    heartbeat
+                        .schedule(Duration::from_millis(100))
+                        .await
+                        .unwrap();
+                    sleep(Duration::from_millis(150)).await;
+                    heartbeat
+                        .schedule(Duration::from_millis(100))
+                        .await
+                        .unwrap();
+                    sleep(Duration::from_millis(150)).await;
 
-                let worker = CountingWorker {
-                    msgs_count: msgs_count.clone(),
-                };
-
-                ctx.start_worker("counting_worker", worker).await.unwrap();
-
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(150)).await;
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(150)).await;
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(150)).await;
-
-                assert_eq!(3, msgs_count.load(Ordering::Relaxed));
+                    assert_eq!(3, msgs_count.load(Ordering::Relaxed));
+                    Result::<()>::Ok(())
+                })
+                .catch_unwind()
+                .await;
 
                 ctx.stop().await.unwrap();
+
+                res
             })
+            .unwrap()
+            .unwrap()
             .unwrap();
 
         Ok(())
@@ -158,39 +166,34 @@ mod tests {
         let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
         executor
             .execute(async move {
-                let msgs_count = Arc::new(AtomicI8::new(0));
-                let mut heartbeat =
-                    DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
-                        .await
-                        .unwrap();
+                let res = std::panic::AssertUnwindSafe(async {
+                    let msgs_count = Arc::new(AtomicI8::new(0));
+                    let mut heartbeat =
+                        DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string()).await?;
 
-                let worker = CountingWorker {
-                    msgs_count: msgs_count.clone(),
-                };
+                    let worker = CountingWorker {
+                        msgs_count: msgs_count.clone(),
+                    };
 
-                ctx.start_worker("counting_worker", worker).await.unwrap();
+                    ctx.start_worker("counting_worker", worker).await?;
 
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(150)).await;
+                    heartbeat.schedule(Duration::from_millis(100)).await?;
+                    heartbeat.schedule(Duration::from_millis(100)).await?;
+                    heartbeat.schedule(Duration::from_millis(100)).await?;
+                    sleep(Duration::from_millis(150)).await;
 
-                assert_eq!(1, msgs_count.load(Ordering::Relaxed));
+                    assert_eq!(1, msgs_count.load(Ordering::Relaxed));
+                    Result::<()>::Ok(())
+                })
+                .catch_unwind()
+                .await;
 
                 ctx.stop().await.unwrap();
+                res
             })
-            .unwrap();
-
-        Ok(())
+            .unwrap()
+            .unwrap()
+        //        Ok(())
     }
 
     #[allow(non_snake_case)]
@@ -199,38 +202,46 @@ mod tests {
         let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
         executor
             .execute(async move {
-                let msgs_count = Arc::new(AtomicI8::new(0));
-                let mut heartbeat =
-                    DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
+                let res = std::panic::AssertUnwindSafe(async {
+                    let msgs_count = Arc::new(AtomicI8::new(0));
+                    let mut heartbeat =
+                        DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
+                            .await
+                            .unwrap();
+
+                    let worker = CountingWorker {
+                        msgs_count: msgs_count.clone(),
+                    };
+
+                    ctx.start_worker("counting_worker", worker).await.unwrap();
+
+                    heartbeat
+                        .schedule(Duration::from_millis(100))
                         .await
                         .unwrap();
+                    sleep(Duration::from_millis(150)).await;
+                    heartbeat
+                        .schedule(Duration::from_millis(200))
+                        .await
+                        .unwrap();
+                    sleep(Duration::from_millis(100)).await;
+                    heartbeat.cancel();
+                    sleep(Duration::from_millis(300)).await;
 
-                let worker = CountingWorker {
-                    msgs_count: msgs_count.clone(),
-                };
+                    assert_eq!(1, msgs_count.load(Ordering::Relaxed));
 
-                ctx.start_worker("counting_worker", worker).await.unwrap();
-
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(150)).await;
-                heartbeat
-                    .schedule(Duration::from_millis(200))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(100)).await;
-                heartbeat.cancel();
-                sleep(Duration::from_millis(300)).await;
-
-                assert_eq!(1, msgs_count.load(Ordering::Relaxed));
+                    Result::<()>::Ok(())
+                })
+                .catch_unwind()
+                .await;
 
                 ctx.stop().await.unwrap();
-            })
-            .unwrap();
 
-        Ok(())
+                res
+            })
+            .unwrap()
+            .unwrap()
+        //        Ok(())
     }
 
     #[allow(non_snake_case)]
@@ -239,37 +250,45 @@ mod tests {
         let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
         executor
             .execute(async move {
-                let msgs_count = Arc::new(AtomicI8::new(0));
-                let mut heartbeat =
-                    DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
+                let res = std::panic::AssertUnwindSafe(async {
+                    let msgs_count = Arc::new(AtomicI8::new(0));
+                    let mut heartbeat =
+                        DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string())
+                            .await
+                            .unwrap();
+
+                    let worker = CountingWorker {
+                        msgs_count: msgs_count.clone(),
+                    };
+
+                    ctx.start_worker("counting_worker", worker).await.unwrap();
+
+                    heartbeat
+                        .schedule(Duration::from_millis(100))
                         .await
                         .unwrap();
+                    sleep(Duration::from_millis(150)).await;
+                    heartbeat
+                        .schedule(Duration::from_millis(200))
+                        .await
+                        .unwrap();
+                    sleep(Duration::from_millis(100)).await;
+                    drop(heartbeat);
+                    sleep(Duration::from_millis(300)).await;
 
-                let worker = CountingWorker {
-                    msgs_count: msgs_count.clone(),
-                };
+                    assert_eq!(1, msgs_count.load(Ordering::Relaxed));
 
-                ctx.start_worker("counting_worker", worker).await.unwrap();
-
-                heartbeat
-                    .schedule(Duration::from_millis(100))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(150)).await;
-                heartbeat
-                    .schedule(Duration::from_millis(200))
-                    .await
-                    .unwrap();
-                sleep(Duration::from_millis(100)).await;
-                drop(heartbeat);
-                sleep(Duration::from_millis(300)).await;
-
-                assert_eq!(1, msgs_count.load(Ordering::Relaxed));
+                    Result::<()>::Ok(())
+                })
+                .catch_unwind()
+                .await;
 
                 ctx.stop().await.unwrap();
-            })
-            .unwrap();
 
-        Ok(())
+                res
+            })
+            .unwrap()
+            .unwrap()
+        //        Ok(())
     }
 }
