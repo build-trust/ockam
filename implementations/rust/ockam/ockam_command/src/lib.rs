@@ -98,13 +98,7 @@ pub struct GlobalArgs {
     )]
     verbose: u8,
 
-    #[clap(
-        global = true,
-        long = "format",
-        short = 'f',
-        value_enum,
-        default_value = "plain"
-    )]
+    #[clap(global = true, long = "format", value_enum, default_value = "plain")]
     output_format: OutputFormat,
 
     // if test_argument_parser is true, command arguments are checked
