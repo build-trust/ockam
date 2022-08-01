@@ -3,7 +3,6 @@ use std::time::Duration;
 use crate::util::{self, api, connect_to};
 use crate::{node::show::query_status, CommandGlobalOpts, OckamConfig};
 use clap::Args;
-use cli_table::{format::Justify, print_stdout, Cell, Style, Table};
 use crossbeam_channel::{bounded, Sender};
 use ockam::{Context, Route};
 use ockam_api::nodes::NODEMANAGER_ADDR;
