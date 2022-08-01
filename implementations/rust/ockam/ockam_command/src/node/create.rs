@@ -75,6 +75,12 @@ impl CreateCommand {
                     );
                     std::process::exit(-1);
                 }
+
+                // Save the config update
+                if let Err(e) = cfg.atomic_update().run() {
+                    eprintln!("failed to update configuration: {}", e);
+                    std::process::exit(-1);
+                }
             }
 
             embedded_node(setup, (command, cfg.clone()));
