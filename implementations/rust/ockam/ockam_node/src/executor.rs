@@ -3,11 +3,10 @@
 use crate::channel_types::SmallSender;
 use crate::{
     router::{Router, SenderPair},
-    tokio::runtime::Runtime,
+    tokio::runtime::{Handle, Runtime},
     NodeMessage,
 };
 use core::future::Future;
-use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Result};
 
 #[cfg(feature = "metrics")]
@@ -31,7 +30,7 @@ use ockam_core::{
 /// `ockam::node` function annotation instead!
 pub struct Executor {
     /// Reference to the runtime needed to spawn tasks
-    rt: Arc<Runtime>,
+    rt: Runtime,
     /// Main worker and application router
     router: Router,
     /// Metrics collection endpoint
@@ -41,7 +40,7 @@ pub struct Executor {
 
 impl Default for Executor {
     fn default() -> Self {
-        let rt = Arc::new(Runtime::new().unwrap());
+        let rt = Runtime::new().unwrap();
         let router = Router::new();
         #[cfg(feature = "metrics")]
         let metrics = Metrics::new(&rt, router.get_metrics_readout());
@@ -66,8 +65,8 @@ impl Executor {
     }
 
     /// Get access to the underlying async runtime (by default `tokio`)
-    pub(crate) fn runtime(&self) -> Arc<Runtime> {
-        self.rt.clone()
+    pub(crate) fn runtime(&self) -> &Handle {
+        self.rt.handle()
     }
 
     /// Initialize the root application worker
@@ -97,18 +96,17 @@ impl Executor {
             .spawn(Arc::clone(&self.metrics).run(Arc::clone(&alive)));
 
         // Spawn user code second
-        let rt = Arc::clone(&self.rt);
-        let join_body = rt.spawn(future);
+        let join_body = self.rt.spawn(future);
 
         // Then block on the execution of the router
-        crate::block_future(&rt, async move { self.router.run().await })?;
+        crate::block_future(&self.rt, self.router.run())?;
 
         // Shut down metrics collector
         #[cfg(feature = "metrics")]
         alive.fetch_or(true, Ordering::Acquire);
 
         // Last join user code
-        let res = crate::block_future(&rt, async move { join_body.await })
+        let res = crate::block_future(&self.rt, join_body)
             .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))?;
 
         Ok(res)
@@ -128,12 +126,12 @@ impl Executor {
         F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
-        let rt = Arc::clone(&self.rt);
-        let _join = rt.spawn(future);
+        let _join = self.rt.spawn(future);
 
         // Block this task executing the primary message router,
         // returning any critical failures that it encounters.
-        crate::tokio::runtime::execute(&rt, async move { self.router.run().await.unwrap() });
+        let future = self.router.run();
+        crate::tokio::runtime::execute(&self.rt, async move { future.await.unwrap() });
         Ok(())
     }
 }

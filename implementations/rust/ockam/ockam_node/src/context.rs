@@ -1,6 +1,6 @@
 use crate::async_drop::AsyncDrop;
 use crate::channel_types::{message_channel, small_channel, SmallReceiver, SmallSender};
-use crate::tokio::{self, runtime::Runtime, time::timeout};
+use crate::tokio::{self, runtime::Handle, time::timeout};
 use crate::{
     error::*,
     parser,
@@ -52,7 +52,7 @@ pub type RepeaterContext = Context;
 pub struct Context {
     mailboxes: Mailboxes,
     sender: SmallSender<NodeMessage>,
-    rt: Arc<Runtime>,
+    rt: Handle,
     receiver: SmallReceiver<RelayMessage>,
     async_drop_sender: Option<AsyncDropSender>,
     mailbox_count: Arc<AtomicUsize>,
@@ -78,8 +78,8 @@ impl AsyncTryClone for Context {
 
 impl Context {
     /// Return runtime clone
-    pub fn runtime(&self) -> Arc<Runtime> {
-        self.rt.clone()
+    pub fn runtime(&self) -> &Handle {
+        &self.rt
     }
 
     /// Return mailbox_count clone
@@ -131,7 +131,7 @@ impl Context {
     /// `async_drop_sender` must be provided when creating a detached
     /// Context type (i.e. not backed by a worker relay).
     pub(crate) fn new(
-        rt: Arc<Runtime>,
+        rt: Handle,
         sender: SmallSender<NodeMessage>,
         mailboxes: Mailboxes,
         async_drop_sender: Option<AsyncDropSender>,
@@ -218,12 +218,12 @@ impl Context {
         // Drop handler, and then forwards a message to the Node
         // router.
         let (async_drop, drop_sender) = AsyncDrop::new(self.sender.clone());
-        async_drop.spawn(&self.rt);
+        self.rt.spawn(async_drop.run());
 
         // Create a new context and get access to the mailbox senders
         let addresses = mailboxes.addresses();
         let (ctx, sender, _) = Self::new(
-            Arc::clone(&self.rt),
+            self.rt.clone(),
             self.sender.clone(),
             mailboxes,
             Some(drop_sender),
@@ -317,7 +317,7 @@ impl Context {
             Context::new(self.rt.clone(), self.sender.clone(), mailboxes, None);
 
         // Initialise the processor relay with the ctrl receiver
-        ProcessorRelay::<P>::init(self.rt.as_ref(), processor, ctx, ctrl_rx);
+        ProcessorRelay::<P>::init(&self.rt, processor, ctx, ctrl_rx);
 
         // Send start request to router
         let (msg, mut rx) = NodeMessage::start_processor(address, senders);

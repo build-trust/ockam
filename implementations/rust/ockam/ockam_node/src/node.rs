@@ -71,7 +71,7 @@ where
         // The root application worker needs a mailbox and relay to accept
         // messages from workers, and to buffer incoming transcoded data.
         let (ctx, sender, _) = Context::new(
-            exe.runtime(),
+            exe.runtime().clone(),
             exe.sender(),
             Mailboxes::new(Mailbox::new(addr, Arc::new(self.access_control)), vec![]),
             None,

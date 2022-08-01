@@ -89,11 +89,15 @@ where
         let main_address = mailboxes.main_address().clone();
 
         // Pass it to the context
-        let (ctx, sender, ctrl_rx) =
-            Context::new(context.runtime(), context.sender().clone(), mailboxes, None);
+        let (ctx, sender, ctrl_rx) = Context::new(
+            context.runtime().clone(),
+            context.sender().clone(),
+            mailboxes,
+            None,
+        );
 
         // Then initialise the worker message relay
-        WorkerRelay::<W, M>::init(&context.runtime(), self.worker, ctx, ctrl_rx);
+        WorkerRelay::<W, M>::init(context.runtime(), self.worker, ctx, ctrl_rx);
 
         // Send start request to router
         let (msg, mut rx) =
