@@ -32,9 +32,10 @@ impl ListCommand {
         };
         verify_pids(cfg, node_names);
 
-        for (_, node_cfg) in cfg.get_inner().nodes.iter() {
-            connect_to(node_cfg.port, cfg.clone(), query_status);
-        }
+        cfg.get_inner()
+            .nodes
+            .iter()
+            .for_each(|(_, node_cfg)| connect_to(node_cfg.port, cfg.clone(), query_status));
     }
 }
 
