@@ -42,14 +42,35 @@ where
 }
 
 /// Runtime
-pub struct Runtime {}
+pub struct Runtime {
+    handle: Handle,
+}
 
 impl Runtime {
     pub fn new() -> io::Result<Runtime> {
-        Ok(Self {})
+        Ok(Self { handle: Handle(()) })
+    }
+
+    pub fn handle(&self) -> &Handle {
+        &self.handle
     }
 
     /// Spawn a future onto the runtime.
+    pub fn spawn<F>(&self, future: F) -> JoinHandle<F::Output>
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        executor::current().spawn(future);
+        JoinHandle::new()
+    }
+}
+
+/// Runtime handle
+#[derive(Clone)]
+pub struct Handle(());
+
+impl Handle {
     pub fn spawn<F>(&self, future: F) -> JoinHandle<F::Output>
     where
         F: Future + Send + 'static,

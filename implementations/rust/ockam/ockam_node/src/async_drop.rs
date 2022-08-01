@@ -1,10 +1,9 @@
-use crate::tokio::runtime::Runtime;
 use crate::tokio::sync::{
     mpsc::Sender as DefaultSender,
     oneshot::{self, Receiver, Sender},
 };
 use crate::NodeMessage;
-use ockam_core::{compat::sync::Arc, Address};
+use ockam_core::Address;
 
 /// A helper to implement Drop mechanisms, but async
 ///
@@ -40,21 +39,19 @@ impl AsyncDrop {
     ///
     /// Because this code is run detached from its original context,
     /// we can't handle any errors.
-    pub fn spawn(self, rt: &Arc<Runtime>) {
-        rt.spawn(async move {
-            if let Ok(addr) = self.rx.await {
-                debug!("Received AsyncDrop request for address: {}", addr);
+    pub async fn run(self) {
+        if let Ok(addr) = self.rx.await {
+            debug!("Received AsyncDrop request for address: {}", addr);
 
-                let (msg, mut reply) = NodeMessage::stop_worker(addr, true);
-                if let Err(e) = self.sender.send(msg).await {
-                    warn!("Failed sending AsyncDrop request to router: {}", e);
-                }
-
-                // Then check that address was properly shut down
-                if reply.recv().await.is_none() {
-                    warn!("AsyncDrop router reply was None");
-                }
+            let (msg, mut reply) = NodeMessage::stop_worker(addr, true);
+            if let Err(e) = self.sender.send(msg).await {
+                warn!("Failed sending AsyncDrop request to router: {}", e);
             }
-        });
+
+            // Then check that address was properly shut down
+            if reply.recv().await.is_none() {
+                warn!("AsyncDrop router reply was None");
+            }
+        }
     }
 }

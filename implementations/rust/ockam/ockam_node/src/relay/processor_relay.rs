@@ -1,5 +1,5 @@
 use crate::channel_types::SmallReceiver;
-use crate::{relay::CtrlSignal, tokio::runtime::Runtime, Context};
+use crate::{relay::CtrlSignal, tokio::runtime::Handle, Context};
 use ockam_core::{Processor, Result};
 
 pub struct ProcessorRelay<P>
@@ -97,7 +97,7 @@ where
 
     /// Create a processor relay with two node contexts
     pub(crate) fn init(
-        rt: &Runtime,
+        rt: &Handle,
         processor: P,
         ctx: Context,
         ctrl_rx: SmallReceiver<CtrlSignal>,
