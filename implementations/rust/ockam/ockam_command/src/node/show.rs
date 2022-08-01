@@ -1,9 +1,13 @@
-use crate::util::{self, api, connect_to};
+use crate::util::{self, api, connect_to, OckamConfig};
 use crate::CommandGlobalOpts;
 use anyhow::Context;
 use clap::Args;
 use ockam::Route;
 use ockam_api::nodes::{models::base::NodeStatus, NODEMANAGER_ADDR};
+use std::{
+    net::{IpAddr, SocketAddr},
+    str::FromStr,
+};
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -22,11 +26,15 @@ impl ShowCommand {
                 std::process::exit(-1);
             }
         };
-        connect_to(port, (), query_status);
+        connect_to(port, cfg.clone(), query_status);
     }
 }
 
-pub async fn query_status(ctx: ockam::Context, _: (), mut base_route: Route) -> anyhow::Result<()> {
+pub async fn query_status(
+    ctx: ockam::Context,
+    cfg: OckamConfig,
+    mut base_route: Route,
+) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append(NODEMANAGER_ADDR),
@@ -44,10 +52,23 @@ pub async fn query_status(ctx: ockam::Context, _: (), mut base_route: Route) -> 
         ..
     } = api::parse_status(&resp)?;
 
-    println!(
-        "Node: {}, Status: {}, Worker count: {}, Pid: {}, Transport count: {}",
-        node_name, status, workers, pid, transports,
-    );
+    let node_cfg = cfg.get_node(&node_name).unwrap();
+    let api_address = SocketAddr::new(IpAddr::from_str("127.0.0.1").unwrap(), node_cfg.port);
+    let (mlog, _) = cfg.log_paths_for_node(&node_name.to_string()).unwrap();
+    let log_path = util::print_path(&mlog);
 
+    println!(
+        r#"
+Node:
+  Name: {}
+  Status: {}
+  API Address: {}
+  Pid: {}
+  Worker count: {}
+  Transport count: {}
+  Log Path: {}
+"#,
+        node_name, status, api_address, pid, workers, transports, log_path
+    );
     util::stop_node(ctx).await
 }
