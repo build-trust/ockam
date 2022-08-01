@@ -297,11 +297,11 @@ impl NodeManager {
 
             // ==*== Identity ==*==
             (Post, ["node", "identity"]) => self.create_identity(ctx, req).await?.to_vec()?,
-            (Post, ["node", "identity", "actions", "export"]) => {
-                self.export_identity(req).await?.to_vec()?
+            (Post, ["node", "identity", "actions", "show", "short"]) => {
+                self.short_identity(req).await?.to_vec()?
             }
-            (Post, ["node", "identity", "actions", "print"]) => {
-                self.print_identity(req).await?.to_vec()?
+            (Post, ["node", "identity", "actions", "show", "long"]) => {
+                self.long_identity(req).await?.to_vec()?
             }
 
             // ==*== Secure channels ==*==
