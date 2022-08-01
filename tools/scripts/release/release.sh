@@ -69,11 +69,8 @@ function approve_deployment() {
           -H "Accept: application/vnd.github+json" \
           /repos/$owner/$repository/actions/runs/$run_id/pending_deployments --input -
       fi
-      sleep 120
-    else
-      sleep 120
-      continue
     fi
+    sleep 120
   done
 }
 
