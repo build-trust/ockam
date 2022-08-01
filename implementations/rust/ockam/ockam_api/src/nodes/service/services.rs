@@ -1,4 +1,5 @@
 use crate::auth::Server;
+use crate::error::ApiError;
 use crate::identity::IdentityService;
 use crate::nodes::models::services::{
     StartAuthenticatedServiceRequest, StartIdentityServiceRequest, StartVaultServiceRequest,
@@ -15,6 +16,10 @@ impl NodeManager {
         ctx: &Context,
         addr: Address,
     ) -> Result<()> {
+        if self.registry.vault_services.contains_key(&addr) {
+            return Err(ApiError::generic("Vault service at this address exists"));
+        }
+
         let vault = self.vault()?.async_try_clone().await?;
         let service = VaultService::new(vault);
 
@@ -37,9 +42,10 @@ impl NodeManager {
 
         let addr = req_body.addr.to_string().into();
 
-        self.start_vault_service_impl(ctx, addr).await?;
-
-        let response = Response::ok(req.id());
+        let response = match self.start_vault_service_impl(ctx, addr).await {
+            Ok(_) => Response::ok(req.id()),
+            Err(_err) => Response::bad_request(req.id()),
+        };
 
         Ok(response)
     }
@@ -49,6 +55,10 @@ impl NodeManager {
         ctx: &Context,
         addr: Address,
     ) -> Result<()> {
+        if self.registry.identity_services.contains_key(&addr) {
+            return Err(ApiError::generic("Identity service at this address exists"));
+        }
+
         let vault = self.vault()?.async_try_clone().await?;
         IdentityService::create(ctx, addr.clone(), vault).await?;
 
@@ -69,9 +79,10 @@ impl NodeManager {
 
         let addr = req_body.addr.to_string().into();
 
-        self.start_identity_service_impl(ctx, addr).await?;
-
-        let response = Response::ok(req.id());
+        let response = match self.start_identity_service_impl(ctx, addr).await {
+            Ok(_) => Response::ok(req.id()),
+            Err(_err) => Response::bad_request(req.id()),
+        };
 
         Ok(response)
     }
@@ -81,6 +92,12 @@ impl NodeManager {
         ctx: &Context,
         addr: Address,
     ) -> Result<()> {
+        if self.registry.authenticated_services.contains_key(&addr) {
+            return Err(ApiError::generic(
+                "Authenticated service at this address exists",
+            ));
+        }
+
         let s = self.authenticated_storage.async_try_clone().await?;
         let server = Server::new(s);
         ctx.start_worker(addr.clone(), server).await?;
@@ -102,9 +119,10 @@ impl NodeManager {
 
         let addr = req_body.addr.to_string().into();
 
-        self.start_authenticated_service_impl(ctx, addr).await?;
-
-        let response = Response::ok(req.id());
+        let response = match self.start_authenticated_service_impl(ctx, addr).await {
+            Ok(_) => Response::ok(req.id()),
+            Err(_err) => Response::bad_request(req.id()),
+        };
 
         Ok(response)
     }
