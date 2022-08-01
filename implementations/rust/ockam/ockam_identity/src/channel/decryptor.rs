@@ -304,6 +304,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             let trust_info = SecureChannelTrustInfo::new(their_identity_id.clone());
             let trusted = self.trust_policy.check(&trust_info).await?;
             if !trusted {
+                // TODO: Shutdown? Communicate error?
                 return Err(IdentityError::SecureChannelTrustCheckFailed.into());
             }
             info!(
@@ -424,6 +425,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             let trust_info = SecureChannelTrustInfo::new(their_identity_id.clone());
             let trusted = self.trust_policy.check(&trust_info).await?;
             if !trusted {
+                // TODO: Shutdown? Communicate error?
                 return Err(IdentityError::SecureChannelTrustCheckFailed.into());
             }
             info!(
