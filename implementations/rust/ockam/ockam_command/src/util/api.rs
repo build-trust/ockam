@@ -91,14 +91,14 @@ pub(crate) fn create_identity() -> Result<Vec<u8>> {
 /// Construct a request to export Identity
 pub(crate) fn long_identity() -> Result<Vec<u8>> {
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/identity/actions/export").encode(&mut buf)?;
+    Request::builder(Method::Post, "/node/identity/actions/show/long").encode(&mut buf)?;
     Ok(buf)
 }
 
 /// Construct a request to print Identity Id
 pub(crate) fn short_identity() -> Result<Vec<u8>> {
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/identity/actions/print").encode(&mut buf)?;
+    Request::builder(Method::Post, "/node/identity/actions/show/short").encode(&mut buf)?;
     Ok(buf)
 }
 
