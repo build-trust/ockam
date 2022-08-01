@@ -50,7 +50,7 @@ impl NodeManager {
         Ok(response)
     }
 
-    pub(super) async fn export_identity(
+    pub(super) async fn long_identity(
         &mut self,
         req: &Request<'_>,
     ) -> Result<ResponseBuilder<LongIdentityResponse<'_>>> {
@@ -61,7 +61,7 @@ impl NodeManager {
         Ok(response)
     }
 
-    pub(super) async fn print_identity(
+    pub(super) async fn short_identity(
         &mut self,
         req: &Request<'_>,
     ) -> Result<ResponseBuilder<ShortIdentityResponse<'_>>> {
