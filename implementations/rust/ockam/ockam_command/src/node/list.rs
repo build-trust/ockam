@@ -1,9 +1,8 @@
 use std::time::Duration;
 
 use crate::util::{self, api, connect_to};
-use crate::{CommandGlobalOpts, OckamConfig};
+use crate::{node::show::query_status, CommandGlobalOpts, OckamConfig};
 use clap::Args;
-use cli_table::{format::Justify, print_stdout, Cell, Style, Table};
 use crossbeam_channel::{bounded, Sender};
 use ockam::{Context, Route};
 use ockam_api::nodes::NODEMANAGER_ADDR;
@@ -33,37 +32,8 @@ impl ListCommand {
         };
         verify_pids(cfg, node_names);
 
-        let table = cfg
-            .get_inner()
-            .nodes
-            .iter()
-            .fold(vec![], |mut acc, (name, node_cfg)| {
-                let (mlog, _) = cfg.log_paths_for_node(name).unwrap();
-
-                let row = vec![
-                    name.cell(),
-                    node_cfg.port.cell().justify(Justify::Right),
-                    match node_cfg.pid {
-                        Some(pid) => format!("Yes (pid: {})", pid),
-                        None => "No".into(),
-                    }
-                    .cell()
-                    .justify(Justify::Left),
-                    util::print_path(&mlog).cell(),
-                ];
-                acc.push(row);
-                acc
-            })
-            .table()
-            .title(vec![
-                "Node name".cell().bold(true),
-                "API port".cell().bold(true),
-                "Running".cell().bold(true),
-                "Log path".cell().bold(true),
-            ]);
-
-        if let Err(e) = print_stdout(table) {
-            eprintln!("failed to print node status: {}", e);
+        for (_, node_cfg) in cfg.get_inner().nodes.iter() {
+            connect_to(node_cfg.port, cfg.clone(), query_status);
         }
     }
 }
@@ -74,7 +44,7 @@ fn verify_pids(cfg: &OckamConfig, nodes: Vec<String>) {
         let node_cfg = cfg.get_node(&node_name).unwrap();
 
         let (tx, rx) = bounded(1);
-        println!("Checking state for node '{}'", node_name);
+
         connect_to(node_cfg.port, tx, query_pid);
         let verified_pid = rx.recv().unwrap();
 

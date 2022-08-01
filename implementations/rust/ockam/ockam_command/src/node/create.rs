@@ -160,8 +160,9 @@ impl CreateCommand {
             // Wait a bit
             std::thread::sleep(Duration::from_millis(500));
 
+            println!("\nNode Created!");
             // Then query the node manager for the status
-            connect_to(address.port(), (), query_status);
+            connect_to(address.port(), cfg.clone(), query_status);
         }
     }
 }
