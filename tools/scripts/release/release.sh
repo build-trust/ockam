@@ -12,7 +12,7 @@ set -x
 
 GITHUB_USERNAME=$(gh api user | jq -r '.login')
 
-owner="build-trust"
+owner="metaclips"
 release_name="release_$(date +'%d-%m-%Y')_$(date +'%s')"
 
 # Ensure all executables are installed
@@ -77,8 +77,8 @@ function approve_deployment() {
 function ockam_bump() {
   set -e
   gh workflow run create-release-pull-request.yml --ref develop\
-    -F branch_name="$release_name" -F git_tag="$GIT_TAG" -F modified_release="$OCKAM_BUMP_MODIFIED_RELEASE"\
-    -F release_version="$OCKAM_BUMP_RELEASE_VERSION" -F bumped_dep_crates_version="$OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION"\
+    -F branch_name="$release_name" -F git_tag="$GIT_TAG" -F ockam_bump_modified_release="$OCKAM_BUMP_MODIFIED_RELEASE"\
+    -F ockam_bump_release_version="$OCKAM_BUMP_RELEASE_VERSION" -F ockam_bump_bumped_dep_crates_version="$OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION"\
     -R $owner/ockam
 
   workflow_file_name="create-release-pull-request.yml"

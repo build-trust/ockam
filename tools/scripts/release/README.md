@@ -80,13 +80,40 @@ Ockam release can also be done over CI either manually using the provided workfl
 - Terraform Repo Bump
 - Terraform Binary Release
 
-To release, we call the script also indicating the Github username of the executor
+There are two steps to final release
+- Draft release
+- Production release
+
+To create a release, we first create a draft, which will later on be reviewed and pull requests merged before running the script to create a final release.
+
+To start the release in draft mode we call from the ockam home
 
 ```bash
-GITHUB_USERNAME=metaclips release.sh
+IS_DRAFT_RELEASE=true ./tools/scripts/release/release.sh
 ```
 
-Indicating username ensures we only watch workflows that are created by the executor. The release script also allows for modifications provided by the `bump` and `publish` scripts, for example to create a release that uses a `RELEASE_VERSION` different from the default (minor)
+On a successful run will,
+- Bump Ockam crates and create a pull request in the /ockam repo
+- Create Github release as draft with built binaries and NIFs
+- Release Ockam docker image with a draft tag
+- Bump Homebrew version and create a pull request for review in /homebrew-ockam repository
+- Bump Terraform version and create a pull request for review in /terraform-provider-ockam repository
+- Create Terraform draft release in /terraform-provider-ockam repository
+
+After draft release is created, release is to be vetted and pull requests created in /ockam, /homebrew-ockam approved and merged before final release is started.
+
+To start final release, from ockam home, call
+
+```bash
+IS_DRAFT_RELEASE=false ./tools/scripts/release/release.sh
+```
+This will
+- Release Ockam docker image as latest
+- Make Ockam Github release non-draft and latest
+- Make Terraform Github release non-draft and latest
+- Push our crates to crates.io
+
+The release script also allows for modifications provided by the `bump` and `publish` scripts, for example to create a release that uses a `RELEASE_VERSION` different from the default (minor)
 
 ```bash
 RELEASE_VERSION=major GITHUB_USERNAME=metaclips release.sh
@@ -103,7 +130,18 @@ We can skip steps during a release by defining variable below as `true`
 
 To skip Ockam bump
 ```bash
-SKIP_OCKAM_BUMP=true GITHUB_USERNAME=metaclips release.sh
+SKIP_OCKAM_BUMP=true ./tools/scripts/release/release.sh
 ```
 
 The release script can be called from any path.
+
+## Acceptance Test
+
+After a release, we can test all generated assets to ensure they work accurately, the acceptance script checks
+
+- Test build our latest published Ockam crate from crates.io
+- Run Docker image
+- Build Homebrew
+- Build Terraform
+- Run our multi architechture binaries
+- Esure all creates are published to crates.io
