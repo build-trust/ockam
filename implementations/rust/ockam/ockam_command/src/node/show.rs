@@ -58,8 +58,17 @@ pub async fn query_status(
     let log_path = util::print_path(&mlog);
 
     println!(
-        "\nNode:\n\x20\x20Name: {}\n\x20\x20Status: {}\n\x20\x20API Address: {}\n\x20\x20Pid: {}\n\x20\x20Worker count: {}\n\x20\x20Transport count: {}\n\x20\x20Log Path: {}",
-        node_name, status, api_address, pid, workers,transports , log_path
+        r#"
+Node:
+  Name: {}
+  Status: {}
+  API Address: {}
+  Pid: {}
+  Worker count: {}
+  Transport count: {}
+  Log Path: {}
+"#,
+        node_name, status, api_address, pid, workers, transports, log_path
     );
     util::stop_node(ctx).await
 }
