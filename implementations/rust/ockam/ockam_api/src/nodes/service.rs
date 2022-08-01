@@ -277,7 +277,7 @@ impl NodeManager {
             (Get, ["node"]) => Response::ok(req.id())
                 .body(NodeStatus::new(
                     self.node_name.as_str(),
-                    "[✓]",
+                    "Running",
                     ctx.list_workers().await?.len() as u32,
                     std::process::id() as i32,
                     self.transports.len() as u32,
