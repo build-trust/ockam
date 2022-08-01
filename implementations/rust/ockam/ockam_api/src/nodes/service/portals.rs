@@ -58,7 +58,7 @@ impl NodeManager {
             ..
         } = dec.decode()?;
         let bind_addr = bind_addr.to_string();
-        // FIXME: Not used
+
         let alias = alias.map(|a| a.0.into()).unwrap_or_else(random_alias);
 
         info!("Handling request to create inlet portal");
@@ -76,6 +76,8 @@ impl NodeManager {
             .tcp_transport
             .create_inlet(bind_addr.clone(), outlet_route)
             .await;
+
+        // TODO: Add to registry
 
         Ok(match res {
             Ok((worker_addr, _)) => Response::ok(req.id()).body(InletStatus::new(
@@ -106,7 +108,6 @@ impl NodeManager {
         } = dec.decode()?;
         let tcp_addr = tcp_addr.to_string();
 
-        // FIXME: Not used
         let alias = alias.map(|a| a.0.into()).unwrap_or_else(random_alias);
 
         info!("Handling request to create outlet portal");
@@ -115,6 +116,8 @@ impl NodeManager {
             .tcp_transport
             .create_outlet(worker_addr.clone(), tcp_addr.clone())
             .await;
+
+        // TODO: Add to registry
 
         Ok(match res {
             Ok(_) => Response::ok(req.id()).body(OutletStatus::new(

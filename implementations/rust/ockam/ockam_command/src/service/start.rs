@@ -106,7 +106,7 @@ pub async fn start_identity_service(
         _ => return Err(ApiError::generic("Internal logic error").into()),
     };
 
-    let addr = addr.unwrap_or_else(|| "vault_service".to_string());
+    let addr = addr.unwrap_or_else(|| "identity_service".to_string());
 
     let response: Vec<u8> = ctx
         .send_and_receive(
@@ -153,7 +153,7 @@ pub async fn start_authenticated_service(
         _ => return Err(ApiError::generic("Internal logic error").into()),
     };
 
-    let addr = addr.unwrap_or_else(|| "vault_service".to_string());
+    let addr = addr.unwrap_or_else(|| "authenticated".to_string());
 
     let response: Vec<u8> = ctx
         .send_and_receive(
