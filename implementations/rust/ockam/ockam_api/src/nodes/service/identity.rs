@@ -20,13 +20,19 @@ impl NodeManager {
     pub(super) async fn create_identity_impl(
         &mut self,
         ctx: &Context,
+        reuse_if_exists: bool,
     ) -> Result<IdentityIdentifier> {
-        if self.identity.is_some() {
-            return Err(ockam_core::Error::new(
-                Origin::Application,
-                Kind::AlreadyExists,
-                "Identity already exists",
-            ))?;
+        if let Some(identity) = &self.identity {
+            return if reuse_if_exists {
+                debug!("Using existing identity");
+                identity.identifier()
+            } else {
+                Err(ockam_core::Error::new(
+                    Origin::Application,
+                    Kind::AlreadyExists,
+                    "Identity already exists",
+                ))
+            };
         }
 
         let vault = self.vault()?;
@@ -48,7 +54,7 @@ impl NodeManager {
         ctx: &Context,
         req: &Request<'_>,
     ) -> Result<ResponseBuilder<CreateIdentityResponse<'_>>> {
-        let identifier = self.create_identity_impl(ctx).await?;
+        let identifier = self.create_identity_impl(ctx, false).await?;
 
         let response =
             Response::ok(req.id()).body(CreateIdentityResponse::new(identifier.to_string()));
