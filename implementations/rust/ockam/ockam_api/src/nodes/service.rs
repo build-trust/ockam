@@ -161,9 +161,24 @@ impl NodeManager {
     }
 
     async fn create_defaults(&mut self, ctx: &Context) -> Result<()> {
-        // Create default vault and identity
-        self.create_vault_impl(None).await?;
-        self.create_identity_impl(ctx).await?;
+        // Create default vault and identity, if they don't exists already
+        self.create_vault_impl(None).await.or_else(|e| {
+            if e.code().kind == Kind::AlreadyExists {
+                debug!("Using existing vault");
+                Ok(())
+            } else {
+                Err(e)
+            }
+        })?;
+        self.create_identity_impl(ctx).await.or_else(|e| {
+            if e.code().kind == Kind::AlreadyExists {
+                let identity = self.identity()?;
+                debug!("Using existing identity");
+                identity.identifier()
+            } else {
+                Err(e)
+            }
+        })?;
 
         Ok(())
     }

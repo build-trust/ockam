@@ -7,6 +7,7 @@ use minicbor::Decoder;
 use ockam::vault::storage::FileStorage;
 use ockam::vault::Vault;
 use ockam::Result;
+use ockam_core::errcode::{Kind, Origin};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -19,7 +20,11 @@ impl NodeManager {
 
     pub(super) async fn create_vault_impl(&mut self, path: Option<PathBuf>) -> Result<()> {
         if self.vault.is_some() {
-            return Err(ApiError::generic("Vault already exists"))?;
+            return Err(ockam_core::Error::new(
+                Origin::Application,
+                Kind::AlreadyExists,
+                "Vault already exists",
+            ))?;
         }
 
         let path = path.unwrap_or_else(|| self.node_dir.join("vault.json"));

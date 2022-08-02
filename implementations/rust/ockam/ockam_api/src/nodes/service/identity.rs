@@ -8,6 +8,7 @@ use crate::{Request, Response, ResponseBuilder};
 use ockam::identity::{Identity, IdentityIdentifier};
 use ockam::vault::Vault;
 use ockam::{Context, Result};
+use ockam_core::errcode::{Kind, Origin};
 
 impl NodeManager {
     pub(crate) fn identity(&self) -> Result<&Identity<Vault>> {
@@ -21,7 +22,11 @@ impl NodeManager {
         ctx: &Context,
     ) -> Result<IdentityIdentifier> {
         if self.identity.is_some() {
-            return Err(ApiError::generic("Identity already exists"))?;
+            return Err(ockam_core::Error::new(
+                Origin::Application,
+                Kind::AlreadyExists,
+                "Identity already exists",
+            ))?;
         }
 
         let vault = self.vault()?;
