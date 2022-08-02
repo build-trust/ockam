@@ -12,7 +12,7 @@ set -x
 
 GITHUB_USERNAME=$(gh api user | jq -r '.login')
 
-owner="metaclips"
+owner="build-trust"
 release_name="release_$(date +'%d-%m-%Y')_$(date +'%s')"
 
 # Ensure all executables are installed
@@ -218,11 +218,13 @@ function success_info() {
 # Perform Ockam bump and binary draft release if specified
 if [[ $IS_DRAFT_RELEASE == true ]]; then
   if [[ -z $SKIP_OCKAM_BUMP || $SKIP_OCKAM_BUMP == false ]]; then
+    echo "Starting Ockam crate bump"
     ockam_bump
     success_info "Crate bump pull request created.... Starting Ockam crates.io publish."
   fi
 
   if [[ -z $SKIP_OCKAM_BINARY_RELEASE || $SKIP_OCKAM_BINARY_RELEASE == false ]]; then
+    echo "Releasing Ockam draft binaries"
     release_ockam_binaries
     success_info "Draft release has been created.... Starting Homebrew release."
   fi
@@ -233,15 +235,17 @@ if [[ -z $LATEST_TAG_NAME ]]; then
   latest_tag_name=$(gh api -H "Accept: application/vnd.github+json" /repos/$owner/ockam/releases | jq -r .[0].tag_name)
   if [[ $latest_tag_name != *"ockam_v"* ]]; then
     echo "Invalid Git Tag retrieved"
+    exit 1
   fi
 
-  success_info "Latest tag is $latest_tag_name press enter if correct"
+  success_info "Latest tag is $latest_tag_name"
 else
   latest_tag_name="$LATEST_TAG_NAME"
 fi
 
 if [[ $IS_DRAFT_RELEASE == true ]]; then
   # Get File hash from draft release
+  echo "Retrieving Ockam file SHA"
   file_and_sha=""
 
   temp_dir=$(mktemp -d)
@@ -263,49 +267,58 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
   echo "File and hash are $file_and_sha"
 
   if [[ -z $SKIP_OCKAM_PACKAGE_DRAFT_RELEASE || $SKIP_OCKAM_PACKAGE_DRAFT_RELEASE  == false ]]; then
+    echo "Releasing Ockam container image"
     release_ockam_package $latest_tag_name "$file_and_sha" false
     success_info "Ockam package draft release successful.... Starting Homebrew release"
   fi
 
   # Homebrew Release
   if [[ -z $SKIP_HOMEBREW_BUMP || $SKIP_HOMEBREW_BUMP == false ]]; then
+    echo "Bumping Homebrew"
     homebrew_repo_bump $latest_tag_name "$file_and_sha"
     success_info "Homebrew release successful.... Starting Terraform Release"
   fi
 
   if [[ -z $SKIP_TERRAFORM_BUMP || $SKIP_TERRAFORM_BUMP == false ]]; then
+    echo "Bumping Terraform"
     terraform_repo_bump $latest_tag_name
   fi
 
   if [[ -z $SKIP_TERRAFORM_BINARY_RELEASE || $SKIP_TERRAFORM_BINARY_RELEASE == false ]]; then
+    echo "Releasing Ockam Terraform binaries"
     terraform_binaries_release $latest_tag_name
   fi
+
+  success_info "Terraform release successful"
 fi
 
 # Release to production
 if [[ $IS_DRAFT_RELEASE == false ]]; then
   # Make Ockam Github draft as latest
   if [[ -z $SKIP_OCKAM_DRAFT_RELEASE || $SKIP_OCKAM_DRAFT_RELEASE == false ]]; then
+    echo "Releasing Ockam Github release"
     gh release edit $latest_tag_name --draft=false -R $owner/ockam
   fi
 
   # Release Terraform Github release
   if [[ -z $SKIP_TERRAFORM_DRAFT_RELEASE || $SKIP_TERRAFORM_DRAFT_RELEASE == false ]]; then
+    echo "Releasing Terraform release"
     terraform_tag=${latest_tag_name:6}
     gh release edit $terraform_tag --draft=false -R $owner/terraform-provider-ockam
   fi
 
   # Release Ockam package
   if [[ -z $SKIP_OCKAM_PACKAGE_RELEASE || $SKIP_OCKAM_PACKAGE_RELEASE  == false ]]; then
+    echo "Making Ockam container latest"
     release_ockam_package $latest_tag_name "nil" true
+    delete_ockam_draft_package
     success_info "Ockam package release successful."
   fi
 
-  delete_ockam_draft_package
-
   if [[ -z $SKIP_CRATES_IO_PUBLISH || $SKIP_CRATES_IO_PUBLISH == false ]]; then
+    echo "Starting Crates IO publish"
     ockam_crate_release
-    success_info "Crates.io publish successful.... Starting Ockam binary release."
+    success_info "Crates.io publish successful."
   fi
 
   success_info "Release Done 🚀🚀🚀."
