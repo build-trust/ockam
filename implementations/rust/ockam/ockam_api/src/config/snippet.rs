@@ -1,21 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::VecDeque, fmt, fs::File, io::Read, path::Path};
-
-/// A stand-alone configuration file to setup a foreground node
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LaunchConfig {
-    pub vec: VecDeque<ComposableSnippet>,
-}
-
-impl LaunchConfig {
-    pub fn load(p: &Path) -> anyhow::Result<Self> {
-        let mut buf = String::new();
-        let mut f = File::open(p)?;
-        f.read_to_string(&mut buf)?;
-        let this = serde_json::from_str(&buf)?;
-        Ok(this)
-    }
-}
+use std::fmt;
 
 /// A composable snippet run against an existing node
 ///
@@ -84,15 +68,11 @@ pub enum RemoteMode {
 
 impl fmt::Display for RemoteMode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Connector => "connector",
-                Self::Receiver => "receiver",
-                Self::Listener => "listener",
-            }
-        )
+        f.write_str(match self {
+            Self::Connector => "connector",
+            Self::Receiver => "receiver",
+            Self::Listener => "listener",
+        })
     }
 }
 
@@ -105,14 +85,10 @@ pub enum PortalMode {
 
 impl fmt::Display for PortalMode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Inlet => "inlet",
-                Self::Outlet => "outlet",
-            }
-        )
+        f.write_str(match self {
+            Self::Inlet => "inlet",
+            Self::Outlet => "outlet",
+        })
     }
 }
 

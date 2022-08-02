@@ -5,8 +5,7 @@ mod addon;
 pub use addon::AddonCommand;
 
 mod config;
-pub use config::snippets;
-pub use config::{ConfigError, NodeConfig, OckamConfig};
+pub use config::*;
 
 use anyhow::Context;
 use ockam::{route, NodeBuilder, Route, TcpTransport, TCP};

@@ -2,11 +2,9 @@
 
 #![allow(unused)]
 
-use crate::util::snippets::{ComposableSnippet, Operation};
+use crate::util::{ComposableSnippet, Operation, RemoteMode};
 use std::collections::VecDeque;
 use std::{env::current_exe, path::PathBuf, process::Command};
-
-use super::snippets::RemoteMode;
 
 pub fn run(node: &str, vec: &VecDeque<ComposableSnippet>) {
     let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
