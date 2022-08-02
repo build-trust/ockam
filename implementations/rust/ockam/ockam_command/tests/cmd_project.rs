@@ -11,7 +11,10 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
         .arg("create")
         .arg("space-id")
         .arg("project-name")
-        .args(common_args);
+        .args(common_args)
+        .arg("--")
+        .arg("service-a")
+        .arg("service-b");
     cmd.assert().success();
 
     let mut cmd = Command::cargo_bin("ockam")?;

@@ -5,8 +5,6 @@ pub use delete::DeleteCommand;
 pub use list::ListCommand;
 pub use show::ShowCommand;
 
-use crate::node::NodeOpts;
-use crate::util::api::CloudOpts;
 use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 
 mod create;
@@ -16,12 +14,6 @@ mod show;
 
 #[derive(Clone, Debug, Args)]
 pub struct ProjectCommand {
-    #[clap(flatten)]
-    node_opts: NodeOpts,
-
-    #[clap(flatten)]
-    cloud_opts: CloudOpts,
-
     #[clap(subcommand)]
     subcommand: ProjectSubcommand,
 }
@@ -48,18 +40,10 @@ pub enum ProjectSubcommand {
 impl ProjectCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: ProjectCommand) {
         match cmd.subcommand {
-            ProjectSubcommand::Create(scmd) => {
-                CreateCommand::run(opts, (cmd.cloud_opts, cmd.node_opts), scmd)
-            }
-            ProjectSubcommand::Delete(scmd) => {
-                DeleteCommand::run(opts, (cmd.cloud_opts, cmd.node_opts), scmd)
-            }
-            ProjectSubcommand::List(scmd) => {
-                ListCommand::run(opts, (cmd.cloud_opts, cmd.node_opts), scmd)
-            }
-            ProjectSubcommand::Show(scmd) => {
-                ShowCommand::run(opts, (cmd.cloud_opts, cmd.node_opts), scmd)
-            }
+            ProjectSubcommand::Create(scmd) => CreateCommand::run(opts, scmd),
+            ProjectSubcommand::Delete(scmd) => DeleteCommand::run(opts, scmd),
+            ProjectSubcommand::List(scmd) => ListCommand::run(opts, scmd),
+            ProjectSubcommand::Show(scmd) => ShowCommand::run(opts, scmd),
         }
     }
 }
