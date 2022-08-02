@@ -69,29 +69,7 @@ pub use node::{NodeBuilder, NullWorker};
 #[cfg(feature = "std")]
 use core::future::Future;
 #[cfg(feature = "std")]
-use tokio::{runtime::Runtime, task};
-
-/// Execute a future without blocking the executor
-///
-/// This is a wrapper around two simple tokio functions to allow
-/// ockam_node to wait for a task to be completed in a non-async
-/// environment.
-///
-/// This function is not meant to be part of the ockam public API, but
-/// as an implementation utility for other ockam utilities that use
-/// tokio.
-#[doc(hidden)]
-#[cfg(feature = "std")]
-pub fn block_future<F>(rt: &Runtime, f: F) -> <F as Future>::Output
-where
-    F: Future + Send,
-    F::Output: Send,
-{
-    task::block_in_place(move || {
-        let local = task::LocalSet::new();
-        local.block_on(rt, f)
-    })
-}
+use tokio::task;
 
 #[doc(hidden)]
 #[cfg(feature = "std")]
