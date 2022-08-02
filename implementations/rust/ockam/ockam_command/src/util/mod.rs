@@ -96,7 +96,7 @@ pub fn find_available_port() -> anyhow::Result<u16> {
     Ok(address.port())
 }
 
-pub fn setup_logging(verbose: u8) {
+pub fn setup_logging(verbose: u8, no_color: bool) {
     let ockam_crates = [
         "ockam",
         "ockam_node",
@@ -127,10 +127,11 @@ pub fn setup_logging(verbose: u8) {
             .with_default_directive(LevelFilter::TRACE.into())
             .parse_lossy(ockam_crates.map(|c| format!("{c}=trace")).join(",")),
     };
+    let fmt = fmt::Layer::default().with_ansi(!no_color);
     let result = tracing_subscriber::registry()
         .with(filter)
         .with(tracing_error::ErrorLayer::default())
-        .with(fmt::layer())
+        .with(fmt)
         .try_init();
     if result.is_err() {
         eprintln!("Failed to initialise tracing logging.");

@@ -100,6 +100,10 @@ pub struct GlobalArgs {
     )]
     verbose: u8,
 
+    /// Disable ANSI terminal colors for trace messages.
+    #[clap(global = true, long, action)]
+    no_color: bool,
+
     #[clap(global = true, long = "format", value_enum, default_value = "plain")]
     output_format: OutputFormat,
 
@@ -242,7 +246,10 @@ pub fn run() {
     let cfg = OckamConfig::load();
 
     if !ockam_command.global_args.quiet {
-        setup_logging(ockam_command.global_args.verbose);
+        setup_logging(
+            ockam_command.global_args.verbose,
+            ockam_command.global_args.no_color,
+        );
         tracing::debug!("Parsed {:?}", &ockam_command);
     }
 
