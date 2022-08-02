@@ -92,21 +92,22 @@ impl Executor {
         #[cfg(feature = "metrics")]
         let alive = Arc::new(AtomicBool::from(true));
         #[cfg(feature = "metrics")]
-        self.rt
-            .spawn(Arc::clone(&self.metrics).run(Arc::clone(&alive)));
+        self.rt.spawn(self.metrics.clone().run(alive.clone()));
 
         // Spawn user code second
         let join_body = self.rt.spawn(future);
 
         // Then block on the execution of the router
-        crate::block_future(&self.rt, self.router.run())?;
+        self.rt.block_on(self.router.run())?;
 
         // Shut down metrics collector
         #[cfg(feature = "metrics")]
         alive.fetch_or(true, Ordering::Acquire);
 
         // Last join user code
-        let res = crate::block_future(&self.rt, join_body)
+        let res = self
+            .rt
+            .block_on(join_body)
             .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))?;
 
         Ok(res)
