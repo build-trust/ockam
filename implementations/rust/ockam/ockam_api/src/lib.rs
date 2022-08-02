@@ -731,3 +731,46 @@ pub(crate) fn error(label: &str, res: &Response, dec: &mut Decoder<'_>) -> ockam
         ockam_core::Error::new(Origin::Application, Kind::Protocol, label)
     }
 }
+
+/// A Unix timestamp (seconds since 1970-01-01 00:00:00Z)
+#[cfg(feature = "std")]
+#[derive(Debug, Clone, Copy, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cbor(transparent)]
+pub struct Timestamp(#[n(0)] u64);
+
+#[cfg(feature = "std")]
+impl Timestamp {
+    pub fn now() -> Option<Self> {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()
+            .map(|d| Timestamp(d.as_secs()))
+    }
+
+    pub fn elapsed(&self, since: Timestamp) -> Option<core::time::Duration> {
+        (self.0 >= since.0).then(|| core::time::Duration::from_secs(self.0 - since.0))
+    }
+}
+
+#[cfg(feature = "std")]
+impl From<Timestamp> for u64 {
+    fn from(t: Timestamp) -> Self {
+        t.0
+    }
+}
+
+/// Newtype around a byte-slice that is assumed to be CBOR-encoded.
+#[derive(Debug, Copy, Clone)]
+pub struct Cbor<'a>(pub &'a [u8]);
+
+impl<C> Encode<C> for Cbor<'_> {
+    fn encode<W>(&self, e: &mut Encoder<W>, _: &mut C) -> Result<(), encode::Error<W::Error>>
+    where
+        W: Write,
+    {
+        // Since we assume an existing CBOR encoding, we just append the bytes as is:
+        e.writer_mut()
+            .write_all(self.0)
+            .map_err(encode::Error::write)
+    }
+}

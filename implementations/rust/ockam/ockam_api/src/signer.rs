@@ -1,7 +1,8 @@
 pub mod types;
 
+use crate::auth::types::Attributes;
 use crate::util::response;
-use crate::{assert_request_match, assert_response_match};
+use crate::{assert_request_match, assert_response_match, Cbor};
 use crate::{CowBytes, Error, Method, Request, RequestBuilder, Response, Status};
 use core::fmt;
 use minicbor::{Decoder, Encode};
@@ -11,7 +12,7 @@ use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_identity::{Identity, IdentityIdentifier, IdentityVault};
 use ockam_node::Context;
 use tracing::{trace, warn};
-use types::{Credential, CredentialRequest, IdentityId, Signature};
+use types::{Credential, IdentityId, Signature};
 
 pub struct Server<V: IdentityVault, S> {
     id: Identity<V>,
@@ -57,29 +58,32 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
 
         let res = match req.method() {
             Some(Method::Post) => match req.path_segments::<2>().as_slice() {
-                ["sign"] => match dec.decode()? {
-                    CredentialRequest::Identity { ident } => {
-                        let iid = self.id.identifier()?;
-                        let sig = self.id.create_signature(&ident).await?;
-                        let bdy = Credential::Identity {
-                            ident,
-                            signature: Signature::new(IdentityId::new(iid.key_id()), sig.as_ref()),
-                        };
-                        Response::ok(req.id()).body(bdy).to_vec()?
-                    }
-                },
+                ["sign"] => {
+                    let pos = dec.position();
+                    dec.decode::<Attributes>()?; // typecheck
+                    let att = &dec.input()[pos..];
+                    let iid = self.id.identifier()?;
+                    let sig = self.id.create_signature(att).await?;
+                    let bdy = {
+                        let a = CowBytes::from(att);
+                        let s = Signature::new(IdentityId::new(iid.key_id()), sig.as_ref());
+                        Credential::new(a, s)
+                    };
+                    Response::ok(req.id()).body(bdy).to_vec()?
+                }
                 _ => response::unknown_path(&req).to_vec()?,
             },
             Some(Method::Get) => match req.path_segments::<2>().as_slice() {
-                ["verify"] => match dec.decode()? {
-                    Credential::Identity { ident, signature } => {
-                        if self.verify(&ident, &signature).await? {
-                            Response::ok(req.id()).to_vec()?
-                        } else {
-                            Response::unauthorized(req.id()).to_vec()?
-                        }
+                ["verify"] => {
+                    let crd: Credential = dec.decode()?;
+                    if self.verify(crd.attributes(), crd.signature()).await? {
+                        Response::ok(req.id())
+                            .body(Cbor(crd.attributes()))
+                            .to_vec()?
+                    } else {
+                        Response::unauthorized(req.id()).to_vec()?
                     }
-                },
+                }
                 _ => response::unknown_path(&req).to_vec()?,
             },
             _ => response::invalid_method(&req).to_vec()?,
@@ -88,7 +92,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
         Ok(res)
     }
 
-    async fn verify(&self, ident: &[u8], sig: &Signature<'_>) -> Result<bool> {
+    async fn verify(&self, data: &[u8], sig: &Signature<'_>) -> Result<bool> {
         let ours = self.id.identifier()?;
         let theirs = sig.identity().as_str();
 
@@ -96,11 +100,11 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
 
         if ours.key_id() == theirs {
             let key = self.id.get_root_public_key().await?;
-            self.id.vault().verify(&sig, &key, ident).await
+            self.id.vault().verify(&sig, &key, data).await
         } else {
             let iid = IdentityIdentifier::from_key_id(theirs.to_string());
             self.id
-                .verify_signature(&sig, &iid, ident, &self.storage)
+                .verify_signature(&sig, &iid, data, &self.storage)
                 .await
         }
     }
@@ -130,11 +134,9 @@ impl Client {
         })
     }
 
-    pub async fn sign_id(&mut self, id: &IdentityIdentifier) -> Result<Credential<'_>> {
-        let req = Request::post("/sign").body(CredentialRequest::Identity {
-            ident: CowBytes::from(id.key_id().as_bytes()),
-        });
-        self.buf = self.request("sign", "credential_request", &req).await?;
+    pub async fn sign(&mut self, attrs: &Attributes<'_>) -> Result<Credential<'_>> {
+        let req = Request::post("/sign").body(attrs);
+        self.buf = self.request("sign", "sign_request", &req).await?;
         assert_response_match("credential", &self.buf);
         let mut d = Decoder::new(&self.buf);
         let res = response("sign", &mut d)?;
@@ -145,15 +147,15 @@ impl Client {
         }
     }
 
-    pub async fn verify(&mut self, crd: &Credential<'_>) -> Result<bool> {
+    pub async fn verify(&mut self, crd: &Credential<'_>) -> Result<Attributes<'_>> {
         let req = Request::get("/verify").body(crd);
         self.buf = self.request("verify", "credential", &req).await?;
         let mut d = Decoder::new(&self.buf);
         let res = response("verify", &mut d)?;
-        match res.status() {
-            Some(Status::Ok) => Ok(true),
-            Some(Status::Unauthorized) => Ok(false),
-            _ => Err(error("verify", &res, &mut d)),
+        if res.status() == Some(Status::Ok) {
+            Ok(d.decode()?)
+        } else {
+            Err(error("verify", &res, &mut d))
         }
     }
 

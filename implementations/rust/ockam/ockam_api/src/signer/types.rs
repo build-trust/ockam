@@ -1,34 +1,65 @@
 use crate::{CowBytes, CowStr};
+use core::fmt;
+use data_encoding::BASE32_DNSSEC;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
 
-#[derive(Debug, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub enum CredentialRequest<'a> {
-    #[n(0)] Identity {
-        #[b(0)] ident: CowBytes<'a>
-    }
-}
+#[cfg(feature = "tag")]
+use crate::TypeTag;
 
 #[derive(Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub enum Credential<'a> {
-    #[n(0)] Identity {
-        #[b(0)] ident: CowBytes<'a>,
-        #[b(1)] signature: Signature<'a>
-    }
+pub struct Credential<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<3796735>,
+    #[b(1)] attributes: CowBytes<'a>,
+    #[b(2)] signature: Signature<'a>
 }
 
 impl<'a> Credential<'a> {
-    pub fn to_owned<'b>(&self) -> Credential<'b> {
-        match self {
-            Credential::Identity { ident, signature } => Credential::Identity {
-                ident: ident.to_owned(),
-                signature: signature.to_owned(),
-            },
+    pub(super) fn new(attributes: CowBytes<'a>, signature: Signature<'a>) -> Self {
+        Credential {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            attributes,
+            signature,
         }
+    }
+
+    pub fn attributes(&self) -> &[u8] {
+        &self.attributes
+    }
+
+    pub fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    pub fn to_owned<'b>(&self) -> Credential<'b> {
+        Credential {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            attributes: self.attributes.to_owned(),
+            signature: self.signature.to_owned(),
+        }
+    }
+}
+
+impl fmt::Display for Credential<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // The derived `Encode` impl does not error and writing to a vector does not either:
+        let bytes = minicbor::to_vec(self).expect("encoding a credential never fails");
+        f.write_str(&BASE32_DNSSEC.encode(&bytes))
+    }
+}
+
+impl TryFrom<&str> for Credential<'_> {
+    type Error = (); // TODO
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let b = BASE32_DNSSEC.decode(value.as_bytes()).map_err(|_| ())?;
+        let c = minicbor::decode::<Credential>(&b).map_err(|_| ())?;
+        Ok(c.to_owned())
     }
 }
 

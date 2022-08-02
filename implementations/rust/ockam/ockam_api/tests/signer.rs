@@ -1,6 +1,7 @@
 use ockam::identity::authenticated_storage::mem::InMemoryStorage;
 use ockam::identity::Identity;
 use ockam::vault::Vault;
+use ockam_api::auth::types::Attributes;
 use ockam_api::signer;
 use ockam_core::Result;
 use ockam_node::Context;
@@ -15,8 +16,12 @@ async fn signer(ctx: &mut Context) -> Result<()> {
 
     let mut c = signer::Client::new("signer".into(), ctx).await?;
 
-    let cred = c.sign_id(&b.identifier()?).await?.to_owned();
-    assert!(c.verify(&cred).await?);
+    let bid = b.identifier()?;
+    let mut attrs = Attributes::new();
+    attrs.put("id", bid.key_id().as_bytes());
+    let cred = c.sign(&attrs).await?.to_owned();
+    let atts = c.verify(&cred).await?;
+    assert_eq!(attrs, atts);
 
     ctx.stop().await
 }
