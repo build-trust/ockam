@@ -301,38 +301,38 @@ pub(crate) mod project {
 
     use super::*;
 
-    pub(crate) fn create(cmd: CreateCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn create(cmd: CreateCommand) -> anyhow::Result<Vec<u8>> {
         let b = CreateProject::new(cmd.project_name.as_str(), &[], &cmd.services);
         let mut buf = vec![];
         Request::builder(Method::Post, format!("v0/projects/{}", cmd.space_id))
-            .body(CloudRequestWrapper::new(b, cloud_opts.route()))
+            .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
             .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn list(_cmd: ListCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn list(cmd: ListCommand) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
         Request::builder(Method::Get, "v0/projects")
-            .body(CloudRequestWrapper::bare(cloud_opts.route()))
+            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
             .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn show(cmd: ShowCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn show(cmd: ShowCommand) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
         Request::builder(Method::Get, format!("v0/projects/{}", cmd.project_id))
-            .body(CloudRequestWrapper::bare(cloud_opts.route()))
+            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
             .encode(&mut buf)?;
         Ok(buf)
     }
 
-    pub(crate) fn delete(cmd: DeleteCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn delete(cmd: DeleteCommand) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
         Request::builder(
             Method::Delete,
             format!("v0/projects/{}/{}", cmd.space_id, cmd.project_id),
         )
-        .body(CloudRequestWrapper::bare(cloud_opts.route()))
+        .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
         .encode(&mut buf)?;
         Ok(buf)
     }
