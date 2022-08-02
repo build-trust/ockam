@@ -130,6 +130,7 @@ impl CreateCommand {
 
             let mut args = vec![
                 verbose,
+                "--no-color".to_string(),
                 "node".to_string(),
                 "create".to_string(),
                 "--api-address".to_string(),
