@@ -18,13 +18,22 @@ impl NodeManager {
             .ok_or_else(|| ApiError::generic("Vault doesn't exist"))
     }
 
-    pub(super) async fn create_vault_impl(&mut self, path: Option<PathBuf>) -> Result<()> {
+    pub(super) async fn create_vault_impl(
+        &mut self,
+        path: Option<PathBuf>,
+        reuse_if_exists: bool,
+    ) -> Result<()> {
         if self.vault.is_some() {
-            return Err(ockam_core::Error::new(
-                Origin::Application,
-                Kind::AlreadyExists,
-                "Vault already exists",
-            ))?;
+            return if reuse_if_exists {
+                debug!("Using existing vault");
+                Ok(())
+            } else {
+                Err(ockam_core::Error::new(
+                    Origin::Application,
+                    Kind::AlreadyExists,
+                    "Vault already exists",
+                ))
+            };
         }
 
         let path = path.unwrap_or_else(|| self.node_dir.join("vault.json"));
@@ -49,7 +58,7 @@ impl NodeManager {
 
         let path = req_body.path.map(|p| PathBuf::from(p.0.as_ref()));
 
-        self.create_vault_impl(path).await?;
+        self.create_vault_impl(path, false).await?;
 
         let response = Response::ok(req.id());
 

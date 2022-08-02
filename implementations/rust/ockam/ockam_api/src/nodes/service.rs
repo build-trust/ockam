@@ -162,23 +162,8 @@ impl NodeManager {
 
     async fn create_defaults(&mut self, ctx: &Context) -> Result<()> {
         // Create default vault and identity, if they don't exists already
-        self.create_vault_impl(None).await.or_else(|e| {
-            if e.code().kind == Kind::AlreadyExists {
-                debug!("Using existing vault");
-                Ok(())
-            } else {
-                Err(e)
-            }
-        })?;
-        self.create_identity_impl(ctx).await.or_else(|e| {
-            if e.code().kind == Kind::AlreadyExists {
-                let identity = self.identity()?;
-                debug!("Using existing identity");
-                identity.identifier()
-            } else {
-                Err(e)
-            }
-        })?;
+        self.create_vault_impl(None, true).await?;
+        self.create_identity_impl(ctx, true).await?;
 
         Ok(())
     }
@@ -473,8 +458,8 @@ pub(crate) mod tests {
             .await?;
 
             // Initialize identity
-            node_man.create_vault_impl(None).await?;
-            node_man.create_identity_impl(ctx).await?;
+            node_man.create_vault_impl(None, false).await?;
+            node_man.create_identity_impl(ctx, false).await?;
 
             // Initialize node_man worker and return its route
             ctx.start_worker(node_manager, node_man).await?;
@@ -504,8 +489,8 @@ pub(crate) mod tests {
             )
             .await?;
 
-            node_man.create_vault_impl(None).await?;
-            node_man.create_identity_impl(ctx).await?;
+            node_man.create_vault_impl(None, false).await?;
+            node_man.create_identity_impl(ctx, false).await?;
 
             // Initialize secure channel listener on the mock cloud worker
             node_man
