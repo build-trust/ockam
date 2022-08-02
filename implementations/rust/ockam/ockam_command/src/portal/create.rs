@@ -1,6 +1,6 @@
 use crate::node::NodeOpts;
-use crate::util::snippets::{ComposableSnippet, Operation, PortalMode, Protocol};
 use crate::util::{api, connect_to, stop_node};
+use crate::util::{ComposableSnippet, Operation, PortalMode, Protocol};
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 use ockam::{Context, Route};
@@ -106,8 +106,20 @@ impl CreateCommand {
             CreateTypeCommand::TcpOutlet { .. } => connect_to(port, command, create_outlet),
         }
 
-        // Update the config
-        cfg.add_composite(&node, composite);
+        // Update the startup config
+        let startup_cfg = match cfg.get_launch_config(&node) {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                eprintln!("failed to load startup configuration: {}", e);
+                std::process::exit(-1);
+            }
+        };
+
+        startup_cfg.add_composite(composite);
+        if let Err(e) = startup_cfg.atomic_update().run() {
+            eprintln!("failed to update configuration: {}", e);
+            std::process::exit(-1);
+        }
     }
 }
 

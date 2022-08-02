@@ -11,12 +11,13 @@ use std::{
     time::Duration,
 };
 
-use crate::util::snippets::LaunchConfig;
 use crate::{
     node::echoer::Echoer,
     node::show::query_status,
     node::uppercase::Uppercase,
-    util::{connect_to, embedded_node, find_available_port, snippets, OckamConfig},
+    util::{
+        connect_to, embedded_node, find_available_port, ComposableSnippet, OckamConfig, Operation,
+    },
     CommandGlobalOpts,
 };
 use ockam::{Context, TcpTransport};
@@ -55,11 +56,11 @@ pub struct CreateCommand {
     no_watchdog: bool,
 }
 
-impl From<&'_ CreateCommand> for snippets::ComposableSnippet {
+impl From<&'_ CreateCommand> for ComposableSnippet {
     fn from(cc: &'_ CreateCommand) -> Self {
         Self {
             id: "_start".into(),
-            op: snippets::Operation::Node {
+            op: Operation::Node {
                 api_addr: cc.api_address.clone(),
                 node_name: cc.node_name.clone(),
             },
@@ -86,17 +87,14 @@ impl CreateCommand {
             ..command
         };
 
-        let composite = (&command).into();
-
         if command.foreground {
-            let composite = (&command).into();
             // HACK: try to get the current node dir.  If it doesn't
             // exist the user PROBABLY started a non-detached node.
             // Thus we need to create the node dir so that subsequent
             // calls to it don't fail
             if cfg.get_node_dir(&command.node_name).is_err() {
                 println!("Creating node directory...");
-                if let Err(e) = cfg.create_node(&command.node_name, address.port(), composite) {
+                if let Err(e) = cfg.create_node(&command.node_name, address.port()) {
                     eprintln!(
                         "failed to update node configuration for '{}': {:?}",
                         command.node_name, e
@@ -109,25 +107,6 @@ impl CreateCommand {
                     eprintln!("failed to update configuration: {}", e);
                     std::process::exit(-1);
                 }
-            }
-
-            if let Some(ref path) = command.launch_config {
-                let cfg = match LaunchConfig::load(path) {
-                    Ok(cfg) => cfg,
-                    Err(e) => {
-                        eprintln!("failed to read launch configuration: {}", e);
-                        std::process::exit(-1);
-                    }
-                };
-
-                std::thread::spawn(move || {
-                    // Wait for the regular node to be ready for us
-                    std::thread::sleep(Duration::from_millis(666));
-
-                    eprintln!("Executing snippets: {:?}", cfg.vec);
-                    crate::util::setup::run_foreground("foo", &cfg.vec);
-                    eprintln!("Done!");
-                });
             }
 
             embedded_node(setup, (command, cfg.clone()));
@@ -146,7 +125,7 @@ impl CreateCommand {
             // First we create a new node in the configuration so that
             // we can ask it for the correct log path, as well as
             // making sure the watchdog can do its job later on.
-            if let Err(e) = cfg.create_node(&command.node_name, address.port(), composite) {
+            if let Err(e) = cfg.create_node(&command.node_name, address.port()) {
                 eprintln!(
                     "failed to update node configuration for '{}': {:?}",
                     command.node_name, e
@@ -201,6 +180,16 @@ impl CreateCommand {
             // Update the pid in the config (should we remove this?)
             cfg.update_pid(&command.node_name, child.id() as i32)
                 .expect("should never panic");
+
+            let composite = (&command).into();
+            let startup_cfg = cfg.get_launch_config(&command.node_name).unwrap();
+            startup_cfg.writelock_inner().commands = vec![composite].into();
+
+            // Save the config update
+            if let Err(e) = startup_cfg.atomic_update().run() {
+                eprintln!("failed to update configuration: {}", e);
+                std::process::exit(-1);
+            }
 
             // Unless this CLI was called from another watchdog we
             // start the watchdog here

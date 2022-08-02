@@ -1,6 +1,6 @@
 use crate::node::NodeOpts;
-use crate::util::snippets::{ComposableSnippet, Operation, Protocol, RemoteMode};
 use crate::util::{api, connect_to, stop_node};
+use crate::util::{ComposableSnippet, Operation, Protocol, RemoteMode};
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 use ockam::{Context, Route, TCP};
@@ -97,10 +97,20 @@ impl CreateCommand {
         // still bad and should be fixed
         let composite = (&command).into();
         let node = command.node_opts.api_node;
-        cfg.add_composite(&node, composite);
 
-        if let Err(e) = cfg.atomic_update().run() {
+        // Update the startup config
+        let startup_cfg = match cfg.get_launch_config(&node) {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                eprintln!("failed to load startup configuration: {}", e);
+                std::process::exit(-1);
+            }
+        };
+
+        startup_cfg.add_composite(composite);
+        if let Err(e) = startup_cfg.atomic_update().run() {
             eprintln!("failed to update configuration: {}", e);
+            std::process::exit(-1);
         }
     }
 }

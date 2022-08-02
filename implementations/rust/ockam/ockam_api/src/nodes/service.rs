@@ -88,7 +88,7 @@ impl NodeManager {
         let mut transports = BTreeMap::new();
         transports.insert(api_transport_id.clone(), api_transport);
 
-        let config = Config::<NodeManConfig>::load(node_dir.clone());
+        let config = Config::<NodeManConfig>::load(node_dir.join("config.json"));
 
         // Check if we had existing AuthenticatedStorage, create with default location otherwise
         let authenticated_storage_path = config

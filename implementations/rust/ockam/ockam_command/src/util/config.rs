@@ -1,40 +1,26 @@
 //! Handle local node configuration
 
-pub mod snippets;
-use snippets::ComposableSnippet;
-
-use directories::ProjectDirs;
-use ockam_api::config::atomic::AtomicUpdater;
-use ockam_api::config::{Config, ConfigValues};
-use serde::{Deserialize, Serialize};
+use ockam_api::config::{cli, Config};
 use slug::slugify;
-use std::{
-    collections::{BTreeMap, VecDeque},
-    env,
-    fs::create_dir_all,
-    path::{Path, PathBuf},
-    sync::RwLockReadGuard,
+use std::{fs::create_dir_all, ops::Deref, path::PathBuf, sync::RwLockReadGuard};
+
+pub use ockam_api::config::cli::NodeConfig;
+pub use ockam_api::config::snippet::{
+    ComposableSnippet, Operation, PortalMode, Protocol, RemoteMode,
 };
 
+/// A simple wrapper around the main configuration structure to add
+/// local config utility/ query functions
 #[derive(Clone)]
 pub struct OckamConfig {
-    pub(super) dirs: ProjectDirs,
-    config: Config<SyncConfig>,
+    inner: Config<cli::OckamConfig>,
 }
 
-/// The inner type that actually gets synced to disk
-#[derive(Clone, Serialize, Deserialize)]
-pub struct SyncConfig {
-    pub api_node: String,
-    pub nodes: BTreeMap<String, NodeConfig>,
-}
+impl Deref for OckamConfig {
+    type Target = Config<cli::OckamConfig>;
 
-impl ConfigValues for SyncConfig {
-    fn default_values(_node_dir: &Path) -> Self {
-        Self {
-            api_node: "default".into(),
-            nodes: BTreeMap::new(),
-        }
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
@@ -53,62 +39,28 @@ pub enum ConfigError {
 }
 
 impl OckamConfig {
-    fn get_paths() -> ProjectDirs {
-        match env::var("OCKAM_PROJECT_PATH") {
-            Ok(dir) => {
-                let dir = PathBuf::from(&dir);
-                ProjectDirs::from_path(dir).expect(
-                    "failed to determine configuration storage location.
-Verify that your OCKAM_PROJECT_PATH environment variable is valid.",
-                )
-            }
-            Err(_) => ProjectDirs::from("io", "ockam", "ockam-cli").expect(
-                "failed to determine configuration storage location.
-Verify that your XDG_CONFIG_HOME and XDG_DATA_HOME environment variables are correctly set.
-Otherwise your OS or OS configuration may not be supported!",
-            ),
-        }
+    pub fn load() -> Self {
+        let directories = cli::OckamConfig::directories();
+        let config_path = directories.config_dir().join("config.json");
+        let inner = Config::<cli::OckamConfig>::load(config_path);
+        inner.writelock_inner().directories = Some(directories);
+        Self { inner }
     }
 
-    fn local_data_dir(&self) -> &Path {
-        self.dirs.data_local_dir()
-    }
-
-    /// Return a static set of config values that can be addressed
+    /// Get available global configuration values
+    // TODO: make this consider node scope options
     pub fn values() -> Vec<&'static str> {
         vec!["api-node"]
     }
 
-    /// Attempt to load an ockam config.  If none exists, one is
-    /// created and then returned.
-    pub fn load() -> Self {
-        let dirs = Self::get_paths();
-
-        let cfg_dir = dirs.config_dir().to_path_buf();
-        let config = Config::load(cfg_dir);
-
-        Self { dirs, config }
-    }
-
-    /// Atomically update the configuration
-    pub fn atomic_update(&self) -> AtomicUpdater<SyncConfig> {
-        AtomicUpdater::new(
-            self.dirs.config_dir().to_path_buf(),
-            "config".to_string(),
-            self.config.inner().clone(),
-        )
-    }
-
-    ///////////////////// READ ACCESSORS //////////////////////////////
-
-    /// Get the current value of the API node
+    /// Get the current API node configuration setting
     pub fn get_api_node(&self) -> String {
-        self.config.inner().read().unwrap().api_node.clone()
+        self.inner.readlock_inner().api_node.clone()
     }
 
     /// Get the node state directory
     pub fn get_node_dir(&self, name: &str) -> Result<PathBuf, ConfigError> {
-        let inner = self.config.inner().read().unwrap();
+        let inner = self.inner.readlock_inner();
         let n = inner
             .nodes
             .get(name)
@@ -118,7 +70,7 @@ Otherwise your OS or OS configuration may not be supported!",
 
     /// Get the API port used by a node
     pub fn get_node_port(&self, name: &str) -> Result<u16, ConfigError> {
-        let inner = self.config.inner().read().unwrap();
+        let inner = self.inner.readlock_inner();
         Ok(inner
             .nodes
             .get(name)
@@ -129,7 +81,7 @@ Otherwise your OS or OS configuration may not be supported!",
     /// In the future this will actually refer to the watchdog pid or
     /// no pid at all but we'll see
     pub fn get_node_pid(&self, name: &str) -> Result<Option<i32>, ConfigError> {
-        let inner = self.config.inner().read().unwrap();
+        let inner = self.inner.readlock_inner();
         Ok(inner
             .nodes
             .get(name)
@@ -141,14 +93,14 @@ Otherwise your OS or OS configuration may not be supported!",
     /// port.  This doesn't catch all port collision errors, but will
     /// get us most of the way there in terms of starting a new node.
     pub fn port_is_used(&self, port: u16) -> bool {
-        let inner = self.config.inner().read().unwrap();
+        let inner = self.inner.readlock_inner();
 
         inner.nodes.iter().any(|(_, n)| n.port == port)
     }
 
     /// Get only a single node configuration
     pub fn get_node(&self, node: &str) -> Result<NodeConfig, ConfigError> {
-        let inner = self.config.inner().read().unwrap();
+        let inner = self.inner.readlock_inner();
         inner
             .nodes
             .get(node)
@@ -158,7 +110,7 @@ Otherwise your OS or OS configuration may not be supported!",
 
     /// Get the current version the selected node configuration
     pub fn select_node<'a>(&'a self, o: &'a str) -> Option<NodeConfig> {
-        let inner = self.config.inner().read().unwrap();
+        let inner = self.inner.readlock_inner();
         inner.nodes.get(o).map(Clone::clone)
     }
 
@@ -167,7 +119,7 @@ Otherwise your OS or OS configuration may not be supported!",
     /// The convention is to name the main log `node-name.log` and the
     /// supplementary log `nod-name.log.stderr`
     pub fn log_paths_for_node(&self, node_name: &String) -> Option<(PathBuf, PathBuf)> {
-        let inner = self.config.inner().read().unwrap();
+        let inner = self.inner.readlock_inner();
 
         let base = &inner.nodes.get(node_name)?.state_dir;
         // TODO: sluggify node names
@@ -178,28 +130,32 @@ Otherwise your OS or OS configuration may not be supported!",
     }
 
     /// Get read access to the inner raw configuration
-    pub fn get_inner(&self) -> RwLockReadGuard<'_, SyncConfig> {
-        self.config.inner().read().unwrap()
+    pub fn get_inner(&self) -> RwLockReadGuard<'_, cli::OckamConfig> {
+        self.inner.readlock_inner()
+    }
+
+    /// Get the launch configuration for a node
+    pub fn get_launch_config(&self, name: &str) -> Result<StartupConfig, ConfigError> {
+        let path = self.get_node_dir(name)?;
+        Ok(StartupConfig::load(path))
     }
 
     ///////////////////// WRITE ACCESSORS //////////////////////////////
 
     /// Add a new node to the configuration for future lookup
-    pub fn create_node(
-        &self,
-        name: &str,
-        port: u16,
-        start_composite: ComposableSnippet,
-    ) -> Result<(), ConfigError> {
-        let mut inner = self.config.inner().write().unwrap();
+    pub fn create_node(&self, name: &str, port: u16) -> Result<(), ConfigError> {
+        let mut inner = self.inner.writelock_inner();
 
         if inner.nodes.contains_key(name) {
             return Err(ConfigError::NodeExists(name.to_string()));
         }
 
         // Setup logging directory and store it
-        let state_dir = self
-            .local_data_dir()
+        let state_dir = inner
+            .directories
+            .as_ref()
+            .expect("configuration is in an invalid state")
+            .data_local_dir()
             .join(slugify(&format!("node-{}", name)));
 
         if let Err(e) = create_dir_all(&state_dir) {
@@ -213,7 +169,6 @@ Otherwise your OS or OS configuration may not be supported!",
                 port,
                 state_dir,
                 pid: Some(0),
-                composites: vec![start_composite].into(),
             },
         );
         Ok(())
@@ -221,7 +176,7 @@ Otherwise your OS or OS configuration may not be supported!",
 
     /// Delete an existing node
     pub fn delete_node(&self, name: &str) -> Result<(), ConfigError> {
-        let mut inner = self.config.inner().write().unwrap();
+        let mut inner = self.inner.writelock_inner();
         match inner.nodes.remove(name) {
             Some(_) => Ok(()),
             None => Err(ConfigError::NodeExists(name.to_string())),
@@ -230,7 +185,7 @@ Otherwise your OS or OS configuration may not be supported!",
 
     /// Update the pid of an existing node process
     pub fn update_pid(&self, name: &str, pid: impl Into<Option<i32>>) -> Result<(), ConfigError> {
-        let mut inner = self.config.inner().write().unwrap();
+        let mut inner = self.inner.writelock_inner();
 
         if !inner.nodes.contains_key(name) {
             return Err(ConfigError::NodeNotFound(name.to_string()));
@@ -242,28 +197,35 @@ Otherwise your OS or OS configuration may not be supported!",
 
     /// Update the api node name on record
     pub fn set_api_node(&self, node_name: &str) {
-        let mut inner = self.config.inner().write().unwrap();
+        let mut inner = self.inner.writelock_inner();
         inner.api_node = node_name.into();
-    }
-
-    ///////////////////// COMPOSITION CONSTRUCTORS //////////////////////////////
-
-    /// Add a new composite command to a node
-    pub fn add_composite(&self, node: &str, composite: ComposableSnippet) {
-        let mut inner = self.config.inner().write().unwrap();
-        inner
-            .nodes
-            .get_mut(node)
-            .unwrap()
-            .composites
-            .push_back(composite);
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct NodeConfig {
-    pub port: u16,
-    pub pid: Option<i32>,
-    pub state_dir: PathBuf,
-    pub composites: VecDeque<ComposableSnippet>,
+/// A simple wrapper around the main configuration structure to add
+/// local config utility/ query functions
+pub struct StartupConfig {
+    inner: Config<cli::StartupConfig>,
+}
+
+impl Deref for StartupConfig {
+    type Target = Config<cli::StartupConfig>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl StartupConfig {
+    pub fn load(node_dir: PathBuf) -> Self {
+        let config_path = node_dir.join("startup.json");
+        let inner = Config::<cli::StartupConfig>::load(config_path);
+        Self { inner }
+    }
+
+    /// Add a new composite command to a node
+    pub fn add_composite(&self, composite: ComposableSnippet) {
+        let mut inner = self.inner.writelock_inner();
+        inner.commands.push_back(composite);
+    }
 }

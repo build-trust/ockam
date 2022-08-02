@@ -2132,6 +2132,7 @@ version = "0.10.0"
 dependencies = [
  "anyhow",
  "cddl-cat",
+ "directories",
  "fake",
  "lmdb-rkv",
  "minicbor",
