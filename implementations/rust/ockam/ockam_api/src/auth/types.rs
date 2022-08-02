@@ -6,7 +6,7 @@ use ockam_core::compat::collections::BTreeMap;
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 
-#[derive(Debug, Clone, Default, Encode, Decode)]
+#[derive(Debug, Clone, Default, Encode, Decode, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Attributes<'a> {

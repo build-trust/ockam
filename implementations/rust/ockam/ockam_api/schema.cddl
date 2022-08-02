@@ -193,17 +193,12 @@ request_enrollment_token = {
 
 ;;; Signer ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-credential_request = [0, identity_credential_request]
+sign_request = attributes
 
-identity_credential_request = {
-    0: bytes ;; identity id bytes
-}
-
-credential = [0, identity_credential]
-
-identity_credential = {
-    0: bytes, ;; identity id bytes
-    1: signer_signature
+credential = {
+    ?0: 3796735,
+     1: bytes, ;; CBOR-encoded attributes
+     2: signer_signature
 }
 
 signer_signature = [
@@ -212,3 +207,15 @@ signer_signature = [
 ]
 
 signer_signature_bytes = bytes
+
+;;; Authenticator ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+add_enroller = {
+    ?0: 1010815,
+     1: identity_id,
+}
+
+add_member = {
+    ?0: 2820828,
+     1: identity_id,
+}

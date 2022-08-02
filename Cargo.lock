@@ -2138,6 +2138,7 @@ version = "0.11.0"
 dependencies = [
  "anyhow",
  "cddl-cat",
+ "data-encoding",
  "directories",
  "fake",
  "lmdb-rkv",
