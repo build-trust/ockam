@@ -2,6 +2,7 @@ use crate::{CowBytes, CowStr};
 use core::fmt;
 use data_encoding::BASE32_DNSSEC;
 use minicbor::{Decode, Encode};
+use ockam_core::compat;
 use ockam_core::compat::borrow::Cow;
 
 #[cfg(feature = "tag")]
@@ -54,11 +55,13 @@ impl fmt::Display for Credential<'_> {
 }
 
 impl TryFrom<&str> for Credential<'_> {
-    type Error = (); // TODO
+    type Error = InvalidCredential;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let b = BASE32_DNSSEC.decode(value.as_bytes()).map_err(|_| ())?;
-        let c = minicbor::decode::<Credential>(&b).map_err(|_| ())?;
+        let b = BASE32_DNSSEC
+            .decode(value.as_bytes())
+            .map_err(|e| InvalidCredential(e.into()))?;
+        let c = minicbor::decode::<Credential>(&b).map_err(|e| InvalidCredential(e.into()))?;
         Ok(c.to_owned())
     }
 }
@@ -112,5 +115,20 @@ impl<'a> IdentityId<'a> {
 
     pub fn to_owned<'b>(&self) -> IdentityId<'b> {
         IdentityId(self.0.to_owned())
+    }
+}
+
+#[derive(Debug)]
+pub struct InvalidCredential(Box<dyn compat::error::Error + Send + Sync>);
+
+impl fmt::Display for InvalidCredential {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl compat::error::Error for InvalidCredential {
+    fn source(&self) -> Option<&(dyn compat::error::Error + 'static)> {
+        Some(&*self.0)
     }
 }

@@ -26,8 +26,9 @@ const MEMBER: &str = "member";
 const MAX_VALIDITY: Duration = Duration::from_secs(2 * 3600);
 
 #[derive(Debug)]
-pub struct Server<M, S> {
-    store: S,
+pub struct Server<M, S, T> {
+    m_store: S, // member store
+    e_store: T, // enroller store
     signer: signer::Client,
     _mode: PhantomData<fn() -> M>,
 }
@@ -41,7 +42,11 @@ pub enum Admin {}
 pub enum General {}
 
 #[ockam_core::worker]
-impl<S: AuthenticatedStorage> Worker for Server<General, S> {
+impl<S, T> Worker for Server<General, S, T>
+where
+    S: AuthenticatedStorage,
+    T: AuthenticatedStorage,
+{
     type Context = Context;
     type Message = Vec<u8>;
 
@@ -53,7 +58,11 @@ impl<S: AuthenticatedStorage> Worker for Server<General, S> {
 }
 
 #[ockam_core::worker]
-impl<S: AuthenticatedStorage> Worker for Server<Admin, S> {
+impl<S, T> Worker for Server<Admin, S, T>
+where
+    S: AuthenticatedStorage,
+    T: AuthenticatedStorage,
+{
     type Context = Context;
     type Message = Vec<u8>;
 
@@ -63,10 +72,15 @@ impl<S: AuthenticatedStorage> Worker for Server<Admin, S> {
     }
 }
 
-impl<S: AuthenticatedStorage> Server<General, S> {
-    pub fn new(store: S, signer: signer::Client) -> Self {
+impl<S, T> Server<General, S, T>
+where
+    S: AuthenticatedStorage,
+    T: AuthenticatedStorage,
+{
+    pub fn new(m_store: S, e_store: T, signer: signer::Client) -> Self {
         Server {
-            store,
+            m_store,
+            e_store,
             signer,
             _mode: PhantomData,
         }
@@ -90,12 +104,12 @@ impl<S: AuthenticatedStorage> Server<General, S> {
             Some(Method::Post) => match req.path_segments::<2>().as_slice() {
                 // Enroller wants to add a member.
                 ["member"] => {
-                    if let Some(err) = check_enroller(&self.store, &req, from.key_id()).await? {
+                    if let Some(err) = check_enroller(&self.e_store, &req, from.key_id()).await? {
                         err.to_vec()?
                     } else {
                         let add: AddMember = dec.decode()?;
                         let member = minicbor::to_vec(Placeholder)?;
-                        self.store
+                        self.m_store
                             .set(MEMBER, add.member().as_str().to_string(), member)
                             .await?;
                         Response::ok(req.id()).to_vec()?
@@ -103,7 +117,7 @@ impl<S: AuthenticatedStorage> Server<General, S> {
                 }
                 // Member wants a credential.
                 ["credential"] => {
-                    if let Some(err) = check_member(&self.store, &req, from.key_id()).await? {
+                    if let Some(err) = check_member(&self.m_store, &req, from.key_id()).await? {
                         err.to_vec()?
                     } else {
                         let mut attrs = Attributes::new();
@@ -121,9 +135,9 @@ impl<S: AuthenticatedStorage> Server<General, S> {
             Some(Method::Get) => match req.path_segments::<3>().as_slice() {
                 // Enroller checks member data.
                 ["member", id] => {
-                    if let Some(err) = check_enroller(&self.store, &req, from.key_id()).await? {
+                    if let Some(err) = check_enroller(&self.e_store, &req, from.key_id()).await? {
                         err.to_vec()?
-                    } else if let Some(data) = self.store.get(MEMBER, id).await? {
+                    } else if let Some(data) = self.m_store.get(MEMBER, id).await? {
                         let member = minicbor::decode::<Placeholder>(&data)?;
                         Response::ok(req.id()).body(member).to_vec()?
                     } else {
@@ -134,7 +148,7 @@ impl<S: AuthenticatedStorage> Server<General, S> {
                 ["credential"] => {
                     let crd: Credential = dec.decode()?;
                     if let Ok(att) = self.signer.verify(&crd).await {
-                        if let Some(err) = check_credential(&self.store, &req, &att).await? {
+                        if let Some(err) = check_credential(&self.m_store, &req, &att).await? {
                             err.to_vec()?
                         } else {
                             Response::ok(req.id())
@@ -236,10 +250,15 @@ async fn check_enroller<'a, S: AuthenticatedStorage>(
     Ok(Some(response::forbidden(req, "unauthorized enroller")))
 }
 
-impl<S: AuthenticatedStorage> Server<Admin, S> {
-    pub fn admin(store: S, signer: signer::Client) -> Self {
+impl<S, T> Server<Admin, S, T>
+where
+    S: AuthenticatedStorage,
+    T: AuthenticatedStorage,
+{
+    pub fn admin(m_store: S, e_store: T, signer: signer::Client) -> Self {
         Server {
-            store,
+            m_store,
+            e_store,
             signer,
             _mode: PhantomData,
         }
@@ -264,7 +283,7 @@ impl<S: AuthenticatedStorage> Server<Admin, S> {
                 ["enroller"] => {
                     let add: AddEnroller = dec.decode()?;
                     let enroller = minicbor::to_vec(Placeholder)?;
-                    self.store
+                    self.e_store
                         .set(ENROLLER, add.enroller().as_str().to_string(), enroller)
                         .await?;
                     Response::ok(req.id()).to_vec()?
@@ -274,7 +293,7 @@ impl<S: AuthenticatedStorage> Server<Admin, S> {
             Some(Method::Get) => match req.path_segments::<3>().as_slice() {
                 // Admin wants to check enroller data.
                 ["enroller", id] => {
-                    if let Some(data) = self.store.get(ENROLLER, id).await? {
+                    if let Some(data) = self.e_store.get(ENROLLER, id).await? {
                         let enroller = minicbor::decode::<Placeholder>(&data)?;
                         Response::ok(req.id()).body(enroller).to_vec()?
                     } else {
@@ -286,7 +305,7 @@ impl<S: AuthenticatedStorage> Server<Admin, S> {
             Some(Method::Delete) => match req.path_segments::<3>().as_slice() {
                 // Admin wants to remove an enroller.
                 ["enroller", id] => {
-                    self.store.del(ENROLLER, id).await?;
+                    self.e_store.del(ENROLLER, id).await?;
                     Response::ok(req.id()).to_vec()?
                 }
                 _ => response::unknown_path(&req).to_vec()?,

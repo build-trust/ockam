@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::{Error, Request, Response, ResponseBuilder, Status};
 
 /// Create an error response because the request path was unknown.
