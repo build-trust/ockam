@@ -22,7 +22,7 @@ use ockam_core::compat::rand;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Route;
 use ockam_node::Context;
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use tinyvec::ArrayVec;
 
 #[macro_use]
@@ -465,9 +465,16 @@ impl<T: Encode<()>> ResponseBuilder<T> {
 /// Contrary to `Cow<_, str>` the `Decode` impl for this type will always borrow
 /// from input so using it in types like `Option`, `Vec<_>` etc will not produce
 /// owned element values.
-#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Encode, Decode, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 #[cbor(transparent)]
-pub struct CowStr<'a>(#[b(0)] pub Cow<'a, str>);
+#[serde(transparent)]
+pub struct CowStr<'a>(
+    #[b(0)]
+    #[serde(borrow)]
+    pub Cow<'a, str>,
+);
 
 impl CowStr<'_> {
     pub fn is_borrowed(&self) -> bool {
@@ -518,15 +525,6 @@ impl<'a> Display for CowStr<'a> {
 impl<'a, S: ?Sized + AsRef<str>> PartialEq<S> for CowStr<'a> {
     fn eq(&self, other: &S) -> bool {
         self.0 == other.as_ref()
-    }
-}
-
-impl<'a> Serialize for CowStr<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(self.0.as_ref())
     }
 }
 

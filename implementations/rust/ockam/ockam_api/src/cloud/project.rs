@@ -17,9 +17,10 @@ pub struct Project<'a> {
     #[b(2)] pub name: CowStr<'a>,
     #[b(3)] pub space_name: CowStr<'a>,
     #[b(4)] pub services: Vec<CowStr<'a>>,
-    #[b(5)] pub access_route: CowStr<'a>,
+    #[b(5)] pub access_route: CowStr<'a>, //TODO: should be optional, waiting for changes on the elixir side
     #[b(6)] pub users: Vec<CowStr<'a>>,
     #[b(7)] pub space_id: CowStr<'a>,
+    #[b(8)] pub identity: Option<CowStr<'a>>,
 }
 
 #[derive(Encode, Decode, Debug)]
@@ -279,6 +280,7 @@ mod tests {
 
         impl Arbitrary for Pr {
             fn arbitrary(g: &mut Gen) -> Self {
+                let identity = String::arbitrary(g).into();
                 Pr(Project {
                     #[cfg(feature = "tag")]
                     tag: Default::default(),
@@ -289,6 +291,7 @@ mod tests {
                     access_route: String::arbitrary(g).into(),
                     users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
                     space_id: String::arbitrary(g).into(),
+                    identity: g.choose(&[None, Some(identity)]).unwrap().clone(),
                 })
             }
         }
@@ -401,7 +404,7 @@ mod tests {
 
             // List it
             let mut buf = vec![];
-            Request::builder(Method::Get, format!("v0/projects"))
+            Request::builder(Method::Get, "v0/projects")
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -424,7 +427,7 @@ mod tests {
 
             // Check list returns empty vec
             let mut buf = vec![];
-            Request::builder(Method::Get, format!("v0/projects"))
+            Request::builder(Method::Get, "v0/projects")
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -436,7 +439,7 @@ mod tests {
 
             // Check that retrieving it returns a not found error
             let mut buf = vec![];
-            Request::builder(Method::Get, format!("v0/projects/{p_id}"))
+            Request::builder(Method::Get, "v0/projects/{p_id}")
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -514,6 +517,7 @@ mod tests {
                             access_route: String::arbitrary(&mut rng).into(),
                             users: project.users.iter().map(|x| x.to_string().into()).collect(),
                             space_id: "space-id".into(),
+                            identity: Some(String::arbitrary(&mut rng).into()),
                         };
                         self.0.insert(obj.id.to_string(), obj.clone());
                         Response::ok(req.id()).body(&obj).to_vec()?
