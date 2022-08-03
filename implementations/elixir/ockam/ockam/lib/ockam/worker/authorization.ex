@@ -229,8 +229,16 @@ defmodule Ockam.Worker.Authorization do
     end)
   end
 
-  def expand_config(config) do
+  def expand_config(config) when is_list(config) do
     expand_config(config, :message, :state)
+  end
+
+  def expand_config(config) when is_map(config) do
+    config
+    |> Enum.map(fn {k, v} when is_list(v) ->
+      {k, expand_config(v)}
+    end)
+    |> Map.new()
   end
 
   defp expand_config(config, message, state) do

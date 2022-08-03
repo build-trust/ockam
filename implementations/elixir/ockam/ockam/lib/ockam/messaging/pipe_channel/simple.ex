@@ -43,15 +43,8 @@ defmodule Ockam.Messaging.PipeChannel.Simple do
   @doc false
   ## Inner message is forwarded with outer address in return route
   def forward_inner(message, state) do
-    [_me | onward_route] = Message.onward_route(message)
-    return_route = Message.return_route(message)
-    payload = Message.payload(message)
-
-    Router.route(%{
-      onward_route: onward_route,
-      return_route: [state.address | return_route],
-      payload: payload
-    })
+    message = Message.forward(message) |> Message.trace(state.address)
+    Router.route(message)
   end
 
   @doc false
@@ -61,15 +54,11 @@ defmodule Ockam.Messaging.PipeChannel.Simple do
     channel_route = Map.fetch!(state, :channel_route)
 
     [_me | onward_route] = Message.onward_route(message)
-    return_route = Message.return_route(message)
-    payload = Message.payload(message)
 
     sender = Map.fetch!(state, :sender)
 
-    Router.route(%{
-      onward_route: [sender | channel_route ++ onward_route],
-      return_route: return_route,
-      payload: payload
-    })
+    message = Message.set_onward_route(message, [sender | channel_route ++ onward_route])
+
+    Router.route(message)
   end
 end
