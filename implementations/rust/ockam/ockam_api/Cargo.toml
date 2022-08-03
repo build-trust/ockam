@@ -25,7 +25,7 @@ vault-storage        = ["ockam_vault/storage"]
 lmdb                 = ["std", "lmdb-rkv"]
 authenticators       = ["direct-authenticator"]
 direct-authenticator = ["lmdb", "std"]
-default              = ["lmdb", "authenticators"] # TODO: remove authenticators
+default              = ["lmdb"]
 
 [dependencies]
 ockam           = { path = "../ockam", version = "^0.68.0", features = ["software_vault"] }

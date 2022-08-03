@@ -18,12 +18,13 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     ctx.start_worker("signer", s).await?;
 
     // Create the authenticator admin service:
-    let store = InMemoryStorage::new();
-    let admin = direct::Server::admin(store.clone(), mk_signer(ctx).await?);
+    let e_store = InMemoryStorage::new();
+    let m_store = InMemoryStorage::new();
+    let admin = direct::Server::admin(m_store.clone(), e_store.clone(), mk_signer(ctx).await?);
     ctx.start_worker("auth-admin", admin).await?;
 
     // Create the general authenticator:
-    let auth = direct::Server::new(store.clone(), mk_signer(ctx).await?);
+    let auth = direct::Server::new(m_store, e_store, mk_signer(ctx).await?);
     ctx.start_worker("auth", auth).await?;
 
     // Create an enroller and add it via the admin service:
