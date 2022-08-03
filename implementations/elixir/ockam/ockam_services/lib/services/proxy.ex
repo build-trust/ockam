@@ -47,12 +47,29 @@ defmodule Ockam.Services.Proxy do
         true ->
           client_address = "PROXY_CLIENT_" <> state.address
 
+          inner_address = state.inner_address
+          client_auth = %{client_address => [from_addresses: [:message, [inner_address]]]}
+
           with {:ok, _pid, client_address} <-
-                 RecoverableClient.start_link(destination: first_address, address: client_address) do
+                 RecoverableClient.start_link(
+                   destination: first_address,
+                   address: client_address,
+                   authorization: client_auth
+                 ) do
             forward_route = [client_address | route_tail]
 
+            ## Only authorize inner address to accept messages from proxy client
+            ## TODO: we need better authorization mechanism
+            state =
+              Ockam.Worker.update_authorization_state(state, inner_address,
+                from_addresses: [:message, [client_address]]
+              )
+
             {:ok,
-             Map.merge(state, %{forward_route: forward_route, client_address: client_address})}
+             Map.merge(state, %{
+               forward_route: forward_route,
+               client_address: client_address
+             })}
           end
 
         false ->

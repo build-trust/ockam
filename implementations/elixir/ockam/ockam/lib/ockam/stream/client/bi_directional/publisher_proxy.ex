@@ -60,7 +60,7 @@ defmodule Ockam.Stream.Client.BiDirectional.PublisherProxy do
     binary_message =
       Ockam.Protocol.encode_payload(Ockam.Protocol.Binary, :request, encoded_message)
 
-    ## TODO: should we forward metadta here?
+    ## TODO: should we forward metadata here?
     Ockam.Router.route(%{
       payload: binary_message,
       onward_route: [publisher_address],

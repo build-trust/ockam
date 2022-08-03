@@ -37,6 +37,30 @@ defmodule Ockam.Worker do
     call(worker, :get_address, timeout)
   end
 
+  def update_authorization_state(state, address, authorization) do
+    update_authorization_state(state, %{address => authorization})
+  end
+
+  def update_authorization_state(state, update) when is_map(update) do
+    current_authorization = Map.get(state, :authorization, [])
+
+    new_authorization =
+      case current_authorization do
+        map when is_map(map) ->
+          Map.merge(current_authorization, update)
+
+        list when is_list(list) ->
+          address = state.address
+          Map.merge(%{address => current_authorization}, update)
+      end
+
+    Map.put(state, :authorization, new_authorization)
+  end
+
+  def update_authorization_state(state, update) when is_list(update) do
+    Map.put(state, :authorization, update)
+  end
+
   defmacro __using__(_options) do
     quote do
       # use GenServer, makes this module a GenServer.
@@ -182,7 +206,7 @@ defmodule Ockam.Worker do
     return_value =
       with_init_metric(module, options, fn ->
         with {:ok, address} <- Keyword.fetch(options, :address),
-             authorization when is_list(authorization) <-
+             authorization when is_list(authorization) or is_map(authorization) <-
                Keyword.get(options, :authorization, [:to_my_address]) do
           base_state = %{
             address: address,

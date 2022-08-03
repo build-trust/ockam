@@ -430,6 +430,12 @@ defmodule Ockam.Identity.SecureChannel.Data do
 
     inner_address = Map.fetch!(state, :inner_address)
 
+    state =
+      Ockam.Worker.update_authorization_state(state, inner_address, [
+        :from_secure_channel,
+        {:from_addresses, [:message, [encryption_channel]]}
+      ])
+
     {:ok,
      Map.merge(
        state,
@@ -439,13 +445,7 @@ defmodule Ockam.Identity.SecureChannel.Data do
          identity: identity,
          contact_id: contact_id,
          contact: contact,
-         additional_metadata: additional_metadata,
-         authorization: %{
-           inner_address => [
-             :from_secure_channel,
-             {:from_addresses, [:message, [encryption_channel]]}
-           ]
-         }
+         additional_metadata: additional_metadata
        }
      )}
   end

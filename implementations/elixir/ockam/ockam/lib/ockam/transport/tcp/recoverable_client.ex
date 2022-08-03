@@ -36,18 +36,24 @@ defmodule Ockam.Transport.TCP.RecoverableClient do
   end
 
   @impl true
-  def handle_inner_message(message, state) do
-    [_me | onward_route] = Message.onward_route(message)
-    [_client | return_route] = Message.return_route(message)
-    payload = Message.payload(message)
+  def handle_inner_message(message, %{client: client} = state) do
+    [source_client | return_route] = Message.return_route(message)
 
-    Router.route(%{
-      onward_route: onward_route,
-      return_route: [state.address | return_route],
-      payload: payload
-    })
+    case source_client do
+      ^client ->
+        forwarded_message =
+          message
+          |> Message.forward()
+          |> Message.set_return_route([state.address | return_route])
 
-    {:ok, state}
+        Router.route(forwarded_message)
+
+        {:ok, state}
+
+      _other ->
+        ## We can only accept messages from the current client on the inner address
+        {:error, {:invalid_inner_address_client, source_client}}
+    end
   end
 
   @impl true
@@ -94,9 +100,19 @@ defmodule Ockam.Transport.TCP.RecoverableClient do
 
     destination = Map.get(state, :destination)
 
+    inner_address = state.inner_address
+
+    client_authorization = [from_addresses: [:message, [inner_address]]]
+
     ## TODO: change monitors to links here
-    case Client.create(destination: destination, restart_type: :temporary) do
+    case Client.create(
+           destination: destination,
+           restart_type: :temporary,
+           authorization: client_authorization
+         ) do
       {:ok, client} ->
+        inner_authorization = [from_addresses: [:message, [client]]]
+        state = Ockam.Worker.update_authorization_state(state, inner_address, inner_authorization)
         monitor_client(client, state)
 
       {:error, _reason} ->
