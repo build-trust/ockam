@@ -69,10 +69,7 @@ pub async fn create_connector(
             let body = dec.decode::<CreateSecureChannelResponse>()?;
             let addr = route_to_multiaddr(&route![body.addr.to_string()])
                 .ok_or_else(|| ApiError::generic("Invalid Secure Channel Address"))?;
-            Ok(format!(
-                "Secure Channel created! You can send messages to it via this address:\n{}",
-                addr
-            ))
+            Ok(addr)
         }
         Some(Status::InternalServerError) => {
             let err = dec
