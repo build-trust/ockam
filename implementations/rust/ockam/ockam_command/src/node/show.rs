@@ -8,6 +8,7 @@ use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
 };
+use ockam_api::Status;
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -52,6 +53,21 @@ pub async fn query_status(
         ..
     } = api::parse_status(&resp)?;
 
+    // Getting short id for the node
+    let resp: Vec<u8> = ctx
+        .send_and_receive(
+            base_route.modify().append(NODEMANAGER_ADDR),
+            api::short_identity()?
+        )
+        .await
+        .context("Failed to process request for short id")?;
+
+    let (response, result) = api::parse_short_identity_response(&resp)?;
+    let default_id = match response.status() {
+        Some(Status::Ok) => { format!("{}", result.identity_id) }
+        _ => { String::from("NOT FOUND") }
+    };
+
     let node_cfg = cfg.get_node(&node_name).unwrap();
     let api_address = SocketAddr::new(IpAddr::from_str("127.0.0.1").unwrap(), node_cfg.port);
     let (mlog, _) = cfg.log_paths_for_node(&node_name.to_string()).unwrap();
@@ -63,12 +79,13 @@ Node:
   Name: {}
   Status: {}
   API Address: {}
+  Default Identity: {}
   Pid: {}
   Worker count: {}
   Transport count: {}
   Log Path: {}
 "#,
-        node_name, status, api_address, pid, workers, transports, log_path
+        node_name, status, api_address, default_id, pid, workers, transports, log_path
     );
     util::stop_node(ctx).await
 }
