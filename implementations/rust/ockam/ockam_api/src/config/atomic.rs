@@ -9,7 +9,7 @@
 //! generates an AtomicUpdater.
 
 use crate::config::ConfigValues;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{
     fs::{self, File},
     io::Write,
@@ -24,8 +24,8 @@ pub struct AtomicUpdater<V: ConfigValues> {
     inner: Arc<RwLock<V>>,
 }
 
-fn make_tmp_path(p: &PathBuf) -> PathBuf {
-    let mut p2 = p.clone();
+fn make_tmp_path(p: &Path) -> PathBuf {
+    let mut p2 = p.to_path_buf();
     let new_name = format!(
         "{}.tmp",
         p2.file_name()

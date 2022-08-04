@@ -209,7 +209,11 @@ impl CreateCommand {
 
             println!("\nNode Created!");
             // Then query the node manager for the status
-            connect_to(address.port(), cfg.clone(), query_status);
+            connect_to(
+                address.port(),
+                (cfg.clone(), command.node_name),
+                query_status,
+            );
         }
     }
 }
