@@ -18,36 +18,38 @@ pub struct ShowCommand {
     /// Id of the space.
     #[clap(display_order = 1001)]
     pub id: String,
+
+    #[clap(flatten)]
+    pub node_opts: NodeOpts,
+
+    #[clap(flatten)]
+    pub cloud_opts: CloudOpts,
 }
 
 impl ShowCommand {
-    pub fn run(
-        opts: CommandGlobalOpts,
-        (cloud_opts, node_opts): (CloudOpts, NodeOpts),
-        cmd: ShowCommand,
-    ) {
+    pub fn run(opts: CommandGlobalOpts, cmd: ShowCommand) {
         let cfg = &opts.config;
-        let port = match cfg.select_node(&node_opts.api_node) {
+        let port = match cfg.select_node(&cmd.node_opts.api_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
                 std::process::exit(-1);
             }
         };
-        connect_to(port, (opts, cloud_opts, cmd), show);
+        connect_to(port, (opts, cmd), show);
     }
 }
 
 async fn show(
     ctx: ockam::Context,
-    (opts, cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, ShowCommand),
+    (opts, cmd): (CommandGlobalOpts, ShowCommand),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     let route: Route = base_route.modify().append(NODEMANAGER_ADDR).into();
     debug!(?cmd, %route, "Sending request");
 
     let response: Vec<u8> = ctx
-        .send_and_receive(route, api::space::show(cmd, cloud_opts)?)
+        .send_and_receive(route, api::space::show(cmd)?)
         .await
         .context("Failed to process request")?;
     let mut dec = Decoder::new(&response);
