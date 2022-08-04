@@ -2082,7 +2082,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.67.0"
+version = "0.68.0"
 dependencies = [
  "arrayref",
  "dyn-clone",
@@ -2108,7 +2108,7 @@ dependencies = [
 
 [[package]]
 name = "ockam-ffi"
-version = "0.53.0"
+version = "0.54.0"
 dependencies = [
  "futures 0.3.21",
  "lazy_static",
@@ -2119,7 +2119,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_abac"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ockam_core",
  "ockam_identity",
@@ -2128,7 +2128,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_api"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "anyhow",
  "cddl-cat",
@@ -2156,7 +2156,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_channel"
-version = "0.61.0"
+version = "0.62.0"
 dependencies = [
  "ockam_core",
  "ockam_key_exchange_core",
@@ -2175,7 +2175,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_command"
-version = "0.67.0"
+version = "0.68.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -2213,7 +2213,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_core"
-version = "0.61.0"
+version = "0.62.0"
 dependencies = [
  "async-trait",
  "backtrace",
@@ -2239,11 +2239,11 @@ dependencies = [
 
 [[package]]
 name = "ockam_examples"
-version = "0.34.0"
+version = "0.35.0"
 
 [[package]]
 name = "ockam_executor"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "crossbeam-queue",
  "futures 0.3.21",
@@ -2256,7 +2256,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_identity"
-version = "0.55.0"
+version = "0.56.0"
 dependencies = [
  "cddl-cat",
  "cfg-if",
@@ -2294,7 +2294,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_core"
-version = "0.52.0"
+version = "0.53.0"
 dependencies = [
  "ockam_core",
  "zeroize",
@@ -2302,7 +2302,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_x3dh"
-version = "0.56.0"
+version = "0.57.0"
 dependencies = [
  "arrayref",
  "hex",
@@ -2315,7 +2315,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_key_exchange_xx"
-version = "0.57.0"
+version = "0.58.0"
 dependencies = [
  "hex",
  "ockam_core",
@@ -2348,7 +2348,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.64.0"
+version = "0.65.0"
 dependencies = [
  "futures 0.3.21",
  "heapless",
@@ -2365,7 +2365,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_ble"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "atsame54_xpro",
  "bluenrg",
@@ -2394,7 +2394,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_core"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "ockam_core",
  "tracing",
@@ -2402,7 +2402,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.62.0"
+version = "0.63.0"
 dependencies = [
  "hashbrown 0.9.1",
  "ockam_core",
@@ -2418,7 +2418,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_udp"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "bytes 1.1.0",
  "futures-util",
@@ -2437,7 +2437,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_websocket"
-version = "0.53.0"
+version = "0.54.0"
 dependencies = [
  "futures-util",
  "ockam_core",
@@ -2452,7 +2452,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.57.0"
+version = "0.58.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
