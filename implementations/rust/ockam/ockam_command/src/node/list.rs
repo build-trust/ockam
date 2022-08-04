@@ -61,6 +61,10 @@ fn verify_pids(cfg: &OckamConfig, nodes: Vec<String>) {
             }
         }
     }
+
+    if cfg.atomic_update().run().is_err() {
+        eprintln!("failed to update PID information in config!");
+    }
 }
 
 pub async fn query_pid(

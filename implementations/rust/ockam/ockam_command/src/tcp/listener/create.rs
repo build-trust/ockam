@@ -58,7 +58,7 @@ impl CreateCommand {
         let composite = (&command).into();
         let node = command.node_opts.api_node;
 
-        let startup_config = match cfg.get_launch_config(&node) {
+        let startup_config = match cfg.get_startup_cfg(&node) {
             Ok(cfg) => cfg,
             Err(e) => {
                 eprintln!("failed to load startup configuration: {}", e);

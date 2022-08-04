@@ -1,7 +1,5 @@
-use crate::{CommandGlobalOpts, OckamConfig};
+use crate::{util::startup, CommandGlobalOpts, OckamConfig};
 use clap::Args;
-use nix::sys::signal::{self, Signal};
-use nix::unistd::Pid;
 use std::ops::Deref;
 
 #[derive(Clone, Debug, Args)]
@@ -61,14 +59,7 @@ pub fn delete_node(opts: &CommandGlobalOpts, node_name: &String, sigkill: bool) 
     };
 
     if let Some(pid) = pid {
-        let _ = signal::kill(
-            Pid::from_raw(pid),
-            if sigkill {
-                Signal::SIGKILL
-            } else {
-                Signal::SIGTERM
-            },
-        );
+        startup::stop(pid, sigkill);
     }
 
     if let Err(e) = cfg.get_node_dir(node_name).map(std::fs::remove_dir_all) {
