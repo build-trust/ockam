@@ -69,7 +69,7 @@ async fn create(
         Some(Status::Ok) => {
             let body = dec.decode::<Project>()?;
             let output = match opts.global_args.output_format {
-                OutputFormat::Plain => "Project created".to_string(),
+                OutputFormat::Plain => body.id.to_string(),
                 OutputFormat::Json => serde_json::to_string(&body)?,
             };
             Ok(output)

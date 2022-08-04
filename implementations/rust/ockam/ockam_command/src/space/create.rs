@@ -19,39 +19,41 @@ pub struct CreateCommand {
     #[clap(display_order = 1001)]
     pub name: String,
 
+    #[clap(flatten)]
+    pub node_opts: NodeOpts,
+
+    #[clap(flatten)]
+    pub cloud_opts: CloudOpts,
+
     /// Administrators for this space
-    #[clap(display_order = 1002, last = true)]
+    #[clap(display_order = 1100, last = true)]
     pub admins: Vec<String>,
 }
 
 impl CreateCommand {
-    pub fn run(
-        opts: CommandGlobalOpts,
-        (cloud_opts, node_opts): (CloudOpts, NodeOpts),
-        cmd: CreateCommand,
-    ) {
+    pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
         let cfg = &opts.config;
-        let port = match cfg.select_node(&node_opts.api_node) {
+        let port = match cfg.select_node(&cmd.node_opts.api_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
                 std::process::exit(-1);
             }
         };
-        connect_to(port, (opts, cloud_opts, cmd), create);
+        connect_to(port, (opts, cmd), create);
     }
 }
 
 async fn create(
     ctx: ockam::Context,
-    (opts, cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, CreateCommand),
+    (opts, cmd): (CommandGlobalOpts, CreateCommand),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     let route: Route = base_route.modify().append(NODEMANAGER_ADDR).into();
     debug!(?cmd, %route, "Sending request");
 
     let response: Vec<u8> = ctx
-        .send_and_receive(route, api::space::create(cmd, cloud_opts)?)
+        .send_and_receive(route, api::space::create(cmd)?)
         .await
         .context("Failed to process request")?;
     let mut dec = Decoder::new(&response);
@@ -66,7 +68,7 @@ async fn create(
                 .decode::<Space>()
                 .context("Failed to decode response body")?;
             let output = match opts.global_args.output_format {
-                OutputFormat::Plain => "Space created".to_string(),
+                OutputFormat::Plain => body.id.to_string(),
                 OutputFormat::Json => serde_json::to_string(&body)
                     .context("Failed to serialize command output as json")?,
             };
