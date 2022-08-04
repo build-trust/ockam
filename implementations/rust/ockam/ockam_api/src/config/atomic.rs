@@ -20,29 +20,33 @@ use std::{
 /// Takes a version of the Config and persists it to disk
 #[must_use]
 pub struct AtomicUpdater<V: ConfigValues> {
-    config_dir: PathBuf,
-    config_name: String,
+    config_path: PathBuf,
     inner: Arc<RwLock<V>>,
+}
+
+fn make_tmp_path(p: &PathBuf) -> PathBuf {
+    let mut p2 = p.clone();
+    let new_name = format!(
+        "{}.tmp",
+        p2.file_name()
+            .expect("config path ended in '..' -- this is not allowed")
+            .to_str()
+            .expect("config name was not valid UTF-8")
+    );
+    p2.set_file_name(new_name);
+    p2
 }
 
 impl<V: ConfigValues> AtomicUpdater<V> {
     /// Create a new atomic updater
-    pub fn new(config_dir: PathBuf, config_name: String, inner: Arc<RwLock<V>>) -> Self {
-        Self {
-            config_dir,
-            config_name,
-            inner,
-        }
+    pub fn new(config_path: PathBuf, inner: Arc<RwLock<V>>) -> Self {
+        Self { config_path, inner }
     }
 
     /// Do the thing that we said it was gonna do
     pub fn run(self) -> anyhow::Result<()> {
         let inner = self.inner.read().unwrap();
-
-        let tmp_path = self
-            .config_dir
-            .join(format!("{}.json.tmp", &self.config_name));
-        let regular_path = self.config_dir.join(format!("{}.json", &self.config_name));
+        let tmp_path = make_tmp_path(&self.config_path);
 
         // Repeatedly try to create this file, in case another
         // instance is _also_ trying to currently update the
@@ -64,7 +68,7 @@ impl<V: ConfigValues> AtomicUpdater<V> {
             .expect("failed to write config");
 
         // Then rename it over the existing config
-        fs::rename(&tmp_path, &regular_path)?;
+        fs::rename(&tmp_path, &self.config_path)?;
 
         Ok(())
     }
