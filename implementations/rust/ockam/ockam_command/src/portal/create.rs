@@ -107,7 +107,7 @@ impl CreateCommand {
         }
 
         // Update the startup config
-        let startup_cfg = match cfg.get_launch_config(&node) {
+        let startup_cfg = match cfg.get_startup_cfg(&node) {
             Ok(cfg) => cfg,
             Err(e) => {
                 eprintln!("failed to load startup configuration: {}", e);

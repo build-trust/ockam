@@ -49,6 +49,18 @@ pub enum Operation {
     Forwarder,
 }
 
+impl fmt::Display for Operation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match self {
+            Self::Node { .. } => "start node",
+            Self::Transport { .. } => "create transport",
+            Self::Portal { .. } => "create portal",
+            Self::SecureChannel => "create secure-channel",
+            Self::Forwarder => "create forwarder",
+        })
+    }
+}
+
 /// The mode a remote operation is using
 ///
 /// * A `Connector` is a connection initiator.  It can either contact a

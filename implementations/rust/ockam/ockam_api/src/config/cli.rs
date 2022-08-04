@@ -74,6 +74,7 @@ Otherwise your OS or OS configuration may not be supported!",
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NodeConfig {
     pub port: u16,
+    pub verbose: u8,
     pub pid: Option<i32>,
     pub state_dir: PathBuf,
 }

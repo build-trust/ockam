@@ -2,6 +2,7 @@
 
 use ockam_api::config::{cli, Config};
 use slug::slugify;
+use std::collections::VecDeque;
 use std::{fs::create_dir_all, ops::Deref, path::PathBuf, sync::RwLockReadGuard};
 
 pub use ockam_api::config::cli::NodeConfig;
@@ -129,7 +130,7 @@ impl OckamConfig {
     ///
     /// The convention is to name the main log `node-name.log` and the
     /// supplementary log `nod-name.log.stderr`
-    pub fn log_paths_for_node(&self, node_name: &String) -> Option<(PathBuf, PathBuf)> {
+    pub fn log_paths_for_node(&self, node_name: &str) -> Option<(PathBuf, PathBuf)> {
         let inner = self.inner.readlock_inner();
 
         let base = &inner.nodes.get(node_name)?.state_dir;
@@ -146,7 +147,7 @@ impl OckamConfig {
     }
 
     /// Get the launch configuration for a node
-    pub fn get_launch_config(&self, name: &str) -> Result<StartupConfig, ConfigError> {
+    pub fn get_startup_cfg(&self, name: &str) -> Result<StartupConfig, ConfigError> {
         let path = self.get_node_dir(name)?;
         Ok(StartupConfig::load(path))
     }
@@ -162,7 +163,7 @@ impl OckamConfig {
     }
 
     /// Add a new node to the configuration for future lookup
-    pub fn create_node(&self, name: &str, port: u16) -> Result<(), ConfigError> {
+    pub fn create_node(&self, name: &str, port: u16, verbose: u8) -> Result<(), ConfigError> {
         let mut inner = self.inner.writelock_inner();
 
         if inner.nodes.contains_key(name) {
@@ -186,6 +187,7 @@ impl OckamConfig {
             name.to_string(),
             NodeConfig {
                 port,
+                verbose,
                 state_dir,
                 pid: Some(0),
             },
@@ -245,5 +247,10 @@ impl StartupConfig {
     pub fn add_composite(&self, composite: ComposableSnippet) {
         let mut inner = self.inner.writelock_inner();
         inner.commands.push_back(composite);
+        dbg!(&inner.commands);
+    }
+
+    pub fn get_all(&self) -> VecDeque<ComposableSnippet> {
+        self.inner.readlock_inner().commands.clone()
     }
 }

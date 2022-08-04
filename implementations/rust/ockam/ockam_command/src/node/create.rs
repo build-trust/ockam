@@ -4,10 +4,8 @@ use rand::prelude::random;
 use std::sync::Arc;
 use std::{
     env::current_exe,
-    fs::OpenOptions,
     net::{IpAddr, SocketAddr},
     path::PathBuf,
-    process::Command,
     str::FromStr,
     time::Duration,
 };
@@ -15,7 +13,8 @@ use std::{
 use crate::{
     node::show::query_status,
     util::{
-        connect_to, embedded_node, find_available_port, ComposableSnippet, OckamConfig, Operation,
+        connect_to, embedded_node, find_available_port, startup, ComposableSnippet, OckamConfig,
+        Operation,
     },
     CommandGlobalOpts,
 };
@@ -86,6 +85,7 @@ impl CreateCommand {
                 .expect("failed to parse tcp listener address")
         };
 
+        let verbose = opts.global_args.verbose;
         let command = CreateCommand {
             tcp_listener_address: address.to_string(),
             ..command
@@ -98,7 +98,7 @@ impl CreateCommand {
             // calls to it don't fail
             if cfg.get_node_dir(&command.node_name).is_err() {
                 println!("Creating node directory...");
-                if let Err(e) = cfg.create_node(&command.node_name, address.port()) {
+                if let Err(e) = cfg.create_node(&command.node_name, address.port(), verbose) {
                     eprintln!(
                         "failed to update node configuration for '{}': {:?}",
                         command.node_name, e
@@ -129,7 +129,7 @@ impl CreateCommand {
             // First we create a new node in the configuration so that
             // we can ask it for the correct log path, as well as
             // making sure the watchdog can do its job later on.
-            if let Err(e) = cfg.create_node(&command.node_name, address.port()) {
+            if let Err(e) = cfg.create_node(&command.node_name, address.port(), verbose) {
                 eprintln!(
                     "failed to update node configuration for '{}': {:?}",
                     command.node_name, e
@@ -137,56 +137,19 @@ impl CreateCommand {
                 std::process::exit(-1);
             }
 
-            let (mlog, elog) = cfg.log_paths_for_node(&command.node_name).unwrap();
-
-            let main_log_file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(mlog)
-                .expect("failed to open log path");
-
-            let stderr_log_file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(elog)
-                .expect("failed to open stderr log path");
-
-            let verbose = match opts.global_args.verbose {
-                // Enable logs at DEBUG level by default
-                0 => "-vv".to_string(),
-                // Pass the provided verbosity level to the background node
-                v => format!("-{}", "v".repeat(v as usize)),
-            };
-
-            let mut args = vec![
+            // Construct the arguments list and re-execute the ockam
+            // CLI in foreground mode to start the newly created node
+            startup::spawn_node(
+                &ockam,
+                &opts.config,
                 verbose,
-                "--no-color".to_string(),
-                "node".to_string(),
-                "create".to_string(),
-                "--tcp-listener-address".to_string(),
-                address.to_string(),
-                "--foreground".to_string(),
-            ];
-
-            if command.skip_defaults {
-                args.push("--skip-defaults".to_string());
-            }
-
-            args.push(command.node_name.clone());
-
-            let child = Command::new(ockam)
-                .args(args)
-                .stdout(main_log_file)
-                .stderr(stderr_log_file)
-                .spawn()
-                .expect("could not spawn node");
-
-            // Update the pid in the config (should we remove this?)
-            cfg.update_pid(&command.node_name, child.id() as i32)
-                .expect("should never panic");
+                command.skip_defaults,
+                &command.node_name,
+                &command.tcp_listener_address,
+            );
 
             let composite = (&command).into();
-            let startup_cfg = cfg.get_launch_config(&command.node_name).unwrap();
+            let startup_cfg = cfg.get_startup_cfg(&command.node_name).unwrap();
             startup_cfg.writelock_inner().commands = vec![composite].into();
 
             // Save the config update

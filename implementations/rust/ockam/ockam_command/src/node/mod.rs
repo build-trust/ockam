@@ -2,11 +2,13 @@ mod create;
 mod delete;
 mod list;
 mod show;
+mod start;
 
 pub(crate) use create::CreateCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
 use show::ShowCommand;
+use start::StartCommand;
 
 use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
@@ -34,6 +36,10 @@ pub enum NodeSubcommand {
     /// Show a node.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Show(ShowCommand),
+
+    /// Start a node that was previously created
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Start(StartCommand),
 }
 
 impl NodeCommand {
@@ -43,6 +49,7 @@ impl NodeCommand {
             NodeSubcommand::Delete(command) => DeleteCommand::run(opts, command),
             NodeSubcommand::List(command) => ListCommand::run(opts, command),
             NodeSubcommand::Show(command) => ShowCommand::run(opts, command),
+            NodeSubcommand::Start(command) => StartCommand::run(opts, command),
         }
     }
 }
