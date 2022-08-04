@@ -82,6 +82,7 @@ Node:
   Status: {}
   API Address: {}
   Default Identity: {}
+  Secure Channel Listener Address: /service/api
   Pid: {}
   Worker count: {}
   Transport count: {}
