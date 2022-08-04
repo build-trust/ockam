@@ -338,47 +338,6 @@ pub(crate) mod project {
     }
 }
 
-/// Helpers to create invitations API requests
-pub(crate) mod invitations {
-    use crate::invitation::*;
-    use ockam_api::cloud::invitation::*;
-
-    use super::*;
-
-    pub(crate) fn create(cmd: CreateCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
-        let mut buf = vec![];
-        let b = CreateInvitation::new(cmd.email, cmd.space_id, cmd.project_id);
-        Request::builder(Method::Post, "v0/invitations")
-            .body(CloudRequestWrapper::new(b, cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
-    }
-
-    pub(crate) fn list(_cmd: ListCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
-        let mut buf = vec![];
-        Request::builder(Method::Get, "v0/invitations")
-            .body(CloudRequestWrapper::bare(cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
-    }
-
-    pub(crate) fn accept(cmd: AcceptCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
-        let mut buf = vec![];
-        Request::builder(Method::Put, format!("v0/invitations/{}", cmd.id))
-            .body(CloudRequestWrapper::bare(cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
-    }
-
-    pub(crate) fn reject(cmd: RejectCommand, cloud_opts: CloudOpts) -> anyhow::Result<Vec<u8>> {
-        let mut buf = vec![];
-        Request::builder(Method::Delete, format!("v0/invitations/{}", cmd.id))
-            .body(CloudRequestWrapper::bare(cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
-    }
-}
-
 ////////////// !== parsers
 
 /// Parse the base response without the inner payload
