@@ -362,14 +362,6 @@ impl NodeManager {
                     .await?
             }
 
-            // ==*== Invitations ==*==
-            (Post, ["v0", "invitations"]) => self.create_invitation(ctx, req, dec).await?,
-            (Get, ["v0", "invitations"]) => self.list_invitations(ctx, req, dec).await?,
-            (Put, ["v0", "invitations", id]) => self.accept_invitation(ctx, req, dec, id).await?,
-            (Delete, ["v0", "invitations", id]) => {
-                self.reject_invitation(ctx, req, dec, id).await?
-            }
-
             // ==*== Enroll ==*==
             (Post, ["v0", "enroll", "auth0"]) => self.enroll_auth0(ctx, req, dec).await?,
             (Get, ["v0", "enroll", "token"]) => {

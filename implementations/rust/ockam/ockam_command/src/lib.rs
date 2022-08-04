@@ -5,7 +5,6 @@ mod configuration;
 mod enroll;
 mod forwarder;
 mod identity;
-mod invitation;
 mod message;
 mod node;
 mod portal;
@@ -22,7 +21,6 @@ use authenticated::AuthenticatedCommand;
 use configuration::ConfigurationCommand;
 use enroll::EnrollCommand;
 use forwarder::ForwarderCommand;
-use invitation::InvitationCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use portal::PortalCommand;
@@ -139,10 +137,6 @@ pub enum OckamSubcommand {
     /// Manage authenticated attributes.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Authenticated(AuthenticatedCommand),
-
-    /// Create, list, accept or reject Invitations
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    Invitation(InvitationCommand),
 
     /// Enroll with Ockam Orchestrator
     // This command offers three different ways for enrolling depending on the information provided
@@ -299,7 +293,6 @@ pub fn run() {
 
     match ockam_command.subcommand {
         OckamSubcommand::Authenticated(command) => AuthenticatedCommand::run(command),
-        OckamSubcommand::Invitation(command) => InvitationCommand::run(opts, command),
         OckamSubcommand::Enroll(command) => EnrollCommand::run(opts, command),
         OckamSubcommand::GenerateEnrollmentToken(command) => {
             GenerateEnrollmentTokenCommand::run(opts, command)

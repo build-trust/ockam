@@ -9,7 +9,6 @@ use crate::CowStr;
 use crate::TypeTag;
 
 pub mod enroll;
-pub mod invitation;
 pub mod project;
 pub mod space;
 
