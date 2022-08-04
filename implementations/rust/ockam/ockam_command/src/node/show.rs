@@ -2,9 +2,16 @@ use crate::util::{self, api, connect_to, OckamConfig};
 use crate::CommandGlobalOpts;
 use anyhow::Context;
 use clap::Args;
+use colored::Colorize;
 use ockam::Route;
+use ockam_api::config::cli::NodeConfig;
 use ockam_api::nodes::{models::base::NodeStatus, NODEMANAGER_ADDR};
 use ockam_api::Status;
+use std::{
+    net::{IpAddr, SocketAddr},
+    str::FromStr,
+    time::Duration,
+};
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -23,46 +30,25 @@ impl ShowCommand {
                 std::process::exit(-1);
             }
         };
-        connect_to(port, cfg.clone(), query_status);
+        connect_to(port, (cfg.clone(), command.node_name), query_status);
     }
 }
 
-pub async fn query_status(
-    ctx: ockam::Context,
-    cfg: OckamConfig,
-    mut base_route: Route,
-) -> anyhow::Result<()> {
-    let resp: Vec<u8> = ctx
-        .send_and_receive(
-            base_route.modify().append(NODEMANAGER_ADDR),
-            api::query_status()?,
-        )
-        .await
-        .context("Failed to process request")?;
-
-    let NodeStatus {
-        node_name, status, ..
-    } = api::parse_status(&resp)?;
-
-    // Getting short id for the node
-    let resp: Vec<u8> = ctx
-        .send_and_receive(
-            base_route.modify().append(NODEMANAGER_ADDR),
-            api::short_identity()?,
-        )
-        .await
-        .context("Failed to process request for short id")?;
-
-    let (response, result) = api::parse_short_identity_response(&resp)?;
-    let default_id = match response.status() {
-        Some(Status::Ok) => {
-            format!("{}", result.identity_id)
-        }
-        _ => String::from("NOT FOUND"),
-    };
-
-    let node_cfg = cfg.get_node(&node_name).unwrap();
-
+// TODO: This function should be replaced with a better system of
+// printing the node state in the future but for now we can just tell
+// clippy to stop complainaing about it.
+#[allow(clippy::too_many_arguments)]
+fn print_node_info(
+    node_cfg: &NodeConfig,
+    node_name: &str,
+    status: &str,
+    default_id: &str,
+    api_address: SocketAddr,
+    pid: &str,
+    workers: &str,
+    transports: &str,
+    log_path: &str,
+) {
     println!(
         r#"
 Node:
@@ -85,8 +71,102 @@ Node:
     Service:
       Type: Echo
       Address: /service/echo
+  API Address: {}
+  Secure Channel Listener Address: /service/api
+  Pid: {}
+  Worker count: {}
+  Transport count: {}
+  Log Path: {}
 "#,
-        node_name, status, node_cfg.port, node_cfg.port, default_id, default_id,
+        node_name,
+        match status {
+            "UP" => status.bright_green(),
+            "DOWN" => status.bright_red(),
+            _ => status.clear(),
+        },
+        node_cfg.port,
+        node_cfg.port,
+        default_id,
+        default_id,
+        api_address,
+        pid,
+        workers,
+        transports,
+        log_path
     );
+}
+
+pub async fn query_status(
+    mut ctx: ockam::Context,
+    (cfg, node_name): (OckamConfig, String),
+    mut base_route: Route,
+) -> anyhow::Result<()> {
+    ctx.send(
+        base_route.modify().append(NODEMANAGER_ADDR),
+        api::query_status()?,
+    )
+    .await?;
+
+    let resp = ctx
+        .receive_duration_timeout::<Vec<u8>>(Duration::from_millis(333))
+        .await
+        .context("Failed to process request");
+
+    let node_cfg = cfg.get_node(&node_name).unwrap();
+    let api_address = SocketAddr::new(IpAddr::from_str("127.0.0.1").unwrap(), node_cfg.port);
+    let (mlog, _) = cfg.log_paths_for_node(&node_name.to_string()).unwrap();
+    let log_path = util::print_path(&mlog);
+
+    match resp {
+        Ok(resp) => {
+            let NodeStatus {
+                workers,
+                pid,
+                transports,
+                ..
+            } = api::parse_status(&resp)?;
+
+            // Getting short id for the node
+            let resp: Vec<u8> = ctx
+                .send_and_receive(
+                    base_route.modify().append(NODEMANAGER_ADDR),
+                    api::short_identity()?,
+                )
+                .await
+                .context("Failed to process request for short id")?;
+
+            let (response, result) = api::parse_short_identity_response(&resp)?;
+            let default_id = match response.status() {
+                Some(Status::Ok) => {
+                    format!("{}", result.identity_id)
+                }
+                _ => String::from("NOT FOUND"),
+            };
+
+            print_node_info(
+                &node_cfg,
+                &node_name,
+                "UP",
+                &default_id,
+                api_address,
+                &pid.to_string(),
+                &workers.to_string(),
+                &transports.to_string(),
+                log_path.as_str(),
+            )
+        }
+        Err(_) => print_node_info(
+            &node_cfg,
+            &node_name,
+            "DOWN",
+            "N/A",
+            api_address,
+            "-",
+            "N/A",
+            "N/A",
+            log_path.as_str(),
+        ),
+    }
+
     util::stop_node(ctx).await
 }

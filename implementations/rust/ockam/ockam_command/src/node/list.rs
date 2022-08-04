@@ -35,7 +35,13 @@ impl ListCommand {
         cfg.get_inner()
             .nodes
             .iter()
-            .for_each(|(_, node_cfg)| connect_to(node_cfg.port, cfg.clone(), query_status));
+            .for_each(|(node_name, node_cfg)| {
+                connect_to(
+                    node_cfg.port,
+                    (cfg.clone(), node_name.clone()),
+                    query_status,
+                )
+            });
     }
 }
 
