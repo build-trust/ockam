@@ -176,6 +176,8 @@ impl NodeManager {
             .await?;
         self.start_authenticated_service_impl(ctx, "authenticated".into())
             .await?;
+        self.create_secure_channel_listener_impl("api".into(), None)
+            .await?;
 
         Ok(())
     }
