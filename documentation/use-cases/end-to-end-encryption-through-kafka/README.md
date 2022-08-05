@@ -111,7 +111,7 @@ To make it easy to try, we've created a Docker image that contains both Alice an
 1. Run Bob’s program:
 
     ```
-    docker run --rm --interactive --tty ghcr.io/build-trust/examples/kafka ockam_kafka_bob
+    docker run --rm --interactive --tty ghcr.io/build-trust/examples/kafka bob
     ```
 
     The Bob program creates a Secure Channel Listener to accept requests to begin an Authenticated Key
@@ -130,7 +130,7 @@ To make it easy to try, we've created a Docker image that contains both Alice an
 3. In a separate terminal window, run the Alice program:
 
     ```
-    docker run --rm --interactive --tty ghcr.io/build-trust/examples/kafka ockam_kafka_alice
+    docker run --rm --interactive --tty ghcr.io/build-trust/examples/kafka alice
     ```
 
 4. The Alice program will stop to ask for the stream addresses that were printed in step 2. Enter them.
