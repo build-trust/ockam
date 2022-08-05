@@ -17,7 +17,7 @@ use crate::channel_types::{router_channel, MessageSender, RouterReceiver, SmallS
 use crate::{
     error::{NodeError, NodeReason},
     relay::{CtrlSignal, RelayMessage},
-    NodeMessage, RouterReply, ShutdownType,
+    NodeMessage, NodeReplyResult, RouterReply, ShutdownType,
 };
 use ockam_core::compat::{collections::BTreeMap, sync::Arc};
 use ockam_core::{Address, Result, TransportType};
@@ -115,6 +115,25 @@ impl Router {
             // If we _are_ still actually running then this is a real
             // failure and needs to be escalated
             e => e,
+        }
+    }
+
+    async fn check_addr_not_exist(
+        &self,
+        addr: &Address,
+        reply: &SmallSender<NodeReplyResult>,
+    ) -> Result<()> {
+        if self.map.internal.contains_key(addr) {
+            let node = NodeError::Address(addr.clone());
+
+            reply
+                .send(Err(node.clone().already_exists()))
+                .await
+                .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
+
+            Err(node.already_exists())
+        } else {
+            Ok(())
         }
     }
 

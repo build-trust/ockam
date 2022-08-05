@@ -32,11 +32,16 @@ async fn start(
     metrics: Arc<AtomicUsize>,
     reply: &SmallSender<NodeReplyResult>,
 ) -> Result<()> {
+    let primary_addr = addrs.first();
+
+    router.check_addr_not_exist(&primary_addr, reply).await?;
+
     debug!("Starting new worker '{}'", addrs.first());
+
     let SenderPair { msgs, ctrl } = senders;
 
     // Create an address record and insert it into the internal map
-    let primary_addr = addrs.first();
+
     let address_record = AddressRecord::new(
         addrs.clone(),
         msgs,
@@ -47,6 +52,7 @@ async fn start(
             detached,
         },
     );
+
     router
         .map
         .internal
