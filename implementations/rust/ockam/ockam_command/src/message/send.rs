@@ -22,34 +22,7 @@ impl SendCommand {
 async fn send_message(mut ctx: Context, cmd: SendCommand) -> anyhow::Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    let addr = match cmd.addr {
-        addr if addr.contains("/-") => {
-            let mut buffer = String::new();
-            io::stdin().read_line(&mut buffer)?;
-            let args_from_stdin = buffer
-                .trim()
-                .split('/')
-                .filter(|&s| !s.is_empty())
-                .fold("".to_owned(), |acc, s| format!("{acc}/{s}"));
-
-            addr.replace("/-", &args_from_stdin)
-        }
-        addr if addr.contains("-/") => {
-            let mut buffer = String::new();
-            io::stdin().read_line(&mut buffer)?;
-
-            let args_from_stdin = buffer
-                .trim()
-                .split('/')
-                .filter(|&s| !s.is_empty())
-                .fold("/".to_owned(), |acc, s| format!("{acc}{s}/"));
-
-            addr.replace("-/", &args_from_stdin)
-        }
-        _ => cmd.addr,
-    };
-
-    let addr = MultiAddr::from_str(&addr)?;
+    let addr = MultiAddr::from_str(&cmd.addr)?;
     if let Some(route) = ockam_api::multiaddr_to_route(&addr) {
         ctx.send(route, cmd.message).await?;
         let message = ctx.receive::<String>().await?;
