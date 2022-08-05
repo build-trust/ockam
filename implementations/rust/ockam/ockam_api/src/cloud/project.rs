@@ -17,7 +17,6 @@ pub struct Project<'a> {
     #[b(2)] pub name: CowStr<'a>,
     #[b(3)] pub space_name: CowStr<'a>,
     #[b(4)] pub services: Vec<CowStr<'a>>,
-    #[serde(skip_serializing)]
     #[b(5)] pub access_route: CowStr<'a>,
     #[b(6)] pub users: Vec<CowStr<'a>>,
     #[b(7)] pub space_id: CowStr<'a>,
