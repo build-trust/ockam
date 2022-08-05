@@ -241,8 +241,41 @@ pub enum OckamSubcommand {
     PrintPath,
 }
 
+fn replace_hyphen_with_stdin(s: String) -> String {
+    use std::io;
+    if s.contains("/-") {
+        let mut buffer = String::new();
+        io::stdin()
+            .read_line(&mut buffer)
+            .expect("could not read from standard input");
+        let args_from_stdin = buffer
+            .trim()
+            .split('/')
+            .filter(|&s| !s.is_empty())
+            .fold("".to_owned(), |acc, s| format!("{acc}/{s}"));
+
+        s.replace("/-", &args_from_stdin)
+    } else if s.contains("-/") {
+        let mut buffer = String::new();
+        io::stdin()
+            .read_line(&mut buffer)
+            .expect("could not read from standard input");
+
+        let args_from_stdin = buffer
+            .trim()
+            .split('/')
+            .filter(|&s| !s.is_empty())
+            .fold("/".to_owned(), |acc, s| format!("{acc}{s}/"));
+
+        s.replace("-/", &args_from_stdin)
+    } else {
+        s
+    }
+}
+
 pub fn run() {
-    let ockam_command: OckamCommand = OckamCommand::parse();
+    let ockam_command: OckamCommand =
+        OckamCommand::parse_from(std::env::args().map(replace_hyphen_with_stdin));
     let cfg = OckamConfig::load();
 
     if !ockam_command.global_args.quiet {
