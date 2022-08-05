@@ -153,96 +153,56 @@ impl Protocol<'_> for Tcp {
     }
 }
 
-/// A DNS address.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct DnsAddr<'a>(pub Cow<'a, str>);
+macro_rules! gen_str_proto {
+    ($t:ident, $c:literal, $p:literal) => {
+        #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub struct $t<'a>(Cow<'a, str>);
 
-impl<'a> DnsAddr<'a> {
-    pub fn new<S: Into<Cow<'a, str>>>(s: S) -> Self {
-        DnsAddr(s.into())
-    }
+        impl<'a> $t<'a> {
+            pub fn new<S: Into<Cow<'a, str>>>(s: S) -> Self {
+                Self(s.into())
+            }
+        }
+
+        impl Deref for $t<'_> {
+            type Target = str;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl<'a> Protocol<'a> for $t<'a> {
+            const CODE: Code = Code::new($c);
+            const PREFIX: &'static str = $p;
+
+            fn read_str(input: Checked<&'a str>) -> Result<Self, Error> {
+                Ok(Self(Cow::Borrowed(input.0)))
+            }
+
+            fn read_bytes(input: Checked<&'a [u8]>) -> Result<Self, Error> {
+                let s = str::from_utf8(&input).map_err(Error::message)?;
+                Ok(Self(Cow::Borrowed(s)))
+            }
+
+            fn write_str(&self, f: &mut fmt::Formatter) -> Result<(), Error> {
+                write!(f, "/{}/{}", Self::PREFIX, self.0)?;
+                Ok(())
+            }
+
+            fn write_bytes(&self, buf: &mut dyn Buffer) {
+                let mut b = encode::u32_buffer();
+                let uvi = encode::u32(Self::CODE.into(), &mut b);
+                buf.extend_with(uvi);
+                let mut b = encode::usize_buffer();
+                let uvi = encode::usize(self.0.len(), &mut b);
+                buf.extend_with(uvi);
+                buf.extend_with(self.0.as_bytes())
+            }
+        }
+    };
 }
 
-impl Deref for DnsAddr<'_> {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a> Protocol<'a> for DnsAddr<'a> {
-    const CODE: Code = Code::new(56);
-    const PREFIX: &'static str = "dnsaddr";
-
-    fn read_str(input: Checked<&'a str>) -> Result<Self, Error> {
-        Ok(DnsAddr(Cow::Borrowed(input.0)))
-    }
-
-    fn read_bytes(input: Checked<&'a [u8]>) -> Result<Self, Error> {
-        let s = str::from_utf8(&input).map_err(Error::message)?;
-        Ok(DnsAddr(Cow::Borrowed(s)))
-    }
-
-    fn write_str(&self, f: &mut fmt::Formatter) -> Result<(), Error> {
-        write!(f, "/{}/{}", Self::PREFIX, self.0)?;
-        Ok(())
-    }
-
-    fn write_bytes(&self, buf: &mut dyn Buffer) {
-        let mut b = encode::u32_buffer();
-        let uvi = encode::u32(Self::CODE.into(), &mut b);
-        buf.extend_with(uvi);
-        let mut b = encode::usize_buffer();
-        let uvi = encode::usize(self.0.len(), &mut b);
-        buf.extend_with(uvi);
-        buf.extend_with(self.0.as_bytes())
-    }
-}
-
-/// A service name.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Service<'a>(Cow<'a, str>);
-
-impl<'a> Service<'a> {
-    pub fn new<S: Into<Cow<'a, str>>>(s: S) -> Self {
-        Service(s.into())
-    }
-}
-
-impl Deref for Service<'_> {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a> Protocol<'a> for Service<'a> {
-    const CODE: Code = Code::new(62526);
-    const PREFIX: &'static str = "service";
-
-    fn read_str(input: Checked<&'a str>) -> Result<Self, Error> {
-        Ok(Service(Cow::Borrowed(input.0)))
-    }
-
-    fn read_bytes(input: Checked<&'a [u8]>) -> Result<Self, Error> {
-        let s = str::from_utf8(&input).map_err(Error::message)?;
-        Ok(Service(Cow::Borrowed(s)))
-    }
-
-    fn write_str(&self, f: &mut fmt::Formatter) -> Result<(), Error> {
-        write!(f, "/{}/{}", Self::PREFIX, self.0)?;
-        Ok(())
-    }
-
-    fn write_bytes(&self, buf: &mut dyn Buffer) {
-        let mut b = encode::u32_buffer();
-        let uvi = encode::u32(Self::CODE.into(), &mut b);
-        buf.extend_with(uvi);
-        let mut b = encode::usize_buffer();
-        let uvi = encode::usize(self.0.len(), &mut b);
-        buf.extend_with(uvi);
-        buf.extend_with(self.0.as_bytes())
-    }
-}
+gen_str_proto!(DnsAddr, 56, "dnsaddr");
+gen_str_proto!(Service, 62526, "service");
+gen_str_proto!(Node, 72526, "node");
