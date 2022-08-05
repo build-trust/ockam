@@ -5,6 +5,11 @@ pub mod asynchronous {
     pub use tokio::sync::RwLock;
 }
 
+/// FutureExt
+pub mod futures {
+    pub use futures::FutureExt;
+}
+
 #[cfg(not(feature = "std"))]
 mod mutex;
 #[cfg(not(feature = "std"))]
