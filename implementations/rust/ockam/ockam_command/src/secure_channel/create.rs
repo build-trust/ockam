@@ -1,4 +1,3 @@
-use crate::node::NodeOpts;
 use crate::util::{api, connect_to, stop_node};
 use crate::CommandGlobalOpts;
 use anyhow::{anyhow, Context};
@@ -16,19 +15,33 @@ use tracing::debug;
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     #[clap(flatten)]
-    node_opts: NodeOpts,
+    node_opts: SecureChannelNodeOpts,
 
-    /// What address to connect to
+    /// Route to a secure channel listener (required)
+    #[clap(name = "to", short, long, value_name = "ROUTE")]
     addr: MultiAddr,
     /// Pre-known Identifiers of the other side
     #[clap(short, long)]
     authorized_identifier: Option<Vec<IdentityIdentifier>>,
 }
 
+#[derive(Clone, Debug, Args)]
+pub struct SecureChannelNodeOpts {
+    /// Node that will initiate the secure channel
+    #[clap(
+        global = true,
+        short,
+        long,
+        value_name = "NODE",
+        default_value = "default"
+    )]
+    pub from: String,
+}
+
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) -> anyhow::Result<()> {
         let cfg = opts.config;
-        let port = match cfg.select_node(&command.node_opts.api_node) {
+        let port = match cfg.select_node(&command.node_opts.from) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
