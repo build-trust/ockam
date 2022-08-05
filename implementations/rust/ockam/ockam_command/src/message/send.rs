@@ -26,12 +26,25 @@ async fn send_message(mut ctx: Context, cmd: SendCommand) -> anyhow::Result<()> 
         addr if addr.contains("/-") => {
             let mut buffer = String::new();
             io::stdin().read_line(&mut buffer)?;
-            addr.replace("/-", buffer.trim())
+            let args_from_stdin = buffer
+                .trim()
+                .split('/')
+                .filter(|&s| !s.is_empty())
+                .fold("".to_owned(), |acc, s| format!("{acc}/{s}"));
+
+            addr.replace("/-", &args_from_stdin)
         }
         addr if addr.contains("-/") => {
             let mut buffer = String::new();
             io::stdin().read_line(&mut buffer)?;
-            addr.replace("-/", buffer.trim())
+
+            let args_from_stdin = buffer
+                .trim()
+                .split('/')
+                .filter(|&s| !s.is_empty())
+                .fold("/".to_owned(), |acc, s| format!("{acc}{s}/"));
+
+            addr.replace("-/", &args_from_stdin)
         }
         _ => cmd.addr,
     };
