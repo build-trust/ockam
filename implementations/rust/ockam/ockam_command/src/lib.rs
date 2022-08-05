@@ -242,7 +242,7 @@ pub enum OckamSubcommand {
 }
 
 pub fn run() {
-    let ockam_command: OckamCommand = OckamCommand::parse();
+    let ockam_command: OckamCommand = OckamCommand::parse_from(std::env::args_os());
     let cfg = OckamConfig::load();
 
     if !ockam_command.global_args.quiet {
