@@ -1,4 +1,3 @@
-use crate::node::NodeOpts;
 use crate::util::{api, connect_to, stop_node};
 use crate::CommandGlobalOpts;
 
@@ -14,19 +13,26 @@ use ockam_core::{Address, Route};
 
 pub struct CreateCommand {
     #[clap(flatten)]
-    node_opts: NodeOpts,
+    node_opts: SecureChannelListenerNodeOpts,
 
-    /// Specify an address for this listener
-    bind: Address,
-    /// Pre-known Identifiers of the other side
-    #[clap(short, long)]
+    /// Address for this listener
+    address: Address,
+    /// Authorized Identifiers of secure channel initators
+    #[clap(short, long, value_name = "IDENTIFIER")]
     authorized_identifier: Option<Vec<IdentityIdentifier>>,
+}
+
+#[derive(Clone, Debug, Args)]
+pub struct SecureChannelListenerNodeOpts {
+    /// Node at which to create the listener
+    #[clap(global = true, long, value_name = "NODE", default_value = "default")]
+    pub at: String,
 }
 
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) -> anyhow::Result<()> {
         let cfg = opts.config;
-        let port = match cfg.select_node(&command.node_opts.api_node) {
+        let port = match cfg.select_node(&command.node_opts.at) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -46,7 +52,7 @@ pub async fn create_listener(
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     let CreateCommand {
-        bind: addr,
+        address: addr,
         authorized_identifier: authorized_identifiers,
         ..
     } = cmd;
