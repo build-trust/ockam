@@ -14,15 +14,19 @@ use stm32f4xx_hal as hal;
 #[cfg(feature = "stm32h7")]
 use stm32h7xx_hal as hal;
 
-#[cfg(any(feature = "atsame54", feature = "pic32"))]
-use embedded_hal;
+#[cfg(feature = "atsame54")]
+use atsame54_xpro_embedded_hal as embedded_hal;
 #[cfg(any(feature = "stm32f4", feature = "stm32h7"))]
 use hal::hal as embedded_hal;
+#[cfg(feature = "pic32")]
+use pic32_embedded_hal as embedded_hal;
 
-#[cfg(not(feature = "atsame54"))]
-use hal::time::MilliSeconds;
 #[cfg(feature = "atsame54")]
-use hal::time::Milliseconds as MilliSeconds;
+use atsame54_xpro::time::Milliseconds as MilliSeconds;
+#[cfg(any(feature = "stm32h7", feature = "pic32"))]
+use hal::time::MilliSeconds;
+#[cfg(feature = "stm32f4")]
+use stm32f4xx_hal_fugit::MillisDurationU32 as MilliSeconds;
 
 mod ble_uart;
 
@@ -39,9 +43,9 @@ use bluenrg::gatt::Commands;
 use bluenrg::BlueNRG;
 use bluetooth_hci::host::uart::Hci;
 
-use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::io;
+use ockam_core::{async_trait, Result};
 
 use crate::driver::BleEvent;
 use crate::driver::{BleServerDriver, BleStreamDriver};
@@ -410,7 +414,7 @@ pub fn get_bd_addr() -> bluetooth_hci::BdAddr {
 /// get a unique hardware address for device
 pub fn get_bd_addr() -> bluetooth_hci::BdAddr {
     let sn: &[u8; 12] = stm32_device_signature::device_id();
-    let id: [u8; 3] = fletcher_24(&sn);
+    let id: [u8; 3] = fletcher_24(sn);
     // https://www.adminsub.net/mac-address-finder/stmicroelectronics
     let bytes: [u8; 6] = [id[0], id[1], id[2], 0xE1, 0x80, 0x00];
     bluetooth_hci::BdAddr(bytes)
@@ -419,7 +423,7 @@ pub fn get_bd_addr() -> bluetooth_hci::BdAddr {
 #[cfg(feature = "pic32")]
 /// get a unique hardware address for device
 pub fn get_bd_addr() -> bluetooth_hci::BdAddr {
-    let sn: &[u8; 12] = &[
+    let sn: [u8; 12] = [
         // TODO get serial number from processor
         01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12,
     ];

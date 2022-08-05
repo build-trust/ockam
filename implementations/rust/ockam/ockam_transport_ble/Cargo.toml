@@ -58,26 +58,25 @@ use_btleplug = [ "btleplug" ]
 
 # Processor Feature: TODO move this into its own "Ockam Addon" crate
 atsame54 = [
-    "embedded-hal", # TODO atsame54_xpro declares hal::hal as private
     "atsame54_xpro",
+    "atsame54_xpro-embedded-hal", # atsame54_xpro declares hal::hal as private
 ]
 
 # Processor Feature: TODO move this into its own "Ockam Addon" crate
 stm32f4 = [
-    "embedded-hal", # TODO atsame54_xpro declares hal::hal as private
     "stm32f4xx-hal",
+    "stm32f4xx-hal-fugit", # stm32f4xx-hal deprecated hal::time::Miliseconds
+    "stm32-device-signature/stm32f4",
 ]
 
 # Processor Feature: TODO move this into its own "Ockam Addon" crate
 stm32h7 = [
-    "embedded-hal", # TODO atsame54_xpro declares hal::hal as private
     "stm32h7xx-hal",
     "stm32-device-signature/stm32h75x",
 ]
 
 # Processor Feature: TODO move this into its own "Ockam Addon" crate
 pic32 = [
-    "embedded-hal", # TODO pic32-hal declares hal::hal as private
     "pic32-hal",
 ]
 pic32mx1xxfxxxb = ["pic32", "pic32-hal/pic32mx1xxfxxxb"]
@@ -94,8 +93,8 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 tracing = { version = "0.1", default_features = false }
 
 # Target os: TODO move this into its own "Ockam Addon" crate
-btleplug = { version = "0.9.0", optional = true }
-uuid = { version = "0.8.2", optional = true }
+btleplug = { version = "0.10.0", optional = true }
+uuid = { version = "1.1.2", optional = true }
 
 # Target baremetal: TODO move this into its own "Ockam Addon" crate
 bluenrg = { version = "0.1.0", default-features = false, features = ["ms"], optional = true }
@@ -104,24 +103,30 @@ nb = { version = "1.0.0", optional = true }
 heapless = { version = "0.7.7", optional = true }
 
 # Processor atsame: TODO move this into its own "Ockam Addon" crate
-atsame54_xpro = { version = "0.2.0", optional = true }
-embedded-hal = { version = "0.2.3", optional = true }
+atsame54_xpro = { version = "0.4.0", optional = true }
+atsame54_xpro-embedded-hal = { package = "embedded-hal", version = "0.2.3", optional = true } # TODO
 
 # Processor stm32: TODO move this into its own "Ockam Addon" crate
 stm32-device-signature = { version = "0.3.3", optional = true }
-stm32f4xx-hal = { version = "0.9.0", features = ["rt", "stm32f407"], optional = true }
-stm32h7xx-hal = { version = "0.9.0", features = ["rt", "stm32h747cm7"], optional = true }
+
+# Processor stm32f4: TODO move this into its own "Ockam Addon" crate
+stm32f4xx-hal = { version = "0.13.2", features = ["rt", "stm32f407"], optional = true }
+stm32f4xx-hal-fugit = { package = "fugit", version = "0.3.5", optional = true }
+
+# Processor stm32h7: TODO move this into its own "Ockam Addon" crate
+stm32h7xx-hal = { version = "0.12.2", features = ["rt", "stm32h747cm7"], optional = true }
 
 # Processor pic32: TODO move this into its own "Ockam Addon" crate
-pic32-hal = { version = "0.4.0", optional = true }
+pic32-hal = { version = "0.6.1", optional = true }
+pic32-embedded-hal = { package = "embedded-hal", version = "0.2.3", optional = true } # TODO
 
 # Architecture ARM: TODO move this into its own "Ockam Addon" crate
 [target.'cfg(target_arch = "arm")'.dependencies]
-cortex-m = "0.7.3"
+cortex-m = "0.7.5"
 
 # Architecture RISCV: TODO move this into its own "Ockam Addon" crate
 [target.'cfg(any(target_arch = "riscv32", target_arch = "riscv64"))'.dependencies]
-riscv = "0.7.0"
+riscv = "0.8.0"
 
 [dev-dependencies]
 ockam_identity = { path = "../ockam_identity", version = "^0.56.0" }
