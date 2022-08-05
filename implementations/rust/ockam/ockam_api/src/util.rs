@@ -1,7 +1,7 @@
 use core::str::FromStr;
 use ockam::{Address, TCP};
 use ockam_core::{Route, LOCAL};
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Ockam, Tcp};
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Service, Tcp};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use std::net::{SocketAddrV4, SocketAddrV6};
 
@@ -35,8 +35,8 @@ pub fn multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
                 }
                 rb = rb.append(Address::new(TCP, &*host))
             }
-            Ockam::CODE => {
-                let local = p.cast::<Ockam>()?;
+            Service::CODE => {
+                let local = p.cast::<Service>()?;
                 rb = rb.append(Address::new(LOCAL, &*local))
             }
             other => {
@@ -63,8 +63,8 @@ pub fn multiaddr_to_addr(ma: &MultiAddr) -> Option<Address> {
                 }
             }
         }
-        Ockam::CODE => {
-            let local = proto.cast::<Ockam>()?;
+        Service::CODE => {
+            let local = proto.cast::<Service>()?;
             return Some(Address::new(LOCAL, &*local));
         }
         _ => {}
@@ -92,7 +92,7 @@ pub fn route_to_multiaddr(r: &Route) -> Option<MultiAddr> {
                     ma.push_back(DnsAddr::new(a.address())).ok()?
                 }
             }
-            LOCAL => ma.push_back(Ockam::new(a.address())).ok()?,
+            LOCAL => ma.push_back(Service::new(a.address())).ok()?,
             other => {
                 error!(target: "ockam_api", transport = %other, "unsupported transport type");
                 return None;

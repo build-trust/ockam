@@ -1,5 +1,5 @@
 use super::{Buffer, Checked, Code, Codec, Protocol};
-use crate::proto::{DnsAddr, Ockam, Tcp};
+use crate::proto::{DnsAddr, Service, Tcp};
 use crate::Error;
 use core::fmt;
 use unsigned_varint::decode;
@@ -57,10 +57,10 @@ impl Codec for StdCodec {
                 let (x, y) = input.split_at(len);
                 Ok((Checked(x), y))
             }
-            Ockam::CODE => {
+            Service::CODE => {
                 let (len, input) = decode::usize(input)?;
                 if input.len() < len {
-                    return Err(Error::required_bytes(Ockam::CODE, len));
+                    return Err(Error::required_bytes(Service::CODE, len));
                 }
                 let (x, y) = input.split_at(len);
                 Ok((Checked(x), y))
@@ -77,7 +77,7 @@ impl Codec for StdCodec {
             crate::proto::Ip6::CODE => crate::proto::Ip6::read_bytes(input).is_ok(),
             Tcp::CODE => Tcp::read_bytes(input).is_ok(),
             DnsAddr::CODE => DnsAddr::read_bytes(input).is_ok(),
-            Ockam::CODE => Ockam::read_bytes(input).is_ok(),
+            Service::CODE => Service::read_bytes(input).is_ok(),
             _ => false,
         }
     }
@@ -107,8 +107,8 @@ impl Codec for StdCodec {
                 DnsAddr::read_str(value)?.write_bytes(buf);
                 Ok(())
             }
-            Ockam::PREFIX => {
-                Ockam::read_str(value)?.write_bytes(buf);
+            Service::PREFIX => {
+                Service::read_str(value)?.write_bytes(buf);
                 Ok(())
             }
             _ => Err(Error::unregistered_prefix(prefix)),
@@ -140,8 +140,8 @@ impl Codec for StdCodec {
                 DnsAddr::read_bytes(value)?.write_str(f)?;
                 Ok(())
             }
-            Ockam::CODE => {
-                Ockam::read_bytes(value)?.write_str(f)?;
+            Service::CODE => {
+                Service::read_bytes(value)?.write_str(f)?;
                 Ok(())
             }
             _ => Err(Error::unregistered(code)),

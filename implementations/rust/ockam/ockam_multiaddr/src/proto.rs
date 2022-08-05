@@ -200,17 +200,17 @@ impl<'a> Protocol<'a> for DnsAddr<'a> {
     }
 }
 
-/// A local Ockam worker address.
+/// A service name.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Ockam<'a>(Cow<'a, str>);
+pub struct Service<'a>(Cow<'a, str>);
 
-impl<'a> Ockam<'a> {
+impl<'a> Service<'a> {
     pub fn new<S: Into<Cow<'a, str>>>(s: S) -> Self {
-        Ockam(s.into())
+        Service(s.into())
     }
 }
 
-impl Deref for Ockam<'_> {
+impl Deref for Service<'_> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
@@ -218,17 +218,17 @@ impl Deref for Ockam<'_> {
     }
 }
 
-impl<'a> Protocol<'a> for Ockam<'a> {
+impl<'a> Protocol<'a> for Service<'a> {
     const CODE: Code = Code::new(62526);
-    const PREFIX: &'static str = "ockam";
+    const PREFIX: &'static str = "service";
 
     fn read_str(input: Checked<&'a str>) -> Result<Self, Error> {
-        Ok(Ockam(Cow::Borrowed(input.0)))
+        Ok(Service(Cow::Borrowed(input.0)))
     }
 
     fn read_bytes(input: Checked<&'a [u8]>) -> Result<Self, Error> {
         let s = str::from_utf8(&input).map_err(Error::message)?;
-        Ok(Ockam(Cow::Borrowed(s)))
+        Ok(Service(Cow::Borrowed(s)))
     }
 
     fn write_str(&self, f: &mut fmt::Formatter) -> Result<(), Error> {
