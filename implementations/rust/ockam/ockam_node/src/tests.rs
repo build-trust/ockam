@@ -40,7 +40,6 @@ fn start_and_shutdown_node__many_iterations__should_not_fail() {
             .unwrap()
     }
 }
-
 struct SimpleWorker {
     initialize_was_called: Arc<AtomicBool>,
     shutdown_was_called: Arc<AtomicBool>,
@@ -106,6 +105,28 @@ async fn simple_worker__run_node_lifecycle__worker_lifecycle_should_be_full(
     assert!(initialize_was_called.load(Ordering::Relaxed));
     assert!(shutdown_was_called.load(Ordering::Relaxed));
     Ok(())
+}
+
+struct DummyProcessor;
+
+#[async_trait]
+impl Processor for DummyProcessor {
+    type Context = Context;
+
+    async fn process(&mut self, _ctx: &mut Context) -> Result<bool> {
+        Ok(true)
+    }
+}
+
+#[ockam_macros::test(crate = "crate")]
+async fn starting_processor_with_dup_address_should_fail(ctx: &mut Context) -> Result<()> {
+    ctx.start_processor("dummy_processor", DummyProcessor)
+        .await?;
+    assert!(ctx
+        .start_processor("dummy_processor", DummyProcessor)
+        .await
+        .is_err());
+    ctx.stop().await
 }
 
 struct CountingProcessor {
@@ -562,4 +583,11 @@ async fn empty_macro_test_timed_out(ctx: &mut Context) -> Result<()> {
     ctx.start_worker("dummy_worker", DummyWorker).await?;
     sleep(Duration::from_millis(100)).await;
     Ok(())
+}
+
+#[ockam_macros::test(crate = "crate")]
+async fn starting_worker_with_dup_address_should_fail(ctx: &mut Context) -> Result<()> {
+    ctx.start_worker("dummy_worker", DummyWorker).await?;
+    assert!(ctx.start_worker("dummy_worker", DummyWorker).await.is_err());
+    ctx.stop().await
 }

@@ -27,7 +27,10 @@ async fn start(
     senders: SenderPair,
     reply: &SmallSender<NodeReplyResult>,
 ) -> Result<()> {
+    router.check_addr_not_exist(&addr, reply).await?;
+
     debug!("Starting new processor '{}'", &addr);
+
     let SenderPair { msgs, ctrl } = senders;
 
     let record = AddressRecord::new(
