@@ -1,5 +1,4 @@
 use clap::Args;
-use std::io;
 use std::str::FromStr;
 
 use ockam::{Context, TcpTransport};

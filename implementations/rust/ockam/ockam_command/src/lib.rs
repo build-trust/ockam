@@ -242,9 +242,10 @@ pub enum OckamSubcommand {
 }
 
 fn replace_hyphen_with_stdin(s: String) -> String {
+    use std::io;
     if s.contains("/-") {
         let mut buffer = String::new();
-        std::io::stdin()
+        io::stdin()
             .read_line(&mut buffer)
             .expect("could not read from standard input");
         let args_from_stdin = buffer
@@ -256,7 +257,7 @@ fn replace_hyphen_with_stdin(s: String) -> String {
         s.replace("/-", &args_from_stdin)
     } else if s.contains("-/") {
         let mut buffer = String::new();
-        std::io::stdin()
+        io::stdin()
             .read_line(&mut buffer)
             .expect("could not read from standard input");
 
