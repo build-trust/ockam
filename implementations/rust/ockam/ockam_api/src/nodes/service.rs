@@ -286,13 +286,26 @@ impl NodeManager {
                 ))
                 .to_vec()?,
 
-            // ==*== Transports ==*==
-            // TODO: Get all transports
-            (Get, ["node", "transport"]) => Response::ok(req.id())
+            // ==*== Tcp Connection ==*==
+            // TODO: Get all tcp connections
+            (Get, ["node", "tcp", "connection"]) => Response::ok(req.id())
                 .body(TransportList::new(self.get_transports()))
                 .to_vec()?,
-            (Post, ["node", "transport"]) => self.add_transport(req, dec).await?.to_vec()?,
-            (Delete, ["node", "transport"]) => self.delete_transport(req, dec).await?.to_vec()?,
+            (Post, ["node", "tcp", "connection"]) => {
+                self.add_transport(req, dec).await?.to_vec()?
+            }
+            (Delete, ["node", "tcp", "connection"]) => {
+                self.delete_transport(req, dec).await?.to_vec()?
+            }
+
+            // ==*== Tcp Listeners ==*==
+            (Get, ["node", "tcp", "listener"]) => Response::ok(req.id())
+                .body(TransportList::new(self.get_transports()))
+                .to_vec()?,
+            (Post, ["node", "tcp", "listener"]) => self.add_transport(req, dec).await?.to_vec()?,
+            (Delete, ["node", "tcp", "listener"]) => {
+                self.delete_transport(req, dec).await?.to_vec()?
+            }
 
             // ==*== Vault ==*==
             (Post, ["node", "vault"]) => self.create_vault(req, dec).await?.to_vec()?,
