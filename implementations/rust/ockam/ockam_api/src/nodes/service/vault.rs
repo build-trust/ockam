@@ -8,7 +8,7 @@ use ockam::vault::storage::FileStorage;
 use ockam::vault::Vault;
 use ockam::Result;
 use ockam_core::errcode::{Kind, Origin};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 impl NodeManager {
@@ -16,6 +16,10 @@ impl NodeManager {
         self.vault
             .as_ref()
             .ok_or_else(|| ApiError::generic("Vault doesn't exist"))
+    }
+
+    pub fn default_vault_path(node_dir: &Path) -> PathBuf {
+        node_dir.join("vault.json")
     }
 
     pub(super) async fn create_vault_impl(
@@ -36,7 +40,7 @@ impl NodeManager {
             };
         }
 
-        let path = path.unwrap_or_else(|| self.node_dir.join("vault.json"));
+        let path = path.unwrap_or_else(|| Self::default_vault_path(&self.node_dir));
 
         let vault_storage = FileStorage::create(path.clone()).await?;
         let vault = Vault::new(Some(Arc::new(vault_storage)));

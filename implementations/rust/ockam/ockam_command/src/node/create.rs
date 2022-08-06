@@ -1,6 +1,7 @@
 use clap::Args;
 use rand::prelude::random;
 
+use std::sync::Arc;
 use std::{
     env::current_exe,
     fs::OpenOptions,
@@ -18,11 +19,16 @@ use crate::{
     },
     CommandGlobalOpts,
 };
+use ockam::identity::Identity;
 use ockam::{Context, TcpTransport};
+use ockam_api::config::cli;
+use ockam_api::nodes::IdentityOverride;
 use ockam_api::{
     nodes::models::transport::{TransportMode, TransportType},
     nodes::{NodeManager, NODEMANAGER_ADDR},
 };
+use ockam_vault::storage::FileStorage;
+use ockam_vault::Vault;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -208,7 +214,56 @@ impl CreateCommand {
     }
 }
 
+async fn create_identity_override(
+    ctx: &Context,
+    cfg: &OckamConfig,
+) -> anyhow::Result<IdentityOverride> {
+    // Get default root vault (create if needed)
+    let default_vault_path = cfg.get_default_vault_path().unwrap_or_else(|| {
+        let default_vault_path = cli::OckamConfig::directories()
+            .config_dir()
+            .join("default_vault.json");
+
+        cfg.set_default_vault_path(Some(default_vault_path.clone()));
+
+        default_vault_path
+    });
+
+    let storage = FileStorage::create(default_vault_path.clone()).await?;
+    let vault = Vault::new(Some(Arc::new(storage)));
+
+    // Get default root identity (create if needed)
+    let identity = match cfg.get_default_identity() {
+        None => {
+            let identity = Identity::create(ctx, &vault).await?;
+            let exported_data = identity.export().await?;
+            cfg.set_default_identity(Some(exported_data));
+
+            identity
+        }
+        Some(identity) => {
+            // Just to check validity
+            Identity::import(ctx, &identity, &vault).await?
+        }
+    };
+
+    cfg.atomic_update().run()?;
+
+    let identity_override = IdentityOverride {
+        identity: identity.export().await?,
+        vault_path: default_vault_path,
+    };
+
+    Ok(identity_override)
+}
+
 async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::Result<()> {
+    let identity_override = if c.skip_defaults {
+        None
+    } else {
+        Some(create_identity_override(&ctx, &cfg).await?)
+    };
+
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = c.tcp_listener_address;
     tcp.listen(&bind).await?;
@@ -218,6 +273,7 @@ async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::
         &ctx,
         c.node_name,
         node_dir,
+        identity_override,
         c.skip_defaults,
         (TransportType::Tcp, TransportMode::Listen, bind),
         tcp,

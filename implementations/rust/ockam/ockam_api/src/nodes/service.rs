@@ -75,12 +75,19 @@ pub struct NodeManager {
     registry: Registry,
 }
 
+pub struct IdentityOverride {
+    pub identity: Vec<u8>,
+    pub vault_path: PathBuf,
+}
+
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
     pub async fn create(
         ctx: &Context,
         node_name: String,
         node_dir: PathBuf,
+        // Should be passed only when creating fresh node and we want it to get default root Identity
+        identity_override: Option<IdentityOverride>,
         skip_defaults: bool,
         api_transport: (TransportType, TransportMode, String),
         tcp_transport: TcpTransport,
@@ -92,20 +99,16 @@ impl NodeManager {
         let config = Config::<NodeManConfig>::load(&node_dir, "config");
 
         // Check if we had existing AuthenticatedStorage, create with default location otherwise
-        let authenticated_storage_path = config
-            .inner()
-            .read()
-            .unwrap()
-            .authenticated_storage_path
-            .clone();
+        let authenticated_storage_path = config.readlock_inner().authenticated_storage_path.clone();
         let authenticated_storage = {
             let authenticated_storage_path = match authenticated_storage_path {
                 Some(p) => p,
                 None => {
                     let default_location = node_dir.join("authenticated_storage.lmdb");
 
-                    config.inner().write().unwrap().authenticated_storage_path =
+                    config.writelock_inner().authenticated_storage_path =
                         Some(default_location.clone());
+                    config.atomic_update().run().map_err(map_anyhow_err)?;
 
                     default_location
                 }
@@ -116,8 +119,21 @@ impl NodeManager {
             storage
         };
 
+        if let Some(identity_override) = identity_override {
+            // Copy vault file, update config
+            let vault_path = Self::default_vault_path(&node_dir);
+            std::fs::copy(&identity_override.vault_path, &vault_path)
+                .map_err(|_| ApiError::generic("Error while copying default node"))?;
+
+            config.writelock_inner().vault_path = Some(vault_path);
+            config.writelock_inner().identity = Some(identity_override.identity);
+            config.writelock_inner().identity_was_overridden = true;
+
+            config.atomic_update().run().map_err(map_anyhow_err)?;
+        }
+
         // Check if we had existing Vault
-        let vault_path = config.inner().read().unwrap().vault_path.clone();
+        let vault_path = config.readlock_inner().vault_path.clone();
         let vault = match vault_path {
             Some(vault_path) => {
                 let vault_storage = FileStorage::create(vault_path).await?;
@@ -129,7 +145,7 @@ impl NodeManager {
         };
 
         // Check if we had existing Identity
-        let identity_info = config.inner().read().unwrap().identity.clone();
+        let identity_info = config.readlock_inner().identity.clone();
         let identity = match identity_info {
             Some(identity) => match vault.as_ref() {
                 Some(vault) => Some(Identity::import(ctx, &identity, vault).await?),
@@ -137,8 +153,6 @@ impl NodeManager {
             },
             None => None,
         };
-
-        config.atomic_update().run().map_err(map_anyhow_err)?;
 
         let mut s = Self {
             node_name,
@@ -468,6 +482,7 @@ pub(crate) mod tests {
                 ctx,
                 "node".to_string(),
                 node_dir.into_path(),
+                None,
                 true,
                 (
                     TransportType::Tcp,
@@ -500,6 +515,7 @@ pub(crate) mod tests {
                 ctx,
                 "node".to_string(),
                 node_dir.into_path(),
+                None,
                 true,
                 (
                     TransportType::Tcp,

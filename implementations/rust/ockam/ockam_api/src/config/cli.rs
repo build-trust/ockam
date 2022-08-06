@@ -28,6 +28,8 @@ pub struct OckamConfig {
     pub directories: Option<ProjectDirs>,
     pub api_node: String,
     pub nodes: BTreeMap<String, NodeConfig>,
+    pub default_identity: Option<Vec<u8>>,
+    pub default_vault_path: Option<PathBuf>,
 }
 
 impl ConfigValues for OckamConfig {
@@ -36,6 +38,8 @@ impl ConfigValues for OckamConfig {
             directories: Some(Self::directories()),
             api_node: "default".into(),
             nodes: BTreeMap::new(),
+            default_identity: None,
+            default_vault_path: None,
         }
     }
 }

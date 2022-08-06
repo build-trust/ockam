@@ -10,6 +10,8 @@ pub struct NodeManConfig {
     pub vault_path: Option<PathBuf>,
     /// Exported identity value
     pub identity: Option<Vec<u8>>,
+    /// Identity was overridden
+    pub identity_was_overridden: bool,
 }
 
 impl ConfigValues for NodeManConfig {

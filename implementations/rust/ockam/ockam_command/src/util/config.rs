@@ -58,6 +58,14 @@ impl OckamConfig {
         self.inner.readlock_inner().api_node.clone()
     }
 
+    pub fn get_default_vault_path(&self) -> Option<PathBuf> {
+        self.inner.readlock_inner().default_vault_path.clone()
+    }
+
+    pub fn get_default_identity(&self) -> Option<Vec<u8>> {
+        self.inner.readlock_inner().default_identity.clone()
+    }
+
     /// Get the node state directory
     pub fn get_node_dir(&self, name: &str) -> Result<PathBuf, ConfigError> {
         let inner = self.inner.readlock_inner();
@@ -144,6 +152,14 @@ impl OckamConfig {
     }
 
     ///////////////////// WRITE ACCESSORS //////////////////////////////
+
+    pub fn set_default_vault_path(&self, default_vault_path: Option<PathBuf>) {
+        self.inner.writelock_inner().default_vault_path = default_vault_path
+    }
+
+    pub fn set_default_identity(&self, default_identity: Option<Vec<u8>>) {
+        self.inner.writelock_inner().default_identity = default_identity;
+    }
 
     /// Add a new node to the configuration for future lookup
     pub fn create_node(&self, name: &str, port: u16) -> Result<(), ConfigError> {
