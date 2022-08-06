@@ -1,7 +1,8 @@
-use crate::CommandGlobalOpts;
+use crate::{CommandGlobalOpts, OckamConfig};
 use clap::Args;
 use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
+use std::ops::Deref;
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
@@ -16,6 +17,10 @@ pub struct DeleteCommand {
     /// Should the node be terminated with SIGKILL instead of SIGTERM
     #[clap(display_order = 900, long, short)]
     sigkill: bool,
+
+    /// Clean up config directories and all nodes state directories
+    #[clap(display_order = 901, long, short)]
+    force: bool,
 }
 
 impl DeleteCommand {
@@ -32,8 +37,13 @@ impl DeleteCommand {
 
                 inner.nodes.iter().map(|(name, _)| name.clone()).collect()
             };
+
             for node in node_names {
-                delete_node(&opts, &node, command.sigkill);
+                delete_node(&opts, &node, command.sigkill)
+            }
+
+            if command.force {
+                remove_config_dir(cfg);
             }
         } else {
             delete_node(&opts, &command.node_name, command.sigkill);
@@ -75,4 +85,17 @@ pub fn delete_node(opts: &CommandGlobalOpts, node_name: &String, sigkill: bool) 
     }
 
     eprintln!("Deleted node '{}'", node_name);
+}
+
+fn remove_config_dir(cfg: &OckamConfig) {
+    let inner = cfg.deref().writelock_inner();
+    let config_dir = inner
+        .directories
+        .as_ref()
+        .expect("configuration is in an invalid state")
+        .config_dir();
+
+    if let Err(e) = std::fs::remove_dir_all(config_dir) {
+        eprintln!("Failed to delete config directory: {}", e);
+    }
 }
