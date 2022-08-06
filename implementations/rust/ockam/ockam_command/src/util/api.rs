@@ -40,8 +40,7 @@ pub(crate) fn create_tcp_connection(
     let payload =
         models::transport::CreateTransport::new(models::transport::TransportType::Tcp, tt, addr);
     let mut buf = vec![];
-    // TODO: change path to /node/tcp_connection in api::service <======================================
-    Request::builder(Method::Post, "/node/transport")
+    Request::builder(Method::Post, "/node/tcp/connection")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)
@@ -54,8 +53,7 @@ pub(crate) fn create_tcp_listener(cmd: &crate::tcp::listener::CreateCommand) -> 
     let payload =
         models::transport::CreateTransport::new(models::transport::TransportType::Tcp, tt, addr);
     let mut buf = vec![];
-    // TODO: change path to /node/tcp_listener in api::service <======================================
-    Request::builder(Method::Post, "/node/transport")
+    Request::builder(Method::Post, "/node/tcp/listener")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)
@@ -66,8 +64,7 @@ pub(crate) fn delete_tcp_connection(
     cmd: &crate::tcp::connection::DeleteCommand,
 ) -> Result<Vec<u8>> {
     let mut buf = vec![];
-    // TODO: change path to /node/tcp_connection in api::service <=====================================
-    Request::builder(Method::Delete, "/node/transport")
+    Request::builder(Method::Delete, "/node/tcp/connection")
         .body(models::transport::DeleteTransport::new(&cmd.id, cmd.force))
         .encode(&mut buf)?;
 
@@ -77,8 +74,7 @@ pub(crate) fn delete_tcp_connection(
 /// Construct a request to delete node tcp connection
 pub(crate) fn delete_tcp_listener(cmd: &crate::tcp::listener::DeleteCommand) -> Result<Vec<u8>> {
     let mut buf = vec![];
-    // TODO: change path to /node/tcp_connection in api::service <=====================================
-    Request::builder(Method::Delete, "/node/transport")
+    Request::builder(Method::Delete, "/node/tcp/listener")
         .body(models::transport::DeleteTransport::new(&cmd.id, cmd.force))
         .encode(&mut buf)?;
 
