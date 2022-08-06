@@ -194,7 +194,20 @@ impl NodeManager {
         self.start_uppercase_service_impl(ctx, "uppercase".into())
             .await?;
         self.start_echoer_service_impl(ctx, "echo".into()).await?;
-        self.create_secure_channel_listener_impl("api".into(), None)
+
+        let authorized_identifiers = if self.config.readlock_inner().identity_was_overridden {
+            if let Some(identity) = &self.identity {
+                // If we had overridden Identity - we should trust only this identity,
+                // otherwise - trust all
+                Some(vec![identity.identifier()?])
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        self.create_secure_channel_listener_impl("api".into(), authorized_identifiers)
             .await?;
 
         Ok(())
