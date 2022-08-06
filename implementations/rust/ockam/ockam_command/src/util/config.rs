@@ -41,8 +41,8 @@ pub enum ConfigError {
 impl OckamConfig {
     pub fn load() -> Self {
         let directories = cli::OckamConfig::directories();
-        let config_path = directories.config_dir().join("config.json");
-        let inner = Config::<cli::OckamConfig>::load(config_path);
+        let config_dir = directories.config_dir();
+        let inner = Config::<cli::OckamConfig>::load(config_dir, "config");
         inner.writelock_inner().directories = Some(directories);
         Self { inner }
     }
@@ -221,8 +221,7 @@ impl Deref for StartupConfig {
 
 impl StartupConfig {
     pub fn load(node_dir: PathBuf) -> Self {
-        let config_path = node_dir.join("startup.json");
-        let inner = Config::<cli::StartupConfig>::load(config_path);
+        let inner = Config::<cli::StartupConfig>::load(&node_dir, "startup");
         Self { inner }
     }
 

@@ -18,13 +18,18 @@ pub trait ConfigValues: Serialize + DeserializeOwned {
 
 #[derive(Clone)]
 pub struct Config<V: ConfigValues> {
-    path: PathBuf,
+    config_dir: PathBuf,
+    config_name: String,
     inner: Arc<RwLock<V>>,
 }
 
 impl<V: ConfigValues> Config<V> {
-    pub fn dir(&self) -> &Path {
-        self.path.parent().unwrap()
+    pub fn config_dir(&self) -> &Path {
+        &self.config_dir
+    }
+
+    pub fn config_name(&self) -> &str {
+        &self.config_name
     }
 
     pub fn inner(&self) -> &Arc<RwLock<V>> {
@@ -42,15 +47,16 @@ impl<V: ConfigValues> Config<V> {
     }
 
     /// Attempt to load a config.  If none exists, one is created and then returned.
-    pub fn load(config_path: PathBuf) -> Self {
-        let dir = config_path
-            .parent()
-            .expect("Configuration path has no parent directory");
-
-        if let Err(e) = create_dir_all(&dir) {
-            eprintln!("failed to create configuration directory {:?}: {}", &dir, e);
+    pub fn load(config_dir: &Path, config_name: &str) -> Self {
+        if let Err(e) = create_dir_all(config_dir) {
+            eprintln!(
+                "failed to create configuration directory {:?}: {}",
+                config_dir, e
+            );
             std::process::exit(-1);
         }
+
+        let config_path = config_dir.join(format!("{}.json", config_name));
 
         let inner = match File::open(&config_path) {
             Ok(ref mut f) => {
@@ -64,7 +70,7 @@ impl<V: ConfigValues> Config<V> {
                 })
             }
             Err(_) => {
-                let new_inner = V::default_values(dir);
+                let new_inner = V::default_values(config_dir);
                 let json: String =
                     serde_json::to_string_pretty(&new_inner).expect("failed to serialise config");
                 let mut f =
@@ -76,7 +82,8 @@ impl<V: ConfigValues> Config<V> {
         };
 
         Self {
-            path: config_path,
+            config_dir: config_dir.to_path_buf(),
+            config_name: config_name.to_string(),
             inner: Arc::new(RwLock::new(inner)),
         }
     }
@@ -84,8 +91,8 @@ impl<V: ConfigValues> Config<V> {
     /// Atomically update the configuration
     pub fn atomic_update(&self) -> AtomicUpdater<V> {
         AtomicUpdater::new(
-            self.dir().to_path_buf(),
-            "config".to_string(),
+            self.config_dir().to_path_buf(),
+            self.config_name().to_string(),
             self.inner.clone(),
         )
     }
