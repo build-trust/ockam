@@ -9,7 +9,7 @@ use ockam_api::nodes::{
     NODEMANAGER_ADDR,
 };
 
-#[derive(Clone, Debug, Args)]
+#[derive(Args, Clone, Debug)]
 pub struct ListCommand {
     #[clap(flatten)]
     node_opts: NodeOpts,
@@ -21,22 +21,29 @@ impl ListCommand {
         let port = match cfg.select_node(&command.node_opts.api_node) {
             Some(cfg) => cfg.port,
             None => {
-                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
+                eprintln!("No such node available. Run `ockam node list` to list available nodes");
                 std::process::exit(-1);
             }
         };
-        connect_to(port, (), query_transports);
+
+        connect_to(port, (), list_listeners);
     }
 }
 
-pub async fn query_transports(ctx: Context, _: (), mut base_route: Route) -> anyhow::Result<()> {
-    let resp: Vec<u8> = ctx
+pub async fn list_listeners(ctx: Context, _: (), mut base_route: Route) -> anyhow::Result<()> {
+    let resp: Vec<u8> = match ctx
         .send_and_receive(
             base_route.modify().append(NODEMANAGER_ADDR),
             api::query_transports()?,
         )
         .await
-        .unwrap();
+    {
+        Ok(sr_msg) => sr_msg,
+        Err(e) => {
+            eprintln!("Wasn't able to send or receive `Message`: {}", e);
+            std::process::exit(-1)
+        }
+    };
 
     let TransportList { list, .. } = api::parse_transport_list(&resp)?;
 

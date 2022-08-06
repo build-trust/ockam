@@ -13,7 +13,7 @@ mod secure_channel;
 mod secure_channel_listener;
 mod service;
 mod space;
-mod transport;
+mod tcp;
 mod util;
 mod vault;
 
@@ -28,7 +28,7 @@ use project::ProjectCommand;
 use secure_channel::SecureChannelCommand;
 use secure_channel_listener::SecureChannelListenerCommand;
 use space::SpaceCommand;
-use transport::TransportCommand;
+use tcp::{connection::TcpConnectionCommand, listener::TcpListenerCommand};
 
 // to be removed
 mod old;
@@ -142,9 +142,13 @@ pub enum OckamSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Node(NodeCommand),
 
-    /// Create, update, or delete transports
+    /// Create, update, or delete tcp connections
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    Transport(TransportCommand),
+    TcpConnection(TcpConnectionCommand),
+
+    /// Create, update, or delete tcp listeners
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    TcpListener(TcpListenerCommand),
 
     /// Manage Vault
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
@@ -310,7 +314,8 @@ pub fn run() {
         OckamSubcommand::Node(command) => NodeCommand::run(opts, command),
         OckamSubcommand::Project(command) => ProjectCommand::run(opts, command),
         OckamSubcommand::Space(command) => SpaceCommand::run(opts, command),
-        OckamSubcommand::Transport(command) => TransportCommand::run(opts, command),
+        OckamSubcommand::TcpConnection(command) => TcpConnectionCommand::run(opts, command),
+        OckamSubcommand::TcpListener(command) => TcpListenerCommand::run(opts, command),
         OckamSubcommand::Portal(command) => PortalCommand::run(opts, command),
         OckamSubcommand::Configuration(command) => ConfigurationCommand::run(opts, command),
         OckamSubcommand::Vault(command) => VaultCommand::run(opts, command),

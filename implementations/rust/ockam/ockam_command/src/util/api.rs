@@ -2,7 +2,6 @@
 
 use crate::util::DEFAULT_CLOUD_ADDRESS;
 // TODO: maybe we can remove this cross-dependency inside the CLI?
-use crate::transport;
 use minicbor::Decoder;
 
 use clap::Args;
@@ -29,34 +28,60 @@ pub(crate) fn query_transports() -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-/// Construct a request to create node transports
-pub(crate) fn create_transport(cmd: &crate::transport::CreateCommand) -> Result<Vec<u8>> {
-    // FIXME: this should not rely on CreateCommand internals!
-    let (tt, addr) = match &cmd.create_subcommand {
-        transport::CreateTypeCommand::TcpConnector { address } => {
-            (models::transport::TransportMode::Connect, address)
-        }
-        transport::CreateTypeCommand::TcpListener { bind } => {
-            (models::transport::TransportMode::Listen, bind)
-        }
-    };
+/// Construct a request to create node tcp connection
+pub(crate) fn create_tcp_connection(
+    cmd: &crate::tcp::connection::CreateCommand,
+) -> Result<Vec<u8>> {
+    let (tt, addr) = (
+        models::transport::TransportMode::Connect,
+        cmd.address.clone(),
+    );
 
     let payload =
         models::transport::CreateTransport::new(models::transport::TransportType::Tcp, tt, addr);
-
     let mut buf = vec![];
+    // TODO: change path to /node/tcp_connection in api::service <======================================
     Request::builder(Method::Post, "/node/transport")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)
 }
 
-/// Construct a request to delete node transports
-pub(crate) fn delete_transport(cmd: &transport::DeleteCommand) -> Result<Vec<u8>> {
+/// Construct a request to create node tcp listener
+pub(crate) fn create_tcp_listener(cmd: &crate::tcp::listener::CreateCommand) -> Result<Vec<u8>> {
+    let (tt, addr) = (models::transport::TransportMode::Listen, cmd.bind.clone());
+
+    let payload =
+        models::transport::CreateTransport::new(models::transport::TransportType::Tcp, tt, addr);
     let mut buf = vec![];
+    // TODO: change path to /node/tcp_listener in api::service <======================================
+    Request::builder(Method::Post, "/node/transport")
+        .body(payload)
+        .encode(&mut buf)?;
+    Ok(buf)
+}
+
+/// Construct a request to delete node tcp connection
+pub(crate) fn delete_tcp_connection(
+    cmd: &crate::tcp::connection::DeleteCommand,
+) -> Result<Vec<u8>> {
+    let mut buf = vec![];
+    // TODO: change path to /node/tcp_connection in api::service <=====================================
     Request::builder(Method::Delete, "/node/transport")
         .body(models::transport::DeleteTransport::new(&cmd.id, cmd.force))
         .encode(&mut buf)?;
+
+    Ok(buf)
+}
+
+/// Construct a request to delete node tcp connection
+pub(crate) fn delete_tcp_listener(cmd: &crate::tcp::listener::DeleteCommand) -> Result<Vec<u8>> {
+    let mut buf = vec![];
+    // TODO: change path to /node/tcp_connection in api::service <=====================================
+    Request::builder(Method::Delete, "/node/transport")
+        .body(models::transport::DeleteTransport::new(&cmd.id, cmd.force))
+        .encode(&mut buf)?;
+
     Ok(buf)
 }
 
