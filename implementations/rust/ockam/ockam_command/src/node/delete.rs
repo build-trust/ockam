@@ -32,7 +32,6 @@ impl DeleteCommand {
 
                 if inner.nodes.is_empty() {
                     eprintln!("No nodes registered on this system!");
-                    std::process::exit(0);
                 }
 
                 inner.nodes.iter().map(|(name, _)| name.clone()).collect()
