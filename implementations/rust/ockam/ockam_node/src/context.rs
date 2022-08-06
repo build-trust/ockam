@@ -296,7 +296,7 @@ impl Context {
     /// custom run loop, with access to a worker context to send and
     /// receive messages.  If your code is built around responding to
     /// message events, consider using
-    /// [`start_worker()`](Self::start_processor) instead!
+    /// [`start_worker()`](Self::start_worker) instead!
     pub async fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
     where
         P: Processor<Context = Context>,
