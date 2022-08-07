@@ -1,5 +1,4 @@
 use crate::{
-    node::NodeOpts,
     util::{api, connect_to, stop_node},
     CommandGlobalOpts,
 };
@@ -11,11 +10,26 @@ use ockam_api::{
     route_to_multiaddr, Status,
 };
 
+#[derive(Clone, Debug, Args)]
+pub struct TcpConnectionNodeOpts {
+    /// Node that will initiate the connection
+    #[clap(
+        global = true,
+        short,
+        long,
+        value_name = "NODE",
+        default_value = "default"
+    )]
+    pub from: String,
+}
+
 #[derive(Args, Clone, Debug)]
 pub struct CreateCommand {
     #[clap(flatten)]
-    node_opts: NodeOpts,
+    node_opts: TcpConnectionNodeOpts,
 
+    /// The address to connect to (required)
+    #[clap(name = "to", short, long, value_name = "ADDRESS")]
     pub address: String,
 }
 
@@ -45,7 +59,7 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
         let cfg = &opts.config;
-        let port = match cfg.select_node(&command.node_opts.api_node) {
+        let port = match cfg.select_node(&command.node_opts.from) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -56,7 +70,7 @@ impl CreateCommand {
         connect_to(port, command.clone(), create_connection);
 
         let composite = (&command).into();
-        let node = command.node_opts.api_node;
+        let node = command.node_opts.from;
 
         let startup_config = match cfg.get_launch_config(&node) {
             Ok(cfg) => cfg,
