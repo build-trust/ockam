@@ -40,9 +40,9 @@ pub struct CreateCommand {
     #[clap(display_order = 901, long, short)]
     skip_defaults: bool,
 
-    /// Specify the API address
+    /// Specify the TCP listener address
     #[clap(default_value = "127.0.0.1:0", long, short)]
-    api_address: String,
+    tcp_listener_address: String,
 
     /// JSON config to setup a foreground node
     ///
@@ -61,7 +61,7 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
         Self {
             id: "_start".into(),
             op: Operation::Node {
-                api_addr: cc.api_address.clone(),
+                api_addr: cc.tcp_listener_address.clone(),
                 node_name: cc.node_name.clone(),
             },
             params: vec![],
@@ -72,18 +72,18 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
         let cfg = &opts.config;
-        let address: SocketAddr = if &command.api_address == "127.0.0.1:0" {
+        let address: SocketAddr = if &command.tcp_listener_address == "127.0.0.1:0" {
             let port = find_available_port().expect("failed to acquire available port");
             SocketAddr::new(IpAddr::from_str("127.0.0.1").unwrap(), port)
         } else {
             command
-                .api_address
+                .tcp_listener_address
                 .parse()
-                .expect("failed to parse api address")
+                .expect("failed to parse tcp listener address")
         };
 
         let command = CreateCommand {
-            api_address: address.to_string(),
+            tcp_listener_address: address.to_string(),
             ..command
         };
 
@@ -159,7 +159,7 @@ impl CreateCommand {
                 "--no-color".to_string(),
                 "node".to_string(),
                 "create".to_string(),
-                "--api-address".to_string(),
+                "--tcp-listener-address".to_string(),
                 address.to_string(),
                 "--foreground".to_string(),
             ];
@@ -212,7 +212,7 @@ impl CreateCommand {
 
 async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
-    let bind = c.api_address;
+    let bind = c.tcp_listener_address;
     tcp.listen(&bind).await?;
 
     let node_dir = cfg.get_node_dir(&c.node_name).unwrap(); // can't fail because we already checked it
