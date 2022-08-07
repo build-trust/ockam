@@ -17,6 +17,12 @@ pub(crate) struct IdentityServiceInfo {}
 #[derive(Default)]
 pub(crate) struct AuthenticatedServiceInfo {}
 
+#[derive(Default)]
+pub(crate) struct UppercaseServiceInfo {}
+
+#[derive(Default)]
+pub(crate) struct EchoerServiceInfo {}
+
 pub(crate) struct InletInfo {
     pub(crate) bind_addr: String,
     pub(crate) worker_address: Address,
@@ -34,6 +40,8 @@ pub(crate) struct Registry {
     pub(crate) vault_services: BTreeMap<Address, VaultServiceInfo>,
     pub(crate) identity_services: BTreeMap<Address, IdentityServiceInfo>,
     pub(crate) authenticated_services: BTreeMap<Address, AuthenticatedServiceInfo>,
+    pub(crate) uppercase_services: BTreeMap<Address, UppercaseServiceInfo>,
+    pub(crate) echoer_services: BTreeMap<Address, EchoerServiceInfo>,
 
     // FIXME: wow this is a terrible way to store data
     pub(crate) inlets: BTreeMap<Alias, InletInfo>,

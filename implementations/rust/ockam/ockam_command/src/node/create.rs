@@ -12,9 +12,7 @@ use std::{
 };
 
 use crate::{
-    node::echoer::Echoer,
     node::show::query_status,
-    node::uppercase::Uppercase,
     util::{
         connect_to, embedded_node, find_available_port, ComposableSnippet, OckamConfig, Operation,
     },
@@ -225,10 +223,8 @@ async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::
         tcp,
     )
     .await?;
-    ctx.start_worker(NODEMANAGER_ADDR, node_man).await?;
 
-    ctx.start_worker("uppercase", Uppercase).await?;
-    ctx.start_worker("echoer", Echoer).await?;
+    ctx.start_worker(NODEMANAGER_ADDR, node_man).await?;
 
     Ok(())
 }

@@ -1,9 +1,7 @@
 mod create;
 mod delete;
-mod echoer;
 mod list;
 mod show;
-mod uppercase;
 
 pub(crate) use create::CreateCommand;
 use delete::DeleteCommand;
