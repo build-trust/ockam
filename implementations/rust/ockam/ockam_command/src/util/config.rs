@@ -69,13 +69,16 @@ impl OckamConfig {
     }
 
     /// Get the API port used by a node
-    pub fn get_node_port(&self, name: &str) -> Result<u16, ConfigError> {
+    pub fn get_node_port(&self, name: &str) -> u16 {
         let inner = self.inner.readlock_inner();
-        Ok(inner
+        inner
             .nodes
             .get(name)
-            .ok_or_else(|| ConfigError::NodeNotFound(name.to_string()))?
-            .port)
+            .unwrap_or_else(|| {
+                eprintln!("No such node available. Run `ockam node list` to list available nodes");
+                std::process::exit(-1);
+            })
+            .port
     }
 
     /// In the future this will actually refer to the watchdog pid or

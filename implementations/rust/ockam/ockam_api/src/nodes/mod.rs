@@ -1,7 +1,7 @@
 mod config;
 mod registry;
 
-pub(crate) mod service;
+pub mod service;
 
 pub mod models;
 

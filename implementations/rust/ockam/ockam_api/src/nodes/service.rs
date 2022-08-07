@@ -26,6 +26,7 @@ use crate::nodes::models::transport::{TransportList, TransportMode, TransportTyp
 use crate::{Method, Request, Response, Status};
 
 mod identity;
+pub mod message;
 mod portals;
 mod secure_channel;
 mod services;
@@ -385,6 +386,9 @@ impl NodeManager {
             (Put, ["v0", "enroll", "token"]) => {
                 self.authenticate_enrollment_token(ctx, req, dec).await?
             }
+
+            // ==*== Messages ==*==
+            (Post, ["v0", "message"]) => self.send_message(ctx, req, dec).await?,
 
             // ==*== Catch-all for Unimplemented APIs ==*==
             _ => {

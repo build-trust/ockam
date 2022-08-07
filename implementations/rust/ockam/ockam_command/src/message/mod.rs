@@ -1,6 +1,6 @@
-use crate::HELP_TEMPLATE;
+use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
-use send::SendCommand;
+pub use send::SendCommand;
 
 mod send;
 
@@ -18,9 +18,9 @@ pub enum MessageSubcommand {
 }
 
 impl MessageCommand {
-    pub fn run(cmd: MessageCommand) {
+    pub fn run(opts: CommandGlobalOpts, cmd: MessageCommand) {
         match cmd.subcommand {
-            MessageSubcommand::Send(cmd) => SendCommand::run(cmd),
+            MessageSubcommand::Send(cmd) => SendCommand::run(opts, cmd),
         }
     }
 }

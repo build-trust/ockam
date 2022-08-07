@@ -310,7 +310,7 @@ pub fn run() {
             GenerateEnrollmentTokenCommand::run(opts, command)
         }
         OckamSubcommand::Forwarder(command) => ForwarderCommand::run(opts, command),
-        OckamSubcommand::Message(command) => MessageCommand::run(command),
+        OckamSubcommand::Message(command) => MessageCommand::run(opts, command),
         OckamSubcommand::Node(command) => NodeCommand::run(opts, command),
         OckamSubcommand::Project(command) => ProjectCommand::run(opts, command),
         OckamSubcommand::Space(command) => SpaceCommand::run(opts, command),
