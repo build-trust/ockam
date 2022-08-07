@@ -1,3 +1,5 @@
+mod node_test;
+
 #[test]
 fn async_try_clone() {
     let t = trybuild::TestCases::new();
