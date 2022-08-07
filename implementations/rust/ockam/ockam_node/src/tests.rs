@@ -555,37 +555,6 @@ impl Worker for DummyWorker {
 }
 
 #[ockam_macros::test(crate = "crate")]
-async fn empty_macro_test_ok(ctx: &mut Context) -> Result<()> {
-    ctx.start_worker("dummy_worker", DummyWorker).await?;
-    ctx.stop().await
-}
-
-#[ockam_macros::test(crate = "crate")]
-#[should_panic]
-async fn empty_macro_test_failing(ctx: &mut Context) -> Result<()> {
-    ctx.start_worker("dummy_worker", DummyWorker).await?;
-    Result::<()>::Err(ockam_core::Error::new_without_cause(
-        ockam_core::errcode::Origin::Node,
-        ockam_core::errcode::Kind::Invalid,
-    ))
-}
-
-#[ockam_macros::test(crate = "crate")]
-#[should_panic]
-async fn empty_macro_test_panicking(ctx: &mut Context) -> Result<()> {
-    ctx.start_worker("dummy_worker", DummyWorker).await?;
-    panic!("Will hang on panic ?");
-}
-
-#[ockam_macros::test(crate = "crate", timeout = 0)]
-#[should_panic]
-async fn empty_macro_test_timed_out(ctx: &mut Context) -> Result<()> {
-    ctx.start_worker("dummy_worker", DummyWorker).await?;
-    sleep(Duration::from_millis(100)).await;
-    Ok(())
-}
-
-#[ockam_macros::test(crate = "crate")]
 async fn starting_worker_with_dup_address_should_fail(ctx: &mut Context) -> Result<()> {
     ctx.start_worker("dummy_worker", DummyWorker).await?;
     assert!(ctx.start_worker("dummy_worker", DummyWorker).await.is_err());

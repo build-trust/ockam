@@ -25,30 +25,43 @@ use crate::internals::{ast, ast::FnVariable, check, ctx::Context, symbol::*};
 /// }
 ///
 /// fn expand() {
+///     use core::panic::AssertUnwindSafe;
 ///     use core::time::Duration;
-///     use ockam_node::{NodeBuilder, tokio::time::timeout};
+///     use ockam_core::{Error, errcode::{Origin, Kind}};
+///     use ockam::{NodeBuilder, compat::{tokio::time::timeout, futures::FutureExt}};
 ///     let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
 ///     executor
 ///         .execute(async move {
-///             match timeout(Duration::from_millis(30000usize as u64), _expand(&mut ctx)).await {
-///                 Ok(r) => match r {
-///                     Err(err) => {
-///                         let _ = ctx.stop().await;
-///                         Err(err)
+///             match AssertUnwindSafe(async {
+///                 match timeout(Duration::from_millis(100u64), _my_test(&mut ctx)).await {
+///                     Ok(r) => r,
+///                     Err(_) => Err(Error::new(Origin::Node, Kind::Timeout, "Test timed out")),
+///                 }
+///             })
+///             .catch_unwind()
+///             .await
+///             {
+///                 Ok(r) => {
+///                     if r.is_err() {
+///                         let _ = AssertUnwindSafe(async { ctx.stop().await.unwrap(); })
+///                             .catch_unwind()
+///                             .await;
 ///                     }
-///                     Ok(_) => Ok(()),
-///                 },
+///                     r
+///                 }
 ///                 Err(_) => {
-///                     let _ = ctx.stop().await;
+///                     let _ = AssertUnwindSafe(async { ctx.stop().await.unwrap(); })
+///                         .catch_unwind()
+///                         .await;
 ///                     ::core::panicking::panic_fmt(::core::fmt::Arguments::new_v1(
-///                         &["Test timeout"],
+///                         &["Test panicked"],
 ///                         &[],
-///                     ))
+///                     ));
 ///                 }
 ///             }
 ///         })
-///         .expect("Executor should not fail")
-///         .expect("Test function should not fail");
+///         .expect("Test panicked")
+///         .expect("Test function returned error");
 /// }
 /// ```
 pub(crate) fn expand(
@@ -70,66 +83,55 @@ fn output(mut cont: Container) -> TokenStream {
             quote! {#ident}
         }
     };
-    let ctx_stop_stmt = quote! { #ctx_ident.stop().await };
+    let ctx_stop_stmt = quote! {
+        let _ = AssertUnwindSafe(async { #ctx_ident.stop().await.unwrap(); })
+            .catch_unwind()
+            .await;
+    };
     let test_fn = &cont.test_fn;
     let test_fn_ident = &cont.test_fn.sig.ident;
     let ockam_crate = cont.data.attrs.ockam_crate;
     let timeout_ms = cont.data.attrs.timeout_ms;
     cont.original_fn.block = parse2(quote! {
         {
+            use core::panic::AssertUnwindSafe;
             use core::time::Duration;
-            use #ockam_crate::{Context, NodeBuilder, compat::tokio::time::timeout};
-            use #ockam_crate::compat::futures::FutureExt;
-
-            async fn stop_map_err(ctx: &mut Context, res: ockam_core::Result<()>) -> ockam_core::Result<()> {
-                match res {
-                    Ok(_) => Ok(()),
-                    Err(err) => {
-                        // ?? ignoring possible error returned by ctx.stop()
-                        let _ = std::panic::AssertUnwindSafe(async { ctx.stop().await.unwrap(); })
-                            .catch_unwind()
-                            .await;
-                        Err(err)
-                    }
-                }
-            }
+            use ockam_core::{Error, errcode::{Origin, Kind}};
+            use #ockam_crate::{NodeBuilder, compat::{tokio::time::timeout, futures::FutureExt}};
 
             let (mut #ctx_ident, mut executor) = NodeBuilder::without_access_control().build();
             executor
                 .execute(async move {
-                    let catch_res = std::panic::AssertUnwindSafe(async {
-
-                        let test_result
-                                = timeout(Duration::from_millis(#timeout_ms), #test_fn_ident(&mut #ctx_ident))
-                            .await
-                            .map_err(|_| ockam_core::Error::new(ockam_core::errcode::Origin::Node,
-                                                    ockam_core::errcode::Kind::Timeout, "Test timeout") )
-                            // unwrap timeout result to get inner test result
-                            .unwrap();
-                        // stop ctx and pipe result back
-                        stop_map_err(&mut #ctx_ident, test_result).await
+                    // Wraps the test function call in a `catch_unwind` to catch possible panics.
+                    match AssertUnwindSafe(async {
+                        match timeout(Duration::from_millis(#timeout_ms), #test_fn_ident(&mut #ctx_ident)).await {
+                            // Test went well. Return result as is.
+                            Ok(r) => r,
+                            // Test timed out. Return a custom error that we can handle.
+                            Err(_) => Err(Error::new(Origin::Node, Kind::Timeout, "Test timed out"))
+                        }
                     })
                     .catch_unwind()
-                    .await;
-                    // unwrap result from catch_unwind
-                    match catch_res {
-                        // not panicked, get test result
-                        Ok(test_result) => test_result,
-
-                        Err(test_panic_cause) => {
-                            // ?? ignoring possible error returned by ctx.stop() in sake of test_panic_cause
-                            let _ = #ctx_stop_stmt;
-                            // NOTICE: still panicking in an async context after catch_unwinding
-                            // could cause hanging ?
-                            // would be better to return Err ?, like so:
-                            // ockam_core::Result::<()>::Err("Test panicked".into())
-                            // however no conversion from &str to Err is there
-                            panic!("Test panicked, caused by {:?}", test_panic_cause);
+                    .await
+                    {
+                        // Return test result.
+                        Ok(r) => {
+                            // It returned an error, so the context might not have been stopped.
+                            // In that case, we try to stop the context manually.
+                            if r.is_err() {
+                                #ctx_stop_stmt
+                            }
+                            r
+                        },
+                        // Test panicked. Stop the context and bubble up the panic to make the test fail.
+                        Err(_) => {
+                            #ctx_stop_stmt
+                            panic!("Test panicked");
                         }
                     }
                 })
-                .expect("Executor should not fail")
-                .expect("Test function should not fail")
+                .expect("Test panicked")
+                .expect("Test function returned error");
         }
     }).expect("Parsing failure");
     let input_fn = &cont.original_fn;
