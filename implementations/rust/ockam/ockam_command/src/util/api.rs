@@ -21,10 +21,19 @@ pub(crate) fn query_status() -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-/// Construct a request to query node transports
-pub(crate) fn query_transports() -> Result<Vec<u8>> {
+/// Construct a request to query node tcp connections
+pub(crate) fn list_tcp_connections() -> Result<Vec<u8>> {
     let mut buf = vec![];
-    Request::builder(Method::Get, "/node/tcp/connection").encode(&mut buf)?;
+    let builder = Request::builder(Method::Get, "/node/tcp/connection");
+    builder.encode(&mut buf)?;
+    Ok(buf)
+}
+
+/// Construct a request to query node tcp listeners
+pub(crate) fn list_tcp_listeners() -> Result<Vec<u8>> {
+    let mut buf = vec![];
+    let builder = Request::builder(Method::Get, "/node/tcp/listener");
+    builder.encode(&mut buf)?;
     Ok(buf)
 }
 
@@ -393,7 +402,7 @@ pub(crate) fn parse_status(resp: &[u8]) -> Result<models::base::NodeStatus> {
 }
 
 /// Parse the returned status response
-pub(crate) fn parse_transport_list(resp: &[u8]) -> Result<models::transport::TransportList> {
+pub(crate) fn parse_tcp_list(resp: &[u8]) -> Result<models::transport::TransportList> {
     let mut dec = Decoder::new(resp);
     let _ = dec.decode::<Response>()?;
     Ok(dec.decode::<models::transport::TransportList>()?)

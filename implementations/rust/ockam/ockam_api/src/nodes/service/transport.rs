@@ -1,5 +1,5 @@
 use crate::nodes::models::transport::{
-    CreateTransport, DeleteTransport, TransportMode, TransportStatus,
+    CreateTransport, DeleteTransport, TransportList, TransportMode, TransportStatus,
 };
 use crate::nodes::service::{random_alias, Alias};
 use crate::nodes::NodeManager;
@@ -8,12 +8,18 @@ use minicbor::Decoder;
 use ockam::Result;
 
 impl NodeManager {
-    // FIXME: return a ResponseBuilder here too!
-    pub(super) fn get_transports(&self) -> Vec<TransportStatus<'_>> {
-        self.transports
-            .iter()
-            .map(|(tid, (tt, tm, addr))| TransportStatus::new(*tt, *tm, addr, tid))
-            .collect()
+    pub(super) fn get_tcp_con_or_list(
+        &self,
+        req: &Request<'_>,
+        mode: TransportMode,
+    ) -> ResponseBuilder<TransportList<'_>> {
+        Response::ok(req.id()).body(TransportList::new(
+            self.transports
+                .iter()
+                .filter(|(_, (_, tm, _))| *tm == mode)
+                .map(|(tid, (tt, tm, addr))| TransportStatus::new(*tt, *tm, addr, tid))
+                .collect(),
+        ))
     }
 
     pub(super) async fn add_transport<'a>(
