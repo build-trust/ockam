@@ -20,6 +20,7 @@ pub struct CreateCommand {
     /// Route to a secure channel listener (required)
     #[clap(name = "to", short, long, value_name = "ROUTE")]
     addr: MultiAddr,
+
     /// Pre-known Identifiers of the other side
     #[clap(short, long)]
     authorized_identifier: Option<Vec<IdentityIdentifier>>,
