@@ -1,10 +1,13 @@
 use crate::auth::Server;
+use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::identity::IdentityService;
 use crate::nodes::models::services::{
-    StartAuthenticatedServiceRequest, StartIdentityServiceRequest, StartVaultServiceRequest,
+    StartAuthenticatedServiceRequest, StartEchoerServiceRequest, StartIdentityServiceRequest,
+    StartUppercaseServiceRequest, StartVaultServiceRequest,
 };
 use crate::nodes::NodeManager;
+use crate::uppercase::Uppercase;
 use crate::vault::VaultService;
 use crate::{Request, Response, ResponseBuilder};
 use minicbor::Decoder;
@@ -120,6 +123,80 @@ impl NodeManager {
         let addr = req_body.addr.to_string().into();
 
         let response = match self.start_authenticated_service_impl(ctx, addr).await {
+            Ok(_) => Response::ok(req.id()),
+            Err(_err) => Response::bad_request(req.id()),
+        };
+
+        Ok(response)
+    }
+
+    pub(super) async fn start_uppercase_service_impl(
+        &mut self,
+        ctx: &Context,
+        addr: Address,
+    ) -> Result<()> {
+        if self.registry.uppercase_services.contains_key(&addr) {
+            return Err(ApiError::generic(
+                "Uppercase service at this address exists",
+            ));
+        }
+
+        ctx.start_worker(addr.clone(), Uppercase).await?;
+
+        self.registry
+            .uppercase_services
+            .insert(addr, Default::default());
+
+        Ok(())
+    }
+
+    pub(super) async fn start_uppercase_service(
+        &mut self,
+        ctx: &Context,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let req_body: StartUppercaseServiceRequest = dec.decode()?;
+
+        let addr = req_body.addr.to_string().into();
+
+        let response = match self.start_uppercase_service_impl(ctx, addr).await {
+            Ok(_) => Response::ok(req.id()),
+            Err(_err) => Response::bad_request(req.id()),
+        };
+
+        Ok(response)
+    }
+
+    pub(super) async fn start_echoer_service_impl(
+        &mut self,
+        ctx: &Context,
+        addr: Address,
+    ) -> Result<()> {
+        if self.registry.echoer_services.contains_key(&addr) {
+            return Err(ApiError::generic("Echoer service at this address exists"));
+        }
+
+        ctx.start_worker(addr.clone(), Echoer).await?;
+
+        self.registry
+            .echoer_services
+            .insert(addr, Default::default());
+
+        Ok(())
+    }
+
+    pub(super) async fn start_echoer_service(
+        &mut self,
+        ctx: &Context,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let req_body: StartEchoerServiceRequest = dec.decode()?;
+
+        let addr = req_body.addr.to_string().into();
+
+        let response = match self.start_echoer_service_impl(ctx, addr).await {
             Ok(_) => Response::ok(req.id()),
             Err(_err) => Response::bad_request(req.id()),
         };

@@ -63,3 +63,43 @@ impl<'a> StartAuthenticatedServiceRequest<'a> {
         }
     }
 }
+
+/// Request body when instructing a node to start an Uppercase service
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartUppercaseServiceRequest<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<8177400>,
+    #[b(1)] pub addr: Cow<'a, str>,
+}
+
+impl<'a> StartUppercaseServiceRequest<'a> {
+    pub fn new(addr: impl Into<Cow<'a, str>>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr: addr.into(),
+        }
+    }
+}
+
+/// Request body when instructing a node to start an Echoer service
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartEchoerServiceRequest<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<7636656>,
+    #[b(1)] pub addr: Cow<'a, str>,
+}
+
+impl<'a> StartEchoerServiceRequest<'a> {
+    pub fn new(addr: impl Into<Cow<'a, str>>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr: addr.into(),
+        }
+    }
+}
