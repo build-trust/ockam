@@ -61,8 +61,7 @@ jobs:
           To install this release using Homebrew:
 
           \`\`\`bash
-          $ brew tap build-trust/ockam
-          $ brew install ockam
+          $ brew install build-trust/ockam/ockam
           \`\`\`"
 
           # Install Docker image
