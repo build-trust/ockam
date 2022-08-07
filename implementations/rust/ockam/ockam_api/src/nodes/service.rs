@@ -23,7 +23,7 @@ use crate::lmdb::LmdbStorage;
 use crate::nodes::config::NodeManConfig;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
-use crate::nodes::models::transport::{TransportList, TransportMode, TransportType};
+use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::{Method, Request, Response, Status};
 
 mod identity;
@@ -320,8 +320,8 @@ impl NodeManager {
 
             // ==*== Tcp Connection ==*==
             // TODO: Get all tcp connections
-            (Get, ["node", "tcp", "connection"]) => Response::ok(req.id())
-                .body(TransportList::new(self.get_transports()))
+            (Get, ["node", "tcp", "connection"]) => self
+                .get_tcp_con_or_list(req, TransportMode::Connect)
                 .to_vec()?,
             (Post, ["node", "tcp", "connection"]) => {
                 self.add_transport(req, dec).await?.to_vec()?
@@ -331,8 +331,8 @@ impl NodeManager {
             }
 
             // ==*== Tcp Listeners ==*==
-            (Get, ["node", "tcp", "listener"]) => Response::ok(req.id())
-                .body(TransportList::new(self.get_transports()))
+            (Get, ["node", "tcp", "listener"]) => self
+                .get_tcp_con_or_list(req, TransportMode::Listen)
                 .to_vec()?,
             (Post, ["node", "tcp", "listener"]) => self.add_transport(req, dec).await?.to_vec()?,
             (Delete, ["node", "tcp", "listener"]) => {

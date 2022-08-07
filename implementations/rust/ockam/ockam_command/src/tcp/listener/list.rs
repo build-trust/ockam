@@ -34,7 +34,7 @@ pub async fn list_listeners(ctx: Context, _: (), mut base_route: Route) -> anyho
     let resp: Vec<u8> = match ctx
         .send_and_receive(
             base_route.modify().append(NODEMANAGER_ADDR),
-            api::query_transports()?,
+            api::list_tcp_listeners()?,
         )
         .await
     {
@@ -45,7 +45,7 @@ pub async fn list_listeners(ctx: Context, _: (), mut base_route: Route) -> anyho
         }
     };
 
-    let TransportList { list, .. } = api::parse_transport_list(&resp)?;
+    let TransportList { list, .. } = api::parse_tcp_list(&resp)?;
 
     let table = list
         .iter()
