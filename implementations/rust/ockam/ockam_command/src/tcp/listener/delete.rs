@@ -56,7 +56,7 @@ pub async fn delete_listener(
     let r: Response = api::parse_response(&resp)?;
 
     match r.status() {
-        Some(Status::Ok) => eprintln!("Tcp listener `{}` successfully delete", cmd.id),
+        Some(Status::Ok) => println!("Tcp listener `{}` successfully delete", cmd.id),
         _ => {
             eprintln!("Failed to delete tcp listener");
             if !cmd.force {

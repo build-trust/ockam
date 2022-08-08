@@ -48,7 +48,7 @@ pub async fn show_identity(
 
         match response.status() {
             Some(Status::Ok) => {
-                eprintln!("{}", hex::encode(result.identity.0.as_ref()))
+                println!("{}", hex::encode(result.identity.0.as_ref()))
             }
             _ => {
                 eprintln!("An error occurred while exporting Identity",)
@@ -68,7 +68,7 @@ pub async fn show_identity(
 
         match response.status() {
             Some(Status::Ok) => {
-                eprintln!("{}", result.identity_id)
+                println!("{}", result.identity_id)
             }
             _ => {
                 eprintln!("An error occurred while getting Identity",)

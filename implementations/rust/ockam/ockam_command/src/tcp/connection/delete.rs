@@ -56,7 +56,7 @@ pub async fn delete_connection(
     let r: Response = api::parse_response(&resp)?;
 
     match r.status() {
-        Some(Status::Ok) => eprintln!("Tcp connection `{}` successfully delete", cmd.id),
+        Some(Status::Ok) => println!("Tcp connection `{}` successfully delete", cmd.id),
         _ => {
             eprintln!("Failed to delete tcp connection");
             if !cmd.force {

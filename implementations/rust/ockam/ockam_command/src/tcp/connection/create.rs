@@ -123,7 +123,7 @@ pub async fn create_connection(
                 }
             };
 
-            eprintln!(
+            println!(
                 "Tcp connection created! You can send messages to it via this route:\n`{}`",
                 multiaddr
             )

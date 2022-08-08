@@ -151,7 +151,7 @@ pub async fn create_inlet(
 
     match response.status() {
         Some(Status::Ok) => {
-            eprintln!(
+            println!(
                 "Portal inlet '{}' created! You can send messages to it on this tcp address: \n{}`",
                 alias, bind_addr
             )
@@ -194,7 +194,7 @@ pub async fn create_outlet(
 
     match response.status() {
         Some(Status::Ok) => {
-            eprintln!(
+            println!(
                 "Portal outlet '{}' created! You can send messages through it via this address:\n{}",
                 alias,
                 worker_addr

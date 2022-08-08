@@ -68,7 +68,7 @@ pub async fn create_listener(
 
     match response.status() {
         Some(Status::Ok) => {
-            eprintln!("Secure Channel Listener created at {}!", addr)
+            println!("Secure Channel Listener created at {}!", addr)
         }
         _ => {
             eprintln!("An error occurred while creating secure channel listener",)

@@ -83,7 +83,7 @@ pub fn delete_node(opts: &CommandGlobalOpts, node_name: &String, sigkill: bool) 
         eprintln!("failed to update configuration: {}", e);
     }
 
-    eprintln!("Deleted node '{}'", node_name);
+    println!("Deleted node '{}'", node_name);
 }
 
 fn remove_config_dir(cfg: &OckamConfig) {
