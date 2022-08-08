@@ -109,7 +109,7 @@ pub async fn create_listener(
                 }
             };
 
-            eprintln!(
+            println!(
                 "Tcp listener created! You can send messages to it via this route:\n`{}`",
                 multiaddr
             )

@@ -46,7 +46,7 @@ pub async fn create_identity(
 
     match response.status() {
         Some(Status::Ok) => {
-            eprintln!("Identity {} created!", result.identity_id)
+            println!("Identity {} created!", result.identity_id)
         }
         _ => {
             eprintln!("An error occurred while creating Identity",)

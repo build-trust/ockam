@@ -49,7 +49,7 @@ pub async fn create_vault(
 
     match response.status() {
         Some(Status::Ok) => {
-            eprintln!("Vault created!")
+            println!("Vault created!")
         }
         _ => {
             eprintln!("An error occurred while creating Vault",)
