@@ -44,7 +44,7 @@ use crate::identity::IdentityCommand;
 use crate::service::ServiceCommand;
 use crate::util::OckamConfig;
 use crate::vault::VaultCommand;
-use clap::{ArgEnum, Args, ColorChoice, Parser, Subcommand};
+use clap::{crate_version, ArgEnum, Args, ColorChoice, Parser, Subcommand};
 use util::setup_logging;
 
 const HELP_TEMPLATE: &str = "\
@@ -65,11 +65,23 @@ FEEDBACK
     on Github https://github.com/build-trust/ockam/discussions/new
 ";
 
+fn long_version() -> &'static str {
+    let crate_version = crate_version!();
+    let git_hash = env!("GIT_HASH");
+    let message = format!(
+        "{}\n\nCompiled from (git hash): {}",
+        crate_version, git_hash
+    );
+
+    Box::leak(message.into_boxed_str())
+}
+
 /// Work seamlessly with Ockam from the command line.
 #[derive(Debug, Parser)]
 #[clap(
     name = "ockam",
     version,
+    long_version = long_version(),
     propagate_version(true),
     color(ColorChoice::Never),
     help_template = HELP_TEMPLATE,
