@@ -4,7 +4,7 @@ mod show;
 pub(crate) use create::CreateCommand;
 pub(crate) use show::ShowCommand;
 
-use crate::{CommandGlobalOpts, HELP_TEMPLATE};
+use crate::{hide, CommandGlobalOpts, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
@@ -16,7 +16,7 @@ pub struct IdentityCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum IdentitySubcommand {
     /// Create Identity
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
     Create(CreateCommand),
     /// Print short existing identity, `--full` for long identity
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
