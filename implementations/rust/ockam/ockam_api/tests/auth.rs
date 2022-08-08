@@ -10,6 +10,14 @@ use ockam_node::Context;
 
 #[ockam_macros::test]
 async fn credential(ctx: &mut Context) -> Result<()> {
+    // Create a secure channel API listener:
+    {
+        let v = Vault::create();
+        let a = Identity::create(ctx, &v).await?;
+        a.create_secure_channel_listener("api", TrustEveryonePolicy, &InMemoryStorage::new())
+            .await?;
+    }
+
     // Create the authority signer service:
     {
         let v = Vault::create();
@@ -18,24 +26,30 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         ctx.start_worker("signer", s).await?;
     }
 
+    // Create an admin that can manage the authenticator service:
+    let admin = {
+        let v = Vault::create();
+        Identity::create(ctx, &v).await?
+    };
+
     // Create the authority authenticator service:
     {
         let e_store = InMemoryStorage::new();
         let m_store = InMemoryStorage::new();
-        let admin = direct::Server::admin(m_store.clone(), e_store.clone(), mk_signer(ctx).await?);
-        ctx.start_worker("auth-admin", admin).await?;
-
-        let auth = direct::Server::new(m_store, e_store, mk_signer(ctx).await?);
+        let mut auth = direct::Server::new(m_store, e_store, mk_signer(ctx).await?);
+        auth.set_admin(&admin.identifier()?);
         ctx.start_worker("auth", auth).await?;
     }
 
-    // Create an enroller and add it via the admin service:
+    // Create an enroller and have the admin add it as authorised to add members:
     let enroller = {
         let v = Vault::create();
         let e = Identity::create(ctx, &v).await?;
-        let mut admin = direct::Client::admin("auth-admin".into(), ctx).await?;
-        admin
-            .add_enroller(IdentityId::new(e.identifier()?.key_id()))
+        let a2a = admin
+            .create_secure_channel("api", TrustEveryonePolicy, &InMemoryStorage::new())
+            .await?;
+        let mut c = direct::Client::new(route![a2a, "auth"], ctx).await?;
+        c.add_enroller(IdentityId::new(e.identifier()?.key_id()))
             .await?;
         e
     };
@@ -43,14 +57,6 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     // Get the authority's signer key:
     let mut signer_client = mk_signer(ctx).await?;
     let auth_identity = signer_client.identity().await?;
-
-    // Create a secure channel API listener:
-    {
-        let v = Vault::create();
-        let a = Identity::create(ctx, &v).await?;
-        a.create_secure_channel_listener("api", TrustEveryonePolicy, &InMemoryStorage::new())
-            .await?;
-    }
 
     // Connect to the API channel from the enroller:
     let e2a = enroller
