@@ -162,10 +162,6 @@ pub enum OckamSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     TcpListener(TcpListenerCommand),
 
-    /// Manage Vault
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    Vault(VaultCommand),
-
     /// Manage Identities
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Identity(IdentityCommand),
@@ -217,6 +213,10 @@ pub enum OckamSubcommand {
     /// Create, update or delete spaces
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
     Space(SpaceCommand),
+
+    /// Manage Vault
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
+    Vault(VaultCommand),
 
     // OLD
     /// Start an outlet.
