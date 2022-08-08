@@ -14,7 +14,7 @@ ext {
   // See...
   //  https://github.com/build-trust/ockam/issues/2822
   //  https://github.com/build-trust/ockam/issues/2342
-  environmentCI = { ->
+  environmentVars = { ->
     env = [
       RUSTFLAGS: "--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings -C link-arg=-fuse-ld=/opt/mold/bin/mold",
       CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: "clang",
@@ -41,7 +41,7 @@ ext {
 task lint_cargo_fmt_check {
   doLast {
     exec {
-      environment environmentCI()
+      environment environmentVars()
       commandLine cargo('fmt', '--all', '--', '--check')
     }
   }
@@ -50,7 +50,7 @@ task lint_cargo_fmt_check {
 task lint_cargo_clippy {
   doLast {
     exec {
-      environment environmentCI()
+      environment environmentVars()
       commandLine cargo('clippy', '--no-deps', '--', '-D', 'warnings')
     }
   }
@@ -59,7 +59,7 @@ task lint_cargo_clippy {
 task lint_cargo_deny {
   doLast {
     exec {
-      environment environmentCI()
+      environment environmentVars()
       commandLine cargo('deny', '--all-features', '--manifest-path=../../Cargo.toml', 'check', 'licenses', 'advisories')
     }
   }
@@ -75,7 +75,7 @@ task lint {
 task build_docs {
   doLast {
     exec {
-      environment environmentCI()
+      environment environmentVars()
       commandLine cargo('doc', '--no-deps')
     }
   }
@@ -84,7 +84,7 @@ task build_docs {
 task build {
   doLast {
     exec {
-      environment environmentCI()
+      environment environmentVars()
       commandLine cargo('--locked', 'build')
     }
   }
@@ -93,7 +93,7 @@ task build {
 task build_examples {
   doLast {
     exec {
-      environment environmentCI()
+      environment environmentVars()
       commandLine cargo('--locked', 'build', '--examples')
     }
   }
@@ -104,13 +104,24 @@ task test {
   description 'Test the project.'
 
   doLast {
-    exec {
-      environment environmentCI()
-
-      if (ci) {
-        // Use cargo nextest in CI
+    if (ci) {
+      // Use 'cargo nextest' in CI
+      exec {
+        environment environmentVars()
         commandLine cargo('--locked', 'nextest', 'run')
-      } else {
+      }
+      // Nextest does not currently support doctests,
+      // so run doctests using cargo
+      // See https://github.com/nextest-rs/nextest/issues/16
+      exec {
+        environment environmentVars()
+        commandLine cargo('--locked', 'test', '--doc')
+      }
+    }
+    else {
+      // Use 'cargo test' when not in CI
+      exec {
+        environment environmentVars()
         commandLine cargo('--locked', 'test')
       }
     }
@@ -123,7 +134,7 @@ task clean {
 
   doLast {
     exec {
-      environment environmentCI()
+      environment environmentVars()
       commandLine cargo('clean')
     }
   }
