@@ -12,9 +12,7 @@ use serde::{Deserialize, Serialize};
 /// Contrary to `Cow<_, str>` the `Decode` impl for this type will always borrow
 /// from input so using it in types like `Option`, `Vec<_>` etc will not produce
 /// owned element values.
-#[derive(
-    Debug, Clone, Encode, Decode, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
-)]
+#[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize, Eq, PartialOrd, Ord, Hash)]
 #[cbor(transparent)]
 #[serde(transparent)]
 pub struct CowStr<'a>(
@@ -75,5 +73,11 @@ impl<'a> Display for CowStr<'a> {
 impl<'a, S: ?Sized + AsRef<str>> PartialEq<S> for CowStr<'a> {
     fn eq(&self, other: &S) -> bool {
         self.0 == other.as_ref()
+    }
+}
+
+impl<'a> AsRef<str> for CowStr<'a> {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
     }
 }

@@ -247,41 +247,30 @@ pub(crate) mod enroll {
 /// Helpers to create spaces API requests
 pub(crate) mod space {
     use crate::space::*;
-    use ockam_api::cloud::space::*;
+    use ockam_api::cloud::{space::*, BareCloudRequestWrapper};
+    use ockam_core::api::RequestBuilder;
 
     use super::*;
 
-    pub(crate) fn create(cmd: CreateCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn create(cmd: &CreateCommand) -> RequestBuilder<CloudRequestWrapper<CreateSpace>> {
         let b = CreateSpace::new(cmd.name.as_str(), &cmd.admins);
-        let mut buf = vec![];
         Request::builder(Method::Post, "v0/spaces")
             .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
     }
 
-    pub(crate) fn list(cmd: ListCommand) -> anyhow::Result<Vec<u8>> {
-        let mut buf = vec![];
+    pub(crate) fn list(cmd: &ListCommand) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::builder(Method::Get, "v0/spaces")
             .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
     }
 
-    pub(crate) fn show(cmd: ShowCommand) -> anyhow::Result<Vec<u8>> {
-        let mut buf = vec![];
+    pub(crate) fn show(cmd: &ShowCommand) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::builder(Method::Get, format!("v0/spaces/{}", cmd.id))
             .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
     }
 
-    pub(crate) fn delete(cmd: DeleteCommand) -> anyhow::Result<Vec<u8>> {
-        let mut buf = vec![];
+    pub(crate) fn delete(cmd: &DeleteCommand) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::builder(Method::Delete, format!("v0/spaces/{}", cmd.id))
             .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
     }
 }
 

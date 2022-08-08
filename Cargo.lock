@@ -2204,6 +2204,7 @@ dependencies = [
  "directories",
  "dirs",
  "hex",
+ "itertools",
  "minicbor",
  "nix",
  "ockam",

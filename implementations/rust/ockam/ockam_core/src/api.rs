@@ -150,6 +150,22 @@ pub enum Status {
     #[n(501)] NotImplemented
 }
 
+impl Display for Status {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(match self {
+            Status::Ok => "200 Ok",
+            Status::BadRequest => "400 BadRequest",
+            Status::Unauthorized => "401 Unauthorized",
+            Status::Forbidden => "403 Forbidden",
+            Status::NotFound => "404 NotFound",
+            Status::Conflict => "409 Conflict",
+            Status::MethodNotAllowed => "405 MethodNotAllowed",
+            Status::InternalServerError => "500 InternalServerError",
+            Status::NotImplemented => "501 NotImplemented",
+        })
+    }
+}
+
 impl Id {
     pub fn fresh() -> Self {
         Id(rand::random())

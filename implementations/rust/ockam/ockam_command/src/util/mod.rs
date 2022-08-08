@@ -1,21 +1,124 @@
+use std::{env, net::TcpListener, path::Path};
+
+use anyhow::Context;
+use minicbor::{Decode, Decoder, Encode};
+use tracing::error;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
+
+pub use addon::AddonCommand;
+pub use config::*;
+use ockam::{route, Address, NodeBuilder, Route, TcpTransport, TCP};
+use ockam_api::nodes::NODEMANAGER_ADDR;
+use ockam_core::api::{RequestBuilder, Response, Status};
+
+use crate::util::output::Output;
+use crate::{CommandGlobalOpts, OutputFormat};
+
 pub mod api;
 pub mod exitcode;
 pub mod startup;
 
 mod addon;
-pub use addon::AddonCommand;
-
 mod config;
-pub use config::*;
-
-use anyhow::Context;
-use ockam::{route, NodeBuilder, Route, TcpTransport, TCP};
-use std::{env, net::TcpListener, path::Path};
-use tracing::error;
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
+mod output;
 
 pub const DEFAULT_CLOUD_ADDRESS: &str = "/dnsaddr/cloud.ockam.io/tcp/62526";
+
+pub struct Rpc<'a> {
+    ctx: &'a ockam::Context,
+    buf: Vec<u8>,
+    opts: &'a CommandGlobalOpts,
+    cfg: NodeConfig,
+}
+
+impl<'a> Rpc<'a> {
+    pub fn new(
+        ctx: &'a ockam::Context,
+        opts: &'a CommandGlobalOpts,
+        api_node: &'a str,
+    ) -> anyhow::Result<Self> {
+        Ok(Rpc {
+            ctx,
+            buf: Vec::new(),
+            opts,
+            cfg: opts.config.get_node(api_node)?,
+        })
+    }
+
+    pub async fn request<T>(&mut self, req: RequestBuilder<'_, T>) -> anyhow::Result<()>
+    where
+        T: Encode<()>,
+    {
+        let buf = req.to_vec()?;
+        let mut rte = connect(self.ctx, &self.cfg).await?;
+        self.buf = self
+            .ctx
+            .send_and_receive(rte.modify().append(NODEMANAGER_ADDR), buf)
+            .await?;
+        Ok(())
+    }
+
+    /// Parse the response body and return it.
+    pub fn parse_response<T>(&'a self) -> crate::Result<T>
+    where
+        T: Decode<'a, ()>,
+    {
+        let mut dec = self.parse_response_impl()?;
+        Ok(dec.decode().context("Failed to decode response body")?)
+    }
+
+    /// Parse response header only to check the status code.
+    pub fn check_response(&self) -> crate::Result<()> {
+        self.parse_response_impl()?;
+        Ok(())
+    }
+
+    /// Parse the response body and return it.
+    fn parse_response_impl(&'a self) -> crate::Result<Decoder> {
+        let mut dec = Decoder::new(&self.buf);
+        let hdr = dec
+            .decode::<Response>()
+            .context("Failed to decode response header")?;
+        match hdr.status() {
+            Some(Status::Ok) if hdr.has_body() => {
+                return Ok(dec);
+            }
+            Some(Status::Ok) => {
+                eprintln!("No body found in response");
+            }
+            Some(status) if hdr.has_body() => {
+                let err = dec.decode::<String>().unwrap_or_default();
+                eprintln!(
+                    "An error occurred while processing the request. Status code: {status}. {err}"
+                );
+            }
+            Some(status) => {
+                eprintln!("An error occurred while processing the request. Status code: {status}",);
+            }
+            None => {
+                eprintln!("No status found in response");
+            }
+        };
+        Err(crate::Error::new(exitcode::SOFTWARE))
+    }
+
+    /// Parse the response body and print it.
+    pub fn print_response<T>(&'a self) -> crate::Result<()>
+    where
+        T: Decode<'a, ()> + Output + serde::Serialize,
+    {
+        let b: T = self.parse_response()?;
+        let o = match self.opts.global_args.output_format {
+            OutputFormat::Plain => b.output().context("Failed to serialize response body")?,
+            OutputFormat::Json => {
+                serde_json::to_string_pretty(&b).context("Failed to serialize response body")?
+            }
+        };
+        println!("{}", o);
+        Ok(())
+    }
+}
 
 /// A simple wrapper for shutting down the local embedded node (for
 /// the client side of the CLI).  Swallows errors and turns them into
@@ -25,7 +128,6 @@ pub const DEFAULT_CLOUD_ADDRESS: &str = "/dnsaddr/cloud.ockam.io/tcp/62526";
 pub async fn stop_node(mut ctx: ockam::Context) -> anyhow::Result<()> {
     if let Err(e) = ctx.stop().await {
         eprintln!("an error occurred while shutting down local node: {}", e);
-        std::process::exit(exitcode::IOERR);
     }
     Ok(())
 }
@@ -46,7 +148,7 @@ where
     F: FnOnce(ockam::Context, A, Route) -> Fut + Send + Sync + 'static,
     Fut: core::future::Future<Output = anyhow::Result<()>> + Send + 'static,
 {
-    embedded_node(
+    let res = embedded_node(
         move |ctx, a| async move {
             let tcp = match TcpTransport::create(&ctx).await {
                 Ok(tcp) => tcp,
@@ -70,26 +172,60 @@ where
             Ok(())
         },
         a,
-    )
+    );
+    if let Err(e) = res {
+        eprintln!("Ockam node failed: {:?}", e,);
+    }
 }
 
-pub fn embedded_node<A, F, Fut>(f: F, a: A)
+async fn connect(ctx: &ockam::Context, cfg: &NodeConfig) -> anyhow::Result<Route> {
+    let adr = Address::from((TCP, format!("localhost:{}", cfg.port)));
+    let tcp = TcpTransport::create(ctx).await?;
+    tcp.connect(adr.address()).await?;
+    Ok(adr.into())
+}
+
+pub fn node_rpc<A, F, Fut>(f: F, a: A)
 where
     A: Send + Sync + 'static,
     F: FnOnce(ockam::Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = anyhow::Result<()>> + Send + 'static,
+    Fut: core::future::Future<Output = crate::Result<()>> + Send + 'static,
+{
+    let res = embedded_node(
+        |ctx, a| async {
+            let res = f(ctx, a).await;
+            if let Err(e) = res {
+                std::process::exit(e.code());
+            }
+            Ok(())
+        },
+        a,
+    );
+    if let Err(e) = res {
+        eprintln!("Ockam node failed: {:?}", e);
+        std::process::exit(exitcode::SOFTWARE);
+    }
+}
+
+pub fn embedded_node<A, F, Fut, T>(f: F, a: A) -> anyhow::Result<T>
+where
+    A: Send + Sync + 'static,
+    F: FnOnce(ockam::Context, A) -> Fut + Send + Sync + 'static,
+    Fut: core::future::Future<Output = anyhow::Result<T>> + Send + 'static,
+    T: Send + 'static,
 {
     let (ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
-    let res = executor.execute(async move {
-        if let Err(e) = f(ctx, a).await {
-            eprintln!("Error {:?}", e);
-            std::process::exit(exitcode::IOERR);
-        }
-    });
-    if let Err(e) = res {
-        eprintln!("Ockam node failed: {:?}", e,);
-        std::process::exit(exitcode::IOERR);
-    }
+    executor
+        .execute(async move {
+            match f(ctx, a).await {
+                Err(e) => {
+                    eprintln!("Error {:?}", e);
+                    std::process::exit(1);
+                }
+                Ok(v) => v,
+            }
+        })
+        .map_err(anyhow::Error::from)
 }
 
 pub fn find_available_port() -> anyhow::Result<u16> {
@@ -138,8 +274,7 @@ pub fn setup_logging(verbose: u8, no_color: bool) {
         .with(fmt)
         .try_init();
     if result.is_err() {
-        eprintln!("Failed to initialize tracing logging.");
-        std::process::exit(exitcode::IOERR);
+        eprintln!("Failed to initialise tracing logging.");
     }
 }
 
@@ -165,4 +300,11 @@ pub fn get_final_element(input_path: &str) -> &str {
     } else {
         input_path
     };
+}
+
+pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {
+    use itertools::Itertools;
+
+    #[allow(unstable_name_collisions)]
+    data.iter().map(AsRef::as_ref).intersperse(", ").collect()
 }

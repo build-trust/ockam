@@ -56,6 +56,7 @@ dialoguer = "0.10"
 directories = "4"
 dirs = "4.0.0"
 hex = "0.4"
+itertools = "0.10"
 minicbor = { version = "0.18.0", features = ["derive"] }
 nix = "0.24"
 open = "2"

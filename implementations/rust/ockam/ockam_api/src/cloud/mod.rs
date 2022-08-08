@@ -1,12 +1,13 @@
-use minicbor::{Decode, Encode};
-use ockam_core::{CowStr, Result, Route};
-use ockam_multiaddr::MultiAddr;
 use std::str::FromStr;
 
-use crate::error::ApiError;
+use minicbor::{Decode, Encode};
 
 #[cfg(feature = "tag")]
-use crate::TypeTag;
+use ockam_core::TypeTag;
+use ockam_core::{CowStr, Result, Route};
+use ockam_multiaddr::MultiAddr;
+
+use crate::error::ApiError;
 
 pub mod enroll;
 pub mod project;
