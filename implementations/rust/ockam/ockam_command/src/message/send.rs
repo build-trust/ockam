@@ -3,7 +3,7 @@ use clap::Args;
 use minicbor::Decoder;
 use tracing::debug;
 
-use crate::CommandGlobalOpts;
+use crate::{embedded_node, CommandGlobalOpts};
 use ockam::TcpTransport;
 use ockam_api::clean_multiaddr;
 use ockam_api::nodes::NODEMANAGER_ADDR;
@@ -11,7 +11,7 @@ use ockam_core::api::{Response, Status};
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 
-use crate::util::{api, connect_to, embedded_node, exitcode, get_final_element, stop_node};
+use crate::util::{api, connect_to, exitcode, stop_node};
 
 #[derive(Clone, Debug, Args)]
 pub struct SendCommand {
@@ -42,11 +42,10 @@ impl SendCommand {
         };
 
         if let Some(node) = &cmd.from {
-            let name = get_final_element(node);
-            let port = opts.config.get_node_port(name);
+            let port = opts.config.get_node_port(node);
             connect_to(port, (opts, cmd), send_message_via_connection_to_a_node);
-        } else {
-            embedded_node(send_message_from_embedded_node, cmd)
+        } else if let Err(e) = embedded_node(send_message_from_embedded_node, cmd) {
+            eprintln!("Ockam node failed: {:?}", e,);
         }
     }
 }

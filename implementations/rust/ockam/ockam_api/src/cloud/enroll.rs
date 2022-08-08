@@ -3,10 +3,9 @@ use std::borrow::Cow;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-use ockam_core::{self, async_trait};
-
 #[cfg(feature = "tag")]
-use ockam_core::api::TypeTag;
+use ockam_core::TypeTag;
+use ockam_core::{self, async_trait};
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq, Clone))]
@@ -222,8 +221,9 @@ pub mod auth0 {
 }
 
 pub mod enrollment_token {
-    use crate::auth::types::Attributes;
     use serde::Serialize;
+
+    use crate::auth::types::Attributes;
 
     use super::*;
 

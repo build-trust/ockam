@@ -32,6 +32,7 @@ use tcp::listener::TcpListenerCommand;
 use tcp::outlet::TcpOutletCommand;
 
 // to be removed
+pub mod error;
 mod old;
 
 use old::cmd::identity::IdentityOpts;
@@ -43,10 +44,13 @@ use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_
 use crate::enroll::GenerateEnrollmentTokenCommand;
 use crate::identity::IdentityCommand;
 use crate::service::ServiceCommand;
-use crate::util::OckamConfig;
+use crate::util::exitcode::ExitCode;
+use crate::util::{exitcode, stop_node, OckamConfig};
 use crate::vault::VaultCommand;
 use clap::{crate_version, ArgEnum, Args, ColorChoice, Parser, Subcommand};
-use util::setup_logging;
+use util::{embedded_node, setup_logging};
+
+pub use error::{Error, Result};
 
 const HELP_TEMPLATE: &str = "\
 {before-help}

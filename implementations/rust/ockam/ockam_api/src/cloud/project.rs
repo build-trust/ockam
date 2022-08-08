@@ -1,9 +1,9 @@
 use minicbor::{Decode, Encode};
-use ockam_core::CowStr;
 use serde::Serialize;
 
+use ockam_core::CowStr;
 #[cfg(feature = "tag")]
-use crate::TypeTag;
+use ockam_core::TypeTag;
 
 #[derive(Encode, Decode, Serialize, Debug)]
 #[cfg_attr(test, derive(Clone))]
@@ -346,11 +346,12 @@ mod tests {
     }
 
     mod node_api {
+        use ockam_core::api::Status;
+        use ockam_core::route;
+
         use crate::cloud::CloudRequestWrapper;
         use crate::nodes::NodeManager;
         use crate::route_to_multiaddr;
-        use ockam_core::api::Status;
-        use ockam_core::route;
 
         use super::*;
 
