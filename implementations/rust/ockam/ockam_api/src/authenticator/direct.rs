@@ -6,7 +6,6 @@ use crate::util::response;
 use crate::{assert_request_match, assert_response_match, Cbor};
 use crate::{signer, Timestamp};
 use crate::{Error, Method, Request, RequestBuilder, Response, ResponseBuilder, Status};
-use core::marker::PhantomData;
 use core::time::Duration;
 use core::{fmt, str};
 use minicbor::encode::write::Cursor;
@@ -26,23 +25,15 @@ const MEMBER: &str = "member";
 const MAX_VALIDITY: Duration = Duration::from_secs(2 * 3600);
 
 #[derive(Debug)]
-pub struct Server<M, S, T> {
+pub struct Server<S, T> {
     m_store: S, // member store
     e_store: T, // enroller store
     signer: signer::Client,
-    _mode: PhantomData<fn() -> M>,
+    admin: Option<IdentityId<'static>>,
 }
 
-/// Marker type, used for privileged API operations.
-#[derive(Debug)]
-pub enum Admin {}
-
-/// Marker type, used for unprivileged API operations.
-#[derive(Debug)]
-pub enum General {}
-
 #[ockam_core::worker]
-impl<S, T> Worker for Server<General, S, T>
+impl<S, T> Worker for Server<S, T>
 where
     S: AuthenticatedStorage,
     T: AuthenticatedStorage,
@@ -51,28 +42,19 @@ where
     type Message = Vec<u8>;
 
     async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
-        let i = IdentitySecureChannelLocalInfo::find_info(m.local_message())?;
-        let r = self.on_request(i.their_identity_id(), m.as_body()).await?;
-        c.send(m.return_route(), r).await
+        if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
+            let r = self.on_request(i.their_identity_id(), m.as_body()).await?;
+            c.send(m.return_route(), r).await
+        } else {
+            let mut dec = Decoder::new(m.as_body());
+            let req: Request = dec.decode()?;
+            let res = response::forbidden(&req, "secure channel required").to_vec()?;
+            c.send(m.return_route(), res).await
+        }
     }
 }
 
-#[ockam_core::worker]
-impl<S, T> Worker for Server<Admin, S, T>
-where
-    S: AuthenticatedStorage,
-    T: AuthenticatedStorage,
-{
-    type Context = Context;
-    type Message = Vec<u8>;
-
-    async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
-        let r = self.on_admin_request(m.as_body()).await?;
-        c.send(m.return_route(), r).await
-    }
-}
-
-impl<S, T> Server<General, S, T>
+impl<S, T> Server<S, T>
 where
     S: AuthenticatedStorage,
     T: AuthenticatedStorage,
@@ -82,8 +64,12 @@ where
             m_store,
             e_store,
             signer,
-            _mode: PhantomData,
+            admin: None,
         }
+    }
+
+    pub fn set_admin(&mut self, id: &IdentityIdentifier) {
+        self.admin = Some(IdentityId::new(id.key_id().to_string()))
     }
 
     async fn on_request(&mut self, from: &IdentityIdentifier, data: &[u8]) -> Result<Vec<u8>> {
@@ -102,6 +88,16 @@ where
 
         let res = match req.method() {
             Some(Method::Post) => match req.path_segments::<2>().as_slice() {
+                // Admin wants to add an enroller.
+                ["enroller"] if self.is_admin(from) => {
+                    let add: AddEnroller = dec.decode()?;
+                    let enroller = minicbor::to_vec(Placeholder)?;
+                    self.e_store
+                        .set(ENROLLER, add.enroller().as_str().to_string(), enroller)
+                        .await?;
+                    Response::ok(req.id()).to_vec()?
+                }
+                ["enroller"] => Response::unauthorized(req.id()).to_vec()?,
                 // Enroller wants to add a member.
                 ["member"] => {
                     if let Some(err) = check_enroller(&self.e_store, &req, from.key_id()).await? {
@@ -133,6 +129,16 @@ where
                 _ => response::unknown_path(&req).to_vec()?,
             },
             Some(Method::Get) => match req.path_segments::<3>().as_slice() {
+                // Admin wants to check enroller data.
+                ["enroller", id] if self.is_admin(from) => {
+                    if let Some(data) = self.e_store.get(ENROLLER, id).await? {
+                        let enroller = minicbor::decode::<Placeholder>(&data)?;
+                        Response::ok(req.id()).body(enroller).to_vec()?
+                    } else {
+                        Response::not_found(req.id()).to_vec()?
+                    }
+                }
+                ["enroller", _] => Response::unauthorized(req.id()).to_vec()?,
                 // Enroller checks member data.
                 ["member", id] => {
                     if let Some(err) = check_enroller(&self.e_store, &req, from.key_id()).await? {
@@ -161,10 +167,24 @@ where
                 }
                 _ => response::unknown_path(&req).to_vec()?,
             },
+            Some(Method::Delete) => match req.path_segments::<3>().as_slice() {
+                // Admin wants to remove an enroller.
+                ["enroller", id] if self.is_admin(from) => {
+                    self.e_store.del(ENROLLER, id).await?;
+                    Response::ok(req.id()).to_vec()?
+                }
+                ["enroller", _] => Response::unauthorized(req.id()).to_vec()?,
+                _ => response::unknown_path(&req).to_vec()?,
+            },
             _ => response::invalid_method(&req).to_vec()?,
         };
 
         Ok(res)
+    }
+
+    /// Check that the given identity ID matches the one configured as admin.
+    fn is_admin(&self, k: &IdentityIdentifier) -> bool {
+        Some(k.key_id().as_str()) == self.admin.as_ref().map(|a| a.as_str())
     }
 }
 
@@ -250,73 +270,6 @@ async fn check_enroller<'a, S: AuthenticatedStorage>(
     Ok(Some(response::forbidden(req, "unauthorized enroller")))
 }
 
-impl<S, T> Server<Admin, S, T>
-where
-    S: AuthenticatedStorage,
-    T: AuthenticatedStorage,
-{
-    pub fn admin(m_store: S, e_store: T, signer: signer::Client) -> Self {
-        Server {
-            m_store,
-            e_store,
-            signer,
-            _mode: PhantomData,
-        }
-    }
-
-    async fn on_admin_request(&mut self, data: &[u8]) -> Result<Vec<u8>> {
-        let mut dec = Decoder::new(data);
-        let req: Request = dec.decode()?;
-
-        debug! {
-            target: "ockam_api::authenticator::direct::server",
-            id     = %req.id(),
-            method = ?req.method(),
-            path   = %req.path(),
-            body   = %req.has_body(),
-            "unauthenticated request"
-        }
-
-        let res = match req.method() {
-            Some(Method::Post) => match req.path_segments::<2>().as_slice() {
-                // Admin wants to add an enroller.
-                ["enroller"] => {
-                    let add: AddEnroller = dec.decode()?;
-                    let enroller = minicbor::to_vec(Placeholder)?;
-                    self.e_store
-                        .set(ENROLLER, add.enroller().as_str().to_string(), enroller)
-                        .await?;
-                    Response::ok(req.id()).to_vec()?
-                }
-                _ => response::unknown_path(&req).to_vec()?,
-            },
-            Some(Method::Get) => match req.path_segments::<3>().as_slice() {
-                // Admin wants to check enroller data.
-                ["enroller", id] => {
-                    if let Some(data) = self.e_store.get(ENROLLER, id).await? {
-                        let enroller = minicbor::decode::<Placeholder>(&data)?;
-                        Response::ok(req.id()).body(enroller).to_vec()?
-                    } else {
-                        Response::not_found(req.id()).to_vec()?
-                    }
-                }
-                _ => response::unknown_path(&req).to_vec()?,
-            },
-            Some(Method::Delete) => match req.path_segments::<3>().as_slice() {
-                // Admin wants to remove an enroller.
-                ["enroller", id] => {
-                    self.e_store.del(ENROLLER, id).await?;
-                    Response::ok(req.id()).to_vec()?
-                }
-                _ => response::unknown_path(&req).to_vec()?,
-            },
-            _ => response::invalid_method(&req).to_vec()?,
-        };
-
-        Ok(res)
-    }
-}
-
 fn invalid_sys_time() -> ockam_core::Error {
     ockam_core::Error::new(Origin::Node, Kind::Internal, "invalid system time")
 }
@@ -325,14 +278,13 @@ fn invalid_utf8(e: str::Utf8Error) -> ockam_core::Error {
     ockam_core::Error::new(Origin::Application, Kind::Invalid, e)
 }
 
-pub struct Client<M> {
+pub struct Client {
     ctx: Context,
     route: Route,
     buf: Vec<u8>,
-    _mode: PhantomData<fn() -> M>,
 }
 
-impl<M> fmt::Debug for Client<M> {
+impl fmt::Debug for Client {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Client")
             .field("route", &self.route)
@@ -340,46 +292,14 @@ impl<M> fmt::Debug for Client<M> {
     }
 }
 
-impl<M> Client<M> {
-    async fn mk(r: Route, ctx: &Context) -> Result<Self> {
+impl Client {
+    pub async fn new(r: Route, ctx: &Context) -> Result<Self> {
         let ctx = ctx.new_detached(Address::random_local()).await?;
         Ok(Client {
             ctx,
             route: r,
             buf: Vec::new(),
-            _mode: PhantomData,
         })
-    }
-
-    /// Encode request header and body (if any) and send the package to the server.
-    async fn request<T>(
-        &mut self,
-        label: &str,
-        schema: impl Into<Option<&str>>,
-        req: &RequestBuilder<'_, T>,
-    ) -> Result<Vec<u8>>
-    where
-        T: Encode<()>,
-    {
-        let mut buf = Vec::new();
-        req.encode(&mut buf)?;
-        assert_request_match(schema, &buf);
-        trace! {
-            target: "ockam_api::authenticator::direct::client",
-            id     = %req.header().id(),
-            method = ?req.header().method(),
-            path   = %req.header().path(),
-            body   = %req.header().has_body(),
-            "-> {label}"
-        };
-        let vec: Vec<u8> = self.ctx.send_and_receive(self.route.clone(), buf).await?;
-        Ok(vec)
-    }
-}
-
-impl Client<Admin> {
-    pub async fn admin(r: Route, ctx: &Context) -> Result<Self> {
-        Client::mk(r, ctx).await
     }
 
     pub async fn add_enroller(&mut self, id: IdentityId<'_>) -> Result<()> {
@@ -393,12 +313,6 @@ impl Client<Admin> {
         } else {
             Err(error("add-enroller", &res, &mut d))
         }
-    }
-}
-
-impl Client<General> {
-    pub async fn new(r: Route, ctx: &Context) -> Result<Self> {
-        Client::mk(r, ctx).await
     }
 
     pub async fn add_member(&mut self, id: IdentityId<'_>) -> Result<()> {
@@ -440,6 +354,31 @@ impl Client<General> {
         } else {
             Err(error("verify-credential", &res, &mut d))
         }
+    }
+
+    /// Encode request header and body (if any) and send the package to the server.
+    async fn request<T>(
+        &mut self,
+        label: &str,
+        schema: impl Into<Option<&str>>,
+        req: &RequestBuilder<'_, T>,
+    ) -> Result<Vec<u8>>
+    where
+        T: Encode<()>,
+    {
+        let mut buf = Vec::new();
+        req.encode(&mut buf)?;
+        assert_request_match(schema, &buf);
+        trace! {
+            target: "ockam_api::authenticator::direct::client",
+            id     = %req.header().id(),
+            method = ?req.header().method(),
+            path   = %req.header().path(),
+            body   = %req.header().has_body(),
+            "-> {label}"
+        };
+        let vec: Vec<u8> = self.ctx.send_and_receive(self.route.clone(), buf).await?;
+        Ok(vec)
     }
 }
 
