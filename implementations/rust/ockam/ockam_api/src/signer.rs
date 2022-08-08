@@ -1,6 +1,7 @@
 pub mod types;
 
 use crate::auth::types::Attributes;
+use crate::signer::types::{AddIdentity, GetIdentityResponse};
 use crate::util::response;
 use crate::{assert_request_match, assert_response_match, Cbor};
 use crate::{CowBytes, Error, Method, Request, RequestBuilder, Response, Status};
@@ -9,6 +10,7 @@ use minicbor::{Decoder, Encode};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{self, vault, Address, Result, Route, Routed, Worker};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
+use ockam_identity::change_history::IdentityChangeHistory;
 use ockam_identity::{Identity, IdentityIdentifier, IdentityVault};
 use ockam_node::Context;
 use tracing::{trace, warn};
@@ -76,12 +78,42 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
             Some(Method::Get) => match req.path_segments::<2>().as_slice() {
                 ["verify"] => {
                     let crd: Credential = dec.decode()?;
-                    if self.verify(crd.attributes(), crd.signature()).await? {
-                        Response::ok(req.id())
+                    match self.verify(crd.attributes(), crd.signature()).await {
+                        Ok(true) => Response::ok(req.id())
                             .body(Cbor(crd.attributes()))
-                            .to_vec()?
+                            .to_vec()?,
+                        Ok(false) => Response::unauthorized(req.id()).to_vec()?,
+                        Err(err) => {
+                            warn! {
+                                target: "ockam_api::signer::server",
+                                id     = %req.id(),
+                                method = ?req.method(),
+                                path   = %req.path(),
+                                body   = %req.has_body(),
+                                error  = %err,
+                                "signature verification failed"
+                            }
+                            Response::internal_error(req.id()).to_vec()?
+                        }
+                    }
+                }
+                ["identity"] => {
+                    let k = self.id.export().await?;
+                    let i = GetIdentityResponse::new(k.as_slice().into());
+                    Response::ok(req.id()).body(i).to_vec()?
+                }
+                _ => response::unknown_path(&req).to_vec()?,
+            },
+            Some(Method::Put) => match req.path_segments::<2>().as_slice() {
+                ["identity"] => {
+                    let i: AddIdentity = dec.decode()?;
+                    let k = IdentityChangeHistory::import(i.identity())?;
+                    if !k.verify_all_existing_events(self.id.vault()).await? {
+                        response::bad_request(&req, "invalid identity key").to_vec()?
                     } else {
-                        Response::unauthorized(req.id()).to_vec()?
+                        let i = k.compute_identity_id(self.id.vault()).await?;
+                        self.id.update_known_identity(&i, &k, &self.storage).await?;
+                        Response::ok(req.id()).to_vec()?
                     }
                 }
                 _ => response::unknown_path(&req).to_vec()?,
@@ -156,6 +188,31 @@ impl Client {
             Ok(d.decode()?)
         } else {
             Err(error("verify", &res, &mut d))
+        }
+    }
+
+    pub async fn identity(&mut self) -> Result<GetIdentityResponse<'_>> {
+        let req = Request::get("/identity");
+        self.buf = self.request("get-identity", None, &req).await?;
+        assert_response_match("get-identity-response", &self.buf);
+        let mut d = Decoder::new(&self.buf);
+        let res = response("get-identity", &mut d)?;
+        if res.status() == Some(Status::Ok) {
+            Ok(d.decode()?)
+        } else {
+            Err(error("get-verify", &res, &mut d))
+        }
+    }
+
+    pub async fn add_identity(&mut self, key: &[u8]) -> Result<()> {
+        let req = Request::put("/identity").body(AddIdentity::new(key.into()));
+        self.buf = self.request("add-identity", "add-identity", &req).await?;
+        let mut d = Decoder::new(&self.buf);
+        let res = response("add-identity", &mut d)?;
+        if res.status() == Some(Status::Ok) {
+            Ok(())
+        } else {
+            Err(error("add-identity", &res, &mut d))
         }
     }
 

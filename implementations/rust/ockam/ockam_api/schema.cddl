@@ -208,6 +208,16 @@ signer_signature = [
 
 signer_signature_bytes = bytes
 
+add-identity = {
+    ?0: 1544679,
+     1: identity
+}
+
+get-identity-response = {
+    ?0: 9967409,
+     1: identity
+}
+
 ;;; Authenticator ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 add_enroller = {

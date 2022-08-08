@@ -132,3 +132,49 @@ impl compat::error::Error for InvalidCredential {
         Some(&*self.0)
     }
 }
+
+#[derive(Debug, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct AddIdentity<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<1544679>,
+    #[b(1)] identity: CowBytes<'a>,
+}
+
+impl<'a> AddIdentity<'a> {
+    pub fn new(identity: CowBytes<'a>) -> Self {
+        AddIdentity {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            identity,
+        }
+    }
+
+    pub fn identity(&self) -> &[u8] {
+        &self.identity
+    }
+}
+
+#[derive(Debug, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct GetIdentityResponse<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<9967409>,
+    #[b(1)] identity: CowBytes<'a>,
+}
+
+impl<'a> GetIdentityResponse<'a> {
+    pub fn new(identity: CowBytes<'a>) -> Self {
+        GetIdentityResponse {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            identity,
+        }
+    }
+
+    pub fn identity(&self) -> &[u8] {
+        &self.identity
+    }
+}
