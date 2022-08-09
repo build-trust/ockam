@@ -46,7 +46,7 @@ pub struct Router {
     /// Externally registered router components
     external: BTreeMap<TransportType, Address>,
     /// Receiver for messages from node
-    receiver: RouterReceiver<NodeMessage>,
+    receiver: Option<RouterReceiver<NodeMessage>>,
 }
 
 enum RouteType {
@@ -69,13 +69,20 @@ impl Router {
             state: RouterState::new(sender),
             map: InternalMap::default(),
             external: BTreeMap::new(),
-            receiver,
+            receiver: Some(receiver),
         }
     }
 
     #[cfg(feature = "metrics")]
     pub(crate) fn get_metrics_readout(&self) -> (Arc<AtomicUsize>, Arc<AtomicUsize>) {
         self.map.get_metrics()
+    }
+
+    /// Get the router receiver
+    fn get_recv(&mut self) -> Result<&mut RouterReceiver<NodeMessage>> {
+        self.receiver
+            .as_mut()
+            .ok_or_else(|| NodeError::NodeState(NodeReason::Corrupt).internal())
     }
 
     pub fn init(&mut self, addr: Address, senders: SenderPair) {
@@ -288,11 +295,13 @@ impl Router {
 
     /// Block current task running this router.  Return fatal errors
     async fn run_inner(&mut self) -> Result<()> {
-        while let Some(msg) = self.receiver.recv().await {
+        while let Some(msg) = self.get_recv()?.recv().await {
             let msg_str = format!("{}", msg);
             match self.handle_msg(msg).await {
                 Ok(should_break) => {
                     if should_break {
+                        // We drop the receiver end here
+                        self.receiver.take();
                         break;
                     }
                 }
