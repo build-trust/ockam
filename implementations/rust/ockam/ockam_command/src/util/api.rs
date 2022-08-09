@@ -7,8 +7,9 @@ use minicbor::Decoder;
 use clap::Args;
 use ockam::identity::IdentityIdentifier;
 use ockam::Result;
-use ockam_api::cloud::CloudRequestWrapper;
+use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
 use ockam_api::nodes::*;
+use ockam_core::api::RequestBuilder;
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
@@ -247,8 +248,7 @@ pub(crate) mod enroll {
 /// Helpers to create spaces API requests
 pub(crate) mod space {
     use crate::space::*;
-    use ockam_api::cloud::{space::*, BareCloudRequestWrapper};
-    use ockam_core::api::RequestBuilder;
+    use ockam_api::cloud::space::*;
 
     use super::*;
 
@@ -315,6 +315,43 @@ pub(crate) mod project {
         .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
         .encode(&mut buf)?;
         Ok(buf)
+    }
+
+    pub(crate) fn add_enroller(
+        cmd: &AddEnrollerCommand,
+    ) -> RequestBuilder<CloudRequestWrapper<AddEnroller>> {
+        let b = AddEnroller::new(
+            cmd.enroller_identity_id.as_str(),
+            cmd.description.as_deref(),
+        );
+        Request::builder(
+            Method::Post,
+            format!("v0/project-enrollers/{}", cmd.project_id),
+        )
+        .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
+    }
+
+    pub(crate) fn list_enrollers(
+        cmd: &ListEnrollersCommand,
+    ) -> RequestBuilder<BareCloudRequestWrapper> {
+        Request::builder(
+            Method::Get,
+            format!("v0/project-enrollers/{}", cmd.project_id),
+        )
+        .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+    }
+
+    pub(crate) fn delete_enroller(
+        cmd: &DeleteEnrollerCommand,
+    ) -> RequestBuilder<BareCloudRequestWrapper> {
+        Request::builder(
+            Method::Delete,
+            format!(
+                "v0/project-enrollers/{}/{}",
+                cmd.project_id, cmd.enroller_identity_id
+            ),
+        )
+        .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
     }
 }
 

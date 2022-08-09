@@ -11,7 +11,6 @@ use ockam_core::TypeTag;
 #[cbor(map)]
 pub struct Space<'a> {
     #[cfg(feature = "tag")]
-    #[serde(skip_serializing)]
     #[n(0)] pub tag: TypeTag<7574645>,
     #[b(1)] pub id: CowStr<'a>,
     #[b(2)] pub name: CowStr<'a>,

@@ -8,7 +8,7 @@ use minicbor::{Decode, Encode};
 /// This zero-sized type is meant to help catching type errors in cases where
 /// CBOR items structurally match various nominal types. It will end up as an
 /// unsigned integer in CBOR and decoding checks that the value is expected.
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, serde::Serialize)]
 pub struct TypeTag<const N: usize>;
 
 // Custom `Debug` impl to include the tag number.

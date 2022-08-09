@@ -11,7 +11,6 @@ use ockam_core::TypeTag;
 #[cbor(map)]
 pub struct Project<'a> {
     #[cfg(feature = "tag")]
-    #[serde(skip_serializing)]
     #[n(0)] pub tag: TypeTag<9056532>,
     #[b(1)] pub id: CowStr<'a>,
     #[b(2)] pub name: CowStr<'a>,
@@ -47,6 +46,42 @@ impl<'a> CreateProject<'a> {
             name: name.into(),
             services: services.iter().map(|x| CowStr::from(x.as_ref())).collect(),
             users: users.iter().map(|x| CowStr::from(x.as_ref())).collect(),
+        }
+    }
+}
+
+#[derive(Encode, Decode, Debug)]
+#[cfg_attr(test, derive(Clone))]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct AddEnroller<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] pub tag: TypeTag<7361445>,
+    #[b(1)] pub identity_id: CowStr<'a>,
+    #[b(2)] pub description: Option<CowStr<'a>>,
+}
+
+#[derive(Encode, Decode, Serialize, Debug)]
+#[cfg_attr(test, derive(Clone))]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct Enroller<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] pub tag: TypeTag<4277633>,
+    #[b(1)] pub identity_id: CowStr<'a>,
+    #[b(2)] pub description: Option<CowStr<'a>>,
+    #[b(3)] pub added_by: CowStr<'a>,
+    #[b(4)] pub created_at: CowStr<'a>,
+}
+
+impl<'a> AddEnroller<'a> {
+    pub fn new<S: Into<CowStr<'a>>>(identity_id: S, description: Option<S>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            identity_id: identity_id.into(),
+
+            description: description.map(|s| s.into()),
         }
     }
 }
@@ -193,6 +228,60 @@ mod node {
             trace!(target: TARGET, %space_id, %project_id, "deleting project");
 
             let req_builder = Request::delete(format!("/v0/{space_id}/{project_id}"));
+            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder)
+                .await
+        }
+
+        pub(crate) async fn add_project_enroller(
+            &mut self,
+            ctx: &mut Context,
+            dec: &mut Decoder<'_>,
+            project_id: &str,
+        ) -> Result<Vec<u8>> {
+            let req_wrapper: CloudRequestWrapper<AddEnroller> = dec.decode()?;
+            let cloud_route = req_wrapper.route()?;
+            let req_body = req_wrapper.req;
+
+            let label = "add_enroller";
+            trace!(target: TARGET, %project_id, "adding enroller");
+
+            let req_builder = Request::post(format!("/v0/{project_id}/enrollers")).body(req_body);
+            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder)
+                .await
+        }
+
+        pub(crate) async fn list_project_enrollers(
+            &mut self,
+            ctx: &mut Context,
+            dec: &mut Decoder<'_>,
+            project_id: &str,
+        ) -> Result<Vec<u8>> {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_route = req_wrapper.route()?;
+
+            let label = "list_enrollers";
+            trace!(target: TARGET, %project_id, "listing enrollers");
+
+            let req_builder = Request::get(format!("/v0/{project_id}/enrollers"));
+            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder)
+                .await
+        }
+
+        pub(crate) async fn delete_project_enroller(
+            &mut self,
+            ctx: &mut Context,
+            dec: &mut Decoder<'_>,
+            project_id: &str,
+            enroller_identity_id: &str,
+        ) -> Result<Vec<u8>> {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_route = req_wrapper.route()?;
+
+            let label = "delete_enroller";
+            trace!(target: TARGET, %project_id, %enroller_identity_id, "deleting enroller");
+
+            let req_builder =
+                Request::delete(format!("/v0/{project_id}/enrollers/{enroller_identity_id}"));
             self.request_controller(ctx, label, None, cloud_route, "projects", req_builder)
                 .await
         }
