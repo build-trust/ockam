@@ -11,7 +11,6 @@ use ockam_core::TypeTag;
 #[cbor(map)]
 pub struct Invitation<'a> {
     #[cfg(feature = "tag")]
-    #[serde(skip_serializing)]
     #[n(0)] tag: TypeTag<7088378>,
     #[b(1)] pub id: CowStr<'a>,
     #[b(2)] pub inviter: CowStr<'a>,

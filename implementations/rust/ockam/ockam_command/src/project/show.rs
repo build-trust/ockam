@@ -16,6 +16,7 @@ use crate::{CommandGlobalOpts, OutputFormat};
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
     /// Id of the space.
+    /// TODO: this is not used at all?
     #[clap(display_order = 1001)]
     pub space_id: String,
 

@@ -244,7 +244,6 @@ pub mod enrollment_token {
     #[cbor(map)]
     pub struct EnrollmentToken<'a> {
         #[cfg(feature = "tag")]
-        #[serde(skip_serializing)]
         #[n(0)] pub tag: TypeTag<8932763>,
         #[n(1)] pub token: Token<'a>,
     }

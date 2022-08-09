@@ -1,5 +1,6 @@
 use cli_table::{Cell, Style, Table};
 use core::fmt::Write;
+use ockam_api::cloud::project::Enroller;
 
 use crate::util::comma_separated;
 use ockam_api::cloud::space::Space;
@@ -57,6 +58,38 @@ impl Output for Vec<Space<'_>> {
                 "ID".cell().bold(true),
                 "Name".cell().bold(true),
                 "Users".cell().bold(true),
+            ])
+            .display()?
+            .to_string();
+        Ok(table)
+    }
+}
+
+impl Output for Enroller<'_> {
+    fn output(&self) -> anyhow::Result<String> {
+        let mut w = String::new();
+        write!(w, "identity_id: {}", self.identity_id)?;
+        write!(w, "\nadded_by: {}", self.added_by)?;
+        Ok(w)
+    }
+}
+
+impl Output for Vec<Enroller<'_>> {
+    fn output(&self) -> anyhow::Result<String> {
+        let mut rows = vec![];
+        for Enroller {
+            identity_id,
+            added_by,
+            ..
+        } in self
+        {
+            rows.push([identity_id.cell(), added_by.cell()]);
+        }
+        let table = rows
+            .table()
+            .title([
+                "Identity ID".cell().bold(true),
+                "Added By".cell().bold(true),
             ])
             .display()?
             .to_string();
