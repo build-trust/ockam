@@ -7,11 +7,7 @@ use ockam::Route;
 use ockam_api::config::cli::NodeConfig;
 use ockam_api::nodes::{models::base::NodeStatus, NODEMANAGER_ADDR};
 use ockam_api::Status;
-use std::{
-    net::{IpAddr, SocketAddr},
-    str::FromStr,
-    time::Duration,
-};
+use std::time::Duration;
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -38,17 +34,7 @@ impl ShowCommand {
 // printing the node state in the future but for now we can just tell
 // clippy to stop complainaing about it.
 #[allow(clippy::too_many_arguments)]
-fn print_node_info(
-    node_cfg: &NodeConfig,
-    node_name: &str,
-    status: &str,
-    default_id: &str,
-    api_address: SocketAddr,
-    pid: &str,
-    workers: &str,
-    transports: &str,
-    log_path: &str,
-) {
+fn print_node_info(node_cfg: &NodeConfig, node_name: &str, status: &str, default_id: &str) {
     println!(
         r#"
 Node:
@@ -71,28 +57,18 @@ Node:
     Service:
       Type: Echo
       Address: /service/echo
-  API Address: {}
   Secure Channel Listener Address: /service/api
-  Pid: {}
-  Worker count: {}
-  Transport count: {}
-  Log Path: {}
 "#,
         node_name,
         match status {
-            "UP" => status.bright_green(),
-            "DOWN" => status.bright_red(),
-            _ => status.clear(),
+            "UP" => status.light_green(),
+            "DOWN" => status.light_red(),
+            _ => status.white(),
         },
         node_cfg.port,
         node_cfg.port,
         default_id,
         default_id,
-        api_address,
-        pid,
-        workers,
-        transports,
-        log_path
     );
 }
 
@@ -113,18 +89,10 @@ pub async fn query_status(
         .context("Failed to process request");
 
     let node_cfg = cfg.get_node(&node_name).unwrap();
-    let api_address = SocketAddr::new(IpAddr::from_str("127.0.0.1").unwrap(), node_cfg.port);
-    let (mlog, _) = cfg.log_paths_for_node(&node_name.to_string()).unwrap();
-    let log_path = util::print_path(&mlog);
 
     match resp {
         Ok(resp) => {
-            let NodeStatus {
-                workers,
-                pid,
-                transports,
-                ..
-            } = api::parse_status(&resp)?;
+            let NodeStatus { .. } = api::parse_status(&resp)?;
 
             // Getting short id for the node
             let resp: Vec<u8> = ctx
@@ -143,29 +111,9 @@ pub async fn query_status(
                 _ => String::from("NOT FOUND"),
             };
 
-            print_node_info(
-                &node_cfg,
-                &node_name,
-                "UP",
-                &default_id,
-                api_address,
-                &pid.to_string(),
-                &workers.to_string(),
-                &transports.to_string(),
-                log_path.as_str(),
-            )
+            print_node_info(&node_cfg, &node_name, "UP", &default_id)
         }
-        Err(_) => print_node_info(
-            &node_cfg,
-            &node_name,
-            "DOWN",
-            "N/A",
-            api_address,
-            "-",
-            "N/A",
-            "N/A",
-            log_path.as_str(),
-        ),
+        Err(_) => print_node_info(&node_cfg, &node_name, "DOWN", "N/A"),
     }
 
     util::stop_node(ctx).await
