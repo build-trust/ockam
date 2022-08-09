@@ -9,7 +9,7 @@ pub use config::*;
 
 use anyhow::Context;
 use ockam::{route, NodeBuilder, Route, TcpTransport, TCP};
-use std::{env, net::TcpListener, path::Path};
+use std::{env, net::TcpListener};
 use tracing::error;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
@@ -137,8 +137,4 @@ pub fn setup_logging(verbose: u8, no_color: bool) {
     if result.is_err() {
         eprintln!("Failed to initialise tracing logging.");
     }
-}
-
-pub fn print_path(p: &Path) -> String {
-    p.to_str().unwrap_or("<unprintable>").to_string()
 }

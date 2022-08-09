@@ -5,10 +5,6 @@ use clap::Args;
 use ockam::Route;
 use ockam_api::nodes::{models::base::NodeStatus, NODEMANAGER_ADDR};
 use ockam_api::Status;
-use std::{
-    net::{IpAddr, SocketAddr},
-    str::FromStr,
-};
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -45,12 +41,7 @@ pub async fn query_status(
         .context("Failed to process request")?;
 
     let NodeStatus {
-        node_name,
-        status,
-        workers,
-        pid,
-        transports,
-        ..
+        node_name, status, ..
     } = api::parse_status(&resp)?;
 
     // Getting short id for the node
@@ -71,24 +62,31 @@ pub async fn query_status(
     };
 
     let node_cfg = cfg.get_node(&node_name).unwrap();
-    let api_address = SocketAddr::new(IpAddr::from_str("127.0.0.1").unwrap(), node_cfg.port);
-    let (mlog, _) = cfg.log_paths_for_node(&node_name.to_string()).unwrap();
-    let log_path = util::print_path(&mlog);
 
     println!(
         r#"
 Node:
   Name: {}
   Status: {}
-  API Address: {}
-  Default Identity: {}
-  Secure Channel Listener Address: /service/api
-  Pid: {}
-  Worker count: {}
-  Transport count: {}
-  Log Path: {}
+  Services:
+    Service:
+      Type: TCP Listener
+      Address: /ip4/127.0.0.1/tcp/{}
+    Service:
+      Type: Secure Channel Listener
+      Address: /service/api
+      Route: /ip4/127.0.0.1/tcp/{}/service/api
+      Identity: {}
+      Authorized Identities:
+        - {}
+    Service:
+      Type: Uppercase
+      Address: /service/uppercase
+    Service:
+      Type: Echo
+      Address: /service/echo
 "#,
-        node_name, status, api_address, default_id, pid, workers, transports, log_path
+        node_name, status, node_cfg.port, node_cfg.port, default_id, default_id,
     );
     util::stop_node(ctx).await
 }
