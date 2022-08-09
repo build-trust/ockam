@@ -91,6 +91,9 @@ pub trait Codec: Send + Sync {
     /// Are the given input bytes valid w.r.t. the code?
     fn is_valid_bytes(&self, code: Code, value: Checked<&[u8]>) -> bool;
 
+    /// Write a protocol value to the given buffer.
+    fn write_bytes(&self, val: &ProtoValue, buf: &mut dyn Buffer) -> Result<(), Error>;
+
     /// Decode the string value and encode it into the buffer.
     fn transcode_str(
         &self,
@@ -357,6 +360,15 @@ impl MultiAddr {
         Ok(())
     }
 
+    /// Add a protocol value to the end of this address.
+    pub fn push_back_value(&mut self, p: &ProtoValue) -> Result<(), Error> {
+        if let Some(codec) = self.reg.get_by_code(p.code()) {
+            codec.write_bytes(p, &mut self.dat)
+        } else {
+            Err(Error::unregistered(p.code()))
+        }
+    }
+
     /// Add a protocol to the front of this address.
     pub fn push_front<'a, P: Protocol<'a>>(&mut self, p: P) -> Result<(), Error> {
         if self.reg.get_by_code(P::CODE).is_none() {
@@ -368,6 +380,19 @@ impl MultiAddr {
         dat.extend_from_slice(&self.dat); // TODO
         self.dat = dat;
         Ok(())
+    }
+
+    /// Add a protocol value to the front of this address.
+    pub fn push_front_value(&mut self, p: &ProtoValue) -> Result<(), Error> {
+        if let Some(codec) = self.reg.get_by_code(p.code()) {
+            let mut dat = TinyVec::new();
+            codec.write_bytes(p, &mut dat)?;
+            dat.extend_from_slice(&self.dat); // TODO
+            self.dat = dat;
+            Ok(())
+        } else {
+            Err(Error::unregistered(p.code()))
+        }
     }
 
     /// Remove and return the last protocol component.

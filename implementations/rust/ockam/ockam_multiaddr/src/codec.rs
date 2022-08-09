@@ -1,6 +1,6 @@
 use super::{Buffer, Checked, Code, Codec, Protocol};
 use crate::proto::{DnsAddr, Node, Service, Tcp};
-use crate::Error;
+use crate::{Error, ProtoValue};
 use core::fmt;
 use unsigned_varint::decode;
 
@@ -73,6 +73,21 @@ impl Codec for StdCodec {
             Node::CODE => Node::read_bytes(input).is_ok(),
             _ => false,
         }
+    }
+
+    fn write_bytes(&self, val: &ProtoValue, buf: &mut dyn Buffer) -> Result<(), Error> {
+        match val.code() {
+            #[cfg(feature = "std")]
+            crate::proto::Ip4::CODE => crate::proto::Ip4::read_bytes(val.data())?.write_bytes(buf),
+            #[cfg(feature = "std")]
+            crate::proto::Ip6::CODE => crate::proto::Ip6::read_bytes(val.data())?.write_bytes(buf),
+            Tcp::CODE => Tcp::read_bytes(val.data())?.write_bytes(buf),
+            DnsAddr::CODE => DnsAddr::read_bytes(val.data())?.write_bytes(buf),
+            Service::CODE => Service::read_bytes(val.data())?.write_bytes(buf),
+            Node::CODE => Node::read_bytes(val.data())?.write_bytes(buf),
+            code => return Err(Error::unregistered(code)),
+        }
+        Ok(())
     }
 
     fn transcode_str(

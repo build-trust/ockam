@@ -19,6 +19,26 @@ quickcheck! {
         a.0 == MultiAddr::try_from(a.0.as_ref()).unwrap()
     }
 
+    fn push_back_value(a: Addr) -> bool {
+        let mut ma = MultiAddr::default();
+        for proto in a.0.iter() {
+            ma.push_back_value(&proto).unwrap()
+        }
+        a.0 == ma
+    }
+
+    fn push_front_value(a: Addr) -> bool {
+        let mut vec = Vec::new();
+        for proto in a.0.iter() {
+            vec.push(proto)
+        }
+        let mut ma = MultiAddr::default();
+        for proto in vec.iter().rev() {
+            ma.push_front_value(&proto).unwrap()
+        }
+        a.0 == ma
+    }
+
     fn operations(ops: Vec<Op>) -> bool {
         let mut gen = rand::thread_rng();
         let mut addr = MultiAddr::default();
