@@ -34,11 +34,11 @@ impl Deref for OckamConfig {
 #[derive(thiserror::Error, Debug)]
 pub enum ConfigError {
     #[error("node with name {} already exists", 0)]
-    NodeExists(String),
+    Exists(String),
     #[error("node with name {} does not exist", 0)]
-    NodeNotFound(String),
+    NotFound(String),
     #[error("node with name {} is not local", 0)]
-    NodeNotLocal(String),
+    NotLocal(String),
 }
 
 impl OckamConfig {
@@ -75,11 +75,11 @@ impl OckamConfig {
         let n = inner
             .nodes
             .get(name)
-            .ok_or_else(|| ConfigError::NodeNotFound(name.to_string()))?;
+            .ok_or_else(|| ConfigError::NotFound(name.to_string()))?;
         let node_path = n
             .state_dir
             .as_ref()
-            .ok_or_else(|| ConfigError::NodeNotLocal(name.to_string()))?;
+            .ok_or_else(|| ConfigError::NotLocal(name.to_string()))?;
         Ok(PathBuf::new().join(node_path))
     }
 
@@ -103,7 +103,7 @@ impl OckamConfig {
         Ok(inner
             .nodes
             .get(name)
-            .ok_or_else(|| ConfigError::NodeNotFound(name.to_string()))?
+            .ok_or_else(|| ConfigError::NotFound(name.to_string()))?
             .pid)
     }
 
@@ -123,7 +123,7 @@ impl OckamConfig {
             .nodes
             .get(node)
             .map(Clone::clone)
-            .ok_or_else(|| ConfigError::NodeNotFound(node.into()))
+            .ok_or_else(|| ConfigError::NotFound(node.into()))
     }
 
     /// Get the current version the selected node configuration
@@ -180,7 +180,7 @@ impl OckamConfig {
         let mut inner = self.inner.writelock_inner();
 
         if inner.nodes.contains_key(name) {
-            return Err(ConfigError::NodeExists(name.to_string()));
+            return Err(ConfigError::Exists(name.to_string()));
         }
 
         // Setup logging directory and store it
@@ -215,7 +215,7 @@ impl OckamConfig {
         let mut inner = self.inner.writelock_inner();
         match inner.nodes.remove(name) {
             Some(_) => Ok(()),
-            None => Err(ConfigError::NodeExists(name.to_string())),
+            None => Err(ConfigError::Exists(name.to_string())),
         }
     }
 
@@ -224,7 +224,7 @@ impl OckamConfig {
         let mut inner = self.inner.writelock_inner();
 
         if !inner.nodes.contains_key(name) {
-            return Err(ConfigError::NodeNotFound(name.to_string()));
+            return Err(ConfigError::NotFound(name.to_string()));
         }
 
         inner.nodes.get_mut(name).unwrap().pid = pid.into();

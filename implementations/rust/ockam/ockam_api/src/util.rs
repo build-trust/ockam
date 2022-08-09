@@ -9,13 +9,14 @@ use std::net::{SocketAddr, SocketAddrV4, SocketAddrV6};
 /// Go through a multiaddr and remove all instances of
 /// `/node/<whatever>` out of it and replaces it with a fully
 /// qualified address to the target
+// TODO: Currently this function doesn't handle DNS names
 pub fn clean_multiaddr(
     input: &MultiAddr,
     lookup: &BTreeMap<String, SocketAddr>,
 ) -> Option<MultiAddr> {
     let mut new_ma = MultiAddr::default();
-    let mut it = input.iter().peekable();
-    while let Some(p) = it.next() {
+    let it = input.iter().peekable();
+    for p in it {
         match p.code() {
             Node::CODE => {
                 let alias = p.cast::<Node>()?;
@@ -24,9 +25,11 @@ pub fn clean_multiaddr(
                     .expect("provided invalid substitution route");
 
                 let _ = match addr {
-                    SocketAddr::V4(v4) => new_ma.push_back(Ip4(v4.ip().clone())),
-                    SocketAddr::V6(v6) => new_ma.push_back(Ip6(v6.ip().clone())),
+                    SocketAddr::V4(v4) => new_ma.push_back(Ip4(*v4.ip())),
+                    SocketAddr::V6(v6) => new_ma.push_back(Ip6(*v6.ip())),
                 };
+
+                let _ = new_ma.push_back(Tcp(addr.port()));
             }
             Service::CODE => {
                 let _ = new_ma.push_back(p.cast::<Service>()?);

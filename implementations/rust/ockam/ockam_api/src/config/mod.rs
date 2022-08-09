@@ -84,7 +84,7 @@ impl<V: ConfigValues> Config<V> {
 
         Self {
             config_dir: config_dir.to_path_buf(),
-            config_name: config_name.to_string(),
+            config_name,
             inner: Arc::new(RwLock::new(inner)),
         }
     }
