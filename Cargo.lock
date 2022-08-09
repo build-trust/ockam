@@ -594,15 +594,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "colored"
-version = "2.0.0"
+name = "colorful"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3616f750b84d8f0de8a58bda93e08e2a81ad3f523089b05f1dffecab48c6cbd"
-dependencies = [
- "atty",
- "lazy_static",
- "winapi",
-]
+checksum = "0bca1619ff57dd7a56b58a8e25ef4199f123e78e503fe1653410350a1b98ae65"
 
 [[package]]
 name = "console"
@@ -2194,7 +2189,7 @@ dependencies = [
  "async-trait",
  "clap 3.2.4",
  "cli-table",
- "colored",
+ "colorful",
  "crossbeam-channel",
  "dialoguer",
  "directories",

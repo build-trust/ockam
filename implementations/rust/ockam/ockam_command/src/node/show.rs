@@ -2,7 +2,7 @@ use crate::util::{self, api, connect_to, OckamConfig};
 use crate::CommandGlobalOpts;
 use anyhow::Context;
 use clap::Args;
-use colored::Colorize;
+use colorful::Colorful;
 use ockam::Route;
 use ockam_api::config::cli::NodeConfig;
 use ockam_api::nodes::{models::base::NodeStatus, NODEMANAGER_ADDR};
