@@ -4,8 +4,10 @@ use crate::config::{snippet::ComposableSnippet, ConfigValues};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
+use std::net::{Ipv4Addr, Ipv6Addr};
 use std::{
     env,
+    net::SocketAddr,
     path::{Path, PathBuf},
 };
 
@@ -62,6 +64,27 @@ Otherwise your OS or OS configuration may not be supported!",
             ),
         }
     }
+
+    // UTILITY FUNCTIONS NEEDED IN OCKAM_API
+
+    /// This function could be zero-copy if we kept the lock on the
+    /// backing store for as long as we needed it.  Because this may
+    /// have unwanted side-effects, instead we eagerly copy data here.
+    /// This may be optimised in the future!
+    pub fn build_lookup(&self) -> BTreeMap<String, SocketAddr> {
+        self.nodes
+            .iter()
+            .map(|(name, cfg)| (name.clone(), cfg.bind.parse().unwrap()))
+            .collect()
+    }
+}
+
+/// An internet address (v6/v4/dns)
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum InternetAddress {
+    Dns(String),
+    V4(Ipv4Addr),
+    V6(Ipv6Addr),
 }
 
 /// Per-node runtime configuration
@@ -73,10 +96,12 @@ Otherwise your OS or OS configuration may not be supported!",
 /// don't have to be synced to consumers.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NodeConfig {
+    pub remote: bool,
+    pub bind: String,
     pub port: u16,
     pub verbose: u8,
     pub pid: Option<i32>,
-    pub state_dir: PathBuf,
+    pub state_dir: Option<PathBuf>,
 }
 
 /// Node launch configuration

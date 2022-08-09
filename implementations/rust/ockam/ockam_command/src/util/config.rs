@@ -37,6 +37,8 @@ pub enum ConfigError {
     NodeExists(String),
     #[error("node with name {} does not exist", 0)]
     NodeNotFound(String),
+    #[error("node with name {} is not local", 0)]
+    NodeNotLocal(String),
 }
 
 impl OckamConfig {
@@ -74,7 +76,11 @@ impl OckamConfig {
             .nodes
             .get(name)
             .ok_or_else(|| ConfigError::NodeNotFound(name.to_string()))?;
-        Ok(PathBuf::new().join(&n.state_dir))
+        let node_path = n
+            .state_dir
+            .as_ref()
+            .ok_or_else(|| ConfigError::NodeNotLocal(name.to_string()))?;
+        Ok(PathBuf::new().join(node_path))
     }
 
     /// Get the API port used by a node
@@ -133,7 +139,8 @@ impl OckamConfig {
     pub fn log_paths_for_node(&self, node_name: &str) -> Option<(PathBuf, PathBuf)> {
         let inner = self.inner.readlock_inner();
 
-        let base = &inner.nodes.get(node_name)?.state_dir;
+        let base = inner.nodes.get(node_name)?.state_dir.as_ref()?;
+
         // TODO: sluggify node names
         Some((
             base.join(format!("{}.log", node_name)),
@@ -163,7 +170,13 @@ impl OckamConfig {
     }
 
     /// Add a new node to the configuration for future lookup
-    pub fn create_node(&self, name: &str, port: u16, verbose: u8) -> Result<(), ConfigError> {
+    pub fn create_node(
+        &self,
+        name: &str,
+        bind: &str,
+        port: u16,
+        verbose: u8,
+    ) -> Result<(), ConfigError> {
         let mut inner = self.inner.writelock_inner();
 
         if inner.nodes.contains_key(name) {
@@ -186,9 +199,11 @@ impl OckamConfig {
         inner.nodes.insert(
             name.to_string(),
             NodeConfig {
+                remote: false,
+                bind: bind.to_string(),
                 port,
                 verbose,
-                state_dir,
+                state_dir: Some(state_dir),
                 pid: Some(0),
             },
         );
@@ -247,7 +262,6 @@ impl StartupConfig {
     pub fn add_composite(&self, composite: ComposableSnippet) {
         let mut inner = self.inner.writelock_inner();
         inner.commands.push_back(composite);
-        dbg!(&inner.commands);
     }
 
     pub fn get_all(&self) -> VecDeque<ComposableSnippet> {
