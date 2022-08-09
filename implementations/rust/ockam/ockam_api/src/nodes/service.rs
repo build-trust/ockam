@@ -1,5 +1,6 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -7,7 +8,7 @@ use minicbor::Decoder;
 
 use ockam::remote::RemoteForwarder;
 use ockam::{Address, Context, Result, Route, Routed, TcpTransport, Worker};
-use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String};
+use ockam_core::compat::{boxed::Box, string::String};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::route;
 use ockam_identity::{Identity, TrustEveryonePolicy};
@@ -96,7 +97,7 @@ impl NodeManager {
         let mut transports = BTreeMap::new();
         transports.insert(api_transport_id.clone(), api_transport);
 
-        let config = Config::<NodeManConfig>::load(&node_dir, "config");
+        let config = Config::<NodeManConfig>::load(&node_dir, "config.json");
 
         // Check if we had existing AuthenticatedStorage, create with default location otherwise
         let authenticated_storage_path = config.readlock_inner().authenticated_storage_path.clone();
