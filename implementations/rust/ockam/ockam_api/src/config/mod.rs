@@ -56,7 +56,8 @@ impl<V: ConfigValues> Config<V> {
             std::process::exit(-1);
         }
 
-        let config_path = config_dir.join(format!("{}.json", config_name));
+        let config_name = format!("{}.json", config_name);
+        let config_path = config_dir.join(&config_name);
 
         let inner = match File::open(&config_path) {
             Ok(ref mut f) => {
