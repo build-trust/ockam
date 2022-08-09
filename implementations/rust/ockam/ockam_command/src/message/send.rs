@@ -5,18 +5,19 @@ use std::str::FromStr;
 use tracing::debug;
 
 use crate::CommandGlobalOpts;
+use ockam::TcpTransport;
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_api::{Response, Status};
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 
-use crate::util::{api, connect_to, stop_node};
+use crate::util::{api, connect_to, embedded_node, stop_node};
 
 #[derive(Clone, Debug, Args)]
 pub struct SendCommand {
     /// The node to send messages from
     #[clap(short, long, value_name = "NODE")]
-    from: String,
+    from: Option<String>,
 
     /// The route to send the message to
     #[clap(short, long, value_name = "ROUTE")]
@@ -27,8 +28,12 @@ pub struct SendCommand {
 
 impl SendCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: SendCommand) {
-        let port = opts.config.get_node_port(&cmd.from);
-        connect_to(port, (opts, cmd), send_message);
+        if let Some(node) = &cmd.from {
+            let port = opts.config.get_node_port(node);
+            connect_to(port, (opts, cmd), send_message_via_connection_to_a_node);
+        } else {
+            embedded_node(send_message_from_embedded_node, cmd)
+        }
     }
 
     pub fn to(&self) -> anyhow::Result<MultiAddr> {
@@ -36,7 +41,24 @@ impl SendCommand {
     }
 }
 
-async fn send_message(
+async fn send_message_from_embedded_node(
+    mut ctx: ockam::Context,
+    cmd: SendCommand,
+) -> anyhow::Result<()> {
+    let _tcp = TcpTransport::create(&ctx).await?;
+
+    if let Some(route) = ockam_api::multiaddr_to_route(&cmd.to()?) {
+        ctx.send(route, cmd.message).await?;
+        let message = ctx.receive::<String>().await?;
+        println!("{}", message);
+    }
+
+    ctx.stop().await?;
+
+    Ok(())
+}
+
+async fn send_message_via_connection_to_a_node(
     ctx: ockam::Context,
     (_opts, cmd): (CommandGlobalOpts, SendCommand),
     mut base_route: Route,
