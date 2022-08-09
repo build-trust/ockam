@@ -139,6 +139,7 @@ pub fn setup_logging(verbose: u8, no_color: bool) {
     }
 }
 
+#[allow(unused)]
 pub fn print_path(p: &Path) -> String {
     p.to_str().unwrap_or("<unprintable>").to_string()
 }
