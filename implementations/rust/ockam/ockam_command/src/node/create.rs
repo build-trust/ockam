@@ -98,7 +98,12 @@ impl CreateCommand {
             // calls to it don't fail
             if cfg.get_node_dir(&command.node_name).is_err() {
                 println!("Creating node directory...");
-                if let Err(e) = cfg.create_node(&command.node_name, address.port(), verbose) {
+                if let Err(e) = cfg.create_node(
+                    &command.node_name,
+                    &command.tcp_listener_address,
+                    address.port(),
+                    verbose,
+                ) {
                     eprintln!(
                         "failed to update node configuration for '{}': {:?}",
                         command.node_name, e
@@ -129,7 +134,12 @@ impl CreateCommand {
             // First we create a new node in the configuration so that
             // we can ask it for the correct log path, as well as
             // making sure the watchdog can do its job later on.
-            if let Err(e) = cfg.create_node(&command.node_name, address.port(), verbose) {
+            if let Err(e) = cfg.create_node(
+                &command.node_name,
+                &command.tcp_listener_address,
+                address.port(),
+                verbose,
+            ) {
                 eprintln!(
                     "failed to update node configuration for '{}': {:?}",
                     command.node_name, e

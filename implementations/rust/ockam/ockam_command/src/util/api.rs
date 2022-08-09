@@ -24,7 +24,7 @@ pub(crate) fn query_status() -> Result<Vec<u8>> {
 /// Construct a request to query node transports
 pub(crate) fn query_transports() -> Result<Vec<u8>> {
     let mut buf = vec![];
-    Request::builder(Method::Get, "/node/transport").encode(&mut buf)?;
+    Request::builder(Method::Get, "/node/tcp/connection").encode(&mut buf)?;
     Ok(buf)
 }
 

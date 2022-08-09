@@ -1,9 +1,45 @@
 use core::str::FromStr;
 use ockam::{Address, TCP};
 use ockam_core::{Route, LOCAL};
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Service, Tcp};
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Service, Tcp};
 use ockam_multiaddr::{MultiAddr, Protocol};
-use std::net::{SocketAddrV4, SocketAddrV6};
+use std::collections::BTreeMap;
+use std::net::{SocketAddr, SocketAddrV4, SocketAddrV6};
+
+/// Go through a multiaddr and remove all instances of
+/// `/node/<whatever>` out of it and replaces it with a fully
+/// qualified address to the target
+pub fn clean_multiaddr(
+    input: &MultiAddr,
+    lookup: &BTreeMap<String, SocketAddr>,
+) -> Option<MultiAddr> {
+    let mut new_ma = MultiAddr::default();
+    let mut it = input.iter().peekable();
+    while let Some(p) = it.next() {
+        match p.code() {
+            Node::CODE => {
+                let alias = p.cast::<Node>()?;
+                let addr = lookup
+                    .get(&*alias)
+                    .expect("provided invalid substitution route");
+
+                let _ = match addr {
+                    SocketAddr::V4(v4) => new_ma.push_back(Ip4(v4.ip().clone())),
+                    SocketAddr::V6(v6) => new_ma.push_back(Ip6(v6.ip().clone())),
+                };
+            }
+            Service::CODE => {
+                let _ = new_ma.push_back(p.cast::<Service>()?);
+            }
+            other => {
+                error!(target: "ockam_api", code = %other, "unsupported protocol");
+                return None;
+            }
+        }
+    }
+
+    Some(new_ma)
+}
 
 /// Try to convert a multi-address to an Ockam route.
 pub fn multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
@@ -39,6 +75,12 @@ pub fn multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
                 let local = p.cast::<Service>()?;
                 rb = rb.append(Address::new(LOCAL, &*local))
             }
+
+            // If your code crashes here then the front-end CLI isn't
+            // properly calling `clean_multiaddr` before passing it to
+            // the backend
+            Node::CODE => unreachable!(),
+
             other => {
                 error!(target: "ockam_api", code = %other, "unsupported protocol");
                 return None;
