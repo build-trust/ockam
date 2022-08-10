@@ -6,6 +6,7 @@ use core::fmt;
 use minicbor::{Decoder, Encode};
 use ockam_core::api::{assert_request_match, assert_response_match, Cbor};
 use ockam_core::api::{Error, Method, Request, RequestBuilder, Response, Status};
+use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::CowBytes;
 use ockam_core::{self, vault, Address, Result, Route, Routed, Worker};
@@ -17,7 +18,7 @@ use tracing::{trace, warn};
 use types::{Credential, IdentityId, Signature};
 
 pub struct Server<V: IdentityVault, S> {
-    id: Identity<V>,
+    id: Arc<Identity<V>>,
     storage: S,
 }
 
@@ -41,7 +42,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Worker for Server<V, S> {
 }
 
 impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
-    pub fn new(id: Identity<V>, storage: S) -> Self {
+    pub fn new(id: Arc<Identity<V>>, storage: S) -> Self {
         Server { id, storage }
     }
 

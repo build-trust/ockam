@@ -4,6 +4,7 @@ use ockam::route;
 use ockam::vault::Vault;
 use ockam_api::authenticator::direct;
 use ockam_api::signer::{self, types::IdentityId};
+use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_identity::TrustEveryonePolicy;
 use ockam_node::Context;
@@ -22,7 +23,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     {
         let v = Vault::create();
         let a = Identity::create(ctx, &v).await?;
-        let s = signer::Server::new(a, InMemoryStorage::new());
+        let s = signer::Server::new(Arc::new(a), InMemoryStorage::new());
         ctx.start_worker("signer", s).await?;
     }
 
@@ -89,7 +90,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     {
         let v = Vault::create();
         let a = Identity::create(ctx, &v).await?;
-        let s = signer::Server::new(a, InMemoryStorage::new());
+        let s = signer::Server::new(Arc::new(a), InMemoryStorage::new());
         ctx.start_worker("another-signer", s).await?;
         let mut c = signer::Client::new("another-signer".into(), ctx).await?;
         c.add_identity(auth_identity.identity()).await?;
