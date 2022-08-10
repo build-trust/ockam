@@ -1,6 +1,6 @@
 use crate::{util::startup, CommandGlobalOpts};
 use clap::Args;
-use nix::{sys::signal::Signal, unistd::Pid};
+use nix::unistd::Pid;
 use rand::prelude::random;
 
 #[derive(Clone, Debug, Args)]
@@ -14,11 +14,9 @@ impl StartCommand {
     pub fn run(opts: CommandGlobalOpts, command: Self) {
         let cfg = opts.config;
 
-        // First we check whether a PID was registered and if it is
-        // still alive.  In case a node is actually running (we test
-        // with SIGUSR1) we abort the operation
+        // First we check whether a PID was registered and if it is still alive.
         if let Ok(Some(pid)) = cfg.get_node_pid(&command.node_name) {
-            let res = nix::sys::signal::kill(Pid::from_raw(pid), Signal::SIGUSR1);
+            let res = nix::sys::signal::kill(Pid::from_raw(pid), None);
 
             if res.is_ok() {
                 eprintln!(
