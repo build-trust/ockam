@@ -18,14 +18,14 @@ use tracing::{trace, warn};
 use types::{Credential, IdentityId, Signature};
 
 pub struct Server<V: IdentityVault, S> {
-    id: Arc<Identity<V>>,
+    identity: Arc<Identity<V>>,
     storage: S,
 }
 
 impl<V: IdentityVault, S> fmt::Debug for Server<V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Server")
-            .field("id", self.id.identifier())
+            .field("identity", self.identity.identifier())
             .finish()
     }
 }
@@ -43,7 +43,10 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Worker for Server<V, S> {
 
 impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
     pub fn new(id: Arc<Identity<V>>, storage: S) -> Self {
-        Server { id, storage }
+        Server {
+            identity: id,
+            storage,
+        }
     }
 
     async fn on_request(&mut self, data: &[u8]) -> Result<Vec<u8>> {
@@ -65,8 +68,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
                     let pos = dec.position();
                     dec.decode::<Attributes>()?; // typecheck
                     let att = &dec.input()[pos..];
-                    let iid = self.id.identifier();
-                    let sig = self.id.create_signature(att).await?;
+                    let iid = self.identity.identifier();
+                    let sig = self.identity.create_signature(att).await?;
                     let bdy = {
                         let a = CowBytes::from(att);
                         let s = Signature::new(IdentityId::new(iid.key_id()), sig.as_ref());
@@ -99,7 +102,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
                     }
                 }
                 ["identity"] => {
-                    let k = self.id.export().await?;
+                    let k = self.identity.export().await?;
                     let i = GetIdentityResponse::new(k.as_slice().into());
                     Response::ok(req.id()).body(i).to_vec()?
                 }
@@ -109,11 +112,13 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
                 ["identity"] => {
                     let i: AddIdentity = dec.decode()?;
                     let k = IdentityChangeHistory::import(i.identity())?;
-                    if !k.verify_all_existing_events(self.id.vault()).await? {
+                    if !k.verify_all_existing_events(self.identity.vault()).await? {
                         ockam_core::api::bad_request(&req, "invalid identity key").to_vec()?
                     } else {
-                        let i = k.compute_identity_id(self.id.vault()).await?;
-                        self.id.update_known_identity(&i, &k, &self.storage).await?;
+                        let i = k.compute_identity_id(self.identity.vault()).await?;
+                        self.identity
+                            .update_known_identity(&i, &k, &self.storage)
+                            .await?;
                         Response::ok(req.id()).to_vec()?
                     }
                 }
@@ -126,17 +131,17 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
     }
 
     async fn verify(&self, data: &[u8], sig: &Signature<'_>) -> Result<bool> {
-        let ours = self.id.identifier();
+        let ours = self.identity.identifier();
         let theirs = sig.identity().as_str();
 
         let sig = vault::Signature::new(sig.data().to_vec());
 
         if ours.key_id() == theirs {
-            let key = self.id.get_root_public_key().await?;
-            self.id.vault().verify(&sig, &key, data).await
+            let key = self.identity.get_root_public_key().await?;
+            self.identity.vault().verify(&sig, &key, data).await
         } else {
             let iid = IdentityIdentifier::from_key_id(theirs.to_string());
-            self.id
+            self.identity
                 .verify_signature(&sig, &iid, data, &self.storage)
                 .await
         }
