@@ -105,7 +105,7 @@ impl CreateCommand {
                     verbose,
                 ) {
                     eprintln!(
-                        "failed to update node configuration for '{}': {:?}",
+                        "failed to update node configuration for '{}': {}",
                         command.node_name, e
                     );
                     std::process::exit(-1);
@@ -141,7 +141,7 @@ impl CreateCommand {
                 verbose,
             ) {
                 eprintln!(
-                    "failed to update node configuration for '{}': {:?}",
+                    "failed to update node configuration for '{}': {}",
                     command.node_name, e
                 );
                 std::process::exit(-1);

@@ -33,11 +33,11 @@ impl Deref for OckamConfig {
 /// message.
 #[derive(thiserror::Error, Debug)]
 pub enum ConfigError {
-    #[error("node with name {} already exists", 0)]
+    #[error("node with name {0} already exists")]
     Exists(String),
-    #[error("node with name {} does not exist", 0)]
+    #[error("node with name {0} does not exist")]
     NotFound(String),
-    #[error("node with name {} is not local", 0)]
+    #[error("node with name {0} is not local")]
     NotLocal(String),
 }
 
