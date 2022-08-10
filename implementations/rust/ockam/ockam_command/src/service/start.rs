@@ -5,8 +5,9 @@ use anyhow::{anyhow, Context};
 use clap::{Args, Subcommand};
 use minicbor::Decoder;
 use ockam_api::error::ApiError;
+use ockam_api::nodes::models::services::{AuthenticatorType, StartAuthenticatorRequest};
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{Response, Status};
+use ockam_core::api::{Error, Method, Request, Response, Status};
 use ockam_core::Route;
 use tracing::debug;
 
@@ -21,9 +22,22 @@ pub struct StartCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum StartSubCommand {
-    Vault { addr: Option<String> },
-    Identity { addr: Option<String> },
-    Authenticated { addr: Option<String> },
+    Vault {
+        addr: Option<String>,
+    },
+    Identity {
+        addr: Option<String>,
+    },
+    Authenticated {
+        addr: Option<String>,
+    },
+    Authenticator {
+        #[clap(long, default_value = "authenticator")]
+        addr: String,
+
+        #[clap(long, default_value = "direct")]
+        authenticator_type: String,
+    },
 }
 
 impl StartCommand {
@@ -42,6 +56,9 @@ impl StartCommand {
             StartSubCommand::Identity { .. } => connect_to(port, command, start_identity_service),
             StartSubCommand::Authenticated { .. } => {
                 connect_to(port, command, start_authenticated_service)
+            }
+            StartSubCommand::Authenticator { .. } => {
+                connect_to(port, command, start_authenticator_service)
             }
         }
 
@@ -196,5 +213,50 @@ pub async fn start_authenticated_service(
         }
     };
 
+    stop_node(ctx).await
+}
+
+pub async fn start_authenticator_service(
+    ctx: ockam::Context,
+    cmd: StartCommand,
+    mut route: Route,
+) -> anyhow::Result<()> {
+    let (addr, ty) = match cmd.create_subcommand {
+        StartSubCommand::Authenticator {
+            addr,
+            authenticator_type,
+        } => match authenticator_type.to_ascii_lowercase().as_str() {
+            "direct" => (addr, AuthenticatorType::Direct),
+            other => return Err(anyhow!("unknown authenticator type: {other}")),
+        },
+        _ => unreachable!(),
+    };
+
+    let req = Request::builder(Method::Post, "/node/services/authenticator")
+        .body(StartAuthenticatorRequest::new(addr.clone(), ty))
+        .to_vec()?;
+
+    let res: Vec<u8> = ctx
+        .send_and_receive(route.modify().append(NODEMANAGER_ADDR), req)
+        .await?;
+
+    let mut dec = Decoder::new(&res);
+    let hdr: Response = dec.decode()?;
+
+    if let Some(Status::Ok) = hdr.status() {
+        println!("Authenticator service started at address: {addr}");
+        return stop_node(ctx).await;
+    }
+
+    if hdr.has_body() {
+        if let Ok(err) = dec.decode::<Error>() {
+            if let Some(msg) = err.message() {
+                eprintln!("Failed to start authenticator service: {}", msg);
+                return stop_node(ctx).await;
+            }
+        }
+    }
+
+    eprintln!("Failed to start authenticator service");
     stop_node(ctx).await
 }
