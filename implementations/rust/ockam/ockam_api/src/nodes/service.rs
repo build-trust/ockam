@@ -366,6 +366,12 @@ impl NodeManager {
             (Post, ["node", "services", "echo"]) => {
                 self.start_echoer_service(ctx, req, dec).await?.to_vec()?
             }
+            (Post, ["node", "services", "authenticator"]) => {
+                match self.start_authenticator_service(ctx, req, dec).await? {
+                    Ok(res) => res.to_vec()?,
+                    Err(res) => res.to_vec()?,
+                }
+            }
 
             // ==*== Forwarder commands ==*==
             (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req, dec).await?,
