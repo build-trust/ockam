@@ -231,7 +231,7 @@ impl NodeManager {
         ctx: &Context,
         req: &'a Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<Result<ResponseBuilder, ResponseBuilder<crate::Error<'a>>>> {
+    ) -> Result<Result<ResponseBuilder, ResponseBuilder<ockam_core::api::Error<'a>>>> {
         let body: StartAuthenticatorRequest = dec.decode()?;
         let addr: Address = body.address().into();
         match body.typ() {
@@ -243,13 +243,13 @@ impl NodeManager {
                 {
                     Ok(()) => Ok(Response::ok(req.id())),
                     Err(e) => {
-                        let err = crate::Error::new(req.path()).with_message(e.to_string());
+                        let err = ockam_core::api::Error::new(req.path()).with_message(e.to_string());
                         Err(Response::bad_request(req.id()).body(err))
                     }
                 };
                 #[cfg(not(feature = "direct-authenticator"))]
                 let res = {
-                    let err = crate::Error::new(req.path())
+                    let err = ockam_core::api::Error::new(req.path())
                         .with_message("direct authenticator not available");
                     Err(Response::not_implemented(req.id()).body(err))
                 };
@@ -264,6 +264,8 @@ impl NodeManager {
         ctx: &Context,
         addr: Address,
     ) -> Result<()> {
+        use crate::nodes::registry::AuthenticatorServiceInfo;
+
         if self.registry.authenticator_service.contains_key(&addr) {
             return Err(ApiError::generic("authenticator service already started"));
         }
@@ -273,7 +275,9 @@ impl NodeManager {
             let sc = crate::signer::Client::new(a.clone().into(), ctx).await?;
             let au = crate::authenticator::direct::Server::new(ms, es, sc);
             ctx.start_worker(addr.clone(), au).await?;
-            self.registry.authenticator_service.insert(addr, ());
+            self.registry
+                .authenticator_service
+                .insert(addr, AuthenticatorServiceInfo::default());
             Ok(())
         } else {
             Err(ApiError::generic("authenticator depends on signer service"))
