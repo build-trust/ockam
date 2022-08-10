@@ -50,6 +50,9 @@ pub(crate) struct UppercaseServiceInfo {}
 #[derive(Default)]
 pub(crate) struct EchoerServiceInfo {}
 
+#[derive(Default)]
+pub(crate) struct AuthenticatorServiceInfo {}
+
 pub(crate) struct InletInfo {
     pub(crate) bind_addr: String,
     pub(crate) worker_address: Address,
@@ -73,6 +76,8 @@ pub(crate) struct Registry {
     pub(crate) uppercase_services: BTreeMap<Address, UppercaseServiceInfo>,
     pub(crate) echoer_services: BTreeMap<Address, EchoerServiceInfo>,
     pub(crate) signer_service: Option<Address>,
+    #[cfg(feature = "direct-authenticator")]
+    pub(crate) authenticator_service: BTreeMap<Address, AuthenticatorServiceInfo>,
 
     // FIXME: wow this is a terrible way to store data
     pub(crate) inlets: BTreeMap<Alias, InletInfo>,

@@ -3,8 +3,9 @@ use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::identity::IdentityService;
 use crate::nodes::models::services::{
-    StartAuthenticatedServiceRequest, StartEchoerServiceRequest, StartIdentityServiceRequest,
-    StartUppercaseServiceRequest, StartVaultServiceRequest,
+    AuthenticatorType, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
+    StartEchoerServiceRequest, StartIdentityServiceRequest, StartUppercaseServiceRequest,
+    StartVaultServiceRequest,
 };
 use crate::nodes::NodeManager;
 use crate::uppercase::Uppercase;
@@ -222,5 +223,60 @@ impl NodeManager {
         };
 
         Ok(response)
+    }
+
+    #[allow(unused_variables)]
+    pub(super) async fn start_authenticator_service<'a>(
+        &mut self,
+        ctx: &Context,
+        req: &'a Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<Result<ResponseBuilder, ResponseBuilder<crate::Error<'a>>>> {
+        let body: StartAuthenticatorRequest = dec.decode()?;
+        let addr: Address = body.address().into();
+        match body.typ() {
+            AuthenticatorType::Direct => {
+                #[cfg(feature = "direct-authenticator")]
+                let res = match self
+                    .start_direct_authenticator_service_impl(ctx, addr)
+                    .await
+                {
+                    Ok(()) => Ok(Response::ok(req.id())),
+                    Err(e) => {
+                        let err = crate::Error::new(req.path()).with_message(e.to_string());
+                        Err(Response::bad_request(req.id()).body(err))
+                    }
+                };
+                #[cfg(not(feature = "direct-authenticator"))]
+                let res = {
+                    let err = crate::Error::new(req.path())
+                        .with_message("direct authenticator not available");
+                    Err(Response::not_implemented(req.id()).body(err))
+                };
+                Ok(res)
+            }
+        }
+    }
+
+    #[cfg(feature = "direct-authenticator")]
+    pub(super) async fn start_direct_authenticator_service_impl(
+        &mut self,
+        ctx: &Context,
+        addr: Address,
+    ) -> Result<()> {
+        if self.registry.authenticator_service.contains_key(&addr) {
+            return Err(ApiError::generic("authenticator service already started"));
+        }
+        if let Some(a) = &self.registry.signer_service {
+            let ms = self.authenticated_storage.async_try_clone().await?;
+            let es = ockam::authenticated_storage::InMemoryStorage::new();
+            let sc = crate::signer::Client::new(a.clone().into(), ctx).await?;
+            let au = crate::authenticator::direct::Server::new(ms, es, sc);
+            ctx.start_worker(addr.clone(), au).await?;
+            self.registry.authenticator_service.insert(addr, ());
+            Ok(())
+        } else {
+            Err(ApiError::generic("authenticator depends on signer service"))
+        }
     }
 }

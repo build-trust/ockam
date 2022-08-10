@@ -103,3 +103,39 @@ impl<'a> StartEchoerServiceRequest<'a> {
         }
     }
 }
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartAuthenticatorRequest<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<4724285>,
+    #[b(1)] addr: Cow<'a, str>,
+    #[n(2)] typ: AuthenticatorType
+}
+
+#[derive(Debug, Clone, Copy, Decode, Encode)]
+#[cbor(index_only)]
+pub enum AuthenticatorType {
+    #[n(0)]
+    Direct,
+}
+
+impl<'a> StartAuthenticatorRequest<'a> {
+    pub fn new(addr: impl Into<Cow<'a, str>>, typ: AuthenticatorType) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr: addr.into(),
+            typ,
+        }
+    }
+
+    pub fn address(&self) -> &str {
+        &self.addr
+    }
+
+    pub fn typ(&self) -> AuthenticatorType {
+        self.typ
+    }
+}
