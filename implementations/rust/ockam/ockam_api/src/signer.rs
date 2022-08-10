@@ -82,7 +82,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
             Some(Method::Get) => match req.path_segments::<2>().as_slice() {
                 ["verify"] => {
                     let crd: Credential = dec.decode()?;
-                    match self.verify(crd.attributes(), crd.signature()).await {
+                    match verify(&self.identity, &self.storage, &crd).await {
                         Ok(true) => Response::ok(req.id())
                             .body(Cbor(crd.attributes()))
                             .to_vec()?,
@@ -129,22 +129,26 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
 
         Ok(res)
     }
+}
 
-    async fn verify(&self, data: &[u8], sig: &Signature<'_>) -> Result<bool> {
-        let ours = self.identity.identifier();
-        let theirs = sig.identity().as_str();
+/// Verify the credential signature.
+pub async fn verify<S, V>(id: &Identity<V>, db: &S, crd: &Credential<'_>) -> Result<bool>
+where
+    S: AuthenticatedStorage,
+    V: IdentityVault,
+{
+    let dat = crd.attributes();
+    let sig = crd.signature();
+    let ours = id.identifier();
+    let theirs = sig.identity().as_str();
+    let sig = vault::Signature::new(sig.data().to_vec());
 
-        let sig = vault::Signature::new(sig.data().to_vec());
-
-        if ours.key_id() == theirs {
-            let key = self.identity.get_root_public_key().await?;
-            self.identity.vault().verify(&sig, &key, data).await
-        } else {
-            let iid = IdentityIdentifier::from_key_id(theirs.to_string());
-            self.identity
-                .verify_signature(&sig, &iid, data, &self.storage)
-                .await
-        }
+    if ours.key_id() == theirs {
+        let key = id.get_root_public_key().await?;
+        id.vault().verify(&sig, &key, dat).await
+    } else {
+        let iid = IdentityIdentifier::from_key_id(theirs.to_string());
+        id.verify_signature(&sig, &iid, dat, db).await
     }
 }
 
