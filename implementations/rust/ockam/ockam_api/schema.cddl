@@ -198,15 +198,15 @@ sign_request = attributes
 credential = {
     ?0: 3796735,
      1: bytes, ;; CBOR-encoded attributes
-     2: signer_signature
+     2: credential_signature
 }
 
-signer_signature = [
+credential_signature = [
     0: identity_id,
-    1: signer_signature_bytes
+    1: credential_signature_bytes
 ]
 
-signer_signature_bytes = bytes
+credential_signature_bytes = bytes
 
 add-identity = {
     ?0: 1544679,
