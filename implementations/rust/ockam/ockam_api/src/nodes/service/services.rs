@@ -90,6 +90,26 @@ impl NodeManager {
         Ok(response)
     }
 
+    pub(super) async fn start_signer_service(
+        &mut self,
+        ctx: &Context,
+        addr: Address,
+    ) -> Result<()> {
+        if self.registry.signer_service.is_some() {
+            return Err(ApiError::generic("signing service already started"));
+        }
+        let ident = if let Some(id) = &self.identity {
+            id.clone()
+        } else {
+            return Err(ApiError::generic("identity not found"));
+        };
+        let db = self.authenticated_storage.async_try_clone().await?;
+        let ss = crate::signer::Server::new(ident, db);
+        ctx.start_worker(addr.clone(), ss).await?;
+        self.registry.signer_service = Some(addr);
+        Ok(())
+    }
+
     pub(super) async fn start_authenticated_service_impl(
         &mut self,
         ctx: &Context,

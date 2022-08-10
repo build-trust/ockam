@@ -72,6 +72,7 @@ pub(crate) struct Registry {
     pub(crate) authenticated_services: BTreeMap<Address, AuthenticatedServiceInfo>,
     pub(crate) uppercase_services: BTreeMap<Address, UppercaseServiceInfo>,
     pub(crate) echoer_services: BTreeMap<Address, EchoerServiceInfo>,
+    pub(crate) signer_service: Option<Address>,
 
     // FIXME: wow this is a terrible way to store data
     pub(crate) inlets: BTreeMap<Alias, InletInfo>,

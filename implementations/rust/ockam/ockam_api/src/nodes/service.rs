@@ -70,7 +70,7 @@ pub struct NodeManager {
     skip_defaults: bool,
 
     pub(crate) vault: Option<Vault>,
-    identity: Option<Identity<Vault>>,
+    identity: Option<Arc<Identity<Vault>>>,
     pub(crate) authenticated_storage: LmdbStorage,
 
     pub(crate) registry: Registry,
@@ -146,7 +146,7 @@ impl NodeManager {
         let identity_info = config.readlock_inner().identity.clone();
         let identity = match identity_info {
             Some(identity) => match vault.as_ref() {
-                Some(vault) => Some(Identity::import(ctx, &identity, vault).await?),
+                Some(vault) => Some(Arc::new(Identity::import(ctx, &identity, vault).await?)),
                 None => None,
             },
             None => None,
@@ -193,6 +193,7 @@ impl NodeManager {
         self.start_uppercase_service_impl(ctx, "uppercase".into())
             .await?;
         self.start_echoer_service_impl(ctx, "echo".into()).await?;
+        self.start_signer_service(ctx, "sign".into()).await?;
 
         ForwardingService::create(ctx).await?;
 
