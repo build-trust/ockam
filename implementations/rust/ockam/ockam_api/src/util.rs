@@ -6,15 +6,16 @@ use ockam_core::{Route, LOCAL};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Service, Tcp};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use std::collections::BTreeMap;
-use std::net::{SocketAddr, SocketAddrV4, SocketAddrV6};
+use std::net::{SocketAddrV4, SocketAddrV6};
+
+use crate::config::cli::InternetAddress;
 
 /// Go through a multiaddr and remove all instances of
 /// `/node/<whatever>` out of it and replaces it with a fully
 /// qualified address to the target
-// TODO: Currently this function doesn't handle DNS names
 pub fn clean_multiaddr(
     input: &MultiAddr,
-    lookup: &BTreeMap<String, SocketAddr>,
+    lookup: &BTreeMap<String, InternetAddress>,
 ) -> Option<MultiAddr> {
     let mut new_ma = MultiAddr::default();
     let it = input.iter().peekable();
@@ -26,20 +27,15 @@ pub fn clean_multiaddr(
                     .get(&*alias)
                     .expect("provided invalid substitution route");
 
-                let _ = match addr {
-                    SocketAddr::V4(v4) => new_ma.push_back(Ip4(*v4.ip())),
-                    SocketAddr::V6(v6) => new_ma.push_back(Ip6(*v6.ip())),
-                };
+                match addr {
+                    InternetAddress::Dns(dns, _) => new_ma.push_back(DnsAddr::new(dns)).ok()?,
+                    InternetAddress::V4(v4) => new_ma.push_back(Ip4(*v4.ip())).ok()?,
+                    InternetAddress::V6(v6) => new_ma.push_back(Ip6(*v6.ip())).ok()?,
+                }
 
-                let _ = new_ma.push_back(Tcp(addr.port()));
+                new_ma.push_back(Tcp(addr.port())).ok()?;
             }
-            Service::CODE => {
-                let _ = new_ma.push_back(p.cast::<Service>()?);
-            }
-            other => {
-                error!(target: "ockam_api", code = %other, "unsupported protocol");
-                return None;
-            }
+            _ => new_ma.push_back_value(&p).ok()?,
         }
     }
 
@@ -147,4 +143,24 @@ pub fn route_to_multiaddr(r: &Route) -> Option<MultiAddr> {
         }
     }
     Some(ma)
+}
+
+#[test]
+fn clean_multiaddr_simple() {
+    let addr: MultiAddr = "/node/hub/service/echoer".parse().unwrap();
+
+    let lookup = {
+        let mut map = BTreeMap::<String, InternetAddress>::new();
+        map.insert(
+            "hub".into(),
+            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 666)).into(),
+        );
+        map
+    };
+
+    let new_addr = clean_multiaddr(&addr, &lookup).unwrap();
+    assert_ne!(addr, new_addr); // Make sure the address changed
+
+    let new_route = multiaddr_to_route(&new_addr).unwrap();
+    println!("{:#?}", new_route);
 }
