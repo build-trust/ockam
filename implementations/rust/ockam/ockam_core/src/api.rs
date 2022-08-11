@@ -11,7 +11,7 @@ use minicbor::{Decode, Decoder, Encode};
 use tinyvec::ArrayVec;
 
 #[cfg(feature = "tag")]
-use crate::TypeTag;
+use ockam_core::TypeTag;
 
 /// A request header.
 #[derive(Debug, Clone, Encode, Decode)]

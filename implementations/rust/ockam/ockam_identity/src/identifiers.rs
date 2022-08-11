@@ -73,7 +73,7 @@ impl TryFrom<String> for IdentityIdentifier {
     type Error = Error;
 
     fn try_from(value: String) -> Result<Self> {
-        Self::try_from(value.as_str())
+        Self::try_from(value.as_str().trim())
     }
 }
 
@@ -81,7 +81,7 @@ impl FromStr for IdentityIdentifier {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.try_into()
+        s.trim().try_into()
     }
 }
 

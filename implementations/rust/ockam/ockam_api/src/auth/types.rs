@@ -4,7 +4,7 @@ use ockam_core;
 use ockam_core::compat::collections::BTreeMap;
 
 #[cfg(feature = "tag")]
-use crate::TypeTag;
+use ockam_core::TypeTag;
 
 #[derive(Debug, Clone, Default, Encode, Decode, PartialEq, Eq)]
 #[rustfmt::skip]

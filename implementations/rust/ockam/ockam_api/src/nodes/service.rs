@@ -7,12 +7,11 @@ use std::sync::Arc;
 use minicbor::Decoder;
 
 use ockam::remote::RemoteForwarder;
-use ockam::{Address, Context, ForwardingService, Result, Route, Routed, TcpTransport, Worker};
+use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
 use ockam_core::api::{Method, Request, Response, Status};
 use ockam_core::compat::{boxed::Box, string::String};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::route;
-use ockam_identity::{Identity, TrustEveryonePolicy};
+use ockam_identity::{Identity, IdentityIdentifier};
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
@@ -66,14 +65,15 @@ pub struct NodeManager {
     api_transport_id: Alias,
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
+    pub(crate) controller_identity_id: IdentityIdentifier,
 
     skip_defaults: bool,
 
-    vault: Option<Vault>,
+    pub(crate) vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
-    authenticated_storage: LmdbStorage,
+    pub(crate) authenticated_storage: LmdbStorage,
 
-    registry: Registry,
+    pub(crate) registry: Registry,
 }
 
 pub struct IdentityOverride {
@@ -159,6 +159,7 @@ impl NodeManager {
             api_transport_id,
             transports,
             tcp_transport,
+            controller_identity_id: Self::load_controller_identity_id()?,
             skip_defaults,
             vault,
             identity,
@@ -213,34 +214,6 @@ impl NodeManager {
 }
 
 impl NodeManager {
-    pub(crate) async fn secure_channel(&self, route: impl Into<Route>) -> Result<Address> {
-        let route = route.into();
-        println!("ddd route {}", route);
-        trace!(target: TARGET, %route, "Creating temporary secure channel");
-        let channel = self
-            .identity()?
-            .create_secure_channel(route, TrustEveryonePolicy, &self.authenticated_storage)
-            .await?;
-        debug!(target: TARGET, %channel, "Temporary secure channel created");
-        Ok(channel)
-    }
-
-    pub(crate) async fn delete_secure_channel(
-        &self,
-        ctx: &Context,
-        addr: impl Into<Address>,
-    ) -> Result<()> {
-        ctx.stop_worker(addr).await
-    }
-
-    pub(crate) fn cloud_service_route(
-        &self,
-        address: impl Into<Address>,
-        api_service: &str,
-    ) -> Route {
-        route![address, api_service]
-    }
-
     //////// Forwarder API ////////
 
     async fn create_forwarder(
@@ -404,39 +377,32 @@ impl NodeManager {
             (Delete, ["node", "portal"]) => todo!(),
 
             // ==*== Spaces ==*==
-            (Post, ["v0", "spaces"]) => self.create_space(ctx, req, dec).await?,
-            (Get, ["v0", "spaces"]) => self.list_spaces(ctx, req, dec).await?,
-            (Get, ["v0", "spaces", id]) => self.get_space(ctx, req, dec, id).await?,
+            (Post, ["v0", "spaces"]) => self.create_space(ctx, dec).await?,
+            (Get, ["v0", "spaces"]) => self.list_spaces(ctx, dec).await?,
+            (Get, ["v0", "spaces", id]) => self.get_space(ctx, dec, id).await?,
             (Get, ["v0", "spaces", "name", name]) => {
                 self.get_space_by_name(ctx, req, dec, name).await?
             }
-            (Delete, ["v0", "spaces", id]) => self.delete_space(ctx, req, dec, id).await?,
+            (Delete, ["v0", "spaces", id]) => self.delete_space(ctx, dec, id).await?,
 
             // ==*== Projects ==*==
-            (Post, ["v0", "projects", space_id]) => {
-                self.create_project(ctx, req, dec, space_id).await?
-            }
-            (Get, ["v0", "projects"]) => self.list_projects(ctx, req, dec).await?,
-            (Get, ["v0", "projects", project_id]) => {
-                self.get_project(ctx, req, dec, project_id).await?
-            }
+            (Post, ["v0", "projects", space_id]) => self.create_project(ctx, dec, space_id).await?,
+            (Get, ["v0", "projects"]) => self.list_projects(ctx, dec).await?,
+            (Get, ["v0", "projects", project_id]) => self.get_project(ctx, dec, project_id).await?,
             // TODO: ockam_command doesn't use this really yet
             (Get, ["v0", "projects", space_id, project_name]) => {
                 self.get_project_by_name(ctx, req, dec, space_id, project_name)
                     .await?
             }
             (Delete, ["v0", "projects", space_id, project_id]) => {
-                self.delete_project(ctx, req, dec, space_id, project_id)
-                    .await?
+                self.delete_project(ctx, dec, space_id, project_id).await?
             }
 
             // ==*== Enroll ==*==
-            (Post, ["v0", "enroll", "auth0"]) => self.enroll_auth0(ctx, req, dec).await?,
-            (Get, ["v0", "enroll", "token"]) => {
-                self.generate_enrollment_token(ctx, req, dec).await?
-            }
+            (Post, ["v0", "enroll", "auth0"]) => self.enroll_auth0(ctx, dec).await?,
+            (Get, ["v0", "enroll", "token"]) => self.generate_enrollment_token(ctx, dec).await?,
             (Put, ["v0", "enroll", "token"]) => {
-                self.authenticate_enrollment_token(ctx, req, dec).await?
+                self.authenticate_enrollment_token(ctx, dec).await?
             }
 
             // ==*== Messages ==*==
@@ -496,12 +462,12 @@ impl Worker for NodeManager {
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::nodes::NodeManager;
-    use ockam::route;
+    use ockam::{route, Route};
 
     use super::*;
 
     impl NodeManager {
-        pub(crate) async fn test_create_old(ctx: &Context) -> Result<Route> {
+        pub(crate) async fn test_create(ctx: &Context) -> Result<Route> {
             let node_dir = tempfile::tempdir().unwrap();
             let node_manager = "manager";
             let transport = TcpTransport::create(ctx).await?;
@@ -524,44 +490,6 @@ pub(crate) mod tests {
             // Initialize identity
             node_man.create_vault_impl(None, false).await?;
             node_man.create_identity_impl(ctx, false).await?;
-
-            // Initialize node_man worker and return its route
-            ctx.start_worker(node_manager, node_man).await?;
-            Ok(route![node_manager])
-        }
-
-        pub(crate) async fn test_create<W: Worker<Context = Context>>(
-            ctx: &Context,
-            cloud_address: &str,
-            cloud_worker: W,
-        ) -> Result<Route> {
-            let node_dir = tempfile::tempdir().unwrap();
-            let node_manager = "manager";
-            let transport = TcpTransport::create(ctx).await?;
-            let node_address = transport.listen("127.0.0.1:0").await?;
-            let mut node_man = NodeManager::create(
-                ctx,
-                "node".to_string(),
-                node_dir.into_path(),
-                None,
-                true,
-                (
-                    TransportType::Tcp,
-                    TransportMode::Listen,
-                    node_address.to_string(),
-                ),
-                transport,
-            )
-            .await?;
-
-            node_man.create_vault_impl(None, false).await?;
-            node_man.create_identity_impl(ctx, false).await?;
-
-            // Initialize secure channel listener on the mock cloud worker
-            node_man
-                .create_secure_channel_listener_impl("cloud".into(), None)
-                .await?;
-            ctx.start_worker(cloud_address, cloud_worker).await?;
 
             // Initialize node_man worker and return its route
             ctx.start_worker(node_manager, node_man).await?;
