@@ -1,13 +1,12 @@
 use anyhow::{anyhow, Context};
 use clap::Args;
 use minicbor::Decoder;
-use std::str::FromStr;
 use tracing::debug;
 
 use crate::CommandGlobalOpts;
 use ockam::TcpTransport;
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_api::{Response, Status};
+use ockam_api::{clean_multiaddr, Response, Status};
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 
@@ -21,23 +20,32 @@ pub struct SendCommand {
 
     /// The route to send the message to
     #[clap(short, long, value_name = "ROUTE")]
-    pub to: String,
+    pub to: MultiAddr,
 
     pub message: String,
 }
 
 impl SendCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: SendCommand) {
+        // First we clean the MultiAddr route to replace /node/<foo>
+        // with the address lookup for `<foo>`
+        let cmd = SendCommand {
+            to: match clean_multiaddr(&cmd.to, &opts.config.get_node_lookup()) {
+                Some(to) => to,
+                None => {
+                    eprintln!("failed to normalise MultiAddr route");
+                    std::process::exit(-1);
+                }
+            },
+            ..cmd
+        };
+
         if let Some(node) = &cmd.from {
             let port = opts.config.get_node_port(node);
             connect_to(port, (opts, cmd), send_message_via_connection_to_a_node);
         } else {
             embedded_node(send_message_from_embedded_node, cmd)
         }
-    }
-
-    pub fn to(&self) -> anyhow::Result<MultiAddr> {
-        MultiAddr::from_str(&self.to).context("Invalid route")
     }
 }
 
@@ -47,7 +55,7 @@ async fn send_message_from_embedded_node(
 ) -> anyhow::Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    if let Some(route) = ockam_api::multiaddr_to_route(&cmd.to()?) {
+    if let Some(route) = ockam_api::multiaddr_to_route(&cmd.to) {
         ctx.send(route, cmd.message).await?;
         let message = ctx.receive::<String>().await?;
         println!("{}", message);
