@@ -371,7 +371,7 @@ pub(crate) mod message {
     pub(crate) fn send(cmd: SendCommand) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
         Request::builder(Method::Post, "v0/message")
-            .body(SendMessage::new(&cmd.to()?, cmd.message.as_bytes()))
+            .body(SendMessage::new(&cmd.to, cmd.message.as_bytes()))
             .encode(&mut buf)?;
         Ok(buf)
     }
