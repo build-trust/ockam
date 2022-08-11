@@ -33,6 +33,7 @@ data-encoding   = { version = "2.3.2", default-features = false, features = ["al
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.4.0", features = ["std"] }
 cddl-cat        = { version = "0.6.1", optional = true }
 minicbor        = { version = "0.18.0", features = ["alloc", "derive"] }
+rust-embed      = "6"
 serde           = { version = "1.0.137", features = ["derive"] }
 serde_json      = "1.0.81"
 tinyvec         = { version = "1.6.0", features = ["rustc_1_57"] }

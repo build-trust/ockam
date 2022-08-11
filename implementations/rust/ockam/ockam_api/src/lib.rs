@@ -24,6 +24,10 @@ pub const SCHEMA: &str = core::include_str!("../schema.cddl");
 
 use minicbor::{Decode, Encode};
 
+#[derive(rust_embed::RustEmbed)]
+#[folder = "./static"]
+pub(crate) struct StaticFiles;
+
 /// A Unix timestamp (seconds since 1970-01-01 00:00:00Z)
 #[cfg(feature = "std")]
 #[derive(Debug, Clone, Copy, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Hash)]

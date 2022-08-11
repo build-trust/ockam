@@ -1,9 +1,36 @@
 use crate::nodes::service::Alias;
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::Address;
+use ockam_core::{Address, Result, Route};
+use ockam_identity::Identity;
+use ockam_vault::Vault;
 
 #[derive(Default)]
 pub(crate) struct SecureChannelInfo {}
+
+pub(crate) struct OrchestratorSecureChannelInfo {
+    addr: Address,
+}
+
+impl OrchestratorSecureChannelInfo {
+    pub(crate) fn new(addr: Address) -> Self {
+        Self { addr }
+    }
+
+    pub(crate) fn addr(&self) -> &Address {
+        &self.addr
+    }
+}
+
+#[derive(Default, Hash, Ord, PartialOrd, Eq, PartialEq)]
+pub(crate) struct IdentityRouteKey(Vec<u8>);
+
+impl IdentityRouteKey {
+    pub(crate) async fn new(identity: &Identity<Vault>, route: &Route) -> Result<Self> {
+        let mut key = identity.export().await?;
+        key.extend_from_slice(route.to_string().as_bytes());
+        Ok(Self(key))
+    }
+}
 
 #[derive(Default)]
 pub(crate) struct SecureChannelListenerInfo {}
@@ -36,6 +63,9 @@ pub(crate) struct OutletInfo {
 #[derive(Default)]
 pub(crate) struct Registry {
     pub(crate) secure_channels: BTreeMap<Address, SecureChannelInfo>,
+    // Registry to keep track of secure channels between the node and the orchestrator (controller node + project nodes).
+    pub(crate) orchestrator_secure_channels:
+        BTreeMap<IdentityRouteKey, OrchestratorSecureChannelInfo>,
     pub(crate) secure_channel_listeners: BTreeMap<Address, SecureChannelListenerInfo>,
     pub(crate) vault_services: BTreeMap<Address, VaultServiceInfo>,
     pub(crate) identity_services: BTreeMap<Address, IdentityServiceInfo>,

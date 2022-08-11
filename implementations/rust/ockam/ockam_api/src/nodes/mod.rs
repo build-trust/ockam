@@ -1,5 +1,5 @@
 mod config;
-mod registry;
+pub mod registry;
 
 pub mod service;
 

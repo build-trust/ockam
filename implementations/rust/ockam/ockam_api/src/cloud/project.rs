@@ -45,16 +45,8 @@ impl<'a> CreateProject<'a> {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             name: name.into(),
-            services: services
-                .iter()
-                .map(|x| x.as_ref().to_string())
-                .map(CowStr::from)
-                .collect(),
-            users: users
-                .iter()
-                .map(|x| x.as_ref().to_string())
-                .map(CowStr::from)
-                .collect(),
+            services: services.iter().map(|x| CowStr::from(x.as_ref())).collect(),
+            users: users.iter().map(|x| CowStr::from(x.as_ref())).collect(),
         }
     }
 }
@@ -65,7 +57,6 @@ mod node {
 
     use ockam_core::api::{Request, Response, Status};
     use ockam_core::{self, Result};
-    use ockam_node::api::request;
     use ockam_node::Context;
 
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
@@ -79,7 +70,6 @@ mod node {
         pub(crate) async fn create_project(
             &mut self,
             ctx: &mut Context,
-            req: &Request<'_>,
             dec: &mut Decoder<'_>,
             space_id: &str,
         ) -> Result<Vec<u8>> {
@@ -90,27 +80,21 @@ mod node {
             let label = "create_project";
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
 
-            let sc = self.secure_channel(cloud_route).await?;
-            let route = self.cloud_service_route(&sc.to_string(), "projects");
-
             let req_builder = Request::post(format!("/v0/{space_id}")).body(req_body);
-            let res = match request(ctx, label, "create_project", route, req_builder).await {
-                Ok(r) => Ok(r),
-                Err(err) => {
-                    error!(?err, "Failed to create project");
-                    Ok(Response::builder(req.id(), Status::InternalServerError)
-                        .body(err.to_string())
-                        .to_vec()?)
-                }
-            };
-            self.delete_secure_channel(ctx, sc).await?;
-            res
+            self.request_controller(
+                ctx,
+                label,
+                "create_project",
+                cloud_route,
+                "projects",
+                req_builder,
+            )
+            .await
         }
 
         pub(crate) async fn list_projects(
             &mut self,
             ctx: &mut Context,
-            req: &Request<'_>,
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
@@ -119,27 +103,14 @@ mod node {
             let label = "list_projects";
             trace!(target: TARGET, "listing projects");
 
-            let sc = self.secure_channel(cloud_route).await?;
-            let route = self.cloud_service_route(&sc.to_string(), "projects");
-
             let req_builder = Request::get("/v0");
-            let res = match request(ctx, label, None, route, req_builder).await {
-                Ok(r) => Ok(r),
-                Err(err) => {
-                    error!(?err, "Failed to retrieve projects");
-                    Ok(Response::builder(req.id(), Status::InternalServerError)
-                        .body(err.to_string())
-                        .to_vec()?)
-                }
-            };
-            self.delete_secure_channel(ctx, sc).await?;
-            res
+            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder)
+                .await
         }
 
         pub(crate) async fn get_project(
             &mut self,
             ctx: &mut Context,
-            req: &Request<'_>,
             dec: &mut Decoder<'_>,
             project_id: &str,
         ) -> Result<Vec<u8>> {
@@ -149,21 +120,9 @@ mod node {
             let label = "get_project";
             trace!(target: TARGET, %project_id, "getting project");
 
-            let sc = self.secure_channel(cloud_route).await?;
-            let route = self.cloud_service_route(&sc.to_string(), "projects");
-
             let req_builder = Request::get(format!("/v0/{project_id}"));
-            let res = match request(ctx, label, None, route, req_builder).await {
-                Ok(r) => Ok(r),
-                Err(err) => {
-                    error!(?err, "Failed to retrieve project");
-                    Ok(Response::builder(req.id(), Status::InternalServerError)
-                        .body(err.to_string())
-                        .to_vec()?)
-                }
-            };
-            self.delete_secure_channel(ctx, sc).await?;
-            res
+            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder)
+                .await
         }
 
         pub(crate) async fn get_project_by_name(
@@ -180,11 +139,12 @@ mod node {
             let label = "get_project_by_name";
             trace!(target: TARGET, %space_id, %project_name, "getting project");
 
-            let sc = self.secure_channel(cloud_route).await?;
-            let route = self.cloud_service_route(&sc.to_string(), "projects");
-
             let req_builder = Request::get("/v0");
-            let res = match request(ctx, label, None, route, req_builder).await {
+
+            match self
+                .request_controller(ctx, label, None, cloud_route, "projects", req_builder)
+                .await
+            {
                 Ok(r) => {
                     let mut dec = Decoder::new(&r);
                     let header = dec.decode::<Response>()?;
@@ -216,15 +176,12 @@ mod node {
                         .body(err.to_string())
                         .to_vec()?)
                 }
-            };
-            self.delete_secure_channel(ctx, sc).await?;
-            res
+            }
         }
 
         pub(crate) async fn delete_project(
             &mut self,
             ctx: &mut Context,
-            req: &Request<'_>,
             dec: &mut Decoder<'_>,
             space_id: &str,
             project_id: &str,
@@ -235,34 +192,16 @@ mod node {
             let label = "delete_project";
             trace!(target: TARGET, %space_id, %project_id, "deleting project");
 
-            let sc = self.secure_channel(cloud_route).await?;
-            let route = self.cloud_service_route(&sc.to_string(), "projects");
-
             let req_builder = Request::delete(format!("/v0/{space_id}/{project_id}"));
-            let res = match request(ctx, label, None, route, req_builder).await {
-                Ok(r) => Ok(r),
-                Err(err) => {
-                    error!(?err, "Failed to retrieve project");
-                    Ok(Response::builder(req.id(), Status::InternalServerError)
-                        .body(err.to_string())
-                        .to_vec()?)
-                }
-            };
-            self.delete_secure_channel(ctx, sc).await?;
-            res
+            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder)
+                .await
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use minicbor::{encode, Decoder};
     use quickcheck::{Arbitrary, Gen};
-
-    use ockam_core::api::{Method, Request, Response};
-    use ockam_core::compat::collections::HashMap;
-    use ockam_core::{Routed, Worker};
-    use ockam_node::Context;
 
     use super::*;
 
@@ -342,210 +281,6 @@ mod tests {
                 }
                 TestResult::passed()
             }
-        }
-    }
-
-    mod node_api {
-        use ockam_core::api::Status;
-        use ockam_core::route;
-
-        use crate::cloud::CloudRequestWrapper;
-        use crate::nodes::NodeManager;
-        use crate::route_to_multiaddr;
-
-        use super::*;
-
-        #[ockam_macros::test]
-        async fn basic_api_usage(ctx: &mut Context) -> ockam_core::Result<()> {
-            // Create node manager to handle requests
-            let route = NodeManager::test_create(ctx, "projects", ProjectServer::default()).await?;
-            let cloud_route = route_to_multiaddr(&route!["cloud"]).unwrap();
-
-            let s_id = "space-id";
-
-            // Create project
-            let req = CreateProject::new("p1", &[], &["service"]);
-            let mut buf = vec![];
-            Request::builder(Method::Post, format!("v0/projects/{s_id}"))
-                .body(CloudRequestWrapper::new(req, &cloud_route))
-                .encode(&mut buf)?;
-            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
-            let mut dec = Decoder::new(&response);
-            let header = dec.decode::<Response>()?;
-            assert_eq!(header.status(), Some(Status::Ok));
-            let p = dec.decode::<Project>()?;
-            assert_eq!(&p.name, "p1");
-            assert_eq!(&p.services, &["service"]);
-            let p_id = p.id.to_string();
-            let p_name = p.name.to_string();
-
-            // Retrieve it
-            let mut buf = vec![];
-            Request::builder(Method::Get, format!("v0/projects/{p_id}"))
-                .body(CloudRequestWrapper::bare(&cloud_route))
-                .encode(&mut buf)?;
-            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
-            let mut dec = Decoder::new(&response);
-            let header = dec.decode::<Response>()?;
-            assert_eq!(header.status(), Some(Status::Ok));
-            let p = dec.decode::<Project>()?;
-            assert_eq!(&p.id, &p_id);
-
-            // Retrieve it by name
-            let mut buf = vec![];
-            Request::builder(Method::Get, format!("v0/projects/{s_id}/{p_name}"))
-                .body(CloudRequestWrapper::bare(&cloud_route))
-                .encode(&mut buf)?;
-            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
-            let mut dec = Decoder::new(&response);
-            let header = dec.decode::<Response>()?;
-            assert_eq!(header.status(), Some(Status::Ok));
-            let p = dec.decode::<Project>()?;
-            assert_eq!(&p.id, &p_id);
-
-            // List it
-            let mut buf = vec![];
-            Request::builder(Method::Get, "v0/projects")
-                .body(CloudRequestWrapper::bare(&cloud_route))
-                .encode(&mut buf)?;
-            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
-            let mut dec = Decoder::new(&response);
-            let header = dec.decode::<Response>()?;
-            assert_eq!(header.status(), Some(Status::Ok));
-            let list = dec.decode::<Vec<Project>>()?;
-            assert_eq!(list.len(), 1);
-            assert_eq!(&list[0].id.to_string(), &p_id);
-
-            // Remove it
-            let mut buf = vec![];
-            Request::builder(Method::Delete, format!("v0/projects/{s_id}/{p_id}"))
-                .body(CloudRequestWrapper::bare(&cloud_route))
-                .encode(&mut buf)?;
-            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
-            let mut dec = Decoder::new(&response);
-            let header = dec.decode::<Response>()?;
-            assert_eq!(header.status(), Some(Status::Ok));
-
-            // Check list returns empty vec
-            let mut buf = vec![];
-            Request::builder(Method::Get, "v0/projects")
-                .body(CloudRequestWrapper::bare(&cloud_route))
-                .encode(&mut buf)?;
-            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
-            let mut dec = Decoder::new(&response);
-            let header = dec.decode::<Response>()?;
-            assert_eq!(header.status(), Some(Status::Ok));
-            let list = dec.decode::<Vec<Project>>()?;
-            assert!(list.is_empty());
-
-            // Check that retrieving it returns a not found error
-            let mut buf = vec![];
-            Request::builder(Method::Get, "v0/projects/{p_id}")
-                .body(CloudRequestWrapper::bare(&cloud_route))
-                .encode(&mut buf)?;
-            let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
-            let mut dec = Decoder::new(&response);
-            let header = dec.decode::<Response>()?;
-            assert_eq!(header.status(), Some(Status::NotFound));
-
-            ctx.stop().await
-        }
-    }
-
-    #[derive(Debug, Default)]
-    pub struct ProjectServer(HashMap<String, Project<'static>>);
-
-    #[ockam_core::worker]
-    impl Worker for ProjectServer {
-        type Message = Vec<u8>;
-        type Context = Context;
-
-        async fn handle_message(
-            &mut self,
-            ctx: &mut Context,
-            msg: Routed<Self::Message>,
-        ) -> ockam_core::Result<()> {
-            let r = self.on_request(msg.as_body())?;
-            ctx.send(msg.return_route(), r).await
-        }
-    }
-
-    impl ProjectServer {
-        fn on_request(&mut self, data: &[u8]) -> ockam_core::Result<Vec<u8>> {
-            let mut rng = Gen::new(32);
-            let mut dec = Decoder::new(data);
-            let req: Request = dec.decode()?;
-            let r = match req.method() {
-                Some(Method::Get) => match req.path_segments::<4>().as_slice() {
-                    // Get all projects:
-                    [_] => Response::ok(req.id())
-                        .body(encode::ArrayIter::new(self.0.values()))
-                        .to_vec()?,
-                    // Get a single project:
-                    [_, id] => {
-                        if let Some(n) = self.0.get(*id) {
-                            Response::ok(req.id()).body(n).to_vec()?
-                        } else {
-                            Response::not_found(req.id()).to_vec()?
-                        }
-                    }
-                    // Get a single project by name:
-                    [_, _, name] => {
-                        if let Some((_, n)) = self.0.iter().find(|(_, n)| n.name == *name) {
-                            Response::ok(req.id()).body(n).to_vec()?
-                        } else {
-                            Response::not_found(req.id()).to_vec()?
-                        }
-                    }
-                    _ => {
-                        error!("Invalid request: {req:#?}");
-                        Response::bad_request(req.id()).to_vec()?
-                    }
-                },
-                Some(Method::Post) if req.has_body() => {
-                    if let Ok(project) = dec.decode::<CreateProject>() {
-                        let obj = Project {
-                            #[cfg(feature = "tag")]
-                            tag: TypeTag,
-                            id: u32::arbitrary(&mut rng).to_string().into(),
-                            name: project.name.to_string().into(),
-                            space_name: String::arbitrary(&mut rng).into(),
-                            services: project
-                                .services
-                                .iter()
-                                .map(|x| x.to_string().into())
-                                .collect(),
-                            access_route: String::arbitrary(&mut rng).into(),
-                            users: project.users.iter().map(|x| x.to_string().into()).collect(),
-                            space_id: "space-id".into(),
-                            identity: Some(String::arbitrary(&mut rng).into()),
-                        };
-                        self.0.insert(obj.id.to_string(), obj.clone());
-                        Response::ok(req.id()).body(&obj).to_vec()?
-                    } else {
-                        error!("Invalid request: {req:#?}");
-                        Response::bad_request(req.id()).to_vec()?
-                    }
-                }
-                Some(Method::Delete) => match req.path_segments::<4>().as_slice() {
-                    [_, _, id] => {
-                        if self.0.remove(*id).is_some() {
-                            Response::ok(req.id()).to_vec()?
-                        } else {
-                            Response::not_found(req.id()).to_vec()?
-                        }
-                    }
-                    _ => {
-                        error!("Invalid request: {req:#?}");
-                        Response::bad_request(req.id()).to_vec()?
-                    }
-                },
-                _ => {
-                    error!("{req:?}");
-                    Response::bad_request(req.id()).to_vec()?
-                }
-            };
-            Ok(r)
         }
     }
 }

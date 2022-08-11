@@ -13,6 +13,8 @@ pub mod enroll;
 pub mod project;
 pub mod space;
 
+pub(crate) const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY_ID";
+
 /// A wrapper around a cloud request with extra fields.
 #[derive(Encode, Decode, Debug)]
 #[cfg_attr(test, derive(Clone))]
@@ -49,5 +51,107 @@ pub type BareCloudRequestWrapper<'a> = CloudRequestWrapper<'a, ()>;
 impl<'a> BareCloudRequestWrapper<'a> {
     pub fn bare(route: &MultiAddr) -> Self {
         Self::new((), route)
+    }
+}
+
+mod node {
+    use std::env;
+    use std::str::FromStr;
+
+    use minicbor::Encode;
+    use rust_embed::EmbeddedFile;
+
+    use ockam_core::api::RequestBuilder;
+    use ockam_core::{self, route, Address, Result, Route};
+    use ockam_identity::{IdentityIdentifier, TrustIdentifierPolicy};
+    use ockam_node::api::request;
+    use ockam_node::Context;
+
+    use crate::cloud::OCKAM_CONTROLLER_IDENTITY_ID;
+    use crate::error::ApiError;
+    use crate::nodes::registry::{IdentityRouteKey, OrchestratorSecureChannelInfo};
+    use crate::nodes::NodeManager;
+    use crate::StaticFiles;
+
+    const TARGET: &str = "ockam_api::nodemanager::service";
+
+    impl NodeManager {
+        /// Load controller identity id from file.
+        ///
+        /// If the env var `OCKAM_CONTROLLER_IDENTITY_ID` is set, that will be used to
+        /// load the identity instead of the file.
+        pub(crate) fn load_controller_identity_id() -> Result<IdentityIdentifier> {
+            if let Ok(s) = env::var(OCKAM_CONTROLLER_IDENTITY_ID) {
+                trace!(idt = %s, "Read controller identity id from env");
+                return IdentityIdentifier::from_str(&s);
+            }
+            match StaticFiles::get("controller.id") {
+                Some(EmbeddedFile { data, .. }) => {
+                    let s = core::str::from_utf8(data.as_ref()).map_err(|err| {
+                        ApiError::generic(&format!(
+                            "Failed to parse controller identity id: {}",
+                            err
+                        ))
+                    })?;
+                    trace!(idt = %s, "Read controller identity id from file");
+                    IdentityIdentifier::from_str(s)
+                }
+                None => Err(ApiError::generic(
+                    "Failed to import controller identity id from file",
+                )),
+            }
+        }
+
+        /// Return controller identity's identifier.
+        pub(crate) fn controller_identity_id(&self) -> IdentityIdentifier {
+            self.controller_identity_id.clone()
+        }
+
+        pub(super) async fn request_controller<T>(
+            &mut self,
+            ctx: &mut Context,
+            label: &str,
+            schema: impl Into<Option<&str>>,
+            cloud_route: impl Into<Route>,
+            api_service: &str,
+            req: RequestBuilder<'_, T>,
+        ) -> Result<Vec<u8>>
+        where
+            T: Encode<()>,
+        {
+            let cloud_route = cloud_route.into();
+            let sc = self.controller_secure_channel(cloud_route).await?;
+            let route = route![&sc.to_string(), api_service];
+            request(ctx, label, schema, route, req).await
+        }
+
+        /// Returns a secure channel between the node and the controller.
+        async fn controller_secure_channel(&mut self, route: impl Into<Route>) -> Result<Address> {
+            let identity = self.identity()?;
+            let route = route.into();
+            let map_key = IdentityRouteKey::new(identity, &route).await?;
+
+            // If channel was already created, do nothing.
+            if let Some(channel) = self.registry.orchestrator_secure_channels.get(&map_key) {
+                let addr = channel.addr();
+                trace!(target: TARGET, %addr, "Using cached orchestrator secure channel");
+                return Ok(addr.clone());
+            }
+
+            // Create secure channel for the given route using the orchestrator identity.
+            trace!(target: TARGET, %route, "Creating orchestrator secure channel");
+            let addr = identity
+                .create_secure_channel(
+                    route,
+                    TrustIdentifierPolicy::new(self.controller_identity_id()),
+                    &self.authenticated_storage,
+                )
+                .await?;
+            self.registry
+                .orchestrator_secure_channels
+                .insert(map_key, OrchestratorSecureChannelInfo::new(addr.clone()));
+            debug!(target: TARGET, %addr, "Orchestrator secure channel created");
+            Ok(addr)
+        }
     }
 }

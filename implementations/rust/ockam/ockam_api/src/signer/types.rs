@@ -6,7 +6,7 @@ use ockam_core::compat::borrow::Cow;
 use ockam_core::{CowBytes, CowStr};
 
 #[cfg(feature = "tag")]
-use crate::TypeTag;
+use ockam_core::TypeTag;
 
 #[derive(Debug, Decode, Encode)]
 #[rustfmt::skip]
