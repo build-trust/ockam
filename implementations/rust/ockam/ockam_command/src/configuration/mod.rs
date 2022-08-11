@@ -10,13 +10,13 @@ use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
-pub struct AliasCommand {
+pub struct ConfigurationCommand {
     #[clap(subcommand)]
-    subcommand: AliasSubcommand,
+    subcommand: ConfigurationSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]
-pub enum AliasSubcommand {
+pub enum ConfigurationSubcommand {
     /// Set a specific configuration value
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Set(SetCommand),
@@ -30,12 +30,12 @@ pub enum AliasSubcommand {
     List(ListCommand),
 }
 
-impl AliasCommand {
-    pub fn run(opts: CommandGlobalOpts, command: AliasCommand) {
+impl ConfigurationCommand {
+    pub fn run(opts: CommandGlobalOpts, command: ConfigurationCommand) {
         match command.subcommand {
-            AliasSubcommand::Set(command) => SetCommand::run(opts, command),
-            AliasSubcommand::Get(command) => GetCommand::run(opts, command),
-            AliasSubcommand::List(command) => ListCommand::run(opts, command),
+            ConfigurationSubcommand::Set(command) => SetCommand::run(opts, command),
+            ConfigurationSubcommand::Get(command) => GetCommand::run(opts, command),
+            ConfigurationSubcommand::List(command) => ListCommand::run(opts, command),
         }
     }
 }

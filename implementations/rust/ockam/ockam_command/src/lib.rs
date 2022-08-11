@@ -1,7 +1,7 @@
 //! This library is used by the `ockam` CLI (in `./bin/ockam.rs`).
 
-mod alias;
 mod authenticated;
+mod configuration;
 mod enroll;
 mod forwarder;
 mod identity;
@@ -17,8 +17,8 @@ mod tcp;
 mod util;
 mod vault;
 
-use alias::AliasCommand;
 use authenticated::AuthenticatedCommand;
+use configuration::ConfigurationCommand;
 use enroll::EnrollCommand;
 use forwarder::ForwarderCommand;
 use message::MessageCommand;
@@ -175,9 +175,9 @@ pub enum OckamSubcommand {
     SecureChannelListener(SecureChannelListenerCommand),
 
     // HIDDEN
-    /// Manage ockam node alias values
+    /// Manage ockam node configuration values
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
-    Alias(AliasCommand),
+    Configuration(ConfigurationCommand),
 
     /// Manage authenticated attributes.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
@@ -315,8 +315,8 @@ pub fn run() {
     let verbose = opts.global_args.verbose;
 
     match ockam_command.subcommand {
-        OckamSubcommand::Alias(command) => AliasCommand::run(opts, command),
         OckamSubcommand::Authenticated(command) => AuthenticatedCommand::run(command),
+        OckamSubcommand::Configuration(command) => ConfigurationCommand::run(opts, command),
         OckamSubcommand::Enroll(command) => EnrollCommand::run(opts, command),
         OckamSubcommand::GenerateEnrollmentToken(command) => {
             GenerateEnrollmentTokenCommand::run(opts, command)
