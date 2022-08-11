@@ -1,6 +1,6 @@
 use crate::node::NodeOpts;
 use crate::util::{api, connect_to, stop_node};
-use crate::util::{ComposableSnippet, Operation, Protocol, RemoteMode};
+use crate::util::{ComposableSnippet, Operation, Protocol, RemoteMode, exitcode};
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 use ockam::{Context, Route, TCP};
@@ -88,7 +88,7 @@ impl CreateCommand {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
 
@@ -107,14 +107,14 @@ impl CreateCommand {
                 Ok(cfg) => cfg,
                 Err(e) => {
                     eprintln!("failed to load startup configuration: {}", e);
-                    std::process::exit(-1);
+                    std::process::exit(exitcode::IOERR);
                 }
             };
 
             startup_cfg.add_composite(composite);
             if let Err(e) = startup_cfg.atomic_update().run() {
                 eprintln!("failed to update configuration: {}", e);
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         }
     }
@@ -131,7 +131,7 @@ pub async fn create_transport(
             api::create_transport(&cmd)?,
         )
         .await
-        .unwrap();
+        .expect("failed to send, or receive message");
 
     let (response, TransportStatus { payload, .. }) = api::parse_transport_status(&resp)?;
 
@@ -152,7 +152,8 @@ pub async fn create_transport(
             eprintln!(
                 "An error occurred while creating the transport: {}",
                 payload
-            )
+            );
+            std::process::exit(exitcode::CANTCREAT);
         }
     }
 

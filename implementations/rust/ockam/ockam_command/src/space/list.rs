@@ -10,7 +10,7 @@ use ockam_core::Route;
 
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
-use crate::util::{api, connect_to, stop_node};
+use crate::util::{api, connect_to, exitcode, stop_node};
 use crate::{CommandGlobalOpts, OutputFormat};
 
 #[derive(Clone, Debug, Args)]
@@ -29,7 +29,7 @@ impl ListCommand {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
         connect_to(port, (opts, cmd), list);
@@ -73,7 +73,10 @@ async fn list(
     };
     match res {
         Ok(o) => println!("{o}"),
-        Err(err) => eprintln!("{err}"),
+        Err(err) => {
+            eprintln!("{err}");
+            std::process::exit(exitcode::IOERR);
+        }
     };
 
     stop_node(ctx).await

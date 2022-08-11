@@ -1,4 +1,4 @@
-use crate::util::{self, api, connect_to, OckamConfig};
+use crate::util::{self, api, connect_to, exitcode, OckamConfig};
 use crate::CommandGlobalOpts;
 use anyhow::Context;
 use clap::Args;
@@ -23,7 +23,7 @@ impl ShowCommand {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
         connect_to(port, (cfg.clone(), command.node_name), query_status);

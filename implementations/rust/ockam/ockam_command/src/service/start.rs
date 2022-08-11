@@ -1,5 +1,5 @@
 use crate::node::NodeOpts;
-use crate::util::{api, connect_to, stop_node};
+use crate::util::{api, connect_to, exitcode, stop_node};
 use crate::CommandGlobalOpts;
 use anyhow::{anyhow, Context};
 use clap::{Args, Subcommand};
@@ -33,7 +33,7 @@ impl StartCommand {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
 
@@ -90,7 +90,10 @@ pub async fn start_vault_service(
     };
     match res {
         Ok(o) => println!("{o}"),
-        Err(err) => eprintln!("{err}"),
+        Err(err) => {
+            eprintln!("{err}");
+            std::process::exit(exitcode::IOERR);
+        }
     };
 
     stop_node(ctx).await
@@ -137,7 +140,10 @@ pub async fn start_identity_service(
     };
     match res {
         Ok(o) => println!("{o}"),
-        Err(err) => eprintln!("{err}"),
+        Err(err) => {
+            eprintln!("{err}");
+            std::process::exit(exitcode::IOERR);
+        }
     };
 
     stop_node(ctx).await
@@ -184,7 +190,10 @@ pub async fn start_authenticated_service(
     };
     match res {
         Ok(o) => println!("{o}"),
-        Err(err) => eprintln!("{err}"),
+        Err(err) => {
+            eprintln!("{err}");
+            std::process::exit(exitcode::IOERR);
+        }
     };
 
     stop_node(ctx).await

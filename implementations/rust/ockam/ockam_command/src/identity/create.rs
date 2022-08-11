@@ -1,5 +1,5 @@
 use crate::node::NodeOpts;
-use crate::util::{api, connect_to, stop_node};
+use crate::util::{api, connect_to, exitcode, stop_node};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
@@ -20,7 +20,7 @@ impl CreateCommand {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
 
@@ -49,7 +49,8 @@ pub async fn create_identity(
             println!("Identity {} created!", result.identity_id)
         }
         _ => {
-            eprintln!("An error occurred while creating Identity",)
+            eprintln!("An error occurred while creating Identity",);
+            std::process::exit(exitcode::CANTCREAT);
         }
     }
 

@@ -1,4 +1,4 @@
-use crate::CommandGlobalOpts;
+use crate::{util::exitcode, CommandGlobalOpts};
 use clap::Args;
 
 #[derive(Clone, Debug, Args)]
@@ -19,6 +19,7 @@ impl GetCommand {
                     "Alias {} not known.  Add it first with `ockam alias set`!",
                     command.alias
                 );
+                std::process::exit(exitcode::DATAERR);
             }
         }
     }

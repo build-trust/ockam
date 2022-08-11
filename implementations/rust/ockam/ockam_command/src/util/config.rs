@@ -12,6 +12,8 @@ pub use ockam_api::config::snippet::{
     ComposableSnippet, Operation, PortalMode, Protocol, RemoteMode,
 };
 
+use crate::util::exitcode;
+
 /// A simple wrapper around the main configuration structure to add
 /// local config utility/ query functions
 #[derive(Clone)]
@@ -93,7 +95,7 @@ impl OckamConfig {
             .get(name)
             .unwrap_or_else(|| {
                 eprintln!("No such node available. Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             })
             .port
     }
@@ -199,7 +201,7 @@ impl OckamConfig {
 
         if let Err(e) = create_dir_all(&state_dir) {
             eprintln!("failed to create new node state directory: {}", e);
-            std::process::exit(-1);
+            std::process::exit(exitcode::CANTCREAT);
         }
 
         // Add this node to the config lookup table

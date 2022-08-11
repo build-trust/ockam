@@ -4,7 +4,7 @@ use ockam_api::{nodes::NODEMANAGER_ADDR, Response, Status};
 
 use crate::{
     node::NodeOpts,
-    util::{api, connect_to, stop_node},
+    util::{api, connect_to, exitcode, stop_node},
     CommandGlobalOpts,
 };
 
@@ -28,7 +28,7 @@ impl DeleteCommand {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available. Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
         connect_to(port, command, delete_listener);
@@ -50,7 +50,7 @@ pub async fn delete_listener(
         Ok(sr_msg) => sr_msg,
         Err(e) => {
             eprintln!("Wasn't able to send or receive `Message`: {}", e);
-            std::process::exit(-1)
+            std::process::exit(exitcode::IOERR);
         }
     };
     let r: Response = api::parse_response(&resp)?;
@@ -61,6 +61,7 @@ pub async fn delete_listener(
             eprintln!("Failed to delete tcp listener");
             if !cmd.force {
                 eprintln!("You may have to provide --force to delete the API transport");
+                std::process::exit(exitcode::UNAVAILABLE);
             }
         }
     }

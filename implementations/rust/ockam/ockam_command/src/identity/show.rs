@@ -1,4 +1,4 @@
-use crate::util::{connect_to, stop_node};
+use crate::util::{connect_to, exitcode, stop_node};
 use crate::CommandGlobalOpts;
 use crate::{node::NodeOpts, util::api};
 use clap::Args;
@@ -21,7 +21,7 @@ impl ShowCommand {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
 
@@ -51,7 +51,8 @@ pub async fn show_identity(
                 println!("{}", hex::encode(result.identity.0.as_ref()))
             }
             _ => {
-                eprintln!("An error occurred while exporting Identity",)
+                eprintln!("An error occurred while exporting Identity",);
+                std::process::exit(exitcode::IOERR);
             }
         }
 
@@ -71,7 +72,8 @@ pub async fn show_identity(
                 println!("{}", result.identity_id)
             }
             _ => {
-                eprintln!("An error occurred while getting Identity",)
+                eprintln!("An error occurred while getting Identity",);
+                std::process::exit(exitcode::IOERR);
             }
         }
 

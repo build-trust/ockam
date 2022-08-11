@@ -1,4 +1,4 @@
-use crate::util::{api, connect_to, stop_node};
+use crate::util::{api, connect_to, exitcode, stop_node};
 use crate::CommandGlobalOpts;
 use anyhow::{anyhow, Context};
 use clap::Args;
@@ -46,7 +46,7 @@ impl CreateCommand {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
 
@@ -54,8 +54,8 @@ impl CreateCommand {
             addr: match clean_multiaddr(&command.addr, &cfg.get_lookup()) {
                 Some(addr) => addr,
                 None => {
-                    eprintln!("failed to normalise MultiAddr route");
-                    std::process::exit(-1);
+                    eprintln!("failed to normalize MultiAddr route");
+                    std::process::exit(exitcode::USAGE);
                 }
             },
             ..command
@@ -108,7 +108,10 @@ pub async fn create_connector(
     };
     match res {
         Ok(o) => println!("{o}"),
-        Err(err) => eprintln!("{err}"),
+        Err(err) => {
+            eprintln!("{err}");
+            std::process::exit(exitcode::IOERR);
+        }
     };
 
     stop_node(ctx).await

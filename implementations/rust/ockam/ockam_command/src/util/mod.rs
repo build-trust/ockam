@@ -1,4 +1,5 @@
 pub mod api;
+pub mod exitcode;
 pub mod startup;
 
 mod addon;
@@ -24,6 +25,7 @@ pub const DEFAULT_CLOUD_ADDRESS: &str = "/dnsaddr/cloud.ockam.io/tcp/62526";
 pub async fn stop_node(mut ctx: ockam::Context) -> anyhow::Result<()> {
     if let Err(e) = ctx.stop().await {
         eprintln!("an error occurred while shutting down local node: {}", e);
+        std::process::exit(exitcode::IOERR);
     }
     Ok(())
 }
@@ -51,19 +53,19 @@ where
                 Err(e) => {
                     eprintln!("failed to create TcpTransport");
                     error!(%e);
-                    std::process::exit(1);
+                    std::process::exit(exitcode::CANTCREAT);
                 }
             };
             if let Err(e) = tcp.connect(format!("localhost:{}", port)).await {
                 eprintln!("failed to connect to node");
                 error!(%e);
-                std::process::exit(1);
+                std::process::exit(exitcode::IOERR);
             }
             let route = route![(TCP, format!("localhost:{}", port))];
             if let Err(e) = lambda(ctx, a, route).await {
                 eprintln!("encountered an error in command handler code");
                 error!(%e);
-                std::process::exit(1);
+                std::process::exit(exitcode::IOERR);
             }
             Ok(())
         },
@@ -81,11 +83,12 @@ where
     let res = executor.execute(async move {
         if let Err(e) = f(ctx, a).await {
             eprintln!("Error {:?}", e);
-            std::process::exit(1);
+            std::process::exit(exitcode::IOERR);
         }
     });
     if let Err(e) = res {
         eprintln!("Ockam node failed: {:?}", e,);
+        std::process::exit(exitcode::IOERR);
     }
 }
 
@@ -135,7 +138,8 @@ pub fn setup_logging(verbose: u8, no_color: bool) {
         .with(fmt)
         .try_init();
     if result.is_err() {
-        eprintln!("Failed to initialise tracing logging.");
+        eprintln!("Failed to initialize tracing logging.");
+        std::process::exit(exitcode::IOERR);
     }
 }
 
