@@ -1,4 +1,7 @@
-use crate::{util::startup, CommandGlobalOpts};
+use crate::{
+    util::{exitcode, startup},
+    CommandGlobalOpts,
+};
 use clap::Args;
 use rand::prelude::random;
 
@@ -19,11 +22,11 @@ impl StopCommand {
             Ok(Some(pid)) => startup::stop(pid, command.kill),
             Ok(_) => {
                 eprintln!("Node {} is not running!", &command.node_name);
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
             Err(_) => {
                 eprintln!("Node {} does not exist!", &command.node_name);
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
     }

@@ -1,5 +1,5 @@
 use crate::node::NodeOpts;
-use crate::util::{api, connect_to, stop_node};
+use crate::util::{api, connect_to, exitcode, stop_node};
 use crate::util::{ComposableSnippet, Operation, PortalMode, Protocol};
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
@@ -94,7 +94,7 @@ impl CreateCommand {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
 
@@ -111,14 +111,14 @@ impl CreateCommand {
             Ok(cfg) => cfg,
             Err(e) => {
                 eprintln!("failed to load startup configuration: {}", e);
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
 
         startup_cfg.add_composite(composite);
         if let Err(e) = startup_cfg.atomic_update().run() {
             eprintln!("failed to update configuration: {}", e);
-            std::process::exit(-1);
+            std::process::exit(exitcode::IOERR);
         }
     }
 }
@@ -157,7 +157,10 @@ pub async fn create_inlet(
             )
         }
 
-        _ => eprintln!("An unknown error occurred while creating an inlet..."),
+        _ => {
+            eprintln!("An unknown error occurred while creating an inlet...");
+            std::process::exit(exitcode::UNAVAILABLE)
+        }
     }
 
     stop_node(ctx).await
@@ -201,7 +204,10 @@ pub async fn create_outlet(
             );
         }
 
-        _ => eprintln!("An unknown error occurred while creating an outlet..."),
+        _ => {
+            eprintln!("An unknown error occurred while creating an outlet...");
+            std::process::exit(exitcode::UNAVAILABLE);
+        }
     }
 
     stop_node(ctx).await

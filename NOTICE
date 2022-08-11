@@ -63,6 +63,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | event-listener                | Apache-2.0 OR MIT                                    | https://github.com/stjepang/event-listener                                |
 | executor                      | Apache-2.0 OR MIT                                    | https://www.github.com/richardanaya/executor                              |
 | executor-macros               | Apache-2.0 OR MIT                                    | https://crates.io/crates/executor-macros                                  |
+| exitcode                      | Apache-2.0                                           | https://github.com/benwilber/exitcode                                     |
 | fastrand                      | Apache-2.0 OR MIT                                    | https://github.com/smol-rs/fastrand                                       |
 | ff                            | Apache-2.0 OR MIT                                    | https://github.com/zkcrypto/ff                                            |
 | flume                         | Apache-2.0 OR MIT                                    | https://github.com/zesterer/flume                                         |

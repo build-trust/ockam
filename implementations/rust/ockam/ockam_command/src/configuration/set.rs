@@ -1,4 +1,4 @@
-use crate::CommandGlobalOpts;
+use crate::{util::exitcode, CommandGlobalOpts};
 use clap::Args;
 use ockam_api::config::lookup::InternetAddress;
 
@@ -19,7 +19,7 @@ impl SetCommand {
                     "Invalid alias address!  Please provide an address in the following schema: <address>:<port>. \
                      IPv6, IPv4, and DNS addresses are supported!"
                 );
-                std::process::exit(-1);
+                std::process::exit(exitcode::USAGE);
             }
         };
 

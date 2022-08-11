@@ -1,4 +1,7 @@
-use crate::{util::startup, CommandGlobalOpts};
+use crate::{
+    util::{exitcode, startup},
+    CommandGlobalOpts,
+};
 use clap::Args;
 use nix::unistd::Pid;
 use rand::prelude::random;
@@ -23,7 +26,7 @@ impl StartCommand {
                     "Node '{}' already appears to be running as PID {}",
                     command.node_name, pid
                 );
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         }
 
@@ -35,7 +38,7 @@ impl StartCommand {
                     "failed to load startup configuration for node '{}' because: {}",
                     command.node_name, e
                 );
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
 

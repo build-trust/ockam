@@ -10,7 +10,7 @@ use ockam_api::{clean_multiaddr, Response, Status};
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 
-use crate::util::{api, connect_to, embedded_node, stop_node};
+use crate::util::{api, connect_to, embedded_node, exitcode, stop_node};
 
 #[derive(Clone, Debug, Args)]
 pub struct SendCommand {
@@ -33,8 +33,8 @@ impl SendCommand {
             to: match clean_multiaddr(&cmd.to, &opts.config.get_lookup()) {
                 Some(to) => to,
                 None => {
-                    eprintln!("failed to normalise MultiAddr route");
-                    std::process::exit(-1);
+                    eprintln!("failed to normalize MultiAddr route");
+                    std::process::exit(exitcode::USAGE);
                 }
             },
             ..cmd
@@ -103,7 +103,10 @@ async fn send_message_via_connection_to_a_node(
     };
     match res {
         Ok(o) => println!("{o}"),
-        Err(err) => eprintln!("{err}"),
+        Err(err) => {
+            eprintln!("{err}");
+            std::process::exit(exitcode::IOERR);
+        }
     };
 
     stop_node(ctx).await

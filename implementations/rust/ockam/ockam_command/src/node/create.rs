@@ -10,6 +10,7 @@ use std::{
     time::Duration,
 };
 
+use crate::util::exitcode;
 use crate::{
     node::show::query_status,
     util::{
@@ -103,13 +104,13 @@ impl CreateCommand {
                         "failed to update node configuration for '{}': {}",
                         command.node_name, e
                     );
-                    std::process::exit(-1);
+                    std::process::exit(exitcode::CANTCREAT);
                 }
 
                 // Save the config update
                 if let Err(e) = cfg.atomic_update().run() {
                     eprintln!("failed to update configuration: {}", e);
-                    std::process::exit(-1);
+                    std::process::exit(exitcode::IOERR);
                 }
             }
 
@@ -123,7 +124,7 @@ impl CreateCommand {
             // FIXME: not really clear why this is causing issues
             if cfg.port_is_used(address.port()) {
                 eprintln!("Another node is listening on the provided port!");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
 
             // First we create a new node in the configuration so that
@@ -134,7 +135,7 @@ impl CreateCommand {
                     "failed to update node configuration for '{}': {}",
                     command.node_name, e
                 );
-                std::process::exit(-1);
+                std::process::exit(exitcode::CANTCREAT);
             }
 
             // Construct the arguments list and re-execute the ockam
@@ -155,7 +156,7 @@ impl CreateCommand {
             // Save the config update
             if let Err(e) = startup_cfg.atomic_update().run() {
                 eprintln!("failed to update configuration: {}", e);
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
 
             // Unless this CLI was called from another watchdog we
@@ -165,6 +166,7 @@ impl CreateCommand {
             // Save the config update
             if let Err(e) = cfg.atomic_update().run() {
                 eprintln!("failed to update configuration: {}", e);
+                std::process::exit(exitcode::IOERR);
             }
 
             // Wait a bit

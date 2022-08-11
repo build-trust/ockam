@@ -12,7 +12,7 @@ use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_api::{Response, Status};
 use ockam_core::Route;
 
-use crate::util::{api, connect_to, stop_node};
+use crate::util::{api, connect_to, exitcode, stop_node};
 use crate::{CommandGlobalOpts, EnrollCommand};
 
 #[derive(Clone, Debug, Args)]
@@ -25,7 +25,7 @@ impl EnrollAuth0Command {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
         connect_to(port, (opts, cmd), enroll);
@@ -68,7 +68,10 @@ async fn enroll(
     };
     match res {
         Ok(o) => println!("{o}"),
-        Err(err) => eprintln!("{err}"),
+        Err(err) => {
+            eprintln!("{err}");
+            std::process::exit(exitcode::IOERR);
+        }
     };
 
     stop_node(ctx).await

@@ -1,4 +1,4 @@
-use crate::util::{api, connect_to, stop_node};
+use crate::util::{api, connect_to, exitcode, stop_node};
 use crate::CommandGlobalOpts;
 
 use clap::Args;
@@ -36,7 +36,7 @@ impl CreateCommand {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
 
@@ -71,7 +71,8 @@ pub async fn create_listener(
             println!("Secure Channel Listener created at {}!", addr)
         }
         _ => {
-            eprintln!("An error occurred while creating secure channel listener",)
+            eprintln!("An error occurred while creating secure channel listener",);
+            std::process::exit(exitcode::CANTCREAT)
         }
     }
 

@@ -8,6 +8,8 @@ use identity::load_identity;
 use ockam::{identity::IdentityIdentifier, NodeBuilder};
 use storage::{ensure_identity_exists, get_ockam_dir};
 
+use crate::util::exitcode;
+
 pub mod identity;
 pub mod storage;
 
@@ -168,7 +170,7 @@ pub fn print_error_and_exit(v: bool, e: anyhow::Error) -> ! {
     for cause in e.chain().skip(1) {
         eprintln!("- caused by: {}", message(v, cause));
     }
-    std::process::exit(1);
+    std::process::exit(exitcode::IOERR);
 }
 
 pub fn exit_with_result(verbose: bool, result: Result<()>) -> ! {

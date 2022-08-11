@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::util::{self, api, connect_to};
+use crate::util::{self, api, connect_to, exitcode};
 use crate::{node::show::query_status, CommandGlobalOpts, OckamConfig};
 use clap::Args;
 use crossbeam_channel::{bounded, Sender};
@@ -18,7 +18,7 @@ impl ListCommand {
 
             if inner.nodes.is_empty() {
                 println!("No nodes registered on this system!");
-                std::process::exit(0);
+                std::process::exit(exitcode::IOERR);
             }
 
             // Before printing node state we have to verify it.  This
@@ -58,12 +58,14 @@ fn verify_pids(cfg: &OckamConfig, nodes: Vec<String>) {
         if node_cfg.pid != verified_pid {
             if let Err(e) = cfg.update_pid(&node_name, verified_pid) {
                 eprintln!("failed to update pid for node {}: {}", node_name, e);
+                std::process::exit(exitcode::IOERR);
             }
         }
     }
 
     if cfg.atomic_update().run().is_err() {
         eprintln!("failed to update PID information in config!");
+        std::process::exit(exitcode::IOERR);
     }
 }
 

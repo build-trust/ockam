@@ -1,5 +1,5 @@
 use crate::{
-    util::{api, connect_to, stop_node},
+    util::{api, connect_to, exitcode, stop_node},
     CommandGlobalOpts,
 };
 use clap::Args;
@@ -63,7 +63,7 @@ impl CreateCommand {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
 
@@ -76,13 +76,13 @@ impl CreateCommand {
             Ok(cfg) => cfg,
             Err(e) => {
                 eprintln!("failed to load startup configuration: {}", e);
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
         startup_config.add_composite(composite);
         if let Err(e) = startup_config.atomic_update().run() {
             eprintln!("failed to update configuration: {}", e);
-            std::process::exit(-1);
+            std::process::exit(exitcode::IOERR);
         }
     }
 }
@@ -102,7 +102,7 @@ pub async fn create_connection(
         Ok(sr_msg) => sr_msg,
         Err(e) => {
             eprintln!("Wasn't able to send or receive `Message`: {}", e);
-            std::process::exit(-1)
+            std::process::exit(exitcode::IOERR);
         }
     };
 
@@ -119,7 +119,7 @@ pub async fn create_connection(
                 Some(addr) => addr,
                 None => {
                     eprintln!("Couldn't convert given address into `MultiAddr`");
-                    std::process::exit(-1)
+                    std::process::exit(exitcode::SOFTWARE);
                 }
             };
 
@@ -132,7 +132,8 @@ pub async fn create_connection(
             eprintln!(
                 "An error occurred while creating the tcp connection: {}",
                 payload
-            )
+            );
+            std::process::exit(exitcode::CANTCREAT);
         }
     }
     stop_node(ctx).await

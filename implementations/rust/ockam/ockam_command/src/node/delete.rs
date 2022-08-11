@@ -1,4 +1,7 @@
-use crate::{util::startup, CommandGlobalOpts, OckamConfig};
+use crate::{
+    util::{exitcode, startup},
+    CommandGlobalOpts, OckamConfig,
+};
 use clap::Args;
 use std::ops::Deref;
 
@@ -30,6 +33,7 @@ impl DeleteCommand {
 
                 if inner.nodes.is_empty() {
                     eprintln!("No nodes registered on this system!");
+                    std::process::exit(exitcode::IOERR)
                 }
 
                 inner.nodes.iter().map(|(name, _)| name.clone()).collect()
@@ -54,7 +58,7 @@ pub fn delete_node(opts: &CommandGlobalOpts, node_name: &String, sigkill: bool) 
         Ok(pid) => pid,
         Err(e) => {
             eprintln!("Failed to delete node: {}", e);
-            std::process::exit(-1);
+            std::process::exit(exitcode::IOERR);
         }
     };
 
@@ -64,14 +68,17 @@ pub fn delete_node(opts: &CommandGlobalOpts, node_name: &String, sigkill: bool) 
 
     if let Err(e) = cfg.get_node_dir(node_name).map(std::fs::remove_dir_all) {
         eprintln!("Failed to delete node directory: {}", e);
+        std::process::exit(exitcode::IOERR);
     }
 
     if let Err(e) = cfg.delete_node(node_name) {
         eprintln!("failed to remove node from config: {}", e);
+        std::process::exit(exitcode::IOERR);
     }
 
     if let Err(e) = cfg.atomic_update().run() {
         eprintln!("failed to update configuration: {}", e);
+        std::process::exit(exitcode::IOERR);
     }
 
     println!("Deleted node '{}'", node_name);
@@ -87,5 +94,6 @@ fn remove_config_dir(cfg: &OckamConfig) {
 
     if let Err(e) = std::fs::remove_dir_all(config_dir) {
         eprintln!("Failed to delete config directory: {}", e);
+        std::process::exit(exitcode::IOERR);
     }
 }

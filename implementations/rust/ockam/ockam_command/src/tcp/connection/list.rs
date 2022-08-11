@@ -1,5 +1,5 @@
 use crate::node::NodeOpts;
-use crate::util::{api, connect_to, stop_node};
+use crate::util::{api, connect_to, exitcode, stop_node};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use cli_table::{print_stdout, Cell, Style, Table};
@@ -22,7 +22,7 @@ impl ListCommand {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available. Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
+                std::process::exit(exitcode::IOERR);
             }
         };
 
@@ -41,7 +41,7 @@ pub async fn list_connections(ctx: Context, _: (), mut base_route: Route) -> any
         Ok(sr_msg) => sr_msg,
         Err(e) => {
             eprintln!("Wasn't able to send or receive `Message`: {}", e);
-            std::process::exit(-1)
+            std::process::exit(exitcode::IOERR);
         }
     };
 
@@ -74,6 +74,7 @@ pub async fn list_connections(ctx: Context, _: (), mut base_route: Route) -> any
 
     if let Err(e) = print_stdout(table) {
         eprintln!("failed to print node status: {}", e);
+        std::process::exit(exitcode::IOERR);
     }
 
     stop_node(ctx).await
