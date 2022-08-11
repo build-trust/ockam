@@ -1,9 +1,10 @@
 //! Handle local node configuration
 
-use ockam_api::config::cli::{InternetAddress, NodeConfigEntry, RemoteConfig};
-use ockam_api::config::{cli, Config};
+use ockam_api::config::cli::NodeConfigEntry;
+use ockam_api::config::lookup::ConfigLookup;
+use ockam_api::config::{cli, lookup::InternetAddress, Config};
 use slug::slugify;
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::{fs::create_dir_all, ops::Deref, path::PathBuf, sync::RwLockReadGuard};
 
@@ -171,8 +172,8 @@ impl OckamConfig {
     }
 
     /// Get a lookup table for node alias -> internet address mappings
-    pub fn get_node_lookup(&self) -> BTreeMap<String, InternetAddress> {
-        self.get_inner().build_lookup()
+    pub fn get_lookup(&self) -> ConfigLookup {
+        self.get_inner().get_lookup().clone()
     }
 
     ///////////////////// WRITE ACCESSORS //////////////////////////////
@@ -211,6 +212,10 @@ impl OckamConfig {
             std::process::exit(-1);
         }
 
+        // Add this node to the config lookup table
+        inner.lookup.set_node(name, bind.into());
+
+        // Add this node to the main node table
         inner.nodes.insert(
             name.to_string(),
             NodeConfigEntry::Local(NodeConfig {
@@ -251,11 +256,9 @@ impl OckamConfig {
         inner.api_node = node_name.into();
     }
 
-    pub fn set_alias(&self, alias: String, addr: InternetAddress) {
+    pub fn set_node_alias(&self, alias: String, addr: InternetAddress) {
         let mut inner = self.inner.writelock_inner();
-        inner
-            .nodes
-            .insert(alias, NodeConfigEntry::Remote(RemoteConfig { addr }));
+        inner.lookup.set_node(&alias, addr)
     }
 }
 

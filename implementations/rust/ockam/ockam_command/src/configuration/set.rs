@@ -1,6 +1,6 @@
 use crate::CommandGlobalOpts;
 use clap::Args;
-use ockam_api::config::cli::InternetAddress;
+use ockam_api::config::lookup::InternetAddress;
 
 #[derive(Clone, Debug, Args)]
 pub struct SetCommand {
@@ -23,6 +23,6 @@ impl SetCommand {
             }
         };
 
-        opts.config.set_alias(command.name, target_addr);
+        opts.config.set_node_alias(command.name, target_addr);
     }
 }
