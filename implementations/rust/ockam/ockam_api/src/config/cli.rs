@@ -4,7 +4,7 @@ use crate::config::{snippet::ComposableSnippet, ConfigValues};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
-use std::net::{Ipv4Addr, Ipv6Addr};
+use std::net::{SocketAddrV4, SocketAddrV6};
 use std::{
     env,
     net::SocketAddr,
@@ -79,12 +79,39 @@ Otherwise your OS or OS configuration may not be supported!",
     }
 }
 
-/// An internet address (v6/v4/dns)
+/// An internet address abstraction (v6/v4/dns)
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum InternetAddress {
-    Dns(String),
-    V4(Ipv4Addr),
-    V6(Ipv6Addr),
+    /// DNSaddr and port
+    Dns(String, u16),
+    /// An IPv4 socket address
+    V4(SocketAddrV4),
+    /// An IPv6 socket address
+    V6(SocketAddrV6),
+}
+
+impl InternetAddress {
+    pub fn from_dns(s: String, port: u16) -> Self {
+        Self::Dns(s, port)
+    }
+
+    /// Get the port for this address
+    pub fn port(&self) -> u16 {
+        match self {
+            Self::Dns(_, port) => *port,
+            Self::V4(v4) => v4.port(),
+            Self::V6(v6) => v6.port(),
+        }
+    }
+}
+
+impl From<SocketAddr> for InternetAddress {
+    fn from(sa: SocketAddr) -> Self {
+        match sa {
+            SocketAddr::V4(v4) => Self::V4(v4),
+            SocketAddr::V6(v6) => Self::V6(v6),
+        }
+    }
 }
 
 /// Per-node runtime configuration
