@@ -146,10 +146,6 @@ impl CommandGlobalOpts {
 
 #[derive(Debug, Subcommand)]
 pub enum OckamSubcommand {
-    /// Manage ockam node alias values
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    Alias(AliasCommand),
-
     /// Send or receive messages
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Message(MessageCommand),
@@ -179,6 +175,10 @@ pub enum OckamSubcommand {
     SecureChannelListener(SecureChannelListenerCommand),
 
     // HIDDEN
+    /// Manage ockam node alias values
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
+    Alias(AliasCommand),
+
     /// Manage authenticated attributes.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
     Authenticated(AuthenticatedCommand),
