@@ -20,7 +20,7 @@ impl ShowCommand {
     pub fn run(opts: CommandGlobalOpts, command: ShowCommand) {
         let cfg = &opts.config;
         let port = match cfg.get_inner().nodes.get(&command.node_name) {
-            Some(cfg) => cfg.port,
+            Some(cfg) => cfg.assume().port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
                 std::process::exit(-1);
