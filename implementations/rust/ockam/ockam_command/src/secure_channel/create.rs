@@ -7,7 +7,7 @@ use ockam::identity::IdentityIdentifier;
 use ockam_api::error::ApiError;
 use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_api::{route_to_multiaddr, Response, Status};
+use ockam_api::{clean_multiaddr, route_to_multiaddr, Response, Status};
 use ockam_core::{route, Route};
 use ockam_multiaddr::MultiAddr;
 use tracing::debug;
@@ -48,6 +48,17 @@ impl CreateCommand {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
                 std::process::exit(-1);
             }
+        };
+
+        let command = CreateCommand {
+            addr: match clean_multiaddr(&command.addr, &cfg.get_node_lookup()) {
+                Some(addr) => addr,
+                None => {
+                    eprintln!("failed to normalise MultiAddr route");
+                    std::process::exit(-1);
+                }
+            },
+            ..command
         };
 
         connect_to(port, command, create_connector);
