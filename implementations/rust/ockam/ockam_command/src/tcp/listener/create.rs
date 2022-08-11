@@ -1,5 +1,4 @@
 use crate::{
-    node::NodeOpts,
     util::{api, connect_to, stop_node},
     CommandGlobalOpts,
 };
@@ -14,16 +13,24 @@ use ockam_api::{
 #[derive(Args, Clone, Debug)]
 pub struct CreateCommand {
     #[clap(flatten)]
-    node_opts: NodeOpts,
+    node_opts: TCPListenerNodeOpts,
 
-    pub bind: String,
+    /// Address for this listener (eg. 127.0.0.1:7000)
+    pub address: String,
+}
+
+#[derive(Clone, Debug, Args)]
+pub struct TCPListenerNodeOpts {
+    /// Node at which to create the listener
+    #[clap(global = true, long, value_name = "NODE", default_value = "default")]
+    pub at: String,
 }
 
 impl From<&'_ CreateCommand> for ComposableSnippet {
     fn from(cc: &'_ CreateCommand) -> Self {
         let mode = RemoteMode::Listener;
         let tcp = true;
-        let address = cc.bind.clone();
+        let address = cc.address.clone();
 
         Self {
             id: format!(
@@ -45,7 +52,7 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
         let cfg = &opts.config;
-        let port = match cfg.select_node(&command.node_opts.api_node) {
+        let port = match cfg.select_node(&command.node_opts.at) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -56,7 +63,7 @@ impl CreateCommand {
         connect_to(port, command.clone(), create_listener);
 
         let composite = (&command).into();
-        let node = command.node_opts.api_node;
+        let node = command.node_opts.at;
 
         let startup_config = match cfg.get_startup_cfg(&node) {
             Ok(cfg) => cfg,

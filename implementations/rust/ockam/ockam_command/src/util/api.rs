@@ -48,7 +48,10 @@ pub(crate) fn create_tcp_connection(
 
 /// Construct a request to create node tcp listener
 pub(crate) fn create_tcp_listener(cmd: &crate::tcp::listener::CreateCommand) -> Result<Vec<u8>> {
-    let (tt, addr) = (models::transport::TransportMode::Listen, cmd.bind.clone());
+    let (tt, addr) = (
+        models::transport::TransportMode::Listen,
+        cmd.address.clone(),
+    );
 
     let payload =
         models::transport::CreateTransport::new(models::transport::TransportType::Tcp, tt, addr);
