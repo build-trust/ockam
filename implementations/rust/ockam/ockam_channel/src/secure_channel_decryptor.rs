@@ -180,7 +180,7 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelDecryptor
 
         let keys = key_exchanger.finalize().await?;
 
-        let address_local = Address::random_local();
+        let address_local = Address::random_tagged("SecureChannelEncryptor");
         let encryptor = SecureChannelEncryptor::new(
             ChannelKeys {
                 key: keys.encrypt_key().clone(),

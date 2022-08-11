@@ -1,12 +1,11 @@
 use crate::channel_types::{small_channel, MessageSender, SmallReceiver, SmallSender};
 use crate::{
     error::{NodeError, NodeReason, RouterReason, WorkerReason},
-    relay::RelayMessage,
     router::SenderPair,
 };
 use core::{fmt, sync::atomic::AtomicUsize};
 use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
-use ockam_core::{Address, AddressSet, Error, Result, TransportType};
+use ockam_core::{Address, AddressSet, Error, RelayMessage, Result, TransportType};
 
 /// Messages sent from the Node to the Executor
 #[derive(Debug)]
@@ -173,6 +172,7 @@ pub enum RouterReply {
         sender: MessageSender<RelayMessage>,
         /// Indicate whether the relay message needs to be constructed
         /// with router wrapping.
+        /// TODO Is this still used in the code-base?
         wrap: bool,
     },
     /// Indicate the 'ready' state of an address

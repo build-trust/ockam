@@ -72,7 +72,9 @@ impl<V: IdentityVault> Identity<V> {
         if !change_history.verify_all_existing_events(vault).await? {
             return Err(IdentityError::IdentityVerificationFailed.into());
         }
-        let child_ctx = ctx.new_detached(Address::random_local()).await?;
+        let child_ctx = ctx
+            .new_detached(Address::random_tagged("Identity.import.detached"))
+            .await?;
 
         let id = change_history.compute_identity_id(vault).await?;
 
@@ -89,7 +91,9 @@ impl<V: IdentityVault> Identity<V> {
 
     /// Create Identity
     pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
-        let child_ctx = ctx.new_detached(Address::random_local()).await?;
+        let child_ctx = ctx
+            .new_detached(Address::random_tagged("Identity.create.detached"))
+            .await?;
         let initial_event_id = EventIdentifier::initial(vault).await;
 
         let key_attribs = KeyAttributes::new(

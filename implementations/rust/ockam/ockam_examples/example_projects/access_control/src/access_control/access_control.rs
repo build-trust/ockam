@@ -6,7 +6,7 @@ use crate::access_control::AbacLocalInfo;
 use ockam::abac::AbacAuthorization;
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
-use ockam_core::{AccessControl, LocalMessage, Result};
+use ockam_core::{AccessControl, RelayMessage, Result};
 
 use core::fmt::{self, Debug, Formatter};
 
@@ -42,9 +42,9 @@ impl<A> AccessControl for AttributeBasedAccessControl<A>
 where
     A: AbacAuthorization,
 {
-    async fn is_authorized(&self, local_msg: &LocalMessage) -> Result<bool> {
+    async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
         // pull request triple out of LocalMessage's LocalInfo
-        let local_info = AbacLocalInfo::find_info(local_msg)?;
+        let local_info = AbacLocalInfo::find_info(&relay_msg.local_msg)?;
 
         tracing::debug!(
             "AttributeBasedAccessControl::is_authorized() -> {:?}",

@@ -5,7 +5,8 @@ use crate::compat::{
     sync::Arc,
     vec::{self, Vec},
 };
-use crate::{LocalMessage, Result};
+use crate::{debugger, AllowAllOutgoing, RelayMessage, Result};
+use core::cmp::Ordering;
 use core::fmt::{self, Debug, Display};
 use core::iter::FromIterator;
 use core::ops::Deref;
@@ -14,35 +15,82 @@ use serde::{Deserialize, Serialize};
 
 /// A `Mailbox` controls the dispatch of incoming messages for a
 /// particular [`Address`]
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct Mailbox {
     address: Address,
-    access_control: Arc<dyn AccessControl>,
+    incoming: Arc<dyn AccessControl>,
+    outgoing: Arc<dyn AccessControl>,
 }
+
+impl Debug for Mailbox {
+    fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {{in:{:?} out:{:?}}}",
+            self.address, self.incoming, self.outgoing
+        )
+    }
+}
+
+impl Ord for Mailbox {
+    fn cmp(&self, rhs: &Self) -> Ordering {
+        self.address.cmp(&rhs.address)
+    }
+}
+impl PartialOrd for Mailbox {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        Some(self.cmp(rhs))
+    }
+}
+impl PartialEq for Mailbox {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.address == rhs.address
+    }
+}
+impl Eq for Mailbox {}
 
 impl Mailbox {
     /// Create a new `Mailbox` with the given [`Address`] and [`AccessControl`]
-    pub fn new(address: Address, access_control: Arc<dyn AccessControl>) -> Self {
+    pub fn new(
+        address: Address,
+        incoming: Arc<dyn AccessControl>,
+        outgoing: Arc<dyn AccessControl>,
+    ) -> Self {
         Self {
             address,
-            access_control,
+            incoming,
+            outgoing,
         }
     }
     /// Return a reference to the [`Address`] of this mailbox
     pub fn address(&self) -> &Address {
         &self.address
     }
-    /// Return a reference to the [`AccessControl`] for this mailbox
-    pub fn access_control(&self) -> &Arc<dyn AccessControl> {
-        &self.access_control
+    /// Return a reference to the incoming [`AccessControl`] for this mailbox
+    pub fn incoming_access_control(&self) -> &Arc<dyn AccessControl> {
+        &self.incoming
+    }
+    /// Return a reference to the outgoing [`AccessControl`] for this mailbox
+    pub fn outgoing_access_control(&self) -> &Arc<dyn AccessControl> {
+        &self.outgoing
     }
 }
 
 /// A collection of [`Mailbox`]es for a [`Context`]
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct Mailboxes {
     main_mailbox: Mailbox,
     additional_mailboxes: Vec<Mailbox>,
+}
+
+impl Debug for Mailboxes {
+    fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{:?} + {:?}",
+            self.main_mailbox, self.additional_mailboxes
+        )
+    }
 }
 
 impl Mailboxes {
@@ -57,8 +105,9 @@ impl Mailboxes {
     /// Create a new collection of `Mailboxes` for the given
     /// [`Address`] with the given [`AccessControl`]
     pub fn main<A: Into<Address>>(address: A, access_control: Arc<dyn AccessControl>) -> Self {
+        let outgoing = Arc::new(AllowAllOutgoing); // TODO
         Self {
-            main_mailbox: Mailbox::new(address.into(), access_control),
+            main_mailbox: Mailbox::new(address.into(), access_control, outgoing),
             additional_mailboxes: vec![],
         }
     }
@@ -70,11 +119,15 @@ impl Mailboxes {
         address_set: AddressSet,
         access_control: Arc<dyn AccessControl>,
     ) -> Self {
-        let main_mailbox = Mailbox::new(address_set.first(), access_control.clone());
+        let outgoing = Arc::new(AllowAllOutgoing); // TODO
+        let main_mailbox = Mailbox::new(address_set.first(), access_control.clone(), outgoing);
         let additional_mailboxes = address_set
             .into_iter()
             .skip(1)
-            .map(|x| Mailbox::new(x, access_control.clone()))
+            .map(|x| {
+                let outgoing = Arc::new(AllowAllOutgoing); // TODO
+                Mailbox::new(x, access_control.clone(), outgoing)
+            })
             .collect();
 
         Mailboxes::new(main_mailbox, additional_mailboxes)
@@ -105,7 +158,7 @@ impl Mailboxes {
     }
 
     /// Return a reference to the [`Mailbox`] with the given [`Address`]
-    fn find_mailbox(&self, msg_addr: &Address) -> Option<&Mailbox> {
+    pub fn find_mailbox(&self, msg_addr: &Address) -> Option<&Mailbox> {
         if &self.main_mailbox.address == msg_addr {
             Some(&self.main_mailbox)
         } else {
@@ -116,18 +169,34 @@ impl Mailboxes {
     }
 
     /// Return `true` if the given [`Address`] is authorized to post
-    /// the given [`LocalMessage`] to these `Mailboxes`
-    pub async fn is_authorized(
-        &self,
-        msg_addr: &Address,
-        local_msg: &LocalMessage,
-    ) -> Result<bool> {
-        if let Some(mailbox) = self.find_mailbox(msg_addr) {
-            mailbox.access_control.is_authorized(local_msg).await
+    /// the given [`RelayMessage`] to these `Mailboxes`
+    /// TODO docs are confusing
+    pub async fn is_incoming_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
+        if let Some(mailbox) = self.find_mailbox(&relay_msg.destination) {
+            debugger::log_incoming_access_control(mailbox, relay_msg);
+
+            mailbox.incoming.is_authorized(relay_msg).await
         } else {
             warn!(
-                "Message for {} does not match any addresses for this destination",
-                msg_addr
+                "Message from {} for {} does not match any addresses for this destination",
+                &relay_msg.source, &relay_msg.destination
+            );
+            crate::deny()
+        }
+    }
+
+    /// Return `true` if these `Mailboxes` are authorized to post the
+    /// given [`RelayMessage`] to the given [`Address`]
+    /// TODO docs are confusing
+    pub async fn is_outgoing_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
+        if let Some(mailbox) = self.find_mailbox(&relay_msg.source) {
+            debugger::log_outgoing_access_control(mailbox, relay_msg);
+
+            mailbox.outgoing.is_authorized(relay_msg).await
+        } else {
+            warn!(
+                "Message from {} for {} does not match any addresses for this origin",
+                &relay_msg.source, &relay_msg.destination
             );
             crate::deny()
         }
@@ -373,6 +442,25 @@ impl Address {
             tt: LOCAL,
             ..random()
         }
+    }
+
+    /// Generate a random address with a debug tag and transport type [`LOCAL`].
+    pub fn random_tagged(_tag: &str) -> Self {
+        #[cfg(feature = "debugger")]
+        {
+            use core::sync::atomic::{AtomicU32, Ordering};
+            static COUNTER: AtomicU32 = AtomicU32::new(0);
+            let address = format!("{}_{}", _tag, COUNTER.fetch_add(1, Ordering::Relaxed),).into();
+            let address = Self {
+                tt: LOCAL,
+                ..address
+            };
+            tracing::trace!("random_tagged => {}", address);
+            address
+        }
+
+        #[cfg(not(feature = "debugger"))]
+        Self::random_local()
     }
 
     /// Get transport type of this address.

@@ -28,6 +28,10 @@ alloc = [
     "ockam/alloc",
 ]
 
+# Feature: "debugger" enables functionality to trace addresses and
+# message flows within Ockam apps.
+debugger = ["ockam/debugger"]
+
 cortexm = [
     "alloc-cortex-m",
     "cortex-m",

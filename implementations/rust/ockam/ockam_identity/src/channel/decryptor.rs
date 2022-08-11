@@ -12,7 +12,6 @@ use ockam_channel::{
     SecureChannelInfo,
 };
 use ockam_core::async_trait;
-use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, sync::Arc, vec::Vec};
 use ockam_core::vault::Signature;
 use ockam_core::{
@@ -88,10 +87,13 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
         trust_policy: Arc<dyn TrustPolicy>,
         timeout: Duration,
     ) -> Result<Address> {
-        let child_address = Address::random_local();
+        let child_address =
+            Address::random_tagged("InitiatorStartChannel.callback_address.detached");
         let mut child_ctx = ctx.new_detached(child_address.clone()).await?;
 
-        let self_address: Address = random();
+        // TODO @ac - does have random() have different entropy to random_local?
+        //let self_address: Address = random();
+        let self_address = Address::random_tagged("DecryptorWorker_create_initiator");
 
         let vault = identity.vault.async_try_clone().await?;
         let initiator = XXNewKeyExchanger::new(vault.async_try_clone().await?)
@@ -99,7 +101,11 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             .await?;
         // Create regular secure channel and set self address as first responder
         let custom_payload = self_address.encode()?;
-        let temp_ctx = ctx.new_detached(Address::random_local()).await?;
+        let temp_ctx = ctx
+            .new_detached(Address::random_tagged(
+                "DecryptorWorker.SecureChannelDecryptor.temp_ctx.detached",
+            ))
+            .await?;
         let channel_future = Box::pin(async move {
             SecureChannel::create_extended(&temp_ctx, route, Some(custom_payload), initiator, vault)
                 .await
@@ -154,14 +160,16 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             .ok_or(IdentityError::SecureChannelCannotBeAuthenticated)?;
         let first_responder_address = Address::decode(custom_payload)?;
 
-        let self_address: Address = random();
+        // TODO @ac - does have random() have different entropy to random_local?
+        // let self_address: Address = random();
+        let self_address = Address::random_tagged("DecryptorWorker_create_responder");
 
         let vault = identity.vault.async_try_clone().await?;
         let state = State::ResponderWaitForKex(ResponderWaitForKex {
             first_responder_address,
         });
 
-        let kex_callback_address = Address::random_local();
+        let kex_callback_address = Address::random_tagged("DecryptorWorker.kex_callback_address");
         let worker = DecryptorWorker {
             is_initiator: false,
             self_address: self_address.clone(),
@@ -183,7 +191,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             &self_address
         );
 
-        let regular_responder_address = Address::random_local();
+        let regular_responder_address = Address::random_tagged("SecureChannelDecryptor");
 
         let responder = XXNewKeyExchanger::new(vault.async_try_clone().await?)
             .responder()
@@ -321,7 +329,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
                 .await?;
             debug!("Sent Authentication response");
 
-            let encryptor_address = Address::random_local();
+            let encryptor_address = Address::random_tagged("EncryptorWorker_send_identity");
 
             self.state = Some(State::Initialized(Initialized {
                 local_secure_channel_address: state.channel.address(),
@@ -419,7 +427,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
 
             let remote_identity_secure_channel_address = return_route.recipient();
 
-            let encryptor_address = Address::random_local();
+            let encryptor_address = Address::random_tagged("EncryptorWorker_receive_identity");
 
             self.state = Some(State::Initialized(Initialized {
                 local_secure_channel_address: state.local_secure_channel_address.clone(),

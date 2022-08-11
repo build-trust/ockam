@@ -1,9 +1,10 @@
 use ockam_core::access_control::AccessControl;
-use ockam_core::compat::{boxed::Box, net::SocketAddr};
-use ockam_core::{Address, AsyncTryClone, Result, Route};
+use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
+use ockam_core::{Address, AsyncTryClone, Mailbox, Mailboxes, Result, Route};
+use ockam_node::access_control::AllowTransport;
 use ockam_node::{Context, WorkerBuilder};
 
-use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
+use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle, TCP};
 
 /// High level management interface for TCP transports
 ///
@@ -183,16 +184,30 @@ impl TcpTransport {
         address: impl Into<Address>,
         peer: impl Into<String>,
     ) -> Result<()> {
-        let worker = TcpOutletListenWorker::new(peer.into());
-        self.router_handle
-            .ctx()
-            .start_worker(address.into(), worker)
+        let worker =
+            TcpOutletListenWorker::new(peer.into(), self.router_handle.main_addr().clone());
+
+        // TODO @ac #outlet
+        // in:  0#outlet  <=  [0#TcpRecvProcessor_11]
+        // out: n/a
+        // TODO allow messages received over TcpTransport, but can we restrict it further?
+        // TODO we also don't want to give everything created by this worker AllowedTransport
+        let mailbox = Mailbox::new(
+            address.into(),
+            Arc::new(AllowTransport::single(TCP)),
+            Arc::new(ockam_core::AllowAll),
+        );
+        WorkerBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), worker)
+            .start(self.router_handle.ctx())
             .await?;
 
         Ok(())
     }
 
     /// FIXME
+    ///
+    /// TODO @deprecated AllowTransport::single(TCP) should be the
+    ///      default behavior for create_outlet ?
     pub async fn create_outlet_with_access_control<AC>(
         &self,
         address: impl Into<Address>,
@@ -202,7 +217,8 @@ impl TcpTransport {
     where
         AC: AccessControl,
     {
-        let worker = TcpOutletListenWorker::new(peer.into());
+        let worker =
+            TcpOutletListenWorker::new(peer.into(), self.router_handle.main_addr().clone());
 
         WorkerBuilder::with_access_control(access_control, address.into(), worker)
             .start(self.router_handle.ctx())

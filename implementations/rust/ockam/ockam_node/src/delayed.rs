@@ -1,7 +1,8 @@
 use crate::Context;
 use core::time::Duration;
 use futures::future::{AbortHandle, Abortable};
-use ockam_core::{Address, Message, Result};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{Address, DenyAll, Mailbox, Mailboxes, Message, Result};
 
 /// Allow to send message to destination address periodically after some delay
 /// Only one scheduled heartbeat allowed at a time
@@ -26,7 +27,18 @@ impl<M: Message + Clone> DelayedEvent<M> {
         destination_addr: impl Into<Address>,
         msg: M,
     ) -> Result<Self> {
-        let child_ctx = ctx.new_detached(Address::random_local()).await?;
+        // @ac 0#DelayedEvent.create.detached
+        // in:  n/a
+        // out: n/a
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(
+                Address::random_tagged("DelayedEvent.create.detached"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            ),
+            vec![],
+        );
+        let child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
 
         let heartbeat = Self {
             ctx: child_ctx,
@@ -51,7 +63,21 @@ impl<M: Message + Clone> DelayedEvent<M> {
     pub async fn schedule(&mut self, duration: Duration) -> Result<()> {
         self.cancel();
 
-        let child_ctx = self.ctx.new_detached(Address::random_local()).await?;
+        // @ac 0#DelayedEvent.create.detached
+        // in:  n/a
+        // out: self.destination_addr
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(
+                Address::random_tagged("DelayedEvent.schedule.detached"),
+                Arc::new(DenyAll),
+                Arc::new(ockam_core::AllowDestinationAddress(
+                    self.destination_addr.clone(),
+                )),
+            ),
+            vec![],
+        );
+        let child_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
+
         let destination_addr = self.destination_addr.clone();
         let msg = self.msg.clone();
 

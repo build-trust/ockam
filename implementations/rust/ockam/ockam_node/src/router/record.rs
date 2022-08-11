@@ -1,5 +1,5 @@
 use crate::channel_types::{MessageSender, SmallSender};
-use crate::relay::{CtrlSignal, RelayMessage};
+use crate::relay::CtrlSignal;
 use crate::{
     error::{NodeError, NodeReason},
     NodeReplyResult, RouterReply,
@@ -12,7 +12,7 @@ use ockam_core::{
         sync::Arc,
         vec::Vec,
     },
-    Address, AddressSet, Result,
+    Address, AddressSet, RelayMessage, Result,
 };
 
 /// Address states and associated logic

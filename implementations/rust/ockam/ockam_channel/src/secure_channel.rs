@@ -2,7 +2,7 @@ use crate::{
     KeyExchangeCompleted, SecureChannelDecryptor, SecureChannelKeyExchanger, SecureChannelListener,
     SecureChannelNewKeyExchanger, SecureChannelVault,
 };
-use ockam_core::compat::{rand::random, vec::Vec};
+use ockam_core::compat::vec::Vec;
 use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
@@ -97,7 +97,9 @@ impl SecureChannel {
         key_exchanger: impl SecureChannelKeyExchanger,
         vault: impl SecureChannelVault,
     ) -> Result<SecureChannelInfo> {
-        let address_remote: Address = random();
+        // TODO @ac - does have random() have different entropy to random_local?
+        // let address_remote: Address = random();
+        let address_remote = Address::random_tagged("SecureChannel.initiator");
 
         debug!(
             "Starting SecureChannel initiator at remote: {}",
@@ -106,7 +108,10 @@ impl SecureChannel {
 
         let route = route.into();
 
-        let callback_address: Address = random();
+        // TODO @ac - does have random() have different entropy to random_local?
+        // let callback_address: Address = random();
+        let callback_address =
+            Address::random_tagged("SecureChannel.initiator.callback_address.detached");
         let decryptor = SecureChannelDecryptor::new_initiator(
             key_exchanger,
             Some(callback_address.clone()),

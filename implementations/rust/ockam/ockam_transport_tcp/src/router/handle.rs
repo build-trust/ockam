@@ -3,8 +3,11 @@ use crate::{
     TcpRouterResponse, WorkerPair, TCP,
 };
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
-use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_core::{Address, AsyncTryClone, Result, Route};
+use ockam_core::{
+    async_trait,
+    compat::{boxed::Box, sync::Arc},
+};
+use ockam_core::{Address, AsyncTryClone, Mailbox, Mailboxes, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
@@ -14,25 +17,50 @@ use ockam_transport_core::TransportError;
 pub(crate) struct TcpRouterHandle {
     ctx: Context,
     api_addr: Address,
+    main_addr: Address,
 }
 
 #[async_trait]
 impl AsyncTryClone for TcpRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
-        let child_ctx = self.ctx.new_detached(Address::random_local()).await?;
-        Ok(Self::new(child_ctx, self.api_addr.clone()))
+        // TODO @ac 0#TcpRouterHandle.async_try_clone.detached
+        // in:  n/a - DenyAll?
+        // out: n/a - DenyAll?
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(
+                Address::random_tagged("TcpRouterHandle.async_try_clone.detached"),
+                Arc::new(ockam_core::AllowAll),
+                Arc::new(ockam_core::AllowAll),
+            ),
+            vec![],
+        );
+        let child_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
+
+        Ok(Self::new(
+            child_ctx,
+            self.main_addr.clone(),
+            self.api_addr.clone(),
+        ))
     }
 }
 
 impl TcpRouterHandle {
     /// Create a new `TcpRouterHandle` with the given address
-    pub(crate) fn new(ctx: Context, api_addr: Address) -> Self {
-        TcpRouterHandle { ctx, api_addr }
+    pub(crate) fn new(ctx: Context, main_addr: Address, api_addr: Address) -> Self {
+        TcpRouterHandle {
+            ctx,
+            main_addr,
+            api_addr,
+        }
     }
 
     /// Return a reference to the router handle's [`Context`]
     pub fn ctx(&self) -> &Context {
         &self.ctx
+    }
+
+    pub(crate) fn main_addr(&self) -> &Address {
+        &self.main_addr
     }
 }
 
@@ -91,15 +119,26 @@ impl TcpRouterHandle {
                 .map(|x| Address::from_string(format!("{}#{}", TCP, x))),
         );
         let self_addr = pair.tx_addr();
+        // TODO @ac 0#RegisterConnectionWorker.detached
+        // in:   0#RegisterConnectionWorker.detached_10  <=  [0#TcpRouter_main_addr_0]
+        // out:  0#RegisterConnectionWorker.detached_10  =>  [0#TcpRouter_api_addr_1]
+        // TODO use Context::send_and_receive() ?
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(
+                Address::random_tagged("RegisterConnectionWorker.detached"),
+                Arc::new(ockam_core::AllowAll),
+                Arc::new(ockam_core::AllowAll),
+            ),
+            vec![],
+        );
+        let mut child_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
 
-        let mut child_ctx = self.ctx.new_detached(Address::random_local()).await?;
         child_ctx
             .send(
                 self.api_addr.clone(),
                 TcpRouterRequest::Register { accepts, self_addr },
             )
             .await?;
-
         let response = child_ctx
             .receive::<TcpRouterResponse>()
             .await?
@@ -169,7 +208,13 @@ impl TcpRouterHandle {
         addr: impl Into<SocketAddr>,
     ) -> Result<(Address, SocketAddr)> {
         let socket_addr = addr.into();
-        TcpInletListenProcessor::start(&self.ctx, outlet_listener_route.into(), socket_addr).await
+        TcpInletListenProcessor::start(
+            &self.ctx,
+            outlet_listener_route.into(),
+            socket_addr,
+            self.main_addr.clone(),
+        )
+        .await
     }
 
     /// Stop the inlet's [`TcpInletListenProcessor`]

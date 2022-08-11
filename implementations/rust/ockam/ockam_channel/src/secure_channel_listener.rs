@@ -1,6 +1,5 @@
 use crate::{SecureChannelDecryptor, SecureChannelNewKeyExchanger, SecureChannelVault};
 use ockam_core::async_trait;
-use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
     Address, Encodable, LocalMessage, Message, Result, Routed, TransportMessage, Worker,
@@ -69,7 +68,9 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
         let return_route = msg.return_route().clone();
         let msg = msg.body();
 
-        let address_remote: Address = random();
+        // TODO @ac - does have random() have different entropy to random_local?
+        // let address_remote: Address = random();
+        let address_remote = Address::random_tagged("SecureChannelDecryptor");
 
         debug!(
             "Starting SecureChannel responder at remote: {}",

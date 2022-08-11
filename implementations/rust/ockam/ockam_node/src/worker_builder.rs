@@ -1,3 +1,4 @@
+use crate::debugger;
 use crate::error::{NodeError, NodeReason};
 use crate::{relay::WorkerRelay, Context, NodeMessage};
 use ockam_core::compat::sync::Arc;
@@ -13,7 +14,7 @@ use ockam_core::{
 /// [`Worker::handle_message`].
 ///
 /// The [`Context::start_worker()`] function wraps this type and
-/// simply calls `WorkerBuilder::with_context_access_control()`.
+/// simply calls `WorkerBuilder::with_inherited_access_control()`.
 ///
 /// Varying use-cases should use the builder API to customise the
 /// underlying worker that is created.
@@ -45,7 +46,11 @@ where
         let address_set = address_set.into();
 
         // Inherit access control from the given context's main mailbox
-        let access_control = context.mailboxes().main_mailbox().access_control().clone();
+        let access_control = context
+            .mailboxes()
+            .main_mailbox()
+            .incoming_access_control()
+            .clone();
 
         debug!(
             "Worker '{}' inherits access control '{:?}' from: '{}'",
@@ -80,8 +85,10 @@ where
     #[inline]
     pub async fn start(self, context: &Context) -> Result<Address> {
         info!(
-            "Initializing ockam worker with access control: {:?}",
-            self.mailboxes.main_mailbox().access_control(),
+            "Initializing ockam worker '{}' with access control in:{:?} out:{:?}",
+            self.mailboxes.main_address(),
+            self.mailboxes.main_mailbox().incoming_access_control(),
+            self.mailboxes.main_mailbox().outgoing_access_control(),
         );
 
         let mailboxes = self.mailboxes;
@@ -95,6 +102,8 @@ where
             mailboxes,
             None,
         );
+
+        debugger::log_inherit_context("WORKER", context, &ctx);
 
         // Then initialise the worker message relay
         WorkerRelay::<W, M>::init(context.runtime(), self.worker, ctx, ctrl_rx);

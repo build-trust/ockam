@@ -16,11 +16,11 @@ use state::{NodeState, RouterState};
 use crate::channel_types::{router_channel, MessageSender, RouterReceiver, SmallSender};
 use crate::{
     error::{NodeError, NodeReason},
-    relay::{CtrlSignal, RelayMessage},
+    relay::CtrlSignal,
     NodeMessage, NodeReplyResult, RouterReply, ShutdownType,
 };
 use ockam_core::compat::{collections::BTreeMap, sync::Arc};
-use ockam_core::{Address, Result, TransportType};
+use ockam_core::{Address, RelayMessage, Result, TransportType};
 
 /// A pair of senders to a worker relay
 #[derive(Debug)]

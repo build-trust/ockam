@@ -52,9 +52,13 @@ alloc = [
     "serde_bare/alloc",
 ]
 
-# Error traces cover whether not our errors capture backtraces and/or spantraces
-# by default.
+# Feature: "error-traces" cover whether not our errors capture
+# backtraces and/or spantraces by default.
 error-traces = ["backtrace", "tracing-error", "once_cell"]
+
+# Feature: "debugger" enables functionality to trace addresses and
+# message flows within Ockam apps.
+debugger = []
 
 tag = ["cddl-cat"]
 
