@@ -9,8 +9,8 @@ pub struct GetCommand {
 
 impl GetCommand {
     pub fn run(opts: CommandGlobalOpts, command: GetCommand) {
-        let lookup = opts.config.get_node_lookup();
-        match lookup.get(&command.alias) {
+        let lookup = opts.config.get_lookup();
+        match lookup.get_node(&command.alias) {
             Some(addr) => {
                 println!("Node: {}\nAddress: {}", command.alias, addr);
             }

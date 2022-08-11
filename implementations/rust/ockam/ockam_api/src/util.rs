@@ -1,22 +1,17 @@
 pub(crate) mod response;
 
+use crate::config::lookup::{ConfigLookup, InternetAddress};
 use core::str::FromStr;
 use ockam::{Address, TCP};
 use ockam_core::{Route, LOCAL};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Service, Tcp};
 use ockam_multiaddr::{MultiAddr, Protocol};
-use std::collections::BTreeMap;
 use std::net::{SocketAddrV4, SocketAddrV6};
-
-use crate::config::cli::InternetAddress;
 
 /// Go through a multiaddr and remove all instances of
 /// `/node/<whatever>` out of it and replaces it with a fully
 /// qualified address to the target
-pub fn clean_multiaddr(
-    input: &MultiAddr,
-    lookup: &BTreeMap<String, InternetAddress>,
-) -> Option<MultiAddr> {
+pub fn clean_multiaddr(input: &MultiAddr, lookup: &ConfigLookup) -> Option<MultiAddr> {
     let mut new_ma = MultiAddr::default();
     let it = input.iter().peekable();
     for p in it {
@@ -24,7 +19,7 @@ pub fn clean_multiaddr(
             Node::CODE => {
                 let alias = p.cast::<Node>()?;
                 let addr = lookup
-                    .get(&*alias)
+                    .get_node(&*alias)
                     .expect("provided invalid substitution route");
 
                 match addr {

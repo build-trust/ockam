@@ -30,7 +30,7 @@ impl SendCommand {
         // First we clean the MultiAddr route to replace /node/<foo>
         // with the address lookup for `<foo>`
         let cmd = SendCommand {
-            to: match clean_multiaddr(&cmd.to, &opts.config.get_node_lookup()) {
+            to: match clean_multiaddr(&cmd.to, &opts.config.get_lookup()) {
                 Some(to) => to,
                 None => {
                     eprintln!("failed to normalise MultiAddr route");

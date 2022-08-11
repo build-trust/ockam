@@ -51,7 +51,7 @@ impl CreateCommand {
         };
 
         let command = CreateCommand {
-            addr: match clean_multiaddr(&command.addr, &cfg.get_node_lookup()) {
+            addr: match clean_multiaddr(&command.addr, &cfg.get_lookup()) {
                 Some(addr) => addr,
                 None => {
                     eprintln!("failed to normalise MultiAddr route");

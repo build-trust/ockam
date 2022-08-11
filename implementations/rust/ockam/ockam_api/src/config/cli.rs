@@ -1,14 +1,15 @@
 //! Configuration files used by the ockam CLI
 
-use crate::config::{snippet::ComposableSnippet, ConfigValues};
+use crate::config::{
+    lookup::{ConfigLookup, InternetAddress},
+    snippet::ComposableSnippet,
+    ConfigValues,
+};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
-use std::net::{SocketAddrV4, SocketAddrV6};
-use std::str::FromStr;
 use std::{
-    env, fmt,
-    net::SocketAddr,
+    env,
     path::{Path, PathBuf},
 };
 
@@ -31,6 +32,7 @@ pub struct OckamConfig {
     pub directories: Option<ProjectDirs>,
     pub api_node: String,
     pub nodes: BTreeMap<String, NodeConfigEntry>,
+    pub lookup: ConfigLookup,
     pub default_identity: Option<Vec<u8>>,
     pub default_vault_path: Option<PathBuf>,
 }
@@ -41,6 +43,7 @@ impl ConfigValues for OckamConfig {
             directories: Some(Self::directories()),
             api_node: "default".into(),
             nodes: BTreeMap::new(),
+            lookup: ConfigLookup::new(),
             default_identity: None,
             default_vault_path: None,
         }
@@ -72,82 +75,8 @@ Otherwise your OS or OS configuration may not be supported!",
     /// backing store for as long as we needed it.  Because this may
     /// have unwanted side-effects, instead we eagerly copy data here.
     /// This may be optimised in the future!
-    pub fn build_lookup(&self) -> BTreeMap<String, InternetAddress> {
-        self.nodes
-            .iter()
-            .filter(|(_, cfg)| cfg.local())
-            .map(|(name, cfg)| (name.clone(), cfg.assume().addr.clone()))
-            .collect()
-    }
-}
-
-/// An internet address abstraction (v6/v4/dns)
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum InternetAddress {
-    /// DNSaddr and port
-    Dns(String, u16),
-    /// An IPv4 socket address
-    V4(SocketAddrV4),
-    /// An IPv6 socket address
-    V6(SocketAddrV6),
-}
-
-impl fmt::Display for InternetAddress {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(
-            match self {
-                Self::Dns(addr, port) => format!("{}:{}", addr, port),
-                Self::V4(v4) => format!("{}", v4),
-                Self::V6(v6) => format!("{}", v6),
-            }
-            .as_str(),
-        )
-    }
-}
-
-impl InternetAddress {
-    pub fn new(addr: &str) -> Option<Self> {
-        // We try to parse a SocketAddress first, and if this fails
-        // then assume it's a DNS address
-        match SocketAddr::from_str(addr) {
-            Ok(addr) => match addr {
-                SocketAddr::V4(v4) => Some(Self::V4(v4)),
-                SocketAddr::V6(v6) => Some(Self::V6(v6)),
-            },
-            Err(_) => {
-                let addr_parts: Vec<&str> = addr.split(':').collect();
-                if addr_parts.len() != 2 {
-                    return None;
-                }
-
-                Some(Self::Dns(
-                    addr_parts[0].to_string(),
-                    addr_parts[1].parse().ok()?,
-                ))
-            }
-        }
-    }
-
-    pub fn from_dns(s: String, port: u16) -> Self {
-        Self::Dns(s, port)
-    }
-
-    /// Get the port for this address
-    pub fn port(&self) -> u16 {
-        match self {
-            Self::Dns(_, port) => *port,
-            Self::V4(v4) => v4.port(),
-            Self::V6(v6) => v6.port(),
-        }
-    }
-}
-
-impl From<SocketAddr> for InternetAddress {
-    fn from(sa: SocketAddr) -> Self {
-        match sa {
-            SocketAddr::V4(v4) => Self::V4(v4),
-            SocketAddr::V6(v6) => Self::V6(v6),
-        }
+    pub fn get_lookup(&self) -> &ConfigLookup {
+        &self.lookup
     }
 }
 
