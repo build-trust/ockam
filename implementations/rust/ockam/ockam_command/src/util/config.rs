@@ -1,6 +1,6 @@
 //! Handle local node configuration
 
-use ockam_api::config::cli::InternetAddress;
+use ockam_api::config::cli::{InternetAddress, NodeConfigEntry, RemoteConfig};
 use ockam_api::config::{cli, Config};
 use slug::slugify;
 use std::collections::{BTreeMap, VecDeque};
@@ -79,6 +79,7 @@ impl OckamConfig {
             .get(name)
             .ok_or_else(|| ConfigError::NotFound(name.to_string()))?;
         let node_path = n
+            .assume()
             .state_dir
             .as_ref()
             .ok_or_else(|| ConfigError::NotLocal(name.to_string()))?;
@@ -95,6 +96,7 @@ impl OckamConfig {
                 eprintln!("No such node available. Run `ockam node list` to list available nodes");
                 std::process::exit(-1);
             })
+            .assume()
             .port
     }
 
@@ -106,6 +108,7 @@ impl OckamConfig {
             .nodes
             .get(name)
             .ok_or_else(|| ConfigError::NotFound(name.to_string()))?
+            .assume()
             .pid)
     }
 
@@ -115,7 +118,11 @@ impl OckamConfig {
     pub fn port_is_used(&self, port: u16) -> bool {
         let inner = self.inner.readlock_inner();
 
-        inner.nodes.iter().any(|(_, n)| n.port == port)
+        inner
+            .nodes
+            .iter()
+            .filter(|(_, cfg)| cfg.local())
+            .any(|(_, n)| n.assume().port == port)
     }
 
     /// Get only a single node configuration
@@ -124,6 +131,8 @@ impl OckamConfig {
         inner
             .nodes
             .get(node)
+            .filter(|cfg| cfg.local())
+            .map(|cfg| cfg.assume())
             .map(Clone::clone)
             .ok_or_else(|| ConfigError::NotFound(node.into()))
     }
@@ -131,7 +140,7 @@ impl OckamConfig {
     /// Get the current version the selected node configuration
     pub fn select_node<'a>(&'a self, o: &'a str) -> Option<NodeConfig> {
         let inner = self.inner.readlock_inner();
-        inner.nodes.get(o).map(Clone::clone)
+        inner.nodes.get(o).map(|cfg| cfg.assume()).map(Clone::clone)
     }
 
     /// Get the log path for a specific node
@@ -141,7 +150,7 @@ impl OckamConfig {
     pub fn log_paths_for_node(&self, node_name: &str) -> Option<(PathBuf, PathBuf)> {
         let inner = self.inner.readlock_inner();
 
-        let base = inner.nodes.get(node_name)?.state_dir.as_ref()?;
+        let base = inner.nodes.get(node_name)?.assume().state_dir.as_ref()?;
 
         // TODO: sluggify node names
         Some((
@@ -204,14 +213,13 @@ impl OckamConfig {
 
         inner.nodes.insert(
             name.to_string(),
-            NodeConfig {
-                remote: false,
+            NodeConfigEntry::Local(NodeConfig {
                 port: bind.port(),
                 addr: bind.into(),
                 verbose,
                 state_dir: Some(state_dir),
                 pid: Some(0),
-            },
+            }),
         );
         Ok(())
     }
@@ -233,7 +241,7 @@ impl OckamConfig {
             return Err(ConfigError::NotFound(name.to_string()));
         }
 
-        inner.nodes.get_mut(name).unwrap().pid = pid.into();
+        inner.nodes.get_mut(name).unwrap().assume_mut().pid = pid.into();
         Ok(())
     }
 
@@ -241,6 +249,13 @@ impl OckamConfig {
     pub fn set_api_node(&self, node_name: &str) {
         let mut inner = self.inner.writelock_inner();
         inner.api_node = node_name.into();
+    }
+
+    pub fn set_alias(&self, alias: String, addr: InternetAddress) {
+        let mut inner = self.inner.writelock_inner();
+        inner
+            .nodes
+            .insert(alias, NodeConfigEntry::Remote(RemoteConfig { addr }));
     }
 }
 

@@ -35,9 +35,10 @@ impl ListCommand {
         cfg.get_inner()
             .nodes
             .iter()
+            .filter(|(_, cfg)| cfg.local())
             .for_each(|(node_name, node_cfg)| {
                 connect_to(
-                    node_cfg.port,
+                    node_cfg.assume().port,
                     (cfg.clone(), node_name.clone()),
                     query_status,
                 )

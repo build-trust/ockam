@@ -1,7 +1,7 @@
 //! This library is used by the `ockam` CLI (in `./bin/ockam.rs`).
 
+mod alias;
 mod authenticated;
-mod configuration;
 mod enroll;
 mod forwarder;
 mod identity;
@@ -17,8 +17,8 @@ mod tcp;
 mod util;
 mod vault;
 
+use alias::AliasCommand;
 use authenticated::AuthenticatedCommand;
-use configuration::ConfigurationCommand;
 use enroll::EnrollCommand;
 use forwarder::ForwarderCommand;
 use message::MessageCommand;
@@ -146,6 +146,10 @@ impl CommandGlobalOpts {
 
 #[derive(Debug, Subcommand)]
 pub enum OckamSubcommand {
+    /// Manage ockam node alias values
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Alias(AliasCommand),
+
     /// Send or receive messages
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Message(MessageCommand),
@@ -178,11 +182,6 @@ pub enum OckamSubcommand {
     /// Manage authenticated attributes.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
     Authenticated(AuthenticatedCommand),
-
-    /// Manage ockam CLI configuration values
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
-    Configuration(ConfigurationCommand),
-
     /// Enroll with Ockam Orchestrator
     // This command offers three different ways for enrolling depending on the information provided
     // by the user. The user can run the enrollment process by passing an `email` address, a `token`
@@ -316,6 +315,7 @@ pub fn run() {
     let verbose = opts.global_args.verbose;
 
     match ockam_command.subcommand {
+        OckamSubcommand::Alias(command) => AliasCommand::run(opts, command),
         OckamSubcommand::Authenticated(command) => AuthenticatedCommand::run(command),
         OckamSubcommand::Enroll(command) => EnrollCommand::run(opts, command),
         OckamSubcommand::GenerateEnrollmentToken(command) => {
@@ -329,7 +329,6 @@ pub fn run() {
         OckamSubcommand::TcpConnection(command) => TcpConnectionCommand::run(opts, command),
         OckamSubcommand::TcpListener(command) => TcpListenerCommand::run(opts, command),
         OckamSubcommand::Portal(command) => PortalCommand::run(opts, command),
-        OckamSubcommand::Configuration(command) => ConfigurationCommand::run(opts, command),
         OckamSubcommand::Vault(command) => VaultCommand::run(opts, command),
         OckamSubcommand::Identity(command) => IdentityCommand::run(opts, command),
         OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(opts, command),
