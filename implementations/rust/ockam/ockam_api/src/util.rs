@@ -147,8 +147,8 @@ fn clean_multiaddr_simple() {
     let addr: MultiAddr = "/node/hub/service/echoer".parse().unwrap();
 
     let lookup = {
-        let mut map = BTreeMap::<String, InternetAddress>::new();
-        map.insert(
+        let mut map = ConfigLookup::new();
+        map.set_node(
             "hub".into(),
             SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 666)).into(),
         );

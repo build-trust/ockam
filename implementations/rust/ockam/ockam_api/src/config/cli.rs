@@ -31,7 +31,7 @@ pub struct OckamConfig {
     #[serde(skip)]
     pub directories: Option<ProjectDirs>,
     pub api_node: String,
-    pub nodes: BTreeMap<String, NodeConfigEntry>,
+    pub nodes: BTreeMap<String, NodeConfig>,
     pub lookup: ConfigLookup,
     pub default_identity: Option<Vec<u8>>,
     pub default_vault_path: Option<PathBuf>,
@@ -78,46 +78,6 @@ Otherwise your OS or OS configuration may not be supported!",
     pub fn get_lookup(&self) -> &ConfigLookup {
         &self.lookup
     }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum NodeConfigEntry {
-    Local(NodeConfig),
-    Remote(RemoteConfig),
-}
-
-impl NodeConfigEntry {
-    pub fn local(&self) -> bool {
-        match self {
-            Self::Local(_) => true,
-            Self::Remote(_) => false,
-        }
-    }
-
-    /// This function panics if called on a fake node
-    pub fn assume_mut(&mut self) -> &mut NodeConfig {
-        match self {
-            Self::Local(cfg) => cfg,
-            _ => unreachable!(),
-        }
-    }
-
-    /// This function panics if called on a fake node
-    pub fn assume(&self) -> &NodeConfig {
-        match self {
-            Self::Local(cfg) => cfg,
-            _ => unreachable!(),
-        }
-    }
-}
-
-/// Represents a remote node
-///
-/// This entry type is only used for alias values
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RemoteConfig {
-    pub addr: InternetAddress,
 }
 
 /// Per-node runtime configuration
