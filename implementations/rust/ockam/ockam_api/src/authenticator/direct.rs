@@ -15,9 +15,9 @@ use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_identity::{IdentityIdentifier, IdentitySecureChannelLocalInfo};
 use ockam_node::Context;
 use tracing::{trace, warn};
-use types::{AddEnroller, AddMember, Placeholder};
+use types::{AddEnroller, AddMember};
 
-// storage scopes:
+// attribute keys:
 const ENROLLER: &str = "enroller";
 const MEMBER: &str = "member";
 
@@ -90,9 +90,9 @@ where
                 // Admin wants to add an enroller.
                 ["enrollers"] if self.is_admin(from) => {
                     let add: AddEnroller = dec.decode()?;
-                    let enroller = minicbor::to_vec(Placeholder)?;
+                    let tru = minicbor::to_vec(true)?;
                     self.e_store
-                        .set(ENROLLER, add.enroller().as_str().to_string(), enroller)
+                        .set(add.enroller().as_str(), ENROLLER.to_string(), tru)
                         .await?;
                     Response::ok(req.id()).to_vec()?
                 }
@@ -103,9 +103,9 @@ where
                         err.to_vec()?
                     } else {
                         let add: AddMember = dec.decode()?;
-                        let member = minicbor::to_vec(Placeholder)?;
+                        let tru = minicbor::to_vec(true)?;
                         self.m_store
-                            .set(MEMBER, add.member().as_str().to_string(), member)
+                            .set(add.member().as_str(), MEMBER.to_string(), tru)
                             .await?;
                         Response::ok(req.id()).to_vec()?
                     }
@@ -128,23 +128,21 @@ where
                 _ => ockam_core::api::unknown_path(&req).to_vec()?,
             },
             Some(Method::Get) => match req.path_segments::<3>().as_slice() {
-                // Admin wants to check enroller data.
+                // Admin wants to check enroller status
                 ["enroller", id] if self.is_admin(from) => {
-                    if let Some(data) = self.e_store.get(ENROLLER, id).await? {
-                        let enroller = minicbor::decode::<Placeholder>(&data)?;
-                        Response::ok(req.id()).body(enroller).to_vec()?
+                    if let Some(data) = self.e_store.get(id, ENROLLER).await? {
+                        Response::ok(req.id()).body(Cbor(&data)).to_vec()?
                     } else {
                         Response::not_found(req.id()).to_vec()?
                     }
                 }
                 ["enroller", _] => Response::unauthorized(req.id()).to_vec()?,
-                // Enroller checks member data.
+                // Enroller checks member status.
                 ["member", id] => {
                     if let Some(err) = check_enroller(&self.e_store, &req, from.key_id()).await? {
                         err.to_vec()?
-                    } else if let Some(data) = self.m_store.get(MEMBER, id).await? {
-                        let member = minicbor::decode::<Placeholder>(&data)?;
-                        Response::ok(req.id()).body(member).to_vec()?
+                    } else if let Some(data) = self.m_store.get(id, MEMBER).await? {
+                        Response::ok(req.id()).body(Cbor(&data)).to_vec()?
                     } else {
                         Response::not_found(req.id()).to_vec()?
                     }
@@ -169,7 +167,7 @@ where
             Some(Method::Delete) => match req.path_segments::<3>().as_slice() {
                 // Admin wants to remove an enroller.
                 ["enroller", id] if self.is_admin(from) => {
-                    self.e_store.del(ENROLLER, id).await?;
+                    self.e_store.del(id, ENROLLER).await?;
                     Response::ok(req.id()).to_vec()?
                 }
                 ["enroller", _] => Response::unauthorized(req.id()).to_vec()?,
@@ -232,9 +230,10 @@ async fn check_member<'a, S: AuthenticatedStorage>(
     req: &'a Request<'_>,
     member: &str,
 ) -> Result<Option<ResponseBuilder<Error<'a>>>> {
-    if let Some(data) = store.get(MEMBER, member).await? {
-        minicbor::decode::<Placeholder>(&data)?;
-        return Ok(None);
+    if let Some(data) = store.get(member, MEMBER).await? {
+        if minicbor::decode(&data)? {
+            return Ok(None);
+        }
     }
     warn! {
         target: "ockam_api::authenticator::direct::server",
@@ -253,9 +252,10 @@ async fn check_enroller<'a, S: AuthenticatedStorage>(
     req: &'a Request<'_>,
     enroller: &str,
 ) -> Result<Option<ResponseBuilder<Error<'a>>>> {
-    if let Some(data) = store.get(ENROLLER, enroller).await? {
-        minicbor::decode::<Placeholder>(&data)?;
-        return Ok(None);
+    if let Some(data) = store.get(enroller, ENROLLER).await? {
+        if minicbor::decode(&data)? {
+            return Ok(None);
+        }
     }
     warn! {
         target: "ockam_api::authenticator::direct::server",

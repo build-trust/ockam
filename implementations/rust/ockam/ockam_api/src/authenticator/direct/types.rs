@@ -49,8 +49,3 @@ impl<'a> AddMember<'a> {
         &self.member
     }
 }
-
-/// Used until we know what enroller/member data we want to store.
-#[derive(Debug, Decode, Encode)]
-#[cbor(map)]
-pub struct Placeholder;
