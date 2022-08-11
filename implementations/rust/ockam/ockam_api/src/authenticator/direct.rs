@@ -88,7 +88,7 @@ where
         let res = match req.method() {
             Some(Method::Post) => match req.path_segments::<2>().as_slice() {
                 // Admin wants to add an enroller.
-                ["enroller"] if self.is_admin(from) => {
+                ["enrollers"] if self.is_admin(from) => {
                     let add: AddEnroller = dec.decode()?;
                     let enroller = minicbor::to_vec(Placeholder)?;
                     self.e_store
@@ -96,9 +96,9 @@ where
                         .await?;
                     Response::ok(req.id()).to_vec()?
                 }
-                ["enroller"] => Response::unauthorized(req.id()).to_vec()?,
+                ["enrollers"] => Response::unauthorized(req.id()).to_vec()?,
                 // Enroller wants to add a member.
-                ["member"] => {
+                ["members"] => {
                     if let Some(err) = check_enroller(&self.e_store, &req, from.key_id()).await? {
                         err.to_vec()?
                     } else {
@@ -305,7 +305,7 @@ impl Client {
     }
 
     pub async fn add_enroller(&mut self, id: IdentityId<'_>) -> Result<()> {
-        let req = Request::post("/enroller").body(AddEnroller::new(id));
+        let req = Request::post("/enrollers").body(AddEnroller::new(id));
         self.buf = self.request("add-enroller", "add_enroller", &req).await?;
         assert_response_match(None, &self.buf);
         let mut d = Decoder::new(&self.buf);
@@ -318,7 +318,7 @@ impl Client {
     }
 
     pub async fn add_member(&mut self, id: IdentityId<'_>) -> Result<()> {
-        let req = Request::post("/member").body(AddMember::new(id));
+        let req = Request::post("/members").body(AddMember::new(id));
         self.buf = self.request("add-member", "add_member", &req).await?;
         assert_response_match(None, &self.buf);
         let mut d = Decoder::new(&self.buf);
