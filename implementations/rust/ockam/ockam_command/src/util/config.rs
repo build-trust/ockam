@@ -1,8 +1,10 @@
 //! Handle local node configuration
 
+use ockam_api::config::cli::InternetAddress;
 use ockam_api::config::{cli, Config};
 use slug::slugify;
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
+use std::net::SocketAddr;
 use std::{fs::create_dir_all, ops::Deref, path::PathBuf, sync::RwLockReadGuard};
 
 pub use ockam_api::config::cli::NodeConfig;
@@ -159,6 +161,11 @@ impl OckamConfig {
         Ok(StartupConfig::load(path))
     }
 
+    /// Get a lookup table for node alias -> internet address mappings
+    pub fn get_node_lookup(&self) -> BTreeMap<String, InternetAddress> {
+        self.get_inner().build_lookup()
+    }
+
     ///////////////////// WRITE ACCESSORS //////////////////////////////
 
     pub fn set_default_vault_path(&self, default_vault_path: Option<PathBuf>) {
@@ -173,8 +180,7 @@ impl OckamConfig {
     pub fn create_node(
         &self,
         name: &str,
-        bind: &str,
-        port: u16,
+        bind: SocketAddr,
         verbose: u8,
     ) -> Result<(), ConfigError> {
         let mut inner = self.inner.writelock_inner();
@@ -200,8 +206,8 @@ impl OckamConfig {
             name.to_string(),
             NodeConfig {
                 remote: false,
-                bind: bind.to_string(),
-                port,
+                port: bind.port(),
+                addr: bind.into(),
                 verbose,
                 state_dir: Some(state_dir),
                 pid: Some(0),

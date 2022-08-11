@@ -147,6 +147,8 @@ pub fn route_to_multiaddr(r: &Route) -> Option<MultiAddr> {
 
 #[test]
 fn clean_multiaddr_simple() {
+    use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+
     let addr: MultiAddr = "/node/hub/service/echoer".parse().unwrap();
 
     let lookup = {

@@ -71,10 +71,10 @@ Otherwise your OS or OS configuration may not be supported!",
     /// backing store for as long as we needed it.  Because this may
     /// have unwanted side-effects, instead we eagerly copy data here.
     /// This may be optimised in the future!
-    pub fn build_lookup(&self) -> BTreeMap<String, SocketAddr> {
+    pub fn build_lookup(&self) -> BTreeMap<String, InternetAddress> {
         self.nodes
             .iter()
-            .map(|(name, cfg)| (name.clone(), cfg.bind.parse().unwrap()))
+            .map(|(name, cfg)| (name.clone(), cfg.addr.clone()))
             .collect()
     }
 }
@@ -123,9 +123,9 @@ impl From<SocketAddr> for InternetAddress {
 /// don't have to be synced to consumers.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NodeConfig {
-    pub remote: bool,
-    pub bind: String,
+    pub addr: InternetAddress,
     pub port: u16,
+    pub remote: bool,
     pub verbose: u8,
     pub pid: Option<i32>,
     pub state_dir: Option<PathBuf>,
