@@ -238,7 +238,7 @@ impl NodeManager {
             AuthenticatorType::Direct => {
                 #[cfg(feature = "direct-authenticator")]
                 let res = match self
-                    .start_direct_authenticator_service_impl(ctx, addr)
+                    .start_direct_authenticator_service_impl(ctx, addr, body.admin())
                     .await
                 {
                     Ok(()) => Ok(Response::ok(req.id())),
@@ -263,6 +263,7 @@ impl NodeManager {
         &mut self,
         ctx: &Context,
         addr: Address,
+        admin: Option<ockam_identity::IdentityIdentifier>
     ) -> Result<()> {
         use crate::nodes::registry::AuthenticatorServiceInfo;
 
@@ -273,7 +274,10 @@ impl NodeManager {
             let ms = self.authenticated_storage.async_try_clone().await?;
             let es = ockam::authenticated_storage::InMemoryStorage::new();
             let sc = crate::signer::Client::new(a.clone().into(), ctx).await?;
-            let au = crate::authenticator::direct::Server::new(ms, es, sc);
+            let mut au = crate::authenticator::direct::Server::new(ms, es, sc);
+            if let Some(a) = admin {
+                au.set_admin(&a)
+            }
             ctx.start_worker(addr.clone(), au).await?;
             self.registry
                 .authenticator_service

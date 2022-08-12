@@ -193,7 +193,7 @@ impl NodeManager {
         self.start_uppercase_service_impl(ctx, "uppercase".into())
             .await?;
         self.start_echoer_service_impl(ctx, "echo".into()).await?;
-        self.start_signer_service(ctx, "sign".into()).await?;
+        self.start_signer_service(ctx, "signer".into()).await?;
 
         ForwardingService::create(ctx).await?;
 

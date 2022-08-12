@@ -103,7 +103,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
                 }
                 ["identity"] => {
                     let k = self.identity.export().await?;
-                    let i = GetIdentityResponse::new(k.as_slice().into());
+                    let i = GetIdentityResponse::new(&k);
                     Response::ok(req.id()).body(i).to_vec()?
                 }
                 _ => ockam_core::api::unknown_path(&req).to_vec()?,
@@ -210,7 +210,7 @@ impl Client {
         if res.status() == Some(Status::Ok) {
             Ok(d.decode()?)
         } else {
-            Err(error("get-verify", &res, &mut d))
+            Err(error("get-identity", &res, &mut d))
         }
     }
 

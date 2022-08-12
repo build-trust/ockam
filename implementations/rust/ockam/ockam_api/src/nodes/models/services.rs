@@ -3,6 +3,9 @@ use ockam_core::compat::borrow::Cow;
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use ockam_identity::IdentityIdentifier;
+
+use crate::CowStr;
 
 /// Request body when instructing a node to start a Vault service
 #[derive(Debug, Clone, Decode, Encode)]
@@ -111,7 +114,8 @@ pub struct StartAuthenticatorRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<4724285>,
     #[b(1)] addr: Cow<'a, str>,
-    #[n(2)] typ: AuthenticatorType
+    #[n(2)] typ: AuthenticatorType,
+    #[b(3)] admin: Option<CowStr<'a>> // TODO: use identity ID
 }
 
 #[derive(Debug, Clone, Copy, Decode, Encode)]
@@ -128,7 +132,12 @@ impl<'a> StartAuthenticatorRequest<'a> {
             tag: TypeTag,
             addr: addr.into(),
             typ,
+            admin: None
         }
+    }
+    
+    pub fn set_admin(&mut self, id: &IdentityIdentifier) {
+        self.admin = Some(CowStr(id.to_string().into()))
     }
 
     pub fn address(&self) -> &str {
@@ -137,5 +146,13 @@ impl<'a> StartAuthenticatorRequest<'a> {
 
     pub fn typ(&self) -> AuthenticatorType {
         self.typ
+    }
+    
+    pub fn admin(&self) -> Option<IdentityIdentifier> {
+        if let Some(a) = &self.admin {
+            IdentityIdentifier::try_from(&**a).ok()
+        } else {
+            None
+        }
     }
 }
