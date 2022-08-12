@@ -118,7 +118,7 @@ identity_module =
       exit(:invalid_config)
   end
 
-config :ockam_services, identity_module: identity_module
+config :ockam, identity_module: identity_module
 
 ## Services config
 

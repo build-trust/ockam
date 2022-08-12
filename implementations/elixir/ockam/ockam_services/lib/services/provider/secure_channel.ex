@@ -53,7 +53,7 @@ defmodule Ockam.Services.Provider.SecureChannel do
 
   def service_options(:identity_secure_channel, args) do
     ## TODO: make it possible to read service identity from some storage
-    identity_module = Keyword.get(args, :identity_module, default_identity_module())
+    identity_module = Keyword.get(args, :identity_module, Ockam.Identity.default_implementation())
 
     extra_services =
       case identity_module do
@@ -92,10 +92,5 @@ defmodule Ockam.Services.Provider.SecureChannel do
       error ->
         raise "error starting service options for identity secure channel: #{inspect(error)}"
     end
-  end
-
-  defp default_identity_module() do
-    ## TODO: WARNING: These defaults are not for production use
-    Application.get_env(:ockam_services, :identity_module, Ockam.Identity.Stub)
   end
 end
