@@ -38,10 +38,11 @@ defmodule Ockam.Worker do
   end
 
   def update_authorization_state(state, address, authorization) do
-    update_authorization_state(state, %{address => authorization})
+    update_authorization_state(state, %{address => Authorization.expand_config(authorization)})
   end
 
   def update_authorization_state(state, update) when is_map(update) do
+    update = Authorization.expand_config(update)
     current_authorization = Map.get(state, :authorization, [])
 
     new_authorization =
@@ -58,7 +59,7 @@ defmodule Ockam.Worker do
   end
 
   def update_authorization_state(state, update) when is_list(update) do
-    Map.put(state, :authorization, update)
+    Map.put(state, :authorization, Authorization.expand_config(update))
   end
 
   defmacro __using__(_options) do

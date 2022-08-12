@@ -17,6 +17,16 @@ defmodule Ockam.Identity.SecureChannel do
   @doc """
   Start an identity secure channel listener.
 
+  Options:
+  - identity :: binary() | :dynamic - identity to use in spawned channels, :dynamic will generate a new identity
+  - identity_module (optional) :: module() - module to generate dynamic identity
+  - encryption_options (optional) :: Keyword.t() - options for Ockam.SecureChannel.Channel
+  - address (optional) :: Ockam.Address.t() - listener address
+  - trust_policies (optional) :: list() - trust policy configuration
+  - authorization (optional) :: list() | map() - listener authorization configuration
+  - responder_authorization (optional) :: list() | map() - responders authorization configuration
+  - additional_metadata (optional) :: map() - metadata to add to outgoing messages
+
   Usage:
   {:ok, alice, alice_id} = Ockam.Identity.create()
   {:ok, vault} = Ockam.Vault.Software.init()
@@ -33,6 +43,8 @@ defmodule Ockam.Identity.SecureChannel do
 
   @doc """
   Child spec to create listeners
+
+  See create_listener/1
   """
   def listener_child_spec(args) do
     spawner_options = spawner_options(args)
@@ -44,7 +56,7 @@ defmodule Ockam.Identity.SecureChannel do
   end
 
   defp spawner_options(options) do
-    listener_keys = [:address, :inner_address, :restart_type]
+    listener_keys = [:address, :inner_address, :restart_type, :authorization]
     handshake_options = Keyword.drop(options, listener_keys)
 
     responder_options = [
@@ -68,15 +80,18 @@ defmodule Ockam.Identity.SecureChannel do
     worker_options = Keyword.fetch!(options, :worker_options)
     handshake_options = Keyword.fetch!(worker_options, :handshake_options)
 
+    identity_module =
+      Keyword.get(handshake_options, :identity_module, Identity.default_implementation())
+
     identity =
-      case Keyword.fetch!(handshake_options, :identity) do
+      case Keyword.get(handshake_options, :identity) do
         :dynamic ->
-          identity_module = Keyword.fetch!(handshake_options, :identity_module)
-          {:ok, new_identity, _id} = Identity.create(identity_module)
-          new_identity
+          {:ok, identity, _id} = Identity.create(identity_module)
+          identity
 
         other ->
-          other
+          {:ok, identity} = Identity.make_identity(identity_module, other)
+          identity
       end
 
     new_handshake_options = Keyword.put(handshake_options, :identity, identity)
@@ -86,6 +101,16 @@ defmodule Ockam.Identity.SecureChannel do
 
   @doc """
   Start an identity secure channel.
+
+  Options:
+  - identity :: binary() | :dynamic - identity to use in the channel, :dynamic will generate a new identity
+  - route :: Ockam.Address.route() - route to connect to
+  - identity_module (optional) :: module() - module to generate dynamic identity defaults to `Ockam.Identity.default_implementation()`
+  - encryption_options (optional) :: Keyword.t() - options for Ockam.SecureChannel.Channel
+  - address (optional) :: Ockam.Address.t() - initiator address
+  - trust_policies (optional) :: list() - trust policy configuration
+  - authorization (optional) :: list() | map() - initiator authorization configuration
+  - additional_metadata (optional) :: map() - metadata to add to outgoing messages
 
   Usage:
   {:ok, bob, bob_id} = Ockam.Identity.create()
@@ -120,14 +145,16 @@ defmodule Ockam.Identity.SecureChannel do
           [vault: vault]
       end
 
+    identity_module = Keyword.get(options, :identity_module, Identity.default_implementation())
+
     identity =
       case Keyword.get(options, :identity) do
-        nil ->
-          module = Keyword.get(options, :identity_module, Identity.default_implementation())
-          {:ok, identity, _id} = Identity.create(module)
+        :dynamic ->
+          {:ok, identity, _id} = Identity.create(identity_module)
           identity
 
-        identity ->
+        other ->
+          {:ok, identity} = Identity.make_identity(identity_module, other)
           identity
       end
 
@@ -216,10 +243,16 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
 
     with {:ok, %IdentityChannelMessage.Request{contact: contact_data, proof: proof}} <-
            IdentityChannelMessage.decode(payload),
-         {:ok, contact, contact_id} <- Identity.validate_data(identity, contact_data),
+         {:ok, contact, contact_id} <- Identity.validate_contact_data(identity, contact_data),
          :ok <- Identity.verify_signature(contact, proof, auth_hash),
          :ok <- check_trust(contact, contact_id, state) do
       {:ok, peer_address} = get_peer_address(message)
+
+      authorization_options =
+        case Keyword.fetch(handshake_options, :authorization) do
+          {:ok, authorization} -> [authorization: authorization]
+          :error -> []
+        end
 
       state =
         Map.merge(state, %{
@@ -229,14 +262,15 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
 
       additional_metadata = Keyword.get(handshake_options, :additional_metadata, %{})
 
-      data_options = [
-        peer_address: peer_address,
-        encryption_channel: enc_channel,
-        identity: identity,
-        contact_id: contact_id,
-        contact: contact,
-        additional_metadata: additional_metadata
-      ]
+      data_options =
+        [
+          peer_address: peer_address,
+          encryption_channel: enc_channel,
+          identity: identity,
+          contact_id: contact_id,
+          contact: contact,
+          additional_metadata: additional_metadata
+        ] ++ authorization_options
 
       {:ready, identity_handshake(IdentityChannelMessage.Response, state), data_options, state}
     end
@@ -304,7 +338,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
 
     with {:ok, %IdentityChannelMessage.Response{contact: contact_data, proof: proof}} <-
            IdentityChannelMessage.decode(payload),
-         {:ok, contact, contact_id} <- Identity.validate_data(identity, contact_data),
+         {:ok, contact, contact_id} <- Identity.validate_contact_data(identity, contact_data),
          :ok <- Identity.verify_signature(contact, proof, auth_hash),
          :ok <- check_trust(contact, contact_id, state),
          {:ok, peer_address} <- get_peer_address(message) do
@@ -312,20 +346,29 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
 
       additional_metadata = Keyword.get(handshake_options, :additional_metadata, %{})
 
-      data_options = [
-        peer_address: peer_address,
-        encryption_channel: enc_channel,
-        identity: identity,
-        contact_id: contact_id,
-        contact: contact,
-        additional_metadata: additional_metadata
-      ]
+      authorization_options =
+        case Keyword.fetch(handshake_options, :responder_authorization) do
+          {:ok, authorization} -> [authorization: authorization]
+          :error -> []
+        end
+
+      data_options =
+        [
+          peer_address: peer_address,
+          encryption_channel: enc_channel,
+          identity: identity,
+          contact_id: contact_id,
+          contact: contact,
+          additional_metadata: additional_metadata
+        ] ++ authorization_options
 
       state =
         Map.merge(state, %{
           peer_address: peer_address,
           identity: identity
         })
+
+      Logger.info("Updated state #{inspect(state)}")
 
       {:ready, data_options, state}
     end
@@ -430,6 +473,17 @@ defmodule Ockam.Identity.SecureChannel.Data do
 
     inner_address = Map.fetch!(state, :inner_address)
 
+    ## Outer address authorization
+    state =
+      case Keyword.fetch(options, :authorization) do
+        {:ok, authorization} ->
+          Ockam.Worker.update_authorization_state(state, authorization)
+
+        :error ->
+          state
+      end
+
+    ## Inner address authorization
     state =
       Ockam.Worker.update_authorization_state(state, inner_address, [
         :from_secure_channel,
