@@ -106,7 +106,7 @@ impl<V: IdentityVault> IdentityService<V> {
             Post => match req.path_segments::<2>().as_slice() {
                 [""] => {
                     let identity = Identity::create(&self.ctx, &self.vault).await?;
-                    let identifier = identity.identifier()?;
+                    let identifier = identity.identifier();
 
                     let body =
                         CreateResponse::new(identity.export().await?, String::from(identifier));
@@ -123,7 +123,7 @@ impl<V: IdentityVault> IdentityService<V> {
                         Identity::import(&self.ctx, args.identity(), &self.vault).await?;
 
                     let body = ValidateIdentityChangeHistoryResponse::new(String::from(
-                        identity.identifier()?,
+                        identity.identifier(),
                     ));
 
                     Self::ok_response(req, Some(body), enc)

@@ -16,7 +16,7 @@ async fn signer(ctx: &mut Context) -> Result<()> {
 
     let mut c = signer::Client::new("signer".into(), ctx).await?;
 
-    let bid = b.identifier()?;
+    let bid = b.identifier();
     let mut attrs = Attributes::new();
     attrs.put("id", bid.key_id().as_bytes());
     let cred = c.sign(&attrs).await?.to_owned();

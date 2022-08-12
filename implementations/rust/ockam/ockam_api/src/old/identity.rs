@@ -34,7 +34,7 @@ pub async fn create_identity(
     }
 
     let identity = Identity::create(ctx, vault).await?;
-    let identifier = identity.identifier()?;
+    let identifier = identity.identifier();
     tracing::debug!("Saving new identity: {:?}", identifier.key_id());
     save_identity(ockam_dir, &identity).await?;
     tracing::info!(
@@ -61,7 +61,7 @@ pub async fn load_identity(
         ));
     }
     let identity = Identity::import(ctx, &stored_ident.identity, vault).await?;
-    tracing::info!("Loaded identity {:?}", identity.identifier()?,);
+    tracing::info!("Loaded identity {:?}", identity.identifier());
     Ok(identity)
 }
 

@@ -24,7 +24,7 @@ pub struct Server<V: IdentityVault, S> {
 impl<V: IdentityVault, S> fmt::Debug for Server<V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Server")
-            .field("id", &self.id.identifier())
+            .field("id", self.id.identifier())
             .finish()
     }
 }
@@ -64,7 +64,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
                     let pos = dec.position();
                     dec.decode::<Attributes>()?; // typecheck
                     let att = &dec.input()[pos..];
-                    let iid = self.id.identifier()?;
+                    let iid = self.id.identifier();
                     let sig = self.id.create_signature(att).await?;
                     let bdy = {
                         let a = CowBytes::from(att);
@@ -125,7 +125,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
     }
 
     async fn verify(&self, data: &[u8], sig: &Signature<'_>) -> Result<bool> {
-        let ours = self.id.identifier()?;
+        let ours = self.id.identifier();
         let theirs = sig.identity().as_str();
 
         let sig = vault::Signature::new(sig.data().to_vec());

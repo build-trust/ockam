@@ -46,7 +46,7 @@ pub async fn create_identity(
     let vault = OckamVault::new(Some(Arc::new(vault_storage)));
     let identity = Identity::create(ctx, &vault).await?;
     let exported = IdentityData {
-        id: identity.identifier()?,
+        id: identity.identifier().clone(),
         data: identity.changes().await?,
     };
 

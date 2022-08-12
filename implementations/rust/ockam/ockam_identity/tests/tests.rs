@@ -24,10 +24,10 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
     let bob = Identity::create(ctx, &bob_vault).await?;
 
     alice
-        .update_known_identity(&bob.identifier()?, &bob.changes().await?, &alice_storage)
+        .update_known_identity(bob.identifier(), &bob.changes().await?, &alice_storage)
         .await?;
 
-    bob.update_known_identity(&alice.identifier()?, &alice.changes().await?, &bob_storage)
+    bob.update_known_identity(alice.identifier(), &alice.changes().await?, &bob_storage)
         .await?;
 
     // Some state known to both parties. In Noise this would be a computed hash, for example.
@@ -42,14 +42,14 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
     let bob_proof = bob.create_signature(&state).await?;
 
     if !alice
-        .verify_signature(&bob_proof, &bob.identifier()?, &state, &alice_storage)
+        .verify_signature(&bob_proof, bob.identifier(), &state, &alice_storage)
         .await?
     {
         return test_error("bob's proof was invalid");
     }
 
     if !bob
-        .verify_signature(&alice_proof, &alice.identifier()?, &state, &bob_storage)
+        .verify_signature(&alice_proof, alice.identifier(), &state, &bob_storage)
         .await?
     {
         return test_error("alice's proof was invalid");
@@ -77,10 +77,10 @@ async fn test_key_rotation(ctx: &mut Context) -> Result<()> {
     bob.rotate_root_secret_key().await?;
 
     alice
-        .update_known_identity(&bob.identifier()?, &bob.changes().await?, &alice_storage)
+        .update_known_identity(bob.identifier(), &bob.changes().await?, &alice_storage)
         .await?;
 
-    bob.update_known_identity(&alice.identifier()?, &alice.changes().await?, &bob_storage)
+    bob.update_known_identity(alice.identifier(), &alice.changes().await?, &bob_storage)
         .await?;
 
     ctx.stop().await?;
@@ -101,20 +101,20 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
     let bob = Identity::create(ctx, &bob_vault).await?;
 
     alice
-        .update_known_identity(&bob.identifier()?, &bob.changes().await?, &alice_storage)
+        .update_known_identity(bob.identifier(), &bob.changes().await?, &alice_storage)
         .await?;
 
-    bob.update_known_identity(&alice.identifier()?, &alice.changes().await?, &bob_storage)
+    bob.update_known_identity(alice.identifier(), &alice.changes().await?, &bob_storage)
         .await?;
 
     alice.rotate_root_secret_key().await?;
     bob.rotate_root_secret_key().await?;
 
     alice
-        .update_known_identity(&bob.identifier()?, &bob.changes().await?, &alice_storage)
+        .update_known_identity(bob.identifier(), &bob.changes().await?, &alice_storage)
         .await?;
 
-    bob.update_known_identity(&alice.identifier()?, &alice.changes().await?, &bob_storage)
+    bob.update_known_identity(alice.identifier(), &alice.changes().await?, &bob_storage)
         .await?;
 
     // Re-Prove
@@ -129,14 +129,14 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
     let bob_proof = bob.create_signature(&state).await?;
 
     if !alice
-        .verify_signature(&bob_proof, &bob.identifier()?, &state, &alice_storage)
+        .verify_signature(&bob_proof, bob.identifier(), &state, &alice_storage)
         .await?
     {
         return test_error("bob's proof was invalid");
     }
 
     if !bob
-        .verify_signature(&alice_proof, &alice.identifier()?, &state, &bob_storage)
+        .verify_signature(&alice_proof, alice.identifier(), &state, &bob_storage)
         .await?
     {
         return test_error("alice's proof was invalid");

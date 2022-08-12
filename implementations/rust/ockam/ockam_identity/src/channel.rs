@@ -99,8 +99,8 @@ mod test {
         let alice = Identity::create(ctx, &alice_vault).await?;
         let bob = Identity::create(ctx, &bob_vault).await?;
 
-        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier()?);
-        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier()?);
+        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
+        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
 
         bob.create_secure_channel_listener("bob_listener", bob_trust_policy, &bob_storage)
             .await?;
@@ -118,7 +118,7 @@ mod test {
         let msg = ctx.receive::<String>().await?.take();
 
         let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
-        assert_eq!(local_info.their_identity_id(), &alice.identifier()?);
+        assert_eq!(local_info.their_identity_id(), alice.identifier());
 
         let return_route = msg.return_route();
         assert_eq!("Hello, Bob!", msg.body());
@@ -128,7 +128,7 @@ mod test {
         let msg = ctx.receive::<String>().await?.take();
 
         let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
-        assert_eq!(local_info.their_identity_id(), &bob.identifier()?);
+        assert_eq!(local_info.their_identity_id(), bob.identifier());
 
         assert_eq!("Hello, Alice!", msg.body());
 
@@ -145,8 +145,8 @@ mod test {
         let alice = Identity::create(ctx, &vault).await?;
         let bob = Identity::create(ctx, &vault).await?;
 
-        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier()?);
-        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier()?);
+        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
+        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
 
         bob.create_secure_channel_listener("bob_listener", bob_trust_policy.clone(), &bob_storage)
             .await?;
@@ -198,8 +198,8 @@ mod test {
         let alice = Identity::create(ctx, &vault).await?;
         let bob = Identity::create(ctx, &vault).await?;
 
-        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier()?);
-        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier()?);
+        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
+        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
 
         bob.create_secure_channel_listener("bob_listener", bob_trust_policy.clone(), &bob_storage)
             .await?;
@@ -270,8 +270,8 @@ mod test {
         let alice = Identity::create(ctx, &vault).await?;
         let bob = Identity::create(ctx, &vault).await?;
 
-        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier()?);
-        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier()?);
+        let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
+        let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
 
         let n = rand::random::<u8>() % 5 + 4;
         let mut channels = vec![];
@@ -349,7 +349,7 @@ mod test {
         let alice = Identity::create(ctx, &vault).await?;
         let bob = Identity::create(ctx, &vault).await?;
 
-        let access_control = IdentityAccessControlBuilder::new_with_id(alice.identifier()?);
+        let access_control = IdentityAccessControlBuilder::new_with_id(alice.identifier().clone());
         WorkerBuilder::with_access_control(access_control, "receiver", receiver)
             .start(ctx)
             .await?;
@@ -389,7 +389,7 @@ mod test {
         let alice = Identity::create(ctx, &vault).await?;
         let bob = Identity::create(ctx, &vault).await?;
 
-        let access_control = IdentityAccessControlBuilder::new_with_id(bob.identifier()?);
+        let access_control = IdentityAccessControlBuilder::new_with_id(bob.identifier().clone());
         WorkerBuilder::with_access_control(access_control, "receiver", receiver)
             .start(ctx)
             .await?;

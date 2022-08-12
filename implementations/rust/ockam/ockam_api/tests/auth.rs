@@ -37,7 +37,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         let e_store = InMemoryStorage::new();
         let m_store = InMemoryStorage::new();
         let mut auth = direct::Server::new(m_store, e_store, mk_signer(ctx).await?);
-        auth.set_admin(&admin.identifier()?);
+        auth.set_admin(admin.identifier());
         ctx.start_worker("auth", auth).await?;
     }
 
@@ -49,7 +49,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
             .create_secure_channel("api", TrustEveryonePolicy, &InMemoryStorage::new())
             .await?;
         let mut c = direct::Client::new(route![a2a, "auth"], ctx).await?;
-        c.add_enroller(IdentityId::new(e.identifier()?.key_id()))
+        c.add_enroller(IdentityId::new(e.identifier().key_id()))
             .await?;
         e
     };
@@ -69,7 +69,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
 
     // Add the member via the enroller's connection:
     let mut c = direct::Client::new(route![e2a, "auth"], ctx).await?;
-    c.add_member(IdentityId::new(m.identifier()?.key_id()))
+    c.add_member(IdentityId::new(m.identifier().key_id()))
         .await?;
 
     // Open a secure channel from member to authenticator:

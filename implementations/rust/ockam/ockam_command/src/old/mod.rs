@@ -35,7 +35,7 @@ pub async fn print_identity(_arg: (), mut ctx: ockam::Context) -> anyhow::Result
     ensure_identity_exists(false)?;
     let dir = get_ockam_dir()?;
     let identity = load_identity(&ctx, &dir).await?;
-    let identifier = identity.identifier()?;
+    let identifier = identity.identifier();
     println!("{}", identifier.key_id());
     ctx.stop().await?;
     Ok(())
