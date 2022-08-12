@@ -194,7 +194,7 @@ defmodule Ockam.Identity.TrustPolicy.KnownIdentitiesEts do
   def set_identity(contact_id, contact, _arg) do
     ensure_table()
     true = :ets.insert(@table, {contact_id, contact})
-    {:ok, contact}
+    :ok
   end
 
   def ensure_table() do
