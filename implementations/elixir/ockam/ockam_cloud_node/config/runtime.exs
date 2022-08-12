@@ -145,7 +145,9 @@ config :ockam_services,
     # discovery service
     Ockam.Services.Provider.Discovery,
     # proxies for remote services
-    Ockam.Services.Provider.Proxy
+    Ockam.Services.Provider.Proxy,
+    # proxies to services in other nodes
+    Ockam.Services.Provider.Sidecar
   ],
   services_config_source: services_config_source,
   # JSON version of the services definition

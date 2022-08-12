@@ -14,7 +14,8 @@ if Code.ensure_loaded?(:telemetry) do
     def attach() do
       subscribe_events = [
         [:ockam, Ockam.Worker, :init, :start],
-        [:ockam, Ockam.Worker, :init, :stop]
+        [:ockam, Ockam.Worker, :init, :stop],
+        [:ockam, Ockam.Router, :route, :start]
       ]
 
       :telemetry.attach_many(
