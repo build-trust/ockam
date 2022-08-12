@@ -129,4 +129,93 @@ defmodule Ockam.Services.Authorization.Tests do
 
     refute_receive(%Ockam.Message{onward_route: [^me], payload: "WITHOUT CHANNEL"}, 500)
   end
+
+  test "Identity secure channel initiator authorization" do
+    {:ok, vault} = SoftwareVault.init()
+    {:ok, listener_identity, _id} = Identity.create(Ockam.Identity.Stub)
+
+    {:ok, listener} =
+      Ockam.Identity.SecureChannel.create_listener(
+        identity: listener_identity,
+        encryption_options: [vault: vault]
+      )
+
+    {:ok, bob, _bob_id} = Identity.create(Ockam.Identity.Stub)
+
+    {:ok, bob_channel} =
+      Ockam.Identity.SecureChannel.create_channel(
+        identity: bob,
+        encryption_options: [vault: vault],
+        route: [listener],
+        authorization: [:is_local]
+      )
+
+    {:ok, me} = Ockam.Node.register_random_address()
+    Ockam.Router.route("initiator from local", [bob_channel, me], [me])
+
+    assert_receive(%Ockam.Message{onward_route: [^me], payload: "initiator from local"}, 500)
+
+    Ockam.Router.route(%Ockam.Message{
+      payload: "initiator from channel",
+      onward_route: [bob_channel, me],
+      return_route: [me],
+      local_metadata: %{source: :channel, channel: :some_transport}
+    })
+
+    refute_receive(%Ockam.Message{onward_route: [^me], payload: "initiator from channel"}, 500)
+  end
+
+  test "Identity secure channel responer authorization" do
+    {:ok, vault} = SoftwareVault.init()
+    {:ok, listener_identity, _id} = Identity.create(Ockam.Identity.Stub)
+
+    {:ok, listener} =
+      Ockam.Identity.SecureChannel.create_listener(
+        identity: listener_identity,
+        encryption_options: [vault: vault],
+        responder_authorization: [:is_local]
+      )
+
+    {:ok, bob, _bob_id} = Identity.create(Ockam.Identity.Stub)
+
+    {:ok, bob_channel} =
+      Ockam.Identity.SecureChannel.create_channel(
+        identity: bob,
+        encryption_options: [vault: vault],
+        route: [listener]
+      )
+
+    {:ok, me} = Ockam.Node.register_random_address()
+    Ockam.Router.route("VIA CHANNEL", [bob_channel, me], [me])
+
+    receive do
+      %Ockam.Message{
+        onward_route: [^me],
+        return_route: [responder | _]
+      } ->
+        Ockam.Router.route(%Ockam.Message{
+          payload: "responder from channel",
+          onward_route: [responder, me],
+          return_route: [me],
+          local_metadata: %{source: :channel, channel: :some_transport}
+        })
+
+        refute_receive(
+          %Ockam.Message{onward_route: [^me], payload: "responder from channel"},
+          500
+        )
+
+        Ockam.Router.route(%Ockam.Message{
+          payload: "responder from local",
+          onward_route: [responder, me],
+          return_route: [me],
+          local_metadata: %{source: :local}
+        })
+
+        assert_receive(%Ockam.Message{onward_route: [^me], payload: "responder from local"}, 500)
+    after
+      1000 ->
+        raise "timeout receiving message via channel"
+    end
+  end
 end

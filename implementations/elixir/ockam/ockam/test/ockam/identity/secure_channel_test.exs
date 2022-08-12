@@ -191,4 +191,25 @@ defmodule Ockam.Identity.SecureChannel.Tests do
       payload: "PING!"
     }
   end
+
+  test "dynamic identity" do
+    {:ok, listener} = SecureChannel.create_listener(identity: :dynamic)
+
+    {:ok, channel} =
+      SecureChannel.create_channel(
+        identity: :dynamic,
+        route: [listener]
+      )
+
+    {:ok, me} = Ockam.Node.register_random_address()
+    Logger.info("Channel: #{inspect(channel)} me: #{inspect(me)}")
+    Ockam.Router.route("PING!", [channel, me], [me])
+
+    assert_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: "PING!",
+      return_route: return_route,
+      local_metadata: %{identity_id: id, identity: _identity, channel: :identity_secure_channel}
+    }
+  end
 end
