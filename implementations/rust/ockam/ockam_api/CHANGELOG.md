@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.12.0 - 2022-08-12
+
+### Added
+
+- Add `Identity` basic functionality to `ockam_api`
+- Add schema validation tests for cloud api types
+- Add tests for api cloud endpoints + fixes error handling
+- Add project node identity to project cbor schema
+- Add util::response module
+- Add signer and direct enroller support
+- Support different enroller/member store
+
+### Changed
+
+- Use identity secure channels to communicate with orchestrator
+- Extract common utils to process api services req/res/err
+- Extract common utils to process api services req/res/err
+- Move cloud api endpoints to run through the nodes service
+- Use temporary secure channel on cloud and enroll api endpoints
+- Command config updates
+- Rename ockam to service in multiaddr
+- Integrate uppercase and echoer workers to nodemanager
+- Implement stop command
+- Use generic attributes in credential
+- Allow export/import of identity
+- Always require secure channel to authenticator
+- Abstract over remote addresses with an alias system
+- Cleaning up the alias configuration
+- Genericise the node alias lookup system
+- Simplify node configuration again
+- Updated dependencies
+
+### Fixed
+
+- Clippy lints
+
+### Removed
+
+- Remove ability to set arbitrary attributes
+
 ## 0.11.0 - 2022-08-04
 
 ### Added
