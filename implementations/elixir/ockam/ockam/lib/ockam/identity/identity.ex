@@ -8,25 +8,48 @@ defmodule Ockam.Identity do
   Default implementation is `Ockam.Identity.Sidecar`
   """
 
-  @type t() :: {module :: atom, opaque :: any()}
+  @type t() :: {module :: atom, opaque :: binary()}
   @type proof() :: binary()
 
-  @default_implementation Ockam.Identity.Sidecar
-
   def default_implementation() do
-    @default_implementation
+    Application.get_env(:ockam, :identity_module, Ockam.Identity.Stub)
   end
 
   @spec create(module :: atom()) ::
           {:ok, identity :: t(), identity_id :: binary()} | {:error, reason :: any()}
-  def create(module \\ @default_implementation) do
+  def create(module \\ nil)
+
+  def create(nil) do
+    create(default_implementation())
+  end
+
+  def create(module) do
     with {:ok, data, id} <- module.create() do
       {:ok, {module, data}, id}
     end
   end
 
-  @spec validate_data(my_identity :: t(), data :: any()) :: {:ok, identity :: t()}
-  def validate_data({my_module, _my_data}, contact_data) do
+  def make_identity(module, {module, data}) do
+    {:ok, {module, data}}
+  end
+
+  def make_identity(module, {other_module, _data}) do
+    {:error, {:different_identity_implementations, module, other_module}}
+  end
+
+  def make_identity(module, data) when is_binary(data) do
+    with {:ok, identity, _id} <- validate_contact_data({module, ""}, data) do
+      {:ok, identity}
+    end
+  end
+
+  def from_data(module, data) do
+    validate_contact_data({module, ""}, data)
+  end
+
+  @spec validate_contact_data(my_identity :: t(), contact_data :: binary()) ::
+          {:ok, identity :: t(), identity_id :: binary()}
+  def validate_contact_data({my_module, _my_data}, contact_data) do
     with {:ok, contact_id} <- validate_identity_change_history({my_module, contact_data}) do
       {:ok, {my_module, contact_data}, contact_id}
     end

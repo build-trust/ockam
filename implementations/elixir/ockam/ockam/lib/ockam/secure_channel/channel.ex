@@ -91,6 +91,9 @@ defmodule Ockam.SecureChannel.Channel do
     metadata = %{options: options}
     start_time = Telemetry.emit_start_event([__MODULE__, :init], metadata: metadata)
 
+    vault = ensure_vault(options)
+    options = Keyword.put(options, :vault, vault)
+
     with {:ok, data} <- setup_plaintext_address(options, %{}),
          {:ok, data} <- setup_ciphertext_address(options, data),
          {:ok, data} <- setup_vault(options, data),
@@ -174,14 +177,30 @@ defmodule Ockam.SecureChannel.Channel do
     end
   end
 
-  # sets vault based on - vault option
-  defp setup_vault(options, data) do
+  defp ensure_vault(options) do
     case Keyword.fetch(options, :vault) do
       {:ok, vault} ->
-        {:ok, Map.put(data, :vault, vault)}
+        vault
 
       :error ->
+        case Ockam.Vault.Software.init() do
+          {:ok, vault} ->
+            vault
+
+          _error ->
+            nil
+        end
+    end
+  end
+
+  # sets vault based on - vault option
+  defp setup_vault(options, data) do
+    case Keyword.get(options, :vault) do
+      nil ->
         {:error, {:option_is_nil, :vault}}
+
+      vault ->
+        {:ok, Map.put(data, :vault, vault)}
     end
   end
 
