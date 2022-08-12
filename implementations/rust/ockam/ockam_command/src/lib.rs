@@ -58,7 +58,7 @@ const HELP_TEMPLATE: &str = "\
 
 LEARN MORE
     Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
-    Learn more at https://docs.ockam.io/get-started/command-line
+    Learn more at https://docs.ockam.io/get-started#command
 
 FEEDBACK
     If you have any questions or feedback, please start a discussion
