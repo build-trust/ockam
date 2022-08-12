@@ -16,7 +16,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_macros = "0.16.0"
+ockam_macros = "0.17.0"
 ```
 
 All macros except for those used exclusively for testing purposes are re-exported by the `ockam` crate, so you may see examples where the macros are exported from `ockam_macros` if are related to tests or from `ockam` in any other case.

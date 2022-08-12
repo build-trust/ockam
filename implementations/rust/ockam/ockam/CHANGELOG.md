@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.69.0 - 2022-08-12
+
+### Added
+
+- Support `Route` instead of `Address` for `RemoteForwarder` initialization
+
+### Changed
+
+- Implement attribute-based access control for message flow authorization
+- Cleanup ockam test macro
+- Updated dependencies
+
+### Removed
+
+- Remove old credentials and signatures code
+
 ## 0.68.0 - 2022-08-04
 
 ### Added
