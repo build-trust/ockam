@@ -4,6 +4,7 @@ use crate::CommandGlobalOpts;
 use anyhow::{anyhow, Context};
 use clap::{Args, Subcommand};
 use minicbor::Decoder;
+use ockam::identity::IdentityIdentifier;
 use ockam_api::error::ApiError;
 use ockam_api::nodes::models::services::{AuthenticatorType, StartAuthenticatorRequest};
 use ockam_api::nodes::NODEMANAGER_ADDR;
@@ -37,6 +38,9 @@ pub enum StartSubCommand {
 
         #[clap(long, default_value = "direct")]
         authenticator_type: String,
+        
+        #[clap(long)]
+        admin: Option<String>
     },
 }
 
@@ -221,12 +225,20 @@ pub async fn start_authenticator_service(
     cmd: StartCommand,
     mut route: Route,
 ) -> anyhow::Result<()> {
-    let (addr, ty) = match cmd.create_subcommand {
+    let (addr, ty, admin) = match cmd.create_subcommand {
         StartSubCommand::Authenticator {
             addr,
             authenticator_type,
+            admin
         } => match authenticator_type.to_ascii_lowercase().as_str() {
-            "direct" => (addr, AuthenticatorType::Direct),
+            "direct" => {
+                let admin = if let Some(a) = admin {
+                    Some(IdentityIdentifier::try_from(a)?)
+                } else {
+                    None
+                };
+                (addr, AuthenticatorType::Direct, admin)
+            }
             other => return Err(anyhow!("unknown authenticator type: {other}")),
         },
         _ => unreachable!(),

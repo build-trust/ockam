@@ -166,11 +166,11 @@ pub struct GetIdentityResponse<'a> {
 }
 
 impl<'a> GetIdentityResponse<'a> {
-    pub fn new(identity: CowBytes<'a>) -> Self {
+    pub fn new<T: Into<Cow<'a, [u8]>>>(identity: T) -> Self {
         GetIdentityResponse {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            identity,
+            identity: CowBytes(identity.into())
         }
     }
 
