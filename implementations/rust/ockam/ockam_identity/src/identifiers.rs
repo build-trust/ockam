@@ -1,6 +1,7 @@
 use crate::{IdentityError, IdentityStateConst};
 use core::fmt::{Display, Formatter};
 use core::str::FromStr;
+use minicbor::{Decode, Encode};
 use ockam_core::compat::string::String;
 use ockam_core::vault::{Hasher, KeyId};
 use ockam_core::{Error, Result};
@@ -8,8 +9,9 @@ use serde::{Deserialize, Serialize};
 
 /// An identifier of an Identity.
 #[allow(clippy::derive_hash_xor_eq)] // we manually implement a constant time Eq
-#[derive(Clone, Debug, Hash, Serialize, Deserialize, Default, PartialOrd, Ord)]
-pub struct IdentityIdentifier(KeyId);
+#[derive(Clone, Debug, Hash, Encode, Decode, Serialize, Deserialize, Default, PartialOrd, Ord)]
+#[cbor(transparent)]
+pub struct IdentityIdentifier(#[n(0)] KeyId);
 
 /// Unique [`crate::Identity`] identifier, computed as SHA256 of root public key
 impl IdentityIdentifier {
@@ -45,6 +47,12 @@ impl Display for IdentityIdentifier {
 
 impl From<IdentityIdentifier> for String {
     fn from(id: IdentityIdentifier) -> Self {
+        Self::from(&id)
+    }
+}
+
+impl From<&IdentityIdentifier> for String {
+    fn from(id: &IdentityIdentifier) -> Self {
         format!("{}{}", IdentityIdentifier::PREFIX, &id.0)
     }
 }

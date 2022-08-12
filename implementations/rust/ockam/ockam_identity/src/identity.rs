@@ -164,8 +164,8 @@ impl<V: IdentityVault> Identity<V> {
 }
 
 impl<V: IdentityVault> Identity<V> {
-    pub fn identifier(&self) -> Result<IdentityIdentifier> {
-        Ok(self.id.clone())
+    pub fn identifier(&self) -> &IdentityIdentifier {
+        &self.id
     }
 
     pub async fn create_key(&self, label: String) -> Result<()> {

@@ -197,13 +197,11 @@ impl NodeManager {
         self.start_echoer_service_impl(ctx, "echo".into()).await?;
 
         let authorized_identifiers = if self.config.readlock_inner().identity_was_overridden {
-            if let Some(identity) = &self.identity {
+            self.identity.as_ref().map(|i| {
                 // If we had overridden Identity - we should trust only this identity,
                 // otherwise - trust all
-                Some(vec![identity.identifier()?])
-            } else {
-                None
-            }
+                vec![i.identifier().clone()]
+            })
         } else {
             None
         };

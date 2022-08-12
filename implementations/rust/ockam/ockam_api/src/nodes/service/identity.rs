@@ -25,7 +25,7 @@ impl NodeManager {
         if let Some(identity) = &self.identity {
             return if reuse_if_exists {
                 debug!("Using existing identity");
-                identity.identifier()
+                Ok(identity.identifier().clone())
             } else {
                 Err(ockam_core::Error::new(
                     Origin::Application,
@@ -38,7 +38,7 @@ impl NodeManager {
         let vault = self.vault()?;
 
         let identity = Identity::create(ctx, vault).await?;
-        let identifier = identity.identifier()?;
+        let identifier = identity.identifier().clone();
         let exported_identity = identity.export().await?;
 
         self.config.inner().write().unwrap().identity = Some(exported_identity);
@@ -77,7 +77,7 @@ impl NodeManager {
         req: &Request<'_>,
     ) -> Result<ResponseBuilder<ShortIdentityResponse<'_>>> {
         let identity = self.identity()?;
-        let identifier = identity.identifier()?;
+        let identifier = identity.identifier();
 
         let response =
             Response::ok(req.id()).body(ShortIdentityResponse::new(identifier.to_string()));
