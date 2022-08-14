@@ -7,7 +7,6 @@ mod forwarder;
 mod identity;
 mod message;
 mod node;
-mod portal;
 mod project;
 mod secure_channel;
 mod secure_channel_listener;
@@ -23,12 +22,14 @@ use enroll::EnrollCommand;
 use forwarder::ForwarderCommand;
 use message::MessageCommand;
 use node::NodeCommand;
-use portal::PortalCommand;
 use project::ProjectCommand;
 use secure_channel::SecureChannelCommand;
 use secure_channel_listener::SecureChannelListenerCommand;
 use space::SpaceCommand;
-use tcp::{connection::TcpConnectionCommand, listener::TcpListenerCommand};
+use tcp::connection::TcpConnectionCommand;
+use tcp::inlet::TcpInletCommand;
+use tcp::listener::TcpListenerCommand;
+use tcp::outlet::TcpOutletCommand;
 
 // to be removed
 mod old;
@@ -158,9 +159,17 @@ pub enum OckamSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     TcpConnection(TcpConnectionCommand),
 
+    /// Manage TCP Inlets
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    TcpInlet(TcpInletCommand),
+
     /// Create, update, or delete tcp listeners
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     TcpListener(TcpListenerCommand),
+
+    /// Manage TCP Outlets
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    TcpOutlet(TcpOutletCommand),
 
     /// Manage Identities
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
@@ -196,10 +205,6 @@ pub enum OckamSubcommand {
     /// Generate an enrollment token
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, name = "token", hide = hide())]
     GenerateEnrollmentToken(GenerateEnrollmentTokenCommand),
-
-    /// Create, update, or delete portal endpoints
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
-    Portal(PortalCommand),
 
     /// Create, update or delete projects
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
@@ -327,8 +332,9 @@ pub fn run() {
         OckamSubcommand::Project(command) => ProjectCommand::run(opts, command),
         OckamSubcommand::Space(command) => SpaceCommand::run(opts, command),
         OckamSubcommand::TcpConnection(command) => TcpConnectionCommand::run(opts, command),
+        OckamSubcommand::TcpInlet(command) => TcpInletCommand::run(opts, command),
         OckamSubcommand::TcpListener(command) => TcpListenerCommand::run(opts, command),
-        OckamSubcommand::Portal(command) => PortalCommand::run(opts, command),
+        OckamSubcommand::TcpOutlet(command) => TcpOutletCommand::run(opts, command),
         OckamSubcommand::Vault(command) => VaultCommand::run(opts, command),
         OckamSubcommand::Identity(command) => IdentityCommand::run(opts, command),
         OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(opts, command),
