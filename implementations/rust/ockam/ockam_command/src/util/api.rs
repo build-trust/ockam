@@ -200,44 +200,6 @@ pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-/// Construct a request to create a tcp inlet
-pub(crate) fn create_inlet(
-    bind_addr: &str,
-    outlet_route: &MultiAddr,
-    alias: &Option<String>,
-) -> Result<Vec<u8>> {
-    let payload = models::portal::CreateInlet::new(
-        bind_addr,
-        outlet_route.to_string(),
-        alias.as_ref().map(|x| x.as_str().into()),
-    );
-
-    let mut buf = vec![];
-    Request::builder(Method::Post, "/node/inlet")
-        .body(payload)
-        .encode(&mut buf)?;
-    Ok(buf)
-}
-
-/// Construct a request to create a tcp outlet
-pub(crate) fn create_outlet(
-    tcp_addr: &str,
-    worker_addr: String,
-    alias: &Option<String>,
-) -> Result<Vec<u8>> {
-    let payload = models::portal::CreateOutlet::new(
-        tcp_addr,
-        worker_addr,
-        alias.as_ref().map(|x| x.as_str().into()),
-    );
-
-    let mut buf = vec![];
-    Request::builder(Method::Post, "/node/outlet")
-        .body(payload)
-        .encode(&mut buf)?;
-    Ok(buf)
-}
-
 /// Helpers to create enroll API requests
 pub(crate) mod enroll {
     use crate::enroll::*;
@@ -463,24 +425,6 @@ pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Resu
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
     Ok(response)
-}
-
-/// Parse the returned status response
-pub(crate) fn parse_inlet_status(
-    resp: &[u8],
-) -> Result<(Response, models::portal::InletStatus<'_>)> {
-    let mut dec = Decoder::new(resp);
-    let response = dec.decode::<Response>()?;
-    Ok((response, dec.decode::<models::portal::InletStatus>()?))
-}
-
-/// Parse the returned status response
-pub(crate) fn parse_outlet_status(
-    resp: &[u8],
-) -> Result<(Response, models::portal::OutletStatus<'_>)> {
-    let mut dec = Decoder::new(resp);
-    let response = dec.decode::<Response>()?;
-    Ok((response, dec.decode::<models::portal::OutletStatus>()?))
 }
 
 ////////////// !== share CLI args
