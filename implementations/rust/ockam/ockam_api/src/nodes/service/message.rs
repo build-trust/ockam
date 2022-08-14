@@ -6,7 +6,7 @@ use std::str::FromStr;
 use crate::error::ApiError;
 #[cfg(feature = "tag")]
 use crate::TypeTag;
-use crate::{CowBytes, CowStr};
+use ockam_core::{CowBytes, CowStr};
 
 #[derive(Encode, Decode, Debug)]
 #[cfg_attr(test, derive(Clone))]

@@ -1,6 +1,7 @@
 #![allow(missing_docs)]
 
-use crate::{CowBytes, CowStr};
+use ockam_core::{CowBytes, CowStr};
+
 use minicbor::{Decode, Encode};
 
 #[cfg(feature = "tag")]

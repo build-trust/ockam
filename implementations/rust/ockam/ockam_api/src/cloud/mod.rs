@@ -1,10 +1,10 @@
 use minicbor::{Decode, Encode};
-use ockam_core::{Result, Route};
+use ockam_core::{CowStr, Result, Route};
 use ockam_multiaddr::MultiAddr;
 use std::str::FromStr;
 
 use crate::error::ApiError;
-use crate::CowStr;
+
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 
