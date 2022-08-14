@@ -18,7 +18,6 @@ pub use util::*;
 pub mod lmdb;
 
 use core::fmt::{self, Display, Formatter};
-use core::ops::Deref;
 use minicbor::encode::{self, Encoder, Write};
 use minicbor::{Decode, Decoder, Encode};
 use ockam_core::compat::borrow::Cow;

@@ -2093,6 +2093,7 @@ dependencies = [
  "arrayref",
  "dyn-clone",
  "hex",
+ "minicbor",
  "ockam_abac",
  "ockam_channel",
  "ockam_core",
