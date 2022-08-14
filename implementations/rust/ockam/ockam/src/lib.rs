@@ -44,6 +44,7 @@ pub use system::{SystemBuilder, SystemHandler, WorkerSystem};
 pub use unique::unique_with_prefix;
 
 pub mod channel;
+pub mod credential;
 pub mod pipe;
 pub mod pipe2;
 pub mod protocols;
