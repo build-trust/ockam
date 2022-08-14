@@ -2,7 +2,6 @@ use crate::util::{self, api, connect_to, exitcode, OckamConfig};
 use crate::CommandGlobalOpts;
 use anyhow::Context;
 use clap::Args;
-use colorful::Colorful;
 use ockam::Route;
 use ockam_api::config::cli::NodeConfig;
 use ockam_api::nodes::{models::base::NodeStatus, NODEMANAGER_ADDR};
@@ -35,41 +34,62 @@ impl ShowCommand {
 // clippy to stop complainaing about it.
 #[allow(clippy::too_many_arguments)]
 fn print_node_info(node_cfg: &NodeConfig, node_name: &str, status: &str, default_id: &str) {
-    println!(
-        r#"
-Node:
-  Name: {}
-  Status: {}
-  Services:
-    Service:
-      Type: TCP Listener
-      Address: /ip4/127.0.0.1/tcp/{}
-    Service:
-      Type: Secure Channel Listener
-      Address: /service/api
-      Route: /ip4/127.0.0.1/tcp/{}/service/api
-      Identity: {}
-      Authorized Identities:
-        - {}
-    Service:
-      Type: Uppercase
-      Address: /service/uppercase
-    Service:
-      Type: Echo
-      Address: /service/echo
-  Secure Channel Listener Address: /service/api
-"#,
-        node_name,
-        match status {
-            "UP" => status.light_green(),
-            "DOWN" => status.light_red(),
-            _ => status.white(),
-        },
-        node_cfg.port,
-        node_cfg.port,
-        default_id,
-        default_id,
-    );
+    let node_out = util::dyn_info::DynInfo::new_node()
+        .name(node_name)
+        .status(status)
+        .services()
+        .service(
+            "TCP Listener",
+            &format!("/ip4/127.0.0.1/tcp/{}", node_cfg.port),
+        )
+        .service_detailed(
+            "Secure Channel Listener",
+            "/service/api",
+            &format!("/ip4/127.0.0.1/tcp/{}/service/api", node_cfg.port),
+            default_id,
+            default_id,
+        )
+        .service("Uppercase", "/service/uppercase")
+        .service("Echo", "/service/echo")
+        .scl()
+        .build();
+
+    println!("{}", node_out);
+    //     println!(
+    //         r#"
+    // Node:
+    //   Name: {}
+    //   Status: {}
+    //   Services:
+    //     Service:
+    //       Type: TCP Listener
+    //       Address: /ip4/127.0.0.1/tcp/{}
+    //     Service:
+    //       Type: Secure Channel Listener
+    //       Address: /service/api
+    //       Route: /ip4/127.0.0.1/tcp/{}/service/api
+    //       Identity: {}
+    //       Authorized Identities:
+    //         - {}
+    //     Service:
+    //       Type: Uppercase
+    //       Address: /service/uppercase
+    //     Service:
+    //       Type: Echo
+    //       Address: /service/echo
+    //   Secure Channel Listener Address: /service/api
+    // "#,
+    //         node_name,
+    //         match status {
+    //             "UP" => status.light_green(),
+    //             "DOWN" => status.light_red(),
+    //             _ => status.white(),
+    //         },
+    //         node_cfg.port,
+    //         node_cfg.port,
+    //         default_id,
+    //         default_id,
+    //     );
 }
 
 pub async fn query_status(

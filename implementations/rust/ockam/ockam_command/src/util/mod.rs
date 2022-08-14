@@ -1,6 +1,7 @@
 pub mod api;
 pub mod exitcode;
 pub mod startup;
+pub mod dyn_info;
 
 mod addon;
 pub use addon::AddonCommand;
