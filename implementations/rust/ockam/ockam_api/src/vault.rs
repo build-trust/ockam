@@ -2,13 +2,14 @@ pub mod models;
 
 use core::convert::Infallible;
 
-use crate::{CowStr, Error, Id, Method, Request, Response, Status};
+use crate::{Error, Id, Method, Request, Response, Status};
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
 use models::*;
 use ockam_core::vault::{
     AsymmetricVault, Hasher, KeyId, SecretVault, Signature, Signer, SymmetricVault, Verifier,
 };
+use ockam_core::CowStr;
 use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_vault::Vault;

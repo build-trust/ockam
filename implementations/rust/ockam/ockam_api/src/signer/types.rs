@@ -1,9 +1,9 @@
-use crate::{CowBytes, CowStr};
 use core::fmt;
 use data_encoding::BASE32_DNSSEC;
 use minicbor::{Decode, Encode};
 use ockam_core::compat;
 use ockam_core::compat::borrow::Cow;
+use ockam_core::{CowBytes, CowStr};
 
 #[cfg(feature = "tag")]
 use crate::TypeTag;

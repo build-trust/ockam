@@ -2,7 +2,7 @@ use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
 use ockam_core::Address;
 
-use crate::CowStr;
+use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_identity::IdentityIdentifier;

@@ -1,7 +1,8 @@
 use minicbor::{Decode, Encode};
 use serde::Serialize;
 
-use crate::CowStr;
+use ockam_core::CowStr;
+
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 

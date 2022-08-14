@@ -50,18 +50,20 @@ extern crate futures_util;
 
 /// Access control
 pub mod access_control;
-
 pub mod compat;
+pub mod vault;
+
+mod cbor_utils;
 mod error;
 mod message;
 mod processor;
 mod routing;
 mod type_tag;
 mod uint;
-pub mod vault;
 mod worker;
 
 pub use access_control::*;
+pub use cbor_utils::*;
 pub use error::*;
 pub use message::*;
 pub use processor::*;

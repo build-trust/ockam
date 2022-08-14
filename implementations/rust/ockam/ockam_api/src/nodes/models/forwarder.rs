@@ -1,7 +1,7 @@
 use minicbor::{Decode, Encode};
 
-use crate::CowStr;
 use ockam::remote::RemoteForwarderInfo;
+use ockam_core::CowStr;
 use ockam_multiaddr::MultiAddr;
 
 #[cfg(feature = "tag")]
