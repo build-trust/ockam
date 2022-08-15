@@ -205,14 +205,13 @@ impl<V: IdentityVault> Identity<V> {
 
     /// Get [`Secret`] key. Key is uniquely identified by label in [`KeyAttributes`]
     pub async fn get_root_secret_key(&self) -> Result<KeyId> {
-        self.get_secret_key(IdentityStateConst::ROOT_LABEL.to_string())
-            .await
+        self.get_secret_key(IdentityStateConst::ROOT_LABEL).await
     }
 
-    pub async fn get_secret_key(&self, label: String) -> Result<KeyId> {
+    pub async fn get_secret_key(&self, label: &str) -> Result<KeyId> {
         let event = IdentityChangeHistory::find_last_key_event(
             self.change_history.read().await.as_ref(),
-            &label,
+            label,
         )?
         .clone();
         Self::get_secret_key_from_event(&event, &self.vault).await
@@ -222,8 +221,8 @@ impl<V: IdentityVault> Identity<V> {
         self.change_history.read().await.get_root_public_key()
     }
 
-    pub async fn get_public_key(&self, label: String) -> Result<PublicKey> {
-        self.change_history.read().await.get_public_key(&label)
+    pub async fn get_public_key(&self, label: &str) -> Result<PublicKey> {
+        self.change_history.read().await.get_public_key(label)
     }
 
     /// Generate Proof of possession of [`crate::Identity`].

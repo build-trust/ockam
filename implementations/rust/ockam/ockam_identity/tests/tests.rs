@@ -184,10 +184,8 @@ async fn test_basic_identity_key_ops(ctx: &mut Context) -> Result<()> {
         return test_error("verify_changes failed");
     }
 
-    let secret2 = identity
-        .get_secret_key("Truck management".to_string())
-        .await?;
-    let public2 = identity.get_public_key("Truck management".into()).await?;
+    let secret2 = identity.get_secret_key("Truck management").await?;
+    let public2 = identity.get_public_key("Truck management").await?;
 
     if secret1 == secret2 {
         return test_error("secret did not change after create_key");
