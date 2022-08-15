@@ -245,7 +245,7 @@ impl AddressRecord {
 }
 
 /// Encode the run states a worker or processor can be in
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum AddressState {
     /// The runner is looping in its main body (either handling messages or a manual run-loop)
     Running,

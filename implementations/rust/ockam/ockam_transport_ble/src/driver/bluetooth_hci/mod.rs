@@ -51,7 +51,7 @@ use crate::BleAddr;
 pub type Packet = bluetooth_hci::host::uart::Packet<BlueNRGEvent>;
 pub type Event = bluetooth_hci::event::Event<BlueNRGEvent>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 enum State {
     Disconnected,
     Advertising,

@@ -70,7 +70,7 @@ impl Clone for PipeBehavior {
             hooks: self
                 .hooks
                 .iter()
-                .map(|b| *dyn_clone::clone_box(&*b))
+                .map(|b| *dyn_clone::clone_box(b))
                 .collect(),
         }
     }

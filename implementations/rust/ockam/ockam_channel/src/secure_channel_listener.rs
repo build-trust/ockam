@@ -27,7 +27,7 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> SecureChannelListen
 }
 
 /// SecureChannelListener message wrapper.
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Message)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug, Message)]
 pub struct CreateResponderChannelMessage {
     payload: Vec<u8>,
     custom_payload: Option<Vec<u8>>,

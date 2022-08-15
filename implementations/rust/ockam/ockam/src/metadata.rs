@@ -136,7 +136,7 @@ impl DerefMut for Metadata {
 /// attached with scope metadata to indicate the message index.
 #[test]
 fn nest_metadata() {
-    #[derive(Serialize, Deserialize, Message, PartialEq, Debug, Clone)]
+    #[derive(Serialize, Deserialize, Message, PartialEq, Eq, Debug, Clone)]
     struct FakePipeMsg {
         vec: Vec<u8>,
     }

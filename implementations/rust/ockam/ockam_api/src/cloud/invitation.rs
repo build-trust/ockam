@@ -23,7 +23,7 @@ pub struct Invitation<'a> {
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]
-#[cfg_attr(test, derive(Clone, PartialEq))]
+#[cfg_attr(test, derive(Clone, PartialEq, Eq))]
 #[rustfmt::skip]
 #[cbor(index_only)]
 pub enum Scope {
@@ -32,7 +32,7 @@ pub enum Scope {
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]
-#[cfg_attr(test, derive(Clone, PartialEq))]
+#[cfg_attr(test, derive(Clone, PartialEq, Eq))]
 #[rustfmt::skip]
 #[cbor(index_only)]
 pub enum State {

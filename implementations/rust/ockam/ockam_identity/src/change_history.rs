@@ -11,7 +11,7 @@ use ockam_core::{allow, deny, Encodable, Result};
 use ockam_vault::PublicKey;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Encode, Decode, PartialEq)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
 #[cbor(index_only)]
 pub enum IdentityHistoryComparison {
     #[n(1)]

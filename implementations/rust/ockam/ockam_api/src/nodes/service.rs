@@ -114,10 +114,7 @@ impl NodeManager {
                     default_location
                 }
             };
-
-            let storage = LmdbStorage::new(&authenticated_storage_path).await?;
-
-            storage
+            LmdbStorage::new(&authenticated_storage_path).await?
         };
 
         if let Some(identity_override) = identity_override {

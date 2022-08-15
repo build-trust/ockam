@@ -6,7 +6,7 @@ use std::ffi::CString;
 use std::os::raw::c_char;
 
 #[repr(C)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 /// Error type relating to FFI specific failures.
 pub struct FfiOckamError {
     code: i32,

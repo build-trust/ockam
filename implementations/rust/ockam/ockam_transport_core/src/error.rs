@@ -5,7 +5,7 @@ use ockam_core::{
 };
 
 /// A Transport worker specific error type
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TransportError {
     /// Failed to send a malformed message
     SendBadMessage = 1,
