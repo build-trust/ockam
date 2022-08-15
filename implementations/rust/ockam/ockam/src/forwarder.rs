@@ -86,16 +86,18 @@ impl Worker for Forwarder {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        info!(
-            "Alias forward from {} to {}",
-            msg.sender(),
-            self.forward_route.next().unwrap(),
-        );
-        let mut msg = msg.into_transport_message();
-        msg.onward_route = self.forward_route.clone();
+        let mut message = msg.into_local_message();
+        let transport_message = message.transport_mut();
 
-        ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
+        // Remove my address from the onward_route
+        transport_message.onward_route.step()?;
 
-        Ok(())
+        // Prepend forward route
+        transport_message
+            .onward_route
+            .modify()
+            .prepend_route(self.forward_route.clone());
+
+        ctx.forward(message).await
     }
 }
