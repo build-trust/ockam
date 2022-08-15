@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use ockam_core::{self, async_trait};
 
 #[cfg(feature = "tag")]
-use crate::TypeTag;
+use ockam_core::api::TypeTag;
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq, Clone))]
@@ -29,7 +29,9 @@ mod node {
     use minicbor::Decoder;
     use tracing::trace;
 
+    use ockam_core::api::{Id, Request, Response, Status};
     use ockam_core::{self, Result, Route};
+    use ockam_node::api::request;
     use ockam_node::Context;
 
     use crate::auth::types::Attributes;
@@ -39,8 +41,6 @@ mod node {
     };
     use crate::cloud::CloudRequestWrapper;
     use crate::nodes::NodeManager;
-    use crate::{request, Id};
-    use crate::{Request, Response, Status};
 
     use super::*;
 
@@ -297,6 +297,7 @@ pub(crate) mod tests {
     use minicbor::Decoder;
     use quickcheck::{Arbitrary, Gen};
 
+    use ockam_core::api::{Method, Request, Response};
     use ockam_core::{Routed, Worker};
     use ockam_node::Context;
 
@@ -305,7 +306,6 @@ pub(crate) mod tests {
         AuthenticateEnrollmentToken, EnrollmentToken, RequestEnrollmentToken,
     };
     use crate::cloud::enroll::Token;
-    use crate::{Method, Request, Response};
 
     use super::*;
 

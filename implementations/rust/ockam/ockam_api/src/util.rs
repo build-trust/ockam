@@ -1,5 +1,3 @@
-pub(crate) mod response;
-
 use crate::config::lookup::{ConfigLookup, InternetAddress};
 use core::str::FromStr;
 use ockam::{Address, TCP};

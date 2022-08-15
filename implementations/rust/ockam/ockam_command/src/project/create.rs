@@ -5,7 +5,7 @@ use tracing::debug;
 
 use ockam_api::cloud::project::Project;
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_api::{Response, Status};
+use ockam_core::api::{Response, Status};
 use ockam_core::Route;
 
 use crate::node::NodeOpts;

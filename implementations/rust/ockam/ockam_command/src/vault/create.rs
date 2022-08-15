@@ -3,7 +3,7 @@ use crate::util::{api, connect_to, exitcode, stop_node};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
-use ockam_api::Status;
+use ockam_core::api::Status;
 use ockam_core::Route;
 
 #[derive(Clone, Debug, Args)]

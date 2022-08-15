@@ -1,7 +1,7 @@
 use minicbor::Decoder;
 use ockam_api::identity::models::*;
 use ockam_api::identity::IdentityService;
-use ockam_api::{Request, Response, Status};
+use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::rand::random;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, AsyncTryClone, Error, Result};

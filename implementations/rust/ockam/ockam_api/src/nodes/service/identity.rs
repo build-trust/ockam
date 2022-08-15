@@ -4,10 +4,10 @@ use crate::nodes::models::identity::{
     CreateIdentityResponse, LongIdentityResponse, ShortIdentityResponse,
 };
 use crate::nodes::NodeManager;
-use crate::{Request, Response, ResponseBuilder};
 use ockam::identity::{Identity, IdentityIdentifier};
 use ockam::vault::Vault;
 use ockam::{Context, Result};
+use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::errcode::{Kind, Origin};
 
 impl NodeManager {

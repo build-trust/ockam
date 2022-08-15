@@ -9,9 +9,9 @@ use crate::nodes::models::services::{
 use crate::nodes::NodeManager;
 use crate::uppercase::Uppercase;
 use crate::vault::VaultService;
-use crate::{Request, Response, ResponseBuilder};
 use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
+use ockam_core::api::{Request, Response, ResponseBuilder};
 
 impl NodeManager {
     pub(super) async fn start_vault_service_impl(

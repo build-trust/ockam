@@ -50,6 +50,7 @@ extern crate futures_util;
 
 /// Access control
 pub mod access_control;
+pub mod api;
 pub mod compat;
 pub mod vault;
 

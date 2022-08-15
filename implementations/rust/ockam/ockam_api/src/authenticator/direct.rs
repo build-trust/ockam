@@ -2,14 +2,13 @@ pub mod types;
 
 use crate::auth::types::Attributes;
 use crate::signer::types::{Credential, IdentityId};
-use crate::util::response;
-use crate::{assert_request_match, assert_response_match, Cbor};
 use crate::{signer, Timestamp};
-use crate::{Error, Method, Request, RequestBuilder, Response, ResponseBuilder, Status};
 use core::time::Duration;
 use core::{fmt, str};
 use minicbor::encode::write::Cursor;
 use minicbor::{Decoder, Encode};
+use ockam_core::api::{assert_request_match, assert_response_match, Cbor};
+use ockam_core::api::{Error, Method, Request, RequestBuilder, Response, ResponseBuilder, Status};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{self, Address, Result, Route, Routed, Worker};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
@@ -48,7 +47,7 @@ where
         } else {
             let mut dec = Decoder::new(m.as_body());
             let req: Request = dec.decode()?;
-            let res = response::forbidden(&req, "secure channel required").to_vec()?;
+            let res = ockam_core::api::forbidden(&req, "secure channel required").to_vec()?;
             c.send(m.return_route(), res).await
         }
     }
@@ -126,7 +125,7 @@ where
                         Response::ok(req.id()).body(crd).to_vec()?
                     }
                 }
-                _ => response::unknown_path(&req).to_vec()?,
+                _ => ockam_core::api::unknown_path(&req).to_vec()?,
             },
             Some(Method::Get) => match req.path_segments::<3>().as_slice() {
                 // Admin wants to check enroller data.
@@ -165,7 +164,7 @@ where
                         Response::unauthorized(req.id()).to_vec()?
                     }
                 }
-                _ => response::unknown_path(&req).to_vec()?,
+                _ => ockam_core::api::unknown_path(&req).to_vec()?,
             },
             Some(Method::Delete) => match req.path_segments::<3>().as_slice() {
                 // Admin wants to remove an enroller.
@@ -174,9 +173,9 @@ where
                     Response::ok(req.id()).to_vec()?
                 }
                 ["enroller", _] => Response::unauthorized(req.id()).to_vec()?,
-                _ => response::unknown_path(&req).to_vec()?,
+                _ => ockam_core::api::unknown_path(&req).to_vec()?,
             },
-            _ => response::invalid_method(&req).to_vec()?,
+            _ => ockam_core::api::invalid_method(&req).to_vec()?,
         };
 
         Ok(res)
@@ -198,7 +197,7 @@ async fn check_credential<'a, S: AuthenticatedStorage>(
     let ts = if let Some(val) = attrs.get("ts") {
         minicbor::decode(val)?
     } else {
-        return Ok(Some(response::bad_request(
+        return Ok(Some(ockam_core::api::bad_request(
             req,
             "missing credential timestamp",
         )));
@@ -206,10 +205,10 @@ async fn check_credential<'a, S: AuthenticatedStorage>(
     let now = Timestamp::now().ok_or_else(invalid_sys_time)?;
     if let Some(dur) = now.elapsed(ts) {
         if dur > MAX_VALIDITY {
-            return Ok(Some(response::forbidden(req, "credential expired")));
+            return Ok(Some(ockam_core::api::forbidden(req, "credential expired")));
         }
     } else {
-        return Ok(Some(response::bad_request(
+        return Ok(Some(ockam_core::api::bad_request(
             req,
             "invalid credential timestamp",
         )));
@@ -220,7 +219,7 @@ async fn check_credential<'a, S: AuthenticatedStorage>(
     let id = if let Some(val) = attrs.get("id") {
         str::from_utf8(val).map_err(invalid_utf8)?
     } else {
-        return Ok(Some(response::bad_request(
+        return Ok(Some(ockam_core::api::bad_request(
             req,
             "missing credential identity",
         )));
@@ -246,7 +245,7 @@ async fn check_member<'a, S: AuthenticatedStorage>(
         body     = %req.has_body(),
         "unauthorised member"
     }
-    Ok(Some(response::forbidden(req, "unauthorized member")))
+    Ok(Some(ockam_core::api::forbidden(req, "unauthorized member")))
 }
 
 async fn check_enroller<'a, S: AuthenticatedStorage>(
@@ -267,7 +266,10 @@ async fn check_enroller<'a, S: AuthenticatedStorage>(
         body     = %req.has_body(),
         "unauthorised enroller"
     }
-    Ok(Some(response::forbidden(req, "unauthorized enroller")))
+    Ok(Some(ockam_core::api::forbidden(
+        req,
+        "unauthorized enroller",
+    )))
 }
 
 fn invalid_sys_time() -> ockam_core::Error {

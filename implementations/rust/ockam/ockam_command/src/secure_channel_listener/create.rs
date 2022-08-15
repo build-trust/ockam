@@ -6,7 +6,7 @@ use clap::Args;
 use ockam::identity::IdentityIdentifier;
 
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_api::Status;
+use ockam_core::api::Status;
 use ockam_core::{Address, Route};
 
 #[derive(Clone, Debug, Args)]

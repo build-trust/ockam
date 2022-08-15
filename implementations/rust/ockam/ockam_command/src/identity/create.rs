@@ -4,7 +4,7 @@ use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_api::Status;
+use ockam_core::api::Status;
 use ockam_core::Route;
 
 #[derive(Clone, Debug, Args)]

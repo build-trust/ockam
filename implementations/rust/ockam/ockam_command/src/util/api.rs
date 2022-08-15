@@ -7,8 +7,9 @@ use minicbor::Decoder;
 use clap::Args;
 use ockam::identity::IdentityIdentifier;
 use ockam::Result;
+use ockam_api::cloud::CloudRequestWrapper;
 use ockam_api::nodes::*;
-use ockam_api::{cloud::CloudRequestWrapper, Method, Request, Response};
+use ockam_core::api::{Method, Request, Response};
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
 

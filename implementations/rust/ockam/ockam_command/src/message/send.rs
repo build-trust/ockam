@@ -5,8 +5,9 @@ use tracing::debug;
 
 use crate::CommandGlobalOpts;
 use ockam::TcpTransport;
+use ockam_api::clean_multiaddr;
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_api::{clean_multiaddr, Response, Status};
+use ockam_core::api::{Response, Status};
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 

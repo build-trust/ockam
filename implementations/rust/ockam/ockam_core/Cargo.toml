@@ -35,6 +35,7 @@ std = [
     "serde_bare/std",
     "ockam_macros/std",
     "once_cell/std",
+    "tinyvec/std"
 ]
 
 # Feature: "no_std" enables functionality required for platforms
@@ -80,6 +81,7 @@ futures-util = { version = "0.3.17", default-features = false, features = [
     "async-await-macro",
     "sink",
 ] }
+tinyvec = { version = "1.6.0", features = ["rustc_1_57"] }
 zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 cfg-if = "1.0"
 subtle = { version = "2", default-features = false }

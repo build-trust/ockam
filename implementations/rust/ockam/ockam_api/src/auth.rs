@@ -1,12 +1,12 @@
 pub mod types;
 
-use crate::util::response;
-use crate::{decode_option, is_ok, request};
-use crate::{Method, Request, Response};
 use core::fmt;
 use minicbor::Decoder;
+use ockam_core::api::{decode_option, is_ok};
+use ockam_core::api::{Method, Request, Response};
 use ockam_core::{self, Address, Result, Route, Routed, Worker};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
+use ockam_node::api::request;
 use ockam_node::Context;
 use tracing::trace;
 use types::Attribute;
@@ -59,16 +59,16 @@ impl<S: AuthenticatedStorage> Server<S> {
                         Response::not_found(req.id()).to_vec()?
                     }
                 }
-                _ => response::unknown_path(&req).to_vec()?,
+                _ => ockam_core::api::unknown_path(&req).to_vec()?,
             },
             Some(Method::Delete) => match req.path_segments::<5>().as_slice() {
                 ["authenticated", id, "attribute", key] => {
                     self.store.del(id, key).await?;
                     Response::ok(req.id()).to_vec()?
                 }
-                _ => response::unknown_path(&req).to_vec()?,
+                _ => ockam_core::api::unknown_path(&req).to_vec()?,
             },
-            _ => response::invalid_method(&req).to_vec()?,
+            _ => ockam_core::api::invalid_method(&req).to_vec()?,
         };
 
         Ok(res)

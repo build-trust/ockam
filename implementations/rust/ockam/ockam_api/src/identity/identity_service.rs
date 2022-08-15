@@ -1,9 +1,9 @@
 use core::convert::Infallible;
 
 use crate::identity::models::*;
-use crate::{Error, Id, Method, Request, Response, Status};
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
+use ockam_core::api::{Error, Id, Method, Request, Response, Status};
 use ockam_core::vault::Signature;
 use ockam_core::{Address, Result, Routed, Worker};
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};

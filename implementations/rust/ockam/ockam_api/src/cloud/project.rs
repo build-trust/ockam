@@ -63,13 +63,13 @@ mod node {
     use minicbor::Decoder;
     use tracing::trace;
 
+    use ockam_core::api::{Request, Response, Status};
     use ockam_core::{self, Result};
+    use ockam_node::api::request;
     use ockam_node::Context;
 
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeManager;
-    use crate::request;
-    use crate::{Request, Response, Status};
 
     use super::*;
 
@@ -259,11 +259,10 @@ mod tests {
     use minicbor::{encode, Decoder};
     use quickcheck::{Arbitrary, Gen};
 
+    use ockam_core::api::{Method, Request, Response};
     use ockam_core::compat::collections::HashMap;
     use ockam_core::{Routed, Worker};
     use ockam_node::Context;
-
-    use crate::{Method, Request, Response};
 
     use super::*;
 
@@ -349,7 +348,8 @@ mod tests {
     mod node_api {
         use crate::cloud::CloudRequestWrapper;
         use crate::nodes::NodeManager;
-        use crate::{route_to_multiaddr, Status};
+        use crate::route_to_multiaddr;
+        use ockam_core::api::Status;
         use ockam_core::route;
 
         use super::*;
@@ -371,7 +371,7 @@ mod tests {
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
-            assert_eq!(header.status, Some(Status::Ok));
+            assert_eq!(header.status(), Some(Status::Ok));
             let p = dec.decode::<Project>()?;
             assert_eq!(&p.name, "p1");
             assert_eq!(&p.services, &["service"]);
@@ -386,7 +386,7 @@ mod tests {
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
-            assert_eq!(header.status, Some(Status::Ok));
+            assert_eq!(header.status(), Some(Status::Ok));
             let p = dec.decode::<Project>()?;
             assert_eq!(&p.id, &p_id);
 
@@ -398,7 +398,7 @@ mod tests {
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
-            assert_eq!(header.status, Some(Status::Ok));
+            assert_eq!(header.status(), Some(Status::Ok));
             let p = dec.decode::<Project>()?;
             assert_eq!(&p.id, &p_id);
 
@@ -410,7 +410,7 @@ mod tests {
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
-            assert_eq!(header.status, Some(Status::Ok));
+            assert_eq!(header.status(), Some(Status::Ok));
             let list = dec.decode::<Vec<Project>>()?;
             assert_eq!(list.len(), 1);
             assert_eq!(&list[0].id.to_string(), &p_id);
@@ -423,7 +423,7 @@ mod tests {
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
-            assert_eq!(header.status, Some(Status::Ok));
+            assert_eq!(header.status(), Some(Status::Ok));
 
             // Check list returns empty vec
             let mut buf = vec![];
@@ -433,7 +433,7 @@ mod tests {
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
-            assert_eq!(header.status, Some(Status::Ok));
+            assert_eq!(header.status(), Some(Status::Ok));
             let list = dec.decode::<Vec<Project>>()?;
             assert!(list.is_empty());
 
@@ -445,7 +445,7 @@ mod tests {
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
-            assert_eq!(header.status, Some(Status::NotFound));
+            assert_eq!(header.status(), Some(Status::NotFound));
 
             ctx.stop().await
         }

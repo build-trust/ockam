@@ -41,11 +41,11 @@ mod node {
     use minicbor::Decoder;
     use tracing::trace;
 
+    use ockam_core::api::{Request, Response, Status};
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
     use crate::nodes::NodeManager;
-    use crate::{Request, Response, Status};
 
     const TARGET: &str = "ockam_api::message";
 
