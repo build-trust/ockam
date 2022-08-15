@@ -2,7 +2,11 @@
 
 //! Building block for Attribute-based access control
 
+// TODO: std is needed to check credential expiration. Figure out what can be done here
+#[cfg(feature = "std")]
 mod exchange;
+#[cfg(feature = "std")]
+pub use exchange::*;
 
 use core::marker::PhantomData;
 use core::time::Duration;
@@ -14,9 +18,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::{Signature, SignatureVec, Verifier};
 use ockam_core::{CowBytes, CowStr, Error, Result};
 use ockam_identity::change_history::IdentityChangeHistory;
-use ockam_identity::{Identity, IdentityIdentifier, IdentityVault};
-
-pub use exchange::*;
+use ockam_identity::{Identity, IdentityIdentifier, IdentityStateConst, IdentityVault};
 
 #[cfg(feature = "tag")]
 use crate::TypeTag;
@@ -81,12 +83,19 @@ impl<'a> Credential<'a> {
     pub async fn verify_signature<'b: 'a, V>(
         &'b self,
         issuer: &IdentityChangeHistory,
-        verifier: V,
+        verifier: &V,
     ) -> Result<CredentialData<'a, Verified>>
     where
         V: Verifier,
     {
         let dat = CredentialData::try_from(self)?;
+        if dat.issuer_key != IdentityStateConst::ROOT_LABEL {
+            return Err(Error::new(
+                Origin::Application,
+                Kind::Invalid,
+                "invalid signing key",
+            ));
+        }
         let sig = Signature::new(self.signature.clone().into_owned());
         let pky = issuer.get_public_key(&dat.issuer_key)?;
         if !verifier.verify(&sig, &pky, &self.data).await? {
@@ -290,10 +299,11 @@ impl<'a> CredentialBuilder<'a> {
 
     /// Create a signed credential based on the given values.
     #[cfg(feature = "std")]
-    pub async fn issue<'b, V>(self, issuer: &Identity<V>, key_label: &str) -> Result<Credential<'b>>
+    pub async fn issue<'b, V>(self, issuer: &Identity<V>) -> Result<Credential<'b>>
     where
         V: IdentityVault,
     {
+        let key_label = IdentityStateConst::ROOT_LABEL;
         let now = Timestamp::now()
             .ok_or_else(|| Error::new(Origin::Core, Kind::Internal, "invalid system time"))?;
         let exp = Timestamp(u64::from(now).saturating_add(self.validity.as_secs()));
