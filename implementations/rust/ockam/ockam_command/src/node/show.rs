@@ -31,65 +31,43 @@ impl ShowCommand {
 
 // TODO: This function should be replaced with a better system of
 // printing the node state in the future but for now we can just tell
-// clippy to stop complainaing about it.
+// clippy to stop complaining about it.
 #[allow(clippy::too_many_arguments)]
 fn print_node_info(node_cfg: &NodeConfig, node_name: &str, status: &str, default_id: &str) {
-    let node_out = util::dyn_info::DynInfo::new_node()
-        .name(node_name)
-        .status(status)
-        .services()
-        .service(
-            "TCP Listener",
-            &format!("/ip4/127.0.0.1/tcp/{}", node_cfg.port),
-        )
-        .service_detailed(
-            "Secure Channel Listener",
-            "/service/api",
-            &format!("/ip4/127.0.0.1/tcp/{}/service/api", node_cfg.port),
-            default_id,
-            default_id,
-        )
-        .service("Uppercase", "/service/uppercase")
-        .service("Echo", "/service/echo")
-        .scl()
-        .build();
+    use util::dyn_info::{NodeService, ServiceType};
+    let node_out = util::dyn_info::DynNodeInfo::new(node_name.to_string())
+        .status(status.to_string())
+        .service(NodeService::new(
+            ServiceType::TCPListener,
+            format!("/ip4/127.0.0.1/tcp/{}", node_cfg.port),
+            None,
+            None,
+            None,
+        ))
+        .service(NodeService::new(
+            ServiceType::SecureChannelListener,
+            format!("/service/api"),
+            Some(format!("/ip4/127.0.0.1/tcp/{}/service/api", node_cfg.port)),
+            Some(default_id.to_string()),
+            Some(vec![format!("{}", default_id)]),
+        ))
+        .service(NodeService::new(
+            ServiceType::Uppercase,
+            "/service/uppercase".to_string(),
+            None,
+            None,
+            None,
+        ))
+        .service(NodeService::new(
+            ServiceType::Echo,
+            "/service/echo".to_string(),
+            None,
+            None,
+            None,
+        ))
+        .secure_channel_addr_listener("/service/api".to_string());
 
     println!("{}", node_out);
-    //     println!(
-    //         r#"
-    // Node:
-    //   Name: {}
-    //   Status: {}
-    //   Services:
-    //     Service:
-    //       Type: TCP Listener
-    //       Address: /ip4/127.0.0.1/tcp/{}
-    //     Service:
-    //       Type: Secure Channel Listener
-    //       Address: /service/api
-    //       Route: /ip4/127.0.0.1/tcp/{}/service/api
-    //       Identity: {}
-    //       Authorized Identities:
-    //         - {}
-    //     Service:
-    //       Type: Uppercase
-    //       Address: /service/uppercase
-    //     Service:
-    //       Type: Echo
-    //       Address: /service/echo
-    //   Secure Channel Listener Address: /service/api
-    // "#,
-    //         node_name,
-    //         match status {
-    //             "UP" => status.light_green(),
-    //             "DOWN" => status.light_red(),
-    //             _ => status.white(),
-    //         },
-    //         node_cfg.port,
-    //         node_cfg.port,
-    //         default_id,
-    //         default_id,
-    //     );
 }
 
 pub async fn query_status(
