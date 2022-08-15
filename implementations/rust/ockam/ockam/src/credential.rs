@@ -40,7 +40,7 @@ pub struct CredentialData<'a> {
     /// A schema identifier to allow distinguishing sets of attributes.
     #[n(1)] schema: Option<SchemaId>,
     /// User-defined key-value pairs.
-    #[b(2)] attributes: Option<Attributes<'a>>,
+    #[b(2)] attributes: Attributes<'a>,
     /// The subject this credential is issued for.
     #[n(3)] subject: IdentityIdentifier,
     /// The entity that signed this credential.
@@ -125,12 +125,8 @@ impl<'a> CredentialData<'a> {
         self.created < self.expires
     }
 
-    pub fn attributes(&self) -> Option<&Attributes<'_>> {
-        if let Some(a) = &self.attributes {
-            Some(a)
-        } else {
-            None
-        }
+    pub fn attributes(&self) -> &Attributes<'_> {
+        &self.attributes
     }
 }
 
@@ -269,7 +265,7 @@ impl<'a> CredentialBuilder<'a> {
         let exp = Timestamp(u64::from(now).saturating_add(self.validity.as_secs()));
         let dat = CredentialData {
             schema: self.schema,
-            attributes: (!self.attrs.is_empty()).then(|| self.attrs),
+            attributes: self.attrs,
             subject: self.subject,
             issuer: issuer.identifier().clone(),
             issuer_key: CowStr(key_label.into()),
