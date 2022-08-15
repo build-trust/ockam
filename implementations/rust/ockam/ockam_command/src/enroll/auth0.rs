@@ -9,7 +9,7 @@ use tracing::{debug, warn};
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::error::ApiError;
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_api::{Response, Status};
+use ockam_core::api::{Response, Status};
 use ockam_core::Route;
 
 use crate::util::{api, connect_to, exitcode, stop_node};

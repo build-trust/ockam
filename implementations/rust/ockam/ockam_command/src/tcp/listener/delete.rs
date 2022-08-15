@@ -1,6 +1,7 @@
 use clap::Args;
 use ockam::{Context, Route};
-use ockam_api::{nodes::NODEMANAGER_ADDR, Response, Status};
+use ockam_api::nodes::NODEMANAGER_ADDR;
+use ockam_core::api::{Response, Status};
 
 use crate::{
     node::NodeOpts,

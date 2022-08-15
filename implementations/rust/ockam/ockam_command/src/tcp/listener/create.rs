@@ -7,8 +7,9 @@ use ockam::{Context, Route, TCP};
 use ockam_api::{
     config::snippet::{ComposableSnippet, Operation, Protocol, RemoteMode},
     nodes::{models::transport::TransportStatus, NODEMANAGER_ADDR},
-    route_to_multiaddr, Status,
+    route_to_multiaddr,
 };
+use ockam_core::api::Status;
 
 #[derive(Args, Clone, Debug)]
 pub struct CreateCommand {

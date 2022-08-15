@@ -4,7 +4,7 @@ use crate::{node::NodeOpts, util::api};
 use clap::Args;
 use ockam::{Context, Route};
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_api::Status;
+use ockam_core::api::Status;
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {

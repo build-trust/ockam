@@ -8,8 +8,9 @@ use ockam_api::{
     error::ApiError,
     nodes::models::portal::{CreateOutlet, OutletStatus},
     nodes::NODEMANAGER_ADDR,
-    route_to_multiaddr, Method, Request, Response, Status,
+    route_to_multiaddr,
 };
+use ockam_core::api::{Method, Request, Response, Status};
 use ockam_core::{route, Address};
 use std::net::SocketAddr;
 

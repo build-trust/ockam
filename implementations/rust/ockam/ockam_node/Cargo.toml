@@ -29,14 +29,14 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "tokio", "tracing-subscriber", "tracing-error", "alloc", "futures/std"]
+std = ["ockam_core/std", "tokio", "tracing-subscriber", "tracing-error", "alloc", "futures/std", "minicbor/std"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
 no_std = ["ockam_core/no_std", "heapless"]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
-alloc = ["ockam_core/alloc", "ockam_executor/alloc", "futures/alloc"]
+alloc = ["ockam_core/alloc", "ockam_executor/alloc", "futures/alloc", "minicbor/alloc"]
 
 # Feature: "dump_internals" when set, will dump the internal state of
 # workers at startup via the trace! macro.
@@ -65,3 +65,4 @@ heapless = { version = "0.7", features = ["mpmc_large"], optional = true }
 ockam_executor = { path = "../ockam_executor", version = "^0.31.0", default-features = false, optional = true }
 serde_bare = { version = "0.5.0", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
+minicbor = { version = "0.18.0", features = ["derive"] }

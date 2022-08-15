@@ -70,7 +70,9 @@ mod tests {
     use minicbor::Decoder;
 
     use ockam::{Context, TCP};
-    use ockam_core::{compat::rand::Rng, route, Address, Result, Routed, Worker};
+    use ockam_core::api::{Method, Request, Response, Status};
+    use ockam_core::{compat::rand, compat::rand::Rng};
+    use ockam_core::{route, Address, Result, Routed, Worker};
 
     use crate::nodes::NodeManager;
     use crate::*;

@@ -3,9 +3,9 @@ use crate::nodes::models::transport::{
 };
 use crate::nodes::service::{random_alias, Alias};
 use crate::nodes::NodeManager;
-use crate::{Request, Response, ResponseBuilder};
 use minicbor::Decoder;
 use ockam::Result;
+use ockam_core::api::{Request, Response, ResponseBuilder};
 
 impl NodeManager {
     pub(super) fn get_tcp_con_or_list(

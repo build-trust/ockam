@@ -2,11 +2,10 @@ pub mod types;
 
 use crate::auth::types::Attributes;
 use crate::signer::types::{AddIdentity, GetIdentityResponse};
-use crate::util::response;
-use crate::{assert_request_match, assert_response_match, Cbor};
-use crate::{Error, Method, Request, RequestBuilder, Response, Status};
 use core::fmt;
 use minicbor::{Decoder, Encode};
+use ockam_core::api::{assert_request_match, assert_response_match, Cbor};
+use ockam_core::api::{Error, Method, Request, RequestBuilder, Response, Status};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::CowBytes;
 use ockam_core::{self, vault, Address, Result, Route, Routed, Worker};
@@ -74,7 +73,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
                     };
                     Response::ok(req.id()).body(bdy).to_vec()?
                 }
-                _ => response::unknown_path(&req).to_vec()?,
+                _ => ockam_core::api::unknown_path(&req).to_vec()?,
             },
             Some(Method::Get) => match req.path_segments::<2>().as_slice() {
                 ["verify"] => {
@@ -103,23 +102,23 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Server<V, S> {
                     let i = GetIdentityResponse::new(k.as_slice().into());
                     Response::ok(req.id()).body(i).to_vec()?
                 }
-                _ => response::unknown_path(&req).to_vec()?,
+                _ => ockam_core::api::unknown_path(&req).to_vec()?,
             },
             Some(Method::Put) => match req.path_segments::<2>().as_slice() {
                 ["identity"] => {
                     let i: AddIdentity = dec.decode()?;
                     let k = IdentityChangeHistory::import(i.identity())?;
                     if !k.verify_all_existing_events(self.id.vault()).await? {
-                        response::bad_request(&req, "invalid identity key").to_vec()?
+                        ockam_core::api::bad_request(&req, "invalid identity key").to_vec()?
                     } else {
                         let i = k.compute_identity_id(self.id.vault()).await?;
                         self.id.update_known_identity(&i, &k, &self.storage).await?;
                         Response::ok(req.id()).to_vec()?
                     }
                 }
-                _ => response::unknown_path(&req).to_vec()?,
+                _ => ockam_core::api::unknown_path(&req).to_vec()?,
             },
-            _ => response::invalid_method(&req).to_vec()?,
+            _ => ockam_core::api::invalid_method(&req).to_vec()?,
         };
 
         Ok(res)

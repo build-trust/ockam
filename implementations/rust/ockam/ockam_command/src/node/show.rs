@@ -6,7 +6,7 @@ use colorful::Colorful;
 use ockam::Route;
 use ockam_api::config::cli::NodeConfig;
 use ockam_api::nodes::{models::base::NodeStatus, NODEMANAGER_ADDR};
-use ockam_api::Status;
+use ockam_core::api::Status;
 use std::time::Duration;
 
 #[derive(Clone, Debug, Args)]

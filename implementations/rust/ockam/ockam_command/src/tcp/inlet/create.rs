@@ -4,10 +4,8 @@ use crate::CommandGlobalOpts;
 use clap::Args;
 use minicbor::Decoder;
 use ockam::{Context, Route};
-use ockam_api::{
-    nodes::models, nodes::models::portal::InletStatus, nodes::NODEMANAGER_ADDR, Method, Request,
-    Response, Status,
-};
+use ockam_api::{nodes::models, nodes::models::portal::InletStatus, nodes::NODEMANAGER_ADDR};
+use ockam_core::api::{Method, Request, Response, Status};
 use ockam_multiaddr::MultiAddr;
 use std::net::SocketAddr;
 

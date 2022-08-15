@@ -4,7 +4,7 @@ use ockam_api::vault::models::{
     VerifyRequest, VerifyResponse,
 };
 use ockam_api::vault::VaultService;
-use ockam_api::{Request, Response, Status};
+use ockam_core::api::{Request, Response, Status};
 use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType};
 use ockam_core::{route, Result};
 use ockam_node::Context;

@@ -49,15 +49,15 @@ mod node {
     use minicbor::Decoder;
     use tracing::trace;
 
+    use ockam_core::api::{Request, Response, Status};
     use ockam_core::{self, Result};
+    use ockam_node::api::request;
     use ockam_node::Context;
 
     use crate::cloud::space::CreateSpace;
     use crate::cloud::space::Space;
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeManager;
-    use crate::request;
-    use crate::{Request, Response, Status};
 
     const TARGET: &str = "ockam_api::cloud::space";
 
@@ -244,12 +244,12 @@ pub mod tests {
     use minicbor::{encode, Decoder};
     use quickcheck::{Arbitrary, Gen};
 
+    use ockam_core::api::{Method, Request, Response};
     use ockam_core::compat::collections::HashMap;
     use ockam_core::{Routed, Worker};
     use ockam_node::Context;
 
     use crate::cloud::space::CreateSpace;
-    use crate::{Method, Request, Response};
 
     use super::*;
 
@@ -328,7 +328,8 @@ pub mod tests {
     mod node_api {
         use crate::cloud::CloudRequestWrapper;
         use crate::nodes::NodeManager;
-        use crate::{route_to_multiaddr, Status};
+        use crate::route_to_multiaddr;
+        use ockam_core::api::Status;
         use ockam_core::route;
 
         use super::*;
@@ -350,7 +351,7 @@ pub mod tests {
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
-            assert_eq!(header.status, Some(Status::Ok));
+            assert_eq!(header.status(), Some(Status::Ok));
             let s = dec.decode::<Space>()?;
             assert_eq!(&s.name, "s1");
             let s_id = s.id.to_string();
@@ -363,7 +364,7 @@ pub mod tests {
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
-            assert_eq!(header.status, Some(Status::Ok));
+            assert_eq!(header.status(), Some(Status::Ok));
             let s = dec.decode::<Space>()?;
             assert_eq!(&s.id, &s_id);
 
@@ -375,7 +376,7 @@ pub mod tests {
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
-            assert_eq!(header.status, Some(Status::Ok));
+            assert_eq!(header.status(), Some(Status::Ok));
             let list = dec.decode::<Vec<Space>>()?;
             assert_eq!(list.len(), 1);
             assert_eq!(&list[0].id.to_string(), &s_id);
@@ -388,7 +389,7 @@ pub mod tests {
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
-            assert_eq!(header.status, Some(Status::Ok));
+            assert_eq!(header.status(), Some(Status::Ok));
 
             // Check list returns empty vec
             let mut buf = vec![];
@@ -398,7 +399,7 @@ pub mod tests {
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
-            assert_eq!(header.status, Some(Status::Ok));
+            assert_eq!(header.status(), Some(Status::Ok));
             let list = dec.decode::<Vec<Space>>()?;
             assert!(list.is_empty());
 
@@ -410,7 +411,7 @@ pub mod tests {
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
             let mut dec = Decoder::new(&response);
             let header = dec.decode::<Response>()?;
-            assert_eq!(header.status, Some(Status::NotFound));
+            assert_eq!(header.status(), Some(Status::NotFound));
 
             ctx.stop().await
         }

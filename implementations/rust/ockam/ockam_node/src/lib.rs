@@ -41,6 +41,9 @@ mod metrics;
 /// Access Control
 pub mod access_control;
 
+/// Api helpers
+pub mod api;
+
 mod async_drop;
 mod cancel;
 mod context;

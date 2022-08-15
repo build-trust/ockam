@@ -6,7 +6,7 @@ use clap::{Args, Subcommand};
 use minicbor::Decoder;
 use ockam_api::error::ApiError;
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_api::{Response, Status};
+use ockam_core::api::{Response, Status};
 use ockam_core::Route;
 use tracing::debug;
 
