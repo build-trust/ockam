@@ -11,7 +11,7 @@ use tracing::{debug, info};
 /// SecureChannel info returned from start_initiator_channel
 /// Auth hash can be used for further authentication of the channel
 /// and tying it up cryptographically to some source of Trust. (e.g. Entities)
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub struct SecureChannelInfo {
     worker_address: Address,
     auth_hash: [u8; 32],

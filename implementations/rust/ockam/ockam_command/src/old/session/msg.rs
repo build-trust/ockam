@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use ockam::Message;
 
-#[derive(Serialize, Deserialize, Message, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Message, Debug, Clone, PartialEq, Eq)]
 pub struct RequestId(pub String);
 
 impl RequestId {

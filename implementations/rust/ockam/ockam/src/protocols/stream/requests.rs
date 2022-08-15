@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// The expected response to this request is
 /// [`InitResponse`](super::responses::InitResponse).
-#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Message)]
 pub struct CreateStreamRequest {
     /// The stream name.
     pub stream_name: Option<String>,
@@ -34,7 +34,7 @@ impl CreateStreamRequest {
 ///
 /// The expected response to this request is
 /// [`PushConfirm`](super::responses::PushConfirm).
-#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Message)]
 pub struct PushRequest {
     /// The request ID
     pub request_id: Uint,
@@ -60,7 +60,7 @@ impl PushRequest {
 /// Pull messages from the mailbox.
 ///
 /// The expected response to this request is [`super::responses::PullResponse`].
-#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Message)]
 pub struct PullRequest {
     /// The request id
     pub request_id: Uint,
@@ -92,7 +92,7 @@ impl PullRequest {
 ///
 /// The expected response to this request is
 /// [`IndexResponse`](super::responses::IndexResponse).
-#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Message)]
 pub enum IndexRequest {
     /// A request for an index
     Get {

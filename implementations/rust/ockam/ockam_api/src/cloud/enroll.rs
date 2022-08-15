@@ -9,7 +9,7 @@ use ockam_core::{self, async_trait};
 use crate::TypeTag;
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(test, derive(PartialEq, Eq, Clone))]
 #[cbor(transparent)]
 #[serde(transparent)]
 pub struct Token<'a>(#[n(0)] pub Cow<'a, str>);
@@ -165,7 +165,7 @@ pub mod auth0 {
 
     // Req/Res types
 
-    #[derive(serde::Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq, Eq)]
     pub struct DeviceCode<'a> {
         pub device_code: Cow<'a, str>,
         pub user_code: Cow<'a, str>,
@@ -175,14 +175,14 @@ pub mod auth0 {
         pub interval: usize,
     }
 
-    #[derive(serde::Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq, Eq)]
     pub struct TokensError<'a> {
         pub error: Cow<'a, str>,
         pub error_description: Cow<'a, str>,
     }
 
     #[derive(serde::Deserialize, Debug)]
-    #[cfg_attr(test, derive(PartialEq, Clone))]
+    #[cfg_attr(test, derive(PartialEq, Eq, Clone))]
     pub struct Auth0Token<'a> {
         pub token_type: TokenType,
         pub access_token: Token<'a>,
@@ -213,7 +213,7 @@ pub mod auth0 {
     // Auxiliary types
 
     #[derive(serde::Deserialize, Encode, Decode, Debug)]
-    #[cfg_attr(test, derive(PartialEq, Clone))]
+    #[cfg_attr(test, derive(PartialEq, Eq, Clone))]
     #[rustfmt::skip]
     #[cbor(index_only)]
     pub enum TokenType {

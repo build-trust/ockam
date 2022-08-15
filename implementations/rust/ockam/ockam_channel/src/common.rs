@@ -3,7 +3,7 @@ use ockam_core::{Address, Message};
 use serde::{Deserialize, Serialize};
 
 /// Key Exchange completed message
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Message)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug, Message)]
 pub struct KeyExchangeCompleted {
     address: Address,
     auth_hash: [u8; 32],

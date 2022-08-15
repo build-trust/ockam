@@ -9,7 +9,7 @@ use ockam_core::{Decodable, Uint};
 use serde::{Deserialize, Serialize};
 
 /// Response to a [`CreateStreamRequest`](super::requests::CreateStreamRequest)
-#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Message)]
 pub struct InitResponse {
     /// The name of the stream.
     pub stream_name: String,
@@ -32,7 +32,7 @@ impl InitResponse {
 }
 
 /// Confirm push operation on the mailbox
-#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Message)]
 pub struct PushConfirm {
     /// The request id
     pub request_id: Uint,
@@ -60,7 +60,7 @@ impl PushConfirm {
 
 /// A simple status code.
 // TODO: replace with `Result<(), ()>`?
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Status {
     /// Indicates success.
     Ok,
@@ -85,7 +85,7 @@ impl From<Option<()>> for Status {
 }
 
 /// Response to a [`PullRequest`](super::requests::PullRequest)
-#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Message)]
 pub struct PullResponse {
     /// The request id
     pub request_id: Uint,
@@ -110,7 +110,7 @@ impl PullResponse {
 }
 
 /// A stream message with a reference index
-#[derive(Debug, PartialEq, Serialize, Deserialize, Message)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Message)]
 pub struct StreamMessage {
     /// Index of the message in the stream
     pub index: Uint,
@@ -120,7 +120,7 @@ pub struct StreamMessage {
 
 /// The index return payload, to an
 /// [`IndexRequest`](super::requests::IndexRequest).
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexResponse {
     /// The client id
     pub client_id: String,

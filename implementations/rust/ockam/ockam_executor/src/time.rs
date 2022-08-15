@@ -55,7 +55,7 @@ pub mod error {
     use core::fmt;
     use ockam_core::compat::{error, io};
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Eq)]
     pub struct Elapsed(());
 
     impl Elapsed {

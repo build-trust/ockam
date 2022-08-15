@@ -40,7 +40,7 @@ impl<C: Send + 'static, M: Message> Clone for WorkerSystem<C, M> {
             map: self
                 .map
                 .iter()
-                .map(|(addr, h)| (addr.clone(), *dyn_clone::clone_box(&*h)))
+                .map(|(addr, h)| (addr.clone(), *dyn_clone::clone_box(h)))
                 .collect(),
         }
     }

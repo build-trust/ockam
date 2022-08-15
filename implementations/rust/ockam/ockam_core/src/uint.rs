@@ -6,7 +6,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// This is to avoid cross-platform and cross-language compatibility
 /// inconsistencies that may be encountered by using Rust fixed-size
 /// integers.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Uint(serde_bare::Uint);
 
 impl Uint {

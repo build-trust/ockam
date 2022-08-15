@@ -34,7 +34,7 @@ quickcheck! {
         }
         let mut ma = MultiAddr::default();
         for proto in vec.iter().rev() {
-            ma.push_front_value(&proto).unwrap()
+            ma.push_front_value(proto).unwrap()
         }
         a.0 == ma
     }

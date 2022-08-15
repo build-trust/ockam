@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
 /// Information about a remotely forwarded worker.
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Message)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug, Message)]
 pub struct RemoteForwarderInfo {
     forwarding_route: Route,
     remote_address: String,

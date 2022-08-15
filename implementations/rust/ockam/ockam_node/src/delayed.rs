@@ -116,7 +116,7 @@ mod tests {
     ) -> Result<()> {
         let msgs_count = Arc::new(AtomicI8::new(0));
         let mut heartbeat =
-            DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string()).await?;
+            DelayedEvent::create(ctx, "counting_worker", "Hello".to_string()).await?;
 
         let worker = CountingWorker {
             msgs_count: msgs_count.clone(),
@@ -140,7 +140,7 @@ mod tests {
     async fn rescheduling__counting_worker__aborts_existing(ctx: &mut Context) -> Result<()> {
         let msgs_count = Arc::new(AtomicI8::new(0));
         let mut heartbeat =
-            DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string()).await?;
+            DelayedEvent::create(ctx, "counting_worker", "Hello".to_string()).await?;
 
         let worker = CountingWorker {
             msgs_count: msgs_count.clone(),
@@ -162,7 +162,7 @@ mod tests {
     async fn cancel__counting_worker__aborts_existing(ctx: &mut Context) -> Result<()> {
         let msgs_count = Arc::new(AtomicI8::new(0));
         let mut heartbeat =
-            DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string()).await?;
+            DelayedEvent::create(ctx, "counting_worker", "Hello".to_string()).await?;
 
         let worker = CountingWorker {
             msgs_count: msgs_count.clone(),
@@ -186,7 +186,7 @@ mod tests {
     async fn drop__counting_worker__aborts_existing(ctx: &mut Context) -> Result<()> {
         let msgs_count = Arc::new(AtomicI8::new(0));
         let mut heartbeat =
-            DelayedEvent::create(&ctx, "counting_worker", "Hello".to_string()).await?;
+            DelayedEvent::create(ctx, "counting_worker", "Hello".to_string()).await?;
 
         let worker = CountingWorker {
             msgs_count: msgs_count.clone(),

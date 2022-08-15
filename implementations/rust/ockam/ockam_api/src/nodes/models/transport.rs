@@ -86,7 +86,7 @@ impl Display for TransportType {
 }
 
 /// Encode which type of transport is being requested
-#[derive(Copy, Clone, Debug, Decode, Encode, PartialEq)]
+#[derive(Copy, Clone, Debug, Decode, Encode, PartialEq, Eq)]
 #[rustfmt::skip]
 pub enum TransportMode {
     /// Listen on a set address
