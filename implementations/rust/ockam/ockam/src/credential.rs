@@ -4,6 +4,7 @@
 
 mod exchange;
 
+use core::marker::PhantomData;
 use core::time::Duration;
 use minicbor::bytes::ByteSlice;
 use minicbor::{Decode, Encode};
@@ -21,6 +22,14 @@ use crate::TypeTag;
 
 pub const MAX_CREDENTIAL_VALIDITY: Duration = Duration::from_secs(6 * 3600);
 
+/// Type to represent data of verified credentials.
+#[derive(Debug, Encode)]
+pub enum Verified {}
+
+/// Type to represent data of unverified credentials.
+#[derive(Debug, Decode)]
+pub enum Unverified {}
+
 #[derive(Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
@@ -36,7 +45,7 @@ pub struct Credential<'a> {
 #[derive(Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CredentialData<'a> {
+pub struct CredentialData<'a, T> {
     /// A schema identifier to allow distinguishing sets of attributes.
     #[n(1)] schema: Option<SchemaId>,
     /// User-defined key-value pairs.
@@ -50,7 +59,9 @@ pub struct CredentialData<'a> {
     /// The time when this credential was created.
     #[n(6)] created: Timestamp,
     /// The time this credential expires.
-    #[n(7)] expires: Timestamp
+    #[n(7)] expires: Timestamp,
+    /// Term to represent the verification status type.
+    #[n(8)] status: Option<PhantomData<T>>
 }
 
 impl<'a> Credential<'a> {
@@ -63,23 +74,44 @@ impl<'a> Credential<'a> {
         }
     }
 
-    pub fn data(&self) -> &[u8] {
-        &self.data
+    /// Perform a signature check with the given identity.
+    ///
+    /// If successful, the credential data are returned.
+    pub async fn verify_signature<'b: 'a, V>(
+        &'b self,
+        issuer: &Identity<V>,
+    ) -> Result<CredentialData<'a, Verified>>
+    where
+        V: IdentityVault,
+    {
+        let dat = CredentialData::try_from(self)?;
+        let sig = Signature::new(self.signature.clone().into_owned());
+        let pky = issuer.get_public_key(&dat.issuer_key).await?;
+        if !issuer.vault().verify(&sig, &pky, &self.data).await? {
+            return Err(Error::new(
+                Origin::Application,
+                Kind::Invalid,
+                "invalid signature",
+            ));
+        }
+        Ok(CredentialData {
+            schema: dat.schema,
+            attributes: dat.attributes,
+            subject: dat.subject,
+            issuer: dat.issuer,
+            issuer_key: dat.issuer_key,
+            created: dat.created,
+            expires: dat.expires,
+            status: None::<PhantomData<Verified>>,
+        })
     }
 
     pub fn signature(&self) -> &[u8] {
         &self.signature
     }
 
-    /// Perform a signature check with the given identity.
-    pub async fn verify_signature<V>(&self, issuer: &Identity<V>) -> Result<bool>
-    where
-        V: IdentityVault,
-    {
-        let dat = CredentialData::try_from(self)?;
-        let sig = Signature::new(self.signature.clone().into_owned());
-        let pky = issuer.get_public_key(dat.issuer_key_label()).await?;
-        issuer.vault().verify(&sig, &pky, &self.data).await
+    pub fn unverified_data(&self) -> &[u8] {
+        &self.data
     }
 
     fn new<A, S>(data: A, signature: S) -> Self
@@ -96,7 +128,7 @@ impl<'a> Credential<'a> {
     }
 }
 
-impl<'a> CredentialData<'a> {
+impl<'a> CredentialData<'a, Verified> {
     pub fn schema(&self) -> Option<SchemaId> {
         self.schema
     }
@@ -130,7 +162,7 @@ impl<'a> CredentialData<'a> {
     }
 }
 
-impl<'a, 'b: 'a> TryFrom<&'b Credential<'a>> for CredentialData<'a> {
+impl<'a, 'b: 'a> TryFrom<&'b Credential<'a>> for CredentialData<'a, Unverified> {
     type Error = minicbor::decode::Error;
 
     fn try_from(value: &'b Credential<'a>) -> Result<Self, Self::Error> {
@@ -229,7 +261,7 @@ pub struct CredentialBuilder<'a> {
 
 impl<'a> CredentialBuilder<'a> {
     /// Add some key-value pair as credential attribute.
-    pub fn put(mut self, k: &'a str, v: &'a [u8]) -> Self {
+    pub fn with_attribute(mut self, k: &'a str, v: &'a [u8]) -> Self {
         self.attrs.put(k, v);
         self
     }
@@ -271,6 +303,7 @@ impl<'a> CredentialBuilder<'a> {
             issuer_key: CowStr(key_label.into()),
             created: now,
             expires: exp,
+            status: None::<PhantomData<Verified>>,
         };
         let bytes = minicbor::to_vec(&dat)?;
         let skey = issuer.get_secret_key(key_label).await?;
