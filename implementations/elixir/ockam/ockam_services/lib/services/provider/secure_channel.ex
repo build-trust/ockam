@@ -55,19 +55,6 @@ defmodule Ockam.Services.Provider.SecureChannel do
     ## TODO: make it possible to read service identity from some storage
     identity_module = Keyword.get(args, :identity_module, Ockam.Identity.default_implementation())
 
-    extra_services =
-      case identity_module do
-        Ockam.Identity.Sidecar ->
-          [
-            Ockam.Services.Provider.Sidecar.child_spec(:identity_sidecar,
-              authorization: [:is_local]
-            )
-          ]
-
-        _other ->
-          []
-      end
-
     trust_policies =
       Keyword.get(args, :trust_policies, [
         {:cached_identity, [Ockam.Identity.TrustPolicy.KnownIdentitiesEts]}
@@ -83,8 +70,7 @@ defmodule Ockam.Services.Provider.SecureChannel do
           identity_module: identity_module,
           encryption_options: [vault: vault, identity_keypair: keypair],
           address: "identity_secure_channel",
-          trust_policies: trust_policies,
-          extra_services: extra_services
+          trust_policies: trust_policies
         ],
         other_args
       )
