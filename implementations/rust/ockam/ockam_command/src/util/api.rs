@@ -93,18 +93,6 @@ pub(crate) fn delete_tcp_listener(cmd: &crate::tcp::listener::DeleteCommand) -> 
     Ok(buf)
 }
 
-/// Construct a request to create a forwarder
-pub(crate) fn create_forwarder(cmd: &crate::forwarder::CreateCommand) -> Result<Vec<u8>> {
-    let mut buf = vec![];
-    Request::builder(Method::Post, "/node/forwarder")
-        .body(models::forwarder::CreateForwarder::new(
-            cmd.address(),
-            cmd.alias(),
-        ))
-        .encode(&mut buf)?;
-    Ok(buf)
-}
-
 /// Construct a request to create a Vault
 pub(crate) fn create_vault(path: Option<String>) -> Result<Vec<u8>> {
     let mut buf = vec![];

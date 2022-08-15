@@ -6,33 +6,31 @@ use tracing::debug;
 
 use ockam_api::nodes::models::forwarder::ForwarderInfo;
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_api::{Response, Status};
+use ockam_api::{nodes::models::forwarder::CreateForwarder, Method, Request, Response, Status};
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 
-use crate::node::NodeOpts;
-use crate::util::{api, connect_to, exitcode, stop_node, DEFAULT_CLOUD_ADDRESS};
+use crate::util::{connect_to, exitcode, stop_node, DEFAULT_CLOUD_ADDRESS};
 use crate::{CommandGlobalOpts, OutputFormat};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
-    #[clap(flatten)]
-    node_opts: NodeOpts,
+    /// Node for which to create the forwarder.
+    #[clap(long = "for", name = "NODE", display_order = 900)]
+    for_node: String,
 
-    /// Ockam's cloud address.
-    #[clap(default_value = DEFAULT_CLOUD_ADDRESS)]
-    addr: MultiAddr,
+    /// Route to the node on which to create the forwarder.
+    #[clap(long, name = "ROUTE", default_value = DEFAULT_CLOUD_ADDRESS, display_order = 900)]
+    at: MultiAddr,
 
-    /// Forwarder alias. Optional{n}
-    /// If set, a static forwarder named after the passed alias will be created{n}
-    /// Otherwise, it will create an ephemeral forwarder (default)
-    alias: Option<String>,
+    /// Forwarding address.
+    address: Option<String>,
 }
 
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
         let cfg = &opts.config;
-        let port = match cfg.select_node(&cmd.node_opts.api_node) {
+        let port = match cfg.select_node(&cmd.for_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -40,14 +38,6 @@ impl CreateCommand {
             }
         };
         connect_to(port, (opts, cmd), create);
-    }
-
-    pub fn address(&self) -> &MultiAddr {
-        &self.addr
-    }
-
-    pub fn alias(&self) -> Option<&str> {
-        self.alias.as_deref()
     }
 }
 
@@ -57,10 +47,10 @@ async fn create(
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     let route: Route = base_route.modify().append(NODEMANAGER_ADDR).into();
-    debug!(?cmd, %route, "Sending request");
+    let message = make_api_request(cmd)?;
 
     let response: Vec<u8> = ctx
-        .send_and_receive(route, api::create_forwarder(&cmd)?)
+        .send_and_receive(route, message)
         .await
         .context("Failed to process request")?;
     let mut dec = Decoder::new(&response);
@@ -101,4 +91,13 @@ async fn create(
     };
 
     stop_node(ctx).await
+}
+
+/// Construct a request to create a forwarder
+pub(crate) fn make_api_request(cmd: CreateCommand) -> ockam::Result<Vec<u8>> {
+    let mut buf = vec![];
+    Request::builder(Method::Post, "/node/forwarder")
+        .body(CreateForwarder::new(&cmd.at, cmd.address.as_deref()))
+        .encode(&mut buf)?;
+    Ok(buf)
 }
