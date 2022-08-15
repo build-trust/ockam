@@ -22,7 +22,6 @@ defmodule Ockam.Services.Provider.SecureChannel do
 
   def child_spec(:identity_secure_channel, args) do
     options = service_options(:identity_secure_channel, args)
-    {extra_services, options} = Keyword.pop(options, :extra_services)
 
     ## TODO: make this more standard approach
     id =
@@ -35,10 +34,7 @@ defmodule Ockam.Services.Provider.SecureChannel do
           :identity_secure_channel
       end
 
-    extra_services ++
-      [
-        Supervisor.child_spec(Ockam.Identity.SecureChannel.listener_child_spec(options), %{id: id})
-      ]
+    Supervisor.child_spec(Ockam.Identity.SecureChannel.listener_child_spec(options), %{id: id})
   end
 
   def service_options(:secure_channel, args) do
