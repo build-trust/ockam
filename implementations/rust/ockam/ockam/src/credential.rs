@@ -11,8 +11,9 @@ use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::vault::{Signature, SignatureVec};
+use ockam_core::vault::{Signature, SignatureVec, Verifier};
 use ockam_core::{CowBytes, CowStr, Error, Result};
+use ockam_identity::change_history::IdentityChangeHistory;
 use ockam_identity::{Identity, IdentityIdentifier, IdentityVault};
 
 pub use exchange::*;
@@ -79,15 +80,16 @@ impl<'a> Credential<'a> {
     /// If successful, the credential data are returned.
     pub async fn verify_signature<'b: 'a, V>(
         &'b self,
-        issuer: &Identity<V>,
+        issuer: &IdentityChangeHistory,
+        verifier: V,
     ) -> Result<CredentialData<'a, Verified>>
     where
-        V: IdentityVault,
+        V: Verifier,
     {
         let dat = CredentialData::try_from(self)?;
         let sig = Signature::new(self.signature.clone().into_owned());
-        let pky = issuer.get_public_key(&dat.issuer_key).await?;
-        if !issuer.vault().verify(&sig, &pky, &self.data).await? {
+        let pky = issuer.get_public_key(&dat.issuer_key)?;
+        if !verifier.verify(&sig, &pky, &self.data).await? {
             return Err(Error::new(
                 Origin::Application,
                 Kind::Invalid,
