@@ -122,7 +122,6 @@ impl PublicKey {
 
 /// Binary representation of Signature.
 #[derive(Serialize, Deserialize, Clone, Debug, Zeroize)]
-#[zeroize(drop)]
 pub struct Signature(SignatureVec);
 
 impl Signature {
@@ -139,9 +138,16 @@ impl AsRef<[u8]> for Signature {
 }
 
 impl Eq for Signature {}
+
 impl PartialEq for Signature {
     fn eq(&self, o: &Self) -> bool {
         subtle::ConstantTimeEq::ct_eq(&self.0[..], &o.0[..]).into()
+    }
+}
+
+impl From<Signature> for SignatureVec {
+    fn from(sig: Signature) -> Self {
+        sig.0
     }
 }
 
