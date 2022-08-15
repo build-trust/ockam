@@ -7,7 +7,7 @@ use std::sync::Arc;
 use minicbor::Decoder;
 
 use ockam::remote::RemoteForwarder;
-use ockam::{Address, Context, Result, Route, Routed, TcpTransport, Worker};
+use ockam::{Address, Context, ForwardingService, Result, Route, Routed, TcpTransport, Worker};
 use ockam_core::compat::{boxed::Box, string::String};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::route;
@@ -195,6 +195,8 @@ impl NodeManager {
         self.start_uppercase_service_impl(ctx, "uppercase".into())
             .await?;
         self.start_echoer_service_impl(ctx, "echo".into()).await?;
+
+        ForwardingService::create(ctx).await?;
 
         let authorized_identifiers = if self.config.readlock_inner().identity_was_overridden {
             self.identity.as_ref().map(|i| {
