@@ -70,7 +70,7 @@ pub struct NodeManager {
     skip_defaults: bool,
 
     pub(crate) vault: Option<Vault>,
-    identity: Option<Arc<Identity<Vault>>>,
+    identity: Option<Identity<Vault>>,
     pub(crate) authenticated_storage: LmdbStorage,
 
     pub(crate) registry: Registry,
@@ -146,7 +146,7 @@ impl NodeManager {
         let identity_info = config.readlock_inner().identity.clone();
         let identity = match identity_info {
             Some(identity) => match vault.as_ref() {
-                Some(vault) => Some(Arc::new(Identity::import(ctx, &identity, vault).await?)),
+                Some(vault) => Some(Identity::import(ctx, &identity, vault).await?),
                 None => None,
             },
             None => None,
@@ -193,7 +193,6 @@ impl NodeManager {
         self.start_uppercase_service_impl(ctx, "uppercase".into())
             .await?;
         self.start_echoer_service_impl(ctx, "echo".into()).await?;
-        self.start_signer_service(ctx, "signer".into()).await?;
 
         ForwardingService::create(ctx).await?;
 
@@ -366,11 +365,12 @@ impl NodeManager {
             (Post, ["node", "services", "echo"]) => {
                 self.start_echoer_service(ctx, req, dec).await?.to_vec()?
             }
-            (Post, ["node", "services", "authenticator"]) => {
-                match self.start_authenticator_service(ctx, req, dec).await? {
-                    Ok(res) => res.to_vec()?,
-                    Err(res) => res.to_vec()?,
-                }
+            (Post, ["node", "services", "authenticator"]) => self
+                .start_authenticator_service(ctx, req, dec)
+                .await?
+                .to_vec()?,
+            (Post, ["node", "services", "verifier"]) => {
+                self.start_verifier_service(ctx, req, dec).await?.to_vec()?
             }
 
             // ==*== Forwarder commands ==*==

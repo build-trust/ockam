@@ -104,6 +104,15 @@ pub fn bad_request<'a>(r: &'a Request, msg: &'a str) -> ResponseBuilder<Error<'a
     Response::bad_request(r.id()).body(e)
 }
 
+/// Create an internal server error response
+pub fn internal_error<'a>(r: &'a Request, msg: &'a str) -> ResponseBuilder<Error<'a>> {
+    let mut e = Error::new(r.path()).with_message(msg);
+    if let Some(m) = r.method() {
+        e = e.with_method(m)
+    }
+    Response::internal_error(r.id()).body(e)
+}
+
 /// A request/response identifier.
 #[derive(Debug, Copy, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord)]
 #[cbor(transparent)]
@@ -281,6 +290,10 @@ impl Response {
 
     pub fn unauthorized(re: Id) -> ResponseBuilder {
         Response::builder(re, Status::Unauthorized)
+    }
+
+    pub fn forbidden(re: Id) -> ResponseBuilder {
+        Response::builder(re, Status::Forbidden)
     }
 
     pub fn internal_error(re: Id) -> ResponseBuilder {

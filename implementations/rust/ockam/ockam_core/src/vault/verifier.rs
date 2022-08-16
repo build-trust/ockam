@@ -13,3 +13,10 @@ pub trait Verifier {
         data: &[u8],
     ) -> Result<bool>;
 }
+
+#[async_trait]
+impl<V: Verifier + Send + Sync + 'static> Verifier for &V {
+    async fn verify(&self, s: &Signature, k: &PublicKey, d: &[u8]) -> Result<bool> {
+        V::verify(self, s, k, d).await
+    }
+}

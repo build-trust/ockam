@@ -3,10 +3,11 @@ use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::identity::IdentityService;
 use crate::nodes::models::services::{
-    AuthenticatorType, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
-    StartEchoerServiceRequest, StartIdentityServiceRequest, StartUppercaseServiceRequest,
-    StartVaultServiceRequest,
+    StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartEchoerServiceRequest,
+    StartIdentityServiceRequest, StartUppercaseServiceRequest, StartVaultServiceRequest,
+    StartVerifierService,
 };
+use crate::nodes::registry::VerifierServiceInfo;
 use crate::nodes::NodeManager;
 use crate::uppercase::Uppercase;
 use crate::vault::VaultService;
@@ -91,24 +92,33 @@ impl NodeManager {
         Ok(response)
     }
 
-    pub(super) async fn start_signer_service(
+    pub(super) async fn start_verifier_service<'a>(
         &mut self,
         ctx: &Context,
-        addr: Address,
-    ) -> Result<()> {
-        if self.registry.signer_service.is_some() {
-            return Err(ApiError::generic("signing service already started"));
+        req: &'a Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let body: StartVerifierService = dec.decode()?;
+        let addr: Address = body.address().into();
+
+        if self.registry.verifier_services.contains_key(&addr) {
+            return Err(ApiError::generic("verifier exists at this address"));
         }
-        let ident = if let Some(id) = &self.identity {
-            id.clone()
+
+        let vault = if let Some(v) = &self.vault {
+            v.async_try_clone().await?
         } else {
-            return Err(ApiError::generic("identity not found"));
+            return Err(ApiError::generic("vault not found"));
         };
-        let db = self.authenticated_storage.async_try_clone().await?;
-        let ss = crate::signer::Server::new(ident, db);
-        ctx.start_worker(addr.clone(), ss).await?;
-        self.registry.signer_service = Some(addr);
-        Ok(())
+
+        let vs = crate::verifier::Verifier::new(vault);
+        ctx.start_worker(addr.clone(), vs).await?;
+
+        self.registry
+            .verifier_services
+            .insert(addr, VerifierServiceInfo::default());
+
+        Ok(Response::ok(req.id()))
     }
 
     pub(super) async fn start_authenticated_service_impl(
@@ -225,37 +235,25 @@ impl NodeManager {
         Ok(response)
     }
 
-    #[allow(unused_variables)]
     pub(super) async fn start_authenticator_service<'a>(
         &mut self,
         ctx: &Context,
         req: &'a Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<Result<ResponseBuilder, ResponseBuilder<ockam_core::api::Error<'a>>>> {
-        let body: StartAuthenticatorRequest = dec.decode()?;
-        let addr: Address = body.address().into();
-        match body.typ() {
-            AuthenticatorType::Direct => {
-                #[cfg(feature = "direct-authenticator")]
-                let res = match self
-                    .start_direct_authenticator_service_impl(ctx, addr, body.admin())
-                    .await
-                {
-                    Ok(()) => Ok(Response::ok(req.id())),
-                    Err(e) => {
-                        let err = ockam_core::api::Error::new(req.path()).with_message(e.to_string());
-                        Err(Response::bad_request(req.id()).body(err))
-                    }
-                };
-                #[cfg(not(feature = "direct-authenticator"))]
-                let res = {
-                    let err = ockam_core::api::Error::new(req.path())
-                        .with_message("direct authenticator not available");
-                    Err(Response::not_implemented(req.id()).body(err))
-                };
-                Ok(res)
-            }
+    ) -> Result<ResponseBuilder> {
+        #[cfg(not(feature = "direct-authenticator"))]
+        return Err(ApiError::generic("direct authenticator not available"));
+
+        #[cfg(feature = "direct-authenticator")]
+        {
+            let body: StartAuthenticatorRequest = dec.decode()?;
+            let addr: Address = body.address().into();
+
+            self.start_direct_authenticator_service_impl(ctx, addr, body.path(), body.project())
+                .await?;
         }
+
+        Ok(Response::ok(req.id()))
     }
 
     #[cfg(feature = "direct-authenticator")]
@@ -263,28 +261,20 @@ impl NodeManager {
         &mut self,
         ctx: &Context,
         addr: Address,
-        admin: Option<ockam_identity::IdentityIdentifier>
+        path: &std::path::Path,
+        proj: &[u8],
     ) -> Result<()> {
         use crate::nodes::registry::AuthenticatorServiceInfo;
-
         if self.registry.authenticator_service.contains_key(&addr) {
             return Err(ApiError::generic("authenticator service already started"));
         }
-        if let Some(a) = &self.registry.signer_service {
-            let ms = self.authenticated_storage.async_try_clone().await?;
-            let es = ockam::authenticated_storage::InMemoryStorage::new();
-            let sc = crate::signer::Client::new(a.clone().into(), ctx).await?;
-            let mut au = crate::authenticator::direct::Server::new(ms, es, sc);
-            if let Some(a) = admin {
-                au.set_admin(&a)
-            }
-            ctx.start_worker(addr.clone(), au).await?;
-            self.registry
-                .authenticator_service
-                .insert(addr, AuthenticatorServiceInfo::default());
-            Ok(())
-        } else {
-            Err(ApiError::generic("authenticator depends on signer service"))
-        }
+        let db = self.authenticated_storage.async_try_clone().await?;
+        let id = self.identity()?.async_try_clone().await?;
+        let au = crate::authenticator::direct::Server::new(proj.to_vec(), db, path, id);
+        ctx.start_worker(addr.clone(), au).await?;
+        self.registry
+            .authenticator_service
+            .insert(addr, AuthenticatorServiceInfo::default());
+        Ok(())
     }
 }

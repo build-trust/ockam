@@ -1,11 +1,10 @@
-use minicbor::{Decode, Encode};
+use std::path::Path;
+
+use minicbor::{bytes::ByteSlice, Decode, Encode};
 use ockam_core::compat::borrow::Cow;
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-use ockam_identity::IdentityIdentifier;
-
-use crate::CowStr;
 
 /// Request body when instructing a node to start a Vault service
 #[derive(Debug, Clone, Decode, Encode)]
@@ -113,46 +112,54 @@ impl<'a> StartEchoerServiceRequest<'a> {
 pub struct StartAuthenticatorRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<4724285>,
-    #[b(1)] addr: Cow<'a, str>,
-    #[n(2)] typ: AuthenticatorType,
-    #[b(3)] admin: Option<CowStr<'a>> // TODO: use identity ID
-}
-
-#[derive(Debug, Clone, Copy, Decode, Encode)]
-#[cbor(index_only)]
-pub enum AuthenticatorType {
-    #[n(0)]
-    Direct,
+    #[b(1)] addr: &'a str,
+    #[b(2)] path: &'a Path,
+    #[b(3)] proj: &'a ByteSlice
 }
 
 impl<'a> StartAuthenticatorRequest<'a> {
-    pub fn new(addr: impl Into<Cow<'a, str>>, typ: AuthenticatorType) -> Self {
+    pub fn new(addr: &'a str, path: &'a Path, proj: &'a [u8]) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr: addr.into(),
-            typ,
-            admin: None
+            addr,
+            path,
+            proj: proj.into(),
         }
     }
-    
-    pub fn set_admin(&mut self, id: &IdentityIdentifier) {
-        self.admin = Some(CowStr(id.to_string().into()))
+
+    pub fn address(&self) -> &'a str {
+        self.addr
     }
 
-    pub fn address(&self) -> &str {
-        &self.addr
+    pub fn path(&self) -> &'a Path {
+        self.path
     }
 
-    pub fn typ(&self) -> AuthenticatorType {
-        self.typ
+    pub fn project(&self) -> &'a [u8] {
+        self.proj
     }
-    
-    pub fn admin(&self) -> Option<IdentityIdentifier> {
-        if let Some(a) = &self.admin {
-            IdentityIdentifier::try_from(&**a).ok()
-        } else {
-            None
+}
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartVerifierService<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<9580740>,
+    #[b(1)] addr: &'a str,
+}
+
+impl<'a> StartVerifierService<'a> {
+    pub fn new(addr: &'a str) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr,
         }
+    }
+
+    pub fn address(&self) -> &'a str {
+        self.addr
     }
 }

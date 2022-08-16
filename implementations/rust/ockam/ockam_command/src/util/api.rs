@@ -201,7 +201,7 @@ pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
 pub(crate) mod enroll {
     use crate::enroll::*;
     use anyhow::anyhow;
-    use ockam_api::auth::types::Attributes;
+    use ockam::credential::Attributes;
     use ockam_api::cloud::enroll::auth0::{Auth0Token, AuthenticateAuth0Token};
     use ockam_api::cloud::enroll::*;
 

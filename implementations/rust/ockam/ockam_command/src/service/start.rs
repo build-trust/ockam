@@ -1,12 +1,13 @@
+use std::path::PathBuf;
+
 use crate::node::NodeOpts;
 use crate::util::{api, connect_to, exitcode, stop_node};
 use crate::CommandGlobalOpts;
 use anyhow::{anyhow, Context};
 use clap::{Args, Subcommand};
 use minicbor::Decoder;
-use ockam::identity::IdentityIdentifier;
 use ockam_api::error::ApiError;
-use ockam_api::nodes::models::services::{AuthenticatorType, StartAuthenticatorRequest};
+use ockam_api::nodes::models::services::{StartAuthenticatorRequest, StartVerifierService};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{Error, Method, Request, Response, Status};
 use ockam_core::Route;
@@ -32,15 +33,19 @@ pub enum StartSubCommand {
     Authenticated {
         addr: Option<String>,
     },
+    Verifier {
+        #[clap(long, default_value = "verifier")]
+        addr: String,
+    },
     Authenticator {
         #[clap(long, default_value = "authenticator")]
         addr: String,
 
-        #[clap(long, default_value = "direct")]
-        authenticator_type: String,
-        
         #[clap(long)]
-        admin: Option<String>
+        enrollers: PathBuf,
+
+        #[clap(long)]
+        project: String,
     },
 }
 
@@ -61,6 +66,7 @@ impl StartCommand {
             StartSubCommand::Authenticated { .. } => {
                 connect_to(port, command, start_authenticated_service)
             }
+            StartSubCommand::Verifier { .. } => connect_to(port, command, start_verifier_service),
             StartSubCommand::Authenticator { .. } => {
                 connect_to(port, command, start_authenticator_service)
             }
@@ -220,32 +226,65 @@ pub async fn start_authenticated_service(
     stop_node(ctx).await
 }
 
+pub async fn start_verifier_service(
+    ctx: ockam::Context,
+    cmd: StartCommand,
+    mut route: Route,
+) -> anyhow::Result<()> {
+    let addr = match cmd.create_subcommand {
+        StartSubCommand::Verifier { addr } => addr,
+        _ => unreachable!(),
+    };
+
+    let req = Request::builder(Method::Post, "/node/services/verifier")
+        .body(StartVerifierService::new(&addr))
+        .to_vec()?;
+
+    let res: Vec<u8> = ctx
+        .send_and_receive(route.modify().append(NODEMANAGER_ADDR), req)
+        .await?;
+
+    let mut dec = Decoder::new(&res);
+    let hdr: Response = dec.decode()?;
+
+    if let Some(Status::Ok) = hdr.status() {
+        println!("Verifier service started at address: {addr}");
+        return stop_node(ctx).await;
+    }
+
+    if hdr.has_body() {
+        if let Ok(err) = dec.decode::<Error>() {
+            if let Some(msg) = err.message() {
+                eprintln!("Failed to start verifier service: {}", msg);
+                return stop_node(ctx).await;
+            }
+        }
+    }
+
+    eprintln!("Failed to start verifier service");
+    stop_node(ctx).await
+}
+
 pub async fn start_authenticator_service(
     ctx: ockam::Context,
     cmd: StartCommand,
     mut route: Route,
 ) -> anyhow::Result<()> {
-    let (addr, ty, admin) = match cmd.create_subcommand {
+    let (addr, enrollers, project) = match cmd.create_subcommand {
         StartSubCommand::Authenticator {
-            addr,
-            authenticator_type,
-            admin
-        } => match authenticator_type.to_ascii_lowercase().as_str() {
-            "direct" => {
-                let admin = if let Some(a) = admin {
-                    Some(IdentityIdentifier::try_from(a)?)
-                } else {
-                    None
-                };
-                (addr, AuthenticatorType::Direct, admin)
-            }
-            other => return Err(anyhow!("unknown authenticator type: {other}")),
-        },
+            addr: a,
+            enrollers: e,
+            project: p,
+        } => (a, e, p),
         _ => unreachable!(),
     };
 
     let req = Request::builder(Method::Post, "/node/services/authenticator")
-        .body(StartAuthenticatorRequest::new(addr.clone(), ty))
+        .body(StartAuthenticatorRequest::new(
+            &addr,
+            &enrollers,
+            project.as_bytes(),
+        ))
         .to_vec()?;
 
     let res: Vec<u8> = ctx

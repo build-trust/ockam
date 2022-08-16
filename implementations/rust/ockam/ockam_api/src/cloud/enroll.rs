@@ -32,13 +32,13 @@ mod node {
     use ockam_core::{self, Result, Route};
     use ockam_node::Context;
 
-    use crate::auth::types::Attributes;
     use crate::cloud::enroll::auth0::AuthenticateAuth0Token;
     use crate::cloud::enroll::enrollment_token::{
         AuthenticateEnrollmentToken, EnrollmentToken, RequestEnrollmentToken,
     };
     use crate::cloud::CloudRequestWrapper;
     use crate::nodes::NodeManager;
+    use ockam::credential::Attributes;
 
     use super::*;
 
@@ -210,9 +210,8 @@ pub mod auth0 {
 }
 
 pub mod enrollment_token {
+    use ockam::credential::Attributes;
     use serde::Serialize;
-
-    use crate::auth::types::Attributes;
 
     use super::*;
 

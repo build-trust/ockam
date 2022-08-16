@@ -83,7 +83,7 @@ impl<'a> Credential<'a> {
     pub async fn verify_signature<'b: 'a, V>(
         &'b self,
         issuer: &IdentityChangeHistory,
-        verifier: &V,
+        verifier: V,
     ) -> Result<CredentialData<'a, Verified>>
     where
         V: Verifier,
@@ -164,12 +164,18 @@ impl<'a> CredentialData<'a, Verified> {
         self.expires
     }
 
-    pub fn is_expired(&self) -> bool {
-        self.created < self.expires
-    }
-
     pub fn attributes(&self) -> &Attributes<'_> {
         &self.attributes
+    }
+
+    pub fn into_attributes(self) -> Attributes<'a> {
+        self.attributes
+    }
+}
+
+impl<'a> CredentialData<'a, Unverified> {
+    pub fn unverfied_issuer(&self) -> &IdentityIdentifier {
+        &self.issuer
     }
 }
 

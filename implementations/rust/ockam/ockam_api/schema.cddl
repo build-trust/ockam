@@ -55,7 +55,7 @@ message = text
 
 attributes = {
     ?0: 4724285,
-     1: {+ text => bytes }
+     1: {* text => bytes }
 }
 
 attribute = {
@@ -191,39 +191,41 @@ request_enrollment_token = {
      1: attributes
 }
 
-;;; Signer ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-sign_request = attributes
+;;; Credential ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 credential = {
     ?0: 3796735,
-     1: bytes, ;; CBOR-encoded attributes
-     2: credential_signature
+     1: credential_data_bytes,
+     2: credential_signature_bytes
 }
 
-credential_signature = [
-    0: identity_id,
-    1: credential_signature_bytes
-]
-
+credential_data_bytes = bytes
 credential_signature_bytes = bytes
 
-add-identity = {
-    ?0: 1544679,
-     1: identity
+credential_data = {
+    ?1: uint,        ;; schema id
+     2: attributes,
+     3: identity_id, ;; subject
+     4: identity_id, ;; issuer
+     5: text,        ;; issuer key label
+     6: uint,        ;; POSIX timestamp (created)
+     7: uint         ;; POSIX timestamp (expiry)
 }
 
-get-identity-response = {
-    ?0: 9967409,
-     1: identity
+verify_request = {
+    ?0: 6844116,
+     1: credential,
+     2: identity_id,                ;; subject
+     3: { identity_id => identity } ;; acceptable identities
+}
+
+verify_response = {
+    ?0: 6845123,
+     1: attributes,
+     2: uint        ;; expiration timestamp
 }
 
 ;;; Authenticator ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-add_enroller = {
-    ?0: 1010815,
-     1: identity_id,
-}
 
 add_member = {
     ?0: 2820828,
