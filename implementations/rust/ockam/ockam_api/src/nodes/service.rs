@@ -249,15 +249,29 @@ impl NodeManager {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
-        let CreateForwarder { address, alias, .. } = dec.decode()?;
+        let CreateForwarder {
+            address,
+            alias,
+            at_rust_node,
+            ..
+        } = dec.decode()?;
         let addr = MultiAddr::try_from(address.0.as_ref()).map_err(map_multiaddr_err)?;
         let route = crate::multiaddr_to_route(&addr)
             .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
         debug!(%addr, ?alias, "Handling CreateForwarder request");
+
         let forwarder = match alias {
-            Some(alias) => RemoteForwarder::create_static(ctx, route, alias.to_string()).await,
+            Some(alias) => {
+                if at_rust_node {
+                    RemoteForwarder::create_static_without_heartbeats(ctx, route, alias.to_string())
+                        .await
+                } else {
+                    RemoteForwarder::create_static(ctx, route, alias.to_string()).await
+                }
+            }
             None => RemoteForwarder::create(ctx, route).await,
         };
+
         match forwarder {
             Ok(info) => {
                 let b = ForwarderInfo::from(info);

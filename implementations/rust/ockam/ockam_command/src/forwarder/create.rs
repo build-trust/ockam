@@ -25,6 +25,11 @@ pub struct CreateCommand {
     at: MultiAddr,
 
     /// Forwarding address.
+    #[clap(long = "from", display_order = 900)]
+    from: Option<String>,
+
+    /// Forwarding address.
+    #[clap(hide = true)]
     address: Option<String>,
 }
 
@@ -91,9 +96,18 @@ async fn create(
 
 /// Construct a request to create a forwarder
 pub(crate) fn make_api_request(cmd: CreateCommand) -> ockam::Result<Vec<u8>> {
+    let (at_rust_node, address) = match &cmd.from {
+        Some(_s) => (true, &cmd.from),
+        None => (false, &cmd.address),
+    };
+
     let mut buf = vec![];
     Request::builder(Method::Post, "/node/forwarder")
-        .body(CreateForwarder::new(&cmd.at, cmd.address.as_deref()))
+        .body(CreateForwarder::new(
+            &cmd.at,
+            address.as_deref(),
+            at_rust_node,
+        ))
         .encode(&mut buf)?;
     Ok(buf)
 }
