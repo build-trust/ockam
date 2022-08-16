@@ -18,15 +18,18 @@ pub struct CreateForwarder<'a> {
     #[b(1)] pub(crate) address: CowStr<'a>,
     /// Forwarder alias
     #[n(2)] pub(crate) alias: Option<CowStr<'a>>,
+    /// Forwarding service is at rust node
+    #[n(3)] pub(crate) at_rust_node: bool,
 }
 
 impl<'a> CreateForwarder<'a> {
-    pub fn new(address: &MultiAddr, alias: Option<&'a str>) -> Self {
+    pub fn new(address: &MultiAddr, alias: Option<&'a str>, at_rust_node: bool) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: Default::default(),
             address: address.to_string().into(),
             alias: alias.map(|s| s.into()),
+            at_rust_node,
         }
     }
 }
@@ -103,6 +106,7 @@ mod tests {
                 .body(CreateForwarder::new(
                     &route_to_multiaddr(&route).unwrap(),
                     None,
+                    false,
                 ))
                 .encode(&mut buf)?;
             buf

@@ -1,4 +1,5 @@
 use crate::Context;
+use core::str::from_utf8;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{Address, Any, LocalMessage, Result, Route, Routed, TransportMessage, Worker};
 use tracing::info;
@@ -52,11 +53,22 @@ impl Forwarder {
         forward_route: Route,
         registration_payload: Vec<u8>,
     ) -> Result<()> {
+        let random_address = Address::random_local();
+
+        // TODO: assume that the first byte is length, ignore it.
+        // We have to improve this actually parse the payload.
+        let address = match registration_payload.get(1..) {
+            Some(address) => match from_utf8(address) {
+                Ok(v) => Address::from_string(v),
+                Err(_e) => random_address,
+            },
+            None => random_address,
+        };
         info!("Created new alias for {}", forward_route);
-        let address = Address::random_local();
+
         let forwarder = Self {
             forward_route,
-            payload: Some(registration_payload),
+            payload: Some(registration_payload.clone()),
         };
         ctx.start_worker(address, forwarder).await?;
 
@@ -77,7 +89,6 @@ impl Worker for Forwarder {
         let msg = TransportMessage::v1(self.forward_route.clone(), ctx.address(), payload);
 
         ctx.forward(LocalMessage::new(msg, Vec::new())).await?;
-
         Ok(())
     }
 

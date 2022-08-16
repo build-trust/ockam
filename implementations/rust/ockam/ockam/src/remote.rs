@@ -172,6 +172,48 @@ impl RemoteForwarder {
 
         Ok(resp)
     }
+
+    /// Create and start new static RemoteForwarder without heart beats
+    pub async fn create_static_without_heartbeats(
+        ctx: &Context,
+        hub_route: impl Into<Route>,
+        alias: impl Into<String>,
+    ) -> Result<RemoteForwarderInfo> {
+        let address: Address = random();
+        let mut child_ctx = ctx.new_detached(address).await?;
+
+        let addresses: Addresses = random();
+
+        let registration_route = hub_route
+            .into()
+            .modify()
+            .append("forwarding_service")
+            .into();
+
+        // let remote_address = Address::random_local().without_type().to_string();
+        let forwarder = Self::new(
+            addresses.clone(),
+            registration_route,
+            alias.into(),
+            child_ctx.address(),
+            None,
+            Duration::from_secs(10),
+        );
+
+        debug!(
+            "Starting ephemeral RemoteForwarder at {}",
+            &addresses.main_address
+        );
+        ctx.start_worker(addresses.main_address, forwarder).await?;
+
+        let resp = child_ctx
+            .receive::<RemoteForwarderInfo>()
+            .await?
+            .take()
+            .body();
+
+        Ok(resp)
+    }
 }
 
 #[crate::worker]
