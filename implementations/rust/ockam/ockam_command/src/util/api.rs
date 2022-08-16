@@ -1,6 +1,6 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 
-use crate::util::DEFAULT_CLOUD_ADDRESS;
+use crate::util::DEFAULT_ORCHESTRATOR_ADDRESS;
 // TODO: maybe we can remove this cross-dependency inside the CLI?
 use minicbor::Decoder;
 
@@ -452,7 +452,7 @@ pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Resu
 #[derive(Clone, Debug, Args)]
 pub struct CloudOpts {
     /// Ockam cloud node's address
-    #[clap(global = true, default_value = DEFAULT_CLOUD_ADDRESS)]
+    #[clap(global = true, default_value = DEFAULT_ORCHESTRATOR_ADDRESS)]
     pub addr: MultiAddr,
 }
 
