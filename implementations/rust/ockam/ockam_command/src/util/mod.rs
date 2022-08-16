@@ -147,3 +147,23 @@ pub fn setup_logging(verbose: u8, no_color: bool) {
 pub fn print_path(p: &Path) -> String {
     p.to_str().unwrap_or("<unprintable>").to_string()
 }
+
+pub fn get_node_name_from_path(input_path: &String) -> Option<String> {
+    //  Get Node name from Node Path
+    //  if Input path has "/", we split the path and return the final element
+    //  if the final element is empty string, we return None
+    if input_path.contains("/") {
+        let split_path: Vec<&str> = input_path.split("/").collect();
+        match split_path.last() {
+            Some(last_value) if *last_value == "" => {
+                eprintln!("Invalid Node Format");
+                std::process::exit(exitcode::IOERR);
+            }
+            Some(last_value) => {
+                return Some(last_value.to_string());
+            }
+            None => return None,
+        };
+    }
+    None
+}
