@@ -15,7 +15,13 @@ defmodule Ockam.Message do
   return_route is `[my_address]`
   """
   def reply(message, my_address, payload) do
-    %{message | onward_route: return_route(message), return_route: [my_address], payload: payload}
+    reply_route = return_route(message)
+
+    %Ockam.Message{
+      onward_route: reply_route,
+      return_route: [my_address],
+      payload: payload
+    }
   end
 
   @doc """
