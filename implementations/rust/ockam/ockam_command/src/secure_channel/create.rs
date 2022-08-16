@@ -1,3 +1,4 @@
+use crate::util::get_node_name_from_path;
 use crate::util::{api, connect_to, exitcode, stop_node};
 use crate::CommandGlobalOpts;
 use anyhow::{anyhow, Context};
@@ -42,7 +43,8 @@ pub struct SecureChannelNodeOpts {
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) -> anyhow::Result<()> {
         let cfg = opts.config;
-        let port = match cfg.select_node(&command.node_opts.from) {
+        let input_value = get_node_name_from_path(&command.node_opts.from);
+        let port = match cfg.select_node(input_value) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -57,6 +59,9 @@ impl CreateCommand {
                     eprintln!("failed to normalize MultiAddr route");
                     std::process::exit(exitcode::USAGE);
                 }
+            },
+            node_opts: SecureChannelNodeOpts {
+                from: input_value.to_string(),
             },
             ..command
         };
