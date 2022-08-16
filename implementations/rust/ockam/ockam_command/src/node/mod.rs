@@ -15,7 +15,32 @@ use stop::StopCommand;
 use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
 
+const EXAMPLES: &str = "\
+EXAMPLES
+
+    # Create a node
+    $ ockam node create n1
+
+    # Send a message to the uppercase service worker in that node
+    $ ockam message send \"hello ockam\" --to /node/n1/service/uppercase
+    HELLO OCKAM
+
+    # Delete the node
+    $ ockam node delete n1
+
+LEARN MORE
+";
+
 #[derive(Clone, Debug, Args)]
+/// Manage nodes
+///
+/// An Ockam node is any running application that can communicate with other
+/// applications using various Ockam protocols like Routing, Secure Channels, Forwarding etc.
+///
+/// Ockam nodes run very lightweight, concurrent, stateful actors called Ockam Workers.
+/// Workers have addresses and a node can deliver messages to workers on the same node or on
+/// a different node.
+#[clap(help_template = const_str::replace!(HELP_TEMPLATE, "LEARN MORE", EXAMPLES))]
 pub struct NodeCommand {
     #[clap(subcommand)]
     subcommand: NodeSubcommand,
@@ -23,8 +48,7 @@ pub struct NodeCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum NodeSubcommand {
-    /// Create a node.
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    #[clap(display_order = 900)]
     Create(CreateCommand),
 
     /// Delete a node.
@@ -39,11 +63,11 @@ pub enum NodeSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Show(ShowCommand),
 
-    /// Start a node that was previously created
+    /// Start a, previously created, node.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Start(StartCommand),
 
-    /// Stop a node that was previously created
+    /// Stop a, previously created, node.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Stop(StopCommand),
 }

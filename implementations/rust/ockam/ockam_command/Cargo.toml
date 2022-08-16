@@ -50,6 +50,7 @@ async-recursion = { version = "1.0.0" }
 async-trait = "0.1"
 clap = { version = "3", features = ["derive", "cargo", "wrap_help"] }
 cli-table = "0.4"
+const-str = "0.4.3"
 crossbeam-channel = "0.5"
 dialoguer = "0.10"
 directories = "4"
