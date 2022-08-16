@@ -60,15 +60,10 @@ async fn create(
     let res = match header.status() {
         Some(Status::Ok) => {
             let body = dec.decode::<ForwarderInfo>()?;
+            let address = format!("/service/{}", body.remote_address());
             let output = match opts.global_args.output_format {
-                OutputFormat::Plain => format!(
-                    "Forwarder created! You can send messages to it via this address:\n{}",
-                    body.remote_address()
-                ),
-                OutputFormat::Json => json!({
-                    "remote_address": body.remote_address(),
-                })
-                .to_string(),
+                OutputFormat::Plain => address,
+                OutputFormat::Json => json!({ "remote_address": address }).to_string(),
             };
             Ok(output)
         }
