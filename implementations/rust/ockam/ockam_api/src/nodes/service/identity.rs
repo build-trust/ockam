@@ -8,13 +8,12 @@ use ockam::identity::{Identity, IdentityIdentifier};
 use ockam::vault::Vault;
 use ockam::{Context, Result};
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 
 impl NodeManager {
     pub(crate) fn identity(&self) -> Result<&Identity<Vault>> {
         self.identity
-            .as_deref()
+            .as_ref()
             .ok_or_else(|| ApiError::generic("Identity doesn't exist"))
     }
 
@@ -45,7 +44,7 @@ impl NodeManager {
         self.config.inner().write().unwrap().identity = Some(exported_identity);
         self.config.atomic_update().run().map_err(map_anyhow_err)?;
 
-        self.identity = Some(Arc::new(identity));
+        self.identity = Some(identity);
 
         Ok(identifier)
     }

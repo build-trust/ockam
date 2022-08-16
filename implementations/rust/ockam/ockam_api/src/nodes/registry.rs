@@ -51,6 +51,9 @@ pub(crate) struct UppercaseServiceInfo {}
 pub(crate) struct EchoerServiceInfo {}
 
 #[derive(Default)]
+pub(crate) struct VerifierServiceInfo {}
+
+#[derive(Default)]
 pub(crate) struct AuthenticatorServiceInfo {}
 
 pub(crate) struct InletInfo {
@@ -75,7 +78,7 @@ pub(crate) struct Registry {
     pub(crate) authenticated_services: BTreeMap<Address, AuthenticatedServiceInfo>,
     pub(crate) uppercase_services: BTreeMap<Address, UppercaseServiceInfo>,
     pub(crate) echoer_services: BTreeMap<Address, EchoerServiceInfo>,
-    pub(crate) signer_service: Option<Address>,
+    pub(crate) verifier_services: BTreeMap<Address, VerifierServiceInfo>,
     #[cfg(feature = "direct-authenticator")]
     pub(crate) authenticator_service: BTreeMap<Address, AuthenticatorServiceInfo>,
 

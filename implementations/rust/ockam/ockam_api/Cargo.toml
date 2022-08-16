@@ -12,15 +12,17 @@ publish = true
 [features]
 std = [
     "data-encoding/std",
+    "either/use_std",
     "minicbor/std",
     "ockam_core/std",
     "ockam_identity/std",
+    "ockam_multiaddr/std",
     "ockam_node/std",
     "ockam_vault/std",
     "tinyvec/std",
     "tracing/std"
 ]
-tag                  = ["cddl-cat"]
+tag                  = ["cddl-cat", "ockam_core/tag"]
 vault-storage        = ["ockam_vault/storage"]
 lmdb                 = ["std", "lmdb-rkv"]
 authenticators       = ["direct-authenticator"]
@@ -29,8 +31,9 @@ default              = ["lmdb"]
 
 [dependencies]
 ockam           = { path = "../ockam", version = "^0.70.0", features = ["software_vault"] }
+either          = { version = "1.7.0", default-features = false }
 data-encoding   = { version = "2.3.2", default-features = false, features = ["alloc"] }
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.4.0", features = ["std"] }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.4.0" }
 cddl-cat        = { version = "0.6.1", optional = true }
 minicbor        = { version = "0.18.0", features = ["alloc", "derive"] }
 rust-embed      = "6"
