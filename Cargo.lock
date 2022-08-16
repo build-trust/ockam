@@ -615,6 +615,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "const-str"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f421161cb492475f1661ddc9815a745a1c894592070661180fdec3d4872e9c3"
+
+[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2192,6 +2198,7 @@ dependencies = [
  "clap 3.2.4",
  "cli-table",
  "colorful",
+ "const-str",
  "crossbeam-channel",
  "dialoguer",
  "directories",

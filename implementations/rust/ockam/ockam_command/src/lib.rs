@@ -66,6 +66,21 @@ FEEDBACK
     on Github https://github.com/build-trust/ockam/discussions/new
 ";
 
+const EXAMPLES: &str = "\
+EXAMPLES
+
+    # Create three local Ockam nodes n1, n2 & n3
+    $ for i in {1..3}; do ockam node create \"n$i\"; done
+
+    # Create a mutually authenticated, authorized, end-to-end encrypted secure channel
+    # and send an end-to-end encrypted message through it.
+    $ ockam secure-channel create --from n1 --to /node/n2/node/n3/service/api \\
+         | ockam message send \"hello ockam\" --from n1 --to -/service/uppercase
+    HELLO OCKAM
+
+LEARN MORE
+";
+
 fn long_version() -> &'static str {
     let crate_version = crate_version!();
     let git_hash = env!("GIT_HASH");
@@ -78,6 +93,11 @@ fn long_version() -> &'static str {
 }
 
 /// Work seamlessly with Ockam from the command line.
+///
+/// Ockam is a suite of open source tools, programming libraries
+/// and cloud services to orchestrate end-to-end encryption, mutual
+/// authentication, key management, credential management & authorization
+/// policy enforcement — at scale.
 #[derive(Debug, Parser)]
 #[clap(
     name = "ockam",
@@ -85,7 +105,8 @@ fn long_version() -> &'static str {
     long_version = long_version(),
     propagate_version(true),
     color(ColorChoice::Never),
-    help_template = HELP_TEMPLATE,
+    term_width = 100,
+    help_template = const_str::replace!(HELP_TEMPLATE, "LEARN MORE", EXAMPLES),
 )]
 pub struct OckamCommand {
     #[clap(subcommand)]
@@ -147,45 +168,44 @@ impl CommandGlobalOpts {
 
 #[derive(Debug, Subcommand)]
 pub enum OckamSubcommand {
-    /// Create forwarders
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    Forwarder(ForwarderCommand),
-
-    /// Send or receive messages
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    Message(MessageCommand),
-
-    /// Create, update or delete nodes
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    #[clap(display_order = 800)]
     Node(NodeCommand),
 
-    /// Create, update, or delete tcp connections
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    TcpConnection(TcpConnectionCommand),
-
-    /// Manage TCP Inlets
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    TcpInlet(TcpInletCommand),
-
-    /// Create, update, or delete tcp listeners
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    TcpListener(TcpListenerCommand),
-
-    /// Manage TCP Outlets
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    TcpOutlet(TcpOutletCommand),
-
-    /// Manage Identities
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    /// Manage identities
+    #[clap(display_order = 801, help_template = HELP_TEMPLATE)]
     Identity(IdentityCommand),
 
-    /// Manage Secure Channels
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    /// Manage secure channels
+    #[clap(display_order = 802, help_template = HELP_TEMPLATE)]
     SecureChannel(SecureChannelCommand),
 
-    /// Manage Secure Channel Listeners
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    /// Manage secure channel listeners
+    #[clap(display_order = 803, help_template = HELP_TEMPLATE)]
     SecureChannelListener(SecureChannelListenerCommand),
+
+    /// Manage forwarders
+    #[clap(display_order = 804, help_template = HELP_TEMPLATE)]
+    Forwarder(ForwarderCommand),
+
+    /// Manage tcp connections
+    #[clap(display_order = 805, help_template = HELP_TEMPLATE)]
+    TcpConnection(TcpConnectionCommand),
+
+    /// Manage tcp inlets
+    #[clap(display_order = 806, help_template = HELP_TEMPLATE)]
+    TcpInlet(TcpInletCommand),
+
+    /// Manage tcp listeners
+    #[clap(display_order = 807, help_template = HELP_TEMPLATE)]
+    TcpListener(TcpListenerCommand),
+
+    /// Manage tcp outlets
+    #[clap(display_order = 808, help_template = HELP_TEMPLATE)]
+    TcpOutlet(TcpOutletCommand),
+
+    /// Send or receive messages
+    #[clap(display_order = 809, help_template = HELP_TEMPLATE)]
+    Message(MessageCommand),
 
     // HIDDEN
     /// Manage ockam node configuration values

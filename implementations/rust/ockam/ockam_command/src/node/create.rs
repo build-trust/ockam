@@ -17,7 +17,7 @@ use crate::{
         connect_to, embedded_node, find_available_port, startup, ComposableSnippet, OckamConfig,
         Operation,
     },
-    CommandGlobalOpts,
+    CommandGlobalOpts, HELP_TEMPLATE,
 };
 use ockam::identity::Identity;
 use ockam::{Context, TcpTransport};
@@ -30,30 +30,56 @@ use ockam_api::{
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
+const EXAMPLES: &str = "\
+EXAMPLES
+
+    # Create a node, with a generated name
+    $ ockam node create
+
+    # Create a node, with a specified name - n1
+    $ ockam node create n1
+
+    # Create a node, with a specified tcp listener address
+    $ ockam node create n1 --tcp-listener-address 127.0.0.1:6001
+
+    # Create a node, and run it in the foreground with verbose traces
+    $ ockam node create n1 --foreground -vvv
+
+LEARN MORE
+";
+
 #[derive(Clone, Debug, Args)]
+/// Create a node.
+#[clap(help_template = const_str::replace!(HELP_TEMPLATE, "LEARN MORE", EXAMPLES))]
 pub struct CreateCommand {
-    /// Name of the node.
-    #[clap(default_value_t = hex::encode(&random::<[u8;4]>()))]
+    /// Name of the node (Optional).
+    #[clap(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
     node_name: String,
 
-    /// Spawn a node in the foreground.
+    /// Run the node in foreground.
     #[clap(display_order = 900, long, short)]
     foreground: bool,
 
-    /// Skip creation of default Vault and Identity
-    #[clap(display_order = 901, long, short)]
-    skip_defaults: bool,
-
-    /// Specify the TCP listener address
-    #[clap(default_value = "127.0.0.1:0", long, short)]
+    /// TCP listener address
+    #[clap(
+        display_order = 900,
+        long,
+        short,
+        name = "SOCKET_ADDRESS",
+        default_value = "127.0.0.1:0"
+    )]
     tcp_listener_address: String,
+
+    /// Skip creation of default Vault and Identity
+    #[clap(long, short, hide = true)]
+    skip_defaults: bool,
 
     /// JSON config to setup a foreground node
     ///
     /// This argument is currently ignored on background nodes.  Node
     /// configuration is run asynchronously and may take several
     /// seconds to complete.
-    #[clap(long)]
+    #[clap(long, hide = true)]
     launch_config: Option<PathBuf>,
 
     #[clap(long, hide = true)]
