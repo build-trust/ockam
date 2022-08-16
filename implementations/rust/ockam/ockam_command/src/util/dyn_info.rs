@@ -1,20 +1,20 @@
 use colorful::Colorful;
-use std::fmt;
+use std::fmt::{self, Write as _};
 #[derive(Debug, Clone)]
-pub struct DynNodeInfo {
-    name: String,
-    status: String,
-    services: Vec<NodeService>,
-    secure_channel_addr_listener: String,
+pub struct DynNodeInfo<'a> {
+    name: &'a str,
+    status: &'a str,
+    services: Vec<NodeService<'a>>,
+    secure_channel_addr_listener: &'a str,
 }
 
 #[derive(Debug, Clone)]
-pub struct NodeService {
+pub struct NodeService<'a> {
     service_type: ServiceType,
-    address: String,
-    route: Option<String>,
-    identity: Option<String>,
-    auth_identity: Option<Vec<String>>,
+    address: &'a str,
+    route: Option<&'a str>,
+    identity: Option<&'a str>,
+    auth_identity: Option<Vec<&'a str>>,
 }
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -35,41 +35,41 @@ pub enum ServiceType {
 //     NONE,
 // }
 
-impl DynNodeInfo {
+impl<'a> DynNodeInfo<'a> {
     /// Name of the Node
-    pub fn new(name: String) -> Self {
+    pub fn new(name: &'a str) -> Self {
         Self {
             name,
-            status: String::new(),
+            status: "",
             services: Vec::new(),
-            secure_channel_addr_listener: String::new(),
+            secure_channel_addr_listener: "",
         }
     }
     /// Status can either be UP, DOWN, TODO
-    pub fn status(mut self, status: String) -> Self {
+    pub fn status(mut self, status: &'a str) -> Self {
         self.status = status;
         self
     }
 
     /// Use NodeService::new()
-    pub fn service(mut self, service: NodeService) -> Self {
+    pub fn service(mut self, service: NodeService<'a>) -> Self {
         self.services.push(service);
         self
     }
 
-    pub fn secure_channel_addr_listener(mut self, addr: String) -> Self {
+    pub fn secure_channel_addr_listener(mut self, addr: &'a str) -> Self {
         self.secure_channel_addr_listener = addr;
         self
     }
 }
 
-impl NodeService {
+impl<'a> NodeService<'a> {
     pub fn new(
         service_type: ServiceType,
-        address: String,
-        route: Option<String>,
-        identity: Option<String>,
-        auth_identity: Option<Vec<String>>,
+        address: &'a str,
+        route: Option<&'a str>,
+        identity: Option<&'a str>,
+        auth_identity: Option<Vec<&'a str>>,
     ) -> Self {
         Self {
             service_type,
@@ -81,7 +81,7 @@ impl NodeService {
     }
 }
 
-impl fmt::Display for DynNodeInfo {
+impl<'a> fmt::Display for DynNodeInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut format_services = String::new();
         for service in &self.services {
@@ -90,44 +90,38 @@ impl fmt::Display for DynNodeInfo {
 
         write!(
             f,
-            "{}",
-            format!(
-                "Node:\n\tName: {}\n\tStatus: {}\n\tServices:\n{}\tSecure Channel Listener Address:{}",
-                self.name,
-                match self.status.as_str() {
-                    "UP" => self.status.clone().light_green(),
-                    "DOWN" => self.status.clone().light_red(),
-                    _ => self.status.clone().white(),
-                },
-                format_services,
-                self.secure_channel_addr_listener,
-            )
+            "Node:\n\tName: {}\n\tStatus: {}\n\tServices:\n{}\tSecure Channel Listener Address:{}",
+            self.name,
+            match self.status {
+                "UP" => self.status.light_green(),
+                "DOWN" => self.status.light_red(),
+                _ => self.status.white(),
+            },
+            format_services,
+            self.secure_channel_addr_listener,
         )
     }
 }
 
-impl fmt::Display for NodeService {
+impl<'a> fmt::Display for NodeService<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = format!(
             "\t\tService:\n\t\t\tType: {}\n\t\t\tAddress: {}\n",
             self.service_type, self.address
         );
-        match (
-            self.route.clone(),
-            self.identity.clone(),
-            self.auth_identity.clone(),
-        ) {
-            (Some(route), Some(identity), Some(auth_identity)) => {
-                let mut format_auth_identity = String::new();
-                for iden in auth_identity {
-                    format_auth_identity = format_auth_identity + &format!("\t\t\t\t- {}\n", iden);
-                }
-                out.push_str(&format!(
-                    "\t\t\tRoute: {}\n\t\t\tIdentity: {}\n\t\t\tAuthorized Identities: \n{}",
-                    route, identity, format_auth_identity
-                ));
+        if let (Some(route), Some(identity), Some(auth_identity)) =
+            (self.route, self.identity, self.auth_identity.clone())
+        {
+            let mut format_auth_identity = String::new();
+            for iden in auth_identity {
+                format_auth_identity = format_auth_identity + &format!("\t\t\t\t- {}\n", iden);
             }
-            (_, _, _) => (),
+
+            let _ = write!(
+                out,
+                "\t\t\tRoute: {}\n\t\t\tIdentity: {}\n\t\t\tAuthorized Identities: \n{}",
+                route, identity, format_auth_identity
+            );
         }
         write!(f, "{}", out)
     }

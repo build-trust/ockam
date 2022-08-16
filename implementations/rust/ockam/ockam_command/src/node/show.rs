@@ -35,37 +35,39 @@ impl ShowCommand {
 #[allow(clippy::too_many_arguments)]
 fn print_node_info(node_cfg: &NodeConfig, node_name: &str, status: &str, default_id: &str) {
     use util::dyn_info::{NodeService, ServiceType};
-    let node_out = util::dyn_info::DynNodeInfo::new(node_name.to_string())
-        .status(status.to_string())
+    let tcp_addr = format!("/ip4/127.0.0.1/tcp/{}", node_cfg.port);
+    let sec_chanl_list = format!("/ip4/127.0.0.1/tcp/{}/service/api", node_cfg.port);
+    let node_out = util::dyn_info::DynNodeInfo::new(node_name)
+        .status(status)
         .service(NodeService::new(
             ServiceType::TCPListener,
-            format!("/ip4/127.0.0.1/tcp/{}", node_cfg.port),
+            &tcp_addr,
             None,
             None,
             None,
         ))
         .service(NodeService::new(
             ServiceType::SecureChannelListener,
-            format!("/service/api"),
-            Some(format!("/ip4/127.0.0.1/tcp/{}/service/api", node_cfg.port)),
-            Some(default_id.to_string()),
-            Some(vec![format!("{}", default_id)]),
+            "/service/api",
+            Some(&sec_chanl_list),
+            Some(default_id),
+            Some(vec![default_id]),
         ))
         .service(NodeService::new(
             ServiceType::Uppercase,
-            "/service/uppercase".to_string(),
+            "/service/uppercase",
             None,
             None,
             None,
         ))
         .service(NodeService::new(
             ServiceType::Echo,
-            "/service/echo".to_string(),
+            "/service/echo",
             None,
             None,
             None,
         ))
-        .secure_channel_addr_listener("/service/api".to_string());
+        .secure_channel_addr_listener("/service/api");
 
     println!("{}", node_out);
 }
