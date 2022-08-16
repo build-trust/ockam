@@ -23,7 +23,7 @@ mod addon;
 mod config;
 mod output;
 
-pub const DEFAULT_CLOUD_ADDRESS: &str = "/dnsaddr/cloud.ockam.io/tcp/62526";
+pub const DEFAULT_ORCHESTRATOR_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/62526";
 
 pub struct Rpc<'a> {
     ctx: &'a ockam::Context,

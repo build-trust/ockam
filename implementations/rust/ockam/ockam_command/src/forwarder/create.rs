@@ -12,7 +12,9 @@ use ockam_core::api::{Method, Request, Response, Status};
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 
-use crate::util::{connect_to, exitcode, get_final_element, stop_node, DEFAULT_CLOUD_ADDRESS};
+use crate::util::{
+    connect_to, exitcode, get_final_element, stop_node, DEFAULT_ORCHESTRATOR_ADDRESS,
+};
 use crate::{CommandGlobalOpts, OutputFormat};
 
 #[derive(Clone, Debug, Args)]
@@ -22,7 +24,7 @@ pub struct CreateCommand {
     for_node: String,
 
     /// Route to the node on which to create the forwarder.
-    #[clap(long, name = "ROUTE", default_value = DEFAULT_CLOUD_ADDRESS, display_order = 900)]
+    #[clap(long, name = "ROUTE", default_value = DEFAULT_ORCHESTRATOR_ADDRESS, display_order = 900)]
     at: MultiAddr,
 
     /// Forwarding address.

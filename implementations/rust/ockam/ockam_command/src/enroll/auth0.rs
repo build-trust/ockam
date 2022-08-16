@@ -80,9 +80,9 @@ async fn enroll(
 pub struct Auth0Service;
 
 impl Auth0Service {
-    const DOMAIN: &'static str = "dev-w5hdnpc2.us.auth0.com";
+    const DOMAIN: &'static str = "account.ockam.io";
     const CLIENT_ID: &'static str = "sGyXBwQfU6fjfW1gopphdV9vCLec060b";
-    const API_AUDIENCE: &'static str = "https://dev-w5hdnpc2.us.auth0.com/api/v2/";
+    const API_AUDIENCE: &'static str = "https://account.ockam.io/api/v2/";
     const SCOPES: &'static str = "profile openid email";
 }
 
