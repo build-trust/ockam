@@ -1,4 +1,4 @@
-use crate::util::{api, connect_to, exitcode, stop_node};
+use crate::util::{api, connect_to, exitcode, get_final_element, stop_node};
 use crate::CommandGlobalOpts;
 
 use clap::Args;
@@ -32,7 +32,8 @@ pub struct SecureChannelListenerNodeOpts {
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) -> anyhow::Result<()> {
         let cfg = opts.config;
-        let port = match cfg.select_node(&command.node_opts.at) {
+        let node = get_final_element(&command.node_opts.at);
+        let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");

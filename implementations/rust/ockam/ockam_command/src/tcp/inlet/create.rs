@@ -1,10 +1,12 @@
-use crate::util::{connect_to, exitcode, stop_node};
+use crate::util::{connect_to, exitcode, get_final_element, stop_node};
 use crate::util::{ComposableSnippet, Operation, PortalMode, Protocol};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use minicbor::Decoder;
 use ockam::{Context, Route};
-use ockam_api::{nodes::models, nodes::models::portal::InletStatus, nodes::NODEMANAGER_ADDR};
+use ockam_api::{
+    clean_multiaddr, nodes::models, nodes::models::portal::InletStatus, nodes::NODEMANAGER_ADDR,
+};
 use ockam_core::api::{Method, Request, Response, Status};
 use ockam_multiaddr::MultiAddr;
 use std::net::SocketAddr;
@@ -47,7 +49,19 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 impl CreateCommand {
     pub fn run(options: CommandGlobalOpts, command: Self) -> anyhow::Result<()> {
         let cfg = &options.config;
-        let port = match cfg.select_node(&command.at) {
+        let command = CreateCommand {
+            to: match clean_multiaddr(&command.to, &cfg.get_lookup()) {
+                Some(addr) => addr,
+                None => {
+                    eprintln!("failed to normalize MultiAddr route");
+                    std::process::exit(exitcode::USAGE);
+                }
+            },
+            ..command
+        };
+
+        let node = get_final_element(&command.at);
+        let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -56,7 +70,7 @@ impl CreateCommand {
         };
 
         let composite = (&command).into();
-        let node = command.at.clone();
+        let node = node.to_string();
         connect_to(port, command, create_inlet);
 
         // Update the startup config
@@ -87,19 +101,11 @@ pub async fn create_inlet(
     let message = make_api_request(&cmd.from.to_string(), &cmd.to, &None::<String>)?;
     let response: Vec<u8> = ctx.send_and_receive(route, message).await?;
 
-    let (
-        response,
-        InletStatus {
-            bind_addr, alias, ..
-        },
-    ) = parse_inlet_status(&response)?;
+    let (response, InletStatus { bind_addr, .. }) = parse_inlet_status(&response)?;
 
     match response.status() {
         Some(Status::Ok) => {
-            println!(
-                "TCP inlet '{}' created! You can send messages to it on this tcp address: \n{}`",
-                alias, bind_addr
-            )
+            println!("{}", bind_addr)
         }
 
         _ => {

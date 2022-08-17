@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Context};
 use clap::Args;
 use minicbor::Decoder;
+use ockam_api::clean_multiaddr;
 use serde_json::json;
 use tracing::debug;
 
@@ -11,7 +12,7 @@ use ockam_core::api::{Method, Request, Response, Status};
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 
-use crate::util::{connect_to, exitcode, stop_node, DEFAULT_CLOUD_ADDRESS};
+use crate::util::{connect_to, exitcode, get_final_element, stop_node, DEFAULT_CLOUD_ADDRESS};
 use crate::{CommandGlobalOpts, OutputFormat};
 
 #[derive(Clone, Debug, Args)]
@@ -36,7 +37,23 @@ pub struct CreateCommand {
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
         let cfg = &opts.config;
-        let port = match cfg.select_node(&cmd.for_node) {
+        let cmd = CreateCommand {
+            at: match clean_multiaddr(&cmd.at, &cfg.get_lookup()) {
+                Some(addr) => addr,
+                None => {
+                    eprintln!("failed to normalize MultiAddr route");
+                    std::process::exit(exitcode::USAGE);
+                }
+            },
+            from: cmd
+                .from
+                .as_ref()
+                .map(|f| String::from(get_final_element(f))),
+            ..cmd
+        };
+
+        let node = get_final_element(&cmd.for_node);
+        let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");

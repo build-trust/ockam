@@ -148,7 +148,7 @@ pub fn print_path(p: &Path) -> String {
     p.to_str().unwrap_or("<unprintable>").to_string()
 }
 
-pub fn get_node_name_from_path(input_path: &str) -> &str {
+pub fn get_final_element(input_path: &str) -> &str {
     //  Get Node name from Node Path
     //  if Input path has "/", we split the path and return the final element
     //  if the final element is empty string, we return None
@@ -156,7 +156,7 @@ pub fn get_node_name_from_path(input_path: &str) -> &str {
         let split_path: Vec<&str> = input_path.split('/').collect();
         match split_path.last() {
             Some(last_value) if last_value.is_empty() => {
-                eprintln!("Invalid Node Format");
+                eprintln!("Invalid Format: {}", input_path);
                 std::process::exit(exitcode::IOERR);
             }
             Some(last_value) => last_value,

@@ -1,3 +1,4 @@
+use crate::util::get_final_element;
 use crate::{
     util::{api, connect_to, exitcode, stop_node},
     CommandGlobalOpts,
@@ -53,7 +54,8 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
         let cfg = &opts.config;
-        let port = match cfg.select_node(&command.node_opts.at) {
+        let node = get_final_element(&command.node_opts.at);
+        let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -64,7 +66,7 @@ impl CreateCommand {
         connect_to(port, command.clone(), create_listener);
 
         let composite = (&command).into();
-        let node = command.node_opts.at;
+        let node = node.to_string();
 
         let startup_config = match cfg.get_startup_cfg(&node) {
             Ok(cfg) => cfg,
