@@ -1,11 +1,12 @@
 use crate::credential::{Attributes, Credential, CredentialData, Timestamp, Unverified};
 use minicbor::bytes::ByteSlice;
-use minicbor::{Decode, Decoder, Encode, Encoder};
+use minicbor::{Decode, Decoder, Encode};
 use ockam_channel::SecureChannelLocalInfo;
 use ockam_core::api::Method::Post;
-use ockam_core::api::{Error, Request, Response, ResponseBuilder, Status};
+use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::ToString, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::vault::Verifier;
 use ockam_core::{Address, Result, Route, Routed, Worker};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_identity::change_history::IdentityChangeHistory;
@@ -38,6 +39,11 @@ impl<'a> AttributesEntry<'a> {
     }
 }
 
+enum ProcessArrivedCredentialResult {
+    Ok(),
+    BadRequest(&'static str),
+}
+
 pub struct CredentialExchange {
     ctx: Context,
 }
@@ -49,6 +55,79 @@ impl CredentialExchange {
         })
     }
 
+    /// Create a generic bad request response.
+    pub fn bad_request<'a>(id: Id, path: &'a str, msg: &'a str) -> ResponseBuilder<Error<'a>> {
+        let e = Error::new(path).with_message(msg);
+        Response::bad_request(id).body(e)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn receive_presented_credential(
+        sender: IdentityIdentifier,
+        credential: Credential<'_>,
+        authorities: &BTreeMap<IdentityIdentifier, IdentityChangeHistory>,
+        vault: impl Verifier,
+        authenticated_storage: &impl AuthenticatedStorage,
+    ) -> Result<ProcessArrivedCredentialResult> {
+        let credential_data: CredentialData<Unverified> = match minicbor::decode(&credential.data) {
+            Ok(c) => c,
+            Err(_) => {
+                return Ok(ProcessArrivedCredentialResult::BadRequest(
+                    "invalid credential",
+                ))
+            }
+        };
+
+        if credential_data.subject != sender {
+            return Ok(ProcessArrivedCredentialResult::BadRequest(
+                "unknown authority",
+            ));
+        }
+
+        let now = Timestamp::now().ok_or_else(|| {
+            ockam_core::Error::new(Origin::Core, Kind::Internal, "invalid system time")
+        })?;
+        if credential_data.expires <= now {
+            return Ok(ProcessArrivedCredentialResult::BadRequest(
+                "expired credential",
+            ));
+        }
+
+        let issuer = match authorities.get(&credential_data.issuer) {
+            Some(i) => i,
+            None => {
+                return Ok(ProcessArrivedCredentialResult::BadRequest(
+                    "unknown authority",
+                ));
+            }
+        };
+
+        let credential_data = match credential.verify_signature(issuer, vault).await {
+            Ok(d) => d,
+            Err(_) => {
+                return Ok(ProcessArrivedCredentialResult::BadRequest(
+                    "credential verification failed",
+                ))
+            }
+        };
+
+        // TODO: Implement expiration mechanism in Storage
+        let entry = AttributesEntry::new(credential_data.attributes, credential_data.expires);
+
+        let entry = minicbor::to_vec(&entry)?;
+
+        authenticated_storage
+            .set(
+                &sender.to_string(),
+                IdentityStateConst::ATTRIBUTES_KEY.to_string(),
+                entry,
+            )
+            .await?;
+
+        Ok(ProcessArrivedCredentialResult::Ok())
+    }
+
+    /// Return authenticated non-expired attributes attached to that Identity
     pub async fn get_attributes(
         identity_id: &IdentityIdentifier,
         authenticated_storage: &impl AuthenticatedStorage,
@@ -62,7 +141,7 @@ impl CredentialExchange {
             None => return Ok(None),
         };
 
-        let entry: AttributesEntry = Decoder::new(&entry).decode()?;
+        let entry: AttributesEntry = minicbor::decode(&entry)?;
 
         let now = Timestamp::now().ok_or_else(|| {
             ockam_core::Error::new(Origin::Core, Kind::Internal, "invalid system time")
@@ -79,18 +158,23 @@ impl CredentialExchange {
         Ok(Some(attrs))
     }
 
+    /// Start worker that will be available to receive others attributes and put them into storage,
+    /// after successful verification
     pub async fn start_worker(
         &self,
         authorities: BTreeMap<IdentityIdentifier, IdentityChangeHistory>,
         address: impl Into<Address>,
+        present_back: Option<Credential<'static>>,
         authenticated_storage: impl AuthenticatedStorage,
         vault: impl IdentityVault,
     ) -> Result<()> {
-        let worker = CredentialExchangeWorker::new(authorities, authenticated_storage, vault);
+        let worker =
+            CredentialExchangeWorker::new(authorities, present_back, authenticated_storage, vault);
 
         self.ctx.start_worker(address.into(), worker).await
     }
 
+    /// Present credential to other party, route shall use secure channel
     async fn present_credential(
         &self,
         credential: Credential<'_>,
@@ -106,8 +190,7 @@ impl CredentialExchange {
         )
         .await?;
 
-        let mut dec = Decoder::new(&buf);
-        let res: Response = dec.decode()?;
+        let res: Response = minicbor::decode(&buf)?;
         match res.status() {
             Some(Status::Ok) => Ok(()),
             _ => Err(ockam_core::Error::new(
@@ -117,11 +200,68 @@ impl CredentialExchange {
             )),
         }
     }
+
+    /// Present credential to other party, route shall use secure channel. Other party is expected
+    /// to present its credential in response, otherwise this call errors.
+    pub async fn present_credential_mutual(
+        &self,
+        credential: Credential<'_>,
+        receiver: &IdentityIdentifier,
+        route: impl Into<Route>,
+        authorities: &BTreeMap<IdentityIdentifier, IdentityChangeHistory>,
+        authenticated_storage: &impl AuthenticatedStorage,
+        vault: &impl IdentityVault,
+    ) -> Result<()> {
+        let mut child_ctx = self.ctx.new_detached(Address::random_local()).await?;
+        let path = "actions/present_mutual";
+        let buf = request(
+            &mut child_ctx,
+            "credential",
+            None,
+            route.into(),
+            Request::post(path).body(credential),
+        )
+        .await?;
+
+        let mut dec = Decoder::new(&buf);
+        let res: Response = dec.decode()?;
+        match res.status() {
+            Some(Status::Ok) => {}
+            _ => {
+                return Err(ockam_core::Error::new(
+                    Origin::Application,
+                    Kind::Invalid,
+                    "credential presentation failed",
+                ))
+            }
+        }
+
+        let credential: Credential = dec.decode()?;
+
+        let res = Self::receive_presented_credential(
+            receiver.clone(),
+            credential,
+            authorities,
+            vault,
+            authenticated_storage,
+        )
+        .await?;
+
+        match res {
+            ProcessArrivedCredentialResult::Ok() => Ok(()),
+            ProcessArrivedCredentialResult::BadRequest(str) => Err(ockam_core::Error::new(
+                Origin::Application,
+                Kind::Protocol,
+                str,
+            )),
+        }
+    }
 }
 
 /// Worker responsible for receiving and verifying other party's credentials
 pub struct CredentialExchangeWorker<S: AuthenticatedStorage, V: IdentityVault> {
     authorities: BTreeMap<IdentityIdentifier, IdentityChangeHistory>,
+    present_back: Option<Credential<'static>>,
     authenticated_storage: S,
     vault: V,
 }
@@ -129,70 +269,16 @@ pub struct CredentialExchangeWorker<S: AuthenticatedStorage, V: IdentityVault> {
 impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
     pub fn new(
         authorities: BTreeMap<IdentityIdentifier, IdentityChangeHistory>,
+        present_back: Option<Credential<'static>>,
         authenticated_storage: S,
         vault: V,
     ) -> Self {
         Self {
             authorities,
+            present_back,
             authenticated_storage,
             vault,
         }
-    }
-
-    async fn receive_presented_credential(
-        &self,
-        req: &Request<'_>,
-        sender: IdentityIdentifier,
-        dec: &mut Decoder<'_>,
-    ) -> Result<Vec<u8>> {
-        let credential: Credential = dec.decode()?;
-
-        let mut decoder = Decoder::new(&credential.data);
-        let credential_data: CredentialData<Unverified> = decoder.decode()?;
-
-        if credential_data.subject != sender {
-            return Ok(ockam_core::api::bad_request(req, "unknown authority").to_vec()?);
-        }
-
-        let now = Timestamp::now().ok_or_else(|| {
-            ockam_core::Error::new(Origin::Core, Kind::Internal, "invalid system time")
-        })?;
-        if credential_data.expires <= now {
-            return Ok(ockam_core::api::bad_request(req, "expired credential").to_vec()?);
-        }
-
-        let issuer = match self.authorities.get(&credential_data.issuer) {
-            Some(i) => i,
-            None => {
-                return Ok(ockam_core::api::bad_request(req, "unknown authority").to_vec()?);
-            }
-        };
-
-        let credential_data = match credential.verify_signature(issuer, &self.vault).await {
-            Ok(d) => d,
-            Err(_) => {
-                return Ok(
-                    ockam_core::api::bad_request(req, "credential verification failed").to_vec()?,
-                )
-            }
-        };
-
-        // TODO: Implement expiration mechanism in Storage
-        let entry = AttributesEntry::new(credential_data.attributes, credential_data.expires);
-
-        let mut entry_buf = vec![];
-        let mut encoder = Encoder::new(&mut entry_buf);
-        encoder.encode(entry)?;
-
-        self.authenticated_storage
-            .set(
-                &sender.to_string(),
-                IdentityStateConst::ATTRIBUTES_KEY.to_string(),
-                entry_buf,
-            )
-            .await?;
-
-        Ok(Response::ok(req.id()).to_vec()?)
     }
 }
 
@@ -227,7 +313,44 @@ impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
 
         let r = match (method, path_segments.as_slice()) {
             (Post, ["actions", "present"]) => {
-                self.receive_presented_credential(req, sender, dec).await?
+                let credential: Credential = dec.decode()?;
+
+                let res = CredentialExchange::receive_presented_credential(
+                    sender,
+                    credential,
+                    &self.authorities,
+                    &self.vault,
+                    &self.authenticated_storage,
+                )
+                .await?;
+
+                match res {
+                    ProcessArrivedCredentialResult::Ok() => Response::ok(req.id()).to_vec()?,
+                    ProcessArrivedCredentialResult::BadRequest(str) => {
+                        CredentialExchange::bad_request(req.id(), req.path(), str).to_vec()?
+                    }
+                }
+            }
+            (Post, ["actions", "present_mutual"]) => {
+                let credential: Credential = dec.decode()?;
+
+                let res = CredentialExchange::receive_presented_credential(
+                    sender,
+                    credential,
+                    &self.authorities,
+                    &self.vault,
+                    &self.authenticated_storage,
+                )
+                .await?;
+
+                if let ProcessArrivedCredentialResult::BadRequest(str) = res {
+                    CredentialExchange::bad_request(req.id(), req.path(), str).to_vec()?
+                } else {
+                    match &self.present_back {
+                        Some(p) => Response::ok(req.id()).body(p).to_vec()?,
+                        None => Response::ok(req.id()).to_vec()?,
+                    }
+                }
             }
 
             // ==*== Catch-all for Unimplemented APIs ==*==
@@ -285,7 +408,6 @@ mod tests {
     use crate::credential::{
         Credential, CredentialBuilder, CredentialExchange, CredentialExchangeWorker,
     };
-    use minicbor::Encoder;
     use ockam_core::{route, Result};
     use ockam_identity::authenticated_storage::mem::InMemoryStorage;
     use ockam_identity::authenticated_storage::AuthenticatedStorage;
@@ -301,7 +423,7 @@ mod tests {
 
     #[allow(non_snake_case)]
     #[ockam_macros::test]
-    async fn full_flow(ctx: &mut Context) -> Result<()> {
+    async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
 
         let authority = Identity::create(ctx, &vault).await?;
@@ -321,6 +443,7 @@ mod tests {
             .start_worker(
                 authorities,
                 "credential_exchange",
+                None,
                 server_storage.clone(),
                 vault.clone(),
             )
@@ -353,6 +476,77 @@ mod tests {
         let val = attrs.get("is_superuser").unwrap();
 
         assert_eq!(val.as_slice(), b"true");
+
+        ctx.stop().await
+    }
+
+    #[allow(non_snake_case)]
+    #[ockam_macros::test]
+    async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
+        let vault = Vault::create();
+
+        let authority = Identity::create(ctx, &vault).await?;
+
+        let credential_exchange = CredentialExchange::create(ctx).await?;
+
+        let client2 = Identity::create(ctx, &vault).await?;
+        let client2_storage = InMemoryStorage::new();
+
+        let credential2 = Credential::builder(client2.identifier().clone())
+            .with_attribute("is_admin", b"true")
+            .issue(&authority)
+            .await?;
+
+        client2
+            .create_secure_channel_listener("listener", TrustEveryonePolicy, &client2_storage)
+            .await?;
+
+        let mut authorities = BTreeMap::<IdentityIdentifier, IdentityChangeHistory>::new();
+        authorities.insert(authority.identifier().clone(), authority.changes().await?);
+        credential_exchange
+            .start_worker(
+                authorities.clone(),
+                "credential_exchange",
+                Some(credential2),
+                client2_storage.clone(),
+                vault.clone(),
+            )
+            .await?;
+
+        let client1 = Identity::create(ctx, &vault).await?;
+        let client1_storage = InMemoryStorage::new();
+
+        let credential1 = Credential::builder(client1.identifier().clone())
+            .with_attribute("is_user", b"true")
+            .issue(&authority)
+            .await?;
+
+        let channel = client1
+            .create_secure_channel(route!["listener"], TrustEveryonePolicy, &client1_storage)
+            .await?;
+
+        credential_exchange
+            .present_credential_mutual(
+                credential1,
+                client2.identifier(),
+                route![channel, "credential_exchange"],
+                &authorities,
+                &client1_storage,
+                &vault,
+            )
+            .await?;
+
+        let attrs1 = CredentialExchange::get_attributes(client1.identifier(), &client2_storage)
+            .await?
+            .unwrap();
+
+        assert_eq!(attrs1.get("is_user").unwrap().as_slice(), b"true");
+
+        let attrs2 = CredentialExchange::get_attributes(client2.identifier(), &client1_storage)
+            .await?
+            .unwrap();
+
+        assert_eq!(attrs2.get("is_admin").unwrap().as_slice(), b"true");
 
         ctx.stop().await
     }
