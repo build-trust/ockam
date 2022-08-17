@@ -3,6 +3,9 @@ use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
+#[cfg(feature = "tag")]
+use crate::TypeTag;
+
 /// Curve25519 private key length.
 pub const CURVE25519_SECRET_LENGTH: usize = 32;
 /// Curve25519 public key length.
@@ -89,6 +92,7 @@ impl AsRef<[u8]> for SecretKey {
 #[cbor(map)]
 pub struct PublicKey {
     #[cfg(feature = "tag")]
+    #[serde(skip)]
     #[n(0)] tag: TypeTag<8922437>,
     #[b(1)] data: PublicKeyVec,
     #[n(2)] stype: SecretType,
@@ -116,7 +120,12 @@ impl PublicKey {
 impl PublicKey {
     /// Create a new public key.
     pub fn new(data: PublicKeyVec, stype: SecretType) -> Self {
-        PublicKey { data, stype }
+        PublicKey {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            data,
+            stype,
+        }
     }
 }
 

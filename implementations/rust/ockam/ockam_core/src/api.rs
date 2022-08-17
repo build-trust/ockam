@@ -11,7 +11,9 @@ use minicbor::{Decode, Decoder, Encode};
 use tinyvec::ArrayVec;
 
 #[cfg(feature = "tag")]
-use ockam_core::TypeTag;
+use crate::TypeTag;
+
+pub const SCHEMA: &str = core::include_str!("../../schema.cddl");
 
 /// A request header.
 #[derive(Debug, Clone, Encode, Decode)]
@@ -516,7 +518,7 @@ impl<T: Encode<()>> ResponseBuilder<T> {
 }
 
 #[allow(unused_variables)]
-pub fn assert_request_match<'a>(schema: impl Into<Option<&'a str>>, cbor: &[u8]) {
+pub fn assert_request_match<'a>(struct_name: impl Into<Option<&'a str>>, cbor: &[u8]) {
     #[cfg(feature = "tag")]
     {
         use cddl_cat::validate_cbor_bytes;
@@ -528,16 +530,16 @@ pub fn assert_request_match<'a>(schema: impl Into<Option<&'a str>>, cbor: &[u8])
             tracing::error!(error = %e, "request header mismatch")
         }
 
-        if let Some(schema) = schema.into() {
-            if let Err(e) = validate_cbor_bytes(schema, SCHEMA, &cbor[dec.position()..]) {
-                tracing::error!(%schema, error = %e, "request body mismatch")
+        if let Some(struct_name) = struct_name.into() {
+            if let Err(e) = validate_cbor_bytes(struct_name, SCHEMA, &cbor[dec.position()..]) {
+                tracing::error!(%struct_name, error = %e, "request body mismatch")
             }
         }
     }
 }
 
 #[allow(unused_variables)]
-pub fn assert_response_match<'a>(schema: impl Into<Option<&'a str>>, cbor: &[u8]) {
+pub fn assert_response_match<'a>(struct_name: impl Into<Option<&'a str>>, cbor: &[u8]) {
     #[cfg(feature = "tag")]
     {
         use cddl_cat::validate_cbor_bytes;
@@ -549,9 +551,9 @@ pub fn assert_response_match<'a>(schema: impl Into<Option<&'a str>>, cbor: &[u8]
             tracing::error!(error = %e, "response header mismatch")
         }
 
-        if let Some(schema) = schema.into() {
-            if let Err(e) = validate_cbor_bytes(schema, SCHEMA, &cbor[dec.position()..]) {
-                tracing::error!(%schema, error = %e, "response body mismatch")
+        if let Some(struct_name) = struct_name.into() {
+            if let Err(e) = validate_cbor_bytes(struct_name, SCHEMA, &cbor[dec.position()..]) {
+                tracing::error!(%struct_name, error = %e, "response body mismatch")
             }
         }
     }
@@ -572,14 +574,14 @@ pub fn is_ok(label: &str, buf: &[u8]) -> Result<()> {
 /// Decode response and an optional body.
 pub fn decode_option<'a, 'b, T: Decode<'b, ()>>(
     label: &'a str,
-    schema: impl Into<Option<&'a str>>,
+    struct_name: impl Into<Option<&'a str>>,
     buf: &'b [u8],
 ) -> Result<Option<T>> {
     let mut d = Decoder::new(buf);
     let res = response(label, &mut d)?;
     match res.status() {
         Some(Status::Ok) => {
-            assert_response_match(schema, buf);
+            assert_response_match(struct_name, buf);
             Ok(Some(d.decode()?))
         }
         Some(Status::NotFound) => Ok(None),

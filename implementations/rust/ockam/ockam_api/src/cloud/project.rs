@@ -11,6 +11,7 @@ use ockam_core::TypeTag;
 #[cbor(map)]
 pub struct Project<'a> {
     #[cfg(feature = "tag")]
+    #[serde(skip)]
     #[n(0)] pub tag: TypeTag<9056532>,
     #[b(1)] pub id: CowStr<'a>,
     #[b(2)] pub name: CowStr<'a>,
@@ -67,6 +68,7 @@ pub struct AddEnroller<'a> {
 #[cbor(map)]
 pub struct Enroller<'a> {
     #[cfg(feature = "tag")]
+    #[serde(skip)]
     #[n(0)] pub tag: TypeTag<4277633>,
     #[b(1)] pub identity_id: CowStr<'a>,
     #[b(2)] pub description: Option<CowStr<'a>>,
@@ -298,7 +300,7 @@ mod tests {
         use cddl_cat::validate_cbor_bytes;
         use quickcheck::{quickcheck, TestResult};
 
-        use crate::SCHEMA;
+        use ockam_core::api::SCHEMA;
 
         use super::*;
 

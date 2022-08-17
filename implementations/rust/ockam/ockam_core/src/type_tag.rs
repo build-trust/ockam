@@ -2,13 +2,14 @@ use core::fmt;
 use minicbor::decode::{self, Decoder};
 use minicbor::encode::{self, Encoder, Write};
 use minicbor::{Decode, Encode};
+use zeroize::Zeroize;
 
 /// A type tag represents a type as a unique numeric value.
 ///
 /// This zero-sized type is meant to help catching type errors in cases where
 /// CBOR items structurally match various nominal types. It will end up as an
 /// unsigned integer in CBOR and decoding checks that the value is expected.
-#[derive(Clone, Copy, Default, PartialEq, Eq, serde::Serialize)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Zeroize)]
 pub struct TypeTag<const N: usize>;
 
 // Custom `Debug` impl to include the tag number.

@@ -9,7 +9,7 @@ use ockam_core::{Result, Route};
 pub async fn request<T, R>(
     ctx: &mut Context,
     label: &str,
-    schema: impl Into<Option<&str>>,
+    struct_name: impl Into<Option<&str>>,
     route: R,
     req: RequestBuilder<'_, T>,
 ) -> Result<Vec<u8>>
@@ -19,7 +19,7 @@ where
 {
     let mut buf = Vec::new();
     req.encode(&mut buf)?;
-    assert_request_match(schema, &buf);
+    assert_request_match(struct_name, &buf);
     trace! {
         target:  "ockam_api",
         id     = %req.header().id(),
