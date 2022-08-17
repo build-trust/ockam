@@ -1,5 +1,5 @@
 use cddl_cat::validate_cbor_bytes;
-use ockam_api::SCHEMA;
+use ockam_core::api::SCHEMA;
 use ockam_core::api::{Error, Id, Method, Request, Response, Status};
 use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
 

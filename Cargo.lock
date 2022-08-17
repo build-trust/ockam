@@ -2237,6 +2237,7 @@ version = "0.64.0"
 dependencies = [
  "async-trait",
  "backtrace",
+ "cddl-cat",
  "cfg-if",
  "core2 0.3.3",
  "futures-util",
@@ -2279,7 +2280,6 @@ dependencies = [
 name = "ockam_identity"
 version = "0.58.0"
 dependencies = [
- "cddl-cat",
  "cfg-if",
  "group",
  "heapless",

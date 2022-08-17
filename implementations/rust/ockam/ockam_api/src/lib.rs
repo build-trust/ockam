@@ -20,8 +20,6 @@ pub mod lmdb;
 #[macro_use]
 extern crate tracing;
 
-pub const SCHEMA: &str = core::include_str!("../schema.cddl");
-
 #[derive(rust_embed::RustEmbed)]
 #[folder = "./static"]
 pub(crate) struct StaticFiles;

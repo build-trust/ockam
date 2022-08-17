@@ -56,7 +56,7 @@ alloc = [
 # by default.
 error-traces = ["backtrace", "tracing-error", "once_cell"]
 
-tag = []
+tag = ["cddl-cat"]
 
 [dependencies]
 ockam_macros = { path = "../ockam_macros", version = "^0.18.0", default_features = false }
@@ -91,3 +91,4 @@ tracing = { version = "0.1", default-features = false, features = ["attributes"]
 tracing-error = { version = "0.2", default-features = false, optional = true }
 backtrace = { version = "0.3", default-features = false, features = ["std", "serialize-serde"], optional = true }
 once_cell = { version = "1", optional = true, default-features = false }
+cddl-cat = { version = "0.6.1", optional = true }
