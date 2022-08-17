@@ -1,7 +1,8 @@
 use std::{env, net::TcpListener, path::Path};
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use minicbor::{Decode, Decoder, Encode};
+use ockam_multiaddr::MultiAddr;
 use tracing::error;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
@@ -55,6 +56,25 @@ impl<'a> Rpc<'a> {
         self.buf = self
             .ctx
             .send_and_receive(rte.modify().append(NODEMANAGER_ADDR), buf)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn request_to<T>(
+        &mut self,
+        req: RequestBuilder<'_, T>,
+        to: &MultiAddr,
+    ) -> anyhow::Result<()>
+    where
+        T: Encode<()>,
+    {
+        let mut target = ockam_api::multiaddr_to_route(to)
+            .ok_or_else(|| anyhow!("failed to convert {to} to route"))?;
+        let buf = req.to_vec()?;
+        let rte = connect(self.ctx, &self.cfg).await?;
+        self.buf = self
+            .ctx
+            .send_and_receive(target.modify().prepend_route(rte), buf)
             .await?;
         Ok(())
     }

@@ -8,8 +8,10 @@ mod exchange;
 #[cfg(feature = "std")]
 pub use exchange::*;
 
+use core::fmt;
 use core::marker::PhantomData;
 use core::time::Duration;
+use data_encoding::BASE32_DNSSEC;
 use minicbor::bytes::ByteSlice;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
@@ -23,6 +25,7 @@ use ockam_core::vault::{Signature, SignatureVec, Verifier};
 use ockam_core::{CowBytes, CowStr, Error, Result};
 use ockam_identity::change_history::IdentityChangeHistory;
 use ockam_identity::{Identity, IdentityIdentifier, IdentityStateConst, IdentityVault};
+use serde::{Serialize, Serializer};
 
 #[cfg(feature = "tag")]
 use crate::TypeTag;
@@ -47,6 +50,12 @@ pub struct Credential<'a> {
     #[b(1)] data: CowBytes<'a>,
     /// Cryptographic signature of attributes data.
     #[b(2)] signature: CowBytes<'a>,
+}
+
+impl fmt::Display for Credential<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.serialize(f)
+    }
 }
 
 #[derive(Debug, Decode, Encode)]
@@ -340,5 +349,16 @@ impl<'a> CredentialBuilder<'a> {
         let skey = issuer.get_secret_key(key_label).await?;
         let sig = issuer.vault().sign(&skey, &bytes).await?;
         Ok(Credential::new(bytes, SignatureVec::from(sig)))
+    }
+}
+
+impl Serialize for Credential<'_> {
+    fn serialize<S: Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        let bytes = minicbor::to_vec(self).expect("encoding credential to vec never errors");
+        if ser.is_human_readable() {
+            ser.serialize_str(&BASE32_DNSSEC.encode(&bytes))
+        } else {
+            ser.serialize_bytes(&bytes)
+        }
     }
 }
