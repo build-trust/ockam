@@ -356,6 +356,9 @@ impl NodeManager {
                 .create_secure_channel_listener(req, dec)
                 .await?
                 .to_vec()?,
+            (Get, ["node", "secure_channel_listener_list"]) => {
+                self.secure_channel_listener_list(req).to_vec()?
+            }
 
             // ==*== Services ==*==
             (Post, ["node", "services", "vault"]) => {
@@ -428,6 +431,7 @@ impl NodeManager {
             // ==*== Catch-all for Unimplemented APIs ==*==
             _ => {
                 warn!(%method, %path, "Called invalid endpoint");
+
                 Response::bad_request(req.id())
                     .body(format!("Invalid endpoint: {}", path))
                     .to_vec()?

@@ -5,28 +5,21 @@ use clap::Args;
 
 use ockam::identity::IdentityIdentifier;
 
+use super::with_at_opt;
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::Status;
 use ockam_core::{Address, Route};
-
 #[derive(Clone, Debug, Args)]
 
 pub struct CreateCommand {
     #[clap(flatten)]
-    node_opts: SecureChannelListenerNodeOpts,
+    node_opts: with_at_opt::WithAtNodeOpt,
 
     /// Address for this listener
     address: Address,
     /// Authorized Identifiers of secure channel initators
     #[clap(short, long, value_name = "IDENTIFIER")]
     authorized_identifier: Option<Vec<IdentityIdentifier>>,
-}
-
-#[derive(Clone, Debug, Args)]
-pub struct SecureChannelListenerNodeOpts {
-    /// Node at which to create the listener
-    #[clap(global = true, long, value_name = "NODE", default_value = "default")]
-    pub at: String,
 }
 
 impl CreateCommand {

@@ -156,6 +156,13 @@ pub(crate) fn create_secure_channel_listener(
     Ok(buf)
 }
 
+/// Get Secure Channel Listener List Request
+pub(crate) fn secure_channel_listener_list() -> Result<Vec<u8>> {
+    let mut buf = vec![];
+    Request::builder(Method::Get, "/node/secure_channel_listener_list").encode(&mut buf)?;
+    Ok(buf)
+}
+
 /// Construct a request to start a Vault Service
 pub(crate) fn start_vault_service(addr: &str) -> Result<Vec<u8>> {
     let payload = models::services::StartVaultServiceRequest::new(addr);
@@ -188,7 +195,6 @@ pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
         .encode(&mut buf)?;
     Ok(buf)
 }
-
 /// Helpers to create enroll API requests
 pub(crate) mod enroll {
     use crate::enroll::*;
@@ -414,6 +420,18 @@ pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Resu
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
     Ok(response)
+}
+
+pub(crate) fn parse_secure_channel_listener_list_response(
+    resp: &[u8],
+) -> Result<(Response, models::secure_channel::SecureChannelListenerList)> {
+    let mut dec = Decoder::new(resp);
+    let response = dec.decode::<Response>()?;
+    eprintln!("response: {:?}", response);
+    Ok((
+        response,
+        dec.decode::<models::secure_channel::SecureChannelListenerList>()?,
+    ))
 }
 
 ////////////// !== share CLI args

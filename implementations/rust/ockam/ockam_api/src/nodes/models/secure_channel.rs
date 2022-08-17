@@ -73,3 +73,42 @@ impl<'a> CreateSecureChannelListenerRequest<'a> {
         }
     }
 }
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct SecureChannelListenerListRequest<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<8008758>,
+    #[b(1)] pub addr: Cow<'a, str>,
+}
+
+impl SecureChannelListenerListRequest<'_> {
+    pub fn new(addr: &Address) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr: addr.to_string().into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct SecureChannelListenerList {
+//    #[cfg(feature = "tag")]
+//    #[n(0)] tag: TypeTag<5212817>,
+//#[n(1)] pub list: Vec<String>
+    #[n(0)] pub list: Vec<String>
+}
+
+impl SecureChannelListenerList {
+    pub fn new(list: Vec<String>) -> Self {
+        Self {
+            //            #[cfg(feature = "tag")]
+            //            tag: TypeTag,
+            list,
+        }
+    }
+}
