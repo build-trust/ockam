@@ -41,6 +41,8 @@ impl IdentityStateConst {
     pub const CURRENT_CHANGE_VERSION: u8 = 1;
     /// Change history key for AuthenticatedStorage
     pub const CHANGE_HISTORY_KEY: &'static str = "CHANGE_HISTORY";
+    /// Attributes key for AuthenticatedStorage
+    pub const ATTRIBUTES_KEY: &'static str = "ATTRIBUTES";
 }
 
 impl<V: IdentityVault> Identity<V> {

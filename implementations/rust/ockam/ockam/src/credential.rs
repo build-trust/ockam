@@ -230,6 +230,15 @@ impl<'a> Attributes<'a> {
     pub fn iter(&self) -> impl Iterator<Item = (&str, &[u8])> {
         self.attrs.iter().map(|(k, v)| (*k, &***v))
     }
+
+    pub fn to_owned(&self) -> BTreeMap<String, Vec<u8>> {
+        let mut map = BTreeMap::default();
+        for (k, v) in self.iter() {
+            map.insert(k.to_string(), v.to_vec());
+        }
+
+        map
+    }
 }
 
 /// A Unix timestamp (seconds since 1970-01-01 00:00:00 UTC)
