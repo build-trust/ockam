@@ -27,7 +27,14 @@ defmodule Ockam.Services.StaticForwarding do
   @impl true
   def setup(options, state) do
     prefix = Keyword.get(options, :prefix, state.address)
-    {:ok, Map.put(state, :prefix, prefix)}
+
+    forwarder_options = Keyword.get(options, :forwarder_options, [])
+
+    {:ok,
+     Map.merge(state, %{
+       prefix: prefix,
+       forwarder_options: forwarder_options
+     })}
   end
 
   @impl true
@@ -54,10 +61,19 @@ defmodule Ockam.Services.StaticForwarding do
 
   def ensure_alias_worker(alias_str, state) do
     forwarder_address = forwarder_address(alias_str, state)
+    forwarder_options = Map.fetch!(state, :forwarder_options)
 
     case Ockam.Node.whereis(forwarder_address) do
-      nil -> Forwarder.create(alias: alias_str, address: forwarder_address)
-      _pid -> {:ok, forwarder_address}
+      nil ->
+        Forwarder.create(
+          Keyword.merge(forwarder_options,
+            alias: alias_str,
+            address: forwarder_address
+          )
+        )
+
+      _pid ->
+        {:ok, forwarder_address}
     end
   end
 

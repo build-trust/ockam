@@ -218,4 +218,98 @@ defmodule Ockam.Services.Authorization.Tests do
         raise "timeout receiving message via channel"
     end
   end
+
+  test "forwarder authorization" do
+    {:ok, service} =
+      Ockam.Services.Forwarding.create(forwarder_options: [authorization: [:is_local]])
+
+    {:ok, test_address} = Ockam.Node.register_random_address()
+
+    register_message = %Message{
+      onward_route: [service],
+      payload: "",
+      return_route: [test_address]
+    }
+
+    Router.route(register_message)
+
+    assert_receive(
+      %Message{
+        onward_route: [^test_address],
+        return_route: [forwarder_address]
+      },
+      5_000
+    )
+
+    local_message = %Message{
+      onward_route: [forwarder_address, "smth"],
+      payload: "hello",
+      return_route: [test_address]
+    }
+
+    Router.route(local_message)
+
+    assert_receive(%Message{payload: "hello", onward_route: [^test_address, "smth"]}, 500)
+
+    channel_message = %Message{
+      onward_route: [forwarder_address, "smth"],
+      payload: "hello from channel",
+      return_route: [test_address],
+      local_metadata: %{source: :channel, channel: :tcp}
+    }
+
+    Router.route(channel_message)
+
+    refute_receive(
+      %Message{payload: "hello from channel", onward_route: [^test_address, "smth"]},
+      500
+    )
+  end
+
+  test "static forwarder authorization" do
+    {:ok, service} =
+      Ockam.Services.StaticForwarding.create(forwarder_options: [authorization: [:is_local]])
+
+    {:ok, test_address} = Ockam.Node.register_random_address()
+
+    register_message = %Message{
+      onward_route: [service],
+      payload: :bare.encode(test_address, :string),
+      return_route: [test_address]
+    }
+
+    Router.route(register_message)
+
+    assert_receive(
+      %Message{
+        onward_route: [^test_address],
+        return_route: [forwarder_address]
+      },
+      5_000
+    )
+
+    local_message = %Message{
+      onward_route: [forwarder_address, "smth"],
+      payload: "hello",
+      return_route: [test_address]
+    }
+
+    Router.route(local_message)
+
+    assert_receive(%Message{payload: "hello", onward_route: [^test_address, "smth"]}, 500)
+
+    channel_message = %Message{
+      onward_route: [forwarder_address, "smth"],
+      payload: "hello from channel",
+      return_route: [test_address],
+      local_metadata: %{source: :channel, channel: :tcp}
+    }
+
+    Router.route(channel_message)
+
+    refute_receive(
+      %Message{payload: "hello from channel", onward_route: [^test_address, "smth"]},
+      500
+    )
+  end
 end

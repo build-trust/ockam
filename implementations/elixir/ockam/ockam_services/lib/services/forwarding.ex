@@ -17,15 +17,24 @@ defmodule Ockam.Services.Forwarding do
   require Logger
 
   @impl true
+  def setup(options, state) do
+    forwarder_options = Keyword.get(options, :forwarder_options, [])
+    {:ok, Map.merge(state, %{forwarder_options: forwarder_options})}
+  end
+
+  @impl true
   def handle_message(message, state) do
     Logger.info("ALIAS service\nMESSAGE: #{inspect(message)}")
     forward_route = Message.return_route(message)
     payload = Message.payload(message)
+    forwarder_options = Map.fetch!(state, :forwarder_options)
 
     {:ok, _alias_address} =
       __MODULE__.Forwarder.create(
-        forward_route: forward_route,
-        registration_payload: payload
+        Keyword.merge(forwarder_options,
+          forward_route: forward_route,
+          registration_payload: payload
+        )
       )
 
     {:ok, state}

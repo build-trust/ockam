@@ -201,6 +201,10 @@ defmodule Ockam.Worker do
     {:ok, options, {:continue, :post_init}}
   end
 
+  def default_authorization() do
+    [:to_my_address]
+  end
+
   def handle_post_init(module, options) do
     Node.set_address_module(Keyword.fetch!(options, :address), module)
 
@@ -208,7 +212,7 @@ defmodule Ockam.Worker do
       with_init_metric(module, options, fn ->
         with {:ok, address} <- Keyword.fetch(options, :address),
              authorization when is_list(authorization) or is_map(authorization) <-
-               Keyword.get(options, :authorization, [:to_my_address]) do
+               Keyword.get(options, :authorization, default_authorization()) do
           base_state = %{
             address: address,
             all_addresses: [address],

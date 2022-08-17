@@ -172,7 +172,7 @@ defmodule Ockam.Worker.Authorization do
   end
 
   def with_state_config(message, state) do
-    config = Map.get(state, :authorization, [:to_my_address])
+    config = Map.get(state, :authorization, Ockam.Worker.default_authorization())
 
     with_config(config, message, state)
   end
