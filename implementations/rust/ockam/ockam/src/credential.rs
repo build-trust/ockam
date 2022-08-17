@@ -13,7 +13,11 @@ use core::time::Duration;
 use minicbor::bytes::ByteSlice;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
-use ockam_core::compat::collections::BTreeMap;
+use ockam_core::compat::{
+    collections::BTreeMap,
+    string::{String, ToString},
+    vec::Vec,
+};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::{Signature, SignatureVec, Verifier};
 use ockam_core::{CowBytes, CowStr, Error, Result};
