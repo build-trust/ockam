@@ -1,9 +1,9 @@
+use core::time::Duration;
 use std::{env, net::TcpListener, path::Path};
 
 use anyhow::{anyhow, Context};
 use minicbor::{Decode, Decoder, Encode};
-use ockam_multiaddr::MultiAddr;
-use tracing::error;
+use tracing::{debug, error, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
@@ -12,6 +12,7 @@ pub use config::*;
 use ockam::{route, Address, NodeBuilder, Route, TcpTransport, TCP};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
+use ockam_multiaddr::MultiAddr;
 
 use crate::util::output::Output;
 use crate::{CommandGlobalOpts, OutputFormat};
@@ -22,61 +23,130 @@ pub mod startup;
 
 mod addon;
 mod config;
-mod output;
+pub(crate) mod output;
 
 pub const DEFAULT_ORCHESTRATOR_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/62526";
+
+pub struct RpcBuilder<'a, 'b> {
+    ctx: &'a ockam::Context,
+    opts: &'a CommandGlobalOpts,
+    node: &'b str,
+    to: Route,
+    tcp: Option<&'a TcpTransport>,
+}
+
+impl<'a, 'b> RpcBuilder<'a, 'b> {
+    pub fn new(ctx: &'a ockam::Context, opts: &'a CommandGlobalOpts, node: &'b str) -> Self {
+        RpcBuilder {
+            ctx,
+            opts,
+            node,
+            to: NODEMANAGER_ADDR.into(),
+            tcp: None,
+        }
+    }
+
+    pub fn to(mut self, to: &MultiAddr) -> anyhow::Result<Self> {
+        self.to = ockam_api::multiaddr_to_route(to)
+            .ok_or_else(|| anyhow!("failed to convert {to} to route"))?;
+        Ok(self)
+    }
+
+    pub fn tcp(mut self, tcp: &'a TcpTransport) -> Self {
+        self.tcp = Some(tcp);
+        self
+    }
+
+    pub fn build(self) -> anyhow::Result<Rpc<'a>> {
+        let mut rpc = Rpc::new(self.ctx, self.opts, self.node)?;
+        rpc.to = self.to;
+        rpc.tcp = self.tcp;
+        Ok(rpc)
+    }
+}
 
 pub struct Rpc<'a> {
     ctx: &'a ockam::Context,
     buf: Vec<u8>,
     opts: &'a CommandGlobalOpts,
     cfg: NodeConfig,
+    to: Route,
+    /// Needed for when we want to call multiple Rpc's from a single command.
+    tcp: Option<&'a TcpTransport>,
 }
 
 impl<'a> Rpc<'a> {
     pub fn new(
         ctx: &'a ockam::Context,
         opts: &'a CommandGlobalOpts,
-        api_node: &'a str,
-    ) -> anyhow::Result<Self> {
+        node: &str,
+    ) -> anyhow::Result<Rpc<'a>> {
+        let cfg = opts.config.get_node(node)?;
         Ok(Rpc {
             ctx,
             buf: Vec::new(),
             opts,
-            cfg: opts.config.get_node(api_node)?,
+            cfg,
+            to: NODEMANAGER_ADDR.into(),
+            tcp: None,
         })
+    }
+
+    pub fn buf(&self) -> &[u8] {
+        &self.buf
     }
 
     pub async fn request<T>(&mut self, req: RequestBuilder<'_, T>) -> anyhow::Result<()>
     where
         T: Encode<()>,
     {
-        let buf = req.to_vec()?;
-        let mut rte = connect(self.ctx, &self.cfg).await?;
+        let route = self.route_impl(self.ctx).await?;
         self.buf = self
             .ctx
-            .send_and_receive(rte.modify().append(NODEMANAGER_ADDR), buf)
-            .await?;
+            .send_and_receive(route.clone(), req.to_vec()?)
+            .await
+            .context("Failed to receive response from node")?;
         Ok(())
     }
 
-    pub async fn request_to<T>(
+    pub async fn request_with_timeout<T>(
         &mut self,
         req: RequestBuilder<'_, T>,
-        to: &MultiAddr,
+        timeout: Duration,
     ) -> anyhow::Result<()>
     where
         T: Encode<()>,
     {
-        let mut target = ockam_api::multiaddr_to_route(to)
-            .ok_or_else(|| anyhow!("failed to convert {to} to route"))?;
-        let buf = req.to_vec()?;
-        let rte = connect(self.ctx, &self.cfg).await?;
-        self.buf = self
-            .ctx
-            .send_and_receive(target.modify().prepend_route(rte), buf)
-            .await?;
+        let mut ctx = self.ctx.new_detached(Address::random_local()).await?;
+        let route = self.route_impl(&ctx).await?;
+        ctx.send(route.clone(), req.to_vec()?).await?;
+        self.buf = ctx
+            .receive_duration_timeout::<Vec<u8>>(timeout)
+            .await
+            .context("Failed to receive response from node")?
+            .take()
+            .body();
         Ok(())
+    }
+
+    async fn route_impl(&mut self, ctx: &ockam::Context) -> anyhow::Result<Route> {
+        let addr = node_addr(&self.cfg);
+        let addr_str = addr.address();
+
+        match self.tcp {
+            None => {
+                let tcp = TcpTransport::create(ctx).await?;
+                tcp.connect(addr_str).await?;
+            }
+            Some(tcp) => {
+                // Ignore "already connected" error.
+                let _ = tcp.connect(addr_str).await;
+            }
+        }
+
+        let route = self.to.modify().prepend_route(addr.into()).into();
+        debug!(%route, "Sending request");
+        Ok(route)
     }
 
     /// Parse the response body and return it.
@@ -88,24 +158,29 @@ impl<'a> Rpc<'a> {
         Ok(dec.decode().context("Failed to decode response body")?)
     }
 
-    /// Parse response header only to check the status code.
-    pub fn check_response(&self) -> crate::Result<()> {
+    /// Check response's status code is OK.
+    pub fn is_ok(&self) -> crate::Result<()> {
         self.parse_response_impl()?;
         Ok(())
     }
 
-    /// Parse the response body and return it.
-    fn parse_response_impl(&'a self) -> crate::Result<Decoder> {
+    pub fn check_response(&self) -> crate::Result<(Response, Decoder)> {
+        let mut dec = Decoder::new(&self.buf);
+        let hdr = dec
+            .decode::<Response>()
+            .context("Failed to decode response header")?;
+        Ok((hdr, dec))
+    }
+
+    /// Parse the header and returns the decoder.
+    fn parse_response_impl(&self) -> crate::Result<Decoder> {
         let mut dec = Decoder::new(&self.buf);
         let hdr = dec
             .decode::<Response>()
             .context("Failed to decode response header")?;
         match hdr.status() {
-            Some(Status::Ok) if hdr.has_body() => {
-                return Ok(dec);
-            }
             Some(Status::Ok) => {
-                eprintln!("No body found in response");
+                return Ok(dec);
             }
             Some(status) if hdr.has_body() => {
                 let err = dec.decode::<String>().unwrap_or_default();
@@ -117,9 +192,10 @@ impl<'a> Rpc<'a> {
                 eprintln!("An error occurred while processing the request. Status code: {status}",);
             }
             None => {
-                eprintln!("No status found in response");
+                eprintln!("No status code found in response");
             }
         };
+        trace!(msg = %minicbor::display(&self.buf), "Received CBOR message");
         Err(crate::Error::new(exitcode::SOFTWARE))
     }
 
@@ -198,11 +274,8 @@ where
     }
 }
 
-async fn connect(ctx: &ockam::Context, cfg: &NodeConfig) -> anyhow::Result<Route> {
-    let adr = Address::from((TCP, format!("localhost:{}", cfg.port)));
-    let tcp = TcpTransport::create(ctx).await?;
-    tcp.connect(adr.address()).await?;
-    Ok(adr.into())
+fn node_addr(cfg: &NodeConfig) -> Address {
+    Address::from((TCP, format!("localhost:{}", cfg.port)))
 }
 
 pub fn node_rpc<A, F, Fut>(f: F, a: A)

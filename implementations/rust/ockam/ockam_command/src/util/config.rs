@@ -216,6 +216,7 @@ impl OckamConfig {
         inner.nodes.insert(
             name.to_string(),
             NodeConfig {
+                name: name.to_string(),
                 port: bind.port(),
                 addr: bind.into(),
                 verbose,

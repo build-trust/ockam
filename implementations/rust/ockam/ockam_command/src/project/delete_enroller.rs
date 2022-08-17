@@ -50,5 +50,5 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let mut rpc = Rpc::new(ctx, &opts, &cmd.node_opts.api_node)?;
     rpc.request(api::project::delete_enroller(&cmd)).await?;
-    rpc.check_response()
+    rpc.is_ok()
 }

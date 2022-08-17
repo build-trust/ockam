@@ -1,13 +1,13 @@
 use clap::Args;
 use rand::prelude::random;
 
+use anyhow::Context;
 use std::sync::Arc;
 use std::{
     env::current_exe,
     net::{IpAddr, SocketAddr},
     path::PathBuf,
     str::FromStr,
-    time::Duration,
 };
 
 use crate::util::exitcode;
@@ -20,7 +20,7 @@ use crate::{
     CommandGlobalOpts, HELP_TEMPLATE,
 };
 use ockam::identity::Identity;
-use ockam::{Context, TcpTransport};
+use ockam::TcpTransport;
 use ockam_api::config::cli;
 use ockam_api::nodes::IdentityOverride;
 use ockam_api::{
@@ -54,11 +54,11 @@ LEARN MORE
 pub struct CreateCommand {
     /// Name of the node (Optional).
     #[clap(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
-    node_name: String,
+    pub node_name: String,
 
     /// Run the node in foreground.
     #[clap(display_order = 900, long, short)]
-    foreground: bool,
+    pub foreground: bool,
 
     /// TCP listener address
     #[clap(
@@ -68,11 +68,11 @@ pub struct CreateCommand {
         name = "SOCKET_ADDRESS",
         default_value = "127.0.0.1:0"
     )]
-    tcp_listener_address: String,
+    pub tcp_listener_address: String,
 
     /// Skip creation of default Vault and Identity
     #[clap(long, short, hide = true)]
-    skip_defaults: bool,
+    pub skip_defaults: bool,
 
     /// JSON config to setup a foreground node
     ///
@@ -80,10 +80,10 @@ pub struct CreateCommand {
     /// configuration is run asynchronously and may take several
     /// seconds to complete.
     #[clap(long, hide = true)]
-    launch_config: Option<PathBuf>,
+    pub launch_config: Option<PathBuf>,
 
     #[clap(long, hide = true)]
-    no_watchdog: bool,
+    pub no_watchdog: bool,
 }
 
 impl From<&'_ CreateCommand> for ComposableSnippet {
@@ -100,35 +100,22 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 }
 
 impl CreateCommand {
-    pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
-        let cfg = &opts.config;
-        let address: SocketAddr = if &command.tcp_listener_address == "127.0.0.1:0" {
-            let port = find_available_port().expect("failed to acquire available port");
-            SocketAddr::new(IpAddr::from_str("127.0.0.1").unwrap(), port)
-        } else {
-            command
-                .tcp_listener_address
-                .parse()
-                .expect("failed to parse tcp listener address")
-        };
-
+    pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
         let verbose = opts.global_args.verbose;
-        let command = CreateCommand {
-            tcp_listener_address: address.to_string(),
-            ..command
-        };
-
-        if command.foreground {
+        let cfg = &opts.config;
+        if cmd.foreground {
+            let cmd = cmd.overwrite_addr().unwrap();
+            let addr = SocketAddr::from_str(&cmd.tcp_listener_address).unwrap();
             // HACK: try to get the current node dir.  If it doesn't
             // exist the user PROBABLY started a non-detached node.
             // Thus we need to create the node dir so that subsequent
             // calls to it don't fail
-            if cfg.get_node_dir(&command.node_name).is_err() {
+            if cfg.get_node_dir(&cmd.node_name).is_err() {
                 println!("Creating node directory...");
-                if let Err(e) = cfg.create_node(&command.node_name, address, verbose) {
+                if let Err(e) = cfg.create_node(&cmd.node_name, addr, verbose) {
                     eprintln!(
                         "failed to update node configuration for '{}': {}",
-                        command.node_name, e
+                        cmd.node_name, e
                     );
                     std::process::exit(exitcode::CANTCREAT);
                 }
@@ -140,79 +127,99 @@ impl CreateCommand {
                 }
             }
 
-            if let Err(e) = embedded_node(setup, (command, cfg.clone())) {
+            if let Err(e) = embedded_node(setup, (cmd, cfg.clone())) {
                 eprintln!("Ockam node failed: {:?}", e,);
             }
         } else {
-            // On systems with non-obvious path setups (or during
-            // development) re-executing the current binary is a more
-            // deterministic way of starting a node.
-            let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
+            let cmd = cmd.overwrite_addr().unwrap();
+            let addr = SocketAddr::from_str(&cmd.tcp_listener_address).unwrap();
 
-            // FIXME: not really clear why this is causing issues
-            if cfg.port_is_used(address.port()) {
-                eprintln!("Another node is listening on the provided port!");
-                std::process::exit(exitcode::IOERR);
-            }
-
-            // First we create a new node in the configuration so that
-            // we can ask it for the correct log path, as well as
-            // making sure the watchdog can do its job later on.
-            if let Err(e) = cfg.create_node(&command.node_name, address, verbose) {
-                eprintln!(
-                    "failed to update node configuration for '{}': {}",
-                    command.node_name, e
-                );
-                std::process::exit(exitcode::CANTCREAT);
-            }
-
-            // Construct the arguments list and re-execute the ockam
-            // CLI in foreground mode to start the newly created node
-            startup::spawn_node(
-                &ockam,
-                &opts.config,
-                verbose,
-                command.skip_defaults,
-                &command.node_name,
-                &command.tcp_listener_address,
-            );
-
-            let composite = (&command).into();
-            let startup_cfg = cfg.get_startup_cfg(&command.node_name).unwrap();
-            startup_cfg.writelock_inner().commands = vec![composite].into();
-
-            // Save the config update
-            if let Err(e) = startup_cfg.atomic_update().run() {
-                eprintln!("failed to update configuration: {}", e);
-                std::process::exit(exitcode::IOERR);
-            }
-
-            // Unless this CLI was called from another watchdog we
-            // start the watchdog here
-            if !command.no_watchdog {}
-
-            // Save the config update
-            if let Err(e) = cfg.atomic_update().run() {
-                eprintln!("failed to update configuration: {}", e);
-                std::process::exit(exitcode::IOERR);
-            }
-
-            // Wait a bit
-            std::thread::sleep(Duration::from_millis(500));
-
-            println!("\nNode Created!");
-            // Then query the node manager for the status
-            connect_to(
-                address.port(),
-                (cfg.clone(), command.node_name),
-                query_status,
-            );
+            Self::create_background_node(&opts, &cmd, &addr).unwrap();
+            connect_to(addr.port(), (cfg.clone(), cmd.node_name), query_status);
         }
+    }
+
+    pub fn create_background_node(
+        opts: &CommandGlobalOpts,
+        cmd: &CreateCommand,
+        addr: &SocketAddr,
+    ) -> anyhow::Result<()> {
+        let verbose = opts.global_args.verbose;
+        let cfg = &opts.config;
+
+        // On systems with non-obvious path setups (or during
+        // development) re-executing the current binary is a more
+        // deterministic way of starting a node.
+        let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
+
+        // FIXME: not really clear why this is causing issues
+        if cfg.port_is_used(addr.port()) {
+            eprintln!("Another node is listening on the provided port!");
+            std::process::exit(exitcode::IOERR);
+        }
+
+        // First we create a new node in the configuration so that
+        // we can ask it for the correct log path, as well as
+        // making sure the watchdog can do its job later on.
+        if let Err(e) = cfg.create_node(&cmd.node_name, *addr, verbose) {
+            eprintln!(
+                "failed to update node configuration for '{}': {}",
+                cmd.node_name, e
+            );
+            std::process::exit(exitcode::CANTCREAT);
+        }
+
+        // Construct the arguments list and re-execute the ockam
+        // CLI in foreground mode to start the newly created node
+        startup::spawn_node(
+            &ockam,
+            &opts.config,
+            verbose,
+            cmd.skip_defaults,
+            &cmd.node_name,
+            &cmd.tcp_listener_address,
+        );
+
+        let composite = cmd.into();
+        let startup_cfg = cfg.get_startup_cfg(&cmd.node_name).unwrap();
+        startup_cfg.writelock_inner().commands = vec![composite].into();
+
+        // Save the config update
+        if let Err(e) = startup_cfg.atomic_update().run() {
+            eprintln!("failed to update configuration: {}", e);
+            std::process::exit(exitcode::IOERR);
+        }
+
+        // Unless this CLI was called from another watchdog we
+        // start the watchdog here
+        if !cmd.no_watchdog {}
+
+        // Save the config update
+        if let Err(e) = cfg.atomic_update().run() {
+            eprintln!("failed to update configuration: {}", e);
+            std::process::exit(exitcode::IOERR);
+        }
+
+        Ok(())
+    }
+
+    pub fn overwrite_addr(&self) -> anyhow::Result<Self> {
+        let cmd = self.clone();
+        let addr: SocketAddr = if &cmd.tcp_listener_address == "127.0.0.1:0" {
+            let port = find_available_port().context("failed to acquire available port")?;
+            SocketAddr::new(IpAddr::from_str("127.0.0.1")?, port)
+        } else {
+            cmd.tcp_listener_address.parse()?
+        };
+        Ok(Self {
+            tcp_listener_address: addr.to_string(),
+            ..cmd
+        })
     }
 }
 
 async fn create_identity_override(
-    ctx: &Context,
+    ctx: &ockam::Context,
     cfg: &OckamConfig,
 ) -> anyhow::Result<IdentityOverride> {
     // Get default root vault (create if needed)
@@ -254,7 +261,7 @@ async fn create_identity_override(
     Ok(identity_override)
 }
 
-async fn setup(ctx: Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::Result<()> {
+async fn setup(ctx: ockam::Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::Result<()> {
     let identity_override = if c.skip_defaults {
         None
     } else {

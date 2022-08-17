@@ -6,7 +6,6 @@ use ockam_core::CowStr;
 use ockam_core::TypeTag;
 
 #[derive(Encode, Decode, Serialize, Debug)]
-#[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Project<'a> {
@@ -21,6 +20,29 @@ pub struct Project<'a> {
     #[b(6)] pub users: Vec<CowStr<'a>>,
     #[b(7)] pub space_id: CowStr<'a>,
     #[b(8)] pub identity: Option<CowStr<'a>>,
+}
+
+impl Clone for Project<'_> {
+    fn clone(&self) -> Self {
+        self.to_owned()
+    }
+}
+
+impl Project<'_> {
+    pub fn to_owned<'r>(&self) -> Project<'r> {
+        Project {
+            #[cfg(feature = "tag")]
+            tag: self.tag.to_owned(),
+            id: self.id.to_owned(),
+            name: self.name.to_owned(),
+            space_name: self.space_name.to_owned(),
+            services: self.services.iter().map(|x| x.to_owned()).collect(),
+            access_route: self.access_route.to_owned(),
+            users: self.users.iter().map(|x| x.to_owned()).collect(),
+            space_id: self.space_id.to_owned(),
+            identity: self.identity.as_ref().map(|x| x.to_owned()),
+        }
+    }
 }
 
 #[derive(Encode, Decode, Debug)]

@@ -58,7 +58,7 @@ async fn show(
     debug!(?cmd, %route, "Sending request");
 
     let response: Vec<u8> = ctx
-        .send_and_receive(route, api::project::show(cmd)?)
+        .send_and_receive(route, api::project::show(&cmd).to_vec()?)
         .await
         .context("Failed to process request")?;
     let mut dec = Decoder::new(&response);
