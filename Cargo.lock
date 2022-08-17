@@ -2097,6 +2097,7 @@ name = "ockam"
 version = "0.70.0"
 dependencies = [
  "arrayref",
+ "data-encoding",
  "dyn-clone",
  "hex",
  "minicbor",

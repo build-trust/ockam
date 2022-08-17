@@ -1,5 +1,6 @@
 use cli_table::{Cell, Style, Table};
 use core::fmt::Write;
+use ockam::credential::Credential;
 use ockam_api::cloud::project::Enroller;
 
 use crate::util::comma_separated;
@@ -94,5 +95,11 @@ impl Output for Vec<Enroller<'_>> {
             .display()?
             .to_string();
         Ok(table)
+    }
+}
+
+impl Output for Credential<'_> {
+    fn output(&self) -> anyhow::Result<String> {
+        Ok(self.to_string())
     }
 }
