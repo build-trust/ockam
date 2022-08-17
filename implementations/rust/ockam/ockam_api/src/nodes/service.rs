@@ -363,6 +363,9 @@ impl NodeManager {
             }
 
             // ==*== Secure channels ==*==
+            (Get, ["node", "secure_channel_listener"]) => {
+                self.list_secure_channel_listener(req).to_vec()?
+            }
             (Post, ["node", "secure_channel"]) => {
                 self.create_secure_channel(req, dec).await?.to_vec()?
             }

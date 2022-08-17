@@ -73,3 +73,23 @@ impl<'a> CreateSecureChannelListenerRequest<'a> {
         }
     }
 }
+
+/// struct for secure-channel-listener list command
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct SecureChannelListenerAddrList {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<1111111>,
+    #[n(1)] pub list: Vec<String>,
+}
+
+impl SecureChannelListenerAddrList {
+    pub fn new(list: Vec<String>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            list,
+        }
+    }
+}
