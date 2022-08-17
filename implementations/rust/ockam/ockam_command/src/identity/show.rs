@@ -1,4 +1,4 @@
-use crate::util::{connect_to, exitcode, stop_node};
+use crate::util::{connect_to, exitcode, get_final_element, stop_node};
 use crate::CommandGlobalOpts;
 use crate::{node::NodeOpts, util::api};
 use clap::Args;
@@ -17,7 +17,8 @@ pub struct ShowCommand {
 impl ShowCommand {
     pub fn run(opts: CommandGlobalOpts, command: Self) -> anyhow::Result<()> {
         let cfg = opts.config;
-        let port = match cfg.select_node(&command.node_opts.api_node) {
+        let node = get_final_element(&command.node_opts.api_node);
+        let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");

@@ -1,4 +1,4 @@
-use crate::util::{connect_to, exitcode, stop_node};
+use crate::util::{connect_to, exitcode, get_final_element, stop_node};
 use crate::util::{ComposableSnippet, Operation, PortalMode, Protocol};
 use crate::CommandGlobalOpts;
 use clap::Args;
@@ -11,7 +11,7 @@ use ockam_api::{
     route_to_multiaddr,
 };
 use ockam_core::api::{Method, Request, Response, Status};
-use ockam_core::{route, Address};
+use ockam_core::route;
 use std::net::SocketAddr;
 
 /// Create TCP Outlets
@@ -23,7 +23,7 @@ pub struct CreateCommand {
 
     /// Address of the tcp outlet.
     #[clap(long, display_order = 901, name = "OUTLET_ADDRESS")]
-    from: Address,
+    from: String,
 
     /// TCP address to send raw tcp traffic.
     #[clap(long, display_order = 902, name = "SOCKET_ADDRESS")]
@@ -52,7 +52,9 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 impl CreateCommand {
     pub fn run(options: CommandGlobalOpts, command: Self) -> anyhow::Result<()> {
         let cfg = &options.config;
-        let port = match cfg.select_node(&command.at) {
+        let at = &command.at.clone();
+        let node = get_final_element(at);
+        let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -60,12 +62,16 @@ impl CreateCommand {
             }
         };
 
+        let command = CreateCommand {
+            from: String::from(get_final_element(&command.from)),
+            ..command
+        };
+
         let composite = (&command).into();
-        let node = command.at.clone();
         connect_to(port, command, create_outlet);
 
         // Update the startup config
-        let startup_cfg = match cfg.get_startup_cfg(&node) {
+        let startup_cfg = match cfg.get_startup_cfg(node) {
             Ok(cfg) => cfg,
             Err(e) => {
                 eprintln!("failed to load startup configuration: {}", e);
@@ -113,7 +119,7 @@ pub async fn create_outlet(
 /// Construct a request to create a tcp outlet
 fn make_api_request(cmd: CreateCommand) -> ockam::Result<Vec<u8>> {
     let tcp_addr = &cmd.to.to_string();
-    let worker_addr = cmd.from.to_string();
+    let worker_addr = cmd.from;
     let alias = (&None::<String>).as_ref().map(|x| x.as_str().into());
     let payload = CreateOutlet::new(tcp_addr, worker_addr, alias);
 

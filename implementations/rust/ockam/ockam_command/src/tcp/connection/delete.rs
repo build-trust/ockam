@@ -3,6 +3,7 @@ use ockam::{Context, Route};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{Response, Status};
 
+use crate::util::get_final_element;
 use crate::{
     node::NodeOpts,
     util::{api, connect_to, exitcode, stop_node},
@@ -25,7 +26,8 @@ pub struct DeleteCommand {
 impl DeleteCommand {
     pub fn run(opts: CommandGlobalOpts, command: DeleteCommand) {
         let cfg = &opts.config;
-        let port = match cfg.select_node(&command.node_opts.api_node) {
+        let node = get_final_element(&command.node_opts.api_node);
+        let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available. Run `ockam node list` to list available nodes");

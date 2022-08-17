@@ -11,7 +11,7 @@ use ockam_core::api::{Response, Status};
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 
-use crate::util::{api, connect_to, embedded_node, exitcode, stop_node};
+use crate::util::{api, connect_to, embedded_node, exitcode, get_final_element, stop_node};
 
 #[derive(Clone, Debug, Args)]
 pub struct SendCommand {
@@ -42,7 +42,8 @@ impl SendCommand {
         };
 
         if let Some(node) = &cmd.from {
-            let port = opts.config.get_node_port(node);
+            let name = get_final_element(node);
+            let port = opts.config.get_node_port(name);
             connect_to(port, (opts, cmd), send_message_via_connection_to_a_node);
         } else {
             embedded_node(send_message_from_embedded_node, cmd)
