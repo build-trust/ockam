@@ -4,6 +4,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.70.0 - 2022-08-17
+
+### Added
+
+- Add basic `Identity` commands to `ockam_command`
+- Add `message-format` global arg
+- Add service command
+- Add argument tests for `node show` and `node delete`
+- Add global command to disable ansi colors on tracing messages
+- Add `SHOW_HIDDEN` environment variable
+- Add api endpoint to send messages
+
+### Changed
+
+- Use same variable names on some ockam_command commands
+- Cloud commands to send requests through nodes
+- Send cloud node address from cloud commands to nodes
+- Use temporary secure channel on cloud and enroll api endpoints
+- Command config updates
+- Rename `ockam config` to `ockam configuration`
+- Adapt cli commands
+- Rename `-a, --api-node` option to `-n, --node`
+- Rename ockam command output format option
+- Split `SecureChannel` into `Self` and `SecureChannelListener`
+- Split `transport` into `tcp-connection` and `tcp-listener`
+- Long_version should display git hash
+- Hide identity create and vault from command help
+- Basic alias system
+- Re-hide alias command
+- Rename alias to configuration
+- Change portal sub command to tcp-inlet and tcp-outlet
+- Change `forwarder create` command arguments to --for and --at
+- Unhide the forwarder subcommand
+- Improve command help with examples
+- Updated dependencies
+
+### Fixed
+
+- `addr` argument for cloud commands
+- Cloud and node arguments set as global
+- `project create` command now works when services + node + cloud args are passed
+- Space create command when list args are passed
+- Replace args containing `-/` or `/-` with stdin
+- Fix link to command line docs
+
+### Removed
+
+- Remove custom validator on authenticated command
+- Remove short flag `-f` for `--format` global option in command
+- Remove invitations code
+- Remove ability to set arbitrary attributes
+
 ## 0.69.0 - 2022-08-12
 
 ### Added

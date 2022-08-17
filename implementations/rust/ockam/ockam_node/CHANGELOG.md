@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.67.0 - 2022-08-17
+
+### Added
+
+- Add support for panic handling in test macro
+
+### Changed
+
+- Implement attribute-based access control for message flow authorization
+- Cleanup ockam test macro
+- Move api structs to `ockam_core`
+- Updated dependencies
+
+### Fixed
+
+- Use runtime handles
+- Fix mispointed link
+- Check if address already exists before creating workers/processors
+
+### Removed
+
+- Remove `block_future`
+
 ## 0.66.0 - 2022-08-12
 
 ### Added

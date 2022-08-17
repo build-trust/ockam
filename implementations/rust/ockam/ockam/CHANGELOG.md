@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.70.0 - 2022-08-17
+
+### Added
+
+- Support `Route` instead of `Address` for `RemoteForwarder` initialization
+- Add `credential` module to `ockam` crate
+- Add static forwarding service
+
+### Changed
+
+- Implement attribute-based access control for message flow authorization
+- Cleanup ockam test macro
+- Define credential structure in ockam crate
+- Non-optional `Attributes`
+- Track verification status in types
+- Use `IdentityChangeHistory` for verification
+- Implement `CredentialExchangeWorker`
+- Updated dependencies
+
+### Fixed
+
+- Fix forwarding service did not include onward route after forwarding
+
+### Removed
+
+- Remove old credentials and signatures code
+
 ## 0.69.0 - 2022-08-12
 
 ### Added
