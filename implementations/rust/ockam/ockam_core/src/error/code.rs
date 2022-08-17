@@ -320,16 +320,16 @@ pub enum Kind {
 // Variants do not need to be contiguous. Requires listing the error variants
 // again, but forces a compile-time error if the list is missing a variant.
 macro_rules! from_prim {
-    ($prim:expr => $Enum:ident { $($Variant:ident),* $(,)? }) => {{
+    ($prim:expr, $typ:tt => $Enum:ident { $($Variant:ident),* $(,)? }) => {{
         // Force a compile error if the list gets out of date.
         const _: fn(e: $Enum) = |e: $Enum| match e {
             $($Enum::$Variant => ()),*
         };
         match $prim {
-            $(v if v == ($Enum::$Variant as _) => Some($Enum::$Variant),)*
+            $(v if v == ($Enum::$Variant as $typ) => Some($Enum::$Variant),)*
             _ => None,
         }
-    }}
+    }};
 }
 
 impl Origin {
@@ -339,7 +339,7 @@ impl Origin {
     /// `Self::Unknown`.
     #[track_caller]
     pub fn from_u8(n: u8) -> Option<Self> {
-        from_prim!(n => Origin {
+        from_prim!(n, u8 => Origin {
             Unknown,
             Application,
             Vault,
@@ -374,7 +374,7 @@ impl From<u8> for Origin {
 impl Kind {
     /// Attempt to construct a `Kind` from the numeric value.
     pub fn from_u8(n: u8) -> Option<Self> {
-        from_prim!(n => Kind {
+        from_prim!(n, u8 => Kind {
             Unknown,
             Internal,
             Invalid,
