@@ -12,15 +12,15 @@ use ockam_multiaddr::MultiAddr;
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     #[clap(flatten)]
-    node_opts: SecureChannelNodeOpts,
+    pub node_opts: SecureChannelNodeOpts,
 
     /// Route to a secure channel listener (required)
     #[clap(name = "to", short, long, value_name = "ROUTE")]
-    addr: MultiAddr,
+    pub addr: MultiAddr,
 
     /// Pre-known Identifiers of the other side
     #[clap(short, long)]
-    authorized_identifier: Option<Vec<IdentityIdentifier>>,
+    pub authorized_identifier: Option<Vec<IdentityIdentifier>>,
 }
 
 #[derive(Clone, Debug, Args)]

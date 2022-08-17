@@ -91,3 +91,7 @@ pub struct NodeOpts {
     #[clap(global = true, name = "node", short, long, default_value = "default")]
     pub api_node: String,
 }
+
+pub fn random_name() -> String {
+    hex::encode(&rand::random::<[u8; 4]>())
+}

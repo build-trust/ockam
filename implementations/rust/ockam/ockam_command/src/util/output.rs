@@ -1,10 +1,14 @@
+use anyhow::Context;
 use cli_table::{Cell, Style, Table};
 use core::fmt::Write;
 use ockam::credential::Credential;
-use ockam_api::cloud::project::Enroller;
+use ockam_api::cloud::project::{Enroller, Project};
 
 use crate::util::comma_separated;
 use ockam_api::cloud::space::Space;
+use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
+use ockam_api::route_to_multiaddr;
+use ockam_core::route;
 
 /// Trait to control how a given type will be printed as a CLI output.
 ///
@@ -37,9 +41,10 @@ pub trait Output {
 impl Output for Space<'_> {
     fn output(&self) -> anyhow::Result<String> {
         let mut w = String::new();
-        write!(w, "id: {}", self.id)?;
-        write!(w, "\nname: {}", self.name)?;
-        write!(w, "\nusers: {}", comma_separated(&self.users))?;
+        write!(w, "Space")?;
+        write!(w, "\n  Id: {}", self.id)?;
+        write!(w, "\n  Name: {}", self.name)?;
+        write!(w, "\n  Users: {}", comma_separated(&self.users))?;
         Ok(w)
     }
 }
@@ -56,7 +61,7 @@ impl Output for Vec<Space<'_>> {
         let table = rows
             .table()
             .title([
-                "ID".cell().bold(true),
+                "Id".cell().bold(true),
                 "Name".cell().bold(true),
                 "Users".cell().bold(true),
             ])
@@ -66,11 +71,35 @@ impl Output for Vec<Space<'_>> {
     }
 }
 
+impl Output for Project<'_> {
+    fn output(&self) -> anyhow::Result<String> {
+        let mut w = String::new();
+        write!(w, "Project")?;
+        write!(w, "\n  Id: {}", self.id)?;
+        write!(w, "\n  Name: {}", self.name)?;
+        write!(w, "\n  Users: {}", comma_separated(&self.users))?;
+        write!(w, "\n  Services: {}", comma_separated(&self.services))?;
+        write!(w, "\n  Access route: {}", self.access_route)?;
+        write!(w, "\n  Identity: {:?}", self.identity)?;
+        Ok(w)
+    }
+}
+
+impl Output for CreateSecureChannelResponse<'_> {
+    fn output(&self) -> anyhow::Result<String> {
+        let addr = route_to_multiaddr(&route![self.addr.to_string()])
+            .context("Invalid Secure Channel Address")?
+            .to_string();
+        Ok(addr)
+    }
+}
+
 impl Output for Enroller<'_> {
     fn output(&self) -> anyhow::Result<String> {
         let mut w = String::new();
-        write!(w, "identity_id: {}", self.identity_id)?;
-        write!(w, "\nadded_by: {}", self.added_by)?;
+        write!(w, "Enroller")?;
+        write!(w, "\n  Identity id: {}", self.identity_id)?;
+        write!(w, "\n  Added by: {}", self.added_by)?;
         Ok(w)
     }
 }

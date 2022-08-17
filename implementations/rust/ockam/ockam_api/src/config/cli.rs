@@ -89,6 +89,7 @@ Otherwise your OS or OS configuration may not be supported!",
 /// don't have to be synced to consumers.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NodeConfig {
+    pub name: String,
     pub addr: InternetAddress,
     pub port: u16,
     pub verbose: u8,

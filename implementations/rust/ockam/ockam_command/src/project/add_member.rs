@@ -8,7 +8,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::NodeOpts;
-use crate::util::{node_rpc, Rpc};
+use crate::util::{node_rpc, RpcBuilder};
 use crate::{stop_node, CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
@@ -33,9 +33,11 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, AddMemberCommand
     async fn go(ctx: &mut Context, opts: &CommandGlobalOpts, cmd: AddMemberCommand) -> Result<()> {
         let to = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
         let req = Request::post("/members").body(AddMember::new(cmd.member));
-        let mut rpc = Rpc::new(ctx, opts, &cmd.node_opts.api_node)?;
-        rpc.request_to(req, &to).await?;
-        rpc.check_response()
+        let mut rpc = RpcBuilder::new(ctx, opts, &cmd.node_opts.api_node)
+            .to(&to)?
+            .build()?;
+        rpc.request(req).await?;
+        rpc.is_ok()
     }
     let result = go(&mut ctx, &opts, cmd).await;
     stop_node(ctx).await?;

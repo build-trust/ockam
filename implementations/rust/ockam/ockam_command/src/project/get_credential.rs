@@ -7,7 +7,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::NodeOpts;
-use crate::util::{node_rpc, Rpc};
+use crate::util::{node_rpc, RpcBuilder};
 use crate::{stop_node, CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
@@ -35,8 +35,10 @@ async fn rpc(
         cmd: &GetCredentialCommand,
     ) -> Result<()> {
         let to = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
-        let mut rpc = Rpc::new(ctx, opts, &cmd.node_opts.api_node)?;
-        rpc.request_to(Request::post("/credential"), &to).await?;
+        let mut rpc = RpcBuilder::new(ctx, opts, &cmd.node_opts.api_node)
+            .to(&to)?
+            .build()?;
+        rpc.request(Request::post("/credential")).await?;
         rpc.print_response::<Credential<'_>>()
     }
     let result = go(&mut ctx, &opts, &cmd).await;

@@ -16,6 +16,15 @@ use ockam_multiaddr::MultiAddr;
 
 ////////////// !== generators
 
+pub(crate) mod node {
+    use super::*;
+
+    /// Construct a request to query node status
+    pub(crate) fn query_status() -> RequestBuilder<'static, ()> {
+        Request::builder(Method::Get, "/node")
+    }
+}
+
 /// Construct a request to query node status
 pub(crate) fn query_status() -> Result<Vec<u8>> {
     let mut buf = vec![];
@@ -204,6 +213,22 @@ pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
+pub(crate) mod secure_channel {
+    use super::*;
+    use crate::secure_channel::*;
+
+    /// Construct a request to create Secure Channels
+    pub(crate) fn create(
+        cmd: &CreateCommand,
+    ) -> RequestBuilder<models::secure_channel::CreateSecureChannelRequest> {
+        let payload = models::secure_channel::CreateSecureChannelRequest::new(
+            &cmd.addr,
+            cmd.authorized_identifier.clone(),
+        );
+        Request::builder(Method::Post, "/node/secure_channel").body(payload)
+    }
+}
+
 /// Helpers to create enroll API requests
 pub(crate) mod enroll {
     use crate::enroll::*;
@@ -214,13 +239,13 @@ pub(crate) mod enroll {
 
     use super::*;
 
-    pub(crate) fn auth0(cmd: EnrollCommand, token: Auth0Token) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn auth0(
+        cmd: EnrollCommand,
+        token: Auth0Token,
+    ) -> RequestBuilder<CloudRequestWrapper<AuthenticateAuth0Token>> {
         let token = AuthenticateAuth0Token::new(token);
-        let mut buf = vec![];
         Request::builder(Method::Post, "v0/enroll/auth0")
             .body(CloudRequestWrapper::new(token, cmd.cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
     }
 
     pub(crate) fn token_generate(cmd: GenerateEnrollmentTokenCommand) -> anyhow::Result<Vec<u8>> {
@@ -288,29 +313,22 @@ pub(crate) mod project {
 
     use super::*;
 
-    pub(crate) fn create(cmd: CreateCommand) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn create(
+        cmd: &CreateCommand,
+    ) -> RequestBuilder<CloudRequestWrapper<CreateProject>> {
         let b = CreateProject::new(cmd.project_name.as_str(), &[], &cmd.services);
-        let mut buf = vec![];
         Request::builder(Method::Post, format!("v0/projects/{}", cmd.space_id))
             .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
     }
 
-    pub(crate) fn list(cmd: ListCommand) -> anyhow::Result<Vec<u8>> {
-        let mut buf = vec![];
+    pub(crate) fn list(cmd: &ListCommand) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::builder(Method::Get, "v0/projects")
             .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
     }
 
-    pub(crate) fn show(cmd: ShowCommand) -> anyhow::Result<Vec<u8>> {
-        let mut buf = vec![];
+    pub(crate) fn show(cmd: &ShowCommand) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::builder(Method::Get, format!("v0/projects/{}", cmd.project_id))
             .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
     }
 
     pub(crate) fn delete(cmd: DeleteCommand) -> anyhow::Result<Vec<u8>> {
@@ -460,8 +478,8 @@ pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Resu
 
 #[derive(Clone, Debug, Args)]
 pub struct CloudOpts {
-    /// Ockam cloud node's address
-    #[clap(global = true, default_value = DEFAULT_ORCHESTRATOR_ADDRESS)]
+    /// Ockam orchestrator address
+    #[clap(global = true, hide = true, default_value = DEFAULT_ORCHESTRATOR_ADDRESS)]
     pub addr: MultiAddr,
 }
 

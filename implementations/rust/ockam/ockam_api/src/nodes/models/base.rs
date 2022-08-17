@@ -18,8 +18,7 @@ use ockam_core::TypeTag;
 #[cbor(map)]
 pub struct NodeStatus<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    tag: TypeTag<6586555>,
+    #[n(0)] tag: TypeTag<6586555>,
     #[n(1)] pub node_name: Cow<'a, str>,
     #[n(2)] pub status: Cow<'a, str>,
     #[n(3)] pub workers: u32,

@@ -77,6 +77,9 @@ pub async fn query_status(
     (cfg, node_name): (OckamConfig, String),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
+    // Wait a little bit for the node to start up.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
     ctx.send(
         base_route.modify().append(NODEMANAGER_ADDR),
         api::query_status()?,

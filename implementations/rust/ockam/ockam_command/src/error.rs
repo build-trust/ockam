@@ -8,7 +8,7 @@ pub struct Error(ExitCode);
 
 impl Error {
     pub fn new(code: ExitCode) -> Self {
-        assert!(code > 0, "Exit code can't be OK");
+        assert_ne!(code, 0, "Error's exit code can't be OK");
         Self(code)
     }
 
@@ -24,6 +24,13 @@ impl From<ConfigError> for Error {
     }
 }
 
+impl From<ockam::Error> for Error {
+    fn from(e: ockam::Error) -> Self {
+        error!("{e}");
+        Error::new(exitcode::SOFTWARE)
+    }
+}
+
 impl From<anyhow::Error> for Error {
     fn from(e: anyhow::Error) -> Self {
         error!("{e}");
@@ -34,6 +41,6 @@ impl From<anyhow::Error> for Error {
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
         error!("{e}");
-        Error::new(exitcode::SOFTWARE)
+        Error::new(exitcode::IOERR)
     }
 }
