@@ -2097,7 +2097,6 @@ name = "ockam"
 version = "0.70.0"
 dependencies = [
  "arrayref",
- "data-encoding",
  "dyn-clone",
  "hex",
  "minicbor",
@@ -2146,7 +2145,6 @@ version = "0.13.0"
 dependencies = [
  "anyhow",
  "cddl-cat",
- "data-encoding",
  "directories",
  "either",
  "fake",
@@ -2203,7 +2201,6 @@ dependencies = [
  "colorful",
  "const-str",
  "crossbeam-channel",
- "data-encoding",
  "dialoguer",
  "directories",
  "dirs",
