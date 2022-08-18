@@ -1,3 +1,4 @@
+use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -37,7 +38,33 @@ impl ConfigLookup {
             .get(&format!("/node/{}", node))
             .and_then(|value| match value {
                 LookupValue::Address(addr) => Some(addr),
-                #[allow(unreachable_patterns)]
+                _ => None,
+            })
+    }
+
+    /// Store a project route and identifier as lookup
+    pub fn set_project(
+        &mut self,
+        prj_name: String,
+        node_route: String,
+        id: String,
+        identity_id: String,
+    ) {
+        self.map.insert(
+            format!("/project/{}", prj_name),
+            LookupValue::Project(ProjectLookup {
+                node_route,
+                id,
+                identity_id,
+            }),
+        );
+    }
+
+    pub fn get_project(&self, project_name: &str) -> Option<&ProjectLookup> {
+        self.map
+            .get(&format!("/project/{}", project_name))
+            .and_then(|value| match value {
+                LookupValue::Project(project) => Some(project),
                 _ => None,
             })
     }
@@ -46,6 +73,7 @@ impl ConfigLookup {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LookupValue {
     Address(InternetAddress),
+    Project(ProjectLookup),
 }
 
 /// An internet address abstraction (v6/v4/dns)
@@ -115,5 +143,27 @@ impl From<SocketAddr> for InternetAddress {
             SocketAddr::V4(v4) => Self::V4(v4),
             SocketAddr::V6(v6) => Self::V6(v6),
         }
+    }
+}
+
+/// Represents a remote Ockam project lookup
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ProjectLookup {
+    /// How to reach the node hosting this project
+    ///
+    /// This value MUST be a MultiAddr and is checked before storing
+    /// that it is.
+    node_route: String,
+    /// Identifier of this project
+    pub id: String,
+    /// Identifier of the IDENTITY of the project (for secure-channel)
+    pub identity_id: String,
+}
+
+impl ProjectLookup {
+    pub fn node_route(&self) -> MultiAddr {
+        MultiAddr::from_str(&self.node_route).expect(
+            "tried retrieving a MultiAddr from PrjoectLookup where no MultiAddr had been stored",
+        )
     }
 }

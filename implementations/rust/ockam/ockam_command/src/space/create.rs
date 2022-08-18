@@ -1,4 +1,5 @@
 use clap::Args;
+use rand::prelude::random;
 
 use ockam::Context;
 use ockam_api::cloud::space::Space;
@@ -11,7 +12,7 @@ use crate::{stop_node, CommandGlobalOpts};
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     /// Name of the space.
-    #[clap(display_order = 1001)]
+    #[clap(display_order = 1001, default_value_t = hex::encode(&random::<[u8;4]>()))]
     pub name: String,
 
     #[clap(flatten)]

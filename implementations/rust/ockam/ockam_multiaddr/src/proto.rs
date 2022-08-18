@@ -206,3 +206,5 @@ macro_rules! gen_str_proto {
 gen_str_proto!(DnsAddr, 56, "dnsaddr");
 gen_str_proto!(Service, 62526, "service");
 gen_str_proto!(Node, 72526, "node");
+gen_str_proto!(Project, 82526, "project");
+gen_str_proto!(Space, 92526, "space");
