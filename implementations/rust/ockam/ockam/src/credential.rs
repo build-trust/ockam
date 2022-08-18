@@ -11,7 +11,6 @@ pub use exchange::*;
 use core::fmt;
 use core::marker::PhantomData;
 use core::time::Duration;
-use data_encoding::BASE32_DNSSEC;
 use minicbor::bytes::ByteSlice;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
@@ -356,7 +355,7 @@ impl Serialize for Credential<'_> {
     fn serialize<S: Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         let bytes = minicbor::to_vec(self).expect("encoding credential to vec never errors");
         if ser.is_human_readable() {
-            ser.serialize_str(&BASE32_DNSSEC.encode(&bytes))
+            ser.serialize_str(&hex::encode(&bytes))
         } else {
             ser.serialize_bytes(&bytes)
         }
