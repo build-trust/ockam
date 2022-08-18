@@ -2293,6 +2293,7 @@ dependencies = [
  "ockam_node",
  "ockam_transport_tcp",
  "ockam_vault",
+ "quickcheck",
  "rand 0.8.5",
  "rand_xorshift",
  "serde",

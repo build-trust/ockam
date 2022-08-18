@@ -99,7 +99,7 @@ impl IdentityChangeHistory {
             .compute_key_id_for_public_key(&root_public_key)
             .await?;
 
-        Ok(IdentityIdentifier::from_key_id(key_id))
+        Ok(IdentityIdentifier::from_key_id(&key_id))
     }
 
     pub fn get_public_key(&self, label: &str) -> Result<PublicKey> {

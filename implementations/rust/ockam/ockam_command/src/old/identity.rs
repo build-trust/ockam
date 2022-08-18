@@ -106,7 +106,7 @@ pub fn parse_identities(idents: &str) -> anyhow::Result<Vec<IdentityIdentifier>>
                     "Failed to parse identifier (should be 64 hexadecimal ASCII characters): {s:?}"
                 ))
             } else {
-                Ok(IdentityIdentifier::from_key_id(s.into()))
+                Ok(IdentityIdentifier::from_key_id(s))
             }
         })
         .collect()
@@ -139,7 +139,7 @@ pub fn read_trusted_idents_from_file(
                 Expected 64 ascii hex chars, but got: {line:?}",
             );
         }
-        let ident = IdentityIdentifier::from_key_id(line.into());
+        let ident = IdentityIdentifier::from_key_id(line);
         idents.push(ident);
     }
     Ok(idents)
