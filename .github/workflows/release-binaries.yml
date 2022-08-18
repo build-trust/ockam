@@ -267,7 +267,7 @@ jobs:
         cosign sign-blob --key env://PRIVATE_KEY ${{ env.ASSET }} > ${{ env.ASSET }}.sig
 
     - name: Upload release archive
-      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+      uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -277,7 +277,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     - name: Upload Signature
-      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+      uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -357,7 +357,7 @@ jobs:
           cosign sign-blob --key env://PRIVATE_KEY libockam_elixir_ffi.so > libockam_elixir_ffi.so.sig
 
       - name: Upload Library
-        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -367,7 +367,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Upload Signature
-        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -403,7 +403,7 @@ jobs:
         run: cosign sign-blob --key env://PRIVATE_KEY sha256sums.txt > sha256sums.txt.sig
 
       - name: Upload SHASum File
-        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -413,7 +413,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Upload SHASum Signature File
-        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
