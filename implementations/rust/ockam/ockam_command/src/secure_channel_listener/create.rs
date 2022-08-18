@@ -30,7 +30,7 @@ pub struct SecureChannelListenerNodeOpts {
 }
 
 impl CreateCommand {
-    pub fn run(opts: CommandGlobalOpts, command: CreateCommand) -> anyhow::Result<()> {
+    pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
         let cfg = opts.config;
         let node = get_final_element(&command.node_opts.at);
         let port = match cfg.select_node(node) {
@@ -42,8 +42,6 @@ impl CreateCommand {
         };
 
         connect_to(port, command, create_listener);
-
-        Ok(())
     }
 }
 

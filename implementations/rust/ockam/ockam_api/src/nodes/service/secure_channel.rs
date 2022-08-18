@@ -2,7 +2,6 @@ use super::map_multiaddr_err;
 use crate::error::ApiError;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
-    SecureChannelListenerAddrList,
 };
 use crate::nodes::NodeManager;
 use minicbor::Decoder;
@@ -168,13 +167,13 @@ impl NodeManager {
     pub(super) fn list_secure_channel_listener(
         &mut self,
         req: &Request<'_>,
-    ) -> ResponseBuilder<SecureChannelListenerAddrList> {
-        Response::ok(req.id()).body(SecureChannelListenerAddrList::new(
+    ) -> ResponseBuilder<Vec<String>> {
+        Response::ok(req.id()).body(
             self.registry
                 .secure_channel_listeners
                 .iter()
                 .map(|(addr, _)| addr.to_string())
                 .collect(),
-        ))
+        )
     }
 }

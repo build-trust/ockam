@@ -158,10 +158,8 @@ pub(crate) fn create_secure_channel_listener(
 }
 
 /// Construct a request to list Secure Channel Listeners
-pub(crate) fn list_secure_channel_listener() -> Result<Vec<u8>> {
-    let mut buf = vec![];
-    Request::builder(Method::Get, "/node/secure_channel_listener").encode(&mut buf)?;
-    Ok(buf)
+pub(crate) fn list_secure_channel_listener() -> RequestBuilder<'static, ()> {
+    Request::builder(Method::Get, "/node/secure_channel_listener")
 }
 
 /// Construct a request to start a Vault Service
@@ -447,14 +445,6 @@ pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Resu
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
     Ok(response)
-}
-
-pub(crate) fn parse_list_secure_channel_listener_response(
-    resp: &[u8],
-) -> Result<models::secure_channel::SecureChannelListenerAddrList> {
-    let mut dec = Decoder::new(resp);
-    let _ = dec.decode::<Response>()?;
-    Ok(dec.decode::<models::secure_channel::SecureChannelListenerAddrList>()?)
 }
 
 ////////////// !== share CLI args
