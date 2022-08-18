@@ -29,6 +29,10 @@ defmodule Ockam.Identity do
     end
   end
 
+  def make_identity(identity) do
+    make_identity(default_implementation(), identity)
+  end
+
   def make_identity(module, {module, data}) do
     {:ok, {module, data}}
   end

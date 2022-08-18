@@ -137,6 +137,10 @@ defmodule Ockam.Session.Pluggable.Initiator do
     {:reply, Map.get(state, :stage), state}
   end
 
+  def handle_call(call, from, state) do
+    RoutingSession.handle_call(call, from, state)
+  end
+
   @impl true
   def handle_message(message, %{stage: :handshake} = state) do
     case message_type(message, state) do

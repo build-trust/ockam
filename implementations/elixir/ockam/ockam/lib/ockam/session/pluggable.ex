@@ -43,6 +43,56 @@ defmodule Ockam.Session.Pluggable do
     end
   end
 
+  def handle_call(call, from, %{stage: :handshake} = state) do
+    handshake_mod = Map.fetch!(state, :handshake)
+    handshake_state = Map.fetch!(state, :handshake_state)
+
+    case handshake_mod.handle_call(call, from, handshake_state) do
+      {:reply, reply, handshake_state} ->
+        {:reply, reply, update_handshake_state(state, handshake_state)}
+
+      {:reply, reply, handshake_state, extra} ->
+        {:reply, reply, update_handshake_state(state, handshake_state), extra}
+
+      {:noreply, handshake_state} ->
+        {:noreply, update_handshake_state(state, handshake_state)}
+
+      {:noreply, handshake_state, extra} ->
+        {:noreply, update_handshake_state(state, handshake_state), extra}
+
+      {:stop, reason, reply, handshake_state} ->
+        {:stop, reason, reply, update_handshake_state(state, handshake_state)}
+
+      {:stop, reason, handshake_state} ->
+        {:stop, reason, update_handshake_state(state, handshake_state)}
+    end
+  end
+
+  def handle_call(call, from, %{stage: :data} = state) do
+    data_state = Map.fetch!(state, :data_state)
+    worker_mod = Map.fetch!(state, :worker_mod)
+
+    case worker_mod.handle_call(call, from, data_state) do
+      {:reply, reply, data_state} ->
+        {:reply, reply, update_data_state(state, data_state)}
+
+      {:reply, reply, data_state, extra} ->
+        {:reply, reply, update_data_state(state, data_state), extra}
+
+      {:noreply, data_state} ->
+        {:noreply, update_data_state(state, data_state)}
+
+      {:noreply, data_state, extra} ->
+        {:noreply, update_data_state(state, data_state), extra}
+
+      {:stop, reason, reply, data_state} ->
+        {:stop, reason, reply, update_data_state(state, data_state)}
+
+      {:stop, reason, data_state} ->
+        {:stop, reason, update_data_state(state, data_state)}
+    end
+  end
+
   ## Helper functions used by initiator and responder
 
   def switch_to_data_stage(message \\ nil, start_options, handshake_state, state) do
