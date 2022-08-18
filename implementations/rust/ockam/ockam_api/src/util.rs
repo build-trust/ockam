@@ -2,7 +2,7 @@ use crate::config::lookup::{ConfigLookup, InternetAddress};
 use core::str::FromStr;
 use ockam::{Address, TCP};
 use ockam_core::{Route, LOCAL};
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Service, Tcp};
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Service, Space, Tcp};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use std::net::{SocketAddrV4, SocketAddrV6};
 
@@ -28,6 +28,19 @@ pub fn clean_multiaddr(input: &MultiAddr, lookup: &ConfigLookup) -> Option<Multi
 
                 new_ma.push_back(Tcp(addr.port())).ok()?;
             }
+            Project::CODE => {
+                let alias = p.cast::<Project>()?;
+                let project = lookup
+                    .get_project(&*alias)
+                    .expect("provided invalid substitution route");
+
+                let project_node = project.node_route();
+                let project_node_iter = project_node.iter().peekable();
+                for project_node_segment in project_node_iter {
+                    new_ma.push_back_value(&project_node_segment).ok()?;
+                }
+            }
+            Space::CODE => panic!("/space/ substitutions are not supported yet!"),
             _ => new_ma.push_back_value(&p).ok()?,
         }
     }

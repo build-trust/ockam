@@ -1,11 +1,12 @@
 //! Handle local node configuration
 
-use ockam_api::config::lookup::ConfigLookup;
-use ockam_api::config::{cli, lookup::InternetAddress, Config};
+use ockam_api::config::{cli, lookup::ConfigLookup, lookup::InternetAddress, Config};
+use ockam_multiaddr::MultiAddr;
 use slug::slugify;
-use std::collections::VecDeque;
-use std::net::SocketAddr;
-use std::{fs::create_dir_all, ops::Deref, path::PathBuf, sync::RwLockReadGuard};
+use std::{
+    collections::VecDeque, fs::create_dir_all, net::SocketAddr, ops::Deref, path::PathBuf,
+    str::FromStr, sync::RwLockReadGuard,
+};
 
 pub use ockam_api::config::cli::NodeConfig;
 pub use ockam_api::config::snippet::{
@@ -43,6 +44,8 @@ pub enum ConfigError {
     NotFound(String),
     #[error("node with name {0} is not local")]
     NotLocal(String),
+    #[error("provided value was not a valid {0}: {1}")]
+    FailedConvert(String, String),
 }
 
 impl OckamConfig {
@@ -251,6 +254,30 @@ impl OckamConfig {
     pub fn set_node_alias(&self, alias: String, addr: InternetAddress) {
         let mut inner = self.inner.writelock_inner();
         inner.lookup.set_node(&alias, addr)
+    }
+
+    pub fn set_project_alias(
+        &self,
+        project_name: String,
+        project_node_route: String,
+        project_id: String,
+        project_identity_id: String,
+    ) -> Result<(), ConfigError> {
+        let mut inner = self.inner.writelock_inner();
+        // MultiAddr can't be serialised with serde, thus we just
+        // check that the conversion is going to succeed in the
+        // future, but then just pass the string value through.
+        let _ = MultiAddr::from_str(&project_node_route)
+            .map_err(|e| ConfigError::FailedConvert("MultiAddr".into(), e.to_string()))?;
+
+        inner.lookup.set_project(
+            project_name,
+            project_node_route,
+            project_id,
+            project_identity_id,
+        );
+
+        Ok(())
     }
 }
 

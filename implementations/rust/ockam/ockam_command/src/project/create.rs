@@ -72,6 +72,7 @@ async fn create(
                 OutputFormat::Plain => body.id.to_string(),
                 OutputFormat::Json => serde_json::to_string(&body)?,
             };
+
             Ok(output)
         }
         Some(Status::InternalServerError) => {
