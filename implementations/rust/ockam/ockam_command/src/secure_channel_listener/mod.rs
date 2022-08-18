@@ -29,6 +29,5 @@ impl SecureChannelListenerCommand {
             SecureChannelListenerSubcommand::Create(command) => CreateCommand::run(opts, command),
             SecureChannelListenerSubcommand::List(command) => ListCommand::run(opts, command),
         }
-        .unwrap()
     }
 }

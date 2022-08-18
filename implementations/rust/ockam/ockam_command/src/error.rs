@@ -30,3 +30,10 @@ impl From<anyhow::Error> for Error {
         Error::new(exitcode::SOFTWARE)
     }
 }
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        error!("{e}");
+        Error::new(exitcode::SOFTWARE)
+    }
+}
