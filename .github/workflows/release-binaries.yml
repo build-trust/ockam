@@ -215,7 +215,7 @@ jobs:
       run: echo "${{ needs.create_release.outputs.upload_url }}"
 
     - name: Install Rust
-      uses: actions-rs/toolchain@b3ea035039aa8cb07d1f4a5168b0f8065c4a2eeb
+      uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af
       with:
         toolchain: ${{ matrix.rust }}
         profile: minimal
@@ -311,7 +311,7 @@ jobs:
           ref: ${{ github.event.inputs.release_branch }}
 
       - name: Install Rust
-        uses: actions-rs/toolchain@b3ea035039aa8cb07d1f4a5168b0f8065c4a2eeb
+        uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af
         with:
           toolchain: stable
           profile: minimal
