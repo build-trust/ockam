@@ -125,7 +125,7 @@ pub fn add_trusted(arg: AddTrustedIdentityOpts) -> anyhow::Result<()> {
     }
     let strings_to_write = idents_to_write
         .into_iter()
-        .map(|s| s.key_id().clone())
+        .map(|s| s.key_id().to_string())
         .collect::<Vec<String>>();
     let new_contents = strings_to_write.join("\n");
 
