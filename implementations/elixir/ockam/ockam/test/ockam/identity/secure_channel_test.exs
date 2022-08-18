@@ -29,6 +29,9 @@ defmodule Ockam.Identity.SecureChannel.Tests do
         route: [listener]
       )
 
+    assert alice == SecureChannel.get_remote_identity(channel)
+    assert alice_id == SecureChannel.get_remote_identity_id(channel)
+
     {:ok, me} = Ockam.Node.register_random_address()
     Logger.info("Channel: #{inspect(channel)} me: #{inspect(me)}")
     Ockam.Router.route("PING!", [channel, me], [me])

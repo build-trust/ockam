@@ -72,7 +72,6 @@ defmodule Ockam.Session.Spawner do
       {:ok, result} ->
         ## NOTE: credo has false-positive here without additional variable
         worker_options = Keyword.merge(worker_options, result)
-        Logger.debug("Worker options: #{inspect(worker_options)}")
         worker_mod.create(worker_options)
 
       {:error, err} ->

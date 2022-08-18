@@ -165,6 +165,24 @@ defmodule Ockam.Identity.SecureChannel do
       Initiator.create_and_wait(initiator_options, 100, timeout)
     end
   end
+
+  @doc """
+  Retrieve remote endpoint identity.
+
+  This identity is added to all messages coming from the channel
+  """
+  def get_remote_identity(worker) do
+    Ockam.Worker.call(worker, :get_remote_identity)
+  end
+
+  @doc """
+  Retrieve remote endpoint identity identifier.
+
+  This identifier is added to all messages coming from the channel
+  """
+  def get_remote_identity_id(worker) do
+    Ockam.Worker.call(worker, :get_remote_identity_id)
+  end
 end
 
 defmodule Ockam.Identity.SecureChannel.Handshake do
@@ -362,8 +380,6 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
           identity: identity
         })
 
-      Logger.info("Updated state #{inspect(state)}")
-
       {:ready, data_options, state}
     end
   end
@@ -556,5 +572,16 @@ defmodule Ockam.Identity.SecureChannel.Data do
       _other ->
         {:error, {:invalid_outer_message, message}}
     end
+  end
+
+  @impl true
+  def handle_call(:get_remote_identity, _form, state) do
+    contact = Map.fetch!(state, :contact)
+    {:reply, contact, state}
+  end
+
+  def handle_call(:get_remote_identity_id, _form, state) do
+    contact_id = Map.fetch!(state, :contact_id)
+    {:reply, contact_id, state}
   end
 end
