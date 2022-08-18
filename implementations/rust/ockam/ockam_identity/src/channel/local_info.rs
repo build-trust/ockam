@@ -33,8 +33,11 @@ impl IdentitySecureChannelLocalInfo {
     }
 
     pub fn find_info(local_msg: &LocalMessage) -> Result<Self> {
-        if let Some(local_info) = local_msg
-            .local_info()
+        Self::find_info_from_list(local_msg.local_info())
+    }
+
+    pub fn find_info_from_list(local_info: &[LocalInfo]) -> Result<Self> {
+        if let Some(local_info) = local_info
             .iter()
             .find(|x| x.type_identifier() == IDENTITY_SECURE_CHANNEL_IDENTIFIER)
         {

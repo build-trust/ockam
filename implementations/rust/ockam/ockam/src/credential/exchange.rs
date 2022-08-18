@@ -1,7 +1,6 @@
 use crate::credential::{Attributes, Credential, CredentialData, Timestamp, Unverified};
 use minicbor::bytes::ByteSlice;
 use minicbor::{Decode, Decoder, Encode};
-use ockam_channel::SecureChannelLocalInfo;
 use ockam_core::api::Method::Post;
 use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::ToString, vec::Vec};
@@ -14,7 +13,7 @@ use ockam_identity::error::IdentityError;
 use ockam_identity::{
     IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityStateConst, IdentityVault,
 };
-use ockam_node::api::request;
+use ockam_node::api::{request, request_with_local_info};
 use ockam_node::Context;
 
 const TARGET: &str = "ockam::credential_exchange_worker::service";
@@ -61,7 +60,6 @@ impl CredentialExchange {
         Response::bad_request(id).body(e)
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn receive_presented_credential(
         sender: IdentityIdentifier,
         credential: Credential<'_>,
@@ -206,7 +204,6 @@ impl CredentialExchange {
     pub async fn present_credential_mutual(
         &self,
         credential: Credential<'_>,
-        receiver: &IdentityIdentifier,
         route: impl Into<Route>,
         authorities: &BTreeMap<IdentityIdentifier, IdentityChangeHistory>,
         authenticated_storage: &impl AuthenticatedStorage,
@@ -214,7 +211,7 @@ impl CredentialExchange {
     ) -> Result<()> {
         let mut child_ctx = self.ctx.new_detached(Address::random_local()).await?;
         let path = "actions/present_mutual";
-        let buf = request(
+        let (buf, local_info) = request_with_local_info(
             &mut child_ctx,
             "credential",
             None,
@@ -222,6 +219,10 @@ impl CredentialExchange {
             Request::post(path).body(credential),
         )
         .await?;
+
+        let their_id = IdentitySecureChannelLocalInfo::find_info_from_list(&local_info)?
+            .their_identity_id()
+            .clone();
 
         let mut dec = Decoder::new(&buf);
         let res: Response = dec.decode()?;
@@ -239,7 +240,7 @@ impl CredentialExchange {
         let credential: Credential = dec.decode()?;
 
         let res = Self::receive_presented_credential(
-            receiver.clone(),
+            their_id,
             credential,
             authorities,
             vault,
@@ -421,7 +422,6 @@ mod tests {
     use std::collections::BTreeMap;
     use std::time::Duration;
 
-    #[allow(non_snake_case)]
     #[ockam_macros::test]
     async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
@@ -480,7 +480,6 @@ mod tests {
         ctx.stop().await
     }
 
-    #[allow(non_snake_case)]
     #[ockam_macros::test]
     async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
@@ -528,7 +527,6 @@ mod tests {
         credential_exchange
             .present_credential_mutual(
                 credential1,
-                client2.identifier(),
                 route![channel, "credential_exchange"],
                 &authorities,
                 &client1_storage,
