@@ -144,7 +144,7 @@ impl<'a> TransportStatus<'a> {
     }
 }
 
-/// Respons body when interacting with a transport
+/// Response body when interacting with a transport
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]

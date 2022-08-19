@@ -336,6 +336,8 @@ impl NodeManager {
             }
 
             // ==*== Secure channels ==*==
+            // TODO: Change to RequestBuilder format
+            (Get, ["node", "secure_channel"]) => self.list_secure_channels(req).to_vec()?,
             (Get, ["node", "secure_channel_listener"]) => {
                 self.list_secure_channel_listener(req).to_vec()?
             }

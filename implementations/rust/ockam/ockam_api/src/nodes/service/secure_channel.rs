@@ -117,6 +117,20 @@ impl NodeManager {
         Ok(Response::ok(req.id()).body(response))
     }
 
+    pub(super) fn list_secure_channels(
+        &mut self,
+        req: &Request<'_>,
+    ) -> ResponseBuilder<Vec<String>> {
+        println!("HERE1");
+        Response::ok(req.id()).body(
+            self.registry
+                .secure_channels
+                .iter()
+                .map(|(addr, _)| addr.to_string())
+                .collect(),
+        )
+    }
+
     pub(super) async fn create_secure_channel_listener_impl(
         &mut self,
         addr: Address,
