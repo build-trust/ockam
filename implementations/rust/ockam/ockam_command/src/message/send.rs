@@ -32,31 +32,6 @@ pub struct SendCommand {
 
 impl SendCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: SendCommand) {
-        // Check if the Node exist
-        let config = &opts.config.clone();
-        let mut node: bool = false;
-        {
-            let inner = config.get_inner();
-
-            if !inner.nodes.is_empty() {
-                let first_node = &cmd.to.first();
-                // this unwrap won't panic, as we enter this block only if a node is there to check
-                let into_multi = first_node.as_ref().unwrap().data().0;
-
-                let input_node_name = std::str::from_utf8(into_multi).unwrap_or("");
-                // Iterate over all Nodes
-                for current_node in inner.nodes.keys() {
-                    if input_node_name == current_node {
-                        node = true;
-                        break;
-                    }
-                }
-            }
-        }
-        if !node {
-            eprintln!("Input Node doesn't exist, use `ockam node list` to list all Nodes");
-            std::process::exit(exitcode::USAGE);
-        }
         // First we clean the MultiAddr route to replace /node/<foo>
         // with the address lookup for `<foo>`
         let cmd = SendCommand {
