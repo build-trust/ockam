@@ -35,4 +35,8 @@ ignore = [
     # dependency `serde-xml`
     # (https://rustsec.org/advisories/RUSTSEC-2022-0048.html)
     "RUSTSEC-2022-0048",
+
+    # `ansi_term` is unmaintained, pulled in from dependency
+    # `tracing-subscriber`
+    "RUSTSEC-2021-0139",
 ]
