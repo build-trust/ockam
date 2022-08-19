@@ -125,6 +125,11 @@ pub(crate) fn short_identity() -> Result<Vec<u8>> {
     Ok(buf)
 }
 
+/// Construct a request builder to list all secure channels on the given node
+pub(crate) fn list_secure_channels() -> RequestBuilder<'static, ()> {
+    Request::builder(Method::Get, "/node/secure_channel")
+}
+
 /// Construct a request to create Secure Channels
 pub(crate) fn create_secure_channel(
     addr: MultiAddr,

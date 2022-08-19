@@ -1,8 +1,10 @@
 pub(crate) mod create;
 pub(crate) mod delete;
+pub(crate) mod list;
 
 pub(crate) use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
+pub(crate) use list::ListCommand;
 
 use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
@@ -18,8 +20,14 @@ pub enum SecureChannelSubcommand {
     /// Create Secure Channel Connector
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Create(CreateCommand),
+
+    /// Delete Secure Channel Connector
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Delete(DeleteCommand),
+
+    /// List Secure Channel Connector
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    List(ListCommand),
 }
 
 impl SecureChannelCommand {
@@ -27,6 +35,7 @@ impl SecureChannelCommand {
         match command.subcommand {
             SecureChannelSubcommand::Create(sub_cmd) => sub_cmd.run(opts),
             SecureChannelSubcommand::Delete(sub_cmd) => sub_cmd.run(opts),
+            SecureChannelSubcommand::List(command) => ListCommand::run(opts, command),
         }
     }
 }
