@@ -30,10 +30,6 @@ GITHUB_USERNAME=$(gh api user | jq -r '.login')
 OWNER="metaclips"
 RELEASE_NAME="release_$(date +'%d-%m-%Y')_$(date +'%s')"
 
-if [[ -z $OCKAM_PUBLISH_RECENT_FAILURE ]]; then
-  OCKAM_PUBLISH_RECENT_FAILURE=false
-fi
-
 if [[ -z $IS_DRAFT_RELEASE ]]; then
   echo "Please indicate flag if script is to run in draft or release mode.\nRun release.sh -h to find all available flags."
   exit 1
@@ -91,6 +87,7 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
 
   echo "File and hash are $file_and_sha"
 
+  #-----------Start production release-------------------------#
   if [[ -z $SKIP_OCKAM_PACKAGE_DRAFT_RELEASE || $SKIP_OCKAM_PACKAGE_DRAFT_RELEASE  == false ]]; then
     echo "Releasing Ockam container image"
     release_ockam_package $latest_tag_name "$file_and_sha" false
@@ -119,18 +116,13 @@ fi
 
 # Release to production
 if [[ $IS_DRAFT_RELEASE == false ]]; then
-  # Make Ockam Github draft as latest
-  if [[ -z $SKIP_OCKAM_DRAFT_RELEASE || $SKIP_OCKAM_DRAFT_RELEASE == false ]]; then
-    echo "Releasing Ockam Github release"
-    gh release edit $latest_tag_name --draft=false -R $OWNER/ockam
-  fi
+  # Make Ockam Github draft as latest.
+  echo "Releasing Ockam Github release"
+  gh release edit $latest_tag_name --draft=false -R $OWNER/ockam
 
   # Release Terraform Github release
-  if [[ -z $SKIP_TERRAFORM_DRAFT_RELEASE || $SKIP_TERRAFORM_DRAFT_RELEASE == false ]]; then
-    echo "Releasing Terraform release"
-    terraform_tag=${latest_tag_name:6}
-    gh release edit $terraform_tag --draft=false -R $OWNER/terraform-provider-ockam
-  fi
+  terraform_tag=${latest_tag_name:6}
+  gh release edit $terraform_tag --draft=false -R $OWNER/terraform-provider-ockam
 
   # Release Ockam package
   if [[ -z $SKIP_OCKAM_PACKAGE_RELEASE || $SKIP_OCKAM_PACKAGE_RELEASE  == false ]]; then
@@ -141,6 +133,10 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
   fi
 
   if [[ -z $SKIP_CRATES_IO_PUBLISH || $SKIP_CRATES_IO_PUBLISH == false ]]; then
+    if [[ -z $OCKAM_PUBLISH_RECENT_FAILURE ]]; then
+      OCKAM_PUBLISH_RECENT_FAILURE=false
+    fi
+
     echo "Starting Crates IO publish"
     ockam_crate_release
     success_info "Crates.io publish successful."

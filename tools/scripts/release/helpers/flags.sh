@@ -8,6 +8,11 @@ do
     esac
 done
 
+if [[ $IS_DRAFT_RELEASE == true && $RECENT_FAILURE == true ]]; then
+  echo "Cannot run script in failure mode for draft release"
+  exit 1
+fi
+
 if [[ ! -z $SHOW_HELP ]]; then
   echo "This script automates Ockam release for which consists of
   - Binary release
