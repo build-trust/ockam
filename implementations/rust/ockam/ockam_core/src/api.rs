@@ -116,7 +116,7 @@ pub fn internal_error<'a>(r: &'a Request, msg: &'a str) -> ResponseBuilder<Error
 }
 
 /// A request/response identifier.
-#[derive(Debug, Copy, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Copy, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord)]
 #[cbor(transparent)]
 pub struct Id(#[n(0)] u32);
 
@@ -179,7 +179,8 @@ impl Display for Status {
 
 impl Id {
     pub fn fresh() -> Self {
-        Id(rand::random())
+        // Ensure random Ids are not equal to 0 (the default Id):
+        Id(rand::random::<u32>().saturating_add(1))
     }
 }
 
@@ -320,7 +321,7 @@ impl Response {
 }
 
 /// An error type used in response bodies.
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Default, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Error<'a> {
@@ -333,7 +334,7 @@ pub struct Error<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<5359172>,
     /// The resource path of this error.
-    #[b(1)] path: Cow<'a, str>,
+    #[b(1)] path: Option<Cow<'a, str>>,
     /// The request method of this error.
     #[n(2)] method: Option<Method>,
     /// The actual error message.
@@ -346,7 +347,7 @@ impl<'a> Error<'a> {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             method: None,
-            path: path.into(),
+            path: Some(path.into()),
             message: None,
         }
     }
@@ -361,8 +362,8 @@ impl<'a> Error<'a> {
         self
     }
 
-    pub fn path(&self) -> &str {
-        &*self.path
+    pub fn path(&self) -> Option<&str> {
+        self.path.as_deref()
     }
 
     pub fn method(&self) -> Option<Method> {
