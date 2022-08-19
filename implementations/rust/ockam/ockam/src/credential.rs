@@ -27,7 +27,7 @@ use ockam_identity::{Identity, IdentityIdentifier, IdentityStateConst, IdentityV
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 
-pub const MAX_CREDENTIAL_VALIDITY: Duration = Duration::from_secs(6 * 3600);
+pub const MAX_CREDENTIAL_VALIDITY: Duration = Duration::from_secs(30 * 24 * 3600);
 
 /// Type to represent data of verified credentials.
 #[derive(Debug, Encode)]
