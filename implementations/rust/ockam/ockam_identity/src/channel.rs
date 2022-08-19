@@ -422,7 +422,7 @@ mod test {
         };
 
         let access_control = IdentityAccessControlBuilder::new_with_id(
-            "I79b26ba2ea5ad9b54abe5bebbcce7c446beda8c948afc0de293250090e5270b6".try_into()?,
+            "P79b26ba2ea5ad9b54abe5bebbcce7c446beda8c948afc0de293250090e5270b6".try_into()?,
         );
         WorkerBuilder::with_access_control(access_control, "receiver", receiver)
             .start(ctx)
