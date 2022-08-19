@@ -1,3 +1,4 @@
+pub(crate) mod config;
 pub(crate) mod start;
 
 pub(crate) use start::StartCommand;

@@ -1,12 +1,12 @@
 use clap::Args;
 use rand::prelude::random;
 
-use anyhow::Context;
+use anyhow::{Context as _, Result};
 use std::sync::Arc;
 use std::{
     env::current_exe,
     net::{IpAddr, SocketAddr},
-    path::PathBuf,
+    path::{Path, PathBuf},
     str::FromStr,
 };
 
@@ -20,7 +20,8 @@ use crate::{
     CommandGlobalOpts, HELP_TEMPLATE,
 };
 use ockam::identity::Identity;
-use ockam::TcpTransport;
+use ockam::{Address, AsyncTryClone, TCP};
+use ockam::{Context, TcpTransport};
 use ockam_api::config::cli;
 use ockam_api::nodes::IdentityOverride;
 use ockam_api::{
@@ -127,7 +128,7 @@ impl CreateCommand {
                 }
             }
 
-            if let Err(e) = embedded_node(setup, (cmd, cfg.clone())) {
+            if let Err(e) = embedded_node(setup, (cmd, addr, cfg.clone())) {
                 eprintln!("Ockam node failed: {:?}", e,);
             }
         } else {
@@ -143,7 +144,7 @@ impl CreateCommand {
         opts: &CommandGlobalOpts,
         cmd: &CreateCommand,
         addr: &SocketAddr,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let verbose = opts.global_args.verbose;
         let cfg = &opts.config;
 
@@ -209,7 +210,7 @@ impl CreateCommand {
         Ok(())
     }
 
-    pub fn overwrite_addr(&self) -> anyhow::Result<Self> {
+    pub fn overwrite_addr(&self) -> Result<Self> {
         let cmd = self.clone();
         let addr: SocketAddr = if &cmd.tcp_listener_address == "127.0.0.1:0" {
             let port = find_available_port().context("failed to acquire available port")?;
@@ -224,10 +225,7 @@ impl CreateCommand {
     }
 }
 
-async fn create_identity_override(
-    ctx: &ockam::Context,
-    cfg: &OckamConfig,
-) -> anyhow::Result<IdentityOverride> {
+async fn create_identity_override(ctx: &Context, cfg: &OckamConfig) -> Result<IdentityOverride> {
     // Get default root vault (create if needed)
     let default_vault_path = cfg.get_default_vault_path().unwrap_or_else(|| {
         let default_vault_path = cli::OckamConfig::directories()
@@ -267,7 +265,10 @@ async fn create_identity_override(
     Ok(identity_override)
 }
 
-async fn setup(ctx: ockam::Context, (c, cfg): (CreateCommand, OckamConfig)) -> anyhow::Result<()> {
+async fn setup(
+    mut ctx: Context,
+    (c, addr, cfg): (CreateCommand, SocketAddr, OckamConfig),
+) -> Result<()> {
     let identity_override = if c.skip_defaults {
         None
     } else {
@@ -281,16 +282,93 @@ async fn setup(ctx: ockam::Context, (c, cfg): (CreateCommand, OckamConfig)) -> a
     let node_dir = cfg.get_node_dir(&c.node_name).unwrap(); // can't fail because we already checked it
     let node_man = NodeManager::create(
         &ctx,
-        c.node_name,
+        c.node_name.clone(),
         node_dir,
         identity_override,
-        c.skip_defaults,
+        c.skip_defaults || c.launch_config.is_some(),
         (TransportType::Tcp, TransportMode::Listen, bind),
-        tcp,
+        tcp.async_try_clone().await?,
     )
     .await?;
 
     ctx.start_worker(NODEMANAGER_ADDR, node_man).await?;
+
+    if let Some(path) = c.launch_config {
+        let node_opts = super::NodeOpts {
+            api_node: c.node_name,
+        };
+        start_services(&mut ctx, &tcp, &path, addr, node_opts).await?
+    }
+
+    Ok(())
+}
+
+async fn start_services(
+    ctx: &mut Context,
+    tcp: &TcpTransport,
+    cfg: &Path,
+    addr: SocketAddr,
+    node_opts: super::NodeOpts,
+) -> Result<()> {
+    use crate::service::config::Config;
+    use crate::service::start::{self, StartCommand, StartSubCommand};
+
+    let config = {
+        let c = Config::read(cfg)?;
+        if let Some(sc) = c.startup_services {
+            sc
+        } else {
+            return Ok(());
+        }
+    };
+
+    let addr = Address::from((TCP, addr.to_string()));
+    tcp.connect(addr.address()).await?;
+
+    if let Some(cfg) = config.vault {
+        if !cfg.disabled {
+            let cmd = StartCommand {
+                node_opts: node_opts.clone(),
+                create_subcommand: StartSubCommand::Vault { addr: cfg.address },
+            };
+            println!("starting vault service ...");
+            start::start_vault_service(ctx, cmd, addr.clone().into()).await?
+        }
+    }
+    if let Some(cfg) = config.identity {
+        if !cfg.disabled {
+            let cmd = StartCommand {
+                node_opts: node_opts.clone(),
+                create_subcommand: StartSubCommand::Identity { addr: cfg.address },
+            };
+            println!("starting identity service ...");
+            start::start_identity_service(ctx, cmd, addr.clone().into()).await?
+        }
+    }
+    if let Some(cfg) = config.verifier {
+        if !cfg.disabled {
+            let cmd = StartCommand {
+                node_opts: node_opts.clone(),
+                create_subcommand: StartSubCommand::Verifier { addr: cfg.address },
+            };
+            println!("starting verifier service ...");
+            start::start_verifier_service(ctx, cmd, addr.clone().into()).await?
+        }
+    }
+    if let Some(cfg) = config.authenticator {
+        if !cfg.disabled {
+            let cmd = StartCommand {
+                node_opts,
+                create_subcommand: StartSubCommand::Authenticator {
+                    addr: cfg.address,
+                    enrollers: cfg.enrollers,
+                    project: cfg.project,
+                },
+            };
+            println!("starting authenticator service ...");
+            start::start_authenticator_service(ctx, cmd, addr.into()).await?
+        }
+    }
 
     Ok(())
 }
