@@ -1,5 +1,5 @@
 use minicbor::{Decode, Encode};
-use ockam::credential::{Attributes, Credential, Timestamp};
+use ockam::credential::{Attributes, Timestamp};
 use ockam_core::compat::borrow::Cow;
 use ockam_core::CowBytes;
 use ockam_identity::IdentityIdentifier;
@@ -14,7 +14,7 @@ use ockam_core::TypeTag;
 pub struct VerifyRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6844116>,
-    #[b(1)] cred: Credential<'a>,
+    #[b(1)] cred: CowBytes<'a>,
     #[n(2)] subj: IdentityIdentifier,
     #[b(3)] auth: BTreeMap<IdentityIdentifier, CowBytes<'a>>
 }
@@ -30,11 +30,11 @@ pub struct VerifyResponse<'a> {
 }
 
 impl<'a> VerifyRequest<'a> {
-    pub fn new(cred: Credential<'a>, subj: IdentityIdentifier) -> Self {
+    pub fn new<C: Into<Cow<'a, [u8]>>>(cred: C, subj: IdentityIdentifier) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            cred,
+            cred: CowBytes(cred.into()),
             subj,
             auth: BTreeMap::new(),
         }
@@ -48,7 +48,7 @@ impl<'a> VerifyRequest<'a> {
         self
     }
 
-    pub fn credential(&self) -> &Credential<'a> {
+    pub fn credential(&self) -> &[u8] {
         &self.cred
     }
 
