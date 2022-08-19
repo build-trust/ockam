@@ -17,7 +17,7 @@ pub struct IdentityIdentifier(#[n(0)] KeyId);
 
 /// Unique [`crate::Identity`] identifier, computed as SHA256 of root public key
 impl IdentityIdentifier {
-    const PREFIX: &'static str = "P";
+    const PREFIX: &'static str = "I";
 
     /// Create an IdentityIdentifier from a KeyId
     pub fn from_key_id(key_id: &str) -> Self {
