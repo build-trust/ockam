@@ -1,10 +1,12 @@
 use anyhow::{anyhow, Context};
 use clap::Args;
+use colorful::Colorful;
 use minicbor::Decoder;
 use reqwest::StatusCode;
 use std::borrow::Borrow;
+use std::io::stdin;
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
-use tracing::{debug, warn};
+use tracing::debug;
 
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::error::ApiError;
@@ -80,9 +82,8 @@ async fn enroll(
 pub struct Auth0Service;
 
 impl Auth0Service {
-    const DOMAIN: &'static str = "ockam.us.auth0.com";
+    const DOMAIN: &'static str = "account.ockam.io";
     const CLIENT_ID: &'static str = "c1SAhEjrJAqEk6ArWjGjuWX11BD2gK8X";
-    const API_AUDIENCE: &'static str = "https://ockam.us.auth0.com/api/v2/";
     const SCOPES: &'static str = "profile openid email";
 }
 
@@ -98,11 +99,7 @@ impl Auth0TokenProvider for Auth0Service {
                 client
                     .post(format!("https://{}/oauth/device/code", Self::DOMAIN))
                     .header("content-type", "application/x-www-form-urlencoded")
-                    .form(&[
-                        ("client_id", Self::CLIENT_ID),
-                        ("scope", Self::SCOPES),
-                        ("audience", Self::API_AUDIENCE),
-                    ])
+                    .form(&[("client_id", Self::CLIENT_ID), ("scope", Self::SCOPES)])
                     .send()
             })
             .await
@@ -127,6 +124,30 @@ impl Auth0TokenProvider for Auth0Service {
             }
         };
 
+        eprint!(
+            "\nEnroll Ockam Command's default identity with Ockam Orchestrator:\n\
+             {} First copy your one-time code: {}\n\
+             {} Then press enter to open {} in your browser...",
+            "!".light_yellow(),
+            format!(" {} ", device_code_res.user_code)
+                .bg_white()
+                .black(),
+            ">".light_green(),
+            device_code_res.verification_uri.to_string().light_green(),
+        );
+
+        let mut input = String::new();
+        match stdin().read_line(&mut input) {
+            Ok(_) => eprintln!(
+                "{} Opening: {}",
+                ">".light_green(),
+                device_code_res.verification_uri
+            ),
+            Err(_e) => {
+                return Err(ApiError::generic("couldn't read enter from stdin"));
+            }
+        }
+
         // Request device activation
         // Note that we try to open the verification uri **without** the code.
         // After the code is entered, if the user closes the tab (because they
@@ -135,13 +156,12 @@ impl Auth0TokenProvider for Auth0Service {
         // rerun the command).
         let uri: &str = device_code_res.verification_uri.borrow();
         if open::that(uri).is_err() {
-            warn!("couldn't open verification url automatically [url={uri}]",);
+            eprintln!(
+                "{} Couldn't open activation url automatically [url={}]",
+                "!".light_red(),
+                uri.to_string().light_green()
+            );
         }
-
-        eprintln!(
-            "Open the following url in your browser to authorize your device with code {}:\n{}",
-            device_code_res.user_code, device_code_res.verification_uri_complete,
-        );
 
         // Request tokens
         let client = reqwest::Client::new();
@@ -165,7 +185,7 @@ impl Auth0TokenProvider for Auth0Service {
                         .await
                         .map_err(|err| ApiError::generic(&err.to_string()))?;
                     debug!("tokens received [tokens={tokens_res:#?}]");
-                    eprintln!("Tokens received, processing...",);
+                    eprintln!("{} Tokens received, processing...", ">".light_green());
                     return Ok(tokens_res);
                 }
                 _ => {
