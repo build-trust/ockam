@@ -214,7 +214,7 @@ credential_data = {
 
 verify_request = {
     ?0: 6844116,
-     1: credential,
+     1: bytes,                      ;; credential
      2: identity_id,                ;; subject
      3: { identity_id => identity } ;; acceptable identities
 }

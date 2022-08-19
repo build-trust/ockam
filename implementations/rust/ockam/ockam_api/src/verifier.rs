@@ -2,7 +2,7 @@ pub mod types;
 
 use either::Either;
 use minicbor::Decoder;
-use ockam::credential::{CredentialData, Timestamp, Verified};
+use ockam::credential::{Credential, CredentialData, Timestamp, Verified};
 use ockam::errcode::{Kind, Origin};
 use ockam_core::api::{self, Id, ResponseBuilder};
 use ockam_core::api::{Error, Method, Request, Response};
@@ -42,7 +42,14 @@ where
 
     async fn on_request(&mut self, data: &[u8]) -> Result<Vec<u8>> {
         let mut dec = Decoder::new(data);
-        let req: Request = dec.decode()?;
+
+        let req: Request = match dec.decode() {
+            Ok(rq) => rq,
+            Err(e) => {
+                let err = Error::default().with_message(e.to_string());
+                return Ok(Response::bad_request(Id::default()).body(err).to_vec()?);
+            }
+        };
 
         trace! {
             target: "ockam_api::verifier",
@@ -57,7 +64,8 @@ where
             Some(Method::Post) => match req.path_segments::<2>().as_slice() {
                 ["verify"] => {
                     let vr: VerifyRequest = dec.decode()?;
-                    match self.verify(req.id(), &vr).await {
+                    let cr: Credential = minicbor::decode(vr.credential())?;
+                    match self.verify(req.id(), &vr, &cr).await {
                         Ok(Either::Left(err)) => err.to_vec()?,
                         Ok(Either::Right(dat)) => {
                             let exp = dat.expires_at();
@@ -82,8 +90,9 @@ where
         &self,
         id: Id,
         req: &'a VerifyRequest<'a>,
+        cre: &'a Credential<'a>,
     ) -> Result<Either<ResponseBuilder<Error<'_>>, CredentialData<'a, Verified>>> {
-        let data = CredentialData::try_from(req.credential())?;
+        let data = CredentialData::try_from(cre)?;
 
         let ident = if let Some(ident) = req.authority(data.unverfied_issuer()) {
             IdentityChangeHistory::import(ident)?
@@ -92,10 +101,7 @@ where
             return Ok(Either::Left(Response::unauthorized(id).body(err)));
         };
 
-        let data = req
-            .credential()
-            .verify_signature(&ident, &self.vault)
-            .await?;
+        let data = cre.verify_signature(&ident, &self.vault).await?;
 
         if req.subject() != data.subject() {
             let err = Error::new("/verify").with_message("invalid subject");
