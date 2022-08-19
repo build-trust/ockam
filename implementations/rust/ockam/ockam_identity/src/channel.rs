@@ -72,6 +72,10 @@ impl<V: IdentityVault> Identity<V> {
         )
         .await
     }
+
+    pub async fn stop_secure_channel(&self, channel: &Address) -> Result<()> {
+        self.ctx.stop_worker(channel.clone()).await
+    }
 }
 
 #[cfg(test)]
