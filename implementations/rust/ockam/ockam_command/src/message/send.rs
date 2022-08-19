@@ -23,11 +23,40 @@ pub struct SendCommand {
     #[clap(short, long, value_name = "ROUTE")]
     pub to: MultiAddr,
 
+    /// Override Default Timeout
+    #[clap(long, value_name = "TIMEOUT")]
+    pub timeout: Option<u64>,
+
     pub message: String,
 }
 
 impl SendCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: SendCommand) {
+        // Check if the Node exist
+        let config = &opts.config.clone();
+        let mut node: bool = false;
+        {
+            let inner = config.get_inner();
+
+            if !inner.nodes.is_empty() {
+                let first_node = &cmd.to.first();
+                // this unwrap won't panic, as we enter this block only if a node is there to check
+                let into_multi = first_node.as_ref().unwrap().data().0;
+
+                let input_node_name = std::str::from_utf8(into_multi).unwrap_or("");
+                // Iterate over all Nodes
+                for current_node in inner.nodes.keys() {
+                    if input_node_name == current_node {
+                        node = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if !node {
+            eprintln!("Input Node doesn't exist, use `ockam node list` to list all Nodes");
+            std::process::exit(exitcode::USAGE);
+        }
         // First we clean the MultiAddr route to replace /node/<foo>
         // with the address lookup for `<foo>`
         let cmd = SendCommand {
@@ -58,8 +87,18 @@ async fn send_message_from_embedded_node(
 
     if let Some(route) = ockam_api::multiaddr_to_route(&cmd.to) {
         ctx.send(route, cmd.message).await?;
-        let message = ctx.receive::<String>().await?;
-        println!("{}", message);
+        match cmd.timeout {
+            Some(timeout) => {
+                let message = ctx
+                    .receive_duration_timeout::<String>(std::time::Duration::from_secs(timeout))
+                    .await?;
+                println!("{}", message);
+            }
+            None => {
+                let message = ctx.receive::<String>().await?;
+                println!("{}", message);
+            }
+        }
     }
 
     ctx.stop().await?;
@@ -75,10 +114,16 @@ async fn send_message_via_connection_to_a_node(
     let route: Route = base_route.modify().append(NODEMANAGER_ADDR).into();
     debug!(?cmd, %route, "Sending request");
 
-    let response: Vec<u8> = ctx
-        .send_and_receive(route, api::message::send(cmd)?)
-        .await
-        .context("Failed to process request")?;
+    let response: Vec<u8> = match cmd.timeout {
+        Some(timeout) => ctx
+            .send_and_receive_with_timeout(route, api::message::send(cmd)?, timeout)
+            .await
+            .context("Failed to process request")?,
+        None => ctx
+            .send_and_receive(route, api::message::send(cmd)?)
+            .await
+            .context("Failed to process request")?,
+    };
     let mut dec = Decoder::new(&response);
     let header = dec
         .decode::<Response>()

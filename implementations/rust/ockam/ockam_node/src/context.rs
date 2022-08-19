@@ -427,6 +427,36 @@ impl Context {
         Ok(child_ctx.receive::<N>().await?.take().body())
     }
 
+    /// Using a temporary new context, send a message and then receive a message with custom timeout
+    ///
+    /// This helper function uses [`new_detached`], [`send`], and
+    /// [`receive`] internally. See their documentation for more
+    /// details.
+    ///
+    /// [`new_detached`]: Self::new_detached
+    /// [`send`]: Self::send
+    /// [`receive`]: Self::receive
+    pub async fn send_and_receive_with_timeout<R, M, N>(
+        &self,
+        route: R,
+        msg: M,
+        timeout: u64,
+    ) -> Result<N>
+    where
+        R: Into<Route>,
+        M: Message + Send + 'static,
+        N: Message,
+    {
+        let mut child_ctx = self.new_detached(Address::random_local()).await?;
+        child_ctx.send(route, msg).await?;
+        let duration = core::time::Duration::from_secs(timeout);
+        Ok(child_ctx
+            .receive_duration_timeout::<N>(duration)
+            .await?
+            .take()
+            .body())
+    }
+
     /// Send a message to another address associated with this worker
     ///
     /// This function is a simple wrapper around `Self::send()` which
