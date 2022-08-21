@@ -3,7 +3,7 @@ use clap::Args;
 use minicbor::Decoder;
 use tracing::debug;
 
-use crate::{embedded_node, CommandGlobalOpts};
+use crate::{embedded_node, CommandGlobalOpts, HELP_TEMPLATE};
 use ockam::TcpTransport;
 use ockam_api::clean_multiaddr;
 use ockam_api::nodes::NODEMANAGER_ADDR;
@@ -13,7 +13,32 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::util::{api, connect_to, exitcode, stop_node};
 
+const EXAMPLES: &str = "\
+EXAMPLES
+
+    # Create two nodes
+    $ ockam node create n1
+    $ ockam node create n2
+
+    # Send a message to the uppercase service on node 1
+    $ ockam message send hello --to /node/n1/service/uppercase
+    HELLO
+
+    # Send a message to the uppercase service on node n1 from node n1
+    $ ockam message send hello --from /node/n2 --to /node/n1/service/uppercase
+    HELLO
+
+    # Create a secure channel from node n1 to the api service on node n2
+    # Send a message through this encrypted channel to the uppercase service
+    $ ockam secure-channel create --from /node/n1 --to /node/n2/service/api \
+        | ockam message send hello --from /node/n1 --to -/service/uppercase
+    HELLO
+
+LEARN MORE
+";
+
 #[derive(Clone, Debug, Args)]
+#[clap(help_template = const_str::replace!(HELP_TEMPLATE, "LEARN MORE", EXAMPLES))]
 pub struct SendCommand {
     /// The node to send messages from
     #[clap(short, long, value_name = "NODE")]
