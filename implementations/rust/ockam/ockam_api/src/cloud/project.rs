@@ -43,6 +43,10 @@ impl Project<'_> {
             identity: self.identity.as_ref().map(|x| x.to_owned()),
         }
     }
+
+    pub fn is_ready(&self) -> bool {
+        !self.access_route.is_empty() & self.identity.is_some()
+    }
 }
 
 #[derive(Encode, Decode, Debug)]

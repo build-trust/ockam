@@ -1,12 +1,12 @@
 use std::borrow::Borrow;
-use std::io::stdin;
+use std::io::{stdin, Write};
 use std::str::FromStr;
 
 use clap::Args;
 use colorful::Colorful;
 use reqwest::StatusCode;
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
-use tracing::{debug, info, trace};
+use tracing::{debug, info};
 
 use ockam::identity::IdentityIdentifier;
 use ockam::{Context, TcpTransport};
@@ -196,29 +196,17 @@ async fn enroll(
     let token = auth0.token().await?;
     let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
     rpc.request(api::enroll::auth0(cmd.clone(), token)).await?;
-    let (res, _) = rpc.check_response()?;
-    match res.status() {
-        Some(Status::Ok) => {
-            info!("Enrolled successfully");
-            return Ok(());
-        }
-        // If the same identity is enrolled more than once, we will receive a BadRequest error.
-        // From the client side, enrolling should be an idempotent operation, and therefore hide that error.
-        // TODO: Maybe we could store this in the config to avoid going through the process multiple times?
-        Some(Status::BadRequest) => {
-            info!("Already enrolled");
-            trace!(msg = %minicbor::display(rpc.buf()), "Received CBOR message");
-            return Ok(());
-        }
-        Some(status) => {
-            eprintln!("An error occurred while processing the request. Status code: {status}");
-        }
-        None => {
-            eprintln!("No status code found in response");
-        }
+    let (res, dec) = rpc.check_response()?;
+    if res.status() == Some(Status::Ok) {
+        info!("Enrolled successfully");
+        Ok(())
+    } else if res.status() == Some(Status::BadRequest) {
+        info!("Already enrolled");
+        Ok(())
+    } else {
+        eprintln!("{}", rpc.parse_err_msg(res, dec));
+        Err(crate::Error::new(exitcode::SOFTWARE))
     }
-    trace!(msg = %minicbor::display(rpc.buf()), "Received CBOR message");
-    Err(crate::Error::new(exitcode::SOFTWARE))
 }
 
 async fn default_space<'a>(
@@ -316,12 +304,13 @@ async fn default_project<'a>(
             cloud_opts: cloud_opts.clone(),
         };
         loop {
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             print!(".");
+            std::io::stdout().flush()?;
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
             rpc.request(api::project::show(&cmd)).await?;
             let project = rpc.parse_response::<Project>()?;
-            if !project.access_route.is_empty() {
+            if project.is_ready() {
                 break;
             }
         }
