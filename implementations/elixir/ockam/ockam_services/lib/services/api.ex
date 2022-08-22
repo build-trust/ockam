@@ -49,7 +49,7 @@ defmodule Ockam.Services.API do
   """
   def reply_error(request, reason, address) do
     status = status_code(reason)
-    body = error_message(reason)
+    body = CBOR.encode(error_message(reason))
     reply(request, status, body, address)
   end
 
@@ -94,11 +94,15 @@ defmodule Ockam.Services.API do
 
   ## TODO: better standard error messages
   def error_message({:bad_request, data}) do
-    inspect(data)
+    error_message(data)
   end
 
   def error_message({:resource_exists, data}) do
-    inspect(data)
+    error_message(data)
+  end
+
+  def error_message(message) when is_binary(message) do
+    message
   end
 
   def error_message(message) do
