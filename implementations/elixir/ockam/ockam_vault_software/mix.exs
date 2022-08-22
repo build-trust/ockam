@@ -1,7 +1,7 @@
 defmodule Ockam.Vault.Software.MixProject do
   use Mix.Project
 
-  @version "0.62.0"
+  @version "0.70.0"
 
   @elixir_requirement "~> 1.12"
 
