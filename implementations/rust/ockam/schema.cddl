@@ -44,7 +44,7 @@ status = 200 ;; OK
 
 error = {
     ?0: 5359172,
-     1: path,
+    ?1: path,
     ?2: method,
     ?3: message
 }
