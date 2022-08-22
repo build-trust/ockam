@@ -22,7 +22,6 @@ pub use trust_public_key_policy::*;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SecureChannelTrustInfo {
     their_identity_id: IdentityIdentifier,
-    // TODO: credentials:
 }
 
 impl SecureChannelTrustInfo {

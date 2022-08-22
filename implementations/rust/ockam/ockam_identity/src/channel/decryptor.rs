@@ -1,8 +1,8 @@
 use crate::authenticated_storage::AuthenticatedStorage;
-use crate::change_history::IdentityChangeHistory;
 use crate::{
     EncryptorWorker, Identity, IdentityChannelMessage, IdentityError, IdentityIdentifier,
-    IdentitySecureChannelLocalInfo, IdentityVault, SecureChannelTrustInfo, TrustPolicy,
+    IdentitySecureChannelLocalInfo, IdentityVault, PublicIdentity, SecureChannelTrustInfo,
+    TrustPolicy,
 };
 use core::future::Future;
 use core::pin::Pin;
@@ -262,18 +262,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
         {
             debug!("Received Authentication request");
 
-            let their_identity = IdentityChangeHistory::import(&identity)?;
-            if !their_identity
-                .verify_all_existing_events(&self.identity.vault)
-                .await?
-            {
-                return Err(IdentityError::IdentityVerificationFailed.into());
-            }
-
-            let their_identity_id = their_identity
-                .compute_identity_id(&self.identity.vault)
-                .await?;
-
+            let their_identity = PublicIdentity::import(&identity, &self.identity.vault).await?;
+            let their_identity_id = their_identity.identifier();
             let public_key = their_identity.get_root_public_key()?;
 
             // Verify responder posses their Identity key
@@ -292,7 +282,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             }
 
             self.identity
-                .update_known_identity(&their_identity_id, &their_identity, &self.storage)
+                .update_known_identity(their_identity_id, their_identity.changes(), &self.storage)
                 .await?;
 
             info!(
@@ -309,7 +299,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             }
             info!(
                 "Initiator checked trust policy for SecureChannel from: {}",
-                &their_identity_id
+                their_identity_id
             );
 
             // Prove we posses our Identity key
@@ -334,7 +324,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
 
             self.state = Some(State::Initialized(Initialized {
                 local_secure_channel_address: state.channel.address(),
-                their_identity_id,
+                their_identity_id: their_identity_id.clone(),
                 encryptor_address: encryptor_address.clone(),
             }));
 
@@ -388,16 +378,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
         {
             debug!("Received Authentication response");
 
-            let their_identity = IdentityChangeHistory::import(&identity)?;
-            if !their_identity
-                .verify_all_existing_events(&self.identity.vault)
-                .await?
-            {
-                return Err(IdentityError::IdentityVerificationFailed.into());
-            }
-            let their_identity_id = their_identity
-                .compute_identity_id(&self.identity.vault)
-                .await?;
+            let their_identity = PublicIdentity::import(&identity, &self.identity.vault).await?;
+            let their_identity_id = their_identity.identifier();
 
             let public_key = their_identity.get_root_public_key()?;
 
@@ -413,12 +395,12 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             }
 
             self.identity
-                .update_known_identity(&their_identity_id, &their_identity, &self.storage)
+                .update_known_identity(their_identity_id, their_identity.changes(), &self.storage)
                 .await?;
 
             info!(
                 "Responder verified SecureChannel from: {}",
-                &their_identity_id
+                their_identity_id
             );
 
             // Check our TrustPolicy
@@ -430,7 +412,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             }
             info!(
                 "Responder checked trust policy for SecureChannel from: {}",
-                &their_identity_id
+                their_identity_id
             );
 
             let remote_identity_secure_channel_address = return_route.recipient();
@@ -439,7 +421,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
 
             self.state = Some(State::Initialized(Initialized {
                 local_secure_channel_address: state.local_secure_channel_address.clone(),
-                their_identity_id,
+                their_identity_id: their_identity_id.clone(),
                 encryptor_address: encryptor_address.clone(),
             }));
 

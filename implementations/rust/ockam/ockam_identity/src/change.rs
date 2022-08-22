@@ -1,9 +1,15 @@
+use crate::{EventIdentifier, IdentityEventAttributes};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{vault::PublicKey, Result};
 use serde::{Deserialize, Serialize};
 
 pub use crate::signature::*;
-use crate::{CreateKeyChange, EventIdentifier, IdentityEventAttributes, RotateKeyChange};
+
+mod create_key;
+mod rotate_key;
+
+pub use create_key::*;
+pub use rotate_key::*;
 
 /// Pre-defined keys in [`IdentityEventAttributes`] map
 #[non_exhaustive]
