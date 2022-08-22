@@ -3,11 +3,10 @@ use crate::change::IdentityChangeEvent;
 use crate::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use crate::{
     EventIdentifier, IdentityError, IdentityEventAttributes, IdentityIdentifier, IdentityVault,
-    KeyAttributes, MetaKeyAttributes,
+    KeyAttributes, MetaKeyAttributes, PublicIdentity,
 };
 use ockam_core::compat::{
     boxed::Box,
-    rand::{thread_rng, CryptoRng, RngCore},
     string::{String, ToString},
     sync::Arc,
     vec::Vec,
@@ -52,11 +51,7 @@ impl<V: IdentityVault> Identity<V> {
         change_history: IdentityChangeHistory,
         ctx: Context,
         vault: V,
-        rng: impl RngCore + CryptoRng + Clone,
     ) -> Self {
-        // Avoid warning
-        let _ = rng;
-
         Self {
             id,
             change_history: Arc::new(RwLock::new(change_history)),
@@ -80,7 +75,7 @@ impl<V: IdentityVault> Identity<V> {
 
         let vault = vault.async_try_clone().await?;
 
-        let identity = Self::new(id, change_history, child_ctx, vault, thread_rng());
+        let identity = Self::new(id, change_history, child_ctx, vault);
 
         Ok(identity)
     }
@@ -141,7 +136,7 @@ impl<V: IdentityVault> Identity<V> {
 
         let vault = vault.async_try_clone().await?;
 
-        let identity = Self::new(id, change_history, child_ctx, vault, thread_rng());
+        let identity = Self::new(id, change_history, child_ctx, vault);
 
         Ok(identity)
     }
@@ -282,7 +277,7 @@ impl<V: IdentityVault> Identity<V> {
     pub async fn update_known_identity(
         &self,
         their_identity_id: &IdentityIdentifier,
-        current_history: &IdentityChangeHistory,
+        current_history: &IdentityChangeHistory, // TODO: Change to PublicIdentity?
         storage: &impl AuthenticatedStorage,
     ) -> Result<()> {
         let should_set =
@@ -312,5 +307,13 @@ impl<V: IdentityVault> Identity<V> {
         }
 
         Ok(())
+    }
+
+    pub async fn to_public(&self) -> Result<PublicIdentity<V>> {
+        Ok(PublicIdentity::new(
+            self.id.clone(),
+            self.change_history.read().await.clone(),
+            self.vault.async_try_clone().await?,
+        ))
     }
 }
