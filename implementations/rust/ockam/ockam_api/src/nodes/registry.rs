@@ -3,9 +3,29 @@ use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, Result, Route};
 use ockam_identity::Identity;
 use ockam_vault::Vault;
+use std::sync::Arc;
 
-#[derive(Default)]
-pub(crate) struct SecureChannelInfo {}
+#[derive(Clone)]
+pub(crate) struct SecureChannelInfo {
+    // Target route of the channel
+    route: Route,
+    // Local address of the created channel
+    addr: Address,
+}
+
+impl SecureChannelInfo {
+    pub(crate) fn new(route: Route, addr: Address) -> Self {
+        Self { addr, route }
+    }
+
+    pub(crate) fn route(&self) -> &Route {
+        &self.route
+    }
+
+    pub(crate) fn addr(&self) -> &Address {
+        &self.addr
+    }
+}
 
 pub(crate) struct OrchestratorSecureChannelInfo {
     addr: Address,
@@ -21,7 +41,7 @@ impl OrchestratorSecureChannelInfo {
     }
 }
 
-#[derive(Default, Hash, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Default, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct IdentityRouteKey(Vec<u8>);
 
 impl IdentityRouteKey {
@@ -68,8 +88,12 @@ pub(crate) struct OutletInfo {
 
 #[derive(Default)]
 pub(crate) struct Registry {
-    pub(crate) secure_channels: BTreeMap<Address, SecureChannelInfo>,
+    // Registry to keep track of secure channels. It uses an Arc to store the channel info because we
+    // generally add two entries to the map: one using the target route as the key to avoid creating
+    // duplicated secure channels, and another using the secure channel address to be able to remove them.
+    pub(crate) secure_channels: BTreeMap<IdentityRouteKey, Arc<SecureChannelInfo>>,
     // Registry to keep track of secure channels between the node and the orchestrator (controller node + project nodes).
+    // TODO: refactor to use `secure_channels` where `orchestrator_secure_channels` is being used
     pub(crate) orchestrator_secure_channels:
         BTreeMap<IdentityRouteKey, OrchestratorSecureChannelInfo>,
     pub(crate) secure_channel_listeners: BTreeMap<Address, SecureChannelListenerInfo>,
