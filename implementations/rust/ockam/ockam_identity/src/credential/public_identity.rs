@@ -70,7 +70,7 @@ impl PublicIdentity {
                 "invalid signature",
             ));
         }
-        Ok(dat.make_verified())
+        Ok(dat.into_verified())
     }
 
     /// Return authenticated non-expired attributes attached to that Identity

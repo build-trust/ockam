@@ -76,7 +76,7 @@ pub struct CredentialData<'a, T> {
 }
 
 impl<'a> CredentialData<'a, Unverified> {
-    pub(crate) fn make_verified(self) -> CredentialData<'a, Verified> {
+    pub(crate) fn into_verified(self) -> CredentialData<'a, Verified> {
         CredentialData {
             schema: self.schema,
             attributes: self.attributes,
