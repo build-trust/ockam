@@ -6,7 +6,6 @@ pub mod echoer;
 pub mod error;
 pub mod identity;
 pub mod nodes;
-pub mod old;
 pub mod uppercase;
 pub mod vault;
 pub mod verifier;
