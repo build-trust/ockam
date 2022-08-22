@@ -24,7 +24,6 @@ pub(crate) mod node {
         Request::builder(Method::Get, "/node")
     }
 }
-
 /// Construct a request to query node status
 pub(crate) fn query_status() -> Result<Vec<u8>> {
     let mut buf = vec![];
@@ -146,15 +145,13 @@ pub(crate) fn create_secure_channel(
 ) -> RequestBuilder<'static, models::secure_channel::CreateSecureChannelRequest<'static>> {
     let payload =
         models::secure_channel::CreateSecureChannelRequest::new(&addr, authorized_identifiers);
-
     Request::builder(Method::Post, "/node/secure_channel").body(payload)
 }
 
 pub(crate) fn delete_secure_channel(
-    addr: Address,
+    addr: &Address,
 ) -> RequestBuilder<'static, models::secure_channel::DeleteSecureChannelRequest<'static>> {
-    let payload = models::secure_channel::DeleteSecureChannelRequest::new(&addr);
-
+    let payload = models::secure_channel::DeleteSecureChannelRequest::new(addr);
     Request::builder(Method::Delete, "/node/secure_channel").body(payload)
 }
 

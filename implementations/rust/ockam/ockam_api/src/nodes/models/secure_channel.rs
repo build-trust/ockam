@@ -101,7 +101,7 @@ pub struct DeleteSecureChannelResponse<'a> {
 }
 
 impl<'a> DeleteSecureChannelResponse<'a> {
-    pub fn new(channel: Option<&Address>) -> Self {
+    pub fn new(channel: Option<Address>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
