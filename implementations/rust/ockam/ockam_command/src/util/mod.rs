@@ -92,10 +92,6 @@ impl<'a> Rpc<'a> {
         })
     }
 
-    pub fn buf(&self) -> &[u8] {
-        &self.buf
-    }
-
     pub async fn request<T>(&mut self, req: RequestBuilder<'_, T>) -> anyhow::Result<()>
     where
         T: Encode<()>,
@@ -178,25 +174,35 @@ impl<'a> Rpc<'a> {
         let hdr = dec
             .decode::<Response>()
             .context("Failed to decode response header")?;
+        if hdr.status() == Some(Status::Ok) {
+            Ok(dec)
+        } else {
+            eprintln!("{}", self.parse_err_msg(hdr, dec));
+            Err(crate::Error::new(exitcode::SOFTWARE))
+        }
+    }
+
+    pub fn parse_err_msg(&self, hdr: Response, mut dec: Decoder) -> String {
+        trace! {
+            dec = %minicbor::display(&self.buf),
+            hex = %hex::encode(&self.buf),
+            "Received CBOR message"
+        };
         match hdr.status() {
-            Some(Status::Ok) => {
-                return Ok(dec);
-            }
             Some(status) if hdr.has_body() => {
-                let err = dec.decode::<String>().unwrap_or_default();
-                eprintln!(
+                let err = match dec.decode::<String>() {
+                    Ok(msg) => msg,
+                    Err(_) => dec.decode::<String>().unwrap_or_default(),
+                };
+                format!(
                     "An error occurred while processing the request. Status code: {status}. {err}"
-                );
+                )
             }
             Some(status) => {
-                eprintln!("An error occurred while processing the request. Status code: {status}",);
+                format!("An error occurred while processing the request. Status code: {status}")
             }
-            None => {
-                eprintln!("No status code found in response");
-            }
-        };
-        trace!(msg = %minicbor::display(&self.buf), "Received CBOR message");
-        Err(crate::Error::new(exitcode::SOFTWARE))
+            None => "No status code found in response".to_string(),
+        }
     }
 
     /// Parse the response body and print it.
