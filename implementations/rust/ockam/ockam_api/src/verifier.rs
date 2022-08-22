@@ -2,11 +2,11 @@ pub mod types;
 
 use either::Either;
 use minicbor::Decoder;
-use ockam::credential::{Credential, CredentialData, Timestamp, Verified};
 use ockam::errcode::{Kind, Origin};
 use ockam_core::api::{self, Id, ResponseBuilder};
 use ockam_core::api::{Error, Method, Request, Response};
 use ockam_core::{self, Result, Routed, Worker};
+use ockam_identity::credential::{Credential, CredentialData, Timestamp, Verified};
 use ockam_identity::{IdentityVault, PublicIdentity};
 use ockam_node::Context;
 use tracing::trace;
@@ -101,7 +101,7 @@ where
             return Ok(Either::Left(Response::unauthorized(id).body(err)));
         };
 
-        let data = cre.verify_signature(&ident, &self.vault).await?;
+        let data = ident.verify_credential(cre, &self.vault).await?;
 
         if req.subject() != data.subject() {
             let err = Error::new("/verify").with_message("invalid subject");

@@ -1,7 +1,7 @@
 use anyhow::Context;
 use cli_table::{Cell, Style, Table};
 use core::fmt::Write;
-use ockam::credential::Credential;
+use ockam::identity::credential::Credential;
 use ockam_api::cloud::project::{Enroller, Project};
 
 use crate::util::comma_separated;

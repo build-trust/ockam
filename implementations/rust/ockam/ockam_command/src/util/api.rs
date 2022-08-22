@@ -230,7 +230,7 @@ pub(crate) mod secure_channel {
 pub(crate) mod enroll {
     use crate::enroll::*;
     use anyhow::anyhow;
-    use ockam::credential::Attributes;
+    use ockam::identity::credential::Attributes;
     use ockam_api::cloud::enroll::auth0::{Auth0Token, AuthenticateAuth0Token};
     use ockam_api::cloud::enroll::*;
 

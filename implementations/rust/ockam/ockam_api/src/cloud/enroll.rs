@@ -38,7 +38,7 @@ mod node {
     };
     use crate::cloud::CloudRequestWrapper;
     use crate::nodes::NodeManager;
-    use ockam::credential::Attributes;
+    use ockam_identity::credential::Attributes;
 
     use super::*;
 
@@ -210,7 +210,7 @@ pub mod auth0 {
 }
 
 pub mod enrollment_token {
-    use ockam::credential::Attributes;
+    use ockam_identity::credential::Attributes;
     use serde::Serialize;
 
     use super::*;

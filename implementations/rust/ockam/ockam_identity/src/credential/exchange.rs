@@ -1,20 +1,22 @@
+use crate::authenticated_storage::AuthenticatedStorage;
 use crate::credential::{Attributes, Credential, CredentialData, Timestamp, Unverified};
+use crate::error::IdentityError;
+use crate::{
+    IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityStateConst, IdentityVault,
+    PublicIdentity,
+};
 use minicbor::bytes::ByteSlice;
 use minicbor::{Decode, Decoder, Encode};
 use ockam_core::api::Method::Post;
 use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
+use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::ToString, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::Verifier;
 use ockam_core::{Address, Result, Route, Routed, Worker};
-use ockam_identity::authenticated_storage::AuthenticatedStorage;
-use ockam_identity::error::IdentityError;
-use ockam_identity::{
-    IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityStateConst, IdentityVault,
-    PublicIdentity,
-};
 use ockam_node::api::{request, request_with_local_info};
 use ockam_node::Context;
+use tracing::{error, trace, warn};
 
 const TARGET: &str = "ockam::credential_exchange_worker::service";
 
@@ -100,7 +102,7 @@ impl CredentialExchange {
             }
         };
 
-        let credential_data = match credential.verify_signature(issuer, vault).await {
+        let credential_data = match issuer.verify_credential(&credential, vault).await {
             Ok(d) => d,
             Err(_) => {
                 return Ok(ProcessArrivedCredentialResult::BadRequest(
@@ -366,7 +368,7 @@ impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
     }
 }
 
-#[crate::worker]
+#[async_trait]
 impl<S: AuthenticatedStorage, V: IdentityVault> Worker for CredentialExchangeWorker<S, V> {
     type Message = Vec<u8>;
     type Context = Context;
@@ -406,16 +408,16 @@ impl<S: AuthenticatedStorage, V: IdentityVault> Worker for CredentialExchangeWor
 
 #[cfg(test)]
 mod tests {
+    use crate::authenticated_storage::mem::InMemoryStorage;
+    use crate::authenticated_storage::AuthenticatedStorage;
     use crate::credential::{
         Credential, CredentialBuilder, CredentialExchange, CredentialExchangeWorker,
     };
-    use ockam_core::{route, Result};
-    use ockam_identity::authenticated_storage::mem::InMemoryStorage;
-    use ockam_identity::authenticated_storage::AuthenticatedStorage;
-    use ockam_identity::{
+    use crate::{
         Identity, IdentityIdentifier, IdentityStateConst, PublicIdentity, TrustEveryonePolicy,
         TrustIdentifierPolicy,
     };
+    use ockam_core::{route, Result};
     use ockam_node::Context;
     use ockam_vault::Vault;
     use std::collections::BTreeMap;
@@ -459,10 +461,9 @@ mod tests {
             .await?;
 
         let credential_builder = Credential::builder(client.identifier().clone());
-        let credential = credential_builder
-            .with_attribute("is_superuser", b"true")
-            .issue(&authority)
-            .await?;
+        let credential = credential_builder.with_attribute("is_superuser", b"true");
+
+        let credential = authority.issue_credential(credential).await?;
 
         credential_exchange
             .present_credential(credential, route![channel, "credential_exchange"])
@@ -490,10 +491,10 @@ mod tests {
         let client2 = Identity::create(ctx, &vault).await?;
         let client2_storage = InMemoryStorage::new();
 
-        let credential2 = Credential::builder(client2.identifier().clone())
-            .with_attribute("is_admin", b"true")
-            .issue(&authority)
-            .await?;
+        let credential2 =
+            Credential::builder(client2.identifier().clone()).with_attribute("is_admin", b"true");
+
+        let credential2 = authority.issue_credential(credential2).await?;
 
         client2
             .create_secure_channel_listener("listener", TrustEveryonePolicy, &client2_storage)
@@ -514,10 +515,10 @@ mod tests {
         let client1 = Identity::create(ctx, &vault).await?;
         let client1_storage = InMemoryStorage::new();
 
-        let credential1 = Credential::builder(client1.identifier().clone())
-            .with_attribute("is_user", b"true")
-            .issue(&authority)
-            .await?;
+        let credential1 =
+            Credential::builder(client1.identifier().clone()).with_attribute("is_user", b"true");
+
+        let credential1 = authority.issue_credential(credential1).await?;
 
         let channel = client1
             .create_secure_channel(route!["listener"], TrustEveryonePolicy, &client1_storage)

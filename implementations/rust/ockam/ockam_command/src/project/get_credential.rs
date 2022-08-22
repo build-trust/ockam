@@ -1,6 +1,6 @@
 use clap::Args;
 
-use ockam::credential::Credential;
+use ockam::identity::credential::Credential;
 use ockam::Context;
 use ockam_api::clean_multiaddr;
 use ockam_core::api::Request;
