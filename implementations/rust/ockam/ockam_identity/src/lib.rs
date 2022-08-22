@@ -28,6 +28,7 @@ use crate::IdentityError;
 pub mod authenticated_storage;
 pub mod change;
 pub mod change_history;
+pub mod credential;
 
 pub mod error;
 

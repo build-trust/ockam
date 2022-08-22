@@ -8,6 +8,10 @@ mod exchange;
 #[cfg(feature = "std")]
 pub use exchange::*;
 
+mod identity;
+mod public_identity;
+
+use crate::{Identity, IdentityIdentifier, IdentityStateConst, IdentityVault, PublicIdentity};
 use core::fmt;
 use core::marker::PhantomData;
 use core::time::Duration;
@@ -22,9 +26,6 @@ use ockam_core::compat::{
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::{Signature, SignatureVec, Verifier};
 use ockam_core::{CowBytes, CowStr, Error, Result};
-use ockam_identity::{
-    Identity, IdentityIdentifier, IdentityStateConst, IdentityVault, PublicIdentity,
-};
 use serde::{Serialize, Serializer};
 
 #[cfg(feature = "tag")]
@@ -71,13 +72,28 @@ pub struct CredentialData<'a, T> {
     /// The entity that signed this credential.
     #[n(4)] issuer: IdentityIdentifier,
     /// The label of the issuer's public key.
-    #[b(5)] issuer_key: CowStr<'a>,
+    #[b(5)] issuer_key_label: CowStr<'a>,
     /// The time when this credential was created.
     #[n(6)] created: Timestamp,
     /// The time this credential expires.
     #[n(7)] expires: Timestamp,
     /// Term to represent the verification status type.
     #[n(8)] status: Option<PhantomData<T>>
+}
+
+impl<'a> CredentialData<'a, Unverified> {
+    pub(crate) fn make_verified(self) -> CredentialData<'a, Verified> {
+        CredentialData {
+            schema: self.schema,
+            attributes: self.attributes,
+            subject: self.subject,
+            issuer: self.issuer,
+            issuer_key_label: self.issuer_key_label,
+            created: self.created,
+            expires: self.expires,
+            status: None::<PhantomData<Verified>>,
+        }
+    }
 }
 
 impl<'a> Credential<'a> {
@@ -88,46 +104,6 @@ impl<'a> Credential<'a> {
             attrs: Attributes::new(),
             validity: MAX_CREDENTIAL_VALIDITY,
         }
-    }
-
-    /// Perform a signature check with the given identity.
-    ///
-    /// If successful, the credential data are returned.
-    pub async fn verify_signature<'b: 'a>(
-        &'b self,
-        issuer: &PublicIdentity,
-        vault: &impl IdentityVault,
-    ) -> Result<CredentialData<'a, Verified>> {
-        let dat = CredentialData::try_from(self)?;
-        if dat.issuer_key != IdentityStateConst::ROOT_LABEL {
-            return Err(Error::new(
-                Origin::Application,
-                Kind::Invalid,
-                "invalid signing key",
-            ));
-        }
-        let sig = Signature::new(self.signature.clone().into_owned());
-
-        if !issuer
-            .verify_signature(&sig, &self.data, Some(&dat.issuer_key), vault)
-            .await?
-        {
-            return Err(Error::new(
-                Origin::Application,
-                Kind::Invalid,
-                "invalid signature",
-            ));
-        }
-        Ok(CredentialData {
-            schema: dat.schema,
-            attributes: dat.attributes,
-            subject: dat.subject,
-            issuer: dat.issuer,
-            issuer_key: dat.issuer_key,
-            created: dat.created,
-            expires: dat.expires,
-            status: None::<PhantomData<Verified>>,
-        })
     }
 
     pub fn signature(&self) -> &[u8] {
@@ -166,7 +142,7 @@ impl<'a> CredentialData<'a, Verified> {
     }
 
     pub fn issuer_key_label(&self) -> &str {
-        &self.issuer_key
+        &self.issuer_key_label
     }
 
     pub fn created_at(&self) -> Timestamp {
@@ -189,6 +165,9 @@ impl<'a> CredentialData<'a, Verified> {
 impl<'a> CredentialData<'a, Unverified> {
     pub fn unverfied_issuer(&self) -> &IdentityIdentifier {
         &self.issuer
+    }
+    pub fn unverfied_key_label(&self) -> &str {
+        &self.issuer_key_label
     }
 }
 
@@ -319,36 +298,10 @@ impl<'a> CredentialBuilder<'a> {
     pub fn valid_for(mut self, val: Duration) -> Self {
         assert! {
             val <= MAX_CREDENTIAL_VALIDITY,
-            "validitiy exceeds allowed maximum"
+            "validity exceeds allowed maximum"
         }
         self.validity = val;
         self
-    }
-
-    /// Create a signed credential based on the given values.
-    #[cfg(feature = "std")]
-    pub async fn issue<'b, V>(self, issuer: &Identity<V>) -> Result<Credential<'b>>
-    where
-        V: IdentityVault,
-    {
-        let key_label = IdentityStateConst::ROOT_LABEL;
-        let now = Timestamp::now()
-            .ok_or_else(|| Error::new(Origin::Core, Kind::Internal, "invalid system time"))?;
-        let exp = Timestamp(u64::from(now).saturating_add(self.validity.as_secs()));
-        let dat = CredentialData {
-            schema: self.schema,
-            attributes: self.attrs,
-            subject: self.subject,
-            issuer: issuer.identifier().clone(),
-            issuer_key: CowStr(key_label.into()),
-            created: now,
-            expires: exp,
-            status: None::<PhantomData<Verified>>,
-        };
-        let bytes = minicbor::to_vec(&dat)?;
-
-        let sig = issuer.create_signature(&bytes, None).await?;
-        Ok(Credential::new(bytes, SignatureVec::from(sig)))
     }
 }
 

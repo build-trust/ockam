@@ -63,7 +63,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let pkey = PublicIdentity::import(&authority, &Vault::create())
         .await
         .unwrap();
-    let data = cred.verify_signature(&pkey, &Vault::create()).await?;
+    let data = pkey.verify_credential(&cred, &Vault::create()).await?;
     assert_eq!(
         Some(b"project42".as_slice()),
         data.attributes().get("project_id")
