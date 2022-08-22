@@ -2,10 +2,11 @@ use crate::authenticated_storage::AuthenticatedStorage;
 use crate::credential::{AttributesStorageUtils, Credential, CredentialData, Timestamp, Verified};
 use crate::PublicIdentity;
 use crate::{IdentityIdentifier, IdentityStateConst, IdentityVault};
+use ockam_core::compat::collections::BTreeMap;
+use ockam_core::compat::{string::String, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::Signature;
 use ockam_core::{Error, Result};
-use std::collections::BTreeMap;
 
 impl PublicIdentity {
     /// Perform a signature check with the given identity.

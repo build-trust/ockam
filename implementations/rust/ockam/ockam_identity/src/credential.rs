@@ -241,6 +241,11 @@ impl Timestamp {
             .map(|d| Timestamp(d.as_secs()))
     }
 
+    #[cfg(not(feature = "std"))]
+    pub fn now() -> Option<Self> {
+        None
+    }
+
     pub fn elapsed(&self, since: Timestamp) -> Option<Duration> {
         (self.0 >= since.0).then(|| Duration::from_secs(self.0 - since.0))
     }

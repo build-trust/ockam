@@ -2,9 +2,13 @@ use crate::authenticated_storage::AuthenticatedStorage;
 use crate::credential::{Attributes, Timestamp};
 use crate::{IdentityIdentifier, IdentityStateConst};
 use minicbor::{Decode, Encode};
+use ockam_core::compat::{
+    collections::BTreeMap,
+    string::{String, ToString},
+    vec::Vec,
+};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
-use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
 #[rustfmt::skip]
