@@ -1,12 +1,11 @@
-use crate::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
-use crate::credential::{Credential, CredentialData, Timestamp, Verified};
+use crate::authenticated_storage::AuthenticatedStorage;
+use crate::credential::{AttributesStorageUtils, Credential, CredentialData, Timestamp, Verified};
 use crate::PublicIdentity;
-use crate::{IdentityError, IdentityIdentifier, IdentityStateConst, IdentityVault};
-use ockam_core::compat::vec::Vec;
+use crate::{IdentityIdentifier, IdentityStateConst, IdentityVault};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::Signature;
 use ockam_core::{Error, Result};
-use ockam_vault::PublicKey;
+use std::collections::BTreeMap;
 
 impl PublicIdentity {
     /// Perform a signature check with the given identity.
@@ -71,5 +70,13 @@ impl PublicIdentity {
             ));
         }
         Ok(dat.make_verified())
+    }
+
+    /// Return authenticated non-expired attributes attached to that Identity
+    pub async fn get_attributes(
+        &self,
+        authenticated_storage: &impl AuthenticatedStorage,
+    ) -> Result<Option<BTreeMap<String, Vec<u8>>>> {
+        AttributesStorageUtils::get_attributes(self.identifier(), authenticated_storage).await
     }
 }

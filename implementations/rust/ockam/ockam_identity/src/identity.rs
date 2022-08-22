@@ -1,6 +1,7 @@
 use crate::authenticated_storage::AuthenticatedStorage;
 use crate::change::IdentityChangeEvent;
 use crate::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
+use crate::credential::Credential;
 use crate::{
     EventIdentifier, IdentityError, IdentityEventAttributes, IdentityIdentifier, IdentityVault,
     KeyAttributes, MetaKeyAttributes, PublicIdentity,
@@ -23,6 +24,7 @@ use ockam_vault::{KeyId, SecretAttributes};
 #[async_try_clone(crate = "ockam_core")]
 pub struct Identity<V: IdentityVault> {
     id: IdentityIdentifier,
+    pub(crate) credential: Arc<RwLock<Option<Credential<'static>>>>,
     pub(crate) change_history: Arc<RwLock<IdentityChangeHistory>>,
     pub(crate) ctx: Context,
     pub(crate) vault: V,
@@ -54,6 +56,7 @@ impl<V: IdentityVault> Identity<V> {
     ) -> Self {
         Self {
             id,
+            credential: Arc::new(RwLock::new(None)),
             change_history: Arc::new(RwLock::new(change_history)),
             ctx,
             vault,

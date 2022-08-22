@@ -1,17 +1,13 @@
-#![allow(dead_code, missing_docs, unused_imports)]
-
-//! Building block for Attribute-based access control
-
-// TODO: std is needed to check credential expiration. Figure out what can be done here
-#[cfg(feature = "std")]
-mod exchange;
-#[cfg(feature = "std")]
-pub use exchange::*;
+#![allow(missing_docs)]
 
 mod identity;
 mod public_identity;
+mod storage_utils;
+mod worker;
 
-use crate::{Identity, IdentityIdentifier, IdentityStateConst, IdentityVault, PublicIdentity};
+pub use storage_utils::*;
+
+use crate::IdentityIdentifier;
 use core::fmt;
 use core::marker::PhantomData;
 use core::time::Duration;
@@ -23,9 +19,7 @@ use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
 };
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::vault::{Signature, SignatureVec, Verifier};
-use ockam_core::{CowBytes, CowStr, Error, Result};
+use ockam_core::{CowBytes, CowStr, Result};
 use serde::{Serialize, Serializer};
 
 #[cfg(feature = "tag")]
@@ -41,7 +35,7 @@ pub enum Verified {}
 #[derive(Debug, Decode)]
 pub enum Unverified {}
 
-#[derive(Debug, Decode, Encode)]
+#[derive(Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Credential<'a> {
