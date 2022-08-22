@@ -271,7 +271,7 @@ async fn default_project<'a>(
         rpc.parse_response::<Vec<Project>>()?
     };
     // If the space has no projects, create one
-    let default_project = if available_projects.is_empty() {
+    let mut default_project = if available_projects.is_empty() {
         let cmd = crate::project::CreateCommand {
             space_id: space.id.to_string(),
             project_name: "default".to_string(),
@@ -311,6 +311,7 @@ async fn default_project<'a>(
             rpc.request(api::project::show(&cmd)).await?;
             let project = rpc.parse_response::<Project>()?;
             if project.is_ready() {
+                default_project = project.to_owned();
                 break;
             }
         }
