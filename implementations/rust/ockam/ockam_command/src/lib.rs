@@ -33,13 +33,6 @@ use tcp::outlet::TcpOutletCommand;
 
 // to be removed
 pub mod error;
-mod old;
-
-use old::cmd::identity::IdentityOpts;
-use old::cmd::inlet::InletOpts;
-use old::cmd::outlet::OutletOpts;
-use old::AddTrustedIdentityOpts;
-use old::{add_trusted, exit_with_result, node_subcommand, print_identity, print_ockam_dir};
 
 use crate::enroll::GenerateEnrollmentTokenCommand;
 use crate::identity::IdentityCommand;
@@ -245,39 +238,6 @@ pub enum OckamSubcommand {
     /// Manage Vault
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
     Vault(VaultCommand),
-
-    // OLD
-    /// Start an outlet.
-    #[clap(display_order = 1000, hide = true)]
-    CreateOutlet(OutletOpts),
-
-    /// Start an inlet.
-    #[clap(display_order = 1001, hide = true)]
-    CreateInlet(InletOpts),
-
-    /// Create an ockam identity.
-    #[clap(display_order = 1002, hide = true)]
-    CreateIdentity(IdentityOpts),
-
-    /// Add an identity (or multiple) to the trusted list.
-    ///
-    /// This is equivalent to adding the identifier to the end of the the list
-    /// in `<ockam_dir>/trusted` (`~/.config/ockam/trusted` by default, but
-    /// code that `$OCKAM_DIR/trusted` if overwritten).
-    #[clap(display_order = 1003, hide = true)]
-    AddTrustedIdentity(AddTrustedIdentityOpts),
-
-    /// Print the identifier for the currently configured identity.
-    #[clap(display_order = 1004, hide = true)]
-    PrintIdentity,
-
-    /// Print path to the ockam directory.
-    ///
-    /// This is usually `$OCKAM_DIR` or `~/.config/ockam`, but in some cases can
-    /// be different, such as on Windows, unixes where `$XDG_CONFIG_HOME` has
-    /// been modified, etc.
-    #[clap(display_order = 1005, hide = true)]
-    PrintPath,
 }
 
 fn replace_hyphen_with_stdin(s: String) -> String {
@@ -341,7 +301,8 @@ pub fn run() {
         return;
     }
 
-    let verbose = opts.global_args.verbose;
+    // FIXME
+    let _verbose = opts.global_args.verbose;
 
     match ockam_command.subcommand {
         OckamSubcommand::Authenticated(command) => AuthenticatedCommand::run(command),
@@ -366,19 +327,5 @@ pub fn run() {
             SecureChannelListenerCommand::run(opts, command)
         }
         OckamSubcommand::Service(command) => ServiceCommand::run(opts, command),
-
-        // OLD
-        OckamSubcommand::CreateOutlet(arg) => {
-            node_subcommand(verbose > 0, arg, old::cmd::outlet::run)
-        }
-        OckamSubcommand::CreateInlet(arg) => {
-            node_subcommand(verbose > 0, arg, old::cmd::inlet::run)
-        }
-        OckamSubcommand::CreateIdentity(arg) => {
-            node_subcommand(verbose > 0, arg, old::cmd::identity::run)
-        }
-        OckamSubcommand::AddTrustedIdentity(arg) => exit_with_result(verbose > 0, add_trusted(arg)),
-        OckamSubcommand::PrintIdentity => node_subcommand(verbose > 0, (), print_identity),
-        OckamSubcommand::PrintPath => exit_with_result(verbose > 0, print_ockam_dir()),
     }
 }
