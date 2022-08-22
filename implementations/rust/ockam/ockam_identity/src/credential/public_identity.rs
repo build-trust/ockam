@@ -1,5 +1,5 @@
 use crate::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
-use crate::credential::{Credential, CredentialData, Verified};
+use crate::credential::{Credential, CredentialData, Timestamp, Verified};
 use crate::PublicIdentity;
 use crate::{IdentityError, IdentityIdentifier, IdentityStateConst, IdentityVault};
 use ockam_core::compat::vec::Vec;
@@ -15,6 +15,7 @@ impl PublicIdentity {
     pub async fn verify_credential<'a, 'b: 'a>(
         &self,
         credential: &'b Credential<'b>,
+        subject: &IdentityIdentifier,
         vault: &impl IdentityVault,
     ) -> Result<CredentialData<'a, Verified>> {
         let dat = CredentialData::try_from(credential)?;
@@ -25,6 +26,33 @@ impl PublicIdentity {
                 "invalid signing key",
             ));
         }
+
+        if &dat.issuer != self.identifier() {
+            return Err(Error::new(
+                Origin::Application,
+                Kind::Invalid,
+                "unknown authority",
+            ));
+        }
+
+        if &dat.subject != subject {
+            return Err(Error::new(
+                Origin::Application,
+                Kind::Invalid,
+                "unknown subject",
+            ));
+        }
+
+        let now = Timestamp::now()
+            .ok_or_else(|| Error::new(Origin::Application, Kind::Invalid, "invalid system time"))?;
+        if dat.expires <= now {
+            return Err(Error::new(
+                Origin::Application,
+                Kind::Invalid,
+                "expired credential",
+            ));
+        }
+
         let sig = Signature::new(credential.signature().to_vec());
 
         if !self

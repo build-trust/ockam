@@ -2,11 +2,10 @@ pub mod types;
 
 use either::Either;
 use minicbor::Decoder;
-use ockam::errcode::{Kind, Origin};
 use ockam_core::api::{self, Id, ResponseBuilder};
 use ockam_core::api::{Error, Method, Request, Response};
 use ockam_core::{self, Result, Routed, Worker};
-use ockam_identity::credential::{Credential, CredentialData, Timestamp, Verified};
+use ockam_identity::credential::{Credential, CredentialData, Verified};
 use ockam_identity::{IdentityVault, PublicIdentity};
 use ockam_node::Context;
 use tracing::trace;
@@ -101,21 +100,16 @@ where
             return Ok(Either::Left(Response::unauthorized(id).body(err)));
         };
 
-        let data = ident.verify_credential(cre, &self.vault).await?;
-
-        if req.subject() != data.subject() {
-            let err = Error::new("/verify").with_message("invalid subject");
-            return Ok(Either::Left(Response::forbidden(id).body(err)));
-        }
-
-        let now = Timestamp::now().ok_or_else(|| {
-            ockam_core::Error::new(Origin::Core, Kind::Internal, "invalid system time")
-        })?;
-
-        if now >= data.expires_at() {
-            let err = Error::new("/verify").with_message("expired");
-            return Ok(Either::Left(Response::forbidden(id).body(err)));
-        }
+        let data = match ident
+            .verify_credential(cre, req.subject(), &self.vault)
+            .await
+        {
+            Ok(data) => data,
+            Err(_) => {
+                let err = Error::new("/verify").with_message("credential verification failed");
+                return Ok(Either::Left(Response::forbidden(id).body(err)));
+            }
+        };
 
         Ok(Either::Right(data))
     }

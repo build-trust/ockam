@@ -78,21 +78,6 @@ impl CredentialExchange {
             }
         };
 
-        if credential_data.subject != sender {
-            return Ok(ProcessArrivedCredentialResult::BadRequest(
-                "unknown authority",
-            ));
-        }
-
-        let now = Timestamp::now().ok_or_else(|| {
-            ockam_core::Error::new(Origin::Core, Kind::Internal, "invalid system time")
-        })?;
-        if credential_data.expires <= now {
-            return Ok(ProcessArrivedCredentialResult::BadRequest(
-                "expired credential",
-            ));
-        }
-
         let issuer = match authorities.get(&credential_data.issuer) {
             Some(i) => i,
             None => {
@@ -102,7 +87,7 @@ impl CredentialExchange {
             }
         };
 
-        let credential_data = match issuer.verify_credential(&credential, vault).await {
+        let credential_data = match issuer.verify_credential(&credential, &sender, vault).await {
             Ok(d) => d,
             Err(_) => {
                 return Ok(ProcessArrivedCredentialResult::BadRequest(
