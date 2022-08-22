@@ -105,8 +105,9 @@ where
             .await
         {
             Ok(data) => data,
-            Err(_) => {
-                let err = Error::new("/verify").with_message("credential verification failed");
+            Err(err) => {
+                let err = Error::new("/verify")
+                    .with_message(format!("error verifying a credential: {}", err));
                 return Ok(Either::Left(Response::forbidden(id).body(err)));
             }
         };
