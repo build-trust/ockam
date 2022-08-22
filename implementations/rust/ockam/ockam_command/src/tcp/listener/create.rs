@@ -1,4 +1,4 @@
-use crate::util::get_final_element;
+use crate::util::{bind_to_port_check, get_final_element};
 use crate::{
     util::{api, connect_to, exitcode, stop_node},
     CommandGlobalOpts,
@@ -11,6 +11,7 @@ use ockam_api::{
     route_to_multiaddr,
 };
 use ockam_core::api::Status;
+use std::str::FromStr;
 
 #[derive(Args, Clone, Debug)]
 pub struct CreateCommand {
@@ -62,6 +63,20 @@ impl CreateCommand {
                 std::process::exit(exitcode::IOERR);
             }
         };
+
+        let input_addr = match std::net::SocketAddr::from_str(&command.address) {
+            Ok(value) => value,
+            _ => {
+                eprintln!("Invalid Input Address");
+                std::process::exit(exitcode::IOERR);
+            }
+        };
+
+        // Check if the port is used by some other services or process
+        if !bind_to_port_check(&input_addr) {
+            eprintln!("Another process is listening on the provided port!");
+            std::process::exit(exitcode::IOERR);
+        }
 
         connect_to(port, command.clone(), create_listener);
 

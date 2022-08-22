@@ -1,4 +1,4 @@
-use crate::util::{connect_to, exitcode, get_final_element, stop_node};
+use crate::util::{bind_to_port_check, connect_to, exitcode, get_final_element, stop_node};
 use crate::util::{ComposableSnippet, Operation, PortalMode, Protocol};
 use crate::CommandGlobalOpts;
 use clap::Args;
@@ -68,6 +68,12 @@ impl CreateCommand {
                 std::process::exit(-1);
             }
         };
+
+        // Check if the port is used by some other services or process
+        if !bind_to_port_check(&command.from) {
+            eprintln!("Another process is listening on the provided port!");
+            std::process::exit(exitcode::IOERR);
+        }
 
         let composite = (&command).into();
         let node = node.to_string();
