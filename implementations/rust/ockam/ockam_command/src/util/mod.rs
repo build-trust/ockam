@@ -1,5 +1,9 @@
 use core::time::Duration;
-use std::{env, net::TcpListener, path::Path};
+use std::{
+    env,
+    net::{SocketAddr, TcpListener},
+    path::Path,
+};
 
 use anyhow::{anyhow, Context};
 use minicbor::{Decode, Decoder, Encode};
@@ -406,4 +410,10 @@ pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {
 
     #[allow(unstable_name_collisions)]
     data.iter().map(AsRef::as_ref).intersperse(", ").collect()
+}
+
+pub fn bind_to_port_check(address: &SocketAddr) -> bool {
+    let port = address.port();
+    let ip = address.ip();
+    std::net::TcpListener::bind((ip, port)).is_ok()
 }

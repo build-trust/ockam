@@ -10,7 +10,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::util::exitcode;
+use crate::util::{bind_to_port_check, exitcode};
 use crate::{
     node::show::query_status,
     util::{
@@ -151,6 +151,12 @@ impl CreateCommand {
         // development) re-executing the current binary is a more
         // deterministic way of starting a node.
         let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
+
+        // Check if the port is used by some other services or process
+        if !bind_to_port_check(addr) {
+            eprintln!("Another process is listening on the provided port!");
+            std::process::exit(exitcode::IOERR);
+        }
 
         // FIXME: not really clear why this is causing issues
         if cfg.port_is_used(addr.port()) {
