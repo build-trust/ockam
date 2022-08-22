@@ -7,9 +7,7 @@ use ockam::vault::Vault;
 use ockam_api::authenticator::direct;
 use ockam_api::authenticator::direct::types::Enroller;
 use ockam_core::Result;
-use ockam_identity::{
-    change_history::IdentityChangeHistory, IdentityIdentifier, TrustEveryonePolicy,
-};
+use ockam_identity::{IdentityIdentifier, PublicIdentity, TrustEveryonePolicy};
 use ockam_node::Context;
 use tempfile::NamedTempFile;
 
@@ -62,8 +60,10 @@ async fn credential(ctx: &mut Context) -> Result<()> {
 
     // Get a fresh member credential and verify its validity:
     let cred = c.credential().await?;
-    let pkey = IdentityChangeHistory::import(&authority).unwrap();
-    let data = cred.verify_signature(&pkey, Vault::create()).await?;
+    let pkey = PublicIdentity::import(&authority, &Vault::create())
+        .await
+        .unwrap();
+    let data = cred.verify_signature(&pkey, &Vault::create()).await?;
     assert_eq!(
         Some(b"project42".as_slice()),
         data.attributes().get("project_id")

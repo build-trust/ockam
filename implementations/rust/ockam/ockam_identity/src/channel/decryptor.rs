@@ -216,7 +216,10 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
         let kex_msg = KeyExchangeCompleted::decode(msg.payload())?;
 
         // Prove we posses Identity key
-        let signature = self.identity.create_signature(&kex_msg.auth_hash()).await?;
+        let signature = self
+            .identity
+            .create_signature(&kex_msg.auth_hash(), None)
+            .await?;
         let identity = self.identity.export().await?;
         let msg = IdentityChannelMessage::Request {
             identity,
@@ -264,16 +267,14 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
 
             let their_identity = PublicIdentity::import(&identity, &self.identity.vault).await?;
             let their_identity_id = their_identity.identifier();
-            let public_key = their_identity.get_root_public_key()?;
 
             // Verify responder posses their Identity key
-            let verified = self
-                .identity
-                .vault
-                .verify(
+            let verified = their_identity
+                .verify_signature(
                     &Signature::new(signature),
-                    &public_key,
                     &state.channel.auth_hash(),
+                    None,
+                    &self.identity.vault,
                 )
                 .await?;
 
@@ -282,7 +283,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             }
 
             self.identity
-                .update_known_identity(their_identity_id, their_identity.changes(), &self.storage)
+                .update_known_identity(their_identity_id, &their_identity, &self.storage)
                 .await?;
 
             info!(
@@ -306,7 +307,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             let identity = self.identity.export().await?;
             let signature = self
                 .identity
-                .create_signature(&state.channel.auth_hash())
+                .create_signature(&state.channel.auth_hash(), None)
                 .await?;
 
             let auth_msg = IdentityChannelMessage::Response {
@@ -381,13 +382,14 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             let their_identity = PublicIdentity::import(&identity, &self.identity.vault).await?;
             let their_identity_id = their_identity.identifier();
 
-            let public_key = their_identity.get_root_public_key()?;
-
             // Verify initiator posses their Identity key
-            let verified = self
-                .identity
-                .vault
-                .verify(&Signature::new(signature), &public_key, &state.auth_hash)
+            let verified = their_identity
+                .verify_signature(
+                    &Signature::new(signature),
+                    &state.auth_hash,
+                    None,
+                    &self.identity.vault,
+                )
                 .await?;
 
             if !verified {
@@ -395,7 +397,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             }
 
             self.identity
-                .update_known_identity(their_identity_id, their_identity.changes(), &self.storage)
+                .update_known_identity(their_identity_id, &their_identity, &self.storage)
                 .await?;
 
             info!(

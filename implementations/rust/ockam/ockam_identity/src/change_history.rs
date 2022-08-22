@@ -29,7 +29,7 @@ pub enum IdentityHistoryComparison {
 
 /// Full history of [`Identity`] changes. History and corresponding secret keys are enough to recreate [`Identity`]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct IdentityChangeHistory(Vec<IdentityChangeEvent>);
+pub(crate) struct IdentityChangeHistory(Vec<IdentityChangeEvent>);
 
 impl IdentityChangeHistory {
     pub fn export(&self) -> Result<Vec<u8>> {
@@ -73,7 +73,6 @@ impl AsRef<[IdentityChangeEvent]> for IdentityChangeHistory {
     }
 }
 
-// Public API
 impl IdentityChangeHistory {
     pub fn compare(&self, known: &Self) -> IdentityHistoryComparison {
         for event_pair in self.0.iter().zip(known.0.iter()) {

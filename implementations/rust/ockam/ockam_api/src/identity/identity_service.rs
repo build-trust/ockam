@@ -6,9 +6,8 @@ use minicbor::{Decoder, Encode};
 use ockam_core::api::{Error, Id, Method, Request, Response, Status};
 use ockam_core::vault::Signature;
 use ockam_core::{Address, Result, Routed, Worker};
-use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
-use ockam_identity::error::IdentityError;
-use ockam_identity::{Identity, IdentityVault};
+use ockam_identity::change_history::IdentityHistoryComparison;
+use ockam_identity::{Identity, IdentityVault, PublicIdentity};
 use ockam_node::Context;
 use tracing::trace;
 
@@ -137,7 +136,7 @@ impl<V: IdentityVault> IdentityService<V> {
                     let identity =
                         Identity::import(&self.ctx, args.identity(), &self.vault).await?;
 
-                    let signature = identity.create_signature(args.data()).await?;
+                    let signature = identity.create_signature(args.data(), None).await?;
 
                     let body = CreateSignatureResponse::new(signature.as_ref());
 
@@ -149,21 +148,15 @@ impl<V: IdentityVault> IdentityService<V> {
                     }
 
                     let args = dec.decode::<VerifySignatureRequest>()?;
-                    let peer_identity = IdentityChangeHistory::import(args.signer_identity())?;
-                    if !peer_identity
-                        .verify_all_existing_events(&self.vault)
-                        .await?
-                    {
-                        return Err(IdentityError::ConsistencyError.into());
-                    }
-                    let public_key = peer_identity.get_first_root_public_key()?;
+                    let peer_identity =
+                        PublicIdentity::import(args.signer_identity(), &self.vault).await?;
 
-                    let verified = self
-                        .vault
-                        .verify(
+                    let verified = peer_identity
+                        .verify_signature(
                             &Signature::new(args.signature().to_vec()),
-                            &public_key,
                             args.data(),
+                            None,
+                            &self.vault,
                         )
                         .await?;
 
@@ -178,24 +171,14 @@ impl<V: IdentityVault> IdentityService<V> {
 
                     let args = dec.decode::<CompareIdentityChangeHistoryRequest>()?;
 
-                    let current_identity = IdentityChangeHistory::import(args.current_identity())?;
-                    if !current_identity
-                        .verify_all_existing_events(&self.vault)
-                        .await?
-                    {
-                        return Err(IdentityError::ConsistencyError.into());
-                    }
+                    let current_identity =
+                        PublicIdentity::import(args.current_identity(), &self.vault).await?;
 
                     let body = if args.known_identity().is_empty() {
                         IdentityHistoryComparison::Newer
                     } else {
-                        let known_identity = IdentityChangeHistory::import(args.known_identity())?;
-                        if !known_identity
-                            .verify_all_existing_events(&self.vault)
-                            .await?
-                        {
-                            return Err(IdentityError::ConsistencyError.into());
-                        }
+                        let known_identity =
+                            PublicIdentity::import(args.known_identity(), &self.vault).await?;
 
                         current_identity.compare(&known_identity)
                     };

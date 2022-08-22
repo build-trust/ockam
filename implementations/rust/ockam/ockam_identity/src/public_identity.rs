@@ -1,34 +1,27 @@
-use crate::change_history::IdentityChangeHistory;
+use crate::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use crate::{IdentityError, IdentityIdentifier, IdentityVault};
-use ockam_core::compat::{boxed::Box, vec::Vec};
-use ockam_core::AsyncTryClone;
+use ockam_core::compat::vec::Vec;
+use ockam_core::vault::Signature;
 use ockam_core::Result;
 use ockam_vault::PublicKey;
 
 /// Identity implementation
-#[derive(AsyncTryClone)]
-#[async_try_clone(crate = "ockam_core")]
-pub struct PublicIdentity<V: IdentityVault> {
+#[derive(Clone)]
+pub struct PublicIdentity {
     id: IdentityIdentifier,
-    pub(crate) change_history: IdentityChangeHistory,
-    pub(crate) vault: V,
+    change_history: IdentityChangeHistory,
 }
 
-impl<V: IdentityVault> PublicIdentity<V> {
-    // Constructor
-    pub fn new(id: IdentityIdentifier, change_history: IdentityChangeHistory, vault: V) -> Self {
-        Self {
-            id,
-            change_history,
-            vault,
-        }
+impl PublicIdentity {
+    pub(crate) fn new(id: IdentityIdentifier, change_history: IdentityChangeHistory) -> Self {
+        Self { id, change_history }
     }
 
     pub fn export(&self) -> Result<Vec<u8>> {
         self.change_history.export()
     }
 
-    pub async fn import(data: &[u8], vault: &V) -> Result<Self> {
+    pub async fn import(data: &[u8], vault: &impl IdentityVault) -> Result<Self> {
         let change_history = IdentityChangeHistory::import(data)?;
         if !change_history.verify_all_existing_events(vault).await? {
             return Err(IdentityError::IdentityVerificationFailed.into());
@@ -36,36 +29,43 @@ impl<V: IdentityVault> PublicIdentity<V> {
 
         let id = change_history.compute_identity_id(vault).await?;
 
-        let vault = vault.async_try_clone().await?;
-
-        let identity = Self::new(id, change_history, vault);
+        let identity = Self::new(id, change_history);
 
         Ok(identity)
     }
 
-    pub fn changes(&self) -> &IdentityChangeHistory {
+    pub(crate) fn changes(&self) -> &IdentityChangeHistory {
         &self.change_history
     }
 
-    pub fn vault(&self) -> &V {
-        &self.vault
-    }
-
-    pub async fn verify_changes(&self) -> Result<bool> {
-        self.change_history
-            .verify_all_existing_events(&self.vault)
-            .await
+    pub fn compare(&self, known: &Self) -> IdentityHistoryComparison {
+        self.change_history.compare(&known.change_history)
     }
 
     pub fn identifier(&self) -> &IdentityIdentifier {
         &self.id
     }
 
-    pub fn get_root_public_key(&self) -> Result<PublicKey> {
+    pub(crate) fn get_root_public_key(&self) -> Result<PublicKey> {
         self.change_history.get_root_public_key()
     }
 
-    pub fn get_public_key(&self, label: &str) -> Result<PublicKey> {
+    pub(crate) fn get_public_key(&self, label: &str) -> Result<PublicKey> {
         self.change_history.get_public_key(label)
+    }
+
+    pub async fn verify_signature(
+        &self,
+        signature: &Signature,
+        data: &[u8],
+        key_label: Option<&str>,
+        vault: &impl IdentityVault,
+    ) -> Result<bool> {
+        let public_key = match key_label {
+            Some(label) => self.get_public_key(label)?,
+            None => self.get_root_public_key()?,
+        };
+
+        vault.verify(signature, &public_key, data).await
     }
 }
