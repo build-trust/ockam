@@ -51,7 +51,7 @@ impl CreateCommand {
         let cfg = &options.config;
         let command = CreateCommand {
             to: match clean_multiaddr(&command.to, &cfg.get_lookup()) {
-                Some(addr) => addr,
+                Some((addr, _meta)) => addr,
                 None => {
                     eprintln!("failed to normalize MultiAddr route");
                     std::process::exit(exitcode::USAGE);

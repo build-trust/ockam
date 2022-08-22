@@ -61,7 +61,7 @@ impl SendCommand {
         // with the address lookup for `<foo>`
         let cmd = SendCommand {
             to: match clean_multiaddr(&cmd.to, &opts.config.get_lookup()) {
-                Some(to) => to,
+                Some((to, _meta)) => to,
                 None => {
                     eprintln!("failed to normalize MultiAddr route");
                     std::process::exit(exitcode::USAGE);

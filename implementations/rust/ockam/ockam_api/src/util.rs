@@ -1,4 +1,4 @@
-use crate::config::lookup::{ConfigLookup, InternetAddress};
+use crate::config::lookup::{ConfigLookup, InternetAddress, LookupMeta};
 use core::str::FromStr;
 use ockam::{Address, TCP};
 use ockam_core::{Route, LOCAL};
@@ -9,8 +9,13 @@ use std::net::{SocketAddrV4, SocketAddrV6};
 /// Go through a multiaddr and remove all instances of
 /// `/node/<whatever>` out of it and replaces it with a fully
 /// qualified address to the target
-pub fn clean_multiaddr(input: &MultiAddr, lookup: &ConfigLookup) -> Option<MultiAddr> {
+pub fn clean_multiaddr(
+    input: &MultiAddr,
+    lookup: &ConfigLookup,
+) -> Option<(MultiAddr, LookupMeta)> {
     let mut new_ma = MultiAddr::default();
+    let mut lookup_meta = LookupMeta::default();
+
     let it = input.iter().peekable();
     for p in it {
         match p.code() {
@@ -30,6 +35,7 @@ pub fn clean_multiaddr(input: &MultiAddr, lookup: &ConfigLookup) -> Option<Multi
             }
             Project::CODE => {
                 let alias = p.cast::<Project>()?;
+                lookup_meta.project.push_back(alias.to_string());
                 let project = lookup
                     .get_project(&*alias)
                     .expect("provided invalid substitution route");
@@ -45,7 +51,7 @@ pub fn clean_multiaddr(input: &MultiAddr, lookup: &ConfigLookup) -> Option<Multi
         }
     }
 
-    Some(new_ma)
+    Some((new_ma, lookup_meta))
 }
 
 /// Try to convert a multi-address to an Ockam route.
@@ -166,7 +172,7 @@ fn clean_multiaddr_simple() {
         map
     };
 
-    let new_addr = clean_multiaddr(&addr, &lookup).unwrap();
+    let (new_addr, _) = clean_multiaddr(&addr, &lookup).unwrap();
     assert_ne!(addr, new_addr); // Make sure the address changed
 
     let new_route = multiaddr_to_route(&new_addr).unwrap();

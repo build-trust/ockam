@@ -34,7 +34,7 @@ async fn rpc(
         opts: &CommandGlobalOpts,
         cmd: &GetCredentialCommand,
     ) -> Result<()> {
-        let to = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
+        let (to, _meta) = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
         let mut rpc = RpcBuilder::new(ctx, opts, &cmd.node_opts.api_node)
             .to(&to)?
             .build()?;

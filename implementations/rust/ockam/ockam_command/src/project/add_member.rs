@@ -31,7 +31,7 @@ impl AddMemberCommand {
 
 async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, AddMemberCommand)) -> Result<()> {
     async fn go(ctx: &mut Context, opts: &CommandGlobalOpts, cmd: AddMemberCommand) -> Result<()> {
-        let to = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
+        let (to, _meta) = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
         let req = Request::post("/members").body(AddMember::new(cmd.member));
         let mut rpc = RpcBuilder::new(ctx, opts, &cmd.node_opts.api_node)
             .to(&to)?

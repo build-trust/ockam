@@ -1,3 +1,4 @@
+use ockam_core::compat::collections::VecDeque;
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -6,6 +7,12 @@ use std::{
     net::{SocketAddr, SocketAddrV4, SocketAddrV6},
     str::FromStr,
 };
+
+#[derive(Debug, Default)]
+pub struct LookupMeta {
+    /// Append any project name that is encountered during look-up
+    pub project: VecDeque<String>,
+}
 
 /// A generic lookup mechanism for configuration values
 #[derive(Clone, Debug, Serialize, Deserialize)]

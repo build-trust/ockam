@@ -46,10 +46,11 @@ impl CreateCommand {
         ctx: &ockam::Context,
         opts: CommandGlobalOpts,
     ) -> crate::Result<()> {
-        let addr = clean_multiaddr(&self.addr, &opts.config.get_lookup()).unwrap_or_else(|| {
-            eprintln!("failed to normalize MultiAddr route");
-            std::process::exit(exitcode::USAGE);
-        });
+        let (addr, _meta) =
+            clean_multiaddr(&self.addr, &opts.config.get_lookup()).unwrap_or_else(|| {
+                eprintln!("failed to normalize MultiAddr route");
+                std::process::exit(exitcode::USAGE);
+            });
 
         let mut rpc = Rpc::new(ctx, &opts, &self.node_opts.from)?;
 
