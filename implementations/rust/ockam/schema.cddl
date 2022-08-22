@@ -100,7 +100,8 @@ project = {
     5: access_route,  ; could be an empty string if the cloud node hasn't started yet (TODO: make it an optional field instead)
     6: [+ user],
     7: space_id,
-    ?8: project_node_identity ; optional, it can be missing if the cloud node hasn't started yet
+    ?8: project_node_identity, ; optional, it can be missing if the cloud node hasn't started yet
+    ?9: authority_access_route ; optional, it can be missing if the authority hasn't started yet
 }
 
 project_node_identity = identity_id
