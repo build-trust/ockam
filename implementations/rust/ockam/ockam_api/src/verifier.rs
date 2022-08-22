@@ -7,7 +7,7 @@ use ockam::errcode::{Kind, Origin};
 use ockam_core::api::{self, Id, ResponseBuilder};
 use ockam_core::api::{Error, Method, Request, Response};
 use ockam_core::{self, Result, Routed, Worker};
-use ockam_identity::change_history::IdentityChangeHistory;
+use ockam_identity::{IdentityVault, PublicIdentity};
 use ockam_node::Context;
 use tracing::trace;
 
@@ -21,7 +21,7 @@ pub struct Verifier<V> {
 #[ockam_core::worker]
 impl<V> Worker for Verifier<V>
 where
-    V: ockam_core::vault::Verifier + Send + Sync + 'static,
+    V: IdentityVault,
 {
     type Context = Context;
     type Message = Vec<u8>;
@@ -34,7 +34,7 @@ where
 
 impl<V> Verifier<V>
 where
-    V: ockam_core::vault::Verifier + Send + Sync + 'static,
+    V: IdentityVault,
 {
     pub fn new(vault: V) -> Self {
         Self { vault }
@@ -95,7 +95,7 @@ where
         let data = CredentialData::try_from(cre)?;
 
         let ident = if let Some(ident) = req.authority(data.unverfied_issuer()) {
-            IdentityChangeHistory::import(ident)?
+            PublicIdentity::import(ident, &self.vault).await?
         } else {
             let err = Error::new("/verify").with_message("unauthorised issuer");
             return Ok(Either::Left(Response::unauthorized(id).body(err)));

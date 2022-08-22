@@ -8,10 +8,10 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::Verifier;
 use ockam_core::{Address, Result, Route, Routed, Worker};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
-use ockam_identity::change_history::IdentityChangeHistory;
 use ockam_identity::error::IdentityError;
 use ockam_identity::{
     IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityStateConst, IdentityVault,
+    PublicIdentity,
 };
 use ockam_node::api::{request, request_with_local_info};
 use ockam_node::Context;
@@ -63,8 +63,8 @@ impl CredentialExchange {
     async fn receive_presented_credential(
         sender: IdentityIdentifier,
         credential: Credential<'_>,
-        authorities: &BTreeMap<IdentityIdentifier, IdentityChangeHistory>,
-        vault: impl Verifier,
+        authorities: &BTreeMap<IdentityIdentifier, PublicIdentity>,
+        vault: &impl IdentityVault,
         authenticated_storage: &impl AuthenticatedStorage,
     ) -> Result<ProcessArrivedCredentialResult> {
         let credential_data: CredentialData<Unverified> = match minicbor::decode(&credential.data) {
@@ -160,7 +160,7 @@ impl CredentialExchange {
     /// after successful verification
     pub async fn start_worker(
         &self,
-        authorities: BTreeMap<IdentityIdentifier, IdentityChangeHistory>,
+        authorities: BTreeMap<IdentityIdentifier, PublicIdentity>,
         address: impl Into<Address>,
         present_back: Option<Credential<'static>>,
         authenticated_storage: impl AuthenticatedStorage,
@@ -205,7 +205,7 @@ impl CredentialExchange {
         &self,
         credential: Credential<'_>,
         route: impl Into<Route>,
-        authorities: &BTreeMap<IdentityIdentifier, IdentityChangeHistory>,
+        authorities: &BTreeMap<IdentityIdentifier, PublicIdentity>,
         authenticated_storage: &impl AuthenticatedStorage,
         vault: &impl IdentityVault,
     ) -> Result<()> {
@@ -261,7 +261,7 @@ impl CredentialExchange {
 
 /// Worker responsible for receiving and verifying other party's credentials
 pub struct CredentialExchangeWorker<S: AuthenticatedStorage, V: IdentityVault> {
-    authorities: BTreeMap<IdentityIdentifier, IdentityChangeHistory>,
+    authorities: BTreeMap<IdentityIdentifier, PublicIdentity>,
     present_back: Option<Credential<'static>>,
     authenticated_storage: S,
     vault: V,
@@ -269,7 +269,7 @@ pub struct CredentialExchangeWorker<S: AuthenticatedStorage, V: IdentityVault> {
 
 impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
     pub fn new(
-        authorities: BTreeMap<IdentityIdentifier, IdentityChangeHistory>,
+        authorities: BTreeMap<IdentityIdentifier, PublicIdentity>,
         present_back: Option<Credential<'static>>,
         authenticated_storage: S,
         vault: V,
@@ -412,9 +412,8 @@ mod tests {
     use ockam_core::{route, Result};
     use ockam_identity::authenticated_storage::mem::InMemoryStorage;
     use ockam_identity::authenticated_storage::AuthenticatedStorage;
-    use ockam_identity::change_history::IdentityChangeHistory;
     use ockam_identity::{
-        Identity, IdentityIdentifier, IdentityStateConst, TrustEveryonePolicy,
+        Identity, IdentityIdentifier, IdentityStateConst, PublicIdentity, TrustEveryonePolicy,
         TrustIdentifierPolicy,
     };
     use ockam_node::Context;
@@ -437,8 +436,8 @@ mod tests {
             .create_secure_channel_listener("listener", TrustEveryonePolicy, &server_storage)
             .await?;
 
-        let mut authorities = BTreeMap::<IdentityIdentifier, IdentityChangeHistory>::new();
-        authorities.insert(authority.identifier().clone(), authority.changes().await?);
+        let mut authorities = BTreeMap::new();
+        authorities.insert(authority.identifier().clone(), authority.to_public().await?);
         credential_exchange
             .start_worker(
                 authorities,
@@ -500,8 +499,8 @@ mod tests {
             .create_secure_channel_listener("listener", TrustEveryonePolicy, &client2_storage)
             .await?;
 
-        let mut authorities = BTreeMap::<IdentityIdentifier, IdentityChangeHistory>::new();
-        authorities.insert(authority.identifier().clone(), authority.changes().await?);
+        let mut authorities = BTreeMap::new();
+        authorities.insert(authority.identifier().clone(), authority.to_public().await?);
         credential_exchange
             .start_worker(
                 authorities.clone(),

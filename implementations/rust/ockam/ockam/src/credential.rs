@@ -22,8 +22,9 @@ use ockam_core::compat::{
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::{Signature, SignatureVec, Verifier};
 use ockam_core::{CowBytes, CowStr, Error, Result};
-use ockam_identity::change_history::IdentityChangeHistory;
-use ockam_identity::{Identity, IdentityIdentifier, IdentityStateConst, IdentityVault};
+use ockam_identity::{
+    Identity, IdentityIdentifier, IdentityStateConst, IdentityVault, PublicIdentity,
+};
 use serde::{Serialize, Serializer};
 
 #[cfg(feature = "tag")]
@@ -92,14 +93,11 @@ impl<'a> Credential<'a> {
     /// Perform a signature check with the given identity.
     ///
     /// If successful, the credential data are returned.
-    pub async fn verify_signature<'b: 'a, V>(
+    pub async fn verify_signature<'b: 'a>(
         &'b self,
-        issuer: &IdentityChangeHistory,
-        verifier: V,
-    ) -> Result<CredentialData<'a, Verified>>
-    where
-        V: Verifier,
-    {
+        issuer: &PublicIdentity,
+        vault: &impl IdentityVault,
+    ) -> Result<CredentialData<'a, Verified>> {
         let dat = CredentialData::try_from(self)?;
         if dat.issuer_key != IdentityStateConst::ROOT_LABEL {
             return Err(Error::new(
@@ -109,8 +107,11 @@ impl<'a> Credential<'a> {
             ));
         }
         let sig = Signature::new(self.signature.clone().into_owned());
-        let pky = issuer.get_public_key(&dat.issuer_key)?;
-        if !verifier.verify(&sig, &pky, &self.data).await? {
+
+        if !issuer
+            .verify_signature(&sig, &self.data, Some(&dat.issuer_key), vault)
+            .await?
+        {
             return Err(Error::new(
                 Origin::Application,
                 Kind::Invalid,
@@ -345,8 +346,8 @@ impl<'a> CredentialBuilder<'a> {
             status: None::<PhantomData<Verified>>,
         };
         let bytes = minicbor::to_vec(&dat)?;
-        let skey = issuer.get_secret_key(key_label).await?;
-        let sig = issuer.vault().sign(&skey, &bytes).await?;
+
+        let sig = issuer.create_signature(&bytes, None).await?;
         Ok(Credential::new(bytes, SignatureVec::from(sig)))
     }
 }

@@ -16,7 +16,7 @@ use ockam_core::AsyncTryClone;
 use ockam_core::{Address, Result};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
-use ockam_vault::{KeyId, PublicKey, SecretAttributes};
+use ockam_vault::{KeyId, SecretAttributes};
 
 /// Identity implementation
 #[derive(AsyncTryClone)]
@@ -46,7 +46,7 @@ impl IdentityStateConst {
 
 impl<V: IdentityVault> Identity<V> {
     /// Identity constructor
-    pub fn new(
+    pub(crate) fn new(
         id: IdentityIdentifier,
         change_history: IdentityChangeHistory,
         ctx: Context,
@@ -80,20 +80,8 @@ impl<V: IdentityVault> Identity<V> {
         Ok(identity)
     }
 
-    pub async fn changes(&self) -> Result<IdentityChangeHistory> {
-        Ok(self.change_history.read().await.clone())
-    }
-
     pub fn vault(&self) -> &V {
         &self.vault
-    }
-
-    pub async fn verify_changes(&self) -> Result<bool> {
-        self.change_history
-            .read()
-            .await
-            .verify_all_existing_events(&self.vault)
-            .await
     }
 
     /// Create Identity
@@ -201,11 +189,11 @@ impl<V: IdentityVault> Identity<V> {
     }
 
     /// Get [`Secret`] key. Key is uniquely identified by label in [`KeyAttributes`]
-    pub async fn get_root_secret_key(&self) -> Result<KeyId> {
+    pub(crate) async fn get_root_secret_key(&self) -> Result<KeyId> {
         self.get_secret_key(IdentityStateConst::ROOT_LABEL).await
     }
 
-    pub async fn get_secret_key(&self, label: &str) -> Result<KeyId> {
+    pub(crate) async fn get_secret_key(&self, label: &str) -> Result<KeyId> {
         let event = IdentityChangeHistory::find_last_key_event(
             self.change_history.read().await.as_ref(),
             label,
@@ -214,47 +202,27 @@ impl<V: IdentityVault> Identity<V> {
         Self::get_secret_key_from_event(&event, &self.vault).await
     }
 
-    pub async fn get_root_public_key(&self) -> Result<PublicKey> {
-        self.change_history.read().await.get_root_public_key()
-    }
-
-    pub async fn get_public_key(&self, label: &str) -> Result<PublicKey> {
-        self.change_history.read().await.get_public_key(label)
-    }
-
     /// Generate Proof of possession of [`crate::Identity`].
     ///
     /// channel_state should be tied to channel's cryptographical material (e.g. h value for Noise XX)
-    pub async fn create_signature(&self, data: &[u8]) -> Result<Signature> {
-        let root_secret = self.get_root_secret_key().await?;
-
-        self.vault.sign(&root_secret, data).await
-    }
-
-    /// Verify Proof of possession of [`Identity`](crate::Identity) with given
-    /// [`IdentityIdentifier`]. channel_state should be tied to channel's
-    /// cryptographical material (e.g. h value for Noise XX)
-    pub async fn verify_signature(
+    pub async fn create_signature(
         &self,
-        signature: &Signature,
-        their_identity_id: &IdentityIdentifier,
         data: &[u8],
-        storage: &impl AuthenticatedStorage,
-    ) -> Result<bool> {
-        let their_identity = match self.get_known_identity(their_identity_id, storage).await? {
-            Some(i) => i,
-            None => return Err(IdentityError::IdentityNotFound.into()),
+        key_label: Option<&str>,
+    ) -> Result<Signature> {
+        let secret = match key_label {
+            Some(label) => self.get_secret_key(label).await?,
+            None => self.get_root_secret_key().await?,
         };
-        let public_key = their_identity.get_root_public_key()?;
 
-        self.vault.verify(signature, &public_key, data).await
+        self.vault.sign(&secret, data).await
     }
 
     pub async fn get_known_identity(
         &self,
         their_identity_id: &IdentityIdentifier,
         storage: &impl AuthenticatedStorage,
-    ) -> Result<Option<IdentityChangeHistory>> {
+    ) -> Result<Option<PublicIdentity>> {
         if let Some(known) = storage
             .get(
                 &their_identity_id.to_string(),
@@ -262,11 +230,7 @@ impl<V: IdentityVault> Identity<V> {
             )
             .await?
         {
-            let known = IdentityChangeHistory::import(&known)?;
-
-            if !known.verify_all_existing_events(&self.vault).await? {
-                return Err(IdentityError::IdentityVerificationFailed.into());
-            }
+            let known = PublicIdentity::import(&known, &self.vault).await?;
 
             Ok(Some(known))
         } else {
@@ -277,12 +241,12 @@ impl<V: IdentityVault> Identity<V> {
     pub async fn update_known_identity(
         &self,
         their_identity_id: &IdentityIdentifier,
-        current_history: &IdentityChangeHistory, // TODO: Change to PublicIdentity?
+        current_history: &PublicIdentity,
         storage: &impl AuthenticatedStorage,
     ) -> Result<()> {
         let should_set =
             if let Some(known) = self.get_known_identity(their_identity_id, storage).await? {
-                match current_history.compare(&known) {
+                match current_history.changes().compare(known.changes()) {
                     IdentityHistoryComparison::Equal => false, /* Do nothing */
                     IdentityHistoryComparison::Conflict => {
                         return Err(IdentityError::ConsistencyError.into())
@@ -309,11 +273,99 @@ impl<V: IdentityVault> Identity<V> {
         Ok(())
     }
 
-    pub async fn to_public(&self) -> Result<PublicIdentity<V>> {
+    pub async fn to_public(&self) -> Result<PublicIdentity> {
         Ok(PublicIdentity::new(
             self.id.clone(),
             self.change_history.read().await.clone(),
-            self.vault.async_try_clone().await?,
         ))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use ockam_core::errcode::{Kind, Origin};
+    use ockam_core::vault::PublicKey;
+    use ockam_core::Error;
+    use ockam_vault::Vault;
+
+    fn test_error<S: Into<String>>(error: S) -> Result<()> {
+        Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))
+    }
+
+    impl<V: IdentityVault> Identity<V> {
+        pub async fn get_root_public_key(&self) -> Result<PublicKey> {
+            self.change_history.read().await.get_root_public_key()
+        }
+
+        pub async fn get_public_key(&self, label: &str) -> Result<PublicKey> {
+            self.change_history.read().await.get_public_key(label)
+        }
+
+        async fn verify_changes(&self) -> Result<bool> {
+            self.change_history
+                .read()
+                .await
+                .verify_all_existing_events(&self.vault)
+                .await
+        }
+    }
+
+    #[ockam_macros::test]
+    async fn test_basic_identity_key_ops(ctx: &mut Context) -> Result<()> {
+        let vault = Vault::create();
+
+        let identity = Identity::create(ctx, &vault).await?;
+
+        if !identity.verify_changes().await? {
+            return test_error("verify_changes failed");
+        }
+
+        let secret1 = identity.get_root_secret_key().await?;
+        let public1 = identity.get_root_public_key().await?;
+
+        identity.create_key("Truck management".to_string()).await?;
+
+        if !identity.verify_changes().await? {
+            return test_error("verify_changes failed");
+        }
+
+        let secret2 = identity.get_secret_key("Truck management").await?;
+        let public2 = identity.get_public_key("Truck management").await?;
+
+        if secret1 == secret2 {
+            return test_error("secret did not change after create_key");
+        }
+
+        if public1 == public2 {
+            return test_error("public did not change after create_key");
+        }
+
+        identity.rotate_root_secret_key().await?;
+
+        if !identity.verify_changes().await? {
+            return test_error("verify_changes failed");
+        }
+
+        let secret3 = identity.get_root_secret_key().await?;
+        let public3 = identity.get_root_public_key().await?;
+
+        identity.rotate_root_secret_key().await?;
+
+        if !identity.verify_changes().await? {
+            return test_error("verify_changes failed");
+        }
+
+        if secret1 == secret3 {
+            return test_error("secret did not change after rotate_key");
+        }
+
+        if public1 == public3 {
+            return test_error("public did not change after rotate_key");
+        }
+
+        ctx.stop().await?;
+
+        Ok(())
     }
 }
