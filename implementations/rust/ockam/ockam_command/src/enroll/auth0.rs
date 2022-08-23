@@ -1,6 +1,6 @@
+use anyhow::anyhow;
 use std::borrow::Borrow;
 use std::io::{stdin, Write};
-use std::str::FromStr;
 
 use clap::Args;
 use colorful::Colorful;
@@ -8,23 +8,20 @@ use reqwest::StatusCode;
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{debug, info};
 
-use ockam::identity::IdentityIdentifier;
 use ockam::{Context, TcpTransport};
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
 use ockam_api::config::cli::NodeConfig;
 use ockam_api::error::ApiError;
-use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
 use ockam_core::api::Status;
-use ockam_multiaddr::MultiAddr;
 
 use crate::enroll::auth0::node::default_node;
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
 use crate::util::{api, node_rpc, stop_node, RpcBuilder};
-use crate::{exitcode, CommandGlobalOpts, EnrollCommand};
+use crate::{CommandGlobalOpts, EnrollCommand, Result};
 
 #[derive(Clone, Debug, Args)]
 pub struct EnrollAuth0Command;
@@ -35,13 +32,13 @@ impl EnrollAuth0Command {
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> crate::Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> Result<()> {
     let res = run_impl(&ctx, opts, cmd).await;
     stop_node(ctx).await?;
     res
 }
 
-async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> crate::Result<()> {
+async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> Result<()> {
     let tcp = TcpTransport::create(ctx).await?;
     let nc = default_node(ctx, &opts, &tcp).await?;
 
@@ -53,8 +50,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     let cloud_opts = cmd.cloud_opts.clone();
 
     let space = default_space(ctx, &opts, &tcp, &nc, &node_opts, &cloud_opts).await?;
-    let project = default_project(ctx, &opts, &tcp, &nc, &space, &node_opts, &cloud_opts).await?;
-    create_secure_channel_to_project(ctx, &opts, &tcp, &nc, &project, &node_opts).await?;
+    default_project(ctx, &opts, &tcp, &nc, &space, &node_opts, &cloud_opts).await?;
 
     Ok(())
 }
@@ -75,11 +71,13 @@ mod node {
     use crate::util::{api, RpcBuilder};
     use crate::CommandGlobalOpts;
 
+    use super::*;
+
     pub async fn default_node(
         ctx: &ockam::Context,
         opts: &CommandGlobalOpts,
         tcp: &TcpTransport,
-    ) -> crate::Result<NodeConfig> {
+    ) -> Result<NodeConfig> {
         let no_nodes = {
             let cfg = opts.config.get_inner();
             cfg.nodes.is_empty()
@@ -149,7 +147,7 @@ mod node {
     async fn create_node(
         opts: &CommandGlobalOpts,
         name: impl Into<Option<&'static str>>,
-    ) -> crate::Result<NodeConfig> {
+    ) -> Result<NodeConfig> {
         let node_name = name
             .into()
             .map(|name| name.to_string())
@@ -190,7 +188,7 @@ async fn enroll(
     cmd: &EnrollCommand,
     tcp: &TcpTransport,
     nc: &NodeConfig,
-) -> crate::Result<()> {
+) -> anyhow::Result<()> {
     let auth0 = Auth0Service;
     let token = auth0.token().await?;
     let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
@@ -204,7 +202,7 @@ async fn enroll(
         Ok(())
     } else {
         eprintln!("{}", rpc.parse_err_msg(res, dec));
-        Err(crate::Error::new(exitcode::SOFTWARE))
+        Err(anyhow!("Failed to enroll"))
     }
 }
 
@@ -215,7 +213,7 @@ async fn default_space<'a>(
     nc: &NodeConfig,
     node_opts: &NodeOpts,
     cloud_opts: &CloudOpts,
-) -> crate::Result<Space<'a>> {
+) -> Result<Space<'a>> {
     // Get available spaces for node's identity
     let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
     let mut available_spaces = {
@@ -258,7 +256,7 @@ async fn default_project<'a>(
     space: &Space<'_>,
     node_opts: &NodeOpts,
     cloud_opts: &CloudOpts,
-) -> crate::Result<Project<'a>> {
+) -> Result<Project<'a>> {
     // Get available project for the given space
     let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
     let mut available_projects: Vec<Project> = {
@@ -305,7 +303,7 @@ async fn default_project<'a>(
         loop {
             print!(".");
             std::io::stdout().flush()?;
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
             let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
             rpc.request(api::project::show(&cmd)).await?;
             let project = rpc.parse_response::<Project>()?;
@@ -327,34 +325,9 @@ async fn default_project<'a>(
             .expect("Project should have identity set")
             .to_string(),
     )?;
+    opts.config.atomic_update().run()?;
     println!("\n{}", default_project.output()?);
     Ok(default_project)
-}
-
-async fn create_secure_channel_to_project(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    tcp: &TcpTransport,
-    nc: &NodeConfig,
-    project: &Project<'_>,
-    node_opts: &NodeOpts,
-) -> crate::Result<()> {
-    // TODO: at node::service.rs, sec-channel registry should be the route, not the address
-    let authorized_identifier = project.identity.clone().map(|id| {
-        vec![IdentityIdentifier::from_str(id.as_ref())
-            .expect("Identity received from cloud should be valid")]
-    });
-    let cmd = crate::secure_channel::CreateCommand {
-        from: node_opts.api_node.to_string(),
-        to: MultiAddr::from_str(project.access_route.as_ref()).unwrap(),
-        authorized: authorized_identifier,
-    };
-    let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
-    rpc.request(api::secure_channel::create(&cmd)).await?;
-    let sc = rpc.parse_response::<CreateSecureChannelResponse>()?;
-    println!("\nSecure channel to project");
-    println!("  {}", sc.output()?);
-    Ok(())
 }
 
 pub struct Auth0Service;

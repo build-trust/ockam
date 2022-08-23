@@ -7,6 +7,7 @@ mod get_credential;
 mod list;
 mod list_enrollers;
 mod show;
+pub mod util;
 
 use clap::{Args, Subcommand};
 

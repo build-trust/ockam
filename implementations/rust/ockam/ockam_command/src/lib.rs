@@ -39,7 +39,7 @@ use crate::util::exitcode::ExitCode;
 use crate::util::{exitcode, stop_node, OckamConfig};
 use crate::vault::VaultCommand;
 use clap::{crate_version, ArgEnum, Args, ColorChoice, Parser, Subcommand};
-use util::{embedded_node, setup_logging};
+use util::setup_logging;
 
 pub use error::{Error, Result};
 
