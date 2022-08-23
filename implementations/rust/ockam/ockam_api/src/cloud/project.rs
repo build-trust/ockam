@@ -22,6 +22,8 @@ pub struct Project<'a> {
     #[b(6)] pub users: Vec<CowStr<'a>>,
     #[b(7)] pub space_id: CowStr<'a>,
     #[b(8)] pub identity: Option<CowStr<'a>>,
+    #[b(9)] pub authority_access_route: Option<CowStr<'a>>,
+    #[b(10)] pub authority_identity: Option<CowStr<'a>>,
 }
 
 impl Clone for Project<'_> {
@@ -43,6 +45,8 @@ impl Project<'_> {
             users: self.users.iter().map(|x| x.to_owned()).collect(),
             space_id: self.space_id.to_owned(),
             identity: self.identity.as_ref().map(|x| x.to_owned()),
+            authority_access_route : self.authority_access_route.as_ref().map(|x| x.to_owned()),
+            authority_identity: self.authority_identity.as_ref().map(|x| x.to_owned()),
         }
     }
 
