@@ -10,6 +10,9 @@ use std::{
     str::FromStr,
 };
 
+use crate::secure_channel_listener::create as secure_channel_listener;
+use crate::service::config::Config;
+use crate::service::start::{self, StartCommand, StartSubCommand};
 use crate::util::{bind_to_port_check, exitcode};
 use crate::{
     node::show::query_status,
@@ -28,6 +31,7 @@ use ockam_api::{
     nodes::models::transport::{TransportMode, TransportType},
     nodes::{NodeManager, NODEMANAGER_ADDR},
 };
+use ockam_core::LOCAL;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
@@ -310,9 +314,6 @@ async fn start_services(
     addr: SocketAddr,
     node_opts: super::NodeOpts,
 ) -> Result<()> {
-    use crate::service::config::Config;
-    use crate::service::start::{self, StartCommand, StartSubCommand};
-
     let config = {
         let c = Config::read(cfg)?;
         if let Some(sc) = c.startup_services {
@@ -343,6 +344,15 @@ async fn start_services(
             };
             println!("starting identity service ...");
             start::start_identity_service(ctx, cmd, addr.clone().into()).await?
+        }
+    }
+    if let Some(cfg) = config.secure_channel_listener {
+        if !cfg.disabled {
+            let adr = Address::from((LOCAL, cfg.address));
+            let ids = cfg.authorized_identifiers.into();
+            let rte = addr.clone().into();
+            println!("starting secure-channel listener ...");
+            secure_channel_listener::create_listener(ctx, adr, ids, rte).await?;
         }
     }
     if let Some(cfg) = config.verifier {
