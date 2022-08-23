@@ -33,7 +33,6 @@ use tcp::outlet::TcpOutletCommand;
 // to be removed
 pub mod error;
 
-use crate::enroll::GenerateEnrollmentTokenCommand;
 use crate::identity::IdentityCommand;
 use crate::service::ServiceCommand;
 use crate::util::exitcode::ExitCode;
@@ -218,10 +217,6 @@ pub enum OckamSubcommand {
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
     Enroll(EnrollCommand),
 
-    /// Generate an enrollment token
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE, name = "token", hide = hide())]
-    GenerateEnrollmentToken(GenerateEnrollmentTokenCommand),
-
     /// Create, update or delete projects
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
     Project(ProjectCommand),
@@ -307,9 +302,6 @@ pub fn run() {
         OckamSubcommand::Authenticated(command) => AuthenticatedCommand::run(command),
         OckamSubcommand::Configuration(command) => ConfigurationCommand::run(opts, command),
         OckamSubcommand::Enroll(command) => EnrollCommand::run(opts, command),
-        OckamSubcommand::GenerateEnrollmentToken(command) => {
-            GenerateEnrollmentTokenCommand::run(opts, command)
-        }
         OckamSubcommand::Forwarder(command) => ForwarderCommand::run(opts, command),
         OckamSubcommand::Message(command) => MessageCommand::run(opts, command),
         OckamSubcommand::Node(command) => NodeCommand::run(opts, command),

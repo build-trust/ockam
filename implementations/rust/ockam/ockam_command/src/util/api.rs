@@ -229,10 +229,7 @@ pub(crate) mod secure_channel {
 /// Helpers to create enroll API requests
 pub(crate) mod enroll {
     use crate::enroll::*;
-    use anyhow::anyhow;
-    use ockam::identity::credential::Attributes;
     use ockam_api::cloud::enroll::auth0::{Auth0Token, AuthenticateAuth0Token};
-    use ockam_api::cloud::enroll::*;
 
     use super::*;
 
@@ -243,34 +240,6 @@ pub(crate) mod enroll {
         let token = AuthenticateAuth0Token::new(token);
         Request::builder(Method::Post, "v0/enroll/auth0")
             .body(CloudRequestWrapper::new(token, cmd.cloud_opts.route()))
-    }
-
-    pub(crate) fn token_generate(cmd: GenerateEnrollmentTokenCommand) -> anyhow::Result<Vec<u8>> {
-        let mut attributes = Attributes::new();
-        for entry in cmd.attrs.chunks(2) {
-            if let [k, v] = entry {
-                attributes.put(k, v.as_bytes());
-            } else {
-                return Err(anyhow!("{entry:?} is not a key-value pair"));
-            }
-        }
-
-        let mut buf = vec![];
-        Request::builder(Method::Get, "v0/enroll/token")
-            .body(CloudRequestWrapper::new(attributes, cmd.cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
-    }
-
-    pub(crate) fn token_authenticate(cmd: EnrollCommand) -> anyhow::Result<Vec<u8>> {
-        // Option checked that is Some at enroll/mod/EnrollCommand::run
-        let token = cmd.token.as_ref().expect("required");
-        let b = Token::new(token);
-        let mut buf = vec![];
-        Request::builder(Method::Put, "v0/enroll/token")
-            .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
     }
 }
 
