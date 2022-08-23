@@ -153,7 +153,9 @@ defmodule Ockam.Vault.Software.MixProject do
         :httpc.request(
           :get,
           {to_charlist(download_url), []},
-          [],
+          # We should ensure we test this TLS version when
+          # we update OTP.
+          [{:ssl, [{:versions, [:"tlsv1.2"]}]}],
           stream: to_charlist(dest_file)
         )
     end)
