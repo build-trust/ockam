@@ -80,23 +80,28 @@ defmodule Ockam.Identity.SecureChannel do
     worker_options = Keyword.fetch!(options, :worker_options)
     handshake_options = Keyword.fetch!(worker_options, :handshake_options)
 
-    identity_module =
-      Keyword.get(handshake_options, :identity_module, Identity.default_implementation())
+    with {:ok, identity} <- get_identity(handshake_options) do
+      new_handshake_options = Keyword.put(handshake_options, :identity, identity)
+      new_worker_options = Keyword.put(worker_options, :handshake_options, new_handshake_options)
+      {:ok, Keyword.put(options, :worker_options, new_worker_options), state}
+    end
+  end
 
-    identity =
-      case Keyword.get(handshake_options, :identity) do
-        :dynamic ->
-          {:ok, identity, _id} = Identity.create(identity_module)
-          identity
+  defp get_identity(options) do
+    identity_module = Keyword.get(options, :identity_module, Identity.default_implementation())
 
-        other ->
-          {:ok, identity} = Identity.make_identity(identity_module, other)
-          identity
-      end
+    case Keyword.fetch(options, :identity) do
+      {:ok, :dynamic} ->
+        {:ok, identity, _id} = Identity.create(identity_module)
+        {:ok, identity}
 
-    new_handshake_options = Keyword.put(handshake_options, :identity, identity)
-    new_worker_options = Keyword.put(worker_options, :handshake_options, new_handshake_options)
-    {Keyword.put(options, :worker_options, new_worker_options), state}
+      {:ok, other} ->
+        {:ok, identity} = Identity.make_identity(identity_module, other)
+        {:ok, identity}
+
+      :error ->
+        {:error, :identity_option_missing}
+    end
   end
 
   @doc """
@@ -145,31 +150,20 @@ defmodule Ockam.Identity.SecureChannel do
           [vault: vault]
       end
 
-    identity_module = Keyword.get(options, :identity_module, Identity.default_implementation())
+    with {:ok, identity} <- get_identity(options) do
+      options = Keyword.merge(options, identity: identity, encryption_options: encryption_options)
 
-    identity =
-      case Keyword.get(options, :identity) do
-        :dynamic ->
-          {:ok, identity, _id} = Identity.create(identity_module)
-          identity
+      initiator_options = [
+        address_prefix: "ISC_I_",
+        address: Keyword.get(options, :address),
+        worker_mod: Ockam.Identity.SecureChannel.Data,
+        init_route: init_route,
+        handshake: Ockam.Identity.SecureChannel.Handshake,
+        handshake_options: options
+      ]
 
-        other ->
-          {:ok, identity} = Identity.make_identity(identity_module, other)
-          identity
-      end
-
-    options = Keyword.merge(options, identity: identity, encryption_options: encryption_options)
-
-    initiator_options = [
-      address_prefix: "ISC_I_",
-      address: Keyword.get(options, :address),
-      worker_mod: Ockam.Identity.SecureChannel.Data,
-      init_route: init_route,
-      handshake: Ockam.Identity.SecureChannel.Handshake,
-      handshake_options: options
-    ]
-
-    Initiator.create_and_wait(initiator_options, 100, timeout)
+      Initiator.create_and_wait(initiator_options, 100, timeout)
+    end
   end
 end
 
