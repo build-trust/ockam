@@ -1,9 +1,8 @@
 use crate::{
     util::{exitcode, startup},
-    CommandGlobalOpts, OckamConfig,
+    CommandGlobalOpts,
 };
 use clap::Args;
-use std::ops::Deref;
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
@@ -27,9 +26,8 @@ pub struct DeleteCommand {
 impl DeleteCommand {
     pub fn run(opts: CommandGlobalOpts, command: DeleteCommand) {
         if command.all {
-            let cfg = &opts.config;
             let node_names: Vec<String> = {
-                let inner = cfg.get_inner();
+                let inner = &opts.config.get_inner();
 
                 if inner.nodes.is_empty() {
                     eprintln!("No nodes registered on this system!");
@@ -44,7 +42,10 @@ impl DeleteCommand {
             }
 
             if command.force {
-                remove_config_dir(cfg);
+                if let Err(e) = opts.config.remove() {
+                    eprintln!("{e}");
+                    std::process::exit(exitcode::IOERR)
+                }
             }
         } else {
             delete_node(&opts, &command.node_name, command.sigkill);
@@ -82,18 +83,4 @@ pub fn delete_node(opts: &CommandGlobalOpts, node_name: &String, sigkill: bool) 
     }
 
     println!("Deleted node '{}'", node_name);
-}
-
-fn remove_config_dir(cfg: &OckamConfig) {
-    let inner = cfg.deref().writelock_inner();
-    let config_dir = inner
-        .directories
-        .as_ref()
-        .expect("configuration is in an invalid state")
-        .config_dir();
-
-    if let Err(e) = std::fs::remove_dir_all(config_dir) {
-        eprintln!("Failed to delete config directory: {}", e);
-        std::process::exit(exitcode::IOERR);
-    }
 }

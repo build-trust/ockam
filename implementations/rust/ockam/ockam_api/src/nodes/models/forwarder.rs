@@ -35,11 +35,12 @@ impl<'a> CreateForwarder<'a> {
 }
 
 /// Response body when creating a forwarder
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Decode, Encode, serde::Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ForwarderInfo<'a> {
     #[cfg(feature = "tag")]
+    #[serde(skip)]
     #[n(0)] tag: TypeTag<2757430>,
     #[b(1)] forwarding_route: CowStr<'a>,
     #[b(2)] remote_address: CowStr<'a>,

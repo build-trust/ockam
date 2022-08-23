@@ -1,6 +1,6 @@
 use crate::{
     secure_channel::BACKGROUND,
-    util::{api, exitcode, get_final_element, node_rpc, stop_node, Rpc},
+    util::{api, exitcode, get_final_element, node_rpc, stop_node},
     CommandGlobalOpts, OutputFormat, Result, HELP_TEMPLATE,
 };
 
@@ -10,8 +10,10 @@ use colorful::Colorful;
 use const_str::replace as const_replace;
 use serde_json::json;
 
-use ockam::{identity::IdentityIdentifier, route, Context};
-use ockam_api::config::lookup::{ConfigLookup, LookupMeta};
+use crate::util::api::CloudOpts;
+use crate::util::RpcBuilder;
+use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
+use ockam_api::config::lookup::ConfigLookup;
 use ockam_api::{
     clean_multiaddr, nodes::models::secure_channel::CreateSecureChannelResponse, route_to_multiaddr,
 };
@@ -35,6 +37,10 @@ pub struct CreateCommand {
     /// Identifiers authorized to be presented by the listener
     #[clap(value_name = "IDENTIFIER", long, short, display_order = 801)]
     pub authorized: Option<Vec<IdentityIdentifier>>,
+
+    /// Orchestrator address to resolve projects present in the `at` argument
+    #[clap(flatten)]
+    cloud_opts: CloudOpts,
 }
 
 impl CreateCommand {
@@ -44,11 +50,23 @@ impl CreateCommand {
 
     // Read the `to` argument and return a MultiAddr
     // or exit with and error if `to` can't be parsed.
-    fn parse_to_route(&self, config: &ConfigLookup) -> (MultiAddr, LookupMeta) {
-        clean_multiaddr(&self.to, config).unwrap_or_else(|| {
+    async fn parse_to_route(
+        &self,
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+        tcp: &TcpTransport,
+        cloud_addr: &MultiAddr,
+        api_node: &str,
+    ) -> anyhow::Result<MultiAddr> {
+        let config = &opts.config.get_lookup();
+        let (to, meta) = clean_multiaddr(&self.to, config).unwrap_or_else(|| {
             eprintln!("Could not convert {} into route", &self.to);
             std::process::exit(exitcode::USAGE);
-        })
+        });
+        let projects_sc =
+            crate::project::util::lookup_projects(ctx, opts, tcp, &meta, cloud_addr, api_node)
+                .await?;
+        crate::project::util::clean_projects_multiaddr(to, projects_sc)
     }
 
     // Read the `from` argument and return node name
@@ -129,13 +147,18 @@ impl CreateCommand {
 }
 
 async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+    let tcp = TcpTransport::create(&ctx).await?;
+
     let config = &options.config.get_lookup();
     let from = &command.parse_from_node(config);
-    let (to, _meta) = &command.parse_to_route(config);
+    let to = &command
+        .parse_to_route(&ctx, &options, &tcp, &command.cloud_opts.addr, from)
+        .await?;
+
     let authorized_identifiers = command.authorized.clone();
 
     // Delegate the request to create a secure channel to the from node.
-    let mut rpc = Rpc::new(&ctx, &options, from)?;
+    let mut rpc = RpcBuilder::new(&ctx, &options, from).tcp(&tcp).build()?;
     let request = api::create_secure_channel(to, authorized_identifiers);
     rpc.request(request).await?;
     let response = rpc.parse_response::<CreateSecureChannelResponse>()?;

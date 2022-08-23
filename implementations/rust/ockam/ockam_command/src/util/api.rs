@@ -210,22 +210,6 @@ pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-pub(crate) mod secure_channel {
-    use super::*;
-    use crate::secure_channel;
-
-    /// Construct a request to create Secure Channels
-    pub(crate) fn create(
-        cmd: &secure_channel::CreateCommand,
-    ) -> RequestBuilder<models::secure_channel::CreateSecureChannelRequest> {
-        let payload = models::secure_channel::CreateSecureChannelRequest::new(
-            &cmd.to,
-            cmd.authorized.clone(),
-        );
-        Request::builder(Method::Post, "/node/secure_channel").body(payload)
-    }
-}
-
 /// Helpers to create enroll API requests
 pub(crate) mod enroll {
     use crate::enroll::*;
@@ -343,21 +327,6 @@ pub(crate) mod project {
             ),
         )
         .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
-    }
-}
-
-pub(crate) mod message {
-    use crate::message::*;
-    use ockam_api::nodes::service::message::*;
-
-    use super::*;
-
-    pub(crate) fn send(cmd: SendCommand) -> anyhow::Result<Vec<u8>> {
-        let mut buf = vec![];
-        Request::builder(Method::Post, "v0/message")
-            .body(SendMessage::new(&cmd.to, cmd.message.as_bytes()))
-            .encode(&mut buf)?;
-        Ok(buf)
     }
 }
 

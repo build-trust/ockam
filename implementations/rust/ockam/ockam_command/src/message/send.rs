@@ -1,17 +1,15 @@
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use clap::Args;
-use minicbor::Decoder;
-use tracing::debug;
 
-use crate::{embedded_node, CommandGlobalOpts, HELP_TEMPLATE};
 use ockam::TcpTransport;
 use ockam_api::clean_multiaddr;
-use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{Response, Status};
-use ockam_core::Route;
+use ockam_api::nodes::service::message::SendMessage;
+use ockam_core::api::{Method, Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
 
-use crate::util::{api, connect_to, exitcode, stop_node};
+use crate::util::api::CloudOpts;
+use crate::util::{embedded_node, node_rpc, stop_node, RpcBuilder};
+use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 
 const EXAMPLES: &str = "\
 EXAMPLES
@@ -53,27 +51,17 @@ pub struct SendCommand {
     pub timeout: Option<u64>,
 
     pub message: String,
+
+    #[clap(flatten)]
+    cloud_opts: CloudOpts,
 }
 
 impl SendCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: SendCommand) {
-        // First we clean the MultiAddr route to replace /node/<foo>
-        // with the address lookup for `<foo>`
-        let cmd = SendCommand {
-            to: match clean_multiaddr(&cmd.to, &opts.config.get_lookup()) {
-                Some((to, _meta)) => to,
-                None => {
-                    eprintln!("failed to normalize MultiAddr route");
-                    std::process::exit(exitcode::USAGE);
-                }
-            },
-            ..cmd
-        };
-
         if let Some(node) = &cmd.from {
-            let port = opts.config.get_node_port(node);
-            connect_to(port, (opts, cmd), send_message_via_connection_to_a_node);
-        } else if let Err(e) = embedded_node(send_message_from_embedded_node, cmd) {
+            let node = node.clone();
+            node_rpc(send_message_via_connection_to_a_node, (opts, cmd, node))
+        } else if let Err(e) = embedded_node(send_message_from_embedded_node, (opts, cmd)) {
             eprintln!("Ockam node failed: {:?}", e,);
         }
     }
@@ -81,11 +69,11 @@ impl SendCommand {
 
 async fn send_message_from_embedded_node(
     mut ctx: ockam::Context,
-    cmd: SendCommand,
+    (opts, cmd): (CommandGlobalOpts, SendCommand),
 ) -> anyhow::Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
-
-    if let Some(route) = ockam_api::multiaddr_to_route(&cmd.to) {
+    let (to, _) = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
+    if let Some(route) = ockam_api::multiaddr_to_route(&to) {
         ctx.send(route, cmd.message).await?;
         match cmd.timeout {
             Some(timeout) => {
@@ -108,52 +96,41 @@ async fn send_message_from_embedded_node(
 
 async fn send_message_via_connection_to_a_node(
     ctx: ockam::Context,
-    (_opts, cmd): (CommandGlobalOpts, SendCommand),
-    mut base_route: Route,
-) -> anyhow::Result<()> {
-    let route: Route = base_route.modify().append(NODEMANAGER_ADDR).into();
-    debug!(?cmd, %route, "Sending request");
+    (opts, cmd, api_node): (CommandGlobalOpts, SendCommand, String),
+) -> crate::Result<()> {
+    async fn go(
+        ctx: &ockam::Context,
+        opts: &CommandGlobalOpts,
+        cmd: SendCommand,
+        api_node: String,
+    ) -> crate::Result<()> {
+        let tcp = TcpTransport::create(ctx).await?;
+        let (to, meta) = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
+        let projects_sc = crate::project::util::lookup_projects(
+            ctx,
+            opts,
+            &tcp,
+            &meta,
+            &cmd.cloud_opts.addr,
+            &api_node,
+        )
+        .await?;
+        let to = crate::project::util::clean_projects_multiaddr(to, projects_sc)?;
 
-    let response: Vec<u8> = match cmd.timeout {
-        Some(timeout) => ctx
-            .send_and_receive_with_timeout(route, api::message::send(cmd)?, timeout)
-            .await
-            .context("Failed to process request")?,
-        None => ctx
-            .send_and_receive(route, api::message::send(cmd)?)
-            .await
-            .context("Failed to process request")?,
-    };
-    let mut dec = Decoder::new(&response);
-    let header = dec
-        .decode::<Response>()
-        .context("Failed to decode Response")?;
-    debug!(?header, "Received response");
+        let mut rpc = RpcBuilder::new(ctx, opts, &api_node).tcp(&tcp).build()?;
+        rpc.request(req(&to, &cmd.message)).await?;
+        let res = rpc.parse_response::<Vec<u8>>()?;
+        println!(
+            "{}",
+            String::from_utf8(res).context("Received content is not a valid utf8 string")?
+        );
+        Ok(())
+    }
+    let result = go(&ctx, &opts, cmd, api_node).await;
+    stop_node(ctx).await?;
+    result
+}
 
-    let res = match (header.status(), header.has_body()) {
-        (Some(Status::Ok), true) => {
-            let body = dec
-                .decode::<Vec<u8>>()
-                .context("Failed to decode response body")?;
-            Ok(String::from_utf8(body)?)
-        }
-        (Some(status), true) => {
-            let err = dec
-                .decode::<String>()
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            Err(anyhow!(
-                "An error occurred while processing the request with status code {status:?}: {err}"
-            ))
-        }
-        _ => Err(anyhow!("Unexpected response received from node")),
-    };
-    match res {
-        Ok(o) => println!("{o}"),
-        Err(err) => {
-            eprintln!("{err}");
-            std::process::exit(exitcode::IOERR);
-        }
-    };
-
-    stop_node(ctx).await
+pub(crate) fn req<'a>(to: &'a MultiAddr, message: &'a str) -> RequestBuilder<'a, SendMessage<'a>> {
+    Request::builder(Method::Post, "v0/message").body(SendMessage::new(to, message.as_bytes()))
 }

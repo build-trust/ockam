@@ -1,12 +1,14 @@
 use minicbor::{Decode, Encode};
-use ockam_core::compat::borrow::Cow;
-use ockam_core::Address;
-use ockam_core::CowStr;
 
+use ockam_core::compat::borrow::Cow;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use ockam_core::{route, Address, CowStr, Result};
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
+
+use crate::error::ApiError;
+use crate::route_to_multiaddr;
 
 /// Request body when instructing a node to create a Secure Channel
 #[derive(Debug, Clone, Decode, Encode)]
@@ -15,7 +17,7 @@ use ockam_multiaddr::MultiAddr;
 pub struct CreateSecureChannelRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6300395>,
-    #[b(1)] pub addr: Cow<'a, str>,
+    #[b(1)] pub addr: CowStr<'a>,
     #[b(2)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
 }
 
@@ -38,7 +40,7 @@ impl<'a> CreateSecureChannelRequest<'a> {
 pub struct CreateSecureChannelResponse<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6056513>,
-    #[b(1)] pub addr: Cow<'a, str>,
+    #[b(1)] pub addr: CowStr<'a>,
 }
 
 impl<'a> CreateSecureChannelResponse<'a> {
@@ -48,6 +50,19 @@ impl<'a> CreateSecureChannelResponse<'a> {
             tag: TypeTag,
             addr: addr.to_string().into(),
         }
+    }
+
+    pub fn to_owned<'r>(&self) -> CreateSecureChannelResponse<'r> {
+        CreateSecureChannelResponse {
+            #[cfg(feature = "tag")]
+            tag: self.tag.to_owned(),
+            addr: self.addr.to_owned(),
+        }
+    }
+
+    pub fn addr(&self) -> Result<MultiAddr> {
+        route_to_multiaddr(&route![self.addr.to_string()])
+            .ok_or_else(|| ApiError::generic(&format!("Invalid route: {}", self.addr)))
     }
 }
 

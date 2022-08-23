@@ -48,5 +48,6 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let mut rpc = Rpc::new(ctx, &opts, &cmd.node_opts.api_node)?;
     rpc.request(api::space::create(&cmd)).await?;
-    rpc.print_response::<Space>()
+    rpc.print_response::<Space>()?;
+    Ok(())
 }

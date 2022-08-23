@@ -1,21 +1,17 @@
-use anyhow::{anyhow, Context};
 use clap::Args;
-use minicbor::Decoder;
-use ockam_api::clean_multiaddr;
-use serde_json::json;
-use tracing::debug;
 
-use ockam_api::nodes::models::forwarder::CreateForwarder;
-use ockam_api::nodes::models::forwarder::ForwarderInfo;
-use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{Method, Request, Response, Status};
-use ockam_core::Route;
+use crate::CommandGlobalOpts;
+use ockam::{Context, TcpTransport};
+use ockam_api::clean_multiaddr;
+use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
+use ockam_core::api::{Method, Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
 
+use crate::util::api::CloudOpts;
+use crate::util::output::Output;
 use crate::util::{
-    connect_to, exitcode, get_final_element, stop_node, DEFAULT_ORCHESTRATOR_ADDRESS,
+    get_final_element, node_rpc, stop_node, RpcBuilder, DEFAULT_ORCHESTRATOR_ADDRESS,
 };
-use crate::{CommandGlobalOpts, OutputFormat};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -34,99 +30,66 @@ pub struct CreateCommand {
     /// Forwarding address.
     #[clap(hide = true)]
     address: Option<String>,
+
+    /// Orchestrator address to resolve projects present in the `at` argument
+    #[clap(flatten)]
+    cloud_opts: CloudOpts,
 }
 
 impl CreateCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
-        let cfg = &opts.config;
-        let cmd = CreateCommand {
-            at: match clean_multiaddr(&cmd.at, &cfg.get_lookup()) {
-                Some((addr, _meta)) => addr,
-                None => {
-                    eprintln!("failed to normalize MultiAddr route");
-                    std::process::exit(exitcode::USAGE);
-                }
-            },
-            from: cmd
-                .from
-                .as_ref()
-                .map(|f| String::from(get_final_element(f))),
-            ..cmd
-        };
-
-        let node = get_final_element(&cmd.for_node);
-        let port = match cfg.select_node(node) {
-            Some(cfg) => cfg.port,
-            None => {
-                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(exitcode::IOERR);
-            }
-        };
-        connect_to(port, (opts, cmd), create);
+        node_rpc(rpc, (opts, cmd));
     }
 }
 
-async fn create(
-    ctx: ockam::Context,
+async fn rpc(
+    mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
-    mut base_route: Route,
-) -> anyhow::Result<()> {
-    let route: Route = base_route.modify().append(NODEMANAGER_ADDR).into();
-    let message = make_api_request(cmd)?;
-
-    let response: Vec<u8> = ctx
-        .send_and_receive(route, message)
-        .await
-        .context("Failed to process request")?;
-    let mut dec = Decoder::new(&response);
-    let header = dec.decode::<Response>()?;
-    debug!(?header, "Received response");
-
-    let res = match header.status() {
-        Some(Status::Ok) => {
-            let body = dec.decode::<ForwarderInfo>()?;
-            let address = format!("/service/{}", body.remote_address());
-            let output = match opts.global_args.output_format {
-                OutputFormat::Plain => address,
-                OutputFormat::Json => json!({ "remote_address": address }).to_string(),
-            };
-            Ok(output)
-        }
-        Some(Status::InternalServerError) => {
-            let err = dec
-                .decode::<String>()
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            Err(anyhow!(
-                "An error occurred while processing the request: {err}"
-            ))
-        }
-        _ => Err(anyhow!("Unexpected response received from node")),
-    };
-    match res {
-        Ok(o) => println!("{o}"),
-        Err(err) => {
-            eprintln!("{err}");
-            std::process::exit(exitcode::IOERR);
-        }
-    };
-
-    stop_node(ctx).await
+) -> crate::Result<()> {
+    async fn go(
+        ctx: &mut Context,
+        opts: &CommandGlobalOpts,
+        cmd: CreateCommand,
+    ) -> crate::Result<()> {
+        let tcp = TcpTransport::create(ctx).await?;
+        let api_node = get_final_element(&cmd.for_node);
+        let (at, meta) = clean_multiaddr(&cmd.at, &opts.config.get_lookup()).unwrap();
+        let projects_sc = crate::project::util::lookup_projects(
+            ctx,
+            opts,
+            &tcp,
+            &meta,
+            &cmd.cloud_opts.addr,
+            api_node,
+        )
+        .await?;
+        let at = crate::project::util::clean_projects_multiaddr(at, projects_sc)?;
+        let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(&tcp).build()?;
+        let cmd = CreateCommand { at, ..cmd };
+        rpc.request(req(&cmd)).await?;
+        rpc.print_response::<ForwarderInfo>()?;
+        Ok(())
+    }
+    let result = go(&mut ctx, &opts, cmd).await;
+    stop_node(ctx).await?;
+    result
 }
 
 /// Construct a request to create a forwarder
-pub(crate) fn make_api_request(cmd: CreateCommand) -> ockam::Result<Vec<u8>> {
+fn req(cmd: &CreateCommand) -> RequestBuilder<CreateForwarder> {
     let (at_rust_node, address) = match &cmd.from {
-        Some(_s) => (true, &cmd.from),
-        None => (false, &cmd.address),
+        Some(s) => (true, Some(get_final_element(s))),
+        None => (false, cmd.address.as_deref()),
     };
+    Request::builder(Method::Post, "/node/forwarder").body(CreateForwarder::new(
+        &cmd.at,
+        address,
+        at_rust_node,
+    ))
+}
 
-    let mut buf = vec![];
-    Request::builder(Method::Post, "/node/forwarder")
-        .body(CreateForwarder::new(
-            &cmd.at,
-            address.as_deref(),
-            at_rust_node,
-        ))
-        .encode(&mut buf)?;
-    Ok(buf)
+impl Output for ForwarderInfo<'_> {
+    fn output(&self) -> anyhow::Result<String> {
+        Ok(format!("/service/{}", self.remote_address()))
+    }
 }

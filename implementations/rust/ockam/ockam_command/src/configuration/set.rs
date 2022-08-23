@@ -24,5 +24,9 @@ impl SetCommand {
         };
 
         opts.config.set_node_alias(command.name, target_addr);
+        if let Err(e) = opts.config.atomic_update().run() {
+            eprintln!("{}", e);
+            std::process::exit(exitcode::IOERR);
+        }
     }
 }

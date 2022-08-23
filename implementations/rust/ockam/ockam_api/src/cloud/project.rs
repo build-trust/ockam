@@ -1,9 +1,11 @@
 use minicbor::{Decode, Encode};
 use serde::Serialize;
+use std::str::FromStr;
 
 use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use ockam_multiaddr::MultiAddr;
 
 #[derive(Encode, Decode, Serialize, Debug)]
 #[rustfmt::skip]
@@ -46,6 +48,10 @@ impl Project<'_> {
 
     pub fn is_ready(&self) -> bool {
         !self.access_route.is_empty() & self.identity.is_some()
+    }
+
+    pub fn access_route(&self) -> MultiAddr {
+        MultiAddr::from_str(&self.access_route).expect("Invalid access route")
     }
 }
 
