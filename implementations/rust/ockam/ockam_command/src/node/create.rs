@@ -349,7 +349,7 @@ async fn start_services(
     if let Some(cfg) = config.secure_channel_listener {
         if !cfg.disabled {
             let adr = Address::from((LOCAL, cfg.address));
-            let ids = cfg.authorized_identifiers.into();
+            let ids = cfg.authorized_identifiers;
             let rte = addr.clone().into();
             println!("starting secure-channel listener ...");
             secure_channel_listener::create_listener(ctx, adr, ids, rte).await?;
