@@ -10,7 +10,7 @@ defmodule Ockam.Session.Spawner do
     @spec message_parser(Ockam.Message.t()) :: {:ok, Keyword.t()} | {:error, any()}
     defaults to `&default_message_parser/1`
   `spawner_setup` - function to prepare spawner state,
-    @spec spawner_setup(options :: Keyword.t(), state :: map) :: {options :: Keyword.t(), state :: map()}
+    @spec spawner_setup(options :: Keyword.t(), state :: map) :: {:ok, options :: Keyword.t(), state :: map()} | {:error, reason :: any()}
     defaults to `&default_spawner_setup`
 
   Upon receiving a message, `worker_mod` worker will be started
@@ -49,18 +49,18 @@ defmodule Ockam.Session.Spawner do
   def setup(options, state) do
     setup = Keyword.get(options, :spawner_setup, &default_spawner_setup/2)
 
-    {options, state} = setup.(options, state)
+    with {:ok, options, state} <- setup.(options, state) do
+      worker_mod = Keyword.fetch!(options, :worker_mod)
+      worker_options = Keyword.get(options, :worker_options, [])
+      message_parser = Keyword.get(options, :message_parser, &default_message_parser/1)
 
-    worker_mod = Keyword.fetch!(options, :worker_mod)
-    worker_options = Keyword.get(options, :worker_options, [])
-    message_parser = Keyword.get(options, :message_parser, &default_message_parser/1)
-
-    {:ok,
-     Map.merge(state, %{
-       worker_mod: worker_mod,
-       worker_options: worker_options,
-       message_parser: message_parser
-     })}
+      {:ok,
+       Map.merge(state, %{
+         worker_mod: worker_mod,
+         worker_options: worker_options,
+         message_parser: message_parser
+       })}
+    end
   end
 
   @impl true
@@ -92,6 +92,6 @@ defmodule Ockam.Session.Spawner do
   end
 
   def default_spawner_setup(options, state) do
-    {options, state}
+    {:ok, options, state}
   end
 end
