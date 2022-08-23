@@ -20,6 +20,11 @@ if [[ ! -z $GIT_TAG ]]; then
 fi
 
 for crate in $(ls "implementations/rust/ockam"); do
+    if [[ -f implementations/rust/ockam/$crate ]]; then
+        echo "$crate is a file, skipping."
+        continue
+    fi
+
     is_publish=$(tomlq package.publish -f implementations/rust/ockam/$crate/Cargo.toml)
     if [[ is_publish == false ]]; then
         echo "$crate indicate as not-publish"
