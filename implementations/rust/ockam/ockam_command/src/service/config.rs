@@ -27,7 +27,7 @@ pub struct SecureChannelListenerConfig {
     pub(crate) address: String,
 
     #[serde(default)]
-    pub(crate) authorized_identifiers: Vec<IdentityIdentifier>,
+    pub(crate) authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 
     #[serde(default)]
     pub(crate) disabled: bool,
