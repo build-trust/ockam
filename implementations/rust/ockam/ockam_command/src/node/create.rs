@@ -1,7 +1,7 @@
 use clap::Args;
 use rand::prelude::random;
 
-use anyhow::{Context as _, Result};
+use anyhow::{anyhow, Context as _, Result};
 use std::sync::Arc;
 use std::{
     env::current_exe,
@@ -31,12 +31,15 @@ use ockam_api::config::cli;
 use ockam_api::error::ApiError;
 use ockam_api::nodes::IdentityOverride;
 use ockam_api::{
+    cloud::project::Project,
     nodes::models::transport::{TransportMode, TransportType},
     nodes::{NodeManager, NODEMANAGER_ADDR},
 };
 use ockam_core::LOCAL;
+use ockam_multiaddr::MultiAddr;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
+use tokio::fs;
 
 /// Create Nodes
 #[derive(Clone, Debug, Args)]
@@ -78,6 +81,9 @@ pub struct CreateCommand {
 
     #[clap(long, hide = true)]
     pub no_watchdog: bool,
+
+    #[clap(long, hide = true)]
+    pub project: Option<PathBuf>,
 }
 
 impl From<&'_ CreateCommand> for ComposableSnippet {
@@ -312,12 +318,16 @@ async fn run_background_node_impl(
         Some(get_identity_override(ctx, &cfg).await?)
     };
 
+    if let Some(path) = &c.project {
+        add_project_authority(path, &c.node_name, &cfg).await?
+    }
+
     let tcp = TcpTransport::create(ctx).await?;
     let bind = c.tcp_listener_address;
     tcp.listen(&bind).await?;
 
     let node_dir = cfg.get_node_dir(&c.node_name)?;
-    let node_man = NodeManager::create(
+    let mut node_man = NodeManager::create(
         ctx,
         c.node_name.clone(),
         node_dir,
@@ -327,6 +337,10 @@ async fn run_background_node_impl(
         tcp.async_try_clone().await?,
     )
     .await?;
+
+    node_man
+        .configure_authorities(cfg.authorities(&c.node_name)?.snapshot())
+        .await?;
 
     ctx.start_worker(NODEMANAGER_ADDR, node_man).await?;
 
@@ -338,6 +352,27 @@ async fn run_background_node_impl(
     }
 
     Ok(())
+}
+
+async fn add_project_authority<P>(path: P, node: &str, cfg: &OckamConfig) -> Result<()>
+where
+    P: AsRef<Path>,
+{
+    let s = fs::read_to_string(path.as_ref()).await?;
+    let p: Project = serde_json::from_str(&s)?;
+    let m = p
+        .authority_access_route
+        .map(|a| MultiAddr::try_from(&*a))
+        .transpose()?;
+    let a = p
+        .authority_identity
+        .map(|a| hex::decode(a.as_bytes()))
+        .transpose()?;
+    if let Some((a, m)) = a.zip(m) {
+        cfg.authorities(node)?.add_authority(a, m)
+    } else {
+        Err(anyhow!("missing authority in project info"))
+    }
 }
 
 async fn start_services(

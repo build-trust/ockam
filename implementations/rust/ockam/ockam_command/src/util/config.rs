@@ -201,6 +201,11 @@ impl OckamConfig {
         self.get_inner().get_lookup().clone()
     }
 
+    pub fn authorities(&self, node: &str) -> Result<AuthoritiesConfig> {
+        let path = self.get_node_dir(node)?;
+        Ok(AuthoritiesConfig::load(path))
+    }
+
     ///////////////////// WRITE ACCESSORS //////////////////////////////
 
     pub fn set_default_vault_path(&self, default_vault_path: Option<PathBuf>) {
@@ -389,5 +394,27 @@ impl StartupConfig {
 
     pub fn get_all(&self) -> VecDeque<ComposableSnippet> {
         self.inner.readlock_inner().commands.clone()
+    }
+}
+
+pub struct AuthoritiesConfig {
+    inner: Config<cli::AuthoritiesConfig>,
+}
+
+impl AuthoritiesConfig {
+    pub fn load(dir: PathBuf) -> Self {
+        let inner = Config::<cli::AuthoritiesConfig>::load(&dir, "authorities");
+        Self { inner }
+    }
+
+    pub fn add_authority(&self, authority: Vec<u8>, addr: MultiAddr) -> Result<()> {
+        let mut cfg = self.inner.writelock_inner();
+        cfg.add_authority(authority, addr);
+        drop(cfg);
+        self.inner.atomic_update().run()
+    }
+
+    pub fn snapshot(&self) -> cli::AuthoritiesConfig {
+        self.inner.readlock_inner().clone()
     }
 }
