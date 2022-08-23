@@ -32,6 +32,11 @@ declare -A crates_version
 
 # Every other crate that were not updated...
 for crate in $(ls "implementations/rust/ockam"); do
+    if [[ -f implementations/rust/ockam/$crate ]]; then
+        echo "$crate is a file, skipping."
+        continue
+    fi
+
     # There are some crates that differ from their folder name, e.g. ockam_ffi
     # so we need the crate name source of truth from Cargo.toml.
     name=$(eval "tomlq package.name -f implementations/rust/ockam/$crate/Cargo.toml")
