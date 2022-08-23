@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use ockam::identity::IdentityIdentifier;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -15,6 +16,18 @@ pub struct VaultConfig {
 pub struct IdentityConfig {
     #[serde(default = "identity_default_addr")]
     pub(crate) address: String,
+
+    #[serde(default)]
+    pub(crate) disabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecureChannelListenerConfig {
+    #[serde(default = "sec_listener_default_addr")]
+    pub(crate) address: String,
+
+    #[serde(default)]
+    pub(crate) authorized_identifiers: Vec<IdentityIdentifier>,
 
     #[serde(default)]
     pub(crate) disabled: bool,
@@ -46,6 +59,7 @@ pub struct AuthenticatorConfig {
 pub struct ServiceConfigs {
     pub(crate) vault: Option<VaultConfig>,
     pub(crate) identity: Option<IdentityConfig>,
+    pub(crate) secure_channel_listener: Option<SecureChannelListenerConfig>,
     pub(crate) verifier: Option<VerifierConfig>,
     pub(crate) authenticator: Option<AuthenticatorConfig>,
 }
@@ -69,6 +83,10 @@ fn vault_default_addr() -> String {
 
 fn identity_default_addr() -> String {
     "identity_service".to_string()
+}
+
+fn sec_listener_default_addr() -> String {
+    "api".to_string()
 }
 
 fn verifier_default_addr() -> String {

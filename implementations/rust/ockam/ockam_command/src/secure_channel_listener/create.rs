@@ -41,21 +41,20 @@ impl CreateCommand {
             }
         };
 
-        connect_to(port, command, create_listener);
+        connect_to(port, command, |mut ctx, cmd, rte| async {
+            let a = create_listener(&mut ctx, cmd.address, cmd.authorized_identifier, rte).await;
+            let b = stop_node(ctx).await;
+            a.and(b)
+        });
     }
 }
 
 pub async fn create_listener(
-    ctx: ockam::Context,
-    cmd: CreateCommand,
+    ctx: &mut ockam::Context,
+    addr: Address,
+    authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     mut base_route: Route,
 ) -> anyhow::Result<()> {
-    let CreateCommand {
-        address: addr,
-        authorized_identifier: authorized_identifiers,
-        ..
-    } = cmd;
-
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append(NODEMANAGER_ADDR),
@@ -67,13 +66,12 @@ pub async fn create_listener(
 
     match response.status() {
         Some(Status::Ok) => {
-            println!("/service/{}", addr.address())
+            println!("/service/{}", addr.address());
+            Ok(())
         }
         _ => {
             eprintln!("An error occurred while creating secure channel listener",);
             std::process::exit(exitcode::CANTCREAT)
         }
     }
-
-    stop_node(ctx).await
 }
