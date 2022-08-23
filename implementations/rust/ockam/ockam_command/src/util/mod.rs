@@ -5,7 +5,7 @@ use std::{
     path::Path,
 };
 
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, Context as _, Result};
 use minicbor::{Decode, Decoder, Encode};
 use tracing::{debug, error, trace};
 use tracing_subscriber::prelude::*;
@@ -13,7 +13,7 @@ use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 pub use addon::AddonCommand;
 pub use config::*;
-use ockam::{route, Address, NodeBuilder, Route, TcpTransport, TCP};
+use ockam::{route, Address, Context, NodeBuilder, Route, TcpTransport, TCP};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_multiaddr::MultiAddr;
@@ -33,7 +33,7 @@ pub const DEFAULT_ORCHESTRATOR_ADDRESS: &str =
     "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
 
 pub struct RpcBuilder<'a, 'b> {
-    ctx: &'a ockam::Context,
+    ctx: &'a Context,
     opts: &'a CommandGlobalOpts,
     node: &'b str,
     to: Route,
@@ -41,7 +41,7 @@ pub struct RpcBuilder<'a, 'b> {
 }
 
 impl<'a, 'b> RpcBuilder<'a, 'b> {
-    pub fn new(ctx: &'a ockam::Context, opts: &'a CommandGlobalOpts, node: &'b str) -> Self {
+    pub fn new(ctx: &'a Context, opts: &'a CommandGlobalOpts, node: &'b str) -> Self {
         RpcBuilder {
             ctx,
             opts,
@@ -51,7 +51,7 @@ impl<'a, 'b> RpcBuilder<'a, 'b> {
         }
     }
 
-    pub fn to(mut self, to: &MultiAddr) -> anyhow::Result<Self> {
+    pub fn to(mut self, to: &MultiAddr) -> Result<Self> {
         self.to = ockam_api::multiaddr_to_route(to)
             .ok_or_else(|| anyhow!("failed to convert {to} to route"))?;
         Ok(self)
@@ -62,7 +62,7 @@ impl<'a, 'b> RpcBuilder<'a, 'b> {
         self
     }
 
-    pub fn build(self) -> anyhow::Result<Rpc<'a>> {
+    pub fn build(self) -> Result<Rpc<'a>> {
         let mut rpc = Rpc::new(self.ctx, self.opts, self.node)?;
         rpc.to = self.to;
         rpc.tcp = self.tcp;
@@ -71,7 +71,7 @@ impl<'a, 'b> RpcBuilder<'a, 'b> {
 }
 
 pub struct Rpc<'a> {
-    ctx: &'a ockam::Context,
+    ctx: &'a Context,
     buf: Vec<u8>,
     opts: &'a CommandGlobalOpts,
     cfg: NodeConfig,
@@ -81,11 +81,7 @@ pub struct Rpc<'a> {
 }
 
 impl<'a> Rpc<'a> {
-    pub fn new(
-        ctx: &'a ockam::Context,
-        opts: &'a CommandGlobalOpts,
-        node: &str,
-    ) -> anyhow::Result<Rpc<'a>> {
+    pub fn new(ctx: &'a Context, opts: &'a CommandGlobalOpts, node: &str) -> Result<Rpc<'a>> {
         let cfg = opts.config.get_node(node)?;
         Ok(Rpc {
             ctx,
@@ -97,7 +93,7 @@ impl<'a> Rpc<'a> {
         })
     }
 
-    pub async fn request<T>(&mut self, req: RequestBuilder<'_, T>) -> anyhow::Result<()>
+    pub async fn request<T>(&mut self, req: RequestBuilder<'_, T>) -> Result<()>
     where
         T: Encode<()>,
     {
@@ -114,7 +110,7 @@ impl<'a> Rpc<'a> {
         &mut self,
         req: RequestBuilder<'_, T>,
         timeout: Duration,
-    ) -> anyhow::Result<()>
+    ) -> Result<()>
     where
         T: Encode<()>,
     {
@@ -130,7 +126,7 @@ impl<'a> Rpc<'a> {
         Ok(())
     }
 
-    async fn route_impl(&mut self, ctx: &ockam::Context) -> anyhow::Result<Route> {
+    async fn route_impl(&mut self, ctx: &Context) -> Result<Route> {
         let addr = node_addr(&self.cfg);
         let addr_str = addr.address();
 
@@ -151,21 +147,21 @@ impl<'a> Rpc<'a> {
     }
 
     /// Parse the response body and return it.
-    pub fn parse_response<T>(&'a self) -> crate::Result<T>
+    pub fn parse_response<T>(&'a self) -> Result<T>
     where
         T: Decode<'a, ()>,
     {
         let mut dec = self.parse_response_impl()?;
-        Ok(dec.decode().context("Failed to decode response body")?)
+        dec.decode().context("Failed to decode response body")
     }
 
     /// Check response's status code is OK.
-    pub fn is_ok(&self) -> crate::Result<()> {
+    pub fn is_ok(&self) -> Result<()> {
         self.parse_response_impl()?;
         Ok(())
     }
 
-    pub fn check_response(&self) -> crate::Result<(Response, Decoder)> {
+    pub fn check_response(&self) -> Result<(Response, Decoder)> {
         let mut dec = Decoder::new(&self.buf);
         let hdr = dec
             .decode::<Response>()
@@ -174,7 +170,7 @@ impl<'a> Rpc<'a> {
     }
 
     /// Parse the header and returns the decoder.
-    fn parse_response_impl(&self) -> crate::Result<Decoder> {
+    fn parse_response_impl(&self) -> Result<Decoder> {
         let mut dec = Decoder::new(&self.buf);
         let hdr = dec
             .decode::<Response>()
@@ -182,8 +178,9 @@ impl<'a> Rpc<'a> {
         if hdr.status() == Some(Status::Ok) {
             Ok(dec)
         } else {
-            eprintln!("{}", self.parse_err_msg(hdr, dec));
-            Err(crate::Error::new(exitcode::SOFTWARE))
+            let msg = self.parse_err_msg(hdr, dec);
+            eprintln!("{}", msg);
+            Err(anyhow!(msg))
         }
     }
 
@@ -211,7 +208,7 @@ impl<'a> Rpc<'a> {
     }
 
     /// Parse the response body and print it.
-    pub fn print_response<T>(&'a self) -> crate::Result<()>
+    pub fn print_response<T>(&'a self) -> Result<T>
     where
         T: Decode<'a, ()> + Output + serde::Serialize,
     {
@@ -223,7 +220,7 @@ impl<'a> Rpc<'a> {
             }
         };
         println!("{}", o);
-        Ok(())
+        Ok(b)
     }
 }
 
@@ -232,7 +229,7 @@ impl<'a> Rpc<'a> {
 /// eprintln logs.
 ///
 /// TODO: We may want to change this behaviour in the future.
-pub async fn stop_node(mut ctx: ockam::Context) -> anyhow::Result<()> {
+pub async fn stop_node(mut ctx: Context) -> Result<()> {
     if let Err(e) = ctx.stop().await {
         eprintln!("an error occurred while shutting down local node: {}", e);
     }
@@ -252,8 +249,8 @@ pub async fn stop_node(mut ctx: ockam::Context) -> anyhow::Result<()> {
 pub fn connect_to<A, F, Fut>(port: u16, a: A, lambda: F)
 where
     A: Send + Sync + 'static,
-    F: FnOnce(ockam::Context, A, Route) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = anyhow::Result<()>> + Send + 'static,
+    F: FnOnce(Context, A, Route) -> Fut + Send + Sync + 'static,
+    Fut: core::future::Future<Output = Result<()>> + Send + 'static,
 {
     let res = embedded_node(
         move |ctx, a| async move {
@@ -292,13 +289,15 @@ fn node_addr(cfg: &NodeConfig) -> Address {
 pub fn node_rpc<A, F, Fut>(f: F, a: A)
 where
     A: Send + Sync + 'static,
-    F: FnOnce(ockam::Context, A) -> Fut + Send + Sync + 'static,
+    F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
     Fut: core::future::Future<Output = crate::Result<()>> + Send + 'static,
 {
     let res = embedded_node(
         |ctx, a| async {
             let res = f(ctx, a).await;
             if let Err(e) = res {
+                error!("{e}");
+                eprintln!("{e}");
                 std::process::exit(e.code());
             }
             Ok(())
@@ -311,11 +310,11 @@ where
     }
 }
 
-pub fn embedded_node<A, F, Fut, T>(f: F, a: A) -> anyhow::Result<T>
+pub fn embedded_node<A, F, Fut, T>(f: F, a: A) -> Result<T>
 where
     A: Send + Sync + 'static,
-    F: FnOnce(ockam::Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = anyhow::Result<T>> + Send + 'static,
+    F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
+    Fut: core::future::Future<Output = Result<T>> + Send + 'static,
     T: Send + 'static,
 {
     let (ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
@@ -332,7 +331,7 @@ where
         .map_err(anyhow::Error::from)
 }
 
-pub fn find_available_port() -> anyhow::Result<u16> {
+pub fn find_available_port() -> Result<u16> {
     let listener = TcpListener::bind("127.0.0.1:0").context("Unable to bind to an open port")?;
     let address = listener
         .local_addr()

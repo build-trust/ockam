@@ -9,6 +9,7 @@
 //! generates an AtomicUpdater.
 
 use crate::config::ConfigValues;
+use anyhow::anyhow;
 use std::path::{Path, PathBuf};
 use std::{
     fs::{self, File},
@@ -45,7 +46,12 @@ impl<V: ConfigValues> AtomicUpdater<V> {
 
     /// Do the thing that we said it was gonna do
     pub fn run(self) -> anyhow::Result<()> {
-        let inner = self.inner.read().unwrap();
+        let inner = match self.inner.read() {
+            Ok(i) => i,
+            Err(_) => {
+                return Err(anyhow!("Failed to get config file lock"));
+            }
+        };
         let tmp_path = make_tmp_path(&self.config_path);
 
         // Repeatedly try to create this file, in case another
@@ -61,11 +67,8 @@ impl<V: ConfigValues> AtomicUpdater<V> {
         };
 
         // First write the file
-        let json: String =
-            serde_json::to_string_pretty(&*inner).expect("failed to serialise config");
-        new_f
-            .write_all(json.as_bytes())
-            .expect("failed to write config");
+        let json: String = serde_json::to_string_pretty(&*inner)?;
+        new_f.write_all(json.as_bytes())?;
 
         // Then rename it over the existing config
         fs::rename(&tmp_path, &self.config_path)?;

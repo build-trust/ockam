@@ -42,5 +42,6 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let mut rpc = Rpc::new(ctx, &opts, &cmd.node_opts.api_node)?;
     rpc.request(api::space::delete(&cmd)).await?;
-    rpc.is_ok()
+    rpc.is_ok()?;
+    Ok(())
 }

@@ -1,6 +1,6 @@
 //! Handle local node configuration
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use ockam_api::config::{cli, lookup::ConfigLookup, lookup::InternetAddress, Config};
 use ockam_multiaddr::MultiAddr;
 use slug::slugify;
@@ -59,6 +59,16 @@ impl OckamConfig {
         let inner = Config::<cli::OckamConfig>::load(config_dir, "config");
         inner.writelock_inner().directories = Some(directories);
         Self { inner }
+    }
+
+    pub fn remove(self) -> Result<()> {
+        let inner = self.inner.writelock_inner();
+        let config_dir = inner
+            .directories
+            .as_ref()
+            .expect("configuration is in an invalid state")
+            .config_dir();
+        std::fs::remove_dir_all(config_dir).context("Failed to delete config directory")
     }
 
     /// Get available global configuration values
