@@ -6,6 +6,9 @@ use crate::config::{
     ConfigValues,
 };
 use directories::ProjectDirs;
+use ockam_core::Result;
+use ockam_identity::{IdentityVault, PublicIdentity};
+use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
 use std::{
@@ -137,6 +140,38 @@ pub struct StartupConfig {
 
 impl ConfigValues for StartupConfig {
     fn default_values(_node_dir: &Path) -> Self {
+        Self::default()
+    }
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct AuthoritiesConfig {
+    authorities: BTreeMap<Vec<u8>, MultiAddr>,
+}
+
+impl AuthoritiesConfig {
+    pub fn add_authority(&mut self, authority: Vec<u8>, addr: MultiAddr) {
+        self.authorities.insert(authority, addr);
+    }
+
+    pub fn authorities(&self) -> impl Iterator<Item = (&[u8], &MultiAddr)> {
+        self.authorities.iter().map(|(v, m)| (v.as_slice(), m))
+    }
+
+    pub async fn to_public_identities<V>(&self, vault: &V) -> Result<Vec<PublicIdentity>>
+    where
+        V: IdentityVault,
+    {
+        let mut v = Vec::new();
+        for a in self.authorities.keys() {
+            v.push(PublicIdentity::import(a, vault).await?)
+        }
+        Ok(v)
+    }
+}
+
+impl ConfigValues for AuthoritiesConfig {
+    fn default_values(_: &Path) -> Self {
         Self::default()
     }
 }

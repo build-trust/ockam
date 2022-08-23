@@ -109,6 +109,7 @@ async fn create_node(
                 child_process: false, // this value is ignored in this case
                 launch_config: None,
                 no_watchdog: false,
+                project: None,
             };
             let cmd = cmd.overwrite_addr()?;
             let addr = SocketAddr::from_str(&cmd.tcp_listener_address)

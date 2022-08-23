@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use minicbor::{Decode, Encode};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use ockam_core::CowStr;
 use ockam_core::Result;
@@ -14,23 +14,52 @@ use ockam_node::tokio;
 use crate::error::ApiError;
 use crate::multiaddr_to_addr;
 
-#[derive(Encode, Decode, Serialize, Debug)]
-#[rustfmt::skip]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
 #[cbor(map)]
 pub struct Project<'a> {
     #[cfg(feature = "tag")]
     #[serde(skip)]
-    #[n(0)] pub tag: TypeTag<9056532>,
-    #[b(1)] pub id: CowStr<'a>,
-    #[b(2)] pub name: CowStr<'a>,
-    #[b(3)] pub space_name: CowStr<'a>,
-    #[b(4)] pub services: Vec<CowStr<'a>>,
-    #[b(5)] pub access_route: CowStr<'a>, //TODO: should be optional, waiting for changes on the elixir side
-    #[b(6)] pub users: Vec<CowStr<'a>>,
-    #[b(7)] pub space_id: CowStr<'a>,
-    #[b(8)] pub identity: Option<IdentityIdentifier>,
-    #[b(9)] pub authority_access_route: Option<CowStr<'a>>,
-    #[b(10)] pub authority_identity: Option<CowStr<'a>>,
+    #[cbor(n(0))]
+    pub tag: TypeTag<9056532>,
+
+    #[cbor(b(1))]
+    #[serde(borrow)]
+    pub id: CowStr<'a>,
+
+    #[cbor(b(2))]
+    #[serde(borrow)]
+    pub name: CowStr<'a>,
+
+    #[cbor(b(3))]
+    #[serde(borrow)]
+    pub space_name: CowStr<'a>,
+
+    #[cbor(b(4))]
+    #[serde(borrow)]
+    pub services: Vec<CowStr<'a>>,
+
+    #[cbor(b(5))]
+    #[serde(borrow)]
+    pub access_route: CowStr<'a>, //TODO: should be optional, waiting for changes on the elixir side
+
+    #[cbor(b(6))]
+    #[serde(borrow)]
+    pub users: Vec<CowStr<'a>>,
+
+    #[cbor(b(7))]
+    #[serde(borrow)]
+    pub space_id: CowStr<'a>,
+
+    #[cbor(n(8))]
+    pub identity: Option<IdentityIdentifier>,
+
+    #[cbor(b(9))]
+    #[serde(borrow)]
+    pub authority_access_route: Option<CowStr<'a>>,
+
+    #[cbor(b(10))]
+    #[serde(borrow)]
+    pub authority_identity: Option<CowStr<'a>>,
 }
 
 impl Clone for Project<'_> {

@@ -15,7 +15,7 @@ use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
 use super::registry::Registry;
-use crate::config::Config;
+use crate::config::{cli::AuthoritiesConfig, Config};
 use crate::error::ApiError;
 use crate::lmdb::LmdbStorage;
 use crate::nodes::config::NodeManConfig;
@@ -66,14 +66,11 @@ pub struct NodeManager {
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
     pub(crate) controller_identity_id: IdentityIdentifier,
-
     skip_defaults: bool,
-
     vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
     authorities: Option<Vec<PublicIdentity>>,
     pub(crate) authenticated_storage: LmdbStorage,
-
     pub(crate) registry: Registry,
 }
 
@@ -194,6 +191,12 @@ impl NodeManager {
         }
 
         Ok(s)
+    }
+
+    pub async fn configure_authorities(&mut self, ac: AuthoritiesConfig) -> Result<()> {
+        let v = Vault::default();
+        self.authorities = Some(ac.to_public_identities(&v).await?);
+        Ok(())
     }
 
     async fn create_defaults(&mut self, ctx: &Context) -> Result<()> {
