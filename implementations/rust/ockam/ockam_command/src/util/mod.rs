@@ -29,7 +29,8 @@ mod addon;
 mod config;
 pub(crate) mod output;
 
-pub const DEFAULT_ORCHESTRATOR_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/62526";
+pub const DEFAULT_ORCHESTRATOR_ADDRESS: &str =
+    "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
 
 pub struct RpcBuilder<'a, 'b> {
     ctx: &'a ockam::Context,
