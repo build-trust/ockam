@@ -1,6 +1,6 @@
 use super::{Code, Codec, Protocol};
 use crate::codec::StdCodec;
-use crate::proto::{DnsAddr, Node, Service, Tcp};
+use crate::proto::{DnsAddr, Node, Project, Service, Tcp};
 use alloc::collections::btree_map::BTreeMap;
 use alloc::sync::Arc;
 use core::fmt;
@@ -31,6 +31,8 @@ impl Default for Registry {
         r.register(Service::CODE, Service::PREFIX, std_codec.clone());
         #[allow(clippy::redundant_clone)]
         r.register(Node::CODE, Node::PREFIX, std_codec.clone());
+        #[allow(clippy::redundant_clone)]
+        r.register(Project::CODE, Project::PREFIX, std_codec.clone());
         #[cfg(feature = "std")]
         r.register(
             crate::proto::Ip4::CODE,

@@ -34,17 +34,13 @@ pub fn clean_multiaddr(
                 new_ma.push_back(Tcp(addr.port())).ok()?;
             }
             Project::CODE => {
+                // Parse project name from the MultiAddr.
                 let alias = p.cast::<Project>()?;
+                // Store it in the lookup meta, so we can later
+                // retrieve it from either the config or the cloud.
                 lookup_meta.project.push_back(alias.to_string());
-                let project = lookup
-                    .get_project(&*alias)
-                    .expect("provided invalid substitution route");
-
-                let project_node = project.node_route();
-                let project_node_iter = project_node.iter().peekable();
-                for project_node_segment in project_node_iter {
-                    new_ma.push_back_value(&project_node_segment).ok()?;
-                }
+                // No substitution done here. It will be done later by `clean_projects_multiaddr`.
+                new_ma.push_back_value(&p).ok()?
             }
             Space::CODE => panic!("/space/ substitutions are not supported yet!"),
             _ => new_ma.push_back_value(&p).ok()?,
