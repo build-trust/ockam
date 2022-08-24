@@ -135,6 +135,14 @@ SKIP_OCKAM_BUMP=true ./tools/scripts/release/release.sh
 
 The release script can be called from any path.
 
+We also have a script to delete draft release, to delete draft
+
+```bash
+TAG_NAME=ockam_v0.71.0 ./delete_draft.sh
+```
+
+Where TAG_NAME is the tag of the draft release.
+
 ## Acceptance Test
 
 After a release, we can test all generated assets to ensure they work accurately, the acceptance script checks
