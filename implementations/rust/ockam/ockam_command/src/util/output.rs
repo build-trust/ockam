@@ -4,6 +4,7 @@ use core::fmt::Write;
 use ockam::identity::credential::Credential;
 use ockam_api::cloud::project::{Enroller, Project};
 
+use crate::CommandGlobalOpts;
 use crate::util::comma_separated;
 use ockam_api::cloud::space::Space;
 use ockam_api::nodes::models::secure_channel::{
@@ -38,8 +39,19 @@ use ockam_core::route;
 ///     }
 /// }
 /// ```
-pub trait Output {
+pub trait Output: serde::Serialize {
     fn output(&self) -> anyhow::Result<String>;
+
+    fn print(&self, opts: &CommandGlobalOpts) -> crate::Result<()> {
+        let o = match opts.global_args.output_format {
+            crate::OutputFormat::Plain => self.output().context("Failed to serialize response body")?,
+            crate::OutputFormat::Json => {
+                serde_json::to_string_pretty(&self).context("Failed to serialize response body")?
+            }
+        };
+        println!("{}", o);
+        Ok(())
+    }
 }
 
 impl Output for Space<'_> {

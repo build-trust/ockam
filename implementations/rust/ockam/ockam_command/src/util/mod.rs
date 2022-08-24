@@ -1,8 +1,9 @@
 use core::time::Duration;
 use std::{
     env,
+    marker::PhantomData,
     net::{SocketAddr, TcpListener},
-    path::Path, marker::PhantomData,
+    path::Path,
 };
 
 use anyhow::{anyhow, Context};
@@ -212,7 +213,7 @@ impl<'a> Rpc<'a> {
     /// Parse the response body and print it.
     pub fn print_response<T>(&'a self) -> crate::Result<()>
     where
-        T: Decode<'a, ()> + Output + serde::Serialize,
+        T: Decode<'a, ()> + Output,
     {
         let b: T = self.parse_response()?;
         let o = match self.opts.global_args.output_format {
@@ -226,37 +227,132 @@ impl<'a> Rpc<'a> {
     }
 }
 
-pub trait CmdTrait<'a>: 'a {
+pub struct RpcResponse<'a, T: RpcCaller<'a>>(Vec<u8>, &'a PhantomData<T>);
+
+impl<'a, T: RpcCaller<'a>> RpcResponse<'a, T> {
+    fn new(raw: Vec<u8>) -> Self { Self(raw, &PhantomData::<T>) }
+
+    pub fn check(&'a self) -> crate::Result<Response> {
+        let mut dec = Decoder::new(&self.0);
+        let hdr: Response = dec.decode().context("Failed to decode response header")?;
+        Ok(hdr)
+    }
+
+    pub fn parse_body(&'a self) -> crate::Result<T::Resp> {
+        let hdr = self.check()?;
+
+        eprintln!("hdr: {:?}", hdr);
+
+        let mut dec = self.parse_response_impl()?;
+
+        eprintln!("after parse_response_impl");
+
+        if hdr.status() == Some(Status::Ok) {
+            eprintln!("before decode");
+            let mut res: T::Resp;
+
+                match dec.decode().context("Failed to decode response body") {
+                    Ok(resp) => {res = resp; eprintln!("after decode success"); }
+                    Err(err) => {eprintln!("errror: {:?}", err); return Err(err.into());}
+                }
+            
+            eprintln!("after decode");
+            Ok(res)
+        } else {
+            eprintln!("{}", self.parse_err_msg(hdr));
+            Err(crate::Error::new(exitcode::SOFTWARE))
+        }
+    }
+
+    pub fn parse_err_msg(&self, hdr: Response) -> String {
+        let mut dec = Decoder::new(&self.0);
+        trace! {
+            dec = %minicbor::display(&self.0),
+            hex = %hex::encode(&self.0),
+            "Received CBOR message"
+        };
+        match hdr.status() {
+            Some(status) if hdr.has_body() => {
+                let err = match dec.decode::<String>() {
+                    Ok(msg) => msg,
+                    Err(_) => dec.decode::<String>().unwrap_or_default(),
+                };
+                format!(
+                    "An error occurred while processing the request. Status code: {status}. {err}"
+                )
+            }
+            Some(status) => {
+                format!("An error occurred while processing the request. Status code: {status}")
+            }
+            None => "No status code found in response".to_string(),
+        }
+    }
+
+    pub fn is_ok(&'a self) -> crate::Result<()> {
+        self.parse_response_impl()?;
+        Ok(())
+    }
+
+    fn parse_response_impl(&'a self) -> crate::Result<Decoder> {
+        let hdr = self.check()?;
+        let mut dec = Decoder::new(&self.0);
+
+        if hdr.status() == Some(Status::Ok) {
+            Ok(dec)
+        } else {
+            eprintln!("{}", self.parse_err_msg(hdr));
+            Err(crate::Error::new(exitcode::SOFTWARE))
+        }
+    }
+}
+pub trait RpcCaller<'a>: 'a {
     type Req: Encode<()>;
     type Resp: Decode<'a, ()> + Output + serde::Serialize;
 
-    fn req(&'a mut self) -> RequestBuilder<'a, Self::Req>;
+    fn req(&'a mut self) -> RequestBuilder<'_, Self::Req>;
+/*
+    fn rpc<'c, Fut>(&mut self, rpc_obj: &Rpc1<'c>) -> core::pin::Pin<Box<Fut>>
+        where
+            Fut: core::future::Future<Output = crate::Result<Vec<u8>>> + Send + 'a
+    {
+        Box::pin(rpc_obj.request_then_response(self))
+    }
+*/
+/*
     fn parse_response(&'a self, res: &'a Vec<u8>) -> crate::Result<Self::Resp> {
         let mut dec = Decoder::new(&res);
-        let res: Self::Resp = dec.decode().context("Failed to decode response body")?; 
-        Ok(res)   
+        let res: Self::Resp = dec.decode().context("Failed to decode response body")?;
+        Ok(res)
     }
+    */
 }
-pub struct RpcBuilder1<'c: 'd, 'd, 'b, T: CmdTrait<'d>> {
+pub struct RpcBuilder1<'c, 'b> {
+//    pub struct RpcBuilder1<'c: 'd, 'd, 'b, T: RpcCaller<'d>> {
     ctx: &'c ockam::Context,
-    cmd: &'c mut T,
+//    cmd: &'c mut T,
     opts: &'c CommandGlobalOpts,
     node: &'b str,
     to: Route,
     tcp: Option<&'c TcpTransport>,
-    _marker: &'d PhantomData<()>,
+//    _marker: &'d PhantomData<()>,
 }
 
-impl<'c, 'd, 'b, T: CmdTrait<'d>> RpcBuilder1<'c, 'd, 'b, T> {
-    pub fn new(ctx: &'c ockam::Context, cmd: &'c mut T, opts: &'c CommandGlobalOpts, node: &'b str) -> Self {
+impl<'c, 'b> RpcBuilder1<'c, 'b> {
+//    impl<'c, 'd, 'b, T: RpcCaller<'d>> RpcBuilder1<'c, 'd, 'b, T> {
+    pub fn new(
+        ctx: &'c ockam::Context,
+//        cmd: &'c mut T,
+        opts: &'c CommandGlobalOpts,
+        node: &'b str,
+    ) -> Self {
         Self {
             ctx,
-            cmd,
+//            cmd,
             opts,
             node,
             to: NODEMANAGER_ADDR.into(),
             tcp: None,
-            _marker: &PhantomData,
+//            _marker: &PhantomData,
         }
     }
 
@@ -271,68 +367,67 @@ impl<'c, 'd, 'b, T: CmdTrait<'d>> RpcBuilder1<'c, 'd, 'b, T> {
         self
     }
 
-    pub fn build(self) -> anyhow::Result<Rpc1<'c, 'd, T>> {
-        let mut rpc = Rpc1::new(self.ctx, self.cmd, self.opts, self.node)?;
+    pub fn build(self) -> anyhow::Result<Rpc1<'c>> {
+//        pub fn build(self) -> anyhow::Result<Rpc1<'c, 'd, T>> {
+        let mut rpc = Rpc1::new(self.ctx, self.opts, self.node)?;
         rpc.to = self.to;
         rpc.tcp = self.tcp;
         Ok(rpc)
     }
 }
-pub struct Rpc1<'c: 'd, 'd, T: CmdTrait<'d>> {
+pub struct Rpc1<'c> {
+//    pub struct Rpc1<'c: 'd, 'd, T: RpcCaller<'d>> {
     ctx: &'c ockam::Context,
-    cmd: &'c mut T,
-    buf: Vec<u8>,
-    opts: &'c CommandGlobalOpts,
+//    cmd: &'c mut T,
     cfg: NodeConfig,
     to: Route,
     /// Needed for when we want to call multiple Rpc's from a single command.
     tcp: Option<&'c TcpTransport>,
-    _marker: &'d PhantomData<T>,
+//    _marker: &'d PhantomData<()>,
 }
 
-impl<'c: 'd, 'd, T: CmdTrait<'d>> Rpc1<'c, 'd, T> {
+impl<'c> Rpc1<'c> {
+//    impl<'c: 'd, 'd, T: RpcCaller<'d>> Rpc1<'c, 'd, T> {
     pub fn new(
         ctx: &'c ockam::Context,
-        cmd: &'c mut T,
+//        cmd: &'c mut T,
         opts: &'c CommandGlobalOpts,
         node: &str,
     ) -> anyhow::Result<Self> {
         let cfg = opts.config.get_node(node)?;
-        Ok(Rpc1 {
+        Ok(Self {
             ctx,
-            cmd,
-            buf: Vec::new(),
-            opts,
+//            cmd,
             cfg,
             to: NODEMANAGER_ADDR.into(),
             tcp: None,
-            _marker: &PhantomData,
+//            _marker: &PhantomData,
         })
     }
 
-    pub async fn request_then_response(&'d mut self) -> crate::Result<Vec<u8>>
-    //-> crate::Result<<T as CmdTrait<'d>>::Resp>
+    pub async fn request_then_response<'d, T: RpcCaller<'d>>(&mut self, cmd: &'d mut T) 
+        -> crate::Result<RpcResponse<'d, T>>
+//-> crate::Result<<T as RpcCaller<'d>>::'Resp>
     {
-        let route = self.route_impl(self.ctx).await.map_err(anyhow::Error::from)?;
-//        self.buf = self
-        let buf = self
-            .ctx
-            .send_and_receive(route.clone(), self.cmd.req().to_vec().map_err(anyhow::Error::from)?)
+        let route = self
+            .route_impl(self.ctx)
             .await
-            .context("Failed to receive response from node")?;
-/*        let mut dec = self.parse_response_impl()?;
-        Ok(dec.decode().context("Failed to decode response body")?)
-*/
-        Ok(buf)
-//        Ok(())
+            .map_err(anyhow::Error::from)?;
+
+        let rpc_resp = RpcResponse::new( self.ctx
+            .send_and_receive(
+                route.clone(),
+                cmd.req().to_vec().map_err(anyhow::Error::from)?,
+            )
+            .await
+            .context("Failed to receive response from node")?
+        );
+        Ok(rpc_resp)
+        //        Ok(())
     }
 
-    pub async fn request_with_timeout(
-        &'d mut self,
-        timeout: Duration,
-    ) -> anyhow::Result<()>
-    {
-        let mut ctx = self.ctx.new_detached(Address::random_local()).await?;
+    pub async fn request_with_timeout(&mut self, timeout: Duration) -> anyhow::Result<()> {
+        /*        let mut ctx = self.ctx.new_detached(Address::random_local()).await?;
         let route = self.route_impl(&ctx).await?;
         ctx.send(route.clone(), self.cmd.req().to_vec()?).await?;
         self.buf = ctx
@@ -341,6 +436,7 @@ impl<'c: 'd, 'd, T: CmdTrait<'d>> Rpc1<'c, 'd, T> {
             .context("Failed to receive response from node")?
             .take()
             .body();
+            */
         Ok(())
     }
 
@@ -363,8 +459,9 @@ impl<'c: 'd, 'd, T: CmdTrait<'d>> Rpc1<'c, 'd, T> {
         debug!(%route, "Sending request");
         Ok(route)
     }
-
+    /*
     /// Parse the response body and return it.
+
     pub fn parse_response(&'d self) -> crate::Result<T::Resp>
     {
         let mut dec = self.parse_response_impl()?;
@@ -383,10 +480,12 @@ impl<'c: 'd, 'd, T: CmdTrait<'d>> Rpc1<'c, 'd, T> {
             .decode::<Response>()
             .context("Failed to decode response header")?;
         Ok((hdr, dec))
+
     }
 
     /// Parse the header and returns the decoder.
     fn parse_response_impl(&self) -> crate::Result<Decoder> {
+
         let mut dec = Decoder::new(&self.buf);
         let hdr = dec
             .decode::<Response>()
@@ -435,6 +534,7 @@ impl<'c: 'd, 'd, T: CmdTrait<'d>> Rpc1<'c, 'd, T> {
         println!("{}", o);
         Ok(())
     }
+    */
 }
 
 /// A simple wrapper for shutting down the local embedded node (for

@@ -1,4 +1,4 @@
-use crate::util::{api, exitcode, node_rpc, stop_node, ConfigError, Rpc1, CmdTrait};
+use crate::util::{api, exitcode, node_rpc, stop_node, ConfigError, Rpc1, RpcCaller};
 
 use crate::CommandGlobalOpts;
 use clap::Args;
@@ -75,11 +75,11 @@ impl CreateCommand {
     */
 }
 
-impl<'a> CmdTrait<'a> for CreateCommand {
+impl<'a> RpcCaller<'a> for CreateCommand {
     type Req = CreateSecureChannelRequest<'a>;
     type Resp = CreateSecureChannelResponse<'a>;
 
-    fn req(&mut self) -> ockam_core::api::RequestBuilder<'a, Self::Req> {
+    fn req(&mut self) -> ockam_core::api::RequestBuilder<'_, Self::Req> {
         let opts = self.global_opts.clone().unwrap();
 
         let (addr, _meta) =
@@ -100,15 +100,21 @@ async fn rpc(ctx: ockam::Context, (opts, cmd): (CommandGlobalOpts, CreateCommand
 async fn rpc_callback(mut cmd: CreateCommand, ctx: &ockam::Context, opts: CommandGlobalOpts) -> crate::Result<()> {
     // We apply the inverse transformation done in the `create` command.
     let from = cmd.node_opts.from.clone();
-    let mut rpc = Rpc1::new(ctx, &mut cmd, &opts, &from)?;
-    let res = rpc.request_then_response().await?;
+    let mut rpc = Rpc1::new(ctx, &opts, &from)?;
+    
+    eprintln!("before sending");
+    
+    let res = rpc.request_then_response(&mut cmd).await?;
+    eprintln!("after sending");
+    let parsed = res.parse_body()?;
 
-    let mut dec = Decoder::new(&res);
-    let res: <CreateCommand as CmdTrait>::Resp = dec.decode().context("Failed to decode response body")?;
+    eprintln!("after sending, response: {:?}", parsed);
+//    let mut dec = Decoder::new(&res);
+//    let res: <CreateCommand as RpcCaller>::Resp = dec.decode().context("Failed to decode response body")?;
 
 //    let res = rpc.parse_response()?;
 
-    route_to_multiaddr(&route![res.addr.to_string()])
+    route_to_multiaddr(&route![parsed.addr.to_string()])
         .map(|addr| println!("{}", addr))
-        .ok_or_else(|| ConfigError::InvalidSecureChannelAddress(res.addr.to_string()).into())
+        .ok_or_else(|| ConfigError::InvalidSecureChannelAddress(parsed.addr.to_string()).into())
 }

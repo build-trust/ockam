@@ -10,7 +10,7 @@ use ockam_core::Route;
 
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
-use crate::util::{api, connect_to, exitcode, stop_node, Rpc1, CmdTrait, node_rpc};
+use crate::util::{api, connect_to, exitcode, stop_node, Rpc1, RpcCaller, node_rpc};
 use crate::{CommandGlobalOpts, OutputFormat};
 use ockam_api::cloud::{CloudRequestWrapper};
 use ockam_api::cloud::project::{CreateProject};
@@ -62,11 +62,11 @@ impl CreateCommand {
     */
 }
 
-impl<'a> CmdTrait<'a> for CreateCommand {
+impl<'a> RpcCaller<'a> for CreateCommand {
     type Req = CloudRequestWrapper<'a, CreateProject<'a>>;
     type Resp = Project<'a>;
 
-    fn req(&'a mut self) -> ockam_core::api::RequestBuilder<'a, Self::Req> {
+    fn req(&'a mut self) -> ockam_core::api::RequestBuilder<'_, Self::Req> {
         api::project::create(self)
 /*        let project_name = self.project_name.clone().as_str();
         let services = self.services.clone();
@@ -77,6 +77,7 @@ impl<'a> CmdTrait<'a> for CreateCommand {
         */  
     }
 }
+
 
 async fn rpc(ctx: ockam::Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> crate::Result<()> {
     let res = rpc_callback(cmd, &ctx, opts).await;
@@ -92,7 +93,7 @@ async fn rpc_callback(cmd: CreateCommand, ctx: &ockam::Context, opts: CommandGlo
     let res = rpc.request_then_response().await?;
 
     let mut dec = Decoder::new(&res);
-    let res: <CreateCommand as CmdTrait>::Resp = dec.decode().context("Failed to decode response body")?;
+    let res: <CreateCommand as RpcCaller>::Resp = dec.decode().context("Failed to decode response body")?;
     res
     */
     Ok(())

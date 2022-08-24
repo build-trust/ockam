@@ -24,7 +24,7 @@ use crate::node::NodeOpts;
 use crate::secure_channel::create::SecureChannelNodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
-use crate::util::{api, node_rpc, stop_node, RpcBuilder, RpcBuilder1, CmdTrait};
+use crate::util::{api, node_rpc, stop_node, RpcBuilder, RpcBuilder1, RpcCaller};
 use crate::{exitcode, CommandGlobalOpts, EnrollCommand};
 
 #[derive(Clone, Debug, Args)]
@@ -280,9 +280,11 @@ async fn default_project<'a>(
             services: vec![], // TODO: define default services
             global_opts: Some(opts.clone()),
         };
-        let mut rpc = RpcBuilder1::new(ctx, &mut cmd, opts, &nc.name).tcp(tcp).build()?;
-        let raw_resp = rpc.request_then_response().await?;
-        cmd.parse_response(&raw_resp)?.to_owned()
+        let mut rpc = RpcBuilder1::new(ctx, opts, &nc.name).tcp(tcp).build()?;
+        rpc.request_then_response(&mut cmd).await?.parse_body()?.to_owned()
+//        let resp = rpc.request_then_response(&mut cmd).await?.parse_body()?.to_owned();
+//        resp.to_owned()
+     //   cmd.parse_response(&raw_resp)?.to_owned()
 
 //        rpc.request(api::project::create(&cmd)).await?;
 //        rpc.parse_response::<Project>()?.to_owned()
