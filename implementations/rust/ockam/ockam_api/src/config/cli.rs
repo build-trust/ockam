@@ -35,6 +35,7 @@ pub struct OckamConfig {
     pub lookup: ConfigLookup,
     pub default_identity: Option<Vec<u8>>,
     pub default_vault_path: Option<PathBuf>,
+    pub default: Option<String>,
 }
 
 impl ConfigValues for OckamConfig {
@@ -46,6 +47,7 @@ impl ConfigValues for OckamConfig {
             lookup: ConfigLookup::new(),
             default_identity: None,
             default_vault_path: None,
+            default: None,
         }
     }
 }

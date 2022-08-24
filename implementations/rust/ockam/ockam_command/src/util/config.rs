@@ -219,6 +219,11 @@ impl OckamConfig {
         // Add this node to the config lookup table
         inner.lookup.set_node(name, bind.into());
 
+        // Set First Created Node as Default Node
+        if inner.default.is_none() {
+            inner.default = Some(name.to_string());
+        }
+
         // Add this node to the main node table
         inner.nodes.insert(
             name.to_string(),
@@ -237,6 +242,11 @@ impl OckamConfig {
     /// Delete an existing node
     pub fn delete_node(&self, name: &str) -> Result<()> {
         let mut inner = self.inner.writelock_inner();
+        // If we are removing the first node also remove the default value
+        match &inner.default {
+            Some(default_node_name) if default_node_name == name => inner.default = None,
+            _ => {}
+        }
         match inner.nodes.remove(name) {
             Some(_) => Ok(()),
             None => Err(ConfigError::Exists(name.to_string()).into()),
@@ -293,6 +303,16 @@ impl OckamConfig {
             project_identity_id,
         );
         Ok(())
+    }
+
+    pub fn set_default_node(&self, name: &String) {
+        let mut inner = self.inner.writelock_inner();
+        inner.default = Some(name.to_string());
+    }
+
+    pub fn get_default_node(&self) -> Option<String> {
+        let inner = self.inner.readlock_inner();
+        inner.default.clone()
     }
 }
 
