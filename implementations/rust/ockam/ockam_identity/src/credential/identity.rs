@@ -11,7 +11,7 @@ use crate::{
 use core::marker::PhantomData;
 use minicbor::Decoder;
 use ockam_core::api::{Request, Response, Status};
-use ockam_core::compat::collections::BTreeMap;
+use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::SignatureVec;
 use ockam_core::{Address, AsyncTryClone, CowStr, Error, Result, Route};
@@ -19,7 +19,12 @@ use ockam_node::api::{request, request_with_local_info};
 
 impl<V: IdentityVault> Identity<V> {
     pub async fn set_credential(&self, credential: Option<Credential<'static>>) {
+        // TODO: May also verify received credential calling self.verify_self_credential
         *self.credential.write().await = credential;
+    }
+
+    pub async fn credential(&self) -> Option<Credential<'_>> {
+        self.credential.read().await.clone()
     }
 
     /// Create a signed credential based on the given values.
@@ -51,7 +56,7 @@ impl<V: IdentityVault> Identity<V> {
     /// after successful verification
     pub async fn start_credentials_exchange_worker(
         &self,
-        authorities: BTreeMap<IdentityIdentifier, PublicIdentity>,
+        authorities: Vec<PublicIdentity>,
         address: impl Into<Address>,
         present_back: bool,
         authenticated_storage: impl AuthenticatedStorage,
@@ -100,7 +105,7 @@ impl<V: IdentityVault> Identity<V> {
     pub async fn present_credential_mutual(
         &self,
         route: impl Into<Route>,
-        authorities: &BTreeMap<IdentityIdentifier, PublicIdentity>,
+        authorities: impl IntoIterator<Item = &PublicIdentity>,
         authenticated_storage: &impl AuthenticatedStorage,
     ) -> Result<()> {
         let credentials = self.credential.read().await;
@@ -165,7 +170,7 @@ impl<V: IdentityVault> Identity<V> {
         &self,
         sender: IdentityIdentifier,
         credential: Credential<'_>,
-        authorities: &BTreeMap<IdentityIdentifier, PublicIdentity>,
+        authorities: impl IntoIterator<Item = &PublicIdentity>,
         authenticated_storage: &impl AuthenticatedStorage,
     ) -> Result<ProcessArrivedCredentialResult> {
         let credential_data: CredentialData<Unverified> = match minicbor::decode(&credential.data) {
@@ -177,7 +182,10 @@ impl<V: IdentityVault> Identity<V> {
             }
         };
 
-        let issuer = match authorities.get(&credential_data.issuer) {
+        let issuer = authorities
+            .into_iter()
+            .find(|&x| x.identifier() == &credential_data.issuer);
+        let issuer = match issuer {
             Some(i) => i,
             None => {
                 return Ok(ProcessArrivedCredentialResult::BadRequest(
