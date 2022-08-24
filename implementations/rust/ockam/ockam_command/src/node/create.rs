@@ -26,6 +26,7 @@ use ockam::identity::Identity;
 use ockam::{Address, AsyncTryClone, NodeBuilder, TCP};
 use ockam::{Context, TcpTransport};
 use ockam_api::config::cli;
+use ockam_api::error::ApiError;
 use ockam_api::nodes::IdentityOverride;
 use ockam_api::{
     nodes::models::transport::{TransportMode, TransportType},
@@ -78,6 +79,10 @@ pub struct CreateCommand {
     /// Skip creation of default Vault and Identity
     #[clap(long, short, hide = true)]
     pub skip_defaults: bool,
+
+    /// ockam_command started a child process to run this node in foreground.
+    #[clap(display_order = 900, long, hide = true)]
+    pub child_process: bool,
 
     /// JSON config to setup a foreground node
     ///
@@ -136,18 +141,26 @@ impl CreateCommand {
                 eprintln!("Ockam node failed: {:?}", e);
             }
         } else {
+            if cmd.child_process {
+                eprintln!("Cannot create a background node from background node");
+                std::process::exit(exitcode::CONFIG);
+            }
+
             let cmd = cmd.overwrite_addr().unwrap();
             let addr = SocketAddr::from_str(&cmd.tcp_listener_address).unwrap();
 
-            Self::create_background_node(&opts, &cmd, &addr).unwrap();
+            embedded_node(
+                Self::create_background_node,
+                (opts.clone(), cmd.clone(), addr),
+            )
+            .unwrap();
             connect_to(addr.port(), (cfg.clone(), cmd.node_name), query_status);
         }
     }
 
-    pub fn create_background_node(
-        opts: &CommandGlobalOpts,
-        cmd: &CreateCommand,
-        addr: &SocketAddr,
+    pub async fn create_background_node(
+        ctx: Context,
+        (opts, cmd, addr): (CommandGlobalOpts, CreateCommand, SocketAddr),
     ) -> Result<()> {
         let verbose = opts.global_args.verbose;
         let cfg = &opts.config;
@@ -158,7 +171,7 @@ impl CreateCommand {
         let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
 
         // Check if the port is used by some other services or process
-        if !bind_to_port_check(addr) {
+        if !bind_to_port_check(&addr) {
             eprintln!("Another process is listening on the provided port!");
             std::process::exit(exitcode::IOERR);
         }
@@ -172,13 +185,21 @@ impl CreateCommand {
         // First we create a new node in the configuration so that
         // we can ask it for the correct log path, as well as
         // making sure the watchdog can do its job later on.
-        if let Err(e) = cfg.create_node(&cmd.node_name, *addr, verbose) {
+        if let Err(e) = cfg.create_node(&cmd.node_name, addr, verbose) {
             eprintln!(
                 "failed to update node configuration for '{}': {}",
                 cmd.node_name, e
             );
             std::process::exit(exitcode::CANTCREAT);
         }
+
+        // Save the config update
+        if let Err(e) = cfg.atomic_update().run() {
+            eprintln!("failed to update configuration: {}", e);
+            std::process::exit(exitcode::IOERR);
+        }
+
+        create_default_identity_if_needed(&ctx, cfg.clone()).await?;
 
         // Construct the arguments list and re-execute the ockam
         // CLI in foreground mode to start the newly created node
@@ -191,7 +212,7 @@ impl CreateCommand {
             &cmd.tcp_listener_address,
         );
 
-        let composite = cmd.into();
+        let composite = (&cmd).into();
         let startup_cfg = cfg.get_startup_cfg(&cmd.node_name).unwrap();
         startup_cfg.writelock_inner().commands = vec![composite].into();
 
@@ -204,12 +225,6 @@ impl CreateCommand {
         // Unless this CLI was called from another watchdog we
         // start the watchdog here
         if !cmd.no_watchdog {}
-
-        // Save the config update
-        if let Err(e) = cfg.atomic_update().run() {
-            eprintln!("failed to update configuration: {}", e);
-            std::process::exit(exitcode::IOERR);
-        }
 
         Ok(())
     }
@@ -229,7 +244,7 @@ impl CreateCommand {
     }
 }
 
-async fn create_identity_override(ctx: &Context, cfg: &OckamConfig) -> Result<IdentityOverride> {
+async fn create_default_identity_if_needed(ctx: &Context, cfg: OckamConfig) -> Result<()> {
     // Get default root vault (create if needed)
     let default_vault_path = cfg.get_default_vault_path().unwrap_or_else(|| {
         let default_vault_path = cli::OckamConfig::directories()
@@ -245,28 +260,37 @@ async fn create_identity_override(ctx: &Context, cfg: &OckamConfig) -> Result<Id
     let vault = Vault::new(Some(Arc::new(storage)));
 
     // Get default root identity (create if needed)
-    let identity = match cfg.get_default_identity() {
-        None => {
-            let identity = Identity::create(ctx, &vault).await?;
-            let exported_data = identity.export().await?;
-            cfg.set_default_identity(Some(exported_data));
-
-            identity
-        }
-        Some(identity) => {
-            // Just to check validity
-            Identity::import(ctx, &identity, &vault).await?
-        }
+    if cfg.get_default_identity().is_none() {
+        let identity = Identity::create(ctx, &vault).await?;
+        let exported_data = identity.export().await?;
+        cfg.set_default_identity(Some(exported_data));
     };
 
     cfg.atomic_update().run()?;
 
-    let identity_override = IdentityOverride {
-        identity: identity.export().await?,
-        vault_path: default_vault_path,
-    };
+    Ok(())
+}
 
-    Ok(identity_override)
+async fn get_identity_override(ctx: &Context, cfg: &OckamConfig) -> Result<IdentityOverride> {
+    // Get default root vault
+    let default_vault_path = cfg
+        .get_default_vault_path()
+        .ok_or_else(|| ApiError::generic("Default vault was not found"))?;
+
+    let storage = FileStorage::create(default_vault_path.clone()).await?;
+    let vault = Vault::new(Some(Arc::new(storage)));
+
+    // Get default root identity
+    let default_identity = cfg
+        .get_default_identity()
+        .ok_or_else(|| ApiError::generic("Default identity was not found"))?;
+    // Just to check validity
+    Identity::import(ctx, &default_identity, &vault).await?;
+
+    Ok(IdentityOverride {
+        identity: default_identity,
+        vault_path: default_vault_path,
+    })
 }
 
 fn run_background_node(c: CreateCommand, addr: SocketAddr, cfg: OckamConfig) -> Result<()> {
@@ -293,19 +317,24 @@ async fn run_background_node_impl(
     addr: SocketAddr,
     cfg: OckamConfig,
 ) -> Result<()> {
+    // This node was initially created as a foreground node
+    if !c.child_process {
+        create_default_identity_if_needed(ctx, cfg.clone()).await?;
+    }
+
     let identity_override = if c.skip_defaults {
         None
     } else {
-        Some(create_identity_override(&ctx, &cfg).await?)
+        Some(get_identity_override(ctx, &cfg).await?)
     };
 
-    let tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(ctx).await?;
     let bind = c.tcp_listener_address;
     tcp.listen(&bind).await?;
 
     let node_dir = cfg.get_node_dir(&c.node_name)?;
     let node_man = NodeManager::create(
-        &ctx,
+        ctx,
         c.node_name.clone(),
         node_dir,
         identity_override,
