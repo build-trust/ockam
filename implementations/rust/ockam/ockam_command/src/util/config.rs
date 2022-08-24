@@ -1,5 +1,6 @@
 //! Handle local node configuration
 
+use anyhow::Result;
 use ockam_api::config::{cli, lookup::ConfigLookup, lookup::InternetAddress, Config};
 use ockam_multiaddr::MultiAddr;
 use slug::slugify;
@@ -7,6 +8,7 @@ use std::{
     collections::VecDeque, fs::create_dir_all, net::SocketAddr, ops::Deref, path::PathBuf,
     str::FromStr, sync::RwLockReadGuard,
 };
+use tracing::{error, trace};
 
 pub use ockam_api::config::cli::NodeConfig;
 pub use ockam_api::config::snippet::{
@@ -79,7 +81,7 @@ impl OckamConfig {
     }
 
     /// Get the node state directory
-    pub fn get_node_dir(&self, name: &str) -> Result<PathBuf, ConfigError> {
+    pub fn get_node_dir(&self, name: &str) -> Result<PathBuf> {
         let inner = self.inner.readlock_inner();
         let n = inner
             .nodes
@@ -107,7 +109,7 @@ impl OckamConfig {
 
     /// In the future this will actually refer to the watchdog pid or
     /// no pid at all but we'll see
-    pub fn get_node_pid(&self, name: &str) -> Result<Option<i32>, ConfigError> {
+    pub fn get_node_pid(&self, name: &str) -> Result<Option<i32>> {
         let inner = self.inner.readlock_inner();
         Ok(inner
             .nodes
@@ -126,13 +128,13 @@ impl OckamConfig {
     }
 
     /// Get only a single node configuration
-    pub fn get_node(&self, node: &str) -> Result<NodeConfig, ConfigError> {
+    pub fn get_node(&self, node: &str) -> Result<NodeConfig> {
         let inner = self.inner.readlock_inner();
         inner
             .nodes
             .get(node)
             .map(Clone::clone)
-            .ok_or_else(|| ConfigError::NotFound(node.into()))
+            .ok_or_else(|| ConfigError::NotFound(node.into()).into())
     }
 
     /// Get the current version the selected node configuration
@@ -163,7 +165,7 @@ impl OckamConfig {
     }
 
     /// Get the launch configuration for a node
-    pub fn get_startup_cfg(&self, name: &str) -> Result<StartupConfig, ConfigError> {
+    pub fn get_startup_cfg(&self, name: &str) -> Result<StartupConfig> {
         let path = self.get_node_dir(name)?;
         Ok(StartupConfig::load(path))
     }
@@ -184,16 +186,11 @@ impl OckamConfig {
     }
 
     /// Add a new node to the configuration for future lookup
-    pub fn create_node(
-        &self,
-        name: &str,
-        bind: SocketAddr,
-        verbose: u8,
-    ) -> Result<(), ConfigError> {
+    pub fn create_node(&self, name: &str, bind: SocketAddr, verbose: u8) -> Result<()> {
         let mut inner = self.inner.writelock_inner();
 
         if inner.nodes.contains_key(name) {
-            return Err(ConfigError::Exists(name.to_string()));
+            return Err(ConfigError::Exists(name.to_string()).into());
         }
 
         // Setup logging directory and store it
@@ -228,20 +225,20 @@ impl OckamConfig {
     }
 
     /// Delete an existing node
-    pub fn delete_node(&self, name: &str) -> Result<(), ConfigError> {
+    pub fn delete_node(&self, name: &str) -> Result<()> {
         let mut inner = self.inner.writelock_inner();
         match inner.nodes.remove(name) {
             Some(_) => Ok(()),
-            None => Err(ConfigError::Exists(name.to_string())),
+            None => Err(ConfigError::Exists(name.to_string()).into()),
         }
     }
 
     /// Update the pid of an existing node process
-    pub fn update_pid(&self, name: &str, pid: impl Into<Option<i32>>) -> Result<(), ConfigError> {
+    pub fn update_pid(&self, name: &str, pid: impl Into<Option<i32>>) -> Result<()> {
         let mut inner = self.inner.writelock_inner();
 
         if !inner.nodes.contains_key(name) {
-            return Err(ConfigError::NotFound(name.to_string()));
+            return Err(ConfigError::NotFound(name.to_string()).into());
         }
 
         inner.nodes.get_mut(name).unwrap().pid = pid.into();
@@ -256,7 +253,7 @@ impl OckamConfig {
 
     pub fn set_node_alias(&self, alias: String, addr: InternetAddress) {
         let mut inner = self.inner.writelock_inner();
-        inner.lookup.set_node(&alias, addr)
+        inner.lookup.set_node(&alias, addr);
     }
 
     pub fn set_project_alias(
@@ -265,22 +262,37 @@ impl OckamConfig {
         project_node_route: String,
         project_id: String,
         project_identity_id: String,
-    ) -> Result<(), ConfigError> {
+    ) -> Result<()> {
         let mut inner = self.inner.writelock_inner();
         // MultiAddr can't be serialised with serde, thus we just
         // check that the conversion is going to succeed in the
         // future, but then just pass the string value through.
         let _ = MultiAddr::from_str(&project_node_route)
             .map_err(|e| ConfigError::FailedConvert("MultiAddr".into(), e.to_string()))?;
-
+        trace! {
+            id = %project_id,
+            name = %project_name,
+            route = %project_node_route,
+            identity_id = %project_identity_id,
+            "Project stored in lookup table"
+        };
         inner.lookup.set_project(
             project_name,
             project_node_route,
             project_id,
             project_identity_id,
         );
-
         Ok(())
+    }
+}
+
+impl Drop for OckamConfig {
+    fn drop(&mut self) {
+        // To reduce temporal coupling between config setters/updaters and actually updating
+        // the backing config file, we try to update the config file when it is dropped.
+        if let Err(e) = self.atomic_update().run() {
+            error!(%e, "Failed to update config file when dropping OckamConfig");
+        }
     }
 }
 

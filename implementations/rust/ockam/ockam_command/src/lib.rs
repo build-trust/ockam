@@ -140,7 +140,7 @@ pub struct GlobalArgs {
     test_argument_parser: bool,
 }
 
-#[derive(Debug, Clone, ArgEnum, PartialEq)]
+#[derive(Debug, Clone, ArgEnum, PartialEq, Eq)]
 pub enum OutputFormat {
     Plain,
     Json,

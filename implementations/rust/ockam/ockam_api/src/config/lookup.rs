@@ -11,8 +11,10 @@ use std::{
 #[derive(Debug, Default)]
 pub struct LookupMeta {
     /// Append any project name that is encountered during look-up
-    pub project: VecDeque<String>,
+    pub project: VecDeque<Name>,
 }
+
+pub type Name = String;
 
 /// A generic lookup mechanism for configuration values
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -52,13 +54,13 @@ impl ConfigLookup {
     /// Store a project route and identifier as lookup
     pub fn set_project(
         &mut self,
-        prj_name: String,
+        name: String,
         node_route: String,
         id: String,
         identity_id: String,
     ) {
         self.map.insert(
-            format!("/project/{}", prj_name),
+            format!("/project/{}", name),
             LookupValue::Project(ProjectLookup {
                 node_route,
                 id,
@@ -67,9 +69,9 @@ impl ConfigLookup {
         );
     }
 
-    pub fn get_project(&self, project_name: &str) -> Option<&ProjectLookup> {
+    pub fn get_project(&self, name: &str) -> Option<&ProjectLookup> {
         self.map
-            .get(&format!("/project/{}", project_name))
+            .get(&format!("/project/{}", name))
             .and_then(|value| match value {
                 LookupValue::Project(project) => Some(project),
                 _ => None,
@@ -170,7 +172,7 @@ pub struct ProjectLookup {
 impl ProjectLookup {
     pub fn node_route(&self) -> MultiAddr {
         MultiAddr::from_str(&self.node_route).expect(
-            "tried retrieving a MultiAddr from PrjoectLookup where no MultiAddr had been stored",
+            "tried retrieving a MultiAddr from ProjectLookup where no MultiAddr had been stored",
         )
     }
 }

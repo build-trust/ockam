@@ -283,7 +283,7 @@ async fn setup(
     let bind = c.tcp_listener_address;
     tcp.listen(&bind).await?;
 
-    let node_dir = cfg.get_node_dir(&c.node_name).unwrap(); // can't fail because we already checked it
+    let node_dir = cfg.get_node_dir(&c.node_name)?;
     let node_man = NodeManager::create(
         &ctx,
         c.node_name.clone(),
