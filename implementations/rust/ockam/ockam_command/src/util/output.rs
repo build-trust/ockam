@@ -6,9 +6,13 @@ use ockam_api::cloud::project::{Enroller, Project};
 
 use crate::util::comma_separated;
 use ockam_api::cloud::space::Space;
-use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
+use ockam_api::nodes::models::secure_channel::{
+    DeleteSecureChannelResponse,
+    CreateSecureChannelResponse
+};
 use ockam_api::route_to_multiaddr;
 use ockam_core::route;
+
 
 /// Trait to control how a given type will be printed as a CLI output.
 ///
@@ -130,5 +134,11 @@ impl Output for Vec<Enroller<'_>> {
 impl Output for Credential<'_> {
     fn output(&self) -> anyhow::Result<String> {
         Ok(self.to_string())
+    }
+}
+
+impl Output for DeleteSecureChannelResponse<'_> {
+    fn output(&self) -> anyhow::Result<String> {
+        Ok("DeleteSecureChannelResponse".to_string())
     }
 }

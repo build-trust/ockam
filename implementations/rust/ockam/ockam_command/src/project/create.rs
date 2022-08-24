@@ -5,13 +5,16 @@ use tracing::debug;
 
 use ockam_api::cloud::project::Project;
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{Response, Status};
+use ockam_core::api::{Method, Request, Response, Status};
 use ockam_core::Route;
 
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
-use crate::util::{api, connect_to, exitcode, stop_node};
+use crate::util::{api, connect_to, exitcode, stop_node, Rpc1, CmdTrait, node_rpc};
 use crate::{CommandGlobalOpts, OutputFormat};
+use ockam_api::cloud::{CloudRequestWrapper};
+use ockam_api::cloud::project::{CreateProject};
+
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -33,10 +36,19 @@ pub struct CreateCommand {
     #[clap(display_order = 1100, last = true)]
     pub services: Vec<String>,
     //TODO:  list of admins
+    #[clap(skip)]
+    pub global_opts: Option<CommandGlobalOpts>,
 }
 
 impl CreateCommand {
+    pub fn run(mut self, opts: CommandGlobalOpts) {
+        self.global_opts = Some(opts.clone());
+        node_rpc(rpc, (opts, self));
+    }
+
+/*    
     pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
+        
         let cfg = &opts.config;
         let port = match cfg.select_node(&cmd.node_opts.api_node) {
             Some(cfg) => cfg.port,
@@ -47,6 +59,43 @@ impl CreateCommand {
         };
         connect_to(port, (opts, cmd), create);
     }
+    */
+}
+
+impl<'a> CmdTrait<'a> for CreateCommand {
+    type Req = CloudRequestWrapper<'a, CreateProject<'a>>;
+    type Resp = Project<'a>;
+
+    fn req(&'a mut self) -> ockam_core::api::RequestBuilder<'a, Self::Req> {
+        api::project::create(self)
+/*        let project_name = self.project_name.clone().as_str();
+        let services = self.services.clone();
+        let b = CreateProject::new(project_name, &[], &services);
+        let req = Request::builder(Method::Post, format!("v0/projects/{}", self.space_id))
+            .body(CloudRequestWrapper::new(b, self.cloud_opts.route()));
+        req  
+        */  
+    }
+}
+
+async fn rpc(ctx: ockam::Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> crate::Result<()> {
+    let res = rpc_callback(cmd, &ctx, opts).await;
+    stop_node(ctx).await?;
+    res
+}
+
+async fn rpc_callback(cmd: CreateCommand, ctx: &ockam::Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    // We apply the inverse transformation done in the `create` command.
+/*
+    let from = cmd.node_opts.from.clone();
+    let mut rpc = Rpc1::new(ctx, cmd, &opts, &from)?;
+    let res = rpc.request_then_response().await?;
+
+    let mut dec = Decoder::new(&res);
+    let res: <CreateCommand as CmdTrait>::Resp = dec.decode().context("Failed to decode response body")?;
+    res
+    */
+    Ok(())
 }
 
 async fn create(

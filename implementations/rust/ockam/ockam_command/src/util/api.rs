@@ -310,7 +310,7 @@ pub(crate) mod project {
 
     use super::*;
 
-    pub(crate) fn create(
+    pub(crate) fn create<'a>(
         cmd: &CreateCommand,
     ) -> RequestBuilder<CloudRequestWrapper<CreateProject>> {
         let b = CreateProject::new(cmd.project_name.as_str(), &[], &cmd.services);

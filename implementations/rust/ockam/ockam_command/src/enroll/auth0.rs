@@ -24,7 +24,7 @@ use crate::node::NodeOpts;
 use crate::secure_channel::create::SecureChannelNodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
-use crate::util::{api, node_rpc, stop_node, RpcBuilder};
+use crate::util::{api, node_rpc, stop_node, RpcBuilder, RpcBuilder1, CmdTrait};
 use crate::{exitcode, CommandGlobalOpts, EnrollCommand};
 
 #[derive(Clone, Debug, Args)]
@@ -272,16 +272,20 @@ async fn default_project<'a>(
     };
     // If the space has no projects, create one
     let mut default_project = if available_projects.is_empty() {
-        let cmd = crate::project::CreateCommand {
+        let mut cmd = crate::project::CreateCommand {
             space_id: space.id.to_string(),
             project_name: "default".to_string(),
             node_opts: node_opts.clone(),
             cloud_opts: cloud_opts.clone(),
             services: vec![], // TODO: define default services
+            global_opts: Some(opts.clone()),
         };
-        let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
-        rpc.request(api::project::create(&cmd)).await?;
-        rpc.parse_response::<Project>()?.to_owned()
+        let mut rpc = RpcBuilder1::new(ctx, &mut cmd, opts, &nc.name).tcp(tcp).build()?;
+        let raw_resp = rpc.request_then_response().await?;
+        cmd.parse_response(&raw_resp)?.to_owned()
+
+//        rpc.request(api::project::create(&cmd)).await?;
+//        rpc.parse_response::<Project>()?.to_owned()
     }
     // If it has, return the "default" project or first one on the list
     else {
@@ -351,6 +355,7 @@ async fn create_secure_channel_to_project(
         },
         addr: MultiAddr::from_str(project.access_route.as_ref()).unwrap(),
         authorized_identifier,
+        global_opts: None,
     };
     let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
     rpc.request(api::secure_channel::create(&cmd)).await?;

@@ -2,7 +2,7 @@ use core::time::Duration;
 use std::{
     env,
     net::{SocketAddr, TcpListener},
-    path::Path,
+    path::Path, marker::PhantomData,
 };
 
 use anyhow::{anyhow, Context};
@@ -215,6 +215,217 @@ impl<'a> Rpc<'a> {
         T: Decode<'a, ()> + Output + serde::Serialize,
     {
         let b: T = self.parse_response()?;
+        let o = match self.opts.global_args.output_format {
+            OutputFormat::Plain => b.output().context("Failed to serialize response body")?,
+            OutputFormat::Json => {
+                serde_json::to_string_pretty(&b).context("Failed to serialize response body")?
+            }
+        };
+        println!("{}", o);
+        Ok(())
+    }
+}
+
+pub trait CmdTrait<'a>: 'a {
+    type Req: Encode<()>;
+    type Resp: Decode<'a, ()> + Output + serde::Serialize;
+
+    fn req(&'a mut self) -> RequestBuilder<'a, Self::Req>;
+    fn parse_response(&'a self, res: &'a Vec<u8>) -> crate::Result<Self::Resp> {
+        let mut dec = Decoder::new(&res);
+        let res: Self::Resp = dec.decode().context("Failed to decode response body")?; 
+        Ok(res)   
+    }
+}
+pub struct RpcBuilder1<'c: 'd, 'd, 'b, T: CmdTrait<'d>> {
+    ctx: &'c ockam::Context,
+    cmd: &'c mut T,
+    opts: &'c CommandGlobalOpts,
+    node: &'b str,
+    to: Route,
+    tcp: Option<&'c TcpTransport>,
+    _marker: &'d PhantomData<()>,
+}
+
+impl<'c, 'd, 'b, T: CmdTrait<'d>> RpcBuilder1<'c, 'd, 'b, T> {
+    pub fn new(ctx: &'c ockam::Context, cmd: &'c mut T, opts: &'c CommandGlobalOpts, node: &'b str) -> Self {
+        Self {
+            ctx,
+            cmd,
+            opts,
+            node,
+            to: NODEMANAGER_ADDR.into(),
+            tcp: None,
+            _marker: &PhantomData,
+        }
+    }
+
+    pub fn to(mut self, to: &MultiAddr) -> anyhow::Result<Self> {
+        self.to = ockam_api::multiaddr_to_route(to)
+            .ok_or_else(|| anyhow!("failed to convert {to} to route"))?;
+        Ok(self)
+    }
+
+    pub fn tcp(mut self, tcp: &'c TcpTransport) -> Self {
+        self.tcp = Some(tcp);
+        self
+    }
+
+    pub fn build(self) -> anyhow::Result<Rpc1<'c, 'd, T>> {
+        let mut rpc = Rpc1::new(self.ctx, self.cmd, self.opts, self.node)?;
+        rpc.to = self.to;
+        rpc.tcp = self.tcp;
+        Ok(rpc)
+    }
+}
+pub struct Rpc1<'c: 'd, 'd, T: CmdTrait<'d>> {
+    ctx: &'c ockam::Context,
+    cmd: &'c mut T,
+    buf: Vec<u8>,
+    opts: &'c CommandGlobalOpts,
+    cfg: NodeConfig,
+    to: Route,
+    /// Needed for when we want to call multiple Rpc's from a single command.
+    tcp: Option<&'c TcpTransport>,
+    _marker: &'d PhantomData<T>,
+}
+
+impl<'c: 'd, 'd, T: CmdTrait<'d>> Rpc1<'c, 'd, T> {
+    pub fn new(
+        ctx: &'c ockam::Context,
+        cmd: &'c mut T,
+        opts: &'c CommandGlobalOpts,
+        node: &str,
+    ) -> anyhow::Result<Self> {
+        let cfg = opts.config.get_node(node)?;
+        Ok(Rpc1 {
+            ctx,
+            cmd,
+            buf: Vec::new(),
+            opts,
+            cfg,
+            to: NODEMANAGER_ADDR.into(),
+            tcp: None,
+            _marker: &PhantomData,
+        })
+    }
+
+    pub async fn request_then_response(&'d mut self) -> crate::Result<Vec<u8>>
+    //-> crate::Result<<T as CmdTrait<'d>>::Resp>
+    {
+        let route = self.route_impl(self.ctx).await.map_err(anyhow::Error::from)?;
+//        self.buf = self
+        let buf = self
+            .ctx
+            .send_and_receive(route.clone(), self.cmd.req().to_vec().map_err(anyhow::Error::from)?)
+            .await
+            .context("Failed to receive response from node")?;
+/*        let mut dec = self.parse_response_impl()?;
+        Ok(dec.decode().context("Failed to decode response body")?)
+*/
+        Ok(buf)
+//        Ok(())
+    }
+
+    pub async fn request_with_timeout(
+        &'d mut self,
+        timeout: Duration,
+    ) -> anyhow::Result<()>
+    {
+        let mut ctx = self.ctx.new_detached(Address::random_local()).await?;
+        let route = self.route_impl(&ctx).await?;
+        ctx.send(route.clone(), self.cmd.req().to_vec()?).await?;
+        self.buf = ctx
+            .receive_duration_timeout::<Vec<u8>>(timeout)
+            .await
+            .context("Failed to receive response from node")?
+            .take()
+            .body();
+        Ok(())
+    }
+
+    async fn route_impl(&mut self, ctx: &ockam::Context) -> anyhow::Result<Route> {
+        let addr = node_addr(&self.cfg);
+        let addr_str = addr.address();
+
+        match self.tcp {
+            None => {
+                let tcp = TcpTransport::create(ctx).await?;
+                tcp.connect(addr_str).await?;
+            }
+            Some(tcp) => {
+                // Ignore "already connected" error.
+                let _ = tcp.connect(addr_str).await;
+            }
+        }
+
+        let route = self.to.modify().prepend_route(addr.into()).into();
+        debug!(%route, "Sending request");
+        Ok(route)
+    }
+
+    /// Parse the response body and return it.
+    pub fn parse_response(&'d self) -> crate::Result<T::Resp>
+    {
+        let mut dec = self.parse_response_impl()?;
+        Ok(dec.decode().context("Failed to decode response body")?)
+    }
+
+    /// Check response's status code is OK.
+    pub fn is_ok(&self) -> crate::Result<()> {
+        self.parse_response_impl()?;
+        Ok(())
+    }
+
+    pub fn check_response(&self) -> crate::Result<(Response, Decoder)> {
+        let mut dec = Decoder::new(&self.buf);
+        let hdr = dec
+            .decode::<Response>()
+            .context("Failed to decode response header")?;
+        Ok((hdr, dec))
+    }
+
+    /// Parse the header and returns the decoder.
+    fn parse_response_impl(&self) -> crate::Result<Decoder> {
+        let mut dec = Decoder::new(&self.buf);
+        let hdr = dec
+            .decode::<Response>()
+            .context("Failed to decode response header")?;
+        if hdr.status() == Some(Status::Ok) {
+            Ok(dec)
+        } else {
+            eprintln!("{}", self.parse_err_msg(hdr, dec));
+            Err(crate::Error::new(exitcode::SOFTWARE))
+        }
+    }
+
+    pub fn parse_err_msg(&self, hdr: Response, mut dec: Decoder) -> String {
+        trace! {
+            dec = %minicbor::display(&self.buf),
+            hex = %hex::encode(&self.buf),
+            "Received CBOR message"
+        };
+        match hdr.status() {
+            Some(status) if hdr.has_body() => {
+                let err = match dec.decode::<String>() {
+                    Ok(msg) => msg,
+                    Err(_) => dec.decode::<String>().unwrap_or_default(),
+                };
+                format!(
+                    "An error occurred while processing the request. Status code: {status}. {err}"
+                )
+            }
+            Some(status) => {
+                format!("An error occurred while processing the request. Status code: {status}")
+            }
+            None => "No status code found in response".to_string(),
+        }
+    }
+
+    /// Parse the response body and print it.
+    pub fn print_response(&'d self) -> crate::Result<()>
+    {
+        let b: T::Resp = self.parse_response()?;
         let o = match self.opts.global_args.output_format {
             OutputFormat::Plain => b.output().context("Failed to serialize response body")?,
             OutputFormat::Json => {

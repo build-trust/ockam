@@ -7,6 +7,7 @@ use ockam_core::CowStr;
 use ockam_core::TypeTag;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
+use serde::Serialize;
 
 /// Request body when instructing a node to create a Secure Channel
 #[derive(Debug, Clone, Decode, Encode)]
@@ -32,7 +33,7 @@ impl<'a> CreateSecureChannelRequest<'a> {
 }
 
 /// Response body when instructing a node to create a Secure Channel
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Decode, Encode, Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSecureChannelResponse<'a> {
@@ -91,7 +92,7 @@ impl<'a> DeleteSecureChannelRequest<'a> {
         }
     }
 }
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Decode, Encode, Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteSecureChannelResponse<'a> {

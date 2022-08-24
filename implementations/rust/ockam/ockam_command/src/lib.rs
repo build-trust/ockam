@@ -148,7 +148,7 @@ pub enum OutputFormat {
     Json,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CommandGlobalOpts {
     pub global_args: GlobalArgs,
     pub config: OckamConfig,

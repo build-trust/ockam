@@ -17,7 +17,7 @@ use crate::util::exitcode;
 
 /// A simple wrapper around the main configuration structure to add
 /// local config utility/ query functions
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OckamConfig {
     inner: Config<cli::OckamConfig>,
 }

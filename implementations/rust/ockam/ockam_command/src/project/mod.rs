@@ -70,7 +70,7 @@ pub enum ProjectSubcommand {
 impl ProjectCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: ProjectCommand) {
         match cmd.subcommand {
-            ProjectSubcommand::Create(scmd) => CreateCommand::run(opts, scmd),
+            ProjectSubcommand::Create(scmd) => scmd.run(opts),
             ProjectSubcommand::Delete(scmd) => DeleteCommand::run(opts, scmd),
             ProjectSubcommand::List(scmd) => ListCommand::run(opts, scmd),
             ProjectSubcommand::Show(scmd) => ShowCommand::run(opts, scmd),
