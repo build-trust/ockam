@@ -2,6 +2,7 @@ use crate::multiaddr_to_route;
 use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
 };
+use crate::nodes::registry::{InletInfo, OutletInfo};
 use crate::nodes::service::{map_multiaddr_err, random_alias};
 use crate::nodes::NodeManager;
 use minicbor::Decoder;
@@ -19,7 +20,7 @@ impl NodeManager {
                 .map(|(alias, info)| {
                     InletStatus::new(
                         &info.bind_addr,
-                        info.worker_address.to_string(),
+                        info.worker_addr.to_string(),
                         alias,
                         None,
                         // FIXME route.as_ref().map(|r| r.to_string().into()),
@@ -78,21 +79,34 @@ impl NodeManager {
             .create_inlet(bind_addr.clone(), outlet_route)
             .await;
 
-        // TODO: Add to registry
-
         Ok(match res {
-            Ok((worker_addr, _)) => Response::ok(req.id()).body(InletStatus::new(
-                bind_addr,
-                worker_addr.to_string(),
-                alias,
-                None,
-            )),
-            Err(e) => Response::bad_request(req.id()).body(InletStatus::new(
-                bind_addr,
-                "",
-                alias,
-                Some(e.to_string().into()),
-            )),
+            Ok((worker_addr, _)) => {
+                // TODO: Use better way to store inlets?
+                self.registry.inlets.insert(
+                    alias.clone(),
+                    InletInfo::new(&bind_addr, Some(&worker_addr)),
+                );
+
+                Response::ok(req.id()).body(InletStatus::new(
+                    bind_addr,
+                    worker_addr.to_string(),
+                    alias,
+                    None,
+                ))
+            }
+            Err(e) => {
+                // TODO: Use better way to store inlets?
+                self.registry
+                    .inlets
+                    .insert(alias.clone(), InletInfo::new(&bind_addr, None));
+
+                Response::bad_request(req.id()).body(InletStatus::new(
+                    bind_addr,
+                    "",
+                    alias,
+                    Some(e.to_string().into()),
+                ))
+            }
         })
     }
 
@@ -118,21 +132,34 @@ impl NodeManager {
             .create_outlet(worker_addr.clone(), tcp_addr.clone())
             .await;
 
-        // TODO: Add to registry
-
         Ok(match res {
-            Ok(_) => Response::ok(req.id()).body(OutletStatus::new(
-                tcp_addr,
-                worker_addr.to_string(),
-                alias,
-                None,
-            )),
-            Err(e) => Response::bad_request(req.id()).body(OutletStatus::new(
-                tcp_addr,
-                worker_addr.to_string(),
-                alias,
-                Some(e.to_string().into()),
-            )),
+            Ok(_) => {
+                // TODO: Use better way to store outlets?
+                self.registry.outlets.insert(
+                    alias.clone(),
+                    OutletInfo::new(&tcp_addr, Some(&worker_addr)),
+                );
+
+                Response::ok(req.id()).body(OutletStatus::new(
+                    tcp_addr,
+                    worker_addr.to_string(),
+                    alias,
+                    None,
+                ))
+            }
+            Err(e) => {
+                // TODO: Use better way to store outlets?
+                self.registry
+                    .outlets
+                    .insert(alias.clone(), OutletInfo::new(&tcp_addr, None));
+
+                Response::bad_request(req.id()).body(OutletStatus::new(
+                    tcp_addr,
+                    worker_addr.to_string(),
+                    alias,
+                    Some(e.to_string().into()),
+                ))
+            }
         })
     }
 }
