@@ -1,5 +1,4 @@
 use crate::authenticated_storage::AuthenticatedStorage;
-use crate::credential::identity::ProcessArrivedCredentialResult;
 use crate::credential::Credential;
 use crate::{
     Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityVault, PublicIdentity,
@@ -85,12 +84,12 @@ impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
                         self.authorities.iter(),
                         &self.authenticated_storage,
                     )
-                    .await?;
+                    .await;
 
                 match res {
-                    ProcessArrivedCredentialResult::Ok() => Response::ok(req.id()).to_vec()?,
-                    ProcessArrivedCredentialResult::BadRequest(str) => {
-                        Self::bad_request(req.id(), req.path(), str).to_vec()?
+                    Ok(()) => Response::ok(req.id()).to_vec()?,
+                    Err(err) => {
+                        Self::bad_request(req.id(), req.path(), &err.to_string()).to_vec()?
                     }
                 }
             }
@@ -105,10 +104,10 @@ impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
                         self.authorities.iter(),
                         &self.authenticated_storage,
                     )
-                    .await?;
+                    .await;
 
-                if let ProcessArrivedCredentialResult::BadRequest(str) = res {
-                    Self::bad_request(req.id(), req.path(), str).to_vec()?
+                if let Err(err) = res {
+                    Self::bad_request(req.id(), req.path(), &err.to_string()).to_vec()?
                 } else {
                     let credentials = self.identity.credential.read().await;
                     match credentials.as_ref() {
