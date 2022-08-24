@@ -120,6 +120,15 @@ impl<'a> Credential<'a> {
             signature: CowBytes(signature.into()),
         }
     }
+
+    pub fn to_owned<'r>(&'a self) -> Credential<'r> {
+        Credential {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            data: self.data.to_owned(),
+            signature: self.signature.to_owned(),
+        }
+    }
 }
 
 impl<'a> CredentialData<'a, Verified> {

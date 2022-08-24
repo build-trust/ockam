@@ -7,7 +7,7 @@ use crate::{
 use minicbor::Decoder;
 use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::async_trait;
-use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::ToString, vec::Vec};
+use ockam_core::compat::{boxed::Box, string::ToString, vec::Vec};
 use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
 use tracing::{error, trace, warn};
@@ -16,7 +16,7 @@ const TARGET: &str = "ockam::credential_exchange_worker::service";
 
 /// Worker responsible for receiving and verifying other party's credentials
 pub struct CredentialExchangeWorker<S: AuthenticatedStorage, V: IdentityVault> {
-    authorities: BTreeMap<IdentityIdentifier, PublicIdentity>,
+    authorities: Vec<PublicIdentity>,
     present_back: bool,
     authenticated_storage: S,
     identity: Identity<V>,
@@ -24,7 +24,7 @@ pub struct CredentialExchangeWorker<S: AuthenticatedStorage, V: IdentityVault> {
 
 impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
     pub fn new(
-        authorities: BTreeMap<IdentityIdentifier, PublicIdentity>,
+        authorities: Vec<PublicIdentity>,
         present_back: bool,
         authenticated_storage: S,
         identity: Identity<V>,
@@ -82,7 +82,7 @@ impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
                     .receive_presented_credential(
                         sender,
                         credential,
-                        &self.authorities,
+                        self.authorities.iter(),
                         &self.authenticated_storage,
                     )
                     .await?;
@@ -102,7 +102,7 @@ impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
                     .receive_presented_credential(
                         sender,
                         credential,
-                        &self.authorities,
+                        self.authorities.iter(),
                         &self.authenticated_storage,
                     )
                     .await?;

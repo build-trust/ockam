@@ -4,7 +4,6 @@ use ockam_identity::credential::{AttributesStorageUtils, Credential};
 use ockam_identity::{Identity, TrustEveryonePolicy, TrustIdentifierPolicy};
 use ockam_node::Context;
 use ockam_vault::Vault;
-use std::collections::BTreeMap;
 
 #[ockam_macros::test]
 async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
@@ -19,8 +18,8 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .create_secure_channel_listener("listener", TrustEveryonePolicy, &server_storage)
         .await?;
 
-    let mut authorities = BTreeMap::new();
-    authorities.insert(authority.identifier().clone(), authority.to_public().await?);
+    let authorities = vec![authority.to_public().await?];
+
     server
         .start_credentials_exchange_worker(
             authorities,
@@ -81,8 +80,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .create_secure_channel_listener("listener", TrustEveryonePolicy, &client2_storage)
         .await?;
 
-    let mut authorities = BTreeMap::new();
-    authorities.insert(authority.identifier().clone(), authority.to_public().await?);
+    let authorities = vec![authority.to_public().await?];
     client2
         .start_credentials_exchange_worker(
             authorities.clone(),
