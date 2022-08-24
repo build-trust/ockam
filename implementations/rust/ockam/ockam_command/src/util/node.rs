@@ -27,7 +27,7 @@ pub async fn default_node(
     // If there are no spawned nodes, create one called "default" and return it.
     let node = if no_nodes {
         debug!("No nodes found in config, creating default node");
-        create_node(opts, "default").await?
+        create_node(ctx, opts, "default").await?
     }
     // If there are spawned nodes, return the "default" node if exists and it's running
     // or the first node we find that is running.
@@ -68,7 +68,7 @@ pub async fn default_node(
         // No running nodes, create a new one
         if ncs.is_empty() {
             debug!("All existing nodes are stopped, creating a new one with a random name");
-            create_node(opts, None).await?
+            create_node(ctx, opts, None).await?
         }
         // Return the "default" node or the first one of the list
         else {
@@ -86,6 +86,7 @@ pub async fn default_node(
 }
 
 async fn create_node(
+    ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
     name: impl Into<Option<&'static str>>,
 ) -> Result<NodeConfig> {
@@ -105,13 +106,16 @@ async fn create_node(
                 foreground: false,
                 tcp_listener_address: "127.0.0.1:0".to_string(),
                 skip_defaults: false,
+                child_process: false, // this value is ignored in this case
                 launch_config: None,
                 no_watchdog: false,
             };
             let cmd = cmd.overwrite_addr()?;
             let addr = SocketAddr::from_str(&cmd.tcp_listener_address)
                 .context("Failed to parse tcp listener address")?;
-            node::CreateCommand::create_background_node(opts, &cmd, &addr)?;
+            let child_ctx = ctx.new_detached(Address::random_local()).await?;
+            node::CreateCommand::create_background_node(child_ctx, (opts.clone(), cmd, addr))
+                .await?;
             loop {
                 std::thread::sleep(std::time::Duration::from_millis(100));
                 if let Some(node) = opts.config.select_node(&node_name) {

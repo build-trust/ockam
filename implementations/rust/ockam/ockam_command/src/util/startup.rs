@@ -2,6 +2,7 @@
 
 #![allow(unused)]
 
+use crate::exitcode;
 use crate::util::{ComposableSnippet, OckamConfig, Operation, RemoteMode, StartupConfig};
 use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
@@ -69,6 +70,7 @@ pub fn spawn_node(
         "--tcp-listener-address".to_string(),
         address.to_string(),
         "--foreground".to_string(),
+        "--child_process".to_string(),
     ];
 
     if skip_defaults {
@@ -87,6 +89,12 @@ pub fn spawn_node(
     // Update the pid in the config (should we remove this?)
     cfg.update_pid(name, child.id() as i32)
         .expect("should never panic");
+
+    // Save the config update
+    if let Err(e) = cfg.atomic_update().run() {
+        eprintln!("failed to update configuration: {}", e);
+        std::process::exit(exitcode::IOERR);
+    }
 }
 
 fn run_snippet(
