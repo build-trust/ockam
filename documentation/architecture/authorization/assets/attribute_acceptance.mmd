@@ -1,0 +1,16 @@
+sequenceDiagram
+  participant alice
+  participant secure_channel
+  participant attribute_acceptor
+  participant attribute_storage
+  participant bob
+
+  alice->>secure_channel: attributes
+  secure_channel->>attribute_acceptor: attributes + identity
+
+  attribute_acceptor->>attribute_storage: save attributes
+
+  alice->>secure_channel: message
+  secure_channel->>bob: message + identity
+  bob->>attribute_storage: check attributes(identity)
+  attribute_storage->>bob: attributes

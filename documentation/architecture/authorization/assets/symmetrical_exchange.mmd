@@ -1,0 +1,23 @@
+sequenceDiagram
+  participant credential_authority
+  participant alice
+  participant secure_channel
+  participant bob_credential_exchange
+  participant bob
+
+  alice->>credential_authority: get_credential(alice_attributes)
+  credential_authority->>alice: alice_credential
+
+  bob->>credential_authority: get_credential(bob_attributes)
+  credential_authority->>bob: bob_credential
+  bob->>+bob_credential_exchange: bob_credential
+
+  alice->>secure_channel: alice_credential
+  secure_channel->>bob_credential_exchange: alice_credential + identity
+
+  bob_credential_exchange->>bob_credential_exchange: verify and save attributes
+  bob_credential_exchange->>alice: bob_credential
+
+  alice->>alice: verify and save attributes
+
+  alice->>bob_credential_exchange: ok
