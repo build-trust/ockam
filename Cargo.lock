@@ -2197,6 +2197,7 @@ dependencies = [
  "assert_cmd",
  "async-recursion",
  "async-trait",
+ "atty",
  "clap 3.2.4",
  "cli-table",
  "colorful",

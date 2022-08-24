@@ -21,7 +21,6 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::enroll::auth0::node::default_node;
 use crate::node::NodeOpts;
-use crate::secure_channel::create::SecureChannelNodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
 use crate::util::{api, node_rpc, stop_node, RpcBuilder};
@@ -346,11 +345,9 @@ async fn create_secure_channel_to_project(
             .expect("Identity received from cloud should be valid")]
     });
     let cmd = crate::secure_channel::CreateCommand {
-        node_opts: SecureChannelNodeOpts {
-            from: node_opts.api_node.to_string(),
-        },
-        addr: MultiAddr::from_str(project.access_route.as_ref()).unwrap(),
-        authorized_identifier,
+        from: node_opts.api_node.to_string(),
+        to: MultiAddr::from_str(project.access_route.as_ref()).unwrap(),
+        authorized: authorized_identifier,
     };
     let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
     rpc.request(api::secure_channel::create(&cmd)).await?;

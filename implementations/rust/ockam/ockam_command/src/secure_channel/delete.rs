@@ -1,54 +1,141 @@
-use crate::util::{api, node_rpc, stop_node, ConfigError, Rpc};
-use crate::CommandGlobalOpts;
+use crate::{
+    secure_channel::BACKGROUND,
+    util::{api, exitcode, get_final_element, node_rpc, stop_node, Rpc},
+    CommandGlobalOpts, OutputFormat, Result, HELP_TEMPLATE,
+};
+
+use atty::Stream;
 use clap::Args;
-use ockam::Context;
-use ockam_api::multiaddr_to_addr;
-use ockam_api::nodes::models::secure_channel::DeleteSecureChannelResponse;
-use ockam_multiaddr::MultiAddr;
+use colorful::Colorful;
+use const_str::replace as const_replace;
+use serde_json::json;
 
-#[derive(Clone, Debug, Args)]
-pub struct SecureChannelNodeOpts {
-    #[clap(
-        global = true,
-        short,
-        long,
-        value_name = "NODE",
-        default_value = "default"
-    )]
-    pub at: String,
-}
+use ockam::{route, Context};
+use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
+use ockam_core::Address;
 
+/// Delete Secure Channels
 #[derive(Clone, Debug, Args)]
+#[clap(
+    display_order = 900,
+    help_template = const_replace!(HELP_TEMPLATE, "LEARN MORE", BACKGROUND)
+)]
 pub struct DeleteCommand {
-    #[clap(flatten)]
-    node_opts: SecureChannelNodeOpts,
+    /// Node from which to initiate the secure channel (required)
+    #[clap(value_name = "NODE", long, display_order = 800)]
+    at: String,
 
-    channel: MultiAddr,
+    /// Address at which the channel to be deleted is running (required)
+    #[clap(display_order = 800)]
+    address: Address,
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(rpc, (opts, self));
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 
-    async fn rpc_callback(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        // We apply the inverse transformation done in the `create` command.
-        let addr = multiaddr_to_addr(&self.channel)
-            .ok_or_else(|| ConfigError::InvalidSecureChannelAddress(self.channel.to_string()))?;
+    // Read the `at` argument and return node name
+    fn parse_at_node(&self) -> String {
+        get_final_element(&self.at).to_string()
+    }
 
-        let mut rpc = Rpc::new(ctx, &opts, &self.node_opts.at)?;
-        rpc.request(api::delete_secure_channel(&addr)).await?;
-        let res = rpc.parse_response::<DeleteSecureChannelResponse>()?;
-        match res.channel {
-            Some(_) => println!("Deleted {}", self.channel),
-            None => println!("Channel with address {} not found", self.channel),
+    fn print_output(
+        &self,
+        parsed_at: &String,
+        address: &Address,
+        options: &CommandGlobalOpts,
+        response: DeleteSecureChannelResponse,
+    ) {
+        match response.channel {
+            Some(address) => {
+                let route = &route![address.to_string()];
+                match route_to_multiaddr(route) {
+                    Some(multiaddr) => {
+                        // if stdout is not interactive/tty write the secure channel address to it
+                        // in case some other program is trying to read it as piped input
+                        if !atty::is(Stream::Stdout) {
+                            println!("{}", multiaddr)
+                        }
+
+                        // if output format is json, write json to stdout.
+                        if options.global_args.output_format == OutputFormat::Json {
+                            let json = json!([{ "address": multiaddr.to_string() }]);
+                            println!("{}", json);
+                        }
+
+                        // if stderr is interactive/tty and we haven't been asked to be quiet
+                        // and output format is plain then write a plain info to stderr.
+                        if atty::is(Stream::Stderr)
+                            && !options.global_args.quiet
+                            && options.global_args.output_format == OutputFormat::Plain
+                        {
+                            if options.global_args.no_color {
+                                eprintln!("\n  Deleted Secure Channel:");
+                                eprintln!("  •        At: /node/{}", &self.at);
+                                eprintln!("  •   Address: {}", &self.address);
+                            } else {
+                                eprintln!("\n  Deleted Secure Channel:");
+
+                                // At:
+                                eprintln!("{}", "  •        At: ".light_magenta());
+                                eprintln!("{}", format!("/node/{}", parsed_at).light_yellow());
+
+                                // Address:
+                                eprintln!("{}", "  •   Address: ".light_magenta());
+                                eprintln!("{}", &self.address.to_string().light_yellow());
+                            }
+                        }
+                    }
+                    None => {
+                        // if stderr is interactive/tty and we haven't been asked to be quiet
+                        // and output format is plain then write a plain info to stderr.
+                        if atty::is(Stream::Stderr)
+                            && !options.global_args.quiet
+                            && options.global_args.output_format == OutputFormat::Plain
+                        {
+                            eprintln!(
+                                "Could not convert returned secure channel route {} into a multiaddr",
+                                route
+                            );
+                        }
+
+                        // return the exitcode::PROTOCOL since if things are going as expected
+                        // a route in the response should be convertable to multiaddr.
+                        std::process::exit(exitcode::PROTOCOL);
+                    }
+                }
+            }
+            None => {
+                // if stderr is interactive/tty and we haven't been asked to be quiet
+                // and output format is plain then write a plain info to stderr.
+                if atty::is(Stream::Stderr)
+                    && !options.global_args.quiet
+                    && options.global_args.output_format == OutputFormat::Plain
+                {
+                    eprintln!(
+                        "Could not find secure channel with address {} at node {}",
+                        address, &self.at
+                    );
+                }
+
+                println!("channel with address {} not found", address)
+            }
         }
-        Ok(())
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> crate::Result<()> {
-    let res = cmd.rpc_callback(&ctx, opts).await;
+async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, DeleteCommand)) -> Result<()> {
+    let at = &command.parse_at_node();
+    let address = &command.address;
+
+    let mut rpc = Rpc::new(&ctx, &options, at)?;
+    let request = api::delete_secure_channel(address);
+    rpc.request(request).await?;
+    let response = rpc.parse_response::<DeleteSecureChannelResponse>()?;
+
+    command.print_output(at, address, &options, response);
+
     stop_node(ctx).await?;
-    res
+    Ok(())
 }

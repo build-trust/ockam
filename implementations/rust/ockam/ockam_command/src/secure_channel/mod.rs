@@ -1,41 +1,80 @@
-pub(crate) mod create;
-pub(crate) mod delete;
-pub(crate) mod list;
+pub(crate) mod listener;
 
-pub(crate) use create::CreateCommand;
-pub(crate) use delete::DeleteCommand;
-pub(crate) use list::ListCommand;
+mod create;
+mod delete;
+mod list;
+
+pub use create::CreateCommand;
+pub use delete::DeleteCommand;
+pub use list::ListCommand;
 
 use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 use clap::{Args, Subcommand};
 
+/// Manage Secure Channels.
+///
+/// Secure Channels provide end-to-end encrypted and mutually authenticated
+/// communication that is safe against eavesdropping, tampering, and forgery
+/// of messages en-route.
 #[derive(Clone, Debug, Args)]
+#[clap(help_template = const_str::replace!(HELP_TEMPLATE, "LEARN MORE", BACKGROUND))]
 pub struct SecureChannelCommand {
     #[clap(subcommand)]
     subcommand: SecureChannelSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]
-pub enum SecureChannelSubcommand {
-    /// Create Secure Channel Connector
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+enum SecureChannelSubcommand {
     Create(CreateCommand),
-
-    /// Delete Secure Channel Connector
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Delete(DeleteCommand),
-
-    /// List Secure Channel Connector
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     List(ListCommand),
 }
 
 impl SecureChannelCommand {
-    pub fn run(opts: CommandGlobalOpts, command: Self) {
-        match command.subcommand {
-            SecureChannelSubcommand::Create(sub_cmd) => sub_cmd.run(opts),
-            SecureChannelSubcommand::Delete(sub_cmd) => sub_cmd.run(opts),
-            SecureChannelSubcommand::List(command) => ListCommand::run(opts, command),
+    pub fn run(self, options: CommandGlobalOpts) {
+        match self.subcommand {
+            SecureChannelSubcommand::Create(c) => c.run(options),
+            SecureChannelSubcommand::Delete(c) => c.run(options),
+            SecureChannelSubcommand::List(c) => c.run(options),
         }
     }
 }
+
+const BACKGROUND: &str = "\
+BACKGROUND
+
+Secure Channels provide end-to-end encrypted and mutually authenticated
+communication that is safe against eavesdropping, tampering, and forgery
+of messages en-route.
+
+To create a secure channel, we first need a secure channel listener.
+Every node that is started with ockam command, by default, starts a secure
+channel listener at the address /service/api.
+
+So the simplest example of creating a secure channel would be:
+
+    $ ockam node create n1
+    $ ockam node create n2
+    $ ockam secure-channel create --from /node/n1 --to /node/n2/service/api
+    /service/09738b73c54b81d48531f659aaa22533
+
+The Ockam Secure Channels protocol is based on handshake designs proposed
+in the Noise Protocol Framework.
+
+Ockam Secure Channels protocol is layered above Ockam Routing and is
+decoupled from transport protocols like TCP, UDP, Bluetooth etc. This allows
+Ockam Secure Channels to be end-to-end over multiple transport layer hops.
+
+For instance we can create a secure channel over two TCP connection hops
+as follows:
+
+    $ ockam node create n1
+    $ ockam node create n2
+    $ ockam node create n3
+
+    $ ockam secure-channel create --from /node/n1 --to /node/n2/node/n3/service/api \\
+        | ockam message send hello --from /node/n1 --to -/service/uppercase
+    HELLO
+
+LEARN MORE
+";
