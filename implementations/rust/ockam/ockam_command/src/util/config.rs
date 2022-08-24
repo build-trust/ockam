@@ -286,16 +286,6 @@ impl OckamConfig {
     }
 }
 
-impl Drop for OckamConfig {
-    fn drop(&mut self) {
-        // To reduce temporal coupling between config setters/updaters and actually updating
-        // the backing config file, we try to update the config file when it is dropped.
-        if let Err(e) = self.atomic_update().run() {
-            error!(%e, "Failed to update config file when dropping OckamConfig");
-        }
-    }
-}
-
 /// A simple wrapper around the main configuration structure to add
 /// local config utility/ query functions
 pub struct StartupConfig {
