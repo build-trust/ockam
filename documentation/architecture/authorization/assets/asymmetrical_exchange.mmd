@@ -1,0 +1,26 @@
+sequenceDiagram
+  participant credential_authority
+  participant alice
+  participant secure_channel
+  participant credential_acceptor
+  participant credential_verifier
+  participant attribute_storage
+  participant bob
+
+  alice->>credential_authority: get_credential(attributes)
+  credential_authority->>alice: credential(attributes, identity, expiration)
+
+  alice->>secure_channel: credential
+  secure_channel->>credential_acceptor: credential + identity
+
+  credential_acceptor->>credential_verifier: credential + identity
+  credential_verifier->>credential_acceptor: attributes + expiration
+
+  credential_acceptor->>attribute_storage: save attributes + expiration
+  credential_acceptor->>secure_channel: ok
+  secure_channel->>alice: ok
+
+  alice->>secure_channel: message
+  secure_channel->>bob: message + identity
+  bob->>attribute_storage: check attributes(identity)
+  attribute_storage->>bob: attributes
