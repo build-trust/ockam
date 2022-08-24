@@ -22,7 +22,7 @@ pub fn clean_multiaddr(
             Node::CODE => {
                 let alias = p.cast::<Node>()?;
                 let addr = lookup
-                    .get_node(&*alias)
+                    .get_node(&alias)
                     .expect("provided invalid substitution route");
 
                 match addr {

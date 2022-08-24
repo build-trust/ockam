@@ -120,7 +120,7 @@ pub async fn create_outlet(
 fn make_api_request(cmd: CreateCommand) -> ockam::Result<Vec<u8>> {
     let tcp_addr = &cmd.to.to_string();
     let worker_addr = cmd.from;
-    let alias = (&None::<String>).as_ref().map(|x| x.as_str().into());
+    let alias = (None::<String>).as_ref().map(|x| x.as_str().into());
     let payload = CreateOutlet::new(tcp_addr, worker_addr, alias);
 
     let mut buf = vec![];
