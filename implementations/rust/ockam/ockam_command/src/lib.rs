@@ -1,6 +1,7 @@
 //! This library is used by the `ockam` CLI (in `./bin/ockam.rs`).
 
 mod authenticated;
+mod completion;
 mod configuration;
 mod enroll;
 mod forwarder;
@@ -16,6 +17,7 @@ mod util;
 mod vault;
 
 use authenticated::AuthenticatedCommand;
+use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
 use enroll::EnrollCommand;
 use forwarder::ForwarderCommand;
@@ -206,6 +208,10 @@ pub enum OckamSubcommand {
     #[clap(display_order = 809, help_template = HELP_TEMPLATE)]
     Message(MessageCommand),
 
+    /// Generate Completions
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    Completion(CompletionCommand),
+
     // HIDDEN
     /// Manage ockam node configuration values
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
@@ -316,5 +322,6 @@ pub fn run() {
             SecureChannelListenerCommand::run(opts, command)
         }
         OckamSubcommand::Service(command) => ServiceCommand::run(opts, command),
+        OckamSubcommand::Completion(command) => CompletionCommand::run(command),
     }
 }
