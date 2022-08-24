@@ -102,11 +102,13 @@ project = {
     7: space_id,
     ?8: project_node_identity, ; optional, it can be missing if the cloud node hasn't started yet
     ?9: authority_access_route, ; optional, it can be missing if the authority hasn't started yet
-    ?10: authority_identity ; optional, hex encoded authority' identity
+    ?10: authority_identity ; optional, hex encoded authority identity
 }
 
 project_node_identity = identity_id
 
+authority_access_route = text
+authority_identity = text
 
 projects = [* project]
 

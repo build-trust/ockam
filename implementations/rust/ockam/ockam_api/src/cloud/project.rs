@@ -1,8 +1,9 @@
 use minicbor::{Decode, Encode};
+use ockam_core::CowStr;
+use ockam_identity::IdentityIdentifier;
 use serde::Serialize;
 use std::str::FromStr;
 
-use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_multiaddr::MultiAddr;
@@ -21,7 +22,7 @@ pub struct Project<'a> {
     #[b(5)] pub access_route: CowStr<'a>, //TODO: should be optional, waiting for changes on the elixir side
     #[b(6)] pub users: Vec<CowStr<'a>>,
     #[b(7)] pub space_id: CowStr<'a>,
-    #[b(8)] pub identity: Option<CowStr<'a>>,
+    #[b(8)] pub identity: Option<IdentityIdentifier>,
     #[b(9)] pub authority_access_route: Option<CowStr<'a>>,
     #[b(10)] pub authority_identity: Option<CowStr<'a>>,
 }
@@ -44,14 +45,17 @@ impl Project<'_> {
             access_route: self.access_route.to_owned(),
             users: self.users.iter().map(|x| x.to_owned()).collect(),
             space_id: self.space_id.to_owned(),
-            identity: self.identity.as_ref().map(|x| x.to_owned()),
-            authority_access_route : self.authority_access_route.as_ref().map(|x| x.to_owned()),
+            identity: self.identity.clone(),
+            authority_access_route: self.authority_access_route.as_ref().map(|x| x.to_owned()),
             authority_identity: self.authority_identity.as_ref().map(|x| x.to_owned()),
         }
     }
 
     pub fn is_ready(&self) -> bool {
-        !self.access_route.is_empty() & self.identity.is_some()
+        !(self.access_route.is_empty()
+            || self.authority_access_route.is_none()
+            || self.identity.is_none()
+            || self.authority_identity.is_none())
     }
 
     pub fn access_route(&self) -> MultiAddr {
@@ -333,19 +337,17 @@ mod tests {
     use super::*;
 
     mod schema {
-        use cddl_cat::validate_cbor_bytes;
-        use quickcheck::{quickcheck, TestResult};
-
-        use ockam_core::api::SCHEMA;
-
         use super::*;
+        use cddl_cat::validate_cbor_bytes;
+        use ockam_core::api::SCHEMA;
+        use ockam_identity::IdentityIdentifier;
+        use quickcheck::{quickcheck, TestResult};
 
         #[derive(Debug, Clone)]
         struct Pr(Project<'static>);
 
         impl Arbitrary for Pr {
             fn arbitrary(g: &mut Gen) -> Self {
-                let identity = String::arbitrary(g).into();
                 Pr(Project {
                     #[cfg(feature = "tag")]
                     tag: Default::default(),
@@ -356,7 +358,11 @@ mod tests {
                     access_route: String::arbitrary(g).into(),
                     users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
                     space_id: String::arbitrary(g).into(),
-                    identity: g.choose(&[None, Some(identity)]).unwrap().clone(),
+                    identity: bool::arbitrary(g)
+                        .then(|| IdentityIdentifier::from_key_id(&String::arbitrary(g))),
+                    authority_access_route: bool::arbitrary(g).then(|| String::arbitrary(g).into()),
+                    authority_identity: bool::arbitrary(g)
+                        .then(|| hex::encode(<Vec<u8>>::arbitrary(g)).into()),
                 })
             }
         }

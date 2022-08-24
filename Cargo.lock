@@ -2158,6 +2158,7 @@ dependencies = [
  "directories",
  "either",
  "fake",
+ "hex",
  "lmdb-rkv",
  "minicbor",
  "mockall",
