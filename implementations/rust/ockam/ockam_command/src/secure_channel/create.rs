@@ -1,72 +1,146 @@
-use crate::util::{api, exitcode, node_rpc, stop_node, ConfigError, Rpc};
+use crate::{
+    secure_channel::BACKGROUND,
+    util::{api, exitcode, get_final_element, node_rpc, stop_node, Rpc},
+    CommandGlobalOpts, OutputFormat, Result, HELP_TEMPLATE,
+};
 
-use crate::CommandGlobalOpts;
+use atty::Stream;
 use clap::Args;
-use ockam::identity::IdentityIdentifier;
-use ockam::Context;
-use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
-use ockam_api::{clean_multiaddr, route_to_multiaddr};
-use ockam_core::route;
+use colorful::Colorful;
+use const_str::replace as const_replace;
+use serde_json::json;
+
+use ockam::{identity::IdentityIdentifier, route, Context};
+use ockam_api::config::lookup::{ConfigLookup, LookupMeta};
+use ockam_api::{
+    clean_multiaddr, nodes::models::secure_channel::CreateSecureChannelResponse, route_to_multiaddr,
+};
 use ockam_multiaddr::MultiAddr;
 
+/// Create Secure Channels
 #[derive(Clone, Debug, Args)]
+#[clap(
+    display_order = 900,
+    help_template = const_replace!(HELP_TEMPLATE, "LEARN MORE", BACKGROUND)
+)]
 pub struct CreateCommand {
-    #[clap(flatten)]
-    pub node_opts: SecureChannelNodeOpts,
+    /// Node from which to initiate the secure channel (required)
+    #[clap(value_name = "NODE", long, display_order = 800)]
+    pub from: String,
 
     /// Route to a secure channel listener (required)
-    #[clap(name = "to", short, long, value_name = "ROUTE")]
-    pub addr: MultiAddr,
+    #[clap(value_name = "ROUTE", long, display_order = 800)]
+    pub to: MultiAddr,
 
-    /// Pre-known Identifiers of the other side
-    #[clap(short, long)]
-    pub authorized_identifier: Option<Vec<IdentityIdentifier>>,
-}
-
-#[derive(Clone, Debug, Args)]
-pub struct SecureChannelNodeOpts {
-    /// Node that will initiate the secure channel
-    #[clap(
-        global = true,
-        short,
-        long,
-        value_name = "NODE",
-        default_value = "default"
-    )]
-    pub from: String,
+    /// Identifiers authorized to be presented by the listener
+    #[clap(value_name = "IDENTIFIER", long, short, display_order = 801)]
+    pub authorized: Option<Vec<IdentityIdentifier>>,
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(rpc, (opts, self));
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 
-    async fn rpc_callback(
-        self,
-        ctx: &ockam::Context,
-        opts: CommandGlobalOpts,
-    ) -> crate::Result<()> {
-        let (addr, _meta) =
-            clean_multiaddr(&self.addr, &opts.config.get_lookup()).unwrap_or_else(|| {
-                eprintln!("failed to normalize MultiAddr route");
-                std::process::exit(exitcode::USAGE);
-            });
+    // Read the `to` argument and return a MultiAddr
+    // or exit with and error if `to` can't be parsed.
+    fn parse_to_route(&self, config: &ConfigLookup) -> (MultiAddr, LookupMeta) {
+        clean_multiaddr(&self.to, config).unwrap_or_else(|| {
+            eprintln!("Could not convert {} into route", &self.to);
+            std::process::exit(exitcode::USAGE);
+        })
+    }
 
-        let mut rpc = Rpc::new(ctx, &opts, &self.node_opts.from)?;
+    // Read the `from` argument and return node name
+    fn parse_from_node(&self, _config: &ConfigLookup) -> String {
+        get_final_element(&self.from).to_string()
+    }
 
-        rpc.request(api::create_secure_channel(addr, self.authorized_identifier))
-            .await?;
+    fn print_output(
+        &self,
+        parsed_from: &String,
+        parsed_to: &MultiAddr,
+        options: &CommandGlobalOpts,
+        response: CreateSecureChannelResponse,
+    ) {
+        let route = &route![response.addr.to_string()];
+        match route_to_multiaddr(route) {
+            Some(multiaddr) => {
+                // if stdout is not interactive/tty write the secure channel address to it
+                // in case some other program is trying to read it as piped input
+                if !atty::is(Stream::Stdout) {
+                    println!("{}", multiaddr)
+                }
 
-        let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
+                // if output format is json, write json to stdout.
+                if options.global_args.output_format == OutputFormat::Json {
+                    let json = json!([{ "address": multiaddr.to_string() }]);
+                    println!("{}", json);
+                }
 
-        route_to_multiaddr(&route![res.addr.to_string()])
-            .map(|addr| println!("{}", addr))
-            .ok_or_else(|| ConfigError::InvalidSecureChannelAddress(res.addr.to_string()).into())
+                // if stderr is interactive/tty and we haven't been asked to be quiet
+                // and output format is plain then write a plain info to stderr.
+                if atty::is(Stream::Stderr)
+                    && !options.global_args.quiet
+                    && options.global_args.output_format == OutputFormat::Plain
+                {
+                    if options.global_args.no_color {
+                        eprintln!("\n  Created Secure Channel:");
+                        eprintln!("  • From: /node/{}", parsed_from);
+                        eprintln!("  •   To: {} ({})", &self.to, &parsed_to);
+                        eprintln!("  •   At: {}", multiaddr);
+                    } else {
+                        eprintln!("\n  Created Secure Channel:");
+
+                        // From:
+                        eprint!("{}", "  • From: ".light_magenta());
+                        eprintln!("{}", format!("/node/{}", parsed_from).light_yellow());
+
+                        // To:
+                        eprint!("{}", "  •   To: ".light_magenta());
+                        let t = format!("{} ({})", &self.to, &parsed_to);
+                        eprintln!("{}", t.light_yellow());
+
+                        // At:
+                        eprint!("{}", "  •   At: ".light_magenta());
+                        eprintln!("{}", multiaddr.to_string().light_yellow());
+                    }
+                }
+            }
+            None => {
+                // if stderr is interactive/tty and we haven't been asked to be quiet
+                // and output format is plain then write a plain info to stderr.
+                if atty::is(Stream::Stderr)
+                    && !options.global_args.quiet
+                    && options.global_args.output_format == OutputFormat::Plain
+                {
+                    eprintln!(
+                        "Could not convert returned secure channel address {} into a multiaddr",
+                        route
+                    );
+                }
+
+                // return the exitcode::PROTOCOL since if things are going as expected
+                // a route in the response should be convertable to multiaddr.
+                std::process::exit(exitcode::PROTOCOL);
+            }
+        };
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> crate::Result<()> {
-    let res = cmd.rpc_callback(&ctx, opts).await;
+async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+    let config = &options.config.get_lookup();
+    let from = &command.parse_from_node(config);
+    let (to, _meta) = &command.parse_to_route(config);
+    let authorized_identifiers = command.authorized.clone();
+
+    // Delegate the request to create a secure channel to the from node.
+    let mut rpc = Rpc::new(&ctx, &options, from)?;
+    let request = api::create_secure_channel(to, authorized_identifiers);
+    rpc.request(request).await?;
+    let response = rpc.parse_response::<CreateSecureChannelResponse>()?;
+
+    command.print_output(from, to, &options, response);
     stop_node(ctx).await?;
-    res
+    Ok(())
 }

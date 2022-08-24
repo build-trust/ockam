@@ -10,7 +10,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::secure_channel_listener::create as secure_channel_listener;
+use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start::{self, StartCommand, StartSubCommand};
 use crate::util::{bind_to_port_check, exitcode};

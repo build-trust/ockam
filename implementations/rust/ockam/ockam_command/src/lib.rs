@@ -9,7 +9,6 @@ mod message;
 mod node;
 mod project;
 mod secure_channel;
-mod secure_channel_listener;
 mod service;
 mod space;
 mod tcp;
@@ -23,8 +22,8 @@ use forwarder::ForwarderCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use project::ProjectCommand;
+use secure_channel::listener::SecureChannelListenerCommand;
 use secure_channel::SecureChannelCommand;
-use secure_channel_listener::SecureChannelListenerCommand;
 use space::SpaceCommand;
 use tcp::connection::TcpConnectionCommand;
 use tcp::inlet::TcpInletCommand;
@@ -142,7 +141,7 @@ pub struct GlobalArgs {
     test_argument_parser: bool,
 }
 
-#[derive(Debug, Clone, ArgEnum)]
+#[derive(Debug, Clone, ArgEnum, PartialEq)]
 pub enum OutputFormat {
     Plain,
     Json,
@@ -322,7 +321,7 @@ pub fn run() {
         OckamSubcommand::TcpOutlet(command) => TcpOutletCommand::run(opts, command),
         OckamSubcommand::Vault(command) => VaultCommand::run(opts, command),
         OckamSubcommand::Identity(command) => IdentityCommand::run(opts, command),
-        OckamSubcommand::SecureChannel(command) => SecureChannelCommand::run(opts, command),
+        OckamSubcommand::SecureChannel(command) => command.run(opts),
         OckamSubcommand::SecureChannelListener(command) => {
             SecureChannelListenerCommand::run(opts, command)
         }

@@ -140,11 +140,11 @@ pub(crate) fn list_secure_channels() -> RequestBuilder<'static, ()> {
 
 /// Construct a request to create Secure Channels
 pub(crate) fn create_secure_channel(
-    addr: MultiAddr,
+    addr: &MultiAddr,
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 ) -> RequestBuilder<'static, models::secure_channel::CreateSecureChannelRequest<'static>> {
     let payload =
-        models::secure_channel::CreateSecureChannelRequest::new(&addr, authorized_identifiers);
+        models::secure_channel::CreateSecureChannelRequest::new(addr, authorized_identifiers);
     Request::builder(Method::Post, "/node/secure_channel").body(payload)
 }
 
@@ -212,15 +212,15 @@ pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
 
 pub(crate) mod secure_channel {
     use super::*;
-    use crate::secure_channel::*;
+    use crate::secure_channel;
 
     /// Construct a request to create Secure Channels
     pub(crate) fn create(
-        cmd: &CreateCommand,
+        cmd: &secure_channel::CreateCommand,
     ) -> RequestBuilder<models::secure_channel::CreateSecureChannelRequest> {
         let payload = models::secure_channel::CreateSecureChannelRequest::new(
-            &cmd.addr,
-            cmd.authorized_identifier.clone(),
+            &cmd.to,
+            cmd.authorized.clone(),
         );
         Request::builder(Method::Post, "/node/secure_channel").body(payload)
     }
