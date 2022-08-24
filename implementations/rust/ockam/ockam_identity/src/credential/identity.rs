@@ -5,8 +5,8 @@ use crate::credential::{
     Timestamp, Unverified, Verified,
 };
 use crate::{
-    Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityStateConst,
-    IdentityVault, PublicIdentity,
+    Identity, IdentityError, IdentityIdentifier, IdentitySecureChannelLocalInfo,
+    IdentityStateConst, IdentityVault, PublicIdentity,
 };
 use core::marker::PhantomData;
 use minicbor::Decoder;
@@ -147,39 +147,23 @@ impl<V: IdentityVault> Identity<V> {
 
         let credential: Credential = dec.decode()?;
 
-        let res = self
-            .receive_presented_credential(their_id, credential, authorities, authenticated_storage)
+        self.receive_presented_credential(their_id, credential, authorities, authenticated_storage)
             .await?;
 
-        match res {
-            ProcessArrivedCredentialResult::Ok() => Ok(()),
-            ProcessArrivedCredentialResult::BadRequest(str) => {
-                Err(Error::new(Origin::Application, Kind::Protocol, str))
-            }
-        }
+        Ok(())
     }
 }
 
-pub(crate) enum ProcessArrivedCredentialResult {
-    Ok(),
-    BadRequest(&'static str),
-}
-
 impl<V: IdentityVault> Identity<V> {
-    pub(crate) async fn receive_presented_credential(
-        &self,
-        sender: IdentityIdentifier,
-        credential: Credential<'_>,
+    async fn verify_credential<'a>(
+        sender: &IdentityIdentifier,
+        credential: &'a Credential<'a>,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
-        authenticated_storage: &impl AuthenticatedStorage,
-    ) -> Result<ProcessArrivedCredentialResult> {
+        vault: &impl IdentityVault,
+    ) -> Result<CredentialData<'a, Verified>> {
         let credential_data: CredentialData<Unverified> = match minicbor::decode(&credential.data) {
             Ok(c) => c,
-            Err(_) => {
-                return Ok(ProcessArrivedCredentialResult::BadRequest(
-                    "invalid credential",
-                ))
-            }
+            Err(_) => return Err(IdentityError::InvalidCredentialFormat.into()),
         };
 
         let issuer = authorities
@@ -187,24 +171,36 @@ impl<V: IdentityVault> Identity<V> {
             .find(|&x| x.identifier() == &credential_data.issuer);
         let issuer = match issuer {
             Some(i) => i,
-            None => {
-                return Ok(ProcessArrivedCredentialResult::BadRequest(
-                    "unknown authority",
-                ));
-            }
+            None => return Err(IdentityError::UnknownAuthority.into()),
         };
 
-        let credential_data = match issuer
-            .verify_credential(&credential, &sender, &self.vault)
-            .await
-        {
+        let credential_data = match issuer.verify_credential(credential, sender, vault).await {
             Ok(d) => d,
-            Err(_) => {
-                return Ok(ProcessArrivedCredentialResult::BadRequest(
-                    "credential verification failed",
-                ))
-            }
+            Err(_) => return Err(IdentityError::CredentialVerificationFailed.into()),
         };
+
+        Ok(credential_data)
+    }
+
+    pub async fn verify_self_credential<'a>(
+        &self,
+        credential: &'a Credential<'a>,
+        authorities: impl IntoIterator<Item = &PublicIdentity>,
+    ) -> Result<()> {
+        let _ = Self::verify_credential(self.identifier(), credential, authorities, &self.vault)
+            .await?;
+        Ok(())
+    }
+
+    pub(crate) async fn receive_presented_credential(
+        &self,
+        sender: IdentityIdentifier,
+        credential: Credential<'_>,
+        authorities: impl IntoIterator<Item = &PublicIdentity>,
+        authenticated_storage: &impl AuthenticatedStorage,
+    ) -> Result<()> {
+        let credential_data =
+            Self::verify_credential(&sender, &credential, authorities, &self.vault).await?;
 
         AttributesStorageUtils::put_attributes(
             &sender,
@@ -213,6 +209,6 @@ impl<V: IdentityVault> Identity<V> {
         )
         .await?;
 
-        Ok(ProcessArrivedCredentialResult::Ok())
+        Ok(())
     }
 }
