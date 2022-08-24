@@ -10,8 +10,9 @@ use ockam_core::Route;
 
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
-use crate::util::{api, connect_to, exitcode, stop_node};
+use crate::util::{api, connect_to, exitcode, stop_node, Rpc1, RpcCaller, node_rpc};
 use crate::{CommandGlobalOpts, OutputFormat};
+use ockam_api::cloud::{BareCloudRequestWrapper};
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -33,22 +34,44 @@ pub struct ShowCommand {
 
     #[clap(flatten)]
     pub cloud_opts: CloudOpts,
+    
+    #[clap(skip)]
+    pub global_opts: Option<CommandGlobalOpts>,
 }
 
 impl ShowCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: ShowCommand) {
-        let cfg = &opts.config;
-        let port = match cfg.select_node(&cmd.node_opts.api_node) {
-            Some(cfg) => cfg.port,
-            None => {
-                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(exitcode::IOERR);
-            }
-        };
-        connect_to(port, (opts, cmd), show);
+    pub fn run(mut self, opts: CommandGlobalOpts) {
+        self.global_opts = Some(opts.clone());
+        node_rpc(rpc, (opts, self));
     }
 }
 
+impl<'a> RpcCaller<'a> for ShowCommand {
+    type Req = BareCloudRequestWrapper<'a>;
+    type Resp = Project<'a>;
+
+    fn req(&'a mut self) -> ockam_core::api::RequestBuilder<'_, Self::Req> {
+        api::project::show(self)
+    }
+}
+
+async fn rpc(ctx: ockam::Context, (opts, cmd): (CommandGlobalOpts, ShowCommand)) -> crate::Result<()> {
+    let res = rpc_callback(cmd, &ctx, opts).await;
+    stop_node(ctx).await?;
+    res
+}
+
+async fn rpc_callback(mut cmd: ShowCommand, ctx: &ockam::Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    // We apply the inverse transformation done in the `create` command.
+    use crate::util::output::Output;
+
+    let node = cmd.node_opts.api_node.clone();
+    Rpc1::new(ctx, &opts, &node)?
+        .request_then_response(&mut cmd).await?.parse_body()?.print(&opts)?;
+    Ok(())
+}
+
+/*
 async fn show(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
@@ -94,3 +117,4 @@ async fn show(
 
     stop_node(ctx).await
 }
+*/

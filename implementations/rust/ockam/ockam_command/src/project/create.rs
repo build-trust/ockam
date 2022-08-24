@@ -10,6 +10,7 @@ use ockam_core::Route;
 
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
+use crate::util::output::Output;
 use crate::util::{api, connect_to, exitcode, stop_node, Rpc1, RpcCaller, node_rpc};
 use crate::{CommandGlobalOpts, OutputFormat};
 use ockam_api::cloud::{CloudRequestWrapper};
@@ -45,21 +46,6 @@ impl CreateCommand {
         self.global_opts = Some(opts.clone());
         node_rpc(rpc, (opts, self));
     }
-
-/*    
-    pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
-        
-        let cfg = &opts.config;
-        let port = match cfg.select_node(&cmd.node_opts.api_node) {
-            Some(cfg) => cfg.port,
-            None => {
-                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(exitcode::IOERR);
-            }
-        };
-        connect_to(port, (opts, cmd), create);
-    }
-    */
 }
 
 impl<'a> RpcCaller<'a> for CreateCommand {
@@ -78,27 +64,21 @@ impl<'a> RpcCaller<'a> for CreateCommand {
     }
 }
 
-
 async fn rpc(ctx: ockam::Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> crate::Result<()> {
     let res = rpc_callback(cmd, &ctx, opts).await;
     stop_node(ctx).await?;
     res
 }
 
-async fn rpc_callback(cmd: CreateCommand, ctx: &ockam::Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+async fn rpc_callback(mut cmd: CreateCommand, ctx: &ockam::Context, opts: CommandGlobalOpts) -> crate::Result<()> {
     // We apply the inverse transformation done in the `create` command.
-/*
-    let from = cmd.node_opts.from.clone();
-    let mut rpc = Rpc1::new(ctx, cmd, &opts, &from)?;
-    let res = rpc.request_then_response().await?;
 
-    let mut dec = Decoder::new(&res);
-    let res: <CreateCommand as RpcCaller>::Resp = dec.decode().context("Failed to decode response body")?;
-    res
-    */
+    let node = cmd.node_opts.api_node.clone();
+    Rpc1::new(ctx, &opts, &node)?
+        .request_then_response(&mut cmd).await?.parse_body()?.print(&opts)?;
     Ok(())
 }
-
+/*
 async fn create(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
@@ -145,3 +125,4 @@ async fn create(
 
     stop_node(ctx).await
 }
+*/

@@ -73,7 +73,7 @@ impl ProjectCommand {
             ProjectSubcommand::Create(scmd) => scmd.run(opts),
             ProjectSubcommand::Delete(scmd) => DeleteCommand::run(opts, scmd),
             ProjectSubcommand::List(scmd) => ListCommand::run(opts, scmd),
-            ProjectSubcommand::Show(scmd) => ShowCommand::run(opts, scmd),
+            ProjectSubcommand::Show(scmd) => scmd.run(opts),
             ProjectSubcommand::AddEnroller(scmd) => AddEnrollerCommand::run(opts, scmd),
             ProjectSubcommand::ListEnrollers(scmd) => ListEnrollersCommand::run(opts, scmd),
             ProjectSubcommand::DeleteEnroller(scmd) => DeleteEnrollerCommand::run(opts, scmd),

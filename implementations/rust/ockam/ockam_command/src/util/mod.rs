@@ -227,6 +227,7 @@ impl<'a> Rpc<'a> {
     }
 }
 
+
 pub struct RpcResponse<'a, T: RpcCaller<'a>>(Vec<u8>, &'a PhantomData<T>);
 
 impl<'a, T: RpcCaller<'a>> RpcResponse<'a, T> {
@@ -239,33 +240,11 @@ impl<'a, T: RpcCaller<'a>> RpcResponse<'a, T> {
     }
 
     pub fn parse_body(&'a self) -> crate::Result<T::Resp> {
-        let hdr = self.check()?;
-
-        eprintln!("hdr: {:?}", hdr);
-
         let mut dec = self.parse_response_impl()?;
-
-        eprintln!("after parse_response_impl");
-
-        if hdr.status() == Some(Status::Ok) {
-            eprintln!("before decode");
-            let mut res: T::Resp;
-
-                match dec.decode().context("Failed to decode response body") {
-                    Ok(resp) => {res = resp; eprintln!("after decode success"); }
-                    Err(err) => {eprintln!("errror: {:?}", err); return Err(err.into());}
-                }
-            
-            eprintln!("after decode");
-            Ok(res)
-        } else {
-            eprintln!("{}", self.parse_err_msg(hdr));
-            Err(crate::Error::new(exitcode::SOFTWARE))
-        }
+        Ok(dec.decode().context("Failed to decode response body")?)
     }
 
-    pub fn parse_err_msg(&self, hdr: Response) -> String {
-        let mut dec = Decoder::new(&self.0);
+    pub fn parse_err_msg(&self, hdr: Response, mut dec: Decoder) -> String {
         trace! {
             dec = %minicbor::display(&self.0),
             hex = %hex::encode(&self.0),
@@ -294,13 +273,14 @@ impl<'a, T: RpcCaller<'a>> RpcResponse<'a, T> {
     }
 
     fn parse_response_impl(&'a self) -> crate::Result<Decoder> {
-        let hdr = self.check()?;
         let mut dec = Decoder::new(&self.0);
-
+        let hdr = dec
+            .decode::<Response>()
+            .context("Failed to decode response header")?;
         if hdr.status() == Some(Status::Ok) {
             Ok(dec)
         } else {
-            eprintln!("{}", self.parse_err_msg(hdr));
+            eprintln!("{}", self.parse_err_msg(hdr, dec));
             Err(crate::Error::new(exitcode::SOFTWARE))
         }
     }
@@ -318,13 +298,6 @@ pub trait RpcCaller<'a>: 'a {
         Box::pin(rpc_obj.request_then_response(self))
     }
 */
-/*
-    fn parse_response(&'a self, res: &'a Vec<u8>) -> crate::Result<Self::Resp> {
-        let mut dec = Decoder::new(&res);
-        let res: Self::Resp = dec.decode().context("Failed to decode response body")?;
-        Ok(res)
-    }
-    */
 }
 pub struct RpcBuilder1<'c, 'b> {
 //    pub struct RpcBuilder1<'c: 'd, 'd, 'b, T: RpcCaller<'d>> {
@@ -406,9 +379,7 @@ impl<'c> Rpc1<'c> {
     }
 
     pub async fn request_then_response<'d, T: RpcCaller<'d>>(&mut self, cmd: &'d mut T) 
-        -> crate::Result<RpcResponse<'d, T>>
-//-> crate::Result<<T as RpcCaller<'d>>::'Resp>
-    {
+        -> crate::Result<RpcResponse<'d, T>> {
         let route = self
             .route_impl(self.ctx)
             .await
@@ -423,21 +394,29 @@ impl<'c> Rpc1<'c> {
             .context("Failed to receive response from node")?
         );
         Ok(rpc_resp)
-        //        Ok(())
     }
 
-    pub async fn request_with_timeout(&mut self, timeout: Duration) -> anyhow::Result<()> {
-        /*        let mut ctx = self.ctx.new_detached(Address::random_local()).await?;
+    pub async fn request_with_timeout<'d, T: RpcCaller<'d>>(
+        &mut self, 
+        cmd: &'d mut T,
+        timeout: Duration
+    ) -> crate::Result<RpcResponse<'d, T>>  {
+    
+        let mut ctx = self.ctx.new_detached(Address::random_local()).await?;
+        
         let route = self.route_impl(&ctx).await?;
-        ctx.send(route.clone(), self.cmd.req().to_vec()?).await?;
-        self.buf = ctx
+        
+        ctx.send(route.clone(), cmd.req().to_vec().map_err(anyhow::Error::from)?).await?;
+        
+        let rpc_resp = RpcResponse::new( ctx
             .receive_duration_timeout::<Vec<u8>>(timeout)
             .await
             .context("Failed to receive response from node")?
             .take()
-            .body();
-            */
-        Ok(())
+            .body()
+        );
+        
+        Ok(rpc_resp)
     }
 
     async fn route_impl(&mut self, ctx: &ockam::Context) -> anyhow::Result<Route> {
@@ -459,82 +438,6 @@ impl<'c> Rpc1<'c> {
         debug!(%route, "Sending request");
         Ok(route)
     }
-    /*
-    /// Parse the response body and return it.
-
-    pub fn parse_response(&'d self) -> crate::Result<T::Resp>
-    {
-        let mut dec = self.parse_response_impl()?;
-        Ok(dec.decode().context("Failed to decode response body")?)
-    }
-
-    /// Check response's status code is OK.
-    pub fn is_ok(&self) -> crate::Result<()> {
-        self.parse_response_impl()?;
-        Ok(())
-    }
-
-    pub fn check_response(&self) -> crate::Result<(Response, Decoder)> {
-        let mut dec = Decoder::new(&self.buf);
-        let hdr = dec
-            .decode::<Response>()
-            .context("Failed to decode response header")?;
-        Ok((hdr, dec))
-
-    }
-
-    /// Parse the header and returns the decoder.
-    fn parse_response_impl(&self) -> crate::Result<Decoder> {
-
-        let mut dec = Decoder::new(&self.buf);
-        let hdr = dec
-            .decode::<Response>()
-            .context("Failed to decode response header")?;
-        if hdr.status() == Some(Status::Ok) {
-            Ok(dec)
-        } else {
-            eprintln!("{}", self.parse_err_msg(hdr, dec));
-            Err(crate::Error::new(exitcode::SOFTWARE))
-        }
-    }
-
-    pub fn parse_err_msg(&self, hdr: Response, mut dec: Decoder) -> String {
-        trace! {
-            dec = %minicbor::display(&self.buf),
-            hex = %hex::encode(&self.buf),
-            "Received CBOR message"
-        };
-        match hdr.status() {
-            Some(status) if hdr.has_body() => {
-                let err = match dec.decode::<String>() {
-                    Ok(msg) => msg,
-                    Err(_) => dec.decode::<String>().unwrap_or_default(),
-                };
-                format!(
-                    "An error occurred while processing the request. Status code: {status}. {err}"
-                )
-            }
-            Some(status) => {
-                format!("An error occurred while processing the request. Status code: {status}")
-            }
-            None => "No status code found in response".to_string(),
-        }
-    }
-
-    /// Parse the response body and print it.
-    pub fn print_response(&'d self) -> crate::Result<()>
-    {
-        let b: T::Resp = self.parse_response()?;
-        let o = match self.opts.global_args.output_format {
-            OutputFormat::Plain => b.output().context("Failed to serialize response body")?,
-            OutputFormat::Json => {
-                serde_json::to_string_pretty(&b).context("Failed to serialize response body")?
-            }
-        };
-        println!("{}", o);
-        Ok(())
-    }
-    */
 }
 
 /// A simple wrapper for shutting down the local embedded node (for

@@ -100,19 +100,10 @@ async fn rpc(ctx: ockam::Context, (opts, cmd): (CommandGlobalOpts, CreateCommand
 async fn rpc_callback(mut cmd: CreateCommand, ctx: &ockam::Context, opts: CommandGlobalOpts) -> crate::Result<()> {
     // We apply the inverse transformation done in the `create` command.
     let from = cmd.node_opts.from.clone();
-    let mut rpc = Rpc1::new(ctx, &opts, &from)?;
     
-    eprintln!("before sending");
-    
-    let res = rpc.request_then_response(&mut cmd).await?;
-    eprintln!("after sending");
+    let res = Rpc1::new(ctx, &opts, &from)?.request_then_response(&mut cmd).await?;
+        
     let parsed = res.parse_body()?;
-
-    eprintln!("after sending, response: {:?}", parsed);
-//    let mut dec = Decoder::new(&res);
-//    let res: <CreateCommand as RpcCaller>::Resp = dec.decode().context("Failed to decode response body")?;
-
-//    let res = rpc.parse_response()?;
 
     route_to_multiaddr(&route![parsed.addr.to_string()])
         .map(|addr| println!("{}", addr))

@@ -280,8 +280,9 @@ async fn default_project<'a>(
             services: vec![], // TODO: define default services
             global_opts: Some(opts.clone()),
         };
-        let mut rpc = RpcBuilder1::new(ctx, opts, &nc.name).tcp(tcp).build()?;
-        rpc.request_then_response(&mut cmd).await?.parse_body()?.to_owned()
+        RpcBuilder1::new(ctx, opts, &nc.name).tcp(tcp)
+            .build()?
+            .request_then_response(&mut cmd).await?.parse_body()?.to_owned()
 //        let resp = rpc.request_then_response(&mut cmd).await?.parse_body()?.to_owned();
 //        resp.to_owned()
      //   cmd.parse_response(&raw_resp)?.to_owned()
@@ -303,21 +304,27 @@ async fn default_project<'a>(
 
     if default_project.access_route.is_empty() {
         print!("\nProject created. Waiting until it's operative...");
-        let cmd = crate::project::ShowCommand {
+        let mut cmd = crate::project::ShowCommand {
             space_id: space.id.to_string(),
             project_id: default_project.id.to_string(),
             node_opts: node_opts.clone(),
             cloud_opts: cloud_opts.clone(),
+            global_opts: Some(opts.clone())
         };
         loop {
             print!(".");
             std::io::stdout().flush()?;
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+            let project = RpcBuilder1::new(ctx, opts, &nc.name).tcp(tcp).build()?
+                .request_then_response(&mut cmd).await?.parse_body()?.to_owned();
+/*            
             let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
             rpc.request(api::project::show(&cmd)).await?;
             let project = rpc.parse_response::<Project>()?;
+*/
             if project.is_ready() {
-                default_project = project.to_owned();
+                default_project = project;
                 break;
             }
         }
