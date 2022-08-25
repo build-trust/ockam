@@ -114,11 +114,21 @@ teardown() {
   ockam node create n1
   ockam node create n2
 
-  ockam forwarder create --from forwarder_to_n2 --for /node/n2 --at /node/n1
-  run ockam message send hello --to /node/n1/service/forwarder_to_n2/service/uppercase
+  ockam forwarder create n1 --at /node/n1 --to /node/n2
+  run ockam message send hello --to /node/n1/service/forward_to_n1/service/uppercase
 
   assert_success
   assert_output "HELLO"
+}
+
+@test "create a forwarder with a dynamic name and send message through it" {
+  ockam node create n1
+  ockam node create n2
+
+  output=$(ockam forwarder create --at /node/n1 --to /node/n2  | \
+    ockam message send hello --to /node/n1/-/service/uppercase)
+
+  assert [ "$output" == "HELLO" ]
 }
 
 @test "create an inlet/outlet pair and move tcp traffic through it" {
@@ -132,15 +142,15 @@ teardown() {
   assert_success
 }
 
-@test "create an inlet/outlet pairwith a relay through a forwarder and move tcp traffic through it" {
+@test "create an inlet/outlet pair with a relay through a forwarder and move tcp traffic through it" {
   ockam node create relay
 
   ockam node create blue
   ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
-  ockam forwarder create --at /node/relay --from /service/forwarder_to_blue --for /node/blue
+  ockam forwarder create blue --at /node/relay --to /node/blue
 
   ockam node create green
-  ockam secure-channel create --from /node/green --to /node/relay/service/forwarder_to_blue/service/api \
+  ockam secure-channel create --from /node/green --to /node/relay/service/forward_to_blue/service/api \
     | ockam tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
 
   run curl --fail --head 127.0.0.1:7000
@@ -152,10 +162,10 @@ teardown() {
 # @test "via project" {
 #   ockam node create blue
 #   ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
-#   ockam forwarder create --at /project/default --from /service/forwarder_to_blue --for /node/blue
+#   ockam forwarder create blue --at /project/default --to /node/blue
 #
 #   ockam node create green
-#   ockam secure-channel create --from /node/green --to /project/default/service/forwarder_to_blue/service/api \
+#   ockam secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
 #     | ockam tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
 #
 #   run curl --fail --head 127.0.0.1:7000
