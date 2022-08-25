@@ -1,6 +1,7 @@
+use crate::error::ApiError;
 use crate::multiaddr_to_route;
 use crate::nodes::models::portal::{
-    CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
+    CreateInlet, CreateOutlet, DeleteInlet, InletList, InletStatus, OutletList, OutletStatus,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo};
 use crate::nodes::service::{map_multiaddr_err, random_alias};
@@ -95,6 +96,7 @@ impl NodeManager {
                 ))
             }
             Err(e) => {
+                info!(%alias, "ALIAS: ");
                 // TODO: Use better way to store inlets?
                 self.registry
                     .inlets
@@ -134,6 +136,7 @@ impl NodeManager {
 
         Ok(match res {
             Ok(_) => {
+                info!(%alias, "ALIAS: ");
                 // TODO: Use better way to store outlets?
                 self.registry.outlets.insert(
                     alias.clone(),
@@ -148,6 +151,7 @@ impl NodeManager {
                 ))
             }
             Err(e) => {
+                info!(%alias, "ALIAS: ");
                 // TODO: Use better way to store outlets?
                 self.registry
                     .outlets
@@ -161,5 +165,57 @@ impl NodeManager {
                 ))
             }
         })
+    }
+
+    pub(super) async fn delete_inlet<'a>(
+        &mut self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<Option<String>>> {
+        let DeleteInlet { ialias, .. } = dec.decode()?;
+        let alias = ialias.clone();
+
+        info!("Handling request to delete tcp inlet: {}", alias);
+
+        // TRY 1  try to stop then delete
+
+        match self.registry.inlets.get(alias.as_ref()) {
+            Some(inlet) => {
+                info!(%inlet.bind_addr, "Stop TCP Inlet");
+                self.tcp_transport
+                    .stop_inlet(inlet.bind_addr.to_owned())
+                    .await?;
+            }
+            None => {
+                trace!(%alias, "No TCP Inlet found for passed alias");
+                ApiError::generic("No TCP inlet found with this alias");
+            }
+        };
+
+        let res = if let Some(v) = self.registry.inlets.remove(alias.as_ref()) {
+            info!(%alias, "Removed TCP Inlet");
+            Some(v.bind_addr)
+        } else {
+            trace!(%alias, "No such TCP Inlet exists");
+            ApiError::generic("No such TCP Inlet exists");
+            None
+        };
+
+        Ok(Response::ok(req.id()).body(res))
+
+        // TRY 4 Just remove it
+
+        // Ok(match self.registry.inlets.remove(alias.as_ref()) {
+        //     Some(inlet) => {
+        //         info!(%alias, "Removed Inlet ");
+
+        //         Response::ok(req.id()).body(Some(inlet.bind_addr))
+        //     }
+        //     None => {
+        //         info!(%alias, "Cant remove Inlet");
+
+        //         Response::bad_request(req.id()).body(None)
+        //     }
+        // })
     }
 }

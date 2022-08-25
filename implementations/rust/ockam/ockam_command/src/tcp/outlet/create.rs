@@ -73,7 +73,7 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
+    pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
         let at = &self.at.clone();
         let node = get_final_element(at);

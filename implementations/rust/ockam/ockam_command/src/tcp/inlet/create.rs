@@ -70,7 +70,7 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
+    pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
         let command = CreateCommand {
             to: match clean_multiaddr(&self.to, &cfg.lookup()) {

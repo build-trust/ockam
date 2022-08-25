@@ -196,3 +196,24 @@ impl<'a> OutletList<'a> {
         }
     }
 }
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct DeleteInlet<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<5697215>,
+    #[n(1)] pub ialias: Cow<'a, str>,
+    #[n(2)] pub force: bool
+}
+
+impl<'a> DeleteInlet<'a> {
+    pub fn new<S: Into<Cow<'a, str>>>(ialias: S, force: bool) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            ialias: ialias.into(),
+            force,
+        }
+    }
+}

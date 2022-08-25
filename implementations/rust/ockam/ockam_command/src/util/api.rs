@@ -247,6 +247,34 @@ pub(crate) mod credentials {
     }
 }
 
+/// Helpers to create tcp API requests
+pub(crate) mod tcp {
+    pub(crate) mod inlet {
+        use ockam_api::nodes::models::portal::*;
+        use ockam_core::api::{Method, Request, RequestBuilder};
+
+        use crate::tcp::inlet::*;
+
+        pub(crate) fn delete(cmd: &DeleteCommand) -> RequestBuilder<'static, DeleteInlet<'static>> {
+            let payload = DeleteInlet::new(cmd.alias.to_owned(), cmd.force);
+            Request::builder(Method::Delete, "/node/inlet").body(payload)
+        }
+
+        pub(crate) fn list() -> RequestBuilder<'static, ()> {
+            Request::get("/node/inlet")
+        }
+    }
+
+    pub(crate) mod outlet {
+
+        use ockam_core::api::{Request, RequestBuilder};
+
+        pub(crate) fn list() -> RequestBuilder<'static, ()> {
+            Request::get("/node/outlet")
+        }
+    }
+}
+
 /// Helpers to create enroll API requests
 pub(crate) mod enroll {
     use crate::enroll::*;

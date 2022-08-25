@@ -434,7 +434,7 @@ impl NodeManager {
             (Get, ["node", "outlet"]) => self.get_outlets(req).to_vec()?,
             (Post, ["node", "inlet"]) => self.create_inlet(req, dec).await?.to_vec()?,
             (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
-            (Delete, ["node", "portal"]) => todo!(),
+            (Delete, ["node", "inlet"]) => self.delete_inlet(req, dec).await?.to_vec()?,
 
             // ==*== Spaces ==*==
             (Post, ["v0", "spaces"]) => self.create_space(ctx, dec).await?,
