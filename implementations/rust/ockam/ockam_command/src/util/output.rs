@@ -151,6 +151,19 @@ impl Output for Credential<'_> {
 
 impl Output for DeleteSecureChannelResponse<'_> {
     fn output(&self) -> anyhow::Result<String> {
-        Ok("DeleteSecureChannelResponse".to_string())
+        let mut w = String::new();
+        match &self.channel {
+            Some(ch) => write!(w, "deleted: {}", ch)?,
+            None => write!(w, "channel not found")?
+        }
+        Ok(w)
+    }
+}
+
+impl Output for Vec<Project<'_>> {
+    fn output(&self) -> anyhow::Result<String> {
+        let mut w = String::new();
+        write!(w, "Output for Vec<Project<'_>> : not implemented")?;
+        Ok(w)
     }
 }

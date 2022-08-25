@@ -24,7 +24,7 @@ use crate::node::NodeOpts;
 use crate::secure_channel::create::SecureChannelNodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
-use crate::util::{api, node_rpc, stop_node, RpcBuilder, RpcBuilderAlt, RpcCaller};
+use crate::util::{api, node_rpc, stop_node, RpcBuilder, RpcBuilderAlt};
 use crate::{exitcode, CommandGlobalOpts, EnrollCommand};
 
 #[derive(Clone, Debug, Args)]
@@ -261,15 +261,18 @@ async fn default_project<'a>(
     cloud_opts: &CloudOpts,
 ) -> crate::Result<Project<'a>> {
     // Get available project for the given space
-    let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
-    let mut available_projects: Vec<Project> = {
-        let cmd = crate::project::ListCommand {
-            node_opts: node_opts.clone(),
-            cloud_opts: cloud_opts.clone(),
-        };
-        rpc.request(api::project::list(&cmd)).await?;
-        rpc.parse_response::<Vec<Project>>()?
+//    let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
+
+    let mut cmd = crate::project::ListCommand {
+        node_opts: node_opts.clone(),
+        cloud_opts: cloud_opts.clone(),
     };
+    
+    let resp = RpcBuilderAlt::new(ctx, opts, &nc.name).tcp(tcp)
+        .build()?
+        .request_then_response(&mut cmd).await?;
+    let mut available_projects = resp.parse_body()?;
+    
     // If the space has no projects, create one
     let mut default_project = if available_projects.is_empty() {
         let mut cmd = crate::project::CreateCommand {
@@ -283,12 +286,6 @@ async fn default_project<'a>(
         RpcBuilderAlt::new(ctx, opts, &nc.name).tcp(tcp)
             .build()?
             .request_then_response(&mut cmd).await?.parse_body()?.to_owned()
-//        let resp = rpc.request_then_response(&mut cmd).await?.parse_body()?.to_owned();
-//        resp.to_owned()
-     //   cmd.parse_response(&raw_resp)?.to_owned()
-
-//        rpc.request(api::project::create(&cmd)).await?;
-//        rpc.parse_response::<Project>()?.to_owned()
     }
     // If it has, return the "default" project or first one on the list
     else {
@@ -296,8 +293,8 @@ async fn default_project<'a>(
             None => available_projects
                 .drain(..1)
                 .next()
-                .expect("already checked that is not empty")
-                .to_owned(),
+                .expect("already checked that is not empty"),
+                
             Some(p) => p.to_owned(),
         }
     };
@@ -316,15 +313,12 @@ async fn default_project<'a>(
             std::io::stdout().flush()?;
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
-            let project = RpcBuilderAlt::new(ctx, opts, &nc.name).tcp(tcp).build()?
-                .request_then_response(&mut cmd).await?.parse_body()?.to_owned();
-/*            
-            let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
-            rpc.request(api::project::show(&cmd)).await?;
-            let project = rpc.parse_response::<Project>()?;
-*/
+            let res = RpcBuilderAlt::new(ctx, opts, &nc.name).tcp(tcp).build()?
+                .request_then_response(&mut cmd).await?;
+            let project = res.parse_body()?;
+
             if project.is_ready() {
-                default_project = project;
+                default_project = project.to_owned();
                 break;
             }
         }
@@ -342,7 +336,7 @@ async fn default_project<'a>(
             .to_string(),
     )?;
     println!("\n{}", default_project.output()?);
-    Ok(default_project)
+    Ok(default_project.to_owned())
 }
 
 async fn create_secure_channel_to_project(

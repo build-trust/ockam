@@ -1,9 +1,8 @@
-use crate::util::{api, exitcode, node_rpc, stop_node, ConfigError, Rpc1, RpcCaller};
+use crate::util::{api, exitcode, node_rpc, stop_node, ConfigError, RpcAlt, RpcCaller};
 
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::identity::IdentityIdentifier;
-//use ockam::Context;
 use ockam_api::nodes::models::secure_channel::{ 
     CreateSecureChannelRequest,
     CreateSecureChannelResponse };
@@ -11,8 +10,6 @@ use ockam_api::nodes::models::secure_channel::{
 use ockam_api::{clean_multiaddr, route_to_multiaddr};
 use ockam_core::route;
 use ockam_multiaddr::MultiAddr;
-use minicbor::{Decode, Decoder, Encode};
-use anyhow::{anyhow, Context};
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -55,7 +52,7 @@ impl<'a> RpcCaller<'a> for CreateCommand {
     type Req = CreateSecureChannelRequest<'a>;
     type Resp = CreateSecureChannelResponse<'a>;
 
-    fn req(&mut self) -> ockam_core::api::RequestBuilder<'_, Self::Req> {
+    fn req(&self) -> ockam_core::api::RequestBuilder<'_, Self::Req> {
         let opts = self.global_opts.clone().unwrap();
 
         let (addr, _meta) =
@@ -63,7 +60,7 @@ impl<'a> RpcCaller<'a> for CreateCommand {
                 eprintln!("failed to normalize MultiAddr route");
                 std::process::exit(exitcode::USAGE);
             });
-        api::create_secure_channel(addr, self.authorized_identifier.take())
+        api::create_secure_channel(addr, self.authorized_identifier.clone())
     }
 }
 
@@ -77,7 +74,7 @@ async fn rpc_callback(mut cmd: CreateCommand, ctx: &ockam::Context, opts: Comman
     // We apply the inverse transformation done in the `create` command.
     let from = cmd.node_opts.from.clone();
     
-    let res = Rpc1::new(ctx, &opts, &from)?.request_then_response(&mut cmd).await?;
+    let res = RpcAlt::new(ctx, &opts, &from)?.request_then_response(&mut cmd).await?;
         
     let parsed = res.parse_body()?;
 

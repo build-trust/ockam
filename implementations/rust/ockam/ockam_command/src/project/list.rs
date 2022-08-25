@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Context};
 use clap::Args;
 use minicbor::Decoder;
+use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
 use tracing::debug;
 
 use ockam_api::cloud::project::Project;
@@ -12,6 +13,7 @@ use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::{api, connect_to, exitcode, stop_node};
 use crate::{CommandGlobalOpts, OutputFormat};
+use crate::util::{RpcCaller};
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
@@ -33,6 +35,18 @@ impl ListCommand {
             }
         };
         connect_to(port, (opts, cmd), list);
+    }
+}
+
+impl<'a> RpcCaller<'a> for ListCommand {
+    type Req = BareCloudRequestWrapper<'a>;
+    type Resp = Vec<Project<'a>>;
+
+    fn req(&'a self) -> ockam_core::api::RequestBuilder<'_, Self::Req> {
+        use ockam_core::api::{Method, Request};
+
+        Request::builder(Method::Get, "v0/projects")
+            .body(CloudRequestWrapper::bare(self.cloud_opts.route()))
     }
 }
 

@@ -1,18 +1,12 @@
-use anyhow::{anyhow, Context};
 use clap::Args;
-use minicbor::Decoder;
-use tracing::debug;
 
 use ockam_api::cloud::project::Project;
-use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{Method, Request, Response, Status};
-use ockam_core::Route;
 
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
-use crate::util::{api, connect_to, exitcode, stop_node, Rpc1, RpcCaller, node_rpc};
-use crate::{CommandGlobalOpts, OutputFormat};
+use crate::util::{stop_node, RpcAlt, RpcCaller, node_rpc};
+use crate::{CommandGlobalOpts};
 use ockam_api::cloud::{CloudRequestWrapper};
 use ockam_api::cloud::project::{CreateProject};
 
@@ -52,15 +46,12 @@ impl<'a> RpcCaller<'a> for CreateCommand {
     type Req = CloudRequestWrapper<'a, CreateProject<'a>>;
     type Resp = Project<'a>;
 
-    fn req(&'a mut self) -> ockam_core::api::RequestBuilder<'a, Self::Req> {
-        api::project::create(self)
-/*        let project_name = self.project_name.clone().as_str();
-        let services = self.services.clone();
-        let b = CreateProject::new(project_name, &[], &services);
-        let req = Request::builder(Method::Post, format!("v0/projects/{}", self.space_id))
-            .body(CloudRequestWrapper::new(b, self.cloud_opts.route()));
-        req  
-        */  
+    fn req(&'a self) -> ockam_core::api::RequestBuilder<'a, Self::Req> {
+        use ockam_core::api::{Method, Request};
+
+        let b = CreateProject::new(self.project_name.as_str(), &[], &self.services);
+        Request::builder(Method::Post, format!("v0/projects/{}", self.space_id))
+            .body(CloudRequestWrapper::new(b, self.cloud_opts.route()))
     }
 }
 
@@ -74,9 +65,8 @@ async fn rpc_callback(mut cmd: CreateCommand, ctx: &ockam::Context, opts: Comman
     // We apply the inverse transformation done in the `create` command.
 
     let node = cmd.node_opts.api_node.clone();
-    Rpc1::new(ctx, &opts, &node)?
-        .request_then_response(&mut cmd).await?.parse_body()?.print(&opts)?;
-    Ok(())
+    RpcAlt::new(ctx, &opts, &node)?
+        .request_then_response(&mut cmd).await?.parse_body()?.print(&opts)
 }
 /*
 async fn create(

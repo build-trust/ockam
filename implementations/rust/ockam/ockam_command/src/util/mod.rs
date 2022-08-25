@@ -285,13 +285,13 @@ impl<'a, T: RpcCaller<'a>> RpcResponse<'a, T> {
         }
     }
 }
-pub trait RpcCaller<'a> {
+pub trait RpcCaller<'a>: 'a {
     type Req: Encode<()>;
     type Resp: Decode<'a, ()> + Output + serde::Serialize;
 
-    fn req(&'a mut self) -> RequestBuilder<'_, Self::Req>;
+    fn req(&'a self) -> RequestBuilder<'_, Self::Req>;
 /*
-    fn rpc<'c, Fut>(&mut self, rpc_obj: &Rpc1<'c>) -> core::pin::Pin<Box<Fut>>
+    fn rpc<'c, Fut>(&mut self, rpc_obj: &RpcAlt<'c>) -> core::pin::Pin<Box<Fut>>
         where
             Fut: core::future::Future<Output = crate::Result<Vec<u8>>> + Send + 'a
     {
@@ -333,14 +333,14 @@ impl<'c, 'b> RpcBuilderAlt<'c, 'b> {
         self
     }
 
-    pub fn build(self) -> anyhow::Result<Rpc1<'c>> {
-        let mut rpc = Rpc1::new(self.ctx, self.opts, self.node)?;
+    pub fn build(self) -> anyhow::Result<RpcAlt<'c>> {
+        let mut rpc = RpcAlt::new(self.ctx, self.opts, self.node)?;
         rpc.to = self.to;
         rpc.tcp = self.tcp;
         Ok(rpc)
     }
 }
-pub struct Rpc1<'c> {
+pub struct RpcAlt<'c> {
     ctx: &'c ockam::Context,
     cfg: NodeConfig,
     to: Route,
@@ -348,7 +348,7 @@ pub struct Rpc1<'c> {
     tcp: Option<&'c TcpTransport>,
 }
 
-impl<'c> Rpc1<'c> {
+impl<'c> RpcAlt<'c> {
     pub fn new(
         ctx: &'c ockam::Context,
         opts: &'c CommandGlobalOpts,

@@ -1,17 +1,11 @@
-use anyhow::{anyhow, Context};
 use clap::Args;
-use minicbor::Decoder;
-use tracing::debug;
 
 use ockam_api::cloud::project::Project;
-use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{Response, Status};
-use ockam_core::Route;
 
-use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
-use crate::util::{api, connect_to, exitcode, stop_node, Rpc1, RpcCaller, node_rpc};
-use crate::{CommandGlobalOpts, OutputFormat};
+use crate::node::NodeOpts;
+use crate::util::{api, stop_node, RpcAlt, RpcCaller, node_rpc};
+use crate::{CommandGlobalOpts};
 use ockam_api::cloud::{BareCloudRequestWrapper};
 
 #[derive(Clone, Debug, Args)]
@@ -50,7 +44,7 @@ impl<'a> RpcCaller<'a> for ShowCommand {
     type Req = BareCloudRequestWrapper<'a>;
     type Resp = Project<'a>;
 
-    fn req(&'a mut self) -> ockam_core::api::RequestBuilder<'_, Self::Req> {
+    fn req(&'a self) -> ockam_core::api::RequestBuilder<'_, Self::Req> {
         api::project::show(self)
     }
 }
@@ -66,7 +60,7 @@ async fn rpc_callback(mut cmd: ShowCommand, ctx: &ockam::Context, opts: CommandG
     use crate::util::output::Output;
 
     let node = cmd.node_opts.api_node.clone();
-    Rpc1::new(ctx, &opts, &node)?
+    RpcAlt::new(ctx, &opts, &node)?
         .request_then_response(&mut cmd).await?.parse_body()?.print(&opts)?;
     Ok(())
 }
