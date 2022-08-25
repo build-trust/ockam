@@ -19,6 +19,18 @@ quickcheck! {
         a.0 == MultiAddr::try_from(a.0.as_ref()).unwrap()
     }
 
+    fn serde_text(a: Addr) -> bool {
+        let json = serde_json::to_string(&a.0).unwrap();
+        let addr = serde_json::from_str(&json).unwrap();
+        a.0 == addr
+    }
+
+    fn serde_binary(a: Addr) -> bool {
+        let byts = bincode::serialize(&a.0).unwrap();
+        let addr = bincode::deserialize(&byts).unwrap();
+        a.0 == addr
+    }
+
     fn push_back_value(a: Addr) -> bool {
         let mut ma = MultiAddr::default();
         for proto in a.0.iter() {
