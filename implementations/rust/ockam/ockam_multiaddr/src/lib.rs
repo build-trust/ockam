@@ -340,6 +340,18 @@ impl MultiAddr {
         })
     }
 
+    /// Try to decode the given CBOR bytes as a multi-address.
+    ///
+    /// Alternative to the `minicbor::Decode` implementation, accepting an
+    /// explicit codec registry.
+    #[cfg(feature = "cbor")]
+    pub fn try_from_cbor(input: &[u8], r: Registry) -> Result<Self, Error> {
+        let bytes = minicbor::Decoder::new(input)
+            .bytes()
+            .map_err(|e| Error::message(format!("invalid cbor: {e}")))?;
+        Self::try_from_bytes(bytes, r)
+    }
+
     /// Does this multi-address contain any protocol components?
     pub fn is_empty(&self) -> bool {
         self.as_ref().is_empty()
@@ -552,6 +564,28 @@ impl<'de> serde::Deserialize<'de> for MultiAddr {
             let b = <&'de [u8]>::deserialize(d)?;
             MultiAddr::try_from(b).map_err(serde::de::Error::custom)
         }
+    }
+}
+
+#[cfg(feature = "cbor")]
+impl<C> minicbor::Encode<C> for MultiAddr {
+    fn encode<W>(
+        &self,
+        e: &mut minicbor::Encoder<W>,
+        _: &mut C,
+    ) -> Result<(), minicbor::encode::Error<W::Error>>
+    where
+        W: minicbor::encode::Write,
+    {
+        e.bytes(self.as_ref())?.ok()
+    }
+}
+
+#[cfg(feature = "cbor")]
+impl<'b, C> minicbor::Decode<'b, C> for MultiAddr {
+    fn decode(d: &mut minicbor::Decoder<'b>, _: &mut C) -> Result<Self, minicbor::decode::Error> {
+        MultiAddr::try_from(d.bytes()?)
+            .map_err(|e| minicbor::decode::Error::message(format!("{e}")))
     }
 }
 
