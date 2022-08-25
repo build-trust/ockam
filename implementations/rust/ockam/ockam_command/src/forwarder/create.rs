@@ -27,10 +27,6 @@ pub struct CreateCommand {
     #[clap(long = "from", display_order = 900)]
     from: Option<String>,
 
-    /// Forwarding address.
-    #[clap(hide = true)]
-    address: Option<String>,
-
     /// Orchestrator address to resolve projects present in the `at` argument
     #[clap(flatten)]
     cloud_opts: CloudOpts,
@@ -77,13 +73,13 @@ async fn rpc(
 
 /// Construct a request to create a forwarder
 fn req(cmd: &CreateCommand) -> RequestBuilder<CreateForwarder> {
-    let (at_rust_node, address) = match &cmd.from {
+    let (at_rust_node, alias) = match &cmd.from {
         Some(s) => (true, Some(get_final_element(s))),
-        None => (false, cmd.address.as_deref()),
+        None => (false, None),
     };
     Request::builder(Method::Post, "/node/forwarder").body(CreateForwarder::new(
         &cmd.at,
-        address,
+        alias,
         at_rust_node,
     ))
 }
