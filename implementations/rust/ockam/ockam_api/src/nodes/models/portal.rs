@@ -77,7 +77,7 @@ impl<'a> CreateOutlet<'a> {
 #[cbor(map)]
 pub struct InletStatus<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<1581592>,
+    #[n(0)] tag: TypeTag<9302588>,
     #[b(1)] pub bind_addr: Cow<'a, str>,
     #[b(2)] pub worker_addr: Cow<'a, str>,
     #[b(3)] pub alias: Cow<'a, str>,

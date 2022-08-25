@@ -14,7 +14,7 @@ use ockam_core::TypeTag;
 pub struct CreateTransport<'a> {
     #[cfg(feature = "tag")]
     #[n(0)]
-    tag: TypeTag<1407961>,
+    tag: TypeTag<1503320>,
     /// The type of transport to create
     #[n(1)] pub tt: TransportType,
     /// The mode the transport should operate in
@@ -42,7 +42,7 @@ impl<'a> CreateTransport<'a> {
 pub struct DeleteTransport<'a> {
     #[cfg(feature = "tag")]
     #[n(0)]
-    tag: TypeTag<1407961>,
+    tag: TypeTag<4739996>,
     /// The transport ID to delete
     #[n(1)] pub tid: Cow<'a, str>,
     /// The user has indicated that deleting the API transport is A-OK

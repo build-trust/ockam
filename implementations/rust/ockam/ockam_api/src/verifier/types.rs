@@ -13,7 +13,7 @@ use ockam_core::TypeTag;
 #[cbor(map)]
 pub struct VerifyRequest<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<6844116>,
+    #[n(0)] tag: TypeTag<4592146>,
     #[b(1)] cred: CowBytes<'a>,
     #[n(2)] subj: IdentityIdentifier,
     #[b(3)] auth: BTreeMap<IdentityIdentifier, CowBytes<'a>>

@@ -111,7 +111,7 @@ impl<'a> StartEchoerServiceRequest<'a> {
 #[cbor(map)]
 pub struct StartAuthenticatorRequest<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<4724285>,
+    #[n(0)] tag: TypeTag<2749734>,
     #[b(1)] addr: &'a str,
     #[b(2)] path: &'a Path,
     #[b(3)] proj: &'a ByteSlice
