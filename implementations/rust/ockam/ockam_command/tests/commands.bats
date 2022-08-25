@@ -137,6 +137,8 @@ teardown() {
   assert_success
 }
 
+# FAILING
+
 # @test "via project" {
 #   ockam node create blue
 #   ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
@@ -154,7 +156,7 @@ teardown() {
 #   ockam node create n1
 #   ockam node create n2
 #
-#   run ockam message send "hello" --from n1 --to /node/n2/service/uppercase
+#   run ockam message send "hello" --from /node/n1 --to /node/n2/service/uppercase
 #
 #   assert_success
 #   assert_output "HELLO"
