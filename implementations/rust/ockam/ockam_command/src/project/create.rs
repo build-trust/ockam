@@ -52,7 +52,7 @@ impl<'a> RpcCaller<'a> for CreateCommand {
     type Req = CloudRequestWrapper<'a, CreateProject<'a>>;
     type Resp = Project<'a>;
 
-    fn req(&'a mut self) -> ockam_core::api::RequestBuilder<'_, Self::Req> {
+    fn req(&'a mut self) -> ockam_core::api::RequestBuilder<'a, Self::Req> {
         api::project::create(self)
 /*        let project_name = self.project_name.clone().as_str();
         let services = self.services.clone();

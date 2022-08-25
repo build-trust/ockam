@@ -49,30 +49,6 @@ impl CreateCommand {
         self.global_opts = Some(opts.clone());
         node_rpc(rpc, (opts, self));
     }
-/*
-    async fn rpc_callback(
-        self,
-        ctx: &ockam::Context,
-        opts: CommandGlobalOpts,
-    ) -> crate::Result<()> {
-        let (addr, _meta) =
-            clean_multiaddr(&self.addr, &opts.config.get_lookup()).unwrap_or_else(|| {
-                eprintln!("failed to normalize MultiAddr route");
-                std::process::exit(exitcode::USAGE);
-            });
-
-        let mut rpc = Rpc::new(ctx, &opts, &self.node_opts.from)?;
-
-        rpc.request(api::create_secure_channel(addr, self.authorized_identifier))
-            .await?;
-
-        let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
-
-        route_to_multiaddr(&route![res.addr.to_string()])
-            .map(|addr| println!("{}", addr))
-            .ok_or_else(|| ConfigError::InvalidSecureChannelAddress(res.addr.to_string()).into())
-    }
-    */
 }
 
 impl<'a> RpcCaller<'a> for CreateCommand {

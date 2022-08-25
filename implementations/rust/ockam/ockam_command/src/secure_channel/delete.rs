@@ -30,7 +30,7 @@ impl<'a> RpcCaller<'a> for DeleteCommand {
     type Req = DeleteSecureChannelRequest<'a>;
     type Resp = DeleteSecureChannelResponse<'a>;
 
-    fn req(&mut self) -> ockam_core::api::RequestBuilder<'_, Self::Req> {
+    fn req(&'a mut self) -> ockam_core::api::RequestBuilder<'_, Self::Req> {
         let addr = multiaddr_to_addr(&self.channel)
             .ok_or_else(|| ConfigError::InvalidSecureChannelAddress(self.channel.to_string())).unwrap();
         api::delete_secure_channel(&addr)

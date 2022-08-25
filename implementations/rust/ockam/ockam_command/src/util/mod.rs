@@ -285,7 +285,7 @@ impl<'a, T: RpcCaller<'a>> RpcResponse<'a, T> {
         }
     }
 }
-pub trait RpcCaller<'a>: 'a {
+pub trait RpcCaller<'a> {
     type Req: Encode<()>;
     type Resp: Decode<'a, ()> + Output + serde::Serialize;
 
@@ -299,33 +299,26 @@ pub trait RpcCaller<'a>: 'a {
     }
 */
 }
-pub struct RpcBuilder1<'c, 'b> {
-//    pub struct RpcBuilder1<'c: 'd, 'd, 'b, T: RpcCaller<'d>> {
+pub struct RpcBuilderAlt<'c, 'b> {
     ctx: &'c ockam::Context,
-//    cmd: &'c mut T,
     opts: &'c CommandGlobalOpts,
     node: &'b str,
     to: Route,
     tcp: Option<&'c TcpTransport>,
-//    _marker: &'d PhantomData<()>,
 }
 
-impl<'c, 'b> RpcBuilder1<'c, 'b> {
-//    impl<'c, 'd, 'b, T: RpcCaller<'d>> RpcBuilder1<'c, 'd, 'b, T> {
+impl<'c, 'b> RpcBuilderAlt<'c, 'b> {
     pub fn new(
         ctx: &'c ockam::Context,
-//        cmd: &'c mut T,
         opts: &'c CommandGlobalOpts,
         node: &'b str,
     ) -> Self {
         Self {
             ctx,
-//            cmd,
             opts,
             node,
             to: NODEMANAGER_ADDR.into(),
             tcp: None,
-//            _marker: &PhantomData,
         }
     }
 
@@ -341,7 +334,6 @@ impl<'c, 'b> RpcBuilder1<'c, 'b> {
     }
 
     pub fn build(self) -> anyhow::Result<Rpc1<'c>> {
-//        pub fn build(self) -> anyhow::Result<Rpc1<'c, 'd, T>> {
         let mut rpc = Rpc1::new(self.ctx, self.opts, self.node)?;
         rpc.to = self.to;
         rpc.tcp = self.tcp;
@@ -349,36 +341,30 @@ impl<'c, 'b> RpcBuilder1<'c, 'b> {
     }
 }
 pub struct Rpc1<'c> {
-//    pub struct Rpc1<'c: 'd, 'd, T: RpcCaller<'d>> {
     ctx: &'c ockam::Context,
-//    cmd: &'c mut T,
     cfg: NodeConfig,
     to: Route,
     /// Needed for when we want to call multiple Rpc's from a single command.
     tcp: Option<&'c TcpTransport>,
-//    _marker: &'d PhantomData<()>,
 }
 
 impl<'c> Rpc1<'c> {
-//    impl<'c: 'd, 'd, T: RpcCaller<'d>> Rpc1<'c, 'd, T> {
     pub fn new(
         ctx: &'c ockam::Context,
-//        cmd: &'c mut T,
         opts: &'c CommandGlobalOpts,
         node: &str,
     ) -> anyhow::Result<Self> {
         let cfg = opts.config.get_node(node)?;
         Ok(Self {
             ctx,
-//            cmd,
             cfg,
             to: NODEMANAGER_ADDR.into(),
             tcp: None,
-//            _marker: &PhantomData,
         })
     }
 
     pub async fn request_then_response<'d, T: RpcCaller<'d>>(&mut self, cmd: &'d mut T) 
+//    pub async fn request_then_response<'d, T: RpcCaller<'d>>(&mut self, cmd: &'d mut T) 
         -> crate::Result<RpcResponse<'d, T>> {
         let route = self
             .route_impl(self.ctx)

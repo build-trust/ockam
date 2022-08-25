@@ -24,7 +24,7 @@ use crate::node::NodeOpts;
 use crate::secure_channel::create::SecureChannelNodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
-use crate::util::{api, node_rpc, stop_node, RpcBuilder, RpcBuilder1, RpcCaller};
+use crate::util::{api, node_rpc, stop_node, RpcBuilder, RpcBuilderAlt, RpcCaller};
 use crate::{exitcode, CommandGlobalOpts, EnrollCommand};
 
 #[derive(Clone, Debug, Args)]
@@ -280,7 +280,7 @@ async fn default_project<'a>(
             services: vec![], // TODO: define default services
             global_opts: Some(opts.clone()),
         };
-        RpcBuilder1::new(ctx, opts, &nc.name).tcp(tcp)
+        RpcBuilderAlt::new(ctx, opts, &nc.name).tcp(tcp)
             .build()?
             .request_then_response(&mut cmd).await?.parse_body()?.to_owned()
 //        let resp = rpc.request_then_response(&mut cmd).await?.parse_body()?.to_owned();
@@ -316,7 +316,7 @@ async fn default_project<'a>(
             std::io::stdout().flush()?;
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
-            let project = RpcBuilder1::new(ctx, opts, &nc.name).tcp(tcp).build()?
+            let project = RpcBuilderAlt::new(ctx, opts, &nc.name).tcp(tcp).build()?
                 .request_then_response(&mut cmd).await?.parse_body()?.to_owned();
 /*            
             let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
@@ -369,6 +369,7 @@ async fn create_secure_channel_to_project(
     let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
     rpc.request(api::secure_channel::create(&cmd)).await?;
     let sc = rpc.parse_response::<CreateSecureChannelResponse>()?;
+
     println!("\nSecure channel to project");
     println!("  {}", sc.output()?);
     Ok(())
