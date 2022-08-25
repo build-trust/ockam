@@ -1,5 +1,6 @@
 use anyhow::Context as _;
 use clap::Args;
+use rand::prelude::random;
 
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
@@ -17,6 +18,10 @@ use crate::Result;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
+    /// Name of the forwarder (Optional).
+    #[clap(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
+    pub forwarder_name: String,
+
     /// Node for which to create the forwarder.
     #[clap(long, name = "NODE", display_order = 900)]
     to: String,
@@ -24,10 +29,6 @@ pub struct CreateCommand {
     /// Route to the node on which to create the forwarder.
     #[clap(long, name = "ROUTE", default_value = DEFAULT_ORCHESTRATOR_ADDRESS, display_order = 900)]
     at: MultiAddr,
-
-    /// Forwarding address.
-    #[clap(long, display_order = 900)]
-    from: Option<String>,
 
     /// Orchestrator address to resolve projects present in the `at` argument
     #[clap(flatten)]
@@ -69,11 +70,18 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) 
 
 /// Construct a request to create a forwarder
 fn req(cmd: &CreateCommand, at_rust_node: bool) -> anyhow::Result<RequestBuilder<CreateForwarder>> {
-    let alias = cmd.from.as_ref().map(|s| get_final_element(s));
+    let alias = if at_rust_node {
+        let mut name = "forward_to_".to_owned();
+        name.push_str(&cmd.forwarder_name);
+        name
+    } else {
+        cmd.forwarder_name.clone()
+    };
+
     Ok(
         Request::builder(Method::Post, "/node/forwarder").body(CreateForwarder::new(
             &cmd.at,
-            alias,
+            Some(alias),
             at_rust_node,
         )),
     )

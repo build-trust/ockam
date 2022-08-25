@@ -23,7 +23,7 @@ pub struct CreateForwarder<'a> {
 }
 
 impl<'a> CreateForwarder<'a> {
-    pub fn new(address: &MultiAddr, alias: Option<&'a str>, at_rust_node: bool) -> Self {
+    pub fn new(address: &MultiAddr, alias: Option<String>, at_rust_node: bool) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: Default::default(),
