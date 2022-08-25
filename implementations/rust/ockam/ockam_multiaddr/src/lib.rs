@@ -531,6 +531,30 @@ impl AsRef<[u8]> for MultiAddr {
     }
 }
 
+#[cfg(feature = "serde")]
+impl serde::Serialize for MultiAddr {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        if s.is_human_readable() {
+            s.serialize_str(&self.to_string())
+        } else {
+            s.serialize_bytes(self.as_ref())
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for MultiAddr {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        if d.is_human_readable() {
+            let s = <&'de str>::deserialize(d)?;
+            MultiAddr::try_from(s).map_err(serde::de::Error::custom)
+        } else {
+            let b = <&'de [u8]>::deserialize(d)?;
+            MultiAddr::try_from(b).map_err(serde::de::Error::custom)
+        }
+    }
+}
+
 /// Iterator over binary [`Protocol`] values of a [`MultiAddr`].
 #[derive(Debug)]
 pub struct ProtoIter<'a>(ValidBytesIter<'a>);

@@ -10,16 +10,19 @@ description = "An implementation of multiformats.io/multiaddr"
 publish = true
 
 [features]
-std = ["unsigned-varint/std"]
+std = ["unsigned-varint/std", "serde?/std"]
 
 [dependencies]
 once_cell       = { version = "1.10.0", default-features = false, features = ["alloc"] }
+serde           = { version = "1.0.144", default-features = false, optional = true }
 tinyvec         = { version = "1.5.1", features = ["alloc"] }
 unsigned-varint = "0.7.1"
 
 [dev-dependencies]
+bincode         = "1.1.3"
 multiaddr       = "0.14"
-ockam_multiaddr = { path = ".", features = ["std"] }
+ockam_multiaddr = { path = ".", features = ["std", "serde"] }
 quickcheck      = "1.0.3"
 rand            = "0.8.5"
+serde_json      = "1.0.85"
 
