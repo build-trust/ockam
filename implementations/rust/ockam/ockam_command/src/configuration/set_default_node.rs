@@ -16,6 +16,11 @@ impl SetDefaultNodeCommand {
         match opts.config.select_node(name) {
             Some(_) => {
                 opts.config.set_default_node(&name.to_string());
+                // Save the config update
+                if let Err(e) = opts.config.atomic_update().run() {
+                    eprintln!("failed to update configuration: {}", e);
+                    std::process::exit(exitcode::IOERR);
+                }
             }
             None => {
                 eprintln!("Node ({}) is not registered yet", command.name);
