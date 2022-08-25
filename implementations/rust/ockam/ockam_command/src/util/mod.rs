@@ -296,7 +296,7 @@ where
         |ctx, a| async {
             let res = f(ctx, a).await;
             if let Err(e) = res {
-                error!("{e}");
+                error!("{e:?}");
                 eprintln!("{e}");
                 std::process::exit(e.code());
             }
@@ -305,7 +305,7 @@ where
         a,
     );
     if let Err(e) = res {
-        eprintln!("Ockam node failed: {:?}", e);
+        eprintln!("Ockam node failed: {e}");
         std::process::exit(exitcode::SOFTWARE);
     }
 }
