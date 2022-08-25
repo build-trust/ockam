@@ -142,7 +142,7 @@ teardown() {
   assert_success
 }
 
-@test "create an inlet/outlet pair with a relay through a forwarder and move tcp traffic through it" {
+@test "create an inlet/outlet pair with relay through a forwarder and move tcp traffic through it" {
   ockam node create relay
 
   ockam node create blue
@@ -157,17 +157,17 @@ teardown() {
   assert_success
 }
 
-# FAILING
+# this will succeed if already enrolled with
+# ockam enroll
+@test "create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
+  ockam node create blue
+  ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  ockam forwarder create blue --at /project/default --to /node/blue
 
-# @test "via project" {
-#   ockam node create blue
-#   ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
-#   ockam forwarder create blue --at /project/default --to /node/blue
-#
-#   ockam node create green
-#   ockam secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
-#     | ockam tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
-#
-#   run curl --fail --head 127.0.0.1:7000
-#   assert_success
-# }
+  ockam node create green
+  ockam secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
+    | ockam tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
+
+  run curl --fail --head 127.0.0.1:7000
+  assert_success
+}
