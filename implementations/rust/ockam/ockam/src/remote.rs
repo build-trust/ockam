@@ -187,7 +187,7 @@ impl RemoteForwarder {
         let registration_route = hub_route
             .into()
             .modify()
-            .append("forwarding_service")
+            .append("static_forwarding_service")
             .into();
 
         // let remote_address = Address::random_local().without_type().to_string();
@@ -201,7 +201,7 @@ impl RemoteForwarder {
         );
 
         debug!(
-            "Starting ephemeral RemoteForwarder at {}",
+            "Starting static RemoteForwarder without heartbeats at {}",
             &addresses.main_address
         );
         ctx.start_worker(addresses.main_address, forwarder).await?;
