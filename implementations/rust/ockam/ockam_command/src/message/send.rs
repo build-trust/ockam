@@ -8,7 +8,7 @@ use ockam_core::api::{Method, Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
 
 use crate::util::api::CloudOpts;
-use crate::util::{embedded_node, node_rpc, stop_node, RpcBuilder};
+use crate::util::{embedded_node, get_final_element, node_rpc, stop_node, RpcBuilder};
 use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 
 const EXAMPLES: &str = "\
@@ -59,7 +59,7 @@ pub struct SendCommand {
 impl SendCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: SendCommand) {
         if let Some(node) = &cmd.from {
-            let node = node.clone();
+            let node = get_final_element(node).to_string();
             node_rpc(send_message_via_connection_to_a_node, (opts, cmd, node))
         } else if let Err(e) = embedded_node(send_message_from_embedded_node, (opts, cmd)) {
             eprintln!("Ockam node failed: {:?}", e,);

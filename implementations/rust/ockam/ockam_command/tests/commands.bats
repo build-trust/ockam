@@ -59,12 +59,22 @@ teardown() {
   assert_output "HELLO"
 }
 
+@test "create two nodes and send message from one to the other - with /node in --from argument" {
+  ockam node create n1
+  ockam node create n2
+
+  run ockam message send "hello" --from /node/n1 --to /node/n2/service/uppercase
+
+  assert_success
+  assert_output "HELLO"
+}
+
 @test "create a secure channel between two nodes and send message through it" {
   ockam node create n1
   ockam node create n2
 
   output=$(ockam secure-channel create --from /node/n1 --to /node/n2/service/api)
-  run ockam message send hello --from n1 --to $output/service/uppercase
+  run ockam message send hello --from /node/n1 --to $output/service/uppercase
 
   assert_success
   assert_output "HELLO"
@@ -84,7 +94,7 @@ teardown() {
   for i in {1..3}; do ockam node create "n$i"; done
 
   output=$(ockam secure-channel create --from n1 --to /node/n2/node/n3/service/api | \
-    ockam message send "hello ockam" --from n1 --to -/service/uppercase)
+    ockam message send "hello ockam" --from /node/n1 --to -/service/uppercase)
 
   assert [ "$output" == "HELLO OCKAM" ]
 }
@@ -95,7 +105,7 @@ teardown() {
 
   ockam secure-channel-listener create "listener" --at /node/n2
   output=$(ockam secure-channel create --from /node/n1 --to /node/n2/service/listener | \
-    ockam message send hello --from n1 --to -/service/uppercase)
+    ockam message send hello --from /node/n1 --to -/service/uppercase)
 
   assert [ "$output" == "HELLO" ]
 }
@@ -111,7 +121,7 @@ teardown() {
   assert_output "HELLO"
 }
 
-@test "create and inlet/outlet pair and move tcp traffic through it" {
+@test "create an inlet/outlet pair and move tcp traffic through it" {
   ockam node create n1
   ockam node create n2
 
@@ -122,7 +132,7 @@ teardown() {
   assert_success
 }
 
-@test "create and inlet/outlet pair inlet/outlet pair with a relay through a forwarder" {
+@test "create an inlet/outlet pairwith a relay through a forwarder and move tcp traffic through it" {
   ockam node create relay
 
   ockam node create blue
@@ -150,14 +160,4 @@ teardown() {
 #
 #   run curl --fail --head 127.0.0.1:7000
 #   assert_success
-# }
-
-# @test "create two nodes and send message from one to the other - with /node in --from argument" {
-#   ockam node create n1
-#   ockam node create n2
-#
-#   run ockam message send "hello" --from /node/n1 --to /node/n2/service/uppercase
-#
-#   assert_success
-#   assert_output "HELLO"
 # }
