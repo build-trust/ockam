@@ -31,6 +31,12 @@ quickcheck! {
         a.0 == addr
     }
 
+    fn cbor(a: Addr) -> bool {
+        let byts = minicbor::to_vec(&a.0).unwrap();
+        let addr = minicbor::decode(&byts).unwrap();
+        a.0 == addr
+    }
+
     fn push_back_value(a: Addr) -> bool {
         let mut ma = MultiAddr::default();
         for proto in a.0.iter() {

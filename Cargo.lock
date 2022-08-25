@@ -2380,6 +2380,7 @@ name = "ockam_multiaddr"
 version = "0.4.0"
 dependencies = [
  "bincode",
+ "minicbor",
  "multiaddr",
  "ockam_multiaddr",
  "once_cell",
