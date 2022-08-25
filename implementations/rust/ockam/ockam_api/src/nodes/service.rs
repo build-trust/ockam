@@ -10,7 +10,7 @@ use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, W
 use ockam_core::api::{Method, Request, Response, Status};
 use ockam_core::compat::{boxed::Box, string::String};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_identity::{Identity, IdentityIdentifier};
+use ockam_identity::{Identity, IdentityIdentifier, PublicIdentity};
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
@@ -22,9 +22,11 @@ use crate::nodes::config::NodeManConfig;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 
+pub mod message;
+
+mod credentials;
 mod forwarder;
 mod identity;
-pub mod message;
 mod portals;
 mod secure_channel;
 mod services;
@@ -67,8 +69,9 @@ pub struct NodeManager {
 
     skip_defaults: bool,
 
-    pub(crate) vault: Option<Vault>,
+    vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
+    authorities: Option<Vec<PublicIdentity>>,
     pub(crate) authenticated_storage: LmdbStorage,
 
     pub(crate) registry: Registry,
@@ -77,6 +80,26 @@ pub struct NodeManager {
 pub struct IdentityOverride {
     pub identity: Vec<u8>,
     pub vault_path: PathBuf,
+}
+
+impl NodeManager {
+    pub(crate) fn identity(&self) -> Result<&Identity<Vault>> {
+        self.identity
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))
+    }
+
+    pub(crate) fn vault(&self) -> Result<&Vault> {
+        self.vault
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Vault doesn't exist"))
+    }
+
+    pub(crate) fn authorities(&self) -> Result<&Vec<PublicIdentity>> {
+        self.authorities
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Authorities don't exist"))
+    }
 }
 
 impl NodeManager {
@@ -161,6 +184,7 @@ impl NodeManager {
             skip_defaults,
             vault,
             identity,
+            authorities: None,
             authenticated_storage,
             registry: Default::default(),
         };
@@ -206,6 +230,9 @@ impl NodeManager {
 
         self.create_secure_channel_listener_impl("api".into(), authorized_identifiers)
             .await?;
+
+        // TODO: Add after authority becomes available at this point
+        // self.start_credentials_service_impl("credentials", false /* Not available yet */).await?;
 
         Ok(())
     }
@@ -283,6 +310,17 @@ impl NodeManager {
                 self.long_identity(req).await?.to_vec()?
             }
 
+            // ==*== Credentials ==*==
+            (Post, ["node", "credentials", "authority"]) => {
+                self.set_authorities(req, dec).await?.to_vec()?
+            }
+            (Post, ["node", "credentials", "actions", "get"]) => {
+                self.get_credential(ctx, req, dec).await?.to_vec()?
+            }
+            (Post, ["node", "credentials", "actions", "present"]) => {
+                self.present_credential(req, dec).await?.to_vec()?
+            }
+
             // ==*== Secure channels ==*==
             // TODO: Change to RequestBuilder format
             (Get, ["node", "secure_channel"]) => self.list_secure_channels(req).to_vec()?,
@@ -325,6 +363,10 @@ impl NodeManager {
             (Post, ["node", "services", "verifier"]) => {
                 self.start_verifier_service(ctx, req, dec).await?.to_vec()?
             }
+            (Post, ["node", "services", "credentials"]) => self
+                .start_credentials_service(ctx, req, dec)
+                .await?
+                .to_vec()?,
 
             // ==*== Forwarder commands ==*==
             (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req, dec).await?,

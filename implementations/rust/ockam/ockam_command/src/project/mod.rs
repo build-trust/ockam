@@ -3,7 +3,6 @@ mod add_member;
 mod create;
 mod delete;
 mod delete_enroller;
-mod get_credential;
 mod list;
 mod list_enrollers;
 mod show;
@@ -11,12 +10,12 @@ pub mod util;
 
 use clap::{Args, Subcommand};
 
+pub use crate::credentials::get_credential::GetCredentialCommand;
 pub use add_enroller::AddEnrollerCommand;
 pub use add_member::AddMemberCommand;
 pub use create::CreateCommand;
 pub use delete::DeleteCommand;
 pub use delete_enroller::DeleteEnrollerCommand;
-pub use get_credential::GetCredentialCommand;
 pub use list::ListCommand;
 pub use list_enrollers::ListEnrollersCommand;
 pub use show::ShowCommand;
@@ -62,10 +61,6 @@ pub enum ProjectSubcommand {
     /// An authorised enroller can add members to a project.
     #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     AddMember(AddMemberCommand),
-
-    /// An authorised member can request a credential from the projects's authority.
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    GetCredential(GetCredentialCommand),
 }
 
 impl ProjectCommand {
@@ -79,7 +74,6 @@ impl ProjectCommand {
             ProjectSubcommand::ListEnrollers(scmd) => ListEnrollersCommand::run(opts, scmd),
             ProjectSubcommand::DeleteEnroller(scmd) => DeleteEnrollerCommand::run(opts, scmd),
             ProjectSubcommand::AddMember(scmd) => scmd.run(opts),
-            ProjectSubcommand::GetCredential(scmd) => scmd.run(opts),
         }
     }
 }

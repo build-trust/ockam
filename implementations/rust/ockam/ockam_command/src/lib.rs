@@ -3,6 +3,7 @@
 mod authenticated;
 mod completion;
 mod configuration;
+mod credentials;
 mod enroll;
 mod forwarder;
 mod identity;
@@ -43,6 +44,7 @@ use crate::vault::VaultCommand;
 use clap::{crate_version, ArgEnum, Args, ColorChoice, Parser, Subcommand};
 use util::setup_logging;
 
+use crate::credentials::CredentialsCommand;
 pub use error::{Error, Result};
 
 const HELP_TEMPLATE: &str = "\
@@ -215,6 +217,10 @@ pub enum OckamSubcommand {
     // HIDDEN
     /// Manage ockam node configuration values
     #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
+    Credentials(CredentialsCommand),
+
+    /// Manage ockam node configuration values
+    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
     Configuration(ConfigurationCommand),
 
     /// Manage authenticated attributes.
@@ -323,5 +329,6 @@ pub fn run() {
         }
         OckamSubcommand::Service(command) => ServiceCommand::run(opts, command),
         OckamSubcommand::Completion(command) => CompletionCommand::run(command),
+        OckamSubcommand::Credentials(command) => CredentialsCommand::run(opts, command),
     }
 }
