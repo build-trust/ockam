@@ -174,6 +174,9 @@ impl RemoteForwarder {
     }
 
     /// Create and start new static RemoteForwarder without heart beats
+    // This is a temporary kind of RemoteForwarder that will only run on
+    // rust nodes (hence the `forwarding_service` addr to create static forwarders).
+    // We will use it while we don't have heartbeats implemented on rust nodes.
     pub async fn create_static_without_heartbeats(
         ctx: &Context,
         hub_route: impl Into<Route>,
@@ -187,7 +190,7 @@ impl RemoteForwarder {
         let registration_route = hub_route
             .into()
             .modify()
-            .append("static_forwarding_service")
+            .append("forwarding_service")
             .into();
 
         // let remote_address = Address::random_local().without_type().to_string();

@@ -24,7 +24,7 @@ impl Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.inner, f)
+        std::fmt::Debug::fmt(&self.inner, f)
     }
 }
 

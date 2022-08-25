@@ -1,4 +1,5 @@
 use crate::config::lookup::{ConfigLookup, InternetAddress, LookupMeta};
+use anyhow::anyhow;
 use core::str::FromStr;
 use ockam::{Address, TCP};
 use ockam_core::{Route, LOCAL};
@@ -151,6 +152,53 @@ pub fn route_to_multiaddr(r: &Route) -> Option<MultiAddr> {
         }
     }
     Some(ma)
+}
+
+/// Tells whether the input MultiAddr references a local node or a remote node.
+///
+/// This should be called before cleaning the MultiAddr.
+pub fn is_local_node(ma: &MultiAddr) -> anyhow::Result<bool> {
+    let at_rust_node;
+    if let Some(p) = ma.iter().next() {
+        match p.code() {
+            // A MultiAddr starting with "/project" will always reference a remote node.
+            Project::CODE => {
+                at_rust_node = false;
+            }
+            // A MultiAddr starting with "/node" will always reference a local node.
+            Node::CODE => {
+                at_rust_node = true;
+            }
+            // A "/dnsaddr" will be local if it is "localhost"
+            DnsAddr::CODE => {
+                at_rust_node = p
+                    .cast::<DnsAddr>()
+                    .map(|dnsaddr| (&*dnsaddr).eq("localhost"))
+                    .ok_or_else(|| anyhow!("Invalid \"dnsaddr\" value"))?;
+            }
+            // A "/ip4" will be local if it matches the loopback address
+            Ip4::CODE => {
+                at_rust_node = p
+                    .cast::<Ip4>()
+                    .map(|ip4| ip4.is_loopback())
+                    .ok_or_else(|| anyhow!("Invalid \"ip4\" value"))?;
+            }
+            // A "/ip6" will be local if it matches the loopback address
+            Ip6::CODE => {
+                at_rust_node = p
+                    .cast::<Ip6>()
+                    .map(|ip6| ip6.is_loopback())
+                    .ok_or_else(|| anyhow!("Invalid \"ip6\" value"))?;
+            }
+            // A MultiAddr starting with "/service" could reference both local and remote nodes.
+            _ => {
+                return Err(anyhow!("Invalid address, protocol not supported"));
+            }
+        }
+        Ok(at_rust_node)
+    } else {
+        Err(anyhow!("Invalid address"))
+    }
 }
 
 #[test]
