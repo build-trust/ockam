@@ -23,6 +23,7 @@ use crate::{CommandGlobalOpts, OutputFormat};
 
 pub mod api;
 pub mod exitcode;
+pub mod node;
 pub mod startup;
 
 mod addon;
