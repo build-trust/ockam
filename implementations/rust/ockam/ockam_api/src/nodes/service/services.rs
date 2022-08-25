@@ -3,11 +3,11 @@ use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::identity::IdentityService;
 use crate::nodes::models::services::{
-    StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartEchoerServiceRequest,
-    StartIdentityServiceRequest, StartUppercaseServiceRequest, StartVaultServiceRequest,
-    StartVerifierService,
+    StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
+    StartEchoerServiceRequest, StartIdentityServiceRequest, StartUppercaseServiceRequest,
+    StartVaultServiceRequest, StartVerifierService,
 };
-use crate::nodes::registry::VerifierServiceInfo;
+use crate::nodes::registry::{CredentialsServiceInfo, VerifierServiceInfo};
 use crate::nodes::NodeManager;
 use crate::uppercase::Uppercase;
 use crate::vault::VaultService;
@@ -117,6 +117,52 @@ impl NodeManager {
         self.registry
             .verifier_services
             .insert(addr, VerifierServiceInfo::default());
+
+        Ok(Response::ok(req.id()))
+    }
+
+    pub(super) async fn start_credentials_service_impl<'a>(
+        &mut self,
+        addr: Address,
+        oneway: bool,
+    ) -> Result<()> {
+        if self.registry.credentials_services.contains_key(&addr) {
+            return Err(ApiError::generic(
+                "credentials service exists at this address",
+            ));
+        }
+
+        let identity = self.identity()?;
+
+        let authorities = self.authorities()?;
+
+        identity
+            .start_credentials_exchange_worker(
+                authorities.clone(),
+                addr.clone(),
+                !oneway,
+                self.authenticated_storage.async_try_clone().await?,
+            )
+            .await?;
+
+        self.registry
+            .credentials_services
+            .insert(addr, CredentialsServiceInfo::default());
+
+        Ok(())
+    }
+
+    pub(super) async fn start_credentials_service<'a>(
+        &mut self,
+        _ctx: &Context,
+        req: &'a Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let body: StartCredentialsService = dec.decode()?;
+        let addr: Address = body.address().into();
+        let oneway = body.oneway();
+
+        self.start_credentials_service_impl(addr, oneway).await?;
 
         Ok(Response::ok(req.id()))
     }

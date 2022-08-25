@@ -210,6 +210,39 @@ pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
+pub(crate) mod credentials {
+    use super::*;
+    use hex::FromHexError;
+    use ockam_api::nodes::models::credentials::{
+        GetCredentialRequest, PresentCredentialRequest, SetAuthorityRequest,
+    };
+
+    pub(crate) fn present_credential(
+        to: &MultiAddr,
+        oneway: bool,
+    ) -> RequestBuilder<PresentCredentialRequest> {
+        let b = PresentCredentialRequest::new(to, oneway);
+        Request::builder(Method::Post, "/node/credentials/actions/present").body(b)
+    }
+
+    pub(crate) fn set_authority(authorities: &[String]) -> RequestBuilder<SetAuthorityRequest> {
+        let authorities: std::result::Result<Vec<Vec<u8>>, FromHexError> =
+            authorities.iter().map(hex::decode).collect();
+        let authorities = authorities.unwrap();
+
+        let b = SetAuthorityRequest::new(authorities);
+        Request::builder(Method::Post, "/node/credentials/authority").body(b)
+    }
+
+    pub(crate) fn get_credential(
+        from: &MultiAddr,
+        overwrite: bool,
+    ) -> RequestBuilder<GetCredentialRequest> {
+        let b = GetCredentialRequest::new(from, overwrite);
+        Request::builder(Method::Post, "/node/credentials/actions/get").body(b)
+    }
+}
+
 /// Helpers to create enroll API requests
 pub(crate) mod enroll {
     use crate::enroll::*;

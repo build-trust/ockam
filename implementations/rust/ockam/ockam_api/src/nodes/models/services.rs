@@ -163,3 +163,32 @@ impl<'a> StartVerifierService<'a> {
         self.addr
     }
 }
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartCredentialsService<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<6467937>,
+    #[b(1)] addr: &'a str,
+    #[n(2)] oneway: bool,
+}
+
+impl<'a> StartCredentialsService<'a> {
+    pub fn new(addr: &'a str, oneway: bool) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr,
+            oneway,
+        }
+    }
+
+    pub fn address(&self) -> &'a str {
+        self.addr
+    }
+
+    pub fn oneway(&self) -> bool {
+        self.oneway
+    }
+}

@@ -1,5 +1,4 @@
 use super::map_anyhow_err;
-use crate::error::ApiError;
 use crate::nodes::models::vault::CreateVaultRequest;
 use crate::nodes::NodeManager;
 use minicbor::Decoder;
@@ -12,12 +11,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 impl NodeManager {
-    pub(crate) fn vault(&self) -> Result<&Vault> {
-        self.vault
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Vault doesn't exist"))
-    }
-
     pub fn default_vault_path(node_dir: &Path) -> PathBuf {
         node_dir.join("vault.json")
     }

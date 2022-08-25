@@ -6,7 +6,9 @@ use clap::{Args, Subcommand};
 use minicbor::Decoder;
 use ockam::Context;
 use ockam_api::error::ApiError;
-use ockam_api::nodes::models::services::{StartAuthenticatorRequest, StartVerifierService};
+use ockam_api::nodes::models::services::{
+    StartAuthenticatorRequest, StartCredentialsService, StartVerifierService,
+};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{Error, Method, Request, Response, Status};
 use ockam_core::Route;
@@ -39,6 +41,13 @@ pub enum StartSubCommand {
     Verifier {
         #[clap(long, default_value = "verifier")]
         addr: String,
+    },
+    Credentials {
+        #[clap(long, default_value = "credentials")]
+        addr: String,
+
+        #[clap(long)]
+        oneway: bool,
     },
     Authenticator {
         #[clap(long, default_value = "authenticator")]
@@ -86,6 +95,13 @@ impl StartCommand {
             StartSubCommand::Verifier { .. } => {
                 connect_to(port, command, |mut ctx, cmd, rte| async {
                     let a = start_verifier_service(&mut ctx, cmd, rte).await;
+                    let b = stop_node(ctx).await;
+                    a.and(b)
+                })
+            }
+            StartSubCommand::Credentials { .. } => {
+                connect_to(port, command, |mut ctx, cmd, rte| async {
+                    let a = start_credentials_service(&mut ctx, cmd, rte).await;
                     let b = stop_node(ctx).await;
                     a.and(b)
                 })
@@ -285,6 +301,43 @@ pub async fn start_verifier_service(
     }
 
     Err(anyhow!("Failed to start verifier service"))
+}
+
+pub async fn start_credentials_service(
+    ctx: &mut Context,
+    cmd: StartCommand,
+    mut route: Route,
+) -> Result<()> {
+    let (addr, oneway) = match cmd.create_subcommand {
+        StartSubCommand::Credentials { addr, oneway } => (addr, oneway),
+        _ => unreachable!(),
+    };
+
+    let req = Request::builder(Method::Post, "/node/services/credentials")
+        .body(StartCredentialsService::new(&addr, oneway))
+        .to_vec()?;
+
+    let res: Vec<u8> = ctx
+        .send_and_receive(route.modify().append(NODEMANAGER_ADDR), req)
+        .await?;
+
+    let mut dec = Decoder::new(&res);
+    let hdr: Response = dec.decode()?;
+
+    if let Some(Status::Ok) = hdr.status() {
+        println!("Credentials service started at address: {addr}");
+        return Ok(());
+    }
+
+    if hdr.has_body() {
+        if let Ok(err) = dec.decode::<Error>() {
+            if let Some(msg) = err.message() {
+                return Err(anyhow!("Failed to start credentials service: {}", msg));
+            }
+        }
+    }
+
+    Err(anyhow!("Failed to start credentials service"))
 }
 
 pub async fn start_authenticator_service(

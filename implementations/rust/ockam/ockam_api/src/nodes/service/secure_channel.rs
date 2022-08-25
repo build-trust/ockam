@@ -10,6 +10,7 @@ use minicbor::Decoder;
 use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
+use ockam_core::AsyncTryClone;
 use ockam_identity::{IdentityIdentifier, TrustMultiIdentifiersPolicy};
 use ockam_multiaddr::MultiAddr;
 use std::sync::Arc;
@@ -20,11 +21,8 @@ impl NodeManager {
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     ) -> Result<Address> {
-        let identity = self
-            .identity
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))?;
-        let key_route = IdentityRouteKey::new(identity, &sc_route).await?;
+        let identity = self.identity()?.async_try_clone().await?;
+        let key_route = IdentityRouteKey::new(&identity, &sc_route).await?;
 
         // If channel was already created, do nothing.
         if let Some(channel) = self.registry.secure_channels.get(&key_route) {
@@ -58,13 +56,13 @@ impl NodeManager {
 
         trace!(%sc_route, %sc_addr, "Created secure channel");
         // Store the channel using the target route as a key
-        let key_route = IdentityRouteKey::new(identity, &sc_route).await?;
+        let key_route = IdentityRouteKey::new(&identity, &sc_route).await?;
         let v = Arc::new(SecureChannelInfo::new(sc_route, sc_addr.clone()));
         self.registry.secure_channels.insert(key_route, v.clone());
 
         // Store the channel using its address as a key
         let scr: Route = sc_addr.clone().into();
-        let key_addr = IdentityRouteKey::new(identity, &scr).await?;
+        let key_addr = IdentityRouteKey::new(&identity, &scr).await?;
         self.registry.secure_channels.insert(key_addr, v);
 
         // Return secure channel address
@@ -122,10 +120,7 @@ impl NodeManager {
             body.channel
         );
 
-        let identity = self
-            .identity
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))?;
+        let identity = self.identity()?.async_try_clone().await?;
 
         let sc_address = Address::from(body.channel.as_ref());
 
@@ -136,11 +131,11 @@ impl NodeManager {
 
         // Remove both the Address and Route entries from the registry.
         let sc_addr = sc_address.clone().into();
-        let key_addr = IdentityRouteKey::new(identity, &sc_addr).await?;
+        let key_addr = IdentityRouteKey::new(&identity, &sc_addr).await?;
         let res = if let Some(v) = self.registry.secure_channels.remove(&key_addr) {
             trace!(%sc_addr, "Removed secure channel");
             let sc_route = v.route();
-            let key_route = IdentityRouteKey::new(identity, sc_route).await?;
+            let key_route = IdentityRouteKey::new(&identity, sc_route).await?;
             self.registry.secure_channels.remove(&key_route);
             trace!(%sc_route, "Removed secure channel");
             Some(sc_address)
@@ -174,10 +169,7 @@ impl NodeManager {
             addr
         );
 
-        let identity = self
-            .identity
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))?;
+        let identity = self.identity()?;
 
         match authorized_identifiers {
             Some(ids) => {
