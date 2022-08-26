@@ -66,9 +66,26 @@ impl OckamConfig {
         let config_dir = inner
             .directories
             .as_ref()
-            .expect("configuration is in an invalid state")
+            .context("configuration is in an invalid state")?
             .config_dir();
-        std::fs::remove_dir_all(config_dir).context("Failed to delete config directory")
+        if let Err(e) = std::fs::remove_dir_all(config_dir) {
+            match e.kind() {
+                std::io::ErrorKind::NotFound => {}
+                _ => return Err(e.into()),
+            }
+        };
+        let nodes_dir = inner
+            .directories
+            .as_ref()
+            .context("configuration is in an invalid state")?
+            .data_local_dir();
+        if let Err(e) = std::fs::remove_dir_all(nodes_dir) {
+            match e.kind() {
+                std::io::ErrorKind::NotFound => {}
+                _ => return Err(e.into()),
+            }
+        };
+        Ok(())
     }
 
     /// Get available global configuration values
@@ -207,14 +224,11 @@ impl OckamConfig {
         let state_dir = inner
             .directories
             .as_ref()
-            .expect("configuration is in an invalid state")
+            .context("configuration is in an invalid state")?
             .data_local_dir()
             .join(slugify(&format!("node-{}", name)));
 
-        if let Err(e) = create_dir_all(&state_dir) {
-            eprintln!("failed to create new node state directory: {}", e);
-            std::process::exit(exitcode::CANTCREAT);
-        }
+        create_dir_all(&state_dir).context("failed to create new node state directory")?;
 
         // Add this node to the config lookup table
         inner.lookup.set_node(name, bind.into());

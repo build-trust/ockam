@@ -1,8 +1,7 @@
-use crate::{
-    util::{exitcode, startup},
-    CommandGlobalOpts,
-};
+use crate::{util::startup, CommandGlobalOpts};
 use clap::Args;
+use sysinfo::{get_current_pid, ProcessExt, System, SystemExt};
+use tracing::{debug, trace};
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
@@ -14,73 +13,105 @@ pub struct DeleteCommand {
     #[clap(long, short)]
     all: bool,
 
-    /// Should the node be terminated with SIGKILL instead of SIGTERM
-    #[clap(display_order = 900, long, short)]
-    sigkill: bool,
-
     /// Clean up config directories and all nodes state directories
     #[clap(display_order = 901, long, short)]
     force: bool,
 }
 
 impl DeleteCommand {
-    pub fn run(opts: CommandGlobalOpts, command: DeleteCommand) {
-        if command.all {
-            let node_names: Vec<String> = {
-                let inner = &opts.config.get_inner();
-
-                if inner.nodes.is_empty() {
-                    eprintln!("No nodes registered on this system!");
-                    std::process::exit(exitcode::IOERR)
-                }
-
-                inner.nodes.iter().map(|(name, _)| name.clone()).collect()
-            };
-
-            for node in node_names {
-                delete_node(&opts, &node, command.sigkill)
-            }
-
-            if command.force {
-                if let Err(e) = opts.config.remove() {
-                    eprintln!("{e}");
-                    std::process::exit(exitcode::IOERR)
-                }
-            }
-        } else {
-            delete_node(&opts, &command.node_name, command.sigkill);
+    pub fn run(opts: CommandGlobalOpts, cmd: DeleteCommand) {
+        if let Err(e) = run_impl(opts, cmd) {
+            eprintln!("{}", e);
+            std::process::exit(e.code());
         }
     }
 }
 
-pub fn delete_node(opts: &CommandGlobalOpts, node_name: &String, sigkill: bool) {
-    let cfg = &opts.config;
-    let pid = match cfg.get_node_pid(node_name) {
-        Ok(pid) => pid,
-        Err(e) => {
-            eprintln!("Failed to delete node: {}", e);
-            std::process::exit(exitcode::IOERR);
+fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
+    if cmd.all {
+        // Try to delete all nodes found in the config file
+        let nn: Vec<String> = {
+            let inner = &opts.config.get_inner();
+            inner.nodes.iter().map(|(name, _)| name.clone()).collect()
+        };
+        for node_name in nn.iter() {
+            // Deleting a node can fail if there are inconsistencies between the config file and the
+            // node state directory (e.g. due to manual manipulation of the config file).
+            // We fail silently and continue with the next node.
+            match delete_node(&opts, node_name, cmd.force) {
+                Ok(_) => {
+                    println!("Deleted node '{}'", node_name);
+                }
+                Err(e) => {
+                    debug!(%node_name, ?e, "Failed to delete node");
+                }
+            }
         }
-    };
-
-    if let Some(pid) = pid {
-        startup::stop(pid, sigkill);
+        // If force is enabled
+        if cmd.force {
+            // delete the config and nodes directories
+            opts.config.remove()?;
+            // and all dangling/orphan ockam processes
+            if let Ok(cpid) = get_current_pid() {
+                let s = System::new_all();
+                for (pid, process) in s.processes() {
+                    if pid != &cpid && process.name() == "ockam" {
+                        process.kill();
+                    }
+                }
+            }
+        }
+        // If not, persist updates to the config file
+        else if let Err(e) = opts.config.atomic_update().run() {
+            eprintln!("Failed to update config file. You might need to run the command with --force to delete all config directories");
+            return Err(crate::Error::new(crate::exitcode::IOERR, e));
+        }
+    } else {
+        delete_node(&opts, &cmd.node_name, cmd.force)?;
+        opts.config.atomic_update().run()?;
+        println!("Deleted node '{}'", &cmd.node_name);
     }
+    Ok(())
+}
 
-    if let Err(e) = cfg.get_node_dir(node_name).map(std::fs::remove_dir_all) {
-        eprintln!("Failed to delete node directory: {}", e);
-        std::process::exit(exitcode::IOERR);
+fn delete_node(opts: &CommandGlobalOpts, node_name: &str, sigkill: bool) -> anyhow::Result<()> {
+    trace!(%node_name, "Deleting node");
+    // Execute deletion operations without propagating errors
+    let ops = [
+        delete_node_pid(opts, node_name, sigkill),
+        delete_node_config(opts, node_name),
+    ];
+    // Propagate errors once all operations have been executed
+    for r in ops.into_iter() {
+        r?;
     }
+    Ok(())
+}
 
-    if let Err(e) = cfg.delete_node(node_name) {
-        eprintln!("failed to remove node from config: {}", e);
-        std::process::exit(exitcode::IOERR);
+fn delete_node_pid(opts: &CommandGlobalOpts, node_name: &str, sigkill: bool) -> anyhow::Result<()> {
+    trace!(%node_name, "Deleting node pid");
+    // Stop the process PID if it has one assigned in the config file
+    if let Some(pid) = opts.config.get_node_pid(node_name)? {
+        startup::stop(pid, sigkill)?;
+        let addr = format!("127.0.0.1:{}", opts.config.get_node_port(node_name));
+        // Give some room for the process to stop
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        // If fails to bind, the port is already taken, so we try to stop the process
+        if std::net::TcpListener::bind(&addr).is_err() {
+            startup::stop(pid, sigkill)?;
+        }
     }
+    Ok(())
+}
 
-    if let Err(e) = cfg.atomic_update().run() {
-        eprintln!("failed to update configuration: {}", e);
-        std::process::exit(exitcode::IOERR);
-    }
-
-    println!("Deleted node '{}'", node_name);
+fn delete_node_config(opts: &CommandGlobalOpts, node_name: &str) -> anyhow::Result<()> {
+    trace!(%node_name, "Deleting node config");
+    // Try removing the node's directory
+    let _ = opts
+        .config
+        .get_node_dir(node_name)
+        .map(std::fs::remove_dir_all);
+    // Remove the node's info from the config file
+    opts.config.delete_node(node_name)?;
+    Ok(())
 }
