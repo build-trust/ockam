@@ -2291,6 +2291,7 @@ dependencies = [
  "ockam_multiaddr",
  "ockam_vault",
  "open",
+ "quickcheck",
  "rand 0.8.5",
  "reqwest",
  "serde",

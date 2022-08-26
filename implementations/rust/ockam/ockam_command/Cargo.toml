@@ -87,3 +87,4 @@ ockam_core = { path = "../ockam_core", version = "^0.64.0" }
 
 [dev-dependencies]
 assert_cmd = "2"
+quickcheck = "1"

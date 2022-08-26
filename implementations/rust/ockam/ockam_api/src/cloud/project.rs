@@ -1,6 +1,6 @@
-use crate::HexBytes;
 use crate::error::ApiError;
 use crate::multiaddr_to_addr;
+use crate::HexBytes;
 use minicbor::{Decode, Encode};
 use ockam_core::CowStr;
 use ockam_core::Result;

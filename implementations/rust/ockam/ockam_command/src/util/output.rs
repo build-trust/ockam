@@ -9,6 +9,7 @@ use ockam_api::cloud::space::Space;
 use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
 use ockam_api::route_to_multiaddr;
 use ockam_core::route;
+use std::cmp;
 
 /// Trait to control how a given type will be printed as a CLI output.
 ///
@@ -71,68 +72,77 @@ impl Output for Vec<Space<'_>> {
     }
 }
 
-impl Output for Project<'_> {
-    fn output(&self) -> anyhow::Result<String> {
-        let mut w = String::new();
-        write!(w, "Project")?;
-        write!(w, "\n  Id: {}", self.id)?;
-        write!(w, "\n  Name: {}", self.name)?;
-        write!(w, "\n  Users: {}", comma_separated(&self.users))?;
-        write!(w, "\n  Services: {}", comma_separated(&self.services))?;
-        write!(w, "\n  Access route: {}", self.access_route)?;
-        write!(
-            w,
-            "\n  Identity identifier: {}",
-            self.identity
-                .as_ref()
-                .map(|i| i.to_string())
-                .unwrap_or_default()
-        )?;
-        write!(
-            w,
-            "\n  Authority access route: {:?}",
-            self.authority_access_route
-        )?;
-        write!(
-            w,
-            "\n  Authority identity: {}",
-            self.authority_identity
-                .as_ref()
-                .unwrap_or(&ockam_api::HexBytes::default())
-        )?;
-        Ok(w)
-    }
-}
-
 impl Output for Vec<Project<'_>> {
     fn output(&self) -> anyhow::Result<String> {
-        let mut rows = vec![];
-        for Project {
-            id,
-            name,
-            users,
-            space_name,
-            ..
-        } in self
-        {
-            rows.push([
-                id.cell(),
-                name.cell(),
-                comma_separated(users).cell(),
-                space_name.cell(),
-            ]);
+        let mut rows = Vec::new();
+        for p in self {
+            rows.push([p.output()?.cell()])
         }
         let table = rows
             .table()
-            .title([
-                "Id".cell().bold(true),
-                "Name".cell().bold(true),
-                "Users".cell().bold(true),
-                "Space".cell().bold(true),
-            ])
+            .title(["Projects".cell().bold(true)])
             .display()?
             .to_string();
         Ok(table)
+    }
+}
+
+#[rustfmt::skip]
+impl Output for Project<'_> {
+    fn output(&self) -> anyhow::Result<String> {
+        const MAX_WIDTH: usize = 80;
+        const SPACES: usize = 4;
+
+        let mut w = String::new();
+        write!(w, "Project")?;
+        write!(w, "\n  Id: {}", self.id)?;
+
+        let prefix = "  Name: ";
+        let value: Vec<char> = self.name.chars().collect();
+        write!(w, "\n{prefix}{}", wrapped_string(prefix.len(), SPACES, MAX_WIDTH, &value))?;
+
+        let prefix = "  Users: ";
+        let value: Vec<char> = comma_separated(&self.users).chars().collect();
+        write!(w, "\n{prefix}{}", wrapped_string(prefix.len(), SPACES, MAX_WIDTH, &value))?;
+
+        let prefix = "  Services: ";
+        let value: Vec<char> = comma_separated(&self.services).chars().collect();
+        write!(w, "\n{prefix}{}", wrapped_string(prefix.len(), SPACES, MAX_WIDTH, &value))?;
+
+        let prefix = "  Access route: ";
+        let value: Vec<char> = self.access_route.to_string().chars().collect();
+        write!(w, "\n{prefix}{}", wrapped_string(prefix.len(), SPACES, MAX_WIDTH, &value))?;
+
+        let prefix = "  Identity identifier: ";
+        let value: Vec<char> = self
+            .identity
+            .as_ref()
+            .map(|i| i.to_string())
+            .unwrap_or_else(|| "N/A".to_string())
+            .chars()
+            .collect();
+        write!(w, "\n{prefix}{}", wrapped_string(prefix.len(), SPACES, MAX_WIDTH, &value))?;
+
+        let prefix = "  Authority access route: ";
+        let value: Vec<char> = self
+            .authority_access_route
+            .as_deref()
+            .unwrap_or("N/A")
+            .chars()
+            .collect();
+        write!(w, "\n{prefix}{}", wrapped_string(prefix.len(), SPACES, MAX_WIDTH, &value))?;
+
+        let prefix = "  Authority identity: ";
+        let value: Vec<char> = self
+            .authority_identity
+            .as_ref()
+            .map(|b| b.to_string())
+            .unwrap_or_else(|| "N/A".to_string())
+            .chars()
+            .collect::<Vec<char>>();
+        write!(w, "\n{prefix}{}", wrapped_string(prefix.len(), SPACES, MAX_WIDTH, &value))?;
+
+        Ok(w)
     }
 }
 
@@ -181,5 +191,52 @@ impl Output for Vec<Enroller<'_>> {
 impl Output for Credential<'_> {
     fn output(&self) -> anyhow::Result<String> {
         Ok(self.to_string())
+    }
+}
+
+/// A naive way to ensure some string is not exceeding a certain width.
+///
+/// This function takes a char slice and turns it into a string with
+/// interspersed newlines. No newline is more that prefix + max characters
+/// from the previous one.
+///
+/// # Panics
+///
+/// - If spaces >= max
+/// - If prefix >= max
+fn wrapped_string(prefix: usize, spaces: usize, max: usize, val: &[char]) -> String {
+    assert!(prefix <= max);
+    assert!(spaces <= max);
+    let (first, rest) = val.split_at(cmp::min(val.len(), max - prefix));
+    let mut out = String::from_iter(first.iter());
+    let mut iter = rest.chunks(max - spaces).peekable();
+    let whitespace = std::iter::repeat(' ').take(spaces);
+    if iter.peek().is_some() {
+        out += "\n";
+        out.extend(whitespace.clone())
+    }
+    while let Some(line) = iter.next() {
+        out += &String::from_iter(line.iter().copied());
+        if iter.peek().is_some() {
+            out += "\n";
+            out.extend(whitespace.clone())
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use quickcheck::{quickcheck, TestResult};
+
+    quickcheck! {
+        fn prop_wrapped_string(prefix: usize, spaces: usize, max: usize, input: String) -> TestResult {
+            if spaces >= max || prefix >= max {
+                return TestResult::discard()
+            }
+            let chars: Vec<char> = input.chars().collect();
+            let output = super::wrapped_string(prefix, spaces, max, &chars);
+            TestResult::from_bool(output.split_whitespace().all(|c| c.chars().count() <= max))
+        }
     }
 }
