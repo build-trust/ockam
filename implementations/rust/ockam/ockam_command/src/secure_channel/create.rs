@@ -3,9 +3,9 @@ use crate::util::{api, exitcode, node_rpc, stop_node, ConfigError, RpcAlt, RpcCa
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::identity::IdentityIdentifier;
-use ockam_api::nodes::models::secure_channel::{ 
-    CreateSecureChannelRequest,
-    CreateSecureChannelResponse };
+use ockam_api::nodes::models::secure_channel::{
+    CreateSecureChannelRequest, CreateSecureChannelResponse,
+};
 
 use ockam_api::{clean_multiaddr, route_to_multiaddr};
 use ockam_core::route;
@@ -64,18 +64,27 @@ impl<'a> RpcCaller<'a> for CreateCommand {
     }
 }
 
-async fn rpc(ctx: ockam::Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> crate::Result<()> {
+async fn rpc(
+    ctx: ockam::Context,
+    (opts, cmd): (CommandGlobalOpts, CreateCommand),
+) -> crate::Result<()> {
     let res = rpc_callback(cmd, &ctx, opts).await;
     stop_node(ctx).await?;
     res
 }
 
-async fn rpc_callback(mut cmd: CreateCommand, ctx: &ockam::Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+async fn rpc_callback(
+    mut cmd: CreateCommand,
+    ctx: &ockam::Context,
+    opts: CommandGlobalOpts,
+) -> crate::Result<()> {
     // We apply the inverse transformation done in the `create` command.
     let from = cmd.node_opts.from.clone();
-    
-    let res = RpcAlt::new(ctx, &opts, &from)?.request_then_response(&mut cmd).await?;
-        
+
+    let res = RpcAlt::new(ctx, &opts, &from)?
+        .request_then_response(&mut cmd)
+        .await?;
+
     let parsed = res.parse_body()?;
 
     route_to_multiaddr(&route![parsed.addr.to_string()])

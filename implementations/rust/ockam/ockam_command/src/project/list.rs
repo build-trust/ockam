@@ -11,9 +11,9 @@ use ockam_core::Route;
 
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
+use crate::util::RpcCaller;
 use crate::util::{api, connect_to, exitcode, stop_node};
 use crate::{CommandGlobalOpts, OutputFormat};
-use crate::util::{RpcCaller};
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {

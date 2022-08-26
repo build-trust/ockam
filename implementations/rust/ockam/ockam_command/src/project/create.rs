@@ -5,11 +5,10 @@ use ockam_api::cloud::project::Project;
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
-use crate::util::{stop_node, RpcAlt, RpcCaller, node_rpc};
-use crate::{CommandGlobalOpts};
-use ockam_api::cloud::{CloudRequestWrapper};
-use ockam_api::cloud::project::{CreateProject};
-
+use crate::util::{node_rpc, stop_node, RpcAlt, RpcCaller};
+use crate::CommandGlobalOpts;
+use ockam_api::cloud::project::CreateProject;
+use ockam_api::cloud::CloudRequestWrapper;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -55,18 +54,28 @@ impl<'a> RpcCaller<'a> for CreateCommand {
     }
 }
 
-async fn rpc(ctx: ockam::Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> crate::Result<()> {
+async fn rpc(
+    ctx: ockam::Context,
+    (opts, cmd): (CommandGlobalOpts, CreateCommand),
+) -> crate::Result<()> {
     let res = rpc_callback(cmd, &ctx, opts).await;
     stop_node(ctx).await?;
     res
 }
 
-async fn rpc_callback(mut cmd: CreateCommand, ctx: &ockam::Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+async fn rpc_callback(
+    mut cmd: CreateCommand,
+    ctx: &ockam::Context,
+    opts: CommandGlobalOpts,
+) -> crate::Result<()> {
     // We apply the inverse transformation done in the `create` command.
 
     let node = cmd.node_opts.api_node.clone();
     RpcAlt::new(ctx, &opts, &node)?
-        .request_then_response(&mut cmd).await?.parse_body()?.print(&opts)
+        .request_then_response(&mut cmd)
+        .await?
+        .parse_body()?
+        .print(&opts)
 }
 /*
 async fn create(

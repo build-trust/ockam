@@ -261,18 +261,20 @@ async fn default_project<'a>(
     cloud_opts: &CloudOpts,
 ) -> crate::Result<Project<'a>> {
     // Get available project for the given space
-//    let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
+    //    let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
 
     let mut cmd = crate::project::ListCommand {
         node_opts: node_opts.clone(),
         cloud_opts: cloud_opts.clone(),
     };
-    
-    let resp = RpcBuilderAlt::new(ctx, opts, &nc.name).tcp(tcp)
+
+    let resp = RpcBuilderAlt::new(ctx, opts, &nc.name)
+        .tcp(tcp)
         .build()?
-        .request_then_response(&mut cmd).await?;
+        .request_then_response(&mut cmd)
+        .await?;
     let mut available_projects = resp.parse_body()?;
-    
+
     // If the space has no projects, create one
     let mut default_project = if available_projects.is_empty() {
         let mut cmd = crate::project::CreateCommand {
@@ -283,9 +285,13 @@ async fn default_project<'a>(
             services: vec![], // TODO: define default services
             global_opts: Some(opts.clone()),
         };
-        RpcBuilderAlt::new(ctx, opts, &nc.name).tcp(tcp)
+        RpcBuilderAlt::new(ctx, opts, &nc.name)
+            .tcp(tcp)
             .build()?
-            .request_then_response(&mut cmd).await?.parse_body()?.to_owned()
+            .request_then_response(&mut cmd)
+            .await?
+            .parse_body()?
+            .to_owned()
     }
     // If it has, return the "default" project or first one on the list
     else {
@@ -294,7 +300,7 @@ async fn default_project<'a>(
                 .drain(..1)
                 .next()
                 .expect("already checked that is not empty"),
-                
+
             Some(p) => p.to_owned(),
         }
     };
@@ -306,15 +312,18 @@ async fn default_project<'a>(
             project_id: default_project.id.to_string(),
             node_opts: node_opts.clone(),
             cloud_opts: cloud_opts.clone(),
-            global_opts: Some(opts.clone())
+            global_opts: Some(opts.clone()),
         };
         loop {
             print!(".");
             std::io::stdout().flush()?;
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
-            let res = RpcBuilderAlt::new(ctx, opts, &nc.name).tcp(tcp).build()?
-                .request_then_response(&mut cmd).await?;
+            let res = RpcBuilderAlt::new(ctx, opts, &nc.name)
+                .tcp(tcp)
+                .build()?
+                .request_then_response(&mut cmd)
+                .await?;
             let project = res.parse_body()?;
 
             if project.is_ready() {

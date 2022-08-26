@@ -1,11 +1,13 @@
+use crate::util::output::Output;
 use crate::util::{api, node_rpc, stop_node, ConfigError, RpcAlt, RpcCaller};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
 use ockam_api::multiaddr_to_addr;
-use ockam_api::nodes::models::secure_channel::{DeleteSecureChannelRequest, DeleteSecureChannelResponse};
+use ockam_api::nodes::models::secure_channel::{
+    DeleteSecureChannelRequest, DeleteSecureChannelResponse,
+};
 use ockam_multiaddr::MultiAddr;
-use crate::util::output::Output;
 #[derive(Clone, Debug, Args)]
 pub struct SecureChannelNodeOpts {
     #[clap(
@@ -32,7 +34,8 @@ impl<'a> RpcCaller<'a> for DeleteCommand {
 
     fn req(&'a self) -> ockam_core::api::RequestBuilder<'_, Self::Req> {
         let addr = multiaddr_to_addr(&self.channel)
-            .ok_or_else(|| ConfigError::InvalidSecureChannelAddress(self.channel.to_string())).unwrap();
+            .ok_or_else(|| ConfigError::InvalidSecureChannelAddress(self.channel.to_string()))
+            .unwrap();
         api::delete_secure_channel(&addr)
     }
 }
@@ -51,11 +54,16 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, DeleteCommand)) -> c
     res
 }
 
-async fn rpc_callback(mut cmd: DeleteCommand, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+async fn rpc_callback(
+    mut cmd: DeleteCommand,
+    ctx: &Context,
+    opts: CommandGlobalOpts,
+) -> crate::Result<()> {
     // We apply the inverse transformation done in the `create` command.
     let at = cmd.node_opts.at.clone();
     RpcAlt::new(ctx, &opts, &at)?
-        .request_then_response(&mut cmd).await?
+        .request_then_response(&mut cmd)
+        .await?
         .parse_body()?
         .print(&opts)
 }

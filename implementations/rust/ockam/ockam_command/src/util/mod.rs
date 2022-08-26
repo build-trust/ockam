@@ -227,18 +227,19 @@ impl<'a> Rpc<'a> {
     }
 }
 
-
 pub struct RpcResponse<'a, T: RpcCaller<'a>>(Vec<u8>, &'a PhantomData<T>);
 
 impl<'a, T: RpcCaller<'a>> RpcResponse<'a, T> {
-    fn new(raw: Vec<u8>) -> Self { Self(raw, &PhantomData::<T>) }
-
-    pub fn check(&'a self) -> crate::Result<Response> {
-        let mut dec = Decoder::new(&self.0);
-        let hdr: Response = dec.decode().context("Failed to decode response header")?;
-        Ok(hdr)
+    fn new(raw: Vec<u8>) -> Self {
+        Self(raw, &PhantomData::<T>)
     }
-
+    /*
+        pub fn check(&'a self) -> crate::Result<Response> {
+            let mut dec = Decoder::new(&self.0);
+            let hdr: Response = dec.decode().context("Failed to decode response header")?;
+            Ok(hdr)
+        }
+    */
     pub fn parse_body(&'a self) -> crate::Result<T::Resp> {
         let mut dec = self.parse_response_impl()?;
         Ok(dec.decode().context("Failed to decode response body")?)
@@ -266,12 +267,12 @@ impl<'a, T: RpcCaller<'a>> RpcResponse<'a, T> {
             None => "No status code found in response".to_string(),
         }
     }
-
-    pub fn is_ok(&'a self) -> crate::Result<()> {
-        self.parse_response_impl()?;
-        Ok(())
-    }
-
+    /*
+        pub fn is_ok(&'a self) -> crate::Result<()> {
+            self.parse_response_impl()?;
+            Ok(())
+        }
+    */
     fn parse_response_impl(&'a self) -> crate::Result<Decoder> {
         let mut dec = Decoder::new(&self.0);
         let hdr = dec
@@ -290,14 +291,14 @@ pub trait RpcCaller<'a>: 'a {
     type Resp: Decode<'a, ()> + Output + serde::Serialize;
 
     fn req(&'a self) -> RequestBuilder<'_, Self::Req>;
-/*
-    fn rpc<'c, Fut>(&mut self, rpc_obj: &RpcAlt<'c>) -> core::pin::Pin<Box<Fut>>
-        where
-            Fut: core::future::Future<Output = crate::Result<Vec<u8>>> + Send + 'a
-    {
-        Box::pin(rpc_obj.request_then_response(self))
-    }
-*/
+    /*
+        fn rpc<'c, Fut>(&mut self, rpc_obj: &RpcAlt<'c>) -> core::pin::Pin<Box<Fut>>
+            where
+                Fut: core::future::Future<Output = crate::Result<Vec<u8>>> + Send + 'a
+        {
+            Box::pin(rpc_obj.request_then_response(self))
+        }
+    */
 }
 pub struct RpcBuilderAlt<'c, 'b> {
     ctx: &'c ockam::Context,
@@ -308,11 +309,7 @@ pub struct RpcBuilderAlt<'c, 'b> {
 }
 
 impl<'c, 'b> RpcBuilderAlt<'c, 'b> {
-    pub fn new(
-        ctx: &'c ockam::Context,
-        opts: &'c CommandGlobalOpts,
-        node: &'b str,
-    ) -> Self {
+    pub fn new(ctx: &'c ockam::Context, opts: &'c CommandGlobalOpts, node: &'b str) -> Self {
         Self {
             ctx,
             opts,
@@ -321,13 +318,13 @@ impl<'c, 'b> RpcBuilderAlt<'c, 'b> {
             tcp: None,
         }
     }
-
-    pub fn to(mut self, to: &MultiAddr) -> anyhow::Result<Self> {
-        self.to = ockam_api::multiaddr_to_route(to)
-            .ok_or_else(|| anyhow!("failed to convert {to} to route"))?;
-        Ok(self)
-    }
-
+    /*
+        pub fn to(mut self, to: &MultiAddr) -> anyhow::Result<Self> {
+            self.to = ockam_api::multiaddr_to_route(to)
+                .ok_or_else(|| anyhow!("failed to convert {to} to route"))?;
+            Ok(self)
+        }
+    */
     pub fn tcp(mut self, tcp: &'c TcpTransport) -> Self {
         self.tcp = Some(tcp);
         self
@@ -363,48 +360,50 @@ impl<'c> RpcAlt<'c> {
         })
     }
 
-    pub async fn request_then_response<'d, T: RpcCaller<'d>>(&mut self, cmd: &'d mut T) 
-//    pub async fn request_then_response<'d, T: RpcCaller<'d>>(&mut self, cmd: &'d mut T) 
-        -> crate::Result<RpcResponse<'d, T>> {
+    pub async fn request_then_response<'d, T: RpcCaller<'d>>(
+        &mut self,
+        cmd: &'d mut T,
+    ) -> crate::Result<RpcResponse<'d, T>> {
         let route = self
             .route_impl(self.ctx)
             .await
             .map_err(anyhow::Error::from)?;
 
-        let rpc_resp = RpcResponse::new( self.ctx
-            .send_and_receive(
-                route.clone(),
-                cmd.req().to_vec().map_err(anyhow::Error::from)?,
-            )
-            .await
-            .context("Failed to receive response from node")?
+        let rpc_resp = RpcResponse::new(
+            self.ctx
+                .send_and_receive(
+                    route.clone(),
+                    cmd.req().to_vec().map_err(anyhow::Error::from)?,
+                )
+                .await
+                .context("Failed to receive response from node")?,
         );
         Ok(rpc_resp)
     }
+    /*
+        pub async fn request_with_timeout<'d, T: RpcCaller<'d>>(
+            &mut self,
+            cmd: &'d mut T,
+            timeout: Duration
+        ) -> crate::Result<RpcResponse<'d, T>>  {
 
-    pub async fn request_with_timeout<'d, T: RpcCaller<'d>>(
-        &mut self, 
-        cmd: &'d mut T,
-        timeout: Duration
-    ) -> crate::Result<RpcResponse<'d, T>>  {
-    
-        let mut ctx = self.ctx.new_detached(Address::random_local()).await?;
-        
-        let route = self.route_impl(&ctx).await?;
-        
-        ctx.send(route.clone(), cmd.req().to_vec().map_err(anyhow::Error::from)?).await?;
-        
-        let rpc_resp = RpcResponse::new( ctx
-            .receive_duration_timeout::<Vec<u8>>(timeout)
-            .await
-            .context("Failed to receive response from node")?
-            .take()
-            .body()
-        );
-        
-        Ok(rpc_resp)
-    }
+            let mut ctx = self.ctx.new_detached(Address::random_local()).await?;
 
+            let route = self.route_impl(&ctx).await?;
+
+            ctx.send(route.clone(), cmd.req().to_vec().map_err(anyhow::Error::from)?).await?;
+
+            let rpc_resp = RpcResponse::new( ctx
+                .receive_duration_timeout::<Vec<u8>>(timeout)
+                .await
+                .context("Failed to receive response from node")?
+                .take()
+                .body()
+            );
+
+            Ok(rpc_resp)
+        }
+    */
     async fn route_impl(&mut self, ctx: &ockam::Context) -> anyhow::Result<Route> {
         let addr = node_addr(&self.cfg);
         let addr_str = addr.address();

@@ -309,15 +309,15 @@ pub(crate) mod project {
     use ockam_api::cloud::project::*;
 
     use super::*;
-
-    pub(crate) fn create<'a>(
-        cmd: &CreateCommand,
-    ) -> RequestBuilder<CloudRequestWrapper<CreateProject>> {
-        let b = CreateProject::new(cmd.project_name.as_str(), &[], &cmd.services);
-        Request::builder(Method::Post, format!("v0/projects/{}", cmd.space_id))
-            .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
-    }
-
+    /*
+        pub(crate) fn create<'a>(
+            cmd: &CreateCommand,
+        ) -> RequestBuilder<CloudRequestWrapper<CreateProject>> {
+            let b = CreateProject::new(cmd.project_name.as_str(), &[], &cmd.services);
+            Request::builder(Method::Post, format!("v0/projects/{}", cmd.space_id))
+                .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
+        }
+    */
     pub(crate) fn list(cmd: &ListCommand) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::builder(Method::Get, "v0/projects")
             .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))

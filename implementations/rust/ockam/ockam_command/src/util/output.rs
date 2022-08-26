@@ -4,16 +4,14 @@ use core::fmt::Write;
 use ockam::identity::credential::Credential;
 use ockam_api::cloud::project::{Enroller, Project};
 
-use crate::CommandGlobalOpts;
 use crate::util::comma_separated;
+use crate::CommandGlobalOpts;
 use ockam_api::cloud::space::Space;
 use ockam_api::nodes::models::secure_channel::{
-    DeleteSecureChannelResponse,
-    CreateSecureChannelResponse
+    CreateSecureChannelResponse, DeleteSecureChannelResponse,
 };
 use ockam_api::route_to_multiaddr;
 use ockam_core::route;
-
 
 /// Trait to control how a given type will be printed as a CLI output.
 ///
@@ -44,7 +42,9 @@ pub trait Output: serde::Serialize {
 
     fn print(&self, opts: &CommandGlobalOpts) -> crate::Result<()> {
         let o = match opts.global_args.output_format {
-            crate::OutputFormat::Plain => self.output().context("Failed to serialize response body")?,
+            crate::OutputFormat::Plain => {
+                self.output().context("Failed to serialize response body")?
+            }
             crate::OutputFormat::Json => {
                 serde_json::to_string_pretty(&self).context("Failed to serialize response body")?
             }
@@ -154,7 +154,7 @@ impl Output for DeleteSecureChannelResponse<'_> {
         let mut w = String::new();
         match &self.channel {
             Some(ch) => write!(w, "deleted: {}", ch)?,
-            None => write!(w, "channel not found")?
+            None => write!(w, "channel not found")?,
         }
         Ok(w)
     }
