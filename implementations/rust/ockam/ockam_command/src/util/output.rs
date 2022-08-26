@@ -96,7 +96,9 @@ impl Output for Project<'_> {
         write!(
             w,
             "\n  Authority identity: {}",
-            self.authority_identity.as_deref().unwrap_or_default()
+            self.authority_identity
+                .as_ref()
+                .unwrap_or(&ockam_api::HexBytes::default())
         )?;
         Ok(w)
     }

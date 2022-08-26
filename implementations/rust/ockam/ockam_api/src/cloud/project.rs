@@ -1,8 +1,7 @@
-use std::str::FromStr;
-
+use crate::HexBytes;
+use crate::error::ApiError;
+use crate::multiaddr_to_addr;
 use minicbor::{Decode, Encode};
-use serde::Serialize;
-
 use ockam_core::CowStr;
 use ockam_core::Result;
 #[cfg(feature = "tag")]
@@ -10,9 +9,8 @@ use ockam_core::TypeTag;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
-
-use crate::error::ApiError;
-use crate::multiaddr_to_addr;
+use serde::Serialize;
+use std::str::FromStr;
 
 #[derive(Encode, Decode, Serialize, Debug)]
 #[rustfmt::skip]
@@ -30,7 +28,7 @@ pub struct Project<'a> {
     #[b(7)] pub space_id: CowStr<'a>,
     #[b(8)] pub identity: Option<IdentityIdentifier>,
     #[b(9)] pub authority_access_route: Option<CowStr<'a>>,
-    #[b(10)] pub authority_identity: Option<CowStr<'a>>,
+    #[b(10)] pub authority_identity: Option<HexBytes<'a>>,
 }
 
 impl Clone for Project<'_> {
@@ -381,7 +379,7 @@ mod tests {
                     .then(|| IdentityIdentifier::from_key_id(&String::arbitrary(g))),
                 authority_access_route: bool::arbitrary(g).then(|| String::arbitrary(g).into()),
                 authority_identity: bool::arbitrary(g)
-                    .then(|| hex::encode(<Vec<u8>>::arbitrary(g)).into()),
+                    .then(|| HexBytes::new(<Vec<u8>>::arbitrary(g))),
             })
         }
     }

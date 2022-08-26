@@ -9,7 +9,7 @@ use minicbor::{Decode, Encode};
 /// Contrary to `Cow<_, [u8]>` the `Decode` impl for this type will always borrow
 /// from input so using it in types like `Option`, `Vec<_>` etc will not produce
 /// owned element values.
-#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Default, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cbor(transparent)]
 pub struct CowBytes<'a>(#[cbor(b(0), with = "minicbor::bytes")] pub Cow<'a, [u8]>);
 
