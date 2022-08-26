@@ -35,7 +35,12 @@ pub struct OckamConfig {
     pub lookup: ConfigLookup,
     pub default_identity: Option<Vec<u8>>,
     pub default_vault_path: Option<PathBuf>,
+    #[serde(default = "default_node")]
     pub default: Option<String>,
+}
+
+fn default_node() -> Option<String> {
+    None
 }
 
 impl ConfigValues for OckamConfig {
