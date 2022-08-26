@@ -73,7 +73,7 @@ pub fn spawn_node(
         "--tcp-listener-address".to_string(),
         address.to_string(),
         "--foreground".to_string(),
-        "--child_process".to_string(),
+        "--child-process".to_string(),
     ];
 
     if skip_defaults {
