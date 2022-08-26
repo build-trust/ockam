@@ -1,4 +1,4 @@
-use crate::util::{connect_to, exitcode, get_final_element, stop_node};
+use crate::util::{connect_to, exitcode, get_final_element};
 use crate::util::{ComposableSnippet, Operation, PortalMode, Protocol};
 use crate::CommandGlobalOpts;
 use clap::Args;
@@ -113,7 +113,7 @@ pub async fn create_outlet(
         }
     }
 
-    stop_node(ctx).await
+    Ok(())
 }
 
 /// Construct a request to create a tcp outlet

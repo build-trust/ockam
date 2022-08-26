@@ -1,6 +1,6 @@
 use crate::util::get_final_element;
 use crate::{
-    util::{api, connect_to, exitcode, stop_node},
+    util::{api, connect_to, exitcode},
     CommandGlobalOpts,
 };
 use clap::Args;
@@ -139,5 +139,5 @@ pub async fn create_connection(
             std::process::exit(exitcode::CANTCREAT);
         }
     }
-    stop_node(ctx).await
+    Ok(())
 }

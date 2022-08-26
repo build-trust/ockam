@@ -1,6 +1,6 @@
 use crate::util::{bind_to_port_check, get_final_element};
 use crate::{
-    util::{api, connect_to, exitcode, stop_node},
+    util::{api, connect_to, exitcode},
     CommandGlobalOpts,
 };
 use clap::Args;
@@ -147,5 +147,5 @@ pub async fn create_listener(
             std::process::exit(exitcode::CANTCREAT);
         }
     }
-    stop_node(ctx).await
+    Ok(())
 }

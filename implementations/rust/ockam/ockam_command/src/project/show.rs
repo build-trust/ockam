@@ -10,7 +10,7 @@ use ockam_core::Route;
 
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
-use crate::util::{api, connect_to, exitcode, stop_node};
+use crate::util::{api, connect_to, exitcode};
 use crate::{CommandGlobalOpts, OutputFormat};
 
 #[derive(Clone, Debug, Args)]
@@ -92,5 +92,5 @@ async fn show(
         }
     };
 
-    stop_node(ctx).await
+    Ok(())
 }

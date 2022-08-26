@@ -6,7 +6,7 @@ use ockam_core::api::{Response, Status};
 use crate::util::get_final_element;
 use crate::{
     node::NodeOpts,
-    util::{api, connect_to, exitcode, stop_node},
+    util::{api, connect_to, exitcode},
     CommandGlobalOpts,
 };
 
@@ -68,5 +68,5 @@ pub async fn delete_connection(
             }
         }
     }
-    stop_node(ctx).await
+    Ok(())
 }

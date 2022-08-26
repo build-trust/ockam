@@ -8,7 +8,7 @@ use ockam_core::api::{Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
 
 use crate::util::api::CloudOpts;
-use crate::util::{embedded_node, get_final_element, node_rpc, stop_node, RpcBuilder};
+use crate::util::{embedded_node, get_final_element, node_rpc, RpcBuilder};
 use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 
 const EXAMPLES: &str = "\
@@ -89,8 +89,6 @@ async fn send_message_from_embedded_node(
         }
     }
 
-    ctx.stop().await?;
-
     Ok(())
 }
 
@@ -126,9 +124,7 @@ async fn send_message_via_connection_to_a_node(
         );
         Ok(())
     }
-    let result = go(&ctx, &opts, cmd, api_node).await;
-    stop_node(ctx).await?;
-    result
+    go(&ctx, &opts, cmd, api_node).await
 }
 
 pub(crate) fn req<'a>(to: &'a MultiAddr, message: &'a str) -> RequestBuilder<'a, SendMessage<'a>> {

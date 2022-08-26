@@ -1,6 +1,6 @@
 use crate::{
     secure_channel::BACKGROUND,
-    util::{api, exitcode, get_final_element, node_rpc, stop_node},
+    util::{api, exitcode, get_final_element, node_rpc},
     CommandGlobalOpts, OutputFormat, Result, HELP_TEMPLATE,
 };
 
@@ -170,6 +170,6 @@ async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, CreateCommand
     let response = rpc.parse_response::<CreateSecureChannelResponse>()?;
 
     command.print_output(from, to, &options, response);
-    stop_node(ctx).await?;
+
     Ok(())
 }

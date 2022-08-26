@@ -1,6 +1,6 @@
 use crate::{
     secure_channel::BACKGROUND,
-    util::{api, exitcode, get_final_element, node_rpc, stop_node, Rpc},
+    util::{api, exitcode, get_final_element, node_rpc, Rpc},
     CommandGlobalOpts, OutputFormat, Result, HELP_TEMPLATE,
 };
 
@@ -136,6 +136,5 @@ async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, DeleteCommand
 
     command.print_output(at, address, &options, response);
 
-    stop_node(ctx).await?;
     Ok(())
 }

@@ -39,7 +39,7 @@ pub mod error;
 use crate::identity::IdentityCommand;
 use crate::service::ServiceCommand;
 use crate::util::exitcode::ExitCode;
-use crate::util::{exitcode, stop_node, OckamConfig};
+use crate::util::{exitcode, OckamConfig};
 use crate::vault::VaultCommand;
 use clap::{crate_version, ArgEnum, Args, ColorChoice, Parser, Subcommand};
 use util::setup_logging;

@@ -6,7 +6,7 @@ use ockam::Context;
 use crate::{
     node::NodeOpts,
     secure_channel::BACKGROUND,
-    util::{api, node_rpc, stop_node, Rpc},
+    util::{api, node_rpc, Rpc},
     CommandGlobalOpts, HELP_TEMPLATE,
 };
 
@@ -32,9 +32,7 @@ async fn secure_channel_list_rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ListCommand),
 ) -> crate::Result<()> {
-    let res = secure_channel_list_rpc_impl(&mut ctx, opts, cmd).await;
-    stop_node(ctx).await?;
-    res
+    secure_channel_list_rpc_impl(&mut ctx, opts, cmd).await
 }
 
 async fn secure_channel_list_rpc_impl(

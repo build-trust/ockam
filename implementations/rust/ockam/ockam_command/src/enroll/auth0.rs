@@ -20,7 +20,7 @@ use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::node::default_node;
 use crate::util::output::Output;
-use crate::util::{api, node_rpc, stop_node, RpcBuilder};
+use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{CommandGlobalOpts, EnrollCommand, Result};
 
 #[derive(Clone, Debug, Args)]
@@ -33,9 +33,7 @@ impl EnrollAuth0Command {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> Result<()> {
-    let res = run_impl(&ctx, opts, cmd).await;
-    stop_node(ctx).await?;
-    res
+    run_impl(&ctx, opts, cmd).await
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> Result<()> {

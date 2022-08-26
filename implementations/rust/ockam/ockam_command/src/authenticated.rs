@@ -49,7 +49,7 @@ impl AuthenticatedCommand {
     }
 }
 
-async fn run_impl(mut ctx: Context, cmd: AuthenticatedSubcommand) -> anyhow::Result<()> {
+async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> anyhow::Result<()> {
     TcpTransport::create(&ctx).await?;
     match &cmd {
         AuthenticatedSubcommand::Get { addr, id, key } => {
@@ -62,7 +62,7 @@ async fn run_impl(mut ctx: Context, cmd: AuthenticatedSubcommand) -> anyhow::Res
             c.del(id, key).await?;
         }
     }
-    ctx.stop().await?;
+
     Ok(())
 }
 
