@@ -111,7 +111,7 @@ async fn send_message_via_connection_to_a_node(
             opts,
             &tcp,
             &meta,
-            &cmd.cloud_opts.addr,
+            &cmd.cloud_opts.route_to_controller,
             &api_node,
         )
         .await?;

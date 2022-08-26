@@ -46,7 +46,7 @@ async fn rpc(
             opts,
             &tcp,
             &meta,
-            &cmd.cloud_opts.addr,
+            &cmd.cloud_opts.route_to_controller,
             &cmd.node_opts.api_node,
         )
         .await?;
