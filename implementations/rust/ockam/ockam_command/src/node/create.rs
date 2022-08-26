@@ -26,7 +26,6 @@ use ockam::identity::Identity;
 use ockam::{Address, AsyncTryClone, TCP};
 use ockam::{Context, TcpTransport};
 use ockam_api::config::cli;
-use ockam_api::error::ApiError;
 use ockam_api::nodes::IdentityOverride;
 use ockam_api::{
     nodes::models::transport::{TransportMode, TransportType},
@@ -181,14 +180,6 @@ impl CreateCommand {
             std::process::exit(exitcode::CANTCREAT);
         }
 
-        // Save the config update
-        if let Err(e) = cfg.atomic_update().run() {
-            eprintln!("failed to update configuration: {}", e);
-            std::process::exit(exitcode::IOERR);
-        }
-
-        embedded_node(create_default_identity, cfg.clone())?;
-
         // Construct the arguments list and re-execute the ockam
         // CLI in foreground mode to start the newly created node
         startup::spawn_node(
@@ -214,6 +205,12 @@ impl CreateCommand {
         // start the watchdog here
         if !cmd.no_watchdog {}
 
+        // Save the config update
+        if let Err(e) = cfg.atomic_update().run() {
+            eprintln!("failed to update configuration: {}", e);
+            std::process::exit(exitcode::IOERR);
+        }
+
         Ok(())
     }
 
@@ -232,7 +229,7 @@ impl CreateCommand {
     }
 }
 
-async fn create_default_identity(mut ctx: Context, cfg: OckamConfig) -> Result<()> {
+async fn create_identity_override(ctx: &Context, cfg: &OckamConfig) -> Result<IdentityOverride> {
     // Get default root vault (create if needed)
     let default_vault_path = cfg.get_default_vault_path().unwrap_or_else(|| {
         let default_vault_path = cli::OckamConfig::directories()
@@ -248,39 +245,28 @@ async fn create_default_identity(mut ctx: Context, cfg: OckamConfig) -> Result<(
     let vault = Vault::new(Some(Arc::new(storage)));
 
     // Get default root identity (create if needed)
-    if cfg.get_default_identity().is_none() {
-        let identity = Identity::create(&ctx, &vault).await?;
-        let exported_data = identity.export().await?;
-        cfg.set_default_identity(Some(exported_data));
+    let identity = match cfg.get_default_identity() {
+        None => {
+            let identity = Identity::create(ctx, &vault).await?;
+            let exported_data = identity.export().await?;
+            cfg.set_default_identity(Some(exported_data));
+
+            identity
+        }
+        Some(identity) => {
+            // Just to check validity
+            Identity::import(ctx, &identity, &vault).await?
+        }
     };
 
     cfg.atomic_update().run()?;
 
-    ctx.stop().await?;
-
-    Ok(())
-}
-
-async fn get_identity_override(ctx: &Context, cfg: &OckamConfig) -> Result<IdentityOverride> {
-    // Get default root vault
-    let default_vault_path = cfg
-        .get_default_vault_path()
-        .ok_or_else(|| ApiError::generic("Default vault was not found"))?;
-
-    let storage = FileStorage::create(default_vault_path.clone()).await?;
-    let vault = Vault::new(Some(Arc::new(storage)));
-
-    // Get default root identity
-    let default_identity = cfg
-        .get_default_identity()
-        .ok_or_else(|| ApiError::generic("Default identity was not found"))?;
-    // Just to check validity
-    Identity::import(ctx, &default_identity, &vault).await?;
-
-    Ok(IdentityOverride {
-        identity: default_identity,
+    let identity_override = IdentityOverride {
+        identity: identity.export().await?,
         vault_path: default_vault_path,
-    })
+    };
+
+    Ok(identity_override)
 }
 
 async fn setup(
@@ -290,7 +276,7 @@ async fn setup(
     let identity_override = if c.skip_defaults {
         None
     } else {
-        Some(get_identity_override(&ctx, &cfg).await?)
+        Some(create_identity_override(&ctx, &cfg).await?)
     };
 
     let tcp = TcpTransport::create(&ctx).await?;

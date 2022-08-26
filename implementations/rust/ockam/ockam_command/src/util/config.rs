@@ -233,7 +233,7 @@ impl OckamConfig {
                 addr: bind.into(),
                 verbose,
                 state_dir: Some(state_dir),
-                pid: None,
+                pid: Some(0),
             },
         );
         Ok(())
