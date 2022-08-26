@@ -79,7 +79,7 @@ fn req(cmd: &CreateCommand, at_rust_node: bool) -> anyhow::Result<RequestBuilder
     };
 
     Ok(Request::post("/node/forwarder").body(CreateForwarder::new(
-        &cmd.at,
+        cmd.at.clone(),
         Some(alias),
         at_rust_node,
     )))

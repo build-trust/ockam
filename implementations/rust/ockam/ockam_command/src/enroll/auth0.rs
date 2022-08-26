@@ -190,7 +190,7 @@ async fn default_project<'a>(
     // Store the default project in the config lookup table.
     opts.config.set_project_alias(
         default_project.name.to_string(),
-        default_project.access_route.to_string(),
+        default_project.access_route.clone(),
         default_project.id.to_string(),
         default_project
             .identity

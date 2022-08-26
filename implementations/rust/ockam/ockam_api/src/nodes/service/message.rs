@@ -1,10 +1,8 @@
-use std::str::FromStr;
-
 use minicbor::{Decode, Encode};
 
+use ockam_core::CowBytes;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-use ockam_core::{CowBytes, CowStr};
 use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
 
@@ -17,25 +15,23 @@ use crate::error::ApiError;
 pub struct SendMessage<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<8400702>,
-    #[b(1)] pub route: CowStr<'a>,
+    #[n(1)] pub route: MultiAddr,
     #[b(2)] pub message: CowBytes<'a>,
 }
 
 impl<'a> SendMessage<'a> {
-    pub fn new<S: Into<CowBytes<'a>>>(route: &MultiAddr, message: S) -> Self {
+    pub fn new<S: Into<CowBytes<'a>>>(route: MultiAddr, message: S) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            route: route.to_string().into(),
+            route,
             message: message.into(),
         }
     }
 
     pub fn route(&self) -> Result<Route> {
-        let maddr = MultiAddr::from_str(self.route.as_ref())
-            .map_err(|_err| ApiError::generic(&format!("Invalid route: {}", self.route)))?;
-        crate::multiaddr_to_route(&maddr)
-            .ok_or_else(|| ApiError::generic(&format!("Invalid MultiAddr: {}", maddr)))
+        crate::multiaddr_to_route(&self.route)
+            .ok_or_else(|| ApiError::generic(&format!("Invalid MultiAddr: {}", self.route)))
     }
 }
 

@@ -17,16 +17,16 @@ use crate::route_to_multiaddr;
 pub struct CreateSecureChannelRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6300395>,
-    #[b(1)] pub addr: CowStr<'a>,
+    #[n(1)] pub addr: MultiAddr,
     #[b(2)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
 }
 
 impl<'a> CreateSecureChannelRequest<'a> {
-    pub fn new(addr: &MultiAddr, authorized_identifiers: Option<Vec<IdentityIdentifier>>) -> Self {
+    pub fn new(addr: MultiAddr, authorized_identifiers: Option<Vec<IdentityIdentifier>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr: addr.to_string().into(),
+            addr,
             authorized_identifiers: authorized_identifiers
                 .map(|x| x.into_iter().map(|y| y.to_string().into()).collect()),
         }

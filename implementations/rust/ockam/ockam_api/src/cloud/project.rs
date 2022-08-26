@@ -2,7 +2,6 @@ use minicbor::{Decode, Encode};
 use ockam_core::CowStr;
 use ockam_identity::IdentityIdentifier;
 use serde::Serialize;
-use std::str::FromStr;
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
@@ -19,7 +18,7 @@ pub struct Project<'a> {
     #[b(2)] pub name: CowStr<'a>,
     #[b(3)] pub space_name: CowStr<'a>,
     #[b(4)] pub services: Vec<CowStr<'a>>,
-    #[b(5)] pub access_route: CowStr<'a>, //TODO: should be optional, waiting for changes on the elixir side
+    #[n(5)] pub access_route: MultiAddr, //TODO: should be optional, waiting for changes on the elixir side
     #[b(6)] pub users: Vec<CowStr<'a>>,
     #[b(7)] pub space_id: CowStr<'a>,
     #[b(8)] pub identity: Option<IdentityIdentifier>,
@@ -58,8 +57,8 @@ impl Project<'_> {
             || self.authority_identity.is_none())
     }
 
-    pub fn access_route(&self) -> MultiAddr {
-        MultiAddr::from_str(&self.access_route).expect("Invalid access route")
+    pub fn access_route(&self) -> &MultiAddr {
+        &self.access_route
     }
 }
 
@@ -342,6 +341,7 @@ mod tests {
         use ockam_core::api::SCHEMA;
         use ockam_identity::IdentityIdentifier;
         use quickcheck::{quickcheck, TestResult};
+        use std::str::FromStr;
 
         #[derive(Debug, Clone)]
         struct Pr(Project<'static>);
@@ -355,7 +355,8 @@ mod tests {
                     name: String::arbitrary(g).into(),
                     space_name: String::arbitrary(g).into(),
                     services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
-                    access_route: String::arbitrary(g).into(),
+                    access_route: MultiAddr::from_str(&format!("node/{}", String::arbitrary(g)))
+                        .unwrap(),
                     users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
                     space_id: String::arbitrary(g).into(),
                     identity: bool::arbitrary(g)

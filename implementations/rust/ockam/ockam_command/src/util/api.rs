@@ -143,8 +143,10 @@ pub(crate) fn create_secure_channel(
     addr: &MultiAddr,
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 ) -> RequestBuilder<'static, models::secure_channel::CreateSecureChannelRequest<'static>> {
-    let payload =
-        models::secure_channel::CreateSecureChannelRequest::new(addr, authorized_identifiers);
+    let payload = models::secure_channel::CreateSecureChannelRequest::new(
+        addr.clone(),
+        authorized_identifiers,
+    );
     Request::post("/node/secure_channel").body(payload)
 }
 
@@ -221,7 +223,7 @@ pub(crate) mod credentials {
         to: &MultiAddr,
         oneway: bool,
     ) -> RequestBuilder<PresentCredentialRequest> {
-        let b = PresentCredentialRequest::new(to, oneway);
+        let b = PresentCredentialRequest::new(to.clone(), oneway);
         Request::post("/node/credentials/actions/present").body(b)
     }
 
@@ -234,10 +236,10 @@ pub(crate) mod credentials {
         Request::post("/node/credentials/authority").body(b)
     }
 
-    pub(crate) fn get_credential(
-        from: &MultiAddr,
+    pub(crate) fn get_credential<'r>(
+        from: MultiAddr,
         overwrite: bool,
-    ) -> RequestBuilder<GetCredentialRequest> {
+    ) -> RequestBuilder<'r, GetCredentialRequest> {
         let b = GetCredentialRequest::new(from, overwrite);
         Request::post("/node/credentials/actions/get").body(b)
     }
@@ -255,8 +257,10 @@ pub(crate) mod enroll {
         token: Auth0Token,
     ) -> RequestBuilder<CloudRequestWrapper<AuthenticateAuth0Token>> {
         let token = AuthenticateAuth0Token::new(token);
-        Request::post("v0/enroll/auth0")
-            .body(CloudRequestWrapper::new(token, cmd.cloud_opts.route()))
+        Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(
+            token,
+            cmd.cloud_opts.route().clone(),
+        ))
     }
 }
 
@@ -269,21 +273,21 @@ pub(crate) mod space {
 
     pub(crate) fn create(cmd: &CreateCommand) -> RequestBuilder<CloudRequestWrapper<CreateSpace>> {
         let b = CreateSpace::new(cmd.name.as_str(), &cmd.admins);
-        Request::post("v0/spaces").body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
+        Request::post("v0/spaces").body(CloudRequestWrapper::new(b, cmd.cloud_opts.route().clone()))
     }
 
     pub(crate) fn list(cmd: &ListCommand) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::get("v0/spaces").body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+        Request::get("v0/spaces").body(CloudRequestWrapper::bare(cmd.cloud_opts.route().clone()))
     }
 
     pub(crate) fn show(cmd: &ShowCommand) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::get(format!("v0/spaces/{}", cmd.id))
-            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route().clone()))
     }
 
     pub(crate) fn delete(cmd: &DeleteCommand) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::delete(format!("v0/spaces/{}", cmd.id))
-            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route().clone()))
     }
 }
 
@@ -299,22 +303,22 @@ pub(crate) mod project {
     ) -> RequestBuilder<CloudRequestWrapper<CreateProject>> {
         let b = CreateProject::new(cmd.project_name.as_str(), &[], &cmd.services);
         Request::post(format!("v0/projects/{}", cmd.space_id))
-            .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
+            .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route().clone()))
     }
 
     pub(crate) fn list(cmd: &ListCommand) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::get("v0/projects").body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+        Request::get("v0/projects").body(CloudRequestWrapper::bare(cmd.cloud_opts.route().clone()))
     }
 
     pub(crate) fn show(cmd: &ShowCommand) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::get(format!("v0/projects/{}", cmd.project_id))
-            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route().clone()))
     }
 
     pub(crate) fn delete(cmd: DeleteCommand) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
         Request::delete(format!("v0/projects/{}/{}", cmd.space_id, cmd.project_id))
-            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route().clone()))
             .encode(&mut buf)?;
         Ok(buf)
     }
@@ -327,14 +331,14 @@ pub(crate) mod project {
             cmd.description.as_deref(),
         );
         Request::post(format!("v0/project-enrollers/{}", cmd.project_id))
-            .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
+            .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route().clone()))
     }
 
     pub(crate) fn list_enrollers(
         cmd: &ListEnrollersCommand,
     ) -> RequestBuilder<BareCloudRequestWrapper> {
         Request::get(format!("v0/project-enrollers/{}", cmd.project_id))
-            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route().clone()))
     }
 
     pub(crate) fn delete_enroller(
@@ -344,7 +348,7 @@ pub(crate) mod project {
             "v0/project-enrollers/{}/{}",
             cmd.project_id, cmd.enroller_identity_id
         ))
-        .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+        .body(CloudRequestWrapper::bare(cmd.cloud_opts.route().clone()))
     }
 }
 

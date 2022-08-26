@@ -4,15 +4,12 @@ use crate::multiaddr_to_route;
 use crate::nodes::models::credentials::{
     GetCredentialRequest, PresentCredentialRequest, SetAuthorityRequest,
 };
-use crate::nodes::service::map_multiaddr_err;
 use crate::nodes::NodeManager;
 use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_identity::PublicIdentity;
-use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
-use std::str::FromStr;
 
 impl NodeManager {
     pub(super) async fn set_authorities_impl<'a>(&mut self, authorities: &[Vec<u8>]) -> Result<()> {
@@ -57,8 +54,7 @@ impl NodeManager {
             return Err(ApiError::generic("credential already exists"));
         }
 
-        let route = MultiAddr::from_str(&request.route).map_err(map_multiaddr_err)?;
-        let route = match multiaddr_to_route(&route) {
+        let route = match multiaddr_to_route(&request.route) {
             Some(route) => route,
             None => return Err(ApiError::generic("invalid authority route")),
         };
@@ -83,8 +79,7 @@ impl NodeManager {
     ) -> Result<ResponseBuilder> {
         let request: PresentCredentialRequest = dec.decode()?;
 
-        let route = MultiAddr::from_str(&request.route).map_err(map_multiaddr_err)?;
-        let route = match multiaddr_to_route(&route) {
+        let route = match multiaddr_to_route(&request.route) {
             Some(route) => route,
             None => return Err(ApiError::generic("invalid credentials service route")),
         };

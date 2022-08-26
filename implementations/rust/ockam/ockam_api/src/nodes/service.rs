@@ -43,16 +43,6 @@ fn random_alias() -> String {
     Address::random_local().without_type().to_owned()
 }
 
-// TODO: Move to multiaddr implementation
-pub(crate) fn invalid_multiaddr_error() -> ockam_core::Error {
-    ockam_core::Error::new(Origin::Core, Kind::Invalid, "Invalid multiaddr")
-}
-
-// TODO: Move to multiaddr implementation
-pub(crate) fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Error {
-    invalid_multiaddr_error()
-}
-
 fn map_anyhow_err(err: anyhow::Error) -> ockam_core::Error {
     ockam_core::Error::new(Origin::Application, Kind::Internal, err)
 }

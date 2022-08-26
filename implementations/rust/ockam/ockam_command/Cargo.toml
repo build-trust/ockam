@@ -79,7 +79,7 @@ clap_complete = "3.2.4"
 
 ockam = { path = "../ockam", version = "^0.70.0", features = ["software_vault"] }
 ockam_api = { path = "../ockam_api", version = "0.13.0", features = ["std", "authenticators"] }
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.4.0", features = ["std"] }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.4.0", features = ["std", "cbor", "serde"] }
 ockam_vault = { path = "../ockam_vault", version = "^0.60.0", features = ["storage"] }
 ockam_core = { path = "../ockam_core", version = "^0.64.0" }
 

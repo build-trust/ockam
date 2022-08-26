@@ -1,4 +1,3 @@
-use super::map_multiaddr_err;
 use crate::error::ApiError;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
@@ -12,7 +11,6 @@ use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::AsyncTryClone;
 use ockam_identity::{IdentityIdentifier, TrustMultiIdentifiersPolicy};
-use ockam_multiaddr::MultiAddr;
 use std::sync::Arc;
 
 impl NodeManager {
@@ -95,7 +93,6 @@ impl NodeManager {
         };
 
         // TODO: Improve error handling + move logic into CreateSecureChannelRequest
-        let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
         let route = crate::multiaddr_to_route(&addr)
             .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 

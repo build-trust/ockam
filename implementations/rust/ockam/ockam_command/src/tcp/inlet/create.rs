@@ -104,7 +104,7 @@ pub async fn create_inlet(
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     let route = base_route.modify().append(NODEMANAGER_ADDR);
-    let message = make_api_request(&cmd.from.to_string(), &cmd.to, &None::<String>)?;
+    let message = make_api_request(&cmd.from.to_string(), cmd.to, &None::<String>)?;
     let response: Vec<u8> = ctx.send_and_receive(route, message).await?;
 
     let (response, InletStatus { bind_addr, .. }) = parse_inlet_status(&response)?;
@@ -126,12 +126,12 @@ pub async fn create_inlet(
 /// Construct a request to create a tcp inlet
 fn make_api_request(
     bind_addr: &str,
-    outlet_route: &MultiAddr,
+    outlet_route: MultiAddr,
     alias: &Option<String>,
 ) -> ockam::Result<Vec<u8>> {
     let payload = models::portal::CreateInlet::new(
         bind_addr,
-        outlet_route.to_string(),
+        outlet_route,
         alias.as_ref().map(|x| x.as_str().into()),
     );
 

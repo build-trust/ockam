@@ -3,12 +3,10 @@ use minicbor::Decoder;
 use ockam::remote::RemoteForwarder;
 use ockam::Result;
 use ockam_core::api::{Request, Response, Status};
-use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
 use crate::error::ApiError;
 use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
-use crate::nodes::service::map_multiaddr_err;
 use crate::nodes::NodeManager;
 
 impl NodeManager {
@@ -24,10 +22,9 @@ impl NodeManager {
             at_rust_node,
             ..
         } = dec.decode()?;
-        let addr = MultiAddr::try_from(address.0.as_ref()).map_err(map_multiaddr_err)?;
-        let route = crate::multiaddr_to_route(&addr)
+        let route = crate::multiaddr_to_route(&address)
             .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
-        debug!(%addr, ?alias, "Handling CreateForwarder request");
+        debug!(%address, ?alias, "Handling CreateForwarder request");
 
         let forwarder = match alias {
             Some(alias) => {

@@ -6,7 +6,7 @@ use ockam_multiaddr::MultiAddr;
 use slug::slugify;
 use std::{
     collections::VecDeque, fs::create_dir_all, net::SocketAddr, ops::Deref, path::PathBuf,
-    str::FromStr, sync::RwLockReadGuard,
+    sync::RwLockReadGuard,
 };
 use tracing::{error, trace};
 
@@ -279,7 +279,7 @@ impl OckamConfig {
     pub fn set_project_alias(
         &self,
         project_name: String,
-        project_node_route: String,
+        project_node_route: MultiAddr,
         project_id: String,
         project_identity_id: String,
     ) -> Result<()> {
@@ -287,8 +287,6 @@ impl OckamConfig {
         // MultiAddr can't be serialised with serde, thus we just
         // check that the conversion is going to succeed in the
         // future, but then just pass the string value through.
-        let _ = MultiAddr::from_str(&project_node_route)
-            .map_err(|e| ConfigError::FailedConvert("MultiAddr".into(), e.to_string()))?;
         trace! {
             id = %project_id,
             name = %project_name,

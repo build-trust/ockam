@@ -6,6 +6,7 @@ use ockam_core::compat::borrow::Cow;
 use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use ockam_multiaddr::MultiAddr;
 
 /// Request body to create an inlet or outlet
 #[derive(Clone, Debug, Decode, Encode)]
@@ -19,7 +20,7 @@ pub struct CreateInlet<'a> {
     /// The peer address (must be ockam routing address)
     /// This can either be the address of an already
     /// created outlet, or a forwarding mechanism via ockam cloud.
-    #[b(2)] pub outlet_route: Cow<'a, str>,
+    #[n(2)] pub outlet_route: MultiAddr,
     /// A human-friendly alias for this portal endpoint
     #[b(3)] pub alias: Option<CowStr<'a>>,
 }
@@ -27,14 +28,14 @@ pub struct CreateInlet<'a> {
 impl<'a> CreateInlet<'a> {
     pub fn new(
         bind_addr: impl Into<Cow<'a, str>>,
-        outlet_route: impl Into<Cow<'a, str>>,
+        outlet_route: MultiAddr,
         alias: impl Into<Option<CowStr<'a>>>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             bind_addr: bind_addr.into(),
-            outlet_route: outlet_route.into(),
+            outlet_route,
             alias: alias.into(),
         }
     }

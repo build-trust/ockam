@@ -1,10 +1,8 @@
-use std::str::FromStr;
-
 use minicbor::{Decode, Encode};
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-use ockam_core::{CowStr, Result, Route};
+use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
 
 use crate::error::ApiError;
@@ -20,36 +18,34 @@ pub(crate) const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CloudRequestWrapper<'a, T> {
+pub struct CloudRequestWrapper<T> {
     #[cfg(feature = "tag")]
     #[n(0)] pub tag: TypeTag<8956240>,
     #[b(1)] pub req: T,
-    #[b(2)] route: CowStr<'a>,
+    #[n(2)] route: MultiAddr,
 }
 
-impl<'a, T> CloudRequestWrapper<'a, T> {
-    pub fn new(req: T, route: &MultiAddr) -> Self {
+impl<T> CloudRequestWrapper<T> {
+    pub fn new(req: T, route: MultiAddr) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             req,
-            route: route.to_string().into(),
+            route,
         }
     }
 
     pub fn route(&self) -> Result<Route> {
-        let maddr = MultiAddr::from_str(self.route.as_ref())
-            .map_err(|_err| ApiError::generic(&format!("Invalid route: {}", self.route)))?;
-        crate::multiaddr_to_route(&maddr)
-            .ok_or_else(|| ApiError::generic(&format!("Invalid MultiAddr: {}", maddr)))
+        crate::multiaddr_to_route(&self.route)
+            .ok_or_else(|| ApiError::generic(&format!("Invalid MultiAddr: {}", self.route)))
     }
 }
 
 /// A CloudRequestWrapper without an internal request.
-pub type BareCloudRequestWrapper<'a> = CloudRequestWrapper<'a, ()>;
+pub type BareCloudRequestWrapper = CloudRequestWrapper<()>;
 
-impl<'a> BareCloudRequestWrapper<'a> {
-    pub fn bare(route: &MultiAddr) -> Self {
+impl BareCloudRequestWrapper {
+    pub fn bare(route: MultiAddr) -> Self {
         Self::new((), route)
     }
 }

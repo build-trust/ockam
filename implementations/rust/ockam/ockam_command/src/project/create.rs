@@ -84,7 +84,7 @@ async fn run_impl(
     }
     opts.config.set_project_alias(
         project.name.to_string(),
-        project.access_route.to_string(),
+        project.access_route.clone(),
         project.id.to_string(),
         project
             .identity

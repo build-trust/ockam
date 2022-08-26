@@ -55,14 +55,14 @@ pub async fn lookup_projects(
     for name in meta.project.iter() {
         // Try to get the project node's access route + identity id from the config
         let (project_access_route, project_identity_id) = match cfg_lookup.get_project(name) {
-            Some(p) => (p.node_route(), p.identity_id.to_string()),
+            Some(p) => (p.node_route().clone(), p.identity_id.to_string()),
             None => {
                 trace!(%name, "Project not found in config, retrieving from cloud");
                 // If it's not in the config, retrieve it from the API
                 let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp).build()?;
                 rpc.request(
                     Request::get(format!("v0/projects/name/{}", name))
-                        .body(CloudRequestWrapper::bare(cloud_addr)),
+                        .body(CloudRequestWrapper::bare(cloud_addr.clone())),
                 )
                 .await?;
                 let project = rpc
@@ -76,12 +76,12 @@ pub async fn lookup_projects(
                 // Store the project in the config lookup table
                 opts.config.set_project_alias(
                     project.name.to_string(),
-                    project.access_route.to_string(),
+                    project.access_route.clone(),
                     project.id.to_string(),
                     identity_id.to_string(),
                 )?;
                 // Return the project data needed to create the secure channel
-                (project.access_route(), identity_id)
+                (project.access_route().clone(), identity_id)
             }
         };
         // Now we can create the secure channel to the project's node
@@ -115,7 +115,7 @@ async fn create_secure_channel_to_project<'a>(
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp).build()?;
     let req = {
         let payload = models::secure_channel::CreateSecureChannelRequest::new(
-            project_access_route,
+            project_access_route.clone(),
             Some(authorized_identifier),
         );
         Request::post("/node/secure_channel").body(payload)

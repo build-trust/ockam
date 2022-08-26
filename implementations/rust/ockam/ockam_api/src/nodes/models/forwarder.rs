@@ -15,19 +15,19 @@ pub struct CreateForwarder<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3386455>,
     /// Ockam's cloud forwarder node address
-    #[b(1)] pub(crate) address: CowStr<'a>,
+    #[n(1)] pub(crate) address: MultiAddr,
     /// Forwarder alias
-    #[n(2)] pub(crate) alias: Option<CowStr<'a>>,
+    #[b(2)] pub(crate) alias: Option<CowStr<'a>>,
     /// Forwarding service is at rust node
     #[n(3)] pub(crate) at_rust_node: bool,
 }
 
 impl<'a> CreateForwarder<'a> {
-    pub fn new(address: &MultiAddr, alias: Option<String>, at_rust_node: bool) -> Self {
+    pub fn new(address: MultiAddr, alias: Option<String>, at_rust_node: bool) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: Default::default(),
-            address: address.to_string().into(),
+            address,
             alias: alias.map(|s| s.into()),
             at_rust_node,
         }
@@ -105,7 +105,7 @@ mod tests {
             let mut buf = vec![];
             Request::post("/node/forwarder")
                 .body(CreateForwarder::new(
-                    &route_to_multiaddr(&route).unwrap(),
+                    route_to_multiaddr(&route).unwrap(),
                     None,
                     false,
                 ))

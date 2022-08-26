@@ -55,7 +55,7 @@ impl ConfigLookup {
     pub fn set_project(
         &mut self,
         name: String,
-        node_route: String,
+        node_route: MultiAddr,
         id: String,
         identity_id: String,
     ) {
@@ -162,7 +162,7 @@ pub struct ProjectLookup {
     ///
     /// This value MUST be a MultiAddr and is checked before storing
     /// that it is.
-    node_route: String,
+    node_route: MultiAddr,
     /// Identifier of this project
     pub id: String,
     /// Identifier of the IDENTITY of the project (for secure-channel)
@@ -170,9 +170,7 @@ pub struct ProjectLookup {
 }
 
 impl ProjectLookup {
-    pub fn node_route(&self) -> MultiAddr {
-        MultiAddr::from_str(&self.node_route).expect(
-            "tried retrieving a MultiAddr from ProjectLookup where no MultiAddr had been stored",
-        )
+    pub fn node_route(&self) -> &MultiAddr {
+        &self.node_route
     }
 }

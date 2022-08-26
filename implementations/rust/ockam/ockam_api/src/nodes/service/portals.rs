@@ -3,13 +3,11 @@ use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo};
-use crate::nodes::service::{map_multiaddr_err, random_alias};
+use crate::nodes::service::random_alias;
 use crate::nodes::NodeManager;
 use minicbor::Decoder;
 use ockam::{Address, Result};
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_multiaddr::MultiAddr;
-use std::str::FromStr;
 
 impl NodeManager {
     pub(super) fn get_inlets(&self, req: &Request<'_>) -> ResponseBuilder<InletList<'_>> {
@@ -65,7 +63,6 @@ impl NodeManager {
 
         info!("Handling request to create inlet portal");
 
-        let outlet_route = MultiAddr::from_str(&outlet_route).map_err(map_multiaddr_err)?;
         let outlet_route = match multiaddr_to_route(&outlet_route) {
             Some(route) => route,
             None => {

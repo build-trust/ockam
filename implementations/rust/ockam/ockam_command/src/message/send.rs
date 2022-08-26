@@ -131,6 +131,6 @@ async fn send_message_via_connection_to_a_node(
     result
 }
 
-pub(crate) fn req<'a>(to: &'a MultiAddr, message: &'a str) -> RequestBuilder<'a, SendMessage<'a>> {
-    Request::post("v0/message").body(SendMessage::new(to, message.as_bytes()))
+pub(crate) fn req<'a>(to: &MultiAddr, message: &'a str) -> RequestBuilder<'a, SendMessage<'a>> {
+    Request::post("v0/message").body(SendMessage::new(to.clone(), message.as_bytes()))
 }

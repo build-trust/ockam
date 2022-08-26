@@ -40,7 +40,7 @@ async fn run_impl(
     cmd: GetCredentialCommand,
 ) -> crate::Result<()> {
     let mut rpc = Rpc::new(ctx, &opts, &cmd.node_opts.api_node)?;
-    rpc.request(api::credentials::get_credential(&cmd.from, cmd.overwrite))
+    rpc.request(api::credentials::get_credential(cmd.from, cmd.overwrite))
         .await?;
     Ok(())
 }
