@@ -19,7 +19,12 @@ impl StopCommand {
     pub fn run(opts: CommandGlobalOpts, command: Self) {
         let cfg = opts.config;
         match cfg.get_node_pid(&command.node_name) {
-            Ok(Some(pid)) => startup::stop(pid, command.kill),
+            Ok(Some(pid)) => {
+                if let Err(e) = startup::stop(pid, command.kill) {
+                    eprintln!("{e:?}");
+                    std::process::exit(exitcode::OSERR);
+                }
+            }
             Ok(_) => {
                 eprintln!("Node {} is not running!", &command.node_name);
                 std::process::exit(exitcode::IOERR);

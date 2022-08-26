@@ -66,6 +66,7 @@ reqwest = { version = "0.11", default-features = false, features = ["json", "def
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 slug = "0.1"
+sysinfo = { version = "0.25", default-features = false }
 tempfile = "3.3"
 thiserror = "1"
 tokio = { version="1", features = ["full"] }

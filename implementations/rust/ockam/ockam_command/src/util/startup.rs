@@ -4,6 +4,7 @@
 
 use crate::exitcode;
 use crate::util::{ComposableSnippet, OckamConfig, Operation, RemoteMode, StartupConfig};
+use anyhow::Context;
 use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
 use std::collections::VecDeque;
@@ -12,15 +13,17 @@ use std::process::Stdio;
 use std::{env::current_exe, fs::OpenOptions, path::PathBuf, process::Command};
 
 /// Stop a node without deleting its state directory
-pub fn stop(pid: i32, sigkill: bool) {
-    let _ = signal::kill(
+pub fn stop(pid: i32, sigkill: bool) -> anyhow::Result<()> {
+    signal::kill(
         Pid::from_raw(pid),
         if sigkill {
             Signal::SIGKILL
         } else {
             Signal::SIGTERM
         },
-    );
+    )
+    .context(format!("Failed to kill process with PID {pid}"))?;
+    Ok(())
 }
 
 /// Execute a series of commands to setup a node
