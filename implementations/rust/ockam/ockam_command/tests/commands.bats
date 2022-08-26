@@ -157,8 +157,35 @@ teardown() {
   assert_success
 }
 
-# this will succeed if already enrolled with
+# the below tests will succeed if already enrolled with
 # ockam enroll
+
+@test "send a message to a project node" {
+  ockam node create blue
+  run ockam message send hello --from blue --to /project/default/service/echo
+
+  assert_success
+  assert_output "hello"
+}
+
+@test "send a message to a project node from command embedded node" {
+  skip
+
+  ockam node create blue
+  run ockam message send hello --to /project/default/service/echo
+
+  assert_success
+  assert_output "hello"
+}
+
+
+@test "list projects" {
+  ockam node create blue
+  run ockam project list --node blue
+
+  assert_success
+}
+
 @test "create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
   ockam node create blue
   ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
