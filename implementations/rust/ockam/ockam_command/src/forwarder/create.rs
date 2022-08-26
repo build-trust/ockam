@@ -52,7 +52,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) 
             opts,
             &tcp,
             &meta,
-            &cmd.cloud_opts.addr,
+            &cmd.cloud_opts.route_to_controller,
             api_node,
         )
         .await?;

@@ -152,7 +152,13 @@ async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, CreateCommand
     let config = &options.config.get_lookup();
     let from = &command.parse_from_node(config);
     let to = &command
-        .parse_to_route(&ctx, &options, &tcp, &command.cloud_opts.addr, from)
+        .parse_to_route(
+            &ctx,
+            &options,
+            &tcp,
+            &command.cloud_opts.route_to_controller,
+            from,
+        )
         .await?;
 
     let authorized_identifiers = command.authorized.clone();

@@ -433,11 +433,11 @@ pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Resu
 pub struct CloudOpts {
     /// Ockam orchestrator address
     #[clap(global = true, hide = true, default_value = DEFAULT_ORCHESTRATOR_ADDRESS)]
-    pub addr: MultiAddr,
+    pub route_to_controller: MultiAddr,
 }
 
 impl CloudOpts {
     pub fn route(&self) -> &MultiAddr {
-        &self.addr
+        &self.route_to_controller
     }
 }
