@@ -4,7 +4,7 @@ use clap::Args;
 use ockam::TcpTransport;
 use ockam_api::clean_multiaddr;
 use ockam_api::nodes::service::message::SendMessage;
-use ockam_core::api::{Method, Request, RequestBuilder};
+use ockam_core::api::{Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
 
 use crate::util::api::CloudOpts;
@@ -132,5 +132,5 @@ async fn send_message_via_connection_to_a_node(
 }
 
 pub(crate) fn req<'a>(to: &'a MultiAddr, message: &'a str) -> RequestBuilder<'a, SendMessage<'a>> {
-    Request::builder(Method::Post, "v0/message").body(SendMessage::new(to, message.as_bytes()))
+    Request::post("v0/message").body(SendMessage::new(to, message.as_bytes()))
 }

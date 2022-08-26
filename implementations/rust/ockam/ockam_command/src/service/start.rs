@@ -10,7 +10,7 @@ use ockam_api::nodes::models::services::{
     StartAuthenticatorRequest, StartCredentialsService, StartVerifierService,
 };
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{Error, Method, Request, Response, Status};
+use ockam_core::api::{Error, Request, Response, Status};
 use ockam_core::Route;
 use std::path::PathBuf;
 use tracing::debug;
@@ -276,7 +276,7 @@ pub async fn start_verifier_service(
         _ => unreachable!(),
     };
 
-    let req = Request::builder(Method::Post, "/node/services/verifier")
+    let req = Request::post("/node/services/verifier")
         .body(StartVerifierService::new(&addr))
         .to_vec()?;
 
@@ -313,7 +313,7 @@ pub async fn start_credentials_service(
         _ => unreachable!(),
     };
 
-    let req = Request::builder(Method::Post, "/node/services/credentials")
+    let req = Request::post("/node/services/credentials")
         .body(StartCredentialsService::new(&addr, oneway))
         .to_vec()?;
 
@@ -354,7 +354,7 @@ pub async fn start_authenticator_service(
         _ => unreachable!(),
     };
 
-    let req = Request::builder(Method::Post, "/node/services/authenticator")
+    let req = Request::post("/node/services/authenticator")
         .body(StartAuthenticatorRequest::new(
             &addr,
             &enrollers,

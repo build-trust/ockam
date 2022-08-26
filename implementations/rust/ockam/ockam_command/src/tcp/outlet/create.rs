@@ -10,7 +10,7 @@ use ockam_api::{
     nodes::NODEMANAGER_ADDR,
     route_to_multiaddr,
 };
-use ockam_core::api::{Method, Request, Response, Status};
+use ockam_core::api::{Request, Response, Status};
 use ockam_core::route;
 use std::net::SocketAddr;
 
@@ -124,7 +124,7 @@ fn make_api_request(cmd: CreateCommand) -> ockam::Result<Vec<u8>> {
     let payload = CreateOutlet::new(tcp_addr, worker_addr, alias);
 
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/outlet")
+    Request::post("/node/outlet")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)

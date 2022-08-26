@@ -74,7 +74,7 @@ mod tests {
     use minicbor::Decoder;
 
     use ockam::{Context, TCP};
-    use ockam_core::api::{Method, Request, Response, Status};
+    use ockam_core::api::{Request, Response, Status};
     use ockam_core::{compat::rand, compat::rand::Rng};
     use ockam_core::{route, Address, Result, Routed, Worker};
 
@@ -103,7 +103,7 @@ mod tests {
         let request = {
             let route = route![(TCP, &cloud_address)];
             let mut buf = vec![];
-            Request::builder(Method::Post, "/node/forwarder")
+            Request::post("/node/forwarder")
                 .body(CreateForwarder::new(
                     &route_to_multiaddr(&route).unwrap(),
                     None,

@@ -7,7 +7,7 @@ use ockam::{Context, Route};
 use ockam_api::{
     clean_multiaddr, nodes::models, nodes::models::portal::InletStatus, nodes::NODEMANAGER_ADDR,
 };
-use ockam_core::api::{Method, Request, Response, Status};
+use ockam_core::api::{Request, Response, Status};
 use ockam_multiaddr::MultiAddr;
 use std::net::SocketAddr;
 
@@ -136,7 +136,7 @@ fn make_api_request(
     );
 
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/inlet")
+    Request::post("/node/inlet")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)
