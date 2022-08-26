@@ -1,6 +1,6 @@
 use crate::util::{connect_to, exitcode, get_final_element};
 use crate::util::{ComposableSnippet, Operation, PortalMode, Protocol};
-use crate::CommandGlobalOpts;
+use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 use clap::Args;
 use minicbor::Decoder;
 use ockam::{Context, Route};
@@ -14,8 +14,31 @@ use ockam_core::api::{Request, Response, Status};
 use ockam_core::route;
 use std::net::SocketAddr;
 
+const EXAMPLES: &str = "\
+EXAMPLES
+
+    # Create a target service, we'll use a simple http server for this example
+    $ python3 -m http.server --bind 127.0.0.1 5000
+
+    # Create two nodes
+    $ ockam node create n1
+    $ ockam node create n2
+
+    # Create a TCP outlet from n1 to the target server
+    $ ockam tcp-outlet create --at /node/n1 --from /service/outlet --to 127.0.0.1:5000
+
+    # Create a TCP inlet from n2 to the outlet on n1
+    $ ockam tcp-inlet create --at /node/n2 --from 127.0.0.1:6000 --to /node/n1/service/outlet
+
+    # Access the service via the inlet/outlet pair
+    $ curl 127.0.0.1:6000
+
+LEARN MORE
+";
+
 /// Create TCP Outlets
 #[derive(Clone, Debug, Args)]
+#[clap(help_template = const_str::replace!(HELP_TEMPLATE, "LEARN MORE", EXAMPLES))]
 pub struct CreateCommand {
     /// Node on which to start the tcp outlet.
     #[clap(long, display_order = 900, name = "NODE")]
