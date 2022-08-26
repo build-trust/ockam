@@ -10,7 +10,7 @@ use ockam::Result;
 use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
 use ockam_api::nodes::*;
 use ockam_core::api::RequestBuilder;
-use ockam_core::api::{Method, Request, Response};
+use ockam_core::api::{Request, Response};
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
 
@@ -21,20 +21,20 @@ pub(crate) mod node {
 
     /// Construct a request to query node status
     pub(crate) fn query_status() -> RequestBuilder<'static, ()> {
-        Request::builder(Method::Get, "/node")
+        Request::get("/node")
     }
 }
 /// Construct a request to query node status
 pub(crate) fn query_status() -> Result<Vec<u8>> {
     let mut buf = vec![];
-    Request::builder(Method::Get, "/node").encode(&mut buf)?;
+    Request::get("/node").encode(&mut buf)?;
     Ok(buf)
 }
 
 /// Construct a request to query node tcp connections
 pub(crate) fn list_tcp_connections() -> Result<Vec<u8>> {
     let mut buf = vec![];
-    let builder = Request::builder(Method::Get, "/node/tcp/connection");
+    let builder = Request::get("/node/tcp/connection");
     builder.encode(&mut buf)?;
     Ok(buf)
 }
@@ -42,7 +42,7 @@ pub(crate) fn list_tcp_connections() -> Result<Vec<u8>> {
 /// Construct a request to query node tcp listeners
 pub(crate) fn list_tcp_listeners() -> Result<Vec<u8>> {
     let mut buf = vec![];
-    let builder = Request::builder(Method::Get, "/node/tcp/listener");
+    let builder = Request::get("/node/tcp/listener");
     builder.encode(&mut buf)?;
     Ok(buf)
 }
@@ -59,7 +59,7 @@ pub(crate) fn create_tcp_connection(
     let payload =
         models::transport::CreateTransport::new(models::transport::TransportType::Tcp, tt, addr);
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/tcp/connection")
+    Request::post("/node/tcp/connection")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)
@@ -75,7 +75,7 @@ pub(crate) fn create_tcp_listener(cmd: &crate::tcp::listener::CreateCommand) -> 
     let payload =
         models::transport::CreateTransport::new(models::transport::TransportType::Tcp, tt, addr);
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/tcp/listener")
+    Request::post("/node/tcp/listener")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)
@@ -86,7 +86,7 @@ pub(crate) fn delete_tcp_connection(
     cmd: &crate::tcp::connection::DeleteCommand,
 ) -> Result<Vec<u8>> {
     let mut buf = vec![];
-    Request::builder(Method::Delete, "/node/tcp/connection")
+    Request::delete("/node/tcp/connection")
         .body(models::transport::DeleteTransport::new(&cmd.id, cmd.force))
         .encode(&mut buf)?;
 
@@ -96,7 +96,7 @@ pub(crate) fn delete_tcp_connection(
 /// Construct a request to delete node tcp connection
 pub(crate) fn delete_tcp_listener(cmd: &crate::tcp::listener::DeleteCommand) -> Result<Vec<u8>> {
     let mut buf = vec![];
-    Request::builder(Method::Delete, "/node/tcp/listener")
+    Request::delete("/node/tcp/listener")
         .body(models::transport::DeleteTransport::new(&cmd.id, cmd.force))
         .encode(&mut buf)?;
 
@@ -106,7 +106,7 @@ pub(crate) fn delete_tcp_listener(cmd: &crate::tcp::listener::DeleteCommand) -> 
 /// Construct a request to create a Vault
 pub(crate) fn create_vault(path: Option<String>) -> Result<Vec<u8>> {
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/vault")
+    Request::post("/node/vault")
         .body(models::vault::CreateVaultRequest::new(path))
         .encode(&mut buf)?;
     Ok(buf)
@@ -115,27 +115,27 @@ pub(crate) fn create_vault(path: Option<String>) -> Result<Vec<u8>> {
 /// Construct a request to create Identity
 pub(crate) fn create_identity() -> Result<Vec<u8>> {
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/identity").encode(&mut buf)?;
+    Request::post("/node/identity").encode(&mut buf)?;
     Ok(buf)
 }
 
 /// Construct a request to export Identity
 pub(crate) fn long_identity() -> Result<Vec<u8>> {
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/identity/actions/show/long").encode(&mut buf)?;
+    Request::post("/node/identity/actions/show/long").encode(&mut buf)?;
     Ok(buf)
 }
 
 /// Construct a request to print Identity Id
 pub(crate) fn short_identity() -> Result<Vec<u8>> {
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/identity/actions/show/short").encode(&mut buf)?;
+    Request::post("/node/identity/actions/show/short").encode(&mut buf)?;
     Ok(buf)
 }
 
 /// Construct a request builder to list all secure channels on the given node
 pub(crate) fn list_secure_channels() -> RequestBuilder<'static, ()> {
-    Request::builder(Method::Get, "/node/secure_channel")
+    Request::get("/node/secure_channel")
 }
 
 /// Construct a request to create Secure Channels
@@ -145,14 +145,14 @@ pub(crate) fn create_secure_channel(
 ) -> RequestBuilder<'static, models::secure_channel::CreateSecureChannelRequest<'static>> {
     let payload =
         models::secure_channel::CreateSecureChannelRequest::new(addr, authorized_identifiers);
-    Request::builder(Method::Post, "/node/secure_channel").body(payload)
+    Request::post("/node/secure_channel").body(payload)
 }
 
 pub(crate) fn delete_secure_channel(
     addr: &Address,
 ) -> RequestBuilder<'static, models::secure_channel::DeleteSecureChannelRequest<'static>> {
     let payload = models::secure_channel::DeleteSecureChannelRequest::new(addr);
-    Request::builder(Method::Delete, "/node/secure_channel").body(payload)
+    Request::delete("/node/secure_channel").body(payload)
 }
 
 /// Construct a request to create Secure Channel Listeners
@@ -166,7 +166,7 @@ pub(crate) fn create_secure_channel_listener(
     );
 
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/secure_channel_listener")
+    Request::post("/node/secure_channel_listener")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)
@@ -174,7 +174,7 @@ pub(crate) fn create_secure_channel_listener(
 
 /// Construct a request to list Secure Channel Listeners
 pub(crate) fn list_secure_channel_listener() -> RequestBuilder<'static, ()> {
-    Request::builder(Method::Get, "/node/secure_channel_listener")
+    Request::get("/node/secure_channel_listener")
 }
 
 /// Construct a request to start a Vault Service
@@ -182,7 +182,7 @@ pub(crate) fn start_vault_service(addr: &str) -> Result<Vec<u8>> {
     let payload = models::services::StartVaultServiceRequest::new(addr);
 
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/services/vault")
+    Request::post("/node/services/vault")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)
@@ -193,7 +193,7 @@ pub(crate) fn start_identity_service(addr: &str) -> Result<Vec<u8>> {
     let payload = models::services::StartIdentityServiceRequest::new(addr);
 
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/services/identity")
+    Request::post("/node/services/identity")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)
@@ -204,7 +204,7 @@ pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
     let payload = models::services::StartAuthenticatedServiceRequest::new(addr);
 
     let mut buf = vec![];
-    Request::builder(Method::Post, "/node/services/authenticated")
+    Request::post("/node/services/authenticated")
         .body(payload)
         .encode(&mut buf)?;
     Ok(buf)
@@ -222,7 +222,7 @@ pub(crate) mod credentials {
         oneway: bool,
     ) -> RequestBuilder<PresentCredentialRequest> {
         let b = PresentCredentialRequest::new(to, oneway);
-        Request::builder(Method::Post, "/node/credentials/actions/present").body(b)
+        Request::post("/node/credentials/actions/present").body(b)
     }
 
     pub(crate) fn set_authority(authorities: &[String]) -> RequestBuilder<SetAuthorityRequest> {
@@ -231,7 +231,7 @@ pub(crate) mod credentials {
         let authorities = authorities.unwrap();
 
         let b = SetAuthorityRequest::new(authorities);
-        Request::builder(Method::Post, "/node/credentials/authority").body(b)
+        Request::post("/node/credentials/authority").body(b)
     }
 
     pub(crate) fn get_credential(
@@ -239,7 +239,7 @@ pub(crate) mod credentials {
         overwrite: bool,
     ) -> RequestBuilder<GetCredentialRequest> {
         let b = GetCredentialRequest::new(from, overwrite);
-        Request::builder(Method::Post, "/node/credentials/actions/get").body(b)
+        Request::post("/node/credentials/actions/get").body(b)
     }
 }
 
@@ -255,7 +255,7 @@ pub(crate) mod enroll {
         token: Auth0Token,
     ) -> RequestBuilder<CloudRequestWrapper<AuthenticateAuth0Token>> {
         let token = AuthenticateAuth0Token::new(token);
-        Request::builder(Method::Post, "v0/enroll/auth0")
+        Request::post("v0/enroll/auth0")
             .body(CloudRequestWrapper::new(token, cmd.cloud_opts.route()))
     }
 }
@@ -269,22 +269,20 @@ pub(crate) mod space {
 
     pub(crate) fn create(cmd: &CreateCommand) -> RequestBuilder<CloudRequestWrapper<CreateSpace>> {
         let b = CreateSpace::new(cmd.name.as_str(), &cmd.admins);
-        Request::builder(Method::Post, "v0/spaces")
-            .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
+        Request::post("v0/spaces").body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
     }
 
     pub(crate) fn list(cmd: &ListCommand) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::builder(Method::Get, "v0/spaces")
-            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+        Request::get("v0/spaces").body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
     }
 
     pub(crate) fn show(cmd: &ShowCommand) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::builder(Method::Get, format!("v0/spaces/{}", cmd.id))
+        Request::get(format!("v0/spaces/{}", cmd.id))
             .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
     }
 
     pub(crate) fn delete(cmd: &DeleteCommand) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::builder(Method::Delete, format!("v0/spaces/{}", cmd.id))
+        Request::delete(format!("v0/spaces/{}", cmd.id))
             .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
     }
 }
@@ -300,28 +298,24 @@ pub(crate) mod project {
         cmd: &CreateCommand,
     ) -> RequestBuilder<CloudRequestWrapper<CreateProject>> {
         let b = CreateProject::new(cmd.project_name.as_str(), &[], &cmd.services);
-        Request::builder(Method::Post, format!("v0/projects/{}", cmd.space_id))
+        Request::post(format!("v0/projects/{}", cmd.space_id))
             .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
     }
 
     pub(crate) fn list(cmd: &ListCommand) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::builder(Method::Get, "v0/projects")
-            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+        Request::get("v0/projects").body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
     }
 
     pub(crate) fn show(cmd: &ShowCommand) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::builder(Method::Get, format!("v0/projects/{}", cmd.project_id))
+        Request::get(format!("v0/projects/{}", cmd.project_id))
             .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
     }
 
     pub(crate) fn delete(cmd: DeleteCommand) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![];
-        Request::builder(
-            Method::Delete,
-            format!("v0/projects/{}/{}", cmd.space_id, cmd.project_id),
-        )
-        .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
-        .encode(&mut buf)?;
+        Request::delete(format!("v0/projects/{}/{}", cmd.space_id, cmd.project_id))
+            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+            .encode(&mut buf)?;
         Ok(buf)
     }
 
@@ -332,33 +326,24 @@ pub(crate) mod project {
             cmd.enroller_identity_id.as_str(),
             cmd.description.as_deref(),
         );
-        Request::builder(
-            Method::Post,
-            format!("v0/project-enrollers/{}", cmd.project_id),
-        )
-        .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
+        Request::post(format!("v0/project-enrollers/{}", cmd.project_id))
+            .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
     }
 
     pub(crate) fn list_enrollers(
         cmd: &ListEnrollersCommand,
     ) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::builder(
-            Method::Get,
-            format!("v0/project-enrollers/{}", cmd.project_id),
-        )
-        .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+        Request::get(format!("v0/project-enrollers/{}", cmd.project_id))
+            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
     }
 
     pub(crate) fn delete_enroller(
         cmd: &DeleteEnrollerCommand,
     ) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::builder(
-            Method::Delete,
-            format!(
-                "v0/project-enrollers/{}/{}",
-                cmd.project_id, cmd.enroller_identity_id
-            ),
-        )
+        Request::delete(format!(
+            "v0/project-enrollers/{}/{}",
+            cmd.project_id, cmd.enroller_identity_id
+        ))
         .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
     }
 }

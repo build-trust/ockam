@@ -5,7 +5,7 @@ use rand::prelude::random;
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_api::{clean_multiaddr, is_local_node};
-use ockam_core::api::{Method, Request, RequestBuilder};
+use ockam_core::api::{Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
 
 use crate::util::api::CloudOpts;
@@ -78,13 +78,11 @@ fn req(cmd: &CreateCommand, at_rust_node: bool) -> anyhow::Result<RequestBuilder
         cmd.forwarder_name.clone()
     };
 
-    Ok(
-        Request::builder(Method::Post, "/node/forwarder").body(CreateForwarder::new(
-            &cmd.at,
-            Some(alias),
-            at_rust_node,
-        )),
-    )
+    Ok(Request::post("/node/forwarder").body(CreateForwarder::new(
+        &cmd.at,
+        Some(alias),
+        at_rust_node,
+    )))
 }
 
 impl Output for ForwarderInfo<'_> {

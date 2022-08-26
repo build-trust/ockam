@@ -339,7 +339,7 @@ mod tests {
             // Create invitation
             let req = CreateInvitation::new("invitee", "s1", Some("p1"));
             let mut buf = vec![];
-            Request::builder(Method::Post, "v0/invitations")
+            Request::post("v0/invitations")
                 .body(CloudRequestWrapper::new(req.clone(), &cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -360,7 +360,7 @@ mod tests {
 
             // List it
             let mut buf = vec![];
-            Request::builder(Method::Get, "v0/invitations")
+            Request::get("v0/invitations")
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -373,7 +373,7 @@ mod tests {
 
             // Accept invitation
             let mut buf = vec![];
-            Request::builder(Method::Put, format!("v0/invitations/{i_id}"))
+            Request::put(format!("v0/invitations/{i_id}"))
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -383,7 +383,7 @@ mod tests {
 
             // Check that status has changed
             let mut buf = vec![];
-            Request::builder(Method::Get, "v0/invitations")
+            Request::get("v0/invitations")
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -397,7 +397,7 @@ mod tests {
 
             // Rejecting an accepted invitation should fail
             let mut buf = vec![];
-            Request::builder(Method::Delete, format!("v0/invitations/{i_id}"))
+            Request::delete(format!("v0/invitations/{i_id}"))
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -418,7 +418,7 @@ mod tests {
             // Create invitation
             let req = CreateInvitation::new("invitee", "s1", Some("p1"));
             let mut buf = vec![];
-            Request::builder(Method::Post, "v0/invitations")
+            Request::post("v0/invitations")
                 .body(CloudRequestWrapper::new(req.clone(), &cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -439,7 +439,7 @@ mod tests {
 
             // List it
             let mut buf = vec![];
-            Request::builder(Method::Get, "v0/invitations")
+            Request::get("v0/invitations")
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -452,7 +452,7 @@ mod tests {
 
             // Reject invitation
             let mut buf = vec![];
-            Request::builder(Method::Delete, format!("v0/invitations/{i_id}"))
+            Request::delete(format!("v0/invitations/{i_id}"))
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -462,7 +462,7 @@ mod tests {
 
             // Check that status has changed
             let mut buf = vec![];
-            Request::builder(Method::Get, "v0/invitations")
+            Request::get("v0/invitations")
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;
@@ -476,7 +476,7 @@ mod tests {
 
             // Accepting a rejected invitation should fail
             let mut buf = vec![];
-            Request::builder(Method::Put, format!("v0/invitations/{i_id}"))
+            Request::put(format!("v0/invitations/{i_id}"))
                 .body(CloudRequestWrapper::bare(&cloud_route))
                 .encode(&mut buf)?;
             let response: Vec<u8> = ctx.send_and_receive(route.clone(), buf).await?;

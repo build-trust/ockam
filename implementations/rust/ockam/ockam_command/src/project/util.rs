@@ -10,7 +10,7 @@ use ockam_api::cloud::CloudRequestWrapper;
 use ockam_api::config::lookup::LookupMeta;
 use ockam_api::nodes::models;
 use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
-use ockam_core::api::{Method, Request};
+use ockam_core::api::Request;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::util::RpcBuilder;
@@ -61,7 +61,7 @@ pub async fn lookup_projects(
                 // If it's not in the config, retrieve it from the API
                 let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp).build()?;
                 rpc.request(
-                    Request::builder(Method::Get, format!("v0/projects/name/{}", name))
+                    Request::get(format!("v0/projects/name/{}", name))
                         .body(CloudRequestWrapper::bare(cloud_addr)),
                 )
                 .await?;
@@ -118,7 +118,7 @@ async fn create_secure_channel_to_project<'a>(
             project_access_route,
             Some(authorized_identifier),
         );
-        Request::builder(Method::Post, "/node/secure_channel").body(payload)
+        Request::post("/node/secure_channel").body(payload)
     };
     rpc.request(req).await?;
     let sc = rpc.parse_response::<CreateSecureChannelResponse>()?;
