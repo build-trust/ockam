@@ -10,9 +10,7 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
-use crate::util::{
-    get_final_element, node_rpc, stop_node, RpcBuilder, DEFAULT_ORCHESTRATOR_ADDRESS,
-};
+use crate::util::{get_final_element, node_rpc, RpcBuilder, DEFAULT_ORCHESTRATOR_ADDRESS};
 use crate::CommandGlobalOpts;
 use crate::Result;
 
@@ -63,9 +61,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) 
         rpc.print_response::<ForwarderInfo>()?;
         Ok(())
     }
-    let result = go(&mut ctx, &opts, cmd).await;
-    stop_node(ctx).await?;
-    result
+    go(&mut ctx, &opts, cmd).await
 }
 
 /// Construct a request to create a forwarder

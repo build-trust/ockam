@@ -1,4 +1,4 @@
-use crate::util::{api, connect_to, exitcode, get_final_element, stop_node};
+use crate::util::{api, connect_to, exitcode, get_final_element};
 use crate::CommandGlobalOpts;
 
 use clap::Args;
@@ -42,9 +42,9 @@ impl CreateCommand {
         };
 
         connect_to(port, command, |mut ctx, cmd, rte| async {
-            let a = create_listener(&mut ctx, cmd.address, cmd.authorized_identifier, rte).await;
-            let b = stop_node(ctx).await;
-            a.and(b)
+            create_listener(&mut ctx, cmd.address, cmd.authorized_identifier, rte).await?;
+            drop(ctx);
+            Ok(())
         });
     }
 }

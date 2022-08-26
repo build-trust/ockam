@@ -23,7 +23,7 @@ use crate::{
     CommandGlobalOpts, HELP_TEMPLATE,
 };
 use ockam::identity::Identity;
-use ockam::{Address, AsyncTryClone, TCP};
+use ockam::{Address, AsyncTryClone, NodeBuilder, TCP};
 use ockam::{Context, TcpTransport};
 use ockam_api::config::cli;
 use ockam_api::nodes::IdentityOverride;
@@ -132,8 +132,8 @@ impl CreateCommand {
                 }
             }
 
-            if let Err(e) = embedded_node(setup, (cmd, addr, cfg.clone())) {
-                eprintln!("Ockam node failed: {:?}", e,);
+            if let Err(e) = run_background_node(cmd, addr, cfg.clone()) {
+                eprintln!("Ockam node failed: {:?}", e);
             }
         } else {
             let cmd = cmd.overwrite_addr().unwrap();
@@ -269,9 +269,29 @@ async fn create_identity_override(ctx: &Context, cfg: &OckamConfig) -> Result<Id
     Ok(identity_override)
 }
 
-async fn setup(
-    mut ctx: Context,
-    (c, addr, cfg): (CreateCommand, SocketAddr, OckamConfig),
+fn run_background_node(c: CreateCommand, addr: SocketAddr, cfg: OckamConfig) -> Result<()> {
+    let (mut ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
+
+    executor
+        .execute(async move {
+            let v = run_background_node_impl(&mut ctx, c, addr, cfg).await;
+
+            match v {
+                Err(e) => {
+                    eprintln!("Background node error {:?}", e);
+                    std::process::exit(1);
+                }
+                Ok(v) => v,
+            }
+        })
+        .map_err(anyhow::Error::from)
+}
+
+async fn run_background_node_impl(
+    ctx: &mut Context,
+    c: CreateCommand,
+    addr: SocketAddr,
+    cfg: OckamConfig,
 ) -> Result<()> {
     let identity_override = if c.skip_defaults {
         None
@@ -301,7 +321,7 @@ async fn setup(
         let node_opts = super::NodeOpts {
             api_node: c.node_name,
         };
-        start_services(&mut ctx, &tcp, &path, addr, node_opts).await?
+        start_services(ctx, &tcp, &path, addr, node_opts).await?
     }
 
     Ok(())

@@ -7,7 +7,7 @@ use ockam_api::cloud::project::Project;
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
-use crate::util::{api, node_rpc, stop_node, RpcBuilder};
+use crate::util::{api, node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
@@ -42,9 +42,7 @@ async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let res = run_impl(&mut ctx, opts, cmd).await;
-    stop_node(ctx).await?;
-    res
+    run_impl(&mut ctx, opts, cmd).await
 }
 
 async fn run_impl(

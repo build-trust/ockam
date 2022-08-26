@@ -1,4 +1,4 @@
-use crate::util::{connect_to, exitcode, get_final_element, stop_node};
+use crate::util::{connect_to, exitcode, get_final_element};
 use crate::CommandGlobalOpts;
 use crate::{node::NodeOpts, util::api};
 use clap::Args;
@@ -57,7 +57,7 @@ pub async fn show_identity(
             }
         }
 
-        stop_node(ctx).await
+        Ok(())
     } else {
         let resp: Vec<u8> = ctx
             .send_and_receive(
@@ -78,6 +78,6 @@ pub async fn show_identity(
             }
         }
 
-        stop_node(ctx).await
+        Ok(())
     }
 }

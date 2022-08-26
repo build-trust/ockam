@@ -245,9 +245,6 @@ pub async fn stop_node(mut ctx: Context) -> Result<()> {
 /// while also configuring a TcpTransport and connecting to another
 /// node.
 ///
-/// **IMPORTANT** every handler is responsibly for shutting down its
-/// local node after it's done communicating with the remote node via
-/// `ctx.stop().await`!
 pub fn connect_to<A, F, Fut>(port: u16, a: A, lambda: F)
 where
     A: Send + Sync + 'static,
@@ -322,7 +319,13 @@ where
     let (ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
     executor
         .execute(async move {
-            match f(ctx, a).await {
+            let child_ctx = ctx
+                .new_detached(Address::random_local())
+                .await
+                .expect("Embedded node child ctx can't be created");
+            let v = f(child_ctx, a).await;
+            stop_node(ctx).await.unwrap();
+            match v {
                 Err(e) => {
                     eprintln!("Error {:?}", e);
                     std::process::exit(1);
@@ -461,11 +464,11 @@ pub async fn query_pid(
         Ok(r) => r.take().body(),
         Err(_) => {
             tx.send(None).unwrap();
-            return stop_node(ctx).await;
+            return Ok(());
         }
     };
 
     let status = api::parse_status(&resp)?;
     tx.send(Some(status.pid)).unwrap();
-    stop_node(ctx).await
+    Ok(())
 }

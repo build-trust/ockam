@@ -1,4 +1,4 @@
-use crate::util::{self, api, connect_to, exitcode, OckamConfig};
+use crate::util::{api, connect_to, exitcode, OckamConfig};
 use crate::CommandGlobalOpts;
 use anyhow::Context;
 use clap::Args;
@@ -119,5 +119,5 @@ pub async fn query_status(
         Err(_) => print_node_info(&node_cfg, &node_name, "DOWN", "N/A"),
     }
 
-    util::stop_node(ctx).await
+    Ok(())
 }

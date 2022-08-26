@@ -1,5 +1,5 @@
 use crate::node::NodeOpts;
-use crate::util::{api, connect_to, exitcode, get_final_element, stop_node};
+use crate::util::{api, connect_to, exitcode, get_final_element};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use cli_table::{print_stdout, Cell, Style, Table};
@@ -78,5 +78,5 @@ pub async fn list_listeners(ctx: Context, _: (), mut base_route: Route) -> anyho
         std::process::exit(exitcode::IOERR);
     }
 
-    stop_node(ctx).await
+    Ok(())
 }

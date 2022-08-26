@@ -1,5 +1,5 @@
 use crate::node::NodeOpts;
-use crate::util::{api, connect_to, exitcode, stop_node};
+use crate::util::{api, connect_to, exitcode};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
@@ -54,5 +54,5 @@ pub async fn create_identity(
         }
     }
 
-    stop_node(ctx).await
+    Ok(())
 }

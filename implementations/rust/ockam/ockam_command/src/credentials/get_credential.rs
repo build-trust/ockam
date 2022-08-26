@@ -5,7 +5,7 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::node::NodeOpts;
 use crate::util::{api, node_rpc, Rpc};
-use crate::{stop_node, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct GetCredentialCommand {
@@ -29,9 +29,7 @@ async fn rpc(
     mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, GetCredentialCommand),
 ) -> crate::Result<()> {
-    let res = run_impl(&mut ctx, opts, cmd).await;
-    stop_node(ctx).await?;
-    res
+    run_impl(&mut ctx, opts, cmd).await
 }
 
 async fn run_impl(

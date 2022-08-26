@@ -1,4 +1,4 @@
-use crate::util::{bind_to_port_check, connect_to, exitcode, get_final_element, stop_node};
+use crate::util::{bind_to_port_check, connect_to, exitcode, get_final_element};
 use crate::util::{ComposableSnippet, Operation, PortalMode, Protocol};
 use crate::CommandGlobalOpts;
 use clap::Args;
@@ -120,7 +120,7 @@ pub async fn create_inlet(
         }
     }
 
-    stop_node(ctx).await
+    Ok(())
 }
 
 /// Construct a request to create a tcp inlet

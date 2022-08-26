@@ -10,7 +10,7 @@ use ockam_multiaddr::MultiAddr;
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{stop_node, CommandGlobalOpts, Result};
+use crate::{CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
 pub struct AddMemberCommand {
@@ -58,7 +58,5 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, AddMemberCommand
         rpc.is_ok()?;
         Ok(())
     }
-    let result = go(&mut ctx, &opts, cmd).await;
-    stop_node(ctx).await?;
-    result
+    go(&mut ctx, &opts, cmd).await
 }
