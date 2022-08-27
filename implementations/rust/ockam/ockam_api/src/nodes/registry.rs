@@ -27,20 +27,6 @@ impl SecureChannelInfo {
     }
 }
 
-pub(crate) struct OrchestratorSecureChannelInfo {
-    addr: Address,
-}
-
-impl OrchestratorSecureChannelInfo {
-    pub(crate) fn new(addr: Address) -> Self {
-        Self { addr }
-    }
-
-    pub(crate) fn addr(&self) -> &Address {
-        &self.addr
-    }
-}
-
 #[derive(Default, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct IdentityRouteKey(Vec<u8>);
 
@@ -121,10 +107,6 @@ pub(crate) struct Registry {
     // generally add two entries to the map: one using the target route as the key to avoid creating
     // duplicated secure channels, and another using the secure channel address to be able to remove them.
     pub(crate) secure_channels: BTreeMap<IdentityRouteKey, Arc<SecureChannelInfo>>,
-    // Registry to keep track of secure channels between the node and the orchestrator (controller node + project nodes).
-    // TODO: refactor to use `secure_channels` where `orchestrator_secure_channels` is being used
-    pub(crate) orchestrator_secure_channels:
-        BTreeMap<IdentityRouteKey, OrchestratorSecureChannelInfo>,
     pub(crate) secure_channel_listeners: BTreeMap<Address, SecureChannelListenerInfo>,
     pub(crate) vault_services: BTreeMap<Address, VaultServiceInfo>,
     pub(crate) identity_services: BTreeMap<Address, IdentityServiceInfo>,
