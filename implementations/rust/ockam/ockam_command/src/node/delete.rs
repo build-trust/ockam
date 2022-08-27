@@ -6,7 +6,6 @@ use tracing::{debug, trace};
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
     /// Name of the node.
-    #[clap(default_value = "default")]
     node_name: String,
 
     /// Terminate all nodes
