@@ -103,26 +103,24 @@ pub fn multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
 /// Try to convert a multiaddr to an Ockam Address
 pub fn multiaddr_to_addr(ma: &MultiAddr) -> Option<Address> {
     let mut it = ma.iter().peekable();
-
-    let proto = it.next()?;
-    match proto.code() {
+    let p = it.next()?;
+    match p.code() {
         DnsAddr::CODE => {
-            let host = proto.cast::<DnsAddr>()?;
+            let host = p.cast::<DnsAddr>()?;
             if let Some(p) = it.peek() {
                 if p.code() == Tcp::CODE {
-                    let tcp = proto.cast::<Tcp>()?;
+                    let tcp = p.cast::<Tcp>()?;
                     return Some(Address::new(TCP, format!("{}:{}", &*host, *tcp)));
                 }
             }
+            None
         }
         Service::CODE => {
-            let local = proto.cast::<Service>()?;
-            return Some(Address::new(LOCAL, &*local));
+            let local = p.cast::<Service>()?;
+            Some(Address::new(LOCAL, &*local))
         }
-        _ => {}
-    };
-
-    None
+        _ => None,
+    }
 }
 
 /// Try to convert an Ockam Route into a MultiAddr.
