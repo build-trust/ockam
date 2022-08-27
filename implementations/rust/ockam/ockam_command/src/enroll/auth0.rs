@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use std::borrow::Borrow;
 use std::io::{stdin, Write};
+use tokio::net::TcpStream;
 
 use clap::Args;
 use colorful::Colorful;
@@ -8,13 +9,15 @@ use reqwest::StatusCode;
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{debug, info};
 
-use ockam::{Context, TcpTransport};
+use ockam::{Context, TcpTransport, TCP};
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
 use ockam_api::config::cli::NodeConfig;
 use ockam_api::error::ApiError;
+use ockam_api::multiaddr_to_route;
 use ockam_core::api::Status;
+use ockam_multiaddr::MultiAddr;
 
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
@@ -185,6 +188,8 @@ async fn default_project<'a>(
         }
     }
 
+    wait_till_tcp_can_connect(default_project.access_route()).await;
+
     // Store the default project in the config lookup table.
     opts.config.set_project_alias(
         default_project.name.to_string(),
@@ -199,6 +204,22 @@ async fn default_project<'a>(
     opts.config.atomic_update().run()?;
     println!("\n{}", default_project.output()?);
     Ok(default_project)
+}
+
+async fn wait_till_tcp_can_connect(address: MultiAddr) {
+    let r = multiaddr_to_route(&address).expect("access route cannot be turned into a route");
+    let a = r.next().expect("could not get first address from route");
+    if a.transport_type() == TCP {
+        let tcp_address = a.address();
+        loop {
+            match TcpStream::connect(tcp_address).await {
+                Ok(_s) => break,
+                Err(_e) => {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+                }
+            }
+        }
+    }
 }
 
 pub struct Auth0Service;
