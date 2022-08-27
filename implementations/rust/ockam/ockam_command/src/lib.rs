@@ -106,7 +106,7 @@ fn long_version() -> &'static str {
     propagate_version(true),
     color(ColorChoice::Never),
     term_width = 100,
-    help_template = highlight::shell_scripts(EXAMPLES),
+    help_template = highlight::highlighted_shell_script(EXAMPLES),
 )]
 pub struct OckamCommand {
     #[clap(subcommand)]
