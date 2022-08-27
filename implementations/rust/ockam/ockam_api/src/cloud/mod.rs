@@ -69,7 +69,6 @@ mod node {
 
     use crate::cloud::OCKAM_CONTROLLER_IDENTITY_ID;
     use crate::error::ApiError;
-    use crate::nodes::registry::{IdentityRouteKey, OrchestratorSecureChannelInfo};
     use crate::nodes::NodeManager;
     use crate::StaticFiles;
 
@@ -122,22 +121,15 @@ mod node {
             let cloud_route = cloud_route.into();
             let sc = self.controller_secure_channel(cloud_route).await?;
             let route = route![&sc.to_string(), api_service];
-            request(ctx, label, schema, route, req).await
+            let res = request(ctx, label, schema, route, req).await;
+            ctx.stop_worker(sc).await?;
+            res
         }
 
         /// Returns a secure channel between the node and the controller.
         async fn controller_secure_channel(&mut self, route: impl Into<Route>) -> Result<Address> {
             let identity = self.identity()?;
             let route = route.into();
-            let map_key = IdentityRouteKey::new(identity, &route).await?;
-
-            // If channel was already created, do nothing.
-            if let Some(channel) = self.registry.orchestrator_secure_channels.get(&map_key) {
-                let addr = channel.addr();
-                trace!(target: TARGET, %addr, "Using cached orchestrator secure channel");
-                return Ok(addr.clone());
-            }
-
             // Create secure channel for the given route using the orchestrator identity.
             trace!(target: TARGET, %route, "Creating orchestrator secure channel");
             let addr = identity
@@ -147,9 +139,6 @@ mod node {
                     &self.authenticated_storage,
                 )
                 .await?;
-            self.registry
-                .orchestrator_secure_channels
-                .insert(map_key, OrchestratorSecureChannelInfo::new(addr.clone()));
             debug!(target: TARGET, %addr, "Orchestrator secure channel created");
             Ok(addr)
         }
