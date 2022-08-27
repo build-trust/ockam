@@ -1,7 +1,6 @@
 use anyhow::anyhow;
 use std::borrow::Borrow;
-use std::io::{stdin, Write};
-use tokio::net::TcpStream;
+use std::io::stdin;
 
 use clap::Args;
 use colorful::Colorful;
@@ -9,17 +8,16 @@ use reqwest::StatusCode;
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{debug, info};
 
-use ockam::{Context, TcpTransport, TCP};
+use ockam::{Context, TcpTransport};
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::space::Space;
 use ockam_api::config::cli::NodeConfig;
 use ockam_api::error::ApiError;
-use ockam_api::multiaddr_to_route;
 use ockam_core::api::Status;
-use ockam_multiaddr::MultiAddr;
 
 use crate::node::NodeOpts;
+use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 use crate::util::node::default_node;
 use crate::util::output::Output;
@@ -142,7 +140,7 @@ async fn default_project<'a>(
         rpc.parse_response::<Vec<Project>>()?
     };
     // If the space has no projects, create one
-    let mut default_project = if available_projects.is_empty() {
+    let default_project = if available_projects.is_empty() {
         let cmd = crate::project::CreateCommand {
             space_id: space.id.to_string(),
             project_name: "default".to_string(),
@@ -165,61 +163,10 @@ async fn default_project<'a>(
             Some(p) => p.to_owned(),
         }
     };
-
-    if default_project.access_route.is_empty() {
-        print!("\nProject created. Waiting until it's operative...");
-        let cmd = crate::project::ShowCommand {
-            space_id: space.id.to_string(),
-            project_id: default_project.id.to_string(),
-            node_opts: node_opts.clone(),
-            cloud_opts: cloud_opts.clone(),
-        };
-        loop {
-            print!(".");
-            std::io::stdout().flush()?;
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-            let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
-            rpc.request(api::project::show(&cmd)).await?;
-            let project = rpc.parse_response::<Project>()?;
-            if project.is_ready() {
-                default_project = project.to_owned();
-                break;
-            }
-        }
-    }
-
-    wait_till_tcp_can_connect(default_project.access_route()).await;
-
-    // Store the default project in the config lookup table.
-    opts.config.set_project_alias(
-        default_project.name.to_string(),
-        default_project.access_route.to_string(),
-        default_project.id.to_string(),
-        default_project
-            .identity
-            .as_ref()
-            .expect("Project should have identity set")
-            .to_string(),
-    )?;
-    opts.config.atomic_update().run()?;
-    println!("\n{}", default_project.output()?);
-    Ok(default_project)
-}
-
-async fn wait_till_tcp_can_connect(address: MultiAddr) {
-    let r = multiaddr_to_route(&address).expect("access route cannot be turned into a route");
-    let a = r.next().expect("could not get first address from route");
-    if a.transport_type() == TCP {
-        let tcp_address = a.address();
-        loop {
-            match TcpStream::connect(tcp_address).await {
-                Ok(_s) => break,
-                Err(_e) => {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
-                }
-            }
-        }
-    }
+    let project =
+        check_project_readiness(ctx, opts, node_opts, cloud_opts, tcp, default_project).await?;
+    println!("{}", project.output()?);
+    Ok(project)
 }
 
 pub struct Auth0Service;

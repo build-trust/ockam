@@ -1,10 +1,10 @@
 use clap::Args;
 use ockam::{Context, TcpTransport};
-use std::io::Write;
 
 use ockam_api::cloud::project::Project;
 
 use crate::node::NodeOpts;
+use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
 use crate::util::{api, node_rpc, RpcBuilder};
@@ -55,41 +55,9 @@ async fn run_impl(
         .tcp(&tcp)
         .build()?;
     rpc.request(api::project::create(&cmd)).await?;
-    let mut project = rpc.parse_response::<Project>()?;
-
-    if project.access_route.is_empty() {
-        print!("\nProject created. Waiting until it's operative...");
-        let cmd = crate::project::ShowCommand {
-            space_id: project.space_id.to_string(),
-            project_id: project.id.to_string(),
-            node_opts: cmd.node_opts.clone(),
-            cloud_opts: cmd.cloud_opts.clone(),
-        };
-        loop {
-            print!(".");
-            std::io::stdout().flush()?;
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-            let mut rpc = RpcBuilder::new(ctx, &opts, &cmd.node_opts.api_node)
-                .tcp(&tcp)
-                .build()?;
-            rpc.request(api::project::show(&cmd)).await?;
-            let p = rpc.parse_response::<Project>()?;
-            if p.is_ready() {
-                project = p.to_owned();
-                break;
-            }
-        }
-    }
-    opts.config.set_project_alias(
-        project.name.to_string(),
-        project.access_route.to_string(),
-        project.id.to_string(),
-        project
-            .identity
-            .as_ref()
-            .expect("Project should have identity set")
-            .to_string(),
-    )?;
+    let project = rpc.parse_response::<Project>()?;
+    let project =
+        check_project_readiness(ctx, &opts, &cmd.node_opts, &cmd.cloud_opts, &tcp, project).await?;
     println!("{}", project.output()?);
     Ok(())
 }

@@ -1,12 +1,18 @@
-use minicbor::{Decode, Encode};
-use ockam_core::CowStr;
-use ockam_identity::IdentityIdentifier;
-use serde::Serialize;
 use std::str::FromStr;
 
+use minicbor::{Decode, Encode};
+use serde::Serialize;
+
+use ockam_core::CowStr;
+use ockam_core::Result;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
+use ockam_node::tokio;
+
+use crate::error::ApiError;
+use crate::multiaddr_to_addr;
 
 #[derive(Encode, Decode, Serialize, Debug)]
 #[rustfmt::skip]
@@ -58,8 +64,28 @@ impl Project<'_> {
             || self.authority_identity.is_none())
     }
 
-    pub fn access_route(&self) -> MultiAddr {
-        MultiAddr::from_str(&self.access_route).expect("Invalid access route")
+    pub async fn is_reachable(&self) -> Result<bool> {
+        let socket_addr = self.access_route_socket_addr()?;
+        Ok(tokio::net::TcpStream::connect(&socket_addr).await.is_ok())
+    }
+
+    pub fn access_route(&self) -> Result<MultiAddr> {
+        MultiAddr::from_str(&self.access_route).map_err(|e| ApiError::generic(&e.to_string()))
+    }
+
+    // Converts the `access_route` MultiAddr into a single Address, which will
+    // return the host and port of the project node.
+    // Ex: if access_route is "/dnsaddr/node.dnsaddr.com/tcp/4000/service/api",
+    // then this will return the string "node.dnsaddr.com:4000".
+    fn access_route_socket_addr(&self) -> Result<String> {
+        let ma = self.access_route()?;
+        if let Some(addr) = multiaddr_to_addr(&ma) {
+            Ok(addr.address().to_string())
+        } else {
+            Err(ApiError::generic(
+                "Project's access route has not a valid structure",
+            ))
+        }
     }
 }
 
@@ -336,51 +362,52 @@ mod tests {
 
     use super::*;
 
+    #[derive(Debug, Clone)]
+    struct Pr(Project<'static>);
+
+    impl Arbitrary for Pr {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Pr(Project {
+                #[cfg(feature = "tag")]
+                tag: Default::default(),
+                id: String::arbitrary(g).into(),
+                name: String::arbitrary(g).into(),
+                space_name: String::arbitrary(g).into(),
+                services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
+                access_route: String::arbitrary(g).into(),
+                users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
+                space_id: String::arbitrary(g).into(),
+                identity: bool::arbitrary(g)
+                    .then(|| IdentityIdentifier::from_key_id(&String::arbitrary(g))),
+                authority_access_route: bool::arbitrary(g).then(|| String::arbitrary(g).into()),
+                authority_identity: bool::arbitrary(g)
+                    .then(|| hex::encode(<Vec<u8>>::arbitrary(g)).into()),
+            })
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    struct CPr(CreateProject<'static>);
+
+    impl Arbitrary for CPr {
+        fn arbitrary(g: &mut Gen) -> Self {
+            CPr(CreateProject {
+                #[cfg(feature = "tag")]
+                tag: Default::default(),
+                name: String::arbitrary(g).into(),
+                services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
+                users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
+            })
+        }
+    }
+
     mod schema {
-        use super::*;
         use cddl_cat::validate_cbor_bytes;
-        use ockam_core::api::SCHEMA;
-        use ockam_identity::IdentityIdentifier;
         use quickcheck::{quickcheck, TestResult};
 
-        #[derive(Debug, Clone)]
-        struct Pr(Project<'static>);
+        use ockam_core::api::SCHEMA;
 
-        impl Arbitrary for Pr {
-            fn arbitrary(g: &mut Gen) -> Self {
-                Pr(Project {
-                    #[cfg(feature = "tag")]
-                    tag: Default::default(),
-                    id: String::arbitrary(g).into(),
-                    name: String::arbitrary(g).into(),
-                    space_name: String::arbitrary(g).into(),
-                    services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
-                    access_route: String::arbitrary(g).into(),
-                    users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
-                    space_id: String::arbitrary(g).into(),
-                    identity: bool::arbitrary(g)
-                        .then(|| IdentityIdentifier::from_key_id(&String::arbitrary(g))),
-                    authority_access_route: bool::arbitrary(g).then(|| String::arbitrary(g).into()),
-                    authority_identity: bool::arbitrary(g)
-                        .then(|| hex::encode(<Vec<u8>>::arbitrary(g)).into()),
-                })
-            }
-        }
-
-        #[derive(Debug, Clone)]
-        struct CPr(CreateProject<'static>);
-
-        impl Arbitrary for CPr {
-            fn arbitrary(g: &mut Gen) -> Self {
-                CPr(CreateProject {
-                    #[cfg(feature = "tag")]
-                    tag: Default::default(),
-                    name: String::arbitrary(g).into(),
-                    services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
-                    users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
-                })
-            }
-        }
+        use super::*;
 
         quickcheck! {
             fn project(o: Pr) -> TestResult {
@@ -415,5 +442,15 @@ mod tests {
                 TestResult::passed()
             }
         }
+    }
+
+    #[test]
+    fn convert_access_route_to_socket_addr() {
+        let mut g = Gen::new(100);
+        let mut p = Pr::arbitrary(&mut g).0;
+        p.access_route = "/dnsaddr/node.dnsaddr.com/tcp/4000/service/api".into();
+
+        let socket_addr = p.access_route_socket_addr().unwrap();
+        assert_eq!(&socket_addr, "node.dnsaddr.com:4000");
     }
 }

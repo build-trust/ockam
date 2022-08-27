@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context, Result};
@@ -13,7 +14,9 @@ use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
 use ockam_core::api::Request;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
-use crate::util::RpcBuilder;
+use crate::node::NodeOpts;
+use crate::util::api::CloudOpts;
+use crate::util::{api, RpcBuilder};
 use crate::CommandGlobalOpts;
 
 pub fn clean_projects_multiaddr(
@@ -80,8 +83,9 @@ pub async fn lookup_projects(
                     project.id.to_string(),
                     identity_id.to_string(),
                 )?;
+                opts.config.atomic_update().run()?;
                 // Return the project data needed to create the secure channel
-                (project.access_route(), identity_id)
+                (project.access_route()?, identity_id)
             }
         };
         // Now we can create the secure channel to the project's node
@@ -123,4 +127,61 @@ async fn create_secure_channel_to_project<'a>(
     rpc.request(req).await?;
     let sc = rpc.parse_response::<CreateSecureChannelResponse>()?;
     Ok(sc.addr()?)
+}
+
+pub async fn check_project_readiness<'a>(
+    ctx: &ockam::Context,
+    opts: &CommandGlobalOpts,
+    node_opts: &NodeOpts,
+    cloud_opts: &CloudOpts,
+    tcp: &TcpTransport,
+    mut project: Project<'a>,
+) -> Result<Project<'a>> {
+    if !project.is_ready() {
+        print!("\nProject created. Waiting until it's operative...");
+        let cmd = crate::project::ShowCommand {
+            space_id: project.space_id.to_string(),
+            project_id: project.id.to_string(),
+            node_opts: node_opts.clone(),
+            cloud_opts: cloud_opts.clone(),
+        };
+        loop {
+            print!(".");
+            std::io::stdout().flush()?;
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            let mut rpc = RpcBuilder::new(ctx, opts, &cmd.node_opts.api_node)
+                .tcp(tcp)
+                .build()?;
+            rpc.request(api::project::show(&cmd)).await?;
+            let p = rpc.parse_response::<Project>()?;
+            if p.is_ready() {
+                project = p.to_owned();
+                break;
+            }
+        }
+    }
+    if !project.is_reachable().await? {
+        print!("\nEstablishing connection (this can take a few minutes)...");
+        loop {
+            print!(".");
+            std::io::stdout().flush()?;
+            tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+            if project.is_reachable().await? {
+                std::io::stdout().flush()?;
+                break;
+            }
+        }
+    }
+    opts.config.set_project_alias(
+        project.name.to_string(),
+        project.access_route.to_string(),
+        project.id.to_string(),
+        project
+            .identity
+            .as_ref()
+            .expect("Project should have identity set")
+            .to_string(),
+    )?;
+    opts.config.atomic_update().run()?;
+    Ok(project)
 }
