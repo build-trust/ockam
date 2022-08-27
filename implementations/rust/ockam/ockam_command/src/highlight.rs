@@ -27,9 +27,14 @@ FEEDBACK
     on Github https://github.com/build-trust/ockam/discussions/new
 ";
 
-pub(crate) fn shell_scripts(script: &str) -> &'static str {
-    let mut highlighted: Vec<String> = Vec::new();
+pub fn highlighted_shell_script(script: &str) -> &'static str {
+    let theme = match TerminalBackground::detect() {
+        TerminalBackground::Light => "base16-ocean.dark",
+        TerminalBackground::Dark => "base16-ocean.light",
+        TerminalBackground::Unknown => return Box::leak(script.to_string().into_boxed_str()),
+    };
 
+    let mut highlighted: Vec<String> = Vec::new();
     for line in LinesWithEndings::from(HELP_TEMPLATE_TOP) {
         highlighted.push(line.to_string());
     }
@@ -38,7 +43,7 @@ pub(crate) fn shell_scripts(script: &str) -> &'static str {
     let ts = ThemeSet::load_defaults();
 
     let syntax = ps.find_syntax_by_extension("sh").unwrap();
-    let mut h = HighlightLines::new(syntax, &ts.themes["base16-mocha.dark"]);
+    let mut h = HighlightLines::new(syntax, &ts.themes[theme]);
 
     for line in LinesWithEndings::from(script) {
         let ranges: Vec<(Style, &str)> = h.highlight_line(line, &ps).unwrap_or_default();
@@ -53,4 +58,45 @@ pub(crate) fn shell_scripts(script: &str) -> &'static str {
     }
 
     Box::leak(highlighted.join("").into_boxed_str())
+}
+
+enum TerminalBackground {
+    Light,
+    Dark,
+    Unknown,
+}
+
+impl TerminalBackground {
+    /// Detect if terminal background is "light", "dark" or "unknown".
+    ///
+    /// There are lots of complex heuristics to check this but they all seem
+    /// to work in some cases and fail in others. We want to degrade gracefully.
+    /// So we rely on the simple tool of whether the COLORFGBG variable is set.
+    ///
+    /// If it is set, it usually takes the form <foreground-color>:<background-color>
+    /// and if <background-color> is in {0,1,2,3,4,5,6,8}, then we assume the terminal
+    /// has a dark background.
+    ///
+    /// Reference: https://stackoverflow.com/a/54652367
+    pub fn detect() -> Self {
+        match std::env::var("COLORFGBG") {
+            Ok(v) => {
+                let parts: Vec<&str> = v.split(';').collect();
+                match parts.get(1) {
+                    Some(p) => match p.to_string().parse::<i32>() {
+                        Ok(i) => {
+                            if (0..8).contains(&i) {
+                                Self::Dark
+                            } else {
+                                Self::Light
+                            }
+                        }
+                        Err(_e) => Self::Light,
+                    },
+                    None => Self::Light,
+                }
+            }
+            Err(_e) => Self::Unknown,
+        }
+    }
 }
