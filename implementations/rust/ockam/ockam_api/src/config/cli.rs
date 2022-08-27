@@ -32,15 +32,17 @@ pub struct OckamConfig {
     pub directories: Option<ProjectDirs>,
     pub api_node: String,
     pub nodes: BTreeMap<String, NodeConfig>,
+
+    #[serde(default = "default_lookup")]
     pub lookup: ConfigLookup,
+
     pub default_identity: Option<Vec<u8>>,
     pub default_vault_path: Option<PathBuf>,
-    #[serde(default = "default_node")]
     pub default: Option<String>,
 }
 
-fn default_node() -> Option<String> {
-    None
+fn default_lookup() -> ConfigLookup {
+    ConfigLookup::default()
 }
 
 impl ConfigValues for OckamConfig {
@@ -96,12 +98,33 @@ Otherwise your OS or OS configuration may not be supported!",
 /// don't have to be synced to consumers.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NodeConfig {
+    #[serde(default = "default_name")]
     pub name: String,
+
+    #[serde(default = "default_addr")]
     pub addr: InternetAddress,
+
+    #[serde(default = "default_port")]
     pub port: u16,
+
+    #[serde(default = "default_verbose")]
     pub verbose: u8,
+
     pub pid: Option<i32>,
     pub state_dir: Option<PathBuf>,
+}
+
+fn default_name() -> String {
+    String::new()
+}
+fn default_addr() -> InternetAddress {
+    InternetAddress::default()
+}
+fn default_port() -> u16 {
+    InternetAddress::default().port()
+}
+fn default_verbose() -> u8 {
+    0
 }
 
 /// Node launch configuration
