@@ -96,6 +96,12 @@ pub enum InternetAddress {
     V6(SocketAddrV6),
 }
 
+impl Default for InternetAddress {
+    fn default() -> Self {
+        InternetAddress::Dns("localhost".to_string(), 6252)
+    }
+}
+
 impl fmt::Display for InternetAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(
