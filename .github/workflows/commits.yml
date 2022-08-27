@@ -75,7 +75,7 @@ jobs:
           fi
 
       - name: Install Commitlint
-        run: npm install -g @commitlint/cli # TODO: move to ockam-builder docker image.
+        run: npm install --location=global @commitlint/cli@16.3.0 # TODO: move to ockam-builder docker image.
 
       - name: Lint Commit Messages
         run: |
