@@ -6,6 +6,7 @@ mod configuration;
 mod credentials;
 mod enroll;
 mod forwarder;
+mod highlight;
 mod identity;
 mod message;
 mod node;
@@ -105,7 +106,7 @@ fn long_version() -> &'static str {
     propagate_version(true),
     color(ColorChoice::Never),
     term_width = 100,
-    help_template = const_str::replace!(HELP_TEMPLATE, "LEARN MORE", EXAMPLES),
+    help_template = highlight::shell_scripts(EXAMPLES),
 )]
 pub struct OckamCommand {
     #[clap(subcommand)]
