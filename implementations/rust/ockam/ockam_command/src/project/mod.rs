@@ -8,6 +8,8 @@ mod list_enrollers;
 mod show;
 pub mod util;
 
+pub use util::config;
+
 use clap::{Args, Subcommand};
 
 pub use crate::credentials::get_credential::GetCredentialCommand;

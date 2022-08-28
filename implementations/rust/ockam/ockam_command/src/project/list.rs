@@ -1,17 +1,13 @@
-use anyhow::{anyhow, Context};
 use clap::Args;
-use minicbor::Decoder;
-use tracing::debug;
+use ockam::Context;
 
 use ockam_api::cloud::project::Project;
-use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{Response, Status};
-use ockam_core::Route;
 
 use crate::node::NodeOpts;
+use crate::project::util::config;
 use crate::util::api::CloudOpts;
-use crate::util::{api, connect_to, exitcode};
-use crate::{CommandGlobalOpts, OutputFormat};
+use crate::util::{api, node_rpc, Rpc};
+use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
@@ -24,60 +20,23 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: ListCommand) {
-        let cfg = &opts.config;
-        let port = match cfg.select_node(&cmd.node_opts.api_node) {
-            Some(cfg) => cfg.port,
-            None => {
-                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(exitcode::IOERR);
-            }
-        };
-        connect_to(port, (opts, cmd), list);
+        node_rpc(rpc, (opts, cmd));
     }
 }
 
-async fn list(
-    ctx: ockam::Context,
-    (opts, cmd): (CommandGlobalOpts, ListCommand),
-    mut base_route: Route,
-) -> anyhow::Result<()> {
-    let route: Route = base_route.modify().append(NODEMANAGER_ADDR).into();
-    debug!(?cmd, %route, "Sending request");
+async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> crate::Result<()> {
+    run_impl(&mut ctx, opts, cmd).await
+}
 
-    let response: Vec<u8> = ctx
-        .send_and_receive(route, api::project::list(&cmd).to_vec()?)
-        .await
-        .context("Failed to process request")?;
-    let mut dec = Decoder::new(&response);
-    let header = dec.decode::<Response>()?;
-    debug!(?header, "Received response");
-
-    let res = match header.status() {
-        Some(Status::Ok) => {
-            let body = dec.decode::<Vec<Project>>()?;
-            let output = match opts.global_args.output_format {
-                OutputFormat::Plain => format!("{body:#?}"),
-                OutputFormat::Json => serde_json::to_string(&body)?,
-            };
-            Ok(output)
-        }
-        Some(Status::InternalServerError) => {
-            let err = dec
-                .decode::<String>()
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            Err(anyhow!(
-                "An error occurred while processing the request: {err}"
-            ))
-        }
-        _ => Err(anyhow!("Unexpected response received from node")),
-    };
-    match res {
-        Ok(o) => println!("{o}"),
-        Err(err) => {
-            eprintln!("{err}");
-            std::process::exit(exitcode::IOERR);
-        }
-    };
-
+async fn run_impl(
+    ctx: &mut Context,
+    opts: CommandGlobalOpts,
+    cmd: ListCommand,
+) -> crate::Result<()> {
+    let mut rpc = Rpc::new(ctx, &opts, &cmd.node_opts.api_node)?;
+    rpc.request(api::project::list(cmd.cloud_opts.route()))
+        .await?;
+    let projects = rpc.parse_and_print_response::<Vec<Project>>()?;
+    config::set_projects(&opts.config, &projects)?;
     Ok(())
 }

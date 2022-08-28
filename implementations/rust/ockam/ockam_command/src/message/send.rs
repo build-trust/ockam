@@ -70,25 +70,24 @@ impl SendCommand {
 async fn send_message_from_embedded_node(
     mut ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, SendCommand),
-) -> anyhow::Result<()> {
+) -> crate::Result<()> {
+    let (to, _) = clean_multiaddr(&cmd.to, &opts.config.get_lookup())
+        .context("Argument '--to' is invalid")?;
+    let route = ockam_api::multiaddr_to_route(&to).context("Argument '--to' is invalid")?;
     let _tcp = TcpTransport::create(&ctx).await?;
-    let (to, _) = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
-    if let Some(route) = ockam_api::multiaddr_to_route(&to) {
-        ctx.send(route, cmd.message).await?;
-        match cmd.timeout {
-            Some(timeout) => {
-                let message = ctx
-                    .receive_duration_timeout::<String>(std::time::Duration::from_secs(timeout))
-                    .await?;
-                println!("{}", message);
-            }
-            None => {
-                let message = ctx.receive::<String>().await?;
-                println!("{}", message);
-            }
+    ctx.send(route, cmd.message).await?;
+    match cmd.timeout {
+        Some(timeout) => {
+            let message = ctx
+                .receive_duration_timeout::<String>(std::time::Duration::from_secs(timeout))
+                .await?;
+            println!("{}", message);
+        }
+        None => {
+            let message = ctx.receive::<String>().await?;
+            println!("{}", message);
         }
     }
-
     Ok(())
 }
 
@@ -102,9 +101,10 @@ async fn send_message_via_connection_to_a_node(
         cmd: SendCommand,
         api_node: String,
     ) -> crate::Result<()> {
+        let (to, meta) = clean_multiaddr(&cmd.to, &opts.config.get_lookup())
+            .context("Argument '--to' is invalid")?;
         let tcp = TcpTransport::create(ctx).await?;
-        let (to, meta) = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
-        let projects_sc = crate::project::util::lookup_projects(
+        let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
             ctx,
             opts,
             &tcp,

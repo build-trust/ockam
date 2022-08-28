@@ -9,7 +9,7 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.args(&prefix_args)
         .arg("create")
-        .arg("space-id")
+        .arg("space-name")
         .arg("project-name")
         .args(common_args)
         .arg("--")
@@ -24,7 +24,6 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.args(&prefix_args)
         .arg("show")
-        .arg("space-id")
         .arg("project-id")
         .args(common_args);
     cmd.assert().success();
@@ -32,7 +31,7 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("ockam")?;
     cmd.args(&prefix_args)
         .arg("delete")
-        .arg("space-id")
+        .arg("space-name")
         .arg("project-id")
         .args(common_args);
     cmd.assert().success();

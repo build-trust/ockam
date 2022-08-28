@@ -181,7 +181,6 @@ impl<'a> Rpc<'a> {
             Ok(dec)
         } else {
             let msg = self.parse_err_msg(hdr, dec);
-            eprintln!("{}", msg);
             Err(anyhow!(msg))
         }
     }
@@ -195,8 +194,8 @@ impl<'a> Rpc<'a> {
         match hdr.status() {
             Some(status) if hdr.has_body() => {
                 let err = match dec.decode::<String>() {
-                    Ok(msg) => msg,
-                    Err(_) => dec.decode::<String>().unwrap_or_default(),
+                    Ok(msg) => format!("Message: {msg}"),
+                    Err(_) => String::default(),
                 };
                 format!(
                     "An error occurred while processing the request. Status code: {status}. {err}"
@@ -210,11 +209,18 @@ impl<'a> Rpc<'a> {
     }
 
     /// Parse the response body and print it.
-    pub fn print_response<T>(&'a self) -> Result<T>
+    pub fn parse_and_print_response<T>(&'a self) -> Result<T>
     where
         T: Decode<'a, ()> + Output + serde::Serialize,
     {
         let b: T = self.parse_response()?;
+        self.print_response(b)
+    }
+
+    pub fn print_response<T>(&self, b: T) -> Result<T>
+    where
+        T: Output + serde::Serialize,
+    {
         let o = match self.opts.global_args.output_format {
             OutputFormat::Plain => b.output().context("Failed to serialize response body")?,
             OutputFormat::Json => {
@@ -309,31 +315,31 @@ where
     }
 }
 
-pub fn embedded_node<A, F, Fut, T>(f: F, a: A) -> Result<T>
+pub fn embedded_node<A, F, Fut, T>(f: F, a: A) -> crate::Result<T>
 where
     A: Send + Sync + 'static,
     F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = Result<T>> + Send + 'static,
+    Fut: core::future::Future<Output = crate::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
     let (ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
-    executor
-        .execute(async move {
-            let child_ctx = ctx
-                .new_detached(Address::random_local())
-                .await
-                .expect("Embedded node child ctx can't be created");
-            let v = f(child_ctx, a).await;
-            stop_node(ctx).await.unwrap();
-            match v {
-                Err(e) => {
-                    eprintln!("Error {:?}", e);
-                    std::process::exit(1);
-                }
-                Ok(v) => v,
+    let r = executor.execute(async move {
+        let child_ctx = ctx
+            .new_detached(Address::random_local())
+            .await
+            .expect("Embedded node child ctx can't be created");
+        let r = f(child_ctx, a).await;
+        stop_node(ctx).await.unwrap();
+        match r {
+            Err(e) => {
+                error!("{e:?}");
+                eprintln!("{e}");
+                std::process::exit(e.code());
             }
-        })
-        .map_err(anyhow::Error::from)
+            Ok(v) => v,
+        }
+    })?;
+    Ok(r)
 }
 
 pub fn find_available_port() -> Result<u16> {

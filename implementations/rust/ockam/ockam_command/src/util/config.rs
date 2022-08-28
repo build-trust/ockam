@@ -1,19 +1,20 @@
 //! Handle local node configuration
 
-use anyhow::{Context, Result};
-use ockam_api::config::{cli, lookup::ConfigLookup, lookup::InternetAddress, Config};
-use ockam_multiaddr::MultiAddr;
-use slug::slugify;
 use std::{
     collections::VecDeque, fs::create_dir_all, net::SocketAddr, ops::Deref, path::PathBuf,
     str::FromStr, sync::RwLockReadGuard,
 };
+
+use anyhow::{Context, Result};
+use slug::slugify;
 use tracing::{error, trace};
 
 pub use ockam_api::config::cli::NodeConfig;
 pub use ockam_api::config::snippet::{
     ComposableSnippet, Operation, PortalMode, Protocol, RemoteMode,
 };
+use ockam_api::config::{cli, lookup::ConfigLookup, lookup::InternetAddress, Config};
+use ockam_multiaddr::MultiAddr;
 
 use crate::util::exitcode;
 
@@ -290,6 +291,25 @@ impl OckamConfig {
         inner.lookup.set_node(&alias, addr);
     }
 
+    pub fn set_space_alias(&self, id: &str, name: &str) {
+        let mut inner = self.inner.writelock_inner();
+        inner.lookup.set_space(id, name);
+        trace!(%id, %name, "Space stored in lookup table");
+    }
+
+    pub fn remove_space_alias(&self, name: &str) -> Result<()> {
+        let mut inner = self.inner.writelock_inner();
+        match inner.lookup.remove_space(name) {
+            Some(_) => Ok(()),
+            None => Err(ConfigError::Exists(name.to_string()).into()),
+        }
+    }
+
+    pub fn remove_spaces_alias(&self) {
+        let mut inner = self.inner.writelock_inner();
+        inner.lookup.remove_spaces();
+    }
+
     pub fn set_project_alias(
         &self,
         project_name: String,
@@ -317,6 +337,19 @@ impl OckamConfig {
             project_identity_id,
         );
         Ok(())
+    }
+
+    pub fn remove_project_alias(&self, name: &str) -> Result<()> {
+        let mut inner = self.inner.writelock_inner();
+        match inner.lookup.remove_project(name) {
+            Some(_) => Ok(()),
+            None => Err(ConfigError::Exists(name.to_string()).into()),
+        }
+    }
+
+    pub fn remove_projects_alias(&self) {
+        let mut inner = self.inner.writelock_inner();
+        inner.lookup.remove_projects();
     }
 
     pub fn set_default_node(&self, name: &String) {

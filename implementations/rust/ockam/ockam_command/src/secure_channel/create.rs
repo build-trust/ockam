@@ -63,9 +63,10 @@ impl CreateCommand {
             eprintln!("Could not convert {} into route", &self.to);
             std::process::exit(exitcode::USAGE);
         });
-        let projects_sc =
-            crate::project::util::lookup_projects(ctx, opts, tcp, &meta, cloud_addr, api_node)
-                .await?;
+        let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
+            ctx, opts, tcp, &meta, cloud_addr, api_node,
+        )
+        .await?;
         crate::project::util::clean_projects_multiaddr(to, projects_sc)
     }
 

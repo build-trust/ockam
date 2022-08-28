@@ -4,6 +4,7 @@ use ockam::Context;
 use ockam_api::cloud::space::Space;
 
 use crate::node::NodeOpts;
+use crate::space::util::config;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
@@ -33,7 +34,9 @@ async fn run_impl(
     cmd: ListCommand,
 ) -> crate::Result<()> {
     let mut rpc = Rpc::new(ctx, &opts, &cmd.node_opts.api_node)?;
-    rpc.request(api::space::list(&cmd)).await?;
-    rpc.print_response::<Vec<Space>>()?;
+    rpc.request(api::space::list(cmd.cloud_opts.route()))
+        .await?;
+    let spaces = rpc.parse_and_print_response::<Vec<Space>>()?;
+    config::set_spaces(&opts.config, &spaces)?;
     Ok(())
 }

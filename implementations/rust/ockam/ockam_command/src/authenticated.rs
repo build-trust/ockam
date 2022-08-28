@@ -49,7 +49,7 @@ impl AuthenticatedCommand {
     }
 }
 
-async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> anyhow::Result<()> {
+async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> crate::Result<()> {
     TcpTransport::create(&ctx).await?;
     match &cmd {
         AuthenticatedSubcommand::Get { addr, id, key } => {
