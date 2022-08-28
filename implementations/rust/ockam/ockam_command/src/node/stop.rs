@@ -12,7 +12,7 @@ pub struct StopCommand {
     node_name: String,
     /// Whether to use the SIGTERM or SIGKILL signal to stop the node
     #[clap(long)]
-    kill: bool,
+    force: bool,
 }
 
 impl StopCommand {
@@ -20,7 +20,7 @@ impl StopCommand {
         let cfg = opts.config;
         match cfg.get_node_pid(&command.node_name) {
             Ok(Some(pid)) => {
-                if let Err(e) = startup::stop(pid, command.kill) {
+                if let Err(e) = startup::stop(pid, command.force) {
                     eprintln!("{e:?}");
                     std::process::exit(exitcode::OSERR);
                 }
