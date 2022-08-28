@@ -51,6 +51,30 @@ impl ConfigLookup {
             })
     }
 
+    pub fn set_space(&mut self, id: &str, name: &str) {
+        self.map.insert(
+            format!("/space/{}", name),
+            LookupValue::Space(SpaceLookup { id: id.to_string() }),
+        );
+    }
+
+    pub fn get_space(&self, name: &str) -> Option<&SpaceLookup> {
+        self.map
+            .get(&format!("/space/{}", name))
+            .and_then(|value| match value {
+                LookupValue::Space(space) => Some(space),
+                _ => None,
+            })
+    }
+
+    pub fn remove_space(&mut self, name: &str) -> Option<LookupValue> {
+        self.map.remove(&format!("/space/{}", name))
+    }
+
+    pub fn remove_spaces(&mut self) {
+        self.map.retain(|k, _| !k.starts_with("/space/"));
+    }
+
     /// Store a project route and identifier as lookup
     pub fn set_project(
         &mut self,
@@ -77,11 +101,20 @@ impl ConfigLookup {
                 _ => None,
             })
     }
+
+    pub fn remove_project(&mut self, name: &str) -> Option<LookupValue> {
+        self.map.remove(&format!("/project/{}", name))
+    }
+
+    pub fn remove_projects(&mut self) {
+        self.map.retain(|k, _| !k.starts_with("/project/"));
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LookupValue {
     Address(InternetAddress),
+    Space(SpaceLookup),
     Project(ProjectLookup),
 }
 
@@ -159,6 +192,13 @@ impl From<SocketAddr> for InternetAddress {
             SocketAddr::V6(v6) => Self::V6(v6),
         }
     }
+}
+
+/// Represents a remote Ockam space lookup
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SpaceLookup {
+    /// Identifier of this space
+    pub id: String,
 }
 
 /// Represents a remote Ockam project lookup

@@ -62,7 +62,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) 
         let api_node = get_final_element(&cmd.to);
         let at_rust_node = is_local_node(&cmd.at).context("Argument --at is not valid")?;
         let (at, meta) = clean_multiaddr(&cmd.at, &opts.config.get_lookup()).unwrap();
-        let projects_sc = crate::project::util::lookup_projects(
+        let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
             ctx,
             opts,
             &tcp,
@@ -75,7 +75,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) 
         let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(&tcp).build()?;
         let cmd = CreateCommand { at, ..cmd };
         rpc.request(req(&cmd, at_rust_node)?).await?;
-        rpc.print_response::<ForwarderInfo>()?;
+        rpc.parse_and_print_response::<ForwarderInfo>()?;
         Ok(())
     }
     go(&mut ctx, &opts, cmd).await

@@ -18,6 +18,8 @@ use ockam_core::api::Status;
 
 use crate::node::NodeOpts;
 use crate::project::util::check_project_readiness;
+use crate::project::util::config::set_project;
+use crate::space::util::config::set_space;
 use crate::util::api::CloudOpts;
 use crate::util::node::default_node;
 use crate::util::output::Output;
@@ -89,11 +91,7 @@ async fn default_space<'a>(
     // Get available spaces for node's identity
     let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
     let mut available_spaces = {
-        let cmd = crate::space::ListCommand {
-            node_opts: node_opts.clone(),
-            cloud_opts: cloud_opts.clone(),
-        };
-        rpc.request(api::space::list(&cmd)).await?;
+        rpc.request(api::space::list(cloud_opts.route())).await?;
         rpc.parse_response::<Vec<Space>>()?
     };
     // If the identity has no spaces, create one
@@ -116,6 +114,7 @@ async fn default_space<'a>(
             .expect("already checked that is not empty")
             .to_owned()
     };
+    set_space(&opts.config, &default_space)?;
     println!("\n{}", default_space.output()?);
     Ok(default_space)
 }
@@ -132,24 +131,18 @@ async fn default_project<'a>(
     // Get available project for the given space
     let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
     let mut available_projects: Vec<Project> = {
-        let cmd = crate::project::ListCommand {
-            node_opts: node_opts.clone(),
-            cloud_opts: cloud_opts.clone(),
-        };
-        rpc.request(api::project::list(&cmd)).await?;
+        rpc.request(api::project::list(cloud_opts.route())).await?;
         rpc.parse_response::<Vec<Project>>()?
     };
     // If the space has no projects, create one
     let default_project = if available_projects.is_empty() {
-        let cmd = crate::project::CreateCommand {
-            space_id: space.id.to_string(),
-            project_name: "default".to_string(),
-            node_opts: node_opts.clone(),
-            cloud_opts: cloud_opts.clone(),
-            services: vec![], // TODO: define default services
-        };
         let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
-        rpc.request(api::project::create(&cmd)).await?;
+        rpc.request(api::project::create(
+            "default",
+            &space.id,
+            cloud_opts.route(),
+        ))
+        .await?;
         rpc.parse_response::<Project>()?.to_owned()
     }
     // If it has, return the "default" project or first one on the list
@@ -165,6 +158,7 @@ async fn default_project<'a>(
     };
     let project =
         check_project_readiness(ctx, opts, node_opts, cloud_opts, tcp, default_project).await?;
+    set_project(&opts.config, &project)?;
     println!("{}", project.output()?);
     Ok(project)
 }

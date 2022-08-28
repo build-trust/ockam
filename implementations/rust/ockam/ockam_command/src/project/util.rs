@@ -1,13 +1,12 @@
 use std::io::Write;
 use std::str::FromStr;
 
-use anyhow::{anyhow, Context, Result};
-use tracing::{debug, trace};
+use anyhow::{anyhow, Context as _, Result};
+use tracing::debug;
 
 use ockam::identity::IdentityIdentifier;
 use ockam::TcpTransport;
 use ockam_api::cloud::project::Project;
-use ockam_api::cloud::CloudRequestWrapper;
 use ockam_api::config::lookup::LookupMeta;
 use ockam_api::nodes::models;
 use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
@@ -17,7 +16,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::{api, RpcBuilder};
-use crate::CommandGlobalOpts;
+use crate::{CommandGlobalOpts, OckamConfig};
 
 pub fn clean_projects_multiaddr(
     input: MultiAddr,
@@ -45,7 +44,7 @@ pub fn clean_projects_multiaddr(
     Ok(new_ma)
 }
 
-pub async fn lookup_projects(
+pub async fn get_projects_secure_channels_from_config_lookup(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
     tcp: &TcpTransport,
@@ -55,40 +54,26 @@ pub async fn lookup_projects(
 ) -> Result<Vec<MultiAddr>> {
     let cfg_lookup = opts.config.get_lookup();
     let mut sc = Vec::with_capacity(meta.project.len());
+
+    // In case a project is missing from the config file, we fetch them all from the cloud.
+    let missing_projects = meta
+        .project
+        .iter()
+        .any(|name| cfg_lookup.get_project(name).is_none());
+    if missing_projects {
+        config::refresh_projects(ctx, opts, tcp, api_node, cloud_addr).await?;
+    }
+
+    // Create a secure channel for each project.
     for name in meta.project.iter() {
-        // Try to get the project node's access route + identity id from the config
-        let (project_access_route, project_identity_id) = match cfg_lookup.get_project(name) {
-            Some(p) => (p.node_route(), p.identity_id.to_string()),
-            None => {
-                trace!(%name, "Project not found in config, retrieving from cloud");
-                // If it's not in the config, retrieve it from the API
-                let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp).build()?;
-                rpc.request(
-                    Request::get(format!("v0/projects/name/{}", name))
-                        .body(CloudRequestWrapper::bare(cloud_addr)),
-                )
-                .await?;
-                let project = rpc
-                    .parse_response::<Project>()
-                    .context("Failed to parse Project response")?;
-                let identity_id = project
-                    .identity
-                    .as_ref()
-                    .expect("Project should have identity set")
-                    .to_string();
-                // Store the project in the config lookup table
-                opts.config.set_project_alias(
-                    project.name.to_string(),
-                    project.access_route.to_string(),
-                    project.id.to_string(),
-                    identity_id.to_string(),
-                )?;
-                opts.config.atomic_update().run()?;
-                // Return the project data needed to create the secure channel
-                (project.access_route()?, identity_id)
-            }
+        // Get the project node's access route + identity id from the config
+        let (project_access_route, project_identity_id) = {
+            // This shouldn't fail, as we did a refresh above if we found any missing project.
+            let p = cfg_lookup
+                .get_project(name)
+                .context(format!("Failed to get project {} from config lookup", name))?;
+            (p.node_route(), p.identity_id.to_string())
         };
-        // Now we can create the secure channel to the project's node
         sc.push(
             create_secure_channel_to_project(
                 ctx,
@@ -101,6 +86,7 @@ pub async fn lookup_projects(
             .await?,
         );
     }
+
     // There should be the same number of project occurrences in the
     // input MultiAddr than there are in the secure channels vector.
     assert_eq!(meta.project.len(), sc.len());
@@ -139,20 +125,16 @@ pub async fn check_project_readiness<'a>(
 ) -> Result<Project<'a>> {
     if !project.is_ready() {
         print!("\nProject created. Waiting until it's operative...");
-        let cmd = crate::project::ShowCommand {
-            space_id: project.space_id.to_string(),
-            project_id: project.id.to_string(),
-            node_opts: node_opts.clone(),
-            cloud_opts: cloud_opts.clone(),
-        };
+        let cloud_route = cloud_opts.route();
         loop {
             print!(".");
             std::io::stdout().flush()?;
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-            let mut rpc = RpcBuilder::new(ctx, opts, &cmd.node_opts.api_node)
+            let mut rpc = RpcBuilder::new(ctx, opts, &node_opts.api_node)
                 .tcp(tcp)
                 .build()?;
-            rpc.request(api::project::show(&cmd)).await?;
+            rpc.request(api::project::show(&project.id, cloud_route))
+                .await?;
             let p = rpc.parse_response::<Project>()?;
             if p.is_ready() {
                 project = p.to_owned();
@@ -171,17 +153,70 @@ pub async fn check_project_readiness<'a>(
                 break;
             }
         }
+        println!();
     }
-    opts.config.set_project_alias(
-        project.name.to_string(),
-        project.access_route.to_string(),
-        project.id.to_string(),
-        project
-            .identity
-            .as_ref()
-            .expect("Project should have identity set")
-            .to_string(),
-    )?;
-    opts.config.atomic_update().run()?;
     Ok(project)
+}
+
+pub mod config {
+    use super::*;
+    use ockam::Context;
+
+    pub fn set_project(config: &OckamConfig, project: &Project) -> Result<()> {
+        config.set_project_alias(
+            project.name.to_string(),
+            project.access_route.to_string(),
+            project.id.to_string(),
+            project
+                .identity
+                .as_ref()
+                .expect("Project should have identity set")
+                .to_string(),
+        )?;
+        config.atomic_update().run()?;
+        Ok(())
+    }
+
+    pub fn set_projects(config: &OckamConfig, projects: &[Project]) -> Result<()> {
+        config.remove_projects_alias();
+        for project in projects.iter() {
+            config.set_project_alias(
+                project.name.to_string(),
+                project.access_route.to_string(),
+                project.id.to_string(),
+                project
+                    .identity
+                    .as_ref()
+                    .expect("Project should have identity set")
+                    .to_string(),
+            )?;
+        }
+        config.atomic_update().run()?;
+        Ok(())
+    }
+
+    pub fn remove_project(config: &OckamConfig, name: &str) -> Result<()> {
+        config.remove_project_alias(name)?;
+        config.atomic_update().run()?;
+        Ok(())
+    }
+
+    pub fn get_project(config: &OckamConfig, name: &str) -> Option<String> {
+        let inner = config.writelock_inner();
+        inner.lookup.get_project(name).map(|s| s.id.clone())
+    }
+
+    pub async fn refresh_projects(
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+        tcp: &TcpTransport,
+        api_node: &str,
+        controller_route: &MultiAddr,
+    ) -> Result<()> {
+        let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp).build()?;
+        rpc.request(api::project::list(controller_route)).await?;
+        let projects = rpc.parse_response::<Vec<Project>>()?;
+        set_projects(&opts.config, &projects)?;
+        Ok(())
+    }
 }

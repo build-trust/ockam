@@ -38,7 +38,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, AddMemberCommand
     async fn go(ctx: &mut Context, opts: &CommandGlobalOpts, cmd: AddMemberCommand) -> Result<()> {
         let tcp = TcpTransport::create(ctx).await?;
         let (to, meta) = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
-        let projects_sc = crate::project::util::lookup_projects(
+        let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
             ctx,
             opts,
             &tcp,

@@ -272,18 +272,22 @@ pub(crate) mod space {
         Request::post("v0/spaces").body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
     }
 
-    pub(crate) fn list(cmd: &ListCommand) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::get("v0/spaces").body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+    pub(crate) fn list(cloud_route: &MultiAddr) -> RequestBuilder<BareCloudRequestWrapper> {
+        Request::get("v0/spaces").body(CloudRequestWrapper::bare(cloud_route))
     }
 
-    pub(crate) fn show(cmd: &ShowCommand) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::get(format!("v0/spaces/{}", cmd.id))
-            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+    pub(crate) fn show<'a>(
+        id: &str,
+        cloud_route: &'a MultiAddr,
+    ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
+        Request::get(format!("v0/spaces/{}", id)).body(CloudRequestWrapper::bare(cloud_route))
     }
 
-    pub(crate) fn delete(cmd: &DeleteCommand) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::delete(format!("v0/spaces/{}", cmd.id))
-            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+    pub(crate) fn delete<'a>(
+        id: &str,
+        cloud_route: &'a MultiAddr,
+    ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
+        Request::delete(format!("v0/spaces/{}", id)).body(CloudRequestWrapper::bare(cloud_route))
     }
 }
 
@@ -294,29 +298,34 @@ pub(crate) mod project {
 
     use super::*;
 
-    pub(crate) fn create(
-        cmd: &CreateCommand,
-    ) -> RequestBuilder<CloudRequestWrapper<CreateProject>> {
-        let b = CreateProject::new(cmd.project_name.as_str(), &[], &cmd.services);
-        Request::post(format!("v0/projects/{}", cmd.space_id))
-            .body(CloudRequestWrapper::new(b, cmd.cloud_opts.route()))
+    pub(crate) fn create<'a>(
+        project_name: &'a str,
+        space_id: &'a str,
+        cloud_route: &'a MultiAddr,
+    ) -> RequestBuilder<'a, CloudRequestWrapper<'a, CreateProject<'a>>> {
+        let b = CreateProject::new::<&str, &str>(project_name, &[], &[]);
+        Request::post(format!("v0/projects/{}", space_id))
+            .body(CloudRequestWrapper::new(b, cloud_route))
     }
 
-    pub(crate) fn list(cmd: &ListCommand) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::get("v0/projects").body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+    pub(crate) fn list(cloud_route: &MultiAddr) -> RequestBuilder<BareCloudRequestWrapper> {
+        Request::get("v0/projects").body(CloudRequestWrapper::bare(cloud_route))
     }
 
-    pub(crate) fn show(cmd: &ShowCommand) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::get(format!("v0/projects/{}", cmd.project_id))
-            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
+    pub(crate) fn show<'a>(
+        id: &str,
+        cloud_route: &'a MultiAddr,
+    ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
+        Request::get(format!("v0/projects/{}", id)).body(CloudRequestWrapper::bare(cloud_route))
     }
 
-    pub(crate) fn delete(cmd: DeleteCommand) -> anyhow::Result<Vec<u8>> {
-        let mut buf = vec![];
-        Request::delete(format!("v0/projects/{}/{}", cmd.space_id, cmd.project_id))
-            .body(CloudRequestWrapper::bare(cmd.cloud_opts.route()))
-            .encode(&mut buf)?;
-        Ok(buf)
+    pub(crate) fn delete<'a>(
+        space_id: &'a str,
+        project_id: &'a str,
+        cloud_route: &'a MultiAddr,
+    ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
+        Request::delete(format!("v0/projects/{}/{}", space_id, project_id))
+            .body(CloudRequestWrapper::bare(cloud_route))
     }
 
     pub(crate) fn add_enroller(

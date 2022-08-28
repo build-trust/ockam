@@ -4,6 +4,7 @@ pub use create::CreateCommand;
 pub use delete::DeleteCommand;
 pub use list::ListCommand;
 pub use show::ShowCommand;
+pub use util::config;
 
 use crate::{CommandGlobalOpts, HELP_TEMPLATE};
 
@@ -11,6 +12,7 @@ mod create;
 mod delete;
 mod list;
 mod show;
+pub mod util;
 
 #[derive(Clone, Debug, Args)]
 pub struct SpaceCommand {

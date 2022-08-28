@@ -1,27 +1,23 @@
-use anyhow::{anyhow, Context};
+use anyhow::Context as _;
 use clap::Args;
-use minicbor::Decoder;
-use serde_json::json;
-use tracing::debug;
 
-use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{Response, Status};
-use ockam_core::Route;
+use ockam::{Context, TcpTransport};
 
 use crate::node::NodeOpts;
-use crate::util::api::CloudOpts;
-use crate::util::{api, connect_to, exitcode};
-use crate::{CommandGlobalOpts, OutputFormat};
+use crate::project::util::config;
+use crate::util::api::{self, CloudOpts};
+use crate::util::{node_rpc, RpcBuilder};
+use crate::{space, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
-    /// Id of the space.
+    /// Name of the space.
     #[clap(display_order = 1001)]
-    pub space_id: String,
+    pub space_name: String,
 
-    /// Id of the project.
+    /// Name of the project.
     #[clap(display_order = 1002)]
-    pub project_id: String,
+    pub project_name: String,
 
     #[clap(flatten)]
     pub node_opts: NodeOpts,
@@ -32,63 +28,64 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(opts: CommandGlobalOpts, cmd: DeleteCommand) {
-        let cfg = &opts.config;
-        let port = match cfg.select_node(&cmd.node_opts.api_node) {
-            Some(cfg) => cfg.port,
-            None => {
-                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(exitcode::IOERR);
-            }
-        };
-        connect_to(port, (opts, cmd), delete);
+        node_rpc(rpc, (opts, cmd));
     }
 }
 
-async fn delete(
-    ctx: ockam::Context,
+async fn rpc(
+    mut ctx: Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-    mut base_route: Route,
-) -> anyhow::Result<()> {
-    let route: Route = base_route.modify().append(NODEMANAGER_ADDR).into();
-    debug!(?cmd, %route, "Sending request");
-    let project_id = cmd.project_id.clone();
+) -> crate::Result<()> {
+    run_impl(&mut ctx, opts, cmd).await
+}
 
-    let response: Vec<u8> = ctx
-        .send_and_receive(route, api::project::delete(cmd)?)
-        .await
-        .context("Failed to process request")?;
-    let mut dec = Decoder::new(&response);
-    let header = dec.decode::<Response>()?;
-    debug!(?header, "Received response");
+async fn run_impl(
+    ctx: &mut Context,
+    opts: CommandGlobalOpts,
+    cmd: DeleteCommand,
+) -> crate::Result<()> {
+    let space_id = space::config::get_space(&opts.config, &cmd.space_name)
+        .context(format!("Space '{}' does not exist", cmd.space_name))?;
 
-    let res = match header.status() {
-        Some(Status::Ok) => {
-            let output = match opts.global_args.output_format {
-                OutputFormat::Plain => "Project deleted".to_string(),
-                OutputFormat::Json => json!({
-                    "id": project_id,
-                })
-                .to_string(),
-            };
-            Ok(output)
-        }
-        Some(Status::InternalServerError) => {
-            let err = dec
-                .decode::<String>()
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            Err(anyhow!(
-                "An error occurred while processing the request: {err}"
-            ))
-        }
-        _ => Err(anyhow!("Unexpected response received from node")),
-    };
-    match res {
-        Ok(o) => println!("{o}"),
-        Err(err) => {
-            eprintln!("{err}");
-            std::process::exit(exitcode::IOERR);
+    let tcp = TcpTransport::create(ctx).await?;
+    let controller_route = cmd.cloud_opts.route();
+
+    // Try to remove from config, in case the project was removed from the cloud but not from the config file.
+    let _ = config::remove_project(&opts.config, &cmd.project_name);
+
+    // Lookup project
+    let project_id = match config::get_project(&opts.config, &cmd.project_name) {
+        Some(id) => id,
+        None => {
+            // The project is not in the config file.
+            // Fetch all available projects from the cloud.
+            config::refresh_projects(ctx, &opts, &tcp, &cmd.node_opts.api_node, controller_route)
+                .await?;
+
+            // If the project is not found in the lookup, then it must not exist in the cloud, so we exit the command.
+            match config::get_project(&opts.config, &cmd.project_name) {
+                Some(id) => id,
+                None => {
+                    return Ok(());
+                }
+            }
         }
     };
+
+    // Send request
+    let mut rpc = RpcBuilder::new(ctx, &opts, &cmd.node_opts.api_node)
+        .tcp(&tcp)
+        .build()?;
+    rpc.request(api::project::delete(
+        &space_id,
+        &project_id,
+        controller_route,
+    ))
+    .await?;
+    rpc.is_ok()?;
+
+    // Try to remove from config again, in case it was re-added after the refresh.
+    let _ = config::remove_project(&opts.config, &cmd.project_name);
 
     Ok(())
 }

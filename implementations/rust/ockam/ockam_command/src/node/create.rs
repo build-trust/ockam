@@ -161,7 +161,7 @@ impl CreateCommand {
     pub async fn create_background_node(
         ctx: Context,
         (opts, cmd, addr): (CommandGlobalOpts, CreateCommand, SocketAddr),
-    ) -> Result<()> {
+    ) -> crate::Result<()> {
         let verbose = opts.global_args.verbose;
         let cfg = &opts.config;
 

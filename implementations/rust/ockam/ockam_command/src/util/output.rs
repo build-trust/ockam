@@ -102,6 +102,38 @@ impl Output for Project<'_> {
     }
 }
 
+impl Output for Vec<Project<'_>> {
+    fn output(&self) -> anyhow::Result<String> {
+        let mut rows = vec![];
+        for Project {
+            id,
+            name,
+            users,
+            space_name,
+            ..
+        } in self
+        {
+            rows.push([
+                id.cell(),
+                name.cell(),
+                comma_separated(users).cell(),
+                space_name.cell(),
+            ]);
+        }
+        let table = rows
+            .table()
+            .title([
+                "Id".cell().bold(true),
+                "Name".cell().bold(true),
+                "Users".cell().bold(true),
+                "Space".cell().bold(true),
+            ])
+            .display()?
+            .to_string();
+        Ok(table)
+    }
+}
+
 impl Output for CreateSecureChannelResponse<'_> {
     fn output(&self) -> anyhow::Result<String> {
         let addr = route_to_multiaddr(&route![self.addr.to_string()])
