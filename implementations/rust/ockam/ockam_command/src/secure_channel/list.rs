@@ -2,7 +2,9 @@ use clap::Args;
 
 use ockam::Context;
 
+use crate::secure_channel::HELP_DETAIL;
 use crate::{
+    help,
     node::NodeOpts,
     util::{api, node_rpc, Rpc},
     CommandGlobalOpts,
@@ -10,8 +12,9 @@ use crate::{
 
 /// List Secure Channels
 #[derive(Clone, Debug, Args)]
+#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct ListCommand {
-    /// Node of which secure channels shall be listed
+    /// Node at which the returned secure channels were initiated (required)
     #[clap(flatten)]
     node_opts: NodeOpts,
 }
