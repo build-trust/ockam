@@ -10,9 +10,11 @@ use ockam_multiaddr::MultiAddr;
 use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{CommandGlobalOpts, Result};
+use crate::{help, CommandGlobalOpts, Result};
 
+/// An authorised enroller can add members to a project.
 #[derive(Clone, Debug, Args)]
+#[clap(hide = help::hide())]
 pub struct AddMemberCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[clap(flatten)]
@@ -29,8 +31,8 @@ pub struct AddMemberCommand {
 }
 
 impl AddMemberCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(rpc, (opts, self));
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 

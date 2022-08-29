@@ -9,11 +9,12 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::util::api::CloudOpts;
 use crate::util::{embedded_node, get_final_element, node_rpc, RpcBuilder};
-use crate::{CommandGlobalOpts, HELP_TEMPLATE};
+use crate::{help, CommandGlobalOpts};
 
-const EXAMPLES: &str = "\
-EXAMPLES
+const HELP_DETAIL: &str = "\
+EXAMPLES:
 
+```sh
     # Create two nodes
     $ ockam node create n1
     $ ockam node create n2
@@ -31,12 +32,11 @@ EXAMPLES
     $ ockam secure-channel create --from /node/n1 --to /node/n2/service/api \
         | ockam message send hello --from /node/n1 --to -/service/uppercase
     HELLO
-
-LEARN MORE
+```
 ";
 
 #[derive(Clone, Debug, Args)]
-#[clap(help_template = const_str::replace!(HELP_TEMPLATE, "LEARN MORE", EXAMPLES))]
+#[clap(help_template = help::template(HELP_DETAIL))]
 pub struct SendCommand {
     /// The node to send messages from
     #[clap(short, long, value_name = "NODE")]
@@ -57,11 +57,11 @@ pub struct SendCommand {
 }
 
 impl SendCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: SendCommand) {
-        if let Some(node) = &cmd.from {
+    pub fn run(self, options: CommandGlobalOpts) {
+        if let Some(node) = &self.from {
             let node = get_final_element(node).to_string();
-            node_rpc(send_message_via_connection_to_a_node, (opts, cmd, node))
-        } else if let Err(e) = embedded_node(send_message_from_embedded_node, (opts, cmd)) {
+            node_rpc(send_message_via_connection_to_a_node, (options, self, node))
+        } else if let Err(e) = embedded_node(send_message_from_embedded_node, (options, self)) {
             eprintln!("Ockam node failed: {:?}", e,);
         }
     }

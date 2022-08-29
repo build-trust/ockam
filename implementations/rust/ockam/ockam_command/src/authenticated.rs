@@ -1,3 +1,4 @@
+use crate::help;
 use crate::util::embedded_node;
 use anyhow::{anyhow, Result};
 use clap::{Args, Subcommand};
@@ -5,7 +6,10 @@ use ockam::{Context, TcpTransport};
 use ockam_api::auth;
 use ockam_multiaddr::MultiAddr;
 
+const HELP_DETAIL: &str = "";
+
 #[derive(Clone, Debug, Args)]
+#[clap(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
 pub struct AuthenticatedCommand {
     #[clap(subcommand)]
     subcommand: AuthenticatedSubcommand,
@@ -42,8 +46,8 @@ pub enum AuthenticatedSubcommand {
 }
 
 impl AuthenticatedCommand {
-    pub fn run(c: AuthenticatedCommand) {
-        if let Err(e) = embedded_node(run_impl, c.subcommand) {
+    pub fn run(self) {
+        if let Err(e) = embedded_node(run_impl, self.subcommand) {
             eprintln!("Ockam node failed: {:?}", e,);
         }
     }

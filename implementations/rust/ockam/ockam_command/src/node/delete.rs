@@ -3,6 +3,7 @@ use clap::Args;
 use sysinfo::{get_current_pid, ProcessExt, System, SystemExt};
 use tracing::{debug, trace};
 
+/// Delete nodes.
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
     /// Name of the node.
@@ -19,8 +20,8 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: DeleteCommand) {
-        if let Err(e) = run_impl(opts, cmd) {
+    pub fn run(self, options: CommandGlobalOpts) {
+        if let Err(e) = run_impl(options, self) {
             eprintln!("{}", e);
             std::process::exit(e.code());
         }

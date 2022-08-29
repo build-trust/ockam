@@ -11,27 +11,10 @@ use ockam_multiaddr::MultiAddr;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
 use crate::util::{get_final_element, node_rpc, RpcBuilder, DEFAULT_ORCHESTRATOR_ADDRESS};
+use crate::CommandGlobalOpts;
 use crate::Result;
-use crate::{CommandGlobalOpts, HELP_TEMPLATE};
-
-const EXAMPLES: &str = "\
-EXAMPLES
-
-    # Create two nodes
-    $ ockam node create n1
-    $ ockam node create n2
-
-    # Create a forwarder to node n2 at node n1
-    $ ockam forwarder create --from forwarder_to_n2 --for /node/n2 --at /node/n1
-
-    # Send message via the forwarder
-    $ ockam message send hello --to /node/n1/service/forwarder_to_n2/service/uppercase
-
-LEARN MORE
-";
 
 #[derive(Clone, Debug, Args)]
-#[clap(help_template = const_str::replace!(HELP_TEMPLATE, "LEARN MORE", EXAMPLES))]
 pub struct CreateCommand {
     /// Name of the forwarder (Optional).
     #[clap(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
@@ -51,8 +34,8 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
-        node_rpc(rpc, (opts, cmd));
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 

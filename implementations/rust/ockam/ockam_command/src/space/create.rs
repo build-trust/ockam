@@ -28,8 +28,8 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
-        node_rpc(rpc, (opts, cmd));
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 

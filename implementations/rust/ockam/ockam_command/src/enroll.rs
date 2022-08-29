@@ -1,8 +1,9 @@
+use clap::Args;
+
 use anyhow::anyhow;
 use std::borrow::Borrow;
 use std::io::stdin;
 
-use clap::Args;
 use colorful::Colorful;
 use reqwest::StatusCode;
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
@@ -24,14 +25,24 @@ use crate::util::api::CloudOpts;
 use crate::util::node::default_node;
 use crate::util::output::Output;
 use crate::util::{api, node_rpc, RpcBuilder};
-use crate::{CommandGlobalOpts, EnrollCommand, Result};
+use crate::{help, CommandGlobalOpts, Result};
 
+const HELP_DETAIL: &str = "";
+
+/// Enroll with Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
-pub struct EnrollAuth0Command;
+#[clap(help_template = help::template(HELP_DETAIL))]
+pub struct EnrollCommand {
+    #[clap(flatten)]
+    node_opts: NodeOpts,
 
-impl EnrollAuth0Command {
-    pub fn run(opts: CommandGlobalOpts, cmd: EnrollCommand) {
-        node_rpc(rpc, (opts, cmd));
+    #[clap(flatten)]
+    pub cloud_opts: CloudOpts,
+}
+
+impl EnrollCommand {
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 

@@ -2,10 +2,12 @@ mod create;
 
 pub(crate) use create::CreateCommand;
 
-use crate::{CommandGlobalOpts, HELP_TEMPLATE};
+use crate::help;
+use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
+#[clap(hide = help::hide())]
 pub struct VaultCommand {
     #[clap(subcommand)]
     subcommand: VaultSubcommand,
@@ -13,15 +15,13 @@ pub struct VaultCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum VaultSubcommand {
-    /// Create Vault
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Create(CreateCommand),
 }
 
 impl VaultCommand {
-    pub fn run(opts: CommandGlobalOpts, command: VaultCommand) {
-        match command.subcommand {
-            VaultSubcommand::Create(command) => CreateCommand::run(opts, command),
+    pub fn run(self, options: CommandGlobalOpts) {
+        match self.subcommand {
+            VaultSubcommand::Create(c) => c.run(options),
         }
         .unwrap()
     }

@@ -53,9 +53,9 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 }
 
 impl CreateCommand {
-    pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
-        let cfg = &opts.config;
-        let node = get_final_element(&command.node_opts.at);
+    pub fn run(self, options: CommandGlobalOpts) {
+        let cfg = &options.config;
+        let node = get_final_element(&self.node_opts.at);
         let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
             None => {
@@ -64,7 +64,7 @@ impl CreateCommand {
             }
         };
 
-        let input_addr = match std::net::SocketAddr::from_str(&command.address) {
+        let input_addr = match std::net::SocketAddr::from_str(&self.address) {
             Ok(value) => value,
             _ => {
                 eprintln!("Invalid Input Address");
@@ -78,9 +78,9 @@ impl CreateCommand {
             std::process::exit(exitcode::IOERR);
         }
 
-        connect_to(port, command.clone(), create_listener);
+        connect_to(port, self.clone(), create_listener);
 
-        let composite = (&command).into();
+        let composite = (&self).into();
         let node = node.to_string();
 
         let startup_config = match cfg.get_startup_cfg(&node) {

@@ -17,7 +17,8 @@ pub struct CreateCommand {
 
     /// Address for this listener
     address: Address,
-    /// Authorized Identifiers of secure channel initators
+
+    /// Authorized Identifiers of secure channel initiators
     #[clap(short, long, value_name = "IDENTIFIER")]
     authorized_identifier: Option<Vec<IdentityIdentifier>>,
 }
@@ -30,9 +31,9 @@ pub struct SecureChannelListenerNodeOpts {
 }
 
 impl CreateCommand {
-    pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
-        let cfg = opts.config;
-        let node = get_final_element(&command.node_opts.at);
+    pub fn run(self, options: CommandGlobalOpts) {
+        let cfg = options.config;
+        let node = get_final_element(&self.node_opts.at);
         let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
             None => {
@@ -41,7 +42,7 @@ impl CreateCommand {
             }
         };
 
-        connect_to(port, command, |mut ctx, cmd, rte| async {
+        connect_to(port, self, |mut ctx, cmd, rte| async {
             create_listener(&mut ctx, cmd.address, cmd.authorized_identifier, rte).await?;
             drop(ctx);
             Ok(())

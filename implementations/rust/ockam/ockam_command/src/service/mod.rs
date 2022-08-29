@@ -3,10 +3,12 @@ pub(crate) mod start;
 
 pub(crate) use start::StartCommand;
 
-use crate::{CommandGlobalOpts, HELP_TEMPLATE};
+use crate::help;
+use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
+#[clap(hide = help::hide())]
 pub struct ServiceCommand {
     #[clap(subcommand)]
     subcommand: ServiceSubcommand,
@@ -14,15 +16,14 @@ pub struct ServiceCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum ServiceSubcommand {
-    /// Start a service
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    #[clap(display_order = 900)]
     Start(StartCommand),
 }
 
 impl ServiceCommand {
-    pub fn run(opts: CommandGlobalOpts, command: ServiceCommand) {
-        match command.subcommand {
-            ServiceSubcommand::Start(command) => StartCommand::run(opts, command),
+    pub fn run(self, options: CommandGlobalOpts) {
+        match self.subcommand {
+            ServiceSubcommand::Start(c) => c.run(options),
         }
         .unwrap()
     }

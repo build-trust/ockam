@@ -49,8 +49,6 @@ pub enum ConfigError {
     NotLocal(String),
     #[error("provided value was not a valid {0}: {1}")]
     FailedConvert(String, String),
-    #[error("invalid secure channel address {0}")]
-    InvalidSecureChannelAddress(String),
 }
 
 impl OckamConfig {

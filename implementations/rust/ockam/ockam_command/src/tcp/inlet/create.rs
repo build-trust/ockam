@@ -1,6 +1,6 @@
 use crate::util::{bind_to_port_check, connect_to, exitcode, get_final_element};
 use crate::util::{ComposableSnippet, Operation, PortalMode, Protocol};
-use crate::{CommandGlobalOpts, HELP_TEMPLATE};
+use crate::{help, CommandGlobalOpts};
 use clap::Args;
 use minicbor::Decoder;
 use ockam::{Context, Route};
@@ -11,9 +11,10 @@ use ockam_core::api::{Request, Response, Status};
 use ockam_multiaddr::MultiAddr;
 use std::net::SocketAddr;
 
-const EXAMPLES: &str = "\
-EXAMPLES
+const HELP_DETAIL: &str = "\
+EXAMPLES:
 
+```sh
     # Create a target service, we'll use a simple http server for this example
     $ python3 -m http.server --bind 127.0.0.1 5000
 
@@ -29,13 +30,12 @@ EXAMPLES
 
     # Access the service via the inlet/outlet pair
     $ curl 127.0.0.1:6000
-
-LEARN MORE
+```
 ";
 
 /// Create TCP Inlets
 #[derive(Clone, Debug, Args)]
-#[clap(help_template = const_str::replace!(HELP_TEMPLATE, "LEARN MORE", EXAMPLES))]
+#[clap(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node on which to start the tcp inlet.
     #[clap(long, display_order = 900, name = "NODE")]
@@ -70,17 +70,17 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 }
 
 impl CreateCommand {
-    pub fn run(options: CommandGlobalOpts, command: Self) -> anyhow::Result<()> {
+    pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
         let cfg = &options.config;
         let command = CreateCommand {
-            to: match clean_multiaddr(&command.to, &cfg.get_lookup()) {
+            to: match clean_multiaddr(&self.to, &cfg.get_lookup()) {
                 Some((addr, _meta)) => addr,
                 None => {
                     eprintln!("failed to normalize MultiAddr route");
                     std::process::exit(exitcode::USAGE);
                 }
             },
-            ..command
+            ..self
         };
 
         let node = get_final_element(&command.at);

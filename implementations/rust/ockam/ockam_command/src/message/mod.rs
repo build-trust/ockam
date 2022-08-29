@@ -1,9 +1,10 @@
-use crate::{CommandGlobalOpts, HELP_TEMPLATE};
+use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 pub use send::SendCommand;
 
 mod send;
 
+/// Send and Receive Messages
 #[derive(Clone, Debug, Args)]
 pub struct MessageCommand {
     #[clap(subcommand)]
@@ -13,14 +14,14 @@ pub struct MessageCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum MessageSubcommand {
     /// Send messages
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
+    #[clap(display_order = 900)]
     Send(SendCommand),
 }
 
 impl MessageCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: MessageCommand) {
-        match cmd.subcommand {
-            MessageSubcommand::Send(cmd) => SendCommand::run(opts, cmd),
+    pub fn run(self, options: CommandGlobalOpts) {
+        match self.subcommand {
+            MessageSubcommand::Send(c) => c.run(options),
         }
     }
 }

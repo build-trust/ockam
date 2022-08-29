@@ -2,12 +2,15 @@ use clap::Args;
 
 use ockam::Context;
 
+use crate::help;
 use crate::node::NodeOpts;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
+/// Remove an identity as authorized enroller from the project' authority
 #[derive(Clone, Debug, Args)]
+#[clap(hide = help::hide())]
 pub struct DeleteEnrollerCommand {
     /// Id of the project.
     #[clap(display_order = 1001)]
@@ -29,8 +32,8 @@ pub struct DeleteEnrollerCommand {
 }
 
 impl DeleteEnrollerCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: DeleteEnrollerCommand) {
-        node_rpc(rpc, (opts, cmd));
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 

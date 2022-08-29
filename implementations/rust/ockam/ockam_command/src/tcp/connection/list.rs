@@ -16,9 +16,9 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(opts: CommandGlobalOpts, command: ListCommand) {
-        let cfg = &opts.config;
-        let node = get_final_element(&command.node_opts.api_node);
+    pub fn run(self, options: CommandGlobalOpts) {
+        let cfg = &options.config;
+        let node = get_final_element(&self.node_opts.api_node);
         let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
             None => {

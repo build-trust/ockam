@@ -11,19 +11,19 @@ pub struct SetDefaultNodeCommand {
 }
 
 impl SetDefaultNodeCommand {
-    pub fn run(opts: CommandGlobalOpts, command: SetDefaultNodeCommand) {
-        let name = get_final_element(&command.name);
-        match opts.config.select_node(name) {
+    pub fn run(self, options: CommandGlobalOpts) {
+        let name = get_final_element(&self.name);
+        match options.config.select_node(name) {
             Some(_) => {
-                opts.config.set_default_node(&name.to_string());
+                options.config.set_default_node(&name.to_string());
                 // Save the config update
-                if let Err(e) = opts.config.atomic_update().run() {
+                if let Err(e) = options.config.atomic_update().run() {
                     eprintln!("failed to update configuration: {}", e);
                     std::process::exit(exitcode::IOERR);
                 }
             }
             None => {
-                eprintln!("Node ({}) is not registered yet", command.name);
+                eprintln!("Node ({}) is not registered yet", self.name);
                 std::process::exit(exitcode::CANTCREAT);
             }
         }

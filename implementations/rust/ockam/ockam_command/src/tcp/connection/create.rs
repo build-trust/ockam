@@ -59,9 +59,9 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 }
 
 impl CreateCommand {
-    pub fn run(opts: CommandGlobalOpts, command: CreateCommand) {
-        let cfg = &opts.config;
-        let node = get_final_element(&command.node_opts.from);
+    pub fn run(self, options: CommandGlobalOpts) {
+        let cfg = &options.config;
+        let node = get_final_element(&self.node_opts.from);
         let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
             None => {
@@ -70,9 +70,9 @@ impl CreateCommand {
             }
         };
 
-        connect_to(port, command.clone(), create_connection);
+        connect_to(port, self.clone(), create_connection);
 
-        let composite = (&command).into();
+        let composite = (&self).into();
         let node = node.to_string();
 
         let startup_config = match cfg.get_startup_cfg(&node) {

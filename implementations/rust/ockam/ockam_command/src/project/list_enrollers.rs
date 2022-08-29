@@ -3,12 +3,15 @@ use clap::Args;
 use ockam::Context;
 use ockam_api::cloud::project::Enroller;
 
+use crate::help;
 use crate::node::NodeOpts;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
+/// List a project' authority authorized enrollers
 #[derive(Clone, Debug, Args)]
+#[clap(hide = help::hide())]
 pub struct ListEnrollersCommand {
     /// Id of the project.
     #[clap(display_order = 1001)]
@@ -27,8 +30,8 @@ pub struct ListEnrollersCommand {
 }
 
 impl ListEnrollersCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: ListEnrollersCommand) {
-        node_rpc(rpc, (opts, cmd));
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 

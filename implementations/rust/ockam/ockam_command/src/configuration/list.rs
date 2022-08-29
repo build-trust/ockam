@@ -6,8 +6,8 @@ use ockam_api::config::lookup::LookupValue;
 pub struct ListCommand {}
 
 impl ListCommand {
-    pub fn run(opts: CommandGlobalOpts, _: ListCommand) {
-        let lookup = opts.config.get_lookup();
+    pub fn run(self, options: CommandGlobalOpts) {
+        let lookup = options.config.get_lookup();
 
         for (alias, value) in &lookup.map {
             // Currently we only have this one type of lookup but we
