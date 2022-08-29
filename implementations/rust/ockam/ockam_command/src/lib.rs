@@ -81,10 +81,8 @@ EXAMPLES:
     help_template = help::template(HELP_DETAIL),
     version,
     long_version = Version::long(),
-    propagate_version(true),
     next_help_heading = "GLOBAL OPTIONS",
     mut_arg("help", |a| a.help_heading("GLOBAL OPTIONS")),
-    mut_arg("version", |a| a.help_heading("GLOBAL OPTIONS")),
     mut_subcommand("help", |c| c.about("Print help information"))
 )]
 pub struct OckamCommand {
