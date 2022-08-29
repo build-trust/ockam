@@ -52,24 +52,73 @@ credential management, and authorization policy enforcement — at scale.
 ";
 
 const HELP_DETAIL: &str = "\
-BACKGROUND:
+ABOUT:
+    Orchestrate end-to-end encryption, mutual authentication, key management,
+    credential management, and authorization policy enforcement — at scale.
+
     Modern applications are distributed and have an unwieldy number of
     interconnections that must trustfully exchange data. Ockam makes it simple
     to build secure by-design applications that have granular control over every
     trust and access decision.
 
-EXAMPLES:
+    Let's walk through a simple example to create an end-to-end encrypted,
+    mutually authenticated secure and private cloud relays – for any application.
+
+    First let's enroll with Ockam Orchestrator where we'll create a managed cloud based
+    relay that will move end-to-end data between distributed parts of our application.
 
 ```sh
-    # Create three local Ockam nodes n1, n2 & n3
-    $ for i in {1..3}; do ockam node create \"n$i\"; done
-
-    # Create a mutually authenticated, authorized, end-to-end encrypted secure channel
-    # and send an end-to-end encrypted message through it.
-    $ ockam secure-channel create --from n1 --to /node/n2/node/n3/service/api \\
-         | ockam message send \"hello ockam\" --from n1 --to -/service/uppercase
-    HELLO OCKAM
+    # Create a cryptographic identity and enroll with Ockam Orchestrator.
+    # This will sign you up for Ockam Orchestrator and setup a hobby space and project.
+    $ ockam enroll
 ```
+
+    You can also create a relay node locally and manage it your self. See `ockam forwarder`.
+
+    Application Service
+    ------
+
+    Next let's prepare the service side of our application.
+
+```sh
+    # An application service, listening on a local ip and port, that clients would
+    # access through the cloud relay. We'll use a simple http server for our example.
+    $ python3 -m http.server --bind 127.0.0.1 5000
+
+    # Setup an ockam node, called blue, next to our application service. Create a
+    # tcp outlet on the blue node to send raw tcp traffic to the application service.
+    # Then create a forwarding relay in the default orchestrator project for blue.
+    $ ockam node create blue
+    $ ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+    $ ockam forwarder create blue --at /project/default --to /node/blue
+```
+
+    Application Client
+    ------
+
+    Now on the client side:
+
+```sh
+    # Setup an ockam node, called green, for use by an application client.
+    # Create an end-to-end encrypted secure channel with blue, through the cloud relay.
+    # Then tunnel traffic from a local tcp inlet through this end-to-end secure channel.
+    $ ockam node create green
+    $ ockam secure-channel create --from /node/green \\
+      --to /project/default/service/forward_to_blue/service/api \\
+          | ockam tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
+
+    # Access the application service though the end-to-end encrypted, secure relay.
+    $ curl 127.0.0.1:7000
+```
+
+    We just created end-to-end encrypted, mutually authenticated, and authorized secure
+    communication between a tcp client and server. This client and server can be running in
+    separate private networks / NATs. We didn't have to expose our server by opening a port
+    on the Internet or punching a hole in out firewall.
+    
+    The two sides authenticated and authorized each other with known, cryptographically
+    provable identifiers.
+
 ";
 
 #[derive(Debug, Parser)]
