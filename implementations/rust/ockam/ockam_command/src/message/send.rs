@@ -9,34 +9,11 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::util::api::CloudOpts;
 use crate::util::{embedded_node, get_final_element, node_rpc, RpcBuilder};
-use crate::{help, CommandGlobalOpts};
+use crate::{help, message::HELP_DETAIL, CommandGlobalOpts};
 
-const HELP_DETAIL: &str = "\
-EXAMPLES:
-
-```sh
-    # Create two nodes
-    $ ockam node create n1
-    $ ockam node create n2
-
-    # Send a message to the uppercase service on node 1
-    $ ockam message send hello --to /node/n1/service/uppercase
-    HELLO
-
-    # Send a message to the uppercase service on node n1 from node n1
-    $ ockam message send hello --from /node/n2 --to /node/n1/service/uppercase
-    HELLO
-
-    # Create a secure channel from node n1 to the api service on node n2
-    # Send a message through this encrypted channel to the uppercase service
-    $ ockam secure-channel create --from /node/n1 --to /node/n2/service/api \
-        | ockam message send hello --from /node/n1 --to -/service/uppercase
-    HELLO
-```
-";
-
+/// Send messages
 #[derive(Clone, Debug, Args)]
-#[clap(help_template = help::template(HELP_DETAIL))]
+#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct SendCommand {
     /// The node to send messages from
     #[clap(short, long, value_name = "NODE")]
