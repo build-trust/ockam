@@ -8,24 +8,30 @@ use ockam_api::{clean_multiaddr, is_local_node};
 use ockam_core::api::{Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
 
+use crate::forwarder::HELP_DETAIL;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
-use crate::util::{get_final_element, node_rpc, RpcBuilder, DEFAULT_ORCHESTRATOR_ADDRESS};
-use crate::CommandGlobalOpts;
+use crate::util::{get_final_element, node_rpc, RpcBuilder};
 use crate::Result;
+use crate::{help, CommandGlobalOpts};
 
+/// Create Forwarders
 #[derive(Clone, Debug, Args)]
+#[clap(
+    arg_required_else_help = true,
+    help_template = help::template(HELP_DETAIL)
+)]
 pub struct CreateCommand {
-    /// Name of the forwarder (Optional).
+    /// Name of the forwarder (optional)
     #[clap(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
     pub forwarder_name: String,
 
-    /// Node for which to create the forwarder.
+    /// Node for which to create the forwarder
     #[clap(long, name = "NODE", display_order = 900)]
     to: String,
 
-    /// Route to the node on which to create the forwarder.
-    #[clap(long, name = "ROUTE", default_value = DEFAULT_ORCHESTRATOR_ADDRESS, display_order = 900)]
+    /// Route to the node at which to create the forwarder (optional)
+    #[clap(long, name = "ROUTE", display_order = 900)]
     at: MultiAddr,
 
     /// Orchestrator address to resolve projects present in the `at` argument
