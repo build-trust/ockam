@@ -10,7 +10,12 @@ use nix::unistd::Pid;
 use std::collections::VecDeque;
 use std::io::Stdout;
 use std::process::Stdio;
-use std::{env::current_exe, fs::OpenOptions, path::PathBuf, process::Command};
+use std::{
+    env::current_exe,
+    fs::OpenOptions,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 /// Stop a node without deleting its state directory
 pub fn stop(pid: i32, sigkill: bool) -> anyhow::Result<()> {
@@ -47,6 +52,7 @@ pub fn spawn_node(
     skip_defaults: bool,
     name: &str,
     address: &str,
+    project: Option<&Path>,
 ) {
     let (mlog, elog) = cfg.log_paths_for_node(name).unwrap();
 
@@ -75,6 +81,14 @@ pub fn spawn_node(
         "--foreground".to_string(),
         "--child-process".to_string(),
     ];
+
+    if let Some(path) = project {
+        args.push("--project".to_string());
+        let p = path
+            .to_str()
+            .unwrap_or_else(|| panic!("unsupported path {path:?}"));
+        args.push(p.to_string())
+    }
 
     if skip_defaults {
         args.push("--skip-defaults".to_string());
@@ -130,6 +144,7 @@ fn run_snippet(
                 true,      // skip-defaults because the node already exists
                 node_name, // The selected node name
                 api_addr,  // The selected node api address
+                None,      // No project information available
             );
 
             // FIXME: Wait for the node to be ready
