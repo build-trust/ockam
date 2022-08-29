@@ -115,7 +115,7 @@ ABOUT:
     communication between a tcp client and server. This client and server can be running in
     separate private networks / NATs. We didn't have to expose our server by opening a port
     on the Internet or punching a hole in out firewall.
-    
+
     The two sides authenticated and authorized each other with known, cryptographically
     provable identifiers.
 
