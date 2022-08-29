@@ -38,7 +38,7 @@ defmodule Ockam.Services do
           Ockam.Services.Provider
         ]
 
-    Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
+    Supervisor.start_link(children, strategy: :one_for_all, intensity: 0, name: __MODULE__)
   end
 
   def start_service(name, options \\ []) do

@@ -27,11 +27,13 @@ if Code.ensure_loaded?(:ranch) do
       ip = Keyword.get_lazy(options, :ip, &default_ip/0)
       port = Keyword.get_lazy(options, :port, &default_port/0)
 
+      handler_options = Keyword.get(options, :handler_options, [])
+
       ref = make_ref()
       transport = :ranch_tcp
       transport_options = [port: port, ip: ip]
       protocol = Ockam.Transport.TCP.Handler
-      protocol_options = [packet: 2, nodelay: true]
+      protocol_options = [packet: 2, nodelay: true, handler_options: handler_options]
 
       with {:ok, _apps} <- Application.ensure_all_started(:ranch),
            {:ok, ranch_listener} <-

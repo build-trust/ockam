@@ -22,7 +22,9 @@ defmodule Ockam.Transport.TCP.Handler do
 
   @impl true
   def init([ref, transport, opts]) do
-    {:ok, socket} = :ranch.handshake(ref, opts)
+    {handler_options, ranch_options} = Keyword.pop(opts, :handler_options, [])
+
+    {:ok, socket} = :ranch.handshake(ref, ranch_options)
     :ok = :inet.setopts(socket, [{:active, true}, {:packet, 2}, {:nodelay, true}])
 
     {:ok, address} = Ockam.Node.register_random_address(@address_prefix, __MODULE__)
@@ -30,13 +32,16 @@ defmodule Ockam.Transport.TCP.Handler do
     {function_name, _} = __ENV__.function
     Telemetry.emit_event(function_name)
 
+    authorization = Keyword.get(handler_options, :authorization, [])
+
     :gen_server.enter_loop(
       __MODULE__,
       [],
       %{
         socket: socket,
         transport: transport,
-        address: address
+        address: address,
+        authorization: authorization
       },
       {:via, Ockam.Node.process_registry(), address}
     )
@@ -85,6 +90,29 @@ defmodule Ockam.Transport.TCP.Handler do
 
   def handle_info(
         %Ockam.Message{} = message,
+        state
+      ) do
+    case is_authorized(message, state) do
+      :ok ->
+        handle_message(message, state)
+
+      {:error, reason} ->
+        Logger.warn("Unauthorized message #{inspect(reason)}")
+        {:noreply, state}
+    end
+  end
+
+  def handle_info(other, state) do
+    Logger.warn("TCP HANDLER Received unkown message #{inspect(other)} #{inspect(state)}")
+    {:noreply, state}
+  end
+
+  def is_authorized(message, state) do
+    Ockam.Worker.Authorization.with_state_config(message, state)
+  end
+
+  def handle_message(
+        %Ockam.Message{} = message,
         %{transport: transport, socket: socket} = state
       ) do
     forwarded_message = Message.forward(message)
@@ -106,11 +134,6 @@ defmodule Ockam.Transport.TCP.Handler do
         raise a
     end
 
-    {:noreply, state}
-  end
-
-  def handle_info(other, state) do
-    Logger.warn("TCP HANDLER Received unkown message #{inspect(other)} #{inspect(state)}")
     {:noreply, state}
   end
 
