@@ -1,3 +1,4 @@
+use crate::help;
 use crate::node::NodeOpts;
 use crate::util::{api, connect_to, exitcode};
 use crate::CommandGlobalOpts;
@@ -8,15 +9,16 @@ use ockam_core::api::Status;
 use ockam_core::Route;
 
 #[derive(Clone, Debug, Args)]
+#[clap(hide = help::hide())]
 pub struct CreateCommand {
     #[clap(flatten)]
     node_opts: NodeOpts,
 }
 
 impl CreateCommand {
-    pub fn run(opts: CommandGlobalOpts, command: Self) -> anyhow::Result<()> {
-        let cfg = opts.config;
-        let port = match cfg.select_node(&command.node_opts.api_node) {
+    pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
+        let cfg = options.config;
+        let port = match cfg.select_node(&self.node_opts.api_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -24,7 +26,7 @@ impl CreateCommand {
             }
         };
 
-        connect_to(port, command, create_identity);
+        connect_to(port, self, create_identity);
 
         Ok(())
     }

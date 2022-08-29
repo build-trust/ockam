@@ -10,6 +10,7 @@ use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 
+/// Show projects
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
     /// Name of the project.
@@ -24,8 +25,8 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: ShowCommand) {
-        node_rpc(rpc, (opts, cmd));
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 

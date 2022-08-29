@@ -4,9 +4,10 @@ mod show;
 pub(crate) use create::CreateCommand;
 pub(crate) use show::ShowCommand;
 
-use crate::{hide, CommandGlobalOpts, HELP_TEMPLATE};
+use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 
+/// Manage Identities
 #[derive(Clone, Debug, Args)]
 pub struct IdentityCommand {
     #[clap(subcommand)]
@@ -16,18 +17,16 @@ pub struct IdentityCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum IdentitySubcommand {
     /// Create Identity
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
     Create(CreateCommand),
     /// Print short existing identity, `--full` for long identity
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Show(ShowCommand),
 }
 
 impl IdentityCommand {
-    pub fn run(opts: CommandGlobalOpts, command: IdentityCommand) {
-        match command.subcommand {
-            IdentitySubcommand::Create(command) => CreateCommand::run(opts, command),
-            IdentitySubcommand::Show(command) => ShowCommand::run(opts, command),
+    pub fn run(self, options: CommandGlobalOpts) {
+        match self.subcommand {
+            IdentitySubcommand::Create(c) => c.run(options),
+            IdentitySubcommand::Show(c) => c.run(options),
         }
         .unwrap()
     }

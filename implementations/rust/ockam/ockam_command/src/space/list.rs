@@ -19,8 +19,8 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: ListCommand) {
-        node_rpc(rpc, (opts, cmd));
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 

@@ -5,6 +5,7 @@ use crate::{
 use clap::Args;
 use rand::prelude::random;
 
+/// Stop nodes.
 #[derive(Clone, Debug, Args)]
 pub struct StopCommand {
     /// Name of the node.
@@ -16,21 +17,21 @@ pub struct StopCommand {
 }
 
 impl StopCommand {
-    pub fn run(opts: CommandGlobalOpts, command: Self) {
-        let cfg = opts.config;
-        match cfg.get_node_pid(&command.node_name) {
+    pub fn run(self, options: CommandGlobalOpts) {
+        let cfg = options.config;
+        match cfg.get_node_pid(&self.node_name) {
             Ok(Some(pid)) => {
-                if let Err(e) = startup::stop(pid, command.force) {
+                if let Err(e) = startup::stop(pid, self.force) {
                     eprintln!("{e:?}");
                     std::process::exit(exitcode::OSERR);
                 }
             }
             Ok(_) => {
-                eprintln!("Node {} is not running!", &command.node_name);
+                eprintln!("Node {} is not running!", &self.node_name);
                 std::process::exit(exitcode::IOERR);
             }
             Err(_) => {
-                eprintln!("Node {} does not exist!", &command.node_name);
+                eprintln!("Node {} does not exist!", &self.node_name);
                 std::process::exit(exitcode::IOERR);
             }
         };

@@ -1,6 +1,7 @@
 use clap::Args;
 
 use ockam::Context;
+use ockam_multiaddr::MultiAddr;
 
 use crate::node::NodeOpts;
 use crate::util::api::{self};
@@ -8,23 +9,26 @@ use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
-pub struct SetAuthorityCommand {
+pub struct PresentCredentialCommand {
     #[clap(flatten)]
     pub node_opts: NodeOpts,
 
-    #[clap(value_name = "AUTHORITY")]
-    pub authority: Vec<String>,
+    #[clap(long, display_order = 900, name = "ROUTE")]
+    pub to: MultiAddr,
+
+    #[clap(short, long)]
+    pub oneway: bool,
 }
 
-impl SetAuthorityCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: SetAuthorityCommand) {
-        node_rpc(rpc, (opts, cmd));
+impl PresentCredentialCommand {
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 
 async fn rpc(
     mut ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, SetAuthorityCommand),
+    (opts, cmd): (CommandGlobalOpts, PresentCredentialCommand),
 ) -> crate::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
@@ -32,10 +36,10 @@ async fn rpc(
 async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
-    cmd: SetAuthorityCommand,
+    cmd: PresentCredentialCommand,
 ) -> crate::Result<()> {
     let mut rpc = Rpc::new(ctx, &opts, &cmd.node_opts.api_node)?;
-    rpc.request(api::credentials::set_authority(&cmd.authority))
+    rpc.request(api::credentials::present_credential(&cmd.to, cmd.oneway))
         .await?;
     Ok(())
 }

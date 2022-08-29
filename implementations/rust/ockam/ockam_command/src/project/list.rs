@@ -9,6 +9,7 @@ use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
+/// List projects
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
     #[clap(flatten)]
@@ -19,8 +20,8 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: ListCommand) {
-        node_rpc(rpc, (opts, cmd));
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 

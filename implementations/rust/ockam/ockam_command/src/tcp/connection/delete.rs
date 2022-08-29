@@ -24,9 +24,9 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(opts: CommandGlobalOpts, command: DeleteCommand) {
-        let cfg = &opts.config;
-        let node = get_final_element(&command.node_opts.api_node);
+    pub fn run(self, options: CommandGlobalOpts) {
+        let cfg = &options.config;
+        let node = get_final_element(&self.node_opts.api_node);
         let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
             None => {
@@ -34,7 +34,7 @@ impl DeleteCommand {
                 std::process::exit(exitcode::IOERR);
             }
         };
-        connect_to(port, command, delete_connection);
+        connect_to(port, self, delete_connection);
     }
 }
 

@@ -1,9 +1,10 @@
 mod create;
 
-use crate::{CommandGlobalOpts, HELP_TEMPLATE};
+use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 use create::CreateCommand;
 
+/// Manage TCP Outlets
 #[derive(Clone, Debug, Args)]
 pub struct TcpOutletCommand {
     #[clap(subcommand)]
@@ -12,14 +13,13 @@ pub struct TcpOutletCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum TcpOutletSubCommand {
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Create(CreateCommand),
 }
 
 impl TcpOutletCommand {
-    pub fn run(options: CommandGlobalOpts, command: TcpOutletCommand) {
-        match command.subcommand {
-            TcpOutletSubCommand::Create(command) => CreateCommand::run(options, command).unwrap(),
+    pub fn run(self, options: CommandGlobalOpts) {
+        match self.subcommand {
+            TcpOutletSubCommand::Create(c) => c.run(options).unwrap(),
         }
     }
 }

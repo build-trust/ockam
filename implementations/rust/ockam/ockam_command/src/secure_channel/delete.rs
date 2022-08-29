@@ -1,13 +1,11 @@
 use crate::{
-    secure_channel::BACKGROUND,
     util::{api, exitcode, get_final_element, node_rpc, Rpc},
-    CommandGlobalOpts, OutputFormat, Result, HELP_TEMPLATE,
+    CommandGlobalOpts, OutputFormat, Result,
 };
 
 use atty::Stream;
 use clap::Args;
 use colorful::Colorful;
-use const_str::replace as const_replace;
 use serde_json::json;
 
 use ockam::{route, Context};
@@ -16,10 +14,6 @@ use ockam_core::Address;
 
 /// Delete Secure Channels
 #[derive(Clone, Debug, Args)]
-#[clap(
-    display_order = 900,
-    help_template = const_replace!(HELP_TEMPLATE, "LEARN MORE", BACKGROUND)
-)]
 pub struct DeleteCommand {
     /// Node from which to initiate the secure channel (required)
     #[clap(value_name = "NODE", long, display_order = 800)]

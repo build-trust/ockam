@@ -1,6 +1,6 @@
 use crate::util::{connect_to, exitcode, get_final_element};
 use crate::util::{ComposableSnippet, Operation, PortalMode, Protocol};
-use crate::{CommandGlobalOpts, HELP_TEMPLATE};
+use crate::{help, CommandGlobalOpts};
 use clap::Args;
 use minicbor::Decoder;
 use ockam::{Context, Route};
@@ -14,9 +14,10 @@ use ockam_core::api::{Request, Response, Status};
 use ockam_core::route;
 use std::net::SocketAddr;
 
-const EXAMPLES: &str = "\
-EXAMPLES
+const HELP_DETAIL: &str = "\
+EXAMPLES:
 
+```sh
     # Create a target service, we'll use a simple http server for this example
     $ python3 -m http.server --bind 127.0.0.1 5000
 
@@ -32,13 +33,12 @@ EXAMPLES
 
     # Access the service via the inlet/outlet pair
     $ curl 127.0.0.1:6000
-
-LEARN MORE
+```
 ";
 
 /// Create TCP Outlets
 #[derive(Clone, Debug, Args)]
-#[clap(help_template = const_str::replace!(HELP_TEMPLATE, "LEARN MORE", EXAMPLES))]
+#[clap(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node on which to start the tcp outlet.
     #[clap(long, display_order = 900, name = "NODE")]
@@ -73,9 +73,9 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 }
 
 impl CreateCommand {
-    pub fn run(options: CommandGlobalOpts, command: Self) -> anyhow::Result<()> {
+    pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
         let cfg = &options.config;
-        let at = &command.at.clone();
+        let at = &self.at.clone();
         let node = get_final_element(at);
         let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
@@ -86,8 +86,8 @@ impl CreateCommand {
         };
 
         let command = CreateCommand {
-            from: String::from(get_final_element(&command.from)),
-            ..command
+            from: String::from(get_final_element(&self.from)),
+            ..self
         };
 
         let composite = (&command).into();

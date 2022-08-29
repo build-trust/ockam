@@ -10,6 +10,7 @@ use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{space, CommandGlobalOpts};
 
+/// Create projects
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     /// Name of the space the project belongs to.
@@ -33,8 +34,8 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
-        node_rpc(rpc, (opts, cmd));
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 

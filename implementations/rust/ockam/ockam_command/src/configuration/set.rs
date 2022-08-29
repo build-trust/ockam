@@ -11,8 +11,8 @@ pub struct SetCommand {
 }
 
 impl SetCommand {
-    pub fn run(opts: CommandGlobalOpts, command: SetCommand) {
-        let target_addr = match InternetAddress::new(&command.target) {
+    pub fn run(self, options: CommandGlobalOpts) {
+        let target_addr = match InternetAddress::new(&self.target) {
             Some(addr) => addr,
             None => {
                 eprintln!(
@@ -23,8 +23,8 @@ impl SetCommand {
             }
         };
 
-        opts.config.set_node_alias(command.name, target_addr);
-        if let Err(e) = opts.config.atomic_update().run() {
+        options.config.set_node_alias(self.name, target_addr);
+        if let Err(e) = options.config.atomic_update().run() {
             eprintln!("{}", e);
             std::process::exit(exitcode::IOERR);
         }

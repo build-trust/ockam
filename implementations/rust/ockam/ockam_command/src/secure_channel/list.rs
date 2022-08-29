@@ -1,21 +1,15 @@
 use clap::Args;
-use const_str::replace as const_replace;
 
 use ockam::Context;
 
 use crate::{
     node::NodeOpts,
-    secure_channel::BACKGROUND,
     util::{api, node_rpc, Rpc},
-    CommandGlobalOpts, HELP_TEMPLATE,
+    CommandGlobalOpts,
 };
 
 /// List Secure Channels
 #[derive(Clone, Debug, Args)]
-#[clap(
-    display_order = 900,
-    help_template = const_replace!(HELP_TEMPLATE, "LEARN MORE", BACKGROUND)
-)]
 pub struct ListCommand {
     /// Node of which secure channels shall be listed
     #[clap(flatten)]

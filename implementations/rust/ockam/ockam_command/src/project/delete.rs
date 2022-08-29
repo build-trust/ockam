@@ -9,6 +9,7 @@ use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{space, CommandGlobalOpts};
 
+/// Delete projects
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
     /// Name of the space.
@@ -27,8 +28,8 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: DeleteCommand) {
-        node_rpc(rpc, (opts, cmd));
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 

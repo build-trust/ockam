@@ -1,12 +1,14 @@
-//! This library is used by the `ockam` CLI (in `./bin/ockam.rs`).
+//! Orchestrate end-to-end encryption, mutual authentication, key management,
+//! credential management, and authorization policy enforcement — at scale.
 
 mod authenticated;
 mod completion;
 mod configuration;
-mod credentials;
+mod credential;
 mod enroll;
+mod error;
 mod forwarder;
-mod highlight;
+mod help;
 mod identity;
 mod message;
 mod node;
@@ -15,60 +17,50 @@ mod secure_channel;
 mod service;
 mod space;
 mod tcp;
+mod terminal;
 mod util;
 mod vault;
+mod version;
 
 use authenticated::AuthenticatedCommand;
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
+use credential::CredentialCommand;
 use enroll::EnrollCommand;
+use error::{Error, Result};
 use forwarder::ForwarderCommand;
+use identity::IdentityCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use project::ProjectCommand;
-use secure_channel::listener::SecureChannelListenerCommand;
-use secure_channel::SecureChannelCommand;
+use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
+use service::ServiceCommand;
 use space::SpaceCommand;
-use tcp::connection::TcpConnectionCommand;
-use tcp::inlet::TcpInletCommand;
-use tcp::listener::TcpListenerCommand;
-use tcp::outlet::TcpOutletCommand;
+use tcp::{
+    connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
+    outlet::TcpOutletCommand,
+};
+use util::{exitcode, exitcode::ExitCode, setup_logging, OckamConfig};
+use vault::VaultCommand;
+use version::Version;
 
-// to be removed
-pub mod error;
+use clap::{ArgEnum, Args, Parser, Subcommand};
 
-use crate::identity::IdentityCommand;
-use crate::service::ServiceCommand;
-use crate::util::exitcode::ExitCode;
-use crate::util::{exitcode, OckamConfig};
-use crate::vault::VaultCommand;
-use clap::{crate_version, ArgEnum, Args, ColorChoice, Parser, Subcommand};
-use util::setup_logging;
-
-use crate::credentials::CredentialsCommand;
-pub use error::{Error, Result};
-
-const HELP_TEMPLATE: &str = "\
-{before-help}
-{name} {version} {author-with-newline}
-{about-with-newline}
-{usage-heading}
-    {usage}
-
-{all-args}
-
-LEARN MORE
-    Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
-    Learn more at https://docs.ockam.io/get-started#command
-
-FEEDBACK
-    If you have any questions or feedback, please start a discussion
-    on Github https://github.com/build-trust/ockam/discussions/new
+const ABOUT: &str = "\
+Orchestrate end-to-end encryption, mutual authentication, key management,
+credential management, and authorization policy enforcement — at scale.
 ";
 
-const EXAMPLES: &str = "\
-EXAMPLES
+const HELP_DETAIL: &str = "\
+BACKGROUND:
+    Modern applications are distributed and have an unwieldy number of
+    interconnections that must trustfully exchange data. Ockam makes it simple
+    to build secure by-design applications that have granular control over every
+    trust and access decision.
 
+EXAMPLES:
+
+```sh
     # Create three local Ockam nodes n1, n2 & n3
     $ for i in {1..3}; do ockam node create \"n$i\"; done
 
@@ -77,36 +69,19 @@ EXAMPLES
     $ ockam secure-channel create --from n1 --to /node/n2/node/n3/service/api \\
          | ockam message send \"hello ockam\" --from n1 --to -/service/uppercase
     HELLO OCKAM
-
-LEARN MORE
+```
 ";
 
-fn long_version() -> &'static str {
-    let crate_version = crate_version!();
-    let git_hash = env!("GIT_HASH");
-    let message = format!(
-        "{}\n\nCompiled from (git hash): {}",
-        crate_version, git_hash
-    );
-
-    Box::leak(message.into_boxed_str())
-}
-
-/// Work seamlessly with Ockam from the command line.
-///
-/// Ockam is a suite of open source tools, programming libraries
-/// and cloud services to orchestrate end-to-end encryption, mutual
-/// authentication, key management, credential management & authorization
-/// policy enforcement — at scale.
 #[derive(Debug, Parser)]
 #[clap(
     name = "ockam",
-    version,
-    long_version = long_version(),
-    propagate_version(true),
-    color(ColorChoice::Never),
     term_width = 100,
-    help_template = highlight::highlighted_shell_script(EXAMPLES),
+    about = ABOUT,
+    long_about = ABOUT,
+    help_template = help::template(HELP_DETAIL),
+    version,
+    long_version = Version::long(),
+    propagate_version(true),
 )]
 pub struct OckamCommand {
     #[clap(subcommand)]
@@ -118,11 +93,11 @@ pub struct OckamCommand {
 
 #[derive(Debug, Clone, Args)]
 pub struct GlobalArgs {
-    /// Do not print trace messages.
+    /// Do not print any informational or trace messages.
     #[clap(global = true, long, short, conflicts_with("verbose"))]
     quiet: bool,
 
-    /// Increase verbosity of trace messages.
+    /// Increase verbosity of output.
     #[clap(
         global = true,
         long,
@@ -132,11 +107,12 @@ pub struct GlobalArgs {
     )]
     verbose: u8,
 
-    /// Disable ANSI terminal colors for trace messages.
-    #[clap(global = true, long, action, hide = hide())]
+    /// Output without any colors.
+    #[clap(global = true, long, action, hide = help::hide())]
     no_color: bool,
 
-    #[clap(global = true, long = "format", value_enum, default_value = "plain", hide = hide())]
+    ///
+    #[clap(global = true, long = "output", value_enum, default_value = "plain", hide = help::hide())]
     output_format: OutputFormat,
 
     // if test_argument_parser is true, command arguments are checked
@@ -168,81 +144,88 @@ impl CommandGlobalOpts {
 
 #[derive(Debug, Subcommand)]
 pub enum OckamSubcommand {
-    /// Enroll with Ockam Orchestrator
-    #[clap(display_order = 800, help_template = HELP_TEMPLATE)]
-    Enroll(EnrollCommand),
-
     #[clap(display_order = 800)]
-    Node(NodeCommand),
-
-    /// Manage identities
-    #[clap(display_order = 801, help_template = HELP_TEMPLATE)]
-    Identity(IdentityCommand),
-
-    /// Manage secure channels
-    #[clap(display_order = 802, help_template = HELP_TEMPLATE)]
-    SecureChannel(SecureChannelCommand),
-
-    /// Manage secure channel listeners
-    #[clap(display_order = 803, help_template = HELP_TEMPLATE)]
-    SecureChannelListener(SecureChannelListenerCommand),
-
-    /// Manage forwarders
-    #[clap(display_order = 804, help_template = HELP_TEMPLATE)]
-    Forwarder(ForwarderCommand),
-
-    /// Manage tcp connections
-    #[clap(display_order = 805, help_template = HELP_TEMPLATE)]
-    TcpConnection(TcpConnectionCommand),
-
-    /// Manage tcp inlets
-    #[clap(display_order = 806, help_template = HELP_TEMPLATE)]
-    TcpInlet(TcpInletCommand),
-
-    /// Manage tcp listeners
-    #[clap(display_order = 807, help_template = HELP_TEMPLATE)]
-    TcpListener(TcpListenerCommand),
-
-    /// Manage tcp outlets
-    #[clap(display_order = 808, help_template = HELP_TEMPLATE)]
-    TcpOutlet(TcpOutletCommand),
-
-    /// Send or receive messages
-    #[clap(display_order = 809, help_template = HELP_TEMPLATE)]
-    Message(MessageCommand),
-
-    /// Generate Completions
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
-    Completion(CompletionCommand),
-
-    // HIDDEN
-    /// Manage ockam node configuration values
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
-    Credentials(CredentialsCommand),
-
-    /// Manage ockam node configuration values
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
-    Configuration(ConfigurationCommand),
-
-    /// Manage authenticated attributes.
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
-    Authenticated(AuthenticatedCommand),
-
-    /// Create, update or delete projects
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
+    Enroll(EnrollCommand),
+    #[clap(display_order = 801)]
+    Space(SpaceCommand),
+    #[clap(display_order = 802)]
     Project(ProjectCommand),
 
-    /// Manage Services
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
+    #[clap(display_order = 811)]
+    Node(NodeCommand),
+    #[clap(display_order = 812)]
+    Identity(IdentityCommand),
+    #[clap(display_order = 813)]
+    TcpListener(TcpListenerCommand),
+    #[clap(display_order = 814)]
+    TcpConnection(TcpConnectionCommand),
+    #[clap(display_order = 815)]
+    TcpOutlet(TcpOutletCommand),
+    #[clap(display_order = 816)]
+    TcpInlet(TcpInletCommand),
+    #[clap(display_order = 817)]
+    SecureChannelListener(SecureChannelListenerCommand),
+    #[clap(display_order = 818)]
+    SecureChannel(SecureChannelCommand),
+    #[clap(display_order = 819)]
+    Forwarder(ForwarderCommand),
+    #[clap(display_order = 820)]
+    Message(MessageCommand),
+
+    #[clap(display_order = 900)]
+    Completion(CompletionCommand),
+
+    Authenticated(AuthenticatedCommand),
+    Configuration(ConfigurationCommand),
+    Credential(CredentialCommand),
     Service(ServiceCommand),
-
-    /// Create, update or delete spaces
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
-    Space(SpaceCommand),
-
-    /// Manage Vault
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE, hide = hide())]
     Vault(VaultCommand),
+}
+
+pub fn run() {
+    let input = std::env::args().map(replace_hyphen_with_stdin);
+
+    let command: OckamCommand = OckamCommand::parse_from(input);
+    let config = OckamConfig::load();
+
+    if !command.global_args.quiet {
+        setup_logging(command.global_args.verbose, command.global_args.no_color);
+        tracing::debug!("Parsed {:?}", &command);
+    }
+
+    let options = CommandGlobalOpts::new(command.global_args, config);
+
+    // If test_argument_parser is true, command arguments are checked
+    // but the command is not executed. This is useful to test arguments
+    // without having to execute their logic.
+    if options.global_args.test_argument_parser {
+        return;
+    }
+
+    // FIXME
+    let _verbose = options.global_args.verbose;
+
+    match command.subcommand {
+        OckamSubcommand::Authenticated(c) => c.run(),
+        OckamSubcommand::Configuration(c) => c.run(options),
+        OckamSubcommand::Enroll(c) => c.run(options),
+        OckamSubcommand::Forwarder(c) => c.run(options),
+        OckamSubcommand::Message(c) => c.run(options),
+        OckamSubcommand::Node(c) => c.run(options),
+        OckamSubcommand::Project(c) => c.run(options),
+        OckamSubcommand::Space(c) => c.run(options),
+        OckamSubcommand::TcpConnection(c) => c.run(options),
+        OckamSubcommand::TcpInlet(c) => c.run(options),
+        OckamSubcommand::TcpListener(c) => c.run(options),
+        OckamSubcommand::TcpOutlet(c) => c.run(options),
+        OckamSubcommand::Vault(c) => c.run(options),
+        OckamSubcommand::Identity(c) => c.run(options),
+        OckamSubcommand::SecureChannel(c) => c.run(options),
+        OckamSubcommand::SecureChannelListener(c) => c.run(options),
+        OckamSubcommand::Service(c) => c.run(options),
+        OckamSubcommand::Completion(c) => c.run(),
+        OckamSubcommand::Credential(c) => c.run(options),
+    }
 }
 
 fn replace_hyphen_with_stdin(s: String) -> String {
@@ -274,62 +257,5 @@ fn replace_hyphen_with_stdin(s: String) -> String {
         s.replace("-/", &args_from_stdin)
     } else {
         s
-    }
-}
-
-fn hide() -> bool {
-    match std::env::var("SHOW_HIDDEN") {
-        Ok(v) => !v.eq_ignore_ascii_case("true"),
-        Err(_e) => true,
-    }
-}
-
-pub fn run() {
-    let ockam_command: OckamCommand =
-        OckamCommand::parse_from(std::env::args().map(replace_hyphen_with_stdin));
-    let cfg = OckamConfig::load();
-
-    if !ockam_command.global_args.quiet {
-        setup_logging(
-            ockam_command.global_args.verbose,
-            ockam_command.global_args.no_color,
-        );
-        tracing::debug!("Parsed {:?}", &ockam_command);
-    }
-
-    let opts = CommandGlobalOpts::new(ockam_command.global_args, cfg);
-
-    // If test_argument_parser is true, command arguments are checked
-    // but the command is not executed. This is useful to test arguments
-    // without having to execute their logic.
-    if opts.global_args.test_argument_parser {
-        return;
-    }
-
-    // FIXME
-    let _verbose = opts.global_args.verbose;
-
-    match ockam_command.subcommand {
-        OckamSubcommand::Authenticated(command) => AuthenticatedCommand::run(command),
-        OckamSubcommand::Configuration(command) => ConfigurationCommand::run(opts, command),
-        OckamSubcommand::Enroll(command) => EnrollCommand::run(opts, command),
-        OckamSubcommand::Forwarder(command) => ForwarderCommand::run(opts, command),
-        OckamSubcommand::Message(command) => MessageCommand::run(opts, command),
-        OckamSubcommand::Node(command) => NodeCommand::run(opts, command),
-        OckamSubcommand::Project(command) => ProjectCommand::run(opts, command),
-        OckamSubcommand::Space(command) => SpaceCommand::run(opts, command),
-        OckamSubcommand::TcpConnection(command) => TcpConnectionCommand::run(opts, command),
-        OckamSubcommand::TcpInlet(command) => TcpInletCommand::run(opts, command),
-        OckamSubcommand::TcpListener(command) => TcpListenerCommand::run(opts, command),
-        OckamSubcommand::TcpOutlet(command) => TcpOutletCommand::run(opts, command),
-        OckamSubcommand::Vault(command) => VaultCommand::run(opts, command),
-        OckamSubcommand::Identity(command) => IdentityCommand::run(opts, command),
-        OckamSubcommand::SecureChannel(command) => command.run(opts),
-        OckamSubcommand::SecureChannelListener(command) => {
-            SecureChannelListenerCommand::run(opts, command)
-        }
-        OckamSubcommand::Service(command) => ServiceCommand::run(opts, command),
-        OckamSubcommand::Completion(command) => CompletionCommand::run(command),
-        OckamSubcommand::Credentials(command) => CredentialsCommand::run(opts, command),
     }
 }

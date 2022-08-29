@@ -2,12 +2,13 @@ use crate::util::{connect_to, exitcode, verify_pids};
 use crate::{node::show::query_status, CommandGlobalOpts};
 use clap::Args;
 
+/// List nodes.
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {}
 
 impl ListCommand {
-    pub fn run(opts: CommandGlobalOpts, _: ListCommand) {
-        let cfg = &opts.config;
+    pub fn run(self, options: CommandGlobalOpts) {
+        let cfg = &options.config;
         let node_names = {
             let inner = cfg.get_inner();
 

@@ -15,9 +15,9 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(opts: CommandGlobalOpts, command: Self) -> anyhow::Result<()> {
-        let cfg = opts.config;
-        let node = get_final_element(&command.node_opts.api_node);
+    pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
+        let cfg = options.config;
+        let node = get_final_element(&self.node_opts.api_node);
         let port = match cfg.select_node(node) {
             Some(cfg) => cfg.port,
             None => {
@@ -26,7 +26,7 @@ impl ShowCommand {
             }
         };
 
-        connect_to(port, command, show_identity);
+        connect_to(port, self, show_identity);
 
         Ok(())
     }

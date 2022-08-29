@@ -6,6 +6,7 @@ use ockam::Context;
 use ockam_core::api::Status;
 use ockam_core::Route;
 
+/// Create vaults
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     #[clap(flatten)]
@@ -17,9 +18,9 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(opts: CommandGlobalOpts, command: CreateCommand) -> anyhow::Result<()> {
-        let cfg = opts.config;
-        let port = match cfg.select_node(&command.node_opts.api_node) {
+    pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
+        let cfg = options.config;
+        let port = match cfg.select_node(&self.node_opts.api_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -27,7 +28,7 @@ impl CreateCommand {
             }
         };
 
-        connect_to(port, command, create_vault);
+        connect_to(port, self, create_vault);
 
         Ok(())
     }

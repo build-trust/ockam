@@ -9,6 +9,7 @@ use ockam_api::nodes::{models::base::NodeStatus, NODEMANAGER_ADDR};
 use ockam_core::api::Status;
 use std::time::Duration;
 
+/// Show nodes.
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
     /// Name of the node.
@@ -17,16 +18,16 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(opts: CommandGlobalOpts, command: ShowCommand) {
-        let cfg = &opts.config;
-        let port = match cfg.get_inner().nodes.get(&command.node_name) {
+    pub fn run(self, options: CommandGlobalOpts) {
+        let cfg = &options.config;
+        let port = match cfg.get_inner().nodes.get(&self.node_name) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
                 std::process::exit(exitcode::IOERR);
             }
         };
-        connect_to(port, (cfg.clone(), command.node_name), query_status);
+        connect_to(port, (cfg.clone(), self.node_name), query_status);
     }
 }
 

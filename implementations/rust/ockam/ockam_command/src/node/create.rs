@@ -15,12 +15,13 @@ use crate::service::config::Config;
 use crate::service::start::{self, StartCommand, StartSubCommand};
 use crate::util::{bind_to_port_check, exitcode};
 use crate::{
+    help,
     node::show::query_status,
     util::{
         connect_to, embedded_node, find_available_port, startup, ComposableSnippet, OckamConfig,
         Operation,
     },
-    CommandGlobalOpts, HELP_TEMPLATE,
+    CommandGlobalOpts,
 };
 use ockam::identity::Identity;
 use ockam::{Address, AsyncTryClone, NodeBuilder, TCP};
@@ -36,9 +37,10 @@ use ockam_core::LOCAL;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
-const EXAMPLES: &str = "\
-EXAMPLES
+const HELP_DETAIL: &str = "\
+EXAMPLES:
 
+```sh
     # Create a node, with a generated name
     $ ockam node create
 
@@ -50,13 +52,12 @@ EXAMPLES
 
     # Create a node, and run it in the foreground with verbose traces
     $ ockam node create n1 --foreground -vvv
-
-LEARN MORE
+```
 ";
 
+/// Create Nodes.
 #[derive(Clone, Debug, Args)]
-/// Create a node.
-#[clap(help_template = const_str::replace!(HELP_TEMPLATE, "LEARN MORE", EXAMPLES))]
+#[clap(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Name of the node (Optional).
     #[clap(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
@@ -110,11 +111,11 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
 }
 
 impl CreateCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: CreateCommand) {
-        let verbose = opts.global_args.verbose;
-        let cfg = &opts.config;
-        if cmd.foreground {
-            let cmd = cmd.overwrite_addr().unwrap();
+    pub fn run(self, options: CommandGlobalOpts) {
+        let verbose = options.global_args.verbose;
+        let cfg = &options.config;
+        if self.foreground {
+            let cmd = self.overwrite_addr().unwrap();
             let addr = SocketAddr::from_str(&cmd.tcp_listener_address).unwrap();
             // HACK: try to get the current node dir.  If it doesn't
             // exist the user PROBABLY started a non-detached node.
@@ -141,17 +142,17 @@ impl CreateCommand {
                 eprintln!("Ockam node failed: {:?}", e);
             }
         } else {
-            if cmd.child_process {
+            if self.child_process {
                 eprintln!("Cannot create a background node from background node");
                 std::process::exit(exitcode::CONFIG);
             }
 
-            let cmd = cmd.overwrite_addr().unwrap();
+            let cmd = self.overwrite_addr().unwrap();
             let addr = SocketAddr::from_str(&cmd.tcp_listener_address).unwrap();
 
             embedded_node(
                 Self::create_background_node,
-                (opts.clone(), cmd.clone(), addr),
+                (options.clone(), cmd.clone(), addr),
             )
             .unwrap();
             connect_to(addr.port(), (cfg.clone(), cmd.node_name), query_status);

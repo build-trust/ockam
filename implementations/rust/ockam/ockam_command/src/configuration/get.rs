@@ -8,16 +8,16 @@ pub struct GetCommand {
 }
 
 impl GetCommand {
-    pub fn run(opts: CommandGlobalOpts, command: GetCommand) {
-        let lookup = opts.config.get_lookup();
-        match lookup.get_node(&command.alias) {
+    pub fn run(self, options: CommandGlobalOpts) {
+        let lookup = options.config.get_lookup();
+        match lookup.get_node(&self.alias) {
             Some(addr) => {
-                println!("Node: {}\nAddress: {}", command.alias, addr);
+                println!("Node: {}\nAddress: {}", self.alias, addr);
             }
             None => {
                 eprintln!(
                     "Alias {} not known.  Add it first with `ockam alias set`!",
-                    command.alias
+                    self.alias
                 );
                 std::process::exit(exitcode::DATAERR);
             }

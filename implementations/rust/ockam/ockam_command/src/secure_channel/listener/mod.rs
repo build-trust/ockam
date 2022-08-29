@@ -4,9 +4,10 @@ pub mod list;
 pub(crate) use create::CreateCommand;
 pub(crate) use list::ListCommand;
 
-use crate::{CommandGlobalOpts, HELP_TEMPLATE};
+use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 
+/// Manage Secure Channel Listeners
 #[derive(Clone, Debug, Args)]
 pub struct SecureChannelListenerCommand {
     #[clap(subcommand)]
@@ -15,19 +16,15 @@ pub struct SecureChannelListenerCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum SecureChannelListenerSubcommand {
-    /// Create Secure Channel Listener
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Create(CreateCommand),
-
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     List(ListCommand),
 }
 
 impl SecureChannelListenerCommand {
-    pub fn run(opts: CommandGlobalOpts, command: SecureChannelListenerCommand) {
-        match command.subcommand {
-            SecureChannelListenerSubcommand::Create(command) => CreateCommand::run(opts, command),
-            SecureChannelListenerSubcommand::List(command) => ListCommand::run(opts, command),
+    pub fn run(self, options: CommandGlobalOpts) {
+        match self.subcommand {
+            SecureChannelListenerSubcommand::Create(c) => c.run(options),
+            SecureChannelListenerSubcommand::List(c) => c.run(options),
         }
     }
 }

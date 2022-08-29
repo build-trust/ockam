@@ -24,8 +24,8 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: ShowCommand) {
-        node_rpc(rpc, (opts, cmd));
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 

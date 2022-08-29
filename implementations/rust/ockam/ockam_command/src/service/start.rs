@@ -62,9 +62,9 @@ pub enum StartSubCommand {
 }
 
 impl StartCommand {
-    pub fn run(opts: CommandGlobalOpts, command: StartCommand) -> Result<()> {
-        let cfg = opts.config;
-        let port = match cfg.select_node(&command.node_opts.api_node) {
+    pub fn run(self, options: CommandGlobalOpts) -> Result<()> {
+        let cfg = options.config;
+        let port = match cfg.select_node(&self.node_opts.api_node) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
@@ -72,42 +72,38 @@ impl StartCommand {
             }
         };
 
-        match command.create_subcommand {
-            StartSubCommand::Vault { .. } => connect_to(port, command, |mut ctx, cmd, rte| async {
+        match self.create_subcommand {
+            StartSubCommand::Vault { .. } => connect_to(port, self, |mut ctx, cmd, rte| async {
                 start_vault_service(&mut ctx, cmd, rte).await?;
                 drop(ctx);
                 Ok(())
             }),
-            StartSubCommand::Identity { .. } => {
-                connect_to(port, command, |mut ctx, cmd, rte| async {
-                    start_identity_service(&mut ctx, cmd, rte).await?;
-                    drop(ctx);
-                    Ok(())
-                })
-            }
+            StartSubCommand::Identity { .. } => connect_to(port, self, |mut ctx, cmd, rte| async {
+                start_identity_service(&mut ctx, cmd, rte).await?;
+                drop(ctx);
+                Ok(())
+            }),
             StartSubCommand::Authenticated { .. } => {
-                connect_to(port, command, |mut ctx, cmd, rte| async {
+                connect_to(port, self, |mut ctx, cmd, rte| async {
                     start_authenticated_service(&mut ctx, cmd, rte).await?;
                     drop(ctx);
                     Ok(())
                 })
             }
-            StartSubCommand::Verifier { .. } => {
-                connect_to(port, command, |mut ctx, cmd, rte| async {
-                    start_verifier_service(&mut ctx, cmd, rte).await?;
-                    drop(ctx);
-                    Ok(())
-                })
-            }
+            StartSubCommand::Verifier { .. } => connect_to(port, self, |mut ctx, cmd, rte| async {
+                start_verifier_service(&mut ctx, cmd, rte).await?;
+                drop(ctx);
+                Ok(())
+            }),
             StartSubCommand::Credentials { .. } => {
-                connect_to(port, command, |mut ctx, cmd, rte| async {
+                connect_to(port, self, |mut ctx, cmd, rte| async {
                     start_credentials_service(&mut ctx, cmd, rte).await?;
                     drop(ctx);
                     Ok(())
                 })
             }
             StartSubCommand::Authenticator { .. } => {
-                connect_to(port, command, |mut ctx, cmd, rte| async {
+                connect_to(port, self, |mut ctx, cmd, rte| async {
                     start_authenticator_service(&mut ctx, cmd, rte).await?;
                     drop(ctx);
                     Ok(())

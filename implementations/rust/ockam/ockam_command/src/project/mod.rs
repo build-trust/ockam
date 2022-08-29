@@ -12,7 +12,7 @@ pub use util::config;
 
 use clap::{Args, Subcommand};
 
-pub use crate::credentials::get_credential::GetCredentialCommand;
+pub use crate::credential::get_credential::GetCredentialCommand;
 pub use add_enroller::AddEnrollerCommand;
 pub use add_member::AddMemberCommand;
 pub use create::CreateCommand;
@@ -22,9 +22,11 @@ pub use list::ListCommand;
 pub use list_enrollers::ListEnrollersCommand;
 pub use show::ShowCommand;
 
-use crate::{CommandGlobalOpts, HELP_TEMPLATE};
+use crate::CommandGlobalOpts;
 
+/// Manage Projects in Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
+#[clap(arg_required_else_help = true, subcommand_required = true)]
 pub struct ProjectCommand {
     #[clap(subcommand)]
     subcommand: ProjectSubcommand,
@@ -32,50 +34,27 @@ pub struct ProjectCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum ProjectSubcommand {
-    /// Create projects
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Create(CreateCommand),
-
-    /// Delete projects
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Delete(DeleteCommand),
-
-    /// List projects
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     List(ListCommand),
-
-    /// Show projects
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     Show(ShowCommand),
-
-    /// Adds an authorized enroller to the project' authority
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     AddEnroller(AddEnrollerCommand),
-
-    /// List a project' authority authorized enrollers
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     ListEnrollers(ListEnrollersCommand),
-
-    /// Remove an identity as authorized enroller from the project' authority
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     DeleteEnroller(DeleteEnrollerCommand),
-
-    /// An authorised enroller can add members to a project.
-    #[clap(display_order = 900, help_template = HELP_TEMPLATE)]
     AddMember(AddMemberCommand),
 }
 
 impl ProjectCommand {
-    pub fn run(opts: CommandGlobalOpts, cmd: ProjectCommand) {
-        match cmd.subcommand {
-            ProjectSubcommand::Create(scmd) => CreateCommand::run(opts, scmd),
-            ProjectSubcommand::Delete(scmd) => DeleteCommand::run(opts, scmd),
-            ProjectSubcommand::List(scmd) => ListCommand::run(opts, scmd),
-            ProjectSubcommand::Show(scmd) => ShowCommand::run(opts, scmd),
-            ProjectSubcommand::AddEnroller(scmd) => AddEnrollerCommand::run(opts, scmd),
-            ProjectSubcommand::ListEnrollers(scmd) => ListEnrollersCommand::run(opts, scmd),
-            ProjectSubcommand::DeleteEnroller(scmd) => DeleteEnrollerCommand::run(opts, scmd),
-            ProjectSubcommand::AddMember(scmd) => scmd.run(opts),
+    pub fn run(self, options: CommandGlobalOpts) {
+        match self.subcommand {
+            ProjectSubcommand::Create(c) => c.run(options),
+            ProjectSubcommand::Delete(c) => c.run(options),
+            ProjectSubcommand::List(c) => c.run(options),
+            ProjectSubcommand::Show(c) => c.run(options),
+            ProjectSubcommand::AddEnroller(c) => c.run(options),
+            ProjectSubcommand::ListEnrollers(c) => c.run(options),
+            ProjectSubcommand::DeleteEnroller(c) => c.run(options),
+            ProjectSubcommand::AddMember(c) => c.run(options),
         }
     }
 }

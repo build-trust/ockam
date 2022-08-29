@@ -5,8 +5,8 @@ use clap::Args;
 pub struct GetDefaultNodeCommand {}
 
 impl GetDefaultNodeCommand {
-    pub fn run(opts: CommandGlobalOpts, _command: GetDefaultNodeCommand) {
-        match opts.config.get_default_node() {
+    pub fn run(self, options: CommandGlobalOpts) {
+        match options.config.get_default_node() {
             Some(name) => {
                 println!("Current Default Node: {}", name)
             }
