@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault"
-version = "0.60.0"
+version = "0.61.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
@@ -61,9 +61,9 @@ alloc = ["ockam_core/alloc", "ockam_node/alloc", "aes-gcm/alloc"]
 storage = ["std", "serde", "serde_json"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.64.0", default_features = false }
-ockam_macros = { path = "../ockam_macros", version = "^0.18.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.67.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.65.0", default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.19.0", default-features = false }
+ockam_node = { path = "../ockam_node", version = "^0.68.0", default_features = false }
 arrayref = "0.3"
 aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }
 curve25519-dalek = { version = "3.1", default-features = false }
