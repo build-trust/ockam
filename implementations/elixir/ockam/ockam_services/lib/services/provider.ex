@@ -23,7 +23,8 @@ defmodule Ockam.Services.Provider do
   def child_spec(args) do
     %{
       id: __MODULE__,
-      start: {__MODULE__, :start_link, args}
+      start: {__MODULE__, :start_link, args},
+      type: :supervisor
     }
   end
 

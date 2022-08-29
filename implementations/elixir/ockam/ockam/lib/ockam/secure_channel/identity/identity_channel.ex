@@ -228,7 +228,8 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
         role: :initiator,
         route: init_route,
         extra_init_payload: extra_payload,
-        callback_route: [handshake_address]
+        callback_route: [handshake_address],
+        authorization: [{:with_metadata, [:message, %{from_pid: self()}]}]
       )
 
     with {:ok, _pid, enc_channel} <- SecureChannel.start_link(encryption_options),
@@ -321,7 +322,8 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
         |> Keyword.merge(
           role: :responder,
           initiating_message: encryption_init,
-          callback_route: [handshake_address]
+          callback_route: [handshake_address],
+          authorization: [{:with_metadata, [:message, %{from_pid: self()}]}]
         )
 
       with {:ok, _pid, enc_channel} <- SecureChannel.start_link(encryption_options),
@@ -407,7 +409,8 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
     %Message{
       payload: payload,
       onward_route: [encryption_channel, peer_address],
-      return_route: [handshake_address]
+      return_route: [handshake_address],
+      local_metadata: %{from_pid: self()}
     }
   end
 
@@ -565,6 +568,7 @@ defmodule Ockam.Identity.SecureChannel.Data do
         forwarded_message =
           message
           |> Message.set_onward_route([channel, peer | onward_route])
+          |> Message.put_local_metadata(:from_pid, self())
 
         Router.route(forwarded_message)
         {:ok, state}

@@ -10,11 +10,19 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Responder do
   def setup(_options, data) do
     actions =
       case Map.get(data, :initiating_message) do
-        nil -> []
-        message -> [{:next_event, :info, message}]
+        nil ->
+          []
+
+        message ->
+          ciphertext_address = Map.fetch!(data, :ciphertext_address)
+          [{:next_event, :info, Message.set_onward_route(message, [ciphertext_address])}]
       end
 
     {:ok, {:key_establishment, @role, :awaiting_message1}, data, actions}
+  end
+
+  def handle_internal(event, _state, _data) do
+    {:error, {:event_not_supported, event}}
   end
 
   def handle_message(message, {:key_establishment, @role, :awaiting_message1}, data) do

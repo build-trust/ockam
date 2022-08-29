@@ -2,7 +2,7 @@ defmodule Ockam.SecureChannel.Channel do
   @moduledoc false
 
   ## TODO: make that Ockam.Worker
-  use GenStateMachine
+  use GenStateMachine, callback_mode: [:handle_event_function, :state_enter]
 
   alias Ockam.Node
   alias Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm, as: EncryptedTransport
@@ -101,6 +101,7 @@ defmodule Ockam.SecureChannel.Channel do
          {:ok, data} <- setup_initiating_message(options, data),
          {:ok, data} <- setup_callback_route(options, data),
          {:ok, data} <- setup_extra_init_payload(options, data),
+         {:ok, data} <- setup_authorization(options, data),
          {:ok, initial, data, next_events} <- setup_key_establishment_protocol(options, data),
          {:ok, initial, data} <- setup_encrypted_transport_protocol(options, initial, data) do
       return_value = {:ok, initial, data, next_events}
@@ -114,11 +115,20 @@ defmodule Ockam.SecureChannel.Channel do
 
   @doc false
   @impl true
+  def handle_event(:enter, _event, {:key_establishment, _role, _role_state}, _data) do
+    :keep_state_and_data
+  end
+
+  def handle_event(:enter, _event, {:encrypted_transport, :ready}, data) do
+    notify_callback_route(data)
+    :keep_state_and_data
+  end
+
   def handle_event(event_type, event, state, data) do
     metadata = %{event_type: event_type, event: event, state: state, data: data}
     start_time = Telemetry.emit_start_event([__MODULE__, :handle_event], metadata: metadata)
 
-    return_value = handle_message(event_type, event, state, data)
+    return_value = do_handle_event(event_type, event, state, data)
 
     metadata = Map.put(metadata, :return_value, return_value)
     Telemetry.emit_stop_event([__MODULE__, :handle_event], start_time, metadata: metadata)
@@ -126,23 +136,33 @@ defmodule Ockam.SecureChannel.Channel do
     return_value
   end
 
-  defp handle_message({:call, from}, :established?, state, data) do
+  defp do_handle_event({:call, from}, :established?, state, data) do
     established = {:encrypted_transport, :ready} === state
     {:next_state, state, data, [{:reply, from, established}]}
   end
 
-  defp handle_message(:info, event, {:key_establishment, _role, _role_state} = state, data) do
+  defp do_handle_event(:internal, event, {:key_establishment, _role, _role_state} = state, data) do
     key_establishment_protocol = Map.get(data, :key_establishment_protocol)
+    key_establishment_protocol.handle_internal(event, state, data)
+  end
 
-    with {:next_state, {:encrypted_transport, :ready}, data} <-
-           key_establishment_protocol.handle_message(event, state, data) do
-      notify_callback_route(data)
-      {:next_state, {:encrypted_transport, :ready}, data}
+  defp do_handle_event(:info, %Ockam.Message{} = message, state, data) do
+    with :ok <- is_authorized(message, data) do
+      handle_message(message, state, data)
     end
   end
 
-  defp handle_message(:info, event, {:encrypted_transport, :ready} = state, data) do
-    EncryptedTransport.handle_message(event, state, data)
+  defp handle_message(message, {:key_establishment, _role, _role_state} = state, data) do
+    key_establishment_protocol = Map.get(data, :key_establishment_protocol)
+    key_establishment_protocol.handle_message(message, state, data)
+  end
+
+  defp handle_message(message, {:encrypted_transport, :ready} = state, data) do
+    EncryptedTransport.handle_message(message, state, data)
+  end
+
+  defp is_authorized(message, data) do
+    Ockam.Worker.is_authorized(message, data)
   end
 
   defp notify_callback_route(%{
@@ -232,6 +252,19 @@ defmodule Ockam.SecureChannel.Channel do
     case Keyword.get(options, :extra_init_payload) do
       nil -> {:ok, data}
       extra_init_payload -> {:ok, Map.put(data, :extra_init_payload, extra_init_payload)}
+    end
+  end
+
+  defp setup_authorization(options, data) do
+    case Keyword.get(options, :authorization, []) do
+      authorization when is_list(authorization) ->
+        plaintext_address = Map.fetch!(data, :plaintext_address)
+        ciphertext_address = Map.fetch!(data, :ciphertext_address)
+        data = Map.put(data, :all_addresses, [plaintext_address, ciphertext_address])
+        {:ok, Ockam.Worker.update_authorization_state(data, plaintext_address, authorization)}
+
+      other ->
+        {:error, {:authorization_not_list, other}}
     end
   end
 

@@ -96,6 +96,23 @@ defmodule Ockam.Worker.Authorization do
     to_addresses(prev, message, addresses)
   end
 
+  def with_metadata(prev \\ :ok, message, metadata) do
+    chain(prev, fn ->
+      local_metadata = Message.local_metadata(message)
+
+      Enum.reduce(metadata, :ok, fn
+        {key, val}, :ok ->
+          case Map.get(local_metadata, key) do
+            ^val -> :ok
+            other -> {:error, {:metadata_mismatch, key, val, other}}
+          end
+
+        _kv, {:error, reason} ->
+          {:error, reason}
+      end)
+    end)
+  end
+
   @doc """
   Allow messages which have `channel: :secure_channel` in their local metadata
   to be handled by the worker.
@@ -172,7 +189,7 @@ defmodule Ockam.Worker.Authorization do
   end
 
   def with_state_config(message, state) do
-    config = Map.get(state, :authorization, Ockam.Worker.default_authorization())
+    config = Map.get(state, :authorization, [])
 
     with_config(config, message, state)
   end

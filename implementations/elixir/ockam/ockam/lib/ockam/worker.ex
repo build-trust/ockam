@@ -43,7 +43,7 @@ defmodule Ockam.Worker do
 
   def update_authorization_state(state, update) when is_map(update) do
     update = Authorization.expand_config(update)
-    current_authorization = Map.get(state, :authorization, [])
+    current_authorization = Map.get(state, :authorization, %{})
 
     new_authorization =
       case current_authorization do
@@ -139,7 +139,7 @@ defmodule Ockam.Worker do
 
       @doc false
       def is_authorized(message, state) do
-        Ockam.Worker.Authorization.with_state_config(message, state)
+        Ockam.Worker.is_authorized(message, state)
       end
 
       defoverridable setup: 2, address_prefix: 1, is_authorized: 2
@@ -201,10 +201,6 @@ defmodule Ockam.Worker do
     {:ok, options, {:continue, :post_init}}
   end
 
-  def default_authorization() do
-    [:to_my_address]
-  end
-
   def handle_post_init(module, options) do
     Node.set_address_module(Keyword.fetch!(options, :address), module)
 
@@ -212,7 +208,7 @@ defmodule Ockam.Worker do
       with_init_metric(module, options, fn ->
         with {:ok, address} <- Keyword.fetch(options, :address),
              authorization when is_list(authorization) or is_map(authorization) <-
-               Keyword.get(options, :authorization, default_authorization()) do
+               Keyword.get(options, :authorization, []) do
           base_state = %{
             address: address,
             all_addresses: [address],
@@ -267,6 +263,16 @@ defmodule Ockam.Worker do
       {:error, reason} ->
         Logger.warn("Worker #{module} handle_message failed. Reason: #{inspect(reason)}")
         {:noreply, Map.put(state, :last_message_ts, last_message_ts)}
+    end
+  end
+
+  ## Default authorization implementation
+
+  def is_authorized(message, state) do
+    ## Address check is default authorization rule for all workers
+    ## It can be overriden by implementing custom is_authorized function
+    with :ok <- Authorization.to_my_address(message, state) do
+      Ockam.Worker.Authorization.with_state_config(message, state)
     end
   end
 

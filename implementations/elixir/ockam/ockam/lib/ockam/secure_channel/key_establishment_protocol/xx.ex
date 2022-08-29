@@ -18,6 +18,14 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX do
     end
   end
 
+  def handle_internal(event, {:key_establishment, role, _role_state} = state, data)
+      when role in [:initiator, :responder] do
+    case role do
+      :initiator -> Initiator.handle_internal(event, state, data)
+      :responder -> Responder.handle_internal(event, state, data)
+    end
+  end
+
   ## TODO: batter name to not collide with Ockam.Worker.handle_message
   def handle_message(message, {:key_establishment, role, _role_state} = state, data)
       when role in [:initiator, :responder] do

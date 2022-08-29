@@ -8,10 +8,10 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
   @role :initiator
 
   def setup(_options, data) do
-    {:ok, {:key_establishment, @role, :ready}, data, [{:next_event, :info, :enter}]}
+    {:ok, {:key_establishment, @role, :ready}, data, [{:next_event, :internal, :enter}]}
   end
 
-  def handle_message(:enter, {:key_establishment, @role, :ready}, data) do
+  def handle_internal(:enter, {:key_establishment, @role, :ready}, data) do
     message1_onward_route = data.peer.route
     message1_return_route = [data.ciphertext_address]
 
