@@ -1,12 +1,15 @@
 use crate::{
+    help,
+    node::HELP_DETAIL,
     util::{exitcode, startup},
     CommandGlobalOpts,
 };
 use clap::Args;
 use rand::prelude::random;
 
-/// Stop nodes.
+/// Stop Nodes
 #[derive(Clone, Debug, Args)]
+#[clap(help_template = help::template(HELP_DETAIL))]
 pub struct StopCommand {
     /// Name of the node.
     #[clap(default_value_t = hex::encode(&random::<[u8;4]>()))]

@@ -16,8 +16,16 @@ use crate::{help, CommandGlobalOpts};
 use clap::{Args, Subcommand};
 
 const HELP_DETAIL: &str = "\
-EXAMPLES
+ABOUT:
 
+An Ockam node is any running application that can communicate with other
+applications using various Ockam protocols like Routing, Secure Channels, Forwarding etc.
+
+Ockam nodes run very lightweight, concurrent, stateful actors called Ockam Workers.
+Workers have addresses and a node can deliver messages to workers on the same node or on
+a different node.
+
+EXAMPLES:
 ```sh
     # Create a node
     $ ockam node create n1
@@ -26,21 +34,37 @@ EXAMPLES
     $ ockam message send \"hello ockam\" --to /node/n1/service/uppercase
     HELLO OCKAM
 
+    # Create a node, with a specified tcp listener address
+    $ ockam node create n1 --tcp-listener-address 127.0.0.1:6001
+
+    # Create a node, and run it in the foreground with verbose traces
+    $ ockam node create n1 --foreground -vvv
+
+    # Show information about a specific node
+    $ ockam node show n1
+
+    # List all created nodes
+    $ ockam node list
+
     # Delete the node
     $ ockam node delete n1
+
+    # Delete all nodes
+    $ ockam node delete --all
+
+    # Delete all nodes and force cleanup
+    $ ockam node delete --all --force
 ```
 ";
 
 /// Manage Nodes
-///
-/// An Ockam node is any running application that can communicate with other
-/// applications using various Ockam protocols like Routing, Secure Channels, Forwarding etc.
-///
-/// Ockam nodes run very lightweight, concurrent, stateful actors called Ockam Workers.
-/// Workers have addresses and a node can deliver messages to workers on the same node or on
-/// a different node.
 #[derive(Clone, Debug, Args)]
-#[clap(help_template = help::template(HELP_DETAIL))]
+#[clap(
+    arg_required_else_help = true,
+    subcommand_required = true,
+    help_template = help::template(HELP_DETAIL),
+    mut_subcommand("help", |c| c.about("Print help information"))
+)]
 pub struct NodeCommand {
     #[clap(subcommand)]
     subcommand: NodeSubcommand,
@@ -48,15 +72,17 @@ pub struct NodeCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum NodeSubcommand {
+    #[clap(display_order = 800)]
     Create(CreateCommand),
+    #[clap(display_order = 800)]
     Delete(DeleteCommand),
-
+    #[clap(display_order = 800)]
     List(ListCommand),
-
+    #[clap(display_order = 800)]
     Show(ShowCommand),
-
+    #[clap(display_order = 800)]
     Start(StartCommand),
-
+    #[clap(display_order = 800)]
     Stop(StopCommand),
 }
 
