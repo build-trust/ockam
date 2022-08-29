@@ -200,6 +200,7 @@ impl CreateCommand {
             cmd.skip_defaults,
             &cmd.node_name,
             &cmd.tcp_listener_address,
+            cmd.project.as_deref(),
         );
 
         let composite = (&cmd).into();
