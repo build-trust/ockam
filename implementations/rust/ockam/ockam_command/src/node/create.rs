@@ -40,7 +40,7 @@ use ockam_vault::Vault;
 
 /// Create Nodes
 #[derive(Clone, Debug, Args)]
-#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
+#[clap(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Name of the node (Optional).
     #[clap(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
