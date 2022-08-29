@@ -194,8 +194,12 @@ impl NodeManager {
     }
 
     pub async fn configure_authorities(&mut self, ac: AuthoritiesConfig) -> Result<()> {
-        let v = Vault::default();
-        self.authorities = Some(ac.to_public_identities(&v).await?);
+        if let Some(v) = self.vault.as_ref() {
+            self.authorities = Some(ac.to_public_identities(v).await?)
+        } else {
+            let v = Vault::default();
+            self.authorities = Some(ac.to_public_identities(&v).await?)
+        }
         Ok(())
     }
 
