@@ -82,6 +82,10 @@ EXAMPLES:
     version,
     long_version = Version::long(),
     propagate_version(true),
+    next_help_heading = "GLOBAL OPTIONS",
+    mut_arg("help", |a| a.help_heading("GLOBAL OPTIONS")),
+    mut_arg("version", |a| a.help_heading("GLOBAL OPTIONS")),
+    mut_subcommand("help", |c| c.about("Print help information"))
 )]
 pub struct OckamCommand {
     #[clap(subcommand)]
@@ -93,11 +97,11 @@ pub struct OckamCommand {
 
 #[derive(Debug, Clone, Args)]
 pub struct GlobalArgs {
-    /// Do not print any informational or trace messages.
+    /// Do not print any trace messages
     #[clap(global = true, long, short, conflicts_with("verbose"))]
     quiet: bool,
 
-    /// Increase verbosity of output.
+    /// Increase verbosity of trace messages
     #[clap(
         global = true,
         long,
@@ -107,12 +111,18 @@ pub struct GlobalArgs {
     )]
     verbose: u8,
 
-    /// Output without any colors.
-    #[clap(global = true, long, action, hide = help::hide())]
+    /// Output without any colors
+    #[clap(hide = help::hide(), global = true, long, action)]
     no_color: bool,
 
-    ///
-    #[clap(global = true, long = "output", value_enum, default_value = "plain", hide = help::hide())]
+    /// Output format
+    #[clap(
+        hide = help::hide(),
+        global = true,
+        long = "output",
+        value_enum,
+        default_value = "plain"
+    )]
     output_format: OutputFormat,
 
     // if test_argument_parser is true, command arguments are checked
