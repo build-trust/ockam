@@ -1,5 +1,6 @@
+use crate::secure_channel::HELP_DETAIL;
 use crate::util::{api, connect_to, exitcode, get_final_element};
-use crate::CommandGlobalOpts;
+use crate::{help, CommandGlobalOpts};
 
 use clap::Args;
 
@@ -9,8 +10,9 @@ use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::Status;
 use ockam_core::{Address, Route};
 
+/// Create Secure Channel Listeners
 #[derive(Clone, Debug, Args)]
-
+#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     #[clap(flatten)]
     node_opts: SecureChannelListenerNodeOpts,
