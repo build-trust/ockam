@@ -38,8 +38,8 @@ pub(crate) fn template(background: &str) -> &'static str {
 
 pub fn highlight_syntax(input: String) -> String {
     let theme_name = match Terminal::detect_background_color() {
-        TerminalBackground::Light => "base16-ocean.dark",
-        TerminalBackground::Dark => "base16-ocean.light",
+        TerminalBackground::Light => "base16-ocean.light",
+        TerminalBackground::Dark => "base16-ocean.dark",
         TerminalBackground::Unknown => return input,
     };
     let theme_set = ThemeSet::load_defaults();
