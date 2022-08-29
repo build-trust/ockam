@@ -1,5 +1,5 @@
 use crate::util::{api, connect_to, exitcode, OckamConfig};
-use crate::CommandGlobalOpts;
+use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
 use anyhow::Context;
 use clap::Args;
 use colorful::Colorful;
@@ -9,8 +9,9 @@ use ockam_api::nodes::{models::base::NodeStatus, NODEMANAGER_ADDR};
 use ockam_core::api::Status;
 use std::time::Duration;
 
-/// Show nodes.
+/// Show Nodes
 #[derive(Clone, Debug, Args)]
+#[clap(help_template = help::template(HELP_DETAIL))]
 pub struct ShowCommand {
     /// Name of the node.
     #[clap(default_value = "default")]

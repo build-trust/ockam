@@ -1,4 +1,6 @@
 use crate::{
+    help,
+    node::HELP_DETAIL,
     util::{exitcode, startup},
     CommandGlobalOpts,
 };
@@ -6,8 +8,9 @@ use clap::Args;
 use nix::unistd::Pid;
 use rand::prelude::random;
 
-/// Start nodes.
+/// Start Nodes
 #[derive(Clone, Debug, Args)]
+#[clap(help_template = help::template(HELP_DETAIL))]
 pub struct StartCommand {
     /// Name of the node.
     #[clap(default_value_t = hex::encode(&random::<[u8;4]>()))]

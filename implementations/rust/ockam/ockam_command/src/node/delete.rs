@@ -1,10 +1,11 @@
-use crate::{util::startup, CommandGlobalOpts};
+use crate::{help, node::HELP_DETAIL, util::startup, CommandGlobalOpts};
 use clap::Args;
 use sysinfo::{get_current_pid, ProcessExt, System, SystemExt};
 use tracing::{debug, trace};
 
-/// Delete nodes.
+/// Delete Nodes
 #[derive(Clone, Debug, Args)]
+#[clap(help_template = help::template(HELP_DETAIL))]
 pub struct DeleteCommand {
     /// Name of the node.
     #[clap(default_value = "default", hide_default_value = true, group = "nodes")]

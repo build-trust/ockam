@@ -17,6 +17,7 @@ use crate::util::{bind_to_port_check, exitcode};
 use crate::{
     help,
     node::show::query_status,
+    node::HELP_DETAIL,
     util::{
         connect_to, embedded_node, find_available_port, startup, ComposableSnippet, OckamConfig,
         Operation,
@@ -37,25 +38,7 @@ use ockam_core::LOCAL;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
-const HELP_DETAIL: &str = "\
-EXAMPLES:
-
-```sh
-    # Create a node, with a generated name
-    $ ockam node create
-
-    # Create a node, with a specified name - n1
-    $ ockam node create n1
-
-    # Create a node, with a specified tcp listener address
-    $ ockam node create n1 --tcp-listener-address 127.0.0.1:6001
-
-    # Create a node, and run it in the foreground with verbose traces
-    $ ockam node create n1 --foreground -vvv
-```
-";
-
-/// Create Nodes.
+/// Create Nodes
 #[derive(Clone, Debug, Args)]
 #[clap(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {

@@ -1,9 +1,10 @@
 use crate::util::{connect_to, exitcode, verify_pids};
-use crate::{node::show::query_status, CommandGlobalOpts};
+use crate::{help, node::show::query_status, node::HELP_DETAIL, CommandGlobalOpts};
 use clap::Args;
 
-/// List nodes.
+/// List Nodes
 #[derive(Clone, Debug, Args)]
+#[clap(help_template = help::template(HELP_DETAIL))]
 pub struct ListCommand {}
 
 impl ListCommand {
