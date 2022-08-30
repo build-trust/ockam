@@ -13,7 +13,7 @@ use tinyvec::ArrayVec;
 #[cfg(feature = "tag")]
 use crate::TypeTag;
 
-pub const SCHEMA: &str = core::include_str!("../../schema.cddl");
+pub const SCHEMA: &str = core::include_str!("schema.cddl");
 
 /// A request header.
 #[derive(Debug, Clone, Encode, Decode)]
