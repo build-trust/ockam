@@ -15,7 +15,7 @@ use crate::{help, CommandGlobalOpts, Result};
 /// An authorised enroller can add members to a project.
 #[derive(Clone, Debug, Args)]
 #[clap(hide = help::hide())]
-pub struct AddMemberCommand {
+pub struct EnrollCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[clap(flatten)]
     cloud_opts: CloudOpts,
@@ -30,14 +30,14 @@ pub struct AddMemberCommand {
     to: MultiAddr,
 }
 
-impl AddMemberCommand {
+impl EnrollCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(rpc, (options, self));
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, AddMemberCommand)) -> Result<()> {
-    async fn go(ctx: &mut Context, opts: &CommandGlobalOpts, cmd: AddMemberCommand) -> Result<()> {
+async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> Result<()> {
+    async fn go(ctx: &mut Context, opts: &CommandGlobalOpts, cmd: EnrollCommand) -> Result<()> {
         let tcp = TcpTransport::create(ctx).await?;
         let (to, meta) = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
