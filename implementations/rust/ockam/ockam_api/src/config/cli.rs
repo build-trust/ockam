@@ -5,9 +5,10 @@ use crate::config::{
     snippet::ComposableSnippet,
     ConfigValues,
 };
+use crate::HexByteVec;
 use directories::ProjectDirs;
 use ockam_core::Result;
-use ockam_identity::{IdentityVault, PublicIdentity};
+use ockam_identity::{IdentityIdentifier, IdentityVault, PublicIdentity};
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
@@ -144,18 +145,18 @@ impl ConfigValues for StartupConfig {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct AuthoritiesConfig {
-    authorities: BTreeMap<Vec<u8>, MultiAddr>,
+    authorities: BTreeMap<IdentityIdentifier, Authority>,
 }
 
 impl AuthoritiesConfig {
-    pub fn add_authority(&mut self, authority: Vec<u8>, addr: MultiAddr) {
-        self.authorities.insert(authority, addr);
+    pub fn add_authority(&mut self, i: IdentityIdentifier, a: Authority) {
+        self.authorities.insert(i, a);
     }
 
-    pub fn authorities(&self) -> impl Iterator<Item = (&[u8], &MultiAddr)> {
-        self.authorities.iter().map(|(v, m)| (v.as_slice(), m))
+    pub fn authorities(&self) -> impl Iterator<Item = (&IdentityIdentifier, &Authority)> {
+        self.authorities.iter()
     }
 
     pub async fn to_public_identities<V>(&self, vault: &V) -> Result<Vec<PublicIdentity>>
@@ -163,8 +164,8 @@ impl AuthoritiesConfig {
         V: IdentityVault,
     {
         let mut v = Vec::new();
-        for a in self.authorities.keys() {
-            v.push(PublicIdentity::import(a, vault).await?)
+        for a in self.authorities.values() {
+            v.push(PublicIdentity::import(a.identity.as_slice(), vault).await?)
         }
         Ok(v)
     }
@@ -173,5 +174,28 @@ impl AuthoritiesConfig {
 impl ConfigValues for AuthoritiesConfig {
     fn default_values(_: &Path) -> Self {
         Self::default()
+    }
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct Authority {
+    identity: HexByteVec,
+    access: MultiAddr,
+}
+
+impl Authority {
+    pub fn new(identity: Vec<u8>, addr: MultiAddr) -> Self {
+        Self {
+            identity: identity.into(),
+            access: addr,
+        }
+    }
+
+    pub fn identity(&self) -> &[u8] {
+        self.identity.as_slice()
+    }
+
+    pub fn access_route(&self) -> &MultiAddr {
+        &self.access
     }
 }

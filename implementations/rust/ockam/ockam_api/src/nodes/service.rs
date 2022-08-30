@@ -193,7 +193,7 @@ impl NodeManager {
         Ok(s)
     }
 
-    pub async fn configure_authorities(&mut self, ac: AuthoritiesConfig) -> Result<()> {
+    pub async fn configure_authorities(&mut self, ac: &AuthoritiesConfig) -> Result<()> {
         if let Some(v) = self.vault.as_ref() {
             self.authorities = Some(ac.to_public_identities(v).await?)
         } else {

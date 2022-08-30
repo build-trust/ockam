@@ -24,7 +24,7 @@ use crate::{
     },
     CommandGlobalOpts,
 };
-use ockam::identity::Identity;
+use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Address, AsyncTryClone, NodeBuilder, TCP};
 use ockam::{Context, TcpTransport};
 use ockam_api::config::cli;
@@ -340,7 +340,7 @@ async fn run_background_node_impl(
     .await?;
 
     node_man
-        .configure_authorities(cfg.authorities(&c.node_name)?.snapshot())
+        .configure_authorities(&cfg.authorities(&c.node_name)?.snapshot())
         .await?;
 
     ctx.start_worker(NODEMANAGER_ADDR, node_man).await?;
@@ -370,7 +370,11 @@ where
         .map(|a| hex::decode(a.as_bytes()))
         .transpose()?;
     if let Some((a, m)) = a.zip(m) {
-        cfg.authorities(node)?.add_authority(a, m)
+        let v = Vault::default();
+        let i = PublicIdentity::import(&a, &v).await?;
+        let a = cli::Authority::new(a, m);
+        cfg.authorities(node)?
+            .add_authority(i.identifier().clone(), a)
     } else {
         Err(anyhow!("missing authority in project info"))
     }
