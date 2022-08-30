@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 use slug::slugify;
 use tracing::{error, trace};
 
+use ockam::identity::IdentityIdentifier;
 pub use ockam_api::config::cli::NodeConfig;
 pub use ockam_api::config::snippet::{
     ComposableSnippet, Operation, PortalMode, Protocol, RemoteMode,
@@ -397,6 +398,7 @@ impl StartupConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct AuthoritiesConfig {
     inner: Config<cli::AuthoritiesConfig>,
 }
@@ -407,9 +409,9 @@ impl AuthoritiesConfig {
         Self { inner }
     }
 
-    pub fn add_authority(&self, authority: Vec<u8>, addr: MultiAddr) -> Result<()> {
+    pub fn add_authority(&self, i: IdentityIdentifier, a: cli::Authority) -> Result<()> {
         let mut cfg = self.inner.writelock_inner();
-        cfg.add_authority(authority, addr);
+        cfg.add_authority(i, a);
         drop(cfg);
         self.inner.atomic_update().run()
     }
