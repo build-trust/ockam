@@ -8,9 +8,8 @@ use ockam::identity::IdentityIdentifier;
 use ockam::TcpTransport;
 use ockam_api::cloud::project::Project;
 use ockam_api::config::lookup::LookupMeta;
-use ockam_api::nodes::models;
-use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
-use ockam_core::api::Request;
+use ockam_api::multiaddr_to_addr;
+use ockam_api::nodes::models::secure_channel::*;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::node::NodeOpts;
@@ -103,16 +102,27 @@ async fn create_secure_channel_to_project<'a>(
 ) -> crate::Result<MultiAddr> {
     let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp).build()?;
-    let req = {
-        let payload = models::secure_channel::CreateSecureChannelRequest::new(
-            project_access_route,
-            Some(authorized_identifier),
-        );
-        Request::post("/node/secure_channel").body(payload)
-    };
-    rpc.request(req).await?;
+    rpc.request(api::create_secure_channel(
+        project_access_route,
+        Some(authorized_identifier),
+    ))
+    .await?;
     let sc = rpc.parse_response::<CreateSecureChannelResponse>()?;
     Ok(sc.addr()?)
+}
+
+async fn delete_secure_channel<'a>(
+    ctx: &ockam::Context,
+    opts: &CommandGlobalOpts,
+    tcp: &TcpTransport,
+    api_node: &str,
+    sc_addr: &MultiAddr,
+) -> crate::Result<()> {
+    let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp).build()?;
+    let addr = multiaddr_to_addr(sc_addr).context("Failed to convert MultiAddr to addr")?;
+    rpc.request(api::delete_secure_channel(&addr)).await?;
+    rpc.is_ok()?;
+    Ok(())
 }
 
 pub async fn check_project_readiness<'a>(
@@ -149,20 +159,74 @@ pub async fn check_project_readiness<'a>(
             std::io::stdout().flush()?;
             tokio::time::sleep(std::time::Duration::from_secs(10)).await;
             if project.is_reachable().await? {
-                std::io::stdout().flush()?;
                 break;
+            }
+        }
+    }
+    {
+        print!("\nEstablishing secure channel...");
+        std::io::stdout().flush()?;
+        let project_route = project.access_route()?;
+        let project_identity = project
+            .identity
+            .as_ref()
+            .context("We already checked that the project has an identity")?
+            .to_string();
+        match create_secure_channel_to_project(
+            ctx,
+            opts,
+            tcp,
+            &node_opts.api_node,
+            &project_route,
+            &project_identity,
+        )
+        .await
+        {
+            Ok(sc_addr) => {
+                // Try to delete secure channel, ignore result.
+                let _ = delete_secure_channel(ctx, opts, tcp, &node_opts.api_node, &sc_addr).await;
+            }
+            Err(_) => {
+                loop {
+                    print!(".");
+                    std::io::stdout().flush()?;
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                    if let Ok(sc_addr) = create_secure_channel_to_project(
+                        ctx,
+                        opts,
+                        tcp,
+                        &node_opts.api_node,
+                        &project_route,
+                        &project_identity,
+                    )
+                    .await
+                    {
+                        // Try to delete secure channel, ignore result.
+                        let _ =
+                            delete_secure_channel(ctx, opts, tcp, &node_opts.api_node, &sc_addr)
+                                .await;
+                        break;
+                    }
+                }
             }
         }
         println!();
     }
+    std::io::stdout().flush()?;
     Ok(project)
 }
 
 pub mod config {
-    use super::*;
     use ockam::Context;
 
+    use super::*;
+
     pub fn set_project(config: &OckamConfig, project: &Project) -> Result<()> {
+        if !project.is_ready() {
+            return Err(anyhow!(
+                "Project is not ready yet, wait a few seconds and try again"
+            ));
+        }
         config.set_project_alias(
             project.name.to_string(),
             project.access_route.to_string(),
@@ -170,7 +234,7 @@ pub mod config {
             project
                 .identity
                 .as_ref()
-                .expect("Project should have identity set")
+                .context("Project should have identity set")?
                 .to_string(),
         )?;
         config.atomic_update().run()?;
@@ -180,6 +244,11 @@ pub mod config {
     pub fn set_projects(config: &OckamConfig, projects: &[Project]) -> Result<()> {
         config.remove_projects_alias();
         for project in projects.iter() {
+            if !project.is_ready() {
+                return Err(anyhow!(
+                    "Project is not ready yet, wait a few seconds and try again"
+                ));
+            }
             config.set_project_alias(
                 project.name.to_string(),
                 project.access_route.to_string(),
@@ -187,7 +256,7 @@ pub mod config {
                 project
                     .identity
                     .as_ref()
-                    .expect("Project should have identity set")
+                    .context("Project should have identity set")?
                     .to_string(),
             )?;
         }
