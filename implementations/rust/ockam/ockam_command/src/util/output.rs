@@ -6,8 +6,11 @@ use ockam_api::cloud::project::{Enroller, Project};
 
 use crate::project::ProjectInfo;
 use crate::util::comma_separated;
+use colorful::Colorful;
 use ockam_api::cloud::space::Space;
-use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
+use ockam_api::nodes::models::secure_channel::{
+    CreateSecureChannelResponse, ShowSecureChannelResponse,
+};
 use ockam_api::route_to_multiaddr;
 use ockam_core::route;
 
@@ -114,7 +117,6 @@ impl Output for Project<'_> {
 
 impl Output for ProjectInfo<'_> {
     fn output(&self) -> anyhow::Result<String> {
-        use colorful::Colorful;
         let pi = self
             .identity
             .as_ref()
@@ -172,6 +174,38 @@ impl Output for CreateSecureChannelResponse<'_> {
             .context("Invalid Secure Channel Address")?
             .to_string();
         Ok(addr)
+    }
+}
+
+impl Output for ShowSecureChannelResponse<'_> {
+    fn output(&self) -> anyhow::Result<String> {
+        let s = match &self.channel {
+            Some(addr) => {
+                format!(
+                    "\n  Secure Channel:\n{} {}\n{} {}\n{} {}\n{} {}",
+                    "  •         At: ".light_magenta(),
+                    route_to_multiaddr(&route![addr.to_string()])
+                        .context("Invalid Secure Channel Address")?
+                        .to_string()
+                        .light_yellow(),
+                    "  •         To: ".light_magenta(),
+                    self.route.as_ref().unwrap().light_yellow(),
+                    "  • Identifier: ".light_magenta(),
+                    self.id.as_ref().unwrap().light_yellow(),
+                    "  • Authorized: ".light_magenta(),
+                    self.authorized_identifiers
+                        .as_ref()
+                        .unwrap_or(&Vec::<ockam_core::CowStr>::from(["none".into()]))
+                        .iter()
+                        .map(|id| id.light_yellow().to_string())
+                        .collect::<Vec<String>>()
+                        .join("\n\t")
+                )
+            }
+            None => format!("{}", "Channel not found".red()),
+        };
+
+        Ok(s)
     }
 }
 

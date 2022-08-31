@@ -2,7 +2,8 @@ use super::map_multiaddr_err;
 use crate::error::ApiError;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
-    DeleteSecureChannelRequest, DeleteSecureChannelResponse,
+    DeleteSecureChannelRequest, DeleteSecureChannelResponse, ShowSecureChannelRequest,
+    ShowSecureChannelResponse,
 };
 use crate::nodes::registry::{IdentityRouteKey, SecureChannelInfo};
 use crate::nodes::NodeManager;
@@ -34,7 +35,7 @@ impl NodeManager {
 
         // Else, create it.
         trace!(%sc_route, "Creating secure channel");
-        let sc_addr = match authorized_identifiers {
+        let sc_addr = match authorized_identifiers.clone() {
             Some(ids) => {
                 identity
                     .create_secure_channel(
@@ -58,7 +59,12 @@ impl NodeManager {
         trace!(%sc_route, %sc_addr, "Created secure channel");
         // Store the channel using the target route as a key
         let key_route = IdentityRouteKey::new(&identity, &sc_route).await?;
-        let v = Arc::new(SecureChannelInfo::new(sc_route, sc_addr.clone()));
+        let v = Arc::new(SecureChannelInfo::new(
+            sc_route,
+            sc_addr.clone(),
+            identity.identifier().clone(),
+            authorized_identifiers,
+        ));
         self.registry.secure_channels.insert(key_route, v.clone());
 
         // Store the channel using its address as a key
@@ -158,6 +164,28 @@ impl NodeManager {
                 .map(|(_, v)| v.addr().to_string())
                 .collect(),
         )
+    }
+
+    pub(super) async fn show_secure_channel<'a>(
+        &mut self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<ShowSecureChannelResponse<'a>>> {
+        let body: ShowSecureChannelRequest = dec.decode()?;
+
+        let identity = self.identity()?.async_try_clone().await?;
+
+        let sc_address = Address::from(body.channel.as_ref());
+
+        debug!(%sc_address, "On show secure channel");
+
+        //        let sc_addr = sc_address.into();
+        let key_addr =
+            IdentityRouteKey::new(&identity, &Address::from(body.channel.as_ref()).into()).await?;
+
+        let info = self.registry.secure_channels.get(&key_addr);
+
+        Ok(Response::ok(req.id()).body(ShowSecureChannelResponse::new(info.map(Arc::as_ref))))
     }
 
     pub(super) async fn create_secure_channel_listener_impl(

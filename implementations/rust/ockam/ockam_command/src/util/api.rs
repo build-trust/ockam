@@ -147,6 +147,13 @@ pub(crate) fn delete_secure_channel(
     Request::delete("/node/secure_channel").body(payload)
 }
 
+pub(crate) fn show_secure_channel(
+    addr: &Address,
+) -> RequestBuilder<'static, models::secure_channel::ShowSecureChannelRequest<'static>> {
+    let payload = models::secure_channel::ShowSecureChannelRequest::new(addr);
+    Request::get("/node/show_secure_channel").body(payload)
+}
+
 /// Construct a request to create Secure Channel Listeners
 pub(crate) fn create_secure_channel_listener(
     addr: &Address,

@@ -340,6 +340,9 @@ impl NodeManager {
             (Delete, ["node", "secure_channel"]) => {
                 self.delete_secure_channel(req, dec).await?.to_vec()?
             }
+            (Get, ["node", "show_secure_channel"]) => {
+                self.show_secure_channel(req, dec).await?.to_vec()?
+            }
             (Post, ["node", "secure_channel_listener"]) => self
                 .create_secure_channel_listener(req, dec)
                 .await?
