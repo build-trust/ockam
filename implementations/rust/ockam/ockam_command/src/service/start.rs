@@ -73,13 +73,13 @@ impl StartCommand {
         };
 
         match self.create_subcommand {
-            StartSubCommand::Vault { .. } => connect_to(port, self, |mut ctx, cmd, rte| async {
-                start_vault_service(&mut ctx, cmd, rte).await?;
+            StartSubCommand::Vault { .. } => connect_to(port, self, |ctx, cmd, rte| async {
+                start_vault_service(&ctx, cmd, rte).await?;
                 drop(ctx);
                 Ok(())
             }),
-            StartSubCommand::Identity { .. } => connect_to(port, self, |mut ctx, cmd, rte| async {
-                start_identity_service(&mut ctx, cmd, rte).await?;
+            StartSubCommand::Identity { .. } => connect_to(port, self, |ctx, cmd, rte| async {
+                start_identity_service(&ctx, cmd, rte).await?;
                 drop(ctx);
                 Ok(())
             }),
@@ -90,8 +90,8 @@ impl StartCommand {
                     Ok(())
                 })
             }
-            StartSubCommand::Verifier { .. } => connect_to(port, self, |mut ctx, cmd, rte| async {
-                start_verifier_service(&mut ctx, cmd, rte).await?;
+            StartSubCommand::Verifier { .. } => connect_to(port, self, |ctx, cmd, rte| async {
+                start_verifier_service(&ctx, cmd, rte).await?;
                 drop(ctx);
                 Ok(())
             }),
@@ -103,8 +103,8 @@ impl StartCommand {
                 })
             }
             StartSubCommand::Authenticator { .. } => {
-                connect_to(port, self, |mut ctx, cmd, rte| async {
-                    start_authenticator_service(&mut ctx, cmd, rte).await?;
+                connect_to(port, self, |ctx, cmd, rte| async {
+                    start_authenticator_service(&ctx, cmd, rte).await?;
                     drop(ctx);
                     Ok(())
                 })
@@ -116,7 +116,7 @@ impl StartCommand {
 }
 
 pub async fn start_vault_service(
-    ctx: &mut Context,
+    ctx: &Context,
     cmd: StartCommand,
     mut base_route: Route,
 ) -> Result<()> {
@@ -165,7 +165,7 @@ pub async fn start_vault_service(
 }
 
 pub async fn start_identity_service(
-    ctx: &mut Context,
+    ctx: &Context,
     cmd: StartCommand,
     mut base_route: Route,
 ) -> Result<()> {
@@ -263,7 +263,7 @@ pub async fn start_authenticated_service(
 }
 
 pub async fn start_verifier_service(
-    ctx: &mut Context,
+    ctx: &Context,
     cmd: StartCommand,
     mut route: Route,
 ) -> Result<()> {
@@ -337,7 +337,7 @@ pub async fn start_credentials_service(
 }
 
 pub async fn start_authenticator_service(
-    ctx: &mut Context,
+    ctx: &Context,
     cmd: StartCommand,
     mut route: Route,
 ) -> Result<()> {

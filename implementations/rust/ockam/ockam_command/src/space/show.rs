@@ -1,10 +1,10 @@
 use anyhow::Context as _;
 use clap::Args;
 
-use ockam::{Context, TcpTransport};
+use ockam::Context;
 use ockam_api::cloud::space::Space;
 
-use crate::node::NodeOpts;
+use crate::node::create::start_embedded_node;
 use crate::space::util::config;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
@@ -15,9 +15,6 @@ pub struct ShowCommand {
     /// Name of the space.
     #[clap(display_order = 1001)]
     pub name: String,
-
-    #[clap(flatten)]
-    pub node_opts: NodeOpts,
 
     #[clap(flatten)]
     pub cloud_opts: CloudOpts,
@@ -38,30 +35,21 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ShowCommand,
 ) -> crate::Result<()> {
+    let node_name = start_embedded_node(ctx, &opts.config).await?;
     let controller_route = cmd.cloud_opts.route();
-    let tcp = TcpTransport::create(ctx).await?;
 
     // Lookup space
     let id = match config::get_space(&opts.config, &cmd.name) {
         Some(id) => id,
         None => {
-            config::refresh_spaces(
-                ctx,
-                &opts,
-                &tcp,
-                &cmd.node_opts.api_node,
-                cmd.cloud_opts.route(),
-            )
-            .await?;
+            config::refresh_spaces(ctx, &opts, &node_name, cmd.cloud_opts.route()).await?;
             config::get_space(&opts.config, &cmd.name)
                 .context(format!("Space '{}' does not exist", cmd.name))?
         }
     };
 
     // Send request
-    let mut rpc = RpcBuilder::new(ctx, &opts, &cmd.node_opts.api_node)
-        .tcp(&tcp)
-        .build()?;
+    let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::space::show(&id, controller_route)).await?;
     let space = rpc.parse_and_print_response::<Space>()?;
     config::set_space(&opts.config, &space)?;

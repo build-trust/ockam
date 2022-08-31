@@ -34,22 +34,30 @@ pub(crate) mod output;
 pub const DEFAULT_ORCHESTRATOR_ADDRESS: &str =
     "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
 
-pub struct RpcBuilder<'a, 'b> {
-    ctx: &'a Context,
-    opts: &'a CommandGlobalOpts,
-    node: &'b str,
-    to: Route,
-    tcp: Option<&'a TcpTransport>,
+pub enum RpcMode<'a> {
+    Embedded,
+    Background {
+        cfg: NodeConfig,
+        tcp: Option<&'a TcpTransport>,
+    },
 }
 
-impl<'a, 'b> RpcBuilder<'a, 'b> {
-    pub fn new(ctx: &'a Context, opts: &'a CommandGlobalOpts, node: &'b str) -> Self {
+pub struct RpcBuilder<'a> {
+    ctx: &'a Context,
+    opts: &'a CommandGlobalOpts,
+    node_name: String,
+    to: Route,
+    mode: RpcMode<'a>,
+}
+
+impl<'a> RpcBuilder<'a> {
+    pub fn new(ctx: &'a Context, opts: &'a CommandGlobalOpts, node_name: &str) -> Self {
         RpcBuilder {
             ctx,
             opts,
-            node,
+            node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
-            tcp: None,
+            mode: RpcMode::Embedded,
         }
     }
 
@@ -59,16 +67,20 @@ impl<'a, 'b> RpcBuilder<'a, 'b> {
         Ok(self)
     }
 
-    pub fn tcp(mut self, tcp: &'a TcpTransport) -> Self {
-        self.tcp = Some(tcp);
-        self
+    pub fn tcp(mut self, tcp: &'a TcpTransport) -> Result<Self> {
+        let cfg = self.opts.config.get_node(&self.node_name)?;
+        self.mode = RpcMode::Background {
+            cfg,
+            tcp: Some(tcp),
+        };
+        Ok(self)
     }
 
-    pub fn build(self) -> Result<Rpc<'a>> {
-        let mut rpc = Rpc::new(self.ctx, self.opts, self.node)?;
+    pub fn build(self) -> Rpc<'a> {
+        let mut rpc = Rpc::_new(self.ctx, self.opts, &self.node_name);
         rpc.to = self.to;
-        rpc.tcp = self.tcp;
-        Ok(rpc)
+        rpc.mode = self.mode;
+        rpc
     }
 }
 
@@ -76,22 +88,45 @@ pub struct Rpc<'a> {
     ctx: &'a Context,
     buf: Vec<u8>,
     opts: &'a CommandGlobalOpts,
-    cfg: NodeConfig,
+    node_name: String,
     to: Route,
-    /// Needed for when we want to call multiple Rpc's from a single command.
-    tcp: Option<&'a TcpTransport>,
+    mode: RpcMode<'a>,
+}
+
+impl<'a> Drop for Rpc<'a> {
+    fn drop(&mut self) {
+        if let RpcMode::Embedded = self.mode {
+            // Try removing the node's directory
+            let _ = self
+                .opts
+                .config
+                .get_node_dir_raw(&self.node_name)
+                .map(std::fs::remove_dir_all);
+        }
+    }
 }
 
 impl<'a> Rpc<'a> {
-    pub fn new(ctx: &'a Context, opts: &'a CommandGlobalOpts, node: &str) -> Result<Rpc<'a>> {
-        let cfg = opts.config.get_node(node)?;
+    fn _new(ctx: &'a Context, opts: &'a CommandGlobalOpts, node_name: &str) -> Rpc<'a> {
+        Rpc {
+            ctx,
+            buf: Vec::new(),
+            opts,
+            node_name: node_name.to_string(),
+            to: NODEMANAGER_ADDR.into(),
+            mode: RpcMode::Embedded,
+        }
+    }
+
+    pub fn new(ctx: &'a Context, opts: &'a CommandGlobalOpts, node_name: &str) -> Result<Rpc<'a>> {
+        let cfg = opts.config.get_node(node_name)?;
         Ok(Rpc {
             ctx,
             buf: Vec::new(),
             opts,
-            cfg,
+            node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
-            tcp: None,
+            mode: RpcMode::Background { cfg, tcp: None },
         })
     }
 
@@ -129,21 +164,24 @@ impl<'a> Rpc<'a> {
     }
 
     async fn route_impl(&mut self, ctx: &Context) -> Result<Route> {
-        let addr = node_addr(&self.cfg);
-        let addr_str = addr.address();
-
-        match self.tcp {
-            None => {
-                let tcp = TcpTransport::create(ctx).await?;
-                tcp.connect(addr_str).await?;
+        let route = match self.mode {
+            RpcMode::Embedded => self.to.clone(),
+            RpcMode::Background { ref cfg, ref tcp } => {
+                let addr = Address::from((TCP, format!("localhost:{}", cfg.port)));
+                let addr_str = addr.address();
+                match tcp {
+                    None => {
+                        let tcp = TcpTransport::create(ctx).await?;
+                        tcp.connect(addr_str).await?;
+                    }
+                    Some(tcp) => {
+                        // Ignore "already connected" error.
+                        let _ = tcp.connect(addr_str).await;
+                    }
+                }
+                self.to.modify().prepend_route(addr.into()).into()
             }
-            Some(tcp) => {
-                // Ignore "already connected" error.
-                let _ = tcp.connect(addr_str).await;
-            }
-        }
-
-        let route = self.to.modify().prepend_route(addr.into()).into();
+        };
         debug!(%route, "Sending request");
         Ok(route)
     }
@@ -285,10 +323,6 @@ where
     if let Err(e) = res {
         eprintln!("Ockam node failed: {:?}", e,);
     }
-}
-
-fn node_addr(cfg: &NodeConfig) -> Address {
-    Address::from((TCP, format!("localhost:{}", cfg.port)))
 }
 
 pub fn node_rpc<A, F, Fut>(f: F, a: A)

@@ -61,7 +61,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     };
     let cloud_opts = cmd.cloud_opts.clone();
 
-    let space = default_space(ctx, &opts, &tcp, &nc, &node_opts, &cloud_opts).await?;
+    let space = default_space(ctx, &opts, &tcp, &nc, &cloud_opts).await?;
     default_project(ctx, &opts, &tcp, &nc, &space, &node_opts, &cloud_opts).await?;
 
     Ok(())
@@ -76,7 +76,7 @@ async fn enroll(
 ) -> anyhow::Result<()> {
     let auth0 = Auth0Service;
     let token = auth0.token().await?;
-    let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
+    let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp)?.build();
     rpc.request(api::enroll::auth0(cmd.clone(), token)).await?;
     let (res, dec) = rpc.check_response()?;
     if res.status() == Some(Status::Ok) {
@@ -96,11 +96,10 @@ async fn default_space<'a>(
     opts: &CommandGlobalOpts,
     tcp: &TcpTransport,
     nc: &NodeConfig,
-    node_opts: &NodeOpts,
     cloud_opts: &CloudOpts,
 ) -> Result<Space<'a>> {
     // Get available spaces for node's identity
-    let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
+    let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp)?.build();
     let mut available_spaces = {
         rpc.request(api::space::list(cloud_opts.route())).await?;
         rpc.parse_response::<Vec<Space>>()?
@@ -108,12 +107,11 @@ async fn default_space<'a>(
     // If the identity has no spaces, create one
     let default_space = if available_spaces.is_empty() {
         let cmd = crate::space::CreateCommand {
-            node_opts: node_opts.clone(),
             cloud_opts: cloud_opts.clone(),
             name: crate::space::random_name(),
             admins: vec![],
         };
-        let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
+        let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp)?.build();
         rpc.request(api::space::create(&cmd)).await?;
         rpc.parse_response::<Space>()?.to_owned()
     }
@@ -140,14 +138,14 @@ async fn default_project<'a>(
     cloud_opts: &CloudOpts,
 ) -> Result<Project<'a>> {
     // Get available project for the given space
-    let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
+    let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp)?.build();
     let mut available_projects: Vec<Project> = {
         rpc.request(api::project::list(cloud_opts.route())).await?;
         rpc.parse_response::<Vec<Project>>()?
     };
     // If the space has no projects, create one
     let default_project = if available_projects.is_empty() {
-        let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp).build()?;
+        let mut rpc = RpcBuilder::new(ctx, opts, &nc.name).tcp(tcp)?.build();
         rpc.request(api::project::create(
             "default",
             &space.id,

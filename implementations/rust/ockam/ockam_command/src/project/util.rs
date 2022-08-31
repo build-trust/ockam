@@ -101,7 +101,7 @@ async fn create_secure_channel_to_project<'a>(
     project_identity: &str,
 ) -> crate::Result<MultiAddr> {
     let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
-    let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp).build()?;
+    let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
     rpc.request(api::create_secure_channel(
         project_access_route,
         Some(authorized_identifier),
@@ -118,7 +118,7 @@ async fn delete_secure_channel<'a>(
     api_node: &str,
     sc_addr: &MultiAddr,
 ) -> crate::Result<()> {
-    let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp).build()?;
+    let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
     let addr = multiaddr_to_addr(sc_addr).context("Failed to convert MultiAddr to addr")?;
     rpc.request(api::delete_secure_channel(&addr)).await?;
     rpc.is_ok()?;
@@ -141,8 +141,8 @@ pub async fn check_project_readiness<'a>(
             std::io::stdout().flush()?;
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
             let mut rpc = RpcBuilder::new(ctx, opts, &node_opts.api_node)
-                .tcp(tcp)
-                .build()?;
+                .tcp(tcp)?
+                .build();
             rpc.request(api::project::show(&project.id, cloud_route))
                 .await?;
             let p = rpc.parse_response::<Project>()?;
@@ -282,7 +282,7 @@ pub mod config {
         api_node: &str,
         controller_route: &MultiAddr,
     ) -> Result<()> {
-        let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp).build()?;
+        let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
         rpc.request(api::project::list(controller_route)).await?;
         let projects = rpc.parse_response::<Vec<Project>>()?;
         set_projects(&opts.config, &projects)?;
