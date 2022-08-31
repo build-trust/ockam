@@ -1,5 +1,4 @@
 use crate::{help, node::HELP_DETAIL, util::startup, CommandGlobalOpts};
-use anyhow::Context;
 use clap::Args;
 use sysinfo::{get_current_pid, ProcessExt, System, SystemExt};
 use tracing::{debug, trace};
@@ -32,7 +31,7 @@ impl DeleteCommand {
 
 fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
     if cmd.all {
-        // Try to delete all nodes found in the config file + their associated processes
+        // Try to delete all nodes found in the config file
         let nn: Vec<String> = {
             let inner = &opts.config.get_inner();
             inner.nodes.iter().map(|(name, _)| name.clone()).collect()
@@ -50,17 +49,6 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
                 }
             }
         }
-        // Try to delete the whole nodes directory
-        {
-            let inner = &opts.config.get_inner();
-            let nodes_dir = inner
-                .directories
-                .as_ref()
-                .context("configuration is in an invalid state")?
-                .data_local_dir();
-            std::fs::remove_dir_all(nodes_dir).context("failed to delete nodes directory")?;
-        };
-
         // If force is enabled
         if cmd.force {
             // delete the config and nodes directories
@@ -123,7 +111,7 @@ fn delete_node_config(opts: &CommandGlobalOpts, node_name: &str) -> anyhow::Resu
     // Try removing the node's directory
     let _ = opts
         .config
-        .get_node_dir_raw(node_name)
+        .get_node_dir(node_name)
         .map(std::fs::remove_dir_all);
     // Remove the node's info from the config file
     opts.config.delete_node(node_name)?;

@@ -58,9 +58,6 @@ impl Output for Space<'_> {
 
 impl Output for Vec<Space<'_>> {
     fn output(&self) -> anyhow::Result<String> {
-        if self.is_empty() {
-            return Ok("No spaces found".to_string());
-        }
         let mut rows = vec![];
         for Space {
             id, name, users, ..
@@ -133,9 +130,6 @@ impl Output for ProjectInfo<'_> {
 
 impl Output for Vec<Project<'_>> {
     fn output(&self) -> anyhow::Result<String> {
-        if self.is_empty() {
-            return Ok("No projects found".to_string());
-        }
         let mut rows = vec![];
         for Project {
             id,
@@ -158,7 +152,7 @@ impl Output for Vec<Project<'_>> {
                 "Id".cell().bold(true),
                 "Name".cell().bold(true),
                 "Users".cell().bold(true),
-                "Space Name".cell().bold(true),
+                "Space".cell().bold(true),
             ])
             .display()?
             .to_string();
@@ -187,9 +181,6 @@ impl Output for Enroller<'_> {
 
 impl Output for Vec<Enroller<'_>> {
     fn output(&self) -> anyhow::Result<String> {
-        if self.is_empty() {
-            return Ok("No enrollers found".to_string());
-        }
         let mut rows = vec![];
         for Enroller {
             identity_id,

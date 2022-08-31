@@ -75,8 +75,8 @@ async fn run_impl(
 
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &cmd.node_opts.api_node)
-        .tcp(&tcp)?
-        .build();
+        .tcp(&tcp)
+        .build()?;
     rpc.request(api::project::delete(
         &space_id,
         &project_id,

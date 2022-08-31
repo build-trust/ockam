@@ -61,7 +61,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) 
         )
         .await?;
         let at = crate::project::util::clean_projects_multiaddr(at, projects_sc)?;
-        let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(&tcp)?.build();
+        let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(&tcp).build()?;
         let cmd = CreateCommand { at, ..cmd };
         rpc.request(req(&cmd, at_rust_node)?).await?;
         rpc.parse_and_print_response::<ForwarderInfo>()?;

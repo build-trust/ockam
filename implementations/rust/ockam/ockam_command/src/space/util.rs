@@ -6,6 +6,7 @@ use ockam_api::cloud::space::Space;
 pub mod config {
     use crate::util::{api, RpcBuilder};
     use crate::{CommandGlobalOpts, OckamConfig};
+    use ockam::TcpTransport;
     use ockam_multiaddr::MultiAddr;
 
     use super::*;
@@ -39,10 +40,11 @@ pub mod config {
     pub async fn refresh_spaces(
         ctx: &Context,
         opts: &CommandGlobalOpts,
+        tcp: &TcpTransport,
         api_node: &str,
         controller_route: &MultiAddr,
     ) -> Result<()> {
-        let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
+        let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp).build()?;
         rpc.request(api::space::list(controller_route)).await?;
         let spaces = rpc.parse_response::<Vec<Space>>()?;
         set_spaces(&opts.config, &spaces)?;
