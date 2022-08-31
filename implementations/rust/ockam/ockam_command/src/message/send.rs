@@ -92,7 +92,7 @@ async fn send_message_via_connection_to_a_node(
         .await?;
         let to = crate::project::util::clean_projects_multiaddr(to, projects_sc)?;
 
-        let mut rpc = RpcBuilder::new(ctx, opts, &api_node).tcp(&tcp)?.build();
+        let mut rpc = RpcBuilder::new(ctx, opts, &api_node).tcp(&tcp).build()?;
         rpc.request(req(&to, &cmd.message)).await?;
         let res = rpc.parse_response::<Vec<u8>>()?;
         println!(

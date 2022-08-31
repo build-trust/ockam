@@ -99,21 +99,6 @@ impl From<&'_ CreateCommand> for ComposableSnippet {
     }
 }
 
-impl Default for CreateCommand {
-    fn default() -> Self {
-        Self {
-            node_name: hex::encode(&random::<[u8; 4]>()),
-            foreground: false,
-            tcp_listener_address: "127.0.0.1:0".to_string(),
-            skip_defaults: false,
-            child_process: false,
-            launch_config: None,
-            no_watchdog: false,
-            project: None,
-        }
-    }
-}
-
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let verbose = options.global_args.verbose;
@@ -208,7 +193,7 @@ impl CreateCommand {
             std::process::exit(exitcode::IOERR);
         }
 
-        create_default_identity_if_needed(&ctx, cfg).await?;
+        create_default_identity_if_needed(&ctx, cfg.clone()).await?;
 
         // Construct the arguments list and re-execute the ockam
         // CLI in foreground mode to start the newly created node
@@ -254,7 +239,7 @@ impl CreateCommand {
     }
 }
 
-async fn create_default_identity_if_needed(ctx: &Context, cfg: &OckamConfig) -> Result<()> {
+async fn create_default_identity_if_needed(ctx: &Context, cfg: OckamConfig) -> Result<()> {
     // Get default root vault (create if needed)
     let default_vault_path = cfg.get_default_vault_path().unwrap_or_else(|| {
         let default_vault_path = cli::OckamConfig::directories()
@@ -329,7 +314,7 @@ async fn run_background_node_impl(
 ) -> Result<()> {
     // This node was initially created as a foreground node
     if !c.child_process {
-        create_default_identity_if_needed(ctx, &cfg).await?;
+        create_default_identity_if_needed(ctx, cfg.clone()).await?;
     }
 
     let identity_override = if c.skip_defaults {
@@ -374,52 +359,6 @@ async fn run_background_node_impl(
     Ok(())
 }
 
-pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<String> {
-    let cmd = CreateCommand::default();
-
-    // Create node directory if it doesn't exist
-    fs::create_dir_all(&cfg.get_node_dir_raw(&cmd.node_name)?).await?;
-
-    // This node was initially created as a foreground node
-    if !cmd.child_process {
-        create_default_identity_if_needed(ctx, cfg).await?;
-    }
-
-    let identity_override = if cmd.skip_defaults {
-        None
-    } else {
-        Some(get_identity_override(ctx, cfg).await?)
-    };
-
-    if let Some(path) = &cmd.project {
-        add_project_authority(path, &cmd.node_name, cfg).await?
-    }
-
-    let tcp = TcpTransport::create(ctx).await?;
-    let bind = cmd.tcp_listener_address;
-    tcp.listen(&bind).await?;
-
-    let node_dir = cfg.get_node_dir_raw(&cmd.node_name)?;
-    let mut node_man = NodeManager::create(
-        ctx,
-        cmd.node_name.clone(),
-        node_dir,
-        identity_override,
-        cmd.skip_defaults || cmd.launch_config.is_some(),
-        (TransportType::Tcp, TransportMode::Listen, bind),
-        tcp,
-    )
-    .await?;
-
-    node_man
-        .configure_authorities(&cfg.authorities(&cmd.node_name)?.snapshot())
-        .await?;
-
-    ctx.start_worker(NODEMANAGER_ADDR, node_man).await?;
-
-    Ok(cmd.node_name.clone())
-}
-
 async fn add_project_authority<P>(path: P, node: &str, cfg: &OckamConfig) -> Result<()>
 where
     P: AsRef<Path>,
@@ -446,7 +385,7 @@ where
 }
 
 async fn start_services(
-    ctx: &Context,
+    ctx: &mut Context,
     tcp: &TcpTransport,
     cfg: &Path,
     addr: SocketAddr,

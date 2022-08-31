@@ -53,9 +53,9 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) 
 
         let req = Request::post("/members").body(AddMember::new(cmd.member));
         let mut rpc = RpcBuilder::new(ctx, opts, &cmd.node_opts.api_node)
-            .tcp(&tcp)?
+            .tcp(&tcp)
             .to(&to)?
-            .build();
+            .build()?;
         rpc.request(req).await?;
         rpc.is_ok()?;
         Ok(())
