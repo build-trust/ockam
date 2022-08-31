@@ -1,29 +1,49 @@
 use crate::nodes::service::Alias;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, Result, Route};
-use ockam_identity::Identity;
+use ockam_identity::{Identity, IdentityIdentifier};
 use ockam_vault::Vault;
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub(crate) struct SecureChannelInfo {
+pub struct SecureChannelInfo {
     // Target route of the channel
     route: Route,
     // Local address of the created channel
     addr: Address,
+    id: IdentityIdentifier,
+    authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 }
 
 impl SecureChannelInfo {
-    pub(crate) fn new(route: Route, addr: Address) -> Self {
-        Self { addr, route }
+    pub fn new(
+        route: Route,
+        addr: Address,
+        id: IdentityIdentifier,
+        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+    ) -> Self {
+        Self {
+            addr,
+            route,
+            id,
+            authorized_identifiers,
+        }
     }
 
-    pub(crate) fn route(&self) -> &Route {
+    pub fn route(&self) -> &Route {
         &self.route
     }
 
-    pub(crate) fn addr(&self) -> &Address {
+    pub fn addr(&self) -> &Address {
         &self.addr
+    }
+
+    pub fn id(&self) -> &IdentityIdentifier {
+        &self.id
+    }
+
+    pub fn authorized_identifiers(&self) -> Option<&Vec<IdentityIdentifier>> {
+        self.authorized_identifiers.as_ref()
     }
 }
 

@@ -3,10 +3,12 @@ pub(crate) mod listener;
 mod create;
 mod delete;
 mod list;
+mod show;
 
 pub use create::CreateCommand;
 pub use delete::DeleteCommand;
 pub use list::ListCommand;
+pub use show::ShowCommand;
 
 use crate::{help, CommandGlobalOpts};
 use clap::{Args, Subcommand};
@@ -155,6 +157,8 @@ enum SecureChannelSubcommand {
     Delete(DeleteCommand),
     #[clap(display_order = 800)]
     List(ListCommand),
+    #[clap(display_order = 800)]
+    Show(ShowCommand),
 }
 
 impl SecureChannelCommand {
@@ -163,6 +167,7 @@ impl SecureChannelCommand {
             SecureChannelSubcommand::Create(c) => c.run(options),
             SecureChannelSubcommand::Delete(c) => c.run(options),
             SecureChannelSubcommand::List(c) => c.run(options),
+            SecureChannelSubcommand::Show(c) => c.run(options),
         }
     }
 }
