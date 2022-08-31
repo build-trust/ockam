@@ -44,8 +44,8 @@ impl CreateCommand {
             }
         };
 
-        connect_to(port, self, |mut ctx, cmd, rte| async {
-            create_listener(&mut ctx, cmd.address, cmd.authorized_identifier, rte).await?;
+        connect_to(port, self, |ctx, cmd, rte| async {
+            create_listener(&ctx, cmd.address, cmd.authorized_identifier, rte).await?;
             drop(ctx);
             Ok(())
         });
@@ -53,7 +53,7 @@ impl CreateCommand {
 }
 
 pub async fn create_listener(
-    ctx: &mut ockam::Context,
+    ctx: &ockam::Context,
     addr: Address,
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     mut base_route: Route,

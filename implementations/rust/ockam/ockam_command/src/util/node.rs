@@ -44,7 +44,7 @@ pub async fn default_node(
         for node_name in node_names.iter() {
             trace!(%node_name, "Checking node");
             let nc = opts.config.get_node(node_name)?;
-            let mut rpc = RpcBuilder::new(ctx, opts, node_name).tcp(tcp).build()?;
+            let mut rpc = RpcBuilder::new(ctx, opts, node_name).tcp(tcp)?.build();
             if rpc
                 .request_with_timeout(
                     api::node::query_status(),
