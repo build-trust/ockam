@@ -3,11 +3,13 @@ mod create;
 mod delete;
 mod delete_enroller;
 mod enroll;
+mod info;
 mod list;
 mod list_enrollers;
 mod show;
 pub mod util;
 
+pub use info::ProjectInfo;
 pub use util::config;
 
 use clap::{Args, Subcommand};
@@ -18,6 +20,7 @@ pub use create::CreateCommand;
 pub use delete::DeleteCommand;
 pub use delete_enroller::DeleteEnrollerCommand;
 pub use enroll::EnrollCommand;
+pub use info::InfoCommand;
 pub use list::ListCommand;
 pub use list_enrollers::ListEnrollersCommand;
 pub use show::ShowCommand;
@@ -38,6 +41,7 @@ pub enum ProjectSubcommand {
     Delete(DeleteCommand),
     List(ListCommand),
     Show(ShowCommand),
+    Info(InfoCommand),
     AddEnroller(AddEnrollerCommand),
     ListEnrollers(ListEnrollersCommand),
     DeleteEnroller(DeleteEnrollerCommand),
@@ -55,6 +59,7 @@ impl ProjectCommand {
             ProjectSubcommand::ListEnrollers(c) => c.run(options),
             ProjectSubcommand::DeleteEnroller(c) => c.run(options),
             ProjectSubcommand::Enroll(c) => c.run(options),
+            ProjectSubcommand::Info(c) => c.run(options),
         }
     }
 }
