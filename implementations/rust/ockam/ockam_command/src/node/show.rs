@@ -28,7 +28,7 @@ impl ShowCommand {
                 std::process::exit(exitcode::IOERR);
             }
         };
-        connect_to(port, (cfg.clone(), self.node_name), query_status);
+        connect_to(port, (cfg.clone(), self.node_name), print_query_status);
     }
 }
 
@@ -74,52 +74,56 @@ Node:
     );
 }
 
-pub async fn query_status(
+pub async fn print_query_status(
     mut ctx: ockam::Context,
     (cfg, node_name): (OckamConfig, String),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
-    // Wait a little bit for the node to start up.
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    let route = base_route.modify().append(NODEMANAGER_ADDR).into();
 
-    ctx.send(
-        base_route.modify().append(NODEMANAGER_ADDR),
-        api::query_status()?,
-    )
-    .await?;
+    // Wait until node is up.
+    if query_status(&mut ctx, &route).await.is_err() {
+        loop {
+            tokio::time::sleep(Duration::from_millis(250)).await;
+            if query_status(&mut ctx, &route).await.is_ok() {
+                break;
+            }
+        }
+    }
+
+    // Get short id for the node
+    let resp: Vec<u8> = ctx
+        .send_and_receive(route.clone(), api::short_identity()?)
+        .await
+        .context("Failed to process request for short id")?;
+
+    let (response, result) = api::parse_short_identity_response(&resp)?;
+    let default_id = match response.status() {
+        Some(Status::Ok) => {
+            format!("{}", result.identity_id)
+        }
+        _ => String::from("NOT FOUND"),
+    };
+
+    // Print node info
+    let node_cfg = cfg.get_node(&node_name).unwrap();
+    print_node_info(&node_cfg, &node_name, "UP", &default_id);
+    Ok(())
+}
+
+async fn query_status(ctx: &mut ockam::Context, route: &Route) -> anyhow::Result<()> {
+    ctx.send(route.clone(), api::query_status()?).await?;
 
     let resp = ctx
-        .receive_duration_timeout::<Vec<u8>>(Duration::from_millis(333))
+        .receive_duration_timeout::<Vec<u8>>(Duration::from_millis(250))
         .await
         .context("Failed to process request");
-
-    let node_cfg = cfg.get_node(&node_name).unwrap();
 
     match resp {
         Ok(resp) => {
             let NodeStatus { .. } = api::parse_status(&resp)?;
-
-            // Getting short id for the node
-            let resp: Vec<u8> = ctx
-                .send_and_receive(
-                    base_route.modify().append(NODEMANAGER_ADDR),
-                    api::short_identity()?,
-                )
-                .await
-                .context("Failed to process request for short id")?;
-
-            let (response, result) = api::parse_short_identity_response(&resp)?;
-            let default_id = match response.status() {
-                Some(Status::Ok) => {
-                    format!("{}", result.identity_id)
-                }
-                _ => String::from("NOT FOUND"),
-            };
-
-            print_node_info(&node_cfg, &node_name, "UP", &default_id)
+            Ok(())
         }
-        Err(_) => print_node_info(&node_cfg, &node_name, "DOWN", "N/A"),
+        Err(e) => Err(e),
     }
-
-    Ok(())
 }

@@ -17,7 +17,7 @@ use crate::service::start::{self, StartCommand, StartSubCommand};
 use crate::util::{bind_to_port_check, exitcode};
 use crate::{
     help,
-    node::show::query_status,
+    node::show::print_query_status,
     node::HELP_DETAIL,
     util::{
         connect_to, embedded_node, find_available_port, startup, ComposableSnippet, OckamConfig,
@@ -144,7 +144,11 @@ impl CreateCommand {
                 (options.clone(), cmd.clone(), addr),
             )
             .unwrap();
-            connect_to(addr.port(), (cfg.clone(), cmd.node_name), query_status);
+            connect_to(
+                addr.port(),
+                (cfg.clone(), cmd.node_name),
+                print_query_status,
+            );
         }
     }
 

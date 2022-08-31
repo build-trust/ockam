@@ -1,5 +1,5 @@
 use crate::util::{connect_to, exitcode, verify_pids};
-use crate::{help, node::show::query_status, node::HELP_DETAIL, CommandGlobalOpts};
+use crate::{help, node::show::print_query_status, node::HELP_DETAIL, CommandGlobalOpts};
 use clap::Args;
 
 /// List Nodes
@@ -36,7 +36,7 @@ impl ListCommand {
                 connect_to(
                     node_cfg.port,
                     (cfg.clone(), node_name.clone()),
-                    query_status,
+                    print_query_status,
                 )
             });
     }
