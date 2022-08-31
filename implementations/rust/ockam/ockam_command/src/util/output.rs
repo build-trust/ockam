@@ -4,6 +4,7 @@ use core::fmt::Write;
 use ockam::identity::credential::Credential;
 use ockam_api::cloud::project::{Enroller, Project};
 
+use crate::project::ProjectInfo;
 use crate::util::comma_separated;
 use ockam_api::cloud::space::Space;
 use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
@@ -36,6 +37,12 @@ use ockam_core::route;
 /// ```
 pub trait Output {
     fn output(&self) -> anyhow::Result<String>;
+}
+
+impl<O: Output> Output for &O {
+    fn output(&self) -> anyhow::Result<String> {
+        (*self).output()
+    }
 }
 
 impl Output for Space<'_> {
@@ -98,6 +105,25 @@ impl Output for Project<'_> {
             "\n  Authority identity: {}",
             self.authority_identity.as_deref().unwrap_or_default()
         )?;
+        Ok(w)
+    }
+}
+
+impl Output for ProjectInfo<'_> {
+    fn output(&self) -> anyhow::Result<String> {
+        use colorful::Colorful;
+        let pi = self
+            .identity
+            .as_ref()
+            .map(|i| i.to_string())
+            .unwrap_or_else(|| "N/A".to_string());
+        let ar = self.authority_access_route.as_deref().unwrap_or("N/A");
+        let ai = self.authority_identity.as_deref().unwrap_or("N/A");
+        let mut w = String::new();
+        writeln!(w, "{}: {}", "Project ID".bold(), self.id)?;
+        writeln!(w, "{}: {}", "Project identity".bold(), pi)?;
+        writeln!(w, "{}: {}", "Authority address".bold(), ar)?;
+        writeln!(w, "{}: {}", "Authority identity".bold(), ai)?;
         Ok(w)
     }
 }

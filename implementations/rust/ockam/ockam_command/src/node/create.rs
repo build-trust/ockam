@@ -10,6 +10,7 @@ use std::{
     str::FromStr,
 };
 
+use crate::project::ProjectInfo;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start::{self, StartCommand, StartSubCommand};
@@ -31,7 +32,6 @@ use ockam_api::config::cli;
 use ockam_api::error::ApiError;
 use ockam_api::nodes::IdentityOverride;
 use ockam_api::{
-    cloud::project::Project,
     nodes::models::transport::{TransportMode, TransportType},
     nodes::{NodeManager, NODEMANAGER_ADDR},
 };
@@ -360,7 +360,7 @@ where
     P: AsRef<Path>,
 {
     let s = fs::read_to_string(path.as_ref()).await?;
-    let p: Project = serde_json::from_str(&s)?;
+    let p: ProjectInfo = serde_json::from_str(&s)?;
     let m = p
         .authority_access_route
         .map(|a| MultiAddr::try_from(&*a))
