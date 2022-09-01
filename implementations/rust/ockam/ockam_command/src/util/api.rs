@@ -16,14 +16,6 @@ use ockam_multiaddr::MultiAddr;
 
 ////////////// !== generators
 
-pub(crate) mod node {
-    use super::*;
-
-    /// Construct a request to query node status
-    pub(crate) fn query_status() -> RequestBuilder<'static, ()> {
-        Request::get("/node")
-    }
-}
 /// Construct a request to query node status
 pub(crate) fn query_status() -> Result<Vec<u8>> {
     let mut buf = vec![];

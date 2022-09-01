@@ -1,14 +1,16 @@
-use anyhow::Context;
+use anyhow::Context as _;
 use clap::Args;
 
-use ockam::TcpTransport;
+use ockam::{Context, TcpTransport};
 use ockam_api::clean_multiaddr;
 use ockam_api::nodes::service::message::SendMessage;
 use ockam_core::api::{Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
 
+use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::util::api::CloudOpts;
-use crate::util::{embedded_node, get_final_element, node_rpc, RpcBuilder};
+use crate::util::{get_final_element, node_rpc, RpcBuilder};
+use crate::Result;
 use crate::{help, message::HELP_DETAIL, CommandGlobalOpts};
 
 /// Send messages
@@ -35,73 +37,53 @@ pub struct SendCommand {
 
 impl SendCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        if let Some(node) = &self.from {
-            let node = get_final_element(node).to_string();
-            node_rpc(send_message_via_connection_to_a_node, (options, self, node))
-        } else if let Err(e) = embedded_node(send_message_from_embedded_node, (options, self)) {
-            eprintln!("Ockam node failed: {:?}", e,);
-        }
+        node_rpc(rpc, (options, self))
     }
 }
 
-async fn send_message_from_embedded_node(
-    mut ctx: ockam::Context,
-    (opts, cmd): (CommandGlobalOpts, SendCommand),
-) -> crate::Result<()> {
-    let (to, _) = clean_multiaddr(&cmd.to, &opts.config.get_lookup())
-        .context("Argument '--to' is invalid")?;
-    let route = ockam_api::multiaddr_to_route(&to).context("Argument '--to' is invalid")?;
-    let _tcp = TcpTransport::create(&ctx).await?;
-    ctx.send(route, cmd.message).await?;
-    match cmd.timeout {
-        Some(timeout) => {
-            let message = ctx
-                .receive_duration_timeout::<String>(std::time::Duration::from_secs(timeout))
-                .await?;
-            println!("{}", message);
-        }
-        None => {
-            let message = ctx.receive::<String>().await?;
-            println!("{}", message);
-        }
-    }
-    Ok(())
-}
-
-async fn send_message_via_connection_to_a_node(
-    ctx: ockam::Context,
-    (opts, cmd, api_node): (CommandGlobalOpts, SendCommand, String),
-) -> crate::Result<()> {
-    async fn go(
-        ctx: &ockam::Context,
-        opts: &CommandGlobalOpts,
-        cmd: SendCommand,
-        api_node: String,
-    ) -> crate::Result<()> {
+async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> Result<()> {
+    async fn go(ctx: &mut Context, opts: &CommandGlobalOpts, cmd: SendCommand) -> Result<()> {
+        // Process `--to` Multiaddr
         let (to, meta) = clean_multiaddr(&cmd.to, &opts.config.get_lookup())
             .context("Argument '--to' is invalid")?;
-        let tcp = TcpTransport::create(ctx).await?;
+
+        // Setup environment depending on whether we are sending the message from an embedded node or a background node
+        let (api_node, tcp) = if let Some(node) = &cmd.from {
+            let api_node = get_final_element(node).to_string();
+            let tcp = TcpTransport::create(ctx).await?;
+            (api_node, Some(tcp))
+        } else {
+            let api_node = start_embedded_node(ctx, &opts.config).await?;
+            (api_node, None)
+        };
+
+        // Replace `/project/<name>` occurrences with their respective secure channel addresses
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
             ctx,
             opts,
-            &tcp,
             &meta,
             &cmd.cloud_opts.route_to_controller,
             &api_node,
+            tcp.as_ref(),
         )
         .await?;
         let to = crate::project::util::clean_projects_multiaddr(to, projects_sc)?;
 
-        let mut rpc = RpcBuilder::new(ctx, opts, &api_node).tcp(&tcp)?.build();
+        // Send request
+        let mut rpc = RpcBuilder::new(ctx, opts, &api_node)
+            .tcp(tcp.as_ref())?
+            .build();
         rpc.request(req(&to, &cmd.message)).await?;
+        delete_embedded_node(&opts.config, rpc.node_name()).await;
         let res = rpc.parse_response::<Vec<u8>>()?;
         println!(
             "{}",
             String::from_utf8(res).context("Received content is not a valid utf8 string")?
         );
+
         Ok(())
     }
-    go(&ctx, &opts, cmd, api_node).await
+    go(&mut ctx, &opts, cmd).await
 }
 
 pub(crate) fn req<'a>(to: &'a MultiAddr, message: &'a str) -> RequestBuilder<'a, SendMessage<'a>> {

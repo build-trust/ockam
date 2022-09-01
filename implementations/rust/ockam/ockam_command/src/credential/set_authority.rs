@@ -2,16 +2,13 @@ use clap::Args;
 
 use ockam::Context;
 
-use crate::node::NodeOpts;
+use crate::node::util::delete_embedded_node;
 use crate::util::api::{self};
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct SetAuthorityCommand {
-    #[clap(flatten)]
-    pub node_opts: NodeOpts,
-
     #[clap(value_name = "AUTHORITY")]
     pub authority: Vec<String>,
 }
@@ -34,8 +31,9 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: SetAuthorityCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::new(ctx, &opts, &cmd.node_opts.api_node)?;
+    let mut rpc = Rpc::embedded(ctx, &opts).await?;
     rpc.request(api::credentials::set_authority(&cmd.authority))
         .await?;
+    delete_embedded_node(&opts.config, rpc.node_name()).await;
     Ok(())
 }

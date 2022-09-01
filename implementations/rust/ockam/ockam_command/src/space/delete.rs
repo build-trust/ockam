@@ -2,7 +2,7 @@ use clap::Args;
 
 use ockam::Context;
 
-use crate::node::create::start_embedded_node;
+use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::space::util::config;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
@@ -64,6 +64,7 @@ async fn run_impl(
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::space::delete(&id, controller_route))
         .await?;
+    delete_embedded_node(&opts.config, rpc.node_name()).await;
     rpc.is_ok()?;
 
     // Try to remove from config again, in case it was re-added after the refresh.

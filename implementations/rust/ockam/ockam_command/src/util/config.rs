@@ -123,13 +123,9 @@ impl OckamConfig {
 
     /// Get the node state directory
     pub fn get_node_dir_raw(&self, name: &str) -> Result<PathBuf> {
-        let inner = self.inner.readlock_inner();
-        let node_path = inner
-            .directories
-            .as_ref()
-            .context("configuration is in an invalid state")?
-            .data_local_dir()
-            .join(slugify(&format!("node-{}", name)));
+        let dirs = cli::OckamConfig::directories();
+        let nodes_dir = dirs.data_local_dir();
+        let node_path = nodes_dir.join(slugify(&format!("node-{}", name)));
         Ok(node_path)
     }
 

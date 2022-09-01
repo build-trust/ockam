@@ -37,7 +37,7 @@ async fn secure_channel_list_rpc_impl(
     opts: CommandGlobalOpts,
     cmd: ListCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::new(ctx, &opts, &cmd.node_opts.api_node)?;
+    let mut rpc = Rpc::background(ctx, &opts, &cmd.node_opts.api_node)?;
     rpc.request(api::list_secure_channels()).await?;
     let res = rpc.parse_response::<Vec<String>>()?;
 

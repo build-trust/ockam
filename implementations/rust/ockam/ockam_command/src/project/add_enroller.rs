@@ -4,7 +4,7 @@ use ockam::Context;
 use ockam_api::cloud::project::Enroller;
 
 use crate::help;
-use crate::node::NodeOpts;
+use crate::node::util::delete_embedded_node;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
@@ -24,14 +24,6 @@ pub struct AddEnrollerCommand {
     /// Description of this enroller, optional.
     #[clap(display_order = 1003)]
     pub description: Option<String>,
-
-    // TODO: add project_name arg that conflicts with project_id
-    //  so we can call the get_project_by_name api method
-    // /// Name of the project.
-    // #[clap(display_order = 1002)]
-    // pub project_name: String,
-    #[clap(flatten)]
-    pub node_opts: NodeOpts,
 
     #[clap(flatten)]
     pub cloud_opts: CloudOpts,
@@ -55,8 +47,9 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: AddEnrollerCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::new(ctx, &opts, &cmd.node_opts.api_node)?;
+    let mut rpc = Rpc::embedded(ctx, &opts).await?;
     rpc.request(api::project::add_enroller(&cmd)).await?;
+    delete_embedded_node(&opts.config, rpc.node_name()).await;
     rpc.parse_and_print_response::<Enroller>()?;
     Ok(())
 }

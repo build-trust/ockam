@@ -12,7 +12,6 @@ use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::secure_channel::*;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
-use crate::node::NodeOpts;
 use crate::util::api::CloudOpts;
 use crate::util::{api, RpcBuilder};
 use crate::{CommandGlobalOpts, OckamConfig};
@@ -46,10 +45,10 @@ pub fn clean_projects_multiaddr(
 pub async fn get_projects_secure_channels_from_config_lookup(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
-    tcp: &TcpTransport,
     meta: &LookupMeta,
     cloud_addr: &MultiAddr,
     api_node: &str,
+    tcp: Option<&TcpTransport>,
 ) -> Result<Vec<MultiAddr>> {
     let cfg_lookup = opts.config.get_lookup();
     let mut sc = Vec::with_capacity(meta.project.len());
@@ -60,7 +59,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
         .iter()
         .any(|name| cfg_lookup.get_project(name).is_none());
     if missing_projects {
-        config::refresh_projects(ctx, opts, tcp, api_node, cloud_addr).await?;
+        config::refresh_projects(ctx, opts, api_node, cloud_addr, tcp).await?;
     }
 
     // Create a secure channel for each project.
@@ -77,8 +76,8 @@ pub async fn get_projects_secure_channels_from_config_lookup(
             create_secure_channel_to_project(
                 ctx,
                 opts,
-                tcp,
                 api_node,
+                tcp,
                 &project_access_route,
                 &project_identity_id,
             )
@@ -95,8 +94,8 @@ pub async fn get_projects_secure_channels_from_config_lookup(
 async fn create_secure_channel_to_project<'a>(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
-    tcp: &TcpTransport,
     api_node: &str,
+    tcp: Option<&TcpTransport>,
     project_access_route: &MultiAddr,
     project_identity: &str,
 ) -> crate::Result<MultiAddr> {
@@ -114,8 +113,8 @@ async fn create_secure_channel_to_project<'a>(
 async fn delete_secure_channel<'a>(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
-    tcp: &TcpTransport,
     api_node: &str,
+    tcp: Option<&TcpTransport>,
     sc_addr: &MultiAddr,
 ) -> crate::Result<()> {
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
@@ -128,9 +127,9 @@ async fn delete_secure_channel<'a>(
 pub async fn check_project_readiness<'a>(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
-    node_opts: &NodeOpts,
     cloud_opts: &CloudOpts,
-    tcp: &TcpTransport,
+    api_node: &str,
+    tcp: Option<&TcpTransport>,
     mut project: Project<'a>,
 ) -> Result<Project<'a>> {
     if !project.is_ready() {
@@ -140,9 +139,7 @@ pub async fn check_project_readiness<'a>(
             print!(".");
             std::io::stdout().flush()?;
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-            let mut rpc = RpcBuilder::new(ctx, opts, &node_opts.api_node)
-                .tcp(tcp)?
-                .build();
+            let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
             rpc.request(api::project::show(&project.id, cloud_route))
                 .await?;
             let p = rpc.parse_response::<Project>()?;
@@ -175,8 +172,8 @@ pub async fn check_project_readiness<'a>(
         match create_secure_channel_to_project(
             ctx,
             opts,
+            api_node,
             tcp,
-            &node_opts.api_node,
             &project_route,
             &project_identity,
         )
@@ -184,7 +181,7 @@ pub async fn check_project_readiness<'a>(
         {
             Ok(sc_addr) => {
                 // Try to delete secure channel, ignore result.
-                let _ = delete_secure_channel(ctx, opts, tcp, &node_opts.api_node, &sc_addr).await;
+                let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
             }
             Err(_) => {
                 loop {
@@ -194,17 +191,15 @@ pub async fn check_project_readiness<'a>(
                     if let Ok(sc_addr) = create_secure_channel_to_project(
                         ctx,
                         opts,
+                        api_node,
                         tcp,
-                        &node_opts.api_node,
                         &project_route,
                         &project_identity,
                     )
                     .await
                     {
                         // Try to delete secure channel, ignore result.
-                        let _ =
-                            delete_secure_channel(ctx, opts, tcp, &node_opts.api_node, &sc_addr)
-                                .await;
+                        let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
                         break;
                     }
                 }
@@ -278,9 +273,9 @@ pub mod config {
     pub async fn refresh_projects(
         ctx: &Context,
         opts: &CommandGlobalOpts,
-        tcp: &TcpTransport,
         api_node: &str,
         controller_route: &MultiAddr,
+        tcp: Option<&TcpTransport>,
     ) -> Result<()> {
         let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
         rpc.request(api::project::list(controller_route)).await?;

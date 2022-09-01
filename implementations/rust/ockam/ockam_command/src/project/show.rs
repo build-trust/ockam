@@ -1,10 +1,10 @@
 use anyhow::Context as _;
 use clap::Args;
 
-use ockam::{Context, TcpTransport};
+use ockam::Context;
 use ockam_api::cloud::project::Project;
 
-use crate::node::NodeOpts;
+use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::config;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
@@ -16,9 +16,6 @@ pub struct ShowCommand {
     /// Name of the project.
     #[clap(display_order = 1001)]
     pub name: String,
-
-    #[clap(flatten)]
-    pub node_opts: NodeOpts,
 
     #[clap(flatten)]
     pub cloud_opts: CloudOpts,
@@ -40,31 +37,23 @@ async fn run_impl(
     cmd: ShowCommand,
 ) -> crate::Result<()> {
     let controller_route = cmd.cloud_opts.route();
-    let tcp = TcpTransport::create(ctx).await?;
+    let node_name = start_embedded_node(ctx, &opts.config).await?;
 
     // Lookup project
     let id = match config::get_project(&opts.config, &cmd.name) {
         Some(id) => id,
         None => {
-            config::refresh_projects(
-                ctx,
-                &opts,
-                &tcp,
-                &cmd.node_opts.api_node,
-                cmd.cloud_opts.route(),
-            )
-            .await?;
+            config::refresh_projects(ctx, &opts, &node_name, cmd.cloud_opts.route(), None).await?;
             config::get_project(&opts.config, &cmd.name)
                 .context(format!("Project '{}' does not exist", cmd.name))?
         }
     };
 
     // Send request
-    let mut rpc = RpcBuilder::new(ctx, &opts, &cmd.node_opts.api_node)
-        .tcp(&tcp)?
-        .build();
+    let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::project::show(&id, controller_route))
         .await?;
+    delete_embedded_node(&opts.config, rpc.node_name()).await;
     let project = rpc.parse_and_print_response::<Project>()?;
     config::set_project(&opts.config, &project)?;
     Ok(())

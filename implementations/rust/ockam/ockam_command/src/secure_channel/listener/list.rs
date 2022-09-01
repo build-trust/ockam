@@ -32,7 +32,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ListCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::new(ctx, &opts, &cmd.node_opts.api_node)?;
+    let mut rpc = Rpc::background(ctx, &opts, &cmd.node_opts.api_node)?;
     rpc.request(api::list_secure_channel_listener()).await?;
     let res = rpc.parse_response::<Vec<String>>()?;
 

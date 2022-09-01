@@ -4,7 +4,7 @@ use clap::Args;
 use ockam::Context;
 use ockam_api::cloud::space::Space;
 
-use crate::node::create::start_embedded_node;
+use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::space::util::config;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
@@ -51,6 +51,7 @@ async fn run_impl(
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::space::show(&id, controller_route)).await?;
+    delete_embedded_node(&opts.config, rpc.node_name()).await;
     let space = rpc.parse_and_print_response::<Space>()?;
     config::set_space(&opts.config, &space)?;
     Ok(())

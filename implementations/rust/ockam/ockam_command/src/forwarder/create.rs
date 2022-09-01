@@ -54,10 +54,10 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) 
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
             ctx,
             opts,
-            &tcp,
             &meta,
             &cmd.cloud_opts.route_to_controller,
             api_node,
+            Some(&tcp),
         )
         .await?;
         let at = crate::project::util::clean_projects_multiaddr(at, projects_sc)?;

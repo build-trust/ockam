@@ -4,6 +4,7 @@ use crate::{
     CommandGlobalOpts, OutputFormat, Result,
 };
 
+use anyhow::Context as _;
 use atty::Stream;
 use clap::Args;
 use colorful::Colorful;
@@ -51,17 +52,20 @@ impl CreateCommand {
         &self,
         ctx: &Context,
         opts: &CommandGlobalOpts,
-        tcp: &TcpTransport,
         cloud_addr: &MultiAddr,
         api_node: &str,
+        tcp: &TcpTransport,
     ) -> anyhow::Result<MultiAddr> {
         let config = &opts.config.get_lookup();
-        let (to, meta) = clean_multiaddr(&self.to, config).unwrap_or_else(|| {
-            eprintln!("Could not convert {} into route", &self.to);
-            std::process::exit(exitcode::USAGE);
-        });
+        let (to, meta) = clean_multiaddr(&self.to, config)
+            .context(format!("Could not convert {} into route", &self.to))?;
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
-            ctx, opts, tcp, &meta, cloud_addr, api_node,
+            ctx,
+            opts,
+            &meta,
+            cloud_addr,
+            api_node,
+            Some(tcp),
         )
         .await?;
         crate::project::util::clean_projects_multiaddr(to, projects_sc)
@@ -153,9 +157,9 @@ async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, CreateCommand
         .parse_to_route(
             &ctx,
             &options,
-            &tcp,
             &command.cloud_opts.route_to_controller,
             from,
+            &tcp,
         )
         .await?;
 

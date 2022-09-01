@@ -1,9 +1,9 @@
 use anyhow::Context as _;
 use clap::Args;
 
-use ockam::{Context, TcpTransport};
+use ockam::Context;
 
-use crate::node::NodeOpts;
+use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::config;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
@@ -19,9 +19,6 @@ pub struct DeleteCommand {
     /// Name of the project.
     #[clap(display_order = 1002)]
     pub project_name: String,
-
-    #[clap(flatten)]
-    pub node_opts: NodeOpts,
 
     #[clap(flatten)]
     pub cloud_opts: CloudOpts,
@@ -48,7 +45,7 @@ async fn run_impl(
     let space_id = space::config::get_space(&opts.config, &cmd.space_name)
         .context(format!("Space '{}' does not exist", cmd.space_name))?;
 
-    let tcp = TcpTransport::create(ctx).await?;
+    let node_name = start_embedded_node(ctx, &opts.config).await?;
     let controller_route = cmd.cloud_opts.route();
 
     // Try to remove from config, in case the project was removed from the cloud but not from the config file.
@@ -60,8 +57,7 @@ async fn run_impl(
         None => {
             // The project is not in the config file.
             // Fetch all available projects from the cloud.
-            config::refresh_projects(ctx, &opts, &tcp, &cmd.node_opts.api_node, controller_route)
-                .await?;
+            config::refresh_projects(ctx, &opts, &node_name, controller_route, None).await?;
 
             // If the project is not found in the lookup, then it must not exist in the cloud, so we exit the command.
             match config::get_project(&opts.config, &cmd.project_name) {
@@ -74,15 +70,14 @@ async fn run_impl(
     };
 
     // Send request
-    let mut rpc = RpcBuilder::new(ctx, &opts, &cmd.node_opts.api_node)
-        .tcp(&tcp)?
-        .build();
+    let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::project::delete(
         &space_id,
         &project_id,
         controller_route,
     ))
     .await?;
+    delete_embedded_node(&opts.config, rpc.node_name()).await;
     rpc.is_ok()?;
 
     // Try to remove from config again, in case it was re-added after the refresh.

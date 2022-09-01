@@ -3,19 +3,15 @@ use ockam::Context;
 
 use ockam_api::cloud::project::Project;
 
-use crate::node::create::start_embedded_node;
-use crate::node::NodeOpts;
+use crate::node::util::delete_embedded_node;
 use crate::project::util::config;
 use crate::util::api::CloudOpts;
-use crate::util::{api, node_rpc, RpcBuilder};
+use crate::util::{api, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
 /// List projects
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
-    #[clap(flatten)]
-    pub node_opts: NodeOpts,
-
     #[clap(flatten)]
     pub cloud_opts: CloudOpts,
 }
@@ -35,10 +31,10 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ListCommand,
 ) -> crate::Result<()> {
-    let node_name = start_embedded_node(ctx, &opts.config).await?;
-    let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
+    let mut rpc = Rpc::embedded(ctx, &opts).await?;
     rpc.request(api::project::list(cmd.cloud_opts.route()))
         .await?;
+    delete_embedded_node(&opts.config, rpc.node_name()).await;
     let projects = rpc.parse_and_print_response::<Vec<Project>>()?;
     config::set_projects(&opts.config, &projects)?;
     Ok(())
