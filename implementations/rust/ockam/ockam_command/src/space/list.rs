@@ -3,17 +3,14 @@ use clap::Args;
 use ockam::Context;
 use ockam_api::cloud::space::Space;
 
-use crate::node::NodeOpts;
+use crate::node::create::start_embedded_node;
 use crate::space::util::config;
 use crate::util::api::{self, CloudOpts};
-use crate::util::{node_rpc, Rpc};
+use crate::util::{node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
-    #[clap(flatten)]
-    pub node_opts: NodeOpts,
-
     #[clap(flatten)]
     pub cloud_opts: CloudOpts,
 }
@@ -33,7 +30,8 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ListCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::new(ctx, &opts, &cmd.node_opts.api_node)?;
+    let node_name = start_embedded_node(ctx, &opts.config).await?;
+    let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::space::list(cmd.cloud_opts.route()))
         .await?;
     let spaces = rpc.parse_and_print_response::<Vec<Space>>()?;

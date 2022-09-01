@@ -1,5 +1,6 @@
 use crate::{help, node::HELP_DETAIL, util::startup, CommandGlobalOpts};
 use clap::Args;
+use ockam_api::config::cli::OckamConfig;
 use sysinfo::{get_current_pid, ProcessExt, System, SystemExt};
 use tracing::{debug, trace};
 
@@ -31,7 +32,7 @@ impl DeleteCommand {
 
 fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
     if cmd.all {
-        // Try to delete all nodes found in the config file
+        // Try to delete all nodes found in the config file + their associated processes
         let nn: Vec<String> = {
             let inner = &opts.config.get_inner();
             inner.nodes.iter().map(|(name, _)| name.clone()).collect()
@@ -49,6 +50,22 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
                 }
             }
         }
+
+        // Try to delete dangling embedded nodes directories
+        let dirs = OckamConfig::directories();
+        let nodes_dir = dirs.data_local_dir();
+        for entry in nodes_dir.read_dir()? {
+            let dir = entry?;
+            if !dir.file_type()?.is_dir() {
+                continue;
+            }
+            if let Some(dir_name) = dir.file_name().to_str() {
+                if !nn.contains(&dir_name.to_string()) {
+                    let _ = std::fs::remove_dir_all(dir.path());
+                }
+            }
+        }
+
         // If force is enabled
         if cmd.force {
             // delete the config and nodes directories
@@ -111,7 +128,7 @@ fn delete_node_config(opts: &CommandGlobalOpts, node_name: &str) -> anyhow::Resu
     // Try removing the node's directory
     let _ = opts
         .config
-        .get_node_dir(node_name)
+        .get_node_dir_raw(node_name)
         .map(std::fs::remove_dir_all);
     // Remove the node's info from the config file
     opts.config.delete_node(node_name)?;

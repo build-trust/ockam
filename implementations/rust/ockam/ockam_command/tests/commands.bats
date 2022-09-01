@@ -1,11 +1,19 @@
 
 # Install
+# =======
+# MacOS:
 #   brew tap kaos/shell
 #   brew install bats-assert
+#
+# Linux:
+#   npm install -g bats bats-support bats-assert
 #
 # https://bats-core.readthedocs.io/en/stable/
 # https://github.com/ztombol/bats-docs#installation
 # https://github.com/ztombol/bats-assert
+
+# bats_lib=$NVM_DIR/versions/node/v18.8.0/lib/node_modules # linux
+bats_lib=$(brew --prefix)/lib # macos
 
 setup_file() {
   pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null
@@ -22,8 +30,8 @@ teardown_file() {
 }
 
 setup() {
-  load "$(brew --prefix)/lib/bats-support/load.bash"
-  load "$(brew --prefix)/lib/bats-assert/load.bash"
+  load "$bats_lib/bats-support/load.bash"
+  load "$bats_lib/bats-assert/load.bash"
   ockam node delete --all || true
 }
 

@@ -55,8 +55,8 @@ async fn run_impl(
         .context(format!("Space '{}' does not exist", cmd.space_name))?;
     let tcp = TcpTransport::create(ctx).await?;
     let mut rpc = RpcBuilder::new(ctx, &opts, &cmd.node_opts.api_node)
-        .tcp(&tcp)
-        .build()?;
+        .tcp(&tcp)?
+        .build();
     rpc.request(api::project::create(
         &cmd.project_name,
         &space_id,

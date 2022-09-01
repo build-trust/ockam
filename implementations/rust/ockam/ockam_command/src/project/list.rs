@@ -3,10 +3,11 @@ use ockam::Context;
 
 use ockam_api::cloud::project::Project;
 
+use crate::node::create::start_embedded_node;
 use crate::node::NodeOpts;
 use crate::project::util::config;
 use crate::util::api::CloudOpts;
-use crate::util::{api, node_rpc, Rpc};
+use crate::util::{api, node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 
 /// List projects
@@ -34,7 +35,8 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ListCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::new(ctx, &opts, &cmd.node_opts.api_node)?;
+    let node_name = start_embedded_node(ctx, &opts.config).await?;
+    let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::project::list(cmd.cloud_opts.route()))
         .await?;
     let projects = rpc.parse_and_print_response::<Vec<Project>>()?;
