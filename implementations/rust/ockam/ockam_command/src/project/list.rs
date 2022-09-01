@@ -36,6 +36,6 @@ async fn run_impl(
         .await?;
     delete_embedded_node(&opts.config, rpc.node_name()).await;
     let projects = rpc.parse_and_print_response::<Vec<Project>>()?;
-    config::set_projects(&opts.config, &projects)?;
+    config::set_projects(&opts.config, &projects).await?;
     Ok(())
 }

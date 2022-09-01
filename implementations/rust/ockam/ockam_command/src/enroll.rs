@@ -158,7 +158,7 @@ async fn default_project<'a>(
     };
     let project =
         check_project_readiness(ctx, opts, cloud_opts, node_name, None, default_project).await?;
-    set_project(&opts.config, &project)?;
+    set_project(&opts.config, &project).await?;
     println!("{}", project.output()?);
     Ok(project)
 }
