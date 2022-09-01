@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use ockam::identity::IdentityIdentifier;
+use ockam_api::DefaultAddress;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -78,21 +79,21 @@ impl Config {
 }
 
 fn vault_default_addr() -> String {
-    "vault_service".to_string()
+    DefaultAddress::VAULT_SERVICE.to_string()
 }
 
 fn identity_default_addr() -> String {
-    "identity_service".to_string()
+    DefaultAddress::IDENTITY_SERVICE.to_string()
 }
 
 fn sec_listener_default_addr() -> String {
-    "api".to_string()
+    DefaultAddress::SECURE_CHANNEL_LISTENER.to_string()
 }
 
 fn verifier_default_addr() -> String {
-    "verifier".to_string()
+    DefaultAddress::VERIFIER.to_string()
 }
 
 fn authenticator_default_addr() -> String {
-    "authenticator".to_string()
+    DefaultAddress::AUTHENTICATOR.to_string()
 }

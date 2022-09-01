@@ -10,6 +10,7 @@ use ockam_api::nodes::models::services::{
     StartAuthenticatorRequest, StartCredentialsService, StartVerifierService,
 };
 use ockam_api::nodes::NODEMANAGER_ADDR;
+use ockam_api::DefaultAddress;
 use ockam_core::api::{Error, Request, Response, Status};
 use ockam_core::Route;
 use std::path::PathBuf;
@@ -27,30 +28,30 @@ pub struct StartCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum StartSubCommand {
     Vault {
-        #[clap(default_value = "vault_service")]
+        #[clap(default_value_t = vault_default_addr())]
         addr: String,
     },
     Identity {
-        #[clap(default_value = "identity_service")]
+        #[clap(default_value_t = identity_default_addr())]
         addr: String,
     },
     Authenticated {
-        #[clap(default_value = "authenticated")]
+        #[clap(default_value_t = authenticated_default_addr())]
         addr: String,
     },
     Verifier {
-        #[clap(long, default_value = "verifier")]
+        #[clap(long, default_value_t = verifier_default_addr())]
         addr: String,
     },
     Credentials {
-        #[clap(long, default_value = "credentials")]
+        #[clap(long, default_value_t = credentials_default_addr())]
         addr: String,
 
         #[clap(long)]
         oneway: bool,
     },
     Authenticator {
-        #[clap(long, default_value = "authenticator")]
+        #[clap(long, default_value_t = authenticator_default_addr())]
         addr: String,
 
         #[clap(long)]
@@ -59,6 +60,30 @@ pub enum StartSubCommand {
         #[clap(long)]
         project: String,
     },
+}
+
+fn vault_default_addr() -> String {
+    DefaultAddress::VAULT_SERVICE.to_string()
+}
+
+fn identity_default_addr() -> String {
+    DefaultAddress::IDENTITY_SERVICE.to_string()
+}
+
+fn authenticated_default_addr() -> String {
+    DefaultAddress::AUTHENTICATED_SERVICE.to_string()
+}
+
+fn verifier_default_addr() -> String {
+    DefaultAddress::VERIFIER.to_string()
+}
+
+fn credentials_default_addr() -> String {
+    DefaultAddress::CREDENTIAL_SERVICE.to_string()
+}
+
+fn authenticator_default_addr() -> String {
+    DefaultAddress::AUTHENTICATOR.to_string()
 }
 
 impl StartCommand {

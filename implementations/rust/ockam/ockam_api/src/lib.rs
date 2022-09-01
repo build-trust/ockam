@@ -19,6 +19,20 @@ pub mod lmdb;
 #[macro_use]
 extern crate tracing;
 
+pub struct DefaultAddress;
+
+impl DefaultAddress {
+    pub const VAULT_SERVICE: &'static str = "vault_service";
+    pub const IDENTITY_SERVICE: &'static str = "identity_service";
+    pub const AUTHENTICATED_SERVICE: &'static str = "authenticated";
+    pub const UPPERCASE_SERVICE: &'static str = "uppercase";
+    pub const ECHO_SERVICE: &'static str = "echo";
+    pub const CREDENTIAL_SERVICE: &'static str = "credentials";
+    pub const SECURE_CHANNEL_LISTENER: &'static str = "api";
+    pub const AUTHENTICATOR: &'static str = "authenticator";
+    pub const VERIFIER: &'static str = "verifier";
+}
+
 use core::fmt;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
