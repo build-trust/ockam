@@ -2,7 +2,7 @@
 
 use std::{
     collections::VecDeque, fs::create_dir_all, net::SocketAddr, ops::Deref, path::PathBuf,
-    str::FromStr, sync::RwLockReadGuard,
+    sync::RwLockReadGuard,
 };
 
 use anyhow::{Context, Result};
@@ -11,11 +11,11 @@ use tracing::{error, trace};
 
 use ockam::identity::IdentityIdentifier;
 pub use ockam_api::config::cli::NodeConfig;
+use ockam_api::config::lookup::ProjectLookup;
 pub use ockam_api::config::snippet::{
     ComposableSnippet, Operation, PortalMode, Protocol, RemoteMode,
 };
 use ockam_api::config::{cli, lookup::ConfigLookup, lookup::InternetAddress, Config};
-use ockam_multiaddr::MultiAddr;
 
 use crate::util::exitcode;
 
@@ -322,32 +322,16 @@ impl OckamConfig {
         inner.lookup.remove_spaces();
     }
 
-    pub fn set_project_alias(
-        &self,
-        project_name: String,
-        project_node_route: String,
-        project_id: String,
-        project_identity_id: String,
-    ) -> Result<()> {
+    pub fn set_project_alias(&self, name: String, proj: ProjectLookup) -> Result<()> {
         let mut inner = self.inner.writelock_inner();
-        // MultiAddr can't be serialised with serde, thus we just
-        // check that the conversion is going to succeed in the
-        // future, but then just pass the string value through.
-        let _ = MultiAddr::from_str(&project_node_route)
-            .map_err(|e| ConfigError::FailedConvert("MultiAddr".into(), e.to_string()))?;
         trace! {
-            id = %project_id,
-            name = %project_name,
-            route = %project_node_route,
-            identity_id = %project_identity_id,
+            id = %proj.id,
+            name = %name,
+            route = %proj.node_route,
+            identity_id = %proj.identity_id,
             "Project stored in lookup table"
         };
-        inner.lookup.set_project(
-            project_name,
-            project_node_route,
-            project_id,
-            project_identity_id,
-        );
+        inner.lookup.set_project(name, proj);
         Ok(())
     }
 

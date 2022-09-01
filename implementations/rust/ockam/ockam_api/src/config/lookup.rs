@@ -1,4 +1,5 @@
 use ockam_core::compat::collections::VecDeque;
+use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -76,21 +77,9 @@ impl ConfigLookup {
     }
 
     /// Store a project route and identifier as lookup
-    pub fn set_project(
-        &mut self,
-        name: String,
-        node_route: String,
-        id: String,
-        identity_id: String,
-    ) {
-        self.map.insert(
-            format!("/project/{}", name),
-            LookupValue::Project(ProjectLookup {
-                node_route,
-                id,
-                identity_id,
-            }),
-        );
+    pub fn set_project(&mut self, name: String, proj: ProjectLookup) {
+        self.map
+            .insert(format!("/project/{}", name), LookupValue::Project(proj));
     }
 
     pub fn get_project(&self, name: &str) -> Option<&ProjectLookup> {
@@ -205,20 +194,11 @@ pub struct SpaceLookup {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProjectLookup {
     /// How to reach the node hosting this project
-    ///
-    /// This value MUST be a MultiAddr and is checked before storing
-    /// that it is.
-    node_route: String,
+    pub node_route: MultiAddr,
     /// Identifier of this project
     pub id: String,
     /// Identifier of the IDENTITY of the project (for secure-channel)
-    pub identity_id: String,
-}
-
-impl ProjectLookup {
-    pub fn node_route(&self) -> MultiAddr {
-        MultiAddr::from_str(&self.node_route).expect(
-            "tried retrieving a MultiAddr from ProjectLookup where no MultiAddr had been stored",
-        )
-    }
+    pub identity_id: IdentityIdentifier,
+    /// How to reach the project's authority node.
+    pub authority_access_route: Option<MultiAddr>,
 }
