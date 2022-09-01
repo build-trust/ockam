@@ -30,6 +30,7 @@ direct-authenticator = ["lmdb", "std"]
 default              = ["lmdb"]
 
 [dependencies]
+bytes           = { version = "1.2.1", default-features = false, features = ["serde"] }
 ockam           = { path = "../ockam", version = "^0.72.0", features = ["software_vault"] }
 either          = { version = "1.7.0", default-features = false }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.6.0", features = ["serde"] }

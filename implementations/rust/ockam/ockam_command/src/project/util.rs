@@ -78,7 +78,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 opts,
                 api_node,
                 tcp,
-                &project_access_route,
+                project_access_route,
                 &project_identity_id,
             )
             .await?,
@@ -212,11 +212,13 @@ pub async fn check_project_readiness<'a>(
 }
 
 pub mod config {
-    use ockam::Context;
+    use ockam::{identity::PublicIdentity, Context};
+    use ockam_api::config::lookup::ProjectAuthority;
+    use ockam_vault::Vault;
 
     use super::*;
 
-    fn set(config: &OckamConfig, project: &Project) -> Result<()> {
+    async fn set(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
         if !project.is_ready() {
             return Err(anyhow!(
                 "Project is not ready yet, wait a few seconds and try again"
@@ -231,33 +233,41 @@ pub mod config {
             .identity
             .as_ref()
             .context("Project should have identity set")?;
-        let aroute = project
-            .authority_access_route
-            .as_ref()
-            .map(|v| MultiAddr::try_from(&**v).context("Invalid project authority"))
-            .transpose()?;
+        let authority = if let Some(r) = &project.authority_access_route {
+            let rte = MultiAddr::try_from(&**r).context("Invalid project authority address")?;
+            let a = project
+                .authority_identity
+                .as_ref()
+                .context("Missing project authority")?;
+            let a = hex::decode(&**a).context("Invalid project authority")?;
+            let v = Vault::default();
+            let p = PublicIdentity::import(&a, &v).await?;
+            Some(ProjectAuthority::new(p.identifier().clone(), rte, a))
+        } else {
+            None
+        };
         config.set_project_alias(
             project.name.to_string(),
             ProjectLookup {
                 node_route: proute,
-                authority_access_route: aroute,
                 id: project.id.to_string(),
                 identity_id: pid.clone(),
+                authority,
             },
         )?;
         Ok(())
     }
 
-    pub fn set_project(config: &OckamConfig, project: &Project) -> Result<()> {
-        set(config, project)?;
+    pub async fn set_project(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
+        set(config, project).await?;
         config.atomic_update().run()?;
         Ok(())
     }
 
-    pub fn set_projects(config: &OckamConfig, projects: &[Project]) -> Result<()> {
+    pub async fn set_projects(config: &OckamConfig, projects: &[Project<'_>]) -> Result<()> {
         config.remove_projects_alias();
         for project in projects.iter() {
-            set(config, project)?;
+            set(config, project).await?;
         }
         config.atomic_update().run()?;
         Ok(())
@@ -284,7 +294,7 @@ pub mod config {
         let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
         rpc.request(api::project::list(controller_route)).await?;
         let projects = rpc.parse_response::<Vec<Project>>()?;
-        set_projects(&opts.config, &projects)?;
+        set_projects(&opts.config, &projects).await?;
         Ok(())
     }
 }

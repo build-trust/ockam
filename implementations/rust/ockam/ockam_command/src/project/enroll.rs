@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use ockam::identity::IdentityIdentifier;
 use ockam::{Context, TcpTransport};
 use ockam_api::authenticator::direct::types::AddMember;
-use ockam_api::config::lookup::ConfigLookup;
+use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority};
 use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
 use ockam_core::api::Request;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
@@ -56,9 +56,8 @@ impl Runner {
     async fn run(self) -> Result<()> {
         let tcp = TcpTransport::create(&self.ctx).await?;
         let map = self.opts.config.get_lookup();
-        let to = if let Some(addr) = authority_addr(&self.cmd.to, &map)? {
-            debug!(%addr, "establishing secure channel to project authority");
-            let mut addr = self.secure_channel(&tcp, &addr).await?;
+        let to = if let Some(a) = project_authority(&self.cmd.to, &map)? {
+            let mut addr = self.secure_channel(&tcp, a).await?;
             for proto in self.cmd.to.iter().skip(1) {
                 addr.push_back_value(&proto).map_err(anyhow::Error::from)?
             }
@@ -68,9 +67,9 @@ impl Runner {
         };
         let req = Request::post("/members").body(AddMember::new(self.cmd.member.clone()));
         let mut rpc = RpcBuilder::new(&self.ctx, &self.opts, &self.cmd.node_opts.api_node)
-            .tcp(&tcp)
+            .tcp(&tcp)?
             .to(&to)?
-            .build()?;
+            .build();
         debug!(addr = %to, member = %self.cmd.member, "requesting to add member");
         rpc.request(req).await?;
         rpc.is_ok()?;
@@ -80,31 +79,37 @@ impl Runner {
     async fn secure_channel(
         &self,
         tcp: &TcpTransport,
-        addr: &MultiAddr,
+        auth: &ProjectAuthority,
     ) -> anyhow::Result<MultiAddr> {
         let mut rpc = RpcBuilder::new(&self.ctx, &self.opts, &self.cmd.node_opts.api_node)
-            .tcp(tcp)
-            .build()?;
-        rpc.request(api::create_secure_channel(addr, None)).await?;
+            .tcp(tcp)?
+            .build();
+        let addr = replace_project(&self.cmd.to, auth.address())?;
+        debug!(%addr, "establishing secure channel to project authority");
+        let allowed = vec![auth.identity_id().clone()];
+        rpc.request(api::create_secure_channel(&addr, Some(allowed)))
+            .await?;
         let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
         let addr = res.addr()?;
         Ok(addr)
     }
 }
 
-/// Get the authority address (if any) of the given address.
+/// Get the project authority from the first address protocol.
 ///
-/// If the input address begins with a `/project` protocol we look for the
-/// corresponding authority access route and return it.
-fn authority_addr(input: &MultiAddr, map: &ConfigLookup) -> anyhow::Result<Option<MultiAddr>> {
+/// If the first protocol is a `/project`, look up the project's config.
+fn project_authority<'a>(
+    input: &MultiAddr,
+    map: &'a ConfigLookup,
+) -> anyhow::Result<Option<&'a ProjectAuthority>> {
     if let Some(proto) = input.first() {
         if proto.code() == proto::Project::CODE {
             let proj = proto.cast::<proto::Project>().expect("project protocol");
             if let Some(p) = map.get_project(&proj) {
-                if let Some(r) = &p.authority_access_route {
-                    return Ok(Some(r.clone()));
+                if let Some(a) = &p.authority {
+                    return Ok(Some(a));
                 } else {
-                    return Err(anyhow!("missing authority route for project {}", &*proj));
+                    return Err(anyhow!("missing authority in project {:?}", &*proj));
                 }
             } else {
                 return Err(anyhow!("unknown project {}", &*proj));
@@ -112,4 +117,21 @@ fn authority_addr(input: &MultiAddr, map: &ConfigLookup) -> anyhow::Result<Optio
         }
     }
     Ok(None)
+}
+
+/// Replaces the first `/project` with the given address.
+///
+/// Assumes (and asserts!) that the first protocol is a `/project`.
+fn replace_project(input: &MultiAddr, with: &MultiAddr) -> anyhow::Result<MultiAddr> {
+    let mut iter = input.iter();
+    let first = iter.next().map(|p| p.code());
+    assert_eq!(first, Some(proto::Project::CODE));
+    let mut output = MultiAddr::default();
+    for proto in with.iter() {
+        output.push_back_value(&proto)?
+    }
+    for proto in iter {
+        output.push_back_value(&proto)?
+    }
+    Ok(output)
 }

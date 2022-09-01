@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use ockam_core::compat::collections::VecDeque;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
@@ -199,6 +200,35 @@ pub struct ProjectLookup {
     pub id: String,
     /// Identifier of the IDENTITY of the project (for secure-channel)
     pub identity_id: IdentityIdentifier,
-    /// How to reach the project's authority node.
-    pub authority_access_route: Option<MultiAddr>,
+    /// Project authority information.
+    pub authority: Option<ProjectAuthority>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ProjectAuthority {
+    id: IdentityIdentifier,
+    address: MultiAddr,
+    identity: Bytes,
+}
+
+impl ProjectAuthority {
+    pub fn new(id: IdentityIdentifier, addr: MultiAddr, identity: Vec<u8>) -> Self {
+        Self {
+            id,
+            address: addr,
+            identity: identity.into(),
+        }
+    }
+
+    pub fn identity(&self) -> &[u8] {
+        &self.identity
+    }
+
+    pub fn identity_id(&self) -> &IdentityIdentifier {
+        &self.id
+    }
+
+    pub fn address(&self) -> &MultiAddr {
+        &self.address
+    }
 }

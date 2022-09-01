@@ -126,7 +126,7 @@ impl Output for ProjectInfo<'_> {
         writeln!(w, "{}: {}", "Project ID".bold(), self.id)?;
         writeln!(w, "{}: {}", "Project identity".bold(), pi)?;
         writeln!(w, "{}: {}", "Authority address".bold(), ar)?;
-        writeln!(w, "{}: {}", "Authority identity".bold(), ai)?;
+        write!(w, "{}: {}", "Authority identity".bold(), ai)?;
         Ok(w)
     }
 }
