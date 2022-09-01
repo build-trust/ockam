@@ -126,7 +126,7 @@ async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, DeleteCommand
     let at = &command.parse_at_node();
     let address = &command.address;
 
-    let mut rpc = Rpc::new(&ctx, &options, at)?;
+    let mut rpc = Rpc::background(&ctx, &options, at)?;
     let request = api::delete_secure_channel(address);
     rpc.request(request).await?;
     let response = rpc.parse_response::<DeleteSecureChannelResponse>()?;

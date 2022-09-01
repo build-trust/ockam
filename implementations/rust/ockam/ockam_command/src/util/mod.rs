@@ -19,12 +19,12 @@ use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_multiaddr::MultiAddr;
 
+use crate::node::util::start_embedded_node;
 use crate::util::output::Output;
 use crate::{CommandGlobalOpts, OutputFormat};
 
 pub mod api;
 pub mod exitcode;
-pub mod node;
 pub mod startup;
 
 mod addon;
@@ -67,20 +67,29 @@ impl<'a> RpcBuilder<'a> {
         Ok(self)
     }
 
-    pub fn tcp(mut self, tcp: &'a TcpTransport) -> Result<Self> {
-        let cfg = self.opts.config.get_node(&self.node_name)?;
-        self.mode = RpcMode::Background {
-            cfg,
-            tcp: Some(tcp),
-        };
+    /// When running multiple RPC's from a single command to a background node,
+    /// a single TcpTransport must be shared amongst them, as we can only have one
+    /// TcpTransport per Context.
+    pub fn tcp<T: Into<Option<&'a TcpTransport>>>(mut self, tcp: T) -> Result<Self> {
+        if let Some(tcp) = tcp.into() {
+            let cfg = self.opts.config.get_node(&self.node_name)?;
+            self.mode = RpcMode::Background {
+                cfg,
+                tcp: Some(tcp),
+            };
+        }
         Ok(self)
     }
 
     pub fn build(self) -> Rpc<'a> {
-        let mut rpc = Rpc::_new(self.ctx, self.opts, &self.node_name);
-        rpc.to = self.to;
-        rpc.mode = self.mode;
-        rpc
+        Rpc {
+            ctx: self.ctx,
+            buf: Vec::new(),
+            opts: self.opts,
+            node_name: self.node_name,
+            to: self.to,
+            mode: self.mode,
+        }
     }
 }
 
@@ -93,32 +102,26 @@ pub struct Rpc<'a> {
     mode: RpcMode<'a>,
 }
 
-impl<'a> Drop for Rpc<'a> {
-    fn drop(&mut self) {
-        if let RpcMode::Embedded = self.mode {
-            // Try removing the node's directory
-            let _ = self
-                .opts
-                .config
-                .get_node_dir_raw(&self.node_name)
-                .map(std::fs::remove_dir_all);
-        }
-    }
-}
-
 impl<'a> Rpc<'a> {
-    fn _new(ctx: &'a Context, opts: &'a CommandGlobalOpts, node_name: &str) -> Rpc<'a> {
-        Rpc {
+    /// Creates a new RPC to send a request to an embedded node.
+    pub async fn embedded(ctx: &'a Context, opts: &'a CommandGlobalOpts) -> Result<Rpc<'a>> {
+        let node_name = start_embedded_node(ctx, &opts.config).await?;
+        Ok(Rpc {
             ctx,
             buf: Vec::new(),
             opts,
-            node_name: node_name.to_string(),
+            node_name,
             to: NODEMANAGER_ADDR.into(),
             mode: RpcMode::Embedded,
-        }
+        })
     }
 
-    pub fn new(ctx: &'a Context, opts: &'a CommandGlobalOpts, node_name: &str) -> Result<Rpc<'a>> {
+    /// Creates a new RPC to send a request to a running background node.
+    pub fn background(
+        ctx: &'a Context,
+        opts: &'a CommandGlobalOpts,
+        node_name: &str,
+    ) -> Result<Rpc<'a>> {
         let cfg = opts.config.get_node(node_name)?;
         Ok(Rpc {
             ctx,
@@ -128,6 +131,10 @@ impl<'a> Rpc<'a> {
             to: NODEMANAGER_ADDR.into(),
             mode: RpcMode::Background { cfg, tcp: None },
         })
+    }
+
+    pub fn node_name(&self) -> &str {
+        &self.node_name
     }
 
     pub async fn request<T>(&mut self, req: RequestBuilder<'_, T>) -> Result<()>
@@ -143,6 +150,7 @@ impl<'a> Rpc<'a> {
         Ok(())
     }
 
+    #[allow(unused)]
     pub async fn request_with_timeout<T>(
         &mut self,
         req: RequestBuilder<'_, T>,
