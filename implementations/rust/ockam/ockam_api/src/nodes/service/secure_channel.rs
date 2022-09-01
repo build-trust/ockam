@@ -13,6 +13,7 @@ use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::AsyncTryClone;
 use ockam_identity::{IdentityIdentifier, TrustMultiIdentifiersPolicy};
 use ockam_multiaddr::MultiAddr;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 impl NodeManager {
@@ -149,7 +150,7 @@ impl NodeManager {
     pub(super) fn list_secure_channels(
         &mut self,
         req: &Request<'_>,
-    ) -> ResponseBuilder<Vec<String>> {
+    ) -> ResponseBuilder<HashSet<String>> {
         Response::ok(req.id()).body(
             self.registry
                 .secure_channels
