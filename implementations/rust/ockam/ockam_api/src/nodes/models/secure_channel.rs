@@ -12,6 +12,15 @@ use serde::Serialize;
 use crate::error::ApiError;
 use crate::route_to_multiaddr;
 
+#[derive(Debug, Clone, Copy, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(index_only)]
+pub enum CredentialExchangeMode {
+    #[n(0)] None,
+    #[n(1)] Oneway,
+    #[n(2)] Mutual,
+}
+
 /// Request body when instructing a node to create a Secure Channel
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
@@ -21,16 +30,22 @@ pub struct CreateSecureChannelRequest<'a> {
     #[n(0)] tag: TypeTag<6300395>,
     #[b(1)] pub addr: CowStr<'a>,
     #[b(2)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
+    #[n(3)] pub credential_exchange_mode: CredentialExchangeMode,
 }
 
 impl<'a> CreateSecureChannelRequest<'a> {
-    pub fn new(addr: &MultiAddr, authorized_identifiers: Option<Vec<IdentityIdentifier>>) -> Self {
+    pub fn new(
+        addr: &MultiAddr,
+        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        credential_exchange_mode: CredentialExchangeMode,
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             addr: addr.to_string().into(),
             authorized_identifiers: authorized_identifiers
                 .map(|x| x.into_iter().map(|y| y.to_string().into()).collect()),
+            credential_exchange_mode,
         }
     }
 }

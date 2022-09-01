@@ -4,6 +4,7 @@ use rand::prelude::random;
 
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
+use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::{clean_multiaddr, is_local_node};
 use ockam_core::api::{Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
@@ -34,6 +35,10 @@ pub struct CreateCommand {
     #[clap(long, name = "ROUTE", display_order = 900)]
     at: MultiAddr,
 
+    /// Run credentials exchange
+    #[clap(long, short, display_order = 802)]
+    pub exchange_credentials: bool,
+
     /// Orchestrator address to resolve projects present in the `at` argument
     #[clap(flatten)]
     cloud_opts: CloudOpts,
@@ -51,6 +56,13 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) 
         let api_node = get_final_element(&cmd.to);
         let at_rust_node = is_local_node(&cmd.at).context("Argument --at is not valid")?;
         let (at, meta) = clean_multiaddr(&cmd.at, &opts.config.lookup()).unwrap();
+
+        let credentials_exchange_mode = if cmd.exchange_credentials {
+            CredentialExchangeMode::Oneway
+        } else {
+            CredentialExchangeMode::None
+        };
+
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
             ctx,
             opts,
@@ -58,6 +70,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) 
             &cmd.cloud_opts.route_to_controller,
             api_node,
             Some(&tcp),
+            credentials_exchange_mode,
         )
         .await?;
         let at = crate::project::util::clean_projects_multiaddr(at, projects_sc)?;

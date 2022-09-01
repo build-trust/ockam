@@ -87,6 +87,10 @@ impl<V: IdentityVault> Identity<V> {
         &self.vault
     }
 
+    pub fn ctx(&self) -> &Context {
+        &self.ctx
+    }
+
     /// Create Identity
     pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
         let child_ctx = ctx.new_detached(Address::random_local()).await?;

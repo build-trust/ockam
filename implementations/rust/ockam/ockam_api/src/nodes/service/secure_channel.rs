@@ -2,23 +2,46 @@ use super::map_multiaddr_err;
 use crate::error::ApiError;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
-    DeleteSecureChannelRequest, DeleteSecureChannelResponse, ShowSecureChannelRequest,
-    ShowSecureChannelResponse,
+    CredentialExchangeMode, DeleteSecureChannelRequest, DeleteSecureChannelResponse,
+    ShowSecureChannelRequest, ShowSecureChannelResponse,
 };
 use crate::nodes::NodeManager;
+use crate::DefaultAddress;
 use minicbor::Decoder;
 use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::AsyncTryClone;
+use ockam_core::{route, AsyncTryClone};
 use ockam_identity::{IdentityIdentifier, TrustMultiIdentifiersPolicy};
 use ockam_multiaddr::MultiAddr;
 
 impl NodeManager {
-    pub(super) async fn create_secure_channel_impl<'a>(
+    async fn get_credential_if_needed(&self) -> Result<()> {
+        let identity = self.identity()?;
+
+        if identity.credential().await.is_some() {
+            return Ok(());
+        }
+
+        let authorities = self.authorities()?;
+
+        // Take first known authority address
+        let addr = authorities
+            .as_ref()
+            .iter()
+            .find_map(|x| x.addr.as_ref())
+            .ok_or_else(|| ApiError::generic("No known Authority address"))?;
+
+        self.get_credential_impl(identity, false, addr).await?;
+
+        Ok(())
+    }
+
+    pub(super) async fn create_secure_channel_impl(
         &mut self,
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        credential_exchange_mode: CredentialExchangeMode,
     ) -> Result<Address> {
         let identity = self.identity()?.async_try_clone().await?;
 
@@ -58,6 +81,33 @@ impl NodeManager {
             .secure_channels
             .insert(sc_addr.clone(), sc_route, authorized_identifiers);
 
+        match credential_exchange_mode {
+            CredentialExchangeMode::None => {
+                trace!(%sc_addr, "No credential presentation");
+            }
+            CredentialExchangeMode::Oneway => {
+                trace!(%sc_addr, "One-way credential presentation");
+                self.get_credential_if_needed().await?;
+                identity
+                    .present_credential(route![sc_addr.clone(), DefaultAddress::CREDENTIAL_SERVICE])
+                    .await?;
+                trace!(%sc_addr, "One-way credential presentation success");
+            }
+            CredentialExchangeMode::Mutual => {
+                trace!(%sc_addr, "Mutual credential presentation");
+                self.get_credential_if_needed().await?;
+                let authorities = self.authorities()?;
+                identity
+                    .present_credential_mutual(
+                        route![sc_addr.clone(), DefaultAddress::CREDENTIAL_SERVICE],
+                        &authorities.public_identities(),
+                        &self.authenticated_storage,
+                    )
+                    .await?;
+                trace!(%sc_addr, "Mutual credential presentation success");
+            }
+        }
+
         // Return secure channel address
         Ok(sc_addr)
     }
@@ -70,6 +120,7 @@ impl NodeManager {
         let CreateSecureChannelRequest {
             addr,
             authorized_identifiers,
+            credential_exchange_mode,
             ..
         } = dec.decode()?;
 
@@ -93,7 +144,7 @@ impl NodeManager {
             .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
         let channel = self
-            .create_secure_channel_impl(route, authorized_identifiers)
+            .create_secure_channel_impl(route, authorized_identifiers, credential_exchange_mode)
             .await?;
 
         let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(&channel));
