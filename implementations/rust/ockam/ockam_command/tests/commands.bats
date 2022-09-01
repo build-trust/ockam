@@ -27,6 +27,9 @@
 # bats_lib=$NVM_DIR/versions/node/v18.8.0/lib/node_modules # linux
 bats_lib=$(brew --prefix)/lib # macos
 
+# Ockam binary to use
+OCKAM=ockam
+
 setup_file() {
   pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null
   python3 -m http.server --bind 127.0.0.1 5000 &
@@ -44,134 +47,134 @@ teardown_file() {
 setup() {
   load "$bats_lib/bats-support/load.bash"
   load "$bats_lib/bats-assert/load.bash"
-  ockam node delete --all || true
+  $OCKAM node delete --all || true
 }
 
 teardown() {
-  ockam node delete --all || true
+  $OCKAM node delete --all || true
 }
 
 @test "create a node without a name" {
-  ockam node create
+  run $OCKAM node create
   assert_success
 }
 
 @test "create a node with a name" {
-  ockam node create n1
+  run $OCKAM node create n1
   assert_success
 }
 
 @test "create a node with a name and send it a message" {
-  ockam node create n1
-  run ockam message send "hello" --to /node/n1/service/uppercase
+  $OCKAM node create n1
+  run $OCKAM message send "hello" --to /node/n1/service/uppercase
 
   assert_success
   assert_output "HELLO"
 }
 
 @test "create two nodes and send message from one to the other" {
-  ockam node create n1
-  ockam node create n2
+  $OCKAM node create n1
+  $OCKAM node create n2
 
-  run ockam message send "hello" --from n1 --to /node/n2/service/uppercase
+  run $OCKAM message send "hello" --from n1 --to /node/n2/service/uppercase
 
   assert_success
   assert_output "HELLO"
 }
 
 @test "create two nodes and send message from one to the other - with /node in --from argument" {
-  ockam node create n1
-  ockam node create n2
+  $OCKAM node create n1
+  $OCKAM node create n2
 
-  run ockam message send "hello" --from /node/n1 --to /node/n2/service/uppercase
+  run $OCKAM message send "hello" --from /node/n1 --to /node/n2/service/uppercase
 
   assert_success
   assert_output "HELLO"
 }
 
 @test "create a secure channel between two nodes and send message through it" {
-  ockam node create n1
-  ockam node create n2
+  $OCKAM node create n1
+  $OCKAM node create n2
 
-  output=$(ockam secure-channel create --from /node/n1 --to /node/n2/service/api)
-  run ockam message send hello --from /node/n1 --to $output/service/uppercase
+  output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api)
+  run $OCKAM message send hello --from /node/n1 --to $output/service/uppercase
 
   assert_success
   assert_output "HELLO"
 }
 
 @test "create a secure channel between two nodes and send message through it - in a pipeline" {
-  ockam node create n1
-  ockam node create n2
+  $OCKAM node create n1
+  $OCKAM node create n2
 
-  output=$(ockam secure-channel create --from /node/n1 --to /node/n2/service/api | \
-    ockam message send hello --from n1 --to -/service/uppercase)
+  output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api | \
+    $OCKAM message send hello --from n1 --to -/service/uppercase)
 
   assert [ "$output" == "HELLO" ]
 }
 
 @test "create a secure channel between three nodes and send message through it - in a pipeline" {
-  for i in {1..3}; do ockam node create "n$i"; done
+  for i in {1..3}; do $OCKAM node create "n$i"; done
 
-  output=$(ockam secure-channel create --from n1 --to /node/n2/node/n3/service/api | \
-    ockam message send "hello ockam" --from /node/n1 --to -/service/uppercase)
+  output=$($OCKAM secure-channel create --from n1 --to /node/n2/node/n3/service/api | \
+    $OCKAM message send "hello ockam" --from /node/n1 --to -/service/uppercase)
 
   assert [ "$output" == "HELLO OCKAM" ]
 }
 
 @test "secure channel with secure channel listener" {
-  ockam node create n1
-  ockam node create n2
+  $OCKAM node create n1
+  $OCKAM node create n2
 
-  ockam secure-channel-listener create "listener" --at /node/n2
-  output=$(ockam secure-channel create --from /node/n1 --to /node/n2/service/listener | \
-    ockam message send hello --from /node/n1 --to -/service/uppercase)
+  $OCKAM secure-channel-listener create "listener" --at /node/n2
+  output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/listener | \
+    $OCKAM message send hello --from /node/n1 --to -/service/uppercase)
 
   assert [ "$output" == "HELLO" ]
 }
 
 @test "create a forwarder and send message through it" {
-  ockam node create n1
-  ockam node create n2
+  $OCKAM node create n1
+  $OCKAM node create n2
 
-  ockam forwarder create n1 --at /node/n1 --to /node/n2
-  run ockam message send hello --to /node/n1/service/forward_to_n1/service/uppercase
+  $OCKAM forwarder create n1 --at /node/n1 --to /node/n2
+  run $OCKAM message send hello --to /node/n1/service/forward_to_n1/service/uppercase
 
   assert_success
   assert_output "HELLO"
 }
 
 @test "create a forwarder with a dynamic name and send message through it" {
-  ockam node create n1
-  ockam node create n2
+  $OCKAM node create n1
+  $OCKAM node create n2
 
-  output=$(ockam forwarder create --at /node/n1 --to /node/n2  | \
-    ockam message send hello --to /node/n1/-/service/uppercase)
+  output=$($OCKAM forwarder create --at /node/n1 --to /node/n2  | \
+    $OCKAM message send hello --to /node/n1/-/service/uppercase)
 
   assert [ "$output" == "HELLO" ]
 }
 
 @test "create an inlet/outlet pair and move tcp traffic through it" {
-  ockam node create n1
-  ockam node create n2
+  $OCKAM node create n1
+  $OCKAM node create n2
 
-  ockam tcp-outlet create --at /node/n1 --from /service/outlet --to 127.0.0.1:5000
-  ockam tcp-inlet create --at /node/n2 --from 127.0.0.1:6000 --to /node/n1/service/outlet
+  $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to 127.0.0.1:5000
+  $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:6000 --to /node/n1/service/outlet
 
   run curl --fail --head 127.0.0.1:6000
   assert_success
 }
 
 @test "create an inlet/outlet pair with relay through a forwarder and move tcp traffic through it" {
-  ockam node create relay
+  $OCKAM node create relay
 
-  ockam node create blue
-  ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
-  ockam forwarder create blue --at /node/relay --to /node/blue
+  $OCKAM node create blue
+  $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  $OCKAM forwarder create blue --at /node/relay --to /node/blue
 
-  ockam node create green
-  ockam secure-channel create --from /node/green --to /node/relay/service/forward_to_blue/service/api \
-    | ockam tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
+  $OCKAM node create green
+  $OCKAM secure-channel create --from /node/green --to /node/relay/service/forward_to_blue/service/api \
+    | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
 
   run curl --fail --head 127.0.0.1:7000
   assert_success
@@ -186,7 +189,7 @@ teardown() {
     skip "ORCHESTRATOR_TESTS are not enabled"
   fi
 
-  run ockam message send hello --to /project/default/service/echo
+  run $OCKAM message send hello --to /project/default/service/echo
 
   assert_success
   assert_output "hello"
@@ -197,8 +200,8 @@ teardown() {
     skip "ORCHESTRATOR_TESTS are not enabled"
   fi
 
-  ockam node create blue
-  run ockam message send hello --from /node/blue --to /project/default/service/echo
+  $OCKAM node create blue
+  run $OCKAM message send hello --from /node/blue --to /project/default/service/echo
 
   assert_success
   assert_output "hello"
@@ -210,7 +213,7 @@ teardown() {
     skip "ORCHESTRATOR_TESTS are not enabled"
   fi
 
-  run ockam project list
+  run $OCKAM project list
 
   assert_success
 }
@@ -227,20 +230,20 @@ teardown() {
   space_name=$(openssl rand -hex 4)
   project_name=$(openssl rand -hex 4)
 
-  run ockam space create ${space_name}
+  run $OCKAM space create ${space_name}
   assert_success
 
-  run ockam project create ${space_name} ${project_name}
+  run $OCKAM project create ${space_name} ${project_name}
   assert_success
 
-  run ockam message send hello --to /project/${project_name}/service/echo
+  run $OCKAM message send hello --to /project/${project_name}/service/echo
   assert_success
   assert_output "hello"
 
-  run ockam project delete ${space_name} ${project_name}
+  run $OCKAM project delete ${space_name} ${project_name}
   assert_success
 
-  run ockam space delete ${space_name}
+  run $OCKAM space delete ${space_name}
   assert_success
 }
 
@@ -249,7 +252,7 @@ teardown() {
     skip "ORCHESTRATOR_TESTS are not enabled"
   fi
 
-  run ockam space list
+  run $OCKAM space list
 
   assert_success
 }
@@ -260,13 +263,13 @@ teardown() {
     skip "ORCHESTRATOR_TESTS are not enabled"
   fi
 
-  ockam node create blue
-  ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
-  ockam forwarder create blue --at /project/default --to /node/blue
+  $OCKAM node create blue
+  $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  $OCKAM forwarder create blue --at /project/default --to /node/blue
 
-  ockam node create green
-  ockam secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
-    | ockam tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
+  $OCKAM node create green
+  $OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
+    | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
 
   run curl --fail --head 127.0.0.1:7000
   assert_success
