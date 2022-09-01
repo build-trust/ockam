@@ -121,6 +121,18 @@ impl OckamConfig {
         Ok(PathBuf::new().join(node_path))
     }
 
+    /// Get the node state directory
+    pub fn get_node_dir_raw(&self, name: &str) -> Result<PathBuf> {
+        let inner = self.inner.readlock_inner();
+        let node_path = inner
+            .directories
+            .as_ref()
+            .context("configuration is in an invalid state")?
+            .data_local_dir()
+            .join(slugify(&format!("node-{}", name)));
+        Ok(node_path)
+    }
+
     /// Get the API port used by a node
     pub fn get_node_port(&self, name: &str) -> u16 {
         let inner = self.inner.readlock_inner();
@@ -203,7 +215,7 @@ impl OckamConfig {
     }
 
     pub fn authorities(&self, node: &str) -> Result<AuthoritiesConfig> {
-        let path = self.get_node_dir(node)?;
+        let path = self.get_node_dir_raw(node)?;
         Ok(AuthoritiesConfig::load(path))
     }
 
