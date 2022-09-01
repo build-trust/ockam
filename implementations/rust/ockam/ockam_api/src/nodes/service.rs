@@ -21,6 +21,7 @@ use crate::lmdb::LmdbStorage;
 use crate::nodes::config::NodeManConfig;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
+use crate::DefaultAddress;
 
 pub mod message;
 
@@ -216,15 +217,16 @@ impl NodeManager {
 
     async fn initialize_defaults(&mut self, ctx: &Context) -> Result<()> {
         // Start services
-        self.start_vault_service_impl(ctx, "vault_service".into())
+        self.start_vault_service_impl(ctx, DefaultAddress::VAULT_SERVICE.into())
             .await?;
-        self.start_identity_service_impl(ctx, "identity_service".into())
+        self.start_identity_service_impl(ctx, DefaultAddress::IDENTITY_SERVICE.into())
             .await?;
-        self.start_authenticated_service_impl(ctx, "authenticated".into())
+        self.start_authenticated_service_impl(ctx, DefaultAddress::AUTHENTICATED_SERVICE.into())
             .await?;
-        self.start_uppercase_service_impl(ctx, "uppercase".into())
+        self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
-        self.start_echoer_service_impl(ctx, "echo".into()).await?;
+        self.start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
+            .await?;
 
         ForwardingService::create(ctx).await?;
 
@@ -238,11 +240,18 @@ impl NodeManager {
             None
         };
 
-        self.create_secure_channel_listener_impl("api".into(), authorized_identifiers)
-            .await?;
+        self.create_secure_channel_listener_impl(
+            DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
+            authorized_identifiers,
+        )
+        .await?;
 
         // TODO: Add after authority becomes available at this point
-        // self.start_credentials_service_impl("credentials", false /* Not available yet */).await?;
+        // self.start_credentials_service_impl(
+        //     DefaultAddresses::CREDENTIAL_SERVICE.into(),
+        //     false, /* Not available yet */
+        // )
+        // .await?;
 
         Ok(())
     }
