@@ -1,10 +1,9 @@
 use ockam_core::access_control::AccessControl;
 use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
 use ockam_core::{Address, AsyncTryClone, Mailbox, Mailboxes, Result, Route};
-use ockam_node::access_control::AllowTransport;
 use ockam_node::{Context, WorkerBuilder};
 
-use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle, TCP};
+use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
 
 /// High level management interface for TCP transports
 ///
@@ -194,8 +193,15 @@ impl TcpTransport {
         // TODO we also don't want to give everything created by this worker AllowedTransport
         let mailbox = Mailbox::new(
             address.into(),
-            Arc::new(AllowTransport::single(TCP)),
-            Arc::new(ockam_core::AllowAll),
+            // TODO @ac need a way to specify AC for incoming from client API because we
+            //          don't know if this is coming in over Transport or SecureChannel or...
+            Arc::new(ockam_core::AnyAccessControl::new(
+                ockam_core::CredentialAccessControl,
+                // ockam_node::access_control::AllowTransport::single(crate::TCP),
+                ockam_core::ToDoAccessControl,
+            )),
+            // TODO @ac 04-routing-over-transport-two-hops
+            Arc::new(ockam_core::ToDoAccessControl),
         );
         WorkerBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), worker)
             .start(self.router_handle.ctx())

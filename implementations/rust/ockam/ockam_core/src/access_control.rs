@@ -51,17 +51,6 @@ pub use allow_all::*;
 pub use any::*;
 pub use deny_all::*;
 
-/// A test Access Control type to check outgoing AccessControl
-#[derive(Debug)]
-pub struct AllowAllOutgoing;
-
-#[async_trait]
-impl AccessControl for AllowAllOutgoing {
-    async fn is_authorized(&self, _relay_msg: &RelayMessage) -> Result<bool> {
-        crate::allow()
-    }
-}
-
 use crate::Address;
 
 /// An Access Control type that allows messages from the given source address to go through
@@ -94,16 +83,32 @@ impl AccessControl for AllowDestinationAddress {
     }
 }
 
+/// TODO A temporary Access Control type to help me figure things out
+#[derive(Debug)]
+pub struct ToDoAccessControl;
+
+#[async_trait]
+impl AccessControl for ToDoAccessControl {
+    async fn is_authorized(&self, _relay_msg: &RelayMessage) -> Result<bool> {
+        crate::allow()
+    }
+}
+
 /// TODO A temporary Access Control type for credentials while I figure things out
 #[derive(Debug)]
-pub struct CredentialAccessControl {}
+pub struct CredentialAccessControl;
 
 #[async_trait]
 impl AccessControl for CredentialAccessControl {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
         let local_info = relay_msg.local_msg.local_info();
-        tracing::error!("CredentialAccessControl <= {:?}", local_info);
-        tracing::error!("CredentialAccessControl <= {:?}", relay_msg);
+        tracing::error!(
+            "CredentialAccessControl {} <= {} with local_info: {:?}",
+            relay_msg.destination,
+            relay_msg.source,
+            local_info
+        );
+        //tracing::error!("CredentialAccessControl <= {:?}", relay_msg);
         crate::allow()
     }
 }

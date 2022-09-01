@@ -70,12 +70,13 @@ impl TcpRouter {
         // TODO can we populate these as the come in if we at least have a ref to TcpRouter's context?
         let main_mailbox = Mailbox::new(
             main_addr.clone(),
-            // TODO @ac 04-routing-over-transport-two-hops-initiator
+            // TODO @ac need a way to specify AC for incoming from client API because we
+            //          don't know if this is coming in over Transport or LocalOrigin or...
             Arc::new(ockam_core::AnyAccessControl::new(
                 ockam_node::access_control::AllowTransport::single(TCP),
                 LocalOriginOnly, // TODO @ac AllowDynamicAddress
             )),
-            Arc::new(LocalOriginOnly), // TODO @ac AllowDynamicAddress
+            Arc::new(ockam_core::ToDoAccessControl), // TODO @ac AllowDynamicAddress
         );
         // @ac 0#TcpRouter_api_addr
         // in:  0#TcpRouter_api_addr   <=  [0#TcpRouterHandle.detached_M]

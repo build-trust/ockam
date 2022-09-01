@@ -1,8 +1,9 @@
+use ockam::access_control::DenyAll;
 use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{vault::Vault, Context, Result, TcpTransport};
 
-#[ockam::node]
+#[ockam::node(access_control = "DenyAll")]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
@@ -55,14 +56,13 @@ async fn main(ctx: Context) -> Result<()> {
                 .create(true)
                 .write(true)
                 .truncate(true)
-                .open("07-outlet.dot")
+                .open("/tmp/07-outlet.dot")
                 .expect("Unable to open file");
             ockam::debugger::generate_graphs(&mut std::io::BufWriter::new(file))
                 .expect("Unable to generate graph");
 
-            println!("\n");
-            ockam::debugger::display_log();
-            println!("\n");
+            //ockam::debugger::display_log();
+            println!(".");
             counter += 1;
             tokio::time::sleep(core::time::Duration::from_secs(10)).await;
         }

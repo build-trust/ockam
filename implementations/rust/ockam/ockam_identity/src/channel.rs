@@ -7,6 +7,7 @@ pub(crate) use listener::*;
 mod messages;
 pub(crate) use messages::*;
 mod trust_policy;
+use ockam_node::WorkerBuilder;
 pub use trust_policy::*;
 pub mod access_control;
 mod local_info;
@@ -16,7 +17,7 @@ use crate::authenticated_storage::AuthenticatedStorage;
 use crate::{Identity, IdentityVault};
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, AsyncTryClone, Result, Route};
+use ockam_core::{Address, AsyncTryClone, Mailbox, Mailboxes, Result, Route};
 
 impl<V: IdentityVault> Identity<V> {
     pub async fn create_secure_channel_listener(
@@ -28,7 +29,29 @@ impl<V: IdentityVault> Identity<V> {
         let identity_clone = self.async_try_clone().await?;
         let storage_clone = storage.async_try_clone().await?;
         let listener = IdentityChannelListener::new(trust_policy, identity_clone, storage_clone);
-        self.ctx.start_worker(address.into(), listener).await?;
+
+        //self.ctx.start_worker(address.into(), listener).await?;
+
+        // TODO @ac
+        const TCP: ockam_core::TransportType = ockam_core::TransportType::new(1);
+
+        // TODO @ac 0#SecureChannel.initiator
+        // in:
+        // out:
+        let mailbox = Mailbox::new(
+            address.into(),
+            // TODO @ac need a way to specify AC for incoming from client API because we
+            //          don't know if this is coming in over Transport or LocalOrigin or...
+            Arc::new(ockam_core::AnyAccessControl::new(
+                ockam_node::access_control::AllowTransport::single(TCP),
+                ockam_node::access_control::LocalOriginOnly,
+            )),
+            Arc::new(ockam_core::ToDoAccessControl),
+        );
+        WorkerBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), listener)
+            .start(&self.ctx)
+            .await?;
+
         Ok(())
     }
 

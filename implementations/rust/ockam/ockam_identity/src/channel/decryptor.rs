@@ -11,16 +11,16 @@ use ockam_channel::{
     CreateResponderChannelMessage, KeyExchangeCompleted, SecureChannel, SecureChannelDecryptor,
     SecureChannelInfo,
 };
-use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, sync::Arc, vec::Vec};
 use ockam_core::vault::Signature;
+use ockam_core::{async_trait, Mailbox, Mailboxes};
 use ockam_core::{
     route, Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
     TransportMessage, Worker,
 };
 use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::XXNewKeyExchanger;
-use ockam_node::Context;
+use ockam_node::{Context, WorkerBuilder};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
@@ -89,7 +89,21 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
     ) -> Result<Address> {
         let child_address =
             Address::random_tagged("InitiatorStartChannel.callback_address.detached");
-        let mut child_ctx = ctx.new_detached(child_address.clone()).await?;
+
+        //let mut child_ctx = ctx.new_detached(child_address.clone()).await?;
+
+        // TODO @ac 0#InitiatorStartChannel.callback_address.detached
+        // in:
+        // out:
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(
+                child_address.clone(),
+                Arc::new(ockam_core::ToDoAccessControl),
+                Arc::new(ockam_core::ToDoAccessControl),
+            ),
+            vec![],
+        );
+        let mut child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
 
         // TODO @ac - does have random() have different entropy to random_local?
         //let self_address: Address = random();
@@ -126,7 +140,19 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             state: Some(state),
         };
 
-        ctx.start_worker(self_address.clone(), worker).await?;
+        //ctx.start_worker(self_address.clone(), worker).await?;
+
+        // TODO @ac 0#DecryptorWorker_create_initiator
+        // in:
+        // out:
+        let mailbox = Mailbox::new(
+            self_address.clone(),
+            Arc::new(ockam_core::ToDoAccessControl),
+            Arc::new(ockam_core::ToDoAccessControl),
+        );
+        WorkerBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), worker)
+            .start(ctx)
+            .await?;
 
         debug!(
             "Starting IdentitySecureChannel Initiator at remote: {}",

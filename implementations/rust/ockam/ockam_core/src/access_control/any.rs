@@ -27,7 +27,7 @@ impl<F: AccessControl, S: AccessControl> AccessControl for AnyAccessControl<F, S
 
 impl<F: AccessControl, S: AccessControl> Debug for AnyAccessControl<F, S> {
     fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "AllowAny({:?} | {:?})", self.first, self.second)
+        write!(f, "AllowAny({:?} OR {:?})", self.first, self.second)
     }
 }
 

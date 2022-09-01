@@ -1,9 +1,9 @@
-use crate::{PortalInternalMessage, PortalMessage, TcpPortalRecvProcessor, TCP};
+use crate::{PortalInternalMessage, PortalMessage, TcpPortalRecvProcessor};
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
 use ockam_core::{async_trait, AllowDestinationAddress, Decodable};
 use ockam_core::{Address, Any, Mailbox, Mailboxes, Result, Route, Routed, Worker};
-use ockam_node::access_control::{AllowTransport, LocalOriginOnly};
+use ockam_node::access_control::LocalOriginOnly;
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use tokio::io::AsyncWriteExt;
@@ -144,15 +144,19 @@ impl TcpPortalWorker {
         // TODO @ac 0#TcpPortalWorker_remote
         // in:  0#TcpPortalWorker_remote_6  <=  [0#TcpRecvProcessor_12]
         // out: 0#TcpPortalWorker_remote_6  =>  [0#TcpRouter_main_addr_0, 0#outlet, 0#TcpPortWorker_remote_n]
-        // TODO @ac but we only want it to have this if we're using TcpTransport!
-        let outgoing_access_control = ockam_core::AnyAccessControl::new(
-            AllowDestinationAddress(worker.router_address.clone()),
-            LocalOriginOnly, // TODO @ac this needs Allow dynamic addresses
-        );
         let remote_mailbox = Mailbox::new(
             worker.remote_address.clone(),
-            Arc::new(AllowTransport::single(TCP)),
-            Arc::new(outgoing_access_control),
+            // TODO @ac need a way to specify AC for incoming from client API because we
+            //          don't know if this is coming in over Transport or SecureChannel or...
+            Arc::new(ockam_core::AnyAccessControl::new(
+                ockam_core::CredentialAccessControl,
+                //ockam_node::access_control::AllowTransport::single(crate::TCP),
+                ockam_core::ToDoAccessControl,
+            )),
+            Arc::new(ockam_core::AnyAccessControl::new(
+                AllowDestinationAddress(worker.router_address.clone()),
+                ockam_core::ToDoAccessControl, // TODO @ac this needs Allow dynamic addresses
+            )),
         );
 
         // start worker

@@ -5,7 +5,7 @@ use crate::compat::{
     sync::Arc,
     vec::{self, Vec},
 };
-use crate::{debugger, AllowAllOutgoing, RelayMessage, Result};
+use crate::{debugger, RelayMessage, Result, ToDoAccessControl};
 use core::cmp::Ordering;
 use core::fmt::{self, Debug, Display};
 use core::iter::FromIterator;
@@ -105,7 +105,7 @@ impl Mailboxes {
     /// Create a new collection of `Mailboxes` for the given
     /// [`Address`] with the given [`AccessControl`]
     pub fn main<A: Into<Address>>(address: A, access_control: Arc<dyn AccessControl>) -> Self {
-        let outgoing = Arc::new(AllowAllOutgoing); // TODO
+        let outgoing = Arc::new(ToDoAccessControl); // TODO
         Self {
             main_mailbox: Mailbox::new(address.into(), access_control, outgoing),
             additional_mailboxes: vec![],
@@ -119,13 +119,13 @@ impl Mailboxes {
         address_set: AddressSet,
         access_control: Arc<dyn AccessControl>,
     ) -> Self {
-        let outgoing = Arc::new(AllowAllOutgoing); // TODO
+        let outgoing = Arc::new(ToDoAccessControl); // TODO
         let main_mailbox = Mailbox::new(address_set.first(), access_control.clone(), outgoing);
         let additional_mailboxes = address_set
             .into_iter()
             .skip(1)
             .map(|x| {
-                let outgoing = Arc::new(AllowAllOutgoing); // TODO
+                let outgoing = Arc::new(ToDoAccessControl); // TODO
                 Mailbox::new(x, access_control.clone(), outgoing)
             })
             .collect();

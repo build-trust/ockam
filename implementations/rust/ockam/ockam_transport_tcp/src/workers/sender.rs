@@ -234,7 +234,7 @@ impl Worker for TcpSendWorker {
         let mailbox = Mailbox::new(
             rx_addr,
             Arc::new(ockam_core::DenyAll),
-            Arc::new(ockam_core::AllowAllOutgoing), // TODO @ac at least LocalOriginOnly
+            Arc::new(ockam_core::ToDoAccessControl), // TODO @ac at least LocalOriginOnly
         );
         ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), receiver)
             .start(ctx)
