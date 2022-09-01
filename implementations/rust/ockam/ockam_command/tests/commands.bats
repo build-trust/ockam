@@ -12,6 +12,18 @@
 # https://github.com/ztombol/bats-docs#installation
 # https://github.com/ztombol/bats-assert
 
+# This will run local only test:
+# bats implementations/rust/ockam/ockam_command/tests/commands.bats
+#
+# This will run all local only test (including the long ones)
+# LONG_TESTS=1 bats implementations/rust/ockam/ockam_command/tests/commands.bats
+#
+# This expects enroll to have already happened and will run the not very long orchestrator tests
+# ORCHESTRATOR_TESTS=1 bats implementations/rust/ockam/ockam_command/tests/commands.bats
+#
+# This expects enroll to have already happened and will run all orchestrator tests
+# ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats implementations/rust/ockam/ockam_command/tests/commands.bats
+
 # bats_lib=$NVM_DIR/versions/node/v18.8.0/lib/node_modules # linux
 bats_lib=$(brew --prefix)/lib # macos
 
@@ -167,20 +179,26 @@ teardown() {
 
 # the below tests will succeed if already enrolled with
 # ockam enroll
+#
 
-@test "send a message to a project node" {
-  ockam node create blue
-  run ockam message send hello --from blue --to /project/default/service/echo
+@test "send a message to a project node from command embedded node" {
+  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
+    skip "ORCHESTRATOR_TESTS are not enabled"
+  fi
+
+  run ockam message send hello --to /project/default/service/echo
 
   assert_success
   assert_output "hello"
 }
 
-@test "send a message to a project node from command embedded node" {
-  skip
+@test "send a message to a project node from a spawned background node" {
+  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
+    skip "ORCHESTRATOR_TESTS are not enabled"
+  fi
 
   ockam node create blue
-  run ockam message send hello --to /project/default/service/echo
+  run ockam message send hello --from /node/blue --to /project/default/service/echo
 
   assert_success
   assert_output "hello"
@@ -188,13 +206,60 @@ teardown() {
 
 
 @test "list projects" {
-  ockam node create blue
-  run ockam project list --node blue
+  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
+    skip "ORCHESTRATOR_TESTS are not enabled"
+  fi
+
+  run ockam project list
 
   assert_success
 }
 
+@test "create space, create project, send message, delete project, delete space" {
+  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
+    skip "ORCHESTRATOR_TESTS are not enabled"
+  fi
+
+  if [ -z "${LONG_TESTS}" ]; then
+    skip "LONG_TESTS are not enabled"
+  fi
+
+  space_name=$(openssl rand -hex 4)
+  project_name=$(openssl rand -hex 4)
+
+  run ockam space create ${space_name}
+  assert_success
+
+  run ockam project create ${space_name} ${project_name}
+  assert_success
+
+  run ockam message send hello --to /project/${project_name}/service/echo
+  assert_success
+  assert_output "hello"
+
+  run ockam project delete ${space_name} ${project_name}
+  assert_success
+
+  run ockam space delete ${space_name}
+  assert_success
+}
+
+@test "list spaces" {
+  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
+    skip "ORCHESTRATOR_TESTS are not enabled"
+  fi
+
+  run ockam space list
+
+  assert_success
+}
+
+
 @test "create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
+  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
+    skip "ORCHESTRATOR_TESTS are not enabled"
+  fi
+
   ockam node create blue
   ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
   ockam forwarder create blue --at /project/default --to /node/blue
