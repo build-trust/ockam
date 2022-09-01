@@ -5,7 +5,6 @@ use crate::nodes::models::secure_channel::{
     DeleteSecureChannelRequest, DeleteSecureChannelResponse, ShowSecureChannelRequest,
     ShowSecureChannelResponse,
 };
-use crate::nodes::registry::{IdentityRouteKey, SecureChannelInfo};
 use crate::nodes::NodeManager;
 use minicbor::Decoder;
 use ockam::identity::TrustEveryonePolicy;
@@ -14,8 +13,6 @@ use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::AsyncTryClone;
 use ockam_identity::{IdentityIdentifier, TrustMultiIdentifiersPolicy};
 use ockam_multiaddr::MultiAddr;
-use std::collections::HashSet;
-use std::sync::Arc;
 
 impl NodeManager {
     pub(super) async fn create_secure_channel_impl<'a>(
@@ -24,10 +21,9 @@ impl NodeManager {
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     ) -> Result<Address> {
         let identity = self.identity()?.async_try_clone().await?;
-        let key_route = IdentityRouteKey::new(&identity, &sc_route).await?;
 
         // If channel was already created, do nothing.
-        if let Some(channel) = self.registry.secure_channels.get(&key_route) {
+        if let Some(channel) = self.registry.secure_channels.get_by_route(&sc_route) {
             let addr = channel.addr();
             trace!(%addr, "Using cached secure channel");
             return Ok(addr.clone());
@@ -57,20 +53,10 @@ impl NodeManager {
         }?;
 
         trace!(%sc_route, %sc_addr, "Created secure channel");
-        // Store the channel using the target route as a key
-        let key_route = IdentityRouteKey::new(&identity, &sc_route).await?;
-        let v = Arc::new(SecureChannelInfo::new(
-            sc_route,
-            sc_addr.clone(),
-            identity.identifier().clone(),
-            authorized_identifiers,
-        ));
-        self.registry.secure_channels.insert(key_route, v.clone());
 
-        // Store the channel using its address as a key
-        let scr: Route = sc_addr.clone().into();
-        let key_addr = IdentityRouteKey::new(&identity, &scr).await?;
-        self.registry.secure_channels.insert(key_addr, v);
+        self.registry
+            .secure_channels
+            .insert(sc_addr.clone(), sc_route, authorized_identifiers);
 
         // Return secure channel address
         Ok(sc_addr)
@@ -127,41 +113,37 @@ impl NodeManager {
             body.channel
         );
 
-        let identity = self.identity()?.async_try_clone().await?;
+        let identity = self.identity()?;
 
         let sc_address = Address::from(body.channel.as_ref());
 
         debug!(%sc_address, "Deleting secure channel");
 
-        // Best effort to tear down the channel.
-        let _ = identity.stop_secure_channel(&sc_address).await;
-
-        // Remove both the Address and Route entries from the registry.
-        let sc_addr = sc_address.clone().into();
-        let key_addr = IdentityRouteKey::new(&identity, &sc_addr).await?;
-        let res = if let Some(v) = self.registry.secure_channels.remove(&key_addr) {
-            trace!(%sc_addr, "Removed secure channel");
-            let sc_route = v.route();
-            let key_route = IdentityRouteKey::new(&identity, sc_route).await?;
-            self.registry.secure_channels.remove(&key_route);
-            trace!(%sc_route, "Removed secure channel");
-            Some(sc_address)
-        } else {
-            trace!(%sc_addr, "No secure channels found for the passed address");
-            None
+        let res = match identity.stop_secure_channel(&sc_address).await {
+            Ok(()) => {
+                trace!(%sc_address, "Removed secure channel");
+                self.registry.secure_channels.remove_by_addr(&sc_address);
+                Some(sc_address)
+            }
+            Err(err) => {
+                trace!(%sc_address, "Error removing secure channel: {err}");
+                None
+            }
         };
+
         Ok(Response::ok(req.id()).body(DeleteSecureChannelResponse::new(res)))
     }
 
     pub(super) fn list_secure_channels(
         &mut self,
         req: &Request<'_>,
-    ) -> ResponseBuilder<HashSet<String>> {
+    ) -> ResponseBuilder<Vec<String>> {
         Response::ok(req.id()).body(
             self.registry
                 .secure_channels
+                .list()
                 .iter()
-                .map(|(_, v)| v.addr().to_string())
+                .map(|v| v.addr().to_string())
                 .collect(),
         )
     }
@@ -173,19 +155,13 @@ impl NodeManager {
     ) -> Result<ResponseBuilder<ShowSecureChannelResponse<'a>>> {
         let body: ShowSecureChannelRequest = dec.decode()?;
 
-        let identity = self.identity()?.async_try_clone().await?;
-
         let sc_address = Address::from(body.channel.as_ref());
 
         debug!(%sc_address, "On show secure channel");
 
-        //        let sc_addr = sc_address.into();
-        let key_addr =
-            IdentityRouteKey::new(&identity, &Address::from(body.channel.as_ref()).into()).await?;
+        let info = self.registry.secure_channels.get_by_addr(&sc_address);
 
-        let info = self.registry.secure_channels.get(&key_addr);
-
-        Ok(Response::ok(req.id()).body(ShowSecureChannelResponse::new(info.map(Arc::as_ref))))
+        Ok(Response::ok(req.id()).body(ShowSecureChannelResponse::new(info)))
     }
 
     pub(super) async fn create_secure_channel_listener_impl(

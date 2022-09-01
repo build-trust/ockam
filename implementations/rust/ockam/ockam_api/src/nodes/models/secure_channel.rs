@@ -155,7 +155,6 @@ pub struct ShowSecureChannelResponse<'a> {
     #[n(0)] tag: TypeTag<4566220>,
     #[b(1)] pub channel: Option<Cow<'a, str>>,
     #[b(2)] pub route: Option<Cow<'a, str>>,
-    #[b(3)] pub id: Option<Cow<'a, str>>,
     #[b(4)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
 }
 
@@ -166,7 +165,6 @@ impl<'a> ShowSecureChannelResponse<'a> {
             tag: TypeTag,
             channel: info.map(|info| info.addr().to_string().into()),
             route: info.map(|info| info.route().to_string().into()),
-            id: info.map(|info| info.id().to_string().into()),
             authorized_identifiers: info
                 .map(|info| {
                     info.authorized_identifiers()

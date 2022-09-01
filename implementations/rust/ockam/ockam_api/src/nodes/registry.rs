@@ -1,9 +1,40 @@
 use crate::nodes::service::Alias;
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::{Address, Result, Route};
-use ockam_identity::{Identity, IdentityIdentifier};
-use ockam_vault::Vault;
-use std::sync::Arc;
+use ockam_core::{Address, Route};
+use ockam_identity::IdentityIdentifier;
+
+#[derive(Default)]
+pub(crate) struct SecureChannelRegistry {
+    channels: Vec<SecureChannelInfo>,
+}
+
+impl SecureChannelRegistry {
+    pub fn get_by_route(&self, route: &Route) -> Option<&SecureChannelInfo> {
+        self.channels.iter().find(|&x| x.route() == route)
+    }
+
+    pub fn get_by_addr(&self, addr: &Address) -> Option<&SecureChannelInfo> {
+        self.channels.iter().find(|&x| x.addr() == addr)
+    }
+
+    pub fn insert(
+        &mut self,
+        addr: Address,
+        route: Route,
+        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+    ) {
+        self.channels
+            .push(SecureChannelInfo::new(route, addr, authorized_identifiers))
+    }
+
+    pub fn remove_by_addr(&mut self, addr: &Address) {
+        self.channels.retain(|x| x.addr() != addr)
+    }
+
+    pub fn list(&self) -> &[SecureChannelInfo] {
+        &self.channels
+    }
+}
 
 #[derive(Clone)]
 pub struct SecureChannelInfo {
@@ -11,7 +42,6 @@ pub struct SecureChannelInfo {
     route: Route,
     // Local address of the created channel
     addr: Address,
-    id: IdentityIdentifier,
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 }
 
@@ -19,13 +49,11 @@ impl SecureChannelInfo {
     pub fn new(
         route: Route,
         addr: Address,
-        id: IdentityIdentifier,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     ) -> Self {
         Self {
             addr,
             route,
-            id,
             authorized_identifiers,
         }
     }
@@ -38,23 +66,8 @@ impl SecureChannelInfo {
         &self.addr
     }
 
-    pub fn id(&self) -> &IdentityIdentifier {
-        &self.id
-    }
-
     pub fn authorized_identifiers(&self) -> Option<&Vec<IdentityIdentifier>> {
         self.authorized_identifiers.as_ref()
-    }
-}
-
-#[derive(Default, Debug, Hash, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) struct IdentityRouteKey(Vec<u8>);
-
-impl IdentityRouteKey {
-    pub(crate) async fn new(identity: &Identity<Vault>, route: &Route) -> Result<Self> {
-        let mut key = identity.export().await?;
-        key.extend_from_slice(route.to_string().as_bytes());
-        Ok(Self(key))
     }
 }
 
@@ -123,10 +136,7 @@ impl OutletInfo {
 
 #[derive(Default)]
 pub(crate) struct Registry {
-    // Registry to keep track of secure channels. It uses an Arc to store the channel info because we
-    // generally add two entries to the map: one using the target route as the key to avoid creating
-    // duplicated secure channels, and another using the secure channel address to be able to remove them.
-    pub(crate) secure_channels: BTreeMap<IdentityRouteKey, Arc<SecureChannelInfo>>,
+    pub(crate) secure_channels: SecureChannelRegistry,
     pub(crate) secure_channel_listeners: BTreeMap<Address, SecureChannelListenerInfo>,
     pub(crate) vault_services: BTreeMap<Address, VaultServiceInfo>,
     pub(crate) identity_services: BTreeMap<Address, IdentityServiceInfo>,

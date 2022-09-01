@@ -182,7 +182,7 @@ impl Output for ShowSecureChannelResponse<'_> {
         let s = match &self.channel {
             Some(addr) => {
                 format!(
-                    "\n  Secure Channel:\n{} {}\n{} {}\n{} {}\n{} {}",
+                    "\n  Secure Channel:\n{} {}\n{} {}\n{} {}",
                     "  •         At: ".light_magenta(),
                     route_to_multiaddr(&route![addr.to_string()])
                         .context("Invalid Secure Channel Address")?
@@ -190,8 +190,6 @@ impl Output for ShowSecureChannelResponse<'_> {
                         .light_yellow(),
                     "  •         To: ".light_magenta(),
                     self.route.as_ref().unwrap().light_yellow(),
-                    "  • Identifier: ".light_magenta(),
-                    self.id.as_ref().unwrap().light_yellow(),
                     "  • Authorized: ".light_magenta(),
                     self.authorized_identifiers
                         .as_ref()
