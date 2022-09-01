@@ -15,6 +15,7 @@ use crate::util::api::CloudOpts;
 use crate::util::RpcBuilder;
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
 use ockam_api::config::lookup::ConfigLookup;
+use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::{
     clean_multiaddr, nodes::models::secure_channel::CreateSecureChannelResponse, route_to_multiaddr,
 };
@@ -36,6 +37,10 @@ pub struct CreateCommand {
     #[clap(value_name = "IDENTIFIER", long, short, display_order = 801)]
     pub authorized: Option<Vec<IdentityIdentifier>>,
 
+    /// Run credentials exchange
+    #[clap(long, short, display_order = 802)]
+    pub exchange_credentials: bool,
+
     /// Orchestrator address to resolve projects present in the `at` argument
     #[clap(flatten)]
     cloud_opts: CloudOpts,
@@ -55,10 +60,16 @@ impl CreateCommand {
         cloud_addr: &MultiAddr,
         api_node: &str,
         tcp: &TcpTransport,
+        exchange_credentials: bool,
     ) -> anyhow::Result<MultiAddr> {
         let config = &opts.config.lookup();
         let (to, meta) = clean_multiaddr(&self.to, config)
             .context(format!("Could not convert {} into route", &self.to))?;
+        let credential_exchange_mode = if exchange_credentials {
+            CredentialExchangeMode::Oneway
+        } else {
+            CredentialExchangeMode::None
+        };
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
             ctx,
             opts,
@@ -66,6 +77,7 @@ impl CreateCommand {
             cloud_addr,
             api_node,
             Some(tcp),
+            credential_exchange_mode,
         )
         .await?;
         crate::project::util::clean_projects_multiaddr(to, projects_sc)
@@ -160,14 +172,22 @@ async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, CreateCommand
             &command.cloud_opts.route_to_controller,
             from,
             &tcp,
+            command.exchange_credentials,
         )
         .await?;
 
     let authorized_identifiers = command.authorized.clone();
 
+    let credential_exchange_mode = if command.exchange_credentials {
+        CredentialExchangeMode::Mutual
+    } else {
+        CredentialExchangeMode::None
+    };
+
     // Delegate the request to create a secure channel to the from node.
     let mut rpc = RpcBuilder::new(&ctx, &options, from).tcp(&tcp)?.build();
-    let request = api::create_secure_channel(to, authorized_identifiers);
+    let request = api::create_secure_channel(to, authorized_identifiers, credential_exchange_mode);
+
     rpc.request(request).await?;
     let response = rpc.parse_response::<CreateSecureChannelResponse>()?;
 

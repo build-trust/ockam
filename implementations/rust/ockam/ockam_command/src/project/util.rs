@@ -49,6 +49,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
     cloud_addr: &MultiAddr,
     api_node: &str,
     tcp: Option<&TcpTransport>,
+    credential_exchange_mode: CredentialExchangeMode,
 ) -> Result<Vec<MultiAddr>> {
     let cfg_lookup = opts.config.lookup();
     let mut sc = Vec::with_capacity(meta.project.len());
@@ -80,6 +81,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 tcp,
                 project_access_route,
                 &project_identity_id,
+                credential_exchange_mode,
             )
             .await?,
         );
@@ -91,19 +93,21 @@ pub async fn get_projects_secure_channels_from_config_lookup(
     Ok(sc)
 }
 
-async fn create_secure_channel_to_project<'a>(
+async fn create_secure_channel_to_project(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
     api_node: &str,
     tcp: Option<&TcpTransport>,
     project_access_route: &MultiAddr,
     project_identity: &str,
+    credential_exchange_mode: CredentialExchangeMode,
 ) -> crate::Result<MultiAddr> {
     let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
     rpc.request(api::create_secure_channel(
         project_access_route,
         Some(authorized_identifier),
+        credential_exchange_mode,
     ))
     .await?;
     let sc = rpc.parse_response::<CreateSecureChannelResponse>()?;
@@ -176,6 +180,7 @@ pub async fn check_project_readiness<'a>(
             tcp,
             &project_route,
             &project_identity,
+            CredentialExchangeMode::None,
         )
         .await
         {
@@ -195,6 +200,7 @@ pub async fn check_project_readiness<'a>(
                         tcp,
                         &project_route,
                         &project_identity,
+                        CredentialExchangeMode::None,
                     )
                     .await
                     {

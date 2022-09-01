@@ -138,7 +138,7 @@ impl NodeManager {
 
         identity
             .start_credentials_exchange_worker(
-                authorities.clone(),
+                authorities.public_identities(),
                 addr.clone(),
                 !oneway,
                 self.authenticated_storage.async_try_clone().await?,

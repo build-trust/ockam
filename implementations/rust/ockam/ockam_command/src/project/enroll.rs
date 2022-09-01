@@ -5,7 +5,9 @@ use ockam::identity::IdentityIdentifier;
 use ockam::{Context, TcpTransport};
 use ockam_api::authenticator::direct::types::AddMember;
 use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority};
-use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
+use ockam_api::nodes::models::secure_channel::{
+    CreateSecureChannelResponse, CredentialExchangeMode,
+};
 use ockam_core::api::Request;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use tracing::debug;
@@ -87,8 +89,12 @@ impl Runner {
         let addr = replace_project(&self.cmd.to, auth.address())?;
         debug!(%addr, "establishing secure channel to project authority");
         let allowed = vec![auth.identity_id().clone()];
-        rpc.request(api::create_secure_channel(&addr, Some(allowed)))
-            .await?;
+        rpc.request(api::create_secure_channel(
+            &addr,
+            Some(allowed),
+            CredentialExchangeMode::None,
+        ))
+        .await?;
         let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
         let addr = res.addr()?;
         Ok(addr)

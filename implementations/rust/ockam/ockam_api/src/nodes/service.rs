@@ -11,6 +11,7 @@ use ockam_core::api::{Method, Request, Response, Status};
 use ockam_core::compat::{boxed::Box, string::String};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_identity::{Identity, IdentityIdentifier, PublicIdentity};
+use ockam_multiaddr::MultiAddr;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
@@ -58,6 +59,29 @@ fn map_anyhow_err(err: anyhow::Error) -> ockam_core::Error {
     ockam_core::Error::new(Origin::Application, Kind::Internal, err)
 }
 
+pub(crate) struct Authorities(Vec<AuthorityInfo>);
+
+impl Authorities {
+    pub fn new(authorities: Vec<AuthorityInfo>) -> Self {
+        Self(authorities)
+    }
+
+    pub fn public_identities(&self) -> Vec<PublicIdentity> {
+        self.0.iter().map(|x| x.identity.clone()).collect()
+    }
+}
+
+impl AsRef<[AuthorityInfo]> for Authorities {
+    fn as_ref(&self) -> &[AuthorityInfo] {
+        self.0.as_ref()
+    }
+}
+
+pub(crate) struct AuthorityInfo {
+    identity: PublicIdentity,
+    addr: Option<MultiAddr>, // TODO: Should be not optional in the future
+}
+
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeManager {
     node_name: String,
@@ -70,7 +94,7 @@ pub struct NodeManager {
     skip_defaults: bool,
     vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
-    authorities: Option<Vec<PublicIdentity>>,
+    authorities: Option<Authorities>,
     pub(crate) authenticated_storage: LmdbStorage,
     pub(crate) registry: Registry,
 }
@@ -93,7 +117,7 @@ impl NodeManager {
             .ok_or_else(|| ApiError::generic("Vault doesn't exist"))
     }
 
-    pub(crate) fn authorities(&self) -> Result<&Vec<PublicIdentity>> {
+    pub(crate) fn authorities(&self) -> Result<&Authorities> {
         self.authorities
             .as_ref()
             .ok_or_else(|| ApiError::generic("Authorities don't exist"))
@@ -102,6 +126,7 @@ impl NodeManager {
 
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
+    #[allow(clippy::too_many_arguments)]
     pub async fn create(
         ctx: &Context,
         node_name: String,
@@ -109,6 +134,7 @@ impl NodeManager {
         // Should be passed only when creating fresh node and we want it to get default root Identity
         identity_override: Option<IdentityOverride>,
         skip_defaults: bool,
+        ac: Option<&AuthoritiesConfig>,
         api_transport: (TransportType, TransportMode, String),
         tcp_transport: TcpTransport,
     ) -> Result<Self> {
@@ -192,18 +218,29 @@ impl NodeManager {
 
         if !skip_defaults {
             s.create_defaults(ctx).await?;
+
+            if let Some(ac) = ac {
+                s.configure_authorities(ac).await?;
+            }
         }
 
         Ok(s)
     }
 
-    pub async fn configure_authorities(&mut self, ac: &AuthoritiesConfig) -> Result<()> {
-        if let Some(v) = self.vault.as_ref() {
-            self.authorities = Some(ac.to_public_identities(v).await?)
-        } else {
-            let v = Vault::default();
-            self.authorities = Some(ac.to_public_identities(&v).await?)
+    async fn configure_authorities(&mut self, ac: &AuthoritiesConfig) -> Result<()> {
+        let vault = self.vault()?;
+
+        let mut v = Vec::new();
+
+        for a in ac.authorities() {
+            v.push(AuthorityInfo {
+                identity: PublicIdentity::import(a.1.identity(), vault).await?,
+                addr: Some(a.1.access_route().clone()),
+            })
         }
+
+        self.authorities = Some(Authorities::new(v));
+
         Ok(())
     }
 
@@ -246,12 +283,11 @@ impl NodeManager {
         )
         .await?;
 
-        // TODO: Add after authority becomes available at this point
-        // self.start_credentials_service_impl(
-        //     DefaultAddresses::CREDENTIAL_SERVICE.into(),
-        //     false, /* Not available yet */
-        // )
-        // .await?;
+        // If we've been configured with authorities, we can start Credentials Exchange service
+        if self.authorities().is_ok() {
+            self.start_credentials_service_impl(DefaultAddress::CREDENTIAL_SERVICE.into(), false)
+                .await?;
+        }
 
         Ok(())
     }
@@ -334,7 +370,7 @@ impl NodeManager {
                 self.set_authorities(req, dec).await?.to_vec()?
             }
             (Post, ["node", "credentials", "actions", "get"]) => {
-                self.get_credential(ctx, req, dec).await?.to_vec()?
+                self.get_credential(req, dec).await?.to_vec()?
             }
             (Post, ["node", "credentials", "actions", "present"]) => {
                 self.present_credential(req, dec).await?.to_vec()?
@@ -506,6 +542,7 @@ pub(crate) mod tests {
                 node_dir.into_path(),
                 None,
                 true,
+                None,
                 (
                     TransportType::Tcp,
                     TransportMode::Listen,

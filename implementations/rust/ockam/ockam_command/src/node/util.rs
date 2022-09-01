@@ -40,20 +40,17 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
     let bind = cmd.tcp_listener_address;
     tcp.listen(&bind).await?;
     let node_dir = cfg.get_node_dir_raw(&cmd.node_name)?;
-    let mut node_man = NodeManager::create(
+    let node_man = NodeManager::create(
         ctx,
         cmd.node_name.clone(),
         node_dir,
         identity_override,
         cmd.skip_defaults || cmd.launch_config.is_some(),
+        Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
         (TransportType::Tcp, TransportMode::Listen, bind),
         tcp,
     )
     .await?;
-
-    node_man
-        .configure_authorities(&cfg.authorities(&cmd.node_name)?.snapshot())
-        .await?;
 
     ctx.start_worker(NODEMANAGER_ADDR, node_man).await?;
 
