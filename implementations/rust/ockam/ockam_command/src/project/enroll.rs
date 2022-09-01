@@ -1,14 +1,17 @@
 use clap::Args;
 
+use anyhow::anyhow;
 use ockam::identity::IdentityIdentifier;
-use ockam::Context;
+use ockam::{Context, TcpTransport};
 use ockam_api::authenticator::direct::types::AddMember;
-use ockam_api::clean_multiaddr;
+use ockam_api::config::lookup::ConfigLookup;
+use ockam_api::nodes::models::secure_channel::CreateSecureChannelResponse;
 use ockam_core::api::Request;
-use ockam_multiaddr::MultiAddr;
+use ockam_multiaddr::{proto, MultiAddr, Protocol};
+use tracing::debug;
 
-use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::util::api::CloudOpts;
+use crate::node::NodeOpts;
+use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{help, CommandGlobalOpts, Result};
 
@@ -20,6 +23,9 @@ pub struct EnrollCommand {
     #[clap(flatten)]
     cloud_opts: CloudOpts,
 
+    #[clap(flatten)]
+    node_opts: NodeOpts,
+
     #[clap(long, short)]
     member: IdentityIdentifier,
 
@@ -29,32 +35,81 @@ pub struct EnrollCommand {
 
 impl EnrollCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(rpc, (options, self));
+        node_rpc(
+            |ctx, (opts, cmd)| Runner::new(ctx, opts, cmd).run(),
+            (options, self),
+        );
     }
 }
 
-async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> Result<()> {
-    async fn go(ctx: &mut Context, opts: &CommandGlobalOpts, cmd: EnrollCommand) -> Result<()> {
-        let node_name = start_embedded_node(ctx, &opts.config).await?;
+struct Runner {
+    ctx: Context,
+    opts: CommandGlobalOpts,
+    cmd: EnrollCommand,
+}
 
-        let (to, meta) = clean_multiaddr(&cmd.to, &opts.config.get_lookup()).unwrap();
-        let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
-            ctx,
-            opts,
-            &meta,
-            &cmd.cloud_opts.route_to_controller,
-            &node_name,
-            None,
-        )
-        .await?;
-        let to = crate::project::util::clean_projects_multiaddr(to, projects_sc)?;
+impl Runner {
+    fn new(ctx: Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> Self {
+        Self { ctx, opts, cmd }
+    }
 
-        let req = Request::post("/members").body(AddMember::new(cmd.member));
-        let mut rpc = RpcBuilder::new(ctx, opts, &node_name).to(&to)?.build();
+    async fn run(self) -> Result<()> {
+        let tcp = TcpTransport::create(&self.ctx).await?;
+        let map = self.opts.config.get_lookup();
+        let to = if let Some(addr) = authority_addr(&self.cmd.to, &map)? {
+            debug!(%addr, "establishing secure channel to project authority");
+            let mut addr = self.secure_channel(&tcp, &addr).await?;
+            for proto in self.cmd.to.iter().skip(1) {
+                addr.push_back_value(&proto).map_err(anyhow::Error::from)?
+            }
+            addr
+        } else {
+            self.cmd.to.clone()
+        };
+        let req = Request::post("/members").body(AddMember::new(self.cmd.member.clone()));
+        let mut rpc = RpcBuilder::new(&self.ctx, &self.opts, &self.cmd.node_opts.api_node)
+            .tcp(&tcp)
+            .to(&to)?
+            .build()?;
+        debug!(addr = %to, member = %self.cmd.member, "requesting to add member");
         rpc.request(req).await?;
-        delete_embedded_node(&opts.config, rpc.node_name()).await;
         rpc.is_ok()?;
         Ok(())
     }
-    go(&mut ctx, &opts, cmd).await
+
+    async fn secure_channel(
+        &self,
+        tcp: &TcpTransport,
+        addr: &MultiAddr,
+    ) -> anyhow::Result<MultiAddr> {
+        let mut rpc = RpcBuilder::new(&self.ctx, &self.opts, &self.cmd.node_opts.api_node)
+            .tcp(tcp)
+            .build()?;
+        rpc.request(api::create_secure_channel(addr, None)).await?;
+        let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
+        let addr = res.addr()?;
+        Ok(addr)
+    }
+}
+
+/// Get the authority address (if any) of the given address.
+///
+/// If the input address begins with a `/project` protocol we look for the
+/// corresponding authority access route and return it.
+fn authority_addr(input: &MultiAddr, map: &ConfigLookup) -> anyhow::Result<Option<MultiAddr>> {
+    if let Some(proto) = input.first() {
+        if proto.code() == proto::Project::CODE {
+            let proj = proto.cast::<proto::Project>().expect("project protocol");
+            if let Some(p) = map.get_project(&proj) {
+                if let Some(r) = &p.authority_access_route {
+                    return Ok(Some(r.clone()));
+                } else {
+                    return Err(anyhow!("missing authority route for project {}", &*proj));
+                }
+            } else {
+                return Err(anyhow!("unknown project {}", &*proj));
+            }
+        }
+    }
+    Ok(None)
 }

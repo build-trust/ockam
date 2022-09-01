@@ -28,7 +28,11 @@ impl Display for Error {
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(self.inner.as_ref())
+    }
+}
 
 impl From<ConfigError> for Error {
     fn from(e: ConfigError) -> Self {

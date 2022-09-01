@@ -7,7 +7,7 @@ use tracing::debug;
 use ockam::identity::IdentityIdentifier;
 use ockam::TcpTransport;
 use ockam_api::cloud::project::Project;
-use ockam_api::config::lookup::LookupMeta;
+use ockam_api::config::lookup::{LookupMeta, ProjectLookup};
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::secure_channel::*;
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -70,7 +70,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
             let p = cfg_lookup
                 .get_project(name)
                 .context(format!("Failed to get project {} from config lookup", name))?;
-            (p.node_route(), p.identity_id.to_string())
+            (&p.node_route, p.identity_id.to_string())
         };
         sc.push(
             create_secure_channel_to_project(
@@ -216,22 +216,40 @@ pub mod config {
 
     use super::*;
 
-    pub fn set_project(config: &OckamConfig, project: &Project) -> Result<()> {
+    fn set(config: &OckamConfig, project: &Project) -> Result<()> {
         if !project.is_ready() {
             return Err(anyhow!(
                 "Project is not ready yet, wait a few seconds and try again"
             ));
         }
+        let proute: MultiAddr = project
+            .access_route
+            .as_ref()
+            .try_into()
+            .context("Invalid project node route")?;
+        let pid = project
+            .identity
+            .as_ref()
+            .context("Project should have identity set")?;
+        let aroute = project
+            .authority_access_route
+            .as_ref()
+            .map(|v| MultiAddr::try_from(&**v).context("Invalid project authority"))
+            .transpose()?;
         config.set_project_alias(
             project.name.to_string(),
-            project.access_route.to_string(),
-            project.id.to_string(),
-            project
-                .identity
-                .as_ref()
-                .context("Project should have identity set")?
-                .to_string(),
+            ProjectLookup {
+                node_route: proute,
+                authority_access_route: aroute,
+                id: project.id.to_string(),
+                identity_id: pid.clone(),
+            },
         )?;
+        Ok(())
+    }
+
+    pub fn set_project(config: &OckamConfig, project: &Project) -> Result<()> {
+        set(config, project)?;
         config.atomic_update().run()?;
         Ok(())
     }
@@ -239,21 +257,7 @@ pub mod config {
     pub fn set_projects(config: &OckamConfig, projects: &[Project]) -> Result<()> {
         config.remove_projects_alias();
         for project in projects.iter() {
-            if !project.is_ready() {
-                return Err(anyhow!(
-                    "Project is not ready yet, wait a few seconds and try again"
-                ));
-            }
-            config.set_project_alias(
-                project.name.to_string(),
-                project.access_route.to_string(),
-                project.id.to_string(),
-                project
-                    .identity
-                    .as_ref()
-                    .context("Project should have identity set")?
-                    .to_string(),
-            )?;
+            set(config, project)?;
         }
         config.atomic_update().run()?;
         Ok(())
