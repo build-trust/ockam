@@ -52,7 +52,7 @@ defmodule Ockam.Credential.AttributeStorageETS do
   @spec get_attributes(identity_id()) :: %{String.t() => binary()}
   def get_attributes(id) do
     case get_attribute_set(id) do
-      {:ok, %{attributes: attributes}} -> attributes
+      {:ok, %{attributes: %{attributes: attributes}}} -> attributes
       {:error, _reason} -> %{}
     end
   end

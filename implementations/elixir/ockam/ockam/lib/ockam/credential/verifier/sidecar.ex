@@ -27,7 +27,7 @@ defmodule Ockam.Credential.Verifier.Sidecar do
     path = "verify"
 
     request =
-      VerifyRequest.encode!(%{
+      VerifyRequest.encode!(%VerifyRequest{
         credential: credential,
         subject_id: subject_id,
         authorities: authorities

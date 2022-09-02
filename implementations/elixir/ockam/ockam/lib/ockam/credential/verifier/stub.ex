@@ -3,11 +3,13 @@ defmodule Ockam.Credential.Verifier.Stub do
   Stub implementation for credential verifier
   """
   alias Ockam.Credential.AttributeSet
+  alias Ockam.Credential.AttributeSet.Attributes
 
   def verify(credential, subject_id, authorities)
       when is_binary(credential) and is_binary(subject_id) and is_map(authorities) do
     with {:ok, %{attributes: attributes, expiration: expiration}} <- parse_credential(credential) do
-      {:ok, %AttributeSet{attributes: attributes, expiration: expiration}}
+      {:ok,
+       %AttributeSet{attributes: %Attributes{attributes: attributes}, expiration: expiration}}
     end
   end
 
