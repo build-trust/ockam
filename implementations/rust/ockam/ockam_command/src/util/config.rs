@@ -274,9 +274,10 @@ impl OckamConfig {
             Some(default_node_name) if default_node_name == name => inner.default = None,
             _ => {}
         }
+        inner.lookup.remove_node(name);
         match inner.nodes.remove(name) {
             Some(_) => Ok(()),
-            None => Err(ConfigError::Exists(name.to_string()).into()),
+            None => Err(ConfigError::NotFound(name.to_string()).into()),
         }
     }
 

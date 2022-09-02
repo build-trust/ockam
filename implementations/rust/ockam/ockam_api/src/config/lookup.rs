@@ -53,6 +53,10 @@ impl ConfigLookup {
             })
     }
 
+    pub fn remove_node(&mut self, name: &str) -> Option<LookupValue> {
+        self.map.remove(&format!("/node/{}", name))
+    }
+
     pub fn set_space(&mut self, id: &str, name: &str) {
         self.map.insert(
             format!("/space/{}", name),
