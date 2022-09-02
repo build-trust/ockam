@@ -2,7 +2,7 @@ use crate::{help, node::HELP_DETAIL, util::startup, CommandGlobalOpts};
 use clap::Args;
 use ockam_api::config::cli::OckamConfig;
 use sysinfo::{get_current_pid, ProcessExt, System, SystemExt};
-use tracing::{debug, trace};
+use tracing::trace;
 
 /// Delete Nodes
 #[derive(Clone, Debug, Args)]
@@ -38,17 +38,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
             inner.nodes.iter().map(|(name, _)| name.clone()).collect()
         };
         for node_name in nn.iter() {
-            // Deleting a node can fail if there are inconsistencies between the config file and the
-            // node state directory (e.g. due to manual manipulation of the config file).
-            // We fail silently and continue with the next node.
-            match delete_node(&opts, node_name, cmd.force) {
-                Ok(_) => {
-                    println!("Deleted node '{}'", node_name);
-                }
-                Err(e) => {
-                    debug!(%node_name, ?e, "Failed to delete node");
-                }
-            }
+            delete_node(&opts, node_name, cmd.force)
         }
 
         // Try to delete dangling embedded nodes directories
@@ -86,25 +76,21 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
             return Err(crate::Error::new(crate::exitcode::IOERR, e));
         }
     } else {
-        delete_node(&opts, &cmd.node_name, cmd.force)?;
+        delete_node(&opts, &cmd.node_name, cmd.force);
         opts.config.atomic_update().run()?;
         println!("Deleted node '{}'", &cmd.node_name);
     }
     Ok(())
 }
 
-fn delete_node(opts: &CommandGlobalOpts, node_name: &str, sigkill: bool) -> anyhow::Result<()> {
+fn delete_node(opts: &CommandGlobalOpts, node_name: &str, sigkill: bool) {
     trace!(%node_name, "Deleting node");
-    // Execute deletion operations without propagating errors
-    let ops = [
-        delete_node_pid(opts, node_name, sigkill),
-        delete_node_config(opts, node_name),
-    ];
-    // Propagate errors once all operations have been executed
-    for r in ops.into_iter() {
-        r?;
-    }
-    Ok(())
+
+    // We ignore the result of killing the node process as it could be not
+    // found (after a restart or if the user manually deleted it, for example).
+    let _ = delete_node_pid(opts, node_name, sigkill);
+
+    delete_node_config(opts, node_name);
 }
 
 fn delete_node_pid(opts: &CommandGlobalOpts, node_name: &str, sigkill: bool) -> anyhow::Result<()> {
@@ -112,10 +98,10 @@ fn delete_node_pid(opts: &CommandGlobalOpts, node_name: &str, sigkill: bool) -> 
     // Stop the process PID if it has one assigned in the config file
     if let Some(pid) = opts.config.get_node_pid(node_name)? {
         startup::stop(pid, sigkill)?;
-        let addr = format!("127.0.0.1:{}", opts.config.get_node_port(node_name));
         // Give some room for the process to stop
         std::thread::sleep(std::time::Duration::from_millis(100));
-        // If fails to bind, the port is already taken, so we try to stop the process
+        // If it fails to bind, the port is still in use, so we try again to stop the process
+        let addr = format!("127.0.0.1:{}", opts.config.get_node_port(node_name));
         if std::net::TcpListener::bind(&addr).is_err() {
             startup::stop(pid, sigkill)?;
         }
@@ -123,14 +109,17 @@ fn delete_node_pid(opts: &CommandGlobalOpts, node_name: &str, sigkill: bool) -> 
     Ok(())
 }
 
-fn delete_node_config(opts: &CommandGlobalOpts, node_name: &str) -> anyhow::Result<()> {
+fn delete_node_config(opts: &CommandGlobalOpts, node_name: &str) {
     trace!(%node_name, "Deleting node config");
-    // Try removing the node's directory
+
+    // Try removing the node's directory.
+    // If the directory is not found, we ignore the result and continue.
     let _ = opts
         .config
         .get_node_dir_raw(node_name)
         .map(std::fs::remove_dir_all);
-    // Remove the node's info from the config file
-    opts.config.delete_node(node_name)?;
-    Ok(())
+
+    // Try removing the node's info from the config file.
+    // If the node is not found, we ignore the result and continue.
+    let _ = opts.config.delete_node(node_name);
 }
