@@ -87,7 +87,10 @@ impl Project<'_> {
     }
 
     pub fn is_ready(&self) -> bool {
-        !(self.access_route.is_empty() || self.identity.is_none())
+        !(self.access_route.is_empty()
+            || self.authority_access_route.is_none()
+            || self.identity.is_none()
+            || self.authority_identity.is_none())
     }
 
     pub async fn is_reachable(&self) -> Result<bool> {
