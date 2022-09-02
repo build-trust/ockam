@@ -497,6 +497,26 @@ impl MultiAddr {
     pub fn shrink_to_fit(&mut self) {
         self.dat.shrink_to_fit()
     }
+
+    /// Try to extend this multi-address with another sequence of protocols.
+    pub fn try_extend<'a, T>(&mut self, iter: T) -> Result<(), Error>
+    where
+        T: IntoIterator<Item = ProtoValue<'a>>,
+    {
+        for p in iter.into_iter() {
+            self.push_back_value(&p)?
+        }
+        Ok(())
+    }
+
+    /// Like `try_extend` but moves `Self`.
+    pub fn try_with<'a, T>(mut self, iter: T) -> Result<Self, Error>
+    where
+        T: IntoIterator<Item = ProtoValue<'a>>,
+    {
+        self.try_extend(iter)?;
+        Ok(self)
+    }
 }
 
 impl fmt::Display for MultiAddr {
@@ -510,6 +530,15 @@ impl fmt::Display for MultiAddr {
             }
         }
         Ok(())
+    }
+}
+
+impl<'a> IntoIterator for &'a MultiAddr {
+    type Item = ProtoValue<'a>;
+    type IntoIter = ProtoIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
