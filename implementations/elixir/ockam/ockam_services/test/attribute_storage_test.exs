@@ -4,6 +4,7 @@ defmodule Test.Services.AttributeSrotageTest do
   alias Ockam.Credential.AttributeStorageETS, as: AttributeStorage
 
   alias Ockam.Credential.AttributeSet
+  alias Ockam.Credential.AttributeSet.Attributes
 
   test "stored attributes" do
     AttributeStorage.init()
@@ -11,13 +12,13 @@ defmodule Test.Services.AttributeSrotageTest do
     id = "foo"
 
     attribute_set = %AttributeSet{
-      attributes: %{"project" => "123", "role" => "member"},
+      attributes: %Attributes{attributes: %{"project" => "123", "role" => "member"}},
       expiration: System.os_time(:second) + 100
     }
 
     AttributeStorage.put_attribute_set(id, attribute_set)
 
-    assert attribute_set.attributes == AttributeStorage.get_attributes(id)
+    assert attribute_set.attributes.attributes == AttributeStorage.get_attributes(id)
   end
 
   test "expired attributes" do

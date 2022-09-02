@@ -72,7 +72,7 @@ defmodule Ockam.Services.API.CredentialExchange do
     Enum.map(authorities_config, fn identity_data ->
       with {:ok, identity} <- Identity.make_identity(identity_data),
            {:ok, identity_id} <- Identity.validate_identity_change_history(identity) do
-        {identity_id, identity}
+        {identity_id, Identity.get_data(identity)}
       end
     end)
     |> Map.new()
