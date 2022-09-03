@@ -5,7 +5,6 @@ use ockam::Context;
 use crate::secure_channel::HELP_DETAIL;
 use crate::{
     help,
-    node::NodeOpts,
     util::{api, node_rpc, Rpc},
     CommandGlobalOpts,
 };
@@ -15,8 +14,8 @@ use crate::{
 #[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct ListCommand {
     /// Node at which the returned secure channels were initiated (required)
-    #[clap(flatten)]
-    node_opts: NodeOpts,
+    #[clap(value_name = "NODE", long, display_order = 800)]
+    at: String,
 }
 
 impl ListCommand {
@@ -37,11 +36,11 @@ async fn secure_channel_list_rpc_impl(
     opts: CommandGlobalOpts,
     cmd: ListCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::background(ctx, &opts, &cmd.node_opts.api_node)?;
+    let mut rpc = Rpc::background(ctx, &opts, &cmd.at)?;
     rpc.request(api::list_secure_channels()).await?;
     let res = rpc.parse_response::<Vec<String>>()?;
 
-    println!("Secure channels for node `{}`:", &cmd.node_opts.api_node);
+    println!("Secure channels for node `{}`:", &cmd.at);
 
     for addr in res {
         println!("  {}", addr);
