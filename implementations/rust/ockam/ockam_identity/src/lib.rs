@@ -19,7 +19,6 @@ extern crate core;
 extern crate alloc;
 
 use ockam_channel::SecureChannelVault;
-use ockam_core::compat::{collections::HashMap, string::String};
 use ockam_core::AsyncTryClone;
 use ockam_vault::{Hasher, SecretVault, Signer, Verifier};
 
@@ -67,6 +66,3 @@ impl<D> IdentityVault for D where
         + 'static
 {
 }
-
-/// Identity event attributes
-pub type IdentityEventAttributes = HashMap<String, String>;

@@ -108,23 +108,23 @@ impl FromStr for IdentityIdentifier {
     }
 }
 
-/// Unique [`crate::IdentityChangeEvent`] identifier, computed as SHA256 of the event data
+/// Unique [`crate::IdentityChangeChange`] identifier, computed as SHA256 of the change data
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Hash)]
-pub struct EventIdentifier([u8; 32]);
+pub struct ChangeIdentifier([u8; 32]);
 
-impl AsRef<[u8]> for EventIdentifier {
+impl AsRef<[u8]> for ChangeIdentifier {
     fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl EventIdentifier {
+impl ChangeIdentifier {
     pub async fn initial(hasher: &(impl Hasher + Sync)) -> Self {
-        let h = match hasher.sha256(IdentityStateConst::NO_EVENT).await {
+        let h = match hasher.sha256(IdentityStateConst::INITIAL_CHANGE).await {
             Ok(hash) => hash,
-            Err(_) => panic!("failed to hash initial event"),
+            Err(_) => panic!("failed to hash initial change"),
         };
-        EventIdentifier::from_hash(h)
+        ChangeIdentifier::from_hash(h)
     }
     /// Create identifier from public key hash
     pub fn from_hash(hash: [u8; 32]) -> Self {

@@ -23,7 +23,7 @@ impl PublicIdentity {
 
     pub async fn import(data: &[u8], vault: &impl IdentityVault) -> Result<Self> {
         let change_history = IdentityChangeHistory::import(data)?;
-        if !change_history.verify_all_existing_events(vault).await? {
+        if !change_history.verify_all_existing_changes(vault).await? {
             return Err(IdentityError::IdentityVerificationFailed.into());
         }
 
