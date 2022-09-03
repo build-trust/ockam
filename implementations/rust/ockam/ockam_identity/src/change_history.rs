@@ -1,8 +1,8 @@
 //! Identity history
-use crate::change::IdentityChangeType::{CreateKey, RotateKey};
-use crate::change::{IdentityChangeEvent, SignatureType};
+use crate::change::IdentityChange::{CreateKey, RotateKey};
+use crate::change::{IdentitySignedChange, SignatureType};
 use crate::{
-    EventIdentifier, IdentityError, IdentityIdentifier, IdentityStateConst, IdentityVault,
+    ChangeIdentifier, IdentityError, IdentityIdentifier, IdentityStateConst, IdentityVault,
 };
 use core::cmp::Ordering;
 use minicbor::{Decode, Encode};
@@ -29,7 +29,7 @@ pub enum IdentityHistoryComparison {
 
 /// Full history of [`Identity`] changes. History and corresponding secret keys are enough to recreate [`Identity`]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct IdentityChangeHistory(Vec<IdentityChangeEvent>);
+pub(crate) struct IdentityChangeHistory(Vec<IdentitySignedChange>);
 
 impl IdentityChangeHistory {
     pub fn export(&self) -> Result<Vec<u8>> {
@@ -48,35 +48,35 @@ impl IdentityChangeHistory {
 }
 
 impl IdentityChangeHistory {
-    pub(crate) fn new(first_event: IdentityChangeEvent) -> Self {
-        Self(vec![first_event])
+    pub(crate) fn new(first_signed_change: IdentitySignedChange) -> Self {
+        Self(vec![first_signed_change])
     }
 
-    pub(crate) fn check_consistency_and_add_event(
+    pub(crate) fn check_consistency_and_add_change(
         &mut self,
-        event: IdentityChangeEvent,
+        change: IdentitySignedChange,
     ) -> Result<()> {
-        let slice = core::slice::from_ref(&event);
+        let slice = core::slice::from_ref(&change);
         if !Self::check_consistency(self.as_ref(), slice) {
             return Err(IdentityError::IdentityVerificationFailed.into());
         }
 
-        self.0.push(event);
+        self.0.push(change);
 
         Ok(())
     }
 }
 
-impl AsRef<[IdentityChangeEvent]> for IdentityChangeHistory {
-    fn as_ref(&self) -> &[IdentityChangeEvent] {
+impl AsRef<[IdentitySignedChange]> for IdentityChangeHistory {
+    fn as_ref(&self) -> &[IdentitySignedChange] {
         &self.0
     }
 }
 
 impl IdentityChangeHistory {
     pub fn compare(&self, known: &Self) -> IdentityHistoryComparison {
-        for event_pair in self.0.iter().zip(known.0.iter()) {
-            if event_pair.0.identifier() != event_pair.1.identifier() {
+        for change_pair in self.0.iter().zip(known.0.iter()) {
+            if change_pair.0.identifier() != change_pair.1.identifier() {
                 return IdentityHistoryComparison::Conflict;
             }
         }
@@ -107,37 +107,37 @@ impl IdentityChangeHistory {
 
     pub fn get_first_root_public_key(&self) -> Result<PublicKey> {
         // TODO: Support root key rotation
-        let root_event = match self.as_ref().first() {
-            Some(event) => event,
+        let root_change = match self.as_ref().first() {
+            Some(change) => change,
             None => return Err(IdentityError::InvalidInternalState.into()),
         };
 
-        let root_change = root_event.change_block().change();
+        let root_change = root_change.change();
 
-        let root_create_key_change = match root_change.change_type() {
+        let root_create_key_change = match root_change {
             CreateKey(c) => c,
             _ => return Err(IdentityError::InvalidInternalState.into()),
         };
 
-        Ok(root_create_key_change.data().public_key().clone())
+        Ok(root_create_key_change.public_key().clone())
     }
 
     pub fn get_root_public_key(&self) -> Result<PublicKey> {
         self.get_public_key(IdentityStateConst::ROOT_LABEL)
     }
 
-    pub async fn verify_all_existing_events(&self, vault: &impl IdentityVault) -> Result<bool> {
+    pub async fn verify_all_existing_changes(&self, vault: &impl IdentityVault) -> Result<bool> {
         for i in 0..self.0.len() {
-            let existing_events = &self.as_ref()[..i];
-            let new_event = &self.as_ref()[i];
-            if !Self::verify_event(existing_events, new_event, vault).await? {
+            let existing_changes = &self.as_ref()[..i];
+            let new_change = &self.as_ref()[i];
+            if !Self::verify_change(existing_changes, new_change, vault).await? {
                 return deny();
             }
         }
         allow()
     }
 
-    /// Check consistency of events that are been added
+    /// Check consistency of changes that are been added
     pub fn check_entire_consistency(&self) -> bool {
         Self::check_consistency(&[], &self.0)
     }
@@ -145,7 +145,7 @@ impl IdentityChangeHistory {
 
 // Pub crate API
 impl IdentityChangeHistory {
-    pub(crate) fn get_last_event_id(&self) -> Result<EventIdentifier> {
+    pub(crate) fn get_last_change_id(&self) -> Result<ChangeIdentifier> {
         if let Some(e) = self.0.last() {
             Ok(e.identifier().clone())
         } else {
@@ -153,57 +153,57 @@ impl IdentityChangeHistory {
         }
     }
 
-    pub(crate) fn find_last_key_event<'a>(
-        existing_events: &'a [IdentityChangeEvent],
+    pub(crate) fn find_last_key_change<'a>(
+        existing_changes: &'a [IdentitySignedChange],
         label: &str,
-    ) -> Result<&'a IdentityChangeEvent> {
-        existing_events
+    ) -> Result<&'a IdentitySignedChange> {
+        existing_changes
             .iter()
             .rev()
-            .find(|e| e.change_block().change().has_label(label))
+            .find(|&e| e.change().has_label(label))
             .ok_or_else(|| IdentityError::InvalidInternalState.into())
     }
 
-    pub(crate) fn find_last_key_event_public_key(
-        existing_events: &[IdentityChangeEvent],
+    pub(crate) fn find_last_key_change_public_key(
+        existing_changes: &[IdentitySignedChange],
         label: &str,
     ) -> Result<PublicKey> {
-        let last_key_event = Self::find_last_key_event(existing_events, label)?;
+        let last_key_change = Self::find_last_key_change(existing_changes, label)?;
 
-        last_key_event.change_block().change().public_key()
+        last_key_change.change().public_key()
     }
 
     pub(crate) fn get_current_root_public_key(
-        existing_events: &[IdentityChangeEvent],
+        existing_changes: &[IdentitySignedChange],
     ) -> Result<PublicKey> {
-        Self::find_last_key_event_public_key(existing_events, IdentityStateConst::ROOT_LABEL)
+        Self::find_last_key_change_public_key(existing_changes, IdentityStateConst::ROOT_LABEL)
     }
 
     pub(crate) fn get_public_key_static(
-        events: &[IdentityChangeEvent],
+        changes: &[IdentitySignedChange],
         label: &str,
     ) -> Result<PublicKey> {
-        let event = Self::find_last_key_event(events, label)?;
-        event.change_block().change().public_key()
+        let change = Self::find_last_key_change(changes, label)?;
+        change.change().public_key()
     }
 
-    /// WARNING: This function assumes all existing events in chain are verified.
-    /// WARNING: Correctness of events sequence is not verified here.
-    pub(crate) async fn verify_event(
-        existing_events: &[IdentityChangeEvent],
-        new_change_event: &IdentityChangeEvent,
+    /// WARNING: This function assumes all existing changes in chain are verified.
+    /// WARNING: Correctness of changes sequence is not verified here.
+    pub(crate) async fn verify_change(
+        existing_changes: &[IdentitySignedChange],
+        new_change: &IdentitySignedChange,
         vault: &impl IdentityVault,
     ) -> Result<bool> {
-        let change_block = new_change_event.change_block();
-        let change_block_binary = change_block
+        let change_binary = new_change
+            .change()
             .encode()
             .map_err(|_| IdentityError::BareError)?;
 
-        let event_id = vault.sha256(&change_block_binary).await?;
-        let event_id = EventIdentifier::from_hash(event_id);
+        let change_id = vault.sha256(&change_binary).await?;
+        let change_id = ChangeIdentifier::from_hash(change_id);
 
-        if &event_id != new_change_event.identifier() {
-            return deny(); // EventIdDoesNotMatch
+        if &change_id != new_change.identifier() {
+            return deny(); // ChangeIdDoesNotMatch
         }
 
         struct SignaturesCheck {
@@ -212,11 +212,11 @@ impl IdentityChangeHistory {
             root_sign: u8,
         }
 
-        let mut signatures_check = match new_change_event.change_block().change().change_type() {
+        let mut signatures_check = match new_change.change() {
             CreateKey(_) => {
                 // Should have self signature and root signature
-                // There is no Root signature for the very first event
-                let root_sign = if existing_events.is_empty() { 0 } else { 1 };
+                // There is no Root signature for the very first change
+                let root_sign = if existing_changes.is_empty() { 0 } else { 1 };
 
                 SignaturesCheck {
                     self_sign: 1,
@@ -234,27 +234,24 @@ impl IdentityChangeHistory {
             }
         };
 
-        for signature in new_change_event.signatures() {
+        for signature in new_change.signatures() {
             let counter;
             let public_key = match signature.stype() {
                 SignatureType::RootSign => {
-                    if existing_events.is_empty() {
+                    if existing_changes.is_empty() {
                         return Err(IdentityError::VerifyFailed.into());
                     }
 
                     counter = &mut signatures_check.root_sign;
-                    Self::get_current_root_public_key(existing_events)?
+                    Self::get_current_root_public_key(existing_changes)?
                 }
                 SignatureType::SelfSign => {
                     counter = &mut signatures_check.self_sign;
-                    new_change_event.change_block().change().public_key()?
+                    new_change.change().public_key()?
                 }
                 SignatureType::PrevSign => {
                     counter = &mut signatures_check.prev_sign;
-                    Self::get_public_key_static(
-                        existing_events,
-                        new_change_event.change_block().change().label(),
-                    )?
+                    Self::get_public_key_static(existing_changes, new_change.change().label())?
                 }
             };
 
@@ -263,7 +260,7 @@ impl IdentityChangeHistory {
             }
 
             if !vault
-                .verify(signature.data(), &public_key, event_id.as_ref())
+                .verify(signature.data(), &public_key, change_id.as_ref())
                 .await?
             {
                 return deny();
@@ -282,22 +279,22 @@ impl IdentityChangeHistory {
         }
     }
 
-    /// Check consistency of events that are been added
+    /// Check consistency of changes that are been added
     pub(crate) fn check_consistency(
-        existing_events: &[IdentityChangeEvent],
-        new_events: &[IdentityChangeEvent],
+        existing_changes: &[IdentitySignedChange],
+        new_changes: &[IdentitySignedChange],
     ) -> bool {
-        let mut prev_event = existing_events.last();
+        let mut prev_change = existing_changes.last();
 
-        for event in new_events.iter() {
-            // Events should go in correct order as stated in previous_event_identifier field
-            if let Some(prev) = prev_event {
-                if prev.identifier() != event.change_block().previous_event_identifier() {
+        for change in new_changes.iter() {
+            // Changes should go in correct order as stated in previous_change_identifier field
+            if let Some(prev) = prev_change {
+                if prev.identifier() != change.change().previous_change_identifier() {
                     return false; // InvalidChainSequence
                 }
             }
 
-            prev_event = Some(event);
+            prev_change = Some(change);
         }
         true
     }

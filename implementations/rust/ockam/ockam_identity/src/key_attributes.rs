@@ -3,17 +3,11 @@ use ockam_core::vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH}
 use ockam_vault::SecretAttributes;
 use serde::{Deserialize, Serialize};
 
-/// Meta-Attributes about a key
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
-pub enum MetaKeyAttributes {
-    SecretAttributes(SecretAttributes),
-}
-
 /// Attributes that are used to identify key
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct KeyAttributes {
     label: String,
-    meta: MetaKeyAttributes,
+    secret_attributes: SecretAttributes,
 }
 
 impl KeyAttributes {
@@ -21,8 +15,8 @@ impl KeyAttributes {
     pub fn label(&self) -> &str {
         &self.label
     }
-    pub fn meta(&self) -> &MetaKeyAttributes {
-        &self.meta
+    pub fn secret_attributes(&self) -> SecretAttributes {
+        self.secret_attributes
     }
 }
 
@@ -30,15 +24,18 @@ impl KeyAttributes {
     pub fn default_with_label(label: impl Into<String>) -> Self {
         Self::new(
             label.into(),
-            MetaKeyAttributes::SecretAttributes(SecretAttributes::new(
+            SecretAttributes::new(
                 SecretType::Ed25519,
                 SecretPersistence::Persistent,
                 CURVE25519_SECRET_LENGTH,
-            )),
+            ),
         )
     }
 
-    pub fn new(label: String, meta: MetaKeyAttributes) -> Self {
-        Self { label, meta }
+    pub fn new(label: String, secret_attributes: SecretAttributes) -> Self {
+        Self {
+            label,
+            secret_attributes,
+        }
     }
 }

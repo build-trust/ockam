@@ -1,10 +1,10 @@
 use crate::authenticated_storage::AuthenticatedStorage;
-use crate::change::IdentityChangeEvent;
+use crate::change::IdentitySignedChange;
 use crate::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use crate::credential::Credential;
 use crate::{
-    EventIdentifier, IdentityError, IdentityEventAttributes, IdentityIdentifier, IdentityVault,
-    KeyAttributes, MetaKeyAttributes, PublicIdentity,
+    ChangeIdentifier, IdentityError, IdentityIdentifier, IdentityVault, KeyAttributes,
+    PublicIdentity,
 };
 use ockam_core::compat::{
     boxed::Box,
@@ -33,9 +33,9 @@ pub struct Identity<V: IdentityVault> {
 pub struct IdentityStateConst;
 
 impl IdentityStateConst {
-    /// Sha256 of that value is used as previous event id for first event in a
+    /// Sha256 of that value is used as previous change id for first change in a
     /// [`crate::Identity`]
-    pub const NO_EVENT: &'static [u8] = "OCKAM_NO_EVENT".as_bytes();
+    pub const INITIAL_CHANGE: &'static [u8] = "OCKAM_INITIAL_CHANGE".as_bytes();
     /// Label for [`crate::Identity`] update key
     pub const ROOT_LABEL: &'static str = "OCKAM_RK";
     /// Current version of change structure
@@ -69,7 +69,7 @@ impl<V: IdentityVault> Identity<V> {
 
     pub async fn import(ctx: &Context, data: &[u8], vault: &V) -> Result<Self> {
         let change_history = IdentityChangeHistory::import(data)?;
-        if !change_history.verify_all_existing_events(vault).await? {
+        if !change_history.verify_all_existing_changes(vault).await? {
             return Err(IdentityError::IdentityVerificationFailed.into());
         }
         let child_ctx = ctx.new_detached(Address::random_local()).await?;
@@ -90,28 +90,27 @@ impl<V: IdentityVault> Identity<V> {
     /// Create Identity
     pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
         let child_ctx = ctx.new_detached(Address::random_local()).await?;
-        let initial_event_id = EventIdentifier::initial(vault).await;
+        let initial_change_id = ChangeIdentifier::initial(vault).await;
 
         let key_attribs = KeyAttributes::new(
             IdentityStateConst::ROOT_LABEL.to_string(),
-            MetaKeyAttributes::SecretAttributes(SecretAttributes::new(
+            SecretAttributes::new(
                 SecretType::Ed25519,
                 SecretPersistence::Persistent,
                 CURVE25519_SECRET_LENGTH,
-            )),
+            ),
         );
 
-        let create_key_event = Self::make_create_key_event_static(
+        let create_key_change = Self::make_create_key_change_static(
             None,
-            initial_event_id,
+            initial_change_id,
             key_attribs.clone(),
-            IdentityEventAttributes::new(),
             None,
             vault,
         )
         .await?;
 
-        let change_history = IdentityChangeHistory::new(create_key_event);
+        let change_history = IdentityChangeHistory::new(create_key_change);
 
         // Sanity check
         if !change_history.check_entire_consistency() {
@@ -119,7 +118,7 @@ impl<V: IdentityVault> Identity<V> {
         }
 
         // Sanity check
-        if !change_history.verify_all_existing_events(vault).await? {
+        if !change_history.verify_all_existing_changes(vault).await? {
             return Err(IdentityError::IdentityVerificationFailed.into());
         }
 
@@ -134,20 +133,20 @@ impl<V: IdentityVault> Identity<V> {
 }
 
 impl<V: IdentityVault> Identity<V> {
-    pub(crate) async fn get_secret_key_from_event(
-        event: &IdentityChangeEvent,
+    pub(crate) async fn get_secret_key_from_change(
+        change: &IdentitySignedChange,
         vault: &V,
     ) -> Result<KeyId> {
-        let public_key = event.change_block().change().public_key()?;
+        let public_key = change.change().public_key()?;
 
         vault.compute_key_id_for_public_key(&public_key).await
     }
 
-    async fn add_change(&self, change_event: IdentityChangeEvent) -> Result<()> {
+    async fn add_change(&self, change: IdentitySignedChange) -> Result<()> {
         self.change_history
             .write()
             .await
-            .check_consistency_and_add_event(change_event)
+            .check_consistency_and_add_change(change)
     }
 }
 
@@ -159,36 +158,38 @@ impl<V: IdentityVault> Identity<V> {
     pub async fn create_key(&self, label: String) -> Result<()> {
         let key_attribs = KeyAttributes::default_with_label(label);
 
-        let event = self
-            .make_create_key_event(None, key_attribs, IdentityEventAttributes::new())
-            .await?;
+        let change = self.make_create_key_change(None, key_attribs).await?;
 
-        self.add_change(event).await
+        self.add_change(change).await
     }
 
     pub async fn add_key(&self, label: String, secret: &KeyId) -> Result<()> {
         let secret_attributes = self.vault.secret_attributes_get(secret).await?;
-        let key_attribs = KeyAttributes::new(
-            label,
-            MetaKeyAttributes::SecretAttributes(secret_attributes),
-        );
+        let key_attribs = KeyAttributes::new(label, secret_attributes);
 
-        let event = self
-            .make_create_key_event(Some(secret), key_attribs, IdentityEventAttributes::new())
+        let change = self
+            .make_create_key_change(Some(secret), key_attribs)
             .await?;
 
-        self.add_change(event).await
+        self.add_change(change).await
     }
 
-    pub async fn rotate_root_secret_key(&self) -> Result<()> {
-        let event = self
-            .make_rotate_key_event(
-                KeyAttributes::default_with_label(IdentityStateConst::ROOT_LABEL.to_string()),
-                IdentityEventAttributes::new(),
-            )
+    pub async fn rotate_key(&self, label: &str) -> Result<()> {
+        let change = self
+            .make_rotate_key_change(KeyAttributes::default_with_label(label.to_string()))
             .await?;
 
-        self.add_change(event).await
+        self.add_change(change).await
+    }
+
+    pub async fn rotate_root_key(&self) -> Result<()> {
+        let change = self
+            .make_rotate_key_change(KeyAttributes::default_with_label(
+                IdentityStateConst::ROOT_LABEL.to_string(),
+            ))
+            .await?;
+
+        self.add_change(change).await
     }
 
     /// Get [`Secret`] key. Key is uniquely identified by label in [`KeyAttributes`]
@@ -197,12 +198,12 @@ impl<V: IdentityVault> Identity<V> {
     }
 
     pub(crate) async fn get_secret_key(&self, label: &str) -> Result<KeyId> {
-        let event = IdentityChangeHistory::find_last_key_event(
+        let change = IdentityChangeHistory::find_last_key_change(
             self.change_history.read().await.as_ref(),
             label,
         )?
         .clone();
-        Self::get_secret_key_from_event(&event, &self.vault).await
+        Self::get_secret_key_from_change(&change, &self.vault).await
     }
 
     /// Generate Proof of possession of [`crate::Identity`].
@@ -309,7 +310,7 @@ mod test {
             self.change_history
                 .read()
                 .await
-                .verify_all_existing_events(&self.vault)
+                .verify_all_existing_changes(&self.vault)
                 .await
         }
     }
@@ -344,7 +345,7 @@ mod test {
             return test_error("public did not change after create_key");
         }
 
-        identity.rotate_root_secret_key().await?;
+        identity.rotate_root_key().await?;
 
         if !identity.verify_changes().await? {
             return test_error("verify_changes failed");
@@ -353,7 +354,7 @@ mod test {
         let secret3 = identity.get_root_secret_key().await?;
         let public3 = identity.get_root_public_key().await?;
 
-        identity.rotate_root_secret_key().await?;
+        identity.rotate_root_key().await?;
 
         if !identity.verify_changes().await? {
             return test_error("verify_changes failed");

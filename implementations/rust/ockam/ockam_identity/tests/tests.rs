@@ -81,8 +81,8 @@ async fn test_key_rotation(ctx: &mut Context) -> Result<()> {
     let bob = Identity::create(ctx, &bob_vault).await?;
 
     // Both identities rotate keys.
-    alice.rotate_root_secret_key().await?;
-    bob.rotate_root_secret_key().await?;
+    alice.rotate_root_key().await?;
+    bob.rotate_root_key().await?;
 
     alice
         .update_known_identity(bob.identifier(), &bob.to_public().await?, &alice_storage)
@@ -115,8 +115,8 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
     bob.update_known_identity(alice.identifier(), &alice.to_public().await?, &bob_storage)
         .await?;
 
-    alice.rotate_root_secret_key().await?;
-    bob.rotate_root_secret_key().await?;
+    alice.rotate_root_key().await?;
+    bob.rotate_root_key().await?;
 
     alice
         .update_known_identity(bob.identifier(), &bob.to_public().await?, &alice_storage)
