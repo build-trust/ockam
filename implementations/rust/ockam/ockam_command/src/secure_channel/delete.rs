@@ -4,18 +4,19 @@ use crate::{
     util::{api, exitcode, get_final_element, node_rpc, Rpc},
     CommandGlobalOpts, OutputFormat, Result,
 };
+use std::str::FromStr;
 
 use atty::Stream;
-use clap::Args;
 use colorful::Colorful;
 use serde_json::json;
 
+use clap::Parser;
 use ockam::{route, Context};
 use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
-use ockam_core::Address;
+use ockam_core::{Address, AddressParseError};
 
 /// Delete Secure Channels
-#[derive(Clone, Debug, Args)]
+#[derive(Clone, Debug, Parser)]
 #[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct DeleteCommand {
     /// Node from which to initiate the secure channel (required)
@@ -23,7 +24,7 @@ pub struct DeleteCommand {
     at: String,
 
     /// Address at which the channel to be deleted is running (required)
-    #[clap(display_order = 800)]
+    #[clap(parse(try_from_str = parse_address), display_order = 800)]
     address: Address,
 }
 
@@ -120,6 +121,23 @@ impl DeleteCommand {
             }
         }
     }
+}
+
+fn parse_address(input: &str) -> core::result::Result<Address, AddressParseError> {
+    let buf: String = input.into();
+
+    if buf.contains("/service/") {
+        let service_vec: Vec<_> = buf.split('/').collect();
+        // If /service/<some value> was passed, we will have split len greater than or equal to 3
+        // ["", "service", "228003f018d277a7e53f15475d111052"]
+        // we will pass index 2 to from_str
+        // EG: /service/228003f018d277a7e53f15475d111052
+        //       /service/228003f018d277a7e53f15475d111052/
+        if service_vec.len() >= 3 && !service_vec[2].is_empty() {
+            return Address::from_str(service_vec[2]);
+        }
+    }
+    Address::from_str(&buf)
 }
 
 async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, DeleteCommand)) -> Result<()> {
