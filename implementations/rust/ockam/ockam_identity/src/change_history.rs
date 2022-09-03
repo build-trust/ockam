@@ -272,7 +272,14 @@ impl IdentityChangeHistory {
             *counter -= 1;
         }
 
-        allow()
+        if signatures_check.prev_sign == 0
+            && signatures_check.root_sign == 0
+            && signatures_check.self_sign == 0
+        {
+            allow()
+        } else {
+            deny()
+        }
     }
 
     /// Check consistency of events that are been added
