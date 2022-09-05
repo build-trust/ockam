@@ -1,6 +1,6 @@
 use crate::vault::{
     SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
-    AES128_SECRET_LENGTH,
+    AES128_SECRET_LENGTH_U32,
 };
 
 pub async fn encryption(vault: &mut (impl SymmetricVault + SecretVault)) {
@@ -10,7 +10,7 @@ pub async fn encryption(vault: &mut (impl SymmetricVault + SecretVault)) {
     let attributes = SecretAttributes::new(
         SecretType::Aes,
         SecretPersistence::Ephemeral,
-        AES128_SECRET_LENGTH,
+        AES128_SECRET_LENGTH_U32,
     );
 
     let ctx = &vault.secret_generate(attributes).await.unwrap();

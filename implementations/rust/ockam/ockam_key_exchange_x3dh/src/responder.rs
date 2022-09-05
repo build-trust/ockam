@@ -6,8 +6,8 @@ use ockam_core::compat::{
     vec::Vec,
 };
 use ockam_core::vault::{
-    KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
-    CURVE25519_SECRET_LENGTH,
+    KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH_U32,
+    CURVE25519_SECRET_LENGTH_U32,
 };
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
@@ -50,12 +50,12 @@ impl<V: X3dhVault> Responder<V> {
         let p_atts = SecretAttributes::new(
             SecretType::X25519,
             SecretPersistence::Persistent,
-            CURVE25519_SECRET_LENGTH,
+            CURVE25519_SECRET_LENGTH_U32,
         );
         let e_atts = SecretAttributes::new(
             SecretType::X25519,
             SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH,
+            CURVE25519_SECRET_LENGTH_U32,
         );
         if self.identity_key.is_none() {
             self.identity_key = Some(self.vault.secret_generate(p_atts).await?);
@@ -181,7 +181,7 @@ impl<V: X3dhVault> KeyExchanger for Responder<V> {
                         SecretAttributes::new(
                             SecretType::Buffer,
                             SecretPersistence::Ephemeral,
-                            ikm_bytes.len(),
+                            ikm_bytes.len() as u32,
                         ),
                     )
                     .await?;
@@ -189,13 +189,17 @@ impl<V: X3dhVault> KeyExchanger for Responder<V> {
                     .vault
                     .secret_import(
                         &[0u8; 32],
-                        SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, 32),
+                        SecretAttributes::new(
+                            SecretType::Buffer,
+                            SecretPersistence::Ephemeral,
+                            32u32,
+                        ),
                     )
                     .await?;
                 let atts = SecretAttributes::new(
                     SecretType::Aes,
                     SecretPersistence::Persistent,
-                    AES256_SECRET_LENGTH,
+                    AES256_SECRET_LENGTH_U32,
                 );
 
                 let mut keyrefs = self

@@ -2,7 +2,8 @@ use crate::{Vault, VaultError};
 use aes_gcm::aead::{generic_array::GenericArray, Aead, NewAead, Payload};
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
 use ockam_core::vault::{
-    Buffer, KeyId, SecretType, SymmetricVault, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH,
+    Buffer, KeyId, SecretType, SymmetricVault, AES128_SECRET_LENGTH_U32,
+    AES128_SECRET_LENGTH_USIZE, AES256_SECRET_LENGTH_U32, AES256_SECRET_LENGTH_USIZE,
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
@@ -32,8 +33,8 @@ impl SymmetricVault for Vault {
 
         let key = entry.key().as_ref();
         match entry.key_attributes().length() {
-            AES128_SECRET_LENGTH => {
-                if key.len() != AES128_SECRET_LENGTH {
+            AES128_SECRET_LENGTH_U32 => {
+                if key.len() != AES128_SECRET_LENGTH_USIZE {
                     return Err(VaultError::AeadAesGcmEncrypt.into());
                 }
 
@@ -42,8 +43,8 @@ impl SymmetricVault for Vault {
                     .encrypt(nonce, payload)
                     .map_err(|_| VaultError::AeadAesGcmEncrypt.into())
             }
-            AES256_SECRET_LENGTH => {
-                if key.len() != AES256_SECRET_LENGTH {
+            AES256_SECRET_LENGTH_U32 => {
+                if key.len() != AES256_SECRET_LENGTH_USIZE {
                     return Err(VaultError::AeadAesGcmEncrypt.into());
                 }
 
@@ -80,8 +81,8 @@ impl SymmetricVault for Vault {
 
         let key = entry.key().as_ref();
         match entry.key_attributes().length() {
-            AES128_SECRET_LENGTH => {
-                if key.len() != AES128_SECRET_LENGTH {
+            AES128_SECRET_LENGTH_U32 => {
+                if key.len() != AES128_SECRET_LENGTH_USIZE {
                     return Err(VaultError::AeadAesGcmEncrypt.into());
                 }
                 let key = GenericArray::from_slice(key);
@@ -89,8 +90,8 @@ impl SymmetricVault for Vault {
                     .decrypt(nonce, payload)
                     .map_err(|_| VaultError::AeadAesGcmEncrypt.into())
             }
-            AES256_SECRET_LENGTH => {
-                if key.len() != AES256_SECRET_LENGTH {
+            AES256_SECRET_LENGTH_U32 => {
+                if key.len() != AES256_SECRET_LENGTH_USIZE {
                     return Err(VaultError::AeadAesGcmEncrypt.into());
                 }
                 let key = GenericArray::from_slice(key);

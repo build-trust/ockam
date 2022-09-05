@@ -80,7 +80,7 @@ impl From<SecretAttributes> for FfiSecretAttributes {
             SecretPersistence::Persistent => 1,
         };
 
-        Self::new(stype, persistence, attrs.length() as u32)
+        Self::new(stype, persistence, attrs.length())
     }
 }
 
@@ -104,6 +104,6 @@ impl TryFrom<FfiSecretAttributes> for SecretAttributes {
             _ => Err(FfiError::InvalidParam),
         }?;
 
-        Ok(Self::new(stype, persistence, attrs.length() as usize))
+        Ok(Self::new(stype, persistence, attrs.length()))
     }
 }

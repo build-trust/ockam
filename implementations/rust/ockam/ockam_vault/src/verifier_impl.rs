@@ -1,6 +1,8 @@
 use crate::vault::Vault;
 use crate::VaultError;
-use ockam_core::vault::{PublicKey, SecretType, Signature, Verifier, CURVE25519_PUBLIC_LENGTH};
+use ockam_core::vault::{
+    PublicKey, SecretType, Signature, Verifier, CURVE25519_PUBLIC_LENGTH_USIZE,
+};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 #[async_trait]
@@ -14,7 +16,7 @@ impl Verifier for Vault {
     ) -> Result<bool> {
         match public_key.stype() {
             SecretType::X25519 => {
-                if public_key.data().len() != CURVE25519_PUBLIC_LENGTH
+                if public_key.data().len() != CURVE25519_PUBLIC_LENGTH_USIZE
                     || signature.as_ref().len() != 64
                 {
                     return Err(VaultError::InvalidPublicKey.into());
@@ -27,12 +29,12 @@ impl Verifier for Vault {
                 let public_key = x25519_dalek::PublicKey::from(*array_ref!(
                     public_key.data(),
                     0,
-                    CURVE25519_PUBLIC_LENGTH
+                    CURVE25519_PUBLIC_LENGTH_USIZE
                 ));
                 Ok(public_key.xeddsa_verify(data.as_ref(), signature_array))
             }
             SecretType::Ed25519 => {
-                if public_key.data().len() != CURVE25519_PUBLIC_LENGTH
+                if public_key.data().len() != CURVE25519_PUBLIC_LENGTH_USIZE
                     || signature.as_ref().len() != 64
                 {
                     return Err(VaultError::InvalidPublicKey.into());

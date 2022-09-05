@@ -3,8 +3,8 @@ use crate::VaultError;
 use arrayref::array_ref;
 use ockam_core::compat::vec::Vec;
 use ockam_core::vault::{
-    Hasher, KeyId, SecretAttributes, SecretType, SecretVault, AES128_SECRET_LENGTH,
-    AES256_SECRET_LENGTH,
+    Hasher, KeyId, SecretAttributes, SecretType, SecretVault, AES128_SECRET_LENGTH_USIZE,
+    AES256_SECRET_LENGTH_USIZE,
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 use sha2::{Digest, Sha256};
@@ -72,9 +72,9 @@ impl Hasher for Vault {
         let mut index = 0;
 
         for attributes in output_attributes {
-            let length = attributes.length();
+            let length = attributes.length() as usize;
             if attributes.stype() == SecretType::Aes {
-                if length != AES256_SECRET_LENGTH && length != AES128_SECRET_LENGTH {
+                if length != AES256_SECRET_LENGTH_USIZE && length != AES128_SECRET_LENGTH_USIZE {
                     return Err(VaultError::InvalidAesKeyLength.into());
                 }
             } else if attributes.stype() != SecretType::Buffer {

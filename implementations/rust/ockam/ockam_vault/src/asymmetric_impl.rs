@@ -2,7 +2,8 @@ use crate::{Vault, VaultError};
 use arrayref::array_ref;
 use ockam_core::vault::{
     AsymmetricVault, Buffer, Hasher, KeyId, PublicKey, SecretAttributes, SecretPersistence,
-    SecretType, SecretVault, VaultEntry, CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
+    SecretType, SecretVault, VaultEntry, CURVE25519_PUBLIC_LENGTH_USIZE,
+    CURVE25519_SECRET_LENGTH_USIZE,
 };
 use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
@@ -12,8 +13,8 @@ impl Vault {
         let key = vault_entry.key();
         match vault_entry.key_attributes().stype() {
             SecretType::X25519 => {
-                if peer_public_key.data().len() != CURVE25519_PUBLIC_LENGTH
-                    || key.as_ref().len() != CURVE25519_SECRET_LENGTH
+                if peer_public_key.data().len() != CURVE25519_PUBLIC_LENGTH_USIZE
+                    || key.as_ref().len() != CURVE25519_SECRET_LENGTH_USIZE
                 {
                     return Err(VaultError::UnknownEcdhKeyType.into());
                 }
@@ -21,12 +22,12 @@ impl Vault {
                 let sk = x25519_dalek::StaticSecret::from(*array_ref!(
                     key.as_ref(),
                     0,
-                    CURVE25519_SECRET_LENGTH
+                    CURVE25519_SECRET_LENGTH_USIZE
                 ));
                 let pk_t = x25519_dalek::PublicKey::from(*array_ref!(
                     peer_public_key.data(),
                     0,
-                    CURVE25519_PUBLIC_LENGTH
+                    CURVE25519_PUBLIC_LENGTH_USIZE
                 ));
                 let secret = sk.diffie_hellman(&pk_t);
                 Ok(secret.as_bytes().to_vec())
@@ -55,8 +56,11 @@ impl AsymmetricVault for Vault {
         // Prevent dead-lock by freeing entries lock, since we don't need it
         drop(entries);
 
-        let attributes =
-            SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, dh.len());
+        let attributes = SecretAttributes::new(
+            SecretType::Buffer,
+            SecretPersistence::Ephemeral,
+            dh.len() as u32,
+        );
         self.secret_import(&dh, attributes).await
     }
 

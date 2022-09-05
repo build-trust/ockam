@@ -1,7 +1,7 @@
-use crate::{XXError, XXVault, AES_GCM_TAGSIZE, SHA256_SIZE};
+use crate::{XXError, XXVault, AES_GCM_TAGSIZE_USIZE, SHA256_SIZE_USIZE};
 use ockam_core::vault::{
-    KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
-    CURVE25519_PUBLIC_LENGTH, CURVE25519_SECRET_LENGTH,
+    KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH_U32,
+    CURVE25519_PUBLIC_LENGTH_USIZE, CURVE25519_SECRET_LENGTH_U32,
 };
 use ockam_core::{compat::vec::Vec, Result};
 use ockam_key_exchange_core::CompletedKeyExchange;
@@ -20,7 +20,7 @@ pub(crate) struct State<V: XXVault> {
     remote_ephemeral_public_key: Option<PublicKey>,
     dh_state: DhState<V>,
     nonce: u16,
-    h: Option<[u8; SHA256_SIZE]>,
+    h: Option<[u8; SHA256_SIZE_USIZE]>,
     vault: V,
 }
 
@@ -56,8 +56,8 @@ impl<V: XXVault> State<V> {
 }
 
 impl<V: XXVault> State<V> {
-    fn get_symmetric_key_type_and_length(&self) -> (SecretType, usize) {
-        (SecretType::Aes, AES256_SECRET_LENGTH)
+    fn get_symmetric_key_type_and_length(&self) -> (SecretType, u32) {
+        (SecretType::Aes, AES256_SECRET_LENGTH_U32)
     }
 
     fn get_protocol_name(&self) -> &'static [u8] {
@@ -69,7 +69,7 @@ impl<V: XXVault> State<V> {
         let attributes = SecretAttributes::new(
             SecretType::X25519,
             SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH,
+            CURVE25519_SECRET_LENGTH_U32,
         );
         // 1. Generate a static key pair for this handshake and set it to `s`
         if let Some(ik) = &self.identity_key {
@@ -101,7 +101,7 @@ impl<V: XXVault> State<V> {
         // 5. h = SHA256(h || prologue),
         // prologue is empty
         // mix_hash(xx, NULL, 0);
-        let mut h = [0u8; SHA256_SIZE];
+        let mut h = [0u8; SHA256_SIZE_USIZE];
         h[..self.get_protocol_name().len()].copy_from_slice(self.get_protocol_name());
         self.dh_state = DhState::new(&h, self.vault.async_try_clone().await?).await?;
         self.h = Some(self.vault.sha256(&h).await?);
@@ -222,9 +222,9 @@ impl<V: XXVault> State<V> {
 
     /// Decode the second message in the sequence, sent from the responder
     pub(crate) async fn decode_message_2<B: AsRef<[u8]>>(&mut self, message: B) -> Result<Vec<u8>> {
-        let public_key_size = CURVE25519_PUBLIC_LENGTH;
+        let public_key_size = CURVE25519_PUBLIC_LENGTH_USIZE;
         let message = message.as_ref();
-        if message.len() < 2 * public_key_size + AES_GCM_TAGSIZE {
+        if message.len() < 2 * public_key_size + AES_GCM_TAGSIZE_USIZE {
             return Err(XXError::MessageLenMismatch.into());
         }
 
@@ -235,7 +235,7 @@ impl<V: XXVault> State<V> {
         let re = &message[..index_r];
         let re = PublicKey::new(re.to_vec(), SecretType::X25519);
         index_l += public_key_size;
-        index_r += public_key_size + AES_GCM_TAGSIZE;
+        index_r += public_key_size + AES_GCM_TAGSIZE_USIZE;
         let encrypted_rs_and_tag = &message[index_l..index_r];
         let encrypted_payload_and_tag = &message[index_r..];
 
@@ -295,7 +295,7 @@ impl<V: XXVault> State<V> {
         &mut self,
         message_1: B,
     ) -> Result<Vec<u8>> {
-        let public_key_size = CURVE25519_PUBLIC_LENGTH;
+        let public_key_size = CURVE25519_PUBLIC_LENGTH_USIZE;
         let message_1 = message_1.as_ref();
         if message_1.len() < public_key_size {
             return Err(XXError::MessageLenMismatch.into());
@@ -349,23 +349,23 @@ impl<V: XXVault> State<V> {
         &mut self,
         message_3: B,
     ) -> Result<Vec<u8>> {
-        let public_key_size = CURVE25519_PUBLIC_LENGTH;
+        let public_key_size = CURVE25519_PUBLIC_LENGTH_USIZE;
         let message_3 = message_3.as_ref();
-        if message_3.len() < public_key_size + AES_GCM_TAGSIZE {
+        if message_3.len() < public_key_size + AES_GCM_TAGSIZE_USIZE {
             return Err(XXError::MessageLenMismatch.into());
         }
 
         let ephemeral_secret = &self.ephemeral_secret.clone().ok_or(XXError::InvalidState)?;
 
         let (rs, h) = self
-            .decrypt_and_mix_hash(&message_3[..public_key_size + AES_GCM_TAGSIZE])
+            .decrypt_and_mix_hash(&message_3[..public_key_size + AES_GCM_TAGSIZE_USIZE])
             .await?;
         self.h = Some(h);
         let rs = PublicKey::new(rs, SecretType::X25519);
         self.dh_state.dh(ephemeral_secret, &rs).await?;
         self.nonce = 0;
         let (payload, h) = self
-            .decrypt_and_mix_hash(&message_3[public_key_size + AES_GCM_TAGSIZE..])
+            .decrypt_and_mix_hash(&message_3[public_key_size + AES_GCM_TAGSIZE_USIZE..])
             .await?;
         self.h = Some(h);
         self.nonce += 1;
@@ -387,7 +387,7 @@ mod tests {
     use hex::{decode, encode};
     use ockam_core::vault::{
         SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
-        CURVE25519_SECRET_LENGTH,
+        CURVE25519_SECRET_LENGTH_U32,
     };
     use ockam_key_exchange_core::KeyExchanger;
     use ockam_vault::Vault;
@@ -653,7 +653,7 @@ mod tests {
         let attributes = SecretAttributes::new(
             SecretType::X25519,
             SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH,
+            CURVE25519_SECRET_LENGTH_U32,
         );
         // Static x25519 for this handshake, `s`
         let static_secret_handle = vault
@@ -681,8 +681,11 @@ mod tests {
             .unwrap();
         let ck = *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0";
 
-        let attributes =
-            SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, ck.len());
+        let attributes = SecretAttributes::new(
+            SecretType::Buffer,
+            SecretPersistence::Ephemeral,
+            ck.len() as u32,
+        );
         let ck = vault.secret_import(&ck[..], attributes).await.unwrap();
 
         State {

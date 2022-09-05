@@ -1,6 +1,6 @@
 use crate::vault::{
     AsymmetricVault, PublicKey, SecretAttributes, SecretPersistence, SecretType, SecretVault,
-    CURVE25519_SECRET_LENGTH,
+    CURVE25519_SECRET_LENGTH_U32,
 };
 use hex::decode;
 
@@ -22,12 +22,12 @@ pub async fn secret_by_key_id(vault: &mut (impl AsymmetricVault + SecretVault)) 
         SecretAttributes::new(
             SecretType::X25519,
             SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH,
+            CURVE25519_SECRET_LENGTH_U32,
         ),
         SecretAttributes::new(
             SecretType::Ed25519,
             SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH,
+            CURVE25519_SECRET_LENGTH_U32,
         ),
     ];
 

@@ -18,17 +18,20 @@ impl Signer for Vault {
                 use crate::xeddsa::XEddsaSigner;
                 use arrayref::array_ref;
                 use ockam_core::compat::rand::{thread_rng, RngCore};
-                use ockam_core::vault::CURVE25519_SECRET_LENGTH;
-                if key.len() != CURVE25519_SECRET_LENGTH {
+                use ockam_core::vault::CURVE25519_SECRET_LENGTH_USIZE;
+                if key.len() != CURVE25519_SECRET_LENGTH_USIZE {
                     return Err(VaultError::InvalidX25519SecretLength.into());
                 }
 
                 let mut rng = thread_rng();
                 let mut nonce = [0u8; 64];
                 rng.fill_bytes(&mut nonce);
-                let sig =
-                    x25519_dalek::StaticSecret::from(*array_ref!(key, 0, CURVE25519_SECRET_LENGTH))
-                        .xeddsa_sign(data.as_ref(), &nonce);
+                let sig = x25519_dalek::StaticSecret::from(*array_ref!(
+                    key,
+                    0,
+                    CURVE25519_SECRET_LENGTH_USIZE
+                ))
+                .xeddsa_sign(data.as_ref(), &nonce);
                 Ok(Signature::new(sig.to_vec()))
             }
             SecretType::Ed25519 => {
