@@ -28,7 +28,11 @@ impl ShowCommand {
                 std::process::exit(exitcode::IOERR);
             }
         };
-        connect_to(port, (cfg.clone(), self.node_name), print_query_status);
+        connect_to(
+            port,
+            (cfg.clone(), self.node_name, false),
+            print_query_status,
+        );
     }
 }
 
@@ -76,24 +80,37 @@ Node:
 
 pub async fn print_query_status(
     mut ctx: ockam::Context,
-    (cfg, node_name): (OckamConfig, String),
+    (cfg, node_name, wait_until_ready): (OckamConfig, String, bool),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     let route = base_route.modify().append(NODEMANAGER_ADDR).into();
+    let node_cfg = cfg.get_node(&node_name)?;
 
     // Wait until node is up.
     if query_status(&mut ctx, &route).await.is_err() {
-        loop {
-            tokio::time::sleep(Duration::from_millis(250)).await;
-            if query_status(&mut ctx, &route).await.is_ok() {
-                break;
+        if wait_until_ready {
+            let mut attempts = 10;
+            while attempts > 0 {
+                tokio::time::sleep(Duration::from_millis(250)).await;
+                if query_status(&mut ctx, &route).await.is_ok() {
+                    break;
+                }
+                attempts -= 1;
             }
+            if attempts <= 0 {
+                print_node_info(&node_cfg, &node_name, "DOWN", "N/A");
+                return Ok(());
+            }
+        } else {
+            print_node_info(&node_cfg, &node_name, "DOWN", "N/A");
+            return Ok(());
         }
     }
 
     // Get short id for the node
-    let resp: Vec<u8> = ctx
-        .send_and_receive(route.clone(), api::short_identity()?)
+    ctx.send(route.clone(), api::short_identity()?).await?;
+    let resp = ctx
+        .receive_duration_timeout::<Vec<u8>>(Duration::from_millis(250))
         .await
         .context("Failed to process request for short id")?;
 
@@ -105,8 +122,6 @@ pub async fn print_query_status(
         _ => String::from("NOT FOUND"),
     };
 
-    // Print node info
-    let node_cfg = cfg.get_node(&node_name).unwrap();
     print_node_info(&node_cfg, &node_name, "UP", &default_id);
     Ok(())
 }

@@ -154,7 +154,7 @@ impl CreateCommand {
             .unwrap();
             connect_to(
                 addr.port(),
-                (cfg.clone(), cmd.node_name),
+                (cfg.clone(), cmd.node_name, true),
                 print_query_status,
             );
         }
