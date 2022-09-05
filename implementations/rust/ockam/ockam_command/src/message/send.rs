@@ -74,13 +74,13 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
             .tcp(tcp.as_ref())?
             .build();
         rpc.request(req(&to, &cmd.message)).await?;
-        delete_embedded_node(&opts.config, rpc.node_name()).await;
         let res = rpc.parse_response::<Vec<u8>>()?;
         println!(
             "{}",
             String::from_utf8(res).context("Received content is not a valid utf8 string")?
         );
 
+        delete_embedded_node(&opts.config, rpc.node_name()).await;
         Ok(())
     }
     go(&mut ctx, &opts, cmd).await
