@@ -2385,6 +2385,7 @@ dependencies = [
  "subtle",
  "tokio",
  "tracing",
+ "zeroize",
 ]
 
 [[package]]
