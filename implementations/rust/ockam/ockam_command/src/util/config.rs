@@ -88,17 +88,6 @@ impl OckamConfig {
         Ok(())
     }
 
-    /// Get available global configuration values
-    // TODO: make this consider node scope options
-    pub fn values() -> Vec<&'static str> {
-        vec!["api-node"]
-    }
-
-    /// Get the current API node configuration setting
-    pub fn get_api_node(&self) -> String {
-        self.inner.readlock_inner().api_node.clone()
-    }
-
     pub fn get_default_vault_path(&self) -> Option<PathBuf> {
         self.inner.readlock_inner().default_vault_path.clone()
     }
@@ -291,12 +280,6 @@ impl OckamConfig {
 
         inner.nodes.get_mut(name).unwrap().pid = pid.into();
         Ok(())
-    }
-
-    /// Update the api node name on record
-    pub fn set_api_node(&self, node_name: &str) {
-        let mut inner = self.inner.writelock_inner();
-        inner.api_node = node_name.into();
     }
 
     pub fn set_node_alias(&self, alias: String, addr: InternetAddress) {

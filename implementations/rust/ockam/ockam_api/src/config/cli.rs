@@ -34,7 +34,7 @@ pub struct OckamConfig {
     /// persist this data to the configuration
     #[serde(skip)]
     pub directories: Option<ProjectDirs>,
-    pub api_node: String,
+    #[serde(default = "default_nodes")]
     pub nodes: BTreeMap<String, NodeConfig>,
 
     #[serde(default = "default_lookup")]
@@ -42,7 +42,12 @@ pub struct OckamConfig {
 
     pub default_identity: Option<Vec<u8>>,
     pub default_vault_path: Option<PathBuf>,
+    /// Default node
     pub default: Option<String>,
+}
+
+fn default_nodes() -> BTreeMap<String, NodeConfig> {
+    BTreeMap::new()
 }
 
 fn default_lookup() -> ConfigLookup {
@@ -53,9 +58,8 @@ impl ConfigValues for OckamConfig {
     fn default_values(_node_dir: &Path) -> Self {
         Self {
             directories: Some(Self::directories()),
-            api_node: "default".into(),
             nodes: BTreeMap::new(),
-            lookup: ConfigLookup::new(),
+            lookup: default_lookup(),
             default_identity: None,
             default_vault_path: None,
             default: None,
