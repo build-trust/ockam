@@ -3,13 +3,16 @@ use clap::Args;
 use ockam::Context;
 use ockam_multiaddr::MultiAddr;
 
-use crate::node::util::delete_embedded_node;
+use crate::node::NodeOpts;
 use crate::util::api::{self};
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct PresentCredentialCommand {
+    #[clap(flatten)]
+    pub node_opts: NodeOpts,
+
     #[clap(long, display_order = 900, name = "ROUTE")]
     pub to: MultiAddr,
 
@@ -35,9 +38,8 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: PresentCredentialCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::embedded(ctx, &opts).await?;
+    let mut rpc = Rpc::background(ctx, &opts, &cmd.node_opts.api_node)?;
     rpc.request(api::credentials::present_credential(&cmd.to, cmd.oneway))
         .await?;
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
     Ok(())
 }
