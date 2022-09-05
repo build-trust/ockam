@@ -61,8 +61,8 @@ async fn run_impl(
     let project = rpc.parse_response::<Project>()?;
     let project =
         check_project_readiness(ctx, &opts, &cmd.cloud_opts, &node_name, None, project).await?;
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
     config::set_project(&opts.config, &project).await?;
     rpc.print_response(project)?;
+    delete_embedded_node(&opts.config, rpc.node_name()).await;
     Ok(())
 }

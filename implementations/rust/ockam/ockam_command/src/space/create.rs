@@ -44,8 +44,8 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
     rpc.request(api::space::create(&cmd)).await?;
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
     let space = rpc.parse_and_print_response::<Space>()?;
     config::set_space(&opts.config, &space)?;
+    delete_embedded_node(&opts.config, rpc.node_name()).await;
     Ok(())
 }

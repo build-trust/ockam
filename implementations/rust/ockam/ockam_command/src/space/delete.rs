@@ -64,11 +64,11 @@ async fn run_impl(
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::space::delete(&id, controller_route))
         .await?;
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
     rpc.is_ok()?;
 
     // Try to remove from config again, in case it was re-added after the refresh.
     let _ = config::remove_space(&opts.config, &cmd.name);
 
+    delete_embedded_node(&opts.config, rpc.node_name()).await;
     Ok(())
 }

@@ -151,6 +151,7 @@ impl<'a> ShowSecureChannelRequest<'a> {
 #[cbor(map)]
 pub struct ShowSecureChannelResponse<'a> {
     #[cfg(feature = "tag")]
+    #[serde(skip)]
     #[n(0)] tag: TypeTag<4566220>,
     #[b(1)] pub channel: Option<Cow<'a, str>>,
     #[b(2)] pub route: Option<Cow<'a, str>>,

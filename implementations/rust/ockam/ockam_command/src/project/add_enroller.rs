@@ -49,7 +49,7 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
     rpc.request(api::project::add_enroller(&cmd)).await?;
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
     rpc.parse_and_print_response::<Enroller>()?;
+    delete_embedded_node(&opts.config, rpc.node_name()).await;
     Ok(())
 }

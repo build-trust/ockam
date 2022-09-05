@@ -33,8 +33,8 @@ async fn run_impl(
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
     rpc.request(api::space::list(cmd.cloud_opts.route()))
         .await?;
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
     let spaces = rpc.parse_and_print_response::<Vec<Space>>()?;
     config::set_spaces(&opts.config, &spaces)?;
+    delete_embedded_node(&opts.config, rpc.node_name()).await;
     Ok(())
 }
