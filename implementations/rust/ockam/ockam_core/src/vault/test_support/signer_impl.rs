@@ -1,6 +1,6 @@
 use crate::vault::{
     SecretAttributes, SecretPersistence, SecretType, SecretVault, Signer, Verifier,
-    CURVE25519_SECRET_LENGTH,
+    CURVE25519_SECRET_LENGTH_U32,
 };
 
 pub async fn sign(vault: &mut (impl Signer + Verifier + SecretVault)) {
@@ -8,12 +8,12 @@ pub async fn sign(vault: &mut (impl Signer + Verifier + SecretVault)) {
         SecretAttributes::new(
             SecretType::X25519,
             SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH,
+            CURVE25519_SECRET_LENGTH_U32,
         ),
         SecretAttributes::new(
             SecretType::Ed25519,
             SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH,
+            CURVE25519_SECRET_LENGTH_U32,
         ),
     ] {
         let secret = vault.secret_generate(attributes).await.unwrap();

@@ -9,7 +9,7 @@ use ockam_node::compat::asynchronous::RwLock;
 /// ```
 /// use ockam_vault::Vault;
 /// use ockam_core::Result;
-/// use ockam_core::vault::{SecretAttributes, SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH, SecretVault, Signer, Verifier};
+/// use ockam_core::vault::{SecretAttributes, SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH_U32, SecretVault, Signer, Verifier};
 ///
 /// async fn example() -> Result<()> {
 ///     let mut vault = Vault::default();
@@ -17,7 +17,7 @@ use ockam_node::compat::asynchronous::RwLock;
 ///     let mut attributes = SecretAttributes::new(
 ///         SecretType::X25519,
 ///         SecretPersistence::Ephemeral,
-///         CURVE25519_SECRET_LENGTH,
+///         CURVE25519_SECRET_LENGTH_U32,
 ///     );
 ///
 ///     let secret = vault.secret_generate(attributes).await?;

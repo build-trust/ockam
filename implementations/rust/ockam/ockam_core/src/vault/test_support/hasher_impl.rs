@@ -16,7 +16,7 @@ pub async fn hkdf(vault: &mut (impl Hasher + SecretVault)) {
     let attributes = SecretAttributes::new(
         SecretType::Buffer,
         crate::vault::SecretPersistence::Ephemeral,
-        salt_value.len(),
+        salt_value.len() as u32,
     );
     let salt = vault
         .secret_import(&salt_value[..], attributes)
@@ -27,14 +27,14 @@ pub async fn hkdf(vault: &mut (impl Hasher + SecretVault)) {
     let attributes = SecretAttributes::new(
         SecretType::Buffer,
         SecretPersistence::Ephemeral,
-        ikm_value.len(),
+        ikm_value.len() as u32,
     );
     let ikm = vault
         .secret_import(&ikm_value[..], attributes)
         .await
         .unwrap();
 
-    let attributes = SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, 24);
+    let attributes = SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, 24u32);
 
     let res = vault
         .hkdf_sha256(&salt, b"", Some(&ikm), vec![attributes])

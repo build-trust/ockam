@@ -5,7 +5,8 @@ use cfg_if::cfg_if;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::vault::{
     AsymmetricVault, KeyId, PublicKey, SecretAttributes, SecretKey, SecretPersistence, SecretType,
-    SecretVault, VaultEntry, AES128_SECRET_LENGTH, AES256_SECRET_LENGTH, CURVE25519_SECRET_LENGTH,
+    SecretVault, VaultEntry, AES128_SECRET_LENGTH_U32, AES256_SECRET_LENGTH_U32,
+    CURVE25519_SECRET_LENGTH_USIZE,
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 cfg_if! {
@@ -24,7 +25,7 @@ impl Vault {
                 let sk = x25519_dalek::StaticSecret::from(*array_ref![
                     secret,
                     0,
-                    CURVE25519_SECRET_LENGTH
+                    CURVE25519_SECRET_LENGTH_USIZE
                 ]);
                 let public = x25519_dalek::PublicKey::from(&sk);
 
@@ -69,7 +70,7 @@ impl Vault {
 
     /// Validate secret key.
     pub fn check_secret(&self, secret: &[u8], attributes: &SecretAttributes) -> Result<()> {
-        if secret.len() != attributes.length() {
+        if secret.len() != attributes.length() as usize {
             return Err(VaultError::InvalidSecretLength.into());
         }
         match attributes.stype() {
@@ -108,7 +109,7 @@ impl SecretVault for Vault {
             SecretType::X25519 | SecretType::Ed25519 => {
                 let bytes = {
                     let mut rng = thread_rng();
-                    let mut bytes = vec![0u8; CURVE25519_SECRET_LENGTH];
+                    let mut bytes = vec![0u8; CURVE25519_SECRET_LENGTH_USIZE];
                     rng.fill_bytes(&mut bytes);
                     bytes
                 };
@@ -121,7 +122,7 @@ impl SecretVault for Vault {
                 };
                 let key = {
                     let mut rng = thread_rng();
-                    let mut key = vec![0u8; attributes.length()];
+                    let mut key = vec![0u8; attributes.length() as usize];
                     rng.fill_bytes(key.as_mut_slice());
                     key
                 };
@@ -129,8 +130,8 @@ impl SecretVault for Vault {
                 SecretKey::new(key)
             }
             SecretType::Aes => {
-                if attributes.length() != AES256_SECRET_LENGTH
-                    && attributes.length() != AES128_SECRET_LENGTH
+                if attributes.length() != AES256_SECRET_LENGTH_U32
+                    && attributes.length() != AES128_SECRET_LENGTH_U32
                 {
                     return Err(VaultError::InvalidAesKeyLength.into());
                 };
@@ -139,7 +140,7 @@ impl SecretVault for Vault {
                 };
                 let key = {
                     let mut rng = thread_rng();
-                    let mut key = vec![0u8; attributes.length()];
+                    let mut key = vec![0u8; attributes.length() as usize];
                     rng.fill_bytes(key.as_mut_slice());
                     key
                 };
@@ -223,20 +224,20 @@ impl SecretVault for Vault {
 
         match entry.key_attributes().stype() {
             SecretType::X25519 => {
-                if entry.key().as_ref().len() != CURVE25519_SECRET_LENGTH {
+                if entry.key().as_ref().len() != CURVE25519_SECRET_LENGTH_USIZE {
                     return Err(VaultError::InvalidPrivateKeyLen.into());
                 }
 
                 let sk = x25519_dalek::StaticSecret::from(*array_ref![
                     entry.key().as_ref(),
                     0,
-                    CURVE25519_SECRET_LENGTH
+                    CURVE25519_SECRET_LENGTH_USIZE
                 ]);
                 let pk = x25519_dalek::PublicKey::from(&sk);
                 Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::X25519))
             }
             SecretType::Ed25519 => {
-                if entry.key().as_ref().len() != CURVE25519_SECRET_LENGTH {
+                if entry.key().as_ref().len() != CURVE25519_SECRET_LENGTH_USIZE {
                     return Err(VaultError::InvalidPrivateKeyLen.into());
                 }
 
@@ -287,7 +288,7 @@ impl SecretVault for Vault {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ockam_core::vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH},
+        ockam_core::vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32},
         SecretAttributes, SecretVault, Vault,
     };
     use cfg_if::cfg_if;
@@ -312,7 +313,7 @@ mod tests {
         Some(SecretAttributes::new(
             SecretType::X25519,
             SecretPersistence::Ephemeral,
-            CURVE25519_SECRET_LENGTH,
+            CURVE25519_SECRET_LENGTH_U32,
         ))
     }
 

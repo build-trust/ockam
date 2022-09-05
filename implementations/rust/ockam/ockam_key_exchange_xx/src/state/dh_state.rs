@@ -1,6 +1,6 @@
-use crate::{XXError, XXVault, SHA256_SIZE};
+use crate::{XXError, XXVault, SHA256_SIZE_U32};
 use ockam_core::vault::{
-    KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH,
+    KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH_U32,
 };
 use ockam_core::Result;
 
@@ -23,7 +23,7 @@ impl<V: XXVault> DhState<V> {
         let attributes = SecretAttributes::new(
             SecretType::Buffer,
             SecretPersistence::Ephemeral,
-            SHA256_SIZE,
+            SHA256_SIZE_U32,
         );
 
         let ck = vault.secret_import(protocol_name, attributes).await?;
@@ -46,8 +46,8 @@ impl<V: XXVault> DhState<V> {
 }
 
 impl<V: XXVault> DhState<V> {
-    pub(crate) fn get_symmetric_key_type_and_length(&self) -> (SecretType, usize) {
-        (SecretType::Aes, AES256_SECRET_LENGTH)
+    pub(crate) fn get_symmetric_key_type_and_length(&self) -> (SecretType, u32) {
+        (SecretType::Aes, AES256_SECRET_LENGTH_U32)
     }
     /// Perform the diffie-hellman computation
     pub(crate) async fn dh(&mut self, secret_handle: &KeyId, public_key: &PublicKey) -> Result<()> {
@@ -56,7 +56,7 @@ impl<V: XXVault> DhState<V> {
         let attributes_ck = SecretAttributes::new(
             SecretType::Buffer,
             SecretPersistence::Ephemeral,
-            SHA256_SIZE,
+            SHA256_SIZE_U32,
         );
 
         let symmetric_secret_info = self.get_symmetric_key_type_and_length();

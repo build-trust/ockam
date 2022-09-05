@@ -1,13 +1,13 @@
 use crate::vault::{
     AsymmetricVault, SecretAttributes, SecretPersistence, SecretType, SecretVault,
-    CURVE25519_SECRET_LENGTH,
+    CURVE25519_SECRET_LENGTH_U32,
 };
 
 pub async fn ec_diffie_hellman_curve25519(vault: &mut (impl AsymmetricVault + SecretVault)) {
     let attributes = SecretAttributes::new(
         SecretType::X25519,
         SecretPersistence::Ephemeral,
-        CURVE25519_SECRET_LENGTH,
+        CURVE25519_SECRET_LENGTH_U32,
     );
     let sk_ctx_1 = vault.secret_generate(attributes).await.unwrap();
     let sk_ctx_2 = vault.secret_generate(attributes).await.unwrap();

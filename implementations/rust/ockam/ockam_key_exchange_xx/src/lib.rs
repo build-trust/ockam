@@ -28,9 +28,14 @@ pub use error::*;
 use ockam_core::AsyncTryClone;
 
 /// The number of bytes in a SHA256 digest
-pub const SHA256_SIZE: usize = 32;
+pub const SHA256_SIZE_U32: u32 = 32;
+/// The number of bytes in a SHA256 digest
+pub const SHA256_SIZE_USIZE: usize = 32;
+
 /// The number of bytes in AES-GCM tag
-pub const AES_GCM_TAGSIZE: usize = 16;
+pub const AES_GCM_TAGSIZE_U32: u32 = 16;
+/// The number of bytes in AES-GCM tag
+pub const AES_GCM_TAGSIZE_USIZE: usize = 16;
 
 /// Vault with XX required functionality
 pub trait XXVault:

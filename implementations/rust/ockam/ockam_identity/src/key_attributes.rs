@@ -1,5 +1,5 @@
 use ockam_core::compat::string::String;
-use ockam_core::vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH};
+use ockam_core::vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32};
 use ockam_vault::SecretAttributes;
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +27,7 @@ impl KeyAttributes {
             SecretAttributes::new(
                 SecretType::Ed25519,
                 SecretPersistence::Persistent,
-                CURVE25519_SECRET_LENGTH,
+                CURVE25519_SECRET_LENGTH_U32,
             ),
         )
     }

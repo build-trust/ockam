@@ -7,13 +7,24 @@ use zeroize::Zeroize;
 use crate::TypeTag;
 
 /// Curve25519 private key length.
-pub const CURVE25519_SECRET_LENGTH: usize = 32;
+pub const CURVE25519_SECRET_LENGTH_U32: u32 = 32;
+/// Curve25519 private key length.
+pub const CURVE25519_SECRET_LENGTH_USIZE: usize = 32;
+
 /// Curve25519 public key length.
-pub const CURVE25519_PUBLIC_LENGTH: usize = 32;
+pub const CURVE25519_PUBLIC_LENGTH_U32: u32 = 32;
+/// Curve25519 public key length.
+pub const CURVE25519_PUBLIC_LENGTH_USIZE: usize = 32;
+
 /// AES256 private key length.
-pub const AES256_SECRET_LENGTH: usize = 32;
+pub const AES256_SECRET_LENGTH_U32: u32 = 32;
+/// AES256 private key length.
+pub const AES256_SECRET_LENGTH_USIZE: usize = 32;
+
 /// AES128 private key length.
-pub const AES128_SECRET_LENGTH: usize = 16;
+pub const AES128_SECRET_LENGTH_U32: u32 = 16;
+/// AES128 private key length.
+pub const AES128_SECRET_LENGTH_USIZE: usize = 16;
 
 cfg_if! {
     if #[cfg(not(feature = "alloc"))] {
@@ -195,7 +206,7 @@ pub enum SecretPersistence {
 pub struct SecretAttributes {
     #[n(1)] stype: SecretType,
     #[n(2)] persistence: SecretPersistence,
-    #[n(3)] length: usize,
+    #[n(3)] length: u32,
 }
 
 impl SecretAttributes {
@@ -208,14 +219,14 @@ impl SecretAttributes {
         self.persistence
     }
     /// Return the length of the secret.
-    pub fn length(&self) -> usize {
+    pub fn length(&self) -> u32 {
         self.length
     }
 }
 
 impl SecretAttributes {
     /// Create a new secret attribute.
-    pub fn new(stype: SecretType, persistence: SecretPersistence, length: usize) -> Self {
+    pub fn new(stype: SecretType, persistence: SecretPersistence, length: u32) -> Self {
         SecretAttributes {
             stype,
             persistence,
