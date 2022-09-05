@@ -25,10 +25,14 @@
 # ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats implementations/rust/ockam/ockam_command/tests/commands.bats
 
 # bats_lib=$NVM_DIR/versions/node/v18.8.0/lib/node_modules # linux
-bats_lib=$(brew --prefix)/lib # macos
+# bats_lib=$(brew --prefix)/lib # macos
 
 # Ockam binary to use
 OCKAM=ockam
+if [[ -z $BATS_LIB ]]; then
+  echo "Please set path to bats-support and bat-assert lib"
+  exit 1
+fi
 
 setup_file() {
   pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null
@@ -45,8 +49,8 @@ teardown_file() {
 }
 
 setup() {
-  load "$bats_lib/bats-support/load.bash"
-  load "$bats_lib/bats-assert/load.bash"
+  load "$BATS_LIB/bats-support/load.bash"
+  load "$BATS_LIB/bats-assert/load.bash"
   $OCKAM node delete --all || true
 }
 

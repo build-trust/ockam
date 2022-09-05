@@ -17,9 +17,6 @@ ENV RUSTUP_HOME=/opt/rust/rustup \
     MOLD_HOME=/opt/mold
 
 RUN set -xe; \
-    # Setup base tools
-    apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends ca-certificates curl locales xz-utils clang; \
     case $(dpkg --print-architecture) in \
       "amd64") \
         echo "Using AMD64"; \
@@ -31,15 +28,6 @@ RUN set -xe; \
         JQ_SHA256="af986793a515d500ab2d35f8d2aecd656e764504b789b66d7e1a0b727a124c44" && JQ_OS="linux64"; \
         MOLD_SHA256="3893f89e5e0dcddcecc9f2ee17f14ad94fbf8b324eca45974b965353a50dac37" && MOLD_OS="x86_64-linux"; \
         OS="x86_64-unknown-linux-gnu"; \
-
-        # Setup brew
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; \
-        echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /root/.profile; \
-        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"; \
-        brew tap kaos/shell; \
-        brew install bats-assert; \
-        brew install python3; \
-        pip3 install selenium; \
       ;; \
       "arm64") \
         export CARGO_NET_GIT_FETCH_WITH_CLI=true; \
@@ -59,18 +47,21 @@ RUN set -xe; \
         exit 1; \
       ;; \
     esac; \
+# Setup base tools
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --no-install-recommends ca-certificates curl locales xz-utils clang; \
 # Setup locale
     LANG=en_US.UTF-8; \
     echo $LANG UTF-8 > /etc/locale.gen; \
     locale-gen; \
     update-locale LANG=$LANG; \
-# Install firefox and geckodriver
-    apt-get install firefox-esr --assume-yes; \
-    wget https://github.com/mozilla/geckodriver/releases/download/v0.31.0/geckodriver-v0.31.0-linux64.tar.gz -O /tmp/geckodriver.tar.gz \
-      && tar -C /opt -xzf /tmp/geckodriver.tar.gz \
-      && chmod 755 /opt/geckodriver \
-      && ln -fs /opt/geckodriver /usr/bin/geckodriver \
-      && ln -fs /opt/geckodriver /usr/local/bin/geckodriver; \
+# Setup Bats
+    mkdir /usr/lib/bats && cd /usr/lib/bats && git init; \
+    git submodule add https://github.com/bats-core/bats-core.git; \
+    cd bats-core && ./install.sh /usr; \
+    cd - && rm -rf bats-core; \
+    git submodule add https://github.com/bats-core/bats-support.git; \
+    git submodule add https://github.com/bats-core/bats-assert.git; \
 # Setup nodejs
     NODEJS_PACKAGE="node-v${NODEJS_VERSION}-${NODEJS_OS}.tar.xz"; \
     curl --proto '=https' --tlsv1.2 -sSOL \
@@ -157,12 +148,13 @@ RUN set -xe; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
-ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${JAVA_HOME}/bin:${RUSTUP_HOME}/bin:${CARGO_HOME}/bin:${CMAKE_HOME}/bin:${NODEJS_HOME}/bin:${MOLD_HOME}/bin:$PATH" \
+ENV PATH="${CARGO_HOME}/bin:${CMAKE_HOME}/bin:${NODEJS_HOME}/bin:${MOLD_HOME}/bin:$PATH" \
     AR=/usr/bin/ar \
     AS=/usr/bin/as \
     CC=/usr/local/bin/gcc \
     CPP=/usr/local/bin/cpp \
     CXX=/usr/local/bin/g++ \
-    LANG=en_US.UTF-8
+    LANG=en_US.UTF-8 \
+    BATS_LIB=/usr/lib/bats
 
 WORKDIR /work
