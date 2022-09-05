@@ -186,24 +186,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build: [linux_86, macos, macos_86]
+        build: [linux_86, linux_armv7, macos, macos_86]
         include:
         - build: linux
           os: ubuntu-18.04
           rust: stable
           target: aarch64-unknown-linux-gnu
+          use-cross-build: true
+        - build: linux_armv7
+          os: ubuntu-18.04
+          rust: stable
+          target: armv7-unknown-linux-gnueabihf
+          use-cross-build: true
         - build: linux_86
           os: ubuntu-18.04
           rust: stable
           target: x86_64-unknown-linux-gnu
+          use-cross-build: false
         - build: macos
           os: macos-latest
           rust: stable
           target: aarch64-apple-darwin
+          use-cross-build: false
         - build: macos_86
           os: macos-latest
           rust: stable
           target: x86_64-apple-darwin
+          use-cross-build: false
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout repository
@@ -227,7 +236,8 @@ jobs:
       if: matrix.os == 'ubuntu-18.04'
       run: |
         set -x
-        if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+        use_cross_build=${{ matrix.use-cross-build }}
+        if [[ $use_cross_build == true ]]; then
           cargo install --version 0.1.16 cross
         else
           sudo apt-get update
@@ -240,8 +250,9 @@ jobs:
       shell: bash
       run: |
         set -x
+        use_cross_build="${{ matrix.use-cross-build }}"
 
-        if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+        if [[ $use_cross_build == "true" ]]; then
           cross build --bin ockam --target ${{ matrix.target }} --verbose --release
         else
           cargo build --bin ockam --target ${{ matrix.target }} --verbose --release

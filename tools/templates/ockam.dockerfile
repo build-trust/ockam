@@ -1,4 +1,4 @@
-FROM ghcr.io/build-trust/ockam-builder:latest as builder
+FROM debian:stable-slim@sha256:8b49bae84e068b852725770ea01a0a08e461620da8006b69f8cc09c93d16d221 as builder
 
 COPY assets .
 
@@ -14,8 +14,12 @@ RUN \
             echo "ockam.x86_64-unknown-linux-gnu_sha256_value  ockam.x86_64-unknown-linux-gnu" | sha256sum -c; \
             mv ockam.x86_64-unknown-linux-gnu /ockam; \
             ;; \
+        armv7l*) \
+            echo "ockam.armv7-unknown-linux-gnueabihf_sha256_value  ockam.armv7-unknown-linux-gnueabihf" | sha256sum -c; \
+            mv ockam.armv7-unknown-linux-gnueabihf /ockam; \
+            ;; \
         *) \
-            echo "unknown arch:" \
+            echo "unknown arch: $(uname -m)" \
             uname -a; \
             exit 1; \
         ;; \
