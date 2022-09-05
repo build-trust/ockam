@@ -49,6 +49,9 @@ pub use public_identity::*;
 
 mod signature;
 
+#[cfg(test)]
+mod invalid_signatures_tests;
+
 /// Traits required for a Vault implementation suitable for use in an Identity
 pub trait IdentityVault:
     SecretVault + SecureChannelVault + Hasher + Signer + Verifier + AsyncTryClone + Send + 'static
