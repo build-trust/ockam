@@ -4,6 +4,89 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.73.0 - 2022-09-05
+
+### Added
+
+- Add basic `Identity` commands to `ockam_command`
+- Add `message-format` global arg
+- Add service command
+- Add argument tests for `node show` and `node delete`
+- Add global command to disable ansi colors on tracing messages
+- Add `SHOW_HIDDEN` environment variable
+- Add api endpoint to send messages
+- Add authority command
+- Add shell completions command
+- Add credentials commands
+- Add syntax highlighting to shell script examples
+
+### Changed
+
+- Use same variable names on some ockam_command commands
+- Cloud commands to send requests through nodes
+- Send cloud node address from cloud commands to nodes
+- Use temporary secure channel on cloud and enroll api endpoints
+- Command config updates
+- Rename `ockam config` to `ockam configuration`
+- Adapt cli commands
+- Rename `-a, --api-node` option to `-n, --node`
+- Rename ockam command output format option
+- Split `SecureChannel` into `Self` and `SecureChannelListener`
+- Split `transport` into `tcp-connection` and `tcp-listener`
+- Long_version should display git hash
+- Hide identity create and vault from command help
+- Basic alias system
+- Re-hide alias command
+- Rename alias to configuration
+- Change portal sub command to tcp-inlet and tcp-outlet
+- Change `forwarder create` command arguments to --for and --at
+- Unhide the forwarder subcommand
+- Improve command help with examples
+- Make it easier to write commands' api req/res handlers
+- Replace signer with verifier
+- Simplify "sc listener list" command
+- Create default space, project and secure channel after enrolling
+- Get rid of old `ockam_command` module
+- Improve secure channel commands
+- Unhide the enroll command
+- Create projects' secure channels present in the input multiaddr
+- Change `--from` argument of forwarder create to `FORWARDER_NAME`
+- Make `embedded_node` stop node itself
+- Highlight examples with different colors based on terminal background
+- Use names instead of ids on spaces and projects commands
+- Restructure ockam command modules and improve help
+- Group global options in command help
+- Make version a local toplevel option in ockam command
+- Improve ockam command help
+- Improve ockam command help
+- Refactor rpc struct so it allows working with embedded nodes
+- Refactor rpc struct to allow working with embedded nodes
+- Use embedded nodes as default on commands
+- Derive identity identifier from identity
+- Updated dependencies
+
+### Fixed
+
+- `addr` argument for cloud commands
+- Cloud and node arguments set as global
+- `project create` command now works when services + node + cloud args are passed
+- Space create command when list args are passed
+- Replace args containing `-/` or `/-` with stdin
+- Fix link to command line docs
+- Mutliaddr support for projects
+- Creation of static forwarder at local nodes
+- Display the correct syntax theme base on `COLORFDBG`
+- Node creation without a name
+- Project enroll
+
+### Removed
+
+- Remove custom validator on authenticated command
+- Remove short flag `-f` for `--format` global option in command
+- Remove invitations code
+- Remove ability to set arbitrary attributes
+- Remove email enroll and enrollment token commands
+
 ## 0.72.0 - 2022-08-31
 
 ### Added
