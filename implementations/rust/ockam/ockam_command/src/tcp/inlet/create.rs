@@ -73,7 +73,7 @@ impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
         let cfg = &options.config;
         let command = CreateCommand {
-            to: match clean_multiaddr(&self.to, &cfg.get_lookup()) {
+            to: match clean_multiaddr(&self.to, &cfg.lookup()) {
                 Some((addr, _meta)) => addr,
                 None => {
                     eprintln!("failed to normalize MultiAddr route");
@@ -84,13 +84,7 @@ impl CreateCommand {
         };
 
         let node = get_final_element(&command.at);
-        let port = match cfg.select_node(node) {
-            Some(cfg) => cfg.port,
-            None => {
-                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(-1);
-            }
-        };
+        let port = cfg.get_node_port(node);
 
         // Check if the port is used by some other services or process
         if !bind_to_port_check(&command.from) {
@@ -103,7 +97,7 @@ impl CreateCommand {
         connect_to(port, command, create_inlet);
 
         // Update the startup config
-        let startup_cfg = match cfg.get_startup_cfg(&node) {
+        let startup_cfg = match cfg.startup_cfg(&node) {
             Ok(cfg) => cfg,
             Err(e) => {
                 eprintln!("failed to load startup configuration: {}", e);
@@ -112,7 +106,7 @@ impl CreateCommand {
         };
 
         startup_cfg.add_composite(composite);
-        if let Err(e) = startup_cfg.atomic_update().run() {
+        if let Err(e) = startup_cfg.persist_config_updates() {
             eprintln!("failed to update configuration: {}", e);
             std::process::exit(exitcode::IOERR);
         } else {

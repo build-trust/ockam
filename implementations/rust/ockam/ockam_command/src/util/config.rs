@@ -43,13 +43,11 @@ impl Deref for OckamConfig {
 #[derive(thiserror::Error, Debug)]
 pub enum ConfigError {
     #[error("node with name {0} already exists")]
-    Exists(String),
+    AlreadyExists(String),
     #[error("node with name {0} does not exist")]
     NotFound(String),
     #[error("node with name {0} is not local")]
     NotLocal(String),
-    #[error("provided value was not a valid {0}: {1}")]
-    FailedConvert(String, String),
 }
 
 impl OckamConfig {
@@ -63,6 +61,8 @@ impl OckamConfig {
 
     pub fn remove(self) -> Result<()> {
         let inner = self.inner.writelock_inner();
+        // Try to delete the config directory. If the directory is not found,
+        // we continue. Otherwise, we return the error.
         let config_dir = inner
             .directories
             .as_ref()
@@ -74,6 +74,8 @@ impl OckamConfig {
                 _ => return Err(e.into()),
             }
         };
+        // Try to delete the nodes directory. If the directory is not found,
+        // we continue. Otherwise, we return the error.
         let nodes_dir = inner
             .directories
             .as_ref()
@@ -147,7 +149,6 @@ impl OckamConfig {
     /// get us most of the way there in terms of starting a new node.
     pub fn port_is_used(&self, port: u16) -> bool {
         let inner = self.inner.readlock_inner();
-
         inner.nodes.iter().any(|(_, n)| n.port == port)
     }
 
@@ -170,12 +171,10 @@ impl OckamConfig {
     /// Get the log path for a specific node
     ///
     /// The convention is to name the main log `node-name.log` and the
-    /// supplementary log `nod-name.log.stderr`
-    pub fn log_paths_for_node(&self, node_name: &str) -> Option<(PathBuf, PathBuf)> {
+    /// supplementary log `node-name.log.stderr`
+    pub fn node_log_paths(&self, node_name: &str) -> Option<(PathBuf, PathBuf)> {
         let inner = self.inner.readlock_inner();
-
         let base = inner.nodes.get(node_name)?.state_dir.as_ref()?;
-
         // TODO: sluggify node names
         Some((
             base.join(format!("{}.log", node_name)),
@@ -184,19 +183,19 @@ impl OckamConfig {
     }
 
     /// Get read access to the inner raw configuration
-    pub fn get_inner(&self) -> RwLockReadGuard<'_, cli::OckamConfig> {
+    pub fn inner(&self) -> RwLockReadGuard<'_, cli::OckamConfig> {
         self.inner.readlock_inner()
     }
 
     /// Get the launch configuration for a node
-    pub fn get_startup_cfg(&self, name: &str) -> Result<StartupConfig> {
+    pub fn startup_cfg(&self, name: &str) -> Result<StartupConfig> {
         let path = self.get_node_dir(name)?;
         Ok(StartupConfig::load(path))
     }
 
-    /// Get a lookup table for node alias -> internet address mappings
-    pub fn get_lookup(&self) -> ConfigLookup {
-        self.get_inner().get_lookup().clone()
+    /// Get a lookup table
+    pub fn lookup(&self) -> ConfigLookup {
+        self.inner().lookup().clone()
     }
 
     pub fn authorities(&self, node: &str) -> Result<AuthoritiesConfig> {
@@ -219,7 +218,7 @@ impl OckamConfig {
         let mut inner = self.inner.writelock_inner();
 
         if inner.nodes.contains_key(name) {
-            return Err(ConfigError::Exists(name.to_string()).into());
+            return Err(ConfigError::AlreadyExists(name.to_string()).into());
         }
 
         // Setup logging directory and store it
@@ -256,7 +255,10 @@ impl OckamConfig {
     }
 
     /// Delete an existing node
-    pub fn delete_node(&self, name: &str) -> Result<()> {
+    ///
+    /// Since this is an idempotent operation and there could be multiple nodes performing the same
+    /// deletion operation, we don't return an error if the node doesn't exist.
+    pub fn remove_node(&self, name: &str) {
         let mut inner = self.inner.writelock_inner();
         // If we are removing the first node also remove the default value
         match &inner.default {
@@ -264,14 +266,11 @@ impl OckamConfig {
             _ => {}
         }
         inner.lookup.remove_node(name);
-        match inner.nodes.remove(name) {
-            Some(_) => Ok(()),
-            None => Err(ConfigError::NotFound(name.to_string()).into()),
-        }
+        inner.nodes.remove(name);
     }
 
     /// Update the pid of an existing node process
-    pub fn update_pid(&self, name: &str, pid: impl Into<Option<i32>>) -> Result<()> {
+    pub fn set_node_pid(&self, name: &str, pid: impl Into<Option<i32>>) -> Result<()> {
         let mut inner = self.inner.writelock_inner();
 
         if !inner.nodes.contains_key(name) {
@@ -290,15 +289,11 @@ impl OckamConfig {
     pub fn set_space_alias(&self, id: &str, name: &str) {
         let mut inner = self.inner.writelock_inner();
         inner.lookup.set_space(id, name);
-        trace!(%id, %name, "Space stored in lookup table");
     }
 
-    pub fn remove_space_alias(&self, name: &str) -> Result<()> {
+    pub fn remove_space_alias(&self, name: &str) {
         let mut inner = self.inner.writelock_inner();
-        match inner.lookup.remove_space(name) {
-            Some(_) => Ok(()),
-            None => Err(ConfigError::Exists(name.to_string()).into()),
-        }
+        inner.lookup.remove_space(name);
     }
 
     pub fn remove_spaces_alias(&self) {
@@ -319,12 +314,9 @@ impl OckamConfig {
         Ok(())
     }
 
-    pub fn remove_project_alias(&self, name: &str) -> Result<()> {
+    pub fn remove_project_alias(&self, name: &str) {
         let mut inner = self.inner.writelock_inner();
-        match inner.lookup.remove_project(name) {
-            Some(_) => Ok(()),
-            None => Err(ConfigError::Exists(name.to_string()).into()),
-        }
+        inner.lookup.remove_project(name);
     }
 
     pub fn remove_projects_alias(&self) {
@@ -389,7 +381,7 @@ impl AuthoritiesConfig {
         let mut cfg = self.inner.writelock_inner();
         cfg.add_authority(i, a);
         drop(cfg);
-        self.inner.atomic_update().run()
+        self.inner.persist_config_updates()
     }
 
     pub fn snapshot(&self) -> cli::AuthoritiesConfig {

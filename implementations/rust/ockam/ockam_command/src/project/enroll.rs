@@ -55,7 +55,7 @@ impl Runner {
 
     async fn run(self) -> Result<()> {
         let tcp = TcpTransport::create(&self.ctx).await?;
-        let map = self.opts.config.get_lookup();
+        let map = self.opts.config.lookup();
         let to = if let Some(a) = project_authority(&self.cmd.to, &map)? {
             let mut addr = self.secure_channel(&tcp, a).await?;
             for proto in self.cmd.to.iter().skip(1) {

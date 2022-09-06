@@ -86,13 +86,11 @@ Otherwise your OS or OS configuration may not be supported!",
         }
     }
 
-    // UTILITY FUNCTIONS NEEDED IN OCKAM_API
-
     /// This function could be zero-copy if we kept the lock on the
     /// backing store for as long as we needed it.  Because this may
     /// have unwanted side-effects, instead we eagerly copy data here.
     /// This may be optimised in the future!
-    pub fn get_lookup(&self) -> &ConfigLookup {
+    pub fn lookup(&self) -> &ConfigLookup {
         &self.lookup
     }
 }

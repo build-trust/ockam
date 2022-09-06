@@ -44,7 +44,7 @@ impl SendCommand {
 async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> Result<()> {
     async fn go(ctx: &mut Context, opts: &CommandGlobalOpts, cmd: SendCommand) -> Result<()> {
         // Process `--to` Multiaddr
-        let (to, meta) = clean_multiaddr(&cmd.to, &opts.config.get_lookup())
+        let (to, meta) = clean_multiaddr(&cmd.to, &opts.config.lookup())
             .context("Argument '--to' is invalid")?;
 
         // Setup environment depending on whether we are sending the message from an embedded node or a background node

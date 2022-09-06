@@ -127,7 +127,7 @@ impl NodeManager {
 
                     config.writelock_inner().authenticated_storage_path =
                         Some(default_location.clone());
-                    config.atomic_update().run().map_err(map_anyhow_err)?;
+                    config.persist_config_updates().map_err(map_anyhow_err)?;
 
                     default_location
                 }
@@ -145,7 +145,7 @@ impl NodeManager {
             config.writelock_inner().identity = Some(identity_override.identity);
             config.writelock_inner().identity_was_overridden = true;
 
-            config.atomic_update().run().map_err(map_anyhow_err)?;
+            config.persist_config_updates().map_err(map_anyhow_err)?;
         }
 
         // Check if we had existing Vault

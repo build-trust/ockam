@@ -85,7 +85,7 @@ pub(super) async fn create_default_identity_if_needed(
         cfg.set_default_identity(Some(exported_data));
     };
 
-    cfg.atomic_update().run()?;
+    cfg.persist_config_updates()?;
 
     Ok(())
 }

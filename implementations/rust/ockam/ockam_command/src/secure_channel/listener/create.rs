@@ -36,13 +36,7 @@ impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = options.config;
         let node = get_final_element(&self.node_opts.at);
-        let port = match cfg.select_node(node) {
-            Some(cfg) => cfg.port,
-            None => {
-                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(exitcode::IOERR);
-            }
-        };
+        let port = cfg.get_node_port(node);
 
         connect_to(port, self, |ctx, cmd, rte| async {
             create_listener(&ctx, cmd.address, cmd.authorized_identifier, rte).await?;

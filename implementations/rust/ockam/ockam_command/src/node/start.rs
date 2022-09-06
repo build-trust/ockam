@@ -35,7 +35,7 @@ impl StartCommand {
         }
 
         // Load the node's launch configuration
-        let start_cfg = match cfg.get_startup_cfg(&self.node_name) {
+        let start_cfg = match cfg.startup_cfg(&self.node_name) {
             Ok(cfg) => cfg,
             Err(e) => {
                 eprintln!(

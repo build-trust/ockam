@@ -481,14 +481,14 @@ pub fn verify_pids(cfg: &OckamConfig, nodes: Vec<String>) {
         let verified_pid = rx.recv().unwrap();
 
         if node_cfg.pid != verified_pid {
-            if let Err(e) = cfg.update_pid(&node_name, verified_pid) {
+            if let Err(e) = cfg.set_node_pid(&node_name, verified_pid) {
                 eprintln!("failed to update pid for node {}: {}", node_name, e);
                 std::process::exit(exitcode::IOERR);
             }
         }
     }
 
-    if cfg.atomic_update().run().is_err() {
+    if cfg.persist_config_updates().is_err() {
         eprintln!("failed to update PID information in config!");
         std::process::exit(exitcode::IOERR);
     }

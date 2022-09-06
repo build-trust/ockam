@@ -34,7 +34,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
     if cmd.all {
         // Try to delete all nodes found in the config file + their associated processes
         let nn: Vec<String> = {
-            let inner = &opts.config.get_inner();
+            let inner = &opts.config.inner();
             inner.nodes.iter().map(|(name, _)| name.clone()).collect()
         };
         for node_name in nn.iter() {
@@ -71,13 +71,13 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
             }
         }
         // If not, persist updates to the config file
-        else if let Err(e) = opts.config.atomic_update().run() {
+        else if let Err(e) = opts.config.persist_config_updates() {
             eprintln!("Failed to update config file. You might need to run the command with --force to delete all config directories");
             return Err(crate::Error::new(crate::exitcode::IOERR, e));
         }
     } else {
         delete_node(&opts, &cmd.node_name, cmd.force);
-        opts.config.atomic_update().run()?;
+        opts.config.persist_config_updates()?;
         println!("Deleted node '{}'", &cmd.node_name);
     }
     Ok(())
@@ -120,6 +120,5 @@ fn delete_node_config(opts: &CommandGlobalOpts, node_name: &str) {
         .map(std::fs::remove_dir_all);
 
     // Try removing the node's info from the config file.
-    // If the node is not found, we ignore the result and continue.
-    let _ = opts.config.delete_node(node_name);
+    opts.config.remove_node(node_name);
 }

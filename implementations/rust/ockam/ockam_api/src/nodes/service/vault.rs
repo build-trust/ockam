@@ -39,7 +39,9 @@ impl NodeManager {
         let vault = Vault::new(Some(Arc::new(vault_storage)));
 
         self.config.inner().write().unwrap().vault_path = Some(path);
-        self.config.atomic_update().run().map_err(map_anyhow_err)?;
+        self.config
+            .persist_config_updates()
+            .map_err(map_anyhow_err)?;
 
         self.vault = Some(vault);
 
