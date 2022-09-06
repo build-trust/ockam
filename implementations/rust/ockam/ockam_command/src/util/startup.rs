@@ -54,7 +54,7 @@ pub fn spawn_node(
     address: &str,
     project: Option<&Path>,
 ) {
-    let (mlog, elog) = cfg.log_paths_for_node(name).unwrap();
+    let (mlog, elog) = cfg.node_log_paths(name).unwrap();
 
     let main_log_file = OpenOptions::new()
         .create(true)
@@ -104,11 +104,11 @@ pub fn spawn_node(
         .expect("could not spawn node");
 
     // Update the pid in the config (should we remove this?)
-    cfg.update_pid(name, child.id() as i32)
+    cfg.set_node_pid(name, child.id() as i32)
         .expect("should never panic");
 
     // Save the config update
-    if let Err(e) = cfg.atomic_update().run() {
+    if let Err(e) = cfg.persist_config_updates() {
         eprintln!("failed to update configuration: {}", e);
         std::process::exit(exitcode::IOERR);
     }

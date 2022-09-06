@@ -56,7 +56,7 @@ impl CreateCommand {
         api_node: &str,
         tcp: &TcpTransport,
     ) -> anyhow::Result<MultiAddr> {
-        let config = &opts.config.get_lookup();
+        let config = &opts.config.lookup();
         let (to, meta) = clean_multiaddr(&self.to, config)
             .context(format!("Could not convert {} into route", &self.to))?;
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
@@ -151,7 +151,7 @@ impl CreateCommand {
 async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
-    let config = &options.config.get_lookup();
+    let config = &options.config.lookup();
     let from = &command.parse_from_node(config);
     let to = &command
         .parse_to_route(

@@ -24,7 +24,7 @@ impl SetCommand {
         };
 
         options.config.set_node_alias(self.name, target_addr);
-        if let Err(e) = options.config.atomic_update().run() {
+        if let Err(e) = options.config.persist_config_updates() {
             eprintln!("{}", e);
             std::process::exit(exitcode::IOERR);
         }

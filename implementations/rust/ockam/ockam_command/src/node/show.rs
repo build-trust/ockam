@@ -21,7 +21,7 @@ pub struct ShowCommand {
 impl ShowCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
-        let port = match cfg.get_inner().nodes.get(&self.node_name) {
+        let port = match cfg.inner().nodes.get(&self.node_name) {
             Some(cfg) => cfg.port,
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");

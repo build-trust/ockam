@@ -91,7 +91,7 @@ impl<V: ConfigValues> Config<V> {
     }
 
     /// Atomically update the configuration
-    pub fn atomic_update(&self) -> AtomicUpdater<V> {
-        AtomicUpdater::new(self.config_dir.join(&self.config_name), self.inner.clone())
+    pub fn persist_config_updates(&self) -> anyhow::Result<()> {
+        AtomicUpdater::new(self.config_dir.join(&self.config_name), self.inner.clone()).run()
     }
 }

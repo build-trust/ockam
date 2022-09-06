@@ -77,13 +77,7 @@ impl CreateCommand {
         let cfg = &options.config;
         let at = &self.at.clone();
         let node = get_final_element(at);
-        let port = match cfg.select_node(node) {
-            Some(cfg) => cfg.port,
-            None => {
-                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(exitcode::IOERR);
-            }
-        };
+        let port = cfg.get_node_port(node);
 
         let command = CreateCommand {
             from: String::from(get_final_element(&self.from)),
@@ -94,7 +88,7 @@ impl CreateCommand {
         connect_to(port, command, create_outlet);
 
         // Update the startup config
-        let startup_cfg = match cfg.get_startup_cfg(node) {
+        let startup_cfg = match cfg.startup_cfg(node) {
             Ok(cfg) => cfg,
             Err(e) => {
                 eprintln!("failed to load startup configuration: {}", e);
@@ -103,7 +97,7 @@ impl CreateCommand {
         };
 
         startup_cfg.add_composite(composite);
-        if let Err(e) = startup_cfg.atomic_update().run() {
+        if let Err(e) = startup_cfg.persist_config_updates() {
             eprintln!("failed to update configuration: {}", e);
             std::process::exit(exitcode::IOERR);
         } else {

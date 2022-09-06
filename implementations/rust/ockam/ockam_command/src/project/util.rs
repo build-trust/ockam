@@ -50,7 +50,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
     api_node: &str,
     tcp: Option<&TcpTransport>,
 ) -> Result<Vec<MultiAddr>> {
-    let cfg_lookup = opts.config.get_lookup();
+    let cfg_lookup = opts.config.lookup();
     let mut sc = Vec::with_capacity(meta.project.len());
 
     // In case a project is missing from the config file, we fetch them all from the cloud.
@@ -260,7 +260,7 @@ pub mod config {
 
     pub async fn set_project(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
         set(config, project).await?;
-        config.atomic_update().run()?;
+        config.persist_config_updates()?;
         Ok(())
     }
 
@@ -269,13 +269,13 @@ pub mod config {
         for project in projects.iter() {
             set(config, project).await?;
         }
-        config.atomic_update().run()?;
+        config.persist_config_updates()?;
         Ok(())
     }
 
     pub fn remove_project(config: &OckamConfig, name: &str) -> Result<()> {
-        config.remove_project_alias(name)?;
-        config.atomic_update().run()?;
+        config.remove_project_alias(name);
+        config.persist_config_updates()?;
         Ok(())
     }
 

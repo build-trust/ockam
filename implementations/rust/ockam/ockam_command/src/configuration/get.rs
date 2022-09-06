@@ -9,7 +9,7 @@ pub struct GetCommand {
 
 impl GetCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        let lookup = options.config.get_lookup();
+        let lookup = options.config.lookup();
         match lookup.get_node(&self.alias) {
             Some(addr) => {
                 println!("Node: {}\nAddress: {}", self.alias, addr);

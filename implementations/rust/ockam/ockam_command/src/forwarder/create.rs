@@ -50,7 +50,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) 
         let tcp = TcpTransport::create(ctx).await?;
         let api_node = get_final_element(&cmd.to);
         let at_rust_node = is_local_node(&cmd.at).context("Argument --at is not valid")?;
-        let (at, meta) = clean_multiaddr(&cmd.at, &opts.config.get_lookup()).unwrap();
+        let (at, meta) = clean_multiaddr(&cmd.at, &opts.config.lookup()).unwrap();
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
             ctx,
             opts,

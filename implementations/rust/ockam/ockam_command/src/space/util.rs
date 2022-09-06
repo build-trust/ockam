@@ -12,7 +12,7 @@ pub mod config {
 
     pub fn set_space(config: &OckamConfig, space: &Space) -> Result<()> {
         config.set_space_alias(&space.id, &space.name);
-        config.atomic_update().run()?;
+        config.persist_config_updates()?;
         Ok(())
     }
 
@@ -21,13 +21,13 @@ pub mod config {
         for space in spaces.iter() {
             config.set_space_alias(&space.id, &space.name);
         }
-        config.atomic_update().run()?;
+        config.persist_config_updates()?;
         Ok(())
     }
 
     pub fn remove_space(config: &OckamConfig, name: &str) -> Result<()> {
-        config.remove_space_alias(name)?;
-        config.atomic_update().run()?;
+        config.remove_space_alias(name);
+        config.persist_config_updates()?;
         Ok(())
     }
 

@@ -11,7 +11,7 @@ impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
         let node_names = {
-            let inner = cfg.get_inner();
+            let inner = cfg.inner();
 
             if inner.nodes.is_empty() {
                 println!("No nodes registered on this system!");
@@ -29,15 +29,12 @@ impl ListCommand {
         };
         verify_pids(cfg, node_names);
 
-        cfg.get_inner()
-            .nodes
-            .iter()
-            .for_each(|(node_name, node_cfg)| {
-                connect_to(
-                    node_cfg.port,
-                    (cfg.clone(), node_name.clone(), false),
-                    print_query_status,
-                )
-            });
+        cfg.inner().nodes.iter().for_each(|(node_name, node_cfg)| {
+            connect_to(
+                node_cfg.port,
+                (cfg.clone(), node_name.clone(), false),
+                print_query_status,
+            )
+        });
     }
 }

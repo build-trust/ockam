@@ -7,7 +7,7 @@ pub struct ListCommand {}
 
 impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        let lookup = options.config.get_lookup();
+        let lookup = options.config.lookup();
 
         for (alias, value) in &lookup.map {
             // Currently we only have this one type of lookup but we

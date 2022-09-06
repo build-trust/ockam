@@ -129,7 +129,7 @@ impl CreateCommand {
                 }
 
                 // Save the config update
-                if let Err(e) = cfg.atomic_update().run() {
+                if let Err(e) = cfg.persist_config_updates() {
                     eprintln!("failed to update configuration: {}", e);
                     std::process::exit(exitcode::IOERR);
                 }
@@ -196,7 +196,7 @@ impl CreateCommand {
         }
 
         // Save the config update
-        if let Err(e) = cfg.atomic_update().run() {
+        if let Err(e) = cfg.persist_config_updates() {
             eprintln!("failed to update configuration: {}", e);
             std::process::exit(exitcode::IOERR);
         }
@@ -216,11 +216,11 @@ impl CreateCommand {
         );
 
         let composite = (&cmd).into();
-        let startup_cfg = cfg.get_startup_cfg(&cmd.node_name).unwrap();
+        let startup_cfg = cfg.startup_cfg(&cmd.node_name).unwrap();
         startup_cfg.writelock_inner().commands = vec![composite].into();
 
         // Save the config update
-        if let Err(e) = startup_cfg.atomic_update().run() {
+        if let Err(e) = startup_cfg.persist_config_updates() {
             eprintln!("failed to update configuration: {}", e);
             std::process::exit(exitcode::IOERR);
         }
