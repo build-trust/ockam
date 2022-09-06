@@ -1,9 +1,9 @@
-use crate::util::get_final_element;
 use crate::{
-    util::{api, connect_to, exitcode},
-    CommandGlobalOpts,
+    util::{api, connect_to, exitcode, get_final_element},
+    CommandGlobalOpts, OutputFormat,
 };
 use clap::Args;
+use colorful::Colorful;
 use ockam::{Context, Route, TCP};
 use ockam_api::{
     config::snippet::{ComposableSnippet, Operation, Protocol, RemoteMode},
@@ -11,6 +11,8 @@ use ockam_api::{
     route_to_multiaddr,
 };
 use ockam_core::api::Status;
+use serde_json::json;
+use std::net::SocketAddrV4;
 
 #[derive(Clone, Debug, Args)]
 pub struct TcpConnectionNodeOpts {
@@ -64,7 +66,7 @@ impl CreateCommand {
         let node = get_final_element(&self.node_opts.from);
         let port = cfg.get_node_port(node);
 
-        connect_to(port, self.clone(), create_connection);
+        connect_to(port, (self.clone(), options.clone()), create_connection);
 
         let composite = (&self).into();
         let node = node.to_string();
@@ -86,7 +88,7 @@ impl CreateCommand {
 
 pub async fn create_connection(
     ctx: Context,
-    cmd: CreateCommand,
+    (cmd, opts): (CreateCommand, CommandGlobalOpts),
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     let resp: Vec<u8> = match ctx
@@ -120,10 +122,31 @@ pub async fn create_connection(
                 }
             };
 
-            println!(
-                "Tcp connection created! You can send messages to it via this route:\n`{}`",
-                multiaddr
-            )
+            let from = cmd.node_opts.from;
+            let to = cmd.address.parse::<SocketAddrV4>().unwrap();
+
+            // if output format is json, write json to stdout.
+            match opts.global_args.output_format {
+                OutputFormat::Plain => {
+                    if opts.global_args.no_color {
+                        eprintln!("\n  Created TCP Connection:");
+                        eprintln!("  • From: /node/{}", from);
+                        eprintln!("  •   To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port());
+                    } else {
+                        eprintln!("\n  Created TCP Connection:");
+                        eprintln!("{}", format!("  • From: /node/{}", from).light_magenta());
+                        eprintln!(
+                            "{}",
+                            format!("  •   To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port())
+                                .light_magenta()
+                        );
+                    }
+                }
+                OutputFormat::Json => {
+                    let json = json!([{"route": multiaddr.to_string() }]);
+                    eprintln!("{}", json);
+                }
+            }
         }
         _ => {
             eprintln!(
