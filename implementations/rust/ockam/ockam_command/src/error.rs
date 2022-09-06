@@ -5,7 +5,6 @@ use crate::{exitcode, ExitCode};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug)]
 pub struct Error {
     code: ExitCode,
     inner: anyhow::Error,
@@ -22,9 +21,15 @@ impl Error {
     }
 }
 
-impl Display for Error {
+impl Debug for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(&self.inner, f)
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{code: {}, err: {}}}", self.code, self.inner)
     }
 }
 

@@ -87,7 +87,7 @@ impl Error {
         self.0.code
     }
 
-    /// Attach additional unstructured informaton to the error.
+    /// Attach additional unstructured information to the error.
     #[must_use]
     pub fn context(mut self, key: &str, val: impl core::fmt::Display) -> Self {
         self.0.add_context(key, &val);

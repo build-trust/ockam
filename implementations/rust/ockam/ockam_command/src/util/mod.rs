@@ -308,19 +308,19 @@ where
             let tcp = match TcpTransport::create(&ctx).await {
                 Ok(tcp) => tcp,
                 Err(e) => {
-                    eprintln!("failed to create TcpTransport");
+                    eprintln!("Failed to create TcpTransport. {e}");
                     error!(%e);
                     std::process::exit(exitcode::CANTCREAT);
                 }
             };
             if let Err(e) = tcp.connect(format!("localhost:{}", port)).await {
-                eprintln!("failed to connect to node");
+                eprintln!("Failed to connect to node. {e}");
                 error!(%e);
                 std::process::exit(exitcode::IOERR);
             }
             let route = route![(TCP, format!("localhost:{}", port))];
             if let Err(e) = lambda(ctx, a, route).await {
-                eprintln!("encountered an error in command handler code");
+                eprintln!("Encountered an error in command handler code. {e}");
                 error!(%e);
                 std::process::exit(exitcode::IOERR);
             }
@@ -343,8 +343,8 @@ where
         |ctx, a| async {
             let res = f(ctx, a).await;
             if let Err(e) = res {
-                error!("{e:?}");
-                eprintln!("{e}");
+                error!(%e);
+                eprintln!("{e:?}");
                 std::process::exit(e.code());
             }
             Ok(())
@@ -374,8 +374,8 @@ where
         stop_node(ctx).await.unwrap();
         match r {
             Err(e) => {
-                error!("{e:?}");
-                eprintln!("{e}");
+                error!(%e);
+                eprintln!("{e:?}");
                 std::process::exit(e.code());
             }
             Ok(v) => v,
@@ -482,14 +482,14 @@ pub fn verify_pids(cfg: &OckamConfig, nodes: Vec<String>) {
 
         if node_cfg.pid != verified_pid {
             if let Err(e) = cfg.set_node_pid(&node_name, verified_pid) {
-                eprintln!("failed to update pid for node {}: {}", node_name, e);
+                eprintln!("Failed to update pid for node {}: {}", node_name, e);
                 std::process::exit(exitcode::IOERR);
             }
         }
     }
 
     if cfg.persist_config_updates().is_err() {
-        eprintln!("failed to update PID information in config!");
+        eprintln!("Failed to update PID information in config!");
         std::process::exit(exitcode::IOERR);
     }
 }

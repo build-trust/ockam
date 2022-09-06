@@ -392,9 +392,6 @@ impl NodeManager {
             (Post, ["v0", "spaces"]) => self.create_space(ctx, dec).await?,
             (Get, ["v0", "spaces"]) => self.list_spaces(ctx, dec).await?,
             (Get, ["v0", "spaces", id]) => self.get_space(ctx, dec, id).await?,
-            (Get, ["v0", "spaces", "name", name]) => {
-                self.get_space_by_name(ctx, req, dec, name).await?
-            }
             (Delete, ["v0", "spaces", id]) => self.delete_space(ctx, dec, id).await?,
 
             // ==*== Project' enrollers ==*==
@@ -413,11 +410,6 @@ impl NodeManager {
             (Post, ["v0", "projects", space_id]) => self.create_project(ctx, dec, space_id).await?,
             (Get, ["v0", "projects"]) => self.list_projects(ctx, dec).await?,
             (Get, ["v0", "projects", project_id]) => self.get_project(ctx, dec, project_id).await?,
-            // TODO: ockam_command doesn't use this really yet
-            (Get, ["v0", "projects", space_id, project_name]) => {
-                self.get_project_by_name(ctx, req, dec, space_id, project_name)
-                    .await?
-            }
             (Delete, ["v0", "projects", space_id, project_id]) => {
                 self.delete_project(ctx, dec, space_id, project_id).await?
             }
@@ -462,7 +454,7 @@ impl Worker for NodeManager {
         let req: Request = match dec.decode() {
             Ok(r) => r,
             Err(e) => {
-                error!("failed to decode request: {:?}", e);
+                error!("Failed to decode request: {:?}", e);
                 return Ok(());
             }
         };
@@ -472,13 +464,13 @@ impl Worker for NodeManager {
             // If an error occurs, send a response with the error code so the listener can
             // fail fast instead of failing silently here and force the listener to timeout.
             Err(err) => {
-                error!(?err, "Failed to handle message");
+                error!(?err, "Failed to handle request");
                 Response::builder(req.id(), Status::InternalServerError)
-                    .body(err.to_string())
+                    .body(format!("Failed to handle request: {err}"))
                     .to_vec()?
             }
         };
-        warn!("** sending response");
+        trace!("** sending response");
         ctx.send(msg.return_route(), r).await
     }
 }
