@@ -187,7 +187,7 @@ mod node {
     use minicbor::Decoder;
     use tracing::trace;
 
-    use ockam_core::api::{Request, Response, Status};
+    use ockam_core::api::Request;
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
@@ -255,60 +255,6 @@ mod node {
             let req_builder = Request::get(format!("/v0/{project_id}"));
             self.request_controller(ctx, label, None, cloud_route, "projects", req_builder)
                 .await
-        }
-
-        pub(crate) async fn get_project_by_name(
-            &mut self,
-            ctx: &mut Context,
-            req: &Request<'_>,
-            dec: &mut Decoder<'_>,
-            space_id: &str,
-            project_name: &str,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
-
-            let label = "get_project_by_name";
-            trace!(target: TARGET, %space_id, %project_name, "getting project");
-
-            let req_builder = Request::get("/v0");
-
-            match self
-                .request_controller(ctx, label, None, cloud_route, "projects", req_builder)
-                .await
-            {
-                Ok(r) => {
-                    let mut dec = Decoder::new(&r);
-                    let header = dec.decode::<Response>()?;
-                    match header.status() {
-                        Some(Status::Ok) => {
-                            let projects = dec.decode::<Vec<Project>>()?;
-                            match projects
-                                .iter()
-                                .find(|n| n.name == *project_name && n.space_id == *space_id)
-                            {
-                                Some(project) => Ok(Response::builder(req.id(), Status::Ok)
-                                    .body(project)
-                                    .to_vec()?),
-                                None => Ok(Response::builder(req.id(), Status::NotFound).to_vec()?),
-                            }
-                        }
-                        _ => {
-                            error!("Failed to retrieve project");
-                            Ok(
-                                Response::builder(req.id(), Status::InternalServerError)
-                                    .to_vec()?,
-                            )
-                        }
-                    }
-                }
-                Err(err) => {
-                    error!(?err, "Failed to retrieve project");
-                    Ok(Response::builder(req.id(), Status::InternalServerError)
-                        .body(err.to_string())
-                        .to_vec()?)
-                }
-            }
         }
 
         pub(crate) async fn delete_project(

@@ -61,12 +61,11 @@ mod node {
     use minicbor::Decoder;
     use tracing::trace;
 
-    use ockam_core::api::{Request, Response, Status};
+    use ockam_core::api::Request;
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
     use crate::cloud::space::CreateSpace;
-    use crate::cloud::space::Space;
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeManager;
 
@@ -128,54 +127,6 @@ mod node {
             let req_builder = Request::get(format!("/v0/{id}"));
             self.request_controller(ctx, label, None, cloud_route, "spaces", req_builder)
                 .await
-        }
-
-        pub(crate) async fn get_space_by_name(
-            &mut self,
-            ctx: &mut Context,
-            req: &Request<'_>,
-            dec: &mut Decoder<'_>,
-            name: &str,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
-
-            let label = "get_space_by_name";
-            trace!(target: TARGET, space = %name, "getting space");
-
-            let req_builder = Request::get("/v0/");
-            match self
-                .request_controller(ctx, label, None, cloud_route.clone(), "spaces", req_builder)
-                .await
-            {
-                Ok(r) => {
-                    let mut dec = Decoder::new(&r);
-                    let header = dec.decode::<Response>()?;
-                    match header.status() {
-                        Some(Status::Ok) => {
-                            let spaces = dec.decode::<Vec<Space>>()?;
-                            match spaces.iter().find(|n| n.name == *name) {
-                                Some(space) => Ok(Response::builder(req.id(), Status::Ok)
-                                    .body(space)
-                                    .to_vec()?),
-                                None => Ok(Response::builder(req.id(), Status::NotFound).to_vec()?),
-                            }
-                        }
-                        _ => {
-                            error!("Failed to retrieve spaces");
-                            Ok(Response::builder(req.id(), Status::InternalServerError)
-                                .body("Failed to retrieve spaces".to_string())
-                                .to_vec()?)
-                        }
-                    }
-                }
-                Err(err) => {
-                    error!(?err, "Failed to retrieve spaces");
-                    Ok(Response::builder(req.id(), Status::InternalServerError)
-                        .body(err.to_string())
-                        .to_vec()?)
-                }
-            }
         }
 
         pub(crate) async fn delete_space(
