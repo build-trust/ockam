@@ -3,15 +3,23 @@ use crate::compat::vec::Vec;
 
 use core::ops::Deref;
 use minicbor::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 
 /// A new type around `Cow<'_, [u8]>` that borrows from input.
 ///
 /// Contrary to `Cow<_, [u8]>` the `Decode` impl for this type will always borrow
 /// from input so using it in types like `Option`, `Vec<_>` etc will not produce
 /// owned element values.
-#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Encode, Decode, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 #[cbor(transparent)]
-pub struct CowBytes<'a>(#[cbor(b(0), with = "minicbor::bytes")] pub Cow<'a, [u8]>);
+#[serde(transparent)]
+pub struct CowBytes<'a>(
+    #[cbor(b(0), with = "minicbor::bytes")]
+    #[serde(borrow)]
+    pub Cow<'a, [u8]>,
+);
 
 impl CowBytes<'_> {
     /// Returns true if the data is borrowed, i.e. if to_mut would require additional work.

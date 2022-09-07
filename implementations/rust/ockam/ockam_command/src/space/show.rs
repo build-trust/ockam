@@ -1,4 +1,3 @@
-use anyhow::Context as _;
 use clap::Args;
 
 use ockam::Context;
@@ -36,17 +35,10 @@ async fn run_impl(
     cmd: ShowCommand,
 ) -> crate::Result<()> {
     let node_name = start_embedded_node(ctx, &opts.config).await?;
-    let controller_route = cmd.cloud_opts.route();
+    let controller_route = &cmd.cloud_opts.route();
 
     // Lookup space
-    let id = match config::get_space(&opts.config, &cmd.name) {
-        Some(id) => id,
-        None => {
-            config::refresh_spaces(ctx, &opts, &node_name, cmd.cloud_opts.route()).await?;
-            config::get_space(&opts.config, &cmd.name)
-                .context(format!("Space '{}' does not exist", cmd.name))?
-        }
-    };
+    let id = config::get_space(ctx, &opts, &cmd.name, &node_name, &cmd.cloud_opts.route()).await?;
 
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();

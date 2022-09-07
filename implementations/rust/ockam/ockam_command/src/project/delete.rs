@@ -42,11 +42,11 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
 ) -> crate::Result<()> {
-    let space_id = space::config::get_space(&opts.config, &cmd.space_name)
+    let space_id = space::config::try_get_space(&opts.config, &cmd.space_name)
         .context(format!("Space '{}' does not exist", cmd.space_name))?;
 
     let node_name = start_embedded_node(ctx, &opts.config).await?;
-    let controller_route = cmd.cloud_opts.route();
+    let controller_route = &cmd.cloud_opts.route();
 
     // Try to remove from config, in case the project was removed from the cloud but not from the config file.
     let _ = config::remove_project(&opts.config, &cmd.project_name);

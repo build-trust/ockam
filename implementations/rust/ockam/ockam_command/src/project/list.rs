@@ -32,7 +32,7 @@ async fn run_impl(
     cmd: ListCommand,
 ) -> crate::Result<()> {
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
-    rpc.request(api::project::list(cmd.cloud_opts.route()))
+    rpc.request(api::project::list(&cmd.cloud_opts.route()))
         .await?;
     let projects = rpc.parse_and_print_response::<Vec<Project>>()?;
     config::set_projects(&opts.config, &projects).await?;

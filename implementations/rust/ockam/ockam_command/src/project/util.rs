@@ -138,7 +138,7 @@ pub async fn check_project_readiness<'a>(
 ) -> Result<Project<'a>> {
     if !project.is_ready() {
         print!("\nProject created. Waiting until it's operative...");
-        let cloud_route = cloud_opts.route();
+        let cloud_route = &cloud_opts.route();
         loop {
             print!(".");
             std::io::stdout().flush()?;
@@ -218,14 +218,17 @@ pub async fn check_project_readiness<'a>(
 }
 
 pub mod config {
+    use crate::util::output::Output;
     use ockam::{identity::PublicIdentity, Context};
     use ockam_api::config::lookup::ProjectAuthority;
     use ockam_vault::Vault;
+    use tracing::trace;
 
     use super::*;
 
     async fn set(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
         if !project.is_ready() {
+            trace!("Project is not ready yet {}", project.output()?);
             return Err(anyhow!(
                 "Project is not ready yet, wait a few seconds and try again"
             ));

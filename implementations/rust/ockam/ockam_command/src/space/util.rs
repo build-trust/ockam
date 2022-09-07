@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 
 use ockam::Context;
 use ockam_api::cloud::space::Space;
@@ -31,12 +31,29 @@ pub mod config {
         Ok(())
     }
 
-    pub fn get_space(config: &OckamConfig, name: &str) -> Option<String> {
+    pub async fn get_space(
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+        space_name: &str,
+        api_node: &str,
+        controller_route: &MultiAddr,
+    ) -> Result<String> {
+        match try_get_space(&opts.config, space_name) {
+            Some(id) => Ok(id),
+            None => {
+                refresh_spaces(ctx, opts, api_node, controller_route).await?;
+                Ok(try_get_space(&opts.config, space_name)
+                    .context(format!("Space '{}' does not exist", space_name))?)
+            }
+        }
+    }
+
+    pub fn try_get_space(config: &OckamConfig, name: &str) -> Option<String> {
         let inner = config.writelock_inner();
         inner.lookup.get_space(name).map(|s| s.id.clone())
     }
 
-    pub async fn refresh_spaces(
+    async fn refresh_spaces(
         ctx: &Context,
         opts: &CommandGlobalOpts,
         api_node: &str,

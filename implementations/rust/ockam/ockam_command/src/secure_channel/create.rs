@@ -160,38 +160,38 @@ impl CreateCommand {
     }
 }
 
-async fn rpc(ctx: Context, (options, command): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
-    let config = &options.config.lookup();
-    let from = &command.parse_from_node(config);
-    let to = &command
+    let config = &opts.config.lookup();
+    let from = &cmd.parse_from_node(config);
+    let to = &cmd
         .parse_to_route(
             &ctx,
-            &options,
-            &command.cloud_opts.route_to_controller,
+            &opts,
+            &cmd.cloud_opts.route(),
             from,
             &tcp,
-            command.exchange_credentials,
+            cmd.exchange_credentials,
         )
         .await?;
 
-    let authorized_identifiers = command.authorized.clone();
+    let authorized_identifiers = cmd.authorized.clone();
 
-    let credential_exchange_mode = if command.exchange_credentials {
+    let credential_exchange_mode = if cmd.exchange_credentials {
         CredentialExchangeMode::Mutual
     } else {
         CredentialExchangeMode::None
     };
 
     // Delegate the request to create a secure channel to the from node.
-    let mut rpc = RpcBuilder::new(&ctx, &options, from).tcp(&tcp)?.build();
+    let mut rpc = RpcBuilder::new(&ctx, &opts, from).tcp(&tcp)?.build();
     let request = api::create_secure_channel(to, authorized_identifiers, credential_exchange_mode);
 
     rpc.request(request).await?;
     let response = rpc.parse_response::<CreateSecureChannelResponse>()?;
 
-    command.print_output(from, to, &options, response);
+    cmd.print_output(from, to, &opts, response);
 
     Ok(())
 }

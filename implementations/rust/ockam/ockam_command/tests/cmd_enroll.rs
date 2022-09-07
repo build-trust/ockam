@@ -3,11 +3,7 @@ use std::process::Command;
 
 #[test]
 fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
-    let prefix_args = [
-        "--test-argument-parser",
-        "enroll",
-        "/dnsaddr/cloud.ockam.io/tcp/62526",
-    ];
+    let prefix_args = ["--test-argument-parser", "enroll"];
 
     // auth0
     let mut cmd = Command::cargo_bin("ockam")?;

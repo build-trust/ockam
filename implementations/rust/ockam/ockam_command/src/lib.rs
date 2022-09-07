@@ -16,6 +16,7 @@ mod project;
 mod secure_channel;
 mod service;
 mod space;
+mod subscription;
 mod tcp;
 mod terminal;
 mod upgrade;
@@ -45,6 +46,7 @@ use util::{exitcode, exitcode::ExitCode, setup_logging, OckamConfig};
 use vault::VaultCommand;
 use version::Version;
 
+use crate::subscription::SubscriptionCommand;
 use clap::{ArgEnum, Args, Parser, Subcommand};
 use upgrade::check_if_an_upgrade_is_available;
 
@@ -248,18 +250,22 @@ pub enum OckamSubcommand {
     Credential(CredentialCommand),
     Service(ServiceCommand),
     Vault(VaultCommand),
+    Subscription(SubscriptionCommand),
 }
 
 pub fn run() {
-    check_if_an_upgrade_is_available();
-
     let input = std::env::args().map(replace_hyphen_with_stdin);
 
     let command: OckamCommand = OckamCommand::parse_from(input);
+    if !command.global_args.test_argument_parser {
+        check_if_an_upgrade_is_available();
+    }
+
     let config = OckamConfig::load();
 
     if !command.global_args.quiet {
         setup_logging(command.global_args.verbose, command.global_args.no_color);
+        tracing::debug!("{}", Version::short());
         tracing::debug!("Parsed {:?}", &command);
     }
 
@@ -295,6 +301,7 @@ pub fn run() {
         OckamSubcommand::Service(c) => c.run(options),
         OckamSubcommand::Completion(c) => c.run(),
         OckamSubcommand::Credential(c) => c.run(options),
+        OckamSubcommand::Subscription(c) => c.run(options),
     }
 }
 

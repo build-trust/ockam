@@ -90,7 +90,7 @@ async fn default_space<'a>(
     // Get available spaces for node's identity
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     let mut available_spaces = {
-        rpc.request(api::space::list(cloud_opts.route())).await?;
+        rpc.request(api::space::list(&cloud_opts.route())).await?;
         rpc.parse_response::<Vec<Space>>()?
     };
     // If the identity has no spaces, create one
@@ -137,7 +137,7 @@ async fn default_project<'a>(
     // Get available project for the given space
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     let mut available_projects: Vec<Project> = {
-        rpc.request(api::project::list(cloud_opts.route())).await?;
+        rpc.request(api::project::list(&cloud_opts.route())).await?;
         rpc.parse_response::<Vec<Project>>()?
     };
     // If the space has no projects, create one
@@ -146,7 +146,7 @@ async fn default_project<'a>(
         rpc.request(api::project::create(
             "default",
             &space.id,
-            cloud_opts.route(),
+            &cloud_opts.route(),
         ))
         .await?;
         rpc.parse_response::<Project>()?.to_owned()

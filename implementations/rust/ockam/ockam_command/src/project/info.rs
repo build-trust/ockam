@@ -61,14 +61,14 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: InfoCommand,
 ) -> crate::Result<()> {
-    let controller_route = cmd.cloud_opts.route();
+    let controller_route = &cmd.cloud_opts.route();
     let node_name = start_embedded_node(ctx, &opts.config).await?;
 
     // Lookup project
     let id = match config::get_project(&opts.config, &cmd.name) {
         Some(id) => id,
         None => {
-            config::refresh_projects(ctx, &opts, &node_name, cmd.cloud_opts.route(), None).await?;
+            config::refresh_projects(ctx, &opts, &node_name, &cmd.cloud_opts.route(), None).await?;
             config::get_project(&opts.config, &cmd.name)
                 .context(format!("Project '{}' does not exist", cmd.name))?
         }
