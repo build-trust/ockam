@@ -5,6 +5,8 @@ mod public_identity;
 mod storage_utils;
 mod worker;
 
+pub mod access_control;
+
 pub use storage_utils::*;
 
 use crate::IdentityIdentifier;
