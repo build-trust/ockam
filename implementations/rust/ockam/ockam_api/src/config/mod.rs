@@ -60,27 +60,32 @@ impl<V: ConfigValues> Config<V> {
         let config_name = format!("{}.json", config_name);
         let config_path = config_dir.join(&config_name);
 
+        let create_new = || {
+            let new_inner = V::default_values(config_dir);
+            let json: String =
+                serde_json::to_string_pretty(&new_inner).expect("failed to serialise config");
+            let mut f = File::create(&config_path).expect("failed to create default config file");
+            f.write_all(json.as_bytes())
+                .expect("failed to write config");
+            new_inner
+        };
+
         let inner = match File::open(&config_path) {
             Ok(ref mut f) => {
                 let mut buf = String::new();
                 f.read_to_string(&mut buf).expect("failed to read config");
-                serde_json::from_str(&buf).unwrap_or_else(|_| {
-                    panic!(
-                        "failed to parse config.  Try deleting {}",
-                        config_path.display()
-                    )
-                })
+                if buf.is_empty() {
+                    create_new()
+                } else {
+                    serde_json::from_str(&buf).unwrap_or_else(|_| {
+                        panic!(
+                            "Failed to parse config.  Try deleting {}",
+                            config_path.display()
+                        )
+                    })
+                }
             }
-            Err(_) => {
-                let new_inner = V::default_values(config_dir);
-                let json: String =
-                    serde_json::to_string_pretty(&new_inner).expect("failed to serialise config");
-                let mut f =
-                    File::create(&config_path).expect("failed to create default config file");
-                f.write_all(json.as_bytes())
-                    .expect("failed to write config");
-                new_inner
-            }
+            Err(_) => create_new(),
         };
 
         Self {
