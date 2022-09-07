@@ -1,6 +1,6 @@
 [package]
 name = "ockam_abac"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
@@ -39,6 +39,6 @@ alloc = [
 ]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.67.0", default-features = false }
-ockam_identity = { path = "../ockam_identity", version = "^0.61.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.68.0", default-features = false }
+ockam_identity = { path = "../ockam_identity", version = "^0.62.0", default_features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
