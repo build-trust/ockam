@@ -9,6 +9,7 @@ use crate::space::util::config;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
+use colorful::Colorful;
 
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
@@ -26,6 +27,15 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
+        println!(
+            "\n{}",
+            "Creating a trial space for you (everything in it will be deleted in 15 days) ..."
+                .light_magenta()
+        );
+        println!(
+            "{}",
+            "To learn more about production ready spaces in Ockam Orchestrator, contact us at: hello@ockam.io".light_magenta()
+        );
         node_rpc(rpc, (options, self));
     }
 }

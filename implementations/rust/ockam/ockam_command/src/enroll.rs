@@ -104,6 +104,16 @@ async fn default_space<'a>(
             name: crate::space::random_name(),
             admins: vec![],
         };
+        println!(
+            "\n{}",
+            "Creating a trial space for you (everything in it will be deleted in 15 days) ..."
+                .light_magenta()
+        );
+        println!(
+            "{}",
+            "To learn more about production ready spaces in Ockam Orchestrator, contact us at: hello@ockam.io".light_magenta()
+        );
+
         let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
         rpc.request(api::space::create(&cmd)).await?;
         rpc.parse_response::<Space>()?.to_owned()
