@@ -6,10 +6,13 @@ use crate::nodes::registry::{InletInfo, OutletInfo};
 use crate::nodes::service::{map_multiaddr_err, random_alias};
 use crate::nodes::NodeManager;
 use minicbor::Decoder;
+use ockam::tcp::{InletOptions, OutletOptions};
 use ockam::{Address, Result};
 use ockam_core::api::{Request, Response, ResponseBuilder};
+use ockam_core::AllowAll;
 use ockam_multiaddr::MultiAddr;
 use std::str::FromStr;
+use std::sync::Arc;
 
 impl NodeManager {
     pub(super) fn get_inlets(&self, req: &Request<'_>) -> ResponseBuilder<InletList<'_>> {
@@ -74,10 +77,13 @@ impl NodeManager {
             }
         };
 
-        let res = self
-            .tcp_transport
-            .create_inlet(bind_addr.clone(), outlet_route)
-            .await;
+        let options = InletOptions::new(
+            bind_addr.clone(),
+            outlet_route,
+            Arc::new(AllowAll), // FIXME
+        );
+
+        let res = self.tcp_transport.create_inlet_extended(options).await;
 
         Ok(match res {
             Ok((worker_addr, _)) => {
@@ -127,10 +133,10 @@ impl NodeManager {
 
         info!("Handling request to create outlet portal");
         let worker_addr = Address::from(worker_addr.as_ref());
-        let res = self
-            .tcp_transport
-            .create_outlet(worker_addr.clone(), tcp_addr.clone())
-            .await;
+
+        let options = OutletOptions::new(worker_addr.clone(), tcp_addr.clone(), Arc::new(AllowAll)); // FIXME
+
+        let res = self.tcp_transport.create_outlet_extended(options).await;
 
         Ok(match res {
             Ok(_) => {

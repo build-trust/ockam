@@ -1,7 +1,8 @@
 use ockam_core::access_control::AccessControl;
 use ockam_core::compat::{boxed::Box, net::SocketAddr};
-use ockam_core::{Address, AsyncTryClone, Result, Route};
-use ockam_node::{Context, WorkerBuilder};
+use ockam_core::{Address, AllowAll, AsyncTryClone, Result, Route};
+use ockam_node::Context;
+use std::sync::Arc;
 
 use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
 
@@ -112,7 +113,60 @@ impl TcpTransport {
     }
 }
 
+/// Args to start an Inlet
+pub struct InletOptions {
+    bind_addr: String,
+    outlet_route: Route,
+    access_control: Arc<dyn AccessControl>,
+}
+
+impl InletOptions {
+    // TODO: Generics
+    /// Constructor
+    pub fn new(
+        bind_addr: String,
+        outlet_route: Route,
+        access_control: Arc<dyn AccessControl>,
+    ) -> Self {
+        Self {
+            bind_addr,
+            outlet_route,
+            access_control,
+        }
+    }
+}
+
+/// Args to start an Outlet
+pub struct OutletOptions {
+    address: Address,
+    peer: String,
+    access_control: Arc<dyn AccessControl>,
+}
+
+impl OutletOptions {
+    // TODO: Generics
+    /// Constructor
+    pub fn new(address: Address, peer: String, access_control: Arc<dyn AccessControl>) -> Self {
+        Self {
+            address,
+            peer,
+            access_control,
+        }
+    }
+}
+
 impl TcpTransport {
+    /// Create an Inlet
+    pub async fn create_inlet_extended(
+        &self,
+        options: InletOptions,
+    ) -> Result<(Address, SocketAddr)> {
+        let bind_addr = parse_socket_addr(options.bind_addr)?;
+        self.router_handle
+            .bind_inlet(options.outlet_route, bind_addr, options.access_control)
+            .await
+    }
+
     /// Create Tcp Inlet that listens on bind_addr, transforms Tcp stream into Ockam Routable
     /// Messages and forward them to Outlet using outlet_route. Inlet is bidirectional: Ockam
     /// Messages sent to Inlet from Outlet (using return route) will be streamed to Tcp connection.
@@ -136,8 +190,9 @@ impl TcpTransport {
         bind_addr: impl Into<String>,
         outlet_route: impl Into<Route>,
     ) -> Result<(Address, SocketAddr)> {
-        let bind_addr = parse_socket_addr(bind_addr.into())?;
-        self.router_handle.bind_inlet(outlet_route, bind_addr).await
+        let options = InletOptions::new(bind_addr.into(), outlet_route.into(), Arc::new(AllowAll));
+
+        self.create_inlet_extended(options).await
     }
 
     /// Stop inlet at addr
@@ -157,6 +212,17 @@ impl TcpTransport {
     /// ```
     pub async fn stop_inlet(&self, addr: impl Into<Address>) -> Result<()> {
         self.router_handle.stop_inlet(addr).await?;
+
+        Ok(())
+    }
+
+    /// Create an Outlet
+    pub async fn create_outlet_extended(&self, options: OutletOptions) -> Result<()> {
+        let worker = TcpOutletListenWorker::new(options.peer, options.access_control);
+        self.router_handle
+            .ctx()
+            .start_worker(options.address, worker)
+            .await?;
 
         Ok(())
     }
@@ -183,32 +249,9 @@ impl TcpTransport {
         address: impl Into<Address>,
         peer: impl Into<String>,
     ) -> Result<()> {
-        let worker = TcpOutletListenWorker::new(peer.into());
-        self.router_handle
-            .ctx()
-            .start_worker(address.into(), worker)
-            .await?;
+        let options = OutletOptions::new(address.into(), peer.into(), Arc::new(AllowAll));
 
-        Ok(())
-    }
-
-    /// FIXME
-    pub async fn create_outlet_with_access_control<AC>(
-        &self,
-        address: impl Into<Address>,
-        peer: impl Into<String>,
-        access_control: AC,
-    ) -> Result<()>
-    where
-        AC: AccessControl,
-    {
-        let worker = TcpOutletListenWorker::new(peer.into());
-
-        WorkerBuilder::with_access_control(access_control, address.into(), worker)
-            .start(self.router_handle.ctx())
-            .await?;
-
-        Ok(())
+        self.create_outlet_extended(options).await
     }
 
     /// Stop outlet at addr

@@ -3,10 +3,11 @@ use crate::{
     TcpRouterResponse, WorkerPair, TCP,
 };
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
-use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::{async_trait, compat::boxed::Box, AccessControl};
 use ockam_core::{Address, AsyncTryClone, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
+use std::sync::Arc;
 
 /// A handle to connect to a TcpRouter
 ///
@@ -167,9 +168,16 @@ impl TcpRouterHandle {
         &self,
         outlet_listener_route: impl Into<Route>,
         addr: impl Into<SocketAddr>,
+        access_control: Arc<dyn AccessControl>,
     ) -> Result<(Address, SocketAddr)> {
         let socket_addr = addr.into();
-        TcpInletListenProcessor::start(&self.ctx, outlet_listener_route.into(), socket_addr).await
+        TcpInletListenProcessor::start(
+            &self.ctx,
+            outlet_listener_route.into(),
+            socket_addr,
+            access_control,
+        )
+        .await
     }
 
     /// Stop the inlet's [`TcpInletListenProcessor`]
