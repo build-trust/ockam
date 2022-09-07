@@ -1,9 +1,14 @@
-use ockam_core::{route, Result};
+use ockam_core::compat::{boxed::Box, sync::Arc};
+use ockam_core::{async_trait, Any};
+use ockam_core::{route, Result, Routed, Worker};
 use ockam_identity::authenticated_storage::mem::InMemoryStorage;
+use ockam_identity::credential::access_control::CredentialAccessControl;
 use ockam_identity::credential::{AttributesStorageUtils, Credential};
 use ockam_identity::{Identity, TrustEveryonePolicy, TrustIdentifierPolicy};
-use ockam_node::Context;
+use ockam_node::{Context, WorkerBuilder};
 use ockam_vault::Vault;
+use std::sync::atomic::{AtomicI8, Ordering};
+use std::time::Duration;
 
 #[ockam_macros::test]
 async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
@@ -122,6 +127,99 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .unwrap();
 
     assert_eq!(attrs2.get("is_admin").unwrap().as_slice(), b"true");
+
+    ctx.stop().await
+}
+
+struct CountingWorker {
+    msgs_count: Arc<AtomicI8>,
+}
+
+#[async_trait]
+impl Worker for CountingWorker {
+    type Context = Context;
+    type Message = Any;
+
+    async fn handle_message(
+        &mut self,
+        _context: &mut Self::Context,
+        _msg: Routed<Self::Message>,
+    ) -> Result<()> {
+        let _ = self.msgs_count.fetch_add(1, Ordering::Relaxed);
+
+        Ok(())
+    }
+}
+
+#[ockam_macros::test]
+async fn access_control(ctx: &mut Context) -> Result<()> {
+    let vault = Vault::create();
+
+    let authority = Identity::create(ctx, &vault).await?;
+
+    let server = Identity::create(ctx, &vault).await?;
+    let server_storage = InMemoryStorage::new();
+
+    server
+        .create_secure_channel_listener("listener", TrustEveryonePolicy, &server_storage)
+        .await?;
+
+    let authorities = vec![authority.to_public().await?];
+
+    server
+        .start_credentials_exchange_worker(
+            authorities,
+            "credential_exchange",
+            false,
+            server_storage.clone(),
+        )
+        .await?;
+
+    let client = Identity::create(ctx, &vault).await?;
+    let client_storage = InMemoryStorage::new();
+    let channel = client
+        .create_secure_channel(
+            route!["listener"],
+            TrustIdentifierPolicy::new(server.identifier().clone()),
+            &client_storage,
+        )
+        .await?;
+
+    let credential_builder = Credential::builder(client.identifier().clone());
+    let credential = credential_builder.with_attribute("is_superuser", b"true");
+
+    let credential = authority.issue_credential(credential).await?;
+
+    client.set_credential(Some(credential)).await;
+
+    let counter = Arc::new(AtomicI8::new(0));
+
+    let worker = CountingWorker {
+        msgs_count: counter.clone(),
+    };
+
+    let required_attributes = vec![("is_superuser".to_string(), b"true".to_vec())];
+    let access_control = CredentialAccessControl::new(&required_attributes, server_storage);
+
+    WorkerBuilder::with_access_control(access_control, "counter", worker)
+        .start(ctx)
+        .await?;
+    ctx.sleep(Duration::from_millis(100)).await;
+    assert_eq!(counter.load(Ordering::Relaxed), 0);
+
+    ctx.send(route![channel.clone(), "counter"], "Hello".to_string())
+        .await?;
+    ctx.sleep(Duration::from_millis(100)).await;
+    assert_eq!(counter.load(Ordering::Relaxed), 0);
+
+    client
+        .present_credential(route![channel.clone(), "credential_exchange"])
+        .await?;
+
+    ctx.send(route![channel, "counter"], "Hello".to_string())
+        .await?;
+    ctx.sleep(Duration::from_millis(100)).await;
+    assert_eq!(counter.load(Ordering::Relaxed), 1);
 
     ctx.stop().await
 }
