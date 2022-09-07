@@ -25,13 +25,12 @@
 # ORCHESTRATOR_TESTS=1 LONG_TESTS=1 bats implementations/rust/ockam/ockam_command/tests/commands.bats
 
 # bats_lib=$NVM_DIR/versions/node/v18.8.0/lib/node_modules # linux
-# bats_lib=$(brew --prefix)/lib # macos
 
 # Ockam binary to use
 OCKAM=ockam
+
 if [[ -z $BATS_LIB ]]; then
-  echo "Please set path to bats-support and bat-assert lib"
-  exit 1
+  bats_lib=$(brew --prefix)/lib # macos
 fi
 
 setup_file() {
