@@ -30,7 +30,7 @@
 OCKAM=ockam
 
 if [[ -z $BATS_LIB ]]; then
-  bats_lib=$(brew --prefix)/lib # macos
+  BATS_LIB=$(brew --prefix)/lib # macos
 fi
 
 setup_file() {
