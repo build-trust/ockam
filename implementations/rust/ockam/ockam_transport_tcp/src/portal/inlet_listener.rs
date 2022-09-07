@@ -1,6 +1,7 @@
 use crate::TcpPortalWorker;
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::{async_trait, compat::boxed::Box};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{async_trait, compat::boxed::Box, AccessControl};
 use ockam_core::{Address, Processor, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
@@ -15,6 +16,7 @@ use tracing::debug;
 pub(crate) struct TcpInletListenProcessor {
     inner: TcpListener,
     outlet_listener_route: Route,
+    access_control: Arc<dyn AccessControl>,
 }
 
 impl TcpInletListenProcessor {
@@ -23,6 +25,7 @@ impl TcpInletListenProcessor {
         ctx: &Context,
         outlet_listener_route: Route,
         addr: SocketAddr,
+        access_control: Arc<dyn AccessControl>,
     ) -> Result<(Address, SocketAddr)> {
         let waddr = Address::random_local();
 
@@ -34,6 +37,7 @@ impl TcpInletListenProcessor {
         let processor = Self {
             inner,
             outlet_listener_route,
+            access_control,
         };
 
         ctx.start_processor(waddr.clone(), processor).await?;
@@ -48,8 +52,14 @@ impl Processor for TcpInletListenProcessor {
 
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
-        TcpPortalWorker::start_new_inlet(ctx, stream, peer, self.outlet_listener_route.clone())
-            .await?;
+        TcpPortalWorker::start_new_inlet(
+            ctx,
+            stream,
+            peer,
+            self.outlet_listener_route.clone(),
+            self.access_control.clone(),
+        )
+        .await?;
 
         Ok(true)
     }

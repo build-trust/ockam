@@ -1,10 +1,11 @@
 use crate::{PortalInternalMessage, PortalMessage, TcpPortalRecvProcessor};
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, net::SocketAddr};
-use ockam_core::{async_trait, Decodable};
+use ockam_core::{async_trait, AccessControl, AllowAll, Decodable, Mailbox, Mailboxes};
 use ockam_core::{Address, Any, Result, Route, Routed, Worker};
-use ockam_node::Context;
+use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
+use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
@@ -57,6 +58,7 @@ impl TcpPortalWorker {
         stream: TcpStream,
         peer: SocketAddr,
         ping_route: Route,
+        access_control: Arc<dyn AccessControl>,
     ) -> Result<Address> {
         Self::start(
             ctx,
@@ -64,6 +66,7 @@ impl TcpPortalWorker {
             State::SendPing { ping_route },
             Some(stream),
             TypeName::Inlet,
+            access_control,
         )
         .await
     }
@@ -73,6 +76,7 @@ impl TcpPortalWorker {
         ctx: &Context,
         peer: SocketAddr,
         pong_route: Route,
+        access_control: Arc<dyn AccessControl>,
     ) -> Result<Address> {
         Self::start(
             ctx,
@@ -80,6 +84,7 @@ impl TcpPortalWorker {
             State::SendPong { pong_route },
             None,
             TypeName::Outlet,
+            access_control,
         )
         .await
     }
@@ -91,6 +96,7 @@ impl TcpPortalWorker {
         state: State,
         stream: Option<TcpStream>,
         type_name: TypeName,
+        access_control: Arc<dyn AccessControl>,
     ) -> Result<Address> {
         let internal_addr = Address::random_local();
         let remote_addr = Address::random_local();
@@ -122,7 +128,14 @@ impl TcpPortalWorker {
             type_name,
         };
 
-        ctx.start_worker(vec![internal_addr, remote_addr.clone()], sender)
+        let main_internal_mailbox = Mailbox::new(
+            internal_addr,
+            Arc::new(AllowAll), /* TODO: Local only */
+        );
+        let remote_mailbox = Mailbox::new(remote_addr.clone(), access_control);
+        let mailboxes = Mailboxes::new(main_internal_mailbox, vec![remote_mailbox]);
+        WorkerBuilder::with_mailboxes(mailboxes, sender)
+            .start(ctx)
             .await?;
 
         Ok(remote_addr)
