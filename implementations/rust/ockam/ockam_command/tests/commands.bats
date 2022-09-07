@@ -34,11 +34,11 @@ if [[ -z $BATS_LIB ]]; then
 fi
 
 setup_file() {
-  pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null
+  pushd "$(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir')" &>/dev/null || { echo "pushd failed"; exit 1; }
   python3 -m http.server --bind 127.0.0.1 5000 &
   pid="$!"
   echo "$pid" > "$BATS_FILE_TMPDIR/http_server.pid"
-  popd
+  popd || { echo "popd failed"; exit 1; }
 }
 
 teardown_file() {
@@ -100,7 +100,7 @@ teardown() {
   $OCKAM node create n2
 
   output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api)
-  run $OCKAM message send hello --from /node/n1 --to $output/service/uppercase
+  run $OCKAM message send hello --from /node/n1 --to "$output/service/uppercase"
 
   assert_success
   assert_output "HELLO"
@@ -183,14 +183,10 @@ teardown() {
   assert_success
 }
 
-# the below tests will succeed if already enrolled with
-# ockam enroll
-#
+# the below tests will only succeed if already enrolled with `ockam enroll`
 
 @test "send a message to a project node from command embedded node" {
-  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
-    skip "ORCHESTRATOR_TESTS are not enabled"
-  fi
+  skip_if_orchestrator_tests_not_enabled
 
   run $OCKAM message send hello --to /project/default/service/echo
 
@@ -199,9 +195,7 @@ teardown() {
 }
 
 @test "send a message to a project node from a spawned background node" {
-  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
-    skip "ORCHESTRATOR_TESTS are not enabled"
-  fi
+  skip_if_orchestrator_tests_not_enabled
 
   $OCKAM node create blue
   run $OCKAM message send hello --from /node/blue --to /project/default/service/echo
@@ -212,9 +206,7 @@ teardown() {
 
 
 @test "list projects" {
-  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
-    skip "ORCHESTRATOR_TESTS are not enabled"
-  fi
+  skip_if_orchestrator_tests_not_enabled
 
   run $OCKAM project list
 
@@ -222,49 +214,39 @@ teardown() {
 }
 
 @test "create space, create project, send message, delete project, delete space" {
-  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
-    skip "ORCHESTRATOR_TESTS are not enabled"
-  fi
-
-  if [ -z "${LONG_TESTS}" ]; then
-    skip "LONG_TESTS are not enabled"
-  fi
+  skip_if_orchestrator_tests_not_enabled
+  skip_if_long_tests_not_enabled
 
   space_name=$(openssl rand -hex 4)
   project_name=$(openssl rand -hex 4)
 
-  run $OCKAM space create ${space_name}
+  run $OCKAM space create "${space_name}"
   assert_success
 
-  run $OCKAM project create ${space_name} ${project_name}
+  run $OCKAM project create "${space_name}" "${project_name}"
   assert_success
 
-  run $OCKAM message send hello --to /project/${project_name}/service/echo
+  run $OCKAM message send hello --to "/project/${project_name}/service/echo"
   assert_success
   assert_output "hello"
 
-  run $OCKAM project delete ${space_name} ${project_name}
+  run $OCKAM project delete "${space_name}" "${project_name}"
   assert_success
 
-  run $OCKAM space delete ${space_name}
+  run $OCKAM space delete "${space_name}"
   assert_success
 }
 
 @test "list spaces" {
-  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
-    skip "ORCHESTRATOR_TESTS are not enabled"
-  fi
+  skip_if_orchestrator_tests_not_enabled
 
   run $OCKAM space list
-
   assert_success
 }
 
 
 @test "create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
-  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
-    skip "ORCHESTRATOR_TESTS are not enabled"
-  fi
+  skip_if_orchestrator_tests_not_enabled
 
   $OCKAM node create blue
   $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
@@ -276,4 +258,17 @@ teardown() {
 
   run curl --fail --head 127.0.0.1:7000
   assert_success
+}
+
+function skip_if_orchestrator_tests_not_enabled() {
+  # shellcheck disable=SC2031
+  if [ -z "${ORCHESTRATOR_TESTS}" ]; then
+    skip "ORCHESTRATOR_TESTS are not enabled"
+  fi
+}
+
+function skip_if_long_tests_not_enabled() {
+  if [ -z "${LONG_TESTS}" ]; then
+    skip "LONG_TESTS are not enabled"
+  fi
 }
