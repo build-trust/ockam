@@ -37,28 +37,20 @@ async fn run_impl(
     cmd: DeleteCommand,
 ) -> crate::Result<()> {
     let node_name = start_embedded_node(ctx, &opts.config).await?;
-    let controller_route = cmd.cloud_opts.route();
+    let controller_route = &cmd.cloud_opts.route();
 
     // Try to remove from config, in case the space was removed from the cloud but not from the config file.
     let _ = config::remove_space(&opts.config, &cmd.name);
 
     // Lookup space
-    let id = match config::get_space(&opts.config, &cmd.name) {
-        Some(id) => id,
-        None => {
-            // The space is not in the config file.
-            // Fetch all available spaces from the cloud.
-            config::refresh_spaces(ctx, &opts, &node_name, controller_route).await?;
-
+    let id =
+        match config::get_space(ctx, &opts, &cmd.name, &node_name, &cmd.cloud_opts.route()).await {
+            Ok(id) => id,
             // If the space is not found in the lookup, then it must not exist in the cloud, so we exit the command.
-            match config::get_space(&opts.config, &cmd.name) {
-                Some(id) => id,
-                None => {
-                    return Ok(());
-                }
+            Err(_) => {
+                return Ok(());
             }
-        }
-    };
+        };
 
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();

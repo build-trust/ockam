@@ -12,7 +12,13 @@ use crate::error::ApiError;
 pub mod enroll;
 pub mod project;
 pub mod space;
+pub mod subscription;
 
+/// If it's present, its contents will be used and will have priority over the contents
+/// from ./static/controller.id.
+///
+/// How to use: when running a command that spawns a background node or use an embedded node
+/// add the env variable. `OCKAM_CONTROLLER_IDENTITY_ID={identity.id-contents} ockam ...`
 pub(crate) const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY_ID";
 
 /// A wrapper around a cloud request with extra fields.

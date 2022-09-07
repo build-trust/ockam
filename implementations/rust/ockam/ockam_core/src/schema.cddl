@@ -235,3 +235,13 @@ add_member = {
     ?0: 2820828,
      1: identity_id,
 }
+
+;;; Subscription ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+activate_request = {
+    ?0: 3888657,
+     1: text,       ;; space_id
+     2: text,       ;; subscription_data
+     3: text,       ;; space_name
+     4: [+ text]    ;; owner_emails
+}

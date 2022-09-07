@@ -67,7 +67,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) 
             ctx,
             opts,
             &meta,
-            &cmd.cloud_opts.route_to_controller,
+            &cmd.cloud_opts.route(),
             api_node,
             Some(&tcp),
             credentials_exchange_mode,

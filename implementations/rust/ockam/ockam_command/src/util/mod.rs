@@ -31,8 +31,7 @@ mod addon;
 mod config;
 pub(crate) mod output;
 
-pub const DEFAULT_ORCHESTRATOR_ADDRESS: &str =
-    "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
+pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
 
 pub enum RpcMode<'a> {
     Embedded,
@@ -200,7 +199,13 @@ impl<'a> Rpc<'a> {
         T: Decode<'a, ()>,
     {
         let mut dec = self.parse_response_impl()?;
-        dec.decode().context("Failed to decode response body")
+        match dec.decode() {
+            Ok(t) => Ok(t),
+            Err(e) => {
+                error!(%e, dec = %minicbor::display(&self.buf), hex = %hex::encode(&self.buf), "Failed to decode response");
+                Err(anyhow!("Failed to decode response body: {}", e))
+            }
+        }
     }
 
     /// Check response's status code is OK.

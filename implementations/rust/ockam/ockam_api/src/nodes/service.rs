@@ -469,6 +469,18 @@ impl NodeManager {
                 self.authenticate_enrollment_token(ctx, dec).await?
             }
 
+            // ==*== Subscriptions ==*==
+            (Post, ["subscription"]) => self.activate_subscription(ctx, dec).await?,
+            (Get, ["subscription", id]) => self.get_subscription(ctx, dec, id).await?,
+            (Get, ["subscription"]) => self.list_subscriptions(ctx, dec).await?,
+            (Put, ["subscription", id, "contact_info"]) => {
+                self.update_subscription_contact_info(ctx, dec, id).await?
+            }
+            (Put, ["subscription", id, "space_id"]) => {
+                self.update_subscription_space(ctx, dec, id).await?
+            }
+            (Put, ["subscription", id, "unsubscribe"]) => self.unsubscribe(ctx, dec, id).await?,
+
             // ==*== Messages ==*==
             (Post, ["v0", "message"]) => self.send_message(ctx, req, dec).await?,
 
