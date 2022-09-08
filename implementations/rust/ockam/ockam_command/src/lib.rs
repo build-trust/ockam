@@ -18,6 +18,7 @@ mod service;
 mod space;
 mod tcp;
 mod terminal;
+mod upgrade;
 mod util;
 mod vault;
 mod version;
@@ -45,6 +46,7 @@ use vault::VaultCommand;
 use version::Version;
 
 use clap::{ArgEnum, Args, Parser, Subcommand};
+use upgrade::check_if_an_upgrade_is_available;
 
 const ABOUT: &str = "\
 Orchestrate end-to-end encryption, mutual authentication, key management,
@@ -270,6 +272,8 @@ pub fn run() {
 
     // FIXME
     let _verbose = options.global_args.verbose;
+
+    check_if_an_upgrade_is_available();
 
     match command.subcommand {
         OckamSubcommand::Authenticated(c) => c.run(),
