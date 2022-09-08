@@ -76,6 +76,14 @@ defmodule Ockam.Services.API do
     400
   end
 
+  def status_code(:unauthorized) do
+    401
+  end
+
+  def status_code({:unauthorized, _reason}) do
+    401
+  end
+
   def status_code(:not_found) do
     404
   end
@@ -94,6 +102,10 @@ defmodule Ockam.Services.API do
 
   ## TODO: better standard error messages
   def error_message({:bad_request, data}) do
+    error_message(data)
+  end
+
+  def error_message({:unauthorized, data}) do
     error_message(data)
   end
 
