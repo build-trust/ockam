@@ -7,8 +7,6 @@ fn valid_arguments() -> Result<(), Box<dyn std::error::Error>> {
         "--test-argument-parser",
         "enroll",
         "/dnsaddr/cloud.ockam.io/tcp/62526",
-        "-n",
-        "node-name",
     ];
 
     // auth0

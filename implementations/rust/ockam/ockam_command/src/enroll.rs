@@ -17,7 +17,6 @@ use ockam_api::error::ApiError;
 use ockam_core::api::Status;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::node::NodeOpts;
 use crate::project::util::check_project_readiness;
 use crate::project::util::config::set_project;
 use crate::space::util::config::set_space;
@@ -32,9 +31,6 @@ const HELP_DETAIL: &str = "";
 #[derive(Clone, Debug, Args)]
 #[clap(help_template = help::template(HELP_DETAIL))]
 pub struct EnrollCommand {
-    #[clap(flatten)]
-    node_opts: NodeOpts,
-
     #[clap(flatten)]
     pub cloud_opts: CloudOpts,
 }
