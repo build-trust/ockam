@@ -135,17 +135,20 @@ impl NodeManager {
             LmdbStorage::new(&authenticated_storage_path).await?
         };
 
-        if let Some(identity_override) = identity_override {
-            // Copy vault file, update config
-            let vault_path = Self::default_vault_path(&node_dir);
-            std::fs::copy(&identity_override.vault_path, &vault_path)
-                .map_err(|_| ApiError::generic("Error while copying default node"))?;
+        // Skip override if we already had vault
+        if config.readlock_inner().vault_path.is_none() {
+            if let Some(identity_override) = identity_override {
+                // Copy vault file, update config
+                let vault_path = Self::default_vault_path(&node_dir);
+                std::fs::copy(&identity_override.vault_path, &vault_path)
+                    .map_err(|_| ApiError::generic("Error while copying default node"))?;
 
-            config.writelock_inner().vault_path = Some(vault_path);
-            config.writelock_inner().identity = Some(identity_override.identity);
-            config.writelock_inner().identity_was_overridden = true;
+                config.writelock_inner().vault_path = Some(vault_path);
+                config.writelock_inner().identity = Some(identity_override.identity);
+                config.writelock_inner().identity_was_overridden = true;
 
-            config.persist_config_updates().map_err(map_anyhow_err)?;
+                config.persist_config_updates().map_err(map_anyhow_err)?;
+            }
         }
 
         // Check if we had existing Vault
