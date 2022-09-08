@@ -1,7 +1,8 @@
 use anyhow::Context as _;
 use clap::Args;
-use ockam::Context;
+use rand::prelude::random;
 
+use ockam::Context;
 use ockam_api::cloud::project::Project;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
@@ -18,7 +19,7 @@ pub struct CreateCommand {
     pub space_name: String,
 
     /// Name of the project.
-    #[clap(display_order = 1002)]
+    #[clap(display_order = 1002, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true)]
     pub project_name: String,
 
     #[clap(flatten)]
