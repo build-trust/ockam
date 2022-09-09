@@ -87,10 +87,16 @@ defmodule Ockam.Transport.TCP.Client do
     {:stop, :normal, state}
   end
 
-  def handle_info(:heartbeat, %{socket: socket} = state) do
+  def handle_info(:heartbeat, state) do
     case heartbeat_enabled?(state) do
       true ->
-        :gen_tcp.send(socket, "")
+        empty_message = %Message{
+          onward_route: [state.address],
+          return_route: [],
+          payload: ""
+        }
+
+        encode_and_send_over_tcp(empty_message, state)
         schedule_heartbeat(state)
 
       false ->
