@@ -220,11 +220,7 @@ pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
 }
 
 pub(crate) mod credentials {
-    use hex::FromHexError;
-
-    use ockam_api::nodes::models::credentials::{
-        GetCredentialRequest, PresentCredentialRequest, SetAuthorityRequest,
-    };
+    use ockam_api::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
 
     use super::*;
 
@@ -236,20 +232,8 @@ pub(crate) mod credentials {
         Request::post("/node/credentials/actions/present").body(b)
     }
 
-    pub(crate) fn set_authority(authorities: &[String]) -> RequestBuilder<SetAuthorityRequest> {
-        let authorities: std::result::Result<Vec<Vec<u8>>, FromHexError> =
-            authorities.iter().map(hex::decode).collect();
-        let authorities = authorities.unwrap();
-
-        let b = SetAuthorityRequest::new(authorities);
-        Request::post("/node/credentials/authority").body(b)
-    }
-
-    pub(crate) fn get_credential(
-        from: &MultiAddr,
-        overwrite: bool,
-    ) -> RequestBuilder<GetCredentialRequest> {
-        let b = GetCredentialRequest::new(from, overwrite);
+    pub(crate) fn get_credential<'r>(overwrite: bool) -> RequestBuilder<'r, GetCredentialRequest> {
+        let b = GetCredentialRequest::new(overwrite);
         Request::post("/node/credentials/actions/get").body(b)
     }
 }

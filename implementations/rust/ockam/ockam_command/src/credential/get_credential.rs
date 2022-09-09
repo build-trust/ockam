@@ -1,7 +1,6 @@
 use clap::Args;
 
 use ockam::Context;
-use ockam_multiaddr::MultiAddr;
 
 use crate::node::NodeOpts;
 use crate::util::{api, node_rpc, Rpc};
@@ -11,9 +10,6 @@ use crate::CommandGlobalOpts;
 pub struct GetCredentialCommand {
     #[clap(flatten)]
     pub node_opts: NodeOpts,
-
-    #[clap(long, short)]
-    pub from: MultiAddr,
 
     #[clap(long)]
     pub overwrite: bool,
@@ -38,7 +34,7 @@ async fn run_impl(
     cmd: GetCredentialCommand,
 ) -> crate::Result<()> {
     let mut rpc = Rpc::background(ctx, &opts, &cmd.node_opts.api_node)?;
-    rpc.request(api::credentials::get_credential(&cmd.from, cmd.overwrite))
+    rpc.request(api::credentials::get_credential(cmd.overwrite))
         .await?;
     Ok(())
 }
