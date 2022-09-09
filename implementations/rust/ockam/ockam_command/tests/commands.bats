@@ -34,6 +34,8 @@ if [[ -z $BATS_LIB ]]; then
 fi
 
 setup_file() {
+  bats_require_minimum_version 1.5.0
+
   pushd "$(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir')" &>/dev/null || { echo "pushd failed"; exit 1; }
   python3 -m http.server --bind 127.0.0.1 5000 &
   pid="$!"
@@ -69,7 +71,7 @@ teardown() {
 
 @test "create a node with a name and send it a message" {
   $OCKAM node create n1
-  run $OCKAM message send "hello" --to /node/n1/service/uppercase
+  run --separate-stderr $OCKAM message send "hello" --to /node/n1/service/uppercase
 
   assert_success
   assert_output "HELLO"
@@ -79,7 +81,7 @@ teardown() {
   $OCKAM node create n1
   $OCKAM node create n2
 
-  run $OCKAM message send "hello" --from n1 --to /node/n2/service/uppercase
+  run --separate-stderr $OCKAM message send "hello" --from n1 --to /node/n2/service/uppercase
 
   assert_success
   assert_output "HELLO"
@@ -89,7 +91,7 @@ teardown() {
   $OCKAM node create n1
   $OCKAM node create n2
 
-  run $OCKAM message send "hello" --from /node/n1 --to /node/n2/service/uppercase
+  run --separate-stderr $OCKAM message send "hello" --from /node/n1 --to /node/n2/service/uppercase
 
   assert_success
   assert_output "HELLO"
@@ -100,7 +102,7 @@ teardown() {
   $OCKAM node create n2
 
   output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api)
-  run $OCKAM message send hello --from /node/n1 --to "$output/service/uppercase"
+  run --separate-stderr $OCKAM message send hello --from /node/n1 --to "$output/service/uppercase"
 
   assert_success
   assert_output "HELLO"
@@ -141,7 +143,7 @@ teardown() {
   $OCKAM node create n2
 
   $OCKAM forwarder create n1 --at /node/n1 --to /node/n2
-  run $OCKAM message send hello --to /node/n1/service/forward_to_n1/service/uppercase
+  run --separate-stderr $OCKAM message send hello --to /node/n1/service/forward_to_n1/service/uppercase
 
   assert_success
   assert_output "HELLO"
@@ -188,7 +190,7 @@ teardown() {
 @test "send a message to a project node from command embedded node" {
   skip_if_orchestrator_tests_not_enabled
 
-  run $OCKAM message send hello --to /project/default/service/echo
+  run --separate-stderr $OCKAM message send hello --to /project/default/service/echo
 
   assert_success
   assert_output "hello"
@@ -198,7 +200,7 @@ teardown() {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM node create blue
-  run $OCKAM message send hello --from /node/blue --to /project/default/service/echo
+  run --separate-stderr $OCKAM message send hello --from /node/blue --to /project/default/service/echo
 
   assert_success
   assert_output "hello"
@@ -226,7 +228,7 @@ teardown() {
   run $OCKAM project create "${space_name}" "${project_name}"
   assert_success
 
-  run $OCKAM message send hello --to "/project/${project_name}/service/echo"
+  run --separate-stderr $OCKAM message send hello --to "/project/${project_name}/service/echo"
   assert_success
   assert_output "hello"
 
