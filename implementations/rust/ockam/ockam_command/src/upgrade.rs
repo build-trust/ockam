@@ -6,7 +6,8 @@ use tokio::runtime::Builder;
 
 #[derive(Deserialize)]
 struct UpgradeFile {
-    upgrade_to: String,
+    upgrade_message: Option<String>,
+    upgrade_message_macos: Option<String>,
 }
 
 pub fn check_if_an_upgrade_is_available() {
@@ -29,30 +30,17 @@ async fn check() {
 
     if let Ok(r) = resp {
         if let Ok(upgrade) = r.json::<UpgradeFile>().await {
-            let new_version = upgrade.upgrade_to;
-            eprintln!(
-                "\n{}",
-                format!(
-                    "A new release of ockam is available: {} → {}",
-                    crate_version!(),
-                    new_version
-                )
-                .yellow()
-            );
-            if cfg!(target_os = "macos") {
-                eprintln!(
-                    "{}",
-                    "To upgrade, run: `brew update && brew upgrade ockam`".yellow()
-                );
+            if let Some(message) = upgrade.upgrade_message {
+                eprintln!("\n{}", message.yellow());
+
+                if cfg!(target_os = "macos") {
+                    if let Some(message) = upgrade.upgrade_message_macos {
+                        eprintln!("\n{}", message.yellow());
+                    }
+                }
+
+                eprintln!();
             }
-            eprintln!(
-                "{}",
-                format!(
-                    "https://github.com/build-trust/ockam/releases/tag/ockam_v{}\n",
-                    new_version
-                )
-                .yellow()
-            );
         }
     }
 }
