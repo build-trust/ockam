@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.9.0 - 2022-09-09
+
+### Added
+
+- Add node protocol to multiaddr
+- Add ways to push `ProtocolValue`s to multi-addr
+- Add serde feature to multiaddr
+- Add cbor support to multiaddr
+- Add `MultiAddr::{try_extend, try_with}`
+
+### Changed
+
+- Rename ockam to service in multiaddr
+- Allow project metadata lookups and route substitution
+- Updated dependencies
+
+### Fixed
+
+- Mutliaddr support for projects
+
 ## 0.8.0 - 2022-09-07
 
 ### Added
