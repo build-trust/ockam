@@ -251,6 +251,8 @@ pub enum OckamSubcommand {
 }
 
 pub fn run() {
+    check_if_an_upgrade_is_available();
+
     let input = std::env::args().map(replace_hyphen_with_stdin);
 
     let command: OckamCommand = OckamCommand::parse_from(input);
@@ -272,8 +274,6 @@ pub fn run() {
 
     // FIXME
     let _verbose = options.global_args.verbose;
-
-    check_if_an_upgrade_is_available();
 
     match command.subcommand {
         OckamSubcommand::Authenticated(c) => c.run(),
