@@ -9,7 +9,7 @@ use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, string::ToString, vec::Vec};
 use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
-use tracing::{error, trace, warn};
+use tracing::{debug, error, trace, warn};
 
 const TARGET: &str = "ockam::credential_exchange_worker::service";
 
@@ -74,12 +74,16 @@ impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
 
         let r = match (method, path_segments.as_slice()) {
             (Post, ["actions", "present"]) => {
+                debug!(
+                    "Received one-way credential presentation request from {}",
+                    sender
+                );
                 let credential: Credential = dec.decode()?;
 
                 let res = self
                     .identity
                     .receive_presented_credential(
-                        sender,
+                        sender.clone(),
                         credential,
                         self.authorities.iter(),
                         &self.authenticated_storage,
@@ -87,19 +91,30 @@ impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
                     .await;
 
                 match res {
-                    Ok(()) => Response::ok(req.id()).to_vec()?,
+                    Ok(()) => {
+                        debug!("One-way credential presentation request processed successfully with {}", sender);
+                        Response::ok(req.id()).to_vec()?
+                    }
                     Err(err) => {
+                        debug!(
+                            "One-way credential presentation request processing error: {} for {}",
+                            err, sender
+                        );
                         Self::bad_request(req.id(), req.path(), &err.to_string()).to_vec()?
                     }
                 }
             }
             (Post, ["actions", "present_mutual"]) => {
+                debug!(
+                    "Received mutual credential presentation request from {}",
+                    sender
+                );
                 let credential: Credential = dec.decode()?;
 
                 let res = self
                     .identity
                     .receive_presented_credential(
-                        sender,
+                        sender.clone(),
                         credential,
                         self.authorities.iter(),
                         &self.authenticated_storage,
@@ -107,12 +122,26 @@ impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
                     .await;
 
                 if let Err(err) = res {
+                    debug!(
+                        "Mutual credential presentation request processing error: {} from {}",
+                        err, sender
+                    );
                     Self::bad_request(req.id(), req.path(), &err.to_string()).to_vec()?
                 } else {
+                    debug!(
+                        "Mutual credential presentation request processed successfully with {}",
+                        sender
+                    );
                     let credentials = self.identity.credential.read().await;
                     match credentials.as_ref() {
-                        Some(p) if self.present_back => Response::ok(req.id()).body(p).to_vec()?,
-                        _ => Response::ok(req.id()).to_vec()?,
+                        Some(p) if self.present_back => {
+                            warn!("Mutual credential presentation request processed successfully with {}. Responding with own credential...", sender);
+                            Response::ok(req.id()).body(p).to_vec()?
+                        }
+                        _ => {
+                            warn!("Mutual credential presentation request processed successfully with {}. No credential to respond!", sender);
+                            Response::ok(req.id()).to_vec()?
+                        }
                     }
                 }
             }
