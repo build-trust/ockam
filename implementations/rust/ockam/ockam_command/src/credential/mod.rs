@@ -1,10 +1,8 @@
 pub(crate) mod get_credential;
 pub(crate) mod present_credential;
-pub(crate) mod set_authority;
 
 pub(crate) use get_credential::GetCredentialCommand;
 pub(crate) use present_credential::PresentCredentialCommand;
-pub(crate) use set_authority::SetAuthorityCommand;
 
 use crate::help;
 use crate::CommandGlobalOpts;
@@ -24,7 +22,6 @@ pub struct CredentialCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum CredentialSubcommand {
-    SetAuthority(SetAuthorityCommand),
     Get(GetCredentialCommand),
     Present(PresentCredentialCommand),
 }
@@ -32,7 +29,6 @@ pub enum CredentialSubcommand {
 impl CredentialCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         match self.subcommand {
-            CredentialSubcommand::SetAuthority(c) => c.run(options),
             CredentialSubcommand::Get(c) => c.run(options),
             CredentialSubcommand::Present(c) => c.run(options),
         }

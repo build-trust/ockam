@@ -79,7 +79,7 @@ impl AsRef<[AuthorityInfo]> for Authorities {
 
 pub(crate) struct AuthorityInfo {
     identity: PublicIdentity,
-    addr: Option<MultiAddr>, // TODO: Should be not optional in the future
+    addr: MultiAddr,
 }
 
 /// Node manager provides a messaging API to interact with the current node
@@ -235,7 +235,7 @@ impl NodeManager {
         for a in ac.authorities() {
             v.push(AuthorityInfo {
                 identity: PublicIdentity::import(a.1.identity(), vault).await?,
-                addr: Some(a.1.access_route().clone()),
+                addr: a.1.access_route().clone(),
             })
         }
 
@@ -366,9 +366,6 @@ impl NodeManager {
             }
 
             // ==*== Credentials ==*==
-            (Post, ["node", "credentials", "authority"]) => {
-                self.set_authorities(req, dec).await?.to_vec()?
-            }
             (Post, ["node", "credentials", "actions", "get"]) => {
                 self.get_credential(req, dec).await?.to_vec()?
             }
