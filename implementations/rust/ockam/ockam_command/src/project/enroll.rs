@@ -2,7 +2,7 @@ use clap::Args;
 
 use anyhow::anyhow;
 use ockam::identity::IdentityIdentifier;
-use ockam::{Context, TcpTransport};
+use ockam::Context;
 use ockam_api::authenticator::direct::types::AddMember;
 use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority};
 use ockam_api::nodes::models::secure_channel::{
@@ -12,6 +12,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use tracing::debug;
 
+use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::node::NodeOpts;
 use crate::util::api::{self, CloudOpts};
 use crate::util::{node_rpc, RpcBuilder};
@@ -56,10 +57,11 @@ impl Runner {
     }
 
     async fn run(self) -> Result<()> {
-        let tcp = TcpTransport::create(&self.ctx).await?;
+        let node_name = start_embedded_node(&self.ctx, &self.opts.config).await?;
+
         let map = self.opts.config.lookup();
         let to = if let Some(a) = project_authority(&self.cmd.to, &map)? {
-            let mut addr = self.secure_channel(&tcp, a).await?;
+            let mut addr = self.secure_channel(a, &node_name).await?;
             for proto in self.cmd.to.iter().skip(1) {
                 addr.push_back_value(&proto).map_err(anyhow::Error::from)?
             }
@@ -68,24 +70,24 @@ impl Runner {
             self.cmd.to.clone()
         };
         let req = Request::post("/members").body(AddMember::new(self.cmd.member.clone()));
-        let mut rpc = RpcBuilder::new(&self.ctx, &self.opts, &self.cmd.node_opts.api_node)
-            .tcp(&tcp)?
+        let mut rpc = RpcBuilder::new(&self.ctx, &self.opts, &node_name)
             .to(&to)?
             .build();
         debug!(addr = %to, member = %self.cmd.member, "requesting to add member");
         rpc.request(req).await?;
         rpc.is_ok()?;
+
+        delete_embedded_node(&self.opts.config, &node_name).await;
+
         Ok(())
     }
 
     async fn secure_channel(
         &self,
-        tcp: &TcpTransport,
         auth: &ProjectAuthority,
+        node_name: &str,
     ) -> anyhow::Result<MultiAddr> {
-        let mut rpc = RpcBuilder::new(&self.ctx, &self.opts, &self.cmd.node_opts.api_node)
-            .tcp(tcp)?
-            .build();
+        let mut rpc = RpcBuilder::new(&self.ctx, &self.opts, node_name).build();
         let addr = replace_project(&self.cmd.to, auth.address())?;
         debug!(%addr, "establishing secure channel to project authority");
         let allowed = vec![auth.identity_id().clone()];
