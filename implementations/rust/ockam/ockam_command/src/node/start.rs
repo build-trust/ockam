@@ -23,6 +23,8 @@ impl StartCommand {
 
         // First we check whether a PID was registered and if it is still alive.
         if let Ok(Some(pid)) = cfg.get_node_pid(&self.node_name) {
+            // Note: On CI where <defunct> processes can occur,
+            // the below `kill 0 pid` can imply a killed process is okay.
             let res = nix::sys::signal::kill(Pid::from_raw(pid), None);
 
             if res.is_ok() {

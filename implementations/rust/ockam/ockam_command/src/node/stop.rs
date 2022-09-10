@@ -27,6 +27,19 @@ impl StopCommand {
                 if let Err(e) = startup::stop(pid, self.force) {
                     eprintln!("{e:?}");
                     std::process::exit(exitcode::OSERR);
+                } else {
+                    // Clear pid in config, so 'ockam node start' does not have to rely on
+                    // nix::sys::signal::kill(pid, None) to detect if a node is running.
+                    if let Err(e) = cfg.set_node_pid(&self.node_name, None) {
+                        eprintln!("Failed to update pid for node {}: {}", &self.node_name, e);
+                        std::process::exit(exitcode::IOERR);
+                    }
+
+                    // Save the config update
+                    if let Err(e) = cfg.persist_config_updates() {
+                        eprintln!("Failed to update configuration: {}", e);
+                        std::process::exit(exitcode::IOERR);
+                    }
                 }
             }
             Ok(_) => {

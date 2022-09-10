@@ -91,7 +91,6 @@ pub struct NodeManager {
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
     pub(crate) controller_identity_id: IdentityIdentifier,
-    skip_defaults: bool,
     vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
     authorities: Option<Authorities>,
@@ -208,7 +207,6 @@ impl NodeManager {
             transports,
             tcp_transport,
             controller_identity_id: Self::load_controller_identity_id()?,
-            skip_defaults,
             vault,
             identity,
             authorities: None,
@@ -490,11 +488,7 @@ impl Worker for NodeManager {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        if !self.skip_defaults {
-            self.initialize_defaults(ctx).await?;
-        }
-
-        Ok(())
+        self.initialize_defaults(ctx).await
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {

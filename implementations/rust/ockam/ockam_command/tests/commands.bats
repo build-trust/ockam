@@ -77,6 +77,21 @@ teardown() {
   assert_output "HELLO"
 }
 
+@test "create a node with a name, stop it, start it and send it a message" {
+  run $OCKAM node create n1
+  assert_success
+
+  run $OCKAM node stop n1
+  assert_success
+
+  run $OCKAM node start n1
+  assert_success
+
+  run $OCKAM message send "hello" --to /node/n1/service/uppercase
+  assert_success
+  assert_output "HELLO"
+}
+
 @test "create two nodes and send message from one to the other" {
   $OCKAM node create n1
   $OCKAM node create n2
