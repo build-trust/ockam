@@ -16,6 +16,11 @@ pub mod util;
 
 /// Manage Spaces in Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
+#[clap(
+    arg_required_else_help = true,
+    subcommand_required = true,
+    mut_subcommand("help", |c| c.about("Print help information")),
+)]
 pub struct SpaceCommand {
     #[clap(subcommand)]
     subcommand: SpaceSubcommand,
@@ -24,15 +29,19 @@ pub struct SpaceCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum SpaceSubcommand {
     /// Create spaces
+    #[clap(display_order = 800)]
     Create(CreateCommand),
 
     /// Delete spaces
+    #[clap(display_order = 800)]
     Delete(DeleteCommand),
 
     /// List spaces
+    #[clap(display_order = 800)]
     List(ListCommand),
 
     /// Show spaces
+    #[clap(display_order = 800)]
     Show(ShowCommand),
 }
 
