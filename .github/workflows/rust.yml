@@ -187,11 +187,11 @@ jobs:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
         with:
           ref: ${{ github.event.inputs.commit_sha }}
+      - run: rustup default nightly
+      - run: rustup update nightly
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - run: rustup default nightly
-      - run: rustup update nightly
       - run: RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
@@ -204,11 +204,11 @@ jobs:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
         with:
           ref: ${{ github.event.inputs.commit_sha }}
+      - run: rustup default nightly
+      - run: rustup update nightly
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - run: rustup default nightly
-      - run: rustup update nightly
       - run: cd implementations/rust && ../../gradlew build
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
@@ -221,11 +221,11 @@ jobs:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
         with:
           ref: ${{ github.event.inputs.commit_sha }}
+      - run: rustup default nightly
+      - run: rustup update nightly
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - run: rustup default nightly
-      - run: rustup update nightly
       - run: cd implementations/rust && ../../gradlew test
         env:
           NIGHTLY_CI: 1
