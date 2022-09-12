@@ -1,12 +1,20 @@
+use atty::Stream;
 use clap::Args;
+use colorful::Colorful;
 
-use ockam::Context;
+use ockam::{Context, TcpTransport};
+use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
+use ockam_api::route_to_multiaddr;
+use ockam_core::{route, Address};
+
+use serde_json::json;
 
 use crate::secure_channel::HELP_DETAIL;
+use crate::util::RpcBuilder;
 use crate::{
-    help,
-    util::{api, node_rpc, Rpc},
-    CommandGlobalOpts,
+    exitcode, help,
+    util::{api, node_rpc},
+    CommandGlobalOpts, OutputFormat,
 };
 
 /// List Secure Channels
@@ -20,30 +28,138 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
-        node_rpc(secure_channel_list_rpc, (opts, self));
+        node_rpc(rpc, (opts, self));
+    }
+
+    fn print_output(
+        &self,
+        options: &CommandGlobalOpts,
+        channel_identifiers: Vec<String>,
+        show_responses: Vec<ShowSecureChannelResponse>,
+    ) -> Result<(), String> {
+        let zipped = channel_identifiers.iter().zip(show_responses);
+
+        if zipped.len() > 0 && has_plain_stderr(options) {
+            println!("\nSecure Channels")
+        }
+
+        for (channel_address, show_response) in zipped {
+            let from = &self.at;
+
+            let at = {
+                let channel_route = &route![channel_address];
+                let channel_multiaddr = route_to_multiaddr(channel_route).ok_or(format!(
+                    "Failed to convert route {} to multi-address",
+                    channel_route
+                ))?;
+                channel_multiaddr.to_string()
+            };
+
+            let to = {
+                let show_route = show_response
+                    .route
+                    .ok_or("Failed to retrieve route from show channel response")?;
+                let parts: Vec<&str> = show_route.split(" => ").collect();
+                if parts.len() != 2 {
+                    return Err(format!(
+                        "Invalid route received from show channel response -- {}",
+                        show_route
+                    ));
+                }
+
+                let r1 = &route![*parts.first().unwrap()];
+                let r2 = &route![*parts.get(1).unwrap()];
+                let ma1 = route_to_multiaddr(r1)
+                    .ok_or(format!("Failed to convert route {} to multi-address", r1))?;
+                let ma2 = route_to_multiaddr(r2)
+                    .ok_or(format!("Failed to convert route {} to multi-address", r2))?;
+                format!("{}{}", ma1, ma2)
+            };
+
+            // if stdout is not interactive/tty write the secure channel address to it
+            // in case some other program is trying to read it as piped input
+            if !atty::is(Stream::Stdout) {
+                println!("{}", at)
+            }
+
+            // if output format is json, write json to stdout.
+            if options.global_args.output_format == OutputFormat::Json {
+                let json = json!([{ "address": at }]);
+                println!("{}", json);
+            }
+
+            // if stderr is interactive/tty and we haven't been asked to be quiet
+            // and output format is plain then write a plain info to stderr.
+            if has_plain_stderr(options) {
+                println!("\n    Secure Channel:");
+                if options.global_args.no_color {
+                    eprintln!("      • From: /node/{}", from);
+                    eprintln!("      •   To: {}", to);
+                    eprintln!("      •   At: {}", at);
+                } else {
+                    // From:
+                    eprint!("{}", "      • From: ".light_magenta());
+                    eprintln!("{}", format!("/node/{}", from).light_yellow());
+
+                    // To:
+                    eprint!("{}", "      •   To: ".light_magenta());
+                    eprintln!("{}", to.light_yellow());
+
+                    // At:
+                    eprint!("{}", "      •   At: ".light_magenta());
+                    eprintln!("{}", at.light_yellow());
+                }
+            }
+        }
+        Ok(())
     }
 }
 
-async fn secure_channel_list_rpc(
-    mut ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ListCommand),
-) -> crate::Result<()> {
-    secure_channel_list_rpc_impl(&mut ctx, opts, cmd).await
+#[inline]
+fn has_plain_stderr(options: &CommandGlobalOpts) -> bool {
+    atty::is(Stream::Stderr)
+        && !options.global_args.quiet
+        && options.global_args.output_format == OutputFormat::Plain
 }
 
-async fn secure_channel_list_rpc_impl(
-    ctx: &mut Context,
-    opts: CommandGlobalOpts,
-    cmd: ListCommand,
+async fn rpc(
+    ctx: Context,
+    (options, command): (CommandGlobalOpts, ListCommand),
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::background(ctx, &opts, &cmd.at)?;
+    // We need this TCPTransport handle to ensure that we are using the same transport across
+    // multiple RPC calls. Creating a RPC instance without explicit transport results in a router
+    // instance being registered for the same transport type multiple times which is not allowed
+    let tcp = TcpTransport::create(&ctx).await?;
+    let mut rpc = RpcBuilder::new(&ctx, &options, &command.at)
+        .tcp(&tcp)?
+        .build();
     rpc.request(api::list_secure_channels()).await?;
-    let res = rpc.parse_response::<Vec<String>>()?;
+    let channel_identifiers = rpc.parse_response::<Vec<String>>()?;
 
-    println!("Secure channels for node `{}`:", &cmd.at);
+    let mut response_rpcs = Vec::with_capacity(channel_identifiers.len());
+    for channel_addr in &channel_identifiers {
+        let mut rpc = RpcBuilder::new(&ctx, &options, &command.at)
+            .tcp(&tcp)?
+            .build();
+        let request = api::show_secure_channel(&Address::from(channel_addr));
+        rpc.request(request).await?;
+        response_rpcs.push(rpc);
+    }
+    let results: Result<Vec<_>, _> = response_rpcs
+        .iter()
+        .map(|rpc| rpc.parse_response::<ShowSecureChannelResponse>())
+        .into_iter()
+        .collect();
+    let responses = results?;
 
-    for addr in res {
-        println!("  {}", addr);
+    if let Err(e) = command.print_output(&options, channel_identifiers, responses) {
+        if atty::is(Stream::Stderr)
+            && !options.global_args.quiet
+            && options.global_args.output_format == OutputFormat::Plain
+        {
+            eprintln!("{}", e);
+        }
+        std::process::exit(exitcode::PROTOCOL)
     }
 
     Ok(())
