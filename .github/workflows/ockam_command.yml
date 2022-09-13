@@ -38,6 +38,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  OCKAM_DISABLE_UPGRADE_CHECK: 1
 
 jobs:
   ockam_command_test:
