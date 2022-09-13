@@ -8,6 +8,11 @@
 # Linux:
 #   npm install -g bats bats-support bats-assert
 #
+# Bats tests can also be run by our Builder Docker image
+# ===========
+# docker run --rm -it -e HOST_USER_ID=$(id -u) --volume $(pwd):/work ghcr.io/build-trust/ockam-builder:latest bash
+# bats implementations/rust/ockam/ockam_command/tests/commands.bats
+#
 # https://bats-core.readthedocs.io/en/stable/
 # https://github.com/ztombol/bats-docs#installation
 # https://github.com/ztombol/bats-assert
