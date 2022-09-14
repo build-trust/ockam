@@ -14,7 +14,7 @@ use ockam_node::tokio;
 use crate::error::ApiError;
 use crate::multiaddr_to_addr;
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, Serialize, Deserialize, Debug, Default)]
 #[cbor(map)]
 pub struct Project<'a> {
     #[cfg(feature = "tag")]
@@ -40,7 +40,7 @@ pub struct Project<'a> {
 
     #[cbor(b(5))]
     #[serde(borrow)]
-    pub access_route: CowStr<'a>, //TODO: should be optional, waiting for changes on the elixir side
+    pub access_route: CowStr<'a>,
 
     #[cbor(b(6))]
     #[serde(borrow)]
