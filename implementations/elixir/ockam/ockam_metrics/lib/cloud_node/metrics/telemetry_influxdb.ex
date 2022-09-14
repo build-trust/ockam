@@ -1,6 +1,8 @@
-defmodule Ockam.CloudNode.Metrics.TelemetryInfluxDB do
+defmodule Ockam.Metrics.TelemetryInfluxDB do
   @moduledoc """
   Telemetry InfluxDB metric reporting configuration
+
+  DEPRECATED. TO BE REMOVED.
   """
   def child_spec() do
     %{
@@ -12,7 +14,7 @@ defmodule Ockam.CloudNode.Metrics.TelemetryInfluxDB do
           [
             version: :v2,
             protocol: :http,
-            reporter_name: "Ockam Cloud Node",
+            reporter_name: "Ockam Metrics",
             host: Application.get_env(:telemetry_influxdb, :host) || "http://127.0.0.1",
             port: String.to_integer(Application.get_env(:telemetry_influxdb, :port) || "8086"),
             bucket: Application.get_env(:telemetry_influxdb, :bucket) || "ockam_hub",

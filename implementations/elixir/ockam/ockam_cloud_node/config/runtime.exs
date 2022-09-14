@@ -223,8 +223,10 @@ config :ockam_cloud_node,
     crontab: cleanup_crontab,
     idle_timeout: cleanup_idle_timeout,
     cleanup_kafka_topics: cleanup_kafka_topics
-  ],
-  # must be set for prometheus metrics to be enabled
+  ]
+
+# must be set for prometheus metrics to be enabled
+config :ockam_metrics,
   prometheus_port: System.get_env("PROMETHEUS_PORT")
 
 ## Logger config

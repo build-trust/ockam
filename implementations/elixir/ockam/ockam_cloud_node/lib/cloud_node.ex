@@ -12,32 +12,7 @@ defmodule Ockam.CloudNode do
   @doc false
   def start(_type, _args) do
     Logger.info("Starting Ockam Cloud Node.")
-    schedule_specs = cleanup_schedule(Application.get_env(:ockam_cloud_node, :cleanup))
-
-    children =
-      if Application.get_env(:ockam_cloud_node, :prometheus_port, nil) do
-        [Ockam.CloudNode.Metrics.Prometheus]
-      else
-        []
-      end ++
-        [
-          {
-            :telemetry_poller,
-            [
-              period: :timer.seconds(30),
-              measurements: [
-                {Ockam.CloudNode.Metrics.TelemetryPoller, :dispatch_worker_count, []},
-                {Ockam.CloudNode.Metrics.TelemetryPoller, :dispatch_tcp_connections, []}
-              ]
-            ]
-          }
-        ] ++
-        schedule_specs ++
-        if Application.get_env(:telemetry_influxdb, :host, nil) do
-          [Ockam.CloudNode.Metrics.TelemetryInfluxDB.child_spec()]
-        else
-          []
-        end
+    children = cleanup_schedule(Application.get_env(:ockam_cloud_node, :cleanup))
 
     Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
   end

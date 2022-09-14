@@ -30,10 +30,14 @@ defmodule Ockam.Transport.TCP do
   defp id(options) do
     case Keyword.fetch(options, :listen) do
       {:ok, listen} ->
-        ip = Keyword.get(listen, :ip, Listener.default_ip())
-        port = Keyword.get(listen, :port, Listener.default_port())
+        if Code.ensure_loaded(:ranch) do
+          ip = Keyword.get(listen, :ip, Listener.default_ip())
+          port = Keyword.get(listen, :port, Listener.default_port())
 
-        "TCP_LISTENER_#{TCPAddress.format_host_port(ip, port)}"
+          "TCP_LISTENER_#{TCPAddress.format_host_port(ip, port)}"
+        else
+          "TCP_TRANSPORT"
+        end
 
       _other ->
         "TCP_TRANSPORT"
@@ -70,8 +74,15 @@ defmodule Ockam.Transport.TCP do
     end
 
     case Keyword.fetch(options, :listen) do
-      {:ok, listen} -> Listener.start_link(listen)
-      _other -> :ignore
+      {:ok, listen} ->
+        if Code.ensure_loaded(:ranch) do
+          Listener.start_link(listen)
+        else
+          {:error, :ranch_not_loaded}
+        end
+
+      _other ->
+        :ignore
     end
   end
 

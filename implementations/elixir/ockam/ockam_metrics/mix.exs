@@ -1,4 +1,4 @@
-defmodule Ockam.CloudNode.MixProject do
+defmodule Ockam.Metrics.MixProject do
   use Mix.Project
 
   @version "0.10.1"
@@ -6,11 +6,11 @@ defmodule Ockam.CloudNode.MixProject do
   @elixir_requirement "~> 1.10"
 
   @ockam_github_repo "https://github.com/build-trust/ockam"
-  @ockam_github_repo_path "implementations/elixir/ockam/ockam_cloud_node"
+  @ockam_github_repo_path "implementations/elixir/ockam/ockam_metrics"
 
   def project do
     [
-      app: :ockam_cloud_node,
+      app: :ockam_metrics,
       version: @version,
       elixir: @elixir_requirement,
       consolidate_protocols: Mix.env() != :test,
@@ -26,11 +26,11 @@ defmodule Ockam.CloudNode.MixProject do
       preferred_cli_env: ["test.cover": :test],
 
       # hex
-      description: "Ockam Cloud Node",
+      description: "Ockam Metrics",
       package: package(),
 
       # docs
-      name: "Ockam Cloud Node",
+      name: "Ockam Metrics",
       docs: docs()
     ]
   end
@@ -38,7 +38,7 @@ defmodule Ockam.CloudNode.MixProject do
   # mix help compile.app for more
   def application do
     [
-      mod: {Ockam.CloudNode, []},
+      mod: {Ockam.Metrics.Application, []},
       extra_applications: [:logger, :ockam]
     ]
   end
@@ -48,17 +48,14 @@ defmodule Ockam.CloudNode.MixProject do
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
       {:ex_doc, "~> 0.25", only: :dev, runtime: false},
-      {:ockam_services, path: "../ockam_services"},
-      {:ockam_metrics, path: "../ockam_metrics"},
-      {:ockam_kafka, path: "../ockam_kafka"},
+      {:ockam, path: "../ockam", optional: true, runtime: false},
       {:telemetry, "~> 1.0", override: true},
       {:telemetry_poller, "~> 1.0"},
       {:telemetry_influxdb, "~> 0.2.0"},
       {:telemetry_metrics, "~> 0.6.1"},
       {:telemetry_metrics_prometheus, "~> 1.1.0"},
       # Needed to avoid conflic on ranch version used by cowboy (telemetry_metrics_prometheus dep)
-      {:ranch, "~> 2.1.0", override: true},
-      {:sched_ex, "~> 1.0"}
+      {:ranch, "~> 2.1.0", override: true}
     ]
   end
 
@@ -73,7 +70,7 @@ defmodule Ockam.CloudNode.MixProject do
   # used by ex_doc
   defp docs do
     [
-      main: "Ockam.CloudNode",
+      main: "Ockam.Metrics",
       source_url_pattern:
         "#{@ockam_github_repo}/blob/v#{@version}/#{@ockam_github_repo_path}/%{path}#L%{line}"
     ]

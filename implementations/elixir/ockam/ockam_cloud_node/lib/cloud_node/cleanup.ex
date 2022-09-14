@@ -26,8 +26,10 @@ defmodule Ockam.CloudNode.Cleanup do
 
     case cleanup_kafka_topics do
       true ->
-        Logger.info("Cleanup kafka topics older than #{idle_timeout} ms")
-        TopicCleanup.cleanup_idle_topics(idle_timeout, [])
+        if Code.ensure_loaded?(Ockam.Kafka) do
+          Logger.info("Cleanup kafka topics older than #{idle_timeout} ms")
+          TopicCleanup.cleanup_idle_topics(idle_timeout, [])
+        end
 
       false ->
         :ok
