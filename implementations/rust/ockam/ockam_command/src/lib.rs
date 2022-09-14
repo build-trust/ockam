@@ -1,6 +1,7 @@
 //! Orchestrate end-to-end encryption, mutual authentication, key management,
 //! credential management, and authorization policy enforcement — at scale.
 
+mod admin;
 mod authenticated;
 mod completion;
 mod configuration;
@@ -48,6 +49,7 @@ use util::{exitcode, exitcode::ExitCode, setup_logging, OckamConfig};
 use vault::VaultCommand;
 use version::Version;
 
+use crate::admin::AdminCommand;
 use crate::subscription::SubscriptionCommand;
 use clap::{ArgEnum, Args, Parser, Subcommand};
 use upgrade::check_if_an_upgrade_is_available;
@@ -255,6 +257,7 @@ pub enum OckamSubcommand {
     Service(ServiceCommand),
     Vault(VaultCommand),
     Subscription(SubscriptionCommand),
+    Admin(AdminCommand),
 }
 
 pub fn run() {
@@ -307,6 +310,7 @@ pub fn run() {
         OckamSubcommand::Credential(c) => c.run(options),
         OckamSubcommand::Subscription(c) => c.run(options),
         OckamSubcommand::Reset(c) => c.run(options),
+        OckamSubcommand::Admin(c) => c.run(options),
     }
 }
 
