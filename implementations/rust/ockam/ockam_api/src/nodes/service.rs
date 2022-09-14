@@ -94,6 +94,7 @@ pub struct NodeManager {
     skip_defaults: bool,
     vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
+    project_id: Option<Vec<u8>>,
     authorities: Option<Authorities>,
     pub(crate) authenticated_storage: LmdbStorage,
     pub(crate) registry: Registry,
@@ -122,6 +123,13 @@ impl NodeManager {
             .as_ref()
             .ok_or_else(|| ApiError::generic("Authorities don't exist"))
     }
+
+    /// Available only for member nodes
+    pub(crate) fn project_id(&self) -> Result<&Vec<u8>> {
+        self.project_id
+            .as_ref()
+            .ok_or_else(|| ApiError::generic("Project id is not set"))
+    }
 }
 
 impl NodeManager {
@@ -135,6 +143,7 @@ impl NodeManager {
         identity_override: Option<IdentityOverride>,
         skip_defaults: bool,
         ac: Option<&AuthoritiesConfig>,
+        project_id: Option<Vec<u8>>,
         api_transport: (TransportType, TransportMode, String),
         tcp_transport: TcpTransport,
     ) -> Result<Self> {
@@ -211,6 +220,7 @@ impl NodeManager {
             skip_defaults,
             vault,
             identity,
+            project_id,
             authorities: None,
             authenticated_storage,
             registry: Default::default(),
@@ -541,6 +551,7 @@ pub(crate) mod tests {
                 node_dir.into_path(),
                 None,
                 true,
+                None,
                 None,
                 (
                     TransportType::Tcp,
