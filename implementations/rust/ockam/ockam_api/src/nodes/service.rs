@@ -267,19 +267,9 @@ impl NodeManager {
 
         ForwardingService::create(ctx).await?;
 
-        let authorized_identifiers = if self.config.readlock_inner().identity_was_overridden {
-            self.identity.as_ref().map(|i| {
-                // If we had overridden Identity - we should trust only this identity,
-                // otherwise - trust all
-                vec![i.identifier().clone()]
-            })
-        } else {
-            None
-        };
-
         self.create_secure_channel_listener_impl(
             DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
-            authorized_identifiers,
+            None, // Not checking identifiers here in favor of credentials check
         )
         .await?;
 
