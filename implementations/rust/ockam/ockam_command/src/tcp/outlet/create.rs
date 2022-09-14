@@ -51,6 +51,10 @@ pub struct CreateCommand {
     /// TCP address to send raw tcp traffic.
     #[clap(long, display_order = 902, name = "SOCKET_ADDRESS")]
     to: SocketAddr,
+
+    /// Enable credentials authorization
+    #[clap(long, short, display_order = 802)]
+    pub check_credential: bool,
 }
 
 impl From<&'_ CreateCommand> for ComposableSnippet {
@@ -138,7 +142,7 @@ fn make_api_request(cmd: CreateCommand) -> ockam::Result<Vec<u8>> {
     let tcp_addr = &cmd.to.to_string();
     let worker_addr = cmd.from;
     let alias = (None::<String>).as_ref().map(|x| x.as_str().into());
-    let payload = CreateOutlet::new(tcp_addr, worker_addr, alias);
+    let payload = CreateOutlet::new(tcp_addr, worker_addr, alias, cmd.check_credential);
 
     let mut buf = vec![];
     Request::post("/node/outlet")

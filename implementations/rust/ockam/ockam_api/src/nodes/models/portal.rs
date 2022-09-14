@@ -22,6 +22,8 @@ pub struct CreateInlet<'a> {
     #[b(2)] pub outlet_route: Cow<'a, str>,
     /// A human-friendly alias for this portal endpoint
     #[b(3)] pub alias: Option<CowStr<'a>>,
+    /// Enable credentials authorization
+    #[n(4)] pub check_credential: bool,
 }
 
 impl<'a> CreateInlet<'a> {
@@ -29,6 +31,7 @@ impl<'a> CreateInlet<'a> {
         bind_addr: impl Into<Cow<'a, str>>,
         outlet_route: impl Into<Cow<'a, str>>,
         alias: impl Into<Option<CowStr<'a>>>,
+        check_credential: bool,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -36,6 +39,7 @@ impl<'a> CreateInlet<'a> {
             bind_addr: bind_addr.into(),
             outlet_route: outlet_route.into(),
             alias: alias.into(),
+            check_credential,
         }
     }
 }
@@ -53,6 +57,8 @@ pub struct CreateOutlet<'a> {
     #[b(2)] pub worker_addr: Cow<'a, str>,
     /// A human-friendly alias for this portal endpoint
     #[b(3)] pub alias: Option<CowStr<'a>>,
+    /// Enable credentials authorization
+    #[n(4)] pub check_credential: bool,
 }
 
 impl<'a> CreateOutlet<'a> {
@@ -60,6 +66,7 @@ impl<'a> CreateOutlet<'a> {
         tcp_addr: impl Into<Cow<'a, str>>,
         worker_addr: impl Into<Cow<'a, str>>,
         alias: impl Into<Option<CowStr<'a>>>,
+        check_credential: bool,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -67,6 +74,7 @@ impl<'a> CreateOutlet<'a> {
             tcp_addr: tcp_addr.into(),
             worker_addr: worker_addr.into(),
             alias: alias.into(),
+            check_credential,
         }
     }
 }

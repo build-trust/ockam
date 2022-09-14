@@ -1,3 +1,4 @@
+use crate::authenticator::direct::{PROJECT_ID, ROLE};
 use crate::multiaddr_to_route;
 use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
@@ -9,7 +10,8 @@ use minicbor::Decoder;
 use ockam::tcp::{InletOptions, OutletOptions};
 use ockam::{Address, Result};
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::AllowAll;
+use ockam_core::{AccessControl, AllowAll};
+use ockam_identity::credential::access_control::CredentialAccessControl;
 use ockam_multiaddr::MultiAddr;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -60,6 +62,7 @@ impl NodeManager {
             bind_addr,
             outlet_route,
             alias,
+            check_credential,
             ..
         } = dec.decode()?;
         let bind_addr = bind_addr.to_string();
@@ -77,11 +80,8 @@ impl NodeManager {
             }
         };
 
-        let options = InletOptions::new(
-            bind_addr.clone(),
-            outlet_route,
-            Arc::new(AllowAll), // FIXME
-        );
+        let access_control = self.access_control(check_credential)?;
+        let options = InletOptions::new(bind_addr.clone(), outlet_route, access_control);
 
         let res = self.tcp_transport.create_inlet_extended(options).await;
 
@@ -116,6 +116,22 @@ impl NodeManager {
         })
     }
 
+    fn access_control(&self, check_credential: bool) -> Result<Arc<dyn AccessControl>> {
+        if check_credential {
+            let project_id = self.project_id()?;
+            let required_attributes = vec![
+                (PROJECT_ID.to_string(), project_id.clone()),
+                (ROLE.to_string(), b"member".to_vec()),
+            ];
+            Ok(Arc::new(CredentialAccessControl::new(
+                &required_attributes,
+                self.authenticated_storage.clone(),
+            )))
+        } else {
+            Ok(Arc::new(AllowAll))
+        }
+    }
+
     pub(super) async fn create_outlet<'a>(
         &mut self,
         req: &Request<'_>,
@@ -125,6 +141,7 @@ impl NodeManager {
             tcp_addr,
             worker_addr,
             alias,
+            check_credential,
             ..
         } = dec.decode()?;
         let tcp_addr = tcp_addr.to_string();
@@ -134,7 +151,8 @@ impl NodeManager {
         info!("Handling request to create outlet portal");
         let worker_addr = Address::from(worker_addr.as_ref());
 
-        let options = OutletOptions::new(worker_addr.clone(), tcp_addr.clone(), Arc::new(AllowAll)); // FIXME
+        let access_control = self.access_control(check_credential)?;
+        let options = OutletOptions::new(worker_addr.clone(), tcp_addr.clone(), access_control);
 
         let res = self.tcp_transport.create_outlet_extended(options).await;
 
