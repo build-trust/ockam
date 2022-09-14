@@ -48,6 +48,10 @@ pub struct CreateCommand {
     /// Route to a tcp outlet.
     #[clap(long, display_order = 900, name = "ROUTE")]
     to: MultiAddr,
+
+    /// Enable credentials authorization
+    #[clap(long, short, display_order = 802)]
+    pub check_credential: bool,
 }
 
 impl From<&'_ CreateCommand> for ComposableSnippet {
@@ -121,7 +125,12 @@ pub async fn create_inlet(
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     let route = base_route.modify().append(NODEMANAGER_ADDR);
-    let message = make_api_request(&cmd.from.to_string(), &cmd.to, &None::<String>)?;
+    let message = make_api_request(
+        &cmd.from.to_string(),
+        &cmd.to,
+        &None::<String>,
+        cmd.check_credential,
+    )?;
     let response: Vec<u8> = ctx.send_and_receive(route, message).await?;
 
     let (response, InletStatus { bind_addr, .. }) = parse_inlet_status(&response)?;
@@ -145,11 +154,13 @@ fn make_api_request(
     bind_addr: &str,
     outlet_route: &MultiAddr,
     alias: &Option<String>,
+    check_credential: bool,
 ) -> ockam::Result<Vec<u8>> {
     let payload = models::portal::CreateInlet::new(
         bind_addr,
         outlet_route.to_string(),
         alias.as_ref().map(|x| x.as_str().into()),
+        check_credential,
     );
 
     let mut buf = vec![];
