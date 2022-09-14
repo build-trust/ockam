@@ -12,6 +12,7 @@ use std::{
 use crate::node::util::{
     add_project_authority, create_default_identity_if_needed, get_identity_override,
 };
+use crate::project::ProjectInfo;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start::{self, StartCommand, StartSubCommand};
@@ -20,6 +21,7 @@ use crate::{
     help,
     node::show::print_query_status,
     node::HELP_DETAIL,
+    project,
     util::{
         connect_to, embedded_node, find_available_port, startup, ComposableSnippet, OckamConfig,
         Operation,
@@ -283,7 +285,10 @@ async fn run_background_node_impl(
     };
 
     if let Some(path) = &c.project {
-        add_project_authority(path, &c.node_name, &cfg).await?
+        let s = tokio::fs::read_to_string(path).await?;
+        let p: ProjectInfo = serde_json::from_str(&s)?;
+        project::config::set_project(&cfg, &(&p).into()).await?;
+        add_project_authority(p, &c.node_name, &cfg).await?;
     }
 
     let tcp = TcpTransport::create(ctx).await?;

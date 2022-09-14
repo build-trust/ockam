@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Context as _, Result};
-use std::path::Path;
 use std::sync::Arc;
 
 use ockam::identity::{Identity, PublicIdentity};
@@ -13,7 +12,7 @@ use ockam_vault::Vault;
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
-use crate::OckamConfig;
+use crate::{project, OckamConfig};
 
 pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<String> {
     let cmd = CreateCommand::default();
@@ -33,7 +32,10 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
     };
 
     if let Some(path) = &cmd.project {
-        add_project_authority(path, &cmd.node_name, cfg).await?
+        let s = tokio::fs::read_to_string(path).await?;
+        let p: ProjectInfo = serde_json::from_str(&s)?;
+        project::config::set_project(cfg, &(&p).into()).await?;
+        add_project_authority(p, &cmd.node_name, cfg).await?;
     }
 
     let tcp = TcpTransport::create(ctx).await?;
@@ -113,12 +115,11 @@ pub(super) async fn get_identity_override(
     })
 }
 
-pub(super) async fn add_project_authority<P>(path: P, node: &str, cfg: &OckamConfig) -> Result<()>
-where
-    P: AsRef<Path>,
-{
-    let s = tokio::fs::read_to_string(path.as_ref()).await?;
-    let p: ProjectInfo = serde_json::from_str(&s)?;
+pub(super) async fn add_project_authority(
+    p: ProjectInfo<'_>,
+    node: &str,
+    cfg: &OckamConfig,
+) -> Result<()> {
     let m = p
         .authority_access_route
         .map(|a| MultiAddr::try_from(&*a))
