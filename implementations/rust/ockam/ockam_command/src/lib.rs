@@ -13,6 +13,7 @@ mod identity;
 mod message;
 mod node;
 mod project;
+mod reset;
 mod secure_channel;
 mod service;
 mod space;
@@ -29,12 +30,13 @@ use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
 use credential::CredentialCommand;
 use enroll::EnrollCommand;
-use error::{Error, Result};
+use error::Result;
 use forwarder::ForwarderCommand;
 use identity::IdentityCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use project::ProjectCommand;
+use reset::ResetCommand;
 use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
 use service::ServiceCommand;
 use space::SpaceCommand;
@@ -220,6 +222,8 @@ pub enum OckamSubcommand {
     Space(SpaceCommand),
     #[clap(display_order = 802)]
     Project(ProjectCommand),
+    #[clap(display_order = 803)]
+    Reset(ResetCommand),
 
     #[clap(display_order = 811)]
     Node(NodeCommand),
@@ -302,6 +306,7 @@ pub fn run() {
         OckamSubcommand::Completion(c) => c.run(),
         OckamSubcommand::Credential(c) => c.run(options),
         OckamSubcommand::Subscription(c) => c.run(options),
+        OckamSubcommand::Reset(c) => c.run(options),
     }
 }
 
