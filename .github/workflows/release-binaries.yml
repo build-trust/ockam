@@ -11,11 +11,13 @@ on:
         required: true
 
 permissions:
-  # Contents permission allows us write to this repository.
-  contents: write
+  contents: read
 
 jobs:
   create_release:
+    permissions:
+      contents: write
+
     name: Initiate Draft Release
     runs-on: ubuntu-20.04
     environment: release
@@ -183,6 +185,9 @@ jobs:
     name: Build Binaries
     needs: create_release
     environment: release
+    permissions:
+      contents: write
+
     strategy:
       fail-fast: false
       matrix:
@@ -301,6 +306,9 @@ jobs:
     name: Build Elixir NIFs
     needs: create_release
     environment: release
+    permissions:
+      contents: write
+
     strategy:
       fail-fast: false
       matrix:
@@ -392,6 +400,9 @@ jobs:
     needs: [build_release, create_release, build_elixir_nifs]
     runs-on: ubuntu-20.04
     environment: release
+    permissions:
+      contents: write
+
     steps:
       - name: Fetch All Assets
         shell: bash

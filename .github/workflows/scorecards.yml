@@ -1,6 +1,7 @@
 name: OSSF Scorecards
 
-permissions: read-all
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:

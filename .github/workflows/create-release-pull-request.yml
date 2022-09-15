@@ -1,5 +1,8 @@
 name: Create Release Pull Request
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:
@@ -29,14 +32,14 @@ on:
         - minor
         - patch
 
-permissions:
-  # Contents permission allows us write to this repository.
-  contents: write
-  # Pull request write ability
-  pull-requests: write
-
 jobs:
   bump_crates:
+    permissions:
+      # Contents permission allows us write to this repository.
+      contents: write
+      # Pull request write ability
+      pull-requests: write
+
     name: Bump Crates And Create PR
     runs-on: ubuntu-20.04
     environment: release
