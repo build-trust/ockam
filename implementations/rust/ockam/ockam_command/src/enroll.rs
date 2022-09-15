@@ -146,6 +146,7 @@ async fn default_project<'a>(
         rpc.request(api::project::create(
             "default",
             &space.id,
+            None,
             &cloud_opts.route(),
         ))
         .await?;
