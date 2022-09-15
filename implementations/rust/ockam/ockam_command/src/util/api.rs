@@ -299,9 +299,10 @@ pub(crate) mod project {
     pub(crate) fn create<'a>(
         project_name: &'a str,
         space_id: &'a str,
+        enforce_credentials: Option<bool>,
         cloud_route: &'a MultiAddr,
     ) -> RequestBuilder<'a, CloudRequestWrapper<'a, CreateProject<'a>>> {
-        let b = CreateProject::new::<&str, &str>(project_name, &[], &[]);
+        let b = CreateProject::new::<&str, &str>(project_name, enforce_credentials, &[], &[]);
         Request::post(format!("v0/projects/{}", space_id))
             .body(CloudRequestWrapper::new(b, cloud_route))
     }
