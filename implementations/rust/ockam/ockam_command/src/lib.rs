@@ -26,6 +26,7 @@ mod util;
 mod vault;
 mod version;
 
+use anyhow::Context;
 use authenticated::AuthenticatedCommand;
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
@@ -37,10 +38,12 @@ use identity::IdentityCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use project::ProjectCommand;
+use rand::prelude::random;
 use reset::ResetCommand;
 use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
 use service::ServiceCommand;
 use space::SpaceCommand;
+use std::path::PathBuf;
 use tcp::{
     connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
     outlet::TcpOutletCommand,
@@ -193,12 +196,31 @@ pub struct GlobalArgs {
     // but the command is not executed.
     #[clap(global = true, long, hide = true)]
     test_argument_parser: bool,
+
+    #[clap(flatten)]
+    export: ExportCommandArgs,
 }
 
 #[derive(Debug, Clone, ArgEnum, PartialEq, Eq)]
 pub enum OutputFormat {
     Plain,
     Json,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct ExportCommandArgs {
+    /// Export the command input to a file.
+    /// Used to run a set of commands after creating a node with `ockam node create --run commands.json`
+    #[clap(global = true, long = "export")]
+    export_path: Option<PathBuf>,
+
+    /// Unique name for the exported command.
+    #[clap(global = true, long, hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
+    export_as: String,
+
+    /// Reference to a previously exported command that must be run before the current command.
+    #[clap(global = true, long)]
+    depends_on: Option<String>,
 }
 
 #[derive(Clone)]
@@ -261,8 +283,10 @@ pub enum OckamSubcommand {
 }
 
 pub fn run() {
-    let input = std::env::args().map(replace_hyphen_with_stdin);
-
+    let input = std::env::args()
+        .map(replace_hyphen_with_stdin)
+        .collect::<Vec<_>>();
+    let args = input.clone();
     let command: OckamCommand = OckamCommand::parse_from(input);
     if !command.global_args.test_argument_parser {
         check_if_an_upgrade_is_available();
@@ -274,6 +298,15 @@ pub fn run() {
         setup_logging(command.global_args.verbose, command.global_args.no_color);
         tracing::debug!("{}", Version::short());
         tracing::debug!("Parsed {:?}", &command);
+    }
+
+    if let Some(path) = command.global_args.export.export_path {
+        let name = command.global_args.export.export_as.clone();
+        let depends_on = command.global_args.export.depends_on.clone();
+        node::util::run::CommandsRunner::export(path, name, depends_on, args)
+            .context("Failed to export command")
+            .unwrap();
+        return;
     }
 
     let options = CommandGlobalOpts::new(command.global_args, config);
