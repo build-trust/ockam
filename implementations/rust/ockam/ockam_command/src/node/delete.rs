@@ -44,14 +44,16 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
         // Try to delete dangling embedded nodes directories
         let dirs = OckamConfig::directories();
         let nodes_dir = dirs.data_local_dir();
-        for entry in nodes_dir.read_dir()? {
-            let dir = entry?;
-            if !dir.file_type()?.is_dir() {
-                continue;
-            }
-            if let Some(dir_name) = dir.file_name().to_str() {
-                if !nn.contains(&dir_name.to_string()) {
-                    let _ = std::fs::remove_dir_all(dir.path());
+        if nodes_dir.exists() {
+            for entry in nodes_dir.read_dir()? {
+                let dir = entry?;
+                if !dir.file_type()?.is_dir() {
+                    continue;
+                }
+                if let Some(dir_name) = dir.file_name().to_str() {
+                    if !nn.contains(&dir_name.to_string()) {
+                        let _ = std::fs::remove_dir_all(dir.path());
+                    }
                 }
             }
         }
