@@ -45,11 +45,13 @@ pub fn start(node: &str, ockam_cfg: &OckamConfig, cfg: &StartupConfig) {
 ///
 /// This function is used by `ockam node create` as well as `ockam
 /// node start`, which attempts to re-use an existing node config
+#[allow(clippy::too_many_arguments)]
 pub fn spawn_node(
     ockam: &PathBuf,
     cfg: &OckamConfig,
     verbose: u8,
     skip_defaults: bool,
+    enable_credential_checks: bool,
     name: &str,
     address: &str,
     project: Option<&Path>,
@@ -92,6 +94,10 @@ pub fn spawn_node(
 
     if skip_defaults {
         args.push("--skip-defaults".to_string());
+    }
+
+    if enable_credential_checks {
+        args.push("--enable-credential-checks".to_string());
     }
 
     args.push(name.to_owned());
@@ -142,6 +148,7 @@ fn run_snippet(
                 cfg,       // Ockam configuration
                 verbose,   // Previously user-chosen verbosity level
                 true,      // skip-defaults because the node already exists
+                false,     // Default value. TODO: implement persistence of this option
                 node_name, // The selected node name
                 api_addr,  // The selected node api address
                 None,      // No project information available

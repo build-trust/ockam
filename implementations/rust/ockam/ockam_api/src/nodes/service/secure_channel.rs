@@ -89,7 +89,13 @@ impl NodeManager {
             .create_secure_channel_internal(&identity, sc_route, authorized_identifiers)
             .await?;
 
-        match credential_exchange_mode {
+        let actual_exchange_mode = if self.enable_credential_checks {
+            credential_exchange_mode
+        } else {
+            CredentialExchangeMode::None
+        };
+
+        match actual_exchange_mode {
             CredentialExchangeMode::None => {
                 debug!(%sc_addr, "No credential presentation");
             }
