@@ -96,6 +96,37 @@ where
     }
 }
 
+/// A message type that is not subject to any encoding or decoding.
+#[derive(Debug)]
+pub struct NeutralMessage(Vec<u8>);
+
+impl From<Vec<u8>> for NeutralMessage {
+    fn from(v: Vec<u8>) -> Self {
+        Self(v)
+    }
+}
+
+impl From<NeutralMessage> for Vec<u8> {
+    fn from(m: NeutralMessage) -> Self {
+        m.0
+    }
+}
+
+impl Encodable for NeutralMessage {
+    fn encode(&self) -> Result<Encoded> {
+        // TODO: Avoid the copy, consider using `Bytes` as `Encoded`.
+        Ok(self.0.to_vec())
+    }
+}
+
+impl Decodable for NeutralMessage {
+    fn decode(v: &[u8]) -> Result<Self> {
+        Ok(Self(v.to_vec()))
+    }
+}
+
+impl Message for NeutralMessage {}
+
 impl From<serde_bare::error::Error> for Error {
     fn from(e: serde_bare::error::Error) -> Self {
         Error::new(Origin::Core, Kind::Io, e)

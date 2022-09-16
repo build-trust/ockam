@@ -1,13 +1,17 @@
-use ockam::{Context, Result, Routed, Worker};
+use ockam::{Any, Context, Result, Routed, Worker};
+use ockam_core::NeutralMessage;
+use tracing as log;
 
 pub struct Echoer;
 
 #[ockam::worker]
 impl Worker for Echoer {
-    type Message = String;
     type Context = Context;
+    type Message = Any;
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        ctx.send(msg.return_route(), msg.body()).await
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+        log::debug!(to = %msg.sender(), "echoing back");
+        ctx.send(msg.return_route(), NeutralMessage::from(msg.take_payload()))
+            .await
     }
 }
