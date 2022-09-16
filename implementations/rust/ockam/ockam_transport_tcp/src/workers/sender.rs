@@ -164,9 +164,14 @@ impl Worker for TcpSendWorker {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
 
         if self.tx.is_none() {
+            debug!(addr = %self.peer, "Connecting");
             let connection = match TcpStream::connect(self.peer).await {
-                Ok(c) => c,
+                Ok(c) => {
+                    debug!(addr = %self.peer, "Connected");
+                    c
+                }
                 Err(e) => {
+                    debug!(addr = %self.peer, err = %e, "Failed to connect");
                     self.stop_and_unregister(ctx).await?;
 
                     return Err(TransportError::from(e).into());
