@@ -57,6 +57,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
         node_dir,
         identity_override,
         cmd.skip_defaults || cmd.launch_config.is_some(),
+        cmd.enable_credential_checks,
         Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
         project_id,
         (TransportType::Tcp, TransportMode::Listen, bind),

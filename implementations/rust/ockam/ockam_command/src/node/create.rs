@@ -62,6 +62,10 @@ pub struct CreateCommand {
     #[clap(long, short, hide = true)]
     pub skip_defaults: bool,
 
+    /// Skip credential checks
+    #[clap(long, hide = true)]
+    pub enable_credential_checks: bool,
+
     /// ockam_command started a child process to run this node in foreground.
     #[clap(display_order = 900, long, hide = true)]
     pub child_process: bool,
@@ -101,6 +105,7 @@ impl Default for CreateCommand {
             foreground: false,
             tcp_listener_address: "127.0.0.1:0".to_string(),
             skip_defaults: false,
+            enable_credential_checks: false,
             child_process: false,
             launch_config: None,
             no_watchdog: false,
@@ -212,6 +217,7 @@ impl CreateCommand {
             &opts.config,
             verbose,
             cmd.skip_defaults,
+            cmd.enable_credential_checks,
             &cmd.node_name,
             &cmd.tcp_listener_address,
             cmd.project.as_deref(),
@@ -307,6 +313,7 @@ async fn run_background_node_impl(
         node_dir,
         identity_override,
         c.skip_defaults || c.launch_config.is_some(),
+        c.enable_credential_checks,
         Some(&cfg.authorities(&c.node_name)?.snapshot()),
         project_id,
         (TransportType::Tcp, TransportMode::Listen, bind),

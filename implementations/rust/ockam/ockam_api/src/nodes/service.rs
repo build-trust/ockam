@@ -92,6 +92,7 @@ pub struct NodeManager {
     tcp_transport: TcpTransport,
     pub(crate) controller_identity_id: IdentityIdentifier,
     skip_defaults: bool,
+    enable_credential_checks: bool,
     vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
     project_id: Option<Vec<u8>>,
@@ -142,6 +143,7 @@ impl NodeManager {
         // Should be passed only when creating fresh node and we want it to get default root Identity
         identity_override: Option<IdentityOverride>,
         skip_defaults: bool,
+        enable_credential_checks: bool,
         ac: Option<&AuthoritiesConfig>,
         project_id: Option<Vec<u8>>,
         api_transport: (TransportType, TransportMode, String),
@@ -209,6 +211,16 @@ impl NodeManager {
             None => None,
         };
 
+        if enable_credential_checks && (ac.is_none() || project_id.is_none()) {
+            error!("Invalid NodeManager options: enable_credential_checks was provided, while not enough \
+                information was provided to enforce the checks");
+            return Err(ockam_core::Error::new(
+                Origin::Ockam,
+                Kind::Invalid,
+                "Invalid NodeManager options",
+            ));
+        }
+
         let mut s = Self {
             node_name,
             node_dir,
@@ -218,6 +230,7 @@ impl NodeManager {
             tcp_transport,
             controller_identity_id: Self::load_controller_identity_id()?,
             skip_defaults,
+            enable_credential_checks,
             vault,
             identity,
             project_id,
@@ -551,6 +564,7 @@ pub(crate) mod tests {
                 node_dir.into_path(),
                 None,
                 true,
+                false,
                 None,
                 None,
                 (
