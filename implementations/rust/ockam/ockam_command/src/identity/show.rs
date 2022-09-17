@@ -1,8 +1,11 @@
 use crate::util::{connect_to, exitcode, get_final_element};
 use crate::CommandGlobalOpts;
-use crate::{node::NodeOpts, util::api};
+use crate::{
+    node::NodeOpts,
+    util::{api, stop_node},
+};
 use clap::Args;
-use ockam::{Context, Route};
+use ockam::{identity::PublicIdentity, vault::Vault, Context, NodeBuilder, Route};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::Status;
 
@@ -18,9 +21,28 @@ impl ShowCommand {
     pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
         let cfg = options.config;
         let node = get_final_element(&self.node_opts.api_node);
-        let port = cfg.get_node_port(node);
-
-        connect_to(port, self, show_identity);
+        if let Some(port) = cfg.try_get_node_port(node) {
+            connect_to(port, self, show_identity);
+        } else if let Some(default_identity) = cfg.get_default_identity() {
+            if self.full {
+                println!("{}", hex::encode(default_identity))
+            } else {
+                let vault = Vault::create();
+                let (ctx, mut executor) =
+                    NodeBuilder::without_access_control().no_logging().build();
+                let _ = executor.execute(async move {
+                    let r = PublicIdentity::import(&default_identity, &vault).await;
+                    stop_node(ctx).await.unwrap();
+                    match r {
+                        Err(e) => {
+                            eprintln!("An error occurred while importing identity: {}", e);
+                            std::process::exit(exitcode::IOERR);
+                        }
+                        Ok(p) => println!("{}", p.identifier()),
+                    }
+                });
+            }
+        }
 
         Ok(())
     }
