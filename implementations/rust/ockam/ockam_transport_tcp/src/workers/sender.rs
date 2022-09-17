@@ -58,6 +58,7 @@ pub(crate) struct TcpSendWorker {
     rx_addr: Option<Address>,
     heartbeat: DelayedEvent<TcpSendWorkerMsg>,
     heartbeat_interval: Option<Duration>,
+    is_initiator: bool,
 }
 
 impl TcpSendWorker {
@@ -68,6 +69,7 @@ impl TcpSendWorker {
         peer: SocketAddr,
         internal_addr: Address,
         heartbeat: DelayedEvent<TcpSendWorkerMsg>,
+        is_initiator: bool
     ) -> Self {
         let (rx, tx) = match stream {
             Some(s) => {
@@ -86,6 +88,7 @@ impl TcpSendWorker {
             rx_addr: None,
             heartbeat,
             heartbeat_interval: Some(Duration::from_secs(5 * 60)),
+            is_initiator,
         }
     }
 
@@ -100,6 +103,7 @@ impl TcpSendWorker {
         stream: Option<TcpStream>,
         peer: SocketAddr,
         hostnames: Vec<String>,
+        is_initiator: bool,
     ) -> Result<(Self, WorkerPair)> {
         let tx_addr = Address::random_local();
         let int_addr = Address::random_local();
@@ -109,6 +113,7 @@ impl TcpSendWorker {
             peer,
             int_addr.clone(),
             DelayedEvent::create(ctx, int_addr.clone(), TcpSendWorkerMsg::Heartbeat).await?,
+            is_initiator
         );
         Ok((
             sender,
@@ -130,7 +135,7 @@ impl TcpSendWorker {
         hostnames: Vec<String>,
     ) -> Result<WorkerPair> {
         trace!("Creating new TCP worker pair");
-        let (worker, pair) = Self::new_pair(ctx, router_handle, stream, peer, hostnames).await?;
+        let (worker, pair) = Self::new_pair(ctx, router_handle, stream, peer, hostnames, true).await?;
         ctx.start_worker(vec![pair.tx_addr(), worker.internal_addr().clone()], worker)
             .await?;
         Ok(pair)
@@ -194,7 +199,10 @@ impl Worker for TcpSendWorker {
 
         self.rx_addr = Some(rx_addr);
 
-        self.schedule_heartbeat().await?;
+        // Check if the connection is initiated by us
+        if self.is_initiator {
+            self.schedule_heartbeat().await?;
+        }
 
         Ok(())
     }
@@ -265,7 +273,10 @@ impl Worker for TcpSendWorker {
             }
         }
 
-        self.schedule_heartbeat().await?;
+        // Check if the connection is initiated by us
+        if self.is_initiator {
+            self.schedule_heartbeat().await?;
+        }
 
         Ok(())
     }
