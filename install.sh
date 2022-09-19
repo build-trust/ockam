@@ -1,7 +1,7 @@
 #!/bin/sh
 # shellcheck shell=dash
 
-set -eu
+set -e
 
 # This script fetches precompiled Ockam binaries and stores them.
 # https://github.com/build-trust/ockam/releases
@@ -154,6 +154,8 @@ download() {
 
 main() {
   echo
+  info "Installing Ockam Command ..."
+
   local _version="$1"
 
   detect_binary_file_name
