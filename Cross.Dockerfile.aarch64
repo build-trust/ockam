@@ -1,0 +1,5 @@
+FROM ghcr.io/cross-rs/aarch64-unknown-linux-musl:0.2.4
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install --assume-yes libdbus-1-dev
