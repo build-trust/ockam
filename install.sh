@@ -3,11 +3,22 @@
 
 set -e
 
-# This script fetches precompiled Ockam binaries and stores them.
+# This script fetches precompiled released Ockam binaries and
+# stores them in the current directory.
 # https://github.com/build-trust/ockam/releases
 
-# It borrows ideas from the rustup-init script which has been used and
-# tested in many environments over many years (MIT Licensed)
+# You can call it as follow:
+#
+# To install the latest released version:
+# curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/build-trust/ockam/develop/install.sh | sh
+#
+# Or
+#
+# To install a specific version:
+# curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/build-trust/ockam/develop/install.sh | sh -s -- v0.74.0
+
+# It borrows ideas from the MIT Licensed rustup-init script which has
+# been used and tested in many environments over many years
 # https://github.com/rust-lang/rustup/blob/master/rustup-init.sh
 
 ansi_escapes_are_valid() {
