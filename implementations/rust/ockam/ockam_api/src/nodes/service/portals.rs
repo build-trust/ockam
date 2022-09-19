@@ -51,7 +51,7 @@ impl NodeManagerWorker {
                         info.worker_addr.to_string(),
                         alias,
                         None,
-                        // FIXME route.as_ref().map(|r| r.to_string().into()),
+                        info.outlet_route.to_string(),
                     )
                 })
                 .collect(),
@@ -68,13 +68,7 @@ impl NodeManagerWorker {
                 .outlets
                 .iter()
                 .map(|(alias, info)| {
-                    OutletStatus::new(
-                        &info.tcp_addr,
-                        info.worker_addr.to_string(),
-                        alias,
-                        None,
-                        // FIXME route.as_ref().map(|r| r.to_string().into()),
-                    )
+                    OutletStatus::new(&info.tcp_addr, info.worker_addr.to_string(), alias, None)
                 })
                 .collect(),
         ))
@@ -109,7 +103,7 @@ impl NodeManagerWorker {
         };
 
         let access_control = node_manager.access_control(check_credential)?;
-        let options = InletOptions::new(bind_addr.clone(), outlet_route, access_control);
+        let options = InletOptions::new(bind_addr.clone(), outlet_route.clone(), access_control);
 
         let res = node_manager
             .tcp_transport
@@ -121,7 +115,7 @@ impl NodeManagerWorker {
                 // TODO: Use better way to store inlets?
                 node_manager.registry.inlets.insert(
                     alias.clone(),
-                    InletInfo::new(&bind_addr, Some(&worker_addr)),
+                    InletInfo::new(&bind_addr, Some(&worker_addr), &outlet_route),
                 );
 
                 Response::ok(req.id()).body(InletStatus::new(
@@ -129,20 +123,22 @@ impl NodeManagerWorker {
                     worker_addr.to_string(),
                     alias,
                     None,
+                    outlet_route.to_string(),
                 ))
             }
             Err(e) => {
                 // TODO: Use better way to store inlets?
-                node_manager
-                    .registry
-                    .inlets
-                    .insert(alias.clone(), InletInfo::new(&bind_addr, None));
+                node_manager.registry.inlets.insert(
+                    alias.clone(),
+                    InletInfo::new(&bind_addr, None, &outlet_route),
+                );
 
                 Response::bad_request(req.id()).body(InletStatus::new(
                     bind_addr,
                     "",
                     alias,
                     Some(e.to_string().into()),
+                    outlet_route.to_string(),
                 ))
             }
         })

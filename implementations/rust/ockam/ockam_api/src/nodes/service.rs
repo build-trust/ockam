@@ -492,6 +492,10 @@ impl NodeManagerWorker {
                 .start_credentials_service(ctx, req, dec)
                 .await?
                 .to_vec()?,
+            (Get, ["node", "services"]) => {
+                let node_manager = self.node_manager.read().await;
+                self.list_services(req, &node_manager.registry).to_vec()?
+            }
 
             // ==*== Forwarder commands ==*==
             (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req.id(), dec).await?,

@@ -192,3 +192,44 @@ impl<'a> StartCredentialsService<'a> {
         self.oneway
     }
 }
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct ServiceStatus<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<8542064>,
+    #[n(2)] pub addr: Cow<'a, str>,
+    #[n(3)] pub service_type: Cow<'a, str>,
+}
+
+impl<'a> ServiceStatus<'a> {
+    pub fn new(addr: impl Into<Cow<'a, str>>, service_type: impl Into<Cow<'a, str>>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr: addr.into(),
+            service_type: service_type.into(),
+        }
+    }
+}
+
+/// Response body for listing services
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct ServiceList<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<9587601>,
+    #[n(1)] pub list: Vec<ServiceStatus<'a>>
+}
+
+impl<'a> ServiceList<'a> {
+    pub fn new(list: Vec<ServiceStatus<'a>>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            list,
+        }
+    }
+}

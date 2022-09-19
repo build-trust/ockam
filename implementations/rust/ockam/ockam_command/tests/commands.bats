@@ -75,9 +75,15 @@ teardown() {
   assert_success
 }
 
-@test "create a node with a name" {
+@test "create a node with a name and do show on it" {
   run $OCKAM node create n1
   assert_success
+
+  run $OCKAM node show n1
+  assert_success
+  assert_output --partial "/dnsaddr/localhost/tcp/"
+  assert_output --partial "/service/api"
+  assert_output --partial "/service/uppercase"
 }
 
 @test "create a node with a name and send it a message" {
