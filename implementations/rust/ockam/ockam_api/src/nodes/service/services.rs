@@ -3,11 +3,11 @@ use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::identity::IdentityService;
 use crate::nodes::models::services::{
-    StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
-    StartEchoerServiceRequest, StartIdentityServiceRequest, StartUppercaseServiceRequest,
-    StartVaultServiceRequest, StartVerifierService,
+    ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
+    StartCredentialsService, StartEchoerServiceRequest, StartIdentityServiceRequest,
+    StartUppercaseServiceRequest, StartVaultServiceRequest, StartVerifierService,
 };
-use crate::nodes::registry::{CredentialsServiceInfo, VerifierServiceInfo};
+use crate::nodes::registry::{CredentialsServiceInfo, Registry, VerifierServiceInfo};
 use crate::nodes::NodeManager;
 use crate::uppercase::Uppercase;
 use crate::vault::VaultService;
@@ -341,5 +341,49 @@ impl NodeManagerWorker {
             .await?;
 
         Ok(Response::ok(req.id()))
+    }
+
+    pub(super) fn list_services<'a>(
+        &self,
+        req: &Request<'a>,
+        registry: &'a Registry,
+    ) -> ResponseBuilder<ServiceList<'a>> {
+        let mut list = Vec::new();
+        registry
+            .vault_services
+            .keys()
+            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "vault")));
+        registry
+            .identity_services
+            .keys()
+            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "identity")));
+        registry
+            .authenticated_services
+            .keys()
+            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "authenticated")));
+        registry
+            .uppercase_services
+            .keys()
+            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "uppercase")));
+        registry
+            .echoer_services
+            .keys()
+            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "echoer")));
+        registry
+            .verifier_services
+            .keys()
+            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "verifier")));
+        registry
+            .credentials_services
+            .keys()
+            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "credentials")));
+
+        #[cfg(feature = "direct-authenticator")]
+        registry
+            .authenticator_service
+            .keys()
+            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "authenticator")));
+
+        Response::ok(req.id()).body(ServiceList::new(list))
     }
 }

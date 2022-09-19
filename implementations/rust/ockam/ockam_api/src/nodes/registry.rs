@@ -101,10 +101,15 @@ pub(crate) struct AuthenticatorServiceInfo {}
 pub(crate) struct InletInfo {
     pub(crate) bind_addr: String,
     pub(crate) worker_addr: Address,
+    pub(crate) outlet_route: Route,
 }
 
 impl InletInfo {
-    pub(crate) fn new(bind_addr: &str, worker_addr: Option<&Address>) -> Self {
+    pub(crate) fn new(
+        bind_addr: &str,
+        worker_addr: Option<&Address>,
+        outlet_route: &Route,
+    ) -> Self {
         let worker_addr = match worker_addr {
             Some(addr) => addr.clone(),
             None => Address::from_string(""),
@@ -112,6 +117,7 @@ impl InletInfo {
         Self {
             bind_addr: bind_addr.to_owned(),
             worker_addr,
+            outlet_route: outlet_route.to_owned(),
         }
     }
 }

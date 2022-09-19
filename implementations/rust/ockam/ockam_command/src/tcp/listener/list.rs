@@ -29,7 +29,7 @@ pub async fn list_listeners(ctx: Context, _: (), mut base_route: Route) -> anyho
     let resp: Vec<u8> = match ctx
         .send_and_receive(
             base_route.modify().append(NODEMANAGER_ADDR),
-            api::list_tcp_listeners()?,
+            api::list_tcp_listeners().to_vec()?,
         )
         .await
     {

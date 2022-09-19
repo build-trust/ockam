@@ -56,7 +56,7 @@ pub async fn show_identity(
         let resp: Vec<u8> = ctx
             .send_and_receive(
                 base_route.modify().append(NODEMANAGER_ADDR),
-                api::short_identity()?,
+                api::short_identity().to_vec()?,
             )
             .await?;
 

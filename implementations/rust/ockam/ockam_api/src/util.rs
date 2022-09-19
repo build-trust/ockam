@@ -167,6 +167,12 @@ pub fn try_address_to_multiaddr(a: &Address) -> Result<MultiAddr, Error> {
     Ok(ma)
 }
 
+/// Try to convert an Ockam Address into a MultiAddr.
+pub fn addr_to_multiaddr<T: Into<Address>>(a: T) -> Option<MultiAddr> {
+    let r: Route = Route::from(a);
+    route_to_multiaddr(&r)
+}
+
 /// Tells whether the input MultiAddr references a local node or a remote node.
 ///
 /// This should be called before cleaning the MultiAddr.
