@@ -91,7 +91,10 @@ impl CreateCommand {
             Some(multiaddr) => {
                 // if stdout is not interactive/tty write the secure channel address to it
                 // in case some other program is trying to read it as piped input
-                if !atty::is(Stream::Stdout) {
+                if !atty::is(Stream::Stdout)
+                // or if the `--pipe` flag is set
+                || options.global_args.export.pipe()
+                {
                     println!("{}", multiaddr)
                 }
 

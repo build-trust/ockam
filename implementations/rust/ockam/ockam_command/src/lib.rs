@@ -38,7 +38,6 @@ use identity::IdentityCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use project::ProjectCommand;
-use rand::prelude::random;
 use reset::ResetCommand;
 use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
 use service::ServiceCommand;
@@ -53,6 +52,7 @@ use vault::VaultCommand;
 use version::Version;
 
 use crate::admin::AdminCommand;
+use crate::node::util::run::CommandSection;
 use crate::subscription::SubscriptionCommand;
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use upgrade::check_if_an_upgrade_is_available;
@@ -223,13 +223,19 @@ pub struct ExportCommandArgs {
     #[arg(global = true, long = "export")]
     export_path: Option<PathBuf>,
 
-    /// Unique name for the exported command.
-    #[arg(global = true, long, hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
-    export_as: String,
+    /// Section of the config file to export the command to.
+    #[arg(global = true, long = "export-section", value_enum)]
+    section: Option<CommandSection>,
 
-    /// Reference to a previously exported command that must be run before the current command.
-    #[arg(global = true, long)]
-    depends_on: Option<String>,
+    /// Flag to indicate that the exported command should pipe its output.
+    #[arg(global = true, long, action = ArgAction::SetTrue)]
+    pipe: Option<bool>,
+}
+
+impl ExportCommandArgs {
+    pub fn pipe(&self) -> bool {
+        self.pipe.unwrap_or(false)
+    }
 }
 
 #[derive(Clone)]
@@ -297,11 +303,10 @@ pub fn run() {
         .collect::<Vec<_>>();
     let args = input.clone();
     let command: OckamCommand = OckamCommand::parse_from(input);
+
     if !command.global_args.test_argument_parser {
         check_if_an_upgrade_is_available();
     }
-
-    let config = OckamConfig::load();
 
     if !command.global_args.quiet {
         setup_logging(command.global_args.verbose, command.global_args.no_color);
@@ -310,49 +315,53 @@ pub fn run() {
     }
 
     if let Some(path) = command.global_args.export.export_path {
-        let name = command.global_args.export.export_as.clone();
-        let depends_on = command.global_args.export.depends_on.clone();
-        node::util::run::CommandsRunner::export(path, name, depends_on, args)
+        let section = command.global_args.export.section.unwrap_or_default();
+        let pipe = command.global_args.export.pipe;
+        node::util::run::CommandsRunner::export(path, section, args, pipe)
             .context("Failed to export command")
             .unwrap();
         return;
     }
 
-    let options = CommandGlobalOpts::new(command.global_args, config);
+    command.run();
+}
 
-    // If test_argument_parser is true, command arguments are checked
-    // but the command is not executed. This is useful to test arguments
-    // without having to execute their logic.
-    if options.global_args.test_argument_parser {
-        return;
-    }
+impl OckamCommand {
+    pub fn run(self) {
+        let config = OckamConfig::load();
+        let options = CommandGlobalOpts::new(self.global_args, config);
 
-    // FIXME
-    let _verbose = options.global_args.verbose;
+        // If test_argument_parser is true, command arguments are checked
+        // but the command is not executed. This is useful to test arguments
+        // without having to execute their logic.
+        if options.global_args.test_argument_parser {
+            return;
+        }
 
-    match command.subcommand {
-        OckamSubcommand::Authenticated(c) => c.run(),
-        OckamSubcommand::Configuration(c) => c.run(options),
-        OckamSubcommand::Enroll(c) => c.run(options),
-        OckamSubcommand::Forwarder(c) => c.run(options),
-        OckamSubcommand::Message(c) => c.run(options),
-        OckamSubcommand::Node(c) => c.run(options),
-        OckamSubcommand::Project(c) => c.run(options),
-        OckamSubcommand::Space(c) => c.run(options),
-        OckamSubcommand::TcpConnection(c) => c.run(options),
-        OckamSubcommand::TcpInlet(c) => c.run(options),
-        OckamSubcommand::TcpListener(c) => c.run(options),
-        OckamSubcommand::TcpOutlet(c) => c.run(options),
-        OckamSubcommand::Vault(c) => c.run(options),
-        OckamSubcommand::Identity(c) => c.run(options),
-        OckamSubcommand::SecureChannel(c) => c.run(options),
-        OckamSubcommand::SecureChannelListener(c) => c.run(options),
-        OckamSubcommand::Service(c) => c.run(options),
-        OckamSubcommand::Completion(c) => c.run(),
-        OckamSubcommand::Credential(c) => c.run(options),
-        OckamSubcommand::Subscription(c) => c.run(options),
-        OckamSubcommand::Reset(c) => c.run(options),
-        OckamSubcommand::Admin(c) => c.run(options),
+        match self.subcommand {
+            OckamSubcommand::Authenticated(c) => c.run(),
+            OckamSubcommand::Configuration(c) => c.run(options),
+            OckamSubcommand::Enroll(c) => c.run(options),
+            OckamSubcommand::Forwarder(c) => c.run(options),
+            OckamSubcommand::Message(c) => c.run(options),
+            OckamSubcommand::Node(c) => c.run(options),
+            OckamSubcommand::Project(c) => c.run(options),
+            OckamSubcommand::Space(c) => c.run(options),
+            OckamSubcommand::TcpConnection(c) => c.run(options),
+            OckamSubcommand::TcpInlet(c) => c.run(options),
+            OckamSubcommand::TcpListener(c) => c.run(options),
+            OckamSubcommand::TcpOutlet(c) => c.run(options),
+            OckamSubcommand::Vault(c) => c.run(options),
+            OckamSubcommand::Identity(c) => c.run(options),
+            OckamSubcommand::SecureChannel(c) => c.run(options),
+            OckamSubcommand::SecureChannelListener(c) => c.run(options),
+            OckamSubcommand::Service(c) => c.run(options),
+            OckamSubcommand::Completion(c) => c.run(),
+            OckamSubcommand::Credential(c) => c.run(options),
+            OckamSubcommand::Subscription(c) => c.run(options),
+            OckamSubcommand::Reset(c) => c.run(options),
+            OckamSubcommand::Admin(c) => c.run(options),
+        }
     }
 }
 

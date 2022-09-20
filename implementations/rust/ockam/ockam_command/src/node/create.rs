@@ -145,7 +145,6 @@ impl CreateCommand {
 
             let cmd = self.overwrite_addr().unwrap();
             let addr = SocketAddr::from_str(&cmd.tcp_listener_address).unwrap();
-
             embedded_node(
                 Self::create_background_node,
                 (options.clone(), cmd.clone(), addr),
@@ -156,9 +155,12 @@ impl CreateCommand {
                 (cfg.clone(), cmd.node_name, true),
                 print_query_status,
             );
-            if let Some(config) = self.config {
-                crate::node::util::run::CommandsRunner::run(&config)
-                    .context("Failed to run commands from config")
+            if let Some(config_path) = &self.config {
+                crate::node::util::run::CommandsRunner::run_node_init(config_path)
+                    .context("Failed to run init commands")
+                    .unwrap();
+                crate::node::util::run::CommandsRunner::run_node_startup(config_path)
+                    .context("Failed to startup commands")
                     .unwrap();
             }
         }
