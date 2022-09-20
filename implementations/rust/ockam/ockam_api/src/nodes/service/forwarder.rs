@@ -139,6 +139,8 @@ async fn connect(
             let i = Some(vec![i.clone()]);
             let a = manager.create_secure_channel_impl(r, i, mode, None).await?;
             return Ok(Either::Left(a));
+        } else {
+            info!(%addr, "no authorised identity found")
         }
     }
     let r = multiaddr_to_route(addr).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;

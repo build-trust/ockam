@@ -77,7 +77,6 @@ impl Medic {
                             .spawn(async move { (key, sender.forward(l).await) });
                         continue;
                     }
-
                     match session.status() {
                         Status::Up => {
                             log::warn!(%key, "session unresponsive");
