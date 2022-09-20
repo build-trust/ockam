@@ -16,6 +16,23 @@ allow = [
     "ISC",
     "BlueOak-1.0.0"
 ]
+exceptions = [
+    { allow = ["LicenseRef-Ring-ISC-OpenSSL"], name = "ring", version = "*" },
+]
+
+[[licenses.clarify]]
+name = "ring"
+expression = "LicenseRef-Ring-ISC-OpenSSL"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 },
+]
+
+[[licenses.clarify]]
+name = "webpki"
+expression = "ISC"
+license-files = [
+    { path = "LICENSE", hash = 0x001c7e6c },
+]
 
 [advisories]
 unmaintained = "deny"
