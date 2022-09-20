@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::map_multiaddr_err;
 use crate::error::ApiError;
 use crate::nodes::models::secure_channel::{
@@ -37,6 +39,7 @@ impl NodeManager {
         identity: &Identity<Vault>,
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        timeout: Option<Duration>,
     ) -> Result<Address> {
         // If channel was already created, do nothing.
         if let Some(channel) = self.registry.secure_channels.get_by_route(&sc_route) {
@@ -47,22 +50,25 @@ impl NodeManager {
         // Else, create it.
 
         debug!(%sc_route, "Creating secure channel");
+        let timeout = timeout.unwrap_or(Duration::from_secs(120));
         let sc_addr = match authorized_identifiers.clone() {
             Some(ids) => {
                 identity
-                    .create_secure_channel(
+                    .create_secure_channel_extended(
                         sc_route.clone(),
                         TrustMultiIdentifiersPolicy::new(ids),
                         &self.authenticated_storage,
+                        timeout,
                     )
                     .await
             }
             None => {
                 identity
-                    .create_secure_channel(
+                    .create_secure_channel_extended(
                         sc_route.clone(),
                         TrustEveryonePolicy,
                         &self.authenticated_storage,
+                        timeout,
                     )
                     .await
             }
@@ -82,11 +88,12 @@ impl NodeManager {
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         credential_exchange_mode: CredentialExchangeMode,
+        timeout: Option<Duration>,
     ) -> Result<Address> {
         let identity = self.identity()?.async_try_clone().await?;
 
         let sc_addr = self
-            .create_secure_channel_internal(&identity, sc_route, authorized_identifiers)
+            .create_secure_channel_internal(&identity, sc_route, authorized_identifiers, timeout)
             .await?;
 
         let actual_exchange_mode = if self.enable_credential_checks {
@@ -135,6 +142,7 @@ impl NodeManager {
             addr,
             authorized_identifiers,
             credential_exchange_mode,
+            timeout,
             ..
         } = dec.decode()?;
 
@@ -158,7 +166,12 @@ impl NodeManager {
             .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
         let channel = self
-            .create_secure_channel_impl(route, authorized_identifiers, credential_exchange_mode)
+            .create_secure_channel_impl(
+                route,
+                authorized_identifiers,
+                credential_exchange_mode,
+                timeout,
+            )
             .await?;
 
         let response = Response::ok(req.id()).body(CreateSecureChannelResponse::new(&channel));

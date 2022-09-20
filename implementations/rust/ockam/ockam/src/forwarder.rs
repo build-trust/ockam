@@ -70,6 +70,7 @@ impl Forwarder {
             forward_route,
             payload: Some(registration_payload.clone()),
         };
+        let _ = ctx.stop_worker(address.clone()).await;
         ctx.start_worker(address, forwarder).await?;
 
         Ok(())

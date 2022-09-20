@@ -10,6 +10,7 @@ pub mod uppercase;
 pub mod vault;
 pub mod verifier;
 
+mod session;
 mod util;
 pub use util::*;
 

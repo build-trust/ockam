@@ -103,6 +103,12 @@ impl ConfigLookup {
     pub fn remove_projects(&mut self) {
         self.map.retain(|k, _| !k.starts_with("/project/"));
     }
+
+    pub fn has_unresolved_projects(&self, meta: &LookupMeta) -> bool {
+        meta.project
+            .iter()
+            .any(|name| self.get_project(name).is_none())
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
