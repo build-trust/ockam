@@ -44,7 +44,7 @@ impl NodeManager {
 
         debug!("Create secure channel to project authority");
         let sc = self
-            .create_secure_channel_internal(&identity, route, Some(allowed))
+            .create_secure_channel_internal(&identity, route, Some(allowed), None)
             .await?;
         debug!("Created secure channel to project authority");
 

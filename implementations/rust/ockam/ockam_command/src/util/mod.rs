@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::{anyhow, Context as _, Result};
 use crossbeam_channel::{bounded, Sender};
-use minicbor::{Decode, Decoder, Encode};
+use minicbor::{data::Type, Decode, Decoder, Encode};
 use tracing::{debug, error, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
@@ -244,9 +244,18 @@ impl<'a> Rpc<'a> {
         };
         match hdr.status() {
             Some(status) if hdr.has_body() => {
-                let err = match dec.decode::<String>() {
-                    Ok(msg) => format!("Message: {msg}"),
-                    Err(_) => String::default(),
+                let err = if matches!(dec.datatype(), Ok(Type::String)) {
+                    dec.decode::<String>()
+                        .map(|msg| format!("Message: {msg}"))
+                        .unwrap_or_default()
+                } else {
+                    dec.decode::<ockam_core::api::Error>()
+                        .map(|e| {
+                            e.message()
+                                .map(|msg| format!("Message: {msg}"))
+                                .unwrap_or_default()
+                        })
+                        .unwrap_or_default()
                 };
                 format!(
                     "An error occurred while processing the request. Status code: {status}. {err}"

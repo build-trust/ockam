@@ -1,17 +1,24 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
 use std::collections::BTreeMap;
+use std::error::Error as _;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use minicbor::Decoder;
 
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
-use ockam_core::api::{Method, Request, Response, Status};
-use ockam_core::compat::{boxed::Box, string::String};
+use ockam_core::api::{Error, Method, Request, Response, Status};
+use ockam_core::compat::{
+    boxed::Box,
+    string::String,
+    sync::{Arc, Mutex},
+};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::AsyncTryClone;
 use ockam_identity::{Identity, IdentityIdentifier, PublicIdentity};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::tokio;
+use ockam_node::tokio::task::JoinHandle;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
@@ -22,6 +29,7 @@ use crate::lmdb::LmdbStorage;
 use crate::nodes::config::NodeManConfig;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
+use crate::session::{Medic, Sessions};
 use crate::DefaultAddress;
 
 pub mod message;
@@ -84,6 +92,7 @@ pub(crate) struct AuthorityInfo {
 
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeManager {
+    address: Address,
     node_name: String,
     node_dir: PathBuf,
     config: Config<NodeManConfig>,
@@ -99,6 +108,14 @@ pub struct NodeManager {
     authorities: Option<Authorities>,
     pub(crate) authenticated_storage: LmdbStorage,
     pub(crate) registry: Registry,
+    sessions: Arc<Mutex<Sessions>>,
+    medic: JoinHandle<Result<(), ockam_core::Error>>,
+}
+
+impl Drop for NodeManager {
+    fn drop(&mut self) {
+        self.medic.abort()
+    }
 }
 
 pub struct IdentityOverride {
@@ -136,7 +153,8 @@ impl NodeManager {
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
     #[allow(clippy::too_many_arguments)]
-    pub async fn create(
+    pub async fn create<A: Into<Address>>(
+        addr: A,
         ctx: &Context,
         node_name: String,
         node_dir: PathBuf,
@@ -221,7 +239,11 @@ impl NodeManager {
             ));
         }
 
+        let medic = Medic::new();
+        let sessions = medic.sessions();
+
         let mut s = Self {
+            address: addr.into(),
             node_name,
             node_dir,
             config,
@@ -237,6 +259,11 @@ impl NodeManager {
             authorities: None,
             authenticated_storage,
             registry: Default::default(),
+            medic: {
+                let ctx = ctx.async_try_clone().await?;
+                tokio::spawn(medic.start(ctx))
+            },
+            sessions,
         };
 
         if !skip_defaults {
@@ -246,6 +273,9 @@ impl NodeManager {
                 s.configure_authorities(ac).await?;
             }
         }
+
+        s.start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
+            .await?;
 
         Ok(s)
     }
@@ -285,8 +315,6 @@ impl NodeManager {
             .await?;
         self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
-        self.start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
-            .await?;
 
         ForwardingService::create(ctx).await?;
 
@@ -315,7 +343,7 @@ impl NodeManager {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
-        trace! {
+        debug! {
             target: TARGET,
             id     = %req.id(),
             method = ?req.method(),
@@ -437,7 +465,7 @@ impl NodeManager {
                 .to_vec()?,
 
             // ==*== Forwarder commands ==*==
-            (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req, dec).await?,
+            (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req.id(), dec).await?,
 
             // ==*== Inlets & Outlets ==*==
             (Get, ["node", "inlet"]) => self.get_inlets(req).to_vec()?,
@@ -531,16 +559,30 @@ impl Worker for NodeManager {
 
         let r = match self.handle_request(ctx, &req, &mut dec).await {
             Ok(r) => r,
-            // If an error occurs, send a response with the error code so the listener can
-            // fail fast instead of failing silently here and force the listener to timeout.
             Err(err) => {
-                error!(?err, "Failed to handle request");
+                error! {
+                    target: TARGET,
+                    re     = %req.id(),
+                    method = ?req.method(),
+                    path   = %req.path(),
+                    code   = %err.code(),
+                    cause  = ?err.source(),
+                    "failed to handle request"
+                }
+                let err =
+                    Error::new(req.path()).with_message(format!("failed to handle request: {err}"));
                 Response::builder(req.id(), Status::InternalServerError)
-                    .body(format!("Failed to handle request: {err}"))
+                    .body(err)
                     .to_vec()?
             }
         };
-        trace!("** sending response");
+        debug! {
+            target: TARGET,
+            re     = %req.id(),
+            method = ?req.method(),
+            path   = %req.path(),
+            "responding"
+        }
         ctx.send(msg.return_route(), r).await
     }
 }
@@ -559,6 +601,7 @@ pub(crate) mod tests {
             let transport = TcpTransport::create(ctx).await?;
             let node_address = transport.listen("127.0.0.1:0").await?;
             let mut node_man = NodeManager::create(
+                node_manager,
                 ctx,
                 "node".to_string(),
                 node_dir.into_path(),

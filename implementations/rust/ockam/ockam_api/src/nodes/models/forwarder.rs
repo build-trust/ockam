@@ -1,11 +1,16 @@
+use std::collections::HashMap;
+
 use minicbor::{Decode, Encode};
 
 use ockam::remote::RemoteForwarderInfo;
 use ockam_core::CowStr;
+use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+
+use super::secure_channel::CredentialExchangeMode;
 
 /// Request body when instructing a node to create a forwarder
 #[derive(Debug, Clone, Decode, Encode)]
@@ -14,23 +19,38 @@ use ockam_core::TypeTag;
 pub struct CreateForwarder<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3386455>,
-    /// Ockam's cloud forwarder node address
-    #[b(1)] pub(crate) address: CowStr<'a>,
-    /// Forwarder alias
-    #[n(2)] pub(crate) alias: Option<CowStr<'a>>,
-    /// Forwarding service is at rust node
+    /// Address to create forwarder at.
+    #[b(1)] pub(crate) address: MultiAddr,
+    /// Forwarder alias.
+    #[b(2)] pub(crate) alias: Option<CowStr<'a>>,
+    /// Forwarding service is at rust node.
     #[n(3)] pub(crate) at_rust_node: bool,
+    /// Authorised identities per project.
+    #[n(4)] pub(crate) identities: HashMap<MultiAddr, IdentityIdentifier>,
+    #[n(5)] pub(crate) mode: CredentialExchangeMode
 }
 
 impl<'a> CreateForwarder<'a> {
-    pub fn new(address: &MultiAddr, alias: Option<String>, at_rust_node: bool) -> Self {
+    pub fn new(address: MultiAddr, alias: Option<String>, at_rust_node: bool) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: Default::default(),
-            address: address.to_string().into(),
+            address,
             alias: alias.map(|s| s.into()),
             at_rust_node,
+            identities: HashMap::new(),
+            mode: CredentialExchangeMode::None,
         }
+    }
+
+    pub fn set_identities(&mut self, ids: HashMap<MultiAddr, IdentityIdentifier>) -> &mut Self {
+        self.identities = ids;
+        self
+    }
+
+    pub fn set_credentials_mode(&mut self, m: CredentialExchangeMode) -> &mut Self {
+        self.mode = m;
+        self
     }
 }
 
@@ -105,7 +125,7 @@ mod tests {
             let mut buf = vec![];
             Request::post("/node/forwarder")
                 .body(CreateForwarder::new(
-                    &route_to_multiaddr(&route).unwrap(),
+                    route_to_multiaddr(&route).unwrap(),
                     None,
                     false,
                 ))

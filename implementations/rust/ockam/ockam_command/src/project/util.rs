@@ -55,11 +55,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
     let mut sc = Vec::with_capacity(meta.project.len());
 
     // In case a project is missing from the config file, we fetch them all from the cloud.
-    let missing_projects = meta
-        .project
-        .iter()
-        .any(|name| cfg_lookup.get_project(name).is_none());
-    if missing_projects {
+    if cfg_lookup.has_unresolved_projects(meta) {
         config::refresh_projects(ctx, opts, api_node, cloud_addr, tcp).await?;
     }
 

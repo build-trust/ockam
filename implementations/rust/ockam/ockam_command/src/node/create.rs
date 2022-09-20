@@ -317,6 +317,7 @@ async fn run_background_node_impl(
 
     let node_dir = cfg.get_node_dir(&c.node_name)?;
     let node_man = NodeManager::create(
+        NODEMANAGER_ADDR,
         ctx,
         c.node_name.clone(),
         node_dir,
