@@ -117,8 +117,8 @@ detect_binary_file_name() {
     ;;
     Linux)
       case "$_cpu_type" in
-        x86_64 | aarch64) _file_name="ockam.$_cpu_type-unknown-linux-gnu";;
-        armv7l) _file_name="ockam.$_cpu_type-unknown-linux-gnueabihf";;
+        x86_64 | aarch64) _file_name="ockam.$_cpu_type-unknown-linux-musl";;
+        armv7l) _file_name="ockam.$_cpu_type-unknown-linux-musleabihf";;
         *) error "Unsupported CPU type: ${_cpu_type} on Linux";
       esac
     ;;
