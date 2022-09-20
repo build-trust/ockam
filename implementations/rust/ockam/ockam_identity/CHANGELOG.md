@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.64.0 - 2022-09-20
+
+### Added
+
+- Add `known_identifier` flag to secure channel command
+- Add identity security tests
+- Add credential exchange support to secure channel involved commands
+- Add credential access control
+
+### Changed
+
+- Updates for clippy 0.1.62
+- Make `IdentityIdentifier` encodable
+- Define credential structure in ockam crate
+- Check controller's identity id when creating secure channel
+- Update attributes storage structure
+- Change `IdentityIdentifier` prefix to `I`
+- Improve secure-channel `create` command and add `delete` command
+- Create `PublicIdentity`, cleanup identity
+- Make `IdentityChangeHistory` crate public, cleanup usage
+- Move credentials to `ockam_identity`
+- Make identity own a credential
+- Rename `make_verified` -> `into_verified`
+- Authority type improvement
+- Update identity structure
+- Switch to arch agnostic integers for secret length
+- Updated dependencies
+
+### Fixed
+
+- Align serialisations of `IdentityIdentifier`
+- Revert prefix change
+- Fix no_std build
+- Fix identity signature check
+
+### Removed
+
+- Remove old credentials and signatures code
+
 ## 0.63.0 - 2022-09-09
 
 ### Added

@@ -4,6 +4,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.19.0 - 2022-09-20
+
+### Added
+
+- Add `Identity` basic functionality to `ockam_api`
+- Add schema validation tests for cloud api types
+- Add tests for api cloud endpoints + fixes error handling
+- Add project node identity to project cbor schema
+- Add util::response module
+- Add signer and direct enroller support
+- Support different enroller/member store
+- Add `credential` module to `ockam` crate
+- Add `Inlet/Outlet` to `Registry`
+
+### Changed
+
+- Use identity secure channels to communicate with orchestrator
+- Extract common utils to process api services req/res/err
+- Extract common utils to process api services req/res/err
+- Move cloud api endpoints to run through the nodes service
+- Use temporary secure channel on cloud and enroll api endpoints
+- Command config updates
+- Rename ockam to service in multiaddr
+- Integrate uppercase and echoer workers to nodemanager
+- Implement stop command
+- Use generic attributes in credential
+- Allow export/import of identity
+- Always require secure channel to authenticator
+- Abstract over remote addresses with an alias system
+- Cleaning up the alias configuration
+- Genericise the node alias lookup system
+- Simplify node configuration again
+- Make `IdentityIdentifier` encodable
+- Move `CowStr` and `CowBytes` to `ockam_core`
+- Move api structs to `ockam_core`
+- Check controller's identity id when creating secure channel
+- Always start signer service
+- Replace signer with verifier
+- Allow project metadata lookups and route substitution
+- Change `VerifyRequest::credential` to binary
+- Make `IdentityChangeHistory` crate public, cleanup usage
+- Move credentials to `ockam_identity`
+- Improve credential verification
+- Get rid of old `ockam_api` module
+- Return project names from multiaddr clean function
+- Move project readiness logic into ockam_api
+- Use `DefaultAddress` consts for default services addresses
+- Change echo worker to accept any message
+- Updated dependencies
+
+### Fixed
+
+- Clippy lints
+- Fix schema validation
+- Mutliaddr support for projects
+- Creation of static forwarder at local nodes
+- Authority config keys must be strings
+
+### Removed
+
+- Remove ability to set arbitrary attributes
+
 ## 0.18.0 - 2022-09-09
 
 ### Added
