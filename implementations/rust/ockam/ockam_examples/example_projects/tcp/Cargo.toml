@@ -5,6 +5,8 @@ authors = ["Ockam Developers"]
 edition = "2021"
 publish = false
 
+[workspace]
+
 [dependencies]
 ockam = { path = "../../../ockam" }
 ockam_node = { path = "../../../ockam_node" }

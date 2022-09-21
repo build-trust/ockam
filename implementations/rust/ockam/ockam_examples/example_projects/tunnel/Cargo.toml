@@ -5,6 +5,8 @@ authors = ["Ockam Developers"]
 edition = "2021"
 publish = false
 
+[workspace]
+
 [dependencies]
 ockam = { path = "../../../ockam" }
 rand = "0.8"
