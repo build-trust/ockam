@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_udp"
-version = "0.17.0"
+version = "0.18.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
@@ -30,9 +30,9 @@ alloc = []
 [dependencies]
 bytes = "1.1.0"
 futures-util = "0.3"
-ockam_core = { path = "../ockam_core", version = "^0.69.0", default_features = false }
-ockam_node = { path = "../ockam_node", version = "^0.72.0" }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.42.0" }
+ockam_core = { path = "../ockam_core", version = "^0.70.0", default_features = false }
+ockam_node = { path = "../ockam_node", version = "^0.73.0" }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.43.0" }
 rand = "0.7"
 hashbrown = { version = "0.9" }
 tracing = { version = "0.1", default-features = false }
@@ -48,8 +48,8 @@ tokio = { version = "1.8", features = [
 tokio-util = { version = "0.7.1", features = ["net", "codec"] }
 
 [dev-dependencies]
-ockam_macros = { path = "../ockam_macros", version = "^0.23.0" }
-ockam = { path = "../ockam", version = "^0.75.0" }
+ockam_macros = { path = "../ockam_macros", version = "^0.24.0" }
+ockam = { path = "../ockam", version = "^0.76.0" }
 
 [[example]]
 name = "client"

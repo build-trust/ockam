@@ -20,7 +20,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam-ffi = "0.61.0"
+ockam-ffi = "0.62.0"
 ```
 
 ## License
