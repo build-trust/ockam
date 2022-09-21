@@ -295,6 +295,11 @@ impl MultiAddr {
         }
     }
 
+    /// Access the registry of this `MultiAddr`.
+    pub fn registry(&self) -> &Registry {
+        &self.reg
+    }
+
     /// Try to parse the given string as a multi-address.
     ///
     /// Alternative to the corresponding `TryFrom` impl, accepting an explicit

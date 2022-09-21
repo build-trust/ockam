@@ -153,6 +153,42 @@ impl Protocol<'_> for Tcp {
     }
 }
 
+/// A security marker.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Secure;
+
+impl Secure {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Protocol<'_> for Secure {
+    const CODE: Code = Code::new(99526);
+    const PREFIX: &'static str = "secure";
+
+    fn read_str(_input: Checked<&str>) -> Result<Self, Error> {
+        debug_assert!(_input.is_empty(), "unexpected text input: {}", *_input);
+        Ok(Self)
+    }
+
+    fn read_bytes(_input: Checked<&[u8]>) -> Result<Self, Error> {
+        debug_assert!(_input.is_empty(), "unexpected binary input: {:x?}", *_input);
+        Ok(Self)
+    }
+
+    fn write_str(&self, f: &mut fmt::Formatter) -> Result<(), Error> {
+        f.write_str("/secure")?;
+        Ok(())
+    }
+
+    fn write_bytes(&self, buf: &mut dyn Buffer) {
+        let mut b = encode::u32_buffer();
+        let uvi = encode::u32(Self::CODE.into(), &mut b);
+        buf.extend_with(uvi)
+    }
+}
+
 macro_rules! gen_str_proto {
     ($t:ident, $c:literal, $p:literal) => {
         #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
