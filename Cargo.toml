@@ -1,22 +1,34 @@
 [workspace]
 resolver = "2"
 members = [
-    # This trick (where we glob workspace members with `*/src/..` or
-    # `*/examples/..` — the latter being used because not all of our examples
-    # have `src` directories, but they all have `examples` directories) helps
-    # avoid including some obvious non-code folders. For example: folders
-    # containing only gitignored contents which are leftover from a branch
-    # change are typical (note that this was the motivation).
-    #
-    # In an ideal world, we'd have a better way to identify all rust crates, but
-    # I'm not sure how — the only item that's guaranteed to be present in Rust
-    # crates is `Cargo.toml`, and `cargo` is unwilling to fall for something
-    # like `members = ["**/Cargo.toml/.."]`.
-    "implementations/rust/ockam/*/src/..",
-    "examples/rust/*/examples/..",
-
-    "tools/docs/example_test_helper",
+    "examples/rust/file_transfer",
+    "examples/rust/get_started",
+    "examples/rust/ockam_kafka",
+    "examples/rust/tcp_inlet_and_outlet",
+    "implementations/rust/ockam/ockam",
+    "implementations/rust/ockam/ockam_abac",
+    "implementations/rust/ockam/ockam_api",
+    "implementations/rust/ockam/ockam_channel",
+    "implementations/rust/ockam/ockam_command",
+    "implementations/rust/ockam/ockam_core",
+    "implementations/rust/ockam/ockam_examples",
+    "implementations/rust/ockam/ockam_executor",
+    "implementations/rust/ockam/ockam_ffi",
+    "implementations/rust/ockam/ockam_identity",
+    "implementations/rust/ockam/ockam_key_exchange_core",
+    "implementations/rust/ockam/ockam_key_exchange_x3dh",
+    "implementations/rust/ockam/ockam_key_exchange_xx",
+    "implementations/rust/ockam/ockam_macros",
+    "implementations/rust/ockam/ockam_multiaddr",
+    "implementations/rust/ockam/ockam_node",
+    "implementations/rust/ockam/ockam_transport_ble",
+    "implementations/rust/ockam/ockam_transport_core",
+    "implementations/rust/ockam/ockam_transport_tcp",
+    "implementations/rust/ockam/ockam_transport_udp",
+    "implementations/rust/ockam/ockam_transport_websocket",
+    "implementations/rust/ockam/ockam_vault",
     "tools/docs/example_blocks",
+    "tools/docs/example_test_helper"
 ]
 
 exclude = ["implementations/rust/ockam/ockam_examples/example_projects"]
