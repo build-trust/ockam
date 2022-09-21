@@ -6,6 +6,8 @@ edition = "2021"
 autobins = false
 publish = false
 
+[workspace]
+
 [dependencies]
 ockam = { path = "../../../ockam" }
 ockam_node = { path = "../../../ockam_node" }

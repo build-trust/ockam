@@ -7,6 +7,8 @@ name = "hello_ockam_no_std"
 version = "0.1.0"
 publish = false
 
+[workspace]
+
 [features]
 default = ["std"]
 

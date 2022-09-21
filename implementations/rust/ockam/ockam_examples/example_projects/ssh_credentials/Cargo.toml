@@ -9,6 +9,8 @@ description = """
 An example of issuing, holding, and verifying a credential
 """
 
+[workspace]
+
 [[bin]]
 name = "alice"
 path = "src/bin/alice.rs"
