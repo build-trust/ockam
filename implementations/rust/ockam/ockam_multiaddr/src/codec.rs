@@ -1,5 +1,5 @@
 use super::{Buffer, Checked, Code, Codec, Protocol};
-use crate::proto::{DnsAddr, Node, Project, Service, Tcp};
+use crate::proto::{DnsAddr, Node, Project, Secure, Service, Space, Tcp};
 use crate::{Error, ProtoValue};
 use core::fmt;
 use unsigned_varint::decode;
@@ -9,9 +9,12 @@ pub struct StdCodec;
 impl Codec for StdCodec {
     fn split_str<'a>(
         &self,
-        _prefix: &str,
+        prefix: &str,
         input: &'a str,
     ) -> Result<(Checked<&'a str>, &'a str), Error> {
+        if prefix == Secure::PREFIX {
+            return Ok((Checked(""), input));
+        }
         if let Some(p) = input.find('/') {
             let (x, y) = input.split_at(p);
             Ok((Checked(x), y))
@@ -49,7 +52,12 @@ impl Codec for StdCodec {
                 let (x, y) = input.split_at(2);
                 Ok((Checked(x), y))
             }
-            c @ DnsAddr::CODE | c @ Service::CODE | c @ Node::CODE | c @ Project::CODE => {
+            Secure::CODE => Ok((Checked(&[]), input)),
+            c @ DnsAddr::CODE
+            | c @ Service::CODE
+            | c @ Node::CODE
+            | c @ Project::CODE
+            | c @ Space::CODE => {
                 let (len, input) = decode::usize(input)?;
                 if input.len() < len {
                     return Err(Error::required_bytes(c, len));
@@ -72,6 +80,8 @@ impl Codec for StdCodec {
             Service::CODE => Service::read_bytes(input).is_ok(),
             Node::CODE => Node::read_bytes(input).is_ok(),
             Project::CODE => Project::read_bytes(input).is_ok(),
+            Space::CODE => Space::read_bytes(input).is_ok(),
+            Secure::CODE => Secure::read_bytes(input).is_ok(),
             _ => false,
         }
     }
@@ -87,6 +97,8 @@ impl Codec for StdCodec {
             Service::CODE => Service::read_bytes(val.data())?.write_bytes(buf),
             Node::CODE => Node::read_bytes(val.data())?.write_bytes(buf),
             Project::CODE => Project::read_bytes(val.data())?.write_bytes(buf),
+            Space::CODE => Space::read_bytes(val.data())?.write_bytes(buf),
+            Secure::CODE => Secure::read_bytes(val.data())?.write_bytes(buf),
             code => return Err(Error::unregistered(code)),
         }
         Ok(())
@@ -129,6 +141,14 @@ impl Codec for StdCodec {
                 Project::read_str(value)?.write_bytes(buf);
                 Ok(())
             }
+            Space::PREFIX => {
+                Space::read_str(value)?.write_bytes(buf);
+                Ok(())
+            }
+            Secure::PREFIX => {
+                Secure::read_str(value)?.write_bytes(buf);
+                Ok(())
+            }
             _ => Err(Error::unregistered_prefix(prefix)),
         }
     }
@@ -168,6 +188,14 @@ impl Codec for StdCodec {
             }
             Project::CODE => {
                 Project::read_bytes(value)?.write_str(f)?;
+                Ok(())
+            }
+            Space::CODE => {
+                Space::read_bytes(value)?.write_str(f)?;
+                Ok(())
+            }
+            Secure::CODE => {
+                Secure::read_bytes(value)?.write_str(f)?;
                 Ok(())
             }
             _ => Err(Error::unregistered(code)),
