@@ -7,16 +7,16 @@ RUN \
     ls; \
     case "$(uname -m)" in \
         aarch64*) \
-            echo "ockam.aarch64-unknown-linux-gnu_sha256_value  ockam.aarch64-unknown-linux-gnu" | sha256sum -c; \
-            mv ockam.aarch64-unknown-linux-gnu /ockam; \
+            echo "ockam.aarch64-unknown-linux-musl_sha256_value  ockam.aarch64-unknown-linux-musl" | sha256sum -c; \
+            mv ockam.aarch64-unknown-linux-musl /ockam; \
             ;; \
         x86_64*) \
-            echo "ockam.x86_64-unknown-linux-gnu_sha256_value  ockam.x86_64-unknown-linux-gnu" | sha256sum -c; \
-            mv ockam.x86_64-unknown-linux-gnu /ockam; \
+            echo "ockam.x86_64-unknown-linux-musl_sha256_value  ockam.x86_64-unknown-linux-musl" | sha256sum -c; \
+            mv ockam.x86_64-unknown-linux-musl /ockam; \
             ;; \
         armv7l*) \
-            echo "ockam.armv7-unknown-linux-gnueabihf_sha256_value  ockam.armv7-unknown-linux-gnueabihf" | sha256sum -c; \
-            mv ockam.armv7-unknown-linux-gnueabihf /ockam; \
+            echo "ockam.armv7-unknown-linux-musleabihf_sha256_value  ockam.armv7-unknown-linux-musleabihf" | sha256sum -c; \
+            mv ockam.armv7-unknown-linux-musleabihf /ockam; \
             ;; \
         *) \
             echo "unknown arch: $(uname -m)" \
