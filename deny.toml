@@ -39,8 +39,6 @@ unmaintained = "deny"
 vulnerability = "deny"
 yanked = "warn"
 ignore = [
-    "RUSTSEC-2020-0159",
-
     # `serde_cbor` is unmaintained
     # (https://rustsec.org/advisories/RUSTSEC-2021-0127.html)
     #
