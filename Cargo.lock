@@ -460,6 +460,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "cast"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
+
+[[package]]
 name = "cc"
 version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1111,6 +1117,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "embedded-dma"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "994f7e5b5cb23521c22304927195f236813053eb9c065dd2226a32ba64695446"
+dependencies = [
+ "stable_deref_trait",
+]
+
+[[package]]
 name = "embedded-hal"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1325,6 +1340,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85dcb89d2b10c5f6133de2efd8c11959ce9dbb46a2f7a4cab208c4eeda6ce1ab"
 
 [[package]]
+name = "fugit"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ab17bb279def6720d058cb6c052249938e7f99260ab534879281a95367a87e5"
+dependencies = [
+ "gcd",
+]
+
+[[package]]
 name = "futures"
 version = "0.1.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1418,6 +1442,15 @@ dependencies = [
  "pin-utils",
  "slab",
  "tokio-io",
+]
+
+[[package]]
+name = "gcd"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f37978dab2ca789938a83b2f8bc1ef32db6633af9051a6cd409eff72cbaaa79a"
+dependencies = [
+ "paste",
 ]
 
 [[package]]
@@ -3608,10 +3641,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "89b4cb13b1bb36e7381eaf8941062b1eba172542b9d4f72dc50c35c4ac6260f2"
 dependencies = [
  "bare-metal 1.0.0",
- "cast",
+ "cast 0.2.7",
  "cortex-m 0.7.6",
  "cortex-m-rt",
- "embedded-dma",
+ "embedded-dma 0.1.2",
  "embedded-hal",
  "nb 1.0.0",
  "rand_core 0.6.4",
@@ -3622,11 +3655,11 @@ dependencies = [
 
 [[package]]
 name = "stm32h7"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b672c837e0ee8158ecc7fce0f9a948dd0693a9c588338e728d14b73307a0b7d"
+checksum = "6f0faa648e03579befdd7267ab5c669624729028001fcf3c973832f53e310a06"
 dependencies = [
- "bare-metal 0.2.5",
+ "bare-metal 1.0.0",
  "cortex-m 0.7.6",
  "cortex-m-rt",
  "vcell",
@@ -3634,16 +3667,16 @@ dependencies = [
 
 [[package]]
 name = "stm32h7xx-hal"
-version = "0.9.0"
+version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67034b80041bc33a48df1c1c435b6ae3bb18c35e42aa7e702ce8363b96793398"
+checksum = "05ed63600f7ec63598de2c7645fcc0745133921d77fe6dd92b94a5f45ff9669e"
 dependencies = [
  "bare-metal 1.0.0",
- "cast",
+ "cast 0.3.0",
  "cortex-m 0.7.6",
- "cortex-m-rt",
- "embedded-dma",
+ "embedded-dma 0.2.0",
  "embedded-hal",
+ "fugit",
  "nb 1.0.0",
  "paste",
  "stm32h7",
