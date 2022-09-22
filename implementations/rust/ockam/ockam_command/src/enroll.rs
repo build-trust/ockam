@@ -31,7 +31,7 @@ const HELP_DETAIL: &str = "";
 #[derive(Clone, Debug, Args)]
 #[command(help_template = help::template(HELP_DETAIL))]
 pub struct EnrollCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cloud_opts: CloudOpts,
 }
 

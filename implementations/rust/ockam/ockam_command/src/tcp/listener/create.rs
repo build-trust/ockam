@@ -15,7 +15,7 @@ use std::str::FromStr;
 
 #[derive(Args, Clone, Debug)]
 pub struct CreateCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: TCPListenerNodeOpts,
 
     /// Address for this listener (eg. 127.0.0.1:7000)

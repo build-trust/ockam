@@ -18,10 +18,10 @@ use tracing::debug;
 
 #[derive(Clone, Debug, Args)]
 pub struct StartCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     pub node_opts: NodeOpts,
 
-    #[clap(subcommand)]
+    #[command(subcommand)]
     pub create_subcommand: StartSubCommand,
 }
 

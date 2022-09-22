@@ -19,7 +19,7 @@ const HELP_DETAIL: &str = "";
 #[derive(Clone, Debug, Args)]
 #[command(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
 pub struct ConfigurationCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: ConfigurationSubcommand,
 }
 

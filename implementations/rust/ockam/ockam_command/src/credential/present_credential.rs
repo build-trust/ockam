@@ -10,7 +10,7 @@ use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct PresentCredentialCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     pub node_opts: NodeOpts,
 
     #[arg(long, display_order = 900, id = "ROUTE")]

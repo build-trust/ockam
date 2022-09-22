@@ -12,7 +12,7 @@ const HELP_DETAIL: &str = "";
 #[derive(Clone, Debug, Args)]
 #[command(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
 pub struct AuthenticatedCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: AuthenticatedSubcommand,
 }
 

@@ -16,7 +16,7 @@ use clap::{Args, Subcommand};
     subcommand_required = true
 )]
 pub struct CredentialCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: CredentialSubcommand,
 }
 

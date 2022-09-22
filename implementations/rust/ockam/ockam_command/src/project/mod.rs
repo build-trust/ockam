@@ -31,7 +31,7 @@ use crate::CommandGlobalOpts;
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, subcommand_required = true)]
 pub struct ProjectCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: ProjectSubcommand,
 }
 

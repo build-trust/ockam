@@ -11,7 +11,7 @@ use ockam_core::Route;
 #[derive(Clone, Debug, Args)]
 #[command(hide = help::hide())]
 pub struct CreateCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: NodeOpts,
 }
 

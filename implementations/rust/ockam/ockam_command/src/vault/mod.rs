@@ -9,7 +9,7 @@ use clap::{Args, Subcommand};
 #[derive(Clone, Debug, Args)]
 #[command(hide = help::hide())]
 pub struct VaultCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: VaultSubcommand,
 }
 

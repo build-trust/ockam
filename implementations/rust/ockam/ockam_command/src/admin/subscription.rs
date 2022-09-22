@@ -20,10 +20,10 @@ const HELP_DETAIL: &str = "";
 #[derive(Clone, Debug, Args)]
 #[command(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
 pub struct SubscriptionCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: SubscriptionSubcommand,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     cloud_opts: CloudOpts,
 }
 
@@ -71,7 +71,7 @@ pub enum SubscriptionSubcommand {
 
 #[derive(Clone, Debug, Args)]
 pub struct SubscriptionUpdate {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: SubscriptionUpdateSubcommand,
 }
 

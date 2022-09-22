@@ -10,10 +10,10 @@ const HELP_DETAIL: &str = "";
 #[derive(Clone, Debug, Args)]
 #[command(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
 pub struct AdminCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     pub subcommand: AdminSubCommand,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cloud_opts: CloudOpts,
 }
 

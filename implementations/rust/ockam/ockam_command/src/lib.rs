@@ -148,8 +148,12 @@ EXAMPLES:
     version,
     long_version = Version::long(),
     next_help_heading = "GLOBAL OPTIONS",
-    mut_arg("help", |a| a.help_heading("GLOBAL OPTIONS")),
-    mut_subcommand("help", |c| c.about("Print help information"))
+    // TODO: mut_arg & mut_subcommand for help
+    //disable_help_flag = true,
+    //arg = Arg::new("help"),
+    //mut_arg("help", |a| a.help_heading("GLOBAL OPTIONS")),
+    //subcommand(Command::new("help")),
+    //mut_subcommand("help", |c| c.about("Print help information"))
 )]
 pub struct OckamCommand {
     #[command(subcommand)]

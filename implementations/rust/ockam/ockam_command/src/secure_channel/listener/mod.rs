@@ -14,7 +14,8 @@ use clap::{Args, Subcommand};
     arg_required_else_help = true,
     subcommand_required = true,
     help_template = help::template(HELP_DETAIL),
-    mut_subcommand("help", |c| c.about("Print help information"))
+// TODO: mut_subcommand
+//  mut_subcommand("help", |c| c.about("Print help information"))
 )]
 pub struct SecureChannelListenerCommand {
     #[command(subcommand)]

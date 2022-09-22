@@ -55,7 +55,7 @@ ABOUT:
     help_template = help::template(HELP_DETAIL)
 )]
 pub struct ForwarderCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: ForwarderSubCommand,
 }
 
