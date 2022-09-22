@@ -92,7 +92,6 @@ pub(crate) struct AuthorityInfo {
 
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeManager {
-    address: Address,
     node_name: String,
     node_dir: PathBuf,
     config: Config<NodeManConfig>,
@@ -110,12 +109,6 @@ pub struct NodeManager {
     pub(crate) registry: Registry,
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
-}
-
-impl Drop for NodeManager {
-    fn drop(&mut self) {
-        self.medic.abort()
-    }
 }
 
 pub struct IdentityOverride {
@@ -153,8 +146,7 @@ impl NodeManager {
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
     #[allow(clippy::too_many_arguments)]
-    pub async fn create<A: Into<Address>>(
-        addr: A,
+    pub async fn create(
         ctx: &Context,
         node_name: String,
         node_dir: PathBuf,
@@ -243,7 +235,6 @@ impl NodeManager {
         let sessions = medic.sessions();
 
         let mut s = Self {
-            address: addr.into(),
             node_name,
             node_dir,
             config,
@@ -547,6 +538,11 @@ impl Worker for NodeManager {
         Ok(())
     }
 
+    async fn shutdown(&mut self, _: &mut Self::Context) -> Result<()> {
+        self.medic.abort();
+        Ok(())
+    }
+
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {
         let mut dec = Decoder::new(msg.as_body());
         let req: Request = match dec.decode() {
@@ -601,7 +597,6 @@ pub(crate) mod tests {
             let transport = TcpTransport::create(ctx).await?;
             let node_address = transport.listen("127.0.0.1:0").await?;
             let mut node_man = NodeManager::create(
-                node_manager,
                 ctx,
                 "node".to_string(),
                 node_dir.into_path(),

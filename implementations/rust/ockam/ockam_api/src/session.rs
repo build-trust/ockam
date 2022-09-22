@@ -55,17 +55,21 @@ impl Medic {
         self.go(ctx, rx).await
     }
 
+    /// Continuously check all sessions.
+    ///
+    /// This method never returns. It will ping all healthy sessions and
+    /// trigger replacements for the unhealthy ones.
     async fn go(mut self, ctx: Context, mut rx: mpsc::Receiver<Message>) -> ! {
         let ctx = Arc::new(ctx);
         loop {
-            log::debug!("check sessions");
+            log::trace!("check sessions");
             {
                 let mut sessions = self.sessions.lock().unwrap();
                 for (&key, session) in sessions.iter_mut() {
                     if session.pings().len() < MAX_FAILURES {
                         let m = Message::new(session.key());
                         session.add_ping(m.ping);
-                        log::debug!(%key, ping = %m.ping, "send ping");
+                        log::trace!(%key, ping = %m.ping, "send ping");
                         let l = {
                             let v = Encodable::encode(&m).expect("message can be encoded");
                             let r = route![session.address().clone(), DefaultAddress::ECHO_SERVICE];
@@ -75,18 +79,18 @@ impl Medic {
                         let sender = ctx.clone();
                         self.pings
                             .spawn(async move { (key, sender.forward(l).await) });
-                        continue;
-                    }
-                    match session.status() {
-                        Status::Up => {
-                            log::warn!(%key, "session unresponsive");
-                            let f = session.replacement(session.address().clone());
-                            session.set_status(Status::Down);
-                            log::info!(%key, "replacing session");
-                            self.replacements.spawn(async move { (key, f.await) });
-                        }
-                        Status::Down => {
-                            log::warn!(%key, "session is down");
+                    } else {
+                        match session.status() {
+                            Status::Up => {
+                                log::warn!(%key, "session unresponsive");
+                                let f = session.replacement(session.address().clone());
+                                session.set_status(Status::Down);
+                                log::info!(%key, "replacing session");
+                                self.replacements.spawn(async move { (key, f.await) });
+                            }
+                            Status::Down => {
+                                log::warn!(%key, "session is down");
+                            }
                         }
                     }
                 }
@@ -103,7 +107,7 @@ impl Medic {
                     None                  => log::debug!("no pings to send"),
                     Some(Err(e))          => log::error!("task failed: {e:?}"),
                     Some(Ok((k, Err(e)))) => log::debug!(key = %k, err = %e, "failed to send ping"),
-                    Some(Ok((k, Ok(())))) => log::debug!(key = %k, "sent ping"),
+                    Some(Ok((k, Ok(())))) => log::trace!(key = %k, "sent ping"),
                 },
                 r = self.replacements.join_next(), if !self.replacements.is_empty() => match r {
                     None                  => log::debug!("no replacements"),
@@ -130,7 +134,7 @@ impl Medic {
                 Some(m) = rx.recv() => {
                     if let Some(s) = self.sessions.lock().unwrap().session_mut(&m.key) {
                         if s.pings().contains(&m.ping) {
-                            log::debug!(key = %m.key, ping = %m.ping, "recv pong");
+                            log::trace!(key = %m.key, ping = %m.ping, "recv pong");
                             s.clear_pings()
                         }
                     }
@@ -164,7 +168,7 @@ impl Decodable for Message {
 
 impl ockam_core::Message for Message {}
 
-/// A collector receives messages from a [`Responder`] and forwards them.
+/// A collector receives echo messages and forwards them.
 #[derive(Debug)]
 struct Collector(mpsc::Sender<Message>);
 

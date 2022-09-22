@@ -26,31 +26,30 @@ pub struct CreateForwarder<'a> {
     /// Forwarding service is at rust node.
     #[n(3)] pub(crate) at_rust_node: bool,
     /// Authorised identities per project.
+    ///
+    /// The current handling of this request will only create a secure channel
+    /// for addresses which have a corresponding authorised identity configured.
     #[n(4)] pub(crate) identities: HashMap<MultiAddr, IdentityIdentifier>,
     #[n(5)] pub(crate) mode: CredentialExchangeMode
 }
 
 impl<'a> CreateForwarder<'a> {
-    pub fn new(address: MultiAddr, alias: Option<String>, at_rust_node: bool) -> Self {
+    pub fn new(
+        address: MultiAddr,
+        alias: Option<String>,
+        at_rust_node: bool,
+        identities: HashMap<MultiAddr, IdentityIdentifier>,
+        mode: CredentialExchangeMode,
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: Default::default(),
             address,
             alias: alias.map(|s| s.into()),
             at_rust_node,
-            identities: HashMap::new(),
-            mode: CredentialExchangeMode::None,
+            identities,
+            mode,
         }
-    }
-
-    pub fn set_identities(&mut self, ids: HashMap<MultiAddr, IdentityIdentifier>) -> &mut Self {
-        self.identities = ids;
-        self
-    }
-
-    pub fn set_credentials_mode(&mut self, m: CredentialExchangeMode) -> &mut Self {
-        self.mode = m;
-        self
     }
 }
 
@@ -97,6 +96,7 @@ mod tests {
     use ockam_core::api::{Request, Response, Status};
     use ockam_core::{compat::rand, compat::rand::Rng};
     use ockam_core::{route, Address, Result, Routed, Worker};
+    use std::collections::HashMap;
 
     use crate::nodes::NodeManager;
     use crate::*;
@@ -128,6 +128,8 @@ mod tests {
                     route_to_multiaddr(&route).unwrap(),
                     None,
                     false,
+                    HashMap::new(),
+                    CredentialExchangeMode::None,
                 ))
                 .encode(&mut buf)?;
             buf

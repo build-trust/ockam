@@ -43,7 +43,7 @@ impl NodeManager {
         let forwarder = match req.alias {
             Some(alias) => {
                 let auth = Arc::new(req.identities);
-                let addr = connect(self, &req.address, &auth, req.mode).await?;
+                let addr = self.connect(&req.address, &auth, req.mode).await?;
                 let alias = alias.to_string();
                 let fwdr = if req.at_rust_node {
                     let route = addr.either(Route::from, identity);
@@ -58,7 +58,7 @@ impl NodeManager {
                             if f.is_ok() {
                                 let c = Arc::new(ctx.async_try_clone().await?);
                                 let mut s = Session::new(a);
-                                let this = self.address.clone();
+                                let this = ctx.address();
                                 enable_recovery(
                                     &mut s,
                                     this,
@@ -104,6 +104,28 @@ impl NodeManager {
             }
         }
     }
+
+    /// Create a secure channel to an API node or return the address route as is.
+    async fn connect(
+        &mut self,
+        addr: &MultiAddr,
+        auth: &HashMap<MultiAddr, IdentityIdentifier>,
+        mode: CredentialExchangeMode,
+    ) -> Result<Either<Address, Route>> {
+        if let Some(a) = api_host(addr) {
+            if let Some(i) = auth.get(&a) {
+                let r =
+                    multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+                let i = Some(vec![i.clone()]);
+                let a = self.create_secure_channel_impl(r, i, mode, None).await?;
+                return Ok(Either::Left(a));
+            } else {
+                info!(%addr, "no authorised identity found")
+            }
+        }
+        let r = multiaddr_to_route(addr).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+        Ok(Either::Right(r))
+    }
 }
 
 /// Get address prefix corresponding to the API host (if any).
@@ -124,27 +146,6 @@ fn api_host(input: &MultiAddr) -> Option<MultiAddr> {
         }
     }
     None
-}
-
-/// Create a secure channel to an API node or return the address route as is.
-async fn connect(
-    manager: &mut NodeManager,
-    addr: &MultiAddr,
-    auth: &HashMap<MultiAddr, IdentityIdentifier>,
-    mode: CredentialExchangeMode,
-) -> Result<Either<Address, Route>> {
-    if let Some(a) = api_host(addr) {
-        if let Some(i) = auth.get(&a) {
-            let r = multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-            let i = Some(vec![i.clone()]);
-            let a = manager.create_secure_channel_impl(r, i, mode, None).await?;
-            return Ok(Either::Left(a));
-        } else {
-            info!(%addr, "no authorised identity found")
-        }
-    }
-    let r = multiaddr_to_route(addr).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-    Ok(Either::Right(r))
 }
 
 /// Configure the session for automatic recovery.
@@ -218,11 +219,8 @@ async fn replace_sec_chan(
         return Err(ApiError::generic("error creating secure channel"));
     }
     let res: CreateSecureChannelResponse = d.decode()?;
-    let mad = res.addr()?;
-    if let Some(p) = mad.first() {
-        if let Some(p) = p.cast::<Service>() {
-            return Ok(Address::from_string(&*p));
-        }
-    }
-    Err(ApiError::generic("invalid response address"))
+    multiaddr_to_route(&res.addr()?)
+        .ok_or_else(|| ApiError::generic("failed to convert secure channel address to route"))?
+        .next()
+        .cloned()
 }
