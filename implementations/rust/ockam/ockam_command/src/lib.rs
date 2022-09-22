@@ -51,7 +51,7 @@ use version::Version;
 
 use crate::admin::AdminCommand;
 use crate::subscription::SubscriptionCommand;
-use clap::{ArgEnum, Args, Parser, Subcommand};
+use clap::{ArgEnum, ArgAction, Args, Parser, Subcommand};
 use upgrade::check_if_an_upgrade_is_available;
 
 const ABOUT: &str = "\
@@ -171,7 +171,7 @@ pub struct GlobalArgs {
         long,
         short,
         conflicts_with("quiet"),
-        parse(from_occurrences)
+        action = ArgAction::Count
     )]
     verbose: u8,
 

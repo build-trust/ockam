@@ -2,6 +2,7 @@ use anyhow::Context as _;
 use std::path::PathBuf;
 
 use clap::{Args, Subcommand};
+use clap::builder::{NonEmptyStringValueParser};
 
 use ockam::Context;
 use ockam_api::cloud::subscription::{ActivateSubscription, Subscription};
@@ -38,7 +39,7 @@ pub enum SubscriptionSubcommand {
             name = "space",
             value_name = "SPACE_ID",
             long,
-            forbid_empty_values = true
+            value_parser(NonEmptyStringValueParser::new())
         )]
         space_id: String,
     },
@@ -59,7 +60,7 @@ pub enum SubscriptionSubcommand {
             name = "space",
             value_name = "SPACE_ID",
             long,
-            forbid_empty_values = true
+            value_parser(NonEmptyStringValueParser::new())
         )]
         space_id: Option<String>,
     },
@@ -88,7 +89,7 @@ enum SubscriptionUpdateSubcommand {
             name = "subscription",
             value_name = "SUBSCRIPTION_ID",
             long,
-            forbid_empty_values = true
+            value_parser(NonEmptyStringValueParser::new())
         )]
         subscription_id: Option<String>,
 
@@ -98,7 +99,7 @@ enum SubscriptionUpdateSubcommand {
             name = "space",
             value_name = "SPACE_ID",
             long,
-            forbid_empty_values = true
+            value_parser(NonEmptyStringValueParser::new())
         )]
         space_id: Option<String>,
     },
@@ -112,7 +113,7 @@ enum SubscriptionUpdateSubcommand {
             name = "subscription",
             value_name = "SUBSCRIPTION_ID",
             long,
-            forbid_empty_values = true
+            value_parser(NonEmptyStringValueParser::new())
         )]
         subscription_id: Option<String>,
 
@@ -122,7 +123,7 @@ enum SubscriptionUpdateSubcommand {
             name = "current_space",
             value_name = "SPACE_ID",
             long,
-            forbid_empty_values = true
+            value_parser(NonEmptyStringValueParser::new())
         )]
         space_id: Option<String>,
 

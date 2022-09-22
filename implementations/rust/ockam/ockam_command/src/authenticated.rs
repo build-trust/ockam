@@ -2,6 +2,7 @@ use crate::help;
 use crate::util::embedded_node;
 use anyhow::{anyhow, Result};
 use clap::{Args, Subcommand};
+use clap::builder::{NonEmptyStringValueParser};
 use ockam::{Context, TcpTransport};
 use ockam_api::auth;
 use ockam_multiaddr::MultiAddr;
@@ -23,11 +24,11 @@ pub enum AuthenticatedSubcommand {
         addr: MultiAddr,
 
         /// Subject identifier
-        #[clap(long, forbid_empty_values = true)]
+        #[clap(long, value_parser(NonEmptyStringValueParser::new()))]
         id: String,
 
         /// Attribute key.
-        #[clap(forbid_empty_values = true)]
+        #[clap(value_parser(NonEmptyStringValueParser::new()))]
         key: String,
     },
     /// Delete attribute
@@ -36,11 +37,11 @@ pub enum AuthenticatedSubcommand {
         addr: MultiAddr,
 
         /// Subject identifier
-        #[clap(long, forbid_empty_values = true)]
+        #[clap(long, value_parser(NonEmptyStringValueParser::new()))]
         id: String,
 
         /// Attribute key.
-        #[clap(forbid_empty_values = true)]
+        #[clap(value_parser(NonEmptyStringValueParser::new()))]
         key: String,
     },
 }

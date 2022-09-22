@@ -1,6 +1,7 @@
 use core::fmt::Write;
 
 use clap::{Args, Subcommand};
+use clap::builder::{NonEmptyStringValueParser};
 
 use ockam::Context;
 use ockam_api::cloud::subscription::Subscription;
@@ -41,7 +42,7 @@ pub enum SubscriptionSubcommand {
             name = "space",
             value_name = "SPACE_ID",
             long,
-            forbid_empty_values = true
+            value_parser(NonEmptyStringValueParser::new())
         )]
         space_id: Option<String>,
     },

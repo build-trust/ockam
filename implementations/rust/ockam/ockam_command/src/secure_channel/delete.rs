@@ -24,7 +24,7 @@ pub struct DeleteCommand {
     at: String,
 
     /// Address at which the channel to be deleted is running (required)
-    #[clap(parse(try_from_str = parse_address), display_order = 800)]
+    #[clap(value_parser(parse_address), display_order = 800)]
     address: Address,
 }
 
