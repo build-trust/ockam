@@ -19,20 +19,20 @@ use crate::{help, message::HELP_DETAIL, CommandGlobalOpts};
 #[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct SendCommand {
     /// The node to send messages from
-    #[clap(short, long, value_name = "NODE")]
+    #[arg(short, long, value_name = "NODE")]
     from: Option<String>,
 
     /// The route to send the message to
-    #[clap(short, long, value_name = "ROUTE")]
+    #[arg(short, long, value_name = "ROUTE")]
     pub to: MultiAddr,
 
     /// Override Default Timeout
-    #[clap(long, value_name = "TIMEOUT")]
+    #[arg(long, value_name = "TIMEOUT")]
     pub timeout: Option<u64>,
 
     pub message: String,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     cloud_opts: CloudOpts,
 }
 

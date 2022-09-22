@@ -17,7 +17,7 @@ use std::net::SocketAddrV4;
 #[derive(Clone, Debug, Args)]
 pub struct TcpConnectionNodeOpts {
     /// Node that will initiate the connection
-    #[clap(
+    #[arg(
         global = true,
         short,
         long,
@@ -29,11 +29,11 @@ pub struct TcpConnectionNodeOpts {
 
 #[derive(Args, Clone, Debug)]
 pub struct CreateCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: TcpConnectionNodeOpts,
 
     /// The address to connect to (required)
-    #[clap(name = "to", short, long, value_name = "ADDRESS")]
+    #[arg(name = "to", short, long, value_name = "ADDRESS")]
     pub address: String,
 }
 

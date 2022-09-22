@@ -51,7 +51,7 @@ use version::Version;
 
 use crate::admin::AdminCommand;
 use crate::subscription::SubscriptionCommand;
-use clap::{ArgEnum, ArgAction, Args, Parser, Subcommand};
+use clap::{ValueEnum, ArgAction, Args, Parser, Subcommand};
 use upgrade::check_if_an_upgrade_is_available;
 
 const ABOUT: &str = "\
@@ -139,7 +139,7 @@ EXAMPLES:
 ";
 
 #[derive(Debug, Parser)]
-#[clap(
+#[command(
     name = "ockam",
     term_width = 100,
     about = ABOUT,
@@ -152,21 +152,21 @@ EXAMPLES:
     mut_subcommand("help", |c| c.about("Print help information"))
 )]
 pub struct OckamCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: OckamSubcommand,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     global_args: GlobalArgs,
 }
 
 #[derive(Debug, Clone, Args)]
 pub struct GlobalArgs {
     /// Do not print any trace messages
-    #[clap(global = true, long, short, conflicts_with("verbose"))]
+    #[arg(global = true, long, short, conflicts_with("verbose"))]
     quiet: bool,
 
     /// Increase verbosity of trace messages
-    #[clap(
+    #[arg(
         global = true,
         long,
         short,
@@ -176,11 +176,11 @@ pub struct GlobalArgs {
     verbose: u8,
 
     /// Output without any colors
-    #[clap(hide = help::hide(), global = true, long, action)]
+    #[arg(hide = help::hide(), global = true, long, action)]
     no_color: bool,
 
     /// Output format
-    #[clap(
+    #[arg(
         hide = help::hide(),
         global = true,
         long = "output",
@@ -191,11 +191,11 @@ pub struct GlobalArgs {
 
     // if test_argument_parser is true, command arguments are checked
     // but the command is not executed.
-    #[clap(global = true, long, hide = true)]
+    #[arg(global = true, long, hide = true)]
     test_argument_parser: bool,
 }
 
-#[derive(Debug, Clone, ArgEnum, PartialEq, Eq)]
+#[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
 pub enum OutputFormat {
     Plain,
     Json,

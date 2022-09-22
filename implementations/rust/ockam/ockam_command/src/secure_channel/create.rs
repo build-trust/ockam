@@ -26,19 +26,19 @@ use ockam_multiaddr::MultiAddr;
 #[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node from which to initiate the secure channel (required)
-    #[clap(value_name = "NODE", long, display_order = 800)]
+    #[arg(value_name = "NODE", long, display_order = 800)]
     pub from: String,
 
     /// Route to a secure channel listener (required)
-    #[clap(value_name = "ROUTE", long, display_order = 800)]
+    #[arg(value_name = "ROUTE", long, display_order = 800)]
     pub to: MultiAddr,
 
     /// Identifiers authorized to be presented by the listener
-    #[clap(value_name = "IDENTIFIER", long, short, display_order = 801)]
+    #[arg(value_name = "IDENTIFIER", long, short, display_order = 801)]
     pub authorized: Option<Vec<IdentityIdentifier>>,
 
     /// Orchestrator address to resolve projects present in the `at` argument
-    #[clap(flatten)]
+    #[command(flatten)]
     cloud_opts: CloudOpts,
 }
 

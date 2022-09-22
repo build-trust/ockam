@@ -38,19 +38,19 @@ EXAMPLES:
 #[clap(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node on which to start the tcp inlet.
-    #[clap(long, display_order = 900, name = "NODE")]
+    #[arg(long, display_order = 900, name = "NODE")]
     at: String,
 
     /// Address on which to accept tcp connections.
-    #[clap(long, display_order = 900, name = "SOCKET_ADDRESS")]
+    #[arg(long, display_order = 900, name = "SOCKET_ADDRESS")]
     from: SocketAddr,
 
     /// Route to a tcp outlet.
-    #[clap(long, display_order = 900, name = "ROUTE")]
+    #[arg(long, display_order = 900, name = "ROUTE")]
     to: MultiAddr,
 
     /// Enable credentials authorization
-    #[clap(long, short, display_order = 802)]
+    #[arg(long, short, display_order = 802)]
     pub check_credential: bool,
 }
 
@@ -171,8 +171,8 @@ fn make_api_request(
 }
 
 /// Parse the returned status response
-fn parse_inlet_status(resp: &[u8]) -> ockam::Result<(Response, models::portal::InletStatus<'_>)> {
+fn parse_inlet_status(resp: &[u8]) -> ockam::Result<(Response, InletStatus<'_>)> {
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
-    Ok((response, dec.decode::<models::portal::InletStatus>()?))
+    Ok((response, dec.decode::<InletStatus>()?))
 }

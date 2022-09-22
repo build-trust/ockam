@@ -15,22 +15,22 @@ use crate::{space, CommandGlobalOpts};
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     /// Name of the space the project belongs to.
-    #[clap(display_order = 1001)]
+    #[arg(display_order = 1001)]
     pub space_name: String,
 
     /// Name of the project.
-    #[clap(display_order = 1002, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true)]
+    #[arg(display_order = 1002, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true)]
     pub project_name: String,
 
     // Enforce credentials for member access to the project node
-    #[clap(long, display_order = 1003)]
+    #[arg(long, display_order = 1003)]
     pub enforce_credentials: Option<bool>,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cloud_opts: CloudOpts,
 
     /// Services enabled for this project.
-    #[clap(display_order = 1100, last = true)]
+    #[arg(display_order = 1100, last = true)]
     pub services: Vec<String>,
     //TODO:  list of admins
 }

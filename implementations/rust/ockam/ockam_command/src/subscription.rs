@@ -33,11 +33,11 @@ pub enum SubscriptionSubcommand {
     /// You can use either the subscription ID or the space ID.
     Show {
         /// Subscription ID
-        #[clap(group = "id")]
+        #[arg(group = "id")]
         subscription_id: Option<String>,
 
         /// Space ID
-        #[clap(
+        #[arg(
             group = "id",
             name = "space",
             value_name = "SPACE_ID",

@@ -25,7 +25,7 @@ pub struct CreateCommand {
 #[derive(Clone, Debug, Args)]
 pub struct TCPListenerNodeOpts {
     /// Node at which to create the listener
-    #[clap(global = true, long, value_name = "NODE", default_value = "default")]
+    #[arg(global = true, long, value_name = "NODE", default_value = "default")]
     pub at: String,
 }
 

@@ -24,11 +24,11 @@ pub enum AuthenticatedSubcommand {
         addr: MultiAddr,
 
         /// Subject identifier
-        #[clap(long, value_parser(NonEmptyStringValueParser::new()))]
+        #[arg(long, value_parser(NonEmptyStringValueParser::new()))]
         id: String,
 
         /// Attribute key.
-        #[clap(value_parser(NonEmptyStringValueParser::new()))]
+        #[arg(value_parser(NonEmptyStringValueParser::new()))]
         key: String,
     },
     /// Delete attribute
@@ -37,11 +37,11 @@ pub enum AuthenticatedSubcommand {
         addr: MultiAddr,
 
         /// Subject identifier
-        #[clap(long, value_parser(NonEmptyStringValueParser::new()))]
+        #[arg(long, value_parser(NonEmptyStringValueParser::new()))]
         id: String,
 
         /// Attribute key.
-        #[clap(value_parser(NonEmptyStringValueParser::new()))]
+        #[arg(value_parser(NonEmptyStringValueParser::new()))]
         key: String,
     },
 }

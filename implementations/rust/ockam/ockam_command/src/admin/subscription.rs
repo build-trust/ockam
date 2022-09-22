@@ -35,7 +35,7 @@ pub enum SubscriptionSubcommand {
         json: PathBuf,
 
         /// Space ID to attach the subscription to
-        #[clap(
+        #[arg(
             name = "space",
             value_name = "SPACE_ID",
             long,
@@ -55,7 +55,7 @@ pub enum SubscriptionSubcommand {
         subscription_id: Option<String>,
 
         /// Space ID
-        #[clap(
+        #[arg(
             group = "id",
             name = "space",
             value_name = "SPACE_ID",
@@ -84,7 +84,7 @@ enum SubscriptionUpdateSubcommand {
         json: PathBuf,
 
         /// Subscription ID
-        #[clap(
+        #[arg(
             group = "id",
             name = "subscription",
             value_name = "SUBSCRIPTION_ID",
@@ -94,7 +94,7 @@ enum SubscriptionUpdateSubcommand {
         subscription_id: Option<String>,
 
         /// Space ID
-        #[clap(
+        #[arg(
             group = "id",
             name = "space",
             value_name = "SPACE_ID",
@@ -108,7 +108,7 @@ enum SubscriptionUpdateSubcommand {
     /// You can use either the subscription ID or the space ID.
     Space {
         /// Subscription ID
-        #[clap(
+        #[arg(
             group = "id",
             name = "subscription",
             value_name = "SUBSCRIPTION_ID",
@@ -118,7 +118,7 @@ enum SubscriptionUpdateSubcommand {
         subscription_id: Option<String>,
 
         /// Space ID
-        #[clap(
+        #[arg(
             group = "id",
             name = "current_space",
             value_name = "SPACE_ID",

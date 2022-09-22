@@ -20,11 +20,11 @@ use ockam_core::{Address, AddressParseError};
 #[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct DeleteCommand {
     /// Node from which to initiate the secure channel (required)
-    #[clap(value_name = "NODE", long, display_order = 800)]
+    #[arg(value_name = "NODE", long, display_order = 800)]
     at: String,
 
     /// Address at which the channel to be deleted is running (required)
-    #[clap(value_parser(parse_address), display_order = 800)]
+    #[arg(value_parser(parse_address), display_order = 800)]
     address: Address,
 }
 

@@ -13,7 +13,7 @@ pub struct CreateCommand {
     node_opts: NodeOpts,
 
     /// Path to the Vault storage file
-    #[clap(short, long)]
+    #[arg(short, long)]
     pub path: Option<String>,
 }
 

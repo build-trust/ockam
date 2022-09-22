@@ -14,21 +14,21 @@ use ockam_core::{Address, Route};
 #[derive(Clone, Debug, Args)]
 #[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: SecureChannelListenerNodeOpts,
 
     /// Address for this listener
     address: Address,
 
     /// Authorized Identifiers of secure channel initiators
-    #[clap(short, long, value_name = "IDENTIFIER")]
+    #[arg(short, long, value_name = "IDENTIFIER")]
     authorized_identifier: Option<Vec<IdentityIdentifier>>,
 }
 
 #[derive(Clone, Debug, Args)]
 pub struct SecureChannelListenerNodeOpts {
     /// Node at which to create the listener
-    #[clap(global = true, long, value_name = "NODE", default_value = "default")]
+    #[arg(global = true, long, value_name = "NODE", default_value = "default")]
     pub at: String,
 }
 

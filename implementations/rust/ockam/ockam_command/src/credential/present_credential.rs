@@ -13,10 +13,10 @@ pub struct PresentCredentialCommand {
     #[clap(flatten)]
     pub node_opts: NodeOpts,
 
-    #[clap(long, display_order = 900, name = "ROUTE")]
+    #[arg(long, display_order = 900, name = "ROUTE")]
     pub to: MultiAddr,
 
-    #[clap(short, long)]
+    #[arg(short, long)]
     pub oneway: bool,
 }
 

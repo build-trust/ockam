@@ -41,15 +41,15 @@ use ockam_core::LOCAL;
 #[clap(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Name of the node (Optional).
-    #[clap(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
+    #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
     pub node_name: String,
 
     /// Run the node in foreground.
-    #[clap(display_order = 900, long, short)]
+    #[arg(display_order = 900, long, short)]
     pub foreground: bool,
 
     /// TCP listener address
-    #[clap(
+    #[arg(
         display_order = 900,
         long,
         short,
@@ -59,15 +59,15 @@ pub struct CreateCommand {
     pub tcp_listener_address: String,
 
     /// Skip creation of default Vault and Identity
-    #[clap(long, short, hide = true)]
+    #[arg(long, short, hide = true)]
     pub skip_defaults: bool,
 
     /// Skip credential checks
-    #[clap(long, hide = true)]
+    #[arg(long, hide = true)]
     pub enable_credential_checks: bool,
 
     /// ockam_command started a child process to run this node in foreground.
-    #[clap(display_order = 900, long, hide = true)]
+    #[arg(display_order = 900, long, hide = true)]
     pub child_process: bool,
 
     /// JSON config to setup a foreground node
@@ -75,13 +75,13 @@ pub struct CreateCommand {
     /// This argument is currently ignored on background nodes.  Node
     /// configuration is run asynchronously and may take several
     /// seconds to complete.
-    #[clap(long, hide = true)]
+    #[arg(long, hide = true)]
     pub launch_config: Option<PathBuf>,
 
-    #[clap(long, hide = true)]
+    #[arg(long, hide = true)]
     pub no_watchdog: bool,
 
-    #[clap(long, hide = true)]
+    #[arg(long, hide = true)]
     pub project: Option<PathBuf>,
 }
 
