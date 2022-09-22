@@ -108,7 +108,7 @@ quickcheck! {
                         prot.push_back(Ip6::CODE)
                     }
                     Secure::CODE => {
-                        addr.push_back(Secure::new()).unwrap();
+                        addr.push_back(Secure::new("secure")).unwrap();
                         prot.push_back(Secure::CODE)
                     }
                     Service::CODE => {
@@ -159,7 +159,7 @@ impl Arbitrary for Addr {
                 DnsAddr::CODE => a.push_back(DnsAddr::new(gen_hostname())).unwrap(),
                 Ip4::CODE => a.push_back(Ip4::new(Ipv4Addr::arbitrary(g))).unwrap(),
                 Ip6::CODE => a.push_back(Ip6::new(Ipv6Addr::arbitrary(g))).unwrap(),
-                Secure::CODE => a.push_back(Secure::new()).unwrap(),
+                Secure::CODE => a.push_back(Secure::new(gen_string())).unwrap(),
                 Service::CODE => a.push_back(Service::new(gen_string())).unwrap(),
                 Project::CODE => a.push_back(Project::new(gen_string())).unwrap(),
                 Space::CODE => a.push_back(Space::new(gen_string())).unwrap(),

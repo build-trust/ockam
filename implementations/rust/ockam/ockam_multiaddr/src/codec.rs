@@ -9,12 +9,9 @@ pub struct StdCodec;
 impl Codec for StdCodec {
     fn split_str<'a>(
         &self,
-        prefix: &str,
+        _prefix: &str,
         input: &'a str,
     ) -> Result<(Checked<&'a str>, &'a str), Error> {
-        if prefix == Secure::PREFIX {
-            return Ok((Checked(""), input));
-        }
         if let Some(p) = input.find('/') {
             let (x, y) = input.split_at(p);
             Ok((Checked(x), y))
@@ -52,12 +49,12 @@ impl Codec for StdCodec {
                 let (x, y) = input.split_at(2);
                 Ok((Checked(x), y))
             }
-            Secure::CODE => Ok((Checked(&[]), input)),
             c @ DnsAddr::CODE
             | c @ Service::CODE
             | c @ Node::CODE
             | c @ Project::CODE
-            | c @ Space::CODE => {
+            | c @ Space::CODE
+            | c @ Secure::CODE => {
                 let (len, input) = decode::usize(input)?;
                 if input.len() < len {
                     return Err(Error::required_bytes(c, len));
