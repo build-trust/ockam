@@ -108,9 +108,13 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
         } else {
             cmd.forwarder_name.clone()
         };
-        let mut body = CreateForwarder::new(ma, Some(alias), at_rust_node);
-        body.set_identities(pa)
-            .set_credentials_mode(CredentialExchangeMode::Oneway);
+        let body = CreateForwarder::new(
+            ma,
+            Some(alias),
+            at_rust_node,
+            pa,
+            CredentialExchangeMode::Oneway,
+        );
         Request::post("/node/forwarder").body(body)
     };
 

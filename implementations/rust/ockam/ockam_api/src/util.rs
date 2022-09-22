@@ -171,7 +171,7 @@ pub fn is_local_node(ma: &MultiAddr) -> anyhow::Result<bool> {
             DnsAddr::CODE => {
                 at_rust_node = p
                     .cast::<DnsAddr>()
-                    .map(|dnsaddr| (&*dnsaddr).eq("localhost"))
+                    .map(|dnsaddr| (*dnsaddr).eq("localhost"))
                     .ok_or_else(|| anyhow!("Invalid \"dnsaddr\" value"))?;
             }
             // A "/ip4" will be local if it matches the loopback address

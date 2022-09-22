@@ -53,7 +53,6 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
     tcp.listen(&bind).await?;
     let node_dir = cfg.get_node_dir_raw(&cmd.node_name)?;
     let node_man = NodeManager::create(
-        NODEMANAGER_ADDR,
         ctx,
         cmd.node_name.clone(),
         node_dir,

@@ -1,6 +1,7 @@
 use core::fmt;
 use core::future::Future;
 use core::pin::Pin;
+use minicbor::bytes::ByteArray;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::rand;
@@ -11,7 +12,6 @@ pub type Replacement = Pin<Box<dyn Future<Output = Result<Address, Error>> + Sen
 
 #[derive(Debug)]
 pub struct Sessions {
-    ctr: u64,
     map: HashMap<Key, Session>,
 }
 
@@ -43,15 +43,12 @@ impl fmt::Debug for Session {
 impl Sessions {
     pub fn new() -> Self {
         Self {
-            ctr: 0,
             map: HashMap::new(),
         }
     }
 
-    pub fn add(&mut self, mut s: Session) -> Key {
-        let k = Key::new(self.ctr);
-        self.ctr += 1;
-        s.key = k;
+    pub fn add(&mut self, s: Session) -> Key {
+        let k = s.key();
         log::debug! {
             target: "ockam_api::session",
             key = %k,
@@ -84,7 +81,7 @@ impl Sessions {
 impl Session {
     pub fn new(addr: Address) -> Self {
         Self {
-            key: Key::default(),
+            key: Key::new(),
             address: addr,
             status: Status::Up,
             replace: Box::new(move |addr| Box::pin(async move { Ok(addr) })),
@@ -136,25 +133,19 @@ impl Session {
     }
 }
 
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encode, Decode)]
 #[rustfmt::skip]
-pub struct Key {
-    #[n(0)] ctr: u64,
-    #[n(1)] rnd: u32,
-}
+pub struct Key(#[n(0)] ByteArray<24>);
 
 impl Key {
-    fn new(n: u64) -> Self {
-        Self {
-            ctr: n,
-            rnd: rand::random(),
-        }
+    fn new() -> Self {
+        Self(rand::random::<[u8; 24]>().into())
     }
 }
 
 impl fmt::Display for Key {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({:x},{:x})", self.ctr, self.rnd)
+        write!(f, "{}", hex::encode(&*self.0))
     }
 }
 
