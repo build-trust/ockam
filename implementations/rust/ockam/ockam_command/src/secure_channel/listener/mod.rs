@@ -10,22 +10,22 @@ use clap::{Args, Subcommand};
 
 /// Manage Secure Channel Listeners
 #[derive(Clone, Debug, Args)]
-#[clap(
+#[command(
     arg_required_else_help = true,
     subcommand_required = true,
     help_template = help::template(HELP_DETAIL),
     mut_subcommand("help", |c| c.about("Print help information"))
 )]
 pub struct SecureChannelListenerCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: SecureChannelListenerSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum SecureChannelListenerSubcommand {
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Create(CreateCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     List(ListCommand),
 }
 

@@ -18,7 +18,7 @@ use crate::{help, CommandGlobalOpts};
 const HELP_DETAIL: &str = "";
 
 #[derive(Clone, Debug, Args)]
-#[clap(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
+#[command(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
 pub struct SubscriptionCommand {
     #[clap(subcommand)]
     subcommand: SubscriptionSubcommand,
@@ -36,7 +36,7 @@ pub enum SubscriptionSubcommand {
 
         /// Space ID to attach the subscription to
         #[arg(
-            name = "space",
+            id = "space",
             value_name = "SPACE_ID",
             long,
             value_parser(NonEmptyStringValueParser::new())
@@ -51,13 +51,13 @@ pub enum SubscriptionSubcommand {
     /// You can use either the subscription ID or the space ID.
     Unsubscribe {
         /// Subscription ID
-        #[clap(group = "id")]
+        #[arg(group = "id")]
         subscription_id: Option<String>,
 
         /// Space ID
         #[arg(
             group = "id",
-            name = "space",
+            id = "space",
             value_name = "SPACE_ID",
             long,
             value_parser(NonEmptyStringValueParser::new())
@@ -86,7 +86,7 @@ enum SubscriptionUpdateSubcommand {
         /// Subscription ID
         #[arg(
             group = "id",
-            name = "subscription",
+            id = "subscription",
             value_name = "SUBSCRIPTION_ID",
             long,
             value_parser(NonEmptyStringValueParser::new())
@@ -96,7 +96,7 @@ enum SubscriptionUpdateSubcommand {
         /// Space ID
         #[arg(
             group = "id",
-            name = "space",
+            id = "space",
             value_name = "SPACE_ID",
             long,
             value_parser(NonEmptyStringValueParser::new())
@@ -110,7 +110,7 @@ enum SubscriptionUpdateSubcommand {
         /// Subscription ID
         #[arg(
             group = "id",
-            name = "subscription",
+            id = "subscription",
             value_name = "SUBSCRIPTION_ID",
             long,
             value_parser(NonEmptyStringValueParser::new())
@@ -120,7 +120,7 @@ enum SubscriptionUpdateSubcommand {
         /// Space ID
         #[arg(
             group = "id",
-            name = "current_space",
+            id = "current_space",
             value_name = "SPACE_ID",
             long,
             value_parser(NonEmptyStringValueParser::new())

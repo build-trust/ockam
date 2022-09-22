@@ -11,21 +11,21 @@ use crate::CommandGlobalOpts;
 
 /// Adds an authorized enroller to the project' authority
 #[derive(Clone, Debug, Args)]
-#[clap(hide = help::hide())]
+#[command(hide = help::hide())]
 pub struct AddEnrollerCommand {
     /// Id of the project.
-    #[clap(display_order = 1001)]
+    #[arg(display_order = 1001)]
     pub project_id: String,
 
     /// Identity id to add as an authorized enroller.
-    #[clap(display_order = 1002)]
+    #[arg(display_order = 1002)]
     pub enroller_identity_id: String,
 
     /// Description of this enroller, optional.
-    #[clap(display_order = 1003)]
+    #[arg(display_order = 1003)]
     pub description: Option<String>,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cloud_opts: CloudOpts,
 }
 

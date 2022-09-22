@@ -14,10 +14,10 @@ use crate::CommandGlobalOpts;
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
     /// Name of the project.
-    #[clap(display_order = 1001)]
+    #[arg(display_order = 1001)]
     pub name: String,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cloud_opts: CloudOpts,
 }
 

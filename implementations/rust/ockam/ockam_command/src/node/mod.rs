@@ -115,7 +115,7 @@ EXAMPLES:
 
 /// Manage Nodes
 #[derive(Clone, Debug, Args)]
-#[clap(
+#[command(
     arg_required_else_help = true,
     subcommand_required = true,
     help_template = help::template(HELP_DETAIL),
@@ -128,17 +128,17 @@ pub struct NodeCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum NodeSubcommand {
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Create(CreateCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Delete(DeleteCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     List(ListCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Show(ShowCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Start(StartCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Stop(StopCommand),
 }
 
@@ -158,6 +158,6 @@ impl NodeCommand {
 #[derive(Clone, Debug, Args)]
 pub struct NodeOpts {
     /// Override the default API node
-    #[arg(global = true, name = "node", short, long, default_value = "default")]
+    #[arg(global = true, id = "node", short, long, default_value = "default")]
     pub api_node: String,
 }

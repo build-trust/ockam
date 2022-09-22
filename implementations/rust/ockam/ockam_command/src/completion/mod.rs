@@ -28,7 +28,7 @@ ABOUT:
 
 /// Generate shell completion scripts
 #[derive(Clone, Debug, Args)]
-#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct CompletionCommand {
     /// The type of shell (bash, zsh, fish)
     #[arg(display_order = 900, long, short)]

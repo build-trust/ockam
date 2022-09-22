@@ -83,7 +83,7 @@ EXAMPLES:
 
 /// Send and Receive Messages
 #[derive(Clone, Debug, Args)]
-#[clap(
+#[command(
     arg_required_else_help = true,
     subcommand_required = true,
     help_template = help::template(HELP_DETAIL),
@@ -96,7 +96,7 @@ pub struct MessageCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum MessageSubcommand {
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Send(SendCommand),
 }
 

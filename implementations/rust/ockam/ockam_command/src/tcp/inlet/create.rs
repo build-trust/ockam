@@ -35,18 +35,18 @@ EXAMPLES:
 
 /// Create TCP Inlets
 #[derive(Clone, Debug, Args)]
-#[clap(help_template = help::template(HELP_DETAIL))]
+#[command(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node on which to start the tcp inlet.
-    #[arg(long, display_order = 900, name = "NODE")]
+    #[arg(long, display_order = 900, id = "NODE")]
     at: String,
 
     /// Address on which to accept tcp connections.
-    #[arg(long, display_order = 900, name = "SOCKET_ADDRESS")]
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS")]
     from: SocketAddr,
 
     /// Route to a tcp outlet.
-    #[arg(long, display_order = 900, name = "ROUTE")]
+    #[arg(long, display_order = 900, id = "ROUTE")]
     to: MultiAddr,
 
     /// Enable credentials authorization

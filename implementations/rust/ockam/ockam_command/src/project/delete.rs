@@ -13,14 +13,14 @@ use crate::{space, CommandGlobalOpts};
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
     /// Name of the space.
-    #[clap(display_order = 1001)]
+    #[arg(display_order = 1001)]
     pub space_name: String,
 
     /// Name of the project.
-    #[clap(display_order = 1002)]
+    #[arg(display_order = 1002)]
     pub project_name: String,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cloud_opts: CloudOpts,
 }
 

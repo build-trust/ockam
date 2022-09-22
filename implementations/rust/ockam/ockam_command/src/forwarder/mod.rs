@@ -49,7 +49,7 @@ ABOUT:
 
 /// Manage Forwarders
 #[derive(Clone, Debug, Args)]
-#[clap(
+#[command(
     arg_required_else_help = true,
     subcommand_required = true,
     help_template = help::template(HELP_DETAIL)

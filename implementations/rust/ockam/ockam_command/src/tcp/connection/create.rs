@@ -33,7 +33,7 @@ pub struct CreateCommand {
     node_opts: TcpConnectionNodeOpts,
 
     /// The address to connect to (required)
-    #[arg(name = "to", short, long, value_name = "ADDRESS")]
+    #[arg(id = "to", short, long, value_name = "ADDRESS")]
     pub address: String,
 }
 

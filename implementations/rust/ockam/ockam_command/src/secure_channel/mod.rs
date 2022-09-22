@@ -138,7 +138,7 @@ ABOUT:
 
 /// Manage Secure Channels.
 #[derive(Clone, Debug, Args)]
-#[clap(
+#[command(
     arg_required_else_help = true,
     subcommand_required = true,
     help_template = help::template(HELP_DETAIL),
@@ -151,13 +151,13 @@ pub struct SecureChannelCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 enum SecureChannelSubcommand {
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Create(CreateCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Delete(DeleteCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     List(ListCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Show(ShowCommand),
 }
 

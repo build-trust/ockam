@@ -10,7 +10,7 @@ use crate::{help, CommandGlobalOpts};
 
 /// List Secure Channel Listeners
 #[derive(Args, Clone, Debug)]
-#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct ListCommand {
     /// Node of which secure listeners shall be listed
     #[clap(flatten)]

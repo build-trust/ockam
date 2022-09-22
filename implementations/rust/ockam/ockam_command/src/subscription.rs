@@ -18,12 +18,12 @@ use crate::{help, CommandGlobalOpts};
 const HELP_DETAIL: &str = "";
 
 #[derive(Clone, Debug, Args)]
-#[clap(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
+#[command(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
 pub struct SubscriptionCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: SubscriptionSubcommand,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     cloud_opts: CloudOpts,
 }
 
@@ -39,7 +39,7 @@ pub enum SubscriptionSubcommand {
         /// Space ID
         #[arg(
             group = "id",
-            name = "space",
+            id = "space",
             value_name = "SPACE_ID",
             long,
             value_parser(NonEmptyStringValueParser::new())

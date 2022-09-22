@@ -8,7 +8,7 @@ mod subscription;
 const HELP_DETAIL: &str = "";
 
 #[derive(Clone, Debug, Args)]
-#[clap(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
+#[command(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
 pub struct AdminCommand {
     #[clap(subcommand)]
     pub subcommand: AdminSubCommand,
@@ -19,7 +19,7 @@ pub struct AdminCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum AdminSubCommand {
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Subscription(subscription::SubscriptionCommand),
 }
 

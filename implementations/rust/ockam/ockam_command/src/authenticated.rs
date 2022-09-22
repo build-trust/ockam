@@ -10,7 +10,7 @@ use ockam_multiaddr::MultiAddr;
 const HELP_DETAIL: &str = "";
 
 #[derive(Clone, Debug, Args)]
-#[clap(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
+#[command(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
 pub struct AuthenticatedCommand {
     #[clap(subcommand)]
     subcommand: AuthenticatedSubcommand,

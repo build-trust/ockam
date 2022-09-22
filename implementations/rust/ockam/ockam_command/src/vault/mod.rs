@@ -7,7 +7,7 @@ use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
-#[clap(hide = help::hide())]
+#[command(hide = help::hide())]
 pub struct VaultCommand {
     #[clap(subcommand)]
     subcommand: VaultSubcommand,

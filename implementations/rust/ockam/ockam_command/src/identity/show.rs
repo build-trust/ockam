@@ -10,7 +10,7 @@ use ockam_core::api::Status;
 pub struct ShowCommand {
     #[command(flatten)]
     node_opts: NodeOpts,
-    #[arg(short, long, action)]
+    #[arg(short, long)]
     full: bool,
 }
 

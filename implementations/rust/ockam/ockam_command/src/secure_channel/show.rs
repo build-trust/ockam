@@ -12,7 +12,7 @@ use ockam_core::Address;
 
 /// Show Secure Channels
 #[derive(Clone, Debug, Args)]
-#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct ShowCommand {
     /// Node
     #[arg(value_name = "NODE", long, display_order = 800)]

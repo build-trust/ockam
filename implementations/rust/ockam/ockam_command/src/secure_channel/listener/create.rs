@@ -12,7 +12,7 @@ use ockam_core::{Address, Route};
 
 /// Create Secure Channel Listeners
 #[derive(Clone, Debug, Args)]
-#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     #[command(flatten)]
     node_opts: SecureChannelListenerNodeOpts,

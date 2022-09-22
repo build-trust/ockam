@@ -29,7 +29,7 @@ use crate::CommandGlobalOpts;
 
 /// Manage Projects in Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
-#[clap(arg_required_else_help = true, subcommand_required = true)]
+#[command(arg_required_else_help = true, subcommand_required = true)]
 pub struct ProjectCommand {
     #[clap(subcommand)]
     subcommand: ProjectSubcommand,

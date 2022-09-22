@@ -38,18 +38,18 @@ EXAMPLES:
 
 /// Create TCP Outlets
 #[derive(Clone, Debug, Args)]
-#[clap(help_template = help::template(HELP_DETAIL))]
+#[command(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node on which to start the tcp outlet.
-    #[arg(long, display_order = 900, name = "NODE")]
+    #[arg(long, display_order = 900, id = "NODE")]
     at: String,
 
     /// Address of the tcp outlet.
-    #[arg(long, display_order = 901, name = "OUTLET_ADDRESS")]
+    #[arg(long, display_order = 901, id = "OUTLET_ADDRESS")]
     from: String,
 
     /// TCP address to send raw tcp traffic.
-    #[arg(long, display_order = 902, name = "SOCKET_ADDRESS")]
+    #[arg(long, display_order = 902, id = "SOCKET_ADDRESS")]
     to: SocketAddr,
 
     /// Enable credentials authorization

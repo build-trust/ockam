@@ -38,7 +38,7 @@ use ockam_core::LOCAL;
 
 /// Create Nodes
 #[derive(Clone, Debug, Args)]
-#[clap(help_template = help::template(HELP_DETAIL))]
+#[command(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Name of the node (Optional).
     #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
@@ -53,7 +53,7 @@ pub struct CreateCommand {
         display_order = 900,
         long,
         short,
-        name = "SOCKET_ADDRESS",
+        id = "SOCKET_ADDRESS",
         default_value = "127.0.0.1:0"
     )]
     pub tcp_listener_address: String,

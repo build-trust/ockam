@@ -176,7 +176,7 @@ pub struct GlobalArgs {
     verbose: u8,
 
     /// Output without any colors
-    #[arg(hide = help::hide(), global = true, long, action)]
+    #[arg(hide = help::hide(), global = true, long)]
     no_color: bool,
 
     /// Output format
@@ -218,37 +218,37 @@ impl CommandGlobalOpts {
 
 #[derive(Debug, Subcommand)]
 pub enum OckamSubcommand {
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Enroll(EnrollCommand),
-    #[clap(display_order = 801)]
+    #[command(display_order = 801)]
     Space(SpaceCommand),
-    #[clap(display_order = 802)]
+    #[command(display_order = 802)]
     Project(ProjectCommand),
-    #[clap(display_order = 803)]
+    #[command(display_order = 803)]
     Reset(ResetCommand),
 
-    #[clap(display_order = 811)]
+    #[command(display_order = 811)]
     Node(NodeCommand),
-    #[clap(display_order = 812)]
+    #[command(display_order = 812)]
     Identity(IdentityCommand),
-    #[clap(display_order = 813)]
+    #[command(display_order = 813)]
     TcpListener(TcpListenerCommand),
-    #[clap(display_order = 814)]
+    #[command(display_order = 814)]
     TcpConnection(TcpConnectionCommand),
-    #[clap(display_order = 815)]
+    #[command(display_order = 815)]
     TcpOutlet(TcpOutletCommand),
-    #[clap(display_order = 816)]
+    #[command(display_order = 816)]
     TcpInlet(TcpInletCommand),
-    #[clap(display_order = 817)]
+    #[command(display_order = 817)]
     SecureChannelListener(SecureChannelListenerCommand),
-    #[clap(display_order = 818)]
+    #[command(display_order = 818)]
     SecureChannel(SecureChannelCommand),
-    #[clap(display_order = 819)]
+    #[command(display_order = 819)]
     Forwarder(ForwarderCommand),
-    #[clap(display_order = 820)]
+    #[command(display_order = 820)]
     Message(MessageCommand),
 
-    #[clap(display_order = 900)]
+    #[command(display_order = 900)]
     Completion(CompletionCommand),
 
     Authenticated(AuthenticatedCommand),
