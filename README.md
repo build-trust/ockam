@@ -18,7 +18,7 @@ Rust and Elixir libraries for end-to-end encrypted, mutually authenticated, secu
 
 Data, within modern distributed applications, are rarely exchanged over a single point-to-point
 transport connection. Application messages routinely flow over complex, multi-hop, multi-protocol
-routes — _across data centers, through queues and caches, via gateways and brokers_ — before reaching
+routes — _across data centres, through queues and caches, via gateways and brokers_ — before reaching
 their end destination.
 
 Transport layer security protocols are unable to protect application messages because their protection
@@ -172,7 +172,7 @@ guarantee that the integrity, authenticity, and confidentiality of their message
 In this guide, we show two programs called Alice and Bob. Alice and Bob send each other messages, over
 the network, via a cloud service, _through Kafka_. They mutually authenticate each other and have a
 cryptographic guarantee that the integrity, authenticity, and confidentiality of their messages is protected
-end-to-end. The Kafka instance, the intermediary cloud service and attackers on the network are not be able
+end-to-end. The Kafka instance, the intermediary cloud service and attackers on the network are not able
 to see or change the contents of en-route messages. The application data in Kafka is encrypted.
 [👉](./documentation/use-cases/end-to-end-encryption-through-kafka#readme)
 
