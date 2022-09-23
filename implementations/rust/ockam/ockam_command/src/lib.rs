@@ -203,7 +203,7 @@ pub struct GlobalArgs {
     #[arg(global = true, long, hide = true)]
     test_argument_parser: bool,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     export: ExportCommandArgs,
 }
 
@@ -217,15 +217,15 @@ pub enum OutputFormat {
 pub struct ExportCommandArgs {
     /// Export the command input to a file.
     /// Used to run a set of commands after creating a node with `ockam node create --run commands.json`
-    #[clap(global = true, long = "export")]
+    #[arg(global = true, long = "export")]
     export_path: Option<PathBuf>,
 
     /// Unique name for the exported command.
-    #[clap(global = true, long, hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
+    #[arg(global = true, long, hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
     export_as: String,
 
     /// Reference to a previously exported command that must be run before the current command.
-    #[clap(global = true, long)]
+    #[arg(global = true, long)]
     depends_on: Option<String>,
 }
 

@@ -84,7 +84,7 @@ pub struct CreateCommand {
     #[arg(long, hide = true)]
     pub project: Option<PathBuf>,
 
-    #[clap(long, hide = true)]
+    #[arg(long, hide = true)]
     pub config: Option<PathBuf>,
 }
 
