@@ -83,6 +83,9 @@ pub struct CreateCommand {
 
     #[arg(long, hide = true)]
     pub project: Option<PathBuf>,
+
+    #[clap(long, hide = true)]
+    pub config: Option<PathBuf>,
 }
 
 impl From<&'_ CreateCommand> for ComposableSnippet {
@@ -110,6 +113,7 @@ impl Default for CreateCommand {
             launch_config: None,
             no_watchdog: false,
             project: None,
+            config: None,
         }
     }
 }
@@ -164,6 +168,11 @@ impl CreateCommand {
                 (cfg.clone(), cmd.node_name, true),
                 print_query_status,
             );
+            if let Some(config) = self.config {
+                crate::node::util::run::CommandsRunner::run(&config)
+                    .context("Failed to run commands from config")
+                    .unwrap();
+            }
         }
     }
 
