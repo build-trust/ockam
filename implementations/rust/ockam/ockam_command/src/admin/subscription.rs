@@ -1,8 +1,8 @@
 use anyhow::Context as _;
 use std::path::PathBuf;
 
+use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
-use clap::builder::{NonEmptyStringValueParser};
 
 use ockam::Context;
 use ockam_api::cloud::subscription::{ActivateSubscription, Subscription};

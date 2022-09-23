@@ -1,7 +1,7 @@
 use core::fmt::Write;
 
+use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
-use clap::builder::{NonEmptyStringValueParser};
 
 use ockam::Context;
 use ockam_api::cloud::subscription::Subscription;

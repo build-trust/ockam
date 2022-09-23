@@ -20,7 +20,9 @@ pub mod util;
     arg_required_else_help = true,
     subcommand_required = true,
 // TODO: mut_subcommand
-//    mut_subcommand("help", |c| c.about("Print help information")),
+//    mut_subcommand("help", |c| c.about("Print help information")
+//    disable_help_subcommand = true,
+//    subcommand(Command::new("help").about("Print help information")),
 )]
 pub struct SpaceCommand {
     #[command(subcommand)]

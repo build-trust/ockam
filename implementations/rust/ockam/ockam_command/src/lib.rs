@@ -51,7 +51,7 @@ use version::Version;
 
 use crate::admin::AdminCommand;
 use crate::subscription::SubscriptionCommand;
-use clap::{ValueEnum, ArgAction, Args, Parser, Subcommand};
+use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use upgrade::check_if_an_upgrade_is_available;
 
 const ABOUT: &str = "\
@@ -149,11 +149,13 @@ EXAMPLES:
     long_version = Version::long(),
     next_help_heading = "GLOBAL OPTIONS",
     // TODO: mut_arg & mut_subcommand for help
-    //disable_help_flag = true,
-    //arg = Arg::new("help"),
     //mut_arg("help", |a| a.help_heading("GLOBAL OPTIONS")),
-    //subcommand(Command::new("help")),
     //mut_subcommand("help", |c| c.about("Print help information"))
+    // disable_help_flag = true,
+    // arg = Arg::new("help").short('h').long("help").action(ArgAction::SetTrue)
+    //         .help_heading("GLOBAL OPTIONS").help("Print help information"),
+    // disable_help_subcommand = true,
+    // subcommand(Command::new("help").about("Print help information")),
 )]
 pub struct OckamCommand {
     #[command(subcommand)]
