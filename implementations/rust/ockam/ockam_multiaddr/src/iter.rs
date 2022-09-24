@@ -84,7 +84,6 @@ impl<'a> Iterator for BytesIter<'a> {
 ///
 pub struct StrIter<'a> {
     string: &'a str,
-    is_err: bool,
     registry: Registry,
 }
 
@@ -92,7 +91,6 @@ impl<'a> StrIter<'a> {
     pub fn new(string: &'a str) -> Self {
         StrIter {
             string,
-            is_err: false,
             registry: default_registry().clone(),
         }
     }
@@ -100,7 +98,6 @@ impl<'a> StrIter<'a> {
     pub fn with_registry(string: &'a str, reg: Registry) -> Self {
         StrIter {
             string,
-            is_err: false,
             registry: reg,
         }
     }
@@ -110,21 +107,16 @@ impl<'a> Iterator for StrIter<'a> {
     type Item = Result<(&'a str, Checked<&'a str>), Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.string.is_empty() || self.is_err {
+        if self.string.is_empty() {
             return None;
         }
         let (prefix, value) = match self.string.split_once('/') {
             Some(("", s)) => match s.split_once('/') {
                 Some((p, r)) => (p, r),
-                None => {
-                    self.is_err = true;
-                    return Some(Err(Error::invalid_prefix(self.string)));
-                }
+                None => (s, ""),
             },
-            Some(_) | None => {
-                self.is_err = true;
-                return Some(Err(Error::invalid_prefix(self.string)));
-            }
+            Some((p, s)) => (p, s),
+            None => (self.string, ""),
         };
         if let Some(codec) = self.registry.get_by_prefix(prefix) {
             match codec.split_str(prefix, value) {

@@ -1,14 +1,22 @@
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Tcp};
+use core::fmt;
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp};
 use ockam_multiaddr::{Code, MultiAddr, Protocol};
 use quickcheck::{quickcheck, Arbitrary, Gen};
+use rand::distributions::{Alphanumeric, DistString};
 use rand::prelude::*;
 use std::collections::VecDeque;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::str::FromStr;
 
 /// Newtype to implement `Arbitrary` for.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct Addr(MultiAddr);
+
+impl fmt::Debug for Addr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Addr").field(&self.0.to_string()).finish()
+    }
+}
 
 quickcheck! {
     fn to_str_from_str(a: Addr) -> bool {
@@ -99,6 +107,26 @@ quickcheck! {
                         addr.push_back(Ip6::new(Ipv6Addr::from_str("::1").unwrap())).unwrap();
                         prot.push_back(Ip6::CODE)
                     }
+                    Secure::CODE => {
+                        addr.push_back(Secure::new("secure")).unwrap();
+                        prot.push_back(Secure::CODE)
+                    }
+                    Service::CODE => {
+                        addr.push_back(Service::new("service")).unwrap();
+                        prot.push_back(Service::CODE);
+                    }
+                    Node::CODE => {
+                        addr.push_back(Node::new("node")).unwrap();
+                        prot.push_back(Node::CODE);
+                    }
+                    Project::CODE => {
+                        addr.push_back(Project::new("project")).unwrap();
+                        prot.push_back(Project::CODE);
+                    }
+                    Space::CODE => {
+                        addr.push_back(Space::new("space")).unwrap();
+                        prot.push_back(Space::CODE);
+                    }
                     _ => unreachable!()
                 }
             }
@@ -110,7 +138,17 @@ quickcheck! {
     }
 }
 
-const PROTOS: &[Code] = &[Tcp::CODE, DnsAddr::CODE, Ip4::CODE, Ip6::CODE];
+const PROTOS: &[Code] = &[
+    Tcp::CODE,
+    DnsAddr::CODE,
+    Ip4::CODE,
+    Ip6::CODE,
+    Secure::CODE,
+    Service::CODE,
+    Node::CODE,
+    Project::CODE,
+    Space::CODE,
+];
 
 impl Arbitrary for Addr {
     fn arbitrary(g: &mut Gen) -> Self {
@@ -121,6 +159,11 @@ impl Arbitrary for Addr {
                 DnsAddr::CODE => a.push_back(DnsAddr::new(gen_hostname())).unwrap(),
                 Ip4::CODE => a.push_back(Ip4::new(Ipv4Addr::arbitrary(g))).unwrap(),
                 Ip6::CODE => a.push_back(Ip6::new(Ipv6Addr::arbitrary(g))).unwrap(),
+                Secure::CODE => a.push_back(Secure::new(gen_string())).unwrap(),
+                Service::CODE => a.push_back(Service::new(gen_string())).unwrap(),
+                Project::CODE => a.push_back(Project::new(gen_string())).unwrap(),
+                Space::CODE => a.push_back(Space::new(gen_string())).unwrap(),
+                Node::CODE => a.push_back(Node::new(gen_string())).unwrap(),
                 _ => unreachable!(),
             }
         }
@@ -165,4 +208,10 @@ fn gen_hostname() -> String {
         v.push(gen_label(&mut g))
     }
     v.join(".")
+}
+
+fn gen_string() -> String {
+    let mut s = Alphanumeric.sample_string(&mut rand::thread_rng(), 23);
+    s.retain(|c| c != '/');
+    s
 }

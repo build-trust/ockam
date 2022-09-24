@@ -31,10 +31,6 @@ impl Error {
         Error(ErrorImpl::InvalidProto(c))
     }
 
-    pub(crate) fn invalid_prefix<S: Into<String>>(s: S) -> Self {
-        Error(ErrorImpl::InvalidPrefix(s.into()))
-    }
-
     pub(crate) fn into_impl(self) -> ErrorImpl {
         self.0
     }
@@ -44,7 +40,6 @@ impl Error {
 pub(crate) enum ErrorImpl {
     Unregistered(Code),
     InvalidProto(Code),
-    InvalidPrefix(String),
     UnregisteredPrefix(String),
     InvalidVarint(unsigned_varint::decode::Error),
     Message(String),
@@ -59,7 +54,6 @@ impl fmt::Display for Error {
         match &self.0 {
             ErrorImpl::Unregistered(c) => write!(f, "unregistered protocol (code {c})"),
             ErrorImpl::InvalidProto(c) => write!(f, "invalid protocol value (code {c})"),
-            ErrorImpl::InvalidPrefix(s) => write!(f, "invalid prefix in protocol string {s:?}"),
             ErrorImpl::UnregisteredPrefix(s) => write!(f, "unregistered protocol prefix {s:?}"),
             ErrorImpl::Message(m) => write!(f, "{m}"),
             ErrorImpl::InvalidVarint(e) => e.fmt(f),
@@ -82,8 +76,7 @@ impl std::error::Error for Error {
             | ErrorImpl::RequiredBytes(..)
             | ErrorImpl::Unregistered(_)
             | ErrorImpl::UnregisteredPrefix(_)
-            | ErrorImpl::Message(_)
-            | ErrorImpl::InvalidPrefix(_) => None,
+            | ErrorImpl::Message(_) => None,
         }
     }
 }
