@@ -11,10 +11,10 @@ use std::time::Duration;
 
 /// Show Nodes
 #[derive(Clone, Debug, Args)]
-#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct ShowCommand {
     /// Name of the node.
-    #[clap(default_value = "default")]
+    #[arg(default_value = "default")]
     node_name: String,
 }
 

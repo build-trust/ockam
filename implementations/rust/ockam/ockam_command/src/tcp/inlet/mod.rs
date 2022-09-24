@@ -7,7 +7,7 @@ use create::CreateCommand;
 /// Manage TCP Inlets
 #[derive(Clone, Debug, Args)]
 pub struct TcpInletCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: TcpInletSubCommand,
 }
 

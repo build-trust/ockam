@@ -7,7 +7,7 @@ use create::CreateCommand;
 /// Manage TCP Outlets
 #[derive(Clone, Debug, Args)]
 pub struct TcpOutletCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: TcpOutletSubCommand,
 }
 

@@ -9,9 +9,9 @@ use ockam_core::api::Status;
 use ockam_core::Route;
 
 #[derive(Clone, Debug, Args)]
-#[clap(hide = help::hide())]
+#[command(hide = help::hide())]
 pub struct CreateCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: NodeOpts,
 }
 

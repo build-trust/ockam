@@ -17,11 +17,11 @@ const TEMPLATE_TOP: &str = "
 ";
 
 const TEMPLATE_BOTTOM: &str = "
-LEARN MORE:
+Learn more:
     Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
     Learn more at https://docs.ockam.io/get-started#command
 
-FEEDBACK:
+Feedback:
     If you have any questions or feedback, please start a discussion
     on Github https://github.com/build-trust/ockam/discussions/new
 ";

@@ -10,7 +10,7 @@ use clap::{Args, Subcommand};
 /// Manage Identities
 #[derive(Clone, Debug, Args)]
 pub struct IdentityCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: IdentitySubcommand,
 }
 

@@ -12,7 +12,7 @@ use clap::{Args, Subcommand};
 /// Manage TCP Listeners
 #[derive(Args, Clone, Debug)]
 pub struct TcpListenerCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: TcpListenerSubCommand,
 }
 

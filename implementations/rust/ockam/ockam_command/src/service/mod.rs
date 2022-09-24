@@ -8,15 +8,15 @@ use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
-#[clap(hide = help::hide())]
+#[command(hide = help::hide())]
 pub struct ServiceCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: ServiceSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum ServiceSubcommand {
-    #[clap(display_order = 900)]
+    #[command(display_order = 900)]
     Start(StartCommand),
 }
 

@@ -11,7 +11,7 @@ use ockam_api::nodes::{
 
 #[derive(Args, Clone, Debug)]
 pub struct ListCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: NodeOpts,
 }
 

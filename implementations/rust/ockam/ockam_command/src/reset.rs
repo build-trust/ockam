@@ -5,7 +5,7 @@ use std::io::{self, BufReader, Read, Write};
 
 #[derive(Clone, Debug, Args)]
 pub struct ResetCommand {
-    #[clap(display_order = 901, long, short)]
+    #[arg(display_order = 901, long, short)]
     yes: bool,
 }
 

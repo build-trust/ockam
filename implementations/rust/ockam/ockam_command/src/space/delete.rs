@@ -11,10 +11,10 @@ use crate::CommandGlobalOpts;
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
     /// Name of the space.
-    #[clap(display_order = 1001)]
+    #[arg(display_order = 1001)]
     pub name: String,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cloud_opts: CloudOpts,
 }
 

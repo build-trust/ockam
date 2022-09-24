@@ -12,7 +12,7 @@ use clap::{Args, Subcommand};
 /// Manage TCP Connections
 #[derive(Args, Clone, Debug)]
 pub struct TcpConnectionCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: TcpConnectionSubCommand,
 }
 

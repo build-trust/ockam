@@ -4,7 +4,7 @@ use clap_complete::{generate, Shell};
 use std::io;
 
 const HELP_DETAIL: &str = "\
-ABOUT:
+About:
     Generate shell completion scripts for Ockam commands.
 
     If you’ve installed `ockam` command using a package manager, you likely
@@ -28,10 +28,10 @@ ABOUT:
 
 /// Generate shell completion scripts
 #[derive(Clone, Debug, Args)]
-#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct CompletionCommand {
     /// The type of shell (bash, zsh, fish)
-    #[clap(display_order = 900, long, short)]
+    #[arg(display_order = 900, long, short)]
     shell: Shell,
 }
 
