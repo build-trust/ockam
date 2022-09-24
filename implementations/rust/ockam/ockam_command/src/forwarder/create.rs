@@ -18,25 +18,25 @@ use crate::{help, CommandGlobalOpts};
 
 /// Create Forwarders
 #[derive(Clone, Debug, Args)]
-#[clap(
+#[command(
     arg_required_else_help = true,
     help_template = help::template(HELP_DETAIL)
 )]
 pub struct CreateCommand {
     /// Name of the forwarder (optional)
-    #[clap(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
+    #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
     pub forwarder_name: String,
 
     /// Node for which to create the forwarder
-    #[clap(long, name = "NODE", display_order = 900)]
+    #[arg(long, id = "NODE", display_order = 900)]
     to: String,
 
     /// Route to the node at which to create the forwarder (optional)
-    #[clap(long, name = "ROUTE", display_order = 900)]
+    #[arg(long, id = "ROUTE", display_order = 900)]
     at: MultiAddr,
 
     /// Orchestrator address to resolve projects present in the `at` argument
-    #[clap(flatten)]
+    #[command(flatten)]
     cloud_opts: CloudOpts,
 }
 

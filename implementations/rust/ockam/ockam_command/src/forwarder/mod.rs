@@ -7,7 +7,7 @@ use crate::{help, CommandGlobalOpts};
 mod create;
 
 const HELP_DETAIL: &str = "\
-ABOUT:
+About:
     Forwarders enable an ockam node to register a forwarding address on another node.
     Any message that arrives at this forwarding address is immediately dispatched
     to the node that registered the forwarding address.
@@ -49,13 +49,13 @@ ABOUT:
 
 /// Manage Forwarders
 #[derive(Clone, Debug, Args)]
-#[clap(
+#[command(
     arg_required_else_help = true,
     subcommand_required = true,
     help_template = help::template(HELP_DETAIL)
 )]
 pub struct ForwarderCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: ForwarderSubCommand,
 }
 

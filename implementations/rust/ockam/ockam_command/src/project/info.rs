@@ -16,10 +16,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Args)]
 pub struct InfoCommand {
     /// Name of the project.
-    #[clap(long)]
+    #[arg(long)]
     pub name: String,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cloud_opts: CloudOpts,
 }
 

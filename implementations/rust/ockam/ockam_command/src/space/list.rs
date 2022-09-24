@@ -11,7 +11,7 @@ use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cloud_opts: CloudOpts,
 }
 

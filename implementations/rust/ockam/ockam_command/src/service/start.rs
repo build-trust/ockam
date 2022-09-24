@@ -18,46 +18,46 @@ use tracing::debug;
 
 #[derive(Clone, Debug, Args)]
 pub struct StartCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     pub node_opts: NodeOpts,
 
-    #[clap(subcommand)]
+    #[command(subcommand)]
     pub create_subcommand: StartSubCommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum StartSubCommand {
     Vault {
-        #[clap(default_value_t = vault_default_addr())]
+        #[arg(default_value_t = vault_default_addr())]
         addr: String,
     },
     Identity {
-        #[clap(default_value_t = identity_default_addr())]
+        #[arg(default_value_t = identity_default_addr())]
         addr: String,
     },
     Authenticated {
-        #[clap(default_value_t = authenticated_default_addr())]
+        #[arg(default_value_t = authenticated_default_addr())]
         addr: String,
     },
     Verifier {
-        #[clap(long, default_value_t = verifier_default_addr())]
+        #[arg(long, default_value_t = verifier_default_addr())]
         addr: String,
     },
     Credentials {
-        #[clap(long, default_value_t = credentials_default_addr())]
+        #[arg(long, default_value_t = credentials_default_addr())]
         addr: String,
 
-        #[clap(long)]
+        #[arg(long)]
         oneway: bool,
     },
     Authenticator {
-        #[clap(long, default_value_t = authenticator_default_addr())]
+        #[arg(long, default_value_t = authenticator_default_addr())]
         addr: String,
 
-        #[clap(long)]
+        #[arg(long)]
         enrollers: PathBuf,
 
-        #[clap(long)]
+        #[arg(long)]
         project: String,
     },
 }

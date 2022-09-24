@@ -9,13 +9,13 @@ use rand::prelude::random;
 
 /// Stop Nodes
 #[derive(Clone, Debug, Args)]
-#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct StopCommand {
     /// Name of the node.
-    #[clap(default_value_t = hex::encode(&random::<[u8;4]>()))]
+    #[arg(default_value_t = hex::encode(&random::<[u8;4]>()))]
     node_name: String,
     /// Whether to use the SIGTERM or SIGKILL signal to stop the node
-    #[clap(long)]
+    #[arg(long)]
     force: bool,
 }
 

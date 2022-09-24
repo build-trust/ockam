@@ -15,7 +15,7 @@ use ockam_core::route;
 use std::net::SocketAddr;
 
 const HELP_DETAIL: &str = "\
-EXAMPLES:
+Examples:
 
 ```sh
     # Create a target service, we'll use a simple http server for this example
@@ -38,22 +38,22 @@ EXAMPLES:
 
 /// Create TCP Outlets
 #[derive(Clone, Debug, Args)]
-#[clap(help_template = help::template(HELP_DETAIL))]
+#[command(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node on which to start the tcp outlet.
-    #[clap(long, display_order = 900, name = "NODE")]
+    #[arg(long, display_order = 900, id = "NODE")]
     at: String,
 
     /// Address of the tcp outlet.
-    #[clap(long, display_order = 901, name = "OUTLET_ADDRESS")]
+    #[arg(long, display_order = 901, id = "OUTLET_ADDRESS")]
     from: String,
 
     /// TCP address to send raw tcp traffic.
-    #[clap(long, display_order = 902, name = "SOCKET_ADDRESS")]
+    #[arg(long, display_order = 902, id = "SOCKET_ADDRESS")]
     to: SocketAddr,
 
     /// Enable credentials authorization
-    #[clap(long, short, display_order = 802)]
+    #[arg(long, short, display_order = 802)]
     pub check_credential: bool,
 }
 

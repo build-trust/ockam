@@ -14,14 +14,14 @@ use colorful::Colorful;
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     /// Name of the space.
-    #[clap(display_order = 1001, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true)]
+    #[arg(display_order = 1001, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true)]
     pub name: String,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cloud_opts: CloudOpts,
 
     /// Administrators for this space
-    #[clap(display_order = 1100, last = true)]
+    #[arg(display_order = 1100, last = true)]
     pub admins: Vec<String>,
 }
 

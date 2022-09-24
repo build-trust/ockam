@@ -12,14 +12,14 @@ use crate::{
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: NodeOpts,
 
     /// Tcp Connection ID
     pub id: String,
 
     /// Force this operation: delete the API transport if requested
-    #[clap(long)]
+    #[arg(long)]
     pub force: bool,
 }
 

@@ -9,11 +9,11 @@ use ockam_core::Route;
 /// Create vaults
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: NodeOpts,
 
     /// Path to the Vault storage file
-    #[clap(short, long)]
+    #[arg(short, long)]
     pub path: Option<String>,
 }
 

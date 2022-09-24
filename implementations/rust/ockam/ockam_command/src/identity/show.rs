@@ -8,9 +8,9 @@ use ockam_core::api::Status;
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: NodeOpts,
-    #[clap(short, long, action)]
+    #[arg(short, long)]
     full: bool,
 }
 

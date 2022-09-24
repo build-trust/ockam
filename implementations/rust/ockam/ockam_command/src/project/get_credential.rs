@@ -14,13 +14,13 @@ use crate::{stop_node, CommandGlobalOpts, Result};
 #[derive(Clone, Debug, Args)]
 pub struct GetCredentialCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
-    #[clap(flatten)]
+    #[command(flatten)]
     cloud_opts: CloudOpts,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: NodeOpts,
 
-    #[clap(long, short)]
+    #[arg(long, short)]
     to: MultiAddr,
 }
 

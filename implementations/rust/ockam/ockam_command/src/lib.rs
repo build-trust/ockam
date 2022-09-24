@@ -54,7 +54,7 @@ use version::Version;
 
 use crate::admin::AdminCommand;
 use crate::subscription::SubscriptionCommand;
-use clap::{ArgEnum, Args, Parser, Subcommand};
+use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use upgrade::check_if_an_upgrade_is_available;
 
 const ABOUT: &str = "\
@@ -63,7 +63,7 @@ credential management, and authorization policy enforcement — at scale.
 ";
 
 const HELP_DETAIL: &str = "\
-ABOUT:
+About:
     Orchestrate end-to-end encryption, mutual authentication, key management,
     credential management, and authorization policy enforcement — at scale.
 
@@ -72,7 +72,7 @@ ABOUT:
     to build secure by-design applications that have granular control over every
     trust and access decision.
 
-EXAMPLES:
+Examples:
 
     Let's walk through a simple example to create an end-to-end encrypted,
     mutually authenticated, secure and private cloud relay – for any application.
@@ -142,7 +142,7 @@ EXAMPLES:
 ";
 
 #[derive(Debug, Parser)]
-#[clap(
+#[command(
     name = "ockam",
     term_width = 100,
     about = ABOUT,
@@ -150,40 +150,49 @@ EXAMPLES:
     help_template = help::template(HELP_DETAIL),
     version,
     long_version = Version::long(),
-    next_help_heading = "GLOBAL OPTIONS",
-    mut_arg("help", |a| a.help_heading("GLOBAL OPTIONS")),
-    mut_subcommand("help", |c| c.about("Print help information"))
+    next_help_heading = "Global options",
+    disable_help_flag = true
 )]
 pub struct OckamCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: OckamSubcommand,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     global_args: GlobalArgs,
 }
 
 #[derive(Debug, Clone, Args)]
 pub struct GlobalArgs {
+    #[arg(
+        global = true,
+        long,
+        short,
+        help("Print help information"),
+        help_heading("Global options"),
+        action = ArgAction::Help
+    )]
+    help: Option<bool>,
+
     /// Do not print any trace messages
-    #[clap(global = true, long, short, conflicts_with("verbose"))]
+    #[arg(global = true, long, short, conflicts_with("verbose"))]
     quiet: bool,
 
     /// Increase verbosity of trace messages
-    #[clap(
+    #[arg(
         global = true,
         long,
         short,
         conflicts_with("quiet"),
-        parse(from_occurrences)
+        action = ArgAction::Count
     )]
     verbose: u8,
 
     /// Output without any colors
-    #[clap(hide = help::hide(), global = true, long, action)]
+    #[arg(hide = help::hide(), global = true, long)]
     no_color: bool,
 
     /// Output format
-    #[clap(
+    #[arg(
         hide = help::hide(),
         global = true,
         long = "output",
@@ -194,14 +203,14 @@ pub struct GlobalArgs {
 
     // if test_argument_parser is true, command arguments are checked
     // but the command is not executed.
-    #[clap(global = true, long, hide = true)]
+    #[arg(global = true, long, hide = true)]
     test_argument_parser: bool,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     export: ExportCommandArgs,
 }
 
-#[derive(Debug, Clone, ArgEnum, PartialEq, Eq)]
+#[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
 pub enum OutputFormat {
     Plain,
     Json,
@@ -211,15 +220,15 @@ pub enum OutputFormat {
 pub struct ExportCommandArgs {
     /// Export the command input to a file.
     /// Used to run a set of commands after creating a node with `ockam node create --run commands.json`
-    #[clap(global = true, long = "export")]
+    #[arg(global = true, long = "export")]
     export_path: Option<PathBuf>,
 
     /// Unique name for the exported command.
-    #[clap(global = true, long, hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
+    #[arg(global = true, long, hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
     export_as: String,
 
     /// Reference to a previously exported command that must be run before the current command.
-    #[clap(global = true, long)]
+    #[arg(global = true, long)]
     depends_on: Option<String>,
 }
 
@@ -240,37 +249,37 @@ impl CommandGlobalOpts {
 
 #[derive(Debug, Subcommand)]
 pub enum OckamSubcommand {
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Enroll(EnrollCommand),
-    #[clap(display_order = 801)]
+    #[command(display_order = 801)]
     Space(SpaceCommand),
-    #[clap(display_order = 802)]
+    #[command(display_order = 802)]
     Project(ProjectCommand),
-    #[clap(display_order = 803)]
+    #[command(display_order = 803)]
     Reset(ResetCommand),
 
-    #[clap(display_order = 811)]
+    #[command(display_order = 811)]
     Node(NodeCommand),
-    #[clap(display_order = 812)]
+    #[command(display_order = 812)]
     Identity(IdentityCommand),
-    #[clap(display_order = 813)]
+    #[command(display_order = 813)]
     TcpListener(TcpListenerCommand),
-    #[clap(display_order = 814)]
+    #[command(display_order = 814)]
     TcpConnection(TcpConnectionCommand),
-    #[clap(display_order = 815)]
+    #[command(display_order = 815)]
     TcpOutlet(TcpOutletCommand),
-    #[clap(display_order = 816)]
+    #[command(display_order = 816)]
     TcpInlet(TcpInletCommand),
-    #[clap(display_order = 817)]
+    #[command(display_order = 817)]
     SecureChannelListener(SecureChannelListenerCommand),
-    #[clap(display_order = 818)]
+    #[command(display_order = 818)]
     SecureChannel(SecureChannelCommand),
-    #[clap(display_order = 819)]
+    #[command(display_order = 819)]
     Forwarder(ForwarderCommand),
-    #[clap(display_order = 820)]
+    #[command(display_order = 820)]
     Message(MessageCommand),
 
-    #[clap(display_order = 900)]
+    #[command(display_order = 900)]
     Completion(CompletionCommand),
 
     Authenticated(AuthenticatedCommand),
