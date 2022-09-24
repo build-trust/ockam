@@ -63,7 +63,7 @@ credential management, and authorization policy enforcement — at scale.
 ";
 
 const HELP_DETAIL: &str = "\
-ABOUT:
+About:
     Orchestrate end-to-end encryption, mutual authentication, key management,
     credential management, and authorization policy enforcement — at scale.
 
@@ -72,7 +72,7 @@ ABOUT:
     to build secure by-design applications that have granular control over every
     trust and access decision.
 
-EXAMPLES:
+Examples:
 
     Let's walk through a simple example to create an end-to-end encrypted,
     mutually authenticated, secure and private cloud relay – for any application.
@@ -150,15 +150,11 @@ EXAMPLES:
     help_template = help::template(HELP_DETAIL),
     version,
     long_version = Version::long(),
-    next_help_heading = "GLOBAL OPTIONS",
-    // TODO: mut_arg & mut_subcommand for help
-    //mut_arg("help", |a| a.help_heading("GLOBAL OPTIONS")),
-    //mut_subcommand("help", |c| c.about("Print help information"))
-    // disable_help_flag = true,
-    // arg = Arg::new("help").short('h').long("help").action(ArgAction::SetTrue)
-    //         .help_heading("GLOBAL OPTIONS").help("Print help information"),
-    // disable_help_subcommand = true,
-    // subcommand(Command::new("help").about("Print help information")),
+    next_help_heading = "Global options",
+    disable_help_flag = true,
+// TODO:
+//    disable_help_subcommand = true
+//    mut_subcommand("help", |c| c.about("Print help information"))
 )]
 pub struct OckamCommand {
     #[command(subcommand)]
@@ -170,6 +166,16 @@ pub struct OckamCommand {
 
 #[derive(Debug, Clone, Args)]
 pub struct GlobalArgs {
+    #[arg(
+        global = true,
+        long,
+        short,
+        help("Print help information"),
+        help_heading("Global options"),
+        action = ArgAction::Help
+    )]
+    help: bool,
+
     /// Do not print any trace messages
     #[arg(global = true, long, short, conflicts_with("verbose"))]
     quiet: bool,
