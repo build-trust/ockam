@@ -174,7 +174,7 @@ pub struct GlobalArgs {
         help_heading("Global options"),
         action = ArgAction::Help
     )]
-    help: bool,
+    help: Option<bool>,
 
     /// Do not print any trace messages
     #[arg(global = true, long, short, conflicts_with("verbose"))]
