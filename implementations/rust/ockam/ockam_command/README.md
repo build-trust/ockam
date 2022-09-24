@@ -1,64 +1,34 @@
-# Ockam Command (WIP)
+# ockam_command
 
-## Running
+[![crate][crate-image]][crate-link]
+[![docs][docs-image]][docs-link]
+[![license][license-image]][license-link]
+[![discuss][discuss-image]][discuss-link]
 
-`cargo build`
+Orchestrate end-to-end encryption, mutual authentication, key management,
+credential management, and authorization policy enforcement — at scale.
 
-Help:
+## Usage
 
-`target/debug/ockam -h` or `--help` or `help`
+Add this to your `Cargo.toml`:
 
+```
+[dependencies]
+ockam_core = "0.76.0"
+```
 
-Node command mock up:
+## License
 
-`target/debug/ockam node create`
+This code is licensed under the terms of the [Apache License 2.0][license-link].
 
-## Status
+[crate-image]: https://img.shields.io/crates/v/ockam_command.svg
+[crate-link]: https://crates.io/crates/ockam_command
 
----
+[docs-image]: https://docs.rs/ockam_command/badge.svg
+[docs-link]: https://docs.rs/ockam_command
 
-### Configuration
+[license-image]: https://img.shields.io/badge/License-Apache%202.0-green.svg
+[license-link]: https://github.com/build-trust/ockam/blob/HEAD/LICENSE
 
-- Command line args
-- Optional `ockam.toml` (override name with `-c`)
-- Optional `ockam_secrets.toml` for distinct secret management (override name with `-s`)
-- Environment variables
-  - Support for `.env` file
-  - Automatically pulls in all vars with `OCKAM_` prefix
-
----
-
-### Subcommands
-
-- Support for subcommands (which can have subcommands, etc)
-- Easily modifiable `cli.yml` driven command and arg configuration
-- Modular, loosely coupled command pattern
-
----
-
-### Help
-
-- Very verbose usage help text for commands and subcommands
-- Auto generated from `cli.yml`
-
----
-
-### Process control
-
-- Ctrl+C handling
-- Human readable panics
-
----
-
-## UI
-
-- Rich colorized text support
-- Progress bars / spinners
-- Tables
-
----
-
-### Logging
-
-- Rich, colorized logging
-- Debug and trace support via environment variables
+[discuss-image]: https://img.shields.io/badge/Discuss-Github%20Discussions-ff70b4.svg
+[discuss-link]: https://github.com/build-trust/ockam/discussions
