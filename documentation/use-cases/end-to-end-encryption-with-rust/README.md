@@ -107,16 +107,16 @@ apt update && apt install nano
 
 **NOTE**: If you do not want to use a container for learning excercise then you will need to install Rust locally. Only do this step if you chose to not use the learning container.
 
-    ```
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-    ```
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
 
 Next, create a new cargo project to get started:
 
-    ```
-    cargo new --lib hello_ockam && cd hello_ockam && mkdir examples &&
-    echo 'ockam = "*"' >> Cargo.toml && cargo build
-    ```
+```
+cargo new --lib hello_ockam && cd hello_ockam && mkdir examples &&
+echo 'ockam = "*"' >> Cargo.toml && cargo build
+```
 
 If the above instructions don't work on your machine please
 [post a question](https://github.com/build-trust/ockam/discussions/1642),
