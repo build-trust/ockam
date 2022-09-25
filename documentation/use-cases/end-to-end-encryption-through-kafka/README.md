@@ -365,6 +365,10 @@ async fn main(mut ctx: Context) -> Result<()> {
 
 The interaction will be very similar to when we ran the [docker based programs](#run-using-docker).
 
+## Clean-up
+
+You may exit from the learning container by pressing the following keys, `CTRL+C`, `CTRL+D` or type `exit` in the terminal.
+
 ## Conclusion
 
 Congratulations on running an end-to-end encrypted communication through Kafka!
