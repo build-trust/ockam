@@ -132,7 +132,7 @@ Upon completion, you will be placed inside the `/work` folder of the container. 
 apt update && apt install nano
 ```
 
-**NOTE**: If you do not want to use a container for learning excercise then you will need to install Rust locally. Only do this step if you chose to not use the learning container.
+**NOTE**: If you do not want to use a container for learning excercise then you will need to install Rust locally. If you don't have it, please [install](https://www.rust-lang.org/tools/install) the latest version of Rust. Only do this step if you chose to not use the learning container.
 
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -144,6 +144,13 @@ Next, create a new cargo project to get started:
 cargo new --lib ockam_tcp_inlet_outlet && cd ockam_tcp_inlet_outlet && mkdir examples &&
   echo 'ockam = "*"' >> Cargo.toml && cargo build
 ```
+
+You will need a total of four terminal windows and sessions with the learning container. Go ahead and create all four sessions now using the following command.
+
+```
+docker exec --workdir /work/ockam_tcp_inlet_outlet -it ockam-learn bash
+```
+Anytime you are instructed to start a program or HTTP server, ensure you are inside one the four terminal windows you opened up.
 
 If the above instructions don't work on your machine please
 [post a question](https://github.com/build-trust/ockam/discussions/1642),
@@ -225,22 +232,16 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
+You may exit and save the file by pressing the keys `Ctrl + X`
+
 Before running the example program, start a target TCP server listening on port `5000`. As a first
 example use a simple HTTP server, later we'll try other TCP-based protocols.
-
-Open up another terminal session into the learning container.
-
-```
-docker exec -it ockam-learn bash
-```
-
-Next, start a local HTTP server in this session.
 
 ```
 pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null; python3 -m http.server --bind 0.0.0.0 5000; popd
 ```
 
-Jump back to the first terminal window so that you can start the program. The example program takes two arguments. The first argument is the TCP address on which to start an Inlet
+The example program takes two arguments. The first argument is the TCP address on which to start an Inlet
 (port `4001`) and the second argument is the TCP address of our target TCP server (port `5000`).
 
 ```
@@ -248,17 +249,7 @@ cargo run --example 01-inlet-outlet 127.0.0.1:4001 127.0.0.1:5000
 ```
 
 Now run an HTTP client, but instead of pointing it directly to our HTTP server, make a request to
-the Inlet at port `4001`. 
-
-However, first you need to open up another terminal window and open a session into the learning container.
-
-**NOTE**: You will need a total of four terminal windows and sessions with the learning container. You may create all four sessions now if want to using the following command.
-
-```
-docker exec --workdir /work/ockam_tcp_inlet_outlet -it ockam-learn bash
-```
-
-Next, go ahead and target the Inlet with the `curl` command.
+the Inlet at port `4001`. Go ahead and target the Inlet with the `curl` command.
 
 ```
 curl http://127.0.0.1:4001
@@ -400,15 +391,7 @@ cargo run --example 02-inlet 127.0.0.1:4001
 ```
 
 Now run an HTTP client, but instead of pointing it directly to our HTTP server, make a request to
-the Inlet at port `4001`. 
-
-You will need an additional terminal window with a session to the learning container.
-
-```
-docker exec --workdir /work/ockam_tcp_inlet_outlet -it ockam-learn bash
-```
-
-Next, go ahead and target the Inlet with the `curl` command.
+the Inlet at port `4001`. Go ahead and target the Inlet with the `curl` command.
 
 ```
 curl http://127.0.0.1:4001

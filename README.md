@@ -76,7 +76,7 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
 
 1. Install Rust (Optional)
 
-    Only do this step if you chose to not use the learning container.
+    **NOTE**: If you do not want to use a container for learning excercise then you will need to install Rust locally. If you don't have it, please [install](https://www.rust-lang.org/tools/install) the latest version of Rust. Only do this step if you chose to not use the learning container.
 
     ```
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh

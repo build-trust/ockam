@@ -105,7 +105,7 @@ Upon completion, you will be placed inside the `/work` folder of the container. 
 apt update && apt install nano
 ```
 
-**NOTE**: If you do not want to use a container for learning excercise then you will need to install Rust locally. Only do this step if you chose to not use the learning container.
+**NOTE**: If you do not want to use a container for learning excercise then you will need to install Rust locally. If you don't have it, please [install](https://www.rust-lang.org/tools/install) the latest version of Rust. Only do this step if you chose to not use the learning container.
 
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -300,12 +300,12 @@ async fn main(mut ctx: Context) -> Result<()> {
 3. In a separate terminal window, open up a new session to the learning container
 
     ```
-    docker exec -it ockam-learn bash
+    docker exec --workdir /work/hello_ockam -it ockam-learn bash
     ```
-4. Next, navigate to the `hello_ockam/` folder and run the Alice program:
+4. Next, run the Alice program:
 
     ```
-    cd hello_ockam/ && cargo run --example alice
+    cargo run --example alice
     ```
 
 4. The Alice program will stop to ask for Bob's forwarding address that was printed in step 2. Proide the Alice program with that address.
