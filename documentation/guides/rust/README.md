@@ -24,7 +24,7 @@ Let's build mutually-authenticated, end-to-end protected communication between d
 
 ### Setup
 
-To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. 
+To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. To learn how to get started with Docker, please visit the [Get Started With Docker](https://docs.docker.com/get-docker/) documentation. 
 
 This command may take a few minutes the first time you invoke it:
 

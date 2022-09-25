@@ -58,7 +58,7 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
 
 1. Deploy Container
 
-    To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. Alternatively, you can skip to step 2 if you want to proceed with a non-containerized install.
+    To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. To learn how to get started with Docker, please visit the [Get Started With Docker](https://docs.docker.com/get-docker/) documentation. Alternatively, you can skip to step 2 if you want to proceed with a non-containerized install.
 
 
     This command may take a few minutes the first time you invoke it:
