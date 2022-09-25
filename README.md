@@ -56,13 +56,31 @@ For the purpose of our first example, we'll create a local channel within one pr
 [later examples](./documentation/guides/rust#readme), you'll see that it's just as easy to create
 end-to-end protected channels over multi-hop, multi-protocol transport routes:
 
-1. Install Rust
+1. Deploy Container
+
+    To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. Alternatively, you can skip to step 2 if you want to proceed with a non-containerized install.
+
+
+    This command may take a few minutes the first time you invoke it:
+
+    ```
+    docker run --rm -it -e HOST_USER_ID=$(id -u) --name ockam-learn --volume $(pwd):/work ghcr.io/build-trust/ockam-builder:latest bash
+    ```
+    Upon completion, you will be placed inside the `/work` folder of the container. Next, add a text editior for editing files. 
+
+    ```
+    apt update && apt install nano
+    ```
+
+    Go ahead and proceed to step 3.
+
+1. Install Rust (Optional)
 
     ```
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
     ```
 
-2. Setup a new cargo project to get started.
+1. Setup a new cargo project to get started.
 
     ```
     cargo new --lib hello_ockam && cd hello_ockam && mkdir examples &&
@@ -73,7 +91,13 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
     [post a question](https://github.com/build-trust/ockam/discussions/1642),
     we would love to help.
 
-3. Create a file at `examples/hello.rs` and copy the below code snippet to it.
+1. Create a file at `examples/hello.rs`.
+
+    ```
+    nano examples/hello.rs
+    ```
+
+1. Copy the below code snippet into the `hello.rs`.
 
 ```rust
 // examples/hello.rs
@@ -129,6 +153,8 @@ async fn main(mut ctx: Context) -> Result<()> {
 }
 
 ```
+
+You may exit and save the file by pressing the keys `Ctrl + X`
 
 4. Run the example
 
