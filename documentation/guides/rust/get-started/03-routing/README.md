@@ -31,7 +31,7 @@ Just before forwarding the message, `Hop`'s handle message function will:
 Create a new file at:
 
 ```
-touch src/hop.rs
+nano src/hop.rs
 ```
 
 Add the following code to this file:
@@ -71,7 +71,13 @@ impl Worker for Hop {
 ```
 
 To make this `Hop` type accessible to our main program, export it
-from `src/lib.rs` by adding the following to it:
+from `src/lib.rs`.
+
+```
+nano src/lib.rs
+```
+
+Add the following code snippet to it:
 
 ```rust
 mod hop;
@@ -95,7 +101,7 @@ route by passing `route!["h1", "echoer"]` to `send(..)`.
 Create a new file at:
 
 ```
-touch examples/03-routing.rs
+nano examples/03-routing.rs
 ```
 
 Add the following code to this file:
@@ -151,7 +157,7 @@ the `"echoer"` and route our message through them.
 Create a new file at:
 
 ```
-touch examples/03-routing-many-hops.rs
+nano examples/03-routing-many-hops.rs
 ```
 
 Add the following code to this file:
@@ -196,6 +202,9 @@ cargo run --example 03-routing-many-hops
 Note the message flow.
 
 <img src="./sequence-many-hops.png" width="100%">
+
+
+Go ahead and stop the program by pressing the keys `Ctrl + C`
 
 <div style="display: none; visibility: hidden;">
 <hr><b>Next:</b> <a href="../04-transport#readme">04. Transport</a>

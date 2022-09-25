@@ -76,7 +76,7 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
 
 1. Install Rust (Optional)
 
-    **NOTE**: If you do not want to use a container for learning excercise then you will need to install Rust locally. If you don't have it, please [install](https://www.rust-lang.org/tools/install) the latest version of Rust. Only do this step if you chose to not use the learning container.
+    **NOTE**: If you do not want to use a container for the learning excercise then you will need to install Rust locally. If you don't have it, please [install](https://www.rust-lang.org/tools/install) the latest version of Rust. Only do this step if you chose to not use the learning container.
 
     ```
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -170,6 +170,8 @@ A lot happened when you ran this small example. It created a secure vault, spawn
 entities, established a mutually authenticated channel and then routed a message through that channel.
 This involved running cryptographic protocols for generating keys, authenticating as an entity, performing
 an authenticated key exchange and exchanging messages with authenticated encryption.
+
+You may exit from the learning containers by pressing the following keys, `CTRL+C`, `CTRL+D` or type `exit` in the terminal.
 
 To learn more about how we make these powerful cryptographic protocols simple to use, please have a look
 at our [step-by-step guide](./documentation/guides/rust#readme) where we introduce the building blocks in Ockam.

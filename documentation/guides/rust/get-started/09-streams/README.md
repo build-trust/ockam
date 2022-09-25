@@ -113,7 +113,7 @@ Since both nodes know the stream names in advance, we don't need any additional 
 Create a new file at:
 
 ```
-touch examples/09-streams-responder.rs
+nano examples/09-streams-responder.rs
 ```
 
 Add the following code to this file:
@@ -159,7 +159,7 @@ This code creates a stream client on the Hub node at `127.0.0.1:4000` and starts
 Create a new file at:
 
 ```
-touch examples/09-streams-initiator.rs
+nano examples/09-streams-initiator.rs
 ```
 
 Add the following code to this file:

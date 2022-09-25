@@ -36,7 +36,7 @@ directory so we can easily reuse the `Echoer` in other examples that we'll
 write later in this guide:
 
 ```
-touch src/echoer.rs
+nano src/echoer.rs
 ```
 
 Add the following code to this file:
@@ -73,7 +73,13 @@ with the address of the `Echoer`. We then take the body of the incoming
 message and echo it back on its return route (more about routes soon).
 
 To make this Echoer type accessible to our main program, export it
-from `src/lib.rs` file by adding the following to it:
+from `src/lib.rs` file. 
+
+```
+nano src/lib.rs
+```
+
+Add the following snipped to the `src/lib.rs` file:
 
 ```rust
 // src/mod
@@ -95,7 +101,7 @@ reply back from the `"echoer"`.
 Create a new file at:
 
 ```
-touch examples/02-worker.rs
+nano examples/02-worker.rs
 ```
 
 Add the following code to this file:

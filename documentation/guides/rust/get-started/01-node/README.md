@@ -26,7 +26,7 @@ For your new node, create a new file at `examples/01-node.rs` in
 your [hello_ockam](../../#setup) project:
 
 ```
-touch examples/01-node.rs
+nano examples/01-node.rs
 ```
 
 Add the following code to this file:
@@ -44,6 +44,8 @@ async fn main(mut ctx: Context) -> Result<()> {
 }
 
 ```
+
+You may exit and save the file by pressing the keys `Ctrl + X`.
 
 Here we add the `#[ockam::node]` attribute to an `async` main function that
 receives the node execution context as a parameter and returns `ockam::Result`

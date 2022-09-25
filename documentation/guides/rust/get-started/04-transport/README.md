@@ -18,7 +18,7 @@ a [responder](#responder-node) and an [initiator](#initiator-node).
 Create a new file at:
 
 ```
-touch examples/04-routing-over-transport-responder.rs
+nano examples/04-routing-over-transport-responder.rs
 ```
 
 Add the following code to this file:
@@ -55,7 +55,7 @@ async fn main(ctx: Context) -> Result<()> {
 Create a new file at:
 
 ```
-touch examples/04-routing-over-transport-initiator.rs
+nano examples/04-routing-over-transport-initiator.rs
 ```
 
 Add the following code to this file:
@@ -95,7 +95,7 @@ Run the responder:
 cargo run --example 04-routing-over-transport-responder
 ```
 
-Run the initiator:
+In a seperate window, run the initiator:
 
 ```
 cargo run --example 04-routing-over-transport-initiator
@@ -106,6 +106,8 @@ Note the message flow.
 <img src="./sequence.png" width="100%">
 
 
+Go ahead and stop each of the programs by pressing the keys `Ctrl + C`
+
 ## Routing over two transport hops
 
 ### Responder node
@@ -113,7 +115,7 @@ Note the message flow.
 Create a new file at:
 
 ```
-touch examples/04-routing-over-transport-two-hops-responder.rs
+nano examples/04-routing-over-transport-two-hops-responder.rs
 ```
 
 Add the following code to this file:
@@ -150,7 +152,7 @@ async fn main(ctx: Context) -> Result<()> {
 Create a new file at:
 
 ```
-touch examples/04-routing-over-transport-two-hops-middle.rs
+nano examples/04-routing-over-transport-two-hops-middle.rs
 ```
 
 Add the following code to this file:
@@ -184,7 +186,7 @@ async fn main(ctx: Context) -> Result<()> {
 Create a new file at:
 
 ```
-touch examples/04-routing-over-transport-two-hops-initiator.rs
+nano examples/04-routing-over-transport-two-hops-initiator.rs
 ```
 
 Add the following code to this file:
@@ -222,6 +224,8 @@ async fn main(mut ctx: Context) -> Result<()> {
 ```
 
 ## Run
+
+Each of the following commands must be run in one of the three terminal window sessions you opened up earlier.
 
 Run the responder:
 

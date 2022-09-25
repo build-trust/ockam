@@ -27,7 +27,7 @@ maintaining a secure channel behind two simple functions:
 Create a new file at:
 
 ```
-touch examples/05-secure-channel-over-two-transport-hops-responder.rs
+nano examples/05-secure-channel-over-two-transport-hops-responder.rs
 ```
 
 Add the following code to this file:
@@ -77,7 +77,7 @@ async fn main(ctx: Context) -> Result<()> {
 Create a new file at:
 
 ```
-touch examples/05-secure-channel-over-two-transport-hops-middle.rs
+nano examples/05-secure-channel-over-two-transport-hops-middle.rs
 ```
 
 Add the following code to this file:
@@ -110,7 +110,7 @@ async fn main(ctx: Context) -> Result<()> {
 Create a new file at:
 
 ```
-touch examples/05-secure-channel-over-two-transport-hops-initiator.rs
+nano examples/05-secure-channel-over-two-transport-hops-initiator.rs
 ```
 
 Add the following code to this file:
@@ -156,6 +156,8 @@ async fn main(mut ctx: Context) -> Result<()> {
 ```
 
 ## Run
+
+Each of the following commands must be run in one of the three terminal window sessions you opened up earlier.
 
 Run the responder:
 

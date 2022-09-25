@@ -35,7 +35,7 @@ Encryption is managed by the nodes and ensures that Ockam Hub is unable to inspe
 Create a new file at:
 
 ```
-touch examples/10-secure-channel-via-streams-responder.rs
+nano examples/10-secure-channel-via-streams-responder.rs
 ```
 
 Add the following code to this file:
@@ -85,7 +85,7 @@ async fn main(ctx: Context) -> Result<()> {
 Create a new file at:
 
 ```
-touch examples/10-secure-channel-via-streams-initiator.rs
+nano examples/10-secure-channel-via-streams-initiator.rs
 ```
 
 Add the following code to this file:

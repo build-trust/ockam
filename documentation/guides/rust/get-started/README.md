@@ -28,7 +28,21 @@ Let's build mutually-authenticated, end-to-end protected communication between d
 
 ### Setup
 
-If you don't have it, please [install](https://www.rust-lang.org/tools/install) the latest version of Rust.
+To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. 
+
+This command may take a few minutes the first time you invoke it:
+
+```
+docker run --rm -it -e HOST_USER_ID=$(id -u) --name ockam-learn  ghcr.io/build-trust/ockam-builder:latest bash
+```
+
+Upon completion, you will be placed inside the `/work` folder of the container. Next, add a text editior for editing files. 
+
+```
+apt update && apt install nano
+```
+
+**NOTE**: If you do not want to use a container for the learning excercise then you will need to install Rust locally. If you don't have it, please [install](https://www.rust-lang.org/tools/install) the latest version of Rust. Only do this step if you chose to not use the learning container.
 
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -39,6 +53,12 @@ Next, create a new cargo project to get started:
 ```
 cargo new --lib hello_ockam && cd hello_ockam && mkdir examples &&
   echo 'ockam = "*"' >> Cargo.toml && cargo build
+```
+
+You will need a total of three terminal windows and sessions with the learning container. Go ahead and create all three sessions now using the following command.
+
+```
+docker exec --workdir /work/hello_ockam -it ockam-learn bash
 ```
 
 If the above instructions don't work on your machine, please
