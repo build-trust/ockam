@@ -64,9 +64,9 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
     This command may take a few minutes the first time you invoke it:
 
     ```
-    docker run --rm -it -e HOST_USER_ID=$(id -u) --name ockam-learn --volume $(pwd):/work ghcr.io/build-trust/ockam-builder:latest bash
+    docker run --rm -it -e HOST_USER_ID=$(id -u) --name ockam-learn ghcr.io/build-trust/ockam-builder:latest bash
     ```
-    Upon completion, you will be placed inside the `/work` folder of the container. Next, add a text editior for editing files. 
+    Upon completion, you will be placed inside the `/work` folder of the container. Next, add a text editior for editing files.
 
     ```
     apt update && apt install nano
@@ -75,6 +75,8 @@ end-to-end protected channels over multi-hop, multi-protocol transport routes:
     Go ahead and proceed to step 3.
 
 1. Install Rust (Optional)
+
+    Only do this step if you chose to not use the learning container.
 
     ```
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh

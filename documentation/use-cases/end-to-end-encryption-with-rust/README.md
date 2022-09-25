@@ -91,18 +91,32 @@ _routing and forwarding._
 
 ### Setup
 
-If you don't have it, please [install](https://www.rust-lang.org/tools/install) the latest version of Rust.
+
+To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. 
+
+This command may take a few minutes the first time you invoke it:
 
 ```
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+docker run --rm -it -e HOST_USER_ID=$(id -u) --name ockam-learn  ghcr.io/build-trust/ockam-builder:latest bash
 ```
+Upon completion, you will be placed inside the `/work` folder of the container. Next, add a text editior for editing files. 
+
+```
+apt update && apt install nano
+```
+
+**NOTE**: If you do not want to use a container for learning excercise then you will need to install Rust locally. Only do this step if you chose to not use the learning container.
+
+    ```
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    ```
 
 Next, create a new cargo project to get started:
 
-```
-cargo new --lib hello_ockam && cd hello_ockam && mkdir examples &&
-  echo 'ockam = "*"' >> Cargo.toml && cargo build
-```
+    ```
+    cargo new --lib hello_ockam && cd hello_ockam && mkdir examples &&
+    echo 'ockam = "*"' >> Cargo.toml && cargo build
+    ```
 
 If the above instructions don't work on your machine please
 [post a question](https://github.com/build-trust/ockam/discussions/1642),
@@ -110,7 +124,13 @@ we would love to help.
 
 ### Bob
 
-Create a file at `examples/bob.rs` and copy the below code snippet to it.
+Create a file at `examples/bob.rs`
+
+```
+nano examples/bob.rs
+```
+
+ Next, copy the below code snippet into the file.
 
 ```rust
 // examples/bob.rs
@@ -180,9 +200,17 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
+You may exit and save the file by pressing the keys `Ctrl + X`
+
 ### Alice
 
-Create a file at `examples/alice.rs` and copy the below code snippet to it.
+Create a file at `examples/alice.rs` 
+
+```
+nano examples/alice.rs
+```
+
+Go ahead and copy the below code snippet into `alice.rs`.
 
 ```rust
 // examples/alice.rs
@@ -261,15 +289,26 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     Bob also starts an Echoer worker that prints any message it receives and echoes it back on its return route.
 
-2. The Bob program will print a hex value which is the forwarding address for Bob on the cloud node, copy it.
-
-3. In a separate terminal window, in the same directory path, run the Alice program:
+2. The Bob program will print a hex value which is the forwarding address for Bob on the cloud node, copy it. The following output is an example of what you should expect.
 
     ```
-    cargo run --example alice
+    [✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000
+    Forwarding address for Bob is:
+    FWD_05380f7b876998f7
     ```
 
-4. It will stop to ask for Bob's forwarding address that was printed in step 2. Give it that address.
+3. In a separate terminal window, open up a new session to the learning container
+
+    ```
+    docker exec -it ockam-learn bash
+    ```
+4. Next, navigate to the `hello_ockam/` folder and run the Alice program:
+
+    ```
+    cd hello_ockam/ && cargo run --example alice
+    ```
+
+4. The Alice program will stop to ask for Bob's forwarding address that was printed in step 2. Proide the Alice program with that address.
 
     This will tell Alice that the route to reach Bob is `[(TCP, "1.node.ockam.network:4000"), forwarding_address]`.
 
@@ -288,6 +327,11 @@ async fn main(mut ctx: Context) -> Result<()> {
     Once the secure channel is established, the Alice program will stop and ask you to enter a message for
     Bob. Any message that you enter, is delivered to Bob using the secure channel, via the cloud node. The echoer
     on Bob will echo the messages back on the same path and Alice will print it.
+
+
+## Clean-up
+
+You may exit from the learning container by pressing the following keys, `CTRL+C`, `CTRL+D` or type `exit` in the terminal.
 
 ## Conclusion
 
