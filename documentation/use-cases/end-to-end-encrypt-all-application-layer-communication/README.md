@@ -118,7 +118,21 @@ If you just want to see the final code, jump directly to
 
 ### Setup
 
-If you don't have it, please [install](https://www.rust-lang.org/tools/install) the latest version of Rust.
+To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. 
+
+This command may take a few minutes the first time you invoke it:
+
+```
+docker run --rm -it -e HOST_USER_ID=$(id -u) --name ockam-learn  ghcr.io/build-trust/ockam-builder:latest bash
+```
+
+Upon completion, you will be placed inside the `/work` folder of the container. Next, add a text editior for editing files. 
+
+```
+apt update && apt install nano
+```
+
+**NOTE**: If you do not want to use a container for learning excercise then you will need to install Rust locally. Only do this step if you chose to not use the learning container.
 
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -151,7 +165,13 @@ A **TCP Inlet** starts up as a **TCP server** and waits for incoming TCP connect
 route to a corresponding outlet. When new data arrives from a TCP client, the Inlet wraps this data
 as payload of a new Ockam Routing message and sends it to the Outlet.
 
-Create a file at `examples/01-inlet-outlet.rs` and copy the below code snippet to it.
+Create a file at `examples/01-inlet-outlet.rs` 
+
+```
+nano examples/01-inlet-outlet.rs
+```
+
+Next,  copy the below code snippet into the file.
 
 ```rust
 // examples/01-inlet-outlet.rs
@@ -208,11 +228,19 @@ async fn main(ctx: Context) -> Result<()> {
 Before running the example program, start a target TCP server listening on port `5000`. As a first
 example use a simple HTTP server, later we'll try other TCP-based protocols.
 
+Open up another terminal session into the learning container.
+
+```
+docker exec -it ockam-learn bash
+```
+
+Next, start a local HTTP server in this session.
+
 ```
 pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null; python3 -m http.server --bind 0.0.0.0 5000; popd
 ```
 
-The example program takes two arguments. The first argument is the TCP address on which to start an Inlet
+Jump back to the first terminal window so that you can start the program. The example program takes two arguments. The first argument is the TCP address on which to start an Inlet
 (port `4001`) and the second argument is the TCP address of our target TCP server (port `5000`).
 
 ```
@@ -220,7 +248,17 @@ cargo run --example 01-inlet-outlet 127.0.0.1:4001 127.0.0.1:5000
 ```
 
 Now run an HTTP client, but instead of pointing it directly to our HTTP server, make a request to
-the Inlet at port `4001`.
+the Inlet at port `4001`. 
+
+However, first you need to open up another terminal window and open a session into the learning container.
+
+**NOTE**: You will need a total of four terminal windows and sessions with the learning container. You may create all four sessions now if want to using the following command.
+
+```
+docker exec --workdir /work/ockam_tcp_inlet_outlet -it ockam-learn bash
+```
+
+Next, go ahead and target the Inlet with the `curl` command.
 
 ```
 curl http://127.0.0.1:4001
@@ -228,6 +266,8 @@ curl http://127.0.0.1:4001
 
 When we run this, we see the data flow as shown in the [diagram above](#01-setup-an-inlet-and-an-outlet) -
 HTTP requests and responses are wrapped in Ockam Routing messages and tunneled through our simple Rust program.
+
+Stop the HTTP server and the programs before moving to the next step. Don't exit the windows as you will continue to need various session into the learning container. You can stop all programs with the keys `Ctrl + C`.  
 
 ### 02: Route over a Transport
 
@@ -241,7 +281,12 @@ using Ockam Routing and Transports.
 The next two code snippets show how we can create such inlet and outlet nodes and tunnel
 HTTP, over TCP, through them.
 
-Create a file at `examples/02-outlet.rs` and copy the below code snippet to it.
+Create a file at `examples/02-outlet.rs`. 
+
+```
+nano examples/02-outlet.rs
+```
+Next, copy the below code snippet to the file.
 
 ```rust
 // examples/02-outlet.rs
@@ -285,7 +330,14 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Create a file at `examples/02-inlet.rs` and copy the below code snippet to it.
+Create a file at `examples/02-inlet.rs`.
+
+```
+nano examples/02-inlet.rs
+```
+
+
+Go ahead and copy the below code to the file.
 
 ```rust
 // examples/02-inlet.rs
@@ -329,7 +381,7 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Before we can run our example, let's start a target HTTP server listening on port `5000`.
+Before we can run our example, let's start a target HTTP server listening on port `5000`. Pick any of the currently active sessions with the learning container.
 
 ```
 pushd $(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir') &>/dev/null; python3 -m http.server --bind 0.0.0.0 5000; popd
@@ -348,7 +400,15 @@ cargo run --example 02-inlet 127.0.0.1:4001
 ```
 
 Now run an HTTP client, but instead of pointing it directly to our HTTP server, make a request to
-the Inlet at port `4001`.
+the Inlet at port `4001`. 
+
+You will need an additional terminal window with a session to the learning container.
+
+```
+docker exec --workdir /work/ockam_tcp_inlet_outlet -it ockam-learn bash
+```
+
+Next, go ahead and target the Inlet with the `curl` command.
 
 ```
 curl http://127.0.0.1:4001
@@ -357,6 +417,8 @@ curl http://127.0.0.1:4001
 When we run this, we see the data flow as shown in the [diagram above](#02-route-over-a-transport) -
 HTTP requests and responses are wrapped in Ockam Routing messages, carried over TCP, unwrapped and
 then delivered to the target HTTP server.
+
+Stop the HTTP server and the programs before moving to the next step.
 
 ### 03: Tunnel through a Secure Channel
 
@@ -373,7 +435,13 @@ The inlet program will then initiate a secure channel handshake over the route:
 route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"]
 ```
 
-Create a file at `examples/03-outlet.rs` and copy the below code snippet to it.
+Create a file at `examples/03-outlet.rs`. 
+
+```
+nano examples/03-outlet.rs
+```
+
+Go ahead and copy the below code snippet into the file.
 
 ```rust
 // examples/03-outlet.rs
@@ -431,7 +499,13 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Create a file at `examples/03-inlet.rs` and copy the below code snippet to it.
+Create a file at `examples/03-inlet.rs` 
+
+```
+nano examples/03-inlet.rs
+```
+
+Next, copy the below code snippet to it.
 
 ```rust
 // examples/03-inlet.rs
@@ -527,6 +601,9 @@ When we run this, we see the data flow as shown in the [diagram above](#03-tunne
 * When it reaches the Outlet, the Outlet unwraps the HTTP request payload and sends it over TCP to our
   target HTTP server.
 
+
+Stop the HTTP server and the programs before moving to the next step.
+
 ### 04: End-to-End Encryption over two TCP connection hops
 
 <p><img alt="End-to-End Encryption over two TCP connection hops" src="./diagrams/04.png"></p>
@@ -550,7 +627,13 @@ created one that lives at `1.node.ockam.network:4000`.
 
 We only need to add a few new lines to our code from [example 03](#03-tunnel-through-a-secure-channel).
 
-Create a file at `examples/04-outlet.rs` and copy the below code snippet to it.
+Create a file at `examples/04-outlet.rs`.
+
+```
+nano examples/04-outlet.rs
+```
+
+Copy the below code into the file.
 
 ```rust
 // examples/04-outlet.rs
@@ -611,7 +694,13 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Create a file at `examples/04-inlet.rs` and copy the below code snippet to it.
+Create a file at `examples/04-inlet.rs` 
+
+```
+nano examples/04-inlet.rs
+```
+
+Next, copy the below code snippet to it.
 
 ```rust
 // examples/04-inlet.rs
@@ -707,6 +796,10 @@ Our target HTTP server can receive requests from the HTTP client over an end-to-
 passes through a node in the cloud. The cloud node only sees encrypted data and any tampering is immediately
 detected. The outlet and the inlet sidecar programs an both run in private networks without opening any
 listening ports that expose them to attacks from the Internet.
+
+## Clean-up
+
+You may exit from the learning containers by pressing the following keys, `CTRL+C`, `CTRL+D` or type `exit` in the terminal.
 
 ## Composable building blocks for securing any communication topology
 
