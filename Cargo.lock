@@ -2480,6 +2480,7 @@ dependencies = [
  "bincode",
  "minicbor",
  "multiaddr",
+ "ockam_core",
  "ockam_multiaddr",
  "once_cell",
  "quickcheck",

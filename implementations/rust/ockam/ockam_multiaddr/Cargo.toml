@@ -10,7 +10,7 @@ description = "An implementation of multiformats.io/multiaddr"
 publish = true
 
 [features]
-std  = ["unsigned-varint/std", "serde?/std"]
+std  = ["ockam_core/std", "unsigned-varint/std", "serde?/std"]
 cbor = ["minicbor"]
 
 [dependencies]
@@ -19,6 +19,12 @@ once_cell       = { version = "1.10.0", default-features = false, features = ["a
 serde           = { version = "1.0.144", default-features = false, optional = true }
 tinyvec         = { version = "1.5.1", features = ["alloc"] }
 unsigned-varint = "0.7.1"
+
+[dependencies.ockam_core]
+version          = "0.70.0"
+path             = "../ockam_core"
+default-features = false
+features         = ["no_std", "alloc"]
 
 [dev-dependencies]
 bincode         = "1.1.3"
