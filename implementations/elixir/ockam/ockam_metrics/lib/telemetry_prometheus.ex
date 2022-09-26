@@ -30,7 +30,7 @@ defmodule Ockam.Metrics.Prometheus do
         :start_link,
         [
           [
-            metrics: add_shared_tags(metrics, shared_tags),
+            metrics: prepare_tags(metrics, shared_tags),
             port: String.to_integer(Application.fetch_env!(:ockam_metrics, :prometheus_port))
           ]
         ]
@@ -49,7 +49,7 @@ defmodule Ockam.Metrics.Prometheus do
     Map.merge(base_tags, extra_tags)
   end
 
-  defp get_configured_metrics() do
+  def get_configured_metrics() do
     static_metrics = Application.get_env(:ockam_metrics, :metrics, [])
 
     dynamic_metrics =
@@ -77,6 +77,12 @@ defmodule Ockam.Metrics.Prometheus do
   # with its keys to the metric, besides any other tags already defined for it.
   # TODO: ideally there should be an easier way to tell the prometheus exporter
   #       to add some static, node-level tags to all metrics exported.
+  defp prepare_tags(metrics, shared_tags) do
+    metrics
+    |> add_shared_tags(shared_tags)
+    |> format_tag_values()
+  end
+
   defp add_shared_tags(metrics, shared_tags) do
     shared_tag_names = Map.keys(shared_tags)
 
@@ -87,6 +93,26 @@ defmodule Ockam.Metrics.Prometheus do
         fn md -> Map.merge(tag_values_fun.(md), shared_tags) end
       end)
     end)
+  end
+
+  defp format_tag_values(metrics) do
+    Enum.map(metrics, fn metric ->
+      Map.update!(metric, :tag_values, fn tag_values_fun ->
+        fn md ->
+          md
+          |> tag_values_fun.()
+          |> tags_to_string()
+        end
+      end)
+    end)
+  end
+
+  defp tags_to_string(metadata) do
+    Enum.map(metadata, fn
+      {key, val} when is_atom(val) -> {key, to_string(val)}
+      other -> other
+    end)
+    |> Map.new()
   end
 
   # Returns the list of Telemetry.Metrics to expose on prometheus format.
@@ -126,6 +152,7 @@ defmodule Ockam.Metrics.Prometheus do
         event_name: [:vm, :system_counts],
         measurement: :port_count
       ),
+      last_value("ockam.workers.secure_channels.count", tags: [:type, :stage]),
       counter("ockam.node.message.sent",
         event_name: [:ockam, Ockam.Node, :message, :sent],
         measurement: :count,
@@ -141,12 +168,50 @@ defmodule Ockam.Metrics.Prometheus do
         measurement: :system_time,
         tags: [:address, :module]
       ),
+      counter("ockam.worker.handle_message.errors",
+        event_name: [:ockam, Ockam.Worker, :handle_message, :stop],
+        keep: fn meta ->
+          match?(%{result: :error}, meta) or match?(%{result: :stop}, meta)
+        end,
+        measurement: :duration,
+        tags: [:address, :module, :reason],
+        tag_values: fn meta ->
+          case Map.fetch(meta, :return_value) do
+            {:ok, {:error, reason}} ->
+              Map.put(meta, :reason, extract_reason(reason))
+
+            {:ok, {:stop, reason, _state}} ->
+              Map.put(meta, :reason, extract_reason(reason))
+
+            _other ->
+              meta
+          end
+        end
+      ),
       distribution("ockam.worker.handle_message.duration",
         event_name: [:ockam, Ockam.Worker, :handle_message, :stop],
         measurement: :duration,
         tags: [:address, :module, :result],
         unit: {:native, :millisecond},
         reporter_options: [buckets: [0.01, 0.1, 0.5, 1]]
+      ),
+      counter("ockam.worker.handle_message.unauthorized",
+        event_name: [:ockam, Ockam.Worker, :handle_message, :stop],
+        measurement: :duration,
+        keep: fn meta ->
+          match?(%{result: :unauthorized}, meta)
+        end,
+        tags: [:address, :module, :reason],
+        tag_values: fn meta ->
+          case Map.fetch(meta, :return_value) do
+            {:ok, {:error, {:unauthorized, reason}}} ->
+              Map.put(meta, :reason, extract_reason(reason))
+
+            _other ->
+              meta
+          end
+        end,
+        unit: {:native, :millisecond}
       ),
       counter("ockan.worker.init",
         event_name: [:ockam, Ockam.Worker, :init, :start],
@@ -162,5 +227,24 @@ defmodule Ockam.Metrics.Prometheus do
       )
       | vm_memory_metrics
     ]
+  end
+
+  defp extract_reason(reason) do
+    case reason do
+      atom when is_atom(atom) ->
+        atom
+
+      {atom, _explanation} when is_atom(atom) ->
+        atom
+
+      string when is_binary(string) ->
+        string
+
+      {atom, _explanation, _additional} when is_atom(atom) ->
+        atom
+
+      _other ->
+        :unknown
+    end
   end
 end

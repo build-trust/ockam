@@ -24,6 +24,7 @@ defmodule Ockam.Services.MixProject do
       # test
       test_coverage: [output: "_build/cover"],
       preferred_cli_env: ["test.cover": :test],
+      elixirc_paths: elixirc_paths(Mix.env()),
 
       # hex
       description: "Ockam Services",
@@ -50,7 +51,8 @@ defmodule Ockam.Services.MixProject do
       {:ex_doc, "~> 0.25", only: :dev, runtime: false},
       {:ockam_vault_software, path: "../ockam_vault_software"},
       {:ockam, path: "../ockam"},
-      {:ranch, "~> 2.1"},
+      {:ockam_metrics, path: "../ockam_metrics"},
+      {:ranch, "~> 2.1.0", override: true},
       ## Token lease manager
       {:httpoison, "~> 1.8"},
       {:poison, "~> 4.0.1"},
@@ -65,6 +67,9 @@ defmodule Ockam.Services.MixProject do
       licenses: ["Apache-2.0"]
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/helpers"]
+  defp elixirc_paths(_), do: ["lib"]
 
   # used by ex_doc
   defp docs do

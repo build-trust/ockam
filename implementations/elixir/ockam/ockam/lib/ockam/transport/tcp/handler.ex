@@ -92,9 +92,20 @@ defmodule Ockam.Transport.TCP.Handler do
         %Ockam.Message{} = message,
         state
       ) do
-    case is_authorized(message, state) do
-      :ok ->
-        handle_message(message, state)
+    reply =
+      Ockam.Worker.with_handle_message_metric(__MODULE__, message, state, fn ->
+        case is_authorized(message, state) do
+          :ok ->
+            handle_message(message, state)
+
+          {:error, reason} ->
+            {:error, {:unauthorized, reason}}
+        end
+      end)
+
+    case reply do
+      {:ok, state} ->
+        {:noreply, state}
 
       {:error, reason} ->
         Logger.warn("Unauthorized message #{inspect(reason)}")
@@ -134,7 +145,7 @@ defmodule Ockam.Transport.TCP.Handler do
         raise a
     end
 
-    {:noreply, state}
+    {:ok, state}
   end
 
   defp send_to_router(message) do

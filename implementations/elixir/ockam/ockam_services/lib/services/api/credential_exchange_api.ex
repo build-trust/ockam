@@ -15,6 +15,7 @@ defmodule Ockam.Services.API.CredentialExchange do
   alias Ockam.Credential.AttributeStorageETS, as: AttributeStorage
 
   alias Ockam.Identity
+  alias Ockam.Telemetry
 
   @default_verifier Ockam.Credential.Verifier.Sidecar
 
@@ -40,8 +41,11 @@ defmodule Ockam.Services.API.CredentialExchange do
         authorities = Map.fetch!(state, :authorities)
         verifier_module = Map.fetch!(state, :verifier_module)
 
+        emit_credential_presented(subject_id, state)
+
         with {:ok, attribute_set} <- verifier_module.verify(credential, subject_id, authorities),
              :ok <- AttributeStorage.put_attribute_set(subject_id, attribute_set) do
+          emit_attributes_verified(subject_id, attribute_set, state)
           {:reply, :ok, nil, state}
         end
 
@@ -62,6 +66,25 @@ defmodule Ockam.Services.API.CredentialExchange do
   def handle_call({:set_authorities, identities_data}, _from, state) do
     new_authorities = prepare_authorities(identities_data)
     {:reply, :ok, Map.put(state, :authorities, new_authorities)}
+  end
+
+  defp emit_credential_presented(subject_id, _state) do
+    ## TODO: record which authority is used?
+    Telemetry.emit_event([:credentials, :presented],
+      measurements: %{count: 1},
+      metadata: %{identity_id: subject_id}
+    )
+  end
+
+  defp emit_attributes_verified(subject_id, attribute_set, _state) do
+    Telemetry.emit_event([:credentials, :verified],
+      measurements: %{count: 1},
+      ## TODO: remove 2 layers of attributes in Elixir data structures
+      metadata: %{
+        identity_id: subject_id,
+        attributes: Enum.count(attribute_set.attributes.attributes)
+      }
+    )
   end
 
   defp prepare_authorities(authorities_config) when is_map(authorities_config) do
