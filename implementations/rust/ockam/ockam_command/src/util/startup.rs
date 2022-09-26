@@ -51,6 +51,7 @@ pub fn spawn_node(
     cfg: &OckamConfig,
     verbose: u8,
     skip_defaults: bool,
+    no_shared_identity: bool,
     enable_credential_checks: bool,
     name: &str,
     address: &str,
@@ -94,6 +95,10 @@ pub fn spawn_node(
 
     if skip_defaults {
         args.push("--skip-defaults".to_string());
+    }
+
+    if no_shared_identity {
+        args.push("--no-shared-identity".to_string());
     }
 
     if enable_credential_checks {
@@ -148,6 +153,7 @@ fn run_snippet(
                 cfg,       // Ockam configuration
                 verbose,   // Previously user-chosen verbosity level
                 true,      // skip-defaults because the node already exists
+                false,     // Default value. TODO: implement persistence of this option
                 false,     // Default value. TODO: implement persistence of this option
                 node_name, // The selected node name
                 api_addr,  // The selected node api address
