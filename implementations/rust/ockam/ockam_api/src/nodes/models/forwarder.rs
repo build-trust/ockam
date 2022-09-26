@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use minicbor::{Decode, Encode};
 
 use ockam::remote::RemoteForwarderInfo;
@@ -10,8 +8,6 @@ use ockam_multiaddr::MultiAddr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 
-use super::secure_channel::CredentialExchangeMode;
-
 /// Request body when instructing a node to create a forwarder
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
@@ -20,26 +16,33 @@ pub struct CreateForwarder<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3386455>,
     /// Address to create forwarder at.
-    #[b(1)] pub(crate) address: MultiAddr,
+    #[n(1)] pub(crate) address: MultiAddr,
     /// Forwarder alias.
     #[b(2)] pub(crate) alias: Option<CowStr<'a>>,
     /// Forwarding service is at rust node.
     #[n(3)] pub(crate) at_rust_node: bool,
-    /// Authorised identities per project.
-    ///
-    /// The current handling of this request will only create a secure channel
-    /// for addresses which have a corresponding authorised identity configured.
-    #[n(4)] pub(crate) identities: HashMap<MultiAddr, IdentityIdentifier>,
-    #[n(5)] pub(crate) mode: CredentialExchangeMode
+    #[n(4)] pub(crate) cloud_addr: Option<MultiAddr>,
+    #[n(5)] pub(crate) authorized: Option<IdentityIdentifier>
 }
 
 impl<'a> CreateForwarder<'a> {
-    pub fn new(
+    pub fn at_project(address: MultiAddr, alias: Option<String>, cloud: MultiAddr) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: Default::default(),
+            address,
+            alias: alias.map(|s| s.into()),
+            at_rust_node: false,
+            cloud_addr: Some(cloud),
+            authorized: None,
+        }
+    }
+
+    pub fn at_node(
         address: MultiAddr,
         alias: Option<String>,
         at_rust_node: bool,
-        identities: HashMap<MultiAddr, IdentityIdentifier>,
-        mode: CredentialExchangeMode,
+        auth: Option<IdentityIdentifier>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -47,8 +50,8 @@ impl<'a> CreateForwarder<'a> {
             address,
             alias: alias.map(|s| s.into()),
             at_rust_node,
-            identities,
-            mode,
+            cloud_addr: None,
+            authorized: auth,
         }
     }
 }
@@ -96,7 +99,6 @@ mod tests {
     use ockam_core::api::{Request, Response, Status};
     use ockam_core::{compat::rand, compat::rand::Rng};
     use ockam_core::{route, Address, Result, Routed, Worker};
-    use std::collections::HashMap;
 
     use crate::nodes::NodeManager;
     use crate::*;
@@ -124,12 +126,11 @@ mod tests {
             let route = route![(TCP, &cloud_address)];
             let mut buf = vec![];
             Request::post("/node/forwarder")
-                .body(CreateForwarder::new(
+                .body(CreateForwarder::at_node(
                     route_to_multiaddr(&route).unwrap(),
                     None,
                     false,
-                    HashMap::new(),
-                    CredentialExchangeMode::None,
+                    None,
                 ))
                 .encode(&mut buf)?;
             buf

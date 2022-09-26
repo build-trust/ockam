@@ -1,10 +1,11 @@
 mod sessions;
 
-use crate::DefaultAddress;
+use crate::{multiaddr_to_route, DefaultAddress};
 use minicbor::{Decode, Encode};
-use ockam::{LocalMessage, TransportMessage, Worker};
+use ockam::{LocalMessage, Route, TransportMessage, Worker};
 use ockam_core::compat::sync::{Arc, Mutex};
-use ockam_core::{route, Address, Decodable, Encodable, Error, Routed, LOCAL};
+use ockam_core::{Address, Decodable, Encodable, Error, Routed, LOCAL};
+use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
 use ockam_node::tokio::sync::mpsc;
 use ockam_node::tokio::task::JoinSet;
@@ -23,7 +24,7 @@ pub struct Medic {
     delay: Duration,
     sessions: Arc<Mutex<Sessions>>,
     pings: JoinSet<(Key, Result<(), Error>)>,
-    replacements: JoinSet<(Key, Result<Address, Error>)>,
+    replacements: JoinSet<(Key, Result<MultiAddr, Error>)>,
 }
 
 #[derive(Debug, Copy, Clone, Encode, Decode)]
@@ -72,7 +73,19 @@ impl Medic {
                         log::trace!(%key, ping = %m.ping, "send ping");
                         let l = {
                             let v = Encodable::encode(&m).expect("message can be encoded");
-                            let r = route![session.address().clone(), DefaultAddress::ECHO_SERVICE];
+                            let r: Route = if let Some(r) = multiaddr_to_route(session.address()) {
+                                r.clone()
+                                    .modify()
+                                    .append(DefaultAddress::ECHO_SERVICE)
+                                    .into()
+                            } else {
+                                log::error! {
+                                    %key,
+                                    addr = %session.address(),
+                                    "failed to convert address to route"
+                                }
+                                continue;
+                            };
                             let t = TransportMessage::v1(r, Collector::address(), v);
                             LocalMessage::new(t, Vec::new())
                         };
@@ -126,7 +139,7 @@ impl Medic {
                         if let Some(s) = sessions.session_mut(&k) {
                             log::info!(key = %k, addr = %a, "replacement is up");
                             s.set_status(Status::Up);
-                            s.set_address(a.clone());
+                            s.set_address(a);
                             s.clear_pings();
                         }
                     }

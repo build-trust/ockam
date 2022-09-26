@@ -1,3 +1,4 @@
+use core::any::Any;
 use core::fmt;
 use core::future::Future;
 use core::pin::Pin;
@@ -5,10 +6,11 @@ use minicbor::bytes::ByteArray;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::rand;
-use ockam_core::{Address, Error};
+use ockam_core::Error;
+use ockam_multiaddr::MultiAddr;
 use tracing as log;
 
-pub type Replacement = Pin<Box<dyn Future<Output = Result<Address, Error>> + Send>>;
+pub type Replacement = Pin<Box<dyn Future<Output = Result<MultiAddr, Error>> + Send>>;
 
 #[derive(Debug)]
 pub struct Sessions {
@@ -17,9 +19,10 @@ pub struct Sessions {
 
 pub struct Session {
     key: Key,
-    address: Address,
+    addr: MultiAddr,
+    meta: HashMap<&'static str, Box<dyn Any + Send>>,
     status: Status,
-    replace: Box<dyn Fn(Address) -> Replacement + Send>,
+    replace: Box<dyn Fn(MultiAddr) -> Replacement + Send>,
     pings: Vec<Ping>,
 }
 
@@ -33,7 +36,7 @@ impl fmt::Debug for Session {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Session")
             .field("key", &self.key)
-            .field("address", &self.address)
+            .field("addr", &self.addr)
             .field("status", &self.status)
             .field("pings", &self.pings)
             .finish()
@@ -79,12 +82,13 @@ impl Sessions {
 }
 
 impl Session {
-    pub fn new(addr: Address) -> Self {
+    pub fn new(addr: MultiAddr) -> Self {
         Self {
             key: Key::new(),
-            address: addr,
+            addr,
+            meta: HashMap::new(),
             status: Status::Up,
-            replace: Box::new(move |addr| Box::pin(async move { Ok(addr) })),
+            replace: Box::new(move |r| Box::pin(async move { Ok(r) })),
             pings: Vec::new(),
         }
     }
@@ -93,12 +97,12 @@ impl Session {
         self.key
     }
 
-    pub fn address(&self) -> &Address {
-        &self.address
+    pub fn address(&self) -> &MultiAddr {
+        &self.addr
     }
 
-    pub fn set_address(&mut self, a: Address) {
-        self.address = a
+    pub fn set_address(&mut self, a: MultiAddr) {
+        self.addr = a
     }
 
     pub fn status(&self) -> Status {
@@ -109,15 +113,23 @@ impl Session {
         self.status = s
     }
 
-    pub fn replacement(&self, addr: Address) -> Replacement {
-        (self.replace)(addr)
+    pub fn replacement(&self, a: MultiAddr) -> Replacement {
+        (self.replace)(a)
     }
 
     pub fn set_replacement<F>(&mut self, f: F)
     where
-        F: Fn(Address) -> Replacement + Send + 'static,
+        F: Fn(MultiAddr) -> Replacement + Send + 'static,
     {
         self.replace = Box::new(f)
+    }
+
+    pub fn put<T: Send + 'static>(&mut self, key: &'static str, data: T) {
+        self.meta.insert(key, Box::new(data));
+    }
+
+    pub fn get<T: 'static>(&self, key: &str) -> Option<&T> {
+        self.meta.get(key).and_then(|data| data.downcast_ref())
     }
 
     pub fn pings(&self) -> &[Ping] {
