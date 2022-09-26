@@ -66,6 +66,10 @@ pub struct CreateCommand {
     #[arg(long, hide = true)]
     pub enable_credential_checks: bool,
 
+    /// Don't share default identity with this node
+    #[arg(long, hide = true)]
+    pub no_shared_identity: bool,
+
     /// ockam_command started a child process to run this node in foreground.
     #[arg(display_order = 900, long, hide = true)]
     pub child_process: bool,
@@ -109,6 +113,7 @@ impl Default for CreateCommand {
             tcp_listener_address: "127.0.0.1:0".to_string(),
             skip_defaults: false,
             enable_credential_checks: false,
+            no_shared_identity: false,
             child_process: false,
             launch_config: None,
             no_watchdog: false,
@@ -226,6 +231,7 @@ impl CreateCommand {
             &opts.config,
             verbose,
             cmd.skip_defaults,
+            cmd.no_shared_identity,
             cmd.enable_credential_checks,
             &cmd.node_name,
             &cmd.tcp_listener_address,
@@ -293,7 +299,7 @@ async fn run_background_node_impl(
         create_default_identity_if_needed(ctx, &cfg).await?;
     }
 
-    let identity_override = if c.skip_defaults {
+    let identity_override = if c.skip_defaults || c.no_shared_identity {
         None
     } else {
         Some(get_identity_override(ctx, &cfg).await?)
