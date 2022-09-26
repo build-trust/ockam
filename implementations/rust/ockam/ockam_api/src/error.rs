@@ -11,6 +11,17 @@ impl ApiError {
     pub fn generic(cause: &str) -> ockam_core::Error {
         ockam_core::Error::new(Origin::Application, Kind::Unknown, cause)
     }
+
+    pub fn message<T: fmt::Display>(m: T) -> ockam_core::Error {
+        ockam_core::Error::new(Origin::Application, Kind::Unknown, m.to_string())
+    }
+
+    pub fn wrap<E>(e: E) -> ockam_core::Error
+    where
+        E: ockam_core::compat::error::Error + Send + Sync + 'static,
+    {
+        ockam_core::Error::new(Origin::Application, Kind::Unknown, e)
+    }
 }
 
 #[derive(Debug)]

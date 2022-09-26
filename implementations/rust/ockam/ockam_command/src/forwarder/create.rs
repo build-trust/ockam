@@ -1,20 +1,16 @@
-use std::collections::HashMap;
-
 use anyhow::{anyhow, Context as _};
 use clap::Args;
-use ockam_api::config::lookup::InternetAddress;
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Tcp};
+use ockam::identity::IdentityIdentifier;
+use ockam_multiaddr::proto::Project;
 use rand::prelude::random;
 
 use ockam::{Context, TcpTransport};
 use ockam_api::is_local_node;
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
-use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_core::api::Request;
 use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
 
 use crate::forwarder::HELP_DETAIL;
-use crate::project::util;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
 use crate::util::{get_final_element, node_rpc, RpcBuilder};
@@ -40,6 +36,10 @@ pub struct CreateCommand {
     #[arg(long, id = "ROUTE", display_order = 900)]
     at: MultiAddr,
 
+    /// Authorized identity for secure channel connection (optional)
+    #[arg(long, name = "AUTHORIZED", display_order = 900)]
+    authorized: Option<IdentityIdentifier>,
+
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]
     cloud_opts: CloudOpts,
@@ -59,7 +59,6 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     let lookup = opts.config.lookup();
 
     let mut ma = MultiAddr::default();
-    let mut pa = HashMap::new();
 
     for proto in cmd.at.iter() {
         match proto.code() {
@@ -68,35 +67,18 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
                     .cast::<Node>()
                     .ok_or_else(|| anyhow!("invalid node address protocol"))?;
                 let addr = lookup
-                    .get_node(&alias)
-                    .ok_or_else(|| anyhow!("unknown node {}", &*alias))?;
-                match addr {
-                    InternetAddress::Dns(dns, _) => ma.push_back(DnsAddr::new(dns))?,
-                    InternetAddress::V4(v4) => ma.push_back(Ip4(*v4.ip()))?,
-                    InternetAddress::V6(v6) => ma.push_back(Ip6(*v6.ip()))?,
-                }
-                ma.push_back(Tcp(addr.port()))?
+                    .node_address(&alias)
+                    .ok_or_else(|| anyhow!("no address for node {}", &*alias))?;
+                ma.try_extend(&addr)?
             }
             Project::CODE => {
-                let alias = proto
+                let name = proto
                     .cast::<Project>()
                     .ok_or_else(|| anyhow!("invalid project address protocol"))?;
-                if lookup.get_project(&alias).is_none() {
-                    util::config::refresh_projects(
-                        &ctx,
-                        &opts,
-                        api_node,
-                        &cmd.cloud_opts.route(),
-                        Some(&tcp),
-                    )
-                    .await?
-                }
-                if let Some(p) = lookup.get_project(&alias) {
-                    ma.try_extend(&p.node_route)?;
-                    pa.insert(p.node_route.clone(), p.identity_id.clone());
-                } else {
-                    return Err(anyhow!("unknown project name {}", &*alias).into());
-                }
+                let proj = lookup
+                    .get_project(&name)
+                    .ok_or_else(|| anyhow!("no project found with name {}", &*name))?;
+                ma.push_back(Project::new(&proj.id))?
             }
             _ => ma.push_back_value(&proto)?,
         }
@@ -108,13 +90,11 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
         } else {
             cmd.forwarder_name.clone()
         };
-        let body = CreateForwarder::new(
-            ma,
-            Some(alias),
-            at_rust_node,
-            pa,
-            CredentialExchangeMode::Oneway,
-        );
+        let body = if Some(Project::CODE) == cmd.at.first().map(|p| p.code()) {
+            CreateForwarder::at_project(ma, Some(alias), cmd.cloud_opts.route())
+        } else {
+            CreateForwarder::at_node(ma, Some(alias), at_rust_node, cmd.authorized)
+        };
         Request::post("/node/forwarder").body(body)
     };
 

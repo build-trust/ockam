@@ -1,23 +1,21 @@
-use std::collections::HashMap;
-use std::convert::identity;
 use std::sync::Arc;
 use std::time::Duration;
 
-use either::Either;
 use minicbor::Decoder;
 
 use ockam::remote::RemoteForwarder;
-use ockam::{Address, Result, Route};
+use ockam::{Address, Result};
 use ockam_core::api::{Error, Id, Request, Response, Status};
 use ockam_core::AsyncTryClone;
 use ockam_identity::IdentityIdentifier;
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Service, Tcp};
+use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::tokio::time::timeout;
 use ockam_node::Context;
 
+use crate::cloud::project::Project as ProjectData;
+use crate::cloud::CloudRequestWrapper;
 use crate::error::ApiError;
-use crate::multiaddr_to_route;
 use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse, CredentialExchangeMode,
@@ -25,9 +23,11 @@ use crate::nodes::models::secure_channel::{
 };
 use crate::nodes::NodeManager;
 use crate::session::Session;
+use crate::{multiaddr_to_addr, multiaddr_to_route, try_address_to_multiaddr};
 
 const MAX_RECOVERY_TIME: Duration = Duration::from_secs(10);
 const MAX_CONNECT_TIME: Duration = Duration::from_secs(5);
+const IDENTITY: &str = "authorized_identity";
 
 impl NodeManager {
     pub(super) async fn create_forwarder(
@@ -40,50 +40,42 @@ impl NodeManager {
 
         debug!(addr = %req.address, alias = ?req.alias, "Handling CreateForwarder request");
 
-        let forwarder = match req.alias {
-            Some(alias) => {
-                let auth = Arc::new(req.identities);
-                let addr = self.connect(&req.address, &auth, req.mode).await?;
-                let alias = alias.to_string();
-                let fwdr = if req.at_rust_node {
-                    let route = addr.either(Route::from, identity);
-                    RemoteForwarder::create_static_without_heartbeats(ctx, route, alias).await
-                } else {
-                    // If connect returned an address it is a secure channel to an api node and
-                    // automatic recovery of a remote forwarder is enabled.
-                    match addr {
-                        Either::Left(a) => {
-                            let r = Route::from(a.clone());
-                            let f = RemoteForwarder::create_static(ctx, r, alias.clone()).await;
-                            if f.is_ok() {
-                                let c = Arc::new(ctx.async_try_clone().await?);
-                                let mut s = Session::new(a);
-                                let this = ctx.address();
-                                enable_recovery(
-                                    &mut s,
-                                    this,
-                                    c,
-                                    req.address,
-                                    alias.to_string(),
-                                    auth,
-                                    req.mode,
-                                );
-                                self.sessions.lock().unwrap().add(s);
-                            }
-                            f
-                        }
-                        Either::Right(r) => {
-                            RemoteForwarder::create_static(ctx, r, alias.clone()).await
-                        }
-                    }
-                };
-                fwdr
+        let addr = self.connect(ctx, &req).await?;
+        let route = multiaddr_to_route(&addr)
+            .ok_or_else(|| ApiError::message("invalid address: {addr}"))?;
+
+        let forwarder = if req.at_rust_node {
+            if let Some(alias) = req.alias.as_deref() {
+                RemoteForwarder::create_static_without_heartbeats(ctx, route, alias).await
+            } else {
+                RemoteForwarder::create(ctx, route).await
             }
-            None => {
-                let r = multiaddr_to_route(&req.address)
-                    .ok_or_else(|| ApiError::generic("invalid multiaddress"))?;
-                RemoteForwarder::create(ctx, r).await
+        } else {
+            let f = if let Some(alias) = req.alias.as_deref() {
+                RemoteForwarder::create_static(ctx, route, alias).await
+            } else {
+                RemoteForwarder::create(ctx, route).await
+            };
+            if f.is_ok() {
+                let c = Arc::new(ctx.async_try_clone().await?);
+                let mut s = Session::new(addr);
+                if let Some(id) = req.authorized {
+                    // Save the authenticated identity so that we can use it if the
+                    // secure channel needs to be recreated:
+                    s.put(IDENTITY, id)
+                }
+                let this = ctx.address();
+                enable_recovery(
+                    &mut s,
+                    this,
+                    c,
+                    req.address,
+                    req.cloud_addr,
+                    req.alias.map(|cow| cow.into_owned()),
+                );
+                self.sessions.lock().unwrap().add(s);
             }
+            f
         };
 
         match forwarder {
@@ -105,47 +97,93 @@ impl NodeManager {
         }
     }
 
-    /// Create a secure channel to an API node or return the address route as is.
-    async fn connect(
-        &mut self,
-        addr: &MultiAddr,
-        auth: &HashMap<MultiAddr, IdentityIdentifier>,
-        mode: CredentialExchangeMode,
-    ) -> Result<Either<Address, Route>> {
-        if let Some(a) = api_host(addr) {
-            if let Some(i) = auth.get(&a) {
+    /// Resolve project ID (if any) and create secure channel if necessary.
+    async fn connect(&mut self, ctx: &mut Context, req: &CreateForwarder<'_>) -> Result<MultiAddr> {
+        if let Some(p) = req.address.first() {
+            if p.code() == Project::CODE {
+                let p = p
+                    .cast::<Project>()
+                    .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+                let m = req
+                    .cloud_addr
+                    .as_ref()
+                    .ok_or_else(|| ApiError::generic("request has no cloud address"))?;
+                let (mut a, i) = self.resolve_project(ctx, &p, m).await?;
+                a.try_extend(req.address.iter().skip(1))?;
+                debug!(addr = %a, "creating secure channel");
                 let r =
                     multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-                let i = Some(vec![i.clone()]);
-                let a = self.create_secure_channel_impl(r, i, mode, None).await?;
-                return Ok(Either::Left(a));
-            } else {
-                info!(%addr, "no authorised identity found")
+                let i = Some(vec![i]);
+                let m = CredentialExchangeMode::Oneway;
+                let a = self.create_secure_channel_impl(r, i, m, None).await?;
+                return try_address_to_multiaddr(&a);
             }
         }
-        let r = multiaddr_to_route(addr).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-        Ok(Either::Right(r))
+        if let Some(p) = req.address.iter().nth(2) {
+            if p.code() == Secure::CODE {
+                debug!(addr = %req.address, "creating secure channel");
+                let r = multiaddr_to_route(&req.address)
+                    .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+                let i = req.authorized.clone().map(|i| vec![i]);
+                let m = CredentialExchangeMode::Oneway;
+                let a = self.create_secure_channel_impl(r, i, m, None).await?;
+                return try_address_to_multiaddr(&a);
+            }
+        }
+        Ok(req.address.clone())
+    }
+
+    /// Resolve the project name to an address and authorised identity.
+    async fn resolve_project(
+        &mut self,
+        ctx: &mut Context,
+        project: &str,
+        cloud: &MultiAddr,
+    ) -> Result<(MultiAddr, IdentityIdentifier)> {
+        debug!(%project, %cloud, "resolving project");
+        let req = minicbor::to_vec(&CloudRequestWrapper::bare(cloud))?;
+        let vec = self
+            .get_project(ctx, &mut Decoder::new(&req), project)
+            .await?;
+        let (addr, auth) = project_data(&vec)?;
+        debug!(%project, %addr, "resolved project");
+        Ok((addr, auth))
     }
 }
 
-/// Get address prefix corresponding to the API host (if any).
-#[rustfmt::skip]
-fn api_host(input: &MultiAddr) -> Option<MultiAddr> {
-    let mut protos = input.iter();
-    if !matches!(protos.next().map(|p| p.code()), Some(DnsAddr::CODE | Ip4::CODE | Ip6::CODE)) {
-        return None;
+/// Resolve the project name to an address and authorised identity.
+///
+/// Uses message passing since callers of this fuunction do not posses a
+/// unique reference to `NodeManager`.
+async fn resolve_project(
+    manager: Address,
+    ctx: &Context,
+    project: &str,
+    cloud: &MultiAddr,
+) -> Result<(MultiAddr, IdentityIdentifier)> {
+    debug!(%project, %cloud, "resolving project");
+    let req = Request::get(format!("/v0/projects/{project}"))
+        .body(CloudRequestWrapper::bare(cloud))
+        .to_vec()?;
+    let vec: Vec<u8> = ctx.send_and_receive(manager, req).await?;
+    let (addr, auth) = project_data(&vec)?;
+    debug!(%project, %addr, "resolved project");
+    Ok((addr, auth))
+}
+
+/// Extract the project address and identity from response bytes.
+fn project_data(bytes: &[u8]) -> Result<(MultiAddr, IdentityIdentifier)> {
+    let mut dec = Decoder::new(bytes);
+    let res: Response = dec.decode()?;
+    if res.status() != Some(Status::Ok) {
+        return Err(ApiError::generic("failed to get project info"));
     }
-    if !matches!(protos.next().map(|p| p.code()), Some(Tcp::CODE)) {
-        return None;
-    }
-    if let Some(p) = protos.next() {
-        if let Some(p) = p.cast::<Service>() {
-            if &*p == "api" {
-                return MultiAddr::default().try_with(input.iter().take(3)).ok();
-            }
-        }
-    }
-    None
+    let res: ProjectData = dec.decode()?;
+    let addr = res.access_route()?;
+    let auth = res
+        .identity
+        .ok_or_else(|| ApiError::generic("project has no identity"))?;
+    Ok((addr, auth))
 }
 
 /// Configure the session for automatic recovery.
@@ -154,21 +192,44 @@ fn enable_recovery(
     manager: Address,
     ctx: Arc<Context>,
     addr: MultiAddr,
-    alias: String,
-    auth: Arc<HashMap<MultiAddr, IdentityIdentifier>>,
-    mode: CredentialExchangeMode,
+    cloud: Option<MultiAddr>,
+    alias: Option<String>,
 ) {
+    let auth = session.get::<IdentityIdentifier>(IDENTITY).cloned();
     session.set_replacement(move |prev| {
         let ctx = ctx.clone();
         let addr = addr.clone();
+        let cloud = cloud.clone();
         let alias = alias.clone();
         let auth = auth.clone();
         let manager = manager.clone();
         Box::pin(async move {
-            debug!(%addr, "creating new remote forwarder");
+            debug!(%prev, %addr, "creating new remote forwarder");
             let f = async {
-                let a = replace_sec_chan(&ctx, &manager, prev, &addr, &auth, mode).await?;
-                RemoteForwarder::create_static(&ctx, Route::from(a.clone()), alias).await?;
+                let a = if let Some(p) = addr.first() {
+                    if p.code() == Project::CODE {
+                        let p = p
+                            .cast::<Project>()
+                            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+                        let c = cloud.ok_or_else(|| ApiError::message("missing cloud address"))?;
+                        let (mut a, i) = resolve_project(manager.clone(), &ctx, &p, &c).await?;
+                        a.try_extend(addr.iter().skip(1))?;
+                        replace_sec_chan(&ctx, &manager, &prev, &a, Some(i)).await?
+                    } else if Some(Secure::CODE) == addr.iter().nth(2).map(|p| p.code()) {
+                        replace_sec_chan(&ctx, &manager, &prev, &addr, auth).await?
+                    } else {
+                        addr.clone()
+                    }
+                } else {
+                    addr.clone()
+                };
+                let r = multiaddr_to_route(&a)
+                    .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {a}")))?;
+                if let Some(alias) = &alias {
+                    RemoteForwarder::create_static(&ctx, r, alias).await?;
+                } else {
+                    RemoteForwarder::create(&ctx, r).await?;
+                }
                 Ok(a)
             };
             match timeout(MAX_RECOVERY_TIME, f).await {
@@ -189,13 +250,16 @@ fn enable_recovery(
 async fn replace_sec_chan(
     ctx: &Context,
     manager: &Address,
-    prev: Address,
+    prev: &MultiAddr,
     addr: &MultiAddr,
-    authorised: &HashMap<MultiAddr, IdentityIdentifier>,
-    mode: CredentialExchangeMode,
-) -> Result<Address> {
+    auth: Option<IdentityIdentifier>,
+) -> Result<MultiAddr> {
     debug!(%addr, %prev, "recreating secure channel");
-    let req = DeleteSecureChannelRequest::new(&prev);
+    let req = {
+        let a = multiaddr_to_addr(prev)
+            .ok_or_else(|| ApiError::message(format!("could not map to address: {prev}")))?;
+        DeleteSecureChannelRequest::new(&a)
+    };
     let req = Request::delete("/node/secure_channel").body(req).to_vec()?;
     let vec: Vec<u8> = ctx.send_and_receive(manager.clone(), req).await?;
     let mut d = Decoder::new(&vec);
@@ -204,8 +268,8 @@ async fn replace_sec_chan(
         let e: Error = d.decode()?;
         debug!(%addr, %prev, err = ?e.message(), "failed to delete secure channel");
     }
-    let ids = authorised.get(addr).map(|i| vec![i.clone()]);
-    let mut req = CreateSecureChannelRequest::new(addr, ids, mode);
+    let auth = auth.map(|a| vec![a]);
+    let mut req = CreateSecureChannelRequest::new(addr, auth, CredentialExchangeMode::Oneway);
     req.timeout = Some(MAX_CONNECT_TIME);
     let req = Request::post("/node/secure_channel").body(req).to_vec()?;
     let vec: Vec<u8> = ctx.send_and_receive(manager.clone(), req).await?;
@@ -219,8 +283,5 @@ async fn replace_sec_chan(
         return Err(ApiError::generic("error creating secure channel"));
     }
     let res: CreateSecureChannelResponse = d.decode()?;
-    multiaddr_to_route(&res.addr()?)
-        .ok_or_else(|| ApiError::generic("failed to convert secure channel address to route"))?
-        .next()
-        .cloned()
+    res.addr()
 }

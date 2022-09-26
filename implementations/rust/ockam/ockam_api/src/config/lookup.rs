@@ -1,7 +1,10 @@
 use bytes::Bytes;
 use ockam_core::compat::collections::VecDeque;
 use ockam_identity::IdentityIdentifier;
-use ockam_multiaddr::MultiAddr;
+use ockam_multiaddr::{
+    proto::{self, DnsAddr, Ip4, Ip6, Tcp},
+    MultiAddr,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -108,6 +111,18 @@ impl ConfigLookup {
         meta.project
             .iter()
             .any(|name| self.get_project(name).is_none())
+    }
+
+    pub fn node_address(&self, node: &proto::Node) -> Option<MultiAddr> {
+        let addr = self.get_node(node)?;
+        let mut m = MultiAddr::default();
+        match addr {
+            InternetAddress::Dns(dns, _) => m.push_back(DnsAddr::new(dns)).ok()?,
+            InternetAddress::V4(v4) => m.push_back(Ip4(*v4.ip())).ok()?,
+            InternetAddress::V6(v6) => m.push_back(Ip6(*v6.ip())).ok()?,
+        }
+        m.push_back(Tcp(addr.port())).ok()?;
+        Some(m)
     }
 }
 
