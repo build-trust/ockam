@@ -22,6 +22,23 @@ defmodule Ockam.Credential.AttributeStorageETS do
     end
   end
 
+  @spec list_records() :: {:ok, %{binary() => AttributeSet.t()}} | {:error, any()}
+  def list_records() do
+    with_table(fn ->
+      map =
+        :ets.tab2list(@table)
+        |> Enum.flat_map(fn {id, attribute_set} ->
+          case AttributeSet.expired?(attribute_set) do
+            true -> []
+            false -> [{id, attribute_set}]
+          end
+        end)
+        |> Map.new()
+
+      {:ok, map}
+    end)
+  end
+
   @doc """
   Retrieves the attribute set for an identity ID.
   """

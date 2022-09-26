@@ -147,8 +147,29 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp do_handle_event(:info, %Ockam.Message{} = message, state, data) do
-    with :ok <- is_authorized(message, data) do
-      handle_message(message, state, data)
+    ## TODO: make secure channel a worker
+    result =
+      Ockam.Worker.with_handle_message_metric(__MODULE__, message, data, fn ->
+        case is_authorized(message, data) do
+          :ok ->
+            ## reply is using gen_statem format,
+            ## not supported by :with_handle_message_metric
+            case handle_message(message, state, data) do
+              {:error, reason} -> {:error, reason}
+              {:stop, reason, data} -> {:stop, reason, data}
+              other -> {:ok, other}
+            end
+
+          {:error, reason} ->
+            {:error, {:unauthorized, reason}}
+        end
+      end)
+
+    ## handle_message_result is using gen_statem format,
+    ## not supported by :with_handle_message_metric
+    case result do
+      {:ok, handle_message_result} -> handle_message_result
+      other -> other
     end
   end
 

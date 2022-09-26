@@ -49,7 +49,6 @@ defmodule Ockam.CloudNode.MixProject do
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
       {:ex_doc, "~> 0.25", only: :dev, runtime: false},
       {:ockam_services, path: "../ockam_services"},
-      {:ockam_metrics, path: "../ockam_metrics"},
       {:ockam_kafka, path: "../ockam_kafka"},
       {:telemetry, "~> 1.0", override: true},
       {:telemetry_poller, "~> 1.0"},

@@ -246,8 +246,12 @@ defmodule Ockam.Worker do
   def handle_message(module, message, state) do
     return_value =
       with_handle_message_metric(module, message, state, fn ->
-        with :ok <- module.is_authorized(message, state) do
-          module.handle_message(message, state)
+        case module.is_authorized(message, state) do
+          :ok ->
+            module.handle_message(message, state)
+
+          {:error, reason} ->
+            {:error, {:unauthorized, reason}}
         end
       end)
 
@@ -314,7 +318,6 @@ defmodule Ockam.Worker do
   end
 
   ## Metrics functions
-
   def with_handle_message_metric(module, message, state, fun) do
     ## TODO: improve metadata
     metadata = %{message: message, address: Map.get(state, :address), module: module}
@@ -344,6 +347,7 @@ defmodule Ockam.Worker do
       case return_value do
         {:ok, _result} -> :ok
         {:stop, _reason, _state} -> :stop
+        {:error, {:unauthorized, _reason}} -> :unauthorized
         {:error, _reason} -> :error
       end
 
