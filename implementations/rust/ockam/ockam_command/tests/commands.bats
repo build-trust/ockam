@@ -64,21 +64,10 @@ setup() {
   load "$BATS_LIB/bats-support/load.bash"
   load "$BATS_LIB/bats-assert/load.bash"
   $OCKAM node delete --all || true
-
-  # We want to make sure there is no data (including identities) on these project folders,
-  # otherwise we could have a test pass because an identity was _already_ added as
-  # a project' member, even when the test itself fails to do so.
-  OCKAM_PROJECT_PATH=$NODE_PATH/blue $OCKAM node delete --all -f | true
-  OCKAM_PROJECT_PATH=$NODE_PATH/green $OCKAM node delete --all -f | true
-  unset OCKAM_PROJECT_PATH
 }
 
 teardown() {
   $OCKAM node delete --all || true
-
-  OCKAM_PROJECT_PATH=$NODE_PATH/blue $OCKAM node delete --all -f | true
-  OCKAM_PROJECT_PATH=$NODE_PATH/green $OCKAM node delete --all -f | true
-  unset OCKAM_PROJECT_PATH
 }
 
 @test "create a node without a name" {
@@ -290,30 +279,25 @@ teardown() {
   $OCKAM project info --name default --output json  > /tmp/project.json
 
   # Green doesn't enable credentials exchange
-  export OCKAM_PROJECT_PATH=$NODE_PATH/green
-  run $OCKAM node create green --project /tmp/project.json
+  run $OCKAM node create green --project /tmp/project.json --no-shared-identity
   assert_success
   green_identifer=$($OCKAM identity show -n green)
 
-  export OCKAM_PROJECT_PATH=$NODE_PATH/blue
-  run $OCKAM node create blue --project /tmp/project.json --enable-credential-checks
+  run $OCKAM node create blue --project /tmp/project.json --enable-credential-checks --no-shared-identity
   assert_success
-  blue_identifer=$(OCKAM_PROJECT_PATH=$NODE_PATH/blue $OCKAM identity show -n blue)
+  blue_identifer=$($OCKAM identity show -n blue)
 
-  unset OCKAM_PROJECT_PATH
   run $OCKAM project enroll --member $blue_identifer --to /project/default/service/authenticator
   assert_success
   run $OCKAM project enroll --member $green_identifer --to /project/default/service/authenticator
   assert_success
 
-  export OCKAM_PROJECT_PATH=$NODE_PATH/blue
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
   assert_success
   run  $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"
   assert_success
 
-  export OCKAM_PROJECT_PATH=$NODE_PATH/green
   run bash -c " $OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet --check-credential"
   assert_success
@@ -328,30 +312,25 @@ teardown() {
 
   $OCKAM project info --name default --output json  > /tmp/project.json
 
-  export OCKAM_PROJECT_PATH=$NODE_PATH/green
-  run $OCKAM node create green --project /tmp/project.json --enable-credential-checks
+  run $OCKAM node create green --project /tmp/project.json --enable-credential-checks --no-shared-identity
   assert_success
   green_identifer=$($OCKAM identity show -n green)
 
-  export OCKAM_PROJECT_PATH=$NODE_PATH/blue
-  run $OCKAM node create blue --project /tmp/project.json --enable-credential-checks
+  run $OCKAM node create blue --project /tmp/project.json --enable-credential-checks --no-shared-identity
   assert_success
   blue_identifer=$($OCKAM identity show -n blue)
 
-  unset OCKAM_PROJECT_PATH
   run $OCKAM project enroll --member $blue_identifer --to /project/default/service/authenticator
   assert_success
   run $OCKAM project enroll --member $green_identifer --to /project/default/service/authenticator
   assert_success
 
-  export OCKAM_PROJECT_PATH=$NODE_PATH/blue
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
   assert_success
   run  $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"
   assert_success
 
-  export OCKAM_PROJECT_PATH=$NODE_PATH/green
   run bash -c " $OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet --check-credential"
   assert_success
@@ -375,38 +354,31 @@ teardown() {
 
   $OCKAM project info --name "${project_name}" --output json  > "/tmp/${project_name}_project.json"
 
-  export OCKAM_PROJECT_PATH=$NODE_PATH/green
-  run $OCKAM node create green --project "/tmp/${project_name}_project.json" --enable-credential-checks
+  run $OCKAM node create green --project "/tmp/${project_name}_project.json" --enable-credential-checks --no-shared-identity
   assert_success
   green_identifer=$($OCKAM identity show -n green)
 
-  export OCKAM_PROJECT_PATH=$NODE_PATH/blue
-  run $OCKAM node create blue --project "/tmp/${project_name}_project.json"
+  run $OCKAM node create blue --project "/tmp/${project_name}_project.json" --no-shared-identity
   assert_success
 
   # Blue can't create forwarder as it doesn't present credential (it isn't a member neither)
-  export OCKAM_PROJECT_PATH=$NODE_PATH/blue
   run  $OCKAM forwarder create blue --at "/project/${project_name}" --to /node/blue
   assert_failure
 
   # add green as a member
-  unset OCKAM_PROJECT_PATH
   run $OCKAM project enroll --member $green_identifer --to "/project/${project_name}/service/authenticator"
   assert_success
 
   # Now green can access project' services
-  export OCKAM_PROJECT_PATH=$NODE_PATH/green
   run  $OCKAM forwarder create green --at "/project/${project_name}" --to /node/green
   assert_success
 
-  unset OCKAM_PROJECT_PATH
   run $OCKAM project delete "${space_name}" "${project_name}"
   assert_success
 
   run $OCKAM space delete "${space_name}"
   assert_success
 }
-
 
 function skip_if_orchestrator_tests_not_enabled() {
   # shellcheck disable=SC2031
