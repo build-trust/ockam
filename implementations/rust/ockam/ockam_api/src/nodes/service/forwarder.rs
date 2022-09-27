@@ -8,7 +8,7 @@ use ockam::{Address, Result};
 use ockam_core::api::{Error, Id, Request, Response, Status};
 use ockam_core::AsyncTryClone;
 use ockam_identity::IdentityIdentifier;
-use ockam_multiaddr::proto::{Project, Secure};
+use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::tokio::time::timeout;
 use ockam_node::Context;
@@ -23,7 +23,9 @@ use crate::nodes::models::secure_channel::{
 };
 use crate::nodes::NodeManager;
 use crate::session::Session;
-use crate::{multiaddr_to_addr, multiaddr_to_route, try_address_to_multiaddr};
+use crate::{
+    is_secure_channel_addr, multiaddr_to_addr, multiaddr_to_route, try_address_to_multiaddr,
+};
 
 const MAX_RECOVERY_TIME: Duration = Duration::from_secs(10);
 const MAX_CONNECT_TIME: Duration = Duration::from_secs(5);
@@ -119,16 +121,14 @@ impl NodeManager {
                 return try_address_to_multiaddr(&a);
             }
         }
-        if let Some(p) = req.address.iter().nth(2) {
-            if p.code() == Secure::CODE {
-                debug!(addr = %req.address, "creating secure channel");
-                let r = multiaddr_to_route(&req.address)
-                    .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-                let i = req.authorized.clone().map(|i| vec![i]);
-                let m = CredentialExchangeMode::Oneway;
-                let a = self.create_secure_channel_impl(r, i, m, None).await?;
-                return try_address_to_multiaddr(&a);
-            }
+        if is_secure_channel_addr(&req.address) {
+            debug!(addr = %req.address, "creating secure channel");
+            let r = multiaddr_to_route(&req.address)
+                .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+            let i = req.authorized.clone().map(|i| vec![i]);
+            let m = CredentialExchangeMode::Oneway;
+            let a = self.create_secure_channel_impl(r, i, m, None).await?;
+            return try_address_to_multiaddr(&a);
         }
         Ok(req.address.clone())
     }
@@ -215,7 +215,7 @@ fn enable_recovery(
                         let (mut a, i) = resolve_project(manager.clone(), &ctx, &p, &c).await?;
                         a.try_extend(addr.iter().skip(1))?;
                         replace_sec_chan(&ctx, &manager, &prev, &a, Some(i)).await?
-                    } else if Some(Secure::CODE) == addr.iter().nth(2).map(|p| p.code()) {
+                    } else if is_secure_channel_addr(&addr) {
                         replace_sec_chan(&ctx, &manager, &prev, &addr, auth).await?
                     } else {
                         addr.clone()
