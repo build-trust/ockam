@@ -73,7 +73,7 @@ with the address of the `Echoer`. We then take the body of the incoming
 message and echo it back on its return route (more about routes soon).
 
 To make this Echoer type accessible to our main program, export it
-from `src/lib.rs` file. 
+from `src/lib.rs` file.
 
 ```
 nano src/lib.rs

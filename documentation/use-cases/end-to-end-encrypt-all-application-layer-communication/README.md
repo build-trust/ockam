@@ -118,7 +118,7 @@ If you just want to see the final code, jump directly to
 
 ### Setup
 
-To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. To learn how to get started with Docker, please visit the [Get Started With Docker](https://docs.docker.com/get-docker/) documentation. 
+To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. To learn how to get started with Docker, please visit the [Get Started With Docker](https://docs.docker.com/get-docker/) documentation.
 
 This command may take a few minutes the first time you invoke it:
 
@@ -126,7 +126,7 @@ This command may take a few minutes the first time you invoke it:
 docker run --rm -it -e HOST_USER_ID=$(id -u) --name ockam-learn  ghcr.io/build-trust/ockam-builder:latest bash
 ```
 
-Upon completion, you will be placed inside the `/work` folder of the container. Next, add a text editior for editing files. 
+Upon completion, you will be placed inside the `/work` folder of the container. Next, add a text editior for editing files.
 
 ```
 apt update && apt install nano
@@ -172,7 +172,7 @@ A **TCP Inlet** starts up as a **TCP server** and waits for incoming TCP connect
 route to a corresponding outlet. When new data arrives from a TCP client, the Inlet wraps this data
 as payload of a new Ockam Routing message and sends it to the Outlet.
 
-Create a file at `examples/01-inlet-outlet.rs` 
+Create a file at `examples/01-inlet-outlet.rs`
 
 ```
 nano examples/01-inlet-outlet.rs
@@ -258,7 +258,7 @@ curl http://127.0.0.1:4001
 When we run this, we see the data flow as shown in the [diagram above](#01-setup-an-inlet-and-an-outlet) -
 HTTP requests and responses are wrapped in Ockam Routing messages and tunneled through our simple Rust program.
 
-Stop the HTTP server and the programs before moving to the next step. Don't exit the windows as you will continue to need various session into the learning container. You can stop all programs with the keys `Ctrl + C`.  
+Stop the HTTP server and the programs before moving to the next step. Don't exit the windows as you will continue to need various session into the learning container. You can stop all programs with the keys `Ctrl + C`.
 
 ### 02: Route over a Transport
 
@@ -272,7 +272,7 @@ using Ockam Routing and Transports.
 The next two code snippets show how we can create such inlet and outlet nodes and tunnel
 HTTP, over TCP, through them.
 
-Create a file at `examples/02-outlet.rs`. 
+Create a file at `examples/02-outlet.rs`.
 
 ```
 nano examples/02-outlet.rs
@@ -418,7 +418,7 @@ The inlet program will then initiate a secure channel handshake over the route:
 route![(TCP, "127.0.0.1:4000"), "secure_channel_listener"]
 ```
 
-Create a file at `examples/03-outlet.rs`. 
+Create a file at `examples/03-outlet.rs`.
 
 ```
 nano examples/03-outlet.rs
@@ -482,7 +482,7 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Create a file at `examples/03-inlet.rs` 
+Create a file at `examples/03-inlet.rs`
 
 ```
 nano examples/03-inlet.rs
@@ -677,7 +677,7 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Create a file at `examples/04-inlet.rs` 
+Create a file at `examples/04-inlet.rs`
 
 ```
 nano examples/04-inlet.rs

@@ -52,7 +52,7 @@ is introduced in each example.
 ## Setup
 
 
-To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. To learn how to get started with Docker, please visit the [Get Started With Docker](https://docs.docker.com/get-docker/) documentation. 
+To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. To learn how to get started with Docker, please visit the [Get Started With Docker](https://docs.docker.com/get-docker/) documentation.
 
 This command may take a few minutes the first time you invoke it:
 
@@ -60,7 +60,7 @@ This command may take a few minutes the first time you invoke it:
 docker run --rm -it -e HOST_USER_ID=$(id -u) --name ockam-learn  ghcr.io/build-trust/ockam-builder:latest bash
 ```
 
-Upon completion, you will be placed inside the `/work` folder of the container. Next, add a text editior for editing files. 
+Upon completion, you will be placed inside the `/work` folder of the container. Next, add a text editior for editing files.
 
 ```
 apt update && apt install nano
@@ -112,7 +112,7 @@ Create a file at `examples/01-inlet-outlet.rs`.
 nano examples/01-inlet-outlet.rs
 ```
 
- Go ahead and copy the below code snippet to it.
+Go ahead and copy the below code snippet to it.
 
 ```rust
 // examples/01-inlet-outlet.rs
@@ -192,7 +192,7 @@ curl http://127.0.0.1:4001
 When we run this, we see the data flow as shown in the [diagram above](#01-setup-an-inlet-and-an-outlet) -
 HTTP requests and responses are wrapped in Ockam Routing messages and tunneled through our simple Rust program.
 
-Stop the HTTP server and the programs before moving to the next step. Don't exit the windows as you will continue to need various session into the learning container. You can stop all programs with the keys `Ctrl + C`. 
+Stop the HTTP server and the programs before moving to the next step. Don't exit the windows as you will continue to need various session into the learning container. You can stop all programs with the keys `Ctrl + C`.
 
 ## 02: Route over a Transport
 
@@ -324,7 +324,7 @@ cargo run --example 02-inlet 127.0.0.1:4001
 ```
 
 Now run an HTTP client, but instead of pointing it directly to our HTTP server, make a request to
-the Inlet at port `4001`. 
+the Inlet at port `4001`.
 
 ```
 curl http://127.0.0.1:4001
@@ -416,7 +416,7 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Create a file at `examples/03-inlet.rs` 
+Create a file at `examples/03-inlet.rs`
 
 ```
 nano examples/03-inlet.rs
@@ -605,7 +605,7 @@ async fn main(ctx: Context) -> Result<()> {
 
 ```
 
-Create a file at `examples/04-inlet.rs` 
+Create a file at `examples/04-inlet.rs`
 
 ```
 nano examples/04-inlet.rs

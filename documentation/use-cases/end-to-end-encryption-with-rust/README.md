@@ -92,14 +92,14 @@ _routing and forwarding._
 ### Setup
 
 
-To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. To learn how to get started with Docker, please visit the [Get Started With Docker](https://docs.docker.com/get-docker/) documentation. 
+To reduce friction and focus the attention on learning, we recommend the usage of a Docker container for the learning exercise. To learn how to get started with Docker, please visit the [Get Started With Docker](https://docs.docker.com/get-docker/) documentation.
 
 This command may take a few minutes the first time you invoke it:
 
 ```
 docker run --rm -it -e HOST_USER_ID=$(id -u) --name ockam-learn  ghcr.io/build-trust/ockam-builder:latest bash
 ```
-Upon completion, you will be placed inside the `/work` folder of the container. Next, add a text editior for editing files. 
+Upon completion, you will be placed inside the `/work` folder of the container. Next, add a text editior for editing files.
 
 ```
 apt update && apt install nano
@@ -130,7 +130,7 @@ Create a file at `examples/bob.rs`
 nano examples/bob.rs
 ```
 
- Next, copy the below code snippet into the file.
+Next, copy the below code snippet into the file.
 
 ```rust
 // examples/bob.rs
@@ -204,7 +204,7 @@ You may exit and save the file by pressing the keys `Ctrl + X`
 
 ### Alice
 
-Create a file at `examples/alice.rs` 
+Create a file at `examples/alice.rs`
 
 ```
 nano examples/alice.rs
