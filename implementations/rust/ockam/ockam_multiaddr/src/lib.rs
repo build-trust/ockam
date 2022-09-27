@@ -548,6 +548,15 @@ impl MultiAddr {
         }
         n == 0
     }
+
+    pub fn split(&self, at: usize) -> (MultiAddr, MultiAddr) {
+        let mut iter = self.iter();
+        let a = MultiAddr::default()
+            .try_with((&mut iter).take(at))
+            .expect("valid address");
+        let b = MultiAddr::default().try_with(iter).expect("valid address");
+        (a, b)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

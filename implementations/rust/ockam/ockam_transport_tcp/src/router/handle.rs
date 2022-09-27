@@ -8,6 +8,7 @@ use ockam_core::{Address, AsyncTryClone, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use std::sync::Arc;
+use tracing::debug;
 
 /// A handle to connect to a TcpRouter
 ///
@@ -182,6 +183,8 @@ impl TcpRouterHandle {
 
     /// Stop the inlet's [`TcpInletListenProcessor`]
     pub async fn stop_inlet(&self, addr: impl Into<Address>) -> Result<()> {
+        let addr = addr.into();
+        debug!(%addr, "stopping inlet");
         self.ctx.stop_processor(addr).await?;
         Ok(())
     }

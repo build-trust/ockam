@@ -6,7 +6,7 @@ use ockam_core::{Address, Processor, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
-use tracing::debug;
+use tracing::{debug, error};
 
 /// A TCP Portal Inlet listen processor
 ///
@@ -30,18 +30,20 @@ impl TcpInletListenProcessor {
         let waddr = Address::random_local();
 
         debug!("Binding TcpPortalListenerWorker to {}", addr);
-        let inner = TcpListener::bind(addr)
-            .await
-            .map_err(TransportError::from)?;
+        let inner = match TcpListener::bind(addr).await {
+            Ok(addr) => addr,
+            Err(err) => {
+                error!(%addr, %err, "could not bind to address");
+                return Err(TransportError::from(err).into());
+            }
+        };
         let saddr = inner.local_addr().map_err(TransportError::from)?;
         let processor = Self {
             inner,
             outlet_listener_route,
             access_control,
         };
-
         ctx.start_processor(waddr.clone(), processor).await?;
-
         Ok((waddr, saddr))
     }
 }
