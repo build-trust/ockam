@@ -6,7 +6,6 @@ use clap::Args;
 use colorful::Colorful;
 use ockam::{Context, Route, TCP};
 use ockam_api::{
-    config::snippet::{ComposableSnippet, Operation, Protocol, RemoteMode},
     nodes::{models::transport::TransportStatus, NODEMANAGER_ADDR},
     route_to_multiaddr,
 };
@@ -37,29 +36,6 @@ pub struct CreateCommand {
     pub address: String,
 }
 
-impl From<&'_ CreateCommand> for ComposableSnippet {
-    fn from(cc: &'_ CreateCommand) -> Self {
-        let mode = RemoteMode::Connector;
-        let tcp = true;
-        let address = cc.address.clone();
-
-        Self {
-            id: format!(
-                "_transport_{}_{}_{}",
-                mode,
-                if tcp { "tcp" } else { "unknown" },
-                address
-            ),
-            op: Operation::Transport {
-                protocol: Protocol::Tcp,
-                address,
-                mode,
-            },
-            params: vec![],
-        }
-    }
-}
-
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
@@ -67,22 +43,6 @@ impl CreateCommand {
         let port = cfg.get_node_port(node);
 
         connect_to(port, (self.clone(), options.clone()), create_connection);
-
-        let composite = (&self).into();
-        let node = node.to_string();
-
-        let startup_config = match cfg.startup_cfg(&node) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                eprintln!("failed to load startup configuration: {}", e);
-                std::process::exit(exitcode::IOERR);
-            }
-        };
-        startup_config.add_composite(composite);
-        if let Err(e) = startup_config.persist_config_updates() {
-            eprintln!("failed to update configuration: {}", e);
-            std::process::exit(exitcode::IOERR);
-        }
     }
 }
 

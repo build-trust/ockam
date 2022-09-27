@@ -2,7 +2,6 @@
 
 use crate::config::{
     lookup::{ConfigLookup, InternetAddress},
-    snippet::ComposableSnippet,
     ConfigValues,
 };
 use crate::HexByteVec;
@@ -11,7 +10,7 @@ use ockam_core::Result;
 use ockam_identity::{IdentityIdentifier, IdentityVault, PublicIdentity};
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 use std::{
     env,
     path::{Path, PathBuf},
@@ -131,20 +130,6 @@ fn default_port() -> u16 {
 }
 fn default_verbose() -> u8 {
     0
-}
-
-/// Node launch configuration
-///
-///
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct StartupConfig {
-    pub commands: VecDeque<ComposableSnippet>,
-}
-
-impl ConfigValues for StartupConfig {
-    fn default_values(_node_dir: &Path) -> Self {
-        Self::default()
-    }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]

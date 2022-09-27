@@ -3,7 +3,6 @@ use rand::prelude::random;
 
 use anyhow::{Context as _, Result};
 use std::{
-    env::current_exe,
     net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
     str::FromStr,
@@ -22,10 +21,7 @@ use crate::{
     node::show::print_query_status,
     node::HELP_DETAIL,
     project,
-    util::{
-        connect_to, embedded_node, find_available_port, startup, ComposableSnippet, OckamConfig,
-        Operation,
-    },
+    util::{connect_to, embedded_node, find_available_port, startup, OckamConfig},
     CommandGlobalOpts,
 };
 use ockam::{Address, AsyncTryClone, NodeBuilder, TCP};
@@ -90,19 +86,6 @@ pub struct CreateCommand {
 
     #[arg(long, hide = true)]
     pub config: Option<PathBuf>,
-}
-
-impl From<&'_ CreateCommand> for ComposableSnippet {
-    fn from(cc: &'_ CreateCommand) -> Self {
-        Self {
-            id: "_start".into(),
-            op: Operation::Node {
-                api_addr: cc.tcp_listener_address.clone(),
-                node_name: cc.node_name.clone(),
-            },
-            params: vec![],
-        }
-    }
 }
 
 impl Default for CreateCommand {
@@ -188,11 +171,6 @@ impl CreateCommand {
         let verbose = opts.global_args.verbose;
         let cfg = &opts.config;
 
-        // On systems with non-obvious path setups (or during
-        // development) re-executing the current binary is a more
-        // deterministic way of starting a node.
-        let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
-
         // Check if the port is used by some other services or process
         if !bind_to_port_check(&addr) {
             eprintln!("Another process is listening on the provided port!");
@@ -227,7 +205,6 @@ impl CreateCommand {
         // Construct the arguments list and re-execute the ockam
         // CLI in foreground mode to start the newly created node
         startup::spawn_node(
-            &ockam,
             &opts.config,
             verbose,
             cmd.skip_defaults,
@@ -237,16 +214,6 @@ impl CreateCommand {
             &cmd.tcp_listener_address,
             cmd.project.as_deref(),
         );
-
-        let composite = (&cmd).into();
-        let startup_cfg = cfg.startup_cfg(&cmd.node_name).unwrap();
-        startup_cfg.writelock_inner().commands = vec![composite].into();
-
-        // Save the config update
-        if let Err(e) = startup_cfg.persist_config_updates() {
-            eprintln!("failed to update configuration: {}", e);
-            std::process::exit(exitcode::IOERR);
-        }
 
         // Unless this CLI was called from another watchdog we
         // start the watchdog here
