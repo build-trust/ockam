@@ -232,7 +232,7 @@ teardown() {
   # Check we can start service, but only once with the same name
   run $OCKAM service start credentials --addr my_credentials --node n1
   assert_success
-  run $OCKAMservice start credentials --addr my_credentials --node n1
+  run $OCKAM service start credentials --addr my_credentials --node n1
   assert_failure
 
   # TODO: add test for authenticator
@@ -301,7 +301,7 @@ teardown() {
 }
 
 
-@test "create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
+@test "create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it 1/2" {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM node create blue
@@ -316,7 +316,21 @@ teardown() {
   assert_success
 }
 
-@test "inlet/outlet example with credentials, not provided" {
+@test "create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it 2/2" {
+  skip_if_orchestrator_tests_not_enabled
+
+  $OCKAM node create blue
+  $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  $OCKAM forwarder create blue --at /project/default --to /node/blue
+
+  $OCKAM node create green
+  $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to /project/default/service/forward_to_blue/secure/api/service/outlet
+
+  run curl --fail --head 127.0.0.1:7000
+  assert_success
+}
+
+@test "inlet/outlet example with credentials, not provided 1/2" {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM project info --name default --output json  > /tmp/project.json
@@ -350,7 +364,40 @@ teardown() {
   assert_failure
 }
 
-@test "inlet/outlet example with credentials" {
+@test "inlet/outlet example with credentials, not provided 2/2" {
+  skip_if_orchestrator_tests_not_enabled
+
+  $OCKAM project info --name default --output json  > /tmp/project.json
+
+  # Green doesn't enable credentials exchange
+  run $OCKAM node create green --project /tmp/project.json --no-shared-identity
+  assert_success
+  green_identifer=$($OCKAM identity show -n green)
+
+  run $OCKAM node create blue --project /tmp/project.json --enable-credential-checks --no-shared-identity
+  assert_success
+  blue_identifer=$($OCKAM identity show -n blue)
+
+  run $OCKAM project enroll --member $blue_identifer --to /project/default/service/authenticator
+  assert_success
+  run $OCKAM project enroll --member $green_identifer --to /project/default/service/authenticator
+  assert_success
+
+  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
+  assert_success
+  run  $OCKAM forwarder create blue --at /project/default --to /node/blue
+  assert_output --partial "forward_to_blue"
+  assert_success
+
+  run $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to /project/default/service/forward_to_blue/secure/api/service/outlet --check-credential
+  assert_success
+
+  # Green can't establish secure channel with blue, because it doesn't exchange credentials with it.
+  run curl --fail --head --max-time 10 127.0.0.1:7000
+  assert_failure
+}
+
+@test "inlet/outlet example with credentials 1/2" {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM project info --name default --output json  > /tmp/project.json
@@ -376,6 +423,37 @@ teardown() {
 
   run bash -c " $OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet --check-credential"
+  assert_success
+
+  run curl --fail --head --max-time 10 127.0.0.1:7000
+  assert_success
+}
+
+@test "inlet/outlet example with credentials 2/2" {
+  skip_if_orchestrator_tests_not_enabled
+
+  $OCKAM project info --name default --output json  > /tmp/project.json
+
+  run $OCKAM node create green --project /tmp/project.json --enable-credential-checks --no-shared-identity
+  assert_success
+  green_identifer=$($OCKAM identity show -n green)
+
+  run $OCKAM node create blue --project /tmp/project.json --enable-credential-checks --no-shared-identity
+  assert_success
+  blue_identifer=$($OCKAM identity show -n blue)
+
+  run $OCKAM project enroll --member $blue_identifer --to /project/default/service/authenticator
+  assert_success
+  run $OCKAM project enroll --member $green_identifer --to /project/default/service/authenticator
+  assert_success
+
+  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
+  assert_success
+  run  $OCKAM forwarder create blue --at /project/default --to /node/blue
+  assert_output --partial "forward_to_blue"
+  assert_success
+
+  run $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to /project/default/service/forward_to_blue/secure/api/service/outlet --check-credential
   assert_success
 
   run curl --fail --head --max-time 10 127.0.0.1:7000

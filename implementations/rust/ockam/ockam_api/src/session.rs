@@ -1,4 +1,5 @@
 mod sessions;
+pub(crate) mod util;
 
 use crate::{multiaddr_to_route, DefaultAddress};
 use minicbor::{Decode, Encode};
@@ -14,7 +15,7 @@ use ockam_node::Context;
 use sessions::{Key, Ping, Status};
 use tracing as log;
 
-pub use sessions::{Session, Sessions};
+pub use sessions::{Data, Replacer, Session, Sessions};
 
 const MAX_FAILURES: usize = 3;
 const DELAY: Duration = Duration::from_secs(3);
@@ -63,29 +64,35 @@ impl Medic {
     async fn go(mut self, ctx: Context, mut rx: mpsc::Receiver<Message>) -> ! {
         let ctx = Arc::new(ctx);
         loop {
-            log::trace!("check sessions");
+            log::debug!("check sessions");
             {
                 let mut sessions = self.sessions.lock().unwrap();
                 for (&key, session) in sessions.iter_mut() {
                     if session.pings().len() < MAX_FAILURES {
                         let m = Message::new(session.key());
                         session.add_ping(m.ping);
-                        log::trace!(%key, ping = %m.ping, "send ping");
                         let l = {
                             let v = Encodable::encode(&m).expect("message can be encoded");
-                            let r: Route = if let Some(r) = multiaddr_to_route(session.address()) {
-                                r.clone()
-                                    .modify()
-                                    .append(DefaultAddress::ECHO_SERVICE)
-                                    .into()
-                            } else {
-                                log::error! {
-                                    %key,
-                                    addr = %session.address(),
-                                    "failed to convert address to route"
-                                }
-                                continue;
-                            };
+                            let r: Route =
+                                if let Some(r) = multiaddr_to_route(session.ping_address()) {
+                                    r.clone()
+                                        .modify()
+                                        .append(DefaultAddress::ECHO_SERVICE)
+                                        .into()
+                                } else {
+                                    log::error! {
+                                        key  = %key,
+                                        addr = %session.ping_address(),
+                                        "failed to convert address to route"
+                                    }
+                                    continue;
+                                };
+                            log::debug! {
+                                key  = %key,
+                                addr = %session.ping_address(),
+                                ping = %m.ping,
+                                "send ping"
+                            }
                             let t = TransportMessage::v1(r, Collector::address(), v);
                             LocalMessage::new(t, Vec::new())
                         };
@@ -96,7 +103,7 @@ impl Medic {
                         match session.status() {
                             Status::Up => {
                                 log::warn!(%key, "session unresponsive");
-                                let f = session.replacement(session.address().clone());
+                                let f = session.replacement(session.ping_address().clone());
                                 session.set_status(Status::Down);
                                 log::info!(%key, "replacing session");
                                 self.replacements.spawn(async move { (key, f.await) });
@@ -120,7 +127,7 @@ impl Medic {
                     None                  => log::debug!("no pings to send"),
                     Some(Err(e))          => log::error!("task failed: {e:?}"),
                     Some(Ok((k, Err(e)))) => log::debug!(key = %k, err = %e, "failed to send ping"),
-                    Some(Ok((k, Ok(())))) => log::trace!(key = %k, "sent ping"),
+                    Some(Ok((k, Ok(())))) => log::debug!(key = %k, "sent ping"),
                 },
                 r = self.replacements.join_next(), if !self.replacements.is_empty() => match r {
                     None                  => log::debug!("no replacements"),
@@ -129,7 +136,7 @@ impl Medic {
                         let mut sessions = self.sessions.lock().unwrap();
                         if let Some(s) = sessions.session_mut(&k) {
                             log::warn!(key = %k, err = %e, "replacing session failed");
-                            let f = s.replacement(s.address().clone());
+                            let f = s.replacement(s.ping_address().clone());
                             log::info!(key = %k, "replacing session");
                             self.replacements.spawn(async move { (k, f.await) });
                         }
@@ -139,7 +146,7 @@ impl Medic {
                         if let Some(s) = sessions.session_mut(&k) {
                             log::info!(key = %k, addr = %a, "replacement is up");
                             s.set_status(Status::Up);
-                            s.set_address(a);
+                            s.set_ping_address(a);
                             s.clear_pings();
                         }
                     }
@@ -147,7 +154,7 @@ impl Medic {
                 Some(m) = rx.recv() => {
                     if let Some(s) = self.sessions.lock().unwrap().session_mut(&m.key) {
                         if s.pings().contains(&m.ping) {
-                            log::trace!(key = %m.key, ping = %m.ping, "recv pong");
+                            log::debug!(key = %m.key, ping = %m.ping, "recv pong");
                             s.clear_pings()
                         }
                     }

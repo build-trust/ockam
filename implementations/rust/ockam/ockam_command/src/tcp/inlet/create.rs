@@ -1,13 +1,15 @@
-use crate::util::{bind_to_port_check, connect_to, exitcode, extract_address_value};
+use crate::util::{bind_to_port_check, exitcode, extract_address_value, node_rpc, RpcBuilder};
+use crate::Result;
 use crate::{help, CommandGlobalOpts};
+use anyhow::anyhow;
 use clap::Args;
-use minicbor::Decoder;
-use ockam::{Context, Route};
-use ockam_api::{
-    clean_multiaddr, nodes::models, nodes::models::portal::InletStatus, nodes::NODEMANAGER_ADDR,
-};
-use ockam_core::api::{Request, Response, Status};
-use ockam_multiaddr::MultiAddr;
+use ockam::identity::IdentityIdentifier;
+use ockam::{Context, TcpTransport};
+use ockam_api::nodes::models::portal::CreateInlet;
+use ockam_api::nodes::models::portal::InletStatus;
+use ockam_core::api::Request;
+use ockam_multiaddr::proto::{Node, Project};
+use ockam_multiaddr::{MultiAddr, Protocol as _};
 use std::net::SocketAddr;
 
 const HELP_DETAIL: &str = "\
@@ -48,93 +50,68 @@ pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "ROUTE")]
     to: MultiAddr,
 
+    /// Authorized identity for secure channel connection (optional)
+    #[arg(long, name = "AUTHORIZED", display_order = 900)]
+    authorized: Option<IdentityIdentifier>,
+
     /// Enable credentials authorization
     #[arg(long, short, display_order = 802)]
-    pub check_credential: bool,
+    check_credential: bool,
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
-        let cfg = &options.config;
-        let command = CreateCommand {
-            to: match clean_multiaddr(&self.to, &cfg.lookup()) {
-                Some((addr, _meta)) => addr,
-                None => {
-                    eprintln!("failed to normalize MultiAddr route");
-                    std::process::exit(exitcode::USAGE);
+    pub fn run(mut self, options: CommandGlobalOpts) -> Result<()> {
+        let lookup = options.config.lookup();
+        self.to = {
+            let mut to = MultiAddr::default();
+            for proto in self.to.iter() {
+                match proto.code() {
+                    Node::CODE => {
+                        let alias = proto
+                            .cast::<Node>()
+                            .ok_or_else(|| anyhow!("invalid node address protocol"))?;
+                        let addr = lookup
+                            .node_address(&alias)
+                            .ok_or_else(|| anyhow!("no address for node {}", &*alias))?;
+                        to.try_extend(&addr)?
+                    }
+                    _ => to.push_back_value(&proto)?,
                 }
-            },
-            ..self
+            }
+            to
         };
 
-        let node = extract_address_value(&command.at)?;
-        let port = cfg.get_node_port(&node).unwrap();
-
         // Check if the port is used by some other services or process
-        if !bind_to_port_check(&command.from) {
+        if !bind_to_port_check(&self.from) {
             eprintln!("Another process is listening on the provided port!");
             std::process::exit(exitcode::IOERR);
         }
 
-        connect_to(port, command, create_inlet);
+        node_rpc(rpc, (options, self));
+
         Ok(())
     }
 }
 
-pub async fn create_inlet(
-    ctx: Context,
-    cmd: CreateCommand,
-    mut base_route: Route,
-) -> anyhow::Result<()> {
-    let route = base_route.modify().append(NODEMANAGER_ADDR);
-    let message = make_api_request(
-        &cmd.from.to_string(),
-        &cmd.to,
-        &None::<String>,
-        cmd.check_credential,
-    )?;
-    let response: Vec<u8> = ctx.send_and_receive(route, message).await?;
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+    let tcp = TcpTransport::create(&ctx).await?;
+    let node = extract_address_value(&cmd.at)?;
 
-    let (response, InletStatus { bind_addr, .. }) = parse_inlet_status(&response)?;
+    let req = {
+        let payload = if cmd.to.matches(0, &[Project::CODE.into()]) {
+            if cmd.authorized.is_some() {
+                return Err(anyhow!("--authorized can not be used with project addresses").into());
+            }
+            CreateInlet::via_project(cmd.from, cmd.to, cmd.check_credential)
+        } else {
+            CreateInlet::to_node(cmd.from, cmd.to, cmd.check_credential, cmd.authorized)
+        };
+        Request::post("/node/inlet").body(payload)
+    };
 
-    match response.status() {
-        Some(Status::Ok) => {
-            println!("{}", bind_addr)
-        }
-
-        _ => {
-            eprintln!("An unknown error occurred while creating an inlet...");
-            std::process::exit(exitcode::UNAVAILABLE)
-        }
-    }
+    let mut rpc = RpcBuilder::new(&ctx, &opts, &node).tcp(&tcp)?.build();
+    rpc.request(req).await?;
+    rpc.parse_response::<InletStatus>()?;
 
     Ok(())
-}
-
-/// Construct a request to create a tcp inlet
-fn make_api_request(
-    bind_addr: &str,
-    outlet_route: &MultiAddr,
-    alias: &Option<String>,
-    check_credential: bool,
-) -> ockam::Result<Vec<u8>> {
-    let payload = models::portal::CreateInlet::new(
-        bind_addr,
-        outlet_route.to_string(),
-        alias.as_ref().map(|x| x.as_str().into()),
-        check_credential,
-    );
-
-    let mut buf = vec![];
-    Request::post("/node/inlet")
-        .body(payload)
-        .encode(&mut buf)?;
-    Ok(buf)
-}
-
-/// Parse the returned status response
-fn parse_inlet_status(resp: &[u8]) -> ockam::Result<(Response, InletStatus<'_>)> {
-    let mut dec = Decoder::new(resp);
-    let response = dec.decode::<Response>()?;
-    Ok((response, dec.decode::<InletStatus>()?))
 }

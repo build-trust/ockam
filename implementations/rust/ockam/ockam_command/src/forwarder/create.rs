@@ -76,7 +76,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
         } else {
             cmd.forwarder_name.clone()
         };
-        let body = if Some(Project::CODE) == cmd.at.first().map(|p| p.code()) {
+        let body = if cmd.at.matches(0, &[Project::CODE.into()]) {
             if cmd.authorized.is_some() {
                 return Err(anyhow!("--authorized can not be used with project addresses").into());
             }

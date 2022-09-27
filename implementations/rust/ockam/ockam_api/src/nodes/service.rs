@@ -1,9 +1,5 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
-use std::collections::BTreeMap;
-use std::error::Error as _;
-use std::path::PathBuf;
-
 use minicbor::Decoder;
 
 use ockam::compat::asynchronous::RwLock;
@@ -17,12 +13,17 @@ use ockam_core::compat::{
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::AsyncTryClone;
 use ockam_identity::{Identity, IdentityIdentifier, PublicIdentity};
-use ockam_multiaddr::MultiAddr;
+use ockam_multiaddr::proto::{Project, Secure};
+use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::tokio;
 use ockam_node::tokio::task::JoinHandle;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
+use std::collections::BTreeMap;
+use std::error::Error as _;
+use std::path::PathBuf;
 
+use super::models::secure_channel::CredentialExchangeMode;
 use super::registry::Registry;
 use crate::config::lookup::ProjectLookup;
 use crate::config::{cli::AuthoritiesConfig, Config};
@@ -31,8 +32,9 @@ use crate::lmdb::LmdbStorage;
 use crate::nodes::config::NodeManConfig;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
+use crate::session::util::{resolve_project, starts_with_host_tcp_secure};
 use crate::session::{Medic, Sessions};
-use crate::DefaultAddress;
+use crate::{multiaddr_to_route, try_address_to_multiaddr, DefaultAddress};
 
 pub mod message;
 
@@ -402,6 +404,53 @@ impl NodeManager {
 
         Ok(())
     }
+
+    /// Resolve project ID (if any) and create secure channel.
+    ///
+    /// Returns the secure channel worker address (if any) and the remainder
+    /// of the address argument.
+    async fn connect(
+        &mut self,
+        addr: &MultiAddr,
+        mode: CredentialExchangeMode,
+        auth: Option<IdentityIdentifier>,
+    ) -> Result<(MultiAddr, MultiAddr)> {
+        if let Some(p) = addr.first() {
+            if p.code() == Project::CODE {
+                let p = p
+                    .cast::<Project>()
+                    .ok_or_else(|| ApiError::message("invalid project protocol in multiaddr"))?;
+                let (a, i) = resolve_project(&self.projects, &p)?;
+                debug!(addr = %a, "creating secure channel");
+                let r =
+                    multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+                let i = Some(vec![i]);
+                let w = self.create_secure_channel_impl(r, i, mode, None).await?;
+                let a = MultiAddr::default().try_with(addr.iter().skip(1))?;
+                return Ok((try_address_to_multiaddr(&w)?, a));
+            }
+        }
+
+        if let Some(pos) = starts_with_host_tcp_secure(addr) {
+            debug!(%addr, "creating secure channel");
+            let (a, b) = addr.split(pos);
+            let r = multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+            let i = auth.clone().map(|i| vec![i]);
+            let w = self.create_secure_channel_impl(r, i, mode, None).await?;
+            return Ok((try_address_to_multiaddr(&w)?, b));
+        }
+
+        if Some(Secure::CODE) == addr.last().map(|p| p.code()) {
+            debug!(%addr, "creating secure channel");
+            let r =
+                multiaddr_to_route(addr).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+            let i = auth.clone().map(|i| vec![i]);
+            let w = self.create_secure_channel_impl(r, i, mode, None).await?;
+            return Ok((try_address_to_multiaddr(&w)?, MultiAddr::default()));
+        }
+
+        Ok((MultiAddr::default(), addr.clone()))
+    }
 }
 
 impl NodeManagerWorker {
@@ -567,7 +616,7 @@ impl NodeManagerWorker {
                 let node_manager = self.node_manager.read().await;
                 self.get_outlets(req, &node_manager.registry).to_vec()?
             }
-            (Post, ["node", "inlet"]) => self.create_inlet(req, dec).await?.to_vec()?,
+            (Post, ["node", "inlet"]) => self.create_inlet(ctx, req, dec).await?.to_vec()?,
             (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "portal"]) => todo!(),
 
