@@ -91,6 +91,9 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
             cmd.forwarder_name.clone()
         };
         let body = if Some(Project::CODE) == cmd.at.first().map(|p| p.code()) {
+            if cmd.authorized.is_some() {
+                return Err(anyhow!("--authorized can not be used with project addresses").into());
+            }
             CreateForwarder::at_project(ma, Some(alias), cmd.cloud_opts.route())
         } else {
             CreateForwarder::at_node(ma, Some(alias), at_rust_node, cmd.authorized)

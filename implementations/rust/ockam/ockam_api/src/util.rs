@@ -5,7 +5,7 @@ use core::str::FromStr;
 use ockam::{Address, Error, TCP};
 use ockam_core::{Route, LOCAL};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp};
-use ockam_multiaddr::{Match, MultiAddr, Protocol};
+use ockam_multiaddr::{MultiAddr, Protocol};
 use std::net::{SocketAddrV4, SocketAddrV6};
 
 /// Go through a multiaddr and remove all instances of
@@ -165,14 +165,6 @@ pub fn try_address_to_multiaddr(a: &Address) -> Result<MultiAddr, Error> {
         }
     }
     Ok(ma)
-}
-
-pub fn is_secure_channel_addr(a: &MultiAddr) -> bool {
-    a.matches(&[
-        Match::any([DnsAddr::CODE, Ip4::CODE, Ip6::CODE]),
-        Tcp::CODE.into(),
-        Secure::CODE.into(),
-    ])
 }
 
 /// Tells whether the input MultiAddr references a local node or a remote node.

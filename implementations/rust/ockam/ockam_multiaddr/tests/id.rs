@@ -47,7 +47,7 @@ quickcheck! {
 
     fn match_test(a: Addr) -> bool {
         let codes = a.0.iter().map(|p| Match::code(p.code())).collect::<Vec<_>>();
-        a.0.matches(&codes)
+        a.0.matches(0, &codes)
     }
 
     fn push_back_value(a: Addr) -> bool {

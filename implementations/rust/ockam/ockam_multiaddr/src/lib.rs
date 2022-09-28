@@ -524,14 +524,14 @@ impl MultiAddr {
     }
 
     /// Check if the protocol codes match the given sequence.
-    pub fn matches<'a, I>(&self, codes: I) -> bool
+    pub fn matches<'a, I>(&self, start: usize, codes: I) -> bool
     where
         I: IntoIterator<Item = &'a Match>,
         I::IntoIter: ExactSizeIterator,
     {
         let codes = codes.into_iter();
         let mut n = codes.len();
-        for (p, c) in self.iter().zip(codes) {
+        for (p, c) in self.iter().skip(start).zip(codes) {
             n -= 1;
             match c {
                 Match::Val(c) => {
