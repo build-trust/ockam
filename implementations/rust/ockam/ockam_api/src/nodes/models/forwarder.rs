@@ -16,13 +16,18 @@ pub struct CreateForwarder<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3386455>,
     /// Address to create forwarder at.
-    #[n(1)] pub(crate) address: MultiAddr,
+    #[n(1)] address: MultiAddr,
     /// Forwarder alias.
-    #[b(2)] pub(crate) alias: Option<CowStr<'a>>,
+    #[b(2)] alias: Option<CowStr<'a>>,
     /// Forwarding service is at rust node.
-    #[n(3)] pub(crate) at_rust_node: bool,
-    #[n(4)] pub(crate) cloud_addr: Option<MultiAddr>,
-    #[n(5)] pub(crate) authorized: Option<IdentityIdentifier>
+    #[n(3)] at_rust_node: bool,
+    /// The orchestrator address used to resolve the project address
+    /// and authorised identity.
+    #[n(4)] cloud_addr: Option<MultiAddr>,
+    /// An authorised identity for secure channels.
+    /// Only set for non-project addresses as for projects the project's
+    /// authorised identity will be used.
+    #[n(5)] authorized: Option<IdentityIdentifier>
 }
 
 impl<'a> CreateForwarder<'a> {
@@ -53,6 +58,26 @@ impl<'a> CreateForwarder<'a> {
             cloud_addr: None,
             authorized: auth,
         }
+    }
+
+    pub fn address(&self) -> &MultiAddr {
+        &self.address
+    }
+
+    pub fn alias(&self) -> Option<&str> {
+        self.alias.as_deref()
+    }
+
+    pub fn at_rust_node(&self) -> bool {
+        self.at_rust_node
+    }
+
+    pub fn authorized(&self) -> Option<IdentityIdentifier> {
+        self.authorized.clone()
+    }
+
+    pub fn cloud_addr(&self) -> Option<&MultiAddr> {
+        self.cloud_addr.as_ref()
     }
 }
 

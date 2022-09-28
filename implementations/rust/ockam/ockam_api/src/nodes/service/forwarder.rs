@@ -8,8 +8,8 @@ use ockam::{Address, Result};
 use ockam_core::api::{Error, Id, Request, Response, Status};
 use ockam_core::AsyncTryClone;
 use ockam_identity::IdentityIdentifier;
-use ockam_multiaddr::proto::Project;
-use ockam_multiaddr::{MultiAddr, Protocol};
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Secure, Tcp};
+use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::tokio::time::timeout;
 use ockam_node::Context;
 
@@ -23,9 +23,7 @@ use crate::nodes::models::secure_channel::{
 };
 use crate::nodes::NodeManager;
 use crate::session::Session;
-use crate::{
-    is_secure_channel_addr, multiaddr_to_addr, multiaddr_to_route, try_address_to_multiaddr,
-};
+use crate::{multiaddr_to_addr, multiaddr_to_route, try_address_to_multiaddr};
 
 const MAX_RECOVERY_TIME: Duration = Duration::from_secs(10);
 const MAX_CONNECT_TIME: Duration = Duration::from_secs(5);
@@ -40,20 +38,20 @@ impl NodeManager {
     ) -> Result<Vec<u8>> {
         let req: CreateForwarder = dec.decode()?;
 
-        debug!(addr = %req.address, alias = ?req.alias, "Handling CreateForwarder request");
+        debug!(addr = %req.address(), alias = ?req.alias(), "Handling CreateForwarder request");
 
         let addr = self.connect(ctx, &req).await?;
         let route = multiaddr_to_route(&addr)
             .ok_or_else(|| ApiError::message("invalid address: {addr}"))?;
 
-        let forwarder = if req.at_rust_node {
-            if let Some(alias) = req.alias.as_deref() {
+        let forwarder = if req.at_rust_node() {
+            if let Some(alias) = req.alias() {
                 RemoteForwarder::create_static_without_heartbeats(ctx, route, alias).await
             } else {
                 RemoteForwarder::create(ctx, route).await
             }
         } else {
-            let f = if let Some(alias) = req.alias.as_deref() {
+            let f = if let Some(alias) = req.alias() {
                 RemoteForwarder::create_static(ctx, route, alias).await
             } else {
                 RemoteForwarder::create(ctx, route).await
@@ -61,7 +59,7 @@ impl NodeManager {
             if f.is_ok() {
                 let c = Arc::new(ctx.async_try_clone().await?);
                 let mut s = Session::new(addr);
-                if let Some(id) = req.authorized {
+                if let Some(id) = req.authorized() {
                     // Save the authenticated identity so that we can use it if the
                     // secure channel needs to be recreated:
                     s.put(IDENTITY, id)
@@ -71,9 +69,9 @@ impl NodeManager {
                     &mut s,
                     this,
                     c,
-                    req.address,
-                    req.cloud_addr,
-                    req.alias.map(|cow| cow.into_owned()),
+                    req.address().clone(),
+                    req.cloud_addr().cloned(),
+                    req.alias().map(|a| a.to_string()),
                 );
                 self.sessions.lock().unwrap().add(s);
             }
@@ -101,17 +99,16 @@ impl NodeManager {
 
     /// Resolve project ID (if any) and create secure channel if necessary.
     async fn connect(&mut self, ctx: &mut Context, req: &CreateForwarder<'_>) -> Result<MultiAddr> {
-        if let Some(p) = req.address.first() {
+        if let Some(p) = req.address().first() {
             if p.code() == Project::CODE {
                 let p = p
                     .cast::<Project>()
                     .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                 let m = req
-                    .cloud_addr
-                    .as_ref()
+                    .cloud_addr()
                     .ok_or_else(|| ApiError::generic("request has no cloud address"))?;
                 let (mut a, i) = self.resolve_project(ctx, &p, m).await?;
-                a.try_extend(req.address.iter().skip(1))?;
+                a.try_extend(req.address().iter().skip(1))?;
                 debug!(addr = %a, "creating secure channel");
                 let r =
                     multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
@@ -121,16 +118,23 @@ impl NodeManager {
                 return try_address_to_multiaddr(&a);
             }
         }
-        if is_secure_channel_addr(&req.address) {
-            debug!(addr = %req.address, "creating secure channel");
-            let r = multiaddr_to_route(&req.address)
+        if req.address().matches(
+            0,
+            &[
+                Match::any([DnsAddr::CODE, Ip4::CODE, Ip6::CODE]),
+                Tcp::CODE.into(),
+                Secure::CODE.into(),
+            ],
+        ) {
+            debug!(addr = %req.address(), "creating secure channel");
+            let r = multiaddr_to_route(req.address())
                 .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-            let i = req.authorized.clone().map(|i| vec![i]);
+            let i = req.authorized().map(|i| vec![i]);
             let m = CredentialExchangeMode::Oneway;
             let a = self.create_secure_channel_impl(r, i, m, None).await?;
             return try_address_to_multiaddr(&a);
         }
-        Ok(req.address.clone())
+        Ok(req.address().clone())
     }
 
     /// Resolve the project name to an address and authorised identity.
@@ -215,7 +219,14 @@ fn enable_recovery(
                         let (mut a, i) = resolve_project(manager.clone(), &ctx, &p, &c).await?;
                         a.try_extend(addr.iter().skip(1))?;
                         replace_sec_chan(&ctx, &manager, &prev, &a, Some(i)).await?
-                    } else if is_secure_channel_addr(&addr) {
+                    } else if addr.matches(
+                        0,
+                        &[
+                            Match::any([DnsAddr::CODE, Ip4::CODE, Ip6::CODE]),
+                            Tcp::CODE.into(),
+                            Secure::CODE.into(),
+                        ],
+                    ) {
                         replace_sec_chan(&ctx, &manager, &prev, &addr, auth).await?
                     } else {
                         addr.clone()
