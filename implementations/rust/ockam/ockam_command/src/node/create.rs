@@ -289,6 +289,7 @@ async fn run_background_node_impl(
     tcp.listen(&bind).await?;
 
     let node_dir = cfg.get_node_dir(&c.node_name)?;
+    let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
         ctx,
         c.node_name.clone(),
@@ -298,6 +299,7 @@ async fn run_background_node_impl(
         c.enable_credential_checks,
         Some(&cfg.authorities(&c.node_name)?.snapshot()),
         project_id,
+        projects,
         (TransportType::Tcp, TransportMode::Listen, bind),
         tcp.async_try_clone().await?,
     )

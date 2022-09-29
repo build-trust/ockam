@@ -21,24 +21,20 @@ pub struct CreateForwarder<'a> {
     #[b(2)] alias: Option<CowStr<'a>>,
     /// Forwarding service is at rust node.
     #[n(3)] at_rust_node: bool,
-    /// The orchestrator address used to resolve the project address
-    /// and authorised identity.
-    #[n(4)] cloud_addr: Option<MultiAddr>,
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
-    #[n(5)] authorized: Option<IdentityIdentifier>
+    #[n(4)] authorized: Option<IdentityIdentifier>
 }
 
 impl<'a> CreateForwarder<'a> {
-    pub fn at_project(address: MultiAddr, alias: Option<String>, cloud: MultiAddr) -> Self {
+    pub fn at_project(address: MultiAddr, alias: Option<String>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: Default::default(),
             address,
             alias: alias.map(|s| s.into()),
             at_rust_node: false,
-            cloud_addr: Some(cloud),
             authorized: None,
         }
     }
@@ -55,7 +51,6 @@ impl<'a> CreateForwarder<'a> {
             address,
             alias: alias.map(|s| s.into()),
             at_rust_node,
-            cloud_addr: None,
             authorized: auth,
         }
     }
@@ -74,10 +69,6 @@ impl<'a> CreateForwarder<'a> {
 
     pub fn authorized(&self) -> Option<IdentityIdentifier> {
         self.authorized.clone()
-    }
-
-    pub fn cloud_addr(&self) -> Option<&MultiAddr> {
-        self.cloud_addr.as_ref()
     }
 }
 

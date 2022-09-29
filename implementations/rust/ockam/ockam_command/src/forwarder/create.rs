@@ -11,7 +11,6 @@ use ockam_core::api::Request;
 use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
 
 use crate::forwarder::HELP_DETAIL;
-use crate::util::api::CloudOpts;
 use crate::util::output::Output;
 use crate::util::{get_final_element, node_rpc, RpcBuilder};
 use crate::Result;
@@ -39,10 +38,6 @@ pub struct CreateCommand {
     /// Authorized identity for secure channel connection (optional)
     #[arg(long, name = "AUTHORIZED", display_order = 900)]
     authorized: Option<IdentityIdentifier>,
-
-    /// Orchestrator address to resolve projects present in the `at` argument
-    #[command(flatten)]
-    cloud_opts: CloudOpts,
 }
 
 impl CreateCommand {
@@ -71,15 +66,6 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
                     .ok_or_else(|| anyhow!("no address for node {}", &*alias))?;
                 ma.try_extend(&addr)?
             }
-            Project::CODE => {
-                let name = proto
-                    .cast::<Project>()
-                    .ok_or_else(|| anyhow!("invalid project address protocol"))?;
-                let proj = lookup
-                    .get_project(&name)
-                    .ok_or_else(|| anyhow!("no project found with name {}", &*name))?;
-                ma.push_back(Project::new(&proj.id))?
-            }
             _ => ma.push_back_value(&proto)?,
         }
     }
@@ -94,7 +80,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
             if cmd.authorized.is_some() {
                 return Err(anyhow!("--authorized can not be used with project addresses").into());
             }
-            CreateForwarder::at_project(ma, Some(alias), cmd.cloud_opts.route())
+            CreateForwarder::at_project(ma, Some(alias))
         } else {
             CreateForwarder::at_node(ma, Some(alias), at_rust_node, cmd.authorized)
         };

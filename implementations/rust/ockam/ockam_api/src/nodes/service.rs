@@ -23,6 +23,7 @@ use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
 use super::registry::Registry;
+use crate::config::lookup::ProjectLookup;
 use crate::config::{cli::AuthoritiesConfig, Config};
 use crate::error::ApiError;
 use crate::lmdb::LmdbStorage;
@@ -104,6 +105,7 @@ pub struct NodeManager {
     vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
     project_id: Option<Vec<u8>>,
+    projects: Arc<BTreeMap<String, ProjectLookup>>,
     authorities: Option<Authorities>,
     pub(crate) authenticated_storage: LmdbStorage,
     pub(crate) registry: Registry,
@@ -156,6 +158,7 @@ impl NodeManager {
         enable_credential_checks: bool,
         ac: Option<&AuthoritiesConfig>,
         project_id: Option<Vec<u8>>,
+        projects: BTreeMap<String, ProjectLookup>,
         api_transport: (TransportType, TransportMode, String),
         tcp_transport: TcpTransport,
     ) -> Result<Self> {
@@ -246,6 +249,7 @@ impl NodeManager {
             enable_credential_checks,
             vault,
             identity,
+            projects: Arc::new(projects),
             project_id,
             authorities: None,
             authenticated_storage,
@@ -605,6 +609,7 @@ pub(crate) mod tests {
                 false,
                 None,
                 None,
+                Default::default(),
                 (
                     TransportType::Tcp,
                     TransportMode::Listen,

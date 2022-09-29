@@ -52,6 +52,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
     let bind = cmd.tcp_listener_address;
     tcp.listen(&bind).await?;
     let node_dir = cfg.get_node_dir_raw(&cmd.node_name)?;
+    let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
         ctx,
         cmd.node_name.clone(),
@@ -61,6 +62,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
         cmd.enable_credential_checks,
         Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
         project_id,
+        projects,
         (TransportType::Tcp, TransportMode::Listen, bind),
         tcp,
     )
