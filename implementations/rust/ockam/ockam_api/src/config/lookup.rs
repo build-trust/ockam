@@ -124,6 +124,17 @@ impl ConfigLookup {
         m.push_back(Tcp(addr.port())).ok()?;
         Some(m)
     }
+
+    pub fn projects(&self) -> impl Iterator<Item = (String, ProjectLookup)> + '_ {
+        self.map.iter().filter_map(|(k, v)| {
+            if let LookupValue::Project(p) = v {
+                let name = k.strip_prefix("/project/").unwrap_or(k).to_string();
+                Some((name, p.clone()))
+            } else {
+                None
+            }
+        })
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
