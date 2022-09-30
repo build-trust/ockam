@@ -103,8 +103,8 @@ impl Output for Project<'_> {
         )?;
         write!(
             w,
-            "\n  Authority access route: {:?}",
-            self.authority_access_route
+            "\n  Authority access route: {}",
+            self.authority_access_route.as_deref().unwrap_or("N/A")
         )?;
         write!(
             w,
