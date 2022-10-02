@@ -184,7 +184,6 @@ pub struct NodeManagerTransportOptions {
 
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
-    #[allow(clippy::too_many_arguments)]
     pub async fn create(
         ctx: &Context,
         general_options: NodeManagerGeneralOptions<'_>,
