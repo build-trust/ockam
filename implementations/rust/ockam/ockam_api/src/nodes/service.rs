@@ -162,28 +162,40 @@ impl NodeManager {
     }
 }
 
+pub struct NodeManagerGeneralOptions<'a> {
+    pub node_name: String,
+    pub node_dir: PathBuf,
+    pub skip_defaults: bool,
+    pub enable_credential_checks: bool,
+    pub ac: Option<&'a AuthoritiesConfig>,
+    // Should be passed only when creating fresh node and we want it to get default root Identity
+    pub identity_override: Option<IdentityOverride>,
+}
+
+pub struct NodeManagerProjectsOptions {
+    pub project_id: Option<Vec<u8>>,
+    pub projects: BTreeMap<String, ProjectLookup>,
+}
+
+pub struct NodeManagerTransportOptions {
+    pub api_transport: (TransportType, TransportMode, String),
+    pub tcp_transport: TcpTransport,
+}
+
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
     #[allow(clippy::too_many_arguments)]
     pub async fn create(
         ctx: &Context,
-        node_name: String,
-        node_dir: PathBuf,
-        // Should be passed only when creating fresh node and we want it to get default root Identity
-        identity_override: Option<IdentityOverride>,
-        skip_defaults: bool,
-        enable_credential_checks: bool,
-        ac: Option<&AuthoritiesConfig>,
-        project_id: Option<Vec<u8>>,
-        projects: BTreeMap<String, ProjectLookup>,
-        api_transport: (TransportType, TransportMode, String),
-        tcp_transport: TcpTransport,
+        general_options: NodeManagerGeneralOptions<'_>,
+        projects_options: NodeManagerProjectsOptions,
+        transport_options: NodeManagerTransportOptions,
     ) -> Result<Self> {
         let api_transport_id = random_alias();
         let mut transports = BTreeMap::new();
-        transports.insert(api_transport_id.clone(), api_transport);
+        transports.insert(api_transport_id.clone(), transport_options.api_transport);
 
-        let config = Config::<NodeManConfig>::load(&node_dir, "config");
+        let config = Config::<NodeManConfig>::load(&general_options.node_dir, "config");
 
         // Check if we had existing AuthenticatedStorage, create with default location otherwise
         let authenticated_storage_path = config.readlock_inner().authenticated_storage_path.clone();
@@ -191,7 +203,7 @@ impl NodeManager {
             let authenticated_storage_path = match authenticated_storage_path {
                 Some(p) => p,
                 None => {
-                    let default_location = node_dir.join("authenticated_storage.lmdb");
+                    let default_location = general_options.node_dir.join("authenticated_storage.lmdb");
 
                     config.writelock_inner().authenticated_storage_path =
                         Some(default_location.clone());
@@ -205,9 +217,9 @@ impl NodeManager {
 
         // Skip override if we already had vault
         if config.readlock_inner().vault_path.is_none() {
-            if let Some(identity_override) = identity_override {
+            if let Some(identity_override) = general_options.identity_override {
                 // Copy vault file, update config
-                let vault_path = Self::default_vault_path(&node_dir);
+                let vault_path = Self::default_vault_path(&general_options.node_dir);
                 std::fs::copy(&identity_override.vault_path, &vault_path)
                     .map_err(|_| ApiError::generic("Error while copying default node"))?;
 
@@ -241,7 +253,7 @@ impl NodeManager {
             None => None,
         };
 
-        if enable_credential_checks && (ac.is_none() || project_id.is_none()) {
+        if general_options.enable_credential_checks && (general_options.ac.is_none() || projects_options.project_id.is_none()) {
             error!("Invalid NodeManager options: enable_credential_checks was provided, while not enough \
                 information was provided to enforce the checks");
             return Err(ockam_core::Error::new(
@@ -255,19 +267,19 @@ impl NodeManager {
         let sessions = medic.sessions();
 
         let mut s = Self {
-            node_name,
-            node_dir,
+            node_name: general_options.node_name,
+            node_dir: general_options.node_dir,
             config,
             api_transport_id,
             transports,
-            tcp_transport,
+            tcp_transport: transport_options.tcp_transport,
             controller_identity_id: Self::load_controller_identity_id()?,
-            skip_defaults,
-            enable_credential_checks,
+            skip_defaults: general_options.skip_defaults,
+            enable_credential_checks: general_options.enable_credential_checks,
             vault,
             identity,
-            projects: Arc::new(projects),
-            project_id,
+            projects: Arc::new(projects_options.projects),
+            project_id: projects_options.project_id,
             authorities: None,
             authenticated_storage,
             registry: Default::default(),
@@ -278,10 +290,10 @@ impl NodeManager {
             sessions,
         };
 
-        if !skip_defaults {
+        if !general_options.skip_defaults {
             s.create_defaults(ctx).await?;
 
-            if let Some(ac) = ac {
+            if let Some(ac) = general_options.ac {
                 s.configure_authorities(ac).await?;
             }
         }
