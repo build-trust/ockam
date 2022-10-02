@@ -660,20 +660,26 @@ pub(crate) mod tests {
             let node_address = transport.listen("127.0.0.1:0").await?;
             let mut node_man = NodeManager::create(
                 ctx,
-                "node".to_string(),
-                node_dir.into_path(),
-                None,
-                true,
-                false,
-                None,
-                None,
-                Default::default(),
-                (
-                    TransportType::Tcp,
-                    TransportMode::Listen,
-                    node_address.to_string(),
-                ),
-                transport,
+                NodeManagerGeneralOptions {
+                    node_name: "node".to_string(),
+                    node_dir: node_dir.into_path(),
+                    skip_defaults: true,
+                    enable_credential_checks: false,
+                    ac: None,
+                    identity_override: None
+                },
+                NodeManagerProjectsOptions {
+                    project_id: None,  
+                    projects: Default::default(),
+                },
+                NodeManagerTransportOptions {
+                    api_transport: (
+                        TransportType::Tcp,
+                        TransportMode::Listen,
+                        node_address.to_string(),
+                    ),
+                    tcp_transport: transport,
+                },
             )
             .await?;
 
