@@ -7,14 +7,12 @@ credential management, and authorization policy enforcement – at massive scale
 Modern applications are distributed and have an unwieldy number of interconnections
 that must trustfully exchange data. To build trust for data-in-motion, applications
 need end-to-end guarantees of data authenticity, integrity, and confidentiality.
-
 To be private and secure by-design, applications must have granular control over every
 trust and access decision. Ockam allows you to add these controls and guarantees to any
 application.
 
 We are passionate about making powerful cryptographic and messaging protocols
 __simple and safe to use__ for millions of builders.
-
 For example, to create a mutually authenticated and end-to-end encrypted
 secure channel between two Ockam nodes, all you have to do is:
 
@@ -25,9 +23,9 @@ $ ockam secure-channel create --from /node/n1 --to /node/n2/service/api \
 HELLO
 ```
 
-We handle all the underlying complexity and give secure, scalable, and reliable
+We handle all the underlying protocol complexity and provide secure, scalable, and reliable
 building blocks for your applications. In the snippet above we used Ockam Command,
-it's also just as easy to do the same inside your application code using our
+it's also just as easy to establish secure channels within your application code using our
 [Rust Library](#next-steps-with-the-rust-library).
 
 Ockam empowers you to:
