@@ -10,6 +10,7 @@ use ockam_api::config::cli;
 use ockam_api::config::cli::OckamConfig as OckamConfigApi;
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::{IdentityOverride, NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_api::nodes::service::{NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions};
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
@@ -55,17 +56,23 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
     let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
         ctx,
-        cmd.node_name.clone(),
-        node_dir,
-        identity_override,
-        cmd.skip_defaults || cmd.launch_config.is_some(),
-        cmd.enable_credential_checks,
-        Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
-        project_id,
-        projects,
-        (TransportType::Tcp, TransportMode::Listen, bind),
-        tcp,
-    )
+        NodeManagerGeneralOptions {
+            node_name: cmd.node_name.clone(),
+            node_dir,
+            skip_defaults: cmd.skip_defaults || cmd.launch_config.is_some(),
+            enable_credential_checks: cmd.enable_credential_checks,
+            ac: Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
+            identity_override
+        },
+        NodeManagerProjectsOptions {
+            project_id,  
+            projects
+        },
+        NodeManagerTransportOptions {
+            api_transport: (TransportType::Tcp, TransportMode::Listen, bind),
+            tcp_transport: tcp,
+        },
+    ) 
     .await?;
 
     let node_manager_worker = NodeManagerWorker::new(node_man);
