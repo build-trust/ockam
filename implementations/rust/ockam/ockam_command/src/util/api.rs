@@ -1,11 +1,16 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 
+use std::path::Path;
 use std::str::FromStr;
 
 use anyhow::Context;
 use clap::Args;
 // TODO: maybe we can remove this cross-dependency inside the CLI?
 use minicbor::Decoder;
+use ockam_api::nodes::models::services::{
+    StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
+    StartIdentityServiceRequest, StartVaultServiceRequest, StartVerifierService,
+};
 use tracing::trace;
 
 use ockam::identity::IdentityIdentifier;
@@ -197,36 +202,50 @@ pub(crate) fn list_secure_channel_listener() -> RequestBuilder<'static, ()> {
 }
 
 /// Construct a request to start a Vault Service
-pub(crate) fn start_vault_service(addr: &str) -> Result<Vec<u8>> {
-    let payload = models::services::StartVaultServiceRequest::new(addr);
-
-    let mut buf = vec![];
-    Request::post("/node/services/vault")
-        .body(payload)
-        .encode(&mut buf)?;
-    Ok(buf)
+pub(crate) fn start_vault_service(addr: &str) -> RequestBuilder<'static, StartVaultServiceRequest> {
+    let payload = StartVaultServiceRequest::new(addr);
+    Request::post("/node/services/vault").body(payload)
 }
 
 /// Construct a request to start an Identity Service
-pub(crate) fn start_identity_service(addr: &str) -> Result<Vec<u8>> {
-    let payload = models::services::StartIdentityServiceRequest::new(addr);
-
-    let mut buf = vec![];
-    Request::post("/node/services/identity")
-        .body(payload)
-        .encode(&mut buf)?;
-    Ok(buf)
+pub(crate) fn start_identity_service(
+    addr: &str,
+) -> RequestBuilder<'static, StartIdentityServiceRequest> {
+    let payload = StartIdentityServiceRequest::new(addr);
+    Request::post("/node/services/identity").body(payload)
 }
 
 /// Construct a request to start an Authenticated Service
-pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
-    let payload = models::services::StartAuthenticatedServiceRequest::new(addr);
+pub(crate) fn start_authenticated_service(
+    addr: &str,
+) -> RequestBuilder<'static, StartAuthenticatedServiceRequest> {
+    let payload = StartAuthenticatedServiceRequest::new(addr);
+    Request::post("/node/services/authenticated").body(payload)
+}
 
-    let mut buf = vec![];
-    Request::post("/node/services/authenticated")
-        .body(payload)
-        .encode(&mut buf)?;
-    Ok(buf)
+/// Construct a request to start a Verifier Service
+pub(crate) fn start_verifier_service(addr: &str) -> RequestBuilder<'static, StartVerifierService> {
+    let payload = StartVerifierService::new(addr);
+    Request::post("/node/services/verifier").body(payload)
+}
+
+/// Construct a request to start a Credentials Service
+pub(crate) fn start_credentials_service(
+    addr: &str,
+    oneway: bool,
+) -> RequestBuilder<'static, StartCredentialsService> {
+    let payload = StartCredentialsService::new(addr, oneway);
+    Request::post("/node/services/credentials").body(payload)
+}
+
+/// Construct a request to start an Authenticator Service
+pub(crate) fn start_authenticator_service<'a>(
+    addr: &'a str,
+    enrollers: &'a Path,
+    project: &'a str,
+) -> RequestBuilder<'static, StartAuthenticatorRequest<'a>> {
+    let payload = StartAuthenticatorRequest::new(addr, enrollers, project.as_bytes());
+    Request::post("/node/services/authenticator").body(payload)
 }
 
 pub(crate) mod credentials {

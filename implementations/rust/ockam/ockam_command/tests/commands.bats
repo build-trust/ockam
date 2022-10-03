@@ -202,6 +202,43 @@ teardown() {
   assert_success
 }
 
+@test "create a node and start services" {
+  $OCKAM node create n1
+
+  # Check we can start service, but only once with the same name
+  run $OCKAM service start vault my_vault --node n1
+  assert_success
+  run $OCKAM service start vault my_vault --node n1
+  assert_failure
+
+  # Check we can start service, but only once with the same name
+  run $OCKAM service start identity my_identity --node n1
+  assert_success
+  run $OCKAM service start identity my_identity --node n1
+  assert_failure
+
+  # Check we can start service, but only once with the same name
+  run $OCKAM service start authenticated my_authenticated --node n1
+  assert_success
+  run $OCKAM service start authenticated my_authenticated --node n1
+  assert_failure
+
+  # Check we can start service, but only once with the same name
+  run $OCKAM service start verifier --addr my_verifier --node n1
+  assert_success
+  run $OCKAM service start verifier --addr my_verifier --node n1
+  assert_failure
+
+  # Check we can start service, but only once with the same name
+  run $OCKAM service start credentials --addr my_credentials --node n1
+  assert_success
+  run $OCKAMservice start credentials --addr my_credentials --node n1
+  assert_failure
+
+  # TODO: add test for authenticator
+}
+
+
 # the below tests will only succeed if already enrolled with `ockam enroll`
 
 @test "send a message to a project node from command embedded node" {

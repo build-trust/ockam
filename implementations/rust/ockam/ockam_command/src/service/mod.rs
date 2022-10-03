@@ -25,6 +25,5 @@ impl ServiceCommand {
         match self.subcommand {
             ServiceSubcommand::Start(c) => c.run(options),
         }
-        .unwrap()
     }
 }

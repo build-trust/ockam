@@ -24,7 +24,7 @@ impl NodeManager {
         addr: Address,
     ) -> Result<()> {
         if self.registry.vault_services.contains_key(&addr) {
-            return Err(ApiError::generic("Vault service at this address exists"));
+            return Err(ApiError::generic("Vault service exists at this address"));
         }
 
         let vault = self.vault()?.async_try_clone().await?;
@@ -45,7 +45,7 @@ impl NodeManager {
         addr: Address,
     ) -> Result<()> {
         if self.registry.identity_services.contains_key(&addr) {
-            return Err(ApiError::generic("Identity service at this address exists"));
+            return Err(ApiError::generic("Identity service exists at this address"));
         }
 
         let vault = self.vault()?.async_try_clone().await?;
@@ -65,7 +65,7 @@ impl NodeManager {
     ) -> Result<()> {
         if self.registry.credentials_services.contains_key(&addr) {
             return Err(ApiError::generic(
-                "credentials service exists at this address",
+                "Credentials service exists at this address",
             ));
         }
 
@@ -96,7 +96,7 @@ impl NodeManager {
     ) -> Result<()> {
         if self.registry.authenticated_services.contains_key(&addr) {
             return Err(ApiError::generic(
-                "Authenticated service at this address exists",
+                "Authenticated service exists at this address",
             ));
         }
 
@@ -118,7 +118,7 @@ impl NodeManager {
     ) -> Result<()> {
         if self.registry.uppercase_services.contains_key(&addr) {
             return Err(ApiError::generic(
-                "Uppercase service at this address exists",
+                "Uppercase service exists at this address",
             ));
         }
 
@@ -137,7 +137,7 @@ impl NodeManager {
         addr: Address,
     ) -> Result<()> {
         if self.registry.echoer_services.contains_key(&addr) {
-            return Err(ApiError::generic("Echoer service at this address exists"));
+            return Err(ApiError::generic("Echoer service exists at this address"));
         }
 
         ctx.start_worker(addr.clone(), Echoer).await?;
@@ -159,7 +159,7 @@ impl NodeManager {
     ) -> Result<()> {
         use crate::nodes::registry::AuthenticatorServiceInfo;
         if self.registry.authenticator_service.contains_key(&addr) {
-            return Err(ApiError::generic("authenticator service already started"));
+            return Err(ApiError::generic("Authenticator service already started"));
         }
         let db = self.authenticated_storage.async_try_clone().await?;
         let id = self.identity()?.async_try_clone().await?;
@@ -181,15 +181,9 @@ impl NodeManagerWorker {
     ) -> Result<ResponseBuilder> {
         let mut node_manager = self.node_manager.write().await;
         let req_body: StartVaultServiceRequest = dec.decode()?;
-
         let addr = req_body.addr.to_string().into();
-
-        let response = match node_manager.start_vault_service_impl(ctx, addr).await {
-            Ok(_) => Response::ok(req.id()),
-            Err(_err) => Response::bad_request(req.id()),
-        };
-
-        Ok(response)
+        node_manager.start_vault_service_impl(ctx, addr).await?;
+        Ok(Response::ok(req.id()))
     }
 
     pub(super) async fn start_identity_service(
@@ -200,15 +194,9 @@ impl NodeManagerWorker {
     ) -> Result<ResponseBuilder> {
         let mut node_manager = self.node_manager.write().await;
         let req_body: StartIdentityServiceRequest = dec.decode()?;
-
         let addr = req_body.addr.to_string().into();
-
-        let response = match node_manager.start_identity_service_impl(ctx, addr).await {
-            Ok(_) => Response::ok(req.id()),
-            Err(_err) => Response::bad_request(req.id()),
-        };
-
-        Ok(response)
+        node_manager.start_identity_service_impl(ctx, addr).await?;
+        Ok(Response::ok(req.id()))
     }
 
     pub(super) async fn start_authenticated_service(
@@ -219,18 +207,11 @@ impl NodeManagerWorker {
     ) -> Result<ResponseBuilder> {
         let mut node_manager = self.node_manager.write().await;
         let req_body: StartAuthenticatedServiceRequest = dec.decode()?;
-
         let addr = req_body.addr.to_string().into();
-
-        let response = match node_manager
+        node_manager
             .start_authenticated_service_impl(ctx, addr)
-            .await
-        {
-            Ok(_) => Response::ok(req.id()),
-            Err(_err) => Response::bad_request(req.id()),
-        };
-
-        Ok(response)
+            .await?;
+        Ok(Response::ok(req.id()))
     }
 
     pub(super) async fn start_uppercase_service(
@@ -241,15 +222,9 @@ impl NodeManagerWorker {
     ) -> Result<ResponseBuilder> {
         let mut node_manager = self.node_manager.write().await;
         let req_body: StartUppercaseServiceRequest = dec.decode()?;
-
         let addr = req_body.addr.to_string().into();
-
-        let response = match node_manager.start_uppercase_service_impl(ctx, addr).await {
-            Ok(_) => Response::ok(req.id()),
-            Err(_err) => Response::bad_request(req.id()),
-        };
-
-        Ok(response)
+        node_manager.start_uppercase_service_impl(ctx, addr).await?;
+        Ok(Response::ok(req.id()))
     }
 
     pub(super) async fn start_echoer_service(
@@ -260,15 +235,9 @@ impl NodeManagerWorker {
     ) -> Result<ResponseBuilder> {
         let mut node_manager = self.node_manager.write().await;
         let req_body: StartEchoerServiceRequest = dec.decode()?;
-
         let addr = req_body.addr.to_string().into();
-
-        let response = match node_manager.start_echoer_service_impl(ctx, addr).await {
-            Ok(_) => Response::ok(req.id()),
-            Err(_err) => Response::bad_request(req.id()),
-        };
-
-        Ok(response)
+        node_manager.start_echoer_service_impl(ctx, addr).await?;
+        Ok(Response::ok(req.id()))
     }
 
     pub(super) async fn start_authenticator_service<'a>(
@@ -279,7 +248,7 @@ impl NodeManagerWorker {
     ) -> Result<ResponseBuilder> {
         let mut node_manager = self.node_manager.write().await;
         #[cfg(not(feature = "direct-authenticator"))]
-        return Err(ApiError::generic("direct authenticator not available"));
+        return Err(ApiError::generic("Direct authenticator not available"));
 
         #[cfg(feature = "direct-authenticator")]
         {
@@ -305,13 +274,13 @@ impl NodeManagerWorker {
         let addr: Address = body.address().into();
 
         if node_manager.registry.verifier_services.contains_key(&addr) {
-            return Err(ApiError::generic("verifier exists at this address"));
+            return Err(ApiError::generic("Verifier service exists at this address"));
         }
 
         let vault = if let Some(v) = &node_manager.vault {
             v.async_try_clone().await?
         } else {
-            return Err(ApiError::generic("vault not found"));
+            return Err(ApiError::generic("Vault not found"));
         };
 
         let vs = crate::verifier::Verifier::new(vault);

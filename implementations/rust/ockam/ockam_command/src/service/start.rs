@@ -1,20 +1,13 @@
 use crate::node::NodeOpts;
-use crate::util::{api, connect_to, exitcode};
+use crate::util::{api, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
-use anyhow::{anyhow, Context as _, Result};
+use anyhow::{anyhow, Result};
 use clap::{Args, Subcommand};
-use minicbor::Decoder;
+use minicbor::Encode;
 use ockam::Context;
-use ockam_api::error::ApiError;
-use ockam_api::nodes::models::services::{
-    StartAuthenticatorRequest, StartCredentialsService, StartVerifierService,
-};
-use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_api::DefaultAddress;
-use ockam_core::api::{Error, Request, Response, Status};
-use ockam_core::Route;
-use std::path::PathBuf;
-use tracing::debug;
+use ockam_core::api::{RequestBuilder, Status};
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Args)]
 pub struct StartCommand {
@@ -87,315 +80,125 @@ fn authenticator_default_addr() -> String {
 }
 
 impl StartCommand {
-    pub fn run(self, options: CommandGlobalOpts) -> Result<()> {
-        let cfg = options.config;
-        let port = cfg.get_node_port(&self.node_opts.api_node).unwrap();
-
-        match self.create_subcommand {
-            StartSubCommand::Vault { .. } => connect_to(port, self, |ctx, cmd, rte| async {
-                start_vault_service(&ctx, cmd, rte).await?;
-                drop(ctx);
-                Ok(())
-            }),
-            StartSubCommand::Identity { .. } => connect_to(port, self, |ctx, cmd, rte| async {
-                start_identity_service(&ctx, cmd, rte).await?;
-                drop(ctx);
-                Ok(())
-            }),
-            StartSubCommand::Authenticated { .. } => {
-                connect_to(port, self, |mut ctx, cmd, rte| async {
-                    start_authenticated_service(&mut ctx, cmd, rte).await?;
-                    drop(ctx);
-                    Ok(())
-                })
-            }
-            StartSubCommand::Verifier { .. } => connect_to(port, self, |ctx, cmd, rte| async {
-                start_verifier_service(&ctx, cmd, rte).await?;
-                drop(ctx);
-                Ok(())
-            }),
-            StartSubCommand::Credentials { .. } => {
-                connect_to(port, self, |mut ctx, cmd, rte| async {
-                    start_credentials_service(&mut ctx, cmd, rte).await?;
-                    drop(ctx);
-                    Ok(())
-                })
-            }
-            StartSubCommand::Authenticator { .. } => {
-                connect_to(port, self, |ctx, cmd, rte| async {
-                    start_authenticator_service(&ctx, cmd, rte).await?;
-                    drop(ctx);
-                    Ok(())
-                })
-            }
-        }
-
-        Ok(())
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(rpc, (options, self));
     }
 }
 
+async fn rpc(
+    mut ctx: Context,
+    (opts, cmd): (CommandGlobalOpts, StartCommand),
+) -> crate::Result<()> {
+    run_impl(&mut ctx, opts, cmd).await
+}
+
+async fn run_impl(
+    ctx: &mut Context,
+    opts: CommandGlobalOpts,
+    cmd: StartCommand,
+) -> crate::Result<()> {
+    let node_name = &cmd.node_opts.api_node;
+    match cmd.create_subcommand {
+        StartSubCommand::Vault { addr, .. } => {
+            start_vault_service(ctx, &opts, node_name, &addr).await?
+        }
+        StartSubCommand::Identity { addr, .. } => {
+            start_identity_service(ctx, &opts, node_name, &addr).await?
+        }
+        StartSubCommand::Authenticated { addr, .. } => {
+            let req = api::start_authenticated_service(&addr);
+            start_service_impl(ctx, &opts, node_name, &addr, "Authenticated", req).await?
+        }
+        StartSubCommand::Verifier { addr, .. } => {
+            start_verifier_service(ctx, &opts, node_name, &addr).await?
+        }
+        StartSubCommand::Credentials { addr, oneway, .. } => {
+            let req = api::start_credentials_service(&addr, oneway);
+            start_service_impl(ctx, &opts, node_name, &addr, "Credentials", req).await?
+        }
+        StartSubCommand::Authenticator {
+            addr,
+            enrollers,
+            project,
+            ..
+        } => {
+            start_authenticator_service(ctx, &opts, node_name, &addr, &enrollers, &project).await?
+        }
+    }
+
+    Ok(())
+}
+
+/// Helper function.
+async fn start_service_impl<T>(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+    serv_addr: &str,
+    serv_name: &str,
+    req: RequestBuilder<'_, T>,
+) -> Result<()>
+where
+    T: Encode<()>,
+{
+    let mut rpc = Rpc::background(ctx, opts, node_name)?;
+    rpc.request(req).await?;
+
+    let (res, dec) = rpc.check_response()?;
+    match res.status() {
+        Some(Status::Ok) => {
+            println!("{serv_name} service started at address: {serv_addr}");
+            Ok(())
+        }
+        _ => {
+            eprintln!("{}", rpc.parse_err_msg(res, dec));
+            Err(anyhow!("Failed to start {serv_name} service"))
+        }
+    }
+}
+
+/// Public so `ockam_command::node::create` can use it.
 pub async fn start_vault_service(
     ctx: &Context,
-    cmd: StartCommand,
-    mut base_route: Route,
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+    serv_addr: &str,
 ) -> Result<()> {
-    let addr = match cmd.create_subcommand {
-        StartSubCommand::Vault { addr, .. } => addr,
-        _ => return Err(ApiError::generic("Internal logic error").into()),
-    };
-
-    let response: Vec<u8> = ctx
-        .send_and_receive(
-            base_route.modify().append(NODEMANAGER_ADDR),
-            api::start_vault_service(&addr)?,
-        )
-        .await
-        .context("Failed to process request")?;
-
-    let mut dec = Decoder::new(&response);
-    let header = dec.decode::<Response>()?;
-    debug!(?header, "Received response");
-
-    let res = match header.status() {
-        Some(Status::Ok) => Ok(format!(
-            "Vault Service started! You can send messages to it via this address:\n{}",
-            addr
-        )),
-        Some(Status::InternalServerError) => {
-            let err = dec
-                .decode::<String>()
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            Err(anyhow!(
-                "An error occurred while processing the request: {err}"
-            ))
-        }
-        _ => Err(anyhow!("Unexpected response received from node")),
-    };
-    match res {
-        Ok(o) => {
-            println!("{o}");
-            Ok(())
-        }
-        Err(err) => {
-            eprintln!("{err}");
-            std::process::exit(exitcode::IOERR);
-        }
-    }
+    let req = api::start_vault_service(serv_addr);
+    start_service_impl(ctx, opts, node_name, serv_addr, "Vault", req).await
 }
 
+/// Public so `ockam_command::node::create` can use it.
 pub async fn start_identity_service(
     ctx: &Context,
-    cmd: StartCommand,
-    mut base_route: Route,
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+    serv_addr: &str,
 ) -> Result<()> {
-    let addr = match cmd.create_subcommand {
-        StartSubCommand::Identity { addr, .. } => addr,
-        _ => return Err(ApiError::generic("Internal logic error").into()),
-    };
-
-    let response: Vec<u8> = ctx
-        .send_and_receive(
-            base_route.modify().append(NODEMANAGER_ADDR),
-            api::start_identity_service(&addr)?,
-        )
-        .await
-        .context("Failed to process request")?;
-
-    let mut dec = Decoder::new(&response);
-    let header = dec.decode::<Response>()?;
-    debug!(?header, "Received response");
-
-    let res = match header.status() {
-        Some(Status::Ok) => Ok(format!(
-            "Identity Service started! You can send messages to it via this address:\n{}",
-            addr
-        )),
-        Some(Status::InternalServerError) => {
-            let err = dec
-                .decode::<String>()
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            Err(anyhow!(
-                "An error occurred while processing the request: {err}"
-            ))
-        }
-        _ => Err(anyhow!("Unexpected response received from node")),
-    };
-    match res {
-        Ok(o) => {
-            println!("{o}");
-            Ok(())
-        }
-        Err(err) => {
-            eprintln!("{err}");
-            std::process::exit(exitcode::IOERR);
-        }
-    }
+    let req = api::start_identity_service(serv_addr);
+    start_service_impl(ctx, opts, node_name, serv_addr, "Identity", req).await
 }
 
-pub async fn start_authenticated_service(
-    ctx: &mut Context,
-    cmd: StartCommand,
-    mut base_route: Route,
-) -> Result<()> {
-    let addr = match cmd.create_subcommand {
-        StartSubCommand::Authenticated { addr, .. } => addr,
-        _ => return Err(ApiError::generic("Internal logic error").into()),
-    };
-
-    let response: Vec<u8> = ctx
-        .send_and_receive(
-            base_route.modify().append(NODEMANAGER_ADDR),
-            api::start_authenticated_service(&addr)?,
-        )
-        .await
-        .context("Failed to process request")?;
-
-    let mut dec = Decoder::new(&response);
-    let header = dec.decode::<Response>()?;
-    debug!(?header, "Received response");
-
-    let res = match header.status() {
-        Some(Status::Ok) => Ok(format!(
-            "Authenticated Service started! You can send messages to it via this address:\n{}",
-            addr
-        )),
-        Some(Status::InternalServerError) => {
-            let err = dec
-                .decode::<String>()
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            Err(anyhow!(
-                "An error occurred while processing the request: {err}"
-            ))
-        }
-        _ => Err(anyhow!("Unexpected response received from node")),
-    };
-    match res {
-        Ok(o) => {
-            println!("{o}");
-            Ok(())
-        }
-        Err(err) => {
-            eprintln!("{err}");
-            std::process::exit(exitcode::IOERR);
-        }
-    }
-}
-
+/// Public so `ockam_command::node::create` can use it.
 pub async fn start_verifier_service(
     ctx: &Context,
-    cmd: StartCommand,
-    mut route: Route,
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+    serv_addr: &str,
 ) -> Result<()> {
-    let addr = match cmd.create_subcommand {
-        StartSubCommand::Verifier { addr } => addr,
-        _ => unreachable!(),
-    };
-
-    let req = Request::post("/node/services/verifier")
-        .body(StartVerifierService::new(&addr))
-        .to_vec()?;
-
-    let res: Vec<u8> = ctx
-        .send_and_receive(route.modify().append(NODEMANAGER_ADDR), req)
-        .await?;
-
-    let mut dec = Decoder::new(&res);
-    let hdr: Response = dec.decode()?;
-
-    if let Some(Status::Ok) = hdr.status() {
-        println!("Verifier service started at address: {addr}");
-        return Ok(());
-    }
-
-    if hdr.has_body() {
-        if let Ok(err) = dec.decode::<Error>() {
-            if let Some(msg) = err.message() {
-                return Err(anyhow!("Failed to start verifier service: {}", msg));
-            }
-        }
-    }
-
-    Err(anyhow!("Failed to start verifier service"))
+    let req = api::start_verifier_service(serv_addr);
+    start_service_impl(ctx, opts, node_name, serv_addr, "Verifier", req).await
 }
 
-pub async fn start_credentials_service(
-    ctx: &mut Context,
-    cmd: StartCommand,
-    mut route: Route,
-) -> Result<()> {
-    let (addr, oneway) = match cmd.create_subcommand {
-        StartSubCommand::Credentials { addr, oneway } => (addr, oneway),
-        _ => unreachable!(),
-    };
-
-    let req = Request::post("/node/services/credentials")
-        .body(StartCredentialsService::new(&addr, oneway))
-        .to_vec()?;
-
-    let res: Vec<u8> = ctx
-        .send_and_receive(route.modify().append(NODEMANAGER_ADDR), req)
-        .await?;
-
-    let mut dec = Decoder::new(&res);
-    let hdr: Response = dec.decode()?;
-
-    if let Some(Status::Ok) = hdr.status() {
-        println!("Credentials service started at address: {addr}");
-        return Ok(());
-    }
-
-    if hdr.has_body() {
-        if let Ok(err) = dec.decode::<Error>() {
-            if let Some(msg) = err.message() {
-                return Err(anyhow!("Failed to start credentials service: {}", msg));
-            }
-        }
-    }
-
-    Err(anyhow!("Failed to start credentials service"))
-}
-
+/// Public so `ockam_command::node::create` can use it.
 pub async fn start_authenticator_service(
     ctx: &Context,
-    cmd: StartCommand,
-    mut route: Route,
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+    serv_addr: &str,
+    enrollers: &Path,
+    project: &str,
 ) -> Result<()> {
-    let (addr, enrollers, project) = match cmd.create_subcommand {
-        StartSubCommand::Authenticator {
-            addr: a,
-            enrollers: e,
-            project: p,
-        } => (a, e, p),
-        _ => unreachable!(),
-    };
-
-    let req = Request::post("/node/services/authenticator")
-        .body(StartAuthenticatorRequest::new(
-            &addr,
-            &enrollers,
-            project.as_bytes(),
-        ))
-        .to_vec()?;
-
-    let res: Vec<u8> = ctx
-        .send_and_receive(route.modify().append(NODEMANAGER_ADDR), req)
-        .await?;
-
-    let mut dec = Decoder::new(&res);
-    let hdr: Response = dec.decode()?;
-
-    if let Some(Status::Ok) = hdr.status() {
-        println!("Authenticator service started at address: {addr}");
-        return Ok(());
-    }
-
-    if hdr.has_body() {
-        if let Ok(err) = dec.decode::<Error>() {
-            if let Some(msg) = err.message() {
-                return Err(anyhow!("Failed to start authenticator service: {}", msg));
-            }
-        }
-    }
-
-    Err(anyhow!("Failed to start authenticator service"))
+    let req = api::start_authenticator_service(serv_addr, enrollers, project);
+    start_service_impl(ctx, opts, node_name, serv_addr, "Authenticator", req).await
 }
