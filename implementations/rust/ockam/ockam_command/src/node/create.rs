@@ -2,10 +2,12 @@ use clap::Args;
 use rand::prelude::random;
 
 use anyhow::{Context as _, Result};
+use ockam::compat::asynchronous::RwLock;
 use std::{
     net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
     str::FromStr,
+    sync::Arc,
 };
 
 use crate::node::util::{
@@ -28,7 +30,7 @@ use ockam::{Address, AsyncTryClone, NodeBuilder, TCP};
 use ockam::{Context, TcpTransport};
 use ockam_api::{
     nodes::models::transport::{TransportMode, TransportType},
-    nodes::{NodeManager, NODEMANAGER_ADDR},
+    nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR},
 };
 use ockam_core::LOCAL;
 
@@ -304,8 +306,12 @@ async fn run_background_node_impl(
         tcp.async_try_clone().await?,
     )
     .await?;
+    let node_manager_worker = NodeManagerWorker {
+        node_manager: Arc::new(RwLock::new(node_man)),
+    };
 
-    ctx.start_worker(NODEMANAGER_ADDR, node_man).await?;
+    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
+        .await?;
 
     if let Some(path) = c.launch_config {
         let node_opts = super::NodeOpts {

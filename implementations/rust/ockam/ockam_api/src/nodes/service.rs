@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 use minicbor::Decoder;
 
+use ockam::compat::asynchronous::RwLock;
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
 use ockam_core::api::{Error, Method, Request, Response, Status};
 use ockam_core::compat::{
@@ -111,6 +112,10 @@ pub struct NodeManager {
     pub(crate) registry: Registry,
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
+}
+
+pub struct NodeManagerWorker {
+    pub node_manager: Arc<RwLock<NodeManager>>,
 }
 
 pub struct IdentityOverride {
@@ -530,24 +535,27 @@ impl NodeManager {
 }
 
 #[ockam::worker]
-impl Worker for NodeManager {
+impl Worker for NodeManagerWorker {
     type Message = Vec<u8>;
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        if !self.skip_defaults {
-            self.initialize_defaults(ctx).await?;
+        let mut node_manger = self.node_manager.write().await;
+        if !node_manger.skip_defaults {
+            node_manger.initialize_defaults(ctx).await?;
         }
 
         Ok(())
     }
 
     async fn shutdown(&mut self, _: &mut Self::Context) -> Result<()> {
-        self.medic.abort();
+        let node_manager = self.node_manager.read().await;
+        node_manager.medic.abort();
         Ok(())
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {
+        let mut node_manager = self.node_manager.write().await;
         let mut dec = Decoder::new(msg.as_body());
         let req: Request = match dec.decode() {
             Ok(r) => r,
@@ -557,7 +565,7 @@ impl Worker for NodeManager {
             }
         };
 
-        let r = match self.handle_request(ctx, &req, &mut dec).await {
+        let r = match node_manager.handle_request(ctx, &req, &mut dec).await {
             Ok(r) => r,
             Err(err) => {
                 error! {
@@ -623,8 +631,12 @@ pub(crate) mod tests {
             node_man.create_vault_impl(None, false).await?;
             node_man.create_identity_impl(ctx, false).await?;
 
+            let node_manager_worker = NodeManagerWorker {
+                node_manager: Arc::new(RwLock::new(node_man)),
+            };
+
             // Initialize node_man worker and return its route
-            ctx.start_worker(node_manager, node_man).await?;
+            ctx.start_worker(node_manager, node_manager_worker).await?;
             Ok(route![node_manager])
         }
     }

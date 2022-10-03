@@ -2,12 +2,13 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context as _, Result};
 
+use ockam::compat::asynchronous::RwLock;
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpTransport};
 use ockam_api::config::cli;
 use ockam_api::config::cli::OckamConfig as OckamConfigApi;
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
-use ockam_api::nodes::{IdentityOverride, NodeManager, NODEMANAGER_ADDR};
+use ockam_api::nodes::{IdentityOverride, NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
@@ -68,7 +69,12 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
     )
     .await?;
 
-    ctx.start_worker(NODEMANAGER_ADDR, node_man).await?;
+    let node_manager_worker = NodeManagerWorker {
+        node_manager: Arc::new(RwLock::new(node_man)),
+    };
+
+    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
+        .await?;
 
     Ok(cmd.node_name.clone())
 }

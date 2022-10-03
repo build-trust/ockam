@@ -9,4 +9,4 @@ pub mod models;
 pub const NODEMANAGER_ADDR: &str = "_internal.nodemanager";
 
 /// The main node-manager service running on remote nodes
-pub use service::{IdentityOverride, NodeManager};
+pub use service::{IdentityOverride, NodeManager, NodeManagerWorker};
