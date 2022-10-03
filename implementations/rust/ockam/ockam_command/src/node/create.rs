@@ -14,7 +14,7 @@ use crate::node::util::{
 use crate::project::ProjectInfo;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
-use crate::service::start::{self, StartCommand, StartSubCommand};
+use crate::service::start;
 use crate::util::{bind_to_port_check, exitcode};
 use crate::{
     help,
@@ -134,7 +134,7 @@ impl CreateCommand {
                 }
             }
 
-            if let Err(e) = run_background_node(cmd, addr, cfg.clone()) {
+            if let Err(e) = run_background_node(cmd, addr, cfg.clone(), options) {
                 eprintln!("Ockam node failed: {:?}", e);
             }
         } else {
@@ -237,12 +237,17 @@ impl CreateCommand {
     }
 }
 
-fn run_background_node(c: CreateCommand, addr: SocketAddr, cfg: OckamConfig) -> Result<()> {
+fn run_background_node(
+    c: CreateCommand,
+    addr: SocketAddr,
+    cfg: OckamConfig,
+    opts: CommandGlobalOpts,
+) -> Result<()> {
     let (mut ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
 
     executor
         .execute(async move {
-            let v = run_background_node_impl(&mut ctx, c, addr, cfg).await;
+            let v = run_background_node_impl(&mut ctx, c, addr, cfg, &opts).await;
 
             match v {
                 Err(e) => {
@@ -260,6 +265,7 @@ async fn run_background_node_impl(
     c: CreateCommand,
     addr: SocketAddr,
     cfg: OckamConfig,
+    opts: &CommandGlobalOpts,
 ) -> Result<()> {
     // This node was initially created as a foreground node
     if !c.child_process {
@@ -313,7 +319,7 @@ async fn run_background_node_impl(
         let node_opts = super::NodeOpts {
             api_node: c.node_name,
         };
-        start_services(ctx, &tcp, &path, addr, node_opts).await?
+        start_services(ctx, &tcp, &path, addr, node_opts, opts).await?
     }
 
     Ok(())
@@ -325,6 +331,7 @@ async fn start_services(
     cfg: &Path,
     addr: SocketAddr,
     node_opts: super::NodeOpts,
+    opts: &CommandGlobalOpts,
 ) -> Result<()> {
     let config = {
         let c = Config::read(cfg)?;
@@ -340,22 +347,14 @@ async fn start_services(
 
     if let Some(cfg) = config.vault {
         if !cfg.disabled {
-            let cmd = StartCommand {
-                node_opts: node_opts.clone(),
-                create_subcommand: StartSubCommand::Vault { addr: cfg.address },
-            };
             println!("starting vault service ...");
-            start::start_vault_service(ctx, cmd, addr.clone().into()).await?
+            start::start_vault_service(ctx, opts, &node_opts.api_node, &cfg.address).await?
         }
     }
     if let Some(cfg) = config.identity {
         if !cfg.disabled {
-            let cmd = StartCommand {
-                node_opts: node_opts.clone(),
-                create_subcommand: StartSubCommand::Identity { addr: cfg.address },
-            };
             println!("starting identity service ...");
-            start::start_identity_service(ctx, cmd, addr.clone().into()).await?
+            start::start_identity_service(ctx, opts, &node_opts.api_node, &cfg.address).await?
         }
     }
     if let Some(cfg) = config.secure_channel_listener {
@@ -369,26 +368,22 @@ async fn start_services(
     }
     if let Some(cfg) = config.verifier {
         if !cfg.disabled {
-            let cmd = StartCommand {
-                node_opts: node_opts.clone(),
-                create_subcommand: StartSubCommand::Verifier { addr: cfg.address },
-            };
             println!("starting verifier service ...");
-            start::start_verifier_service(ctx, cmd, addr.clone().into()).await?
+            start::start_verifier_service(ctx, opts, &node_opts.api_node, &cfg.address).await?
         }
     }
     if let Some(cfg) = config.authenticator {
         if !cfg.disabled {
-            let cmd = StartCommand {
-                node_opts,
-                create_subcommand: StartSubCommand::Authenticator {
-                    addr: cfg.address,
-                    enrollers: cfg.enrollers,
-                    project: cfg.project,
-                },
-            };
             println!("starting authenticator service ...");
-            start::start_authenticator_service(ctx, cmd, addr.into()).await?
+            start::start_authenticator_service(
+                ctx,
+                opts,
+                &node_opts.api_node,
+                &cfg.address,
+                &cfg.enrollers,
+                &cfg.project,
+            )
+            .await?
         }
     }
 
