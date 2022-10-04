@@ -183,12 +183,10 @@ defmodule Ockam.Node do
     )
   end
 
-  @doc false
   def start_link(_init_arg) do
     Supervisor.start_link(__MODULE__, nil, name: __MODULE__)
   end
 
-  @doc false
   def stop(pid) when is_pid(pid) do
     DynamicSupervisor.terminate_child(@processes_supervisor, pid)
   end

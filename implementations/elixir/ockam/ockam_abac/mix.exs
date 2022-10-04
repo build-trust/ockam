@@ -1,4 +1,4 @@
-defmodule Ockam.Services.MixProject do
+defmodule Ockam.ABAC.MixProject do
   use Mix.Project
 
   @version "0.10.1"
@@ -6,11 +6,11 @@ defmodule Ockam.Services.MixProject do
   @elixir_requirement "~> 1.10"
 
   @ockam_github_repo "https://github.com/build-trust/ockam"
-  @ockam_github_repo_path "implementations/elixir/ockam/ockam_services"
+  @ockam_github_repo_path "implementations/elixir/ockam/ockam_abac"
 
   def project do
     [
-      app: :ockam_services,
+      app: :ockam_abac,
       version: @version,
       elixir: @elixir_requirement,
       consolidate_protocols: Mix.env() != :test,
@@ -27,11 +27,11 @@ defmodule Ockam.Services.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
 
       # hex
-      description: "Ockam Services",
+      description: "Ockam ABAC",
       package: package(),
 
       # docs
-      name: "Ockam Services",
+      name: "Ockam ABAC",
       docs: docs()
     ]
   end
@@ -39,7 +39,7 @@ defmodule Ockam.Services.MixProject do
   # mix help compile.app for more
   def application do
     [
-      mod: {Ockam.Services, []},
+      mod: {Ockam.ABAC, []},
       extra_applications: [:logger, :ockam]
     ]
   end
@@ -49,15 +49,8 @@ defmodule Ockam.Services.MixProject do
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
       {:ex_doc, "~> 0.25", only: :dev, runtime: false},
-      {:ockam_vault_software, path: "../ockam_vault_software"},
       {:ockam, path: "../ockam"},
-      {:ockam_metrics, path: "../ockam_metrics"},
-      {:ockam_abac, path: "../ockam_abac"},
-      {:ranch, "~> 2.1.0", override: true},
-      ## Token lease manager
-      {:httpoison, "~> 1.8"},
-      {:poison, "~> 4.0.1"},
-      {:postgrex, "~> 0.15.10"}
+      {:neotoma, git: "https://github.com/seancribbs/neotoma.git", runtime: false}
     ]
   end
 
@@ -75,7 +68,7 @@ defmodule Ockam.Services.MixProject do
   # used by ex_doc
   defp docs do
     [
-      main: "Ockam.Services",
+      main: "Ockam.ABAC",
       source_url_pattern:
         "#{@ockam_github_repo}/blob/v#{@version}/#{@ockam_github_repo_path}/%{path}#L%{line}"
     ]
@@ -89,8 +82,9 @@ defmodule Ockam.Services.MixProject do
       "lint.credo": "credo --strict",
       "lint.dialyzer": "dialyzer --format dialyxir",
       lint: ["lint.format", "lint.credo"],
-      test: "test --no-start",
-      "test.cover": "test --no-start --cover"
+      # test: "test --no-start",
+      "test.cover": "test --no-start --cover",
+      compile: ["compile", "compile_rules"]
     ]
   end
 end
