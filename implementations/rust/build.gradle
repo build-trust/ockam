@@ -60,7 +60,7 @@ task lint_cargo_deny {
   doLast {
     exec {
       environment environmentVars()
-      commandLine cargo('deny', '--all-features', '--manifest-path=../../Cargo.toml', 'check', 'licenses', 'advisories')
+      commandLine cargo('deny', '--all-features', '--manifest-path=../../Cargo.toml', 'check', '--config=tools/cargo-deny/deny.toml', 'licenses', 'advisories')
     }
   }
 }
