@@ -209,12 +209,15 @@ defmodule Ockam.Worker do
         with {:ok, address} <- Keyword.fetch(options, :address),
              authorization when is_list(authorization) or is_map(authorization) <-
                Keyword.get(options, :authorization, []) do
+          attributes = Keyword.get(options, :attributes, %{}) |> Map.new()
+
           base_state = %{
             address: address,
             all_addresses: [address],
             module: module,
             last_message_ts: nil,
-            authorization: Authorization.expand_config(authorization)
+            authorization: Authorization.expand_config(authorization),
+            attributes: attributes
           }
 
           with {:ok, state} <-

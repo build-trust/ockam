@@ -12,12 +12,13 @@ defmodule Ockam.CloudNode do
   @doc false
   def start(_type, _args) do
     Logger.info("Starting Ockam Cloud Node.")
-    children = cleanup_schedule(Application.get_env(:ockam_cloud_node, :cleanup))
+    children = cleanup_schedule()
 
     Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
   end
 
-  defp cleanup_schedule(config) do
+  defp cleanup_schedule() do
+    config = Application.get_env(:ockam_cloud_node, :cleanup)
     crontab = Keyword.get(config, :crontab)
     idle_timeout = Keyword.get(config, :idle_timeout)
     cleanup_kafka_topics = Keyword.get(config, :cleanup_kafka_topics)

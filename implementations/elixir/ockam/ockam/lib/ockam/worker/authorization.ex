@@ -49,6 +49,7 @@ defmodule Ockam.Worker.Authorization do
   def from_addresses(message, addresses) do
     Logger.debug("check from addresses #{inspect(message)} #{inspect(addresses)}")
 
+    ## TODO: use better tools to check from, maybe use from_pid
     case Message.return_route(message) do
       [return_address | _rest] ->
         case Enum.member?(addresses, return_address) do

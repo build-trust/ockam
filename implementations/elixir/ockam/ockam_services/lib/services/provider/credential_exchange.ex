@@ -1,7 +1,7 @@
 defmodule Ockam.Services.Provider.CredentialExchange do
   @moduledoc """
   Implementation for Ockam.Services.Provider
-  providing asymmetricsl credential exchange api service
+  providing asymmetrical credential exchange api service
   """
 
   @behaviour Ockam.Services.Provider

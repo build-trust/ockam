@@ -1,0 +1,84 @@
+expression <- rule / comment;
+
+comment <- ';;' .*;
+
+rule <- space* (filter_rule / member_rule / exists_rule / logical_rule / boolean) space*
+`[_Space1, Rule, _Space2] = Node, Rule`;
+
+%% Filter rules compare an attribute to another attribute or value
+filter_rule <- open filter attribute (attribute / value) close
+`[_Open, Filter, Attribute, Comp, _Close] = Node, {Filter, Attribute, Comp}`;
+filter <- ('=' / '<' / '>' / '!=') space*
+`[Filter, _Space] = Node,
+case Filter of
+  <<"=">> -> 'eq';
+  <<"!=">> -> 'neq';
+  <<">">> -> 'gt';
+  <<"<">> -> 'lt'
+end`;
+
+%% Member rules check that attribute or value is a member of a list
+member_rule <- open ('member?' / 'in') space* (attribute / value) (attribute / value_list) close
+`[_Open, _Member, _Space, Attr, List, _Close] = Node, {member, Attr, List}`;
+
+exists_rule <- open 'exists?' space* attribute close
+`[_Open, _Exists, _Space, Attr, _Close] = Node, {exists, Attr}`;
+
+logical_rule <- combination_rule / not_rule / if_rule;
+
+%% And and Or rules must have 2 or more arguments
+combination_rule <- open logical_op rule rule+ close
+`[_Open, Comb, Rule, Rules, _Close] = Node, {Comb, [Rule | Rules]}`;
+
+logical_op <- and / or;
+and <- 'and' space*
+`'and'`;
+or <- 'or' space*
+`'or'`;
+
+not_rule <- open 'not' space* rule close
+`[_Open, _Not, _Space, Rule, _Close] = Node, {'not', Rule}`;
+
+if_rule <- open 'if' space* rule rule rule close
+`[_Open, _If, _Space, CondRule, TrueRule, FalseRule, _Close] = Node,
+{'if', CondRule, TrueRule, FalseRule}`;
+
+attribute <- type '.' name  space*
+`[Type, _, Name, _] = Node, {binary_to_atom(Type), iolist_to_binary(Name)}`;
+type <- 'action' / 'subject' / 'resource';
+name <- [a-z0-9_]+;
+
+value <- (string / boolean / number) space*
+`[Val, _Space] = Node, Val`;
+
+value_list <- list_open value* list_close
+`[_Open, Values, _Close] = Node, Values`;
+
+boolean <- true / false;
+open <- '(' space* ;
+close <- ')' space* ;
+list_open <- '[' space*;
+list_close <- ']' space*;
+space <- ' ' / '\t' / eol;
+eol <- '\r\n' / '\n' / '\r';
+string <- '"' chars:(!'"' ("\\\\" / '\\"' / .))* '"'
+`iolist_to_binary(proplists:get_value(chars, Node))`;
+number <- int frac? exp?
+`
+case Node of
+  [Int, [], []] -> list_to_integer(binary_to_list(iolist_to_binary(Int)));
+  [Int, Frac, []] -> list_to_float(binary_to_list(iolist_to_binary([Int, Frac])));
+  [Int, [], Exp] -> list_to_float(binary_to_list(iolist_to_binary([Int, ".0", Exp])));
+  _ -> list_to_float(binary_to_list(iolist_to_binary(Node)))
+end
+`;
+int <- '-'? (non_zero_digit digit+) / digit ~;
+frac <- '.' digit+ ~;
+exp <- e digit+ ~;
+e <- [eE] ('+' / '-')? ~;
+non_zero_digit <- [1-9] ~;
+digit <- [0-9] ~;
+true <- 'true' space*
+`true`;
+false <- 'false' space*
+`false`;

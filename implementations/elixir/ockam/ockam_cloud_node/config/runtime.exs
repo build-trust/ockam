@@ -225,6 +225,22 @@ config :ockam_cloud_node,
     cleanup_kafka_topics: cleanup_kafka_topics
   ]
 
+## ABAC configuration
+
+abac_policy_storage =
+  case System.get_env("ABAC_POLICY_STORAGE", "memory") do
+    "memory" ->
+      Ockam.ABAC.PolicyStorage.ETS
+
+    "file" ->
+      Ockam.ABAC.PolicyStorage.DETS
+
+    "file:" <> filename ->
+      {Ockam.ABAC.PolicyStorage.DETS, [filename: filename]}
+  end
+
+config :ockam_abac, policy_storage: abac_policy_storage
+
 # must be set for prometheus metrics to be enabled
 config :ockam_metrics,
   prometheus_port: System.get_env("PROMETHEUS_PORT"),
