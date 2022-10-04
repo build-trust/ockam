@@ -522,9 +522,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.0.0-rc.2"
+version = "4.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04d5891a0b7bbd946e91a79c350b5475764d7d7eda9c71141059a9d2ab0853e5"
+checksum = "30607dd93c420c6f1f80b544be522a0238a7db35e6a12968d28910983fee0df0"
 dependencies = [
  "atty",
  "bitflags",
@@ -538,18 +538,18 @@ dependencies = [
 
 [[package]]
 name = "clap_complete"
-version = "4.0.0-rc.1"
+version = "4.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f00c7ed9ef8826baf070d8f477714b0d9219f8d15744d1b5267cc8a89a1f0286"
+checksum = "11cba7abac9b56dfe2f035098cdb3a43946f276e6db83b72c4e692343f9aab9a"
 dependencies = [
- "clap 4.0.0-rc.2",
+ "clap 4.0.9",
 ]
 
 [[package]]
 name = "clap_derive"
-version = "4.0.0-rc.1"
+version = "4.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51eef4d62724bf369e9ca7458cfde0c55263708b4552020058fba384864e8c23"
+checksum = "a4a307492e1a34939f79d3b6b9650bd2b971513cd775436bf2b78defeb5af00b"
 dependencies = [
  "heck 0.4.0",
  "proc-macro-error",
@@ -2310,7 +2310,7 @@ dependencies = [
  "async-recursion",
  "async-trait",
  "atty",
- "clap 4.0.0-rc.2",
+ "clap 4.0.9",
  "clap_complete",
  "cli-table",
  "colorful",
