@@ -305,10 +305,13 @@ async fn run_background_node_impl(
             node_dir,
             c.skip_defaults || c.launch_config.is_some(),
             c.enable_credential_checks,
-            Some(&cfg.authorities(&c.node_name)?.snapshot()),
             identity_override
         ),
-        NodeManagerProjectsOptions::new(project_id, projects),
+        NodeManagerProjectsOptions::new(
+            Some(&cfg.authorities(&c.node_name)?.snapshot()),
+            project_id,
+            projects
+        ),
         NodeManagerTransportOptions::new(
             (TransportType::Tcp, TransportMode::Listen, bind),
             tcp.async_try_clone().await?
