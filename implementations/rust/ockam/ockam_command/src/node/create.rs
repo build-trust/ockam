@@ -300,22 +300,19 @@ async fn run_background_node_impl(
     let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
         ctx,
-        NodeManagerGeneralOptions {
-            node_name: c.node_name.clone(),
+        NodeManagerGeneralOptions::new(
+            c.node_name.clone(),
             node_dir,
-            skip_defaults: c.skip_defaults || c.launch_config.is_some(),
-            enable_credential_checks: c.enable_credential_checks,
-            ac: Some(&cfg.authorities(&c.node_name)?.snapshot()),
+            c.skip_defaults || c.launch_config.is_some(),
+            c.enable_credential_checks,
+            Some(&cfg.authorities(&c.node_name)?.snapshot()),
             identity_override
-        },
-        NodeManagerProjectsOptions {
-            project_id,  
-            projects
-        },
-        NodeManagerTransportOptions {
-            api_transport: (TransportType::Tcp, TransportMode::Listen, bind),
-            tcp_transport: tcp.async_try_clone().await?,
-        },
+        ),
+        NodeManagerProjectsOptions::new(project_id, projects),
+        NodeManagerTransportOptions::new(
+            (TransportType::Tcp, TransportMode::Listen, bind),
+            tcp.async_try_clone().await?
+        )
     )
     .await?;
     let node_manager_worker = NodeManagerWorker::new(node_man);

@@ -56,22 +56,22 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
     let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
         ctx,
-        NodeManagerGeneralOptions {
-            node_name: cmd.node_name.clone(),
+        NodeManagerGeneralOptions::new(
+            cmd.node_name.clone(),
             node_dir,
-            skip_defaults: cmd.skip_defaults || cmd.launch_config.is_some(),
-            enable_credential_checks: cmd.enable_credential_checks,
-            ac: Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
+            cmd.skip_defaults || cmd.launch_config.is_some(),
+            cmd.enable_credential_checks,
+            Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
             identity_override
-        },
-        NodeManagerProjectsOptions {
+        ),
+        NodeManagerProjectsOptions::new(
             project_id,  
             projects
-        },
-        NodeManagerTransportOptions {
-            api_transport: (TransportType::Tcp, TransportMode::Listen, bind),
-            tcp_transport: tcp,
-        },
+        ),
+        NodeManagerTransportOptions::new(
+            (TransportType::Tcp, TransportMode::Listen, bind),
+            tcp,
+        ),
     ) 
     .await?;
 
