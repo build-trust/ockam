@@ -7,6 +7,7 @@ ARG ELIXIR_VERSION=1.12.2-1~debian~buster
 ARG NODEJS_VERSION=16.13.1
 ARG COSIGN_VERSION=1.9.0
 ARG MOLD_VERSION=1.3.1
+ARG SHFMT_VERSION=3.5.1
 
 ARG ELIXIR_SHA256=5e8251c5d2557373ecfab986fa481844a2f659597abbfb623f45ad3a1974bb1f
 
@@ -27,6 +28,7 @@ RUN set -xe; \
         JDK_SHA256="81f5bed21077f9fbb04909b50391620c78b9a3c376593c0992934719c0de6b73" && JDK_OS="x64"; \
         JQ_SHA256="af986793a515d500ab2d35f8d2aecd656e764504b789b66d7e1a0b727a124c44" && JQ_OS="linux64"; \
         MOLD_SHA256="3893f89e5e0dcddcecc9f2ee17f14ad94fbf8b324eca45974b965353a50dac37" && MOLD_OS="x86_64-linux"; \
+        SHFMT_SHA256="56099a689b68534f98e1f8f05d3df6750ab53e3db68f514ee45595bf5b79d158" && SHFMT_OS="linux_amd64" \
         OS="x86_64-unknown-linux-gnu"; \
       ;; \
       "arm64") \
@@ -39,6 +41,7 @@ RUN set -xe; \
         JDK_SHA256="2e3c19c1707205c6b90cc04b416e8d83078ed98417d5a69dce3cf7dc0d7cfbca" && JDK_OS="aarch64"; \
         JQ_SHA256="af986793a515d500ab2d35f8d2aecd656e764504b789b66d7e1a0b727a124c44" && JQ_OS="linux64"; \
         MOLD_SHA256="24ea75ada4337c5f509ad2eecf1a82d6047ab58c415a78374dfa7e6d69b06737" && MOLD_OS="aarch64-linux"; \
+        SHFMT_SHA256="09d7902de04d52ebe0b332d84a9746d195f7e930806bdc2436f84d0de6a2d368" && SHFMT_OS="linux_arm64" \
         OS="aarch64-unknown-linux-gnu"; \
       ;; \
       *) \
@@ -144,6 +147,13 @@ RUN set -xe; \
     tar -xf /tmp/${MOLD_PACKAGE} --strip-components=1; \
     rm -rf /tmp/${MOLD_PACKAGE}; \
     chown -Rh root:root ${MOLD_HOME}/*; \
+# Setup shfmt
+    cd /tmp; \
+    SHFMT_PACKAGE="shfmt_v${SHFMT_VERSION}_${SHFMT_OS}"; \
+    curl --proto '=https' --tlsv1.2 -sSOL "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/${SHFMT_PACKAGE}"; \
+    echo "${SHFMT_SHA256}  ${SHFMT_PACKAGE}" | sha256sum -c; \
+    mv ${SHFMT_PACKAGE} /usr/bin/shfmt; \
+    chmod +x /usr/bin/shfmt; \
 # Cleanup
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
