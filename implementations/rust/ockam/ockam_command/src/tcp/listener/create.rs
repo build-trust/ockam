@@ -32,7 +32,7 @@ impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
         let node = get_final_element(&self.node_opts.at);
-        let port = cfg.get_node_port(node);
+        let port = cfg.get_node_port(node).unwrap();
 
         let input_addr = match std::net::SocketAddr::from_str(&self.address) {
             Ok(value) => value,

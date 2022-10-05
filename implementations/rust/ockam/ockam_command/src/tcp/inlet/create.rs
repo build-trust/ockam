@@ -68,7 +68,7 @@ impl CreateCommand {
         };
 
         let node = get_final_element(&command.at);
-        let port = cfg.get_node_port(node);
+        let port = cfg.get_node_port(node).unwrap();
 
         // Check if the port is used by some other services or process
         if !bind_to_port_check(&command.from) {

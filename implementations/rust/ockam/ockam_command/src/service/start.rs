@@ -89,7 +89,7 @@ fn authenticator_default_addr() -> String {
 impl StartCommand {
     pub fn run(self, options: CommandGlobalOpts) -> Result<()> {
         let cfg = options.config;
-        let port = cfg.get_node_port(&self.node_opts.api_node);
+        let port = cfg.get_node_port(&self.node_opts.api_node).unwrap();
 
         match self.create_subcommand {
             StartSubCommand::Vault { .. } => connect_to(port, self, |ctx, cmd, rte| async {

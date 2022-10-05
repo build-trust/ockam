@@ -225,7 +225,10 @@ fn delete_node_pid(opts: &CommandGlobalOpts, node_name: &str, sigkill: bool) -> 
         // Give some room for the process to stop
         std::thread::sleep(std::time::Duration::from_millis(100));
         // If it fails to bind, the port is still in use, so we try again to stop the process
-        let addr = format!("127.0.0.1:{}", opts.config.get_node_port(node_name));
+        let addr = format!(
+            "127.0.0.1:{}",
+            opts.config.get_node_port(node_name).unwrap()
+        );
         if std::net::TcpListener::bind(&addr).is_err() {
             startup::stop(pid, sigkill)?;
         }
