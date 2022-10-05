@@ -105,6 +105,11 @@ pub fn multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
     Some(rb.into())
 }
 
+pub fn try_multiaddr_to_route(ma: &MultiAddr) -> Result<Route, Error> {
+    multiaddr_to_route(ma)
+        .ok_or_else(|| ApiError::message(format!("could not convert {ma} to route")))
+}
+
 /// Try to convert a multiaddr to an Ockam Address
 pub fn multiaddr_to_addr(ma: &MultiAddr) -> Option<Address> {
     let mut it = ma.iter().peekable();
@@ -126,6 +131,11 @@ pub fn multiaddr_to_addr(ma: &MultiAddr) -> Option<Address> {
         }
         _ => None,
     }
+}
+
+pub fn try_multiaddr_to_addr(ma: &MultiAddr) -> Result<Address, Error> {
+    multiaddr_to_addr(ma)
+        .ok_or_else(|| ApiError::message(format!("could not convert {ma} to address")))
 }
 
 /// Try to convert an Ockam Route into a MultiAddr.
