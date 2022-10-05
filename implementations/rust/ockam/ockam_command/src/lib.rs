@@ -150,7 +150,7 @@ Examples:
     help_template = help::template(HELP_DETAIL),
     version,
     long_version = Version::long(),
-    next_help_heading = "Global options",
+    next_help_heading = "Global Options",
     disable_help_flag = true
 )]
 pub struct OckamCommand {
@@ -168,7 +168,7 @@ pub struct GlobalArgs {
         long,
         short,
         help("Print help information"),
-        help_heading("Global options"),
+        help_heading("Global Options"),
         action = ArgAction::Help
     )]
     help: Option<bool>,

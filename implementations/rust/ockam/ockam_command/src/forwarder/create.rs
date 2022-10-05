@@ -36,7 +36,7 @@ pub struct CreateCommand {
     at: MultiAddr,
 
     /// Authorized identity for secure channel connection (optional)
-    #[arg(long, name = "AUTHORIZED", display_order = 900)]
+    #[arg(long, id = "AUTHORIZED", display_order = 900)]
     authorized: Option<IdentityIdentifier>,
 }
 

@@ -17,7 +17,7 @@ const TEMPLATE_TOP: &str = "
 ";
 
 const TEMPLATE_BOTTOM: &str = "
-Learn more:
+Learn More:
     Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
     Learn more at https://docs.ockam.io/get-started#command
 
