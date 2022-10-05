@@ -15,6 +15,8 @@ use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 
+use super::NodeManagerWorker;
+
 impl NodeManager {
     pub(super) async fn start_vault_service_impl(
         &mut self,
@@ -37,24 +39,6 @@ impl NodeManager {
         Ok(())
     }
 
-    pub(super) async fn start_vault_service(
-        &mut self,
-        ctx: &Context,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        let req_body: StartVaultServiceRequest = dec.decode()?;
-
-        let addr = req_body.addr.to_string().into();
-
-        let response = match self.start_vault_service_impl(ctx, addr).await {
-            Ok(_) => Response::ok(req.id()),
-            Err(_err) => Response::bad_request(req.id()),
-        };
-
-        Ok(response)
-    }
-
     pub(super) async fn start_identity_service_impl(
         &mut self,
         ctx: &Context,
@@ -72,53 +56,6 @@ impl NodeManager {
             .insert(addr, Default::default());
 
         Ok(())
-    }
-
-    pub(super) async fn start_identity_service(
-        &mut self,
-        ctx: &Context,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        let req_body: StartIdentityServiceRequest = dec.decode()?;
-
-        let addr = req_body.addr.to_string().into();
-
-        let response = match self.start_identity_service_impl(ctx, addr).await {
-            Ok(_) => Response::ok(req.id()),
-            Err(_err) => Response::bad_request(req.id()),
-        };
-
-        Ok(response)
-    }
-
-    pub(super) async fn start_verifier_service<'a>(
-        &mut self,
-        ctx: &Context,
-        req: &'a Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        let body: StartVerifierService = dec.decode()?;
-        let addr: Address = body.address().into();
-
-        if self.registry.verifier_services.contains_key(&addr) {
-            return Err(ApiError::generic("verifier exists at this address"));
-        }
-
-        let vault = if let Some(v) = &self.vault {
-            v.async_try_clone().await?
-        } else {
-            return Err(ApiError::generic("vault not found"));
-        };
-
-        let vs = crate::verifier::Verifier::new(vault);
-        ctx.start_worker(addr.clone(), vs).await?;
-
-        self.registry
-            .verifier_services
-            .insert(addr, VerifierServiceInfo::default());
-
-        Ok(Response::ok(req.id()))
     }
 
     pub(super) async fn start_credentials_service_impl<'a>(
@@ -152,21 +89,6 @@ impl NodeManager {
         Ok(())
     }
 
-    pub(super) async fn start_credentials_service<'a>(
-        &mut self,
-        _ctx: &Context,
-        req: &'a Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        let body: StartCredentialsService = dec.decode()?;
-        let addr: Address = body.address().into();
-        let oneway = body.oneway();
-
-        self.start_credentials_service_impl(addr, oneway).await?;
-
-        Ok(Response::ok(req.id()))
-    }
-
     pub(super) async fn start_authenticated_service_impl(
         &mut self,
         ctx: &Context,
@@ -189,24 +111,6 @@ impl NodeManager {
         Ok(())
     }
 
-    pub(super) async fn start_authenticated_service(
-        &mut self,
-        ctx: &Context,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        let req_body: StartAuthenticatedServiceRequest = dec.decode()?;
-
-        let addr = req_body.addr.to_string().into();
-
-        let response = match self.start_authenticated_service_impl(ctx, addr).await {
-            Ok(_) => Response::ok(req.id()),
-            Err(_err) => Response::bad_request(req.id()),
-        };
-
-        Ok(response)
-    }
-
     pub(super) async fn start_uppercase_service_impl(
         &mut self,
         ctx: &Context,
@@ -227,24 +131,6 @@ impl NodeManager {
         Ok(())
     }
 
-    pub(super) async fn start_uppercase_service(
-        &mut self,
-        ctx: &Context,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        let req_body: StartUppercaseServiceRequest = dec.decode()?;
-
-        let addr = req_body.addr.to_string().into();
-
-        let response = match self.start_uppercase_service_impl(ctx, addr).await {
-            Ok(_) => Response::ok(req.id()),
-            Err(_err) => Response::bad_request(req.id()),
-        };
-
-        Ok(response)
-    }
-
     pub(super) async fn start_echoer_service_impl(
         &mut self,
         ctx: &Context,
@@ -261,45 +147,6 @@ impl NodeManager {
             .insert(addr, Default::default());
 
         Ok(())
-    }
-
-    pub(super) async fn start_echoer_service(
-        &mut self,
-        ctx: &Context,
-        req: &Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        let req_body: StartEchoerServiceRequest = dec.decode()?;
-
-        let addr = req_body.addr.to_string().into();
-
-        let response = match self.start_echoer_service_impl(ctx, addr).await {
-            Ok(_) => Response::ok(req.id()),
-            Err(_err) => Response::bad_request(req.id()),
-        };
-
-        Ok(response)
-    }
-
-    pub(super) async fn start_authenticator_service<'a>(
-        &mut self,
-        ctx: &Context,
-        req: &'a Request<'_>,
-        dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
-        #[cfg(not(feature = "direct-authenticator"))]
-        return Err(ApiError::generic("direct authenticator not available"));
-
-        #[cfg(feature = "direct-authenticator")]
-        {
-            let body: StartAuthenticatorRequest = dec.decode()?;
-            let addr: Address = body.address().into();
-
-            self.start_direct_authenticator_service_impl(ctx, addr, body.path(), body.project())
-                .await?;
-        }
-
-        Ok(Response::ok(req.id()))
     }
 
     #[cfg(feature = "direct-authenticator")]
@@ -322,5 +169,177 @@ impl NodeManager {
             .authenticator_service
             .insert(addr, AuthenticatorServiceInfo::default());
         Ok(())
+    }
+}
+
+impl NodeManagerWorker {
+    pub(super) async fn start_vault_service(
+        &mut self,
+        ctx: &Context,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let mut node_manager = self.node_manager.write().await;
+        let req_body: StartVaultServiceRequest = dec.decode()?;
+
+        let addr = req_body.addr.to_string().into();
+
+        let response = match node_manager.start_vault_service_impl(ctx, addr).await {
+            Ok(_) => Response::ok(req.id()),
+            Err(_err) => Response::bad_request(req.id()),
+        };
+
+        Ok(response)
+    }
+
+    pub(super) async fn start_identity_service(
+        &mut self,
+        ctx: &Context,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let mut node_manager = self.node_manager.write().await;
+        let req_body: StartIdentityServiceRequest = dec.decode()?;
+
+        let addr = req_body.addr.to_string().into();
+
+        let response = match node_manager.start_identity_service_impl(ctx, addr).await {
+            Ok(_) => Response::ok(req.id()),
+            Err(_err) => Response::bad_request(req.id()),
+        };
+
+        Ok(response)
+    }
+
+    pub(super) async fn start_authenticated_service(
+        &mut self,
+        ctx: &Context,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let mut node_manager = self.node_manager.write().await;
+        let req_body: StartAuthenticatedServiceRequest = dec.decode()?;
+
+        let addr = req_body.addr.to_string().into();
+
+        let response = match node_manager
+            .start_authenticated_service_impl(ctx, addr)
+            .await
+        {
+            Ok(_) => Response::ok(req.id()),
+            Err(_err) => Response::bad_request(req.id()),
+        };
+
+        Ok(response)
+    }
+
+    pub(super) async fn start_uppercase_service(
+        &mut self,
+        ctx: &Context,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let mut node_manager = self.node_manager.write().await;
+        let req_body: StartUppercaseServiceRequest = dec.decode()?;
+
+        let addr = req_body.addr.to_string().into();
+
+        let response = match node_manager.start_uppercase_service_impl(ctx, addr).await {
+            Ok(_) => Response::ok(req.id()),
+            Err(_err) => Response::bad_request(req.id()),
+        };
+
+        Ok(response)
+    }
+
+    pub(super) async fn start_echoer_service(
+        &mut self,
+        ctx: &Context,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let mut node_manager = self.node_manager.write().await;
+        let req_body: StartEchoerServiceRequest = dec.decode()?;
+
+        let addr = req_body.addr.to_string().into();
+
+        let response = match node_manager.start_echoer_service_impl(ctx, addr).await {
+            Ok(_) => Response::ok(req.id()),
+            Err(_err) => Response::bad_request(req.id()),
+        };
+
+        Ok(response)
+    }
+
+    pub(super) async fn start_authenticator_service<'a>(
+        &mut self,
+        ctx: &Context,
+        req: &'a Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let mut node_manager = self.node_manager.write().await;
+        #[cfg(not(feature = "direct-authenticator"))]
+        return Err(ApiError::generic("direct authenticator not available"));
+
+        #[cfg(feature = "direct-authenticator")]
+        {
+            let body: StartAuthenticatorRequest = dec.decode()?;
+            let addr: Address = body.address().into();
+
+            node_manager
+                .start_direct_authenticator_service_impl(ctx, addr, body.path(), body.project())
+                .await?;
+        }
+
+        Ok(Response::ok(req.id()))
+    }
+
+    pub(super) async fn start_verifier_service<'a>(
+        &mut self,
+        ctx: &Context,
+        req: &'a Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let mut node_manager = self.node_manager.write().await;
+        let body: StartVerifierService = dec.decode()?;
+        let addr: Address = body.address().into();
+
+        if node_manager.registry.verifier_services.contains_key(&addr) {
+            return Err(ApiError::generic("verifier exists at this address"));
+        }
+
+        let vault = if let Some(v) = &node_manager.vault {
+            v.async_try_clone().await?
+        } else {
+            return Err(ApiError::generic("vault not found"));
+        };
+
+        let vs = crate::verifier::Verifier::new(vault);
+        ctx.start_worker(addr.clone(), vs).await?;
+
+        node_manager
+            .registry
+            .verifier_services
+            .insert(addr, VerifierServiceInfo::default());
+
+        Ok(Response::ok(req.id()))
+    }
+
+    pub(super) async fn start_credentials_service<'a>(
+        &mut self,
+        _ctx: &Context,
+        req: &'a Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let mut node_manager = self.node_manager.write().await;
+        let body: StartCredentialsService = dec.decode()?;
+        let addr: Address = body.address().into();
+        let oneway = body.oneway();
+
+        node_manager
+            .start_credentials_service_impl(addr, oneway)
+            .await?;
+
+        Ok(Response::ok(req.id()))
     }
 }

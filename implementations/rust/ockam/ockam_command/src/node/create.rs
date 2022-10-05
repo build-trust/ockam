@@ -2,12 +2,10 @@ use clap::Args;
 use rand::prelude::random;
 
 use anyhow::{Context as _, Result};
-use ockam::compat::asynchronous::RwLock;
 use std::{
     net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
 };
 
 use crate::node::util::{
@@ -306,9 +304,7 @@ async fn run_background_node_impl(
         tcp.async_try_clone().await?,
     )
     .await?;
-    let node_manager_worker = NodeManagerWorker {
-        node_manager: Arc::new(RwLock::new(node_man)),
-    };
+    let node_manager_worker = NodeManagerWorker::new(node_man);
 
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
         .await?;

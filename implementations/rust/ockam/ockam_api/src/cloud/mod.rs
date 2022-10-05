@@ -75,7 +75,7 @@ mod node {
 
     use crate::cloud::OCKAM_CONTROLLER_IDENTITY_ID;
     use crate::error::ApiError;
-    use crate::nodes::NodeManager;
+    use crate::nodes::{NodeManager, NodeManagerWorker};
     use crate::StaticFiles;
 
     const TARGET: &str = "ockam_api::nodemanager::service";
@@ -112,26 +112,6 @@ mod node {
             self.controller_identity_id.clone()
         }
 
-        pub(super) async fn request_controller<T>(
-            &mut self,
-            ctx: &mut Context,
-            label: &str,
-            schema: impl Into<Option<&str>>,
-            cloud_route: impl Into<Route>,
-            api_service: &str,
-            req: RequestBuilder<'_, T>,
-        ) -> Result<Vec<u8>>
-        where
-            T: Encode<()>,
-        {
-            let cloud_route = cloud_route.into();
-            let sc = self.controller_secure_channel(cloud_route).await?;
-            let route = route![&sc.to_string(), api_service];
-            let res = request(ctx, label, schema, route, req).await;
-            ctx.stop_worker(sc).await?;
-            res
-        }
-
         /// Returns a secure channel between the node and the controller.
         async fn controller_secure_channel(&mut self, route: impl Into<Route>) -> Result<Address> {
             let identity = self.identity()?;
@@ -147,6 +127,29 @@ mod node {
                 .await?;
             debug!(target: TARGET, %addr, "Orchestrator secure channel created");
             Ok(addr)
+        }
+    }
+
+    impl NodeManagerWorker {
+        pub(super) async fn request_controller<T>(
+            &mut self,
+            ctx: &mut Context,
+            label: &str,
+            schema: impl Into<Option<&str>>,
+            cloud_route: impl Into<Route>,
+            api_service: &str,
+            req: RequestBuilder<'_, T>,
+        ) -> Result<Vec<u8>>
+        where
+            T: Encode<()>,
+        {
+            let mut node_manger = self.get().write().await;
+            let cloud_route = cloud_route.into();
+            let sc = node_manger.controller_secure_channel(cloud_route).await?;
+            let route = route![&sc.to_string(), api_service];
+            let res = request(ctx, label, schema, route, req).await;
+            ctx.stop_worker(sc).await?;
+            res
         }
     }
 }

@@ -115,7 +115,19 @@ pub struct NodeManager {
 }
 
 pub struct NodeManagerWorker {
-    pub node_manager: Arc<RwLock<NodeManager>>,
+    node_manager: Arc<RwLock<NodeManager>>,
+}
+
+impl NodeManagerWorker {
+    pub fn new(node_manager: NodeManager) -> Self {
+        NodeManagerWorker {
+            node_manager: Arc::new(RwLock::new(node_manager)),
+        }
+    }
+
+    pub fn get(&mut self) -> &mut Arc<RwLock<NodeManager>> {
+        &mut self.node_manager
+    }
 }
 
 pub struct IdentityOverride {
@@ -334,7 +346,7 @@ impl NodeManager {
     }
 }
 
-impl NodeManager {
+impl NodeManagerWorker {
     //////// Request matching and response handling ////////
 
     async fn handle_request(
@@ -363,21 +375,26 @@ impl NodeManager {
         let r = match (method, path_segments.as_slice()) {
             // ==*== Basic node information ==*==
             // TODO: create, delete, destroy remote nodes
-            (Get, ["node"]) => Response::ok(req.id())
-                .body(NodeStatus::new(
-                    self.node_name.as_str(),
-                    "Running",
-                    ctx.list_workers().await?.len() as u32,
-                    std::process::id() as i32,
-                    self.transports.len() as u32,
-                ))
-                .to_vec()?,
+            (Get, ["node"]) => {
+                let node_manager = self.node_manager.read().await;
+                Response::ok(req.id())
+                    .body(NodeStatus::new(
+                        node_manager.node_name.as_str(),
+                        "Running",
+                        ctx.list_workers().await?.len() as u32,
+                        std::process::id() as i32,
+                        node_manager.transports.len() as u32,
+                    ))
+                    .to_vec()?
+            }
 
             // ==*== Tcp Connection ==*==
             // TODO: Get all tcp connections
-            (Get, ["node", "tcp", "connection"]) => self
-                .get_tcp_con_or_list(req, TransportMode::Connect)
-                .to_vec()?,
+            (Get, ["node", "tcp", "connection"]) => {
+                let node_manager = self.node_manager.read().await;
+                self.get_tcp_con_or_list(req, &node_manager.transports, TransportMode::Connect)
+                    .to_vec()?
+            }
             (Post, ["node", "tcp", "connection"]) => {
                 self.add_transport(req, dec).await?.to_vec()?
             }
@@ -386,9 +403,15 @@ impl NodeManager {
             }
 
             // ==*== Tcp Listeners ==*==
-            (Get, ["node", "tcp", "listener"]) => self
-                .get_tcp_con_or_list(req, TransportMode::Listen)
-                .to_vec()?,
+            (Get, ["node", "tcp", "listener"]) => {
+                let node_manager = self.node_manager.read().await;
+                self.get_tcp_con_or_list(
+                    req,
+                    &node_manager.transports.clone(),
+                    TransportMode::Listen,
+                )
+                .to_vec()?
+            }
             (Post, ["node", "tcp", "listener"]) => self.add_transport(req, dec).await?.to_vec()?,
             (Delete, ["node", "tcp", "listener"]) => {
                 self.delete_transport(req, dec).await?.to_vec()?
@@ -416,9 +439,15 @@ impl NodeManager {
 
             // ==*== Secure channels ==*==
             // TODO: Change to RequestBuilder format
-            (Get, ["node", "secure_channel"]) => self.list_secure_channels(req).to_vec()?,
+            (Get, ["node", "secure_channel"]) => {
+                let node_manager = self.node_manager.read().await;
+                self.list_secure_channels(req, &node_manager.registry)
+                    .to_vec()?
+            }
             (Get, ["node", "secure_channel_listener"]) => {
-                self.list_secure_channel_listener(req).to_vec()?
+                let node_manager = self.node_manager.read().await;
+                self.list_secure_channel_listener(req, &node_manager.registry)
+                    .to_vec()?
             }
             (Post, ["node", "secure_channel"]) => {
                 self.create_secure_channel(req, dec).await?.to_vec()?
@@ -468,8 +497,14 @@ impl NodeManager {
             (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req.id(), dec).await?,
 
             // ==*== Inlets & Outlets ==*==
-            (Get, ["node", "inlet"]) => self.get_inlets(req).to_vec()?,
-            (Get, ["node", "outlet"]) => self.get_outlets(req).to_vec()?,
+            (Get, ["node", "inlet"]) => {
+                let node_manager = self.node_manager.read().await;
+                self.get_inlets(req, &node_manager.registry).to_vec()?
+            }
+            (Get, ["node", "outlet"]) => {
+                let node_manager = self.node_manager.read().await;
+                self.get_outlets(req, &node_manager.registry).to_vec()?
+            }
             (Post, ["node", "inlet"]) => self.create_inlet(req, dec).await?.to_vec()?,
             (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "portal"]) => todo!(),
@@ -555,7 +590,6 @@ impl Worker for NodeManagerWorker {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {
-        let mut node_manager = self.node_manager.write().await;
         let mut dec = Decoder::new(msg.as_body());
         let req: Request = match dec.decode() {
             Ok(r) => r,
@@ -565,7 +599,7 @@ impl Worker for NodeManagerWorker {
             }
         };
 
-        let r = match node_manager.handle_request(ctx, &req, &mut dec).await {
+        let r = match self.handle_request(ctx, &req, &mut dec).await {
             Ok(r) => r,
             Err(err) => {
                 error! {
@@ -631,9 +665,7 @@ pub(crate) mod tests {
             node_man.create_vault_impl(None, false).await?;
             node_man.create_identity_impl(ctx, false).await?;
 
-            let node_manager_worker = NodeManagerWorker {
-                node_manager: Arc::new(RwLock::new(node_man)),
-            };
+            let node_manager_worker = NodeManagerWorker::new(node_man);
 
             // Initialize node_man worker and return its route
             ctx.start_worker(node_manager, node_manager_worker).await?;
