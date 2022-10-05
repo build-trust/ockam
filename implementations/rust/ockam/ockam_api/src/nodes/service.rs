@@ -163,23 +163,54 @@ impl NodeManager {
 }
 
 pub struct NodeManagerGeneralOptions<'a> {
-    pub node_name: String,
-    pub node_dir: PathBuf,
-    pub skip_defaults: bool,
-    pub enable_credential_checks: bool,
-    pub ac: Option<&'a AuthoritiesConfig>,
+    node_name: String,
+    node_dir: PathBuf,
+    skip_defaults: bool,
+    enable_credential_checks: bool,
+    ac: Option<&'a AuthoritiesConfig>,
     // Should be passed only when creating fresh node and we want it to get default root Identity
-    pub identity_override: Option<IdentityOverride>,
+    identity_override: Option<IdentityOverride>,
+}
+
+impl <'a>NodeManagerGeneralOptions<'a> {
+   pub fn new(node_name: String, node_dir: PathBuf, skip_defaults: bool, enable_credential_checks: bool, ac: Option<&'a AuthoritiesConfig>, identity_override: Option<IdentityOverride>) -> Self {
+        Self {
+            node_name,
+            node_dir,
+            skip_defaults,
+            enable_credential_checks,
+            ac,
+            identity_override,
+        }
+    }
 }
 
 pub struct NodeManagerProjectsOptions {
-    pub project_id: Option<Vec<u8>>,
-    pub projects: BTreeMap<String, ProjectLookup>,
+    project_id: Option<Vec<u8>>,
+    projects: BTreeMap<String, ProjectLookup>,
+}
+
+impl NodeManagerProjectsOptions {
+    pub fn new(project_id: Option<Vec<u8>>, projects: BTreeMap<String, ProjectLookup>) -> Self {
+        Self {
+            project_id,
+            projects,
+        }
+    }
 }
 
 pub struct NodeManagerTransportOptions {
-    pub api_transport: (TransportType, TransportMode, String),
-    pub tcp_transport: TcpTransport,
+    api_transport: (TransportType, TransportMode, String),
+    tcp_transport: TcpTransport,
+}
+
+impl NodeManagerTransportOptions {
+    pub fn new(api_transport: (TransportType, TransportMode, String), tcp_transport: TcpTransport) -> Self {
+        Self {
+            api_transport,
+            tcp_transport
+        }
+   }
 }
 
 impl NodeManager {
@@ -659,26 +690,22 @@ pub(crate) mod tests {
             let node_address = transport.listen("127.0.0.1:0").await?;
             let mut node_man = NodeManager::create(
                 ctx,
-                NodeManagerGeneralOptions {
-                    node_name: "node".to_string(),
-                    node_dir: node_dir.into_path(),
-                    skip_defaults: true,
-                    enable_credential_checks: false,
-                    ac: None,
-                    identity_override: None
-                },
-                NodeManagerProjectsOptions {
-                    project_id: None,  
-                    projects: Default::default(),
-                },
-                NodeManagerTransportOptions {
-                    api_transport: (
-                        TransportType::Tcp,
-                        TransportMode::Listen,
-                        node_address.to_string(),
-                    ),
-                    tcp_transport: transport,
-                },
+                NodeManagerGeneralOptions::new(
+                    "node".to_string(),
+                    node_dir.into_path(),
+                    true,
+                    false,
+                    None,
+                    None
+                ),
+                NodeManagerProjectsOptions::new(
+                    None,
+                    Default::default()
+                ),
+                NodeManagerTransportOptions::new(
+                    (TransportType::Tcp, TransportMode::Listen, node_address.to_string()),
+                    transport
+                )
             )
             .await?;
 
