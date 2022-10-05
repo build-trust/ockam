@@ -47,11 +47,11 @@ mod node {
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
-    use crate::nodes::NodeManager;
+    use crate::nodes::NodeManagerWorker;
 
     const TARGET: &str = "ockam_api::message";
 
-    impl NodeManager {
+    impl NodeManagerWorker {
         pub(crate) async fn send_message(
             &mut self,
             ctx: &mut Context,

@@ -21,26 +21,28 @@ use crate::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse, CredentialExchangeMode,
     DeleteSecureChannelRequest,
 };
-use crate::nodes::NodeManager;
 use crate::session::Session;
 use crate::{multiaddr_to_addr, multiaddr_to_route, try_address_to_multiaddr};
+
+use super::{NodeManager, NodeManagerWorker};
 
 const MAX_RECOVERY_TIME: Duration = Duration::from_secs(10);
 const MAX_CONNECT_TIME: Duration = Duration::from_secs(5);
 const IDENTITY: &str = "authorized_identity";
 
-impl NodeManager {
+impl NodeManagerWorker {
     pub(super) async fn create_forwarder(
         &mut self,
         ctx: &mut Context,
         rid: Id,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
+        let mut node_manager = self.node_manager.write().await;
         let req: CreateForwarder = dec.decode()?;
 
         debug!(addr = %req.address(), alias = ?req.alias(), "Handling CreateForwarder request");
 
-        let addr = self.connect(&req).await?;
+        let addr = node_manager.connect(&req).await?;
         let route = multiaddr_to_route(&addr)
             .ok_or_else(|| ApiError::message("invalid address: {addr}"))?;
 
@@ -71,9 +73,9 @@ impl NodeManager {
                     c,
                     req.address().clone(),
                     req.alias().map(|a| a.to_string()),
-                    self.projects.clone(),
+                    node_manager.projects.clone(),
                 );
-                self.sessions.lock().unwrap().add(s);
+                node_manager.sessions.lock().unwrap().add(s);
             }
             f
         };
@@ -96,7 +98,9 @@ impl NodeManager {
             }
         }
     }
+}
 
+impl NodeManager {
     /// Resolve project ID (if any) and create secure channel if necessary.
     async fn connect(&mut self, req: &CreateForwarder<'_>) -> Result<MultiAddr> {
         if let Some(p) = req.address().first() {

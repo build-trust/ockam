@@ -1,4 +1,4 @@
-use super::map_anyhow_err;
+use super::{map_anyhow_err, NodeManagerWorker};
 use crate::nodes::models::vault::CreateVaultRequest;
 use crate::nodes::NodeManager;
 use minicbor::Decoder;
@@ -47,17 +47,20 @@ impl NodeManager {
 
         Ok(())
     }
+}
 
+impl NodeManagerWorker {
     pub(super) async fn create_vault(
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder> {
+        let mut node_manager = self.node_manager.write().await;
         let req_body: CreateVaultRequest = dec.decode()?;
 
         let path = req_body.path.map(|p| PathBuf::from(p.0.as_ref()));
 
-        self.create_vault_impl(path, false).await?;
+        node_manager.create_vault_impl(path, false).await?;
 
         let response = Response::ok(req.id());
 

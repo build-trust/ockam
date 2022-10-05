@@ -195,13 +195,13 @@ mod node {
     use ockam_node::Context;
 
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
-    use crate::nodes::NodeManager;
+    use crate::nodes::NodeManagerWorker;
 
     use super::*;
 
     const TARGET: &str = "ockam_api::cloud::project";
 
-    impl NodeManager {
+    impl NodeManagerWorker {
         pub(crate) async fn create_project(
             &mut self,
             ctx: &mut Context,

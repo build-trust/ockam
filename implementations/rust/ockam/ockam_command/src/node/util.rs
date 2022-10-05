@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context as _, Result};
 
-use ockam::compat::asynchronous::RwLock;
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpTransport};
 use ockam_api::config::cli;
@@ -69,9 +68,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
     )
     .await?;
 
-    let node_manager_worker = NodeManagerWorker {
-        node_manager: Arc::new(RwLock::new(node_man)),
-    };
+    let node_manager_worker = NodeManagerWorker::new(node_man);
 
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
         .await?;

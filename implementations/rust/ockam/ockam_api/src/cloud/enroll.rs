@@ -37,14 +37,14 @@ mod node {
         AuthenticateEnrollmentToken, EnrollmentToken, RequestEnrollmentToken,
     };
     use crate::cloud::CloudRequestWrapper;
-    use crate::nodes::NodeManager;
+    use crate::nodes::NodeManagerWorker;
     use ockam_identity::credential::Attributes;
 
     use super::*;
 
     const TARGET: &str = "ockam_api::cloud::enroll";
 
-    impl NodeManager {
+    impl NodeManagerWorker {
         /// Executes an enrollment process to generate a new set of access tokens using the auth0 flow.
         pub(crate) async fn enroll_auth0(
             &mut self,

@@ -12,6 +12,8 @@ use ockam_core::{route, AsyncTryClone};
 use ockam_multiaddr::MultiAddr;
 use std::str::FromStr;
 
+use super::NodeManagerWorker;
+
 impl NodeManager {
     pub(super) async fn get_credential_impl(&mut self, overwrite: bool) -> Result<()> {
         debug!("Credential check: looking for identity");
@@ -65,15 +67,18 @@ impl NodeManager {
 
         Ok(())
     }
+}
 
+impl NodeManagerWorker {
     pub(super) async fn get_credential(
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder> {
+        let mut node_manager = self.node_manager.write().await;
         let request: GetCredentialRequest = dec.decode()?;
 
-        self.get_credential_impl(request.overwrite).await?;
+        node_manager.get_credential_impl(request.overwrite).await?;
 
         let response = Response::ok(req.id());
         Ok(response)
@@ -84,6 +89,7 @@ impl NodeManager {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder> {
+        let node_manager = self.node_manager.read().await;
         let request: PresentCredentialRequest = dec.decode()?;
 
         let route = MultiAddr::from_str(&request.route).map_err(map_multiaddr_err)?;
@@ -92,7 +98,7 @@ impl NodeManager {
             None => return Err(ApiError::generic("invalid credentials service route")),
         };
 
-        let identity = self.identity()?;
+        let identity = node_manager.identity()?;
 
         if request.oneway {
             identity.present_credential(route).await?;
@@ -100,8 +106,8 @@ impl NodeManager {
             identity
                 .present_credential_mutual(
                     route,
-                    &self.authorities()?.public_identities(),
-                    &self.authenticated_storage,
+                    &node_manager.authorities()?.public_identities(),
+                    &node_manager.authenticated_storage,
                 )
                 .await?;
         }
