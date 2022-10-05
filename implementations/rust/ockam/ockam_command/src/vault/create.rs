@@ -20,7 +20,7 @@ pub struct CreateCommand {
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
         let cfg = options.config;
-        let port = cfg.get_node_port(&self.node_opts.api_node);
+        let port = cfg.get_node_port(&self.node_opts.api_node).unwrap();
 
         connect_to(port, self, create_vault);
 

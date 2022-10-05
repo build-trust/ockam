@@ -27,7 +27,7 @@ impl DeleteCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
         let node = get_final_element(&self.node_opts.api_node);
-        let port = cfg.get_node_port(node);
+        let port = cfg.get_node_port(node).unwrap();
         connect_to(port, self, delete_connection);
     }
 }

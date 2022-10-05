@@ -40,7 +40,7 @@ impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
         let node = get_final_element(&self.node_opts.from);
-        let port = cfg.get_node_port(node);
+        let port = cfg.get_node_port(node).unwrap();
 
         connect_to(port, (self.clone(), options.clone()), create_connection);
     }

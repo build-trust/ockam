@@ -61,7 +61,7 @@ impl CreateCommand {
         let cfg = &options.config;
         let at = &self.at.clone();
         let node = get_final_element(at);
-        let port = cfg.get_node_port(node);
+        let port = cfg.get_node_port(node).unwrap();
 
         let command = CreateCommand {
             from: String::from(get_final_element(&self.from)),

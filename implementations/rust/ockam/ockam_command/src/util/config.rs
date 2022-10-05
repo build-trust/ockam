@@ -11,8 +11,6 @@ pub use ockam_api::config::cli::NodeConfig;
 use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::config::{cli, lookup::ConfigLookup, lookup::InternetAddress, Config};
 
-use crate::util::exitcode;
-
 /// A simple wrapper around the main configuration structure to add
 /// local config utility/ query functions
 #[derive(Clone)]
@@ -115,16 +113,15 @@ impl OckamConfig {
     }
 
     /// Get the API port used by a node
-    pub fn get_node_port(&self, name: &str) -> u16 {
+    pub fn get_node_port(&self, name: &str) -> Result<u16> {
         let inner = self.inner.readlock_inner();
-        inner
+        let port = inner
             .nodes
             .get(name)
-            .unwrap_or_else(|| {
-                eprintln!("No such node available. Run `ockam node list` to list available nodes");
-                std::process::exit(exitcode::IOERR);
-            })
-            .port
+            .context("No such node available. Run `ockam node list` to list available nodes")?
+            .port;
+
+        Ok(port)
     }
 
     /// In the future this will actually refer to the watchdog pid or
