@@ -1,26 +1,23 @@
 use crate::authenticator::direct::{PROJECT_ID, ROLE};
-use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
-use crate::multiaddr_to_route;
 use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
 };
-use crate::nodes::models::secure_channel::CredentialExchangeMode;
 use crate::nodes::registry::{InletInfo, OutletInfo, Registry};
 use crate::nodes::service::random_alias;
 use crate::session::{util, Data, Replacer, Session};
+use crate::{multiaddr_to_route, try_multiaddr_to_addr};
 use minicbor::Decoder;
+use ockam::compat::asynchronous::RwLock;
 use ockam::compat::tokio::time::timeout;
 use ockam::tcp::{InletOptions, OutletOptions};
-use ockam::{Address, Context, Result, TcpTransport};
+use ockam::{Address, Result};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::{AccessControl, AllowAll};
 use ockam_identity::credential::access_control::CredentialAccessControl;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::{Project, Secure, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};
-use ockam_vault::ockam_core::AsyncTryClone;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use super::{NodeManager, NodeManagerWorker};
@@ -86,10 +83,10 @@ impl NodeManagerWorker {
 
     pub(super) async fn create_inlet<'a>(
         &mut self,
-        ctx: &mut Context,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<InletStatus<'a>>> {
+        let manager = self.node_manager.clone();
         let mut node_manager = self.node_manager.write().await;
         let rid = req.id();
         let req: CreateInlet = dec.decode()?;
@@ -109,19 +106,18 @@ impl NodeManagerWorker {
             "Creating inlet portal"
         }
 
+        // The addressing scheme is very flexible. Typically the node connects to
+        // the cloud via secure channel and the with another secure channel via
+        // forwarder to the actual outlet on the target node. However it is also
+        // possible that there is just a single secure channel used to go directly
+        // to another node.
         let (outer, rest) = {
             let (sec1, rest) = node_manager
-                .connect(
-                    req.outlet_addr(),
-                    CredentialExchangeMode::Oneway,
-                    req.authorized(),
-                )
+                .connect(req.outlet_addr(), req.authorized(), None)
                 .await?;
             if !sec1.is_empty() && rest.matches(0, &[Service::CODE.into(), Secure::CODE.into()]) {
                 let addr = sec1.clone().try_with(rest.iter().take(2))?;
-                let (sec2, _) = node_manager
-                    .connect(&addr, CredentialExchangeMode::Mutual, None)
-                    .await?;
+                let (sec2, _) = node_manager.connect(&addr, None, None).await?;
                 (sec1, sec2.try_with(rest.iter().skip(2))?)
             } else {
                 (MultiAddr::default(), sec1.try_with(&rest)?)
@@ -142,7 +138,8 @@ impl NodeManagerWorker {
                 .first()
                 .and_then(|p| {
                     if let Some(p) = p.cast::<Project>() {
-                        node_manager.projects
+                        node_manager
+                            .projects
                             .get(&*p)
                             .map(|info| info.id.as_bytes().to_vec())
                     } else {
@@ -158,7 +155,11 @@ impl NodeManagerWorker {
             None
         })?;
 
-        let options = InletOptions::new(listen_addr.clone(), outlet_route.clone(), access_control.clone());
+        let options = InletOptions::new(
+            listen_addr.clone(),
+            outlet_route.clone(),
+            access_control.clone(),
+        );
 
         let res = node_manager
             .tcp_transport
@@ -173,21 +174,15 @@ impl NodeManagerWorker {
                     InletInfo::new(&listen_addr, Some(&worker_addr), &outlet_route),
                 );
                 if !outer.is_empty() {
-                    let this = ctx.address();
-                    let ctx = Arc::new(ctx.async_try_clone().await?);
-                    let tcp = Arc::new(node_manager.tcp_transport.async_try_clone().await?);
                     let mut s = Session::new(without_outlet_address(rest));
                     s.data().put(INLET_WORKER, worker_addr.clone());
                     s.data().put(OUTER_CHAN, outer);
                     let repl = replacer(
+                        manager,
                         s.data(),
-                        this,
-                        ctx,
-                        tcp,
                         listen_addr.clone(),
                         req.outlet_addr().clone(),
                         req.authorized(),
-                        node_manager.projects.clone(),
                         access_control.clone(),
                     );
                     s.set_replacer(repl);
@@ -205,10 +200,10 @@ impl NodeManagerWorker {
             Err(e) => {
                 warn!(to = %req.outlet_addr(), err = %e, "failed to create tcp inlet");
                 // TODO: Use better way to store inlets?
-                node_manager
-                    .registry
-                    .inlets
-                    .insert(alias.clone(), InletInfo::new(&listen_addr, None, &outlet_route));
+                node_manager.registry.inlets.insert(
+                    alias.clone(),
+                    InletInfo::new(&listen_addr, None, &outlet_route),
+                );
 
                 Response::bad_request(rid).body(InletStatus::new(
                     listen_addr,
@@ -286,64 +281,80 @@ impl NodeManagerWorker {
     }
 }
 
-/// Configure the session for automatic recovery.
-#[allow(clippy::too_many_arguments)]
+/// Create a session replacer.
+///
+/// This returns a function that accepts the previous ping address (e.g.
+/// the secure channel worker address) and constructs the whole route
+/// again.
 fn replacer(
+    manager: Arc<RwLock<NodeManager>>,
     data: Data,
-    manager: Address,
-    ctx: Arc<Context>,
-    tcp: Arc<TcpTransport>,
     bind: String,
     addr: MultiAddr,
     auth: Option<IdentityIdentifier>,
-    projects: Arc<BTreeMap<String, ProjectLookup>>,
     access: Arc<dyn AccessControl>,
 ) -> Replacer {
     Box::new(move |prev| {
-        let ctx = ctx.clone();
         let addr = addr.clone();
-        let tcp = tcp.clone();
         let auth = auth.clone();
         let bind = bind.clone();
         let manager = manager.clone();
         let access = access.clone();
         let data = data.clone();
-        let projects = projects.clone();
         Box::pin(async move {
             debug!(%prev, %addr, "creating new tcp inlet");
+            // The future that recreates the inlet:
             let f = async {
-                util::delete_sec_chan(&ctx, &manager, &prev).await?;
+                let prev = try_multiaddr_to_addr(&prev)?;
+                let mut this = manager.write().await;
+                let timeout = Some(util::MAX_CONNECT_TIME);
+
+                // First the previous secure channel is deleted, and -- if secure
+                // channels were nested -- the outer one as well:
+
+                let _ = this.delete_secure_channel(&prev).await;
                 if let Some(a) = data.get::<MultiAddr>(OUTER_CHAN) {
-                    util::delete_sec_chan(&ctx, &manager, &a).await?;
+                    let a = try_multiaddr_to_addr(&a)?;
+                    let _ = this.delete_secure_channel(&a).await;
                 }
+
+                // Now a connection attempt is made:
+
                 let rest = {
-                    let (sec1, rest) = {
-                        let mode = CredentialExchangeMode::Oneway;
-                        util::connect(&ctx, &manager, &addr, mode, auth, &projects).await?
-                    };
+                    let (sec1, rest) = this.connect(&addr, auth, timeout).await?;
                     if !sec1.is_empty()
                         && rest.matches(0, &[Service::CODE.into(), Secure::CODE.into()])
                     {
+                        // Another secure channel needs to be created. The first one
+                        // needs to be remembered so it can be cleaned up if this recovery
+                        // executes multiple times:
                         data.put(OUTER_CHAN, sec1.clone());
+
                         let addr = sec1.clone().try_with(rest.iter().take(2))?;
-                        let mode = CredentialExchangeMode::Mutual;
-                        let (sec2, _) =
-                            util::connect(&ctx, &manager, &addr, mode, None, &projects).await?;
+                        let (sec2, _) = this.connect(&addr, None, timeout).await?;
                         sec2.try_with(rest.iter().skip(2))?
                     } else {
                         sec1.try_with(&rest)?
                     }
                 };
+
                 let r = multiaddr_to_route(&rest)
                     .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {rest}")))?;
+
+                // The previous inlet worker needs to be stopped:
                 if let Some(wa) = data.get::<Address>(INLET_WORKER) {
-                    tcp.stop_inlet(wa).await?
+                    let _ = this.tcp_transport.stop_inlet(wa).await;
                 }
+
+                // Finally attempt to create a new inlet using the new route:
                 let opts = InletOptions::new(bind, r, access);
-                let wa = tcp.create_inlet_extended(opts).await?.0;
+                let wa = this.tcp_transport.create_inlet_extended(opts).await?.0;
                 data.put(INLET_WORKER, wa);
+
                 Ok(without_outlet_address(rest))
             };
+
+            // The above future is given some limited time to succeed.
             match timeout(util::MAX_RECOVERY_TIME, f).await {
                 Err(_) => {
                     warn!(%addr, "timeout creating new tcp inlet");

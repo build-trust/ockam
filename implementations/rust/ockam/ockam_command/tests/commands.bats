@@ -301,7 +301,7 @@ teardown() {
 }
 
 
-@test "create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it 1/2" {
+@test "create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM node create blue
@@ -316,7 +316,7 @@ teardown() {
   assert_success
 }
 
-@test "create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it 2/2" {
+@test "create an inlet (with implicit secure channel creation) / outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM node create blue
@@ -330,7 +330,7 @@ teardown() {
   assert_success
 }
 
-@test "inlet/outlet example with credentials, not provided 1/2" {
+@test "inlet/outlet example with credentials, not provided" {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM project info --name default --output json  > /tmp/project.json
@@ -364,7 +364,7 @@ teardown() {
   assert_failure
 }
 
-@test "inlet/outlet example with credentials, not provided 2/2" {
+@test "inlet (with implicit secure channel creation) / outlet example with credentials, not provided" {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM project info --name default --output json  > /tmp/project.json
@@ -397,7 +397,7 @@ teardown() {
   assert_failure
 }
 
-@test "inlet/outlet example with credentials 1/2" {
+@test "inlet/outlet example with credentials" {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM project info --name default --output json  > /tmp/project.json
@@ -429,7 +429,7 @@ teardown() {
   assert_success
 }
 
-@test "inlet/outlet example with credentials 2/2" {
+@test "inlet (with implicit secure channel creation) / outlet example with credentials" {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM project info --name default --output json  > /tmp/project.json

@@ -1,27 +1,24 @@
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use minicbor::Decoder;
 
+use ockam::compat::asynchronous::RwLock;
 use ockam::remote::RemoteForwarder;
-use ockam::{Address, Result};
+use ockam::Result;
 use ockam_core::api::{Id, Response, Status};
 use ockam_core::AsyncTryClone;
 use ockam_identity::IdentityIdentifier;
-use ockam_multiaddr::proto::Project;
-use ockam_multiaddr::{MultiAddr, Protocol};
+use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio::time::timeout;
 use ockam_node::Context;
 
-use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
-use crate::multiaddr_to_route;
 use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
-use crate::nodes::models::secure_channel::CredentialExchangeMode;
 use crate::session::util;
 use crate::session::{Replacer, Session};
+use crate::{multiaddr_to_route, try_multiaddr_to_addr};
 
-use super::NodeManagerWorker;
+use super::{NodeManager, NodeManagerWorker};
 
 impl NodeManagerWorker {
     pub(super) async fn create_forwarder(
@@ -30,17 +27,14 @@ impl NodeManagerWorker {
         rid: Id,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
+        let manager = self.node_manager.clone();
         let mut node_manager = self.node_manager.write().await;
         let req: CreateForwarder = dec.decode()?;
 
         debug!(addr = %req.address(), alias = ?req.alias(), "Handling CreateForwarder request");
 
         let (sec_chan, suffix) = node_manager
-            .connect(
-                req.address(),
-                CredentialExchangeMode::Oneway,
-                req.authorized(),
-            )
+            .connect(req.address(), req.authorized(), None)
             .await?;
 
         let full = sec_chan.clone().try_with(&suffix)?;
@@ -60,14 +54,12 @@ impl NodeManagerWorker {
                 RemoteForwarder::create(ctx, route).await
             };
             if f.is_ok() && !sec_chan.is_empty() {
-                let this = ctx.address();
                 let ctx = Arc::new(ctx.async_try_clone().await?);
                 let repl = replacer(
-                    this,
+                    manager,
                     ctx,
                     req.address().clone(),
                     req.alias().map(|a| a.to_string()),
-                    node_manager.projects.clone(),
                     req.authorized(),
                 );
                 let mut s = Session::new(sec_chan);
@@ -97,13 +89,16 @@ impl NodeManagerWorker {
     }
 }
 
-/// Configure the session for automatic recovery.
+/// Create a session replacer.
+///
+/// This returns a function that accepts the previous ping address (e.g.
+/// the secure channel worker address) and constructs the whole route
+/// again.
 fn replacer(
-    manager: Address,
+    manager: Arc<RwLock<NodeManager>>,
     ctx: Arc<Context>,
     addr: MultiAddr,
     alias: Option<String>,
-    projects: Arc<BTreeMap<String, ProjectLookup>>,
     auth: Option<IdentityIdentifier>,
 ) -> Replacer {
     Box::new(move |prev| {
@@ -112,41 +107,23 @@ fn replacer(
         let alias = alias.clone();
         let auth = auth.clone();
         let manager = manager.clone();
-        let projects = projects.clone();
         Box::pin(async move {
             debug!(%prev, %addr, "creating new remote forwarder");
             let f = async {
-                let (w, a) = if let Some(p) = addr.first() {
-                    if p.code() == Project::CODE {
-                        let p = p
-                            .cast::<Project>()
-                            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-                        let (a, i) = util::resolve_project(&projects, &p)?;
-                        util::delete_sec_chan(&ctx, &manager, &prev).await?;
-                        let m = CredentialExchangeMode::Oneway;
-                        let w = util::create_sec_chan(&ctx, &manager, &a, Some(i), m).await?;
-                        (w, MultiAddr::default().try_with(addr.iter().skip(1))?)
-                    } else if let Some(pos) = util::starts_with_host_tcp_secure(&addr) {
-                        let (a, b) = addr.split(pos);
-                        util::delete_sec_chan(&ctx, &manager, &prev).await?;
-                        let m = CredentialExchangeMode::Oneway;
-                        let w = util::create_sec_chan(&ctx, &manager, &a, auth, m).await?;
-                        (w, b)
-                    } else {
-                        (MultiAddr::default(), addr.clone())
-                    }
-                } else {
-                    (MultiAddr::default(), addr.clone())
-                };
-                let x = w.clone().try_with(&a)?;
-                let r = multiaddr_to_route(&x)
+                let prev = try_multiaddr_to_addr(&prev)?;
+                let mut this = manager.write().await;
+                let _ = this.delete_secure_channel(&prev).await;
+                let timeout = Some(util::MAX_CONNECT_TIME);
+                let (sec, rest) = this.connect(&addr, auth, timeout).await?;
+                let a = sec.clone().try_with(&rest)?;
+                let r = multiaddr_to_route(&a)
                     .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {a}")))?;
                 if let Some(alias) = &alias {
                     RemoteForwarder::create_static(&ctx, r, alias).await?;
                 } else {
                     RemoteForwarder::create(&ctx, r).await?;
                 }
-                Ok(w)
+                Ok(sec)
             };
             match timeout(util::MAX_RECOVERY_TIME, f).await {
                 Err(_) => {

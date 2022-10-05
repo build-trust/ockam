@@ -22,6 +22,7 @@ use ockam_vault::Vault;
 use std::collections::BTreeMap;
 use std::error::Error as _;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use super::models::secure_channel::CredentialExchangeMode;
 use super::registry::Registry;
@@ -32,7 +33,7 @@ use crate::lmdb::LmdbStorage;
 use crate::nodes::config::NodeManConfig;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
-use crate::session::util::{resolve_project, starts_with_host_tcp_secure};
+use crate::session::util::starts_with_host_tcp_secure;
 use crate::session::{Medic, Sessions};
 use crate::{multiaddr_to_route, try_address_to_multiaddr, DefaultAddress};
 
@@ -412,20 +413,21 @@ impl NodeManager {
     async fn connect(
         &mut self,
         addr: &MultiAddr,
-        mode: CredentialExchangeMode,
         auth: Option<IdentityIdentifier>,
+        timeout: Option<Duration>,
     ) -> Result<(MultiAddr, MultiAddr)> {
         if let Some(p) = addr.first() {
             if p.code() == Project::CODE {
                 let p = p
                     .cast::<Project>()
                     .ok_or_else(|| ApiError::message("invalid project protocol in multiaddr"))?;
-                let (a, i) = resolve_project(&self.projects, &p)?;
+                let (a, i) = self.resolve_project(&p)?;
                 debug!(addr = %a, "creating secure channel");
                 let r =
                     multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                 let i = Some(vec![i]);
-                let w = self.create_secure_channel_impl(r, i, mode, None).await?;
+                let m = CredentialExchangeMode::Oneway;
+                let w = self.create_secure_channel_impl(r, i, m, timeout).await?;
                 let a = MultiAddr::default().try_with(addr.iter().skip(1))?;
                 return Ok((try_address_to_multiaddr(&w)?, a));
             }
@@ -436,7 +438,8 @@ impl NodeManager {
             let (a, b) = addr.split(pos);
             let r = multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
             let i = auth.clone().map(|i| vec![i]);
-            let w = self.create_secure_channel_impl(r, i, mode, None).await?;
+            let m = CredentialExchangeMode::Mutual;
+            let w = self.create_secure_channel_impl(r, i, m, timeout).await?;
             return Ok((try_address_to_multiaddr(&w)?, b));
         }
 
@@ -445,11 +448,20 @@ impl NodeManager {
             let r =
                 multiaddr_to_route(addr).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
             let i = auth.clone().map(|i| vec![i]);
-            let w = self.create_secure_channel_impl(r, i, mode, None).await?;
+            let m = CredentialExchangeMode::Mutual;
+            let w = self.create_secure_channel_impl(r, i, m, timeout).await?;
             return Ok((try_address_to_multiaddr(&w)?, MultiAddr::default()));
         }
 
         Ok((MultiAddr::default(), addr.clone()))
+    }
+
+    fn resolve_project(&self, name: &str) -> Result<(MultiAddr, IdentityIdentifier)> {
+        if let Some(info) = self.projects.get(name) {
+            Ok((info.node_route.clone(), info.identity_id.clone()))
+        } else {
+            Err(ApiError::message(format!("project {name} not found")))
+        }
     }
 }
 
@@ -616,7 +628,7 @@ impl NodeManagerWorker {
                 let node_manager = self.node_manager.read().await;
                 self.get_outlets(req, &node_manager.registry).to_vec()?
             }
-            (Post, ["node", "inlet"]) => self.create_inlet(ctx, req, dec).await?.to_vec()?,
+            (Post, ["node", "inlet"]) => self.create_inlet(req, dec).await?.to_vec()?,
             (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "portal"]) => todo!(),
 

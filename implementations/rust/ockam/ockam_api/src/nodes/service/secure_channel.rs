@@ -173,6 +173,14 @@ impl NodeManager {
 
         Ok(())
     }
+
+    pub(super) async fn delete_secure_channel(&mut self, addr: &Address) -> Result<()> {
+        debug!(%addr, "deleting secure channel");
+        let identity = self.identity()?;
+        identity.stop_secure_channel(addr).await?;
+        self.registry.secure_channels.remove_by_addr(addr);
+        Ok(())
+    }
 }
 
 impl NodeManagerWorker {
@@ -258,35 +266,22 @@ impl NodeManagerWorker {
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<DeleteSecureChannelResponse<'a>>> {
         let body: DeleteSecureChannelRequest = dec.decode()?;
-
-        info!(
-            "Handling request to delete secure channel: {}",
-            body.channel
-        );
+        let addr = Address::from(body.channel.as_ref());
+        info!(%addr, "Handling request to delete secure channel");
         let mut node_manager = self.node_manager.write().await;
-        let identity = node_manager.identity()?;
-
-        let sc_address = Address::from(body.channel.as_ref());
-
-        debug!(%sc_address, "Deleting secure channel");
-
-        let res = match identity.stop_secure_channel(&sc_address).await {
+        let res = match node_manager.delete_secure_channel(&addr).await {
             Ok(()) => {
-                trace!(%sc_address, "Removed secure channel");
-                node_manager
-                    .registry
-                    .secure_channels
-                    .remove_by_addr(&sc_address);
-                Some(sc_address)
+                trace!(%addr, "Removed secure channel");
+                Some(addr)
             }
             Err(err) => {
-                trace!(%sc_address, "Error removing secure channel: {err}");
+                trace!(%addr, %err, "Error removing secure channel");
                 None
             }
         };
-
         Ok(Response::ok(req.id()).body(DeleteSecureChannelResponse::new(res)))
     }
+
     pub(super) async fn show_secure_channel<'a>(
         &mut self,
         req: &Request<'_>,
