@@ -23,6 +23,5 @@ impl VaultCommand {
         match self.subcommand {
             VaultSubcommand::Create(c) => c.run(options),
         }
-        .unwrap()
     }
 }
