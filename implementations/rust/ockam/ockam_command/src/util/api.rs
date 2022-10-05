@@ -103,15 +103,6 @@ pub(crate) fn delete_tcp_listener(cmd: &crate::tcp::listener::DeleteCommand) -> 
     Ok(buf)
 }
 
-/// Construct a request to create a Vault
-pub(crate) fn create_vault(path: Option<String>) -> Result<Vec<u8>> {
-    let mut buf = vec![];
-    Request::post("/node/vault")
-        .body(models::vault::CreateVaultRequest::new(path))
-        .encode(&mut buf)?;
-    Ok(buf)
-}
-
 /// Construct a request to export Identity
 pub(crate) fn long_identity() -> Result<Vec<u8>> {
     let mut buf = vec![];
@@ -410,12 +401,6 @@ pub(crate) fn parse_transport_status(
         response,
         dec.decode::<models::transport::TransportStatus>()?,
     ))
-}
-
-pub(crate) fn parse_create_vault_response(resp: &[u8]) -> Result<Response> {
-    let mut dec = Decoder::new(resp);
-    let response = dec.decode::<Response>()?;
-    Ok(response)
 }
 
 pub(crate) fn parse_long_identity_response(

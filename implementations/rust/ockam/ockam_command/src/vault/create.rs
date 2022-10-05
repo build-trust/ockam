@@ -1,10 +1,10 @@
 use crate::node::NodeOpts;
-use crate::util::{api, connect_to, exitcode};
+use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
-use ockam_core::api::Status;
-use ockam_core::Route;
+use ockam_api::nodes::models::vault::CreateVaultRequest;
+use ockam_core::api::Request;
 
 /// Create vaults
 #[derive(Clone, Debug, Args)]
@@ -18,39 +18,21 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
-        let cfg = options.config;
-        let port = cfg.get_node_port(&self.node_opts.api_node).unwrap();
-
-        connect_to(port, self, create_vault);
-
-        Ok(())
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(run_impl, (options, self))
     }
 }
 
-pub async fn create_vault(
+async fn run_impl(
     ctx: Context,
-    cmd: CreateCommand,
-    mut base_route: Route,
-) -> anyhow::Result<()> {
-    let resp: Vec<u8> = ctx
-        .send_and_receive(
-            base_route.modify().append("_internal.nodemanager"),
-            api::create_vault(cmd.path)?,
-        )
-        .await?;
+    (options, cmd): (CommandGlobalOpts, CreateCommand),
+) -> crate::Result<()> {
+    let mut rpc = Rpc::background(&ctx, &options, &cmd.node_opts.api_node)?;
+    let request = Request::post("/node/vault").body(CreateVaultRequest::new(cmd.path));
 
-    let response = api::parse_create_vault_response(&resp)?;
+    rpc.request(request).await?;
+    rpc.parse_response()?;
 
-    match response.status() {
-        Some(Status::Ok) => {
-            println!("Vault created!")
-        }
-        _ => {
-            eprintln!("An error occurred while creating Vault",);
-            std::process::exit(exitcode::CANTCREAT);
-        }
-    }
-
+    println!("Vault created!");
     Ok(())
 }
