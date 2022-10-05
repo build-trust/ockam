@@ -162,37 +162,37 @@ impl NodeManager {
     }
 }
 
-pub struct NodeManagerGeneralOptions<'a> {
+pub struct NodeManagerGeneralOptions {
     node_name: String,
     node_dir: PathBuf,
     skip_defaults: bool,
     enable_credential_checks: bool,
-    ac: Option<&'a AuthoritiesConfig>,
     // Should be passed only when creating fresh node and we want it to get default root Identity
     identity_override: Option<IdentityOverride>,
 }
 
-impl <'a>NodeManagerGeneralOptions<'a> {
-   pub fn new(node_name: String, node_dir: PathBuf, skip_defaults: bool, enable_credential_checks: bool, ac: Option<&'a AuthoritiesConfig>, identity_override: Option<IdentityOverride>) -> Self {
+impl NodeManagerGeneralOptions {
+   pub fn new(node_name: String, node_dir: PathBuf, skip_defaults: bool, enable_credential_checks: bool, identity_override: Option<IdentityOverride>) -> Self {
         Self {
             node_name,
             node_dir,
             skip_defaults,
             enable_credential_checks,
-            ac,
             identity_override,
         }
     }
 }
 
-pub struct NodeManagerProjectsOptions {
+pub struct NodeManagerProjectsOptions<'a> {
+    ac: Option<&'a AuthoritiesConfig>,
     project_id: Option<Vec<u8>>,
     projects: BTreeMap<String, ProjectLookup>,
 }
 
-impl NodeManagerProjectsOptions {
-    pub fn new(project_id: Option<Vec<u8>>, projects: BTreeMap<String, ProjectLookup>) -> Self {
+impl <'a>NodeManagerProjectsOptions<'a> {
+    pub fn new(ac: Option<&'a AuthoritiesConfig>, project_id: Option<Vec<u8>>, projects: BTreeMap<String, ProjectLookup>) -> Self {
         Self {
+            ac,
             project_id,
             projects,
         }
@@ -217,8 +217,8 @@ impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
     pub async fn create(
         ctx: &Context,
-        general_options: NodeManagerGeneralOptions<'_>,
-        projects_options: NodeManagerProjectsOptions,
+        general_options: NodeManagerGeneralOptions,
+        projects_options: NodeManagerProjectsOptions<'_>,
         transport_options: NodeManagerTransportOptions,
     ) -> Result<Self> {
         let api_transport_id = random_alias();
@@ -283,7 +283,7 @@ impl NodeManager {
             None => None,
         };
 
-        if general_options.enable_credential_checks && (general_options.ac.is_none() || projects_options.project_id.is_none()) {
+        if general_options.enable_credential_checks && (projects_options.ac.is_none() || projects_options.project_id.is_none()) {
             error!("Invalid NodeManager options: enable_credential_checks was provided, while not enough \
                 information was provided to enforce the checks");
             return Err(ockam_core::Error::new(
@@ -323,7 +323,7 @@ impl NodeManager {
         if !general_options.skip_defaults {
             s.create_defaults(ctx).await?;
 
-            if let Some(ac) = general_options.ac {
+            if let Some(ac) = projects_options.ac {
                 s.configure_authorities(ac).await?;
             }
         }
@@ -696,9 +696,9 @@ pub(crate) mod tests {
                     true,
                     false,
                     None,
-                    None
                 ),
                 NodeManagerProjectsOptions::new(
+                    None,
                     None,
                     Default::default()
                 ),
