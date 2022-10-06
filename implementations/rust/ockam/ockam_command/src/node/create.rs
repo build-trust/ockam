@@ -28,7 +28,12 @@ use ockam::{Address, AsyncTryClone, NodeBuilder, TCP};
 use ockam::{Context, TcpTransport};
 use ockam_api::{
     nodes::models::transport::{TransportMode, TransportType},
-    nodes::{NodeManager, NODEMANAGER_ADDR, service::{NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions}, NodeManagerWorker},
+    nodes::{
+        service::{
+            NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
+        },
+        NodeManager, NodeManagerWorker, NODEMANAGER_ADDR,
+    },
 };
 use ockam_core::LOCAL;
 
@@ -305,17 +310,17 @@ async fn run_background_node_impl(
             node_dir,
             c.skip_defaults || c.launch_config.is_some(),
             c.enable_credential_checks,
-            identity_override
+            identity_override,
         ),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&c.node_name)?.snapshot()),
             project_id,
-            projects
+            projects,
         ),
         NodeManagerTransportOptions::new(
             (TransportType::Tcp, TransportMode::Listen, bind),
-            tcp.async_try_clone().await?
-        )
+            tcp.async_try_clone().await?,
+        ),
     )
     .await?;
     let node_manager_worker = NodeManagerWorker::new(node_man);

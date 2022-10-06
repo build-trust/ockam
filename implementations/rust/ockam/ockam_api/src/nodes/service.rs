@@ -172,7 +172,13 @@ pub struct NodeManagerGeneralOptions {
 }
 
 impl NodeManagerGeneralOptions {
-   pub fn new(node_name: String, node_dir: PathBuf, skip_defaults: bool, enable_credential_checks: bool, identity_override: Option<IdentityOverride>) -> Self {
+    pub fn new(
+        node_name: String,
+        node_dir: PathBuf,
+        skip_defaults: bool,
+        enable_credential_checks: bool,
+        identity_override: Option<IdentityOverride>,
+    ) -> Self {
         Self {
             node_name,
             node_dir,
@@ -189,8 +195,12 @@ pub struct NodeManagerProjectsOptions<'a> {
     projects: BTreeMap<String, ProjectLookup>,
 }
 
-impl <'a>NodeManagerProjectsOptions<'a> {
-    pub fn new(ac: Option<&'a AuthoritiesConfig>, project_id: Option<Vec<u8>>, projects: BTreeMap<String, ProjectLookup>) -> Self {
+impl<'a> NodeManagerProjectsOptions<'a> {
+    pub fn new(
+        ac: Option<&'a AuthoritiesConfig>,
+        project_id: Option<Vec<u8>>,
+        projects: BTreeMap<String, ProjectLookup>,
+    ) -> Self {
         Self {
             ac,
             project_id,
@@ -205,12 +215,15 @@ pub struct NodeManagerTransportOptions {
 }
 
 impl NodeManagerTransportOptions {
-    pub fn new(api_transport: (TransportType, TransportMode, String), tcp_transport: TcpTransport) -> Self {
+    pub fn new(
+        api_transport: (TransportType, TransportMode, String),
+        tcp_transport: TcpTransport,
+    ) -> Self {
         Self {
             api_transport,
-            tcp_transport
+            tcp_transport,
         }
-   }
+    }
 }
 
 impl NodeManager {
@@ -233,7 +246,8 @@ impl NodeManager {
             let authenticated_storage_path = match authenticated_storage_path {
                 Some(p) => p,
                 None => {
-                    let default_location = general_options.node_dir.join("authenticated_storage.lmdb");
+                    let default_location =
+                        general_options.node_dir.join("authenticated_storage.lmdb");
 
                     config.writelock_inner().authenticated_storage_path =
                         Some(default_location.clone());
@@ -283,7 +297,9 @@ impl NodeManager {
             None => None,
         };
 
-        if general_options.enable_credential_checks && (projects_options.ac.is_none() || projects_options.project_id.is_none()) {
+        if general_options.enable_credential_checks
+            && (projects_options.ac.is_none() || projects_options.project_id.is_none())
+        {
             error!("Invalid NodeManager options: enable_credential_checks was provided, while not enough \
                 information was provided to enforce the checks");
             return Err(ockam_core::Error::new(
@@ -697,15 +713,15 @@ pub(crate) mod tests {
                     false,
                     None,
                 ),
-                NodeManagerProjectsOptions::new(
-                    None,
-                    None,
-                    Default::default()
-                ),
+                NodeManagerProjectsOptions::new(None, None, Default::default()),
                 NodeManagerTransportOptions::new(
-                    (TransportType::Tcp, TransportMode::Listen, node_address.to_string()),
-                    transport
-                )
+                    (
+                        TransportType::Tcp,
+                        TransportMode::Listen,
+                        node_address.to_string(),
+                    ),
+                    transport,
+                ),
             )
             .await?;
 
