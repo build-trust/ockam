@@ -112,13 +112,6 @@ pub(crate) fn create_vault(path: Option<String>) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-/// Construct a request to create Identity
-pub(crate) fn create_identity() -> Result<Vec<u8>> {
-    let mut buf = vec![];
-    Request::post("/node/identity").encode(&mut buf)?;
-    Ok(buf)
-}
-
 /// Construct a request to export Identity
 pub(crate) fn long_identity() -> Result<Vec<u8>> {
     let mut buf = vec![];
@@ -423,17 +416,6 @@ pub(crate) fn parse_create_vault_response(resp: &[u8]) -> Result<Response> {
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
     Ok(response)
-}
-
-pub(crate) fn parse_create_identity_response(
-    resp: &[u8],
-) -> Result<(Response, models::identity::CreateIdentityResponse<'_>)> {
-    let mut dec = Decoder::new(resp);
-    let response = dec.decode::<Response>()?;
-    Ok((
-        response,
-        dec.decode::<models::identity::CreateIdentityResponse>()?,
-    ))
 }
 
 pub(crate) fn parse_long_identity_response(
