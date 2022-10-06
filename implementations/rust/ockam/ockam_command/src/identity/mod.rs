@@ -26,8 +26,7 @@ impl IdentityCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         match self.subcommand {
             IdentitySubcommand::Create(c) => c.run(options),
-            IdentitySubcommand::Show(c) => c.run(options),
+            IdentitySubcommand::Show(c) => c.run(options).unwrap(),
         }
-        .unwrap()
     }
 }
