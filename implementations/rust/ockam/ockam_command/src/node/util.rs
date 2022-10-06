@@ -9,8 +9,10 @@ use ockam::{Context, TcpTransport};
 use ockam_api::config::cli;
 use ockam_api::config::cli::OckamConfig as OckamConfigApi;
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
+use ockam_api::nodes::service::{
+    NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
+};
 use ockam_api::nodes::{IdentityOverride, NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
-use ockam_api::nodes::service::{NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions};
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
@@ -61,18 +63,15 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
             node_dir,
             cmd.skip_defaults || cmd.launch_config.is_some(),
             cmd.enable_credential_checks,
-            identity_override
+            identity_override,
         ),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
-            project_id,  
-            projects
+            project_id,
+            projects,
         ),
-        NodeManagerTransportOptions::new(
-            (TransportType::Tcp, TransportMode::Listen, bind),
-            tcp
-        ),
-    ) 
+        NodeManagerTransportOptions::new((TransportType::Tcp, TransportMode::Listen, bind), tcp),
+    )
     .await?;
 
     let node_manager_worker = NodeManagerWorker::new(node_man);
