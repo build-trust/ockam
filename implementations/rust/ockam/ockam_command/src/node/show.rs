@@ -4,7 +4,7 @@ use anyhow::Context;
 use clap::Args;
 use colorful::Colorful;
 use minicbor::Decoder;
-use ockam_api::config::cli::NodeConfig;
+use ockam_api::config::cli::NodeConfigOld;
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
@@ -33,7 +33,7 @@ impl ShowCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
         let port = match cfg.inner().nodes.get(&self.node_name) {
-            Some(cfg) => cfg.port,
+            Some(cfg) => cfg.port(),
             None => {
                 eprintln!("No such node available.  Run `ockam node list` to list available nodes");
                 std::process::exit(exitcode::IOERR);
@@ -52,7 +52,7 @@ impl ShowCommand {
 // clippy to stop complainaing about it.
 #[allow(clippy::too_many_arguments)]
 fn print_node_info(
-    node_cfg: &NodeConfig,
+    node_cfg: &NodeConfigOld,
     node_name: &str,
     status: &str,
     default_id: &str,
@@ -81,7 +81,7 @@ fn print_node_info(
 
     let mut m = MultiAddr::default();
     if m.push_back(DnsAddr::new("localhost")).is_ok()
-        && m.push_back(Tcp::new(node_cfg.port)).is_ok()
+        && m.push_back(Tcp::new(node_cfg.port())).is_ok()
     {
         println!("    Verbose: {}", m);
     }

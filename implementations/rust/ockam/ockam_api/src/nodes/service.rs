@@ -26,11 +26,11 @@ use std::time::Duration;
 
 use super::models::secure_channel::CredentialExchangeMode;
 use super::registry::Registry;
+use crate::config::cli::AuthoritiesConfig;
 use crate::config::lookup::ProjectLookup;
-use crate::config::{cli::AuthoritiesConfig, Config};
 use crate::error::ApiError;
 use crate::lmdb::LmdbStorage;
-use crate::nodes::config::NodeManConfig;
+use crate::nodes::config::NodeConfig;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::session::util::starts_with_host_tcp_secure;
@@ -99,7 +99,7 @@ pub(crate) struct AuthorityInfo {
 pub struct NodeManager {
     node_name: String,
     node_dir: PathBuf,
-    config: Config<NodeManConfig>,
+    config: NodeConfig,
     api_transport_id: Alias,
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
@@ -241,10 +241,11 @@ impl NodeManager {
         let mut transports = BTreeMap::new();
         transports.insert(api_transport_id.clone(), transport_options.api_transport);
 
-        let config = Config::<NodeManConfig>::load(&general_options.node_dir, "config");
+        let config = NodeConfig::new(&general_options.node_dir).map_err(map_anyhow_err)?;
+        let state = config.state();
 
         // Check if we had existing AuthenticatedStorage, create with default location otherwise
-        let authenticated_storage_path = config.readlock_inner().authenticated_storage_path.clone();
+        let authenticated_storage_path = state.read().authenticated_storage_path.clone();
         let authenticated_storage = {
             let authenticated_storage_path = match authenticated_storage_path {
                 Some(p) => p,
@@ -252,9 +253,8 @@ impl NodeManager {
                     let default_location =
                         general_options.node_dir.join("authenticated_storage.lmdb");
 
-                    config.writelock_inner().authenticated_storage_path =
-                        Some(default_location.clone());
-                    config.persist_config_updates().map_err(map_anyhow_err)?;
+                    state.write().authenticated_storage_path = Some(default_location.clone());
+                    state.persist_config_updates().map_err(map_anyhow_err)?;
 
                     default_location
                 }
@@ -263,23 +263,23 @@ impl NodeManager {
         };
 
         // Skip override if we already had vault
-        if config.readlock_inner().vault_path.is_none() {
+        if state.read().vault_path.is_none() {
             if let Some(identity_override) = general_options.identity_override {
                 // Copy vault file, update config
                 let vault_path = Self::default_vault_path(&general_options.node_dir);
                 std::fs::copy(&identity_override.vault_path, &vault_path)
                     .map_err(|_| ApiError::generic("Error while copying default node"))?;
 
-                config.writelock_inner().vault_path = Some(vault_path);
-                config.writelock_inner().identity = Some(identity_override.identity);
-                config.writelock_inner().identity_was_overridden = true;
+                state.write().vault_path = Some(vault_path);
+                state.write().identity = Some(identity_override.identity);
+                state.write().identity_was_overridden = true;
 
-                config.persist_config_updates().map_err(map_anyhow_err)?;
+                state.persist_config_updates().map_err(map_anyhow_err)?;
             }
         }
 
         // Check if we had existing Vault
-        let vault_path = config.readlock_inner().vault_path.clone();
+        let vault_path = state.read().vault_path.clone();
         let vault = match vault_path {
             Some(vault_path) => {
                 let vault_storage = FileStorage::create(vault_path).await?;
@@ -291,7 +291,7 @@ impl NodeManager {
         };
 
         // Check if we had existing Identity
-        let identity_info = config.readlock_inner().identity.clone();
+        let identity_info = state.read().identity.clone();
         let identity = match identity_info {
             Some(identity) => match vault.as_ref() {
                 Some(vault) => Some(Identity::import(ctx, &identity, vault).await?),

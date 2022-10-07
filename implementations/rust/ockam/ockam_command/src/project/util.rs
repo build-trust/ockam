@@ -318,7 +318,7 @@ pub mod config {
     }
 
     pub fn get_project(config: &OckamConfig, name: &str) -> Option<String> {
-        let inner = config.writelock_inner();
+        let inner = config.write();
         inner.lookup.get_project(name).map(|s| s.id.clone())
     }
 

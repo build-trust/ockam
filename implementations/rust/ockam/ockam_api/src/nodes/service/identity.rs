@@ -33,10 +33,9 @@ impl NodeManager {
         let identifier = identity.identifier().clone();
         let exported_identity = identity.export().await?;
 
-        self.config.inner().write().unwrap().identity = Some(exported_identity);
-        self.config
-            .persist_config_updates()
-            .map_err(map_anyhow_err)?;
+        let state = self.config.state();
+        state.write().identity = Some(exported_identity);
+        state.persist_config_updates().map_err(map_anyhow_err)?;
 
         self.identity = Some(identity);
 

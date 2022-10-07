@@ -271,6 +271,7 @@ pub mod run {
     use std::str::FromStr;
 
     use clap::Parser;
+    use ockam_api::nodes::config::{Command, Commands};
     use tracing::trace;
 
     use ockam_multiaddr::proto::Node;
@@ -282,151 +283,7 @@ pub mod run {
     pub struct CommandsRunner {
         exe: PathBuf,
         path: PathBuf,
-        commands: Commands,
-    }
-
-    #[derive(serde::Serialize, serde::Deserialize, Default)]
-    #[cfg_attr(test, derive(Clone, Debug, PartialEq))]
-    struct Commands {
-        /// Run when executing the `node run` command.
-        run: Option<RunNode>,
-        /// Run when the node is created.
-        #[serde(default)]
-        on_node_init: Vec<Command>,
-        /// Run after initialization is done. Will rerun on every node restart.
-        #[serde(default)]
-        on_node_startup: Vec<Command>,
-    }
-
-    #[derive(serde::Serialize, serde::Deserialize, Default)]
-    #[cfg_attr(test, derive(Clone, Debug, PartialEq))]
-    struct RunNode {
-        name: String,
-        args: Option<CommandArgs>,
-    }
-
-    impl RunNode {
-        /// Return the `args` field as a Vec of strings.
-        fn args<P: AsRef<Path>>(&self, path: P, exe: &str) -> Vec<String> {
-            let mut args: Vec<String> = format!("{} node create {}", exe, self.name)
-                .split_whitespace()
-                .map(|x| x.to_string())
-                .collect();
-            if let Some(a) = &self.args {
-                args.extend(a.args());
-            }
-            args.extend([
-                "--config".to_string(),
-                path.as_ref().to_str().expect("Invalid path").to_string(),
-            ]);
-            args
-        }
-    }
-
-    impl From<RunNode> for Command {
-        fn from(r: RunNode) -> Self {
-            let args = match r.args {
-                Some(args) => match args {
-                    CommandArgs::String(s) => s,
-                    CommandArgs::Vec(v) => v.join(" "),
-                },
-                None => String::new(),
-            };
-            Command::String(format!("node create {} {}", r.name, args))
-        }
-    }
-
-    #[derive(serde::Serialize, serde::Deserialize)]
-    #[serde(untagged)]
-    #[cfg_attr(test, derive(Clone, Debug, PartialEq))]
-    enum Command {
-        String(String),
-        Obj(CommandObj),
-    }
-
-    impl Command {
-        fn new(command: String, pipe: Option<bool>) -> Self {
-            if pipe.is_none() {
-                Command::String(command)
-            } else {
-                Command::Obj(CommandObj {
-                    command: Some(command),
-                    args: None,
-                    pipe,
-                })
-            }
-        }
-
-        /// Return the `args` field as a Vec of strings.
-        fn args(&self) -> Vec<String> {
-            match self {
-                Command::String(s) => s.split_whitespace().map(|s| s.to_string()).collect(),
-                Command::Obj(o) => o.args(),
-            }
-        }
-
-        fn pipe_output(&self) -> bool {
-            match self {
-                Command::String(_) => false,
-                Command::Obj(o) => o.pipe_output(),
-            }
-        }
-    }
-
-    #[derive(serde::Serialize, serde::Deserialize)]
-    #[cfg_attr(test, derive(Clone, Debug, PartialEq))]
-    struct CommandObj {
-        command: Option<String>,
-        args: Option<CommandArgs>,
-        /// Pipes output to the next command.
-        pipe: Option<bool>,
-    }
-
-    impl CommandObj {
-        /// Return the `args` field as a Vec of strings.
-        fn args(&self) -> Vec<String> {
-            let mut args = Vec::new();
-            // Collect args from `command` and `args`
-            if let Some(command) = &self.command {
-                args.extend(command.split_whitespace().map(|s| s.to_string()));
-            }
-            if let Some(a) = &self.args {
-                args.extend(a.args());
-            }
-            // Add `--pipe` if needed. This can be used by commands to output a different message based on this flag.
-            if self.pipe_output() {
-                args.push("--pipe".to_string());
-            }
-            args
-        }
-
-        fn pipe_output(&self) -> bool {
-            self.pipe.unwrap_or(false)
-        }
-    }
-
-    #[derive(serde::Serialize, serde::Deserialize)]
-    #[serde(untagged)]
-    #[cfg_attr(test, derive(Clone, Debug, PartialEq))]
-    enum CommandArgs {
-        String(String),
-        Vec(Vec<String>),
-    }
-
-    impl CommandArgs {
-        fn args(&self) -> Vec<String> {
-            match self {
-                CommandArgs::String(s) => s.split_whitespace().map(|s| s.to_string()).collect(),
-                // `join` and `split` to convert to single-value entries.
-                // E.g. ["--flag", "--arg value"] -> ["--flag", "--arg", "value"]
-                CommandArgs::Vec(v) => v
-                    .join(" ")
-                    .split(' ')
-                    .map(|s| s.to_string())
-                    .filter(|x| !x.is_empty())
-                    .collect(),
-            }
-        }
+        pub commands: Commands,
     }
 
     #[derive(clap::ValueEnum, Clone, Debug)]
@@ -453,7 +310,7 @@ pub mod run {
     }
 
     impl CommandsRunner {
-        fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
+        pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
             let path = path.as_ref();
             let commands = if path.exists() {
                 let s = std::fs::read_to_string(path)?;
@@ -618,7 +475,7 @@ pub mod run {
         fn command_preprocessing(exe: &PathBuf, cmd: &Command) -> Result<()> {
             // The config file can be updated by other commands that are run on different threads,
             // so we load the config file each time we run a command so we always have an updated version.
-            let lookup = OckamConfig::load();
+            let lookup = OckamConfig::load()?;
             for arg in &cmd.args() {
                 // Parse arguments to find a `/node/<name>/...` instance and create a node with that name if it doesn't exist.
                 if arg.starts_with("/node/") {
@@ -703,6 +560,7 @@ pub mod run {
 
     #[cfg(test)]
     mod tests {
+        use ockam_api::nodes::config::CommandArgs;
         use tempfile::tempdir;
 
         use super::*;

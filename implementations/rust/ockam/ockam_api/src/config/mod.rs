@@ -1,12 +1,15 @@
-use crate::config::atomic::AtomicUpdater;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 use std::{
     fs::{create_dir_all, File},
     io::{Read, Write},
     path::{Path, PathBuf},
     sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
+
+use anyhow::Context;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+
+use crate::config::atomic::AtomicUpdater;
 
 pub mod atomic;
 pub mod cli;
@@ -24,6 +27,10 @@ pub struct Config<V: ConfigValues> {
 }
 
 impl<V: ConfigValues> Config<V> {
+    pub fn config_path(&self) -> PathBuf {
+        self.config_dir.join(&self.config_name)
+    }
+
     pub fn config_dir(&self) -> &Path {
         &self.config_dir
     }
@@ -37,44 +44,40 @@ impl<V: ConfigValues> Config<V> {
     }
 
     /// Read lock the inner collection and return a guard to it
-    pub fn readlock_inner(&self) -> RwLockReadGuard<'_, V> {
+    pub fn read(&self) -> RwLockReadGuard<'_, V> {
         self.inner.read().unwrap()
     }
 
     /// Write lock the inner collection and return a guard to it
-    pub fn writelock_inner(&self) -> RwLockWriteGuard<'_, V> {
+    pub fn write(&self) -> RwLockWriteGuard<'_, V> {
         self.inner.write().unwrap()
     }
 
     /// Attempt to load a config.  If none exists, one is created and then returned.
-    pub fn load(config_dir: &Path, config_name: &str) -> Self {
-        if let Err(e) = create_dir_all(config_dir) {
-            eprintln!(
-                "failed to create configuration directory {:?}: {}",
-                config_dir, e
-            );
-            std::process::exit(-1);
-        }
+    pub fn load(config_dir: &Path, config_name: &str) -> anyhow::Result<Self> {
+        create_dir_all(config_dir)?;
 
         let config_name = format!("{}.json", config_name);
         let config_path = config_dir.join(&config_name);
 
-        let create_new = || {
+        let create_new = || -> anyhow::Result<V> {
             let new_inner = V::default_values(config_dir);
             let json: String =
-                serde_json::to_string_pretty(&new_inner).expect("failed to serialise config");
-            let mut f = File::create(&config_path).expect("failed to create default config file");
+                serde_json::to_string_pretty(&new_inner).context("failed to serialise config")?;
+            let mut f =
+                File::create(&config_path).context("failed to create default config file")?;
             f.write_all(json.as_bytes())
-                .expect("failed to write config");
-            new_inner
+                .context("failed to write config")?;
+            Ok(new_inner)
         };
 
         let inner = match File::open(&config_path) {
             Ok(ref mut f) => {
                 let mut buf = String::new();
-                f.read_to_string(&mut buf).expect("failed to read config");
+                f.read_to_string(&mut buf)
+                    .context("failed to read config")?;
                 if buf.is_empty() {
-                    create_new()
+                    create_new()?
                 } else {
                     serde_json::from_str(&buf).unwrap_or_else(|_| {
                         panic!(
@@ -84,14 +87,14 @@ impl<V: ConfigValues> Config<V> {
                     })
                 }
             }
-            Err(_) => create_new(),
+            Err(_) => create_new()?,
         };
 
-        Self {
+        Ok(Self {
             config_dir: config_dir.to_path_buf(),
             config_name,
             inner: Arc::new(RwLock::new(inner)),
-        }
+        })
     }
 
     /// Atomically update the configuration
