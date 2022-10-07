@@ -16,6 +16,7 @@ use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 pub use addon::AddonCommand;
 pub use config::*;
 use ockam::{route, Address, Context, NodeBuilder, Route, TcpTransport, TCP};
+use ockam_api::config::cli::NodeConfigOld;
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
@@ -37,7 +38,7 @@ pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp
 pub enum RpcMode<'a> {
     Embedded,
     Background {
-        cfg: NodeConfig,
+        cfg: NodeConfigOld,
         tcp: Option<&'a TcpTransport>,
     },
 }
@@ -175,7 +176,7 @@ impl<'a> Rpc<'a> {
         let route = match self.mode {
             RpcMode::Embedded => self.to.clone(),
             RpcMode::Background { ref cfg, ref tcp } => {
-                let addr = Address::from((TCP, format!("localhost:{}", cfg.port)));
+                let addr = Address::from((TCP, format!("localhost:{}", cfg.port())));
                 let addr_str = addr.address();
                 match tcp {
                     None => {
@@ -541,10 +542,10 @@ pub fn verify_pids(cfg: &OckamConfig, nodes: Vec<String>) {
 
         let (tx, rx) = bounded(1);
 
-        connect_to(node_cfg.port, tx, query_pid);
+        connect_to(node_cfg.port(), tx, query_pid);
         let verified_pid = rx.recv().unwrap();
 
-        if node_cfg.pid != verified_pid {
+        if node_cfg.pid() != verified_pid {
             if let Err(e) = cfg.set_node_pid(&node_name, verified_pid) {
                 eprintln!("Failed to update pid for node {}: {}", node_name, e);
                 std::process::exit(exitcode::IOERR);

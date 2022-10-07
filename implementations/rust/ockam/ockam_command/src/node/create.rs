@@ -8,6 +8,7 @@ use std::{
     str::FromStr,
 };
 
+use crate::node::util::run::CommandsRunner;
 use crate::node::util::{
     add_project_authority, create_default_identity_if_needed, get_identity_override,
 };
@@ -112,8 +113,8 @@ impl Default for CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        if let Err(e) = run_impl(options, self) {
+    pub fn run(self, opts: CommandGlobalOpts) {
+        if let Err(e) = run_impl(opts, self) {
             eprintln!("{}", e);
             std::process::exit(e.code());
         }
@@ -163,14 +164,15 @@ fn run_impl(opts: CommandGlobalOpts, cmd: CreateCommand) -> crate::Result<()> {
         embedded_node(spawn_background_node, (opts.clone(), cmd.clone(), addr))?;
         connect_to(
             addr.port(),
-            (cfg.clone(), cmd.node_name, true),
+            (cfg.clone(), cmd.node_name.clone(), true),
             print_query_status,
         );
         if let Some(config_path) = &cmd.config {
-            crate::node::util::run::CommandsRunner::run_node_init(config_path)
-                .context("Failed to run init commands")?;
-            crate::node::util::run::CommandsRunner::run_node_startup(config_path)
-                .context("Failed to startup commands")?;
+            let node_config = cfg.node(&cmd.node_name)?;
+            let commands = CommandsRunner::new(config_path.clone())?;
+            node_config.commands().set(commands.commands)?;
+            CommandsRunner::run_node_init(config_path).context("Failed to run init commands")?;
+            CommandsRunner::run_node_startup(config_path).context("Failed to startup commands")?;
         }
     }
     Ok(())
@@ -349,7 +351,7 @@ async fn spawn_background_node(
         &cmd.node_name,
         &cmd.tcp_listener_address,
         cmd.project.as_deref(),
-    );
+    )?;
 
     Ok(())
 }

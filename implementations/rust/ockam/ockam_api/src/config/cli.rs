@@ -34,7 +34,7 @@ pub struct OckamConfig {
     #[serde(skip)]
     pub directories: Option<ProjectDirs>,
     #[serde(default = "default_nodes")]
-    pub nodes: BTreeMap<String, NodeConfig>,
+    pub nodes: BTreeMap<String, NodeConfigOld>,
 
     #[serde(default = "default_lookup")]
     pub lookup: ConfigLookup,
@@ -45,7 +45,7 @@ pub struct OckamConfig {
     pub default: Option<String>,
 }
 
-fn default_nodes() -> BTreeMap<String, NodeConfig> {
+fn default_nodes() -> BTreeMap<String, NodeConfigOld> {
     BTreeMap::new()
 }
 
@@ -102,21 +102,17 @@ Otherwise your OS or OS configuration may not be supported!",
 /// the CLI.  The config is updated periodically but writes to it
 /// don't have to be synced to consumers.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct NodeConfig {
+pub struct NodeConfigOld {
     #[serde(default = "default_name")]
-    pub name: String,
-
+    name: String,
     #[serde(default = "default_addr")]
-    pub addr: InternetAddress,
-
+    addr: InternetAddress,
     #[serde(default = "default_port")]
-    pub port: u16,
-
+    port: u16,
     #[serde(default = "default_verbose")]
-    pub verbose: u8,
-
+    verbose: u8,
     pub pid: Option<i32>,
-    pub state_dir: Option<PathBuf>,
+    state_dir: Option<PathBuf>,
 }
 
 fn default_name() -> String {
@@ -130,6 +126,50 @@ fn default_port() -> u16 {
 }
 fn default_verbose() -> u8 {
     0
+}
+
+impl NodeConfigOld {
+    pub fn new(
+        name: String,
+        addr: InternetAddress,
+        port: u16,
+        verbose: u8,
+        pid: Option<i32>,
+        state_dir: Option<PathBuf>,
+    ) -> Self {
+        Self {
+            name,
+            addr,
+            port,
+            verbose,
+            pid,
+            state_dir,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn addr(&self) -> &InternetAddress {
+        &self.addr
+    }
+
+    pub fn port(&self) -> u16 {
+        self.port
+    }
+
+    pub fn verbose(&self) -> u8 {
+        self.verbose
+    }
+
+    pub fn pid(&self) -> Option<i32> {
+        self.pid
+    }
+
+    pub fn state_dir(&self) -> Option<&Path> {
+        self.state_dir.as_deref()
+    }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]

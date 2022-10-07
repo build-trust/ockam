@@ -49,7 +49,7 @@ pub mod config {
     }
 
     pub fn try_get_space(config: &OckamConfig, name: &str) -> Option<String> {
-        let inner = config.writelock_inner();
+        let inner = config.write();
         inner.lookup.get_space(name).map(|s| s.id.clone())
     }
 

@@ -45,7 +45,7 @@ pub fn spawn_node(
     name: &str,
     address: &str,
     project: Option<&Path>,
-) {
+) -> crate::Result<()> {
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
     // deterministic way of starting a node.
@@ -57,13 +57,13 @@ pub fn spawn_node(
         .create(true)
         .append(true)
         .open(mlog)
-        .expect("failed to open log path");
+        .context("failed to open log path")?;
 
     let stderr_log_file = OpenOptions::new()
         .create(true)
         .append(true)
         .open(elog)
-        .expect("failed to open stderr log path");
+        .context("failed to open stderr log path")?;
 
     let mut args = vec![
         match verbose {
@@ -105,16 +105,11 @@ pub fn spawn_node(
         .args(args)
         .stdout(main_log_file)
         .stderr(stderr_log_file)
-        .spawn()
-        .expect("could not spawn node");
+        .spawn()?;
 
     // Update the pid in the config (should we remove this?)
-    cfg.set_node_pid(name, child.id() as i32)
-        .expect("should never panic");
+    cfg.set_node_pid(name, child.id() as i32)?;
+    cfg.persist_config_updates()?;
 
-    // Save the config update
-    if let Err(e) = cfg.persist_config_updates() {
-        eprintln!("failed to update configuration: {}", e);
-        std::process::exit(exitcode::IOERR);
-    }
+    Ok(())
 }

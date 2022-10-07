@@ -38,10 +38,9 @@ impl NodeManager {
         let vault_storage = FileStorage::create(path.clone()).await?;
         let vault = Vault::new(Some(Arc::new(vault_storage)));
 
-        self.config.inner().write().unwrap().vault_path = Some(path);
-        self.config
-            .persist_config_updates()
-            .map_err(map_anyhow_err)?;
+        let state = self.config.state();
+        state.write().vault_path = Some(path);
+        state.persist_config_updates().map_err(map_anyhow_err)?;
 
         self.vault = Some(vault);
 

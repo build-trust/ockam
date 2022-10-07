@@ -329,7 +329,7 @@ pub fn run() {
 
 impl OckamCommand {
     pub fn run(self) {
-        let config = OckamConfig::load();
+        let config = OckamConfig::load().expect("Failed to load config");
         let options = CommandGlobalOpts::new(self.global_args, config);
 
         // If test_argument_parser is true, command arguments are checked
