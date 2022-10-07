@@ -82,7 +82,11 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
             String::from_utf8(res).context("Received content is not a valid utf8 string")?
         );
 
-        delete_embedded_node(&opts.config, rpc.node_name()).await;
+        // only delete node in case 'from' is empty and embedded node was started before
+        if let None = &cmd.from {
+            delete_embedded_node(&opts.config, rpc.node_name()).await;
+        }
+
         Ok(())
     }
     go(&mut ctx, &opts, cmd).await
