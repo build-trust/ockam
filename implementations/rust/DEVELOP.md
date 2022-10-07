@@ -83,7 +83,7 @@ Get a code coverage report:
 ```
 cargo +nightly install grcov
 
-env CARGO_INCREMENTAL=0 RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort --cfg tokio_unstable" RUSTDOCFLAGS="-Cpanic=abort" cargo +nightly test
+env CARGO_INCREMENTAL=0 RUSTFLAGS="-Zprofile -Clink-dead-code --cfg tokio_unstable" cargo +nightly test --profile coverage
 
 grcov --llvm . -s . --binary-path ./target/debug/ -t html --branch --ignore-not-existing -o ./target/debug/coverage/
 
