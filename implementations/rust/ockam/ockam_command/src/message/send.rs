@@ -83,7 +83,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
         );
 
         // only delete node in case 'from' is empty and embedded node was started before
-        if let None = &cmd.from {
+        if cmd.from.is_none() {
             delete_embedded_node(&opts.config, rpc.node_name()).await;
         }
 
