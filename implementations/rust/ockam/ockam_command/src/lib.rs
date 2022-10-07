@@ -32,7 +32,7 @@ use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
 use credential::CredentialCommand;
 use enroll::EnrollCommand;
-use error::Result;
+use error::{Error, Result};
 use forwarder::ForwarderCommand;
 use identity::IdentityCommand;
 use message::MessageCommand;

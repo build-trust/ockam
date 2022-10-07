@@ -68,3 +68,15 @@ impl From<ockam_multiaddr::Error> for Error {
         Error::new(exitcode::SOFTWARE, e.into())
     }
 }
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Error::new(exitcode::DATAERR, e.into())
+    }
+}
+
+impl From<std::net::AddrParseError> for Error {
+    fn from(e: std::net::AddrParseError) -> Self {
+        Error::new(exitcode::SOFTWARE, e.into())
+    }
+}
