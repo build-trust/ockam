@@ -41,7 +41,7 @@ About:
     The Ockam Routing Protocol is a very simple application layer protocol that allows
     the sender of a message to describe the `onward_route` and `return_route` of message.
 
-    The routing layer in a node can then be used route these messages between workers within
+    The routing layer in a node can then be used to route these messages between workers within
     a node or across nodes using transports. Messages can be sent over multiple hops, within
     one node or across many nodes.
 
@@ -57,7 +57,7 @@ About:
     ------
 
     One or more Ockam Workers can work as a team to offer a Service. Services have
-    addressed represented by /service/{ADDRESS}. Services can be attached to identities and
+    addresses represented by /service/{ADDRESS}. Services can be attached to identities and
     authorization policies to enforce attribute based access control rules.
 
     Nodes created using `ockam` command usually start a pre-defined set of default services.
