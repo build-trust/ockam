@@ -18,6 +18,7 @@ allow = [
 ]
 exceptions = [
     { allow = ["LicenseRef-Ring-ISC-OpenSSL"], name = "ring", version = "*" },
+    { allow = ["Unicode-DFS-2016"], name = "unicode-ident", version = "*" },
 ]
 
 [[licenses.clarify]]

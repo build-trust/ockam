@@ -1,20 +1,24 @@
+use std::collections::BTreeMap;
+
 use crate::nodes::models::transport::{
-    CreateTransport, DeleteTransport, TransportList, TransportMode, TransportStatus,
+    CreateTransport, DeleteTransport, TransportList, TransportMode, TransportStatus, TransportType,
 };
 use crate::nodes::service::{random_alias, Alias};
-use crate::nodes::NodeManager;
 use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Request, Response, ResponseBuilder};
 
-impl NodeManager {
-    pub(super) fn get_tcp_con_or_list(
+use super::NodeManagerWorker;
+
+impl NodeManagerWorker {
+    pub(super) fn get_tcp_con_or_list<'a>(
         &self,
-        req: &Request<'_>,
+        req: &Request<'a>,
+        transports: &'a BTreeMap<Alias, (TransportType, TransportMode, String)>,
         mode: TransportMode,
-    ) -> ResponseBuilder<TransportList<'_>> {
+    ) -> ResponseBuilder<TransportList<'a>> {
         Response::ok(req.id()).body(TransportList::new(
-            self.transports
+            transports
                 .iter()
                 .filter(|(_, (_, tm, _))| *tm == mode)
                 .map(|(tid, (tt, tm, addr))| TransportStatus::new(*tt, *tm, addr, tid))
@@ -23,10 +27,11 @@ impl NodeManager {
     }
 
     pub(super) async fn add_transport<'a>(
-        &mut self,
+        &self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<TransportStatus<'a>>> {
+        let mut node_manager = self.node_manager.write().await;
         let CreateTransport { tt, tm, addr, .. } = dec.decode()?;
 
         use {super::TransportType::*, TransportMode::*};
@@ -38,12 +43,12 @@ impl NodeManager {
         let addr = addr.to_string();
 
         let res = match (tt, tm) {
-            (Tcp, Listen) => self
+            (Tcp, Listen) => node_manager
                 .tcp_transport
                 .listen(&addr)
                 .await
                 .map(|socket| socket.to_string()),
-            (Tcp, Connect) => self
+            (Tcp, Connect) => node_manager
                 .tcp_transport
                 .connect(&addr)
                 .await
@@ -54,7 +59,9 @@ impl NodeManager {
         let response = match res {
             Ok(_) => {
                 let tid = random_alias();
-                self.transports.insert(tid.clone(), (tt, tm, addr.clone()));
+                node_manager
+                    .transports
+                    .insert(tid.clone(), (tt, tm, addr.clone()));
                 Response::ok(req.id()).body(TransportStatus::new(tt, tm, addr, tid))
             }
             Err(msg) => Response::bad_request(req.id()).body(TransportStatus::new(
@@ -69,28 +76,29 @@ impl NodeManager {
     }
 
     pub(super) async fn delete_transport(
-        &mut self,
+        &self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<()>> {
+        let mut node_manager = self.node_manager.write().await;
         let body: DeleteTransport = dec.decode()?;
         info!("Handling request to delete transport: {}", body.tid);
 
         let tid: Alias = body.tid.into();
 
-        if self.api_transport_id == tid && !body.force {
+        if node_manager.api_transport_id == tid && !body.force {
             warn!("User requested to delete the API transport without providing force OP flag...");
             return Ok(Response::bad_request(req.id()));
         }
 
-        match self.transports.get(&tid) {
+        match node_manager.transports.get(&tid) {
             Some(t) if t.1 == TransportMode::Listen => {
                 warn!("It is not currently supported to destroy LISTEN transports");
                 Ok(Response::bad_request(req.id()))
             }
             Some(t) => {
-                self.tcp_transport.disconnect(&t.2).await?;
-                self.transports.remove(&tid);
+                node_manager.tcp_transport.disconnect(&t.2).await?;
+                node_manager.transports.remove(&tid);
                 Ok(Response::ok(req.id()))
             }
             None => Ok(Response::bad_request(req.id())),

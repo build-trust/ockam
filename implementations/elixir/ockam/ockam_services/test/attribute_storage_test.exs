@@ -27,7 +27,7 @@ defmodule Test.Services.AttributeSrotageTest do
     id = "foo"
 
     attribute_set = %AttributeSet{
-      attributes: %{"project" => "123", "role" => "member"},
+      attributes: %Attributes{attributes: %{"project" => "123", "role" => "member"}},
       expiration: System.os_time(:second) - 100
     }
 
@@ -40,7 +40,7 @@ defmodule Test.Services.AttributeSrotageTest do
     id = "foo"
 
     attribute_set = %AttributeSet{
-      attributes: %{"project" => "123", "role" => "member"},
+      attributes: %Attributes{attributes: %{"project" => "123", "role" => "member"}},
       expiration: System.os_time(:second) + 100
     }
 

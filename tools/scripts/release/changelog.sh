@@ -11,8 +11,7 @@ for crate in $( echo "$updated_crates" ); do
     # the below message.
     echo "Generating changelog for $crate with tag $last_git_tag"
     with_commit_msg="feat: updated dependencies"
-    git-cliff $last_git_tag.. --with-commit "$with_commit_msg" --include-path implementations/rust/ockam/$crate/**/*.rs --prepend implementations/rust/ockam/$crate/CHANGELOG.md
-
+    git-cliff $last_git_tag.. --config tools/cliff/cliff.toml --with-commit "$with_commit_msg" --include-path implementations/rust/ockam/$crate/**/*.rs --prepend implementations/rust/ockam/$crate/CHANGELOG.md
     # Replace ## unreleased text to bumped version
     version=$(eval "tomlq package.version -f implementations/rust/ockam/$crate/Cargo.toml")
 

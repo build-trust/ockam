@@ -3,18 +3,6 @@ defmodule Test.Services.ProviderTest do
 
   alias Ockam.Services.Provider
 
-  test "provider runs services" do
-    {:ok, sup_pid} = Provider.start_link([Test.Services.ProviderTest.Provider], [:my_service])
-
-    assert [{:my_service, service_pid, _, _}] = Supervisor.which_children(sup_pid)
-
-    assert service_pid == Ockam.Node.whereis("my_service")
-
-    :ok = Ockam.Services.stop_service("my_service")
-
-    assert nil == Ockam.Node.whereis("my_service")
-  end
-
   test "provider parses json config" do
     json = Jason.encode!(%{my_service: ["a", "b"], other_service: ["arg"]})
     Application.put_env(:ockam_services, :services_config_source, "json")
@@ -49,26 +37,5 @@ defmodule Test.Services.ProviderTest do
     Application.put_env(:ockam_services, :services_file, tmp_file)
 
     assert [my_service: ["a", "b"], other_service: ["arg"]] = Provider.get_configured_services()
-  end
-end
-
-defmodule Test.Services.ProviderTest.Provider do
-  @behaviour Ockam.Services.Provider
-
-  @impl true
-  def services(), do: [:my_service]
-
-  @impl true
-  def child_spec(:my_service, _args) do
-    {Test.Services.ProviderTest.MyService, address: "my_service"}
-  end
-end
-
-defmodule Test.Services.ProviderTest.MyService do
-  use Ockam.Worker
-
-  @impl true
-  def handle_message(_message, state) do
-    {:ok, state}
   end
 end

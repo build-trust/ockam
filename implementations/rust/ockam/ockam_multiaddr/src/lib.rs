@@ -150,7 +150,7 @@ impl<T> Deref for Checked<T> {
 }
 
 /// A numeric protocol code.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Code(u32);
 
 impl fmt::Display for Code {
@@ -521,6 +521,54 @@ impl MultiAddr {
     {
         self.try_extend(iter)?;
         Ok(self)
+    }
+
+    /// Check if the protocol codes match the given sequence.
+    pub fn matches<'a, I>(&self, start: usize, codes: I) -> bool
+    where
+        I: IntoIterator<Item = &'a Match>,
+        I::IntoIter: ExactSizeIterator,
+    {
+        let codes = codes.into_iter();
+        let mut n = codes.len();
+        for (p, c) in self.iter().skip(start).zip(codes) {
+            n -= 1;
+            match c {
+                Match::Val(c) => {
+                    if p.code() != *c {
+                        return false;
+                    }
+                }
+                Match::Any(cs) => {
+                    if !cs.contains(&p.code()) {
+                        return false;
+                    }
+                }
+            }
+        }
+        n == 0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Match {
+    Val(Code),
+    Any(TinyVec<[Code; 4]>),
+}
+
+impl Match {
+    pub fn code(c: Code) -> Self {
+        Self::Val(c)
+    }
+
+    pub fn any<I: IntoIterator<Item = Code>>(cs: I) -> Self {
+        Self::Any(cs.into_iter().collect())
+    }
+}
+
+impl From<Code> for Match {
+    fn from(c: Code) -> Self {
+        Match::code(c)
     }
 }
 

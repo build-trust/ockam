@@ -9,14 +9,14 @@ use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 
 #[derive(Clone, Debug, Args)]
-#[clap(
+#[command(
     hide = help::hide(),
     help_template = help::template(""),
     arg_required_else_help = true,
     subcommand_required = true
 )]
 pub struct CredentialCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: CredentialSubcommand,
 }
 

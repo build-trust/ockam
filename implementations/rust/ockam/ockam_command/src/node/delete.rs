@@ -4,18 +4,18 @@ use clap::Args;
 
 /// Delete Nodes
 #[derive(Clone, Debug, Args)]
-#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct DeleteCommand {
     /// Name of the node.
-    #[clap(default_value = "default", hide_default_value = true, group = "nodes")]
+    #[arg(default_value = "default", group = "nodes")]
     node_name: String,
 
     /// Terminate all nodes
-    #[clap(long, short, group = "nodes")]
+    #[arg(long, short, group = "nodes")]
     all: bool,
 
     /// Clean up config directories and all nodes state directories
-    #[clap(display_order = 901, long, short)]
+    #[arg(display_order = 901, long, short)]
     force: bool,
 }
 

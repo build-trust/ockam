@@ -1,27 +1,37 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
 use std::collections::BTreeMap;
+use std::error::Error as _;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use minicbor::Decoder;
 
+use ockam::compat::asynchronous::RwLock;
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
-use ockam_core::api::{Method, Request, Response, Status};
-use ockam_core::compat::{boxed::Box, string::String};
+use ockam_core::api::{Error, Method, Request, Response, Status};
+use ockam_core::compat::{
+    boxed::Box,
+    string::String,
+    sync::{Arc, Mutex},
+};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::AsyncTryClone;
 use ockam_identity::{Identity, IdentityIdentifier, PublicIdentity};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::tokio;
+use ockam_node::tokio::task::JoinHandle;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
 use super::registry::Registry;
+use crate::config::lookup::ProjectLookup;
 use crate::config::{cli::AuthoritiesConfig, Config};
 use crate::error::ApiError;
 use crate::lmdb::LmdbStorage;
 use crate::nodes::config::NodeManConfig;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
+use crate::session::{Medic, Sessions};
 use crate::DefaultAddress;
 
 pub mod message;
@@ -96,9 +106,28 @@ pub struct NodeManager {
     vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
     project_id: Option<Vec<u8>>,
+    projects: Arc<BTreeMap<String, ProjectLookup>>,
     authorities: Option<Authorities>,
     pub(crate) authenticated_storage: LmdbStorage,
     pub(crate) registry: Registry,
+    sessions: Arc<Mutex<Sessions>>,
+    medic: JoinHandle<Result<(), ockam_core::Error>>,
+}
+
+pub struct NodeManagerWorker {
+    node_manager: Arc<RwLock<NodeManager>>,
+}
+
+impl NodeManagerWorker {
+    pub fn new(node_manager: NodeManager) -> Self {
+        NodeManagerWorker {
+            node_manager: Arc::new(RwLock::new(node_manager)),
+        }
+    }
+
+    pub fn get(&mut self) -> &mut Arc<RwLock<NodeManager>> {
+        &mut self.node_manager
+    }
 }
 
 pub struct IdentityOverride {
@@ -133,27 +162,83 @@ impl NodeManager {
     }
 }
 
-impl NodeManager {
-    /// Create a new NodeManager with the node name from the ockam CLI
-    #[allow(clippy::too_many_arguments)]
-    pub async fn create(
-        ctx: &Context,
+pub struct NodeManagerGeneralOptions {
+    node_name: String,
+    node_dir: PathBuf,
+    skip_defaults: bool,
+    enable_credential_checks: bool,
+    // Should be passed only when creating fresh node and we want it to get default root Identity
+    identity_override: Option<IdentityOverride>,
+}
+
+impl NodeManagerGeneralOptions {
+    pub fn new(
         node_name: String,
         node_dir: PathBuf,
-        // Should be passed only when creating fresh node and we want it to get default root Identity
-        identity_override: Option<IdentityOverride>,
         skip_defaults: bool,
         enable_credential_checks: bool,
-        ac: Option<&AuthoritiesConfig>,
+        identity_override: Option<IdentityOverride>,
+    ) -> Self {
+        Self {
+            node_name,
+            node_dir,
+            skip_defaults,
+            enable_credential_checks,
+            identity_override,
+        }
+    }
+}
+
+pub struct NodeManagerProjectsOptions<'a> {
+    ac: Option<&'a AuthoritiesConfig>,
+    project_id: Option<Vec<u8>>,
+    projects: BTreeMap<String, ProjectLookup>,
+}
+
+impl<'a> NodeManagerProjectsOptions<'a> {
+    pub fn new(
+        ac: Option<&'a AuthoritiesConfig>,
         project_id: Option<Vec<u8>>,
+        projects: BTreeMap<String, ProjectLookup>,
+    ) -> Self {
+        Self {
+            ac,
+            project_id,
+            projects,
+        }
+    }
+}
+
+pub struct NodeManagerTransportOptions {
+    api_transport: (TransportType, TransportMode, String),
+    tcp_transport: TcpTransport,
+}
+
+impl NodeManagerTransportOptions {
+    pub fn new(
         api_transport: (TransportType, TransportMode, String),
         tcp_transport: TcpTransport,
+    ) -> Self {
+        Self {
+            api_transport,
+            tcp_transport,
+        }
+    }
+}
+
+impl NodeManager {
+    /// Create a new NodeManager with the node name from the ockam CLI
+    pub async fn create(
+        ctx: &Context,
+        general_options: NodeManagerGeneralOptions,
+        projects_options: NodeManagerProjectsOptions<'_>,
+        transport_options: NodeManagerTransportOptions,
     ) -> Result<Self> {
         let api_transport_id = random_alias();
         let mut transports = BTreeMap::new();
-        transports.insert(api_transport_id.clone(), api_transport);
+        transports.insert(api_transport_id.clone(), transport_options.api_transport);
 
-        let config = Config::<NodeManConfig>::load(&node_dir, "config");
+        let config = Config::<NodeManConfig>::load(&general_options.node_dir, "config");
 
         // Check if we had existing AuthenticatedStorage, create with default location otherwise
         let authenticated_storage_path = config.readlock_inner().authenticated_storage_path.clone();
@@ -161,7 +246,8 @@ impl NodeManager {
             let authenticated_storage_path = match authenticated_storage_path {
                 Some(p) => p,
                 None => {
-                    let default_location = node_dir.join("authenticated_storage.lmdb");
+                    let default_location =
+                        general_options.node_dir.join("authenticated_storage.lmdb");
 
                     config.writelock_inner().authenticated_storage_path =
                         Some(default_location.clone());
@@ -175,9 +261,9 @@ impl NodeManager {
 
         // Skip override if we already had vault
         if config.readlock_inner().vault_path.is_none() {
-            if let Some(identity_override) = identity_override {
+            if let Some(identity_override) = general_options.identity_override {
                 // Copy vault file, update config
-                let vault_path = Self::default_vault_path(&node_dir);
+                let vault_path = Self::default_vault_path(&general_options.node_dir);
                 std::fs::copy(&identity_override.vault_path, &vault_path)
                     .map_err(|_| ApiError::generic("Error while copying default node"))?;
 
@@ -211,7 +297,9 @@ impl NodeManager {
             None => None,
         };
 
-        if enable_credential_checks && (ac.is_none() || project_id.is_none()) {
+        if general_options.enable_credential_checks
+            && (projects_options.ac.is_none() || projects_options.project_id.is_none())
+        {
             error!("Invalid NodeManager options: enable_credential_checks was provided, while not enough \
                 information was provided to enforce the checks");
             return Err(ockam_core::Error::new(
@@ -221,31 +309,43 @@ impl NodeManager {
             ));
         }
 
+        let medic = Medic::new();
+        let sessions = medic.sessions();
+
         let mut s = Self {
-            node_name,
-            node_dir,
+            node_name: general_options.node_name,
+            node_dir: general_options.node_dir,
             config,
             api_transport_id,
             transports,
-            tcp_transport,
+            tcp_transport: transport_options.tcp_transport,
             controller_identity_id: Self::load_controller_identity_id()?,
-            skip_defaults,
-            enable_credential_checks,
+            skip_defaults: general_options.skip_defaults,
+            enable_credential_checks: general_options.enable_credential_checks,
             vault,
             identity,
-            project_id,
+            projects: Arc::new(projects_options.projects),
+            project_id: projects_options.project_id,
             authorities: None,
             authenticated_storage,
             registry: Default::default(),
+            medic: {
+                let ctx = ctx.async_try_clone().await?;
+                tokio::spawn(medic.start(ctx))
+            },
+            sessions,
         };
 
-        if !skip_defaults {
+        if !general_options.skip_defaults {
             s.create_defaults(ctx).await?;
 
-            if let Some(ac) = ac {
+            if let Some(ac) = projects_options.ac {
                 s.configure_authorities(ac).await?;
             }
         }
+
+        s.start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
+            .await?;
 
         Ok(s)
     }
@@ -285,8 +385,6 @@ impl NodeManager {
             .await?;
         self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
-        self.start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
-            .await?;
 
         ForwardingService::create(ctx).await?;
 
@@ -306,7 +404,7 @@ impl NodeManager {
     }
 }
 
-impl NodeManager {
+impl NodeManagerWorker {
     //////// Request matching and response handling ////////
 
     async fn handle_request(
@@ -315,7 +413,7 @@ impl NodeManager {
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
-        trace! {
+        debug! {
             target: TARGET,
             id     = %req.id(),
             method = ?req.method(),
@@ -335,21 +433,26 @@ impl NodeManager {
         let r = match (method, path_segments.as_slice()) {
             // ==*== Basic node information ==*==
             // TODO: create, delete, destroy remote nodes
-            (Get, ["node"]) => Response::ok(req.id())
-                .body(NodeStatus::new(
-                    self.node_name.as_str(),
-                    "Running",
-                    ctx.list_workers().await?.len() as u32,
-                    std::process::id() as i32,
-                    self.transports.len() as u32,
-                ))
-                .to_vec()?,
+            (Get, ["node"]) => {
+                let node_manager = self.node_manager.read().await;
+                Response::ok(req.id())
+                    .body(NodeStatus::new(
+                        node_manager.node_name.as_str(),
+                        "Running",
+                        ctx.list_workers().await?.len() as u32,
+                        std::process::id() as i32,
+                        node_manager.transports.len() as u32,
+                    ))
+                    .to_vec()?
+            }
 
             // ==*== Tcp Connection ==*==
             // TODO: Get all tcp connections
-            (Get, ["node", "tcp", "connection"]) => self
-                .get_tcp_con_or_list(req, TransportMode::Connect)
-                .to_vec()?,
+            (Get, ["node", "tcp", "connection"]) => {
+                let node_manager = self.node_manager.read().await;
+                self.get_tcp_con_or_list(req, &node_manager.transports, TransportMode::Connect)
+                    .to_vec()?
+            }
             (Post, ["node", "tcp", "connection"]) => {
                 self.add_transport(req, dec).await?.to_vec()?
             }
@@ -358,9 +461,15 @@ impl NodeManager {
             }
 
             // ==*== Tcp Listeners ==*==
-            (Get, ["node", "tcp", "listener"]) => self
-                .get_tcp_con_or_list(req, TransportMode::Listen)
-                .to_vec()?,
+            (Get, ["node", "tcp", "listener"]) => {
+                let node_manager = self.node_manager.read().await;
+                self.get_tcp_con_or_list(
+                    req,
+                    &node_manager.transports.clone(),
+                    TransportMode::Listen,
+                )
+                .to_vec()?
+            }
             (Post, ["node", "tcp", "listener"]) => self.add_transport(req, dec).await?.to_vec()?,
             (Delete, ["node", "tcp", "listener"]) => {
                 self.delete_transport(req, dec).await?.to_vec()?
@@ -388,9 +497,15 @@ impl NodeManager {
 
             // ==*== Secure channels ==*==
             // TODO: Change to RequestBuilder format
-            (Get, ["node", "secure_channel"]) => self.list_secure_channels(req).to_vec()?,
+            (Get, ["node", "secure_channel"]) => {
+                let node_manager = self.node_manager.read().await;
+                self.list_secure_channels(req, &node_manager.registry)
+                    .to_vec()?
+            }
             (Get, ["node", "secure_channel_listener"]) => {
-                self.list_secure_channel_listener(req).to_vec()?
+                let node_manager = self.node_manager.read().await;
+                self.list_secure_channel_listener(req, &node_manager.registry)
+                    .to_vec()?
             }
             (Post, ["node", "secure_channel"]) => {
                 self.create_secure_channel(req, dec).await?.to_vec()?
@@ -435,13 +550,23 @@ impl NodeManager {
                 .start_credentials_service(ctx, req, dec)
                 .await?
                 .to_vec()?,
+            (Get, ["node", "services"]) => {
+                let node_manager = self.node_manager.read().await;
+                self.list_services(req, &node_manager.registry).to_vec()?
+            }
 
             // ==*== Forwarder commands ==*==
-            (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req, dec).await?,
+            (Post, ["node", "forwarder"]) => self.create_forwarder(ctx, req.id(), dec).await?,
 
             // ==*== Inlets & Outlets ==*==
-            (Get, ["node", "inlet"]) => self.get_inlets(req).to_vec()?,
-            (Get, ["node", "outlet"]) => self.get_outlets(req).to_vec()?,
+            (Get, ["node", "inlet"]) => {
+                let node_manager = self.node_manager.read().await;
+                self.get_inlets(req, &node_manager.registry).to_vec()?
+            }
+            (Get, ["node", "outlet"]) => {
+                let node_manager = self.node_manager.read().await;
+                self.get_outlets(req, &node_manager.registry).to_vec()?
+            }
             (Post, ["node", "inlet"]) => self.create_inlet(req, dec).await?.to_vec()?,
             (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "portal"]) => todo!(),
@@ -507,15 +632,22 @@ impl NodeManager {
 }
 
 #[ockam::worker]
-impl Worker for NodeManager {
+impl Worker for NodeManagerWorker {
     type Message = Vec<u8>;
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        if !self.skip_defaults {
-            self.initialize_defaults(ctx).await?;
+        let mut node_manger = self.node_manager.write().await;
+        if !node_manger.skip_defaults {
+            node_manger.initialize_defaults(ctx).await?;
         }
 
+        Ok(())
+    }
+
+    async fn shutdown(&mut self, _: &mut Self::Context) -> Result<()> {
+        let node_manager = self.node_manager.read().await;
+        node_manager.medic.abort();
         Ok(())
     }
 
@@ -531,16 +663,30 @@ impl Worker for NodeManager {
 
         let r = match self.handle_request(ctx, &req, &mut dec).await {
             Ok(r) => r,
-            // If an error occurs, send a response with the error code so the listener can
-            // fail fast instead of failing silently here and force the listener to timeout.
             Err(err) => {
-                error!(?err, "Failed to handle request");
+                error! {
+                    target: TARGET,
+                    re     = %req.id(),
+                    method = ?req.method(),
+                    path   = %req.path(),
+                    code   = %err.code(),
+                    cause  = ?err.source(),
+                    "failed to handle request"
+                }
+                let err =
+                    Error::new(req.path()).with_message(format!("failed to handle request: {err}"));
                 Response::builder(req.id(), Status::InternalServerError)
-                    .body(format!("Failed to handle request: {err}"))
+                    .body(err)
                     .to_vec()?
             }
         };
-        trace!("** sending response");
+        debug! {
+            target: TARGET,
+            re     = %req.id(),
+            method = ?req.method(),
+            path   = %req.path(),
+            "responding"
+        }
         ctx.send(msg.return_route(), r).await
     }
 }
@@ -560,19 +706,22 @@ pub(crate) mod tests {
             let node_address = transport.listen("127.0.0.1:0").await?;
             let mut node_man = NodeManager::create(
                 ctx,
-                "node".to_string(),
-                node_dir.into_path(),
-                None,
-                true,
-                false,
-                None,
-                None,
-                (
-                    TransportType::Tcp,
-                    TransportMode::Listen,
-                    node_address.to_string(),
+                NodeManagerGeneralOptions::new(
+                    "node".to_string(),
+                    node_dir.into_path(),
+                    true,
+                    false,
+                    None,
                 ),
-                transport,
+                NodeManagerProjectsOptions::new(None, None, Default::default()),
+                NodeManagerTransportOptions::new(
+                    (
+                        TransportType::Tcp,
+                        TransportMode::Listen,
+                        node_address.to_string(),
+                    ),
+                    transport,
+                ),
             )
             .await?;
 
@@ -580,8 +729,10 @@ pub(crate) mod tests {
             node_man.create_vault_impl(None, false).await?;
             node_man.create_identity_impl(ctx, false).await?;
 
+            let node_manager_worker = NodeManagerWorker::new(node_man);
+
             // Initialize node_man worker and return its route
-            ctx.start_worker(node_manager, node_man).await?;
+            ctx.start_worker(node_manager, node_manager_worker).await?;
             Ok(route![node_manager])
         }
     }

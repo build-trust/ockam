@@ -1,12 +1,9 @@
 defmodule Ockam.Services.Provider do
   @moduledoc """
-  Behaviour module and entrypoint to start Ockam.Services services
+  Behaviour module and helper functions to operate Ockam.Services services
 
   Provider behaviour implementations should provide a list of service names and be able to
   start service workers given names and arguments
-
-  Provider can start all services configured in :ockam_services => :services application environment
-  with :ockam_services => :providers provider implementations
   """
 
   require Logger
@@ -20,30 +17,17 @@ defmodule Ockam.Services.Provider do
 
   @callback child_spec(name :: atom(), args :: Keyword.t()) :: child_spec() | [child_spec()]
 
-  def child_spec(args) do
-    %{
-      id: __MODULE__,
-      start: {__MODULE__, :start_link, args},
-      type: :supervisor
-    }
-  end
-
-  def start_link(providers \\ nil, services \\ nil)
-
-  def start_link(providers, nil) do
+  @spec get_configured_services_child_specs() :: {:ok, [child_spec()]} | {:error, any()}
+  def get_configured_services_child_specs() do
     services = get_configured_services()
-    start_link(providers, services)
-  end
-
-  def start_link(providers, services) do
-    {child_specs, errors} = get_services_child_specs(services, providers)
+    {child_specs, errors} = get_services_child_specs(services)
 
     case errors do
       [] ->
-        Supervisor.start_link(child_specs, name: __MODULE__, strategy: :one_for_one)
+        {:ok, child_specs}
 
       errors ->
-        {:error, errors}
+        {:error, {:cannot_load_child_specs, errors}}
     end
   end
 
@@ -97,44 +81,6 @@ defmodule Ockam.Services.Provider do
         rescue
           err ->
             {:error, err}
-        end
-    end
-  end
-
-  @spec start_service(service_config(), atom(), nil | list()) ::
-          [{:ok, pid()}] | [{:ok, pid(), any()}] | [{:error, any()}]
-  def start_service(service_config, supervisor, providers \\ nil) do
-    case get_service_child_specs(service_config, providers) do
-      {:ok, child_specs} ->
-        Enum.map(child_specs, fn spec ->
-          Supervisor.start_child(supervisor, spec)
-        end)
-
-      {:error, reason} ->
-        [{:error, reason}]
-    end
-  end
-
-  @spec stop_service(Ockam.Address.t(), atom()) :: :ok | {:error, :not_found}
-  def stop_service(address, supervisor) do
-    with {:ok, child_id} <- find_child_id(supervisor, address) do
-      Supervisor.terminate_child(supervisor, child_id)
-    end
-  end
-
-  defp find_child_id(supervisor, address) do
-    ## TODO: easier way to find services child_ids by address
-    ## Use addresses for child ids?
-    case Ockam.Node.whereis(address) do
-      nil ->
-        {:error, :not_found}
-
-      pid ->
-        children = Supervisor.which_children(supervisor)
-
-        case List.keyfind(children, pid, 1) do
-          {id, ^pid, _type, _modules} -> {:ok, id}
-          nil -> {:error, :not_found}
         end
     end
   end

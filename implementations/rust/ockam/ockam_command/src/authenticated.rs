@@ -1,6 +1,7 @@
 use crate::help;
 use crate::util::embedded_node;
 use anyhow::{anyhow, Result};
+use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 use ockam::{Context, TcpTransport};
 use ockam_api::auth;
@@ -9,9 +10,9 @@ use ockam_multiaddr::MultiAddr;
 const HELP_DETAIL: &str = "";
 
 #[derive(Clone, Debug, Args)]
-#[clap(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
+#[command(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
 pub struct AuthenticatedCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: AuthenticatedSubcommand,
 }
 
@@ -23,11 +24,11 @@ pub enum AuthenticatedSubcommand {
         addr: MultiAddr,
 
         /// Subject identifier
-        #[clap(long, forbid_empty_values = true)]
+        #[arg(long, value_parser(NonEmptyStringValueParser::new()))]
         id: String,
 
         /// Attribute key.
-        #[clap(forbid_empty_values = true)]
+        #[arg(value_parser(NonEmptyStringValueParser::new()))]
         key: String,
     },
     /// Delete attribute
@@ -36,11 +37,11 @@ pub enum AuthenticatedSubcommand {
         addr: MultiAddr,
 
         /// Subject identifier
-        #[clap(long, forbid_empty_values = true)]
+        #[arg(long, value_parser(NonEmptyStringValueParser::new()))]
         id: String,
 
         /// Attribute key.
-        #[clap(forbid_empty_values = true)]
+        #[arg(value_parser(NonEmptyStringValueParser::new()))]
         key: String,
     },
 }

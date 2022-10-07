@@ -67,11 +67,11 @@ mod node {
 
     use crate::cloud::space::CreateSpace;
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
-    use crate::nodes::NodeManager;
+    use crate::nodes::NodeManagerWorker;
 
     const TARGET: &str = "ockam_api::cloud::space";
 
-    impl NodeManager {
+    impl NodeManagerWorker {
         pub(crate) async fn create_space(
             &mut self,
             ctx: &mut Context,

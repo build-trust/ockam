@@ -6,7 +6,6 @@ use crate::{
 use clap::Args;
 use ockam::{Context, Route, TCP};
 use ockam_api::{
-    config::snippet::{ComposableSnippet, Operation, Protocol, RemoteMode},
     nodes::{models::transport::TransportStatus, NODEMANAGER_ADDR},
     route_to_multiaddr,
 };
@@ -15,7 +14,7 @@ use std::str::FromStr;
 
 #[derive(Args, Clone, Debug)]
 pub struct CreateCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: TCPListenerNodeOpts,
 
     /// Address for this listener (eg. 127.0.0.1:7000)
@@ -25,38 +24,15 @@ pub struct CreateCommand {
 #[derive(Clone, Debug, Args)]
 pub struct TCPListenerNodeOpts {
     /// Node at which to create the listener
-    #[clap(global = true, long, value_name = "NODE", default_value = "default")]
+    #[arg(global = true, long, value_name = "NODE", default_value = "default")]
     pub at: String,
-}
-
-impl From<&'_ CreateCommand> for ComposableSnippet {
-    fn from(cc: &'_ CreateCommand) -> Self {
-        let mode = RemoteMode::Listener;
-        let tcp = true;
-        let address = cc.address.clone();
-
-        Self {
-            id: format!(
-                "_transport_{}_{}_{}",
-                mode,
-                if tcp { "tcp" } else { "unknown" },
-                address
-            ),
-            op: Operation::Transport {
-                protocol: Protocol::Tcp,
-                address,
-                mode,
-            },
-            params: vec![],
-        }
-    }
 }
 
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
         let node = get_final_element(&self.node_opts.at);
-        let port = cfg.get_node_port(node);
+        let port = cfg.get_node_port(node).unwrap();
 
         let input_addr = match std::net::SocketAddr::from_str(&self.address) {
             Ok(value) => value,
@@ -73,22 +49,6 @@ impl CreateCommand {
         }
 
         connect_to(port, self.clone(), create_listener);
-
-        let composite = (&self).into();
-        let node = node.to_string();
-
-        let startup_config = match cfg.startup_cfg(&node) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                eprintln!("failed to load startup configuration: {}", e);
-                std::process::exit(exitcode::IOERR);
-            }
-        };
-        startup_config.add_composite(composite);
-        if let Err(e) = startup_config.persist_config_updates() {
-            eprintln!("failed to update configuration: {}", e);
-            std::process::exit(exitcode::IOERR);
-        }
     }
 }
 

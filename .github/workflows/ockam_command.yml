@@ -14,10 +14,7 @@ on:
       - "**.rs"
       - "**.toml"
       - "**/Cargo.lock"
-      - "**.gradle"
-      - "tools/gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
+      - "implementations/rust/ockam/ockam_command/tests/commands.bats"
       - ".github/actions/**"
 
   push:
@@ -26,10 +23,7 @@ on:
       - "**.rs"
       - "**.toml"
       - "**/Cargo.lock"
-      - "**.gradle"
-      - "tools/gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
+      - "implementations/rust/ockam/ockam_command/tests/commands.bats"
       - ".github/actions/**"
   schedule:
     - cron: "0 1 * * *"

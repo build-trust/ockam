@@ -11,7 +11,7 @@ use ockam_api::nodes::{
 
 #[derive(Args, Clone, Debug)]
 pub struct ListCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: NodeOpts,
 }
 
@@ -19,7 +19,7 @@ impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
         let node = get_final_element(&self.node_opts.api_node);
-        let port = cfg.get_node_port(node);
+        let port = cfg.get_node_port(node).unwrap();
 
         connect_to(port, (), list_listeners);
     }
@@ -29,7 +29,7 @@ pub async fn list_listeners(ctx: Context, _: (), mut base_route: Route) -> anyho
     let resp: Vec<u8> = match ctx
         .send_and_receive(
             base_route.modify().append(NODEMANAGER_ADDR),
-            api::list_tcp_listeners()?,
+            api::list_tcp_listeners().to_vec()?,
         )
         .await
     {

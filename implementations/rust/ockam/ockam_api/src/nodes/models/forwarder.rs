@@ -2,6 +2,7 @@ use minicbor::{Decode, Encode};
 
 use ockam::remote::RemoteForwarderInfo;
 use ockam_core::CowStr;
+use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 
 #[cfg(feature = "tag")]
@@ -14,23 +15,60 @@ use ockam_core::TypeTag;
 pub struct CreateForwarder<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3386455>,
-    /// Ockam's cloud forwarder node address
-    #[b(1)] pub(crate) address: CowStr<'a>,
-    /// Forwarder alias
-    #[n(2)] pub(crate) alias: Option<CowStr<'a>>,
-    /// Forwarding service is at rust node
-    #[n(3)] pub(crate) at_rust_node: bool,
+    /// Address to create forwarder at.
+    #[n(1)] address: MultiAddr,
+    /// Forwarder alias.
+    #[b(2)] alias: Option<CowStr<'a>>,
+    /// Forwarding service is at rust node.
+    #[n(3)] at_rust_node: bool,
+    /// An authorised identity for secure channels.
+    /// Only set for non-project addresses as for projects the project's
+    /// authorised identity will be used.
+    #[n(4)] authorized: Option<IdentityIdentifier>
 }
 
 impl<'a> CreateForwarder<'a> {
-    pub fn new(address: &MultiAddr, alias: Option<String>, at_rust_node: bool) -> Self {
+    pub fn at_project(address: MultiAddr, alias: Option<String>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: Default::default(),
-            address: address.to_string().into(),
+            address,
+            alias: alias.map(|s| s.into()),
+            at_rust_node: false,
+            authorized: None,
+        }
+    }
+
+    pub fn at_node(
+        address: MultiAddr,
+        alias: Option<String>,
+        at_rust_node: bool,
+        auth: Option<IdentityIdentifier>,
+    ) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: Default::default(),
+            address,
             alias: alias.map(|s| s.into()),
             at_rust_node,
+            authorized: auth,
         }
+    }
+
+    pub fn address(&self) -> &MultiAddr {
+        &self.address
+    }
+
+    pub fn alias(&self) -> Option<&str> {
+        self.alias.as_deref()
+    }
+
+    pub fn at_rust_node(&self) -> bool {
+        self.at_rust_node
+    }
+
+    pub fn authorized(&self) -> Option<IdentityIdentifier> {
+        self.authorized.clone()
     }
 }
 
@@ -104,10 +142,11 @@ mod tests {
             let route = route![(TCP, &cloud_address)];
             let mut buf = vec![];
             Request::post("/node/forwarder")
-                .body(CreateForwarder::new(
-                    &route_to_multiaddr(&route).unwrap(),
+                .body(CreateForwarder::at_node(
+                    route_to_multiaddr(&route).unwrap(),
                     None,
                     false,
+                    None,
                 ))
                 .encode(&mut buf)?;
             buf

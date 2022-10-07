@@ -94,14 +94,96 @@ mod node {
     use ockam_node::Context;
 
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
-    use crate::nodes::NodeManager;
+    use crate::nodes::NodeManagerWorker;
 
     use super::*;
 
     const TARGET: &str = "ockam_api::cloud::subscription";
     const API_SERVICE: &str = "subscriptions";
 
-    impl NodeManager {
+    impl NodeManagerWorker {
+        pub(crate) async fn unsubscribe(
+            &mut self,
+            ctx: &mut Context,
+            dec: &mut Decoder<'_>,
+            id: &str,
+        ) -> Result<Vec<u8>> {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_route = req_wrapper.route()?;
+
+            let label = "unsubscribe";
+            trace!(target: TARGET, subscription = %id, "unsubscribing");
+
+            let req_builder = Request::put(format!("/v0/{}/unsubscribe", id));
+            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
+                .await
+        }
+
+        pub(crate) async fn update_subscription_space(
+            &mut self,
+            ctx: &mut Context,
+            dec: &mut Decoder<'_>,
+            id: &str,
+        ) -> Result<Vec<u8>> {
+            let req_wrapper: CloudRequestWrapper<String> = dec.decode()?;
+            let cloud_route = req_wrapper.route()?;
+            let req_body = req_wrapper.req;
+
+            let label = "list_sbuscriptions";
+            trace!(target: TARGET, subscription = %id, "updating subscription space");
+
+            let req_builder = Request::put(format!("/v0/{}/space_id", id)).body(req_body);
+            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
+                .await
+        }
+        pub(crate) async fn update_subscription_contact_info(
+            &mut self,
+            ctx: &mut Context,
+            dec: &mut Decoder<'_>,
+            id: &str,
+        ) -> Result<Vec<u8>> {
+            let req_wrapper: CloudRequestWrapper<String> = dec.decode()?;
+            let cloud_route = req_wrapper.route()?;
+            let req_body = req_wrapper.req;
+
+            let label = "update_subscription_contact_info";
+            trace!(target: TARGET, subscription = %id, "updating subscription contact info");
+
+            let req_builder = Request::put(format!("/v0/{}/contact_info", id)).body(req_body);
+            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
+                .await
+        }
+        pub(crate) async fn list_subscriptions(
+            &mut self,
+            ctx: &mut Context,
+            dec: &mut Decoder<'_>,
+        ) -> Result<Vec<u8>> {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_route = req_wrapper.route()?;
+
+            let label = "list_subscriptions";
+            trace!(target: TARGET, "listing subscriptions");
+
+            let req_builder = Request::get("/v0/");
+            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
+                .await
+        }
+        pub(crate) async fn get_subscription(
+            &mut self,
+            ctx: &mut Context,
+            dec: &mut Decoder<'_>,
+            id: &str,
+        ) -> Result<Vec<u8>> {
+            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
+            let cloud_route = req_wrapper.route()?;
+
+            let label = "get_subscription";
+            trace!(target: TARGET, subscription = %id, "getting subscription");
+
+            let req_builder = Request::get(format!("/v0/{}", id));
+            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
+                .await
+        }
         pub(crate) async fn activate_subscription(
             &mut self,
             ctx: &mut Context,
@@ -124,92 +206,6 @@ mod node {
                 req_builder,
             )
             .await
-        }
-
-        pub(crate) async fn get_subscription(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
-            id: &str,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
-
-            let label = "get_subscription";
-            trace!(target: TARGET, subscription = %id, "getting subscription");
-
-            let req_builder = Request::get(format!("/v0/{}", id));
-            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
-                .await
-        }
-
-        pub(crate) async fn list_subscriptions(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
-
-            let label = "list_subscriptions";
-            trace!(target: TARGET, "listing subscriptions");
-
-            let req_builder = Request::get("/v0/");
-            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
-                .await
-        }
-
-        pub(crate) async fn update_subscription_contact_info(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
-            id: &str,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: CloudRequestWrapper<String> = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
-            let req_body = req_wrapper.req;
-
-            let label = "update_subscription_contact_info";
-            trace!(target: TARGET, subscription = %id, "updating subscription contact info");
-
-            let req_builder = Request::put(format!("/v0/{}/contact_info", id)).body(req_body);
-            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
-                .await
-        }
-
-        pub(crate) async fn update_subscription_space(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
-            id: &str,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: CloudRequestWrapper<String> = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
-            let req_body = req_wrapper.req;
-
-            let label = "list_sbuscriptions";
-            trace!(target: TARGET, subscription = %id, "updating subscription space");
-
-            let req_builder = Request::put(format!("/v0/{}/space_id", id)).body(req_body);
-            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
-                .await
-        }
-
-        pub(crate) async fn unsubscribe(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
-            id: &str,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
-
-            let label = "unsubscribe";
-            trace!(target: TARGET, subscription = %id, "unsubscribing");
-
-            let req_builder = Request::put(format!("/v0/{}/unsubscribe", id));
-            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
-                .await
         }
     }
 }

@@ -5,7 +5,7 @@ pub use send::SendCommand;
 mod send;
 
 const HELP_DETAIL: &str = "\
-ABOUT:
+About:
     An Ockam node is any running application that can communicate with other applications
     using various Ockam protocols like Routing, Secure Channels, Forwarding etc.
 
@@ -52,7 +52,7 @@ ABOUT:
         - A secure channel listener at /service/api
         - A tcp listener listening at some TCP port
 
-EXAMPLES:
+Examples:
 
 ```sh
     # Create two nodes
@@ -83,20 +83,19 @@ EXAMPLES:
 
 /// Send and Receive Messages
 #[derive(Clone, Debug, Args)]
-#[clap(
+#[command(
     arg_required_else_help = true,
     subcommand_required = true,
-    help_template = help::template(HELP_DETAIL),
-    mut_subcommand("help", |c| c.about("Print help information"))
+    help_template = help::template(HELP_DETAIL)
 )]
 pub struct MessageCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: MessageSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum MessageSubcommand {
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Send(SendCommand),
 }
 

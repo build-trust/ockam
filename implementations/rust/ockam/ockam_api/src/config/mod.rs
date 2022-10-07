@@ -11,7 +11,6 @@ use std::{
 pub mod atomic;
 pub mod cli;
 pub mod lookup;
-pub mod snippet;
 
 pub trait ConfigValues: Serialize + DeserializeOwned {
     fn default_values(config_dir: &Path) -> Self;

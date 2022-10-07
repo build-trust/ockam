@@ -8,10 +8,10 @@ use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
 pub struct GetCredentialCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     pub node_opts: NodeOpts,
 
-    #[clap(long)]
+    #[arg(long)]
     pub overwrite: bool,
 }
 

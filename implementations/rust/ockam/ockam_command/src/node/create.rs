@@ -3,7 +3,6 @@ use rand::prelude::random;
 
 use anyhow::{Context as _, Result};
 use std::{
-    env::current_exe,
     net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
     str::FromStr,
@@ -15,59 +14,65 @@ use crate::node::util::{
 use crate::project::ProjectInfo;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
-use crate::service::start::{self, StartCommand, StartSubCommand};
+use crate::service::start;
 use crate::util::{bind_to_port_check, exitcode};
 use crate::{
     help,
     node::show::print_query_status,
     node::HELP_DETAIL,
     project,
-    util::{
-        connect_to, embedded_node, find_available_port, startup, ComposableSnippet, OckamConfig,
-        Operation,
-    },
+    util::{connect_to, embedded_node, find_available_port, startup, OckamConfig},
     CommandGlobalOpts,
 };
 use ockam::{Address, AsyncTryClone, NodeBuilder, TCP};
 use ockam::{Context, TcpTransport};
 use ockam_api::{
     nodes::models::transport::{TransportMode, TransportType},
-    nodes::{NodeManager, NODEMANAGER_ADDR},
+    nodes::{
+        service::{
+            NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
+        },
+        NodeManager, NodeManagerWorker, NODEMANAGER_ADDR,
+    },
 };
 use ockam_core::LOCAL;
 
 /// Create Nodes
 #[derive(Clone, Debug, Args)]
-#[clap(help_template = help::template(HELP_DETAIL))]
+#[command(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Name of the node (Optional).
-    #[clap(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
+    #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
     pub node_name: String,
 
     /// Run the node in foreground.
-    #[clap(display_order = 900, long, short)]
+    #[arg(display_order = 900, long, short)]
     pub foreground: bool,
 
     /// TCP listener address
-    #[clap(
+    #[arg(
         display_order = 900,
         long,
         short,
-        name = "SOCKET_ADDRESS",
+        id = "SOCKET_ADDRESS",
         default_value = "127.0.0.1:0"
     )]
     pub tcp_listener_address: String,
 
     /// Skip creation of default Vault and Identity
-    #[clap(long, short, hide = true)]
+    #[arg(long, short, hide = true)]
     pub skip_defaults: bool,
 
     /// Skip credential checks
-    #[clap(long, hide = true)]
+    #[arg(long, hide = true)]
     pub enable_credential_checks: bool,
 
+    /// Don't share default identity with this node
+    #[arg(long, hide = true)]
+    pub no_shared_identity: bool,
+
     /// ockam_command started a child process to run this node in foreground.
-    #[clap(display_order = 900, long, hide = true)]
+    #[arg(display_order = 900, long, hide = true)]
     pub child_process: bool,
 
     /// JSON config to setup a foreground node
@@ -75,30 +80,17 @@ pub struct CreateCommand {
     /// This argument is currently ignored on background nodes.  Node
     /// configuration is run asynchronously and may take several
     /// seconds to complete.
-    #[clap(long, hide = true)]
+    #[arg(long, hide = true)]
     pub launch_config: Option<PathBuf>,
 
-    #[clap(long, hide = true)]
+    #[arg(long, hide = true)]
     pub no_watchdog: bool,
 
-    #[clap(long, hide = true)]
+    #[arg(long, hide = true)]
     pub project: Option<PathBuf>,
 
-    #[clap(long, hide = true)]
+    #[arg(long, hide = true)]
     pub config: Option<PathBuf>,
-}
-
-impl From<&'_ CreateCommand> for ComposableSnippet {
-    fn from(cc: &'_ CreateCommand) -> Self {
-        Self {
-            id: "_start".into(),
-            op: Operation::Node {
-                api_addr: cc.tcp_listener_address.clone(),
-                node_name: cc.node_name.clone(),
-            },
-            params: vec![],
-        }
-    }
 }
 
 impl Default for CreateCommand {
@@ -109,6 +101,7 @@ impl Default for CreateCommand {
             tcp_listener_address: "127.0.0.1:0".to_string(),
             skip_defaults: false,
             enable_credential_checks: false,
+            no_shared_identity: false,
             child_process: false,
             launch_config: None,
             no_watchdog: false,
@@ -146,7 +139,7 @@ impl CreateCommand {
                 }
             }
 
-            if let Err(e) = run_background_node(cmd, addr, cfg.clone()) {
+            if let Err(e) = run_background_node(cmd, addr, cfg.clone(), options) {
                 eprintln!("Ockam node failed: {:?}", e);
             }
         } else {
@@ -157,7 +150,6 @@ impl CreateCommand {
 
             let cmd = self.overwrite_addr().unwrap();
             let addr = SocketAddr::from_str(&cmd.tcp_listener_address).unwrap();
-
             embedded_node(
                 Self::create_background_node,
                 (options.clone(), cmd.clone(), addr),
@@ -168,9 +160,12 @@ impl CreateCommand {
                 (cfg.clone(), cmd.node_name, true),
                 print_query_status,
             );
-            if let Some(config) = self.config {
-                crate::node::util::run::CommandsRunner::run(&config)
-                    .context("Failed to run commands from config")
+            if let Some(config_path) = &self.config {
+                crate::node::util::run::CommandsRunner::run_node_init(config_path)
+                    .context("Failed to run init commands")
+                    .unwrap();
+                crate::node::util::run::CommandsRunner::run_node_startup(config_path)
+                    .context("Failed to startup commands")
                     .unwrap();
             }
         }
@@ -182,11 +177,6 @@ impl CreateCommand {
     ) -> crate::Result<()> {
         let verbose = opts.global_args.verbose;
         let cfg = &opts.config;
-
-        // On systems with non-obvious path setups (or during
-        // development) re-executing the current binary is a more
-        // deterministic way of starting a node.
-        let ockam = current_exe().unwrap_or_else(|_| "ockam".into());
 
         // Check if the port is used by some other services or process
         if !bind_to_port_check(&addr) {
@@ -222,25 +212,15 @@ impl CreateCommand {
         // Construct the arguments list and re-execute the ockam
         // CLI in foreground mode to start the newly created node
         startup::spawn_node(
-            &ockam,
             &opts.config,
             verbose,
             cmd.skip_defaults,
+            cmd.no_shared_identity,
             cmd.enable_credential_checks,
             &cmd.node_name,
             &cmd.tcp_listener_address,
             cmd.project.as_deref(),
         );
-
-        let composite = (&cmd).into();
-        let startup_cfg = cfg.startup_cfg(&cmd.node_name).unwrap();
-        startup_cfg.writelock_inner().commands = vec![composite].into();
-
-        // Save the config update
-        if let Err(e) = startup_cfg.persist_config_updates() {
-            eprintln!("failed to update configuration: {}", e);
-            std::process::exit(exitcode::IOERR);
-        }
 
         // Unless this CLI was called from another watchdog we
         // start the watchdog here
@@ -264,12 +244,17 @@ impl CreateCommand {
     }
 }
 
-fn run_background_node(c: CreateCommand, addr: SocketAddr, cfg: OckamConfig) -> Result<()> {
+fn run_background_node(
+    c: CreateCommand,
+    addr: SocketAddr,
+    cfg: OckamConfig,
+    opts: CommandGlobalOpts,
+) -> Result<()> {
     let (mut ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
 
     executor
         .execute(async move {
-            let v = run_background_node_impl(&mut ctx, c, addr, cfg).await;
+            let v = run_background_node_impl(&mut ctx, c, addr, cfg, &opts).await;
 
             match v {
                 Err(e) => {
@@ -287,13 +272,14 @@ async fn run_background_node_impl(
     c: CreateCommand,
     addr: SocketAddr,
     cfg: OckamConfig,
+    opts: &CommandGlobalOpts,
 ) -> Result<()> {
     // This node was initially created as a foreground node
     if !c.child_process {
         create_default_identity_if_needed(ctx, &cfg).await?;
     }
 
-    let identity_override = if c.skip_defaults {
+    let identity_override = if c.skip_defaults || c.no_shared_identity {
         None
     } else {
         Some(get_identity_override(ctx, &cfg).await?)
@@ -316,27 +302,37 @@ async fn run_background_node_impl(
     tcp.listen(&bind).await?;
 
     let node_dir = cfg.get_node_dir(&c.node_name)?;
+    let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
         ctx,
-        c.node_name.clone(),
-        node_dir,
-        identity_override,
-        c.skip_defaults || c.launch_config.is_some(),
-        c.enable_credential_checks,
-        Some(&cfg.authorities(&c.node_name)?.snapshot()),
-        project_id,
-        (TransportType::Tcp, TransportMode::Listen, bind),
-        tcp.async_try_clone().await?,
+        NodeManagerGeneralOptions::new(
+            c.node_name.clone(),
+            node_dir,
+            c.skip_defaults || c.launch_config.is_some(),
+            c.enable_credential_checks,
+            identity_override,
+        ),
+        NodeManagerProjectsOptions::new(
+            Some(&cfg.authorities(&c.node_name)?.snapshot()),
+            project_id,
+            projects,
+        ),
+        NodeManagerTransportOptions::new(
+            (TransportType::Tcp, TransportMode::Listen, bind),
+            tcp.async_try_clone().await?,
+        ),
     )
     .await?;
+    let node_manager_worker = NodeManagerWorker::new(node_man);
 
-    ctx.start_worker(NODEMANAGER_ADDR, node_man).await?;
+    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
+        .await?;
 
     if let Some(path) = c.launch_config {
         let node_opts = super::NodeOpts {
             api_node: c.node_name,
         };
-        start_services(ctx, &tcp, &path, addr, node_opts).await?
+        start_services(ctx, &tcp, &path, addr, node_opts, opts).await?
     }
 
     Ok(())
@@ -348,6 +344,7 @@ async fn start_services(
     cfg: &Path,
     addr: SocketAddr,
     node_opts: super::NodeOpts,
+    opts: &CommandGlobalOpts,
 ) -> Result<()> {
     let config = {
         let c = Config::read(cfg)?;
@@ -363,22 +360,14 @@ async fn start_services(
 
     if let Some(cfg) = config.vault {
         if !cfg.disabled {
-            let cmd = StartCommand {
-                node_opts: node_opts.clone(),
-                create_subcommand: StartSubCommand::Vault { addr: cfg.address },
-            };
             println!("starting vault service ...");
-            start::start_vault_service(ctx, cmd, addr.clone().into()).await?
+            start::start_vault_service(ctx, opts, &node_opts.api_node, &cfg.address).await?
         }
     }
     if let Some(cfg) = config.identity {
         if !cfg.disabled {
-            let cmd = StartCommand {
-                node_opts: node_opts.clone(),
-                create_subcommand: StartSubCommand::Identity { addr: cfg.address },
-            };
             println!("starting identity service ...");
-            start::start_identity_service(ctx, cmd, addr.clone().into()).await?
+            start::start_identity_service(ctx, opts, &node_opts.api_node, &cfg.address).await?
         }
     }
     if let Some(cfg) = config.secure_channel_listener {
@@ -392,26 +381,22 @@ async fn start_services(
     }
     if let Some(cfg) = config.verifier {
         if !cfg.disabled {
-            let cmd = StartCommand {
-                node_opts: node_opts.clone(),
-                create_subcommand: StartSubCommand::Verifier { addr: cfg.address },
-            };
             println!("starting verifier service ...");
-            start::start_verifier_service(ctx, cmd, addr.clone().into()).await?
+            start::start_verifier_service(ctx, opts, &node_opts.api_node, &cfg.address).await?
         }
     }
     if let Some(cfg) = config.authenticator {
         if !cfg.disabled {
-            let cmd = StartCommand {
-                node_opts,
-                create_subcommand: StartSubCommand::Authenticator {
-                    addr: cfg.address,
-                    enrollers: cfg.enrollers,
-                    project: cfg.project,
-                },
-            };
             println!("starting authenticator service ...");
-            start::start_authenticator_service(ctx, cmd, addr.into()).await?
+            start::start_authenticator_service(
+                ctx,
+                opts,
+                &node_opts.api_node,
+                &cfg.address,
+                &cfg.enrollers,
+                &cfg.project,
+            )
+            .await?
         }
     }
 

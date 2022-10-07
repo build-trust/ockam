@@ -1,5 +1,4 @@
 use crate::util::{bind_to_port_check, connect_to, exitcode, get_final_element};
-use crate::util::{ComposableSnippet, Operation, PortalMode, Protocol};
 use crate::{help, CommandGlobalOpts};
 use clap::Args;
 use minicbor::Decoder;
@@ -12,7 +11,7 @@ use ockam_multiaddr::MultiAddr;
 use std::net::SocketAddr;
 
 const HELP_DETAIL: &str = "\
-EXAMPLES:
+Examples:
 
 ```sh
     # Create a target service, we'll use a simple http server for this example
@@ -35,42 +34,23 @@ EXAMPLES:
 
 /// Create TCP Inlets
 #[derive(Clone, Debug, Args)]
-#[clap(help_template = help::template(HELP_DETAIL))]
+#[command(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node on which to start the tcp inlet.
-    #[clap(long, display_order = 900, name = "NODE")]
+    #[arg(long, display_order = 900, id = "NODE")]
     at: String,
 
     /// Address on which to accept tcp connections.
-    #[clap(long, display_order = 900, name = "SOCKET_ADDRESS")]
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS")]
     from: SocketAddr,
 
     /// Route to a tcp outlet.
-    #[clap(long, display_order = 900, name = "ROUTE")]
+    #[arg(long, display_order = 900, id = "ROUTE")]
     to: MultiAddr,
 
     /// Enable credentials authorization
-    #[clap(long, short, display_order = 802)]
+    #[arg(long, short, display_order = 802)]
     pub check_credential: bool,
-}
-
-impl From<&'_ CreateCommand> for ComposableSnippet {
-    fn from(cc: &'_ CreateCommand) -> Self {
-        let bind = cc.from.to_string();
-        let peer = cc.to.to_string();
-        let mode = PortalMode::Inlet;
-
-        Self {
-            id: format!("_portal_{}_{}_{}_{}", mode, "tcp", bind, peer,),
-            op: Operation::Portal {
-                mode,
-                protocol: Protocol::Tcp,
-                bind,
-                peer,
-            },
-            params: vec![],
-        }
-    }
 }
 
 impl CreateCommand {
@@ -88,7 +68,7 @@ impl CreateCommand {
         };
 
         let node = get_final_element(&command.at);
-        let port = cfg.get_node_port(node);
+        let port = cfg.get_node_port(node).unwrap();
 
         // Check if the port is used by some other services or process
         if !bind_to_port_check(&command.from) {
@@ -96,26 +76,8 @@ impl CreateCommand {
             std::process::exit(exitcode::IOERR);
         }
 
-        let composite = (&command).into();
-        let node = node.to_string();
         connect_to(port, command, create_inlet);
-
-        // Update the startup config
-        let startup_cfg = match cfg.startup_cfg(&node) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                eprintln!("failed to load startup configuration: {}", e);
-                std::process::exit(-1);
-            }
-        };
-
-        startup_cfg.add_composite(composite);
-        if let Err(e) = startup_cfg.persist_config_updates() {
-            eprintln!("failed to update configuration: {}", e);
-            std::process::exit(exitcode::IOERR);
-        } else {
-            std::process::exit(exitcode::OK);
-        }
+        Ok(())
     }
 }
 
@@ -171,8 +133,8 @@ fn make_api_request(
 }
 
 /// Parse the returned status response
-fn parse_inlet_status(resp: &[u8]) -> ockam::Result<(Response, models::portal::InletStatus<'_>)> {
+fn parse_inlet_status(resp: &[u8]) -> ockam::Result<(Response, InletStatus<'_>)> {
     let mut dec = Decoder::new(resp);
     let response = dec.decode::<Response>()?;
-    Ok((response, dec.decode::<models::portal::InletStatus>()?))
+    Ok((response, dec.decode::<InletStatus>()?))
 }

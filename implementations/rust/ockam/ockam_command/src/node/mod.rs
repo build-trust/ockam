@@ -1,23 +1,26 @@
-mod create;
-mod delete;
-mod list;
-mod show;
-mod start;
-mod stop;
-pub mod util;
+use clap::{Args, Subcommand};
 
 pub(crate) use create::CreateCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
+use run::RunCommand;
 use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
 
 use crate::{help, CommandGlobalOpts};
-use clap::{Args, Subcommand};
+
+mod create;
+mod delete;
+mod list;
+mod run;
+mod show;
+mod start;
+mod stop;
+pub mod util;
 
 const HELP_DETAIL: &str = "\
-ABOUT:
+About:
     An Ockam node is any running application that can communicate with other applications
     using various Ockam protocols like Routing, Secure Channels, Forwarding etc.
 
@@ -64,7 +67,7 @@ ABOUT:
         - A secure channel listener at /service/api
         - A tcp listener listening at some TCP port
 
-EXAMPLES:
+Examples:
 ```sh
     # Create two nodes
     $ ockam node create n1
@@ -115,30 +118,31 @@ EXAMPLES:
 
 /// Manage Nodes
 #[derive(Clone, Debug, Args)]
-#[clap(
+#[command(
     arg_required_else_help = true,
     subcommand_required = true,
-    help_template = help::template(HELP_DETAIL),
-    mut_subcommand("help", |c| c.about("Print help information"))
+    help_template = help::template(HELP_DETAIL)
 )]
 pub struct NodeCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: NodeSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum NodeSubcommand {
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Create(CreateCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Delete(DeleteCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     List(ListCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Show(ShowCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
+    Run(RunCommand),
+    #[command(display_order = 800)]
     Start(StartCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Stop(StopCommand),
 }
 
@@ -148,6 +152,7 @@ impl NodeCommand {
             NodeSubcommand::Create(c) => c.run(options),
             NodeSubcommand::Delete(c) => c.run(options),
             NodeSubcommand::List(c) => c.run(options),
+            NodeSubcommand::Run(c) => c.run(options),
             NodeSubcommand::Show(c) => c.run(options),
             NodeSubcommand::Start(c) => c.run(options),
             NodeSubcommand::Stop(c) => c.run(options),
@@ -158,6 +163,6 @@ impl NodeCommand {
 #[derive(Clone, Debug, Args)]
 pub struct NodeOpts {
     /// Override the default API node
-    #[clap(global = true, name = "node", short, long, default_value = "default")]
+    #[arg(global = true, id = "node", short, long, default_value = "default")]
     pub api_node: String,
 }

@@ -227,7 +227,9 @@ config :ockam_cloud_node,
 
 # must be set for prometheus metrics to be enabled
 config :ockam_metrics,
-  prometheus_port: System.get_env("PROMETHEUS_PORT")
+  prometheus_port: System.get_env("PROMETHEUS_PORT"),
+  poller_measurements: Ockam.Services.Metrics.TelemetryPoller.measurements(),
+  metrics_fun: {Ockam.Services.Metrics, :metrics, []}
 
 ## Logger config
 

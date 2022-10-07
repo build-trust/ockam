@@ -57,6 +57,16 @@ defmodule Ockam.Node do
     Registry.set_module(address, module)
   end
 
+  @spec get_address_module(any()) :: {:ok, module()} | :error
+  @doc """
+  Gets registered worker module by address
+  """
+  def get_address_module(address) do
+    with {:ok, _pid, module} <- Registry.lookup(address) do
+      {:ok, module}
+    end
+  end
+
   @spec unregister_address(any()) :: :ok
   @doc """
   Unregisters an address.

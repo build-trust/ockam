@@ -91,6 +91,7 @@ pub struct InletStatus<'a> {
     #[b(3)] pub alias: Cow<'a, str>,
     /// An optional status payload
     #[b(4)] pub payload: Option<Cow<'a, str>>,
+    #[b(5)] pub outlet_route: Cow<'a, str>,
 }
 
 impl<'a> InletStatus<'a> {
@@ -102,6 +103,7 @@ impl<'a> InletStatus<'a> {
             worker_addr: "".into(),
             alias: "".into(),
             payload: Some(reason.into()),
+            outlet_route: "".into(),
         }
     }
 
@@ -110,6 +112,7 @@ impl<'a> InletStatus<'a> {
         worker_addr: impl Into<Cow<'a, str>>,
         alias: impl Into<Cow<'a, str>>,
         payload: impl Into<Option<Cow<'a, str>>>,
+        outlet_route: impl Into<Cow<'a, str>>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -118,6 +121,7 @@ impl<'a> InletStatus<'a> {
             worker_addr: worker_addr.into(),
             alias: alias.into(),
             payload: payload.into(),
+            outlet_route: outlet_route.into(),
         }
     }
 }

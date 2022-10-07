@@ -14,7 +14,7 @@ use crate::{help, CommandGlobalOpts};
 use clap::{Args, Subcommand};
 
 const HELP_DETAIL: &str = "\
-ABOUT:
+About:
     Secure Channels provide end-to-end encrypted and mutually authenticated communication
     that is safe against eavesdropping, tampering, and forgery of messages en-route.
 
@@ -138,26 +138,25 @@ ABOUT:
 
 /// Manage Secure Channels.
 #[derive(Clone, Debug, Args)]
-#[clap(
+#[command(
     arg_required_else_help = true,
     subcommand_required = true,
-    help_template = help::template(HELP_DETAIL),
-    mut_subcommand("help", |c| c.about("Print help information"))
+    help_template = help::template(HELP_DETAIL)
 )]
 pub struct SecureChannelCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: SecureChannelSubcommand,
 }
 
 #[derive(Clone, Debug, Subcommand)]
 enum SecureChannelSubcommand {
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Create(CreateCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Delete(DeleteCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     List(ListCommand),
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Show(ShowCommand),
 }
 

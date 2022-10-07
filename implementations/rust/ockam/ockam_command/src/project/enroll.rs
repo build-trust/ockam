@@ -20,19 +20,19 @@ use crate::{help, CommandGlobalOpts, Result};
 
 /// An authorised enroller can add members to a project.
 #[derive(Clone, Debug, Args)]
-#[clap(hide = help::hide())]
+#[command(hide = help::hide())]
 pub struct EnrollCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
-    #[clap(flatten)]
+    #[command(flatten)]
     cloud_opts: CloudOpts,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: NodeOpts,
 
-    #[clap(long, short)]
+    #[arg(long, short)]
     member: IdentityIdentifier,
 
-    #[clap(long, short)]
+    #[arg(long, short)]
     to: MultiAddr,
 }
 

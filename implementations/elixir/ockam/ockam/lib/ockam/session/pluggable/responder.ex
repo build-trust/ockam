@@ -30,7 +30,7 @@ defmodule Ockam.Session.Pluggable.Responder do
   use Ockam.AsymmetricWorker
 
   alias Ockam.Message
-  alias Ockam.Session.Pluggable, as: RoutingSession
+  alias Ockam.Session.Pluggable, as: Session
 
   require Logger
 
@@ -47,6 +47,9 @@ defmodule Ockam.Session.Pluggable.Responder do
 
     handshake = Keyword.get(options, :handshake, Ockam.Session.Handshake.Default)
     handshake_options = Keyword.get(options, :handshake_options, [])
+
+    ## Set the module to handshake
+    Session.set_module(state, handshake)
 
     handshake_state = %{
       worker_address: state.inner_address,
@@ -89,7 +92,20 @@ defmodule Ockam.Session.Pluggable.Responder do
   end
 
   def handle_message(message, %{stage: :data} = state) do
-    RoutingSession.handle_data_message(message, state)
+    Session.handle_data_message(message, state)
+  end
+
+  @impl true
+  def handle_call(:get_stage, _from, state) do
+    {:reply, Map.get(state, :stage), state}
+  end
+
+  def handle_call(:get_role, _from, state) do
+    {:reply, :responder, state}
+  end
+
+  def handle_call(call, from, state) do
+    Session.handle_call(call, from, state)
   end
 
   def handle_handshake_message(message, state) do
@@ -99,10 +115,10 @@ defmodule Ockam.Session.Pluggable.Responder do
 
     case handshake.handle_responder(handshake_options, message, handshake_state) do
       {:ready, response, options, handshake_state} ->
-        RoutingSession.switch_to_data_stage(response, options, handshake_state, state)
+        Session.switch_to_data_stage(response, options, handshake_state, state)
 
       {:ready, options, handshake_state} ->
-        RoutingSession.switch_to_data_stage(options, handshake_state, state)
+        Session.switch_to_data_stage(options, handshake_state, state)
 
       {:next, response, handshake_state} ->
         case response do
@@ -110,10 +126,10 @@ defmodule Ockam.Session.Pluggable.Responder do
           %{} -> Ockam.Router.route(response)
         end
 
-        {:ok, RoutingSession.update_handshake_state(state, handshake_state)}
+        {:ok, Session.update_handshake_state(state, handshake_state)}
 
       {:next, handshake_state} ->
-        {:ok, RoutingSession.update_handshake_state(state, handshake_state)}
+        {:ok, Session.update_handshake_state(state, handshake_state)}
 
       {:error, err} ->
         {:stop, {:handshake_error, err}, state}

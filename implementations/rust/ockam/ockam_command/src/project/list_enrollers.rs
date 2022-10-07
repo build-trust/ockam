@@ -11,13 +11,13 @@ use crate::CommandGlobalOpts;
 
 /// List a project' authority authorized enrollers
 #[derive(Clone, Debug, Args)]
-#[clap(hide = help::hide())]
+#[command(hide = help::hide())]
 pub struct ListEnrollersCommand {
     /// Id of the project.
-    #[clap(display_order = 1001)]
+    #[arg(display_order = 1001)]
     pub project_id: String,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub cloud_opts: CloudOpts,
 }
 

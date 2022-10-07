@@ -1,7 +1,4 @@
-use crate::{
-    util::{exitcode, get_final_element},
-    CommandGlobalOpts,
-};
+use crate::{util::get_final_element, CommandGlobalOpts};
 use clap::Args;
 
 #[derive(Clone, Debug, Args)]
@@ -12,16 +9,19 @@ pub struct SetDefaultNodeCommand {
 
 impl SetDefaultNodeCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        let name = get_final_element(&self.name);
-        if options.config.get_node(name).is_ok() {
-            options.config.set_default_node(&name.to_string());
-            if let Err(e) = options.config.persist_config_updates() {
-                eprintln!("failed to update configuration: {}", e);
-                std::process::exit(exitcode::IOERR);
-            }
-        } else {
-            eprintln!("Node ({}) is not registered yet", self.name);
-            std::process::exit(exitcode::CANTCREAT);
+        if let Err(e) = run_impl(&self.name, &options) {
+            eprintln!("{}", e);
+            std::process::exit(e.code());
         }
     }
+}
+
+fn run_impl(name: &str, options: &CommandGlobalOpts) -> crate::Result<()> {
+    options.config.get_node(name)?;
+    options
+        .config
+        .set_default_node(&get_final_element(name).to_owned());
+    options.config.persist_config_updates()?;
+
+    Ok(())
 }

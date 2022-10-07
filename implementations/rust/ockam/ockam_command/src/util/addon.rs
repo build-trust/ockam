@@ -13,7 +13,7 @@ use std::str::FromStr;
 #[derive(Clone, Debug, Args)]
 pub struct AddonCommand {
     /// Operation to perform
-    #[clap(possible_values = vec!["create", "delete", "show", "list"])]
+    #[arg(value_parser(["create", "delete", "show", "list"]))]
     operation: String,
     /// Add-on subcommand to call
     // Its full name must be `ockam-<scope>-<name>`, so for example:

@@ -1,6 +1,6 @@
 use core::fmt;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp};
-use ockam_multiaddr::{Code, MultiAddr, Protocol};
+use ockam_multiaddr::{Code, Match, MultiAddr, Protocol};
 use quickcheck::{quickcheck, Arbitrary, Gen};
 use rand::distributions::{Alphanumeric, DistString};
 use rand::prelude::*;
@@ -43,6 +43,11 @@ quickcheck! {
         let byts = minicbor::to_vec(&a.0).unwrap();
         let addr = minicbor::decode(&byts).unwrap();
         a.0 == addr
+    }
+
+    fn match_test(a: Addr) -> bool {
+        let codes = a.0.iter().map(|p| Match::code(p.code())).collect::<Vec<_>>();
+        a.0.matches(0, &codes)
     }
 
     fn push_back_value(a: Addr) -> bool {

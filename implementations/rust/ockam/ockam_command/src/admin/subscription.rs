@@ -1,6 +1,7 @@
 use anyhow::Context as _;
 use std::path::PathBuf;
 
+use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 
 use ockam::Context;
@@ -17,12 +18,12 @@ use crate::{help, CommandGlobalOpts};
 const HELP_DETAIL: &str = "";
 
 #[derive(Clone, Debug, Args)]
-#[clap(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
+#[command(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
 pub struct SubscriptionCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: SubscriptionSubcommand,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     cloud_opts: CloudOpts,
 }
 
@@ -34,11 +35,11 @@ pub enum SubscriptionSubcommand {
         json: PathBuf,
 
         /// Space ID to attach the subscription to
-        #[clap(
-            name = "space",
+        #[arg(
+            id = "space",
             value_name = "SPACE_ID",
             long,
-            forbid_empty_values = true
+            value_parser(NonEmptyStringValueParser::new())
         )]
         space_id: String,
     },
@@ -50,16 +51,16 @@ pub enum SubscriptionSubcommand {
     /// You can use either the subscription ID or the space ID.
     Unsubscribe {
         /// Subscription ID
-        #[clap(group = "id")]
+        #[arg(group = "id")]
         subscription_id: Option<String>,
 
         /// Space ID
-        #[clap(
+        #[arg(
             group = "id",
-            name = "space",
+            id = "space",
             value_name = "SPACE_ID",
             long,
-            forbid_empty_values = true
+            value_parser(NonEmptyStringValueParser::new())
         )]
         space_id: Option<String>,
     },
@@ -70,7 +71,7 @@ pub enum SubscriptionSubcommand {
 
 #[derive(Clone, Debug, Args)]
 pub struct SubscriptionUpdate {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: SubscriptionUpdateSubcommand,
 }
 
@@ -83,22 +84,22 @@ enum SubscriptionUpdateSubcommand {
         json: PathBuf,
 
         /// Subscription ID
-        #[clap(
+        #[arg(
             group = "id",
-            name = "subscription",
+            id = "subscription",
             value_name = "SUBSCRIPTION_ID",
             long,
-            forbid_empty_values = true
+            value_parser(NonEmptyStringValueParser::new())
         )]
         subscription_id: Option<String>,
 
         /// Space ID
-        #[clap(
+        #[arg(
             group = "id",
-            name = "space",
+            id = "space",
             value_name = "SPACE_ID",
             long,
-            forbid_empty_values = true
+            value_parser(NonEmptyStringValueParser::new())
         )]
         space_id: Option<String>,
     },
@@ -107,22 +108,22 @@ enum SubscriptionUpdateSubcommand {
     /// You can use either the subscription ID or the space ID.
     Space {
         /// Subscription ID
-        #[clap(
+        #[arg(
             group = "id",
-            name = "subscription",
+            id = "subscription",
             value_name = "SUBSCRIPTION_ID",
             long,
-            forbid_empty_values = true
+            value_parser(NonEmptyStringValueParser::new())
         )]
         subscription_id: Option<String>,
 
         /// Space ID
-        #[clap(
+        #[arg(
             group = "id",
-            name = "current_space",
+            id = "current_space",
             value_name = "SPACE_ID",
             long,
-            forbid_empty_values = true
+            value_parser(NonEmptyStringValueParser::new())
         )]
         space_id: Option<String>,
 

@@ -1,9 +1,6 @@
 //! Handle local node configuration
 
-use std::{
-    collections::VecDeque, fs::create_dir_all, net::SocketAddr, ops::Deref, path::PathBuf,
-    sync::RwLockReadGuard,
-};
+use std::{fs::create_dir_all, net::SocketAddr, ops::Deref, path::PathBuf, sync::RwLockReadGuard};
 
 use anyhow::{Context, Result};
 use slug::slugify;
@@ -12,12 +9,7 @@ use tracing::{error, trace};
 use ockam::identity::IdentityIdentifier;
 pub use ockam_api::config::cli::NodeConfig;
 use ockam_api::config::lookup::ProjectLookup;
-pub use ockam_api::config::snippet::{
-    ComposableSnippet, Operation, PortalMode, Protocol, RemoteMode,
-};
 use ockam_api::config::{cli, lookup::ConfigLookup, lookup::InternetAddress, Config};
-
-use crate::util::exitcode;
 
 /// A simple wrapper around the main configuration structure to add
 /// local config utility/ query functions
@@ -121,16 +113,15 @@ impl OckamConfig {
     }
 
     /// Get the API port used by a node
-    pub fn get_node_port(&self, name: &str) -> u16 {
+    pub fn get_node_port(&self, name: &str) -> Result<u16> {
         let inner = self.inner.readlock_inner();
-        inner
+        let port = inner
             .nodes
             .get(name)
-            .unwrap_or_else(|| {
-                eprintln!("No such node available. Run `ockam node list` to list available nodes");
-                std::process::exit(exitcode::IOERR);
-            })
-            .port
+            .context("No such node available. Run `ockam node list` to list available nodes")?
+            .port;
+
+        Ok(port)
     }
 
     /// In the future this will actually refer to the watchdog pid or
@@ -185,12 +176,6 @@ impl OckamConfig {
     /// Get read access to the inner raw configuration
     pub fn inner(&self) -> RwLockReadGuard<'_, cli::OckamConfig> {
         self.inner.readlock_inner()
-    }
-
-    /// Get the launch configuration for a node
-    pub fn startup_cfg(&self, name: &str) -> Result<StartupConfig> {
-        let path = self.get_node_dir(name)?;
-        Ok(StartupConfig::load(path))
     }
 
     /// Get a lookup table
@@ -332,37 +317,6 @@ impl OckamConfig {
     pub fn get_default_node(&self) -> Option<String> {
         let inner = self.inner.readlock_inner();
         inner.default.clone()
-    }
-}
-
-/// A simple wrapper around the main configuration structure to add
-/// local config utility/ query functions
-pub struct StartupConfig {
-    inner: Config<cli::StartupConfig>,
-}
-
-impl Deref for StartupConfig {
-    type Target = Config<cli::StartupConfig>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl StartupConfig {
-    pub fn load(node_dir: PathBuf) -> Self {
-        let inner = Config::<cli::StartupConfig>::load(&node_dir, "startup");
-        Self { inner }
-    }
-
-    /// Add a new composite command to a node
-    pub fn add_composite(&self, composite: ComposableSnippet) {
-        let mut inner = self.inner.writelock_inner();
-        inner.commands.push_back(composite);
-    }
-
-    pub fn get_all(&self) -> VecDeque<ComposableSnippet> {
-        self.inner.readlock_inner().commands.clone()
     }
 }
 

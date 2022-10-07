@@ -1,6 +1,7 @@
 use super::Code;
 use alloc::string::{String, ToString};
 use core::fmt;
+use ockam_core::errcode::{Kind, Origin};
 
 #[derive(Debug)]
 pub struct Error(ErrorImpl);
@@ -90,5 +91,11 @@ impl From<unsigned_varint::decode::Error> for Error {
 impl From<fmt::Error> for Error {
     fn from(e: fmt::Error) -> Self {
         Error(ErrorImpl::Format(e))
+    }
+}
+
+impl From<Error> for ockam_core::Error {
+    fn from(e: Error) -> Self {
+        ockam_core::Error::new(Origin::Unknown, Kind::Invalid, e)
     }
 }

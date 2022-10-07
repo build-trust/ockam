@@ -1,11 +1,16 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 
+use std::path::Path;
 use std::str::FromStr;
 
 use anyhow::Context;
 use clap::Args;
 // TODO: maybe we can remove this cross-dependency inside the CLI?
 use minicbor::Decoder;
+use ockam_api::nodes::models::services::{
+    StartAuthenticatedServiceRequest, StartAuthenticatorRequest, StartCredentialsService,
+    StartIdentityServiceRequest, StartVaultServiceRequest, StartVerifierService,
+};
 use tracing::trace;
 
 use ockam::identity::IdentityIdentifier;
@@ -38,11 +43,8 @@ pub(crate) fn list_tcp_connections() -> Result<Vec<u8>> {
 }
 
 /// Construct a request to query node tcp listeners
-pub(crate) fn list_tcp_listeners() -> Result<Vec<u8>> {
-    let mut buf = vec![];
-    let builder = Request::get("/node/tcp/listener");
-    builder.encode(&mut buf)?;
-    Ok(buf)
+pub(crate) fn list_tcp_listeners() -> RequestBuilder<'static, ()> {
+    Request::get("/node/tcp/listener")
 }
 
 /// Construct a request to create node tcp connection
@@ -101,22 +103,6 @@ pub(crate) fn delete_tcp_listener(cmd: &crate::tcp::listener::DeleteCommand) -> 
     Ok(buf)
 }
 
-/// Construct a request to create a Vault
-pub(crate) fn create_vault(path: Option<String>) -> Result<Vec<u8>> {
-    let mut buf = vec![];
-    Request::post("/node/vault")
-        .body(models::vault::CreateVaultRequest::new(path))
-        .encode(&mut buf)?;
-    Ok(buf)
-}
-
-/// Construct a request to create Identity
-pub(crate) fn create_identity() -> Result<Vec<u8>> {
-    let mut buf = vec![];
-    Request::post("/node/identity").encode(&mut buf)?;
-    Ok(buf)
-}
-
 /// Construct a request to export Identity
 pub(crate) fn long_identity() -> Result<Vec<u8>> {
     let mut buf = vec![];
@@ -125,10 +111,23 @@ pub(crate) fn long_identity() -> Result<Vec<u8>> {
 }
 
 /// Construct a request to print Identity Id
-pub(crate) fn short_identity() -> Result<Vec<u8>> {
-    let mut buf = vec![];
-    Request::post("/node/identity/actions/show/short").encode(&mut buf)?;
-    Ok(buf)
+pub(crate) fn short_identity() -> RequestBuilder<'static, ()> {
+    Request::post("/node/identity/actions/show/short")
+}
+
+/// Construct a request to print a list of services for the given node
+pub(crate) fn list_services() -> RequestBuilder<'static, ()> {
+    Request::get("/node/services")
+}
+
+/// Construct a request to print a list of inlets for the given node
+pub(crate) fn list_inlets() -> RequestBuilder<'static, ()> {
+    Request::get("/node/inlet")
+}
+
+/// Construct a request to print a list of outlets for the given node
+pub(crate) fn list_outlets() -> RequestBuilder<'static, ()> {
+    Request::get("/node/outlet")
 }
 
 /// Construct a request builder to list all secure channels on the given node
@@ -187,36 +186,50 @@ pub(crate) fn list_secure_channel_listener() -> RequestBuilder<'static, ()> {
 }
 
 /// Construct a request to start a Vault Service
-pub(crate) fn start_vault_service(addr: &str) -> Result<Vec<u8>> {
-    let payload = models::services::StartVaultServiceRequest::new(addr);
-
-    let mut buf = vec![];
-    Request::post("/node/services/vault")
-        .body(payload)
-        .encode(&mut buf)?;
-    Ok(buf)
+pub(crate) fn start_vault_service(addr: &str) -> RequestBuilder<'static, StartVaultServiceRequest> {
+    let payload = StartVaultServiceRequest::new(addr);
+    Request::post("/node/services/vault").body(payload)
 }
 
 /// Construct a request to start an Identity Service
-pub(crate) fn start_identity_service(addr: &str) -> Result<Vec<u8>> {
-    let payload = models::services::StartIdentityServiceRequest::new(addr);
-
-    let mut buf = vec![];
-    Request::post("/node/services/identity")
-        .body(payload)
-        .encode(&mut buf)?;
-    Ok(buf)
+pub(crate) fn start_identity_service(
+    addr: &str,
+) -> RequestBuilder<'static, StartIdentityServiceRequest> {
+    let payload = StartIdentityServiceRequest::new(addr);
+    Request::post("/node/services/identity").body(payload)
 }
 
 /// Construct a request to start an Authenticated Service
-pub(crate) fn start_authenticated_service(addr: &str) -> Result<Vec<u8>> {
-    let payload = models::services::StartAuthenticatedServiceRequest::new(addr);
+pub(crate) fn start_authenticated_service(
+    addr: &str,
+) -> RequestBuilder<'static, StartAuthenticatedServiceRequest> {
+    let payload = StartAuthenticatedServiceRequest::new(addr);
+    Request::post("/node/services/authenticated").body(payload)
+}
 
-    let mut buf = vec![];
-    Request::post("/node/services/authenticated")
-        .body(payload)
-        .encode(&mut buf)?;
-    Ok(buf)
+/// Construct a request to start a Verifier Service
+pub(crate) fn start_verifier_service(addr: &str) -> RequestBuilder<'static, StartVerifierService> {
+    let payload = StartVerifierService::new(addr);
+    Request::post("/node/services/verifier").body(payload)
+}
+
+/// Construct a request to start a Credentials Service
+pub(crate) fn start_credentials_service(
+    addr: &str,
+    oneway: bool,
+) -> RequestBuilder<'static, StartCredentialsService> {
+    let payload = StartCredentialsService::new(addr, oneway);
+    Request::post("/node/services/credentials").body(payload)
+}
+
+/// Construct a request to start an Authenticator Service
+pub(crate) fn start_authenticator_service<'a>(
+    addr: &'a str,
+    enrollers: &'a Path,
+    project: &'a str,
+) -> RequestBuilder<'static, StartAuthenticatorRequest<'a>> {
+    let payload = StartAuthenticatorRequest::new(addr, enrollers, project.as_bytes());
+    Request::post("/node/services/authenticator").body(payload)
 }
 
 pub(crate) mod credentials {
@@ -390,23 +403,6 @@ pub(crate) fn parse_transport_status(
     ))
 }
 
-pub(crate) fn parse_create_vault_response(resp: &[u8]) -> Result<Response> {
-    let mut dec = Decoder::new(resp);
-    let response = dec.decode::<Response>()?;
-    Ok(response)
-}
-
-pub(crate) fn parse_create_identity_response(
-    resp: &[u8],
-) -> Result<(Response, models::identity::CreateIdentityResponse<'_>)> {
-    let mut dec = Decoder::new(resp);
-    let response = dec.decode::<Response>()?;
-    Ok((
-        response,
-        dec.decode::<models::identity::CreateIdentityResponse>()?,
-    ))
-}
-
 pub(crate) fn parse_long_identity_response(
     resp: &[u8],
 ) -> Result<(Response, models::identity::LongIdentityResponse<'_>)> {
@@ -427,6 +423,24 @@ pub(crate) fn parse_short_identity_response(
         response,
         dec.decode::<models::identity::ShortIdentityResponse>()?,
     ))
+}
+
+pub(crate) fn parse_list_services_response(resp: &[u8]) -> Result<models::services::ServiceList> {
+    let mut dec = Decoder::new(resp);
+    let _ = dec.decode::<Response>()?;
+    Ok(dec.decode::<models::services::ServiceList>()?)
+}
+
+pub(crate) fn parse_list_inlets_response(resp: &[u8]) -> Result<models::portal::InletList> {
+    let mut dec = Decoder::new(resp);
+    let _ = dec.decode::<Response>()?;
+    Ok(dec.decode::<models::portal::InletList>()?)
+}
+
+pub(crate) fn parse_list_outlets_response(resp: &[u8]) -> Result<models::portal::OutletList> {
+    let mut dec = Decoder::new(resp);
+    let _ = dec.decode::<Response>()?;
+    Ok(dec.decode::<models::portal::OutletList>()?)
 }
 
 pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Result<Response> {

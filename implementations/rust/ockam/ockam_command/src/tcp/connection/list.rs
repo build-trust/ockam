@@ -11,7 +11,7 @@ use ockam_api::nodes::{
 
 #[derive(Args, Clone, Debug)]
 pub struct ListCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: NodeOpts,
 }
 
@@ -19,7 +19,7 @@ impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
         let node = get_final_element(&self.node_opts.api_node);
-        let port = cfg.get_node_port(node);
+        let port = cfg.get_node_port(node).unwrap();
 
         connect_to(port, (), list_connections);
     }

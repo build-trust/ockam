@@ -8,9 +8,9 @@ use ockam_core::api::Status;
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
-    #[clap(flatten)]
+    #[command(flatten)]
     node_opts: NodeOpts,
-    #[clap(short, long, action)]
+    #[arg(short, long)]
     full: bool,
 }
 
@@ -18,7 +18,7 @@ impl ShowCommand {
     pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
         let cfg = options.config;
         let node = get_final_element(&self.node_opts.api_node);
-        let port = cfg.get_node_port(node);
+        let port = cfg.get_node_port(node).unwrap();
 
         connect_to(port, self, show_identity);
 
@@ -56,7 +56,7 @@ pub async fn show_identity(
         let resp: Vec<u8> = ctx
             .send_and_receive(
                 base_route.modify().append(NODEMANAGER_ADDR),
-                api::short_identity()?,
+                api::short_identity().to_vec()?,
             )
             .await?;
 

@@ -1,7 +1,7 @@
 use crate::{
     help,
     node::HELP_DETAIL,
-    util::{exitcode, startup},
+    util::{exitcode, startup::spawn_node},
     CommandGlobalOpts,
 };
 use clap::Args;
@@ -10,19 +10,22 @@ use rand::prelude::random;
 
 /// Start Nodes
 #[derive(Clone, Debug, Args)]
-#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct StartCommand {
     /// Name of the node.
-    #[clap(default_value_t = hex::encode(&random::<[u8;4]>()))]
+    #[arg(default_value_t = hex::encode(&random::<[u8;4]>()))]
     node_name: String,
 }
 
 impl StartCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        let cfg = options.config;
+    pub fn run(self, opts: CommandGlobalOpts) {
+        let cfg = &opts.config;
+        let cfg_node = cfg
+            .get_node(&self.node_name)
+            .expect("failed to load node config");
 
         // First we check whether a PID was registered and if it is still alive.
-        if let Ok(Some(pid)) = cfg.get_node_pid(&self.node_name) {
+        if let Some(pid) = cfg_node.pid {
             // Note: On CI machines where <defunct> processes can occur,
             // the below `kill 0 pid` can imply a killed process is okay.
             let res = nix::sys::signal::kill(Pid::from_raw(pid), None);
@@ -36,21 +39,17 @@ impl StartCommand {
             }
         }
 
-        // Load the node's launch configuration
-        let start_cfg = match cfg.startup_cfg(&self.node_name) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                eprintln!(
-                    "failed to load startup configuration for node '{}' because: {}",
-                    self.node_name, e
-                );
-                std::process::exit(exitcode::IOERR);
-            }
-        };
-
-        println!("Attempting to restart node '{}'", self.node_name);
-
-        // Finally run the stack of configuration commands for this node
-        startup::start(&self.node_name, &cfg, &start_cfg);
+        // Construct the arguments list and re-execute the ockam
+        // CLI in foreground mode to re-start the node
+        spawn_node(
+            &opts.config,               // Ockam configuration
+            cfg_node.verbose,           // Previously user-chosen verbosity level
+            true,                       // skip-defaults because the node already exists
+            false,                      // Default value. TODO: implement persistence of this option
+            false,                      // Default value. TODO: implement persistence of this option
+            &cfg_node.name,             // The selected node name
+            &cfg_node.addr.to_string(), // The selected node api address
+            None,                       // No project information available
+        );
     }
 }

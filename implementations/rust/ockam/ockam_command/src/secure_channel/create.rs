@@ -23,22 +23,22 @@ use ockam_multiaddr::MultiAddr;
 
 /// Create Secure Channels
 #[derive(Clone, Debug, Args)]
-#[clap(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node from which to initiate the secure channel (required)
-    #[clap(value_name = "NODE", long, display_order = 800)]
+    #[arg(value_name = "NODE", long, display_order = 800)]
     pub from: String,
 
     /// Route to a secure channel listener (required)
-    #[clap(value_name = "ROUTE", long, display_order = 800)]
+    #[arg(value_name = "ROUTE", long, display_order = 800)]
     pub to: MultiAddr,
 
     /// Identifiers authorized to be presented by the listener
-    #[clap(value_name = "IDENTIFIER", long, short, display_order = 801)]
+    #[arg(value_name = "IDENTIFIER", long, short, display_order = 801)]
     pub authorized: Option<Vec<IdentityIdentifier>>,
 
     /// Orchestrator address to resolve projects present in the `at` argument
-    #[clap(flatten)]
+    #[command(flatten)]
     cloud_opts: CloudOpts,
 }
 
@@ -91,7 +91,10 @@ impl CreateCommand {
             Some(multiaddr) => {
                 // if stdout is not interactive/tty write the secure channel address to it
                 // in case some other program is trying to read it as piped input
-                if !atty::is(Stream::Stdout) {
+                if !atty::is(Stream::Stdout)
+                // or if the `--pipe` flag is set
+                || options.global_args.export.pipe()
+                {
                     println!("{}", multiaddr)
                 }
 

@@ -1,5 +1,4 @@
 use crate::util::{connect_to, exitcode, get_final_element};
-use crate::util::{ComposableSnippet, Operation, PortalMode, Protocol};
 use crate::{help, CommandGlobalOpts};
 use clap::Args;
 use minicbor::Decoder;
@@ -15,7 +14,7 @@ use ockam_core::route;
 use std::net::SocketAddr;
 
 const HELP_DETAIL: &str = "\
-EXAMPLES:
+Examples:
 
 ```sh
     # Create a target service, we'll use a simple http server for this example
@@ -38,42 +37,23 @@ EXAMPLES:
 
 /// Create TCP Outlets
 #[derive(Clone, Debug, Args)]
-#[clap(help_template = help::template(HELP_DETAIL))]
+#[command(help_template = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Node on which to start the tcp outlet.
-    #[clap(long, display_order = 900, name = "NODE")]
+    #[arg(long, display_order = 900, id = "NODE")]
     at: String,
 
     /// Address of the tcp outlet.
-    #[clap(long, display_order = 901, name = "OUTLET_ADDRESS")]
+    #[arg(long, display_order = 901, id = "OUTLET_ADDRESS")]
     from: String,
 
     /// TCP address to send raw tcp traffic.
-    #[clap(long, display_order = 902, name = "SOCKET_ADDRESS")]
+    #[arg(long, display_order = 902, id = "SOCKET_ADDRESS")]
     to: SocketAddr,
 
     /// Enable credentials authorization
-    #[clap(long, short, display_order = 802)]
+    #[arg(long, short, display_order = 802)]
     pub check_credential: bool,
-}
-
-impl From<&'_ CreateCommand> for ComposableSnippet {
-    fn from(cc: &'_ CreateCommand) -> Self {
-        let bind = cc.from.to_string();
-        let peer = cc.to.to_string();
-        let mode = PortalMode::Outlet;
-
-        Self {
-            id: format!("_portal_{}_{}_{}_{}", mode, "tcp", bind, peer,),
-            op: Operation::Portal {
-                mode,
-                protocol: Protocol::Tcp,
-                bind,
-                peer,
-            },
-            params: vec![],
-        }
-    }
 }
 
 impl CreateCommand {
@@ -81,32 +61,15 @@ impl CreateCommand {
         let cfg = &options.config;
         let at = &self.at.clone();
         let node = get_final_element(at);
-        let port = cfg.get_node_port(node);
+        let port = cfg.get_node_port(node).unwrap();
 
         let command = CreateCommand {
             from: String::from(get_final_element(&self.from)),
             ..self
         };
 
-        let composite = (&command).into();
         connect_to(port, command, create_outlet);
-
-        // Update the startup config
-        let startup_cfg = match cfg.startup_cfg(node) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                eprintln!("failed to load startup configuration: {}", e);
-                std::process::exit(exitcode::IOERR);
-            }
-        };
-
-        startup_cfg.add_composite(composite);
-        if let Err(e) = startup_cfg.persist_config_updates() {
-            eprintln!("failed to update configuration: {}", e);
-            std::process::exit(exitcode::IOERR);
-        } else {
-            std::process::exit(exitcode::OK);
-        }
+        Ok(())
     }
 }
 
@@ -127,7 +90,6 @@ pub async fn create_outlet(
         Some(Status::Ok) => {
             println!("{}", addr);
         }
-
         _ => {
             eprintln!("An unknown error occurred while creating an outlet...");
             std::process::exit(exitcode::UNAVAILABLE);

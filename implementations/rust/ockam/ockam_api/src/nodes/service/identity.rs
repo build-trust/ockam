@@ -1,4 +1,4 @@
-use super::map_anyhow_err;
+use super::{map_anyhow_err, NodeManagerWorker};
 use crate::nodes::models::identity::{
     CreateIdentityResponse, LongIdentityResponse, ShortIdentityResponse,
 };
@@ -42,13 +42,16 @@ impl NodeManager {
 
         Ok(identifier)
     }
+}
 
+impl NodeManagerWorker {
     pub(super) async fn create_identity(
         &mut self,
         ctx: &Context,
         req: &Request<'_>,
     ) -> Result<ResponseBuilder<CreateIdentityResponse<'_>>> {
-        let identifier = self.create_identity_impl(ctx, false).await?;
+        let mut node_manager = self.node_manager.write().await;
+        let identifier = node_manager.create_identity_impl(ctx, false).await?;
 
         let response =
             Response::ok(req.id()).body(CreateIdentityResponse::new(identifier.to_string()));
@@ -59,7 +62,8 @@ impl NodeManager {
         &mut self,
         req: &Request<'_>,
     ) -> Result<ResponseBuilder<LongIdentityResponse<'_>>> {
-        let identity = self.identity()?;
+        let node_manager = self.node_manager.read().await;
+        let identity = node_manager.identity()?;
         let identity = identity.export().await?;
 
         let response = Response::ok(req.id()).body(LongIdentityResponse::new(identity));
@@ -70,7 +74,8 @@ impl NodeManager {
         &mut self,
         req: &Request<'_>,
     ) -> Result<ResponseBuilder<ShortIdentityResponse<'_>>> {
-        let identity = self.identity()?;
+        let node_manager = self.node_manager.read().await;
+        let identity = node_manager.identity()?;
         let identifier = identity.identifier();
 
         let response =

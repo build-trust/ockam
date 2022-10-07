@@ -20,6 +20,18 @@ defmodule Ockam.Session.Pluggable do
     Ockam.Session.Pluggable.Responder
   end
 
+  def handshake_mod(server) do
+    Ockam.Worker.call(server, :get_handshake_mod)
+  end
+
+  def worker_mod(server) do
+    Ockam.Worker.call(server, :get_worker_mod)
+  end
+
+  def role(server) do
+    Ockam.Worker.call(server, :get_role)
+  end
+
   @doc """
   Shared function for data stage of the session
 
@@ -41,6 +53,16 @@ defmodule Ockam.Session.Pluggable do
       {:stop, reason, new_data_state} ->
         {:stop, reason, update_data_state(state, new_data_state)}
     end
+  end
+
+  def handle_call(:get_handshake_mod, _from, state) do
+    handshake_mod = Map.fetch!(state, :handshake)
+    {:reply, handshake_mod, state}
+  end
+
+  def handle_call(:get_worker_mod, _from, state) do
+    worker_mod = Map.fetch!(state, :worker_mod)
+    {:reply, worker_mod, state}
   end
 
   def handle_call(call, from, %{stage: :handshake} = state) do
@@ -99,6 +121,9 @@ defmodule Ockam.Session.Pluggable do
     base_state = Map.fetch!(state, :base_state)
     worker_mod = Map.fetch!(state, :worker_mod)
     worker_options = Map.fetch!(state, :worker_options)
+
+    ## Set registered module to data mod
+    set_module(state, worker_mod)
 
     options = Keyword.merge(worker_options, start_options)
 
@@ -163,6 +188,14 @@ defmodule Ockam.Session.Pluggable do
       authorization: authorization,
       all_addresses: all_addresses
     })
+  end
+
+  def set_module(state, module) do
+    all_addresses = Map.get(state, :all_addresses, [])
+
+    Enum.each(all_addresses, fn address ->
+      Ockam.Node.set_address_module(address, module)
+    end)
   end
 
   defp merge_list(list1, list2) do

@@ -62,3 +62,9 @@ impl From<std::io::Error> for Error {
         Error::new(exitcode::IOERR, e.into())
     }
 }
+
+impl From<ockam_multiaddr::Error> for Error {
+    fn from(e: ockam_multiaddr::Error) -> Self {
+        Error::new(exitcode::SOFTWARE, e.into())
+    }
+}

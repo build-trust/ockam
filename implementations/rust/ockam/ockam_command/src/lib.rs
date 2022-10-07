@@ -38,7 +38,6 @@ use identity::IdentityCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use project::ProjectCommand;
-use rand::prelude::random;
 use reset::ResetCommand;
 use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
 use service::ServiceCommand;
@@ -53,8 +52,9 @@ use vault::VaultCommand;
 use version::Version;
 
 use crate::admin::AdminCommand;
+use crate::node::util::run::CommandSection;
 use crate::subscription::SubscriptionCommand;
-use clap::{ArgEnum, Args, Parser, Subcommand};
+use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use upgrade::check_if_an_upgrade_is_available;
 
 const ABOUT: &str = "\
@@ -63,7 +63,7 @@ credential management, and authorization policy enforcement — at scale.
 ";
 
 const HELP_DETAIL: &str = "\
-ABOUT:
+About:
     Orchestrate end-to-end encryption, mutual authentication, key management,
     credential management, and authorization policy enforcement — at scale.
 
@@ -72,7 +72,7 @@ ABOUT:
     to build secure by-design applications that have granular control over every
     trust and access decision.
 
-EXAMPLES:
+Examples:
 
     Let's walk through a simple example to create an end-to-end encrypted,
     mutually authenticated, secure and private cloud relay – for any application.
@@ -142,7 +142,7 @@ EXAMPLES:
 ";
 
 #[derive(Debug, Parser)]
-#[clap(
+#[command(
     name = "ockam",
     term_width = 100,
     about = ABOUT,
@@ -150,40 +150,49 @@ EXAMPLES:
     help_template = help::template(HELP_DETAIL),
     version,
     long_version = Version::long(),
-    next_help_heading = "GLOBAL OPTIONS",
-    mut_arg("help", |a| a.help_heading("GLOBAL OPTIONS")),
-    mut_subcommand("help", |c| c.about("Print help information"))
+    next_help_heading = "Global Options",
+    disable_help_flag = true
 )]
 pub struct OckamCommand {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcommand: OckamSubcommand,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     global_args: GlobalArgs,
 }
 
 #[derive(Debug, Clone, Args)]
 pub struct GlobalArgs {
+    #[arg(
+        global = true,
+        long,
+        short,
+        help("Print help information"),
+        help_heading("Global Options"),
+        action = ArgAction::Help
+    )]
+    help: Option<bool>,
+
     /// Do not print any trace messages
-    #[clap(global = true, long, short, conflicts_with("verbose"))]
+    #[arg(global = true, long, short, conflicts_with("verbose"))]
     quiet: bool,
 
     /// Increase verbosity of trace messages
-    #[clap(
+    #[arg(
         global = true,
         long,
         short,
         conflicts_with("quiet"),
-        parse(from_occurrences)
+        action = ArgAction::Count
     )]
     verbose: u8,
 
     /// Output without any colors
-    #[clap(hide = help::hide(), global = true, long, action)]
+    #[arg(hide = help::hide(), global = true, long)]
     no_color: bool,
 
     /// Output format
-    #[clap(
+    #[arg(
         hide = help::hide(),
         global = true,
         long = "output",
@@ -194,14 +203,14 @@ pub struct GlobalArgs {
 
     // if test_argument_parser is true, command arguments are checked
     // but the command is not executed.
-    #[clap(global = true, long, hide = true)]
+    #[arg(global = true, long, hide = true)]
     test_argument_parser: bool,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     export: ExportCommandArgs,
 }
 
-#[derive(Debug, Clone, ArgEnum, PartialEq, Eq)]
+#[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
 pub enum OutputFormat {
     Plain,
     Json,
@@ -211,16 +220,22 @@ pub enum OutputFormat {
 pub struct ExportCommandArgs {
     /// Export the command input to a file.
     /// Used to run a set of commands after creating a node with `ockam node create --run commands.json`
-    #[clap(global = true, long = "export")]
+    #[arg(global = true, long = "export")]
     export_path: Option<PathBuf>,
 
-    /// Unique name for the exported command.
-    #[clap(global = true, long, hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
-    export_as: String,
+    /// Section of the config file to export the command to.
+    #[arg(global = true, long = "export-section", value_enum)]
+    section: Option<CommandSection>,
 
-    /// Reference to a previously exported command that must be run before the current command.
-    #[clap(global = true, long)]
-    depends_on: Option<String>,
+    /// Flag to indicate that the exported command should pipe its output.
+    #[arg(global = true, long, action = ArgAction::SetTrue)]
+    pipe: Option<bool>,
+}
+
+impl ExportCommandArgs {
+    pub fn pipe(&self) -> bool {
+        self.pipe.unwrap_or(false)
+    }
 }
 
 #[derive(Clone)]
@@ -240,37 +255,37 @@ impl CommandGlobalOpts {
 
 #[derive(Debug, Subcommand)]
 pub enum OckamSubcommand {
-    #[clap(display_order = 800)]
+    #[command(display_order = 800)]
     Enroll(EnrollCommand),
-    #[clap(display_order = 801)]
+    #[command(display_order = 801)]
     Space(SpaceCommand),
-    #[clap(display_order = 802)]
+    #[command(display_order = 802)]
     Project(ProjectCommand),
-    #[clap(display_order = 803)]
+    #[command(display_order = 803)]
     Reset(ResetCommand),
 
-    #[clap(display_order = 811)]
+    #[command(display_order = 811)]
     Node(NodeCommand),
-    #[clap(display_order = 812)]
+    #[command(display_order = 812)]
     Identity(IdentityCommand),
-    #[clap(display_order = 813)]
+    #[command(display_order = 813)]
     TcpListener(TcpListenerCommand),
-    #[clap(display_order = 814)]
+    #[command(display_order = 814)]
     TcpConnection(TcpConnectionCommand),
-    #[clap(display_order = 815)]
+    #[command(display_order = 815)]
     TcpOutlet(TcpOutletCommand),
-    #[clap(display_order = 816)]
+    #[command(display_order = 816)]
     TcpInlet(TcpInletCommand),
-    #[clap(display_order = 817)]
+    #[command(display_order = 817)]
     SecureChannelListener(SecureChannelListenerCommand),
-    #[clap(display_order = 818)]
+    #[command(display_order = 818)]
     SecureChannel(SecureChannelCommand),
-    #[clap(display_order = 819)]
+    #[command(display_order = 819)]
     Forwarder(ForwarderCommand),
-    #[clap(display_order = 820)]
+    #[command(display_order = 820)]
     Message(MessageCommand),
 
-    #[clap(display_order = 900)]
+    #[command(display_order = 900)]
     Completion(CompletionCommand),
 
     Authenticated(AuthenticatedCommand),
@@ -288,11 +303,10 @@ pub fn run() {
         .collect::<Vec<_>>();
     let args = input.clone();
     let command: OckamCommand = OckamCommand::parse_from(input);
+
     if !command.global_args.test_argument_parser {
         check_if_an_upgrade_is_available();
     }
-
-    let config = OckamConfig::load();
 
     if !command.global_args.quiet {
         setup_logging(command.global_args.verbose, command.global_args.no_color);
@@ -301,49 +315,53 @@ pub fn run() {
     }
 
     if let Some(path) = command.global_args.export.export_path {
-        let name = command.global_args.export.export_as.clone();
-        let depends_on = command.global_args.export.depends_on.clone();
-        node::util::run::CommandsRunner::export(path, name, depends_on, args)
+        let section = command.global_args.export.section.unwrap_or_default();
+        let pipe = command.global_args.export.pipe;
+        node::util::run::CommandsRunner::export(path, section, args, pipe)
             .context("Failed to export command")
             .unwrap();
         return;
     }
 
-    let options = CommandGlobalOpts::new(command.global_args, config);
+    command.run();
+}
 
-    // If test_argument_parser is true, command arguments are checked
-    // but the command is not executed. This is useful to test arguments
-    // without having to execute their logic.
-    if options.global_args.test_argument_parser {
-        return;
-    }
+impl OckamCommand {
+    pub fn run(self) {
+        let config = OckamConfig::load();
+        let options = CommandGlobalOpts::new(self.global_args, config);
 
-    // FIXME
-    let _verbose = options.global_args.verbose;
+        // If test_argument_parser is true, command arguments are checked
+        // but the command is not executed. This is useful to test arguments
+        // without having to execute their logic.
+        if options.global_args.test_argument_parser {
+            return;
+        }
 
-    match command.subcommand {
-        OckamSubcommand::Authenticated(c) => c.run(),
-        OckamSubcommand::Configuration(c) => c.run(options),
-        OckamSubcommand::Enroll(c) => c.run(options),
-        OckamSubcommand::Forwarder(c) => c.run(options),
-        OckamSubcommand::Message(c) => c.run(options),
-        OckamSubcommand::Node(c) => c.run(options),
-        OckamSubcommand::Project(c) => c.run(options),
-        OckamSubcommand::Space(c) => c.run(options),
-        OckamSubcommand::TcpConnection(c) => c.run(options),
-        OckamSubcommand::TcpInlet(c) => c.run(options),
-        OckamSubcommand::TcpListener(c) => c.run(options),
-        OckamSubcommand::TcpOutlet(c) => c.run(options),
-        OckamSubcommand::Vault(c) => c.run(options),
-        OckamSubcommand::Identity(c) => c.run(options),
-        OckamSubcommand::SecureChannel(c) => c.run(options),
-        OckamSubcommand::SecureChannelListener(c) => c.run(options),
-        OckamSubcommand::Service(c) => c.run(options),
-        OckamSubcommand::Completion(c) => c.run(),
-        OckamSubcommand::Credential(c) => c.run(options),
-        OckamSubcommand::Subscription(c) => c.run(options),
-        OckamSubcommand::Reset(c) => c.run(options),
-        OckamSubcommand::Admin(c) => c.run(options),
+        match self.subcommand {
+            OckamSubcommand::Authenticated(c) => c.run(),
+            OckamSubcommand::Configuration(c) => c.run(options),
+            OckamSubcommand::Enroll(c) => c.run(options),
+            OckamSubcommand::Forwarder(c) => c.run(options),
+            OckamSubcommand::Message(c) => c.run(options),
+            OckamSubcommand::Node(c) => c.run(options),
+            OckamSubcommand::Project(c) => c.run(options),
+            OckamSubcommand::Space(c) => c.run(options),
+            OckamSubcommand::TcpConnection(c) => c.run(options),
+            OckamSubcommand::TcpInlet(c) => c.run(options),
+            OckamSubcommand::TcpListener(c) => c.run(options),
+            OckamSubcommand::TcpOutlet(c) => c.run(options),
+            OckamSubcommand::Vault(c) => c.run(options),
+            OckamSubcommand::Identity(c) => c.run(options),
+            OckamSubcommand::SecureChannel(c) => c.run(options),
+            OckamSubcommand::SecureChannelListener(c) => c.run(options),
+            OckamSubcommand::Service(c) => c.run(options),
+            OckamSubcommand::Completion(c) => c.run(),
+            OckamSubcommand::Credential(c) => c.run(options),
+            OckamSubcommand::Subscription(c) => c.run(options),
+            OckamSubcommand::Reset(c) => c.run(options),
+            OckamSubcommand::Admin(c) => c.run(options),
+        }
     }
 }
 

@@ -30,7 +30,7 @@ defmodule Ockam.Session.Pluggable.Initiator do
   alias Ockam.Message
   alias Ockam.Router
 
-  alias Ockam.Session.Pluggable, as: RoutingSession
+  alias Ockam.Session.Pluggable, as: Session
 
   require Logger
 
@@ -96,6 +96,9 @@ defmodule Ockam.Session.Pluggable.Initiator do
     handshake = Keyword.get(options, :handshake, Ockam.Session.Handshake.Default)
     handshake_options = Keyword.get(options, :handshake_options, [])
 
+    ## Set the module to handshake
+    Session.set_module(state, handshake)
+
     handshake_state = %{
       init_route: init_route,
       worker_address: state.inner_address,
@@ -113,7 +116,7 @@ defmodule Ockam.Session.Pluggable.Initiator do
       })
 
     with {:ok, handshake_state} <- init_handshake(handshake, handshake_options, handshake_state) do
-      state = RoutingSession.update_handshake_state(state, handshake_state)
+      state = Session.update_handshake_state(state, handshake_state)
       {:ok, state}
     end
   end
@@ -137,8 +140,12 @@ defmodule Ockam.Session.Pluggable.Initiator do
     {:reply, Map.get(state, :stage), state}
   end
 
+  def handle_call(:get_role, _from, state) do
+    {:reply, :initiator, state}
+  end
+
   def handle_call(call, from, state) do
-    RoutingSession.handle_call(call, from, state)
+    Session.handle_call(call, from, state)
   end
 
   @impl true
@@ -154,7 +161,7 @@ defmodule Ockam.Session.Pluggable.Initiator do
   end
 
   def handle_message(message, %{stage: :data, data_state: _, worker_mod: _} = state) do
-    RoutingSession.handle_data_message(message, state)
+    Session.handle_data_message(message, state)
   end
 
   def handle_handshake_message(message, state) do
@@ -164,17 +171,17 @@ defmodule Ockam.Session.Pluggable.Initiator do
 
     case handshake.handle_initiator(handshake_options, message, handshake_state) do
       {:ready, options, handshake_state} ->
-        RoutingSession.switch_to_data_stage(options, handshake_state, state)
+        Session.switch_to_data_stage(options, handshake_state, state)
 
       {:ready, message, options, handshake_state} ->
-        RoutingSession.switch_to_data_stage(message, options, handshake_state, state)
+        Session.switch_to_data_stage(message, options, handshake_state, state)
 
       {:next, message, handshake_state} ->
         maybe_send_message(message)
-        {:ok, RoutingSession.update_handshake_state(state, handshake_state)}
+        {:ok, Session.update_handshake_state(state, handshake_state)}
 
       {:next, handshake_state} ->
-        {:ok, RoutingSession.update_handshake_state(state, handshake_state)}
+        {:ok, Session.update_handshake_state(state, handshake_state)}
 
       {:error, err} ->
         ## Use a {:shutdown, term()} reason, so we don't get restarted in loop
