@@ -1,7 +1,7 @@
 use clap::Args;
 use rand::prelude::random;
 
-use anyhow::{Context as _, Result};
+use anyhow::{anyhow, Context as _, Result};
 use std::{
     net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
@@ -15,16 +15,16 @@ use crate::project::ProjectInfo;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start;
-use crate::util::{bind_to_port_check, exitcode};
+use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
     help,
     node::show::print_query_status,
     node::HELP_DETAIL,
     project,
-    util::{connect_to, embedded_node, find_available_port, startup, OckamConfig},
+    util::{connect_to, embedded_node, find_available_port, startup},
     CommandGlobalOpts,
 };
-use ockam::{Address, AsyncTryClone, NodeBuilder, TCP};
+use ockam::{Address, AsyncTryClone, TCP};
 use ockam::{Context, TcpTransport};
 use ockam_api::{
     nodes::models::transport::{TransportMode, TransportType},
@@ -113,123 +113,13 @@ impl Default for CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        let verbose = options.global_args.verbose;
-        let cfg = &options.config;
-        if self.foreground {
-            let cmd = self.overwrite_addr().unwrap();
-            let addr = SocketAddr::from_str(&cmd.tcp_listener_address).unwrap();
-            // HACK: try to get the current node dir.  If it doesn't
-            // exist the user PROBABLY started a non-detached node.
-            // Thus we need to create the node dir so that subsequent
-            // calls to it don't fail
-            if cfg.get_node_dir(&cmd.node_name).is_err() {
-                println!("Creating node directory...");
-                if let Err(e) = cfg.create_node(&cmd.node_name, addr, verbose) {
-                    eprintln!(
-                        "failed to update node configuration for '{}': {}",
-                        cmd.node_name, e
-                    );
-                    std::process::exit(exitcode::CANTCREAT);
-                }
-
-                // Save the config update
-                if let Err(e) = cfg.persist_config_updates() {
-                    eprintln!("failed to update configuration: {}", e);
-                    std::process::exit(exitcode::IOERR);
-                }
-            }
-
-            if let Err(e) = run_background_node(cmd, addr, cfg.clone(), options) {
-                eprintln!("Ockam node failed: {:?}", e);
-            }
-        } else {
-            if self.child_process {
-                eprintln!("Cannot create a background node from background node");
-                std::process::exit(exitcode::CONFIG);
-            }
-
-            let cmd = self.overwrite_addr().unwrap();
-            let addr = SocketAddr::from_str(&cmd.tcp_listener_address).unwrap();
-            embedded_node(
-                Self::create_background_node,
-                (options.clone(), cmd.clone(), addr),
-            )
-            .unwrap();
-            connect_to(
-                addr.port(),
-                (cfg.clone(), cmd.node_name, true),
-                print_query_status,
-            );
-            if let Some(config_path) = &self.config {
-                crate::node::util::run::CommandsRunner::run_node_init(config_path)
-                    .context("Failed to run init commands")
-                    .unwrap();
-                crate::node::util::run::CommandsRunner::run_node_startup(config_path)
-                    .context("Failed to startup commands")
-                    .unwrap();
-            }
+        if let Err(e) = run_impl(options, self) {
+            eprintln!("{}", e);
+            std::process::exit(e.code());
         }
     }
 
-    pub async fn create_background_node(
-        ctx: Context,
-        (opts, cmd, addr): (CommandGlobalOpts, CreateCommand, SocketAddr),
-    ) -> crate::Result<()> {
-        let verbose = opts.global_args.verbose;
-        let cfg = &opts.config;
-
-        // Check if the port is used by some other services or process
-        if !bind_to_port_check(&addr) {
-            eprintln!("Another process is listening on the provided port!");
-            std::process::exit(exitcode::IOERR);
-        }
-
-        // FIXME: not really clear why this is causing issues
-        if cfg.port_is_used(addr.port()) {
-            eprintln!("Another node is listening on the provided port!");
-            std::process::exit(exitcode::IOERR);
-        }
-
-        // First we create a new node in the configuration so that
-        // we can ask it for the correct log path, as well as
-        // making sure the watchdog can do its job later on.
-        if let Err(e) = cfg.create_node(&cmd.node_name, addr, verbose) {
-            eprintln!(
-                "failed to update node configuration for '{}': {}",
-                cmd.node_name, e
-            );
-            std::process::exit(exitcode::CANTCREAT);
-        }
-
-        // Save the config update
-        if let Err(e) = cfg.persist_config_updates() {
-            eprintln!("failed to update configuration: {}", e);
-            std::process::exit(exitcode::IOERR);
-        }
-
-        create_default_identity_if_needed(&ctx, cfg).await?;
-
-        // Construct the arguments list and re-execute the ockam
-        // CLI in foreground mode to start the newly created node
-        startup::spawn_node(
-            &opts.config,
-            verbose,
-            cmd.skip_defaults,
-            cmd.no_shared_identity,
-            cmd.enable_credential_checks,
-            &cmd.node_name,
-            &cmd.tcp_listener_address,
-            cmd.project.as_deref(),
-        );
-
-        // Unless this CLI was called from another watchdog we
-        // start the watchdog here
-        if !cmd.no_watchdog {}
-
-        Ok(())
-    }
-
-    pub fn overwrite_addr(&self) -> Result<Self> {
+    fn overwrite_addr(&self) -> Result<Self> {
         let cmd = self.clone();
         let addr: SocketAddr = if &cmd.tcp_listener_address == "127.0.0.1:0" {
             let port = find_available_port().context("failed to acquire available port")?;
@@ -244,76 +134,94 @@ impl CreateCommand {
     }
 }
 
-fn run_background_node(
-    c: CreateCommand,
-    addr: SocketAddr,
-    cfg: OckamConfig,
-    opts: CommandGlobalOpts,
-) -> Result<()> {
-    let (mut ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
+fn run_impl(opts: CommandGlobalOpts, cmd: CreateCommand) -> crate::Result<()> {
+    let verbose = opts.global_args.verbose;
+    let cfg = &opts.config;
+    if cmd.foreground {
+        let cmd = cmd.overwrite_addr()?;
+        let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
+        // HACK: try to get the current node dir.  If it doesn't
+        // exist the user PROBABLY started a non-detached node.
+        // Thus we need to create the node dir so that subsequent
+        // calls to it don't fail
+        if cfg.get_node_dir(&cmd.node_name).is_err() {
+            println!("Creating node directory...");
+            cfg.create_node(&cmd.node_name, addr, verbose)?;
+            cfg.persist_config_updates()?;
+        }
+        embedded_node_that_is_not_stopped(run_foreground_node, (opts.clone(), cmd, addr))?;
+    } else {
+        if cmd.child_process {
+            return Err(crate::Error::new(
+                exitcode::CONFIG,
+                anyhow!("Cannot create a background node from background node"),
+            ));
+        }
 
-    executor
-        .execute(async move {
-            let v = run_background_node_impl(&mut ctx, c, addr, cfg, &opts).await;
-
-            match v {
-                Err(e) => {
-                    eprintln!("Background node error {:?}", e);
-                    std::process::exit(1);
-                }
-                Ok(v) => v,
-            }
-        })
-        .map_err(anyhow::Error::from)
+        let cmd = cmd.overwrite_addr()?;
+        let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
+        embedded_node(spawn_background_node, (opts.clone(), cmd.clone(), addr))?;
+        connect_to(
+            addr.port(),
+            (cfg.clone(), cmd.node_name, true),
+            print_query_status,
+        );
+        if let Some(config_path) = &cmd.config {
+            crate::node::util::run::CommandsRunner::run_node_init(config_path)
+                .context("Failed to run init commands")?;
+            crate::node::util::run::CommandsRunner::run_node_startup(config_path)
+                .context("Failed to startup commands")?;
+        }
+    }
+    Ok(())
 }
 
-async fn run_background_node_impl(
-    ctx: &mut Context,
-    c: CreateCommand,
-    addr: SocketAddr,
-    cfg: OckamConfig,
-    opts: &CommandGlobalOpts,
-) -> Result<()> {
+async fn run_foreground_node(
+    ctx: Context,
+    (opts, cmd, addr): (CommandGlobalOpts, CreateCommand, SocketAddr),
+) -> crate::Result<()> {
+    let cfg = &opts.config;
+
     // This node was initially created as a foreground node
-    if !c.child_process {
-        create_default_identity_if_needed(ctx, &cfg).await?;
+    if !cmd.child_process {
+        create_default_identity_if_needed(&ctx, cfg).await?;
     }
 
-    let identity_override = if c.skip_defaults || c.no_shared_identity {
+    let identity_override = if cmd.skip_defaults || cmd.no_shared_identity {
         None
     } else {
-        Some(get_identity_override(ctx, &cfg).await?)
+        Some(get_identity_override(&ctx, cfg).await?)
     };
 
-    let project_id = match &c.project {
+    let project_id = match &cmd.project {
         Some(path) => {
             let s = tokio::fs::read_to_string(path).await?;
             let p: ProjectInfo = serde_json::from_str(&s)?;
             let project_id = p.id.as_bytes().to_vec();
-            project::config::set_project(&cfg, &(&p).into()).await?;
-            add_project_authority(p, &c.node_name, &cfg).await?;
+            project::config::set_project(cfg, &(&p).into()).await?;
+            add_project_authority(p, &cmd.node_name, cfg).await?;
             Some(project_id)
         }
         None => None,
     };
 
-    let tcp = TcpTransport::create(ctx).await?;
-    let bind = c.tcp_listener_address;
+    let tcp = TcpTransport::create(&ctx).await?;
+    let bind = cmd.tcp_listener_address;
     tcp.listen(&bind).await?;
 
-    let node_dir = cfg.get_node_dir(&c.node_name)?;
+    let node_dir = cfg.get_node_dir(&cmd.node_name)?;
     let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
-        ctx,
+        &ctx,
         NodeManagerGeneralOptions::new(
-            c.node_name.clone(),
+            cmd.node_name.clone(),
             node_dir,
-            c.skip_defaults || c.launch_config.is_some(),
-            c.enable_credential_checks,
+            cmd.skip_defaults || cmd.launch_config.is_some(),
+            cmd.enable_credential_checks,
             identity_override,
         ),
         NodeManagerProjectsOptions::new(
-            Some(&cfg.authorities(&c.node_name)?.snapshot()),
+            Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
             project_id,
             projects,
         ),
@@ -328,11 +236,11 @@ async fn run_background_node_impl(
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
         .await?;
 
-    if let Some(path) = c.launch_config {
+    if let Some(path) = cmd.launch_config {
         let node_opts = super::NodeOpts {
-            api_node: c.node_name,
+            api_node: cmd.node_name,
         };
-        start_services(ctx, &tcp, &path, addr, node_opts, opts).await?
+        start_services(&ctx, &tcp, &path, addr, node_opts, &opts).await?
     }
 
     Ok(())
@@ -399,6 +307,45 @@ async fn start_services(
             .await?
         }
     }
+
+    Ok(())
+}
+
+async fn spawn_background_node(
+    ctx: Context,
+    (opts, cmd, addr): (CommandGlobalOpts, CreateCommand, SocketAddr),
+) -> crate::Result<()> {
+    let verbose = opts.global_args.verbose;
+    let cfg = &opts.config;
+
+    // Check if the port is used by some other services or process
+    if !bind_to_port_check(&addr) || cfg.port_is_used(addr.port()) {
+        return Err(crate::Error::new(
+            exitcode::IOERR,
+            anyhow!("Another process is listening on the provided port!"),
+        ));
+    }
+
+    // First we create a new node in the configuration so that
+    // we can ask it for the correct log path, as well as
+    // making sure the watchdog can do its job later on.
+    cfg.create_node(&cmd.node_name, addr, verbose)?;
+    cfg.persist_config_updates()?;
+
+    create_default_identity_if_needed(&ctx, cfg).await?;
+
+    // Construct the arguments list and re-execute the ockam
+    // CLI in foreground mode to start the newly created node
+    startup::spawn_node(
+        &opts.config,
+        verbose,
+        cmd.skip_defaults,
+        cmd.no_shared_identity,
+        cmd.enable_credential_checks,
+        &cmd.node_name,
+        &cmd.tcp_listener_address,
+        cmd.project.as_deref(),
+    );
 
     Ok(())
 }

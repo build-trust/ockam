@@ -399,6 +399,31 @@ where
     Ok(r)
 }
 
+pub fn embedded_node_that_is_not_stopped<A, F, Fut, T>(f: F, a: A) -> crate::Result<T>
+where
+    A: Send + Sync + 'static,
+    F: FnOnce(Context, A) -> Fut + Send + Sync + 'static,
+    Fut: core::future::Future<Output = crate::Result<T>> + Send + 'static,
+    T: Send + 'static,
+{
+    let (ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
+    let r = executor.execute(async move {
+        let child_ctx = ctx
+            .new_detached(Address::random_local())
+            .await
+            .expect("Embedded node child ctx can't be created");
+        match f(child_ctx, a).await {
+            Err(e) => {
+                error!(%e);
+                eprintln!("{e:?}");
+                std::process::exit(e.code());
+            }
+            Ok(v) => v,
+        }
+    })?;
+    Ok(r)
+}
+
 pub fn find_available_port() -> Result<u16> {
     let listener = TcpListener::bind("127.0.0.1:0").context("Unable to bind to an open port")?;
     let address = listener
