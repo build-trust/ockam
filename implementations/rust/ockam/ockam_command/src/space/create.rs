@@ -1,8 +1,7 @@
 use clap::Args;
-use rand::prelude::random;
-
 use ockam::Context;
 use ockam_api::cloud::space::Space;
+use rand::prelude::random;
 
 use crate::node::util::delete_embedded_node;
 use crate::space::util::config;
@@ -14,7 +13,7 @@ use colorful::Colorful;
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     /// Name of the space.
-    #[arg(display_order = 1001, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true)]
+    #[arg(display_order = 1001, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true, value_parser = validate_space_name)]
     pub name: String,
 
     #[command(flatten)]
@@ -58,4 +57,15 @@ async fn run_impl(
     config::set_space(&opts.config, &space)?;
     delete_embedded_node(&opts.config, rpc.node_name()).await;
     Ok(())
+}
+
+fn validate_space_name(s: &str) -> Result<String, String> {
+    match api::validate_cloud_resource_name(s) {
+        Ok(_) => Ok(s.to_string()),
+        Err(_e)=> Err(String::from(
+            "space name can contain only alphanumeric characters and the '-', '_' and '.' separators. \
+            Separators must occur between alphanumeric characters. This implies that separators can't \
+            occur at the start or end of the name, nor they can occur in sequence.",
+        ))
+    }
 }

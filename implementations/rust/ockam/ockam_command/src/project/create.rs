@@ -19,7 +19,7 @@ pub struct CreateCommand {
     pub space_name: String,
 
     /// Name of the project.
-    #[arg(display_order = 1002, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true)]
+    #[arg(display_order = 1002, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true, value_parser = validate_project_name)]
     pub project_name: String,
 
     // Enforce credentials for member access to the project node
@@ -71,4 +71,15 @@ async fn run_impl(
     rpc.print_response(project)?;
     delete_embedded_node(&opts.config, rpc.node_name()).await;
     Ok(())
+}
+
+fn validate_project_name(s: &str) -> Result<String, String> {
+    match api::validate_cloud_resource_name(s) {
+        Ok(_) => Ok(s.to_string()),
+        Err(_e)=> Err(String::from(
+            "project name can contain only alphanumeric characters and the '-', '_' and '.' separators. \
+            Separators must occur between alphanumeric characters. This implies that separators can't \
+            occur at the start or end of the name, nor they can occur in sequence.",
+        )),
+    }
 }
