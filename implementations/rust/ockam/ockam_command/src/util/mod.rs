@@ -3,6 +3,7 @@ use std::{
     env,
     net::{SocketAddr, TcpListener},
     path::Path,
+    str::FromStr,
 };
 
 use anyhow::{anyhow, Context as _, Result};
@@ -17,7 +18,7 @@ pub use config::*;
 use ockam::{route, Address, Context, NodeBuilder, Route, TcpTransport, TCP};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
-use ockam_multiaddr::MultiAddr;
+use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
 
 use crate::node::util::start_embedded_node;
 use crate::util::output::Output;
@@ -453,23 +454,29 @@ pub fn print_path(p: &Path) -> String {
     p.to_str().unwrap_or("<unprintable>").to_string()
 }
 
-pub fn get_final_element(input_path: &str) -> &str {
-    //  Get Node name from Node Path
-    //  if Input path has "/", we split the path and return the final element
-    //  if the final element is empty string, we return None
-    return if input_path.contains('/') {
-        let split_path: Vec<&str> = input_path.split('/').collect();
-        match split_path.last() {
-            Some(last_value) if last_value.is_empty() => {
-                eprintln!("Invalid Format: {}", input_path);
-                std::process::exit(exitcode::IOERR);
+///  Get node name from a string with format `/node/<name>` or `<name>`
+pub fn extract_node_name(input: &str) -> anyhow::Result<String> {
+    // we default to the `input` value
+    let mut node_name = input.to_string();
+    // if input has "/", we process it as a MultiAddr
+    if input.contains('/') {
+        let err = anyhow!("invalid node address protocol");
+        let maddr = MultiAddr::from_str(input)?;
+        if let Some(p) = maddr.iter().next() {
+            if p.code() == Node::CODE {
+                let name = p.cast::<Node>().ok_or(err)?;
+                node_name = name.to_string();
+            } else {
+                return Err(err);
             }
-            Some(last_value) => last_value,
-            None => input_path,
+        } else {
+            return Err(err);
         }
-    } else {
-        input_path
-    };
+    }
+    if node_name.is_empty() {
+        return Err(anyhow!("Empty node name in address"));
+    }
+    Ok(node_name)
 }
 
 pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {
@@ -533,4 +540,32 @@ pub async fn query_pid(
     let status = api::parse_status(&resp)?;
     tx.send(Some(status.pid)).unwrap();
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_node_name() {
+        let test_cases = vec![
+            ("", Err(())),
+            ("test", Ok("test")),
+            ("/test", Err(())),
+            ("test/", Err(())),
+            ("/node", Err(())),
+            ("/node/", Err(())),
+            ("/node/test", Ok("test")),
+            ("/node/test/tcp", Err(())),
+            ("/node/test/test", Err(())),
+            ("/node/test/tcp/22", Ok("test")),
+        ];
+        for (input, result) in test_cases {
+            if let Ok(node) = result {
+                assert_eq!(extract_node_name(input).unwrap(), node);
+            } else {
+                assert!(extract_node_name(input).is_err());
+            }
+        }
+    }
 }

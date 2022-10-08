@@ -10,7 +10,7 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::util::api::CloudOpts;
-use crate::util::{get_final_element, node_rpc, RpcBuilder};
+use crate::util::{extract_node_name, node_rpc, RpcBuilder};
 use crate::Result;
 use crate::{help, message::HELP_DETAIL, CommandGlobalOpts};
 
@@ -50,7 +50,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
 
         // Setup environment depending on whether we are sending the message from an embedded node or a background node
         let (api_node, tcp) = if let Some(node) = &cmd.from {
-            let api_node = get_final_element(node).to_string();
+            let api_node = extract_node_name(node)?;
             let tcp = TcpTransport::create(ctx).await?;
             (api_node, Some(tcp))
         } else {

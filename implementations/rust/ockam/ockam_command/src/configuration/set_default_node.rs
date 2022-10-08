@@ -1,4 +1,4 @@
-use crate::{util::get_final_element, CommandGlobalOpts};
+use crate::{util::extract_node_name, CommandGlobalOpts};
 use clap::Args;
 
 #[derive(Clone, Debug, Args)]
@@ -18,9 +18,7 @@ impl SetDefaultNodeCommand {
 
 fn run_impl(name: &str, options: &CommandGlobalOpts) -> crate::Result<()> {
     options.config.get_node(name)?;
-    options
-        .config
-        .set_default_node(&get_final_element(name).to_owned());
+    options.config.set_default_node(&extract_node_name(name)?);
     options.config.persist_config_updates()?;
 
     Ok(())

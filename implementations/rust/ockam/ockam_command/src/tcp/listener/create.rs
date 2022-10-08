@@ -1,4 +1,4 @@
-use crate::util::{bind_to_port_check, get_final_element};
+use crate::util::{bind_to_port_check, extract_node_name};
 use crate::{
     util::{api, connect_to, exitcode},
     CommandGlobalOpts,
@@ -31,8 +31,8 @@ pub struct TCPListenerNodeOpts {
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
-        let node = get_final_element(&self.node_opts.at);
-        let port = cfg.get_node_port(node).unwrap();
+        let node = extract_node_name(&self.node_opts.at).unwrap_or_else(|_| "".to_string());
+        let port = cfg.get_node_port(&node).unwrap();
 
         let input_addr = match std::net::SocketAddr::from_str(&self.address) {
             Ok(value) => value,
@@ -48,7 +48,7 @@ impl CreateCommand {
             std::process::exit(exitcode::IOERR);
         }
 
-        connect_to(port, self.clone(), create_listener);
+        connect_to(port, self, create_listener);
     }
 }
 

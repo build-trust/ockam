@@ -1,7 +1,7 @@
 use crate::secure_channel::HELP_DETAIL;
 use crate::{
     help,
-    util::{api, get_final_element, node_rpc, Rpc},
+    util::{api, extract_node_name, node_rpc, Rpc},
     CommandGlobalOpts, Result,
 };
 use clap::Args;
@@ -30,7 +30,7 @@ impl ShowCommand {
 
     // Read the `at` argument and return node name
     fn parse_at_node(&self) -> String {
-        get_final_element(&self.at).to_string()
+        extract_node_name(&self.at).unwrap_or_else(|_| "".to_string())
     }
 }
 
