@@ -12,7 +12,7 @@ use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
 
 use crate::forwarder::HELP_DETAIL;
 use crate::util::output::Output;
-use crate::util::{get_final_element, node_rpc, RpcBuilder};
+use crate::util::{extract_node_name, node_rpc, RpcBuilder};
 use crate::Result;
 use crate::{help, CommandGlobalOpts};
 
@@ -48,7 +48,7 @@ impl CreateCommand {
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
-    let api_node = get_final_element(&cmd.to);
+    let api_node = extract_node_name(&cmd.to)?;
     let at_rust_node = is_local_node(&cmd.at).context("Argument --at is not valid")?;
 
     let lookup = opts.config.lookup();
@@ -87,7 +87,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
         Request::post("/node/forwarder").body(body)
     };
 
-    let mut rpc = RpcBuilder::new(&ctx, &opts, api_node).tcp(&tcp)?.build();
+    let mut rpc = RpcBuilder::new(&ctx, &opts, &api_node).tcp(&tcp)?.build();
     rpc.request(req).await?;
     rpc.parse_and_print_response::<ForwarderInfo>()?;
 

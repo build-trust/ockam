@@ -1,4 +1,4 @@
-use crate::util::{bind_to_port_check, connect_to, exitcode, get_final_element};
+use crate::util::{bind_to_port_check, connect_to, exitcode, extract_node_name};
 use crate::{help, CommandGlobalOpts};
 use clap::Args;
 use minicbor::Decoder;
@@ -67,8 +67,8 @@ impl CreateCommand {
             ..self
         };
 
-        let node = get_final_element(&command.at);
-        let port = cfg.get_node_port(node).unwrap();
+        let node = extract_node_name(&command.at)?;
+        let port = cfg.get_node_port(&node).unwrap();
 
         // Check if the port is used by some other services or process
         if !bind_to_port_check(&command.from) {

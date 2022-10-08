@@ -1,5 +1,5 @@
 use crate::secure_channel::HELP_DETAIL;
-use crate::util::{api, connect_to, exitcode, get_final_element};
+use crate::util::{api, connect_to, exitcode, extract_node_name};
 use crate::{help, CommandGlobalOpts};
 
 use clap::Args;
@@ -35,8 +35,8 @@ pub struct SecureChannelListenerNodeOpts {
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = options.config;
-        let node = get_final_element(&self.node_opts.at);
-        let port = cfg.get_node_port(node).unwrap();
+        let node = extract_node_name(&self.node_opts.at).unwrap_or_else(|_| "".to_string());
+        let port = cfg.get_node_port(&node).unwrap();
 
         connect_to(port, self, |ctx, cmd, rte| async {
             create_listener(&ctx, cmd.address, cmd.authorized_identifier, rte).await?;
