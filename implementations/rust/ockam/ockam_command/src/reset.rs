@@ -3,6 +3,7 @@ use crate::CommandGlobalOpts;
 use clap::Args;
 use std::io::{self, BufReader, Read, Write};
 
+/// Full Ockam Reset
 #[derive(Clone, Debug, Args)]
 pub struct ResetCommand {
     #[arg(display_order = 901, long, short)]

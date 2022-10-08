@@ -4,7 +4,7 @@ use clap::Args;
 
 /// List Nodes
 #[derive(Clone, Debug, Args)]
-#[command(help_template = help::template(HELP_DETAIL))]
+#[command(after_long_help = help::template(HELP_DETAIL))]
 pub struct ListCommand {}
 
 impl ListCommand {

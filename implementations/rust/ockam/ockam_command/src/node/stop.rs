@@ -9,7 +9,7 @@ use rand::prelude::random;
 
 /// Stop Nodes
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
 pub struct StopCommand {
     /// Name of the node.
     #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]

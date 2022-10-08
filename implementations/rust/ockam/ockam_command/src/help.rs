@@ -3,18 +3,10 @@ use colorful::Colorful;
 use syntect::{
     easy::HighlightLines,
     highlighting::{Style, ThemeSet},
+    parsing::Regex,
     parsing::SyntaxSet,
     util::{as_24_bit_terminal_escaped, LinesWithEndings},
 };
-
-const TEMPLATE_TOP: &str = "
-{about-with-newline}
-{usage-heading}
-    {usage}
-
-{all-args}
-
-";
 
 const TEMPLATE_BOTTOM: &str = "
 Learn More:
@@ -26,10 +18,9 @@ Feedback:
     on Github https://github.com/build-trust/ockam/discussions/new
 ";
 
-pub(crate) fn template(background: &str) -> &'static str {
-    let mut template: String = TEMPLATE_TOP.to_owned();
+pub(crate) fn template(body: &str) -> &'static str {
+    let mut template: String = body.to_string();
 
-    template.push_str(background);
     template.push_str(TEMPLATE_BOTTOM);
     let highlighted = highlight_syntax(template);
 
@@ -58,8 +49,9 @@ pub fn highlight_syntax(input: String) -> String {
         }
 
         if !in_fenced_block {
-            if line.to_uppercase() == line {
-                highlighted.push(line.to_string().yellow().to_string());
+            let re = Regex::new("^[A-Za-z][A-Za-z0-9 ]+:$".into());
+            if re.is_match(line) {
+                highlighted.push(line.to_string().bold().underlined().to_string());
             } else {
                 highlighted.push(line.to_string());
             }

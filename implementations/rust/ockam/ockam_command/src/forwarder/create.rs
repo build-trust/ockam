@@ -20,7 +20,7 @@ use crate::{help, CommandGlobalOpts};
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = true,
-    help_template = help::template(HELP_DETAIL)
+    after_long_help = help::template(HELP_DETAIL)
 )]
 pub struct CreateCommand {
     /// Name of the forwarder (optional)

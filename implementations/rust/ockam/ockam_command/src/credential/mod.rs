@@ -8,10 +8,12 @@ use crate::help;
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 
+const HELP_DETAIL: &str = "";
+
 #[derive(Clone, Debug, Args)]
 #[command(
     hide = help::hide(),
-    help_template = help::template(""),
+    after_long_help = help::template(HELP_DETAIL),
     arg_required_else_help = true,
     subcommand_required = true
 )]

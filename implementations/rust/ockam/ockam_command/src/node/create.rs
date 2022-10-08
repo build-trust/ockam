@@ -39,7 +39,7 @@ use ockam_core::LOCAL;
 
 /// Create Nodes
 #[derive(Clone, Debug, Args)]
-#[command(help_template = help::template(HELP_DETAIL))]
+#[command(after_long_help = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
     /// Name of the node (Optional).
     #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
