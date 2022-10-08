@@ -12,7 +12,7 @@ use rand::prelude::random;
 #[command(arg_required_else_help = true, help_template = help::template(HELP_DETAIL))]
 pub struct StopCommand {
     /// Name of the node.
-    #[arg(default_value_t = hex::encode(&random::<[u8;4]>()))]
+    #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
     node_name: String,
     /// Whether to use the SIGTERM or SIGKILL signal to stop the node
     #[arg(long)]
