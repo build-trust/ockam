@@ -1,13 +1,11 @@
-use crate::node::NodeOpts;
-use crate::util::{api, connect_to, exitcode, extract_node_name};
-use crate::CommandGlobalOpts;
 use clap::Args;
 use cli_table::{print_stdout, Cell, Style, Table};
-use ockam::{Context, Route};
-use ockam_api::nodes::{
-    models::transport::{TransportList, TransportStatus},
-    NODEMANAGER_ADDR,
-};
+use ockam::Context;
+use ockam_api::nodes::models::transport::{TransportList, TransportStatus};
+
+use crate::node::NodeOpts;
+use crate::util::{api, node_rpc, Rpc};
+use crate::CommandGlobalOpts;
 
 #[derive(Args, Clone, Debug)]
 pub struct ListCommand {
@@ -16,32 +14,30 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        let cfg = &options.config;
-        let node = extract_node_name(&self.node_opts.api_node).unwrap_or_else(|_| "".to_string());
-        let port = cfg.get_node_port(&node).unwrap();
-
-        connect_to(port, (), list_listeners);
+    pub fn run(self, opts: CommandGlobalOpts) {
+        node_rpc(rpc, (opts, self));
     }
 }
 
-pub async fn list_listeners(ctx: Context, _: (), mut base_route: Route) -> anyhow::Result<()> {
-    let resp: Vec<u8> = match ctx
-        .send_and_receive(
-            base_route.modify().append(NODEMANAGER_ADDR),
-            api::list_tcp_listeners().to_vec()?,
-        )
-        .await
-    {
-        Ok(sr_msg) => sr_msg,
-        Err(e) => {
-            eprintln!("Wasn't able to send or receive `Message`: {}", e);
-            std::process::exit(exitcode::IOERR);
-        }
-    };
+async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, ListCommand)) -> crate::Result<()> {
+    run_impl(&mut ctx, opts, cmd).await
+}
 
-    let TransportList { list, .. } = api::parse_tcp_list(&resp)?;
+async fn run_impl(
+    ctx: &mut Context,
+    opts: CommandGlobalOpts,
+    cmd: ListCommand,
+) -> crate::Result<()> {
+    let mut rpc = Rpc::background(ctx, &opts, &cmd.node_opts.api_node)?;
+    rpc.request(api::list_tcp_listeners()).await?;
+    let res = rpc.parse_response::<TransportList>()?;
 
+    list_listeners(&res.list).await?;
+
+    Ok(())
+}
+
+pub async fn list_listeners<'a>(list: &[TransportStatus<'a>]) -> crate::Result<()> {
     let table = list
         .iter()
         .fold(
@@ -67,10 +63,7 @@ pub async fn list_listeners(ctx: Context, _: (), mut base_route: Route) -> anyho
             "Address bind".cell().bold(true),
         ]);
 
-    if let Err(e) = print_stdout(table) {
-        eprintln!("failed to print node status: {}", e);
-        std::process::exit(exitcode::IOERR);
-    }
+    print_stdout(table)?;
 
     Ok(())
 }
