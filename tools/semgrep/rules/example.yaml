@@ -1,0 +1,7 @@
+rules:
+- id: is-comparison
+  languages:
+    - python
+  message: The operator 'is' is for reference equality, not value equality! Use `==` instead!
+  pattern: $SOMEVAR is "..."
+  severity: ERROR
