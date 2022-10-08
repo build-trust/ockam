@@ -13,7 +13,7 @@ use clap::{Args, Subcommand};
 #[command(
     arg_required_else_help = true,
     subcommand_required = true,
-    help_template = help::template(HELP_DETAIL)
+    after_long_help = help::template(HELP_DETAIL)
 )]
 pub struct SecureChannelListenerCommand {
     #[command(subcommand)]

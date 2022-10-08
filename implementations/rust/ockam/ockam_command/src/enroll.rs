@@ -29,7 +29,7 @@ const HELP_DETAIL: &str = "";
 
 /// Enroll with Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
-#[command(help_template = help::template(HELP_DETAIL))]
+#[command(after_long_help = help::template(HELP_DETAIL))]
 pub struct EnrollCommand {
     #[command(flatten)]
     pub cloud_opts: CloudOpts,

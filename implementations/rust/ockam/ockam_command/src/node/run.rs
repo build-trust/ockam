@@ -9,7 +9,7 @@ const HELP_DETAIL: &str = "";
 
 /// Run a node given a configuration file
 #[derive(Clone, Debug, Args)]
-#[command(help_template = help::template(HELP_DETAIL))]
+#[command(after_long_help = help::template(HELP_DETAIL))]
 pub struct RunCommand {
     pub config: PathBuf,
 }

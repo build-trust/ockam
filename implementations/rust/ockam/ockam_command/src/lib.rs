@@ -147,7 +147,7 @@ Examples:
     term_width = 100,
     about = ABOUT,
     long_about = ABOUT,
-    help_template = help::template(HELP_DETAIL),
+    after_long_help = help::template(HELP_DETAIL),
     version,
     long_version = Version::long(),
     next_help_heading = "Global Options",
@@ -167,7 +167,8 @@ pub struct GlobalArgs {
         global = true,
         long,
         short,
-        help("Print help information"),
+        help("Print help information (-h compact, --help extensive)"),
+        long_help("Print help information (-h displays compact help summary, --help displays extensive help summary"),
         help_heading("Global Options"),
         action = ArgAction::Help
     )]
