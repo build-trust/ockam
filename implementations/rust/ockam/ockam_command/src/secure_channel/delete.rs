@@ -1,7 +1,7 @@
 use crate::secure_channel::HELP_DETAIL;
 use crate::{
     help,
-    util::{api, exitcode, extract_node_name, node_rpc, Rpc},
+    util::{api, exitcode, extract_address_value, node_rpc, Rpc},
     CommandGlobalOpts, OutputFormat, Result,
 };
 use std::str::FromStr;
@@ -35,7 +35,7 @@ impl DeleteCommand {
 
     // Read the `at` argument and return node name
     fn parse_at_node(&self) -> String {
-        extract_node_name(&self.at).unwrap_or_else(|_| "".to_string())
+        extract_address_value(&self.at).unwrap_or_else(|_| "".to_string())
     }
 
     fn print_output(

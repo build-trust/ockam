@@ -3,7 +3,7 @@ use ockam::{Context, Route};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{Response, Status};
 
-use crate::util::extract_node_name;
+use crate::util::extract_address_value;
 use crate::{
     node::NodeOpts,
     util::{api, connect_to, exitcode},
@@ -26,7 +26,8 @@ pub struct DeleteCommand {
 impl DeleteCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
-        let node = extract_node_name(&self.node_opts.api_node).unwrap_or_else(|_| "".to_string());
+        let node =
+            extract_address_value(&self.node_opts.api_node).unwrap_or_else(|_| "".to_string());
         let port = cfg.get_node_port(&node).unwrap();
         connect_to(port, self, delete_listener);
     }

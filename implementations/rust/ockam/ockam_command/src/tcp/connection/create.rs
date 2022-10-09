@@ -1,5 +1,5 @@
 use crate::{
-    util::{api, connect_to, exitcode, extract_node_name},
+    util::{api, connect_to, exitcode, extract_address_value},
     CommandGlobalOpts, OutputFormat,
 };
 use clap::Args;
@@ -39,7 +39,7 @@ pub struct CreateCommand {
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
-        let node = extract_node_name(&self.node_opts.from).unwrap_or_else(|_| "".to_string());
+        let node = extract_address_value(&self.node_opts.from).unwrap_or_else(|_| "".to_string());
         let port = cfg.get_node_port(&node).unwrap();
 
         connect_to(port, (self, options.clone()), create_connection);

@@ -1,4 +1,4 @@
-use crate::util::{connect_to, exitcode, extract_node_name};
+use crate::util::{connect_to, exitcode, extract_address_value};
 use crate::{help, CommandGlobalOpts};
 use clap::Args;
 use minicbor::Decoder;
@@ -60,11 +60,11 @@ impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
         let cfg = &options.config;
         let at = &self.at.clone();
-        let node = extract_node_name(at)?;
+        let node = extract_address_value(at)?;
         let port = cfg.get_node_port(&node).unwrap();
 
         let command = CreateCommand {
-            from: extract_node_name(&self.from)?,
+            from: extract_address_value(&self.from)?,
             ..self
         };
 
