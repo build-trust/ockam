@@ -1,5 +1,5 @@
 use crate::node::NodeOpts;
-use crate::util::{api, connect_to, exitcode, extract_node_name};
+use crate::util::{api, connect_to, exitcode, extract_address_value};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use cli_table::{print_stdout, Cell, Style, Table};
@@ -18,7 +18,8 @@ pub struct ListCommand {
 impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         let cfg = &options.config;
-        let node = extract_node_name(&self.node_opts.api_node).unwrap_or_else(|_| "".to_string());
+        let node =
+            extract_address_value(&self.node_opts.api_node).unwrap_or_else(|_| "".to_string());
         let port = cfg.get_node_port(&node).unwrap();
 
         connect_to(port, (), list_connections);

@@ -18,7 +18,7 @@ pub use config::*;
 use ockam::{route, Address, Context, NodeBuilder, Route, TcpTransport, TCP};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
-use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
+use ockam_multiaddr::{proto, MultiAddr, Protocol};
 
 use crate::node::util::start_embedded_node;
 use crate::util::output::Output;
@@ -454,29 +454,47 @@ pub fn print_path(p: &Path) -> String {
     p.to_str().unwrap_or("<unprintable>").to_string()
 }
 
-///  Get node name from a string with format `/node/<name>` or `<name>`
-pub fn extract_node_name(input: &str) -> anyhow::Result<String> {
+/// Get address value from a string.
+///
+/// The input string can be either a plain address of a MultiAddr formatted string.
+/// Examples: `/node/<name>`, `<name>`
+pub fn extract_address_value(input: &str) -> anyhow::Result<String> {
     // we default to the `input` value
-    let mut node_name = input.to_string();
+    let mut addr = input.to_string();
     // if input has "/", we process it as a MultiAddr
     if input.contains('/') {
-        let err = anyhow!("invalid node address protocol");
+        let err = anyhow!("invalid address protocol");
         let maddr = MultiAddr::from_str(input)?;
         if let Some(p) = maddr.iter().next() {
-            if p.code() == Node::CODE {
-                let name = p.cast::<Node>().ok_or(err)?;
-                node_name = name.to_string();
-            } else {
-                return Err(err);
+            match p.code() {
+                proto::Node::CODE => {
+                    addr = p
+                        .cast::<proto::Node>()
+                        .context("Failed to parse `node` protocol")?
+                        .to_string();
+                }
+                proto::Service::CODE => {
+                    addr = p
+                        .cast::<proto::Service>()
+                        .context("Failed to parse `service` protocol")?
+                        .to_string();
+                }
+                proto::Project::CODE => {
+                    addr = p
+                        .cast::<proto::Project>()
+                        .context("Failed to parse `project` protocol")?
+                        .to_string();
+                }
+                code => return Err(anyhow!("Protocol {code} not supported")),
             }
         } else {
             return Err(err);
         }
     }
-    if node_name.is_empty() {
-        return Err(anyhow!("Empty node name in address"));
+    if addr.is_empty() {
+        return Err(anyhow!("Empty address in input: {input}"));
     }
-    Ok(node_name)
+    Ok(addr)
 }
 
 pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {
@@ -547,7 +565,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_extract_node_name() {
+    fn test_extract_address_value() {
         let test_cases = vec![
             ("", Err(())),
             ("test", Ok("test")),
@@ -555,16 +573,19 @@ mod tests {
             ("test/", Err(())),
             ("/node", Err(())),
             ("/node/", Err(())),
-            ("/node/test", Ok("test")),
-            ("/node/test/tcp", Err(())),
-            ("/node/test/test", Err(())),
-            ("/node/test/tcp/22", Ok("test")),
+            ("/node/n1", Ok("n1")),
+            ("/service/s1", Ok("s1")),
+            ("/project/p1", Ok("p1")),
+            ("/randomprotocol/rp1", Err(())),
+            ("/node/n1/tcp", Err(())),
+            ("/node/n1/test", Err(())),
+            ("/node/n1/tcp/22", Ok("n1")),
         ];
-        for (input, result) in test_cases {
-            if let Ok(node) = result {
-                assert_eq!(extract_node_name(input).unwrap(), node);
+        for (input, expected) in test_cases {
+            if let Ok(addr) = expected {
+                assert_eq!(extract_address_value(input).unwrap(), addr);
             } else {
-                assert!(extract_node_name(input).is_err());
+                assert!(extract_address_value(input).is_err());
             }
         }
     }

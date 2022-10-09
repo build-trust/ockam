@@ -1,4 +1,4 @@
-use crate::util::{connect_to, exitcode, extract_node_name};
+use crate::util::{connect_to, exitcode, extract_address_value};
 use crate::CommandGlobalOpts;
 use crate::{node::NodeOpts, util::api};
 use clap::Args;
@@ -17,7 +17,7 @@ pub struct ShowCommand {
 impl ShowCommand {
     pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
         let cfg = options.config;
-        let node = extract_node_name(&self.node_opts.api_node)?;
+        let node = extract_address_value(&self.node_opts.api_node)?;
         let port = cfg.get_node_port(&node).unwrap();
 
         connect_to(port, self, show_identity);

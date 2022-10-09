@@ -1,6 +1,6 @@
 use crate::{
     help,
-    util::{api, exitcode, extract_node_name, node_rpc},
+    util::{api, exitcode, extract_address_value, node_rpc},
     CommandGlobalOpts, OutputFormat, Result,
 };
 
@@ -76,7 +76,7 @@ impl CreateCommand {
 
     // Read the `from` argument and return node name
     fn parse_from_node(&self, _config: &ConfigLookup) -> String {
-        extract_node_name(&self.from).unwrap_or_else(|_| "".to_string())
+        extract_address_value(&self.from).unwrap_or_else(|_| "".to_string())
     }
 
     fn print_output(
