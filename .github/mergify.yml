@@ -65,11 +65,16 @@ pull_request_rules:
       - check-failure!=Rust - Build Documentation
       - check-failure!=Rust - Build
       - check-failure!=Rust - Build Examples
+      - check-failure!=Rust - Test
       - check-failure!=Rust - Check Features - no_std alloc software_vault
       - check-failure!=Rust - Check Cargo Update
       - check-failure!=Rust - Nightly Check
       - check-failure!=Rust - Nightly Build
       - check-failure!=Rust - Nightly Test
+      # ockam_command.yml
+      - check-failure!=Test Ockam Command
+      # semgrep.yml
+      - check-failure!=Semgrep - Lint
 
       ####
       # The following checks should not be pending
@@ -105,11 +110,16 @@ pull_request_rules:
       - check-pending!=Rust - Build Documentation
       - check-pending!=Rust - Build
       - check-pending!=Rust - Build Examples
+      - check-pending!=Rust - Test
       - check-pending!=Rust - Check Features - no_std alloc software_vault
       - check-pending!=Rust - Check Cargo Update
       - check-pending!=Rust - Nightly Check
       - check-pending!=Rust - Nightly Build
       - check-pending!=Rust - Nightly Test
+      # ockam_command.yml
+      - check-pending!=Test Ockam Command
+      # semgrep.yml
+      - check-pending!=Semgrep - Lint
 
       ####
       # The following checks should not be stale
@@ -145,8 +155,13 @@ pull_request_rules:
       - check-stale!=Rust - Build Documentation
       - check-stale!=Rust - Build
       - check-stale!=Rust - Build Examples
+      - check-stale!=Rust - Test
       - check-stale!=Rust - Check Features - no_std alloc software_vault
       - check-stale!=Rust - Check Cargo Update
       - check-stale!=Rust - Nightly Check
       - check-stale!=Rust - Nightly Build
       - check-stale!=Rust - Nightly Test
+      # ockam_command.yml
+      - check-stale!=Test Ockam Command
+      # semgrep.yml
+      - check-stale!=Semgrep - Lint
