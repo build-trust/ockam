@@ -1,15 +1,13 @@
-use crate::util::{connect_to, exitcode, extract_address_value};
+use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{help, CommandGlobalOpts};
 use clap::Args;
-use minicbor::Decoder;
-use ockam::{Context, Route};
+use ockam::Context;
 use ockam_api::{
     error::ApiError,
     nodes::models::portal::{CreateOutlet, OutletStatus},
-    nodes::NODEMANAGER_ADDR,
     route_to_multiaddr,
 };
-use ockam_core::api::{Request, Response, Status};
+use ockam_core::api::{Request, RequestBuilder};
 use ockam_core::route;
 use std::net::SocketAddr;
 
@@ -57,65 +55,40 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
-        let cfg = &options.config;
-        let at = &self.at.clone();
-        let node = extract_address_value(at)?;
-        let port = cfg.get_node_port(&node).unwrap();
-
-        let command = CreateCommand {
-            from: extract_address_value(&self.from)?,
-            ..self
-        };
-
-        connect_to(port, command, create_outlet);
-        Ok(())
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(run_impl, (options, self))
     }
 }
 
-pub async fn create_outlet(
+pub async fn run_impl(
     ctx: Context,
-    cmd: CreateCommand,
-    mut base_route: Route,
-) -> anyhow::Result<()> {
-    let route = base_route.modify().append(NODEMANAGER_ADDR);
-    let message = make_api_request(cmd)?;
-    let response: Vec<u8> = ctx.send_and_receive(route, message).await?;
+    (options, cmd): (CommandGlobalOpts, CreateCommand),
+) -> crate::Result<()> {
+    let node = extract_address_value(&cmd.at)?;
+    let mut rpc = Rpc::background(&ctx, &options, &node)?;
 
-    let (response, OutletStatus { worker_addr, .. }) = parse_outlet_status(&response)?;
+    let cmd = CreateCommand {
+        from: extract_address_value(&cmd.from)?,
+        ..cmd
+    };
+
+    rpc.request(make_api_request(cmd)?).await?;
+    let OutletStatus { worker_addr, .. } = rpc.parse_response()?;
+
     let addr = route_to_multiaddr(&route![worker_addr.to_string()])
         .ok_or_else(|| ApiError::generic("Invalid Outlet Address"))?;
-
-    match response.status() {
-        Some(Status::Ok) => {
-            println!("{}", addr);
-        }
-        _ => {
-            eprintln!("An unknown error occurred while creating an outlet...");
-            std::process::exit(exitcode::UNAVAILABLE);
-        }
-    }
+    println!("{}", addr);
 
     Ok(())
 }
 
 /// Construct a request to create a tcp outlet
-fn make_api_request(cmd: CreateCommand) -> ockam::Result<Vec<u8>> {
-    let tcp_addr = &cmd.to.to_string();
+fn make_api_request<'a>(cmd: CreateCommand) -> crate::Result<RequestBuilder<'a, CreateOutlet<'a>>> {
+    let tcp_addr = cmd.to.to_string();
     let worker_addr = cmd.from;
     let alias = (None::<String>).as_ref().map(|x| x.as_str().into());
     let payload = CreateOutlet::new(tcp_addr, worker_addr, alias, cmd.check_credential);
 
-    let mut buf = vec![];
-    Request::post("/node/outlet")
-        .body(payload)
-        .encode(&mut buf)?;
-    Ok(buf)
-}
-
-/// Parse the returned status response
-fn parse_outlet_status(response: &[u8]) -> ockam::Result<(Response, OutletStatus<'_>)> {
-    let mut decoder = Decoder::new(response);
-    let response = decoder.decode::<Response>()?;
-    Ok((response, decoder.decode::<OutletStatus>()?))
+    let request = Request::post("/node/outlet").body(payload);
+    Ok(request)
 }
