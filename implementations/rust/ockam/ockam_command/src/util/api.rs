@@ -93,16 +93,6 @@ pub(crate) fn delete_tcp_connection(
     Ok(buf)
 }
 
-/// Construct a request to delete node tcp connection
-pub(crate) fn delete_tcp_listener(cmd: &crate::tcp::listener::DeleteCommand) -> Result<Vec<u8>> {
-    let mut buf = vec![];
-    Request::delete("/node/tcp/listener")
-        .body(models::transport::DeleteTransport::new(&cmd.id, cmd.force))
-        .encode(&mut buf)?;
-
-    Ok(buf)
-}
-
 /// Construct a request to export Identity
 pub(crate) fn long_identity() -> Result<Vec<u8>> {
     let mut buf = vec![];
