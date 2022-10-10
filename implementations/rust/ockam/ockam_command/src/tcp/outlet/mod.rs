@@ -19,7 +19,7 @@ pub enum TcpOutletSubCommand {
 impl TcpOutletCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         match self.subcommand {
-            TcpOutletSubCommand::Create(c) => c.run(options).unwrap(),
+            TcpOutletSubCommand::Create(c) => c.run(options),
         }
     }
 }
