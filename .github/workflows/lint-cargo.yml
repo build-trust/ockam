@@ -1,0 +1,47 @@
+name: Lint Cargo.lock
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: SHA to test workflow
+  pull_request:
+    paths:
+      - "**.toml"
+      - "**/Cargo.lock"
+  push:
+    paths:
+      - "**.toml"
+      - "**/Cargo.lock"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint_cargo_lock:
+    name: Rust - Lint Cargo.lock
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/build-trust/ockam-builder@sha256:e43dd94652096b03cc472a3c709c7335e8b166cab77b7a7b56f88fa38f3d24cc
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
+      - name: Check whether Cargo.lock is same as CI-generated Cargo.lock
+        run: |
+          old_hash=`sha384sum Cargo.lock`
+          rm Cargo.lock
+          RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
+          expected_hash=`sha384sum Cargo.lock`
+          if [ "$old_hash" = "$expected_hash" ]; then
+              echo "Cargo.lock hash matches CI-generated Cargo.lock hash"
+          else
+              echo "Cargo.lock hash does not match CI-generated Cargo.lock hash. Expected: $expected_hash Got: $old_hash" && exit 1
+          fi
+      - uses: ./.github/actions/cargo_target_dir_pre_cache
