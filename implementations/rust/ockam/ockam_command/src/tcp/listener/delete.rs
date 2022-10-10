@@ -1,14 +1,13 @@
+use anyhow::anyhow;
 use clap::Args;
-use ockam::{Context, Route};
-use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{Response, Status};
 
 use crate::util::extract_address_value;
-use crate::{
-    node::NodeOpts,
-    util::{api, connect_to, exitcode},
-    CommandGlobalOpts,
-};
+use ockam::Context;
+use ockam_api::nodes::models;
+use ockam_core::api::Request;
+
+use crate::util::{node_rpc, Rpc};
+use crate::{exitcode, node::NodeOpts, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
@@ -25,43 +24,30 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        let cfg = &options.config;
-        let node =
-            extract_address_value(&self.node_opts.api_node).unwrap_or_else(|_| "".to_string());
-        let port = cfg.get_node_port(&node).unwrap();
-        connect_to(port, self, delete_listener);
+        node_rpc(run_impl, (options, self));
     }
 }
 
-pub async fn delete_listener(
+async fn run_impl(
     ctx: Context,
-    cmd: DeleteCommand,
-    mut base_route: Route,
-) -> anyhow::Result<()> {
-    let resp: Vec<u8> = match ctx
-        .send_and_receive(
-            base_route.modify().append(NODEMANAGER_ADDR),
-            api::delete_tcp_listener(&cmd)?,
-        )
-        .await
-    {
-        Ok(sr_msg) => sr_msg,
-        Err(e) => {
-            eprintln!("Wasn't able to send or receive `Message`: {}", e);
-            std::process::exit(exitcode::IOERR);
+    (opts, cmd): (CommandGlobalOpts, DeleteCommand),
+) -> crate::Result<()> {
+    let node = extract_address_value(&cmd.node_opts.api_node)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+    let req = Request::delete("/node/tcp/listener")
+        .body(models::transport::DeleteTransport::new(&cmd.id, cmd.force));
+    rpc.request(req).await?;
+    if rpc.parse_response::<Vec<u8>>().is_ok() {
+        println!("Tcp listener `{}` successfully deleted", cmd.id);
+        Ok(())
+    } else {
+        let mut msg = "Failed to delete tcp listener".to_string();
+        if !cmd.force {
+            msg.push_str("\nYou may have to provide --force to delete the API transport");
         }
-    };
-    let r: Response = api::parse_response(&resp)?;
-
-    match r.status() {
-        Some(Status::Ok) => println!("Tcp listener `{}` successfully delete", cmd.id),
-        _ => {
-            eprintln!("Failed to delete tcp listener");
-            if !cmd.force {
-                eprintln!("You may have to provide --force to delete the API transport");
-                std::process::exit(exitcode::UNAVAILABLE);
-            }
-        }
+        Err(crate::error::Error::new(
+            exitcode::UNAVAILABLE,
+            anyhow!(msg),
+        ))
     }
-    Ok(())
 }
