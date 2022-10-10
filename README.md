@@ -69,7 +69,7 @@ After the binary downloads, please move it to a location in your shell's `$PATH`
 Let's build a solution for a very common topology. A application service and an application client running
 in two private networks wish to communicate with each other without exposing ports on the Internet.
 
-```bash
+``bash
 # Create a relay node that will relay end-to-end encrypted messages
 ockam node create relay
 
