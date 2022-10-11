@@ -523,6 +523,25 @@ teardown() {
   assert_success
 }
 
+@test "project addons - list addons" {
+  skip_if_orchestrator_tests_not_enabled
+
+  run --separate-stderr $OCKAM project addon list --project default
+
+  assert_success
+  assert_output "Id: okta\n  Enabled: false"
+}
+
+@test "project addons - configure/disable okta" {
+  skip_if_orchestrator_tests_not_enabled
+
+  run --separate-stderr $OCKAM project addon configure okta --project default --tenant http://my.okta.com --cert certrawcontents
+  assert_success
+
+  run --separate-stderr $OCKAM project addon disable --project default --addon okta
+  assert_success
+}
+
 function skip_if_orchestrator_tests_not_enabled() {
   # shellcheck disable=SC2031
   if [ -z "${ORCHESTRATOR_TESTS}" ]; then

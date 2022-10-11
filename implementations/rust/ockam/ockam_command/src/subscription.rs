@@ -148,7 +148,7 @@ impl Output for Subscription<'_> {
     }
 }
 
-impl<'a> Output for Vec<Subscription<'a>> {
+impl Output for Vec<Subscription<'_>> {
     fn output(&self) -> anyhow::Result<String> {
         if self.is_empty() {
             return Ok("No subscriptions found".to_string());

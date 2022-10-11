@@ -687,6 +687,15 @@ impl NodeManagerWorker {
             }
             (Put, ["subscription", id, "unsubscribe"]) => self.unsubscribe(ctx, dec, id).await?,
 
+            // ==*== Addons ==*==
+            (Get, [project_id, "addons"]) => self.list_addons(ctx, dec, project_id).await?,
+            (Put, [project_id, "addons", addon_id]) => {
+                self.configure_addon(ctx, dec, project_id, addon_id).await?
+            }
+            (Delete, [project_id, "addons", addon_id]) => {
+                self.disable_addon(ctx, dec, project_id, addon_id).await?
+            }
+
             // ==*== Messages ==*==
             (Post, ["v0", "message"]) => self.send_message(ctx, req, dec).await?,
 
