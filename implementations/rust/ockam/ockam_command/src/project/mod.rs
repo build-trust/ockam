@@ -1,4 +1,5 @@
 mod add_enroller;
+mod addon;
 mod create;
 mod delete;
 mod delete_enroller;
@@ -16,6 +17,7 @@ use clap::{Args, Subcommand};
 
 pub use crate::credential::get_credential::GetCredentialCommand;
 pub use add_enroller::AddEnrollerCommand;
+pub use addon::AddonCommand;
 pub use create::CreateCommand;
 pub use delete::DeleteCommand;
 pub use delete_enroller::DeleteEnrollerCommand;
@@ -46,6 +48,7 @@ pub enum ProjectSubcommand {
     ListEnrollers(ListEnrollersCommand),
     DeleteEnroller(DeleteEnrollerCommand),
     Enroll(EnrollCommand),
+    Addon(AddonCommand),
 }
 
 impl ProjectCommand {
@@ -60,6 +63,7 @@ impl ProjectCommand {
             ProjectSubcommand::DeleteEnroller(c) => c.run(options),
             ProjectSubcommand::Enroll(c) => c.run(options),
             ProjectSubcommand::Info(c) => c.run(options),
+            ProjectSubcommand::Addon(c) => c.run(options),
         }
     }
 }
