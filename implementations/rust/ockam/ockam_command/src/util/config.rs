@@ -291,8 +291,8 @@ impl OckamConfig {
         trace! {
             id = %proj.id,
             name = %name,
-            route = %proj.node_route,
-            identity_id = %proj.identity_id,
+            route = ?proj.node_route,
+            identity_id = ?proj.identity_id,
             "Project stored in lookup table"
         };
         inner.lookup.set_project(name, proj);

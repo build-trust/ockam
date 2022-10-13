@@ -458,7 +458,17 @@ impl NodeManager {
 
     fn resolve_project(&self, name: &str) -> Result<(MultiAddr, IdentityIdentifier)> {
         if let Some(info) = self.projects.get(name) {
-            Ok((info.node_route.clone(), info.identity_id.clone()))
+            let node_route = info
+                .node_route
+                .as_ref()
+                .ok_or_else(|| ApiError::generic("Project should have node route set"))?
+                .clone();
+            let identity_id = info
+                .identity_id
+                .as_ref()
+                .ok_or_else(|| ApiError::generic("Project should have identity set"))?
+                .clone();
+            Ok((node_route, identity_id))
         } else {
             Err(ApiError::message(format!("project {name} not found")))
         }
