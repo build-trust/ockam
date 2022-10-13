@@ -2,7 +2,7 @@ defmodule Ockam.Session.Handshake do
   @moduledoc """
   Session handshake behaviour.
 
-  Used in `Ockam.Session.Pluggable` and `Ockam.Session.Separate` modules
+  Used in `Ockam.Session.Pluggable` modules
 
   """
   @type message() :: Ockam.Router.message()
