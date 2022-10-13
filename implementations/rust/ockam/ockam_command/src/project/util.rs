@@ -67,7 +67,15 @@ pub async fn get_projects_secure_channels_from_config_lookup(
             let p = cfg_lookup
                 .get_project(name)
                 .context(format!("Failed to get project {} from config lookup", name))?;
-            (&p.node_route, p.identity_id.to_string())
+            let id = p
+                .identity_id
+                .as_ref()
+                .context("Project should have identity set")?;
+            let node_route = p
+                .node_route
+                .as_ref()
+                .context("Invalid project node route")?;
+            (node_route, id.to_string())
         };
         sc.push(
             create_secure_channel_to_project(
@@ -132,6 +140,9 @@ pub async fn check_project_readiness<'a>(
     tcp: Option<&TcpTransport>,
     mut project: Project<'a>,
 ) -> Result<Project<'a>> {
+    // Persist project config prior to checking readiness which might take a while
+    config::set_project_unchecked(&opts.config, &project).await?;
+
     if !project.is_ready() {
         print!("\nProject created. Waiting until it's operative...");
         let cloud_route = &cloud_opts.route();
@@ -222,23 +233,8 @@ pub mod config {
 
     use super::*;
 
-    async fn set(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
-        if !project.is_ready() {
-            trace!("Project is not ready yet {}", project.output()?);
-            return Err(anyhow!(
-                "Project is not ready yet, wait a few seconds and try again"
-            ));
-        }
-        let proute: MultiAddr = project
-            .access_route
-            .as_ref()
-            .try_into()
-            .context("Invalid project node route")?;
-        let pid = project
-            .identity
-            .as_ref()
-            .context("Project should have identity set")?;
-        let authority = if let Some(r) = &project.authority_access_route {
+    async fn get_project_authority(project: &Project<'_>) -> Result<Option<ProjectAuthority>> {
+        if let Some(r) = &project.authority_access_route {
             let rte = MultiAddr::try_from(&**r).context("Invalid project authority address")?;
             let a = project
                 .authority_identity
@@ -247,16 +243,61 @@ pub mod config {
             let a = hex::decode(&**a).context("Invalid project authority")?;
             let v = Vault::default();
             let p = PublicIdentity::import(&a, &v).await?;
-            Some(ProjectAuthority::new(p.identifier().clone(), rte, a))
+            Ok(Some(ProjectAuthority::new(p.identifier().clone(), rte, a)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn set(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
+        if !project.is_ready() {
+            trace!("Project is not ready yet {}", project.output()?);
+            return Err(anyhow!(
+                "Project is not ready yet, wait a few seconds and try again"
+            ));
+        }
+        let node_route: MultiAddr = project
+            .access_route
+            .as_ref()
+            .try_into()
+            .context("Invalid project node route")?;
+        let pid = project
+            .identity
+            .as_ref()
+            .context("Project should have identity set")?;
+        let authority = get_project_authority(project).await?;
+        config.set_project_alias(
+            project.name.to_string(),
+            ProjectLookup {
+                node_route: Some(node_route),
+                id: project.id.to_string(),
+                identity_id: Some(pid.clone()),
+                authority,
+            },
+        )?;
+        Ok(())
+    }
+
+    // Set the project in config *without* waiting for the project to be ready
+    pub async fn set_project_unchecked(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
+        let authority = get_project_authority(project).await?;
+        let node_route: Option<MultiAddr> = if !project.access_route.is_empty() {
+            Some(
+                project
+                    .access_route
+                    .as_ref()
+                    .try_into()
+                    .context("Invalid project node route")?,
+            )
         } else {
             None
         };
         config.set_project_alias(
             project.name.to_string(),
             ProjectLookup {
-                node_route: proute,
+                node_route,
                 id: project.id.to_string(),
-                identity_id: pid.clone(),
+                identity_id: project.identity.clone(),
                 authority,
             },
         )?;
