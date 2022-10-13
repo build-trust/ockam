@@ -59,7 +59,7 @@ jobs:
 
           # Only cache rust build if example blocks code was built
           if [[ ls target ]]; then
-            echo "::set-output name=is_cached::true"
+            echo "is_cached=true" >> $GITHUB_OUTPUT
           fi
 
       - uses: ./.github/actions/cargo_target_dir_pre_cache
