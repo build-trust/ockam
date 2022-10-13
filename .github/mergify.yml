@@ -75,6 +75,8 @@ pull_request_rules:
       - check-failure!=Test Ockam Command
       # semgrep.yml
       - check-failure!=Semgrep - Lint
+      # lint-cargo.yml
+      - check-failure!=Rust - Lint Cargo.lock
 
       ####
       # The following checks should not be pending
@@ -120,6 +122,8 @@ pull_request_rules:
       - check-pending!=Test Ockam Command
       # semgrep.yml
       - check-pending!=Semgrep - Lint
+      # lint-cargo.yml
+      - check-pending!=Rust - Lint Cargo.lock
 
       ####
       # The following checks should not be stale
@@ -165,3 +169,5 @@ pull_request_rules:
       - check-stale!=Test Ockam Command
       # semgrep.yml
       - check-stale!=Semgrep - Lint
+      # lint-cargo.yml
+      - check-stale!=Rust - Lint Cargo.lock
