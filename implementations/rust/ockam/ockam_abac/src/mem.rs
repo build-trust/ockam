@@ -84,7 +84,7 @@ mod tests {
         let condition = r#"
             (and (= resource.version "1.0.0")
                  (= subject.name "John")
-                 (member "John" resource.admins))
+                 (member? "John" resource.admins))
         "#;
 
         let action = Action::new("r");

@@ -16,18 +16,12 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
                     "or"  => eval_or(&es[1..], env),
                     "not" => eval_not(&es[1..], env),
                     "if"  => eval_if(&es[1..], env),
-                    "+"   => eval_arith(&es[1..], env, Op::Add),
-                    "*"   => eval_arith(&es[1..], env, Op::Mul),
-                    "-"   => eval_arith(&es[1..], env, Op::Sub),
-                    "/"   => eval_arith(&es[1..], env, Op::Div),
                     "<"   => eval_pred(&es[1..], env, "<",  |a, b| a < b),
-                    "<="  => eval_pred(&es[1..], env, "<=", |a, b| a <= b),
                     ">"   => eval_pred(&es[1..], env, ">",  |a, b| a > b),
-                    ">="  => eval_pred(&es[1..], env, ">=", |a, b| a >= b),
-                    "in" | "member" => eval_in(&es[1..], env),
-                    "="  | "eq?"    => eval_eq(&es[1..], env),
-                    "!=" | "ne?"    => eval_ne(&es[1..], env),
-                    _               => Err(EvalError::Unknown(id.to_string()))
+                    "="   => eval_eq(&es[1..], env),
+                    "!="  => eval_ne(&es[1..], env),
+                    "member?" => eval_in(&es[1..], env),
+                    _     => Err(EvalError::Unknown(id.to_string()))
                 }
             }
             [other, ..] => Err(EvalError::InvalidType(other.clone(), "expected (op ...)"))
@@ -38,13 +32,6 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
         }
         expr => Ok(expr.clone())
     }
-}
-
-enum Op {
-    Add,
-    Mul,
-    Sub,
-    Div,
 }
 
 fn eval_and(expr: &[Expr], env: &Env) -> Result<Expr, EvalError> {
@@ -89,58 +76,6 @@ fn eval_not(expr: &[Expr], env: &Env) -> Result<Expr, EvalError> {
     match eval(&expr[0], env)? {
         Expr::Bool(b) => Ok(Expr::Bool(!b)),
         other => Err(EvalError::InvalidType(other, "expected bool")),
-    }
-}
-
-fn eval_arith(expr: &[Expr], env: &Env, op: Op) -> Result<Expr, EvalError> {
-    match expr {
-        [] => match op {
-            Op::Add => Ok(Expr::Int(0)),
-            Op::Mul => Ok(Expr::Int(1)),
-            Op::Sub => Err(EvalError::malformed("- requires an argument")),
-            Op::Div => Err(EvalError::malformed("/ requires an argument")),
-        },
-        [a, ..] => match eval(a, env)? {
-            Expr::Int(mut i) => {
-                for e in &expr[1..] {
-                    match eval(e, env)? {
-                        Expr::Int(j) => match op {
-                            Op::Add => i = i.checked_add(j).ok_or(EvalError::Overflow)?,
-                            Op::Mul => i = i.checked_mul(j).ok_or(EvalError::Overflow)?,
-                            Op::Sub => i = i.checked_sub(j).ok_or(EvalError::Underflow)?,
-                            Op::Div => i = i.checked_div(j).ok_or(EvalError::Division)?,
-                        },
-                        other => return Err(EvalError::InvalidType(other, "expected int")),
-                    }
-                }
-                match op {
-                    Op::Sub if expr.len() == 1 => Ok(Expr::Int(-i)),
-                    Op::Div if expr.len() == 1 => {
-                        Ok(Expr::Int(1i64.checked_div(i).ok_or(EvalError::Division)?))
-                    }
-                    _ => Ok(Expr::Int(i)),
-                }
-            }
-            Expr::Float(mut i) => {
-                for e in &expr[1..] {
-                    match eval(e, env)? {
-                        Expr::Float(j) => match op {
-                            Op::Add => i += j,
-                            Op::Mul => i *= j,
-                            Op::Sub => i -= j,
-                            Op::Div => i /= j,
-                        },
-                        other => return Err(EvalError::InvalidType(other, "expected float")),
-                    }
-                }
-                match op {
-                    Op::Sub if expr.len() == 1 => Ok(Expr::Float(-i)),
-                    Op::Div if expr.len() == 1 => Ok(Expr::Float(1.0 / i)),
-                    _ => Ok(Expr::Float(i)),
-                }
-            }
-            other => Err(EvalError::InvalidType(other, "expected int")),
-        },
     }
 }
 

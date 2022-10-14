@@ -1,3 +1,4 @@
+use core::cmp::Ordering;
 use core::fmt;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::string::String;
@@ -6,7 +7,7 @@ use ockam_core::compat::vec::Vec;
 #[cfg(test)]
 use quickcheck::{Arbitrary, Gen};
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
 pub enum Expr {
     #[n(1)] Str   (#[n(0)] String),
@@ -16,6 +17,43 @@ pub enum Expr {
     #[n(5)] Ident (#[n(0)] String),
     #[n(6)] Seq   (#[n(0)] Vec<Expr>),
     #[n(7)] List  (#[n(0)] Vec<Expr>)
+}
+
+impl PartialEq for Expr {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Expr::Str(a), Expr::Str(b)) => a.eq(b),
+            (Expr::Bool(a), Expr::Bool(b)) => a.eq(b),
+            (Expr::Ident(a), Expr::Ident(b)) => a.eq(b),
+            (Expr::Seq(a), Expr::Seq(b)) => a.eq(b),
+            (Expr::List(a), Expr::List(b)) => a.eq(b),
+            (Expr::Int(a), Expr::Int(b)) => a.eq(b),
+            (Expr::Float(a), Expr::Float(b)) => a.eq(b),
+            (Expr::Int(a), Expr::Float(b)) => (*a as f64).eq(b),
+            (Expr::Float(a), Expr::Int(b)) => a.eq(&(*b as f64)),
+            _ => false,
+        }
+    }
+}
+
+impl PartialOrd for Expr {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (Expr::Str(a), Expr::Str(b)) => a.partial_cmp(b),
+            (Expr::Bool(a), Expr::Bool(b)) => a.partial_cmp(b),
+            (Expr::Ident(a), Expr::Ident(b)) => a.partial_cmp(b),
+            (Expr::Seq(a), Expr::Seq(b)) => match a.len().partial_cmp(&b.len())? {
+                Ordering::Equal => a.partial_cmp(b),
+                ordering => Some(ordering),
+            },
+            (Expr::List(a), Expr::List(b)) => a.partial_cmp(b),
+            (Expr::Int(a), Expr::Int(b)) => a.partial_cmp(b),
+            (Expr::Float(a), Expr::Float(b)) => a.partial_cmp(b),
+            (Expr::Int(a), Expr::Float(b)) => (*a as f64).partial_cmp(b),
+            (Expr::Float(a), Expr::Int(b)) => a.partial_cmp(&(*b as f64)),
+            _ => None,
+        }
+    }
 }
 
 impl Expr {
@@ -168,6 +206,7 @@ impl Arbitrary for Expr {
 mod tests {
     use super::Expr;
     use crate::parser::parse;
+    use core::cmp::Ordering;
     use ockam_core::compat::string::ToString;
     use quickcheck::{Gen, QuickCheck};
 
@@ -180,6 +219,168 @@ mod tests {
         }
         QuickCheck::new()
             .gen(Gen::new(4))
+            .tests(1000)
+            .min_tests_passed(1000)
             .quickcheck(property as fn(_) -> bool)
+    }
+
+    #[test]
+    fn symm_eq() {
+        fn property(a: Expr, b: Expr) {
+            if a == b {
+                assert_eq!(b, a);
+                assert_eq!(a.partial_cmp(&b), Some(Ordering::Equal));
+                assert_eq!(b.partial_cmp(&a), Some(Ordering::Equal))
+            }
+        }
+        QuickCheck::new()
+            .gen(Gen::new(4))
+            .tests(1000)
+            .min_tests_passed(1000)
+            .quickcheck(property as fn(_, _))
+    }
+
+    #[test]
+    fn trans_eq() {
+        fn property(a: Expr, b: Expr, c: Expr) {
+            if a == b && b == c {
+                assert_eq!(a, c)
+            }
+        }
+        QuickCheck::new()
+            .gen(Gen::new(4))
+            .tests(1000)
+            .min_tests_passed(1000)
+            .quickcheck(property as fn(_, _, _))
+    }
+
+    #[test]
+    fn not_eq() {
+        fn property(a: Expr, b: Expr) {
+            if a != b {
+                assert!(!(a == b))
+            }
+            if !(a == b) {
+                assert!(a != b)
+            }
+        }
+        QuickCheck::new()
+            .gen(Gen::new(4))
+            .tests(1000)
+            .min_tests_passed(1000)
+            .quickcheck(property as fn(_, _))
+    }
+
+    #[test]
+    fn lt() {
+        fn property(a: Expr, b: Expr) {
+            if a.partial_cmp(&b) == Some(Ordering::Less) {
+                assert!(a < b)
+            }
+            if a < b {
+                assert_eq!(a.partial_cmp(&b), Some(Ordering::Less))
+            }
+        }
+        QuickCheck::new()
+            .gen(Gen::new(4))
+            .tests(1000)
+            .min_tests_passed(1000)
+            .quickcheck(property as fn(_, _))
+    }
+
+    #[test]
+    fn lt_eq() {
+        fn property(a: Expr, b: Expr) {
+            if a <= b {
+                assert!(a < b || a == b)
+            }
+            if a < b || a == b {
+                assert!(a <= b)
+            }
+        }
+        QuickCheck::new()
+            .gen(Gen::new(4))
+            .tests(1000)
+            .min_tests_passed(1000)
+            .quickcheck(property as fn(_, _))
+    }
+
+    #[test]
+    fn gt() {
+        fn property(a: Expr, b: Expr) {
+            if a.partial_cmp(&b) == Some(Ordering::Greater) {
+                assert!(a > b)
+            }
+            if a > b {
+                assert_eq!(a.partial_cmp(&b), Some(Ordering::Greater))
+            }
+        }
+        QuickCheck::new()
+            .gen(Gen::new(4))
+            .tests(1000)
+            .min_tests_passed(1000)
+            .quickcheck(property as fn(_, _))
+    }
+
+    #[test]
+    fn gt_eq() {
+        fn property(a: Expr, b: Expr) {
+            if a >= b {
+                assert!(a > b || a == b)
+            }
+            if a > b || a == b {
+                assert!(a >= b)
+            }
+        }
+        QuickCheck::new()
+            .gen(Gen::new(4))
+            .tests(1000)
+            .min_tests_passed(1000)
+            .quickcheck(property as fn(_, _))
+    }
+
+    #[test]
+    fn trans_lt() {
+        fn property(a: Expr, b: Expr, c: Expr) {
+            if a < b && b < c {
+                assert!(a < c)
+            }
+        }
+        QuickCheck::new()
+            .gen(Gen::new(4))
+            .tests(1000)
+            .min_tests_passed(1000)
+            .quickcheck(property as fn(_, _, _))
+    }
+
+    #[test]
+    fn trans_gt() {
+        fn property(a: Expr, b: Expr, c: Expr) {
+            if a > b && b > c {
+                assert!(a > c)
+            }
+        }
+        QuickCheck::new()
+            .gen(Gen::new(4))
+            .tests(1000)
+            .min_tests_passed(1000)
+            .quickcheck(property as fn(_, _, _))
+    }
+
+    #[test]
+    fn dual() {
+        fn property(a: Expr, b: Expr) {
+            if a > b {
+                assert!(b < a)
+            }
+            if b < a {
+                assert!(a > b)
+            }
+        }
+        QuickCheck::new()
+            .gen(Gen::new(4))
+            .tests(1000)
+            .min_tests_passed(1000)
+            .quickcheck(property as fn(_, _))
     }
 }
