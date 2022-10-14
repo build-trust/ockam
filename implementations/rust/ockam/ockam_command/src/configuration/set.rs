@@ -1,4 +1,6 @@
-use crate::{util::exitcode, CommandGlobalOpts};
+use anyhow::anyhow;
+
+use crate::{util::exitcode, CommandGlobalOpts, Error};
 use clap::Args;
 use ockam_api::config::lookup::InternetAddress;
 
@@ -12,21 +14,23 @@ pub struct SetCommand {
 
 impl SetCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        let target_addr = match InternetAddress::new(&self.target) {
-            Some(addr) => addr,
-            None => {
-                eprintln!(
-                    "Invalid alias address!  Please provide an address in the following schema: <address>:<port>. \
-                     IPv6, IPv4, and DNS addresses are supported!"
-                );
-                std::process::exit(exitcode::USAGE);
-            }
-        };
-
-        options.config.set_node_alias(self.name, target_addr);
-        if let Err(e) = options.config.persist_config_updates() {
+        if let Err(e) = run_impl(options, self) {
             eprintln!("{}", e);
-            std::process::exit(exitcode::IOERR);
+            std::process::exit(e.code());
         }
     }
+}
+
+fn run_impl(opts: CommandGlobalOpts, cmd: SetCommand) -> crate::Result<()> {
+    let target_addr = InternetAddress::new(&cmd.target).ok_or_else(|| {
+        let message = anyhow!("Invalid alias address! Please provide an address in the following schema: <address>:<port>. \
+                     IPv6, IPv4, and DNS addresses are supported!");
+        Error::new(exitcode::USAGE, message)
+    })?;
+
+    opts.config.set_node_alias(cmd.name, target_addr);
+    opts.config.persist_config_updates().map_err(|e| {
+        let message = format!("Failed to persist config updates -- {}", e);
+        Error::new(exitcode::IOERR, anyhow!(message))
+    })
 }
