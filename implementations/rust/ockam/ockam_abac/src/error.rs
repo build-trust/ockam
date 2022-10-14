@@ -26,9 +26,6 @@ pub enum EvalError {
     Unknown(String),
     InvalidType(Expr, &'static str),
     Malformed(String),
-    Overflow,
-    Underflow,
-    Division,
 }
 
 impl EvalError {
@@ -80,9 +77,6 @@ impl fmt::Display for EvalError {
             EvalError::Unknown(id) => write!(f, "unknown operator: {id}"),
             EvalError::InvalidType(e, m) => write!(f, "invalid type of expression {e}: {m}"),
             EvalError::Malformed(m) => write!(f, "malformed expression: {m}"),
-            EvalError::Overflow => f.write_str("numeric overflow"),
-            EvalError::Underflow => f.write_str("numeric underflow"),
-            EvalError::Division => f.write_str("numeric division error"),
         }
     }
 }
