@@ -1,10 +1,10 @@
 use crate::node::NodeOpts;
-use crate::util::{api, node_rpc, Rpc};
+use crate::util::{api, node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 use anyhow::{anyhow, Result};
 use clap::{Args, Subcommand};
 use minicbor::Encode;
-use ockam::Context;
+use ockam::{Context, TcpTransport};
 use ockam_api::DefaultAddress;
 use ockam_core::api::{RequestBuilder, Status};
 use std::path::{Path, PathBuf};
@@ -98,23 +98,33 @@ async fn run_impl(
     cmd: StartCommand,
 ) -> crate::Result<()> {
     let node_name = &cmd.node_opts.api_node;
+    let tcp = TcpTransport::create(ctx).await?;
     match cmd.create_subcommand {
         StartSubCommand::Vault { addr, .. } => {
-            start_vault_service(ctx, &opts, node_name, &addr).await?
+            start_vault_service(ctx, &opts, node_name, &addr, Some(&tcp)).await?
         }
         StartSubCommand::Identity { addr, .. } => {
-            start_identity_service(ctx, &opts, node_name, &addr).await?
+            start_identity_service(ctx, &opts, node_name, &addr, Some(&tcp)).await?
         }
         StartSubCommand::Authenticated { addr, .. } => {
             let req = api::start_authenticated_service(&addr);
-            start_service_impl(ctx, &opts, node_name, &addr, "Authenticated", req).await?
+            start_service_impl(
+                ctx,
+                &opts,
+                node_name,
+                &addr,
+                "Authenticated",
+                req,
+                Some(&tcp),
+            )
+            .await?
         }
         StartSubCommand::Verifier { addr, .. } => {
-            start_verifier_service(ctx, &opts, node_name, &addr).await?
+            start_verifier_service(ctx, &opts, node_name, &addr, Some(&tcp)).await?
         }
         StartSubCommand::Credentials { addr, oneway, .. } => {
             let req = api::start_credentials_service(&addr, oneway);
-            start_service_impl(ctx, &opts, node_name, &addr, "Credentials", req).await?
+            start_service_impl(ctx, &opts, node_name, &addr, "Credentials", req, Some(&tcp)).await?
         }
         StartSubCommand::Authenticator {
             addr,
@@ -122,7 +132,16 @@ async fn run_impl(
             project,
             ..
         } => {
-            start_authenticator_service(ctx, &opts, node_name, &addr, &enrollers, &project).await?
+            start_authenticator_service(
+                ctx,
+                &opts,
+                node_name,
+                &addr,
+                &enrollers,
+                &project,
+                Some(&tcp),
+            )
+            .await?
         }
     }
 
@@ -137,11 +156,12 @@ async fn start_service_impl<T>(
     serv_addr: &str,
     serv_name: &str,
     req: RequestBuilder<'_, T>,
+    tcp: Option<&'_ TcpTransport>,
 ) -> Result<()>
 where
     T: Encode<()>,
 {
-    let mut rpc = Rpc::background(ctx, opts, node_name)?;
+    let mut rpc = RpcBuilder::new(ctx, opts, node_name).tcp(tcp)?.build();
     rpc.request(req).await?;
 
     let (res, dec) = rpc.check_response()?;
@@ -163,9 +183,10 @@ pub async fn start_vault_service(
     opts: &CommandGlobalOpts,
     node_name: &str,
     serv_addr: &str,
+    tcp: Option<&'_ TcpTransport>,
 ) -> Result<()> {
     let req = api::start_vault_service(serv_addr);
-    start_service_impl(ctx, opts, node_name, serv_addr, "Vault", req).await
+    start_service_impl(ctx, opts, node_name, serv_addr, "Vault", req, tcp).await
 }
 
 /// Public so `ockam_command::node::create` can use it.
@@ -174,9 +195,10 @@ pub async fn start_identity_service(
     opts: &CommandGlobalOpts,
     node_name: &str,
     serv_addr: &str,
+    tcp: Option<&'_ TcpTransport>,
 ) -> Result<()> {
     let req = api::start_identity_service(serv_addr);
-    start_service_impl(ctx, opts, node_name, serv_addr, "Identity", req).await
+    start_service_impl(ctx, opts, node_name, serv_addr, "Identity", req, tcp).await
 }
 
 /// Public so `ockam_command::node::create` can use it.
@@ -185,9 +207,10 @@ pub async fn start_verifier_service(
     opts: &CommandGlobalOpts,
     node_name: &str,
     serv_addr: &str,
+    tcp: Option<&'_ TcpTransport>,
 ) -> Result<()> {
     let req = api::start_verifier_service(serv_addr);
-    start_service_impl(ctx, opts, node_name, serv_addr, "Verifier", req).await
+    start_service_impl(ctx, opts, node_name, serv_addr, "Verifier", req, tcp).await
 }
 
 /// Public so `ockam_command::node::create` can use it.
@@ -198,7 +221,8 @@ pub async fn start_authenticator_service(
     serv_addr: &str,
     enrollers: &Path,
     project: &str,
+    tcp: Option<&'_ TcpTransport>,
 ) -> Result<()> {
     let req = api::start_authenticator_service(serv_addr, enrollers, project);
-    start_service_impl(ctx, opts, node_name, serv_addr, "Authenticator", req).await
+    start_service_impl(ctx, opts, node_name, serv_addr, "Authenticator", req, tcp).await
 }

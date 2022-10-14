@@ -269,13 +269,15 @@ async fn start_services(
     if let Some(cfg) = config.vault {
         if !cfg.disabled {
             println!("starting vault service ...");
-            start::start_vault_service(ctx, opts, &node_opts.api_node, &cfg.address).await?
+            start::start_vault_service(ctx, opts, &node_opts.api_node, &cfg.address, Some(tcp))
+                .await?
         }
     }
     if let Some(cfg) = config.identity {
         if !cfg.disabled {
             println!("starting identity service ...");
-            start::start_identity_service(ctx, opts, &node_opts.api_node, &cfg.address).await?
+            start::start_identity_service(ctx, opts, &node_opts.api_node, &cfg.address, Some(tcp))
+                .await?
         }
     }
     if let Some(cfg) = config.secure_channel_listener {
@@ -290,7 +292,8 @@ async fn start_services(
     if let Some(cfg) = config.verifier {
         if !cfg.disabled {
             println!("starting verifier service ...");
-            start::start_verifier_service(ctx, opts, &node_opts.api_node, &cfg.address).await?
+            start::start_verifier_service(ctx, opts, &node_opts.api_node, &cfg.address, Some(tcp))
+                .await?
         }
     }
     if let Some(cfg) = config.authenticator {
@@ -303,6 +306,7 @@ async fn start_services(
                 &cfg.address,
                 &cfg.enrollers,
                 &cfg.project,
+                Some(tcp),
             )
             .await?
         }
