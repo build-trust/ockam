@@ -18,8 +18,7 @@ use ockam_core::api::Status;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::check_project_readiness;
-use crate::project::util::config::set_project;
-use crate::space::util::config::set_space;
+use crate::space::util::config;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
 use crate::util::{api, node_rpc, RpcBuilder};
@@ -122,7 +121,7 @@ async fn default_space<'a>(
             .expect("already checked that is not empty")
             .to_owned()
     };
-    set_space(&opts.config, &default_space)?;
+    config::set_space(&opts.config, &default_space)?;
     println!("\n{}", default_space.output()?);
     Ok(default_space)
 }
@@ -165,7 +164,6 @@ async fn default_project<'a>(
     };
     let project =
         check_project_readiness(ctx, opts, cloud_opts, node_name, None, default_project).await?;
-    set_project(&opts.config, &project).await?;
     println!("{}", project.output()?);
     Ok(project)
 }
