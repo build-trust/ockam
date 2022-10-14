@@ -141,7 +141,7 @@ pub async fn check_project_readiness<'a>(
     mut project: Project<'a>,
 ) -> Result<Project<'a>> {
     // Persist project config prior to checking readiness which might take a while
-    config::set_project_unchecked(&opts.config, &project).await?;
+    config::set_project_id(&opts.config, &project).await?;
 
     if !project.is_ready() {
         print!("\nProject created. Waiting until it's operative...");
@@ -221,6 +221,8 @@ pub async fn check_project_readiness<'a>(
         println!();
     }
     std::io::stdout().flush()?;
+    // Persist project config with all its fields
+    config::set_project(&opts.config, &project).await?;
     Ok(project)
 }
 
@@ -233,7 +235,9 @@ pub mod config {
 
     use super::*;
 
-    async fn get_project_authority(project: &Project<'_>) -> Result<Option<ProjectAuthority>> {
+    pub(super) async fn get_project_authority(
+        project: &Project<'_>,
+    ) -> Result<Option<ProjectAuthority>> {
         if let Some(r) = &project.authority_access_route {
             let rte = MultiAddr::try_from(&**r).context("Invalid project authority address")?;
             let a = project
@@ -278,29 +282,17 @@ pub mod config {
         Ok(())
     }
 
-    // Set the project in config *without* waiting for the project to be ready
-    pub async fn set_project_unchecked(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
-        let authority = get_project_authority(project).await?;
-        let node_route: Option<MultiAddr> = if !project.access_route.is_empty() {
-            Some(
-                project
-                    .access_route
-                    .as_ref()
-                    .try_into()
-                    .context("Invalid project node route")?,
-            )
-        } else {
-            None
-        };
+    pub(super) async fn set_project_id(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
         config.set_project_alias(
             project.name.to_string(),
             ProjectLookup {
-                node_route,
+                node_route: None,
                 id: project.id.to_string(),
-                identity_id: project.identity.clone(),
-                authority,
+                identity_id: None,
+                authority: None,
             },
         )?;
+        config.persist_config_updates()?;
         Ok(())
     }
 
