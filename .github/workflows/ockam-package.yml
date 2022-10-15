@@ -54,7 +54,7 @@ jobs:
         run: |
           tag_name="${{ github.event.inputs.tag }}"
           version=${tag_name:7}
-          echo ::set-output name=image::"ghcr.io/${ORGANIZATION}/$ARTIFACT_NAME:${version}-draft"
+          echo "image=ghcr.io/${ORGANIZATION}/$ARTIFACT_NAME:${version}-draft" >> $GITHUB_OUTPUT
 
       - name: Update Docker Template
         shell: bash
@@ -126,7 +126,7 @@ jobs:
         run: |
           tag_name="${{ github.event.inputs.tag }}"
           version=${tag_name:7}
-          echo ::set-output name=version::"${version}"
+          echo "version=${version}" >> $GITHUB_OUTPUT
 
       - name: Deploy Latest Image
         shell: bash
