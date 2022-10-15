@@ -3,6 +3,7 @@ use crate::{Action, Key, Resource, Subject, Value};
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use serde::{Deserialize, Serialize};
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::vec;
 
 /// Pimitive conditional operators used to construct ABAC policies.

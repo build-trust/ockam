@@ -6,6 +6,7 @@ use ockam_identity::IdentityIdentifier;
 
 use serde::{Deserialize, Serialize};
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::format;
 use core::fmt;
 
