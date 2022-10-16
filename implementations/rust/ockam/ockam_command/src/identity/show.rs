@@ -1,10 +1,13 @@
-use crate::util::{connect_to, exitcode, extract_address_value};
+use crate::node::util::delete_embedded_node;
+use crate::node::NodeOpts;
+use crate::util::output::Output;
+use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
-use crate::{node::NodeOpts, util::api};
 use clap::Args;
-use ockam::{Context, Route};
-use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::Status;
+use core::fmt::Write;
+use ockam::Context;
+use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
+use ockam_core::api::Request;
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -15,63 +18,42 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, options: CommandGlobalOpts) -> anyhow::Result<()> {
-        let cfg = options.config;
-        let node = extract_address_value(&self.node_opts.api_node)?;
-        let port = cfg.get_node_port(&node).unwrap();
-
-        connect_to(port, self, show_identity);
-
-        Ok(())
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(run_impl, (options, self))
     }
 }
 
-pub async fn show_identity(
+async fn run_impl(
     ctx: Context,
-    cmd: ShowCommand,
-    mut base_route: Route,
-) -> anyhow::Result<()> {
+    (opts, cmd): (CommandGlobalOpts, ShowCommand),
+) -> crate::Result<()> {
+    let node_name = extract_address_value(&cmd.node_opts.api_node)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     if cmd.full {
-        let resp: Vec<u8> = ctx
-            .send_and_receive(
-                base_route.modify().append(NODEMANAGER_ADDR),
-                api::long_identity()?,
-            )
-            .await?;
-
-        let (response, result) = api::parse_long_identity_response(&resp)?;
-
-        match response.status() {
-            Some(Status::Ok) => {
-                println!("{}", hex::encode(result.identity.0.as_ref()))
-            }
-            _ => {
-                eprintln!("An error occurred while exporting Identity",);
-                std::process::exit(exitcode::IOERR);
-            }
-        }
-
-        Ok(())
+        let req = Request::post("/node/identity/actions/show/long");
+        rpc.request(req).await?;
+        rpc.parse_and_print_response::<LongIdentityResponse>()?;
     } else {
-        let resp: Vec<u8> = ctx
-            .send_and_receive(
-                base_route.modify().append(NODEMANAGER_ADDR),
-                api::short_identity().to_vec()?,
-            )
-            .await?;
+        let req = Request::post("/node/identity/actions/show/short");
+        rpc.request(req).await?;
+        rpc.parse_and_print_response::<ShortIdentityResponse>()?;
+    }
+    delete_embedded_node(&opts.config, &node_name).await;
+    Ok(())
+}
 
-        let (response, result) = api::parse_short_identity_response(&resp)?;
+impl Output for LongIdentityResponse<'_> {
+    fn output(&self) -> anyhow::Result<String> {
+        let mut w = String::new();
+        write!(w, "{}", hex::encode(self.identity.0.as_ref()))?;
+        Ok(w)
+    }
+}
 
-        match response.status() {
-            Some(Status::Ok) => {
-                println!("{}", result.identity_id)
-            }
-            _ => {
-                eprintln!("An error occurred while getting Identity",);
-                std::process::exit(exitcode::IOERR);
-            }
-        }
-
-        Ok(())
+impl Output for ShortIdentityResponse<'_> {
+    fn output(&self) -> anyhow::Result<String> {
+        let mut w = String::new();
+        write!(w, "{}", self.identity_id)?;
+        Ok(w)
     }
 }

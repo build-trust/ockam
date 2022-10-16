@@ -75,6 +75,15 @@ teardown() {
   assert_success
 }
 
+@test "create a node and show its identity" {
+  run $OCKAM node create n1
+  assert_success
+
+  run $OCKAM identity show --node n1
+  assert_success
+  assert_output --regexp '^P'
+}
+
 @test "create a node with a name and do show on it" {
   run $OCKAM node create n1
   assert_success
