@@ -94,13 +94,6 @@ pub(crate) fn delete_tcp_connection(
     Ok(buf)
 }
 
-/// Construct a request to export Identity
-pub(crate) fn long_identity() -> Result<Vec<u8>> {
-    let mut buf = vec![];
-    Request::post("/node/identity/actions/show/long").encode(&mut buf)?;
-    Ok(buf)
-}
-
 /// Construct a request to print Identity Id
 pub(crate) fn short_identity() -> RequestBuilder<'static, ()> {
     Request::post("/node/identity/actions/show/short")
@@ -391,17 +384,6 @@ pub(crate) fn parse_transport_status(
     Ok((
         response,
         dec.decode::<models::transport::TransportStatus>()?,
-    ))
-}
-
-pub(crate) fn parse_long_identity_response(
-    resp: &[u8],
-) -> Result<(Response, models::identity::LongIdentityResponse<'_>)> {
-    let mut dec = Decoder::new(resp);
-    let response = dec.decode::<Response>()?;
-    Ok((
-        response,
-        dec.decode::<models::identity::LongIdentityResponse>()?,
     ))
 }
 
