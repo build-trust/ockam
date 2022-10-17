@@ -2334,6 +2334,7 @@ dependencies = [
  "ockam_transport_tcp",
  "ockam_vault",
  "quickcheck",
+ "reqwest",
  "rust-embed",
  "serde",
  "serde_json",

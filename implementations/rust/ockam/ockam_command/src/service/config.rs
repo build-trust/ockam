@@ -57,12 +57,28 @@ pub struct AuthenticatorConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OktaIdentityProviderConfig {
+    #[serde(default = "okta_identity_provider_default_addr")]
+    pub(crate) address: String,
+
+    pub(crate) tenant: String,
+
+    pub(crate) certificate: String,
+
+    pub(crate) project: String,
+
+    #[serde(default)]
+    pub(crate) disabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceConfigs {
     pub(crate) vault: Option<VaultConfig>,
     pub(crate) identity: Option<IdentityConfig>,
     pub(crate) secure_channel_listener: Option<SecureChannelListenerConfig>,
     pub(crate) verifier: Option<VerifierConfig>,
     pub(crate) authenticator: Option<AuthenticatorConfig>,
+    pub(crate) okta_identity_provider: Option<OktaIdentityProviderConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -96,4 +112,8 @@ fn verifier_default_addr() -> String {
 
 fn authenticator_default_addr() -> String {
     DefaultAddress::AUTHENTICATOR.to_string()
+}
+
+fn okta_identity_provider_default_addr() -> String {
+    DefaultAddress::OKTA_IDENTITY_PROVIDER.to_string()
 }

@@ -7,7 +7,7 @@ use tracing::debug;
 use ockam::identity::IdentityIdentifier;
 use ockam::TcpTransport;
 use ockam_api::cloud::project::Project;
-use ockam_api::config::lookup::{LookupMeta, ProjectLookup};
+use ockam_api::config::lookup::{LookupMeta, ProjectAuthority, ProjectLookup};
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::secure_channel::*;
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -116,6 +116,27 @@ async fn create_secure_channel_to_project(
     .await?;
     let sc = rpc.parse_response::<CreateSecureChannelResponse>()?;
     Ok(sc.addr()?)
+}
+
+pub async fn create_secure_channel_to_authority(
+    ctx: &ockam::Context,
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+    authority: &ProjectAuthority,
+    addr: &MultiAddr,
+) -> crate::Result<MultiAddr> {
+    let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
+    debug!(%addr, "establishing secure channel to project authority");
+    let allowed = vec![authority.identity_id().clone()];
+    rpc.request(api::create_secure_channel(
+        addr,
+        Some(allowed),
+        CredentialExchangeMode::None,
+    ))
+    .await?;
+    let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
+    let addr = res.addr()?;
+    Ok(addr)
 }
 
 async fn delete_secure_channel<'a>(
@@ -257,7 +278,7 @@ pub mod config {
         )
         .await?;
         let okta = project.okta_config.as_ref().map(|o| OktaAuth0 {
-            tenant_url: o.tenant_url.to_string(),
+            tenant: o.tenant.to_string(),
             client_id: o.client_id.to_string(),
         });
         config.set_project_alias(

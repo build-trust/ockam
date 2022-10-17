@@ -193,6 +193,45 @@ impl<'a> StartCredentialsService<'a> {
     }
 }
 
+/// Request body when instructing a node to start an Okta Identity Provider service
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartOktaIdentityProviderRequest<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<2291842>,
+    #[b(1)] addr: &'a str,
+    #[b(2)] tenant: &'a str,
+    #[b(3)] certificate: &'a str,
+    #[b(4)] proj: &'a ByteSlice
+}
+
+impl<'a> StartOktaIdentityProviderRequest<'a> {
+    pub fn new(addr: &'a str, tenant: &'a str, certificate: &'a str, proj: &'a [u8]) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr,
+            tenant,
+            certificate,
+            proj: proj.into(),
+        }
+    }
+
+    pub fn address(&self) -> &'a str {
+        self.addr
+    }
+    pub fn tenant(&self) -> &'a str {
+        self.tenant
+    }
+    pub fn certificate(&self) -> &'a str {
+        self.certificate
+    }
+    pub fn project(&self) -> &'a [u8] {
+        self.proj
+    }
+}
+
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]

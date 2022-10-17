@@ -84,6 +84,9 @@ pub(crate) struct IdentityServiceInfo {}
 pub(crate) struct AuthenticatedServiceInfo {}
 
 #[derive(Default)]
+pub(crate) struct OktaIdentityProviderServiceInfo {}
+
+#[derive(Default)]
 pub(crate) struct UppercaseServiceInfo {}
 
 #[derive(Default)]
@@ -147,6 +150,7 @@ pub(crate) struct Registry {
     pub(crate) vault_services: BTreeMap<Address, VaultServiceInfo>,
     pub(crate) identity_services: BTreeMap<Address, IdentityServiceInfo>,
     pub(crate) authenticated_services: BTreeMap<Address, AuthenticatedServiceInfo>,
+    pub(crate) okta_identity_provider_services: BTreeMap<Address, OktaIdentityProviderServiceInfo>,
     pub(crate) uppercase_services: BTreeMap<Address, UppercaseServiceInfo>,
     pub(crate) echoer_services: BTreeMap<Address, EchoerServiceInfo>,
     pub(crate) verifier_services: BTreeMap<Address, VerifierServiceInfo>,

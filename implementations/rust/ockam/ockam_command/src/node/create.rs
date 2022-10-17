@@ -313,6 +313,13 @@ async fn start_services(
             .await?
         }
     }
+    if let Some(cfg) = config.okta_identity_provider {
+        if !cfg.disabled {
+            println!("starting okta identity provider service ...");
+            start::start_okta_identity_provider(ctx, opts, &node_opts.api_node, &cfg, Some(tcp))
+                .await?
+        }
+    }
 
     Ok(())
 }
