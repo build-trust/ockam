@@ -4,9 +4,6 @@ use anyhow::{anyhow, Context as _};
 use ockam::Context;
 use ockam_api::cloud::enroll::auth0::{Auth0TokenProvider, AuthenticateAuth0Token};
 use ockam_api::cloud::project::OktaAuth0;
-use ockam_api::nodes::models::secure_channel::{
-    CreateSecureChannelResponse, CredentialExchangeMode,
-};
 use ockam_core::api::{Request, Status};
 use ockam_multiaddr::MultiAddr;
 use tracing::{debug, info};
@@ -14,10 +11,15 @@ use tracing::{debug, info};
 use crate::enroll::{Auth0Provider, Auth0Service};
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::ProjectInfo;
-use crate::util::api::{self, CloudOpts};
+use crate::util::api::CloudOpts;
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{help, CommandGlobalOpts};
 use std::path::PathBuf;
+
+use crate::project::util::create_secure_channel_to_authority;
+use ockam_api::authenticator::direct::Client;
+use ockam_api::config::lookup::ProjectAuthority;
+use ockam_api::DefaultAddress;
 
 /// Authenticate using okta addon
 #[derive(Clone, Debug, Args)]
@@ -43,11 +45,6 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let node_name = start_embedded_node(&ctx, &opts.config).await?;
 
-    // TODO's
-    //  - The secure channel setup is copy-pasted from ockam_command::project::enroll
-    //  and should be easier/more direct way to do it.
-    //  - The api's okta enroll is not used, remove it
-
     // Read (okta and authority) project parameters from project.json
     let s = tokio::fs::read_to_string(cmd.project).await?;
     let p: ProjectInfo = serde_json::from_str(&s)?;
@@ -56,37 +53,51 @@ async fn run_impl(
     let okta_config: OktaAuth0 = p.okta_config.context("Okta addon not configured")?.into();
     let auth0 = Auth0Service::new(Auth0Provider::Okta(okta_config));
     let token = auth0.token().await?;
+    // Create secure channel to the project's authority node
+    let secure_channel_addr = {
+        let authority =
+            ProjectAuthority::from_raw(&p.authority_access_route, &p.authority_identity)
+                .await?
+                .ok_or_else(|| anyhow!("Authority details not configured"))?;
+        create_secure_channel_to_authority(&ctx, &opts, &node_name, &authority, authority.address())
+            .await?
+    };
 
-    // Create secure channel to the okta_authenticator service at the project's authority node
-    let addr = {
-        let authority_access_route: MultiAddr = p
-            .authority_access_route
-            .context("Authority route not configured")?
-            .as_ref()
-            .try_into()
-            .context("Invalid authority route")?;
-
-        // Return address to the "okta_authenticator" worker on the authority node through a secure channel
-        let mut addr = secure_channel(&ctx, &opts, &authority_access_route, &node_name).await?;
+    // Return address to the "okta_authenticator" worker on the authority node through the secure channel
+    let okta_authenticator_addr = {
         let service = MultiAddr::try_from("/service/okta_authenticator")?;
+        let mut addr = secure_channel_addr.clone();
         for proto in service.iter() {
             addr.push_back_value(&proto)?;
         }
         addr
     };
 
+    // Return address to the authenticator in the authority node
+    let authenticator_route = {
+        let service =
+            MultiAddr::try_from(format!("/service/{}", DefaultAddress::AUTHENTICATOR).as_str())?;
+        let mut addr = secure_channel_addr.clone();
+        for proto in service.iter() {
+            addr.push_back_value(&proto)?;
+        }
+        ockam_api::multiaddr_to_route(&addr).context(format!("Invalid MultiAddr {}", addr))?
+    };
+
     // Send enroll request to authority node
     let token = AuthenticateAuth0Token::new(token);
     let req = Request::post("v0/enroll").body(token);
-    let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).to(&addr)?.build();
-    debug!(addr = %addr, "enrolling");
+    let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name)
+        .to(&okta_authenticator_addr)?
+        .build();
+    debug!(addr = %okta_authenticator_addr, "enrolling");
     rpc.request(req).await?;
     let (res, dec) = rpc.check_response()?;
     let res = if res.status() == Some(Status::Ok) {
         info!("Enrolled successfully");
-        Ok(())
-    } else if res.status() == Some(Status::BadRequest) {
-        info!("Already enrolled");
+        let mut client = Client::new(authenticator_route, &ctx).await?;
+        let credential = client.credential().await?;
+        println!("{:?}", credential); //TODO: output in human-readable format
         Ok(())
     } else {
         eprintln!("{}", rpc.parse_err_msg(res, dec));
@@ -94,26 +105,4 @@ async fn run_impl(
     };
     delete_embedded_node(&opts.config, &node_name).await;
     res
-}
-
-async fn secure_channel(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    authority_route: &MultiAddr,
-    //authority_identifier: IdentityIdentifier,
-    node_name: &str,
-) -> anyhow::Result<MultiAddr> {
-    let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
-    debug!(%authority_route, "establishing secure channel to project authority");
-    //TODO: check authority' identity
-    rpc.request(api::create_secure_channel(
-        authority_route,
-        // Some(allowed),
-        None, //Do this means all are ok?
-        CredentialExchangeMode::None,
-    ))
-    .await?;
-    let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
-    let addr = res.addr()?;
-    Ok(addr)
 }

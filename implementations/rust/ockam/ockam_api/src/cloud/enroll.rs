@@ -62,30 +62,6 @@ mod node {
             .await
         }
 
-        /// Executes an enrollment process to generate a new set of access tokens using the okta flow.
-        pub(crate) async fn enroll_okta(
-            &mut self,
-            ctx: &mut Context,
-            dec: &mut Decoder<'_>,
-        ) -> Result<Vec<u8>> {
-            let req_wrapper: CloudRequestWrapper<AuthenticateAuth0Token> = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
-            let req_body: AuthenticateAuth0Token = req_wrapper.req;
-            let req_builder = Request::post("v0/enroll").body(req_body);
-            let api_service = "okta_authenticator";
-
-            trace!(target: TARGET, "executing okta flow");
-            self.request_controller(
-                ctx,
-                api_service,
-                None,
-                cloud_route,
-                api_service,
-                req_builder,
-            )
-            .await
-        }
-
         /// Generates a token that will be associated to the passed attributes.
         pub(crate) async fn generate_enrollment_token(
             &mut self,

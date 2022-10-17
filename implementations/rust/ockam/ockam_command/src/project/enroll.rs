@@ -5,16 +5,14 @@ use ockam::identity::IdentityIdentifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::types::AddMember;
 use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority};
-use ockam_api::nodes::models::secure_channel::{
-    CreateSecureChannelResponse, CredentialExchangeMode,
-};
 use ockam_core::api::Request;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use tracing::debug;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::node::NodeOpts;
-use crate::util::api::{self, CloudOpts};
+use crate::project::util::create_secure_channel_to_authority;
+use crate::util::api::CloudOpts;
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{help, CommandGlobalOpts, Result};
 
@@ -61,7 +59,14 @@ impl Runner {
 
         let map = self.opts.config.lookup();
         let to = if let Some(a) = project_authority(&self.cmd.to, &map)? {
-            let mut addr = self.secure_channel(a, &node_name).await?;
+            let mut addr = create_secure_channel_to_authority(
+                &self.ctx,
+                &self.opts,
+                &node_name,
+                a,
+                &replace_project(&self.cmd.to, a.address())?,
+            )
+            .await?;
             for proto in self.cmd.to.iter().skip(1) {
                 addr.push_back_value(&proto).map_err(anyhow::Error::from)?
             }
@@ -80,26 +85,6 @@ impl Runner {
         delete_embedded_node(&self.opts.config, &node_name).await;
 
         Ok(())
-    }
-
-    async fn secure_channel(
-        &self,
-        auth: &ProjectAuthority,
-        node_name: &str,
-    ) -> anyhow::Result<MultiAddr> {
-        let mut rpc = RpcBuilder::new(&self.ctx, &self.opts, node_name).build();
-        let addr = replace_project(&self.cmd.to, auth.address())?;
-        debug!(%addr, "establishing secure channel to project authority");
-        let allowed = vec![auth.identity_id().clone()];
-        rpc.request(api::create_secure_channel(
-            &addr,
-            Some(allowed),
-            CredentialExchangeMode::None,
-        ))
-        .await?;
-        let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
-        let addr = res.addr()?;
-        Ok(addr)
     }
 }
 

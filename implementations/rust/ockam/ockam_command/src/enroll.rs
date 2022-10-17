@@ -188,17 +188,14 @@ impl Auth0Provider {
     fn device_code_url(&self) -> String {
         match self {
             Self::Auth0 => "https://account.ockam.io/oauth/device/code".to_string(),
-            Self::Okta(d) => format!(
-                "https://{}/oauth2/default/v1/device/authorize",
-                &d.tenant_url
-            ),
+            Self::Okta(d) => format!("https://{}/oauth2/default/v1/device/authorize", &d.tenant),
         }
     }
 
     fn token_request_url(&self) -> String {
         match self {
             Self::Auth0 => "https://account.ockam.io/oauth/token".to_string(),
-            Self::Okta(d) => format!("https://{}/oauth2/default/v1/token", &d.tenant_url),
+            Self::Okta(d) => format!("https://{}/oauth2/default/v1/token", &d.tenant),
         }
     }
 }
