@@ -1,4 +1,4 @@
-use crate::error::EvalError;
+use crate::error::{EvalError, MergeError};
 use crate::expr::Expr;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::string::{String, ToString};
@@ -17,6 +17,10 @@ impl Env {
             .ok_or_else(|| EvalError::Unbound(k.to_string()))
     }
 
+    pub fn contains(&self, k: &str) -> bool {
+        self.0.contains_key(k)
+    }
+
     pub fn put<K: Into<String>, E: Into<Expr>>(&mut self, k: K, v: E) -> &mut Self {
         self.0.insert(k.into(), v.into());
         self
@@ -32,5 +36,29 @@ impl Env {
 
     pub fn clear(&mut self) {
         self.0.clear()
+    }
+
+    pub fn merge(&mut self, other: Env) -> Result<(), MergeError> {
+        for k in other.0.keys() {
+            if self.0.contains_key(k) {
+                return Err(MergeError::BindingExists(k.clone()));
+            }
+        }
+        for (k, v) in other.0.into_iter() {
+            self.0.insert(k, v);
+        }
+        Ok(())
+    }
+
+    pub fn merge_right(&mut self, other: Env) {
+        for (k, v) in other.0.into_iter() {
+            self.0.insert(k, v);
+        }
+    }
+
+    pub fn merge_left(&mut self, other: Env) {
+        for (k, v) in other.0.into_iter() {
+            self.0.entry(k).or_insert(v);
+        }
     }
 }

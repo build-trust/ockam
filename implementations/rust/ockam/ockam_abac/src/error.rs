@@ -14,18 +14,23 @@ pub enum ParseError {
     Message(String),
 }
 
-impl ParseError {
-    pub fn message<S: Into<String>>(s: S) -> Self {
-        ParseError::Message(s.into())
-    }
-}
-
 #[derive(Debug)]
 pub enum EvalError {
     Unbound(String),
     Unknown(String),
     InvalidType(Expr, &'static str),
     Malformed(String),
+}
+
+#[derive(Debug)]
+pub enum MergeError {
+    BindingExists(String),
+}
+
+impl ParseError {
+    pub fn message<S: Into<String>>(s: S) -> Self {
+        ParseError::Message(s.into())
+    }
 }
 
 impl EvalError {
