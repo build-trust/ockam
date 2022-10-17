@@ -8,11 +8,12 @@ use wast::lexer::{FloatVal, Lexer, Token};
 
 pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
     fn go(lx: &mut Lexer, xs: &mut Vec<Expr>) -> Result<(), ParseError> {
-        while let Some(tk) = lx.parse()? {
+        while let Some(tk) = next(lx)? {
             match tk {
                 Token::Whitespace(_) | Token::LineComment(_) | Token::BlockComment(_) => continue,
                 Token::Integer(i) => {
-                    let x: i64 = i.src().parse()?;
+                    let (s, r) = i.val();
+                    let x = i64::from_str_radix(s, r)?;
                     xs.push(Expr::Int(x))
                 }
                 Token::Float(v) => match v.val() {
@@ -59,4 +60,14 @@ pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
         1 => Ok(Some(xs.remove(0))),
         _ => Ok(Some(Expr::List(xs))),
     }
+}
+
+fn next<'a>(lx: &mut Lexer<'a>) -> Result<Option<Token<'a>>, ParseError> {
+    while let Some(tk) = lx.parse()? {
+        match tk {
+            Token::Whitespace(_) | Token::LineComment(_) | Token::BlockComment(_) => continue,
+            other => return Ok(Some(other)),
+        }
+    }
+    Ok(None)
 }

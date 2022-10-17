@@ -19,6 +19,28 @@ pub enum Expr {
     #[n(7)] List  (#[n(0)] Vec<Expr>)
 }
 
+#[derive(Debug, Clone, Encode, Decode)]
+#[rustfmt::skip]
+pub enum Val {
+    #[n(1)] Str   (#[n(0)] String),
+    #[n(2)] Int   (#[n(0)] i64),
+    #[n(3)] Float (#[n(0)] f64),
+    #[n(4)] Bool  (#[n(0)] bool),
+    #[n(5)] Seq   (#[n(0)] Vec<Val>)
+}
+
+impl From<Val> for Expr {
+    fn from(v: Val) -> Self {
+        match v {
+            Val::Str(s) => Expr::Str(s),
+            Val::Int(i) => Expr::Int(i),
+            Val::Float(f) => Expr::Float(f),
+            Val::Bool(b) => Expr::Bool(b),
+            Val::Seq(s) => Expr::Seq(s.into_iter().map(Expr::from).collect()),
+        }
+    }
+}
+
 impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
