@@ -12,16 +12,16 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
             []                    => Ok(unit()),
             [Expr::Ident(id), ..] => {
                 match id.as_str() {
-                    "and" => eval_and(&es[1..], env),
-                    "or"  => eval_or(&es[1..], env),
-                    "not" => eval_not(&es[1..], env),
-                    "if"  => eval_if(&es[1..], env),
-                    "<"   => eval_pred(&es[1..], env, "<",  |a, b| a < b),
-                    ">"   => eval_pred(&es[1..], env, ">",  |a, b| a > b),
-                    "="   => eval_eq(&es[1..], env),
-                    "!="  => eval_ne(&es[1..], env),
+                    "and"     => eval_and(&es[1..], env),
+                    "or"      => eval_or(&es[1..], env),
+                    "not"     => eval_not(&es[1..], env),
+                    "if"      => eval_if(&es[1..], env),
+                    "<"       => eval_pred(&es[1..], env, "<",  |a, b| a < b),
+                    ">"       => eval_pred(&es[1..], env, ">",  |a, b| a > b),
+                    "="       => eval_eq(&es[1..], env),
+                    "!="      => eval_ne(&es[1..], env),
                     "member?" => eval_in(&es[1..], env),
-                    _     => Err(EvalError::Unknown(id.to_string()))
+                    _         => Err(EvalError::Unknown(id.to_string()))
                 }
             }
             [other, ..] => Err(EvalError::InvalidType(other.clone(), "expected (op ...)"))

@@ -37,6 +37,10 @@ impl EvalError {
     pub fn malformed<S: Into<String>>(s: S) -> Self {
         EvalError::Malformed(s.into())
     }
+
+    pub fn is_unbound(&self) -> bool {
+        matches!(self, EvalError::Unbound(_))
+    }
 }
 
 impl From<Utf8Error> for ParseError {

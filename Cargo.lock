@@ -2325,6 +2325,7 @@ dependencies = [
  "minicbor",
  "mockall",
  "ockam",
+ "ockam_abac",
  "ockam_api",
  "ockam_core",
  "ockam_identity",

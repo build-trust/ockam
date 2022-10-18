@@ -15,6 +15,7 @@ std = [
     "hex/std",
     "minicbor/std",
     "ockam_core/std",
+    "ockam_abac/std",
     "ockam_identity/std",
     "ockam_multiaddr/std",
     "ockam_node/std",
@@ -71,6 +72,10 @@ version          = "0.64.0"
 path             = "../ockam_identity"
 default-features = false
 features         = ["std"]
+
+[dependencies.ockam_abac]
+version          = "0.10.0"
+path             = "../ockam_abac"
 
 [dev-dependencies]
 cddl-cat            = "0.6.1"

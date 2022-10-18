@@ -37,8 +37,13 @@ impl Inner {
         Inner::default()
     }
 
-    fn del_policy(&mut self, r: &Resource) {
-        self.policies.remove(r);
+    fn del_policy(&mut self, r: &Resource, a: &Action) {
+        if let Some(p) = self.policies.get_mut(r) {
+            p.remove(a);
+            if p.is_empty() {
+                self.policies.remove(r);
+            }
+        }
     }
 
     fn get_policy(&self, r: &Resource, a: &Action) -> Option<Expr> {
@@ -55,8 +60,8 @@ impl Inner {
 
 #[async_trait]
 impl PolicyStorage for Memory {
-    async fn del_policy(&self, r: &Resource) -> Result<()> {
-        self.inner.write().unwrap().del_policy(r);
+    async fn del_policy(&self, r: &Resource, a: &Action) -> Result<()> {
+        self.inner.write().unwrap().del_policy(r, a);
         Ok(())
     }
 
