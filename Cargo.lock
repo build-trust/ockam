@@ -2299,7 +2299,6 @@ name = "ockam_abac"
 version = "0.10.0"
 dependencies = [
  "minicbor",
- "ockam_abac",
  "ockam_core",
  "ockam_identity",
  "quickcheck",
