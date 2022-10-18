@@ -1,4 +1,5 @@
 use lmdb::{Database, Environment, Transaction};
+use ockam_abac::{Action, Expr, PolicyStorage, Resource};
 use ockam_core::async_trait;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
@@ -41,6 +42,29 @@ impl LmdbStorage {
         };
         task::spawn_blocking(t).await.map_err(map_join_err)?
     }
+
+    async fn write(&self, k: String, v: Vec<u8>) -> Result<()> {
+        let d = self.clone();
+        let t = move || {
+            let mut w = d.env.begin_rw_txn().map_err(map_lmdb_err)?;
+            w.put(d.map, &k, &v, lmdb::WriteFlags::empty())
+                .map_err(map_lmdb_err)?;
+            w.commit().map_err(map_lmdb_err)?;
+            Ok(())
+        };
+        task::spawn_blocking(t).await.map_err(map_join_err)?
+    }
+
+    async fn delete(&self, k: String) -> Result<()> {
+        let d = self.clone();
+        let t = move || {
+            let mut w = d.env.begin_rw_txn().map_err(map_lmdb_err)?;
+            w.del(d.map, &k, None).map_err(map_lmdb_err)?;
+            w.commit().map_err(map_lmdb_err)?;
+            Ok(())
+        };
+        task::spawn_blocking(t).await.map_err(map_join_err)?
+    }
 }
 
 #[async_trait]
@@ -60,28 +84,40 @@ impl AuthenticatedStorage for LmdbStorage {
     }
 
     async fn set(&self, id: &str, key: String, val: Vec<u8>) -> Result<()> {
+        self.write(format!("{id}:{key}"), val).await
+    }
+
+    async fn del(&self, id: &str, key: &str) -> Result<()> {
+        self.delete(format!("{id}:{key}")).await
+    }
+}
+
+#[async_trait]
+impl PolicyStorage for LmdbStorage {
+    async fn get_policy(&self, r: &Resource, a: &Action) -> Result<Option<Expr>> {
         let d = self.clone();
-        let k = format!("{id}:{key}");
+        let k = format!("{r}:{a}");
         let t = move || {
-            let mut w = d.env.begin_rw_txn().map_err(map_lmdb_err)?;
-            w.put(d.map, &k, &val, lmdb::WriteFlags::empty())
-                .map_err(map_lmdb_err)?;
-            w.commit().map_err(map_lmdb_err)?;
-            Ok(())
+            let r = d.env.begin_ro_txn().map_err(map_lmdb_err)?;
+            match r.get(d.map, &k) {
+                Ok(value) => {
+                    let e: Expr = minicbor::decode(value)?;
+                    Ok(Some(e))
+                }
+                Err(lmdb::Error::NotFound) => Ok(None),
+                Err(e) => Err(map_lmdb_err(e)),
+            }
         };
         task::spawn_blocking(t).await.map_err(map_join_err)?
     }
 
-    async fn del(&self, id: &str, key: &str) -> Result<()> {
-        let d = self.clone();
-        let k = format!("{id}:{key}");
-        let t = move || {
-            let mut w = d.env.begin_rw_txn().map_err(map_lmdb_err)?;
-            w.del(d.map, &k, None).map_err(map_lmdb_err)?;
-            w.commit().map_err(map_lmdb_err)?;
-            Ok(())
-        };
-        task::spawn_blocking(t).await.map_err(map_join_err)?
+    async fn set_policy(&self, r: Resource, a: Action, c: &Expr) -> Result<()> {
+        let v = minicbor::to_vec(c)?;
+        self.write(format!("{r}:{a}"), v).await
+    }
+
+    async fn del_policy(&self, r: &Resource, a: &Action) -> Result<()> {
+        self.delete(format!("{r}:{a}")).await
     }
 }
 

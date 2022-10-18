@@ -89,11 +89,11 @@ where
                 Ok(b)
             }
             Ok(x) => {
-                log::error!(%id, expr = %x, "evaluation did not yield a boolean result");
+                log::warn!(%id, expr = %x, "evaluation did not yield a boolean result");
                 Ok(false)
             }
             Err(e) => {
-                log::error!(%id, err = %e, "policy evaluation failed");
+                log::warn!(%id, err = %e, "policy evaluation failed");
                 Ok(false)
             }
         }

@@ -94,6 +94,10 @@ impl Expr {
             false
         }
     }
+
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Expr::Ident(_))
+    }
 }
 
 impl From<bool> for Expr {
@@ -144,6 +148,35 @@ pub fn seq<T: IntoIterator<Item = Expr>>(xs: T) -> Expr {
 
 pub fn str<S: Into<String>>(s: S) -> Expr {
     Expr::Str(s.into())
+}
+
+pub fn and<I>(exprs: I) -> Expr
+where
+    I: IntoIterator<Item = Expr>,
+{
+    with_op(ident("and"), exprs)
+}
+
+pub fn or<I>(exprs: I) -> Expr
+where
+    I: IntoIterator<Item = Expr>,
+{
+    with_op(ident("or"), exprs)
+}
+
+pub fn eq<I>(exprs: I) -> Expr
+where
+    I: IntoIterator<Item = Expr>,
+{
+    with_op(ident("="), exprs)
+}
+
+fn with_op<I>(op: Expr, exprs: I) -> Expr
+where
+    I: IntoIterator<Item = Expr>,
+{
+    let xs = Vec::from_iter([op].into_iter().chain(exprs));
+    Expr::List(xs)
 }
 
 impl fmt::Display for Expr {
