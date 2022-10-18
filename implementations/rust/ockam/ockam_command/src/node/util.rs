@@ -43,7 +43,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
         Some(path) => {
             let s = tokio::fs::read_to_string(path).await?;
             let p: ProjectInfo = serde_json::from_str(&s)?;
-            let project_id = p.id.as_bytes().to_vec();
+            let project_id = p.id.to_string();
             project::config::set_project(cfg, &(&p).into()).await?;
             add_project_authority(p, &cmd.node_name, cfg).await?;
             Some(project_id)

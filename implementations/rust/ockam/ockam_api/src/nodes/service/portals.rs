@@ -26,10 +26,10 @@ const INLET_WORKER: &str = "inlet-worker";
 const OUTER_CHAN: &str = "outer-chan";
 
 impl NodeManager {
-    fn access_control(&self, project_id: Option<Vec<u8>>) -> Result<Arc<dyn AccessControl>> {
+    fn access_control(&self, project_id: Option<String>) -> Result<Arc<dyn AccessControl>> {
         if let Some(pid) = project_id {
             let required_attributes = vec![
-                (PROJECT_ID.to_string(), pid),
+                (PROJECT_ID.to_string(), pid.into_bytes()),
                 (ROLE.to_string(), b"member".to_vec()),
             ];
             Ok(Arc::new(CredentialAccessControl::new(
@@ -141,7 +141,7 @@ impl NodeManagerWorker {
                         node_manager
                             .projects
                             .get(&*p)
-                            .map(|info| info.id.as_bytes().to_vec())
+                            .map(|info| info.id.to_string())
                     } else {
                         None
                     }
@@ -237,7 +237,7 @@ impl NodeManagerWorker {
         let worker_addr = Address::from(worker_addr.as_ref());
 
         let access_control = node_manager.access_control(if check_credential {
-            Some(node_manager.project_id()?.clone())
+            Some(node_manager.project_id()?.to_string())
         } else {
             None
         })?;

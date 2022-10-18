@@ -108,7 +108,7 @@ pub struct NodeManager {
     enable_credential_checks: bool,
     vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
-    project_id: Option<Vec<u8>>,
+    project_id: Option<String>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
     authorities: Option<Authorities>,
     pub(crate) authenticated_storage: LmdbStorage,
@@ -158,9 +158,9 @@ impl NodeManager {
     }
 
     /// Available only for member nodes
-    pub(crate) fn project_id(&self) -> Result<&Vec<u8>> {
+    pub(crate) fn project_id(&self) -> Result<&str> {
         self.project_id
-            .as_ref()
+            .as_deref()
             .ok_or_else(|| ApiError::generic("Project id is not set"))
     }
 }
@@ -194,14 +194,14 @@ impl NodeManagerGeneralOptions {
 
 pub struct NodeManagerProjectsOptions<'a> {
     ac: Option<&'a AuthoritiesConfig>,
-    project_id: Option<Vec<u8>>,
+    project_id: Option<String>,
     projects: BTreeMap<String, ProjectLookup>,
 }
 
 impl<'a> NodeManagerProjectsOptions<'a> {
     pub fn new(
         ac: Option<&'a AuthoritiesConfig>,
-        project_id: Option<Vec<u8>>,
+        project_id: Option<String>,
         projects: BTreeMap<String, ProjectLookup>,
     ) -> Self {
         Self {
