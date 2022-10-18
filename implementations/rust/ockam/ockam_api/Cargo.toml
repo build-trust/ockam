@@ -76,6 +76,7 @@ features         = ["std"]
 [dependencies.ockam_abac]
 version          = "0.10.0"
 path             = "../ockam_abac"
+default-features = false
 
 [dev-dependencies]
 cddl-cat            = "0.6.1"

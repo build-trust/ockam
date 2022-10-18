@@ -1,5 +1,4 @@
-#[cfg(not(feature = "std"))]
-use alloc::string::String;
+use ockam_core::compat::string::String;
 
 macro_rules! define {
     ($t:ident) => {

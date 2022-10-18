@@ -51,6 +51,7 @@ std = [
     "ockam_key_exchange_core/std",
     "ockam_key_exchange_xx/std",
     "ockam_identity/std",
+    "ockam_abac/std",
     "rand/default",
     "serde/std",
 ]
@@ -66,6 +67,7 @@ no_std = [
     "ockam_key_exchange_core/no_std",
     "ockam_key_exchange_xx/no_std",
     "ockam_identity/no_std",
+    "ockam_abac/no_std",
 ]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
@@ -77,6 +79,7 @@ alloc = [
     "ockam_key_exchange_core/alloc",
     "ockam_key_exchange_xx/alloc",
     "ockam_identity/alloc",
+    "ockam_abac/alloc",
     "serde/alloc",
 ]
 
@@ -94,7 +97,7 @@ ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.71.0", op
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.61.0", default_features = false }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.66.0", default_features = false, optional = true }
 ockam_identity = { path = "../ockam_identity", version = "^0.64.0", default_features = false }
-ockam_abac = { path = "../ockam_abac", version = "^0.10.0" }
+ockam_abac = { path = "../ockam_abac", version = "^0.10.0", default_features = false }
 arrayref = "0.3"
 minicbor = { version = "0.18.0", features = ["alloc", "derive"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
