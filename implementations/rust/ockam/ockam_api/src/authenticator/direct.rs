@@ -98,7 +98,9 @@ where
                 ["members"] => match self.check_enroller(&req, from).await {
                     Ok(None) => {
                         let add: AddMember = dec.decode()?;
-                        let tru = minicbor::to_vec(true)?;
+                        let member_attributes =
+                            HashMap::from([(ROLE.to_string(), MEMBER.to_string())]);
+                        let tru = minicbor::to_vec(member_attributes)?;
                         self.store
                             .set(add.member().key_id(), MEMBER.to_string(), tru)
                             .await?;
@@ -108,17 +110,21 @@ where
                     Err(error) => api::internal_error(&req, &error.to_string()).to_vec()?,
                 },
                 // Member wants a credential.
-                ["credential"] => match self.check_member(&req, from).await {
-                    Ok(None) => {
-                        let crd = Credential::builder(from.clone())
-                            .with_schema(PROJECT_MEMBER_SCHEMA)
-                            .with_attribute(PROJECT_ID, &self.project)
-                            .with_attribute(ROLE, b"member");
+                ["credential"] => match self.get_member(&req, from).await {
+                    Ok(Some(attrs)) => {
+                        if let Some(role) = attrs.get(&ROLE.to_string()) {
+                            let crd = Credential::builder(from.clone())
+                                .with_schema(PROJECT_MEMBER_SCHEMA)
+                                .with_attribute(PROJECT_ID, &self.project)
+                                .with_attribute(ROLE, role.as_bytes());
 
-                        let crd = self.ident.issue_credential(crd).await?;
-                        Response::ok(req.id()).body(crd).to_vec()?
+                            let crd = self.ident.issue_credential(crd).await?;
+                            Response::ok(req.id()).body(crd).to_vec()?
+                        } else {
+                            api::internal_error(&req, "missing role").to_vec()?
+                        }
                     }
-                    Ok(Some(e)) => e.to_vec()?,
+                    Ok(None) => api::forbidden(&req, "unauthorized member").to_vec()?,
                     Err(error) => api::internal_error(&req, &error.to_string()).to_vec()?,
                 },
                 _ => api::unknown_path(&req).to_vec()?,
@@ -159,17 +165,34 @@ where
         Ok(Some(api::forbidden(req, "unauthorized enroller")))
     }
 
-    async fn check_member<'a>(
+    // Ok(Some(attrs)) if we have attributes for this identifier
+    // Ok(None) if we don't have any info for this identifier
+    // Err(error) in case of errors looking up / decoding the attributes
+    async fn get_member<'a>(
         &self,
         req: &'a Request<'_>,
         member: &IdentityIdentifier,
-    ) -> Result<Option<ResponseBuilder<Error<'a>>>> {
+    ) -> Result<Option<HashMap<String, String>>> {
         if let Some(data) = self.store.get(member.key_id(), MEMBER).await? {
-            if minicbor::decode(&data)? {
-                return Ok(None);
+            match minicbor::decode(&data) {
+                Ok(attrs) => return Ok(Some(attrs)),
+                Err(_) => {
+                    // Attempt to adapt values in legacy format
+                    if minicbor::decode(&data)? {
+                        let member_attributes =
+                            HashMap::from([(ROLE.to_string(), MEMBER.to_string())]);
+                        let val = minicbor::to_vec(member_attributes)?;
+                        self.store
+                            .set(member.key_id(), MEMBER.to_string(), val)
+                            .await?;
+                        return Ok(Some(HashMap::from([(
+                            ROLE.to_string(),
+                            MEMBER.to_string(),
+                        )])));
+                    }
+                }
             }
         }
-
         warn! {
             target: "ockam_api::authenticator::direct::server",
             member   = %member,
@@ -179,8 +202,7 @@ where
             body     = %req.has_body(),
             "unauthorised member"
         }
-
-        Ok(Some(api::forbidden(req, "unauthorized member")))
+        Ok(None)
     }
 }
 
