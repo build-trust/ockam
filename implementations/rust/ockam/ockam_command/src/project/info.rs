@@ -3,6 +3,7 @@ use clap::Args;
 
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
+use ockam_api::cloud::project::OktaConfig;
 use ockam_api::cloud::project::Project;
 use ockam_core::CowStr;
 
@@ -37,6 +38,8 @@ pub struct ProjectInfo<'a> {
     pub authority_access_route: Option<CowStr<'a>>,
     #[serde(borrow)]
     pub authority_identity: Option<CowStr<'a>>,
+    #[serde(borrow)]
+    pub okta_config: Option<OktaConfig<'a>>,
 }
 
 impl<'a> From<Project<'a>> for ProjectInfo<'a> {
@@ -48,6 +51,7 @@ impl<'a> From<Project<'a>> for ProjectInfo<'a> {
             access_route: p.access_route,
             authority_access_route: p.authority_access_route,
             authority_identity: p.authority_identity,
+            okta_config: p.okta_config,
         }
     }
 }
@@ -61,6 +65,7 @@ impl<'a> From<&ProjectInfo<'a>> for Project<'a> {
             access_route: p.access_route.clone(),
             authority_access_route: p.authority_access_route.clone(),
             authority_identity: p.authority_identity.clone(),
+            okta_config: p.okta_config.clone(),
             ..Default::default()
         }
     }

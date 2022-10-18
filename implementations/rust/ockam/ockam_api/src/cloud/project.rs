@@ -60,6 +60,10 @@ pub struct Project<'a> {
     #[cbor(b(10))]
     #[serde(borrow)]
     pub authority_identity: Option<CowStr<'a>>,
+
+    #[cbor(b(11))]
+    #[serde(borrow)]
+    pub okta_config: Option<OktaConfig<'a>>,
 }
 
 impl Clone for Project<'_> {
@@ -83,6 +87,7 @@ impl Project<'_> {
             identity: self.identity.clone(),
             authority_access_route: self.authority_access_route.as_ref().map(|x| x.to_owned()),
             authority_identity: self.authority_identity.as_ref().map(|x| x.to_owned()),
+            okta_config: self.okta_config.as_ref().map(|x| x.to_owned()),
         }
     }
 
@@ -114,6 +119,68 @@ impl Project<'_> {
             Err(ApiError::generic(
                 "Project's access route has not a valid structure",
             ))
+        }
+    }
+}
+
+#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct OktaConfig<'a> {
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[cbor(n(0))] pub tag: TypeTag<6434814>,
+
+    #[serde(borrow)]
+    #[cbor(b(1))] pub tenant_url: CowStr<'a>,
+
+    #[serde(borrow)]
+    #[cbor(b(2))] pub certificate: CowStr<'a>,
+
+    #[serde(borrow)]
+    #[cbor(b(3))] pub client_id: CowStr<'a>,
+}
+
+impl<'a> OktaConfig<'a> {
+    pub fn new<S: Into<CowStr<'a>>>(tenant_url: S, certificate: S, client_id: S) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            tenant_url: tenant_url.into(),
+            certificate: certificate.into(),
+            client_id: client_id.into(),
+        }
+    }
+}
+
+impl Clone for OktaConfig<'_> {
+    fn clone(&self) -> Self {
+        self.to_owned()
+    }
+}
+impl OktaConfig<'_> {
+    pub fn to_owned<'r>(&self) -> OktaConfig<'r> {
+        OktaConfig {
+            #[cfg(feature = "tag")]
+            tag: self.tag.to_owned(),
+            tenant_url: self.tenant_url.to_owned(),
+            certificate: self.certificate.to_owned(),
+            client_id: self.client_id.to_owned(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OktaAuth0 {
+    pub tenant_url: String,
+    pub client_id: String,
+}
+
+impl From<OktaConfig<'_>> for OktaAuth0 {
+    fn from(c: OktaConfig) -> Self {
+        Self {
+            tenant_url: c.tenant_url.to_string(),
+            client_id: c.client_id.to_string(),
         }
     }
 }
@@ -360,6 +427,7 @@ mod tests {
                 authority_access_route: bool::arbitrary(g).then(|| String::arbitrary(g).into()),
                 authority_identity: bool::arbitrary(g)
                     .then(|| hex::encode(<Vec<u8>>::arbitrary(g)).into()),
+                okta_config: None,
             })
         }
     }

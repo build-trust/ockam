@@ -6,7 +6,8 @@ use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 
 use ockam::Context;
-use ockam_api::cloud::addon::{Addon, ConfigureAddon};
+use ockam_api::cloud::addon::Addon;
+use ockam_api::cloud::project::OktaConfig;
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
 
@@ -96,6 +97,15 @@ pub enum ConfigureAddonCommand {
         /// Certificate file path. Use either this or --cert
         #[arg(long = "cert-path", group = "cert", value_name = "CERTIFICATE_PATH")]
         certificate_path: Option<PathBuf>,
+
+        /// Okta Client ID.
+        #[arg(
+            long,
+            id = "client_id",
+            value_name = "CLIENT_ID",
+            value_parser(NonEmptyStringValueParser::new())
+        )]
+        client_id: String,
     },
 }
 
@@ -146,6 +156,7 @@ async fn run_impl(
                 tenant,
                 certificate,
                 certificate_path,
+                client_id,
             } => {
                 let certificate = match (certificate, certificate_path) {
                     (Some(c), _) => c,
@@ -154,7 +165,7 @@ async fn run_impl(
                 };
                 let addon_id = "okta";
                 let endpoint = format!("{}/{}", base_endpoint(&project_name)?, addon_id);
-                let body = ConfigureAddon::new(tenant, certificate);
+                let body = OktaConfig::new(tenant, certificate, client_id);
                 let req =
                     Request::put(endpoint).body(CloudRequestWrapper::new(body, controller_route));
                 rpc.request(req).await?;

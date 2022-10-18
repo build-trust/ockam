@@ -19,23 +19,16 @@ impl<'a> Token<'a> {
     }
 }
 
-pub enum AuthenticateToken<'a> {
-    Auth0(auth0::AuthenticateAuth0Token<'a>),
-    EnrollmentToken(enrollment_token::AuthenticateEnrollmentToken<'a>),
-}
-
 mod node {
     use minicbor::Decoder;
     use tracing::trace;
 
     use ockam_core::api::Request;
-    use ockam_core::{self, Result, Route};
+    use ockam_core::{self, Result};
     use ockam_node::Context;
 
     use crate::cloud::enroll::auth0::AuthenticateAuth0Token;
-    use crate::cloud::enroll::enrollment_token::{
-        AuthenticateEnrollmentToken, EnrollmentToken, RequestEnrollmentToken,
-    };
+    use crate::cloud::enroll::enrollment_token::{EnrollmentToken, RequestEnrollmentToken};
     use crate::cloud::CloudRequestWrapper;
     use crate::nodes::NodeManagerWorker;
     use ockam_identity::credential::Attributes;
@@ -54,10 +47,43 @@ mod node {
             let req_wrapper: CloudRequestWrapper<AuthenticateAuth0Token> = dec.decode()?;
             let cloud_route = req_wrapper.route()?;
             let req_body: AuthenticateAuth0Token = req_wrapper.req;
-            let req_body = AuthenticateToken::Auth0(req_body);
+            let req_builder = Request::post("v0/enroll").body(req_body);
+            let api_service = "auth0_authenticator";
 
             trace!(target: TARGET, "executing auth0 flow");
-            self.authenticate_token(ctx, cloud_route, req_body).await
+            self.request_controller(
+                ctx,
+                api_service,
+                None,
+                cloud_route,
+                api_service,
+                req_builder,
+            )
+            .await
+        }
+
+        /// Executes an enrollment process to generate a new set of access tokens using the okta flow.
+        pub(crate) async fn enroll_okta(
+            &mut self,
+            ctx: &mut Context,
+            dec: &mut Decoder<'_>,
+        ) -> Result<Vec<u8>> {
+            let req_wrapper: CloudRequestWrapper<AuthenticateAuth0Token> = dec.decode()?;
+            let cloud_route = req_wrapper.route()?;
+            let req_body: AuthenticateAuth0Token = req_wrapper.req;
+            let req_builder = Request::post("v0/enroll").body(req_body);
+            let api_service = "okta_authenticator";
+
+            trace!(target: TARGET, "executing okta flow");
+            self.request_controller(
+                ctx,
+                api_service,
+                None,
+                cloud_route,
+                api_service,
+                req_builder,
+            )
+            .await
         }
 
         /// Generates a token that will be associated to the passed attributes.
@@ -95,50 +121,19 @@ mod node {
             let req_wrapper: CloudRequestWrapper<EnrollmentToken> = dec.decode()?;
             let cloud_route = req_wrapper.route()?;
             let req_body: EnrollmentToken = req_wrapper.req;
-            let req_body =
-                AuthenticateToken::EnrollmentToken(AuthenticateEnrollmentToken::new(req_body));
+            let req_builder = Request::post("v0/enroll").body(req_body);
+            let api_service = "enrollment_token_authenticator";
 
             trace!(target: TARGET, "authenticating token");
-            self.authenticate_token(ctx, cloud_route, req_body).await
-        }
-
-        async fn authenticate_token(
-            &mut self,
-            ctx: &mut Context,
-            cloud_route: Route,
-            body: AuthenticateToken<'_>,
-        ) -> Result<Vec<u8>> {
-            // TODO: add AuthenticateAuth0Token to schema.cddl and use it here
-            let schema = None;
-            let api_service;
-            match body {
-                AuthenticateToken::Auth0(body) => {
-                    api_service = "auth0_authenticator";
-                    let req_builder = Request::post("v0/enroll").body(body);
-                    self.request_controller(
-                        ctx,
-                        api_service,
-                        schema,
-                        cloud_route,
-                        api_service,
-                        req_builder,
-                    )
-                    .await
-                }
-                AuthenticateToken::EnrollmentToken(body) => {
-                    api_service = "enrollment_token_authenticator";
-                    let req_builder = Request::post("v0/enroll").body(body);
-                    self.request_controller(
-                        ctx,
-                        api_service,
-                        schema,
-                        cloud_route,
-                        api_service,
-                        req_builder,
-                    )
-                    .await
-                }
-            }
+            self.request_controller(
+                ctx,
+                api_service,
+                None,
+                cloud_route,
+                api_service,
+                req_builder,
+            )
+            .await
         }
     }
 }

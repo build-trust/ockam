@@ -228,30 +228,12 @@ pub async fn check_project_readiness<'a>(
 
 pub mod config {
     use crate::util::output::Output;
-    use ockam::{identity::PublicIdentity, Context};
+    use ockam::Context;
+    use ockam_api::cloud::project::OktaAuth0;
     use ockam_api::config::lookup::ProjectAuthority;
-    use ockam_vault::Vault;
     use tracing::trace;
 
     use super::*;
-
-    pub(super) async fn get_project_authority(
-        project: &Project<'_>,
-    ) -> Result<Option<ProjectAuthority>> {
-        if let Some(r) = &project.authority_access_route {
-            let rte = MultiAddr::try_from(&**r).context("Invalid project authority address")?;
-            let a = project
-                .authority_identity
-                .as_ref()
-                .context("Missing project authority")?;
-            let a = hex::decode(&**a).context("Invalid project authority")?;
-            let v = Vault::default();
-            let p = PublicIdentity::import(&a, &v).await?;
-            Ok(Some(ProjectAuthority::new(p.identifier().clone(), rte, a)))
-        } else {
-            Ok(None)
-        }
-    }
 
     async fn set(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
         if !project.is_ready() {
@@ -269,7 +251,15 @@ pub mod config {
             .identity
             .as_ref()
             .context("Project should have identity set")?;
-        let authority = get_project_authority(project).await?;
+        let authority = ProjectAuthority::from_raw(
+            &project.authority_access_route,
+            &project.authority_identity,
+        )
+        .await?;
+        let okta = project.okta_config.as_ref().map(|o| OktaAuth0 {
+            tenant_url: o.tenant_url.to_string(),
+            client_id: o.client_id.to_string(),
+        });
         config.set_project_alias(
             project.name.to_string(),
             ProjectLookup {
@@ -277,6 +267,7 @@ pub mod config {
                 id: project.id.to_string(),
                 identity_id: Some(pid.clone()),
                 authority,
+                okta,
             },
         )?;
         Ok(())
@@ -290,6 +281,7 @@ pub mod config {
                 id: project.id.to_string(),
                 identity_id: None,
                 authority: None,
+                okta: None,
             },
         )?;
         config.persist_config_updates()?;

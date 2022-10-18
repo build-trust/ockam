@@ -1,10 +1,14 @@
+use crate::cloud::project::OktaAuth0;
+use crate::error::ApiError;
 use bytes::Bytes;
 use ockam_core::compat::collections::VecDeque;
-use ockam_identity::IdentityIdentifier;
+use ockam_core::{CowStr, Result};
+use ockam_identity::{IdentityIdentifier, PublicIdentity};
 use ockam_multiaddr::{
     proto::{self, DnsAddr, Ip4, Ip6, Tcp},
     MultiAddr,
 };
+use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -137,6 +141,7 @@ impl ConfigLookup {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LookupValue {
     Address(InternetAddress),
@@ -238,6 +243,8 @@ pub struct ProjectLookup {
     pub identity_id: Option<IdentityIdentifier>,
     /// Project authority information.
     pub authority: Option<ProjectAuthority>,
+    /// OktaAuth0 information.
+    pub okta: Option<OktaAuth0>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -253,6 +260,25 @@ impl ProjectAuthority {
             id,
             address: addr,
             identity: identity.into(),
+        }
+    }
+
+    pub async fn from_raw<'a>(
+        route: &'a Option<CowStr<'a>>,
+        identity: &'a Option<CowStr<'a>>,
+    ) -> Result<Option<Self>> {
+        if let Some(r) = route {
+            let rte = MultiAddr::try_from(&**r)?;
+            let a = identity
+                .as_ref()
+                .ok_or_else(|| ApiError::generic("Identity is not set"))?;
+            let a =
+                hex::decode(&**a).map_err(|_| ApiError::generic("Invalid project authority"))?;
+            let v = Vault::default();
+            let p = PublicIdentity::import(&a, &v).await?;
+            Ok(Some(ProjectAuthority::new(p.identifier().clone(), rte, a)))
+        } else {
+            Ok(None)
         }
     }
 
