@@ -21,6 +21,7 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
                     "="       => eval_eq(&es[1..], env),
                     "!="      => eval_ne(&es[1..], env),
                     "member?" => eval_in(&es[1..], env),
+                    "exists?" => eval_exists(&es[1..], env),
                     _         => Err(EvalError::Unknown(id.to_string()))
                 }
             }
@@ -108,6 +109,20 @@ fn eval_in(expr: &[Expr], env: &Env) -> Result<Expr, EvalError> {
         Expr::Seq(vs) => Ok(Expr::Bool(vs.contains(&a))),
         other => Err(EvalError::InvalidType(other, "expected sequence")),
     }
+}
+
+fn eval_exists(expr: &[Expr], env: &Env) -> Result<Expr, EvalError> {
+    for e in expr {
+        match e {
+            Expr::Ident(id) => {
+                if !env.contains(id) {
+                    return Ok(Expr::Bool(false));
+                }
+            }
+            other => return Err(EvalError::InvalidType(other.clone(), "expected identifier")),
+        }
+    }
+    Ok(Expr::Bool(true))
 }
 
 fn eval_pred<F>(expr: &[Expr], env: &Env, op: &str, pred: F) -> Result<Expr, EvalError>

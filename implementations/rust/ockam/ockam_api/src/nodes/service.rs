@@ -4,7 +4,7 @@ use minicbor::Decoder;
 
 use ockam::compat::asynchronous::RwLock;
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
-use ockam_core::api::{Error, Method, Request, Response, Status};
+use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
 use ockam_core::compat::{
     boxed::Box,
     string::String,
@@ -42,6 +42,7 @@ pub mod message;
 mod credentials;
 mod forwarder;
 mod identity;
+mod policy;
 mod portals;
 mod secure_channel;
 mod services;
@@ -115,6 +116,7 @@ pub struct NodeManager {
     pub(crate) registry: Registry,
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
+    policies: LmdbStorage,
 }
 
 pub struct NodeManagerWorker {
@@ -262,6 +264,20 @@ impl NodeManager {
             LmdbStorage::new(&authenticated_storage_path).await?
         };
 
+        let policies_storage_path = state.read().policies_storage_path.clone();
+        let policies_storage = {
+            let path = match policies_storage_path {
+                Some(p) => p,
+                None => {
+                    let default_location = general_options.node_dir.join("policies_storage.lmdb");
+                    state.write().policies_storage_path = Some(default_location.clone());
+                    state.persist_config_updates().map_err(map_anyhow_err)?;
+                    default_location
+                }
+            };
+            LmdbStorage::new(&path).await?
+        };
+
         // Skip override if we already had vault
         if state.read().vault_path.is_none() {
             if let Some(identity_override) = general_options.identity_override {
@@ -337,6 +353,7 @@ impl NodeManager {
                 tokio::spawn(medic.start(ctx))
             },
             sessions,
+            policies: policies_storage,
         };
 
         if !general_options.skip_defaults {
@@ -645,6 +662,21 @@ impl NodeManagerWorker {
             (Post, ["node", "inlet"]) => self.create_inlet(req, dec).await?.to_vec()?,
             (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "portal"]) => todo!(),
+
+            (Post, ["policy", resource, action]) => self
+                .node_manager
+                .read()
+                .await
+                .add_policy(resource, action, req, dec)
+                .await?
+                .to_vec()?,
+            (Get, ["policy", resource, action]) => self
+                .node_manager
+                .read()
+                .await
+                .get_policy(req, resource, action)
+                .await?
+                .either(ResponseBuilder::to_vec, ResponseBuilder::to_vec)?,
 
             // ==*== Spaces ==*==
             (Post, ["v0", "spaces"]) => self.create_space(ctx, dec).await?,

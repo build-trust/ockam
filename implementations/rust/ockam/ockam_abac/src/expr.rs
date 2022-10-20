@@ -1,11 +1,13 @@
-use core::cmp::Ordering;
 use core::fmt;
+use core::{cmp::Ordering, str::FromStr};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::string::String;
 use ockam_core::compat::vec::Vec;
 
 #[cfg(test)]
 use quickcheck::{Arbitrary, Gen};
+
+use crate::ParseError;
 
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
@@ -164,6 +166,17 @@ where
     with_op(ident("or"), exprs)
 }
 
+pub fn exists<I>(exprs: I) -> Expr
+where
+    I: IntoIterator<Item = Expr>,
+{
+    with_op(ident("exists?"), exprs)
+}
+
+pub fn when(test: Expr, then: Expr, orelse: Expr) -> Expr {
+    with_op(ident("if"), [test, then, orelse])
+}
+
 pub fn eq<I>(exprs: I) -> Expr
 where
     I: IntoIterator<Item = Expr>,
@@ -226,6 +239,34 @@ impl fmt::Display for Expr {
                 f.write_str("]")
             }
         }
+    }
+}
+
+impl TryFrom<&str> for Expr {
+    type Error = ParseError;
+
+    fn try_from(input: &str) -> Result<Self, Self::Error> {
+        if let Some(x) = crate::parse(input)? {
+            Ok(x)
+        } else {
+            Err(ParseError::message("empty expression value"))
+        }
+    }
+}
+
+impl TryFrom<String> for Expr {
+    type Error = ParseError;
+
+    fn try_from(input: String) -> Result<Self, Self::Error> {
+        Self::try_from(input.as_str())
+    }
+}
+
+impl FromStr for Expr {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from(s)
     }
 }
 

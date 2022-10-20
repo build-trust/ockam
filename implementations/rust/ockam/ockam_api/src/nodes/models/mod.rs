@@ -6,6 +6,7 @@ pub mod base;
 pub mod credentials;
 pub mod forwarder;
 pub mod identity;
+pub mod policy;
 pub mod portal;
 pub mod secure_channel;
 pub mod services;

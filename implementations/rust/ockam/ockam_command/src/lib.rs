@@ -13,6 +13,7 @@ mod help;
 mod identity;
 mod message;
 mod node;
+mod policy;
 mod project;
 mod reset;
 mod secure_channel;
@@ -37,6 +38,7 @@ use forwarder::ForwarderCommand;
 use identity::IdentityCommand;
 use message::MessageCommand;
 use node::NodeCommand;
+use policy::PolicyCommand;
 use project::ProjectCommand;
 use reset::ResetCommand;
 use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
@@ -285,6 +287,8 @@ pub enum OckamSubcommand {
     Forwarder(ForwarderCommand),
     #[command(display_order = 820)]
     Message(MessageCommand),
+    #[command(display_order = 821)]
+    Policy(PolicyCommand),
 
     #[command(display_order = 900)]
     Completion(CompletionCommand),
@@ -346,6 +350,7 @@ impl OckamCommand {
             OckamSubcommand::Forwarder(c) => c.run(options),
             OckamSubcommand::Message(c) => c.run(options),
             OckamSubcommand::Node(c) => c.run(options),
+            OckamSubcommand::Policy(c) => c.run(options),
             OckamSubcommand::Project(c) => c.run(options),
             OckamSubcommand::Space(c) => c.run(options),
             OckamSubcommand::TcpConnection(c) => c.run(options),

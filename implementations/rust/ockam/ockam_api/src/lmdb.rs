@@ -111,7 +111,7 @@ impl PolicyStorage for LmdbStorage {
         task::spawn_blocking(t).await.map_err(map_join_err)?
     }
 
-    async fn set_policy(&self, r: Resource, a: Action, c: &Expr) -> Result<()> {
+    async fn set_policy(&self, r: &Resource, a: &Action, c: &Expr) -> Result<()> {
         let v = minicbor::to_vec(c)?;
         self.write(format!("{r}:{a}"), v).await
     }
