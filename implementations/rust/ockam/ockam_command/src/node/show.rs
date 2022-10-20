@@ -1,16 +1,18 @@
-use crate::util::{api, connect_to, exitcode, OckamConfig};
+use crate::util::{api, node_rpc, OckamConfig, RpcBuilder};
 use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
 use anyhow::Context;
 use clap::Args;
 use colorful::Colorful;
 use minicbor::Decoder;
+use ockam::{route, TcpTransport, TCP};
 use ockam_api::config::cli::NodeConfigOld;
+use ockam_api::nodes::models::identity::ShortIdentityResponse;
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_api::{addr_to_multiaddr, route_to_multiaddr};
-use ockam_core::api::{Response, Status};
+use ockam_core::api::{Request, Response, Status};
 use ockam_core::{Result, Route};
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
@@ -31,20 +33,79 @@ pub struct ShowCommand {
 
 impl ShowCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        let cfg = &options.config;
-        let port = match cfg.inner().nodes.get(&self.node_name) {
-            Some(cfg) => cfg.port(),
-            None => {
-                eprintln!("No such node available.  Run `ockam node list` to list available nodes");
-                std::process::exit(exitcode::IOERR);
+        node_rpc(run_impl, (options, self))
+    }
+}
+
+async fn run_impl(
+    mut ctx: ockam::Context,
+    (opts, cmd): (CommandGlobalOpts, ShowCommand),
+) -> crate::Result<()> {
+    let node_name = cmd.node_name;
+    let cfg = &opts.config;
+    let node_cfg = cfg.get_node(&node_name)?;
+    let tcp = TcpTransport::create(&ctx).await?;
+    let port = cfg.get_node_port(&node_name)?;
+    let mut base_route = route![(TCP, format!("localhost:{}", port))];
+    let route = base_route.modify().append(NODEMANAGER_ADDR).into();
+    let duration = Duration::new(SEND_RECEIVE_TIMEOUT_SECS, 0);
+    if !is_node_up(&mut ctx, &route, true).await? {
+        print_node_info(&node_cfg, &node_name, "DOWN", "N/A", None, None, None, None);
+    } else {
+        // Get short id for the node
+        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
+        let req = Request::post("/node/identity/actions/show/short");
+        rpc.request_with_timeout(req, duration).await?;
+        let default_id = match rpc.is_ok() {
+            Ok(()) => {
+                let resp = rpc.parse_response::<ShortIdentityResponse>()?;
+                format!("{}", resp.identity_id)
             }
+            _ => String::from("Not found"),
         };
-        connect_to(
-            port,
-            (cfg.clone(), self.node_name, false),
-            print_query_status,
+
+        // Get list of services for the node
+        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
+        let req = Request::get("/node/services");
+        rpc.request_with_timeout(req, duration).await?;
+        let services = rpc.parse_response::<ServiceList>()?;
+
+        // Get list of TCP listeners for node
+        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
+        let req = Request::get("/node/tcp/listener");
+        rpc.request_with_timeout(req, duration).await?;
+        let tcp_listeners = rpc.parse_response::<TransportList>()?;
+
+        // Get list of Secure Channel Listeners
+        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
+        let req = Request::get("/node/secure_channel_listener");
+        rpc.request_with_timeout(req, duration).await?;
+        let secure_channel_listeners = rpc.parse_response::<Vec<String>>()?;
+
+        // Get list of inlets
+        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
+        let req = Request::get("/node/inlet");
+        rpc.request_with_timeout(req, duration).await?;
+        let inlets = rpc.parse_response::<InletList>()?;
+
+        // Get list of outlets
+        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
+        let req = Request::get("/node/outlet");
+        rpc.request_with_timeout(req, duration).await?;
+        let outlets = rpc.parse_response::<OutletList>()?;
+
+        print_node_info(
+            &node_cfg,
+            &node_name,
+            "UP",
+            &default_id,
+            Some(&services),
+            Some(&tcp_listeners),
+            Some(&secure_channel_listeners),
+            Some((&inlets, &outlets)),
         );
     }
+    Ok(())
 }
 
 // TODO: This function should be replaced with a better system of
