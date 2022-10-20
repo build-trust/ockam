@@ -84,6 +84,17 @@ teardown() {
   assert_output --regexp '^P'
 }
 
+@test "create a node and show identity change history" {
+  run $OCKAM node create n1
+  assert_success
+
+  run $OCKAM identity show --full --node n1
+  assert_success
+  assert_output --partial "Change History"
+  assert_output --partial "identifier"
+  assert_output --partial "signatures"
+}
+
 @test "create a node with a name and do show on it" {
   run $OCKAM node create n1
   assert_success
