@@ -1,3 +1,4 @@
+use core::fmt;
 use ockam_core::vault::Signature as OckamVaultSignature;
 use serde::{Deserialize, Serialize};
 
@@ -34,5 +35,11 @@ impl Signature {
     /// Create a new signature
     pub fn new(stype: SignatureType, data: OckamVaultSignature) -> Self {
         Signature { stype, data }
+    }
+}
+
+impl fmt::Display for Signature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?} {}", self.stype(), hex::encode(self.data()))
     }
 }

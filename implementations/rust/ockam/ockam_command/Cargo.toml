@@ -65,6 +65,7 @@ rand = "0.8"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
 slug = "0.1"
 sysinfo = { version = "0.26", default-features = false }
 syntect = "5"
@@ -86,6 +87,7 @@ ockam_api = { path = "../ockam_api", version = "0.19.0", features = ["std", "aut
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.10.0", features = ["std"] }
 ockam_vault = { path = "../ockam_vault", version = "^0.66.0", features = ["storage"] }
 ockam_core = { path = "../ockam_core", version = "^0.70.0" }
+ockam_identity = { path = "../ockam_identity", version = "^0.64.0" }
 
 [dev-dependencies]
 assert_cmd = "2"

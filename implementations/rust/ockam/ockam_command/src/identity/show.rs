@@ -8,6 +8,7 @@ use core::fmt::Write;
 use ockam::Context;
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 use ockam_core::api::Request;
+use ockam_identity::change_history::IdentityChangeHistory;
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -45,7 +46,8 @@ async fn run_impl(
 impl Output for LongIdentityResponse<'_> {
     fn output(&self) -> anyhow::Result<String> {
         let mut w = String::new();
-        write!(w, "{}", hex::encode(self.identity.0.as_ref()))?;
+        let id: IdentityChangeHistory = serde_bare::from_slice(self.identity.0.as_ref())?;
+        write!(w, "{}", id)?;
         Ok(w)
     }
 }

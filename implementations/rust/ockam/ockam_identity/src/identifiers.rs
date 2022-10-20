@@ -111,6 +111,11 @@ impl FromStr for IdentityIdentifier {
 /// Unique [`crate::IdentityChangeChange`] identifier, computed as SHA256 of the change data
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct ChangeIdentifier([u8; 32]);
+impl Display for ChangeIdentifier {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", hex::encode(self.0))
+    }
+}
 
 impl AsRef<[u8]> for ChangeIdentifier {
     fn as_ref(&self) -> &[u8] {

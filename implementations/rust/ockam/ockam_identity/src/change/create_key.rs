@@ -2,6 +2,7 @@ use crate::change::{IdentityChange, IdentitySignedChange, Signature, SignatureTy
 use crate::change_history::IdentityChangeHistory;
 use crate::IdentityError::InvalidInternalState;
 use crate::{ChangeIdentifier, Identity, IdentityError, IdentityVault, KeyAttributes};
+use core::fmt;
 use ockam_core::vault::{KeyId, PublicKey};
 use ockam_core::{Encodable, Result};
 use serde::{Deserialize, Serialize};
@@ -41,6 +42,18 @@ impl CreateKeyChangeData {
             key_attributes,
             public_key,
         }
+    }
+}
+
+impl fmt::Display for CreateKeyChangeData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "prev_change_id:{} key attibutes:{} public key:{}",
+            self.prev_change_id(),
+            self.key_attributes(),
+            self.public_key()
+        )
     }
 }
 

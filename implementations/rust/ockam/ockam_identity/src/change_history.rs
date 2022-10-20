@@ -5,6 +5,7 @@ use crate::{
     ChangeIdentifier, IdentityError, IdentityIdentifier, IdentityStateConst, IdentityVault,
 };
 use core::cmp::Ordering;
+use core::fmt;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{allow, deny, Encodable, Result};
@@ -29,7 +30,31 @@ pub enum IdentityHistoryComparison {
 
 /// Full history of [`Identity`] changes. History and corresponding secret keys are enough to recreate [`Identity`]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct IdentityChangeHistory(Vec<IdentitySignedChange>);
+pub struct IdentityChangeHistory(Vec<IdentitySignedChange>);
+
+impl fmt::Display for IdentityChangeHistory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Change History:")?;
+        for (i_num, ident) in self.0.iter().enumerate() {
+            let public_key = ident.change().public_key().unwrap();
+            writeln!(f, "  Change[{}]:", i_num)?;
+            writeln!(f, "    identifier: {}", ident.identifier())?;
+            writeln!(f, "    change:")?;
+            writeln!(
+                f,
+                "      prev_change_identifier: {}",
+                ident.change().previous_change_identifier()
+            )?;
+            writeln!(f, "      label:        {}", ident.change().label())?;
+            writeln!(f, "      public_key:   {}", public_key)?;
+            writeln!(f, "    signatures:")?;
+            for (sig_num, sig) in ident.signatures().iter().enumerate() {
+                writeln!(f, "      [{}]: {}", sig_num, sig)?;
+            }
+        }
+        Ok(())
+    }
+}
 
 impl IdentityChangeHistory {
     pub fn export(&self) -> Result<Vec<u8>> {

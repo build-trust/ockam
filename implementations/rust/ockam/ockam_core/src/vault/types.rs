@@ -1,4 +1,5 @@
 use cfg_if::cfg_if;
+use core::fmt;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -140,6 +141,12 @@ impl PublicKey {
     }
 }
 
+impl fmt::Display for PublicKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?} {}", self.stype(), hex::encode(self.data()))
+    }
+}
+
 /// Binary representation of Signature.
 #[derive(Serialize, Deserialize, Clone, Debug, Zeroize)]
 pub struct Signature(SignatureVec);
@@ -229,6 +236,18 @@ impl SecretAttributes {
             persistence,
             length,
         }
+    }
+}
+
+impl fmt::Display for SecretAttributes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:?}({:?}) len:{}",
+            self.stype(),
+            self.persistence(),
+            self.length()
+        )
     }
 }
 

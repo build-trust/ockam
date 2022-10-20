@@ -1,4 +1,5 @@
 use crate::ChangeIdentifier;
+use core::fmt;
 use ockam_core::compat::vec::Vec;
 use ockam_core::vault::PublicKey;
 use ockam_core::Result;
@@ -19,6 +20,15 @@ pub enum IdentityChange {
     CreateKey(CreateKeyChangeData),
     /// Rotate key
     RotateKey(RotateKeyChangeData),
+}
+
+impl fmt::Display for IdentityChange {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            IdentityChange::CreateKey(data) => write!(f, " CreateKey:{}", data),
+            IdentityChange::RotateKey(data) => write!(f, " RotateKey:{}", data),
+        }
+    }
 }
 
 impl IdentityChange {
@@ -85,5 +95,16 @@ impl IdentitySignedChange {
             change,
             signatures,
         }
+    }
+}
+
+impl fmt::Display for IdentitySignedChange {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "  identifier: {}", self.identifier())?;
+        writeln!(f, "  identity change: {}", self.change())?;
+        for s in self.signatures() {
+            writeln!(f, "signatures: {}", s)?;
+        }
+        Ok(())
     }
 }

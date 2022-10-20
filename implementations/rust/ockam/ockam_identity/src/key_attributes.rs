@@ -1,3 +1,4 @@
+use core::fmt;
 use ockam_core::compat::string::String;
 use ockam_core::vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32};
 use ockam_vault::SecretAttributes;
@@ -37,5 +38,15 @@ impl KeyAttributes {
             label,
             secret_attributes,
         }
+    }
+}
+impl fmt::Display for KeyAttributes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            " label:{}, secrets:{}",
+            self.label(),
+            self.secret_attributes()
+        )
     }
 }
