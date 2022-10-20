@@ -1,4 +1,3 @@
-use crate::authenticator::direct::{PROJECT_ID, ROLE};
 use crate::error::ApiError;
 use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
@@ -6,15 +5,17 @@ use crate::nodes::models::portal::{
 use crate::nodes::registry::{InletInfo, OutletInfo, Registry};
 use crate::nodes::service::random_alias;
 use crate::session::{util, Data, Replacer, Session};
+use crate::{actions, resources};
 use crate::{multiaddr_to_route, try_multiaddr_to_addr};
 use minicbor::Decoder;
 use ockam::compat::asynchronous::RwLock;
 use ockam::compat::tokio::time::timeout;
 use ockam::tcp::{InletOptions, OutletOptions};
 use ockam::{Address, Result};
+use ockam_abac::expr::{and, eq, ident, str};
+use ockam_abac::{Action, Env, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::{AccessControl, AllowAll};
-use ockam_identity::credential::access_control::CredentialAccessControl;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::{Project, Secure, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -26,16 +27,27 @@ const INLET_WORKER: &str = "inlet-worker";
 const OUTER_CHAN: &str = "outer-chan";
 
 impl NodeManager {
-    fn access_control(&self, project_id: Option<String>) -> Result<Arc<dyn AccessControl>> {
+    async fn access_control(
+        &self,
+        r: &Resource,
+        a: &Action,
+        project_id: Option<String>,
+    ) -> Result<Arc<dyn AccessControl>> {
         if let Some(pid) = project_id {
-            let required_attributes = vec![
-                (PROJECT_ID.to_string(), pid.into_bytes()),
-                (ROLE.to_string(), b"member".to_vec()),
-            ];
-            Ok(Arc::new(CredentialAccessControl::new(
-                &required_attributes,
-                self.authenticated_storage.clone(),
-            )))
+            // Populate environment with known attributes:
+            let mut env = Env::new();
+            env.put("resource.id", str(r.as_str()));
+            env.put("action.id", str(a.as_str()));
+            env.put("resource.project_id", str(pid));
+            // Load the policy from storage or use the default one:
+            let policy = self.policies.get_policy(r, a).await?.unwrap_or_else(|| {
+                and([
+                    eq([ident("resource.project_id"), ident("subject.project_id")]),
+                    eq([ident("subject.role"), str("member")]),
+                ])
+            });
+            let store = self.authenticated_storage.clone();
+            Ok(Arc::new(PolicyAccessControl::new(policy, store, env)))
         } else {
             Ok(Arc::new(AllowAll))
         }
@@ -132,28 +144,34 @@ impl NodeManagerWorker {
             }
         };
 
-        let access_control = node_manager.access_control(if req.is_check_credential() {
-            let pid = req
-                .outlet_addr()
-                .first()
-                .and_then(|p| {
-                    if let Some(p) = p.cast::<Project>() {
-                        node_manager
-                            .projects
-                            .get(&*p)
-                            .map(|info| info.id.to_string())
-                    } else {
-                        None
+        let access_control = node_manager
+            .access_control(
+                &resources::INLET,
+                &actions::HANDLE_MESSAGE,
+                if req.is_check_credential() {
+                    let pid = req
+                        .outlet_addr()
+                        .first()
+                        .and_then(|p| {
+                            if let Some(p) = p.cast::<Project>() {
+                                node_manager
+                                    .projects
+                                    .get(&*p)
+                                    .map(|info| info.id.to_string())
+                            } else {
+                                None
+                            }
+                        })
+                        .or_else(|| node_manager.project_id.clone());
+                    if pid.is_none() {
+                        return Err(ApiError::generic("credential check requires project"));
                     }
-                })
-                .or_else(|| node_manager.project_id.clone());
-            if pid.is_none() {
-                return Err(ApiError::generic("credential check requires project"));
-            }
-            pid
-        } else {
-            None
-        })?;
+                    pid
+                } else {
+                    None
+                },
+            )
+            .await?;
 
         let options = InletOptions::new(
             listen_addr.clone(),
@@ -236,11 +254,18 @@ impl NodeManagerWorker {
         info!("Handling request to create outlet portal");
         let worker_addr = Address::from(worker_addr.as_ref());
 
-        let access_control = node_manager.access_control(if check_credential {
-            Some(node_manager.project_id()?.to_string())
-        } else {
-            None
-        })?;
+        let access_control = node_manager
+            .access_control(
+                &resources::OUTLET,
+                &actions::HANDLE_MESSAGE,
+                if check_credential {
+                    Some(node_manager.project_id()?.to_string())
+                } else {
+                    None
+                },
+            )
+            .await?;
+
         let options = OutletOptions::new(worker_addr.clone(), tcp_addr.clone(), access_control);
 
         let res = node_manager

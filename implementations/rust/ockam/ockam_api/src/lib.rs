@@ -36,6 +36,17 @@ impl DefaultAddress {
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
 }
 
+pub mod actions {
+    use ockam_abac::Action;
+    pub const HANDLE_MESSAGE: Action = Action::assert_inline("handle_message");
+}
+
+pub mod resources {
+    use ockam_abac::Resource;
+    pub const INLET: Resource = Resource::assert_inline("inlet");
+    pub const OUTLET: Resource = Resource::assert_inline("outlet");
+}
+
 use core::fmt;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};

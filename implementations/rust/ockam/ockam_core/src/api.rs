@@ -357,6 +357,10 @@ impl<'a> Error<'a> {
         self
     }
 
+    pub fn set_method(&mut self, m: Method) {
+        self.method = Some(m);
+    }
+
     pub fn with_message<S: Into<Cow<'a, str>>>(mut self, m: S) -> Self {
         self.message = Some(m.into());
         self

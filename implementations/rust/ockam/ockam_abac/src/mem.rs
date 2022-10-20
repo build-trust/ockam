@@ -50,11 +50,11 @@ impl Inner {
         self.policies.get(r).and_then(|p| p.get(a).cloned())
     }
 
-    fn set_policy(&mut self, r: Resource, a: Action, p: &Expr) {
+    fn set_policy(&mut self, r: &Resource, a: &Action, p: &Expr) {
         self.policies
-            .entry(r)
+            .entry(r.clone())
             .or_insert_with(BTreeMap::new)
-            .insert(a, p.clone());
+            .insert(a.clone(), p.clone());
     }
 }
 
@@ -69,7 +69,7 @@ impl PolicyStorage for Memory {
         Ok(self.inner.read().unwrap().get_policy(r, a))
     }
 
-    async fn set_policy(&self, r: Resource, a: Action, p: &Expr) -> Result<()> {
+    async fn set_policy(&self, r: &Resource, a: &Action, p: &Expr) -> Result<()> {
         self.inner.write().unwrap().set_policy(r, a, p);
         Ok(())
     }
@@ -97,8 +97,8 @@ mod tests {
         let store = Memory::new();
 
         store.inner.write().unwrap().set_policy(
-            resource.clone(),
-            action.clone(),
+            &resource,
+            &action,
             &parse(condition).unwrap().unwrap(),
         );
 
