@@ -12,7 +12,7 @@ OWNER="build-trust"
 USER_TYPE="orgs"
 
 if [[ -z $TAG_NAME || $TAG_NAME != *"ockam_v"* ]]; then
-    echo "Invalid tag name, pleas set TAG_NAME variable"
+    echo "Invalid tag name, please set TAG_NAME variable"
     exit 1
 fi
 
