@@ -280,6 +280,7 @@ pub mod config {
         let okta = project.okta_config.as_ref().map(|o| OktaAuth0 {
             tenant: o.tenant.to_string(),
             client_id: o.client_id.to_string(),
+            certificate: o.certificate.to_string(),
         });
         config.set_project_alias(
             project.name.to_string(),

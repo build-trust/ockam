@@ -17,7 +17,7 @@ pub struct Server<S> {
     project: Vec<u8>,
     store: S,
     tenant: String,
-    _certificate: String, //TODO: check this when making https request to okta endpoint
+    certificate: reqwest::Certificate,
 }
 
 #[ockam_core::worker]
@@ -45,13 +45,15 @@ impl<S> Server<S>
 where
     S: AuthenticatedStorage,
 {
-    pub fn new(project: Vec<u8>, store: S, tenant: &str, certificate: &str) -> Self {
-        Server {
+    pub fn new(project: Vec<u8>, store: S, tenant: &str, certificate: &str) -> Result<Self> {
+        let certificate = reqwest::Certificate::from_pem(certificate.as_bytes())
+            .map_err(|err| ApiError::generic(&err.to_string()))?;
+        Ok(Server {
             project,
             store,
             tenant: tenant.to_string(),
-            _certificate: certificate.to_string(),
-        }
+            certificate,
+        })
     }
 
     async fn on_request(&mut self, from: &IdentityIdentifier, data: &[u8]) -> Result<Vec<u8>> {
@@ -97,7 +99,11 @@ where
     }
 
     async fn check_token(&mut self, token: &str) -> Result<bool> {
-        let client = reqwest::Client::new();
+        let client = reqwest::ClientBuilder::new()
+            .tls_built_in_root_certs(false)
+            .add_root_certificate(self.certificate.clone())
+            .build()
+            .map_err(|err| ApiError::generic(&err.to_string()))?;
         let res = client
             .get(format!(
                 "https://{}/oauth2/default/v1/userinfo",

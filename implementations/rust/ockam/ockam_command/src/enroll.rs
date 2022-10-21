@@ -198,6 +198,21 @@ impl Auth0Provider {
             Self::Okta(d) => format!("https://{}/oauth2/default/v1/token", &d.tenant),
         }
     }
+
+    fn build_http_client(&self) -> reqwest::Client {
+        match self {
+            Self::Auth0 => reqwest::Client::new(),
+            Self::Okta(d) => {
+                let certificate = reqwest::Certificate::from_pem(d.certificate.as_bytes())
+                    .expect("Error parsing certifate");
+                reqwest::ClientBuilder::new()
+                    .tls_built_in_root_certs(false)
+                    .add_root_certificate(certificate)
+                    .build()
+                    .expect("Error building http client")
+            }
+        }
+    }
 }
 
 pub struct Auth0Service(Auth0Provider);
@@ -219,8 +234,8 @@ impl Auth0TokenProvider for Auth0Service {
         // More on how to use scope and audience in https://auth0.com/docs/quickstart/native/device#device-code-parameters
         let device_code_res = {
             let retry_strategy = ExponentialBackoff::from_millis(10).take(5);
+            let client = self.provider().build_http_client();
             let res = Retry::spawn(retry_strategy, move || {
-                let client = reqwest::Client::new();
                 client
                     .post(self.provider().device_code_url())
                     .header("content-type", "application/x-www-form-urlencoded")
@@ -292,7 +307,7 @@ impl Auth0TokenProvider for Auth0Service {
         }
 
         // Request tokens
-        let client = reqwest::Client::new();
+        let client = self.provider().build_http_client();
         let tokens_res;
         loop {
             let res = client

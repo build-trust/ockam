@@ -158,6 +158,9 @@ async fn run_impl(
                 certificate_path,
                 client_id,
             } => {
+                //TODO: should check here that the client_id, tenant and certificate are correct.
+                //      Could do the first part of the oauth flow and request a device code,
+                //      if we can't get one, something is wrong with the config
                 let certificate = match (certificate, certificate_path) {
                     (Some(c), _) => c,
                     (_, Some(p)) => std::fs::read_to_string(p)?,
