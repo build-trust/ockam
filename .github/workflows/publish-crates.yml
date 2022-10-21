@@ -10,7 +10,7 @@ on:
         description: Exclude Specific Crates From Being Published
         required: false
       release_branch:
-        description: Release Branch Where Recent Bump Occured
+        description: Release Branch Where Recent Bump Occurred
         required: true
       ockam_publish_recent_failure:
         description: Indicate A Recent Failure
