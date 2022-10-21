@@ -191,7 +191,7 @@ impl NodeManager {
             ));
         }
         let db = self.authenticated_storage.async_try_clone().await?;
-        let au = crate::okta::Server::new(proj.to_vec(), db, tenant, certificate);
+        let au = crate::okta::Server::new(proj.to_vec(), db, tenant, certificate)?;
         ctx.start_worker(addr.clone(), au).await?;
         self.registry
             .okta_identity_provider_services

@@ -175,6 +175,7 @@ impl OktaConfig<'_> {
 pub struct OktaAuth0 {
     pub tenant: String,
     pub client_id: String,
+    pub certificate: String,
 }
 
 impl From<OktaConfig<'_>> for OktaAuth0 {
@@ -182,6 +183,7 @@ impl From<OktaConfig<'_>> for OktaAuth0 {
         Self {
             tenant: c.tenant.to_string(),
             client_id: c.client_id.to_string(),
+            certificate: c.certificate.to_string(),
         }
     }
 }
