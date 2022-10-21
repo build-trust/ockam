@@ -39,6 +39,7 @@ pub struct ProjectInfo<'a> {
     #[serde(borrow)]
     pub authority_identity: Option<CowStr<'a>>,
     #[serde(borrow)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub okta_config: Option<OktaConfig<'a>>,
 }
 
