@@ -8,7 +8,7 @@ defmodule Hop do
   def handle_message(message, %{address: address} = state) do
     IO.puts("Address: #{address}\t Received: #{inspect(message)}")
 
-    ## Forward mesage to the next address and trace current address
+    ## Forward message to the next address and trace current address
     ## in return route.
     forwarded_message = Message.forward(message) |> Message.trace(address)
 
