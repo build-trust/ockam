@@ -274,9 +274,9 @@ void test_vault_secret_ecdh(void** state)
     assert_true(ockam_error_is_none(&error));
   }
 
-  /* ------------ */
-  /* Key Retrival */
-  /* ------------ */
+  /* ------------- */
+  /* Key Retrieval */
+  /* ------------- */
 
   error = ockam_vault_secret_publickey_get(
     test_data->vault, &initiator_secret, generated_initiator_pub, test_data->key_size, &length);

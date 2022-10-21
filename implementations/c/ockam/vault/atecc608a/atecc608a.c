@@ -1500,7 +1500,7 @@ ockam_error_t atecc608a_aead_aes_gcm(ockam_vault_t*        vault,
   if (encrypt == VAULT_ATECC608A_AEAD_AES_GCM_ENCRYPT) {
 
     uint8_t* tag_offset = 0;
-    status = atcab_aes_gcm_encrypt_update(atca_ctx, /* If mode is encrypt, resulting cipertext is placed  */
+    status = atcab_aes_gcm_encrypt_update(atca_ctx, /* If mode is encrypt, resulting ciphertext is placed */
                                           input,    /* into output.                                       */
                                           input_length,
                                           output);
@@ -1511,8 +1511,8 @@ ockam_error_t atecc608a_aead_aes_gcm(ockam_vault_t*        vault,
 
     tag_offset = output + input_length;
 
-    status = atcab_aes_gcm_encrypt_finish(atca_ctx,    /* After the cipertext has been generated, output the */
-                                          tag_offset,  /* resulting tag to p_tag and end AES GCM encryption  */
+    status = atcab_aes_gcm_encrypt_finish(atca_ctx,    /* After the ciphertext has been generated, output the */
+                                          tag_offset,  /* resulting tag to p_tag and end AES GCM encryption   */
                                           OCKAM_VAULT_AEAD_AES_GCM_TAG_LENGTH);
     if (status != ATCA_SUCCESS) {
       error.code = OCKAM_VAULT_ATECC608A_ERROR_AEAD_AES_GCM_FAIL;
