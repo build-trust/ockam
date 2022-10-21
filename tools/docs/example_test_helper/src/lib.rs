@@ -7,7 +7,7 @@
 //! - `OCKAM_LOG=trace`
 //!
 //! Some functions will timeout if [`DEFAULT_TIMEOUT_MS`] milliseconds
-//! pass. In parituclar [`CmdBuilder::run()`], but not [`CmdBuilder::spawn()`].
+//! pass. In particular [`CmdBuilder::run()`], but not [`CmdBuilder::spawn()`].
 //!
 //! Processes which have not completed are killed (or signalled) when their
 //! [`CmdRunner`] is dropped.
