@@ -28,7 +28,7 @@ impl<S> PolicyAccessControl<S> {
     /// Create a new `PolicyAccessControl`.
     ///
     /// The policy expression is evaluated by getting subject attributes from
-    /// the given authenticated storage, adding them the given envionment,
+    /// the given authenticated storage, adding them the given environment,
     /// which may already contain other resource, action or subject attributes.
     pub fn new(policy: Expr, store: S, env: Env) -> Self {
         Self {

@@ -6,7 +6,7 @@
 //! plugin for this architecture.
 //!
 //! You can use Ockam's routing mechanism for cryptographic protocols,
-//! key lifecycle, credetial exchange, enrollment, etc, without having
+//! key lifecycle, credential exchange, enrollment, etc, without having
 //! to worry about the transport specifics.
 //!
 #![deny(unsafe_code)]

@@ -115,7 +115,7 @@ where
     F: Fn(&Expr, &Expr) -> bool,
 {
     if expr.len() < 2 {
-        let msg = format!("{op} requires at leat two arguments");
+        let msg = format!("{op} requires at least two arguments");
         return Err(EvalError::malformed(msg));
     }
     let mut last = eval(&expr[0], env)?;

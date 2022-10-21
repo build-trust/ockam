@@ -541,7 +541,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v0.6.0 - 2021-03-22
 ### Added
 - Routable message abstraction.
-- Builder for Routable messags.
+- Builder for Routable messages.
 - Route metadata for messages.
 - Generic transport message.
 

@@ -155,7 +155,7 @@ async fn handle_cmd(
             trace!("Sending PullRequest to stream {:?}...", w.receiver_name);
             ctx.send(
                 w.service_route.clone(),
-                // TOOD: make fetch amount configurable/ dynamic?
+                // TODO: make fetch amount configurable/ dynamic?
                 PullRequest::new(request_id, w.idx, 8),
             )
             .await?;

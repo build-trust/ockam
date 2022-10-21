@@ -44,7 +44,7 @@ pub struct ErrorCode {
     /// Concretely: two `ErrorCode` with different `extra` values should
     /// identify types of errors.
     // TODO: is 32 bits okay on embedded? This puts us to 64 bits for the
-    // structure in practice, but means that we'll alwasy be able to hold OS
+    // structure in practice, but means that we'll always be able to hold OS
     // errors, as well as `old_error::Error::code`.
     pub extra: i32,
 }
@@ -218,8 +218,8 @@ pub enum Kind {
     ///
     /// For example, this may be appropriate for:
     ///
-    /// - A vault which does not recognize a `Secret` which it recieves.
-    /// - FFI that recieves an integer `handle` that does not belong to any
+    /// - A vault which does not recognize a `Secret` which it receives.
+    /// - FFI that receives an integer `handle` that does not belong to any
     ///   known entity.
     /// - Local [`Address`](crate::Address) which don't correspond to any known
     ///   `Worker` or `Processor`.
@@ -234,8 +234,8 @@ pub enum Kind {
     ///
     /// For example, this may be appropriate for:
     ///
-    /// - A vault which does not recognize a `Secret` which it recieves.
-    /// - FFI that recieves an integer `handle` that does not belong to any
+    /// - A vault which does not recognize a `Secret` which it receives.
+    /// - FFI that receives an integer `handle` that does not belong to any
     ///   known entity.
     /// - Local [`Address`](crate::Address) which don't correspond to any known
     ///   `Worker` or `Processor`.
