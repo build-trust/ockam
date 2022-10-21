@@ -154,7 +154,7 @@ download() {
     info "Installing latest version"
   fi
 
-  info "Dowloading $_url"
+  info "Downloading $_url"
   curl --proto '=https' --tlsv1.2 --location --silent --fail --show-error --output "ockam" "$_url"
   info "Downloaded ockam command in the current directory $(pwd)"
 
