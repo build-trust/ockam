@@ -51,7 +51,7 @@ typedef struct {
    * @brief   Generate an ockam secret.
    * @param   vault[in]       Vault object to use for generating a secret key.
    * @param   secret[out]     Pointer to an ockam secret object to be populated with the generated secret.
-   * @param   attributes[in]  Desired attribtes for the secret to be generated.
+   * @param   attributes[in]  Desired attributes for the secret to be generated.
    */
   ockam_error_t (*secret_generate)(ockam_vault_t*                         vault,
                                    ockam_vault_secret_t*                  secret,
@@ -60,7 +60,7 @@ typedef struct {
    * @brief   Import the specified data into the supplied ockam vault secret.
    * @param   vault[in]         Vault object to use for generating a secret key.
    * @param   secret[out]       Pointer to an ockam secret object to be populated with input data.
-   * @param   attributes[in]    Desired attribtes for the secret to be imported.
+   * @param   attributes[in]    Desired attributes for the secret to be imported.
    * @param   input[in]         Data to load into the supplied secret.
    * @param   input_length[in]  Length of data to load into the secret.
    */
@@ -101,7 +101,7 @@ typedef struct {
                                         size_t*               output_buffer_length);
 
   /**
-   * @brief   Retrive the attributes for a specified secret
+   * @brief   Retrieve the attributes for a specified secret
    * @param   vault[in]       Vault object to use for retrieving ockam vault secret attributes.
    * @param   secret[in]      Ockam vault secret to get attributes for.
    * @param   attributes[out] Pointer to the attributes for the specified secret.
@@ -133,7 +133,7 @@ typedef struct {
    * @param   privatekey[in]            The ockam vault secret to use for the private key of ECDH.
    * @param   peer_publickey[in]        Public key data to use for ECDH.
    * @param   peer_publickey_length[in] Length of the public key.
-   * @param   shared_secret[out]        Resulting shared secret from a sucessful ECDH operation. Invalid if ECDH failed.
+   * @param   shared_secret[out]        Resulting shared secret from a successful ECDH operation. Invalid if ECDH failed.
    * @return  OCKAM_ERROR_NONE on success.
    */
   ockam_error_t (*ecdh)(ockam_vault_t*        vault,

@@ -10,7 +10,7 @@
 # your cmake- (or more generically externally-) built artifacts.
 #
 # If you desire to use IAR EW as native IDE, you'll need to create EW project and then manually add
-# every file using the IDE GUI. To maintain folder structure, use "add group" to mimick/replicate the folder
+# every file using the IDE GUI. To maintain folder structure, use "add group" to mimic/replicate the folder
 # hierarchy. The project config/structure is eventually saved into XML files. So presumably, you could
 # also create by hand (or write a script to generate) the XML files.
 #
