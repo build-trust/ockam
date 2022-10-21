@@ -62,7 +62,7 @@ impl From<SenderAddress> for Route {
     }
 }
 
-/// The reciever half of [`SenderAddress`].
+/// The receiver half of [`SenderAddress`].
 pub struct ReceiverAddress {
     ctx: Context,
     _inner: Address,

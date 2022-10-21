@@ -15,7 +15,7 @@ categories = [
     "no-std",
 ]
 keywords = ["ockam", "crypto", "x3dh", "cryptography", "encryption"]
-description = """The Ockam X3DH impementation.
+description = """The Ockam X3DH implementation.
 """
 publish = true
 rust-version = "1.56.0"

@@ -106,7 +106,7 @@ impl Display for TransportMode {
 
 ///////////////////-!  RESPONSE BODIES
 
-/// Respons body when interacting with a transport
+/// Response body when interacting with a transport
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]

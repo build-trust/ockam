@@ -147,7 +147,7 @@ impl CreateCommand {
                 }
 
                 // return the exitcode::PROTOCOL since if things are going as expected
-                // a route in the response should be convertable to multiaddr.
+                // a route in the response should be convertible to multiaddr.
                 std::process::exit(exitcode::PROTOCOL);
             }
         };

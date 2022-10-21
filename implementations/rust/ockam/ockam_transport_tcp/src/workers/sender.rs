@@ -254,7 +254,7 @@ impl Worker for TcpSendWorker {
             // Remove our own address from the route so the other end
             // knows what to do with the incoming message
             msg.onward_route.step()?;
-            // Create a message buffer with pre-pended length
+            // Create a message buffer with prepended length
             let msg = prepare_message(msg)?;
 
             if tx.write_all(msg.as_slice()).await.is_err() {

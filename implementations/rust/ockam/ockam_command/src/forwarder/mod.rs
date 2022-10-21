@@ -36,7 +36,7 @@ About:
     $ ockam node create yellow
 
     # Create an end-to-end secure channel between yellow and blue.
-    # This secure channel is created trough blue's forwarder at green and we can
+    # This secure channel is created through blue's forwarder at green and we can
     # send end-to-end encrypted messages through it.
     $ ockam secure-channel create --from /node/yellow --to /node/green/service/forward_to_blue/service/api \\
         | ockam message send hello --from /node/yellow --to -/service/uppercase

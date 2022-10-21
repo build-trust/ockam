@@ -71,7 +71,7 @@ impl BehaviorHook for SenderConfirm {
                     // Then actually re-send the message
                     ctx.send(peer, msg).await?;
                 }
-                None => trace!("Received timeout for message, but message was acknowleged"),
+                None => trace!("Received timeout for message, but message was acknowledged"),
             },
             InternalCmd::Ack(Ack { idx }) => {
                 debug!("Received pipe delivery ACK for index {}", idx);

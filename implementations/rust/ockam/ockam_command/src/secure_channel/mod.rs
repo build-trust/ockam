@@ -86,7 +86,7 @@ About:
     /service/forward_to_n2
 
     # Create an end-to-end secure channel between n1 and n2.
-    # This secure channel is created trough n2's forwarder at relay and we can
+    # This secure channel is created through n2's forwarder at relay and we can
     # send end-to-end encrypted messages through it.
     $ ockam secure-channel create --from /node/n1 --to /node/relay/service/forward_to_n2/service/api \\
         | ockam message send hello --from /node/n1 --to -/service/uppercase
