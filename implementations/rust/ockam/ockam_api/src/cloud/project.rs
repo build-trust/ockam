@@ -63,6 +63,7 @@ pub struct Project<'a> {
 
     #[cbor(b(11))]
     #[serde(borrow)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub okta_config: Option<OktaConfig<'a>>,
 }
 
