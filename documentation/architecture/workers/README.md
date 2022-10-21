@@ -41,7 +41,7 @@ impl Worker for MyWorker {
     type Context = Context;
     type Message = MyMessage;
 
-    fn intialize(&mut self, ctx: &mut Context) -> Result<()> {
+    fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         println!("Starting worker {}", ctx.address())
         Ok(())
     }
