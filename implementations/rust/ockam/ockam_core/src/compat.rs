@@ -294,6 +294,8 @@ pub use std::task;
 /// Provides `std::vec`.
 pub mod vec {
     #[cfg(feature = "alloc")]
+    pub use alloc::vec;
+    #[cfg(feature = "alloc")]
     pub use alloc::vec::*;
     #[cfg(not(feature = "alloc"))]
     pub type Vec<T> = heapless::Vec<T, 64>;
