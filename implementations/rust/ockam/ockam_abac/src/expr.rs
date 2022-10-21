@@ -2,7 +2,7 @@ use core::fmt;
 use core::{cmp::Ordering, str::FromStr};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::string::String;
-use ockam_core::compat::vec::Vec;
+use ockam_core::compat::vec::{vec, Vec};
 
 #[cfg(test)]
 use quickcheck::{Arbitrary, Gen};
@@ -43,40 +43,90 @@ impl From<Val> for Expr {
     }
 }
 
+#[rustfmt::skip]
 impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Expr::Str(a), Expr::Str(b)) => a.eq(b),
-            (Expr::Bool(a), Expr::Bool(b)) => a.eq(b),
-            (Expr::Ident(a), Expr::Ident(b)) => a.eq(b),
-            (Expr::Seq(a), Expr::Seq(b)) => a.eq(b),
-            (Expr::List(a), Expr::List(b)) => a.eq(b),
-            (Expr::Int(a), Expr::Int(b)) => a.eq(b),
-            (Expr::Float(a), Expr::Float(b)) => a.eq(b),
-            (Expr::Int(a), Expr::Float(b)) => (*a as f64).eq(b),
-            (Expr::Float(a), Expr::Int(b)) => a.eq(&(*b as f64)),
-            _ => false,
+        let mut ctrl = vec![(self, other)];
+
+        while let Some(x) = ctrl.pop() {
+            match x {
+                (Expr::Str(a),   Expr::Str(b))   => if !a.eq(b) { return false }
+                (Expr::Bool(a),  Expr::Bool(b))  => if !a.eq(b) { return false }
+                (Expr::Ident(a), Expr::Ident(b)) => if !a.eq(b) { return false }
+                (Expr::Int(a),   Expr::Int(b))   => if !a.eq(b) { return false }
+                (Expr::Float(a), Expr::Float(b)) => if !a.eq(b) { return false }
+                (Expr::Int(a),   Expr::Float(b)) => if !(*a as f64).eq(b)  { return false }
+                (Expr::Float(a), Expr::Int(b))   => if !a.eq(&(*b as f64)) { return false }
+                (Expr::Seq(a),   Expr::Seq(b))   => {
+                    if a.len() != b.len() {
+                        return false
+                    }
+                    for (a, b) in a.iter().zip(b).rev() {
+                        ctrl.push((a, b))
+                    }
+                }
+                (Expr::List(a), Expr::List(b)) => {
+                    if a.len() != b.len() {
+                        return false
+                    }
+                    for (a, b) in a.iter().zip(b).rev() {
+                        ctrl.push((a, b))
+                    }
+                }
+                _ => return false
+            }
         }
+
+        true
     }
 }
 
+#[rustfmt::skip]
 impl PartialOrd for Expr {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (self, other) {
-            (Expr::Str(a), Expr::Str(b)) => a.partial_cmp(b),
-            (Expr::Bool(a), Expr::Bool(b)) => a.partial_cmp(b),
-            (Expr::Ident(a), Expr::Ident(b)) => a.partial_cmp(b),
-            (Expr::Seq(a), Expr::Seq(b)) => match a.len().partial_cmp(&b.len())? {
-                Ordering::Equal => a.partial_cmp(b),
-                ordering => Some(ordering),
-            },
-            (Expr::List(a), Expr::List(b)) => a.partial_cmp(b),
-            (Expr::Int(a), Expr::Int(b)) => a.partial_cmp(b),
-            (Expr::Float(a), Expr::Float(b)) => a.partial_cmp(b),
-            (Expr::Int(a), Expr::Float(b)) => (*a as f64).partial_cmp(b),
-            (Expr::Float(a), Expr::Int(b)) => a.partial_cmp(&(*b as f64)),
-            _ => None,
+        let mut ctrl = vec![(self, other)];
+
+        let mut result = None;
+
+        while let Some(x) = ctrl.pop() {
+            match x {
+                (Expr::Str(a),   Expr::Str(b))   => { result = a.partial_cmp(b) }
+                (Expr::Bool(a),  Expr::Bool(b))  => { result = a.partial_cmp(b) }
+                (Expr::Ident(a), Expr::Ident(b)) => { result = a.partial_cmp(b) }
+                (Expr::Int(a),   Expr::Int(b))   => { result = a.partial_cmp(b) }
+                (Expr::Float(a), Expr::Float(b)) => { result = a.partial_cmp(b) }
+                (Expr::Int(a),   Expr::Float(b)) => { result = (*a as f64).partial_cmp(b) }
+                (Expr::Float(a), Expr::Int(b))   => { result = a.partial_cmp(&(*b as f64)) }
+                (Expr::Seq(a),   Expr::Seq(b))   => {
+                    result = a.len().partial_cmp(&b.len());
+                    if Some(Ordering::Equal) == result {
+                        for (a, b) in a.iter().zip(b).rev() {
+                            ctrl.push((a, b))
+                        }
+                        continue
+                    } else {
+                        return result
+                    }
+                }
+                (Expr::List(a), Expr::List(b)) => {
+                    result = a.len().partial_cmp(&b.len());
+                    if Some(Ordering::Equal) == result {
+                        for (a, b) in a.iter().zip(b).rev() {
+                            ctrl.push((a, b))
+                        }
+                        continue
+                    } else {
+                        return result
+                    }
+                }
+                _ => return None
+            }
+            if Some(Ordering::Equal) != result {
+                return result
+            }
         }
+
+        result
     }
 }
 
@@ -192,53 +242,70 @@ where
     Expr::List(xs)
 }
 
+#[rustfmt::skip]
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Expr::Str(s) => write!(f, "{s:?}"),
-            Expr::Int(i) => write!(f, "{i}"),
-            Expr::Float(x) => {
-                if x.is_nan() {
-                    f.write_str("nan")
-                } else if x.is_infinite() {
-                    if x.is_sign_negative() {
-                        f.write_str("-inf")
+        /// Control stack element.
+        enum Op<'a> {
+            Show(&'a Expr),
+            ListEnd,
+            SeqEnd,
+            Whitespace,
+        }
+
+        // Control stack.
+        let mut ctrl = vec![Op::Show(self)];
+
+        while let Some(e) = ctrl.pop() {
+            match e {
+                Op::Show(Expr::Str(s)) => write!(f, "{s:?}")?,
+                Op::Show(Expr::Int(i)) => write!(f, "{i}")?,
+                Op::Show(Expr::Float(x)) => {
+                    if x.is_nan() {
+                        f.write_str("nan")?
+                    } else if x.is_infinite() {
+                        if x.is_sign_negative() {
+                            f.write_str("-inf")?
+                        } else {
+                            f.write_str("+inf")?
+                        }
                     } else {
-                        f.write_str("+inf")
+                        write!(f, "{:?}", x)?
                     }
-                } else {
-                    write!(f, "{:?}", x)
                 }
-            }
-            Expr::Bool(b) => write!(f, "{b}"),
-            Expr::Ident(v) => f.write_str(v),
-            Expr::List(es) => {
-                f.write_str("(")?;
-                let mut n = es.len();
-                for e in es {
-                    if n > 1 {
-                        write!(f, "{e} ")?
-                    } else {
-                        write!(f, "{e}")?
+                Op::Show(Expr::Bool(b)) => write!(f, "{b}")?,
+                Op::Show(Expr::Ident(v)) => f.write_str(v)?,
+                Op::Show(Expr::List(es)) => {
+                    ctrl.push(Op::ListEnd);
+                    f.write_str("(")?;
+                    let mut n = es.len();
+                    for e in es.iter().rev() {
+                        ctrl.push(Op::Show(e));
+                        if n > 1 {
+                            ctrl.push(Op::Whitespace)
+                        }
+                        n -= 1
                     }
-                    n -= 1;
                 }
-                f.write_str(")")
-            }
-            Expr::Seq(es) => {
-                f.write_str("[")?;
-                let mut n = es.len();
-                for e in es {
-                    if n > 1 {
-                        write!(f, "{e} ")?
-                    } else {
-                        write!(f, "{e}")?
+                Op::Show(Expr::Seq(es)) => {
+                    ctrl.push(Op::SeqEnd);
+                    f.write_str("[")?;
+                    let mut n = es.len();
+                    for e in es.iter().rev() {
+                        ctrl.push(Op::Show(e));
+                        if n > 1 {
+                            ctrl.push(Op::Whitespace)
+                        }
+                        n -= 1
                     }
-                    n -= 1;
                 }
-                f.write_str("]")
+                Op::ListEnd    => f.write_str(")")?,
+                Op::SeqEnd     => f.write_str("]")?,
+                Op::Whitespace => f.write_str(" ")?,
             }
         }
+
+        Ok(())
     }
 }
 
@@ -277,6 +344,7 @@ impl Arbitrary for Expr {
             use rand::distributions::{Alphanumeric, DistString};
             let mut s = Alphanumeric.sample_string(&mut rand::thread_rng(), 23);
             s.retain(|c| !['(', ')', '[', ']'].contains(&c));
+            s.insert(0, 'a');
             s
         }
         match g.choose(&[1, 2, 3, 4, 5, 6, 7]).unwrap() {
@@ -301,10 +369,10 @@ impl Arbitrary for Expr {
 #[cfg(test)]
 mod tests {
     use super::Expr;
-    use crate::parser::parse;
+    use crate::{eval, parser::parse, Env};
     use core::cmp::Ordering;
     use ockam_core::compat::string::ToString;
-    use quickcheck::{Gen, QuickCheck};
+    use quickcheck::{Arbitrary, Gen, QuickCheck};
 
     #[test]
     fn write_read() {
@@ -478,5 +546,107 @@ mod tests {
             .tests(1000)
             .min_tests_passed(1000)
             .quickcheck(property as fn(_, _))
+    }
+
+    const EVIL: &str = r#"
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+         "#;
+
+    #[test]
+    fn evil() {
+        let x = parse(EVIL).unwrap().unwrap();
+        eval(&x, &Env::new()).unwrap();
+        let y = x.to_string();
+        let z = parse(&y).unwrap().unwrap();
+        assert_eq!(x, z);
+        assert!(x == z);
+        assert_eq!(Some(Ordering::Equal), x.partial_cmp(&z));
+    }
+
+    #[derive(Debug, Clone)]
+    struct S(String);
+
+    impl Arbitrary for S {
+        fn arbitrary(g: &mut Gen) -> Self {
+            const ALPHABET: &[char] = &[
+                ' ', ')', '(', '[', ']', '"', 'a', 'b', 'c', '1', '2', '3', '.',
+            ];
+            let mut s = String::new();
+            for _ in 0u8..u8::arbitrary(g) {
+                s.push(*g.choose(ALPHABET).unwrap())
+            }
+            s.push('#'); // guarantee parse error
+            S(s)
+        }
+    }
+
+    #[test]
+    fn malformed() {
+        fn property(s: S) {
+            assert!(parse(&s.0).is_err())
+        }
+        QuickCheck::new()
+            .tests(1000)
+            .min_tests_passed(1000)
+            .quickcheck(property as fn(_))
     }
 }
