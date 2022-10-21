@@ -22,7 +22,7 @@ defmodule Ockam.Node.Registry do
 
   @spec register_name(any, any) :: :no | :yes
   @doc false
-  # This function is used when a process is registed using the `:via` option.
+  # This function is used when a process is registered using the `:via` option.
   #
   # The Gen* modules expect this function to be exported.
   # See the "Name registration" section of the `GenServer` module.
@@ -33,7 +33,7 @@ defmodule Ockam.Node.Registry do
 
   @spec whereis_name(any) :: :undefined | pid
   @doc false
-  # This function is used when a process is registed using the `:via` option.
+  # This function is used when a process is registered using the `:via` option.
   #
   # The Gen* modules expect this function to be exported.
   # See the "Name registration" section of the `GenServer` module.
@@ -41,7 +41,7 @@ defmodule Ockam.Node.Registry do
 
   @spec unregister_name(any) :: :ok
   @doc false
-  # This function is used when a process is registed using the `:via` option.
+  # This function is used when a process is registered using the `:via` option.
   #
   # The Gen* modules expect this function to be exported.
   # See the "Name registration" section of the `GenServer` module.
@@ -54,7 +54,7 @@ defmodule Ockam.Node.Registry do
 
   def addresses(pid), do: Registry.keys(__MODULE__, pid)
 
-  # This function is used when a process is registed using the `:via` option.
+  # This function is used when a process is registered using the `:via` option.
   #
   # The Gen* modules expect this function to be exported.
   # See the "Name registration" section of the `GenServer` module.

@@ -26,7 +26,7 @@ defmodule Ockam.Transport.Portal.OutletWorker.Tests do
           {:target_port, echo_port}
         ])
 
-      # We must receive the :pong responde handshake
+      # We must receive the :pong response handshake
       assert :pong == receive_msg()
 
       # Send some data

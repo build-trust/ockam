@@ -38,7 +38,7 @@ defmodule Ockam.Router.Storage do
   @doc """
   Puts the given `value` under `key` in storage.
 
-  If key is successfullly set, `:ok` is returned.
+  If key is successfully set, `:ok` is returned.
   If a value already exists for this key, it will be overwritten, `:ok` is returned.
   """
   @spec put(key(), value()) :: :ok

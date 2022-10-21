@@ -1,7 +1,7 @@
 defmodule Ockam.TypedCBOR do
   @moduledoc """
   Helpers encode/decode structs to/from CBOR,  aimed at compatibility with minicbor rust library.
-  Prefered usage is through TypedStruct macros, see examples on test/plugin_test.exs
+  Preferred usage is through TypedStruct macros, see examples on test/plugin_test.exs
   """
 
   @doc ~S"""
