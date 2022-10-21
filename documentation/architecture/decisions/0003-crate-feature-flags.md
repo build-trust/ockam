@@ -45,7 +45,7 @@ The public API of Rust's standard library is split into 3 parts.
         - If no `#[global_allocator]` is configured, then `libstd` will provide one based on the OS's default allocator.
             - In the rare cases where `libstd` supports a target without a system-provided allocator, `libstd` will provide a default written in Rust (currently, it uses a Rust [port of `dlmalloc`](https://crates.io/crates/dlmalloc) for these situations).
 
-As you may note, these are analagous to the three configurations we wish to support, but there is an important difference:
+As you may note, these are analogous to the three configurations we wish to support, but there is an important difference:
 
 We should do not adopt the restriction that `libcore` and `liballoc` has around target-specific checks and `cfg`s and such. We favor practicality over purity, and without this, we would be completely unable to provide useful functionality for embedded environments.
 

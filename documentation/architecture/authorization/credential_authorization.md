@@ -26,19 +26,19 @@ Credential contains identity of the sender, a set of attributes this sender is a
 ### Credential based attribute acceptance implementation
 
 To accept attributes from a credential, the accepting endpoint will need to trust a credential authority and be able to verify credential signature.
-This is implemented by posessing the credential authority identity, which contains the public key used to sign credentials.
+This is implemented by possessing the credential authority identity, which contains the public key used to sign credentials.
 
 The attribute acceptance works as following:
 
 - Receive a credential from an identity
 - Verify credential signature and identity using credential verifier service
 - Receive attribute set from the verifier service
-- Save attribute set to local cache assiciated with the sender identity
+- Save attribute set to local cache associated with the sender identity
 
 
 ### Attribute sets and expiration
 
-Posession of attributes by certain identity may change over time, this means we need to remove attributes from the attribute storage for this identity at some point.
+Possession of attributes by certain identity may change over time, this means we need to remove attributes from the attribute storage for this identity at some point.
 This can be done by having attribute expiration time and removing the attributes once they expired.
 
 Expiration time is controlled by the credential authority and communicated in a credential.
@@ -47,7 +47,7 @@ A group of attributes presented in a credential with their expiry is called attr
 
 **Current implementation of attribute storage allows to store one attribute set per identity.**
 
-**If the same identity presents a new credential - old attribute set is overriden by a new one.**
+**If the same identity presents a new credential - old attribute set is overridden by a new one.**
 
 
 ### Credential exchange

@@ -181,7 +181,7 @@ building Rust executables for RISC-V is the presence of a RISC-V linker, such as
 - For Debian: `apt-get install gcc-riscv64-linux-gnu`
 - For MacOS: `brew tap riscv/riscv && brew install --cc=gcc-10 riscv-tools`
 
-In your `ockam_rv` project, create a `.cargo/config.toml` file. In this file, we specify that we're builing for RISC-V
+In your `ockam_rv` project, create a `.cargo/config.toml` file. In this file, we specify that we're building for RISC-V
 and also configure the location of the linker.
 
 
