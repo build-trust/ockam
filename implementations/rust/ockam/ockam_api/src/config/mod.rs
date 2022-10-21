@@ -16,31 +16,29 @@ pub mod cli;
 pub mod lookup;
 
 pub trait ConfigValues: Serialize + DeserializeOwned {
-    fn default_values(config_dir: &Path) -> Self;
+    fn default_values() -> Self;
 }
 
 #[derive(Clone, Debug)]
 pub struct Config<V: ConfigValues> {
     config_dir: PathBuf,
-    config_name: String,
+    config_file_name: String,
     inner: Arc<RwLock<V>>,
+}
+
+impl<V: ConfigValues> Default for Config<V> {
+    fn default() -> Self {
+        Self {
+            config_dir: Default::default(),
+            config_file_name: "".to_string(),
+            inner: Arc::new(RwLock::new(V::default_values())),
+        }
+    }
 }
 
 impl<V: ConfigValues> Config<V> {
     pub fn config_path(&self) -> PathBuf {
-        self.config_dir.join(&self.config_name)
-    }
-
-    pub fn config_dir(&self) -> &Path {
-        &self.config_dir
-    }
-
-    pub fn config_name(&self) -> &str {
-        &self.config_name
-    }
-
-    pub fn inner(&self) -> &Arc<RwLock<V>> {
-        &self.inner
+        self.config_dir.join(&self.config_file_name)
     }
 
     /// Read lock the inner collection and return a guard to it
@@ -57,11 +55,11 @@ impl<V: ConfigValues> Config<V> {
     pub fn load(config_dir: &Path, config_name: &str) -> anyhow::Result<Self> {
         create_dir_all(config_dir)?;
 
-        let config_name = format!("{}.json", config_name);
-        let config_path = config_dir.join(&config_name);
+        let config_file_name = build_config_file_name(config_name);
+        let config_path = build_config_path(config_dir, config_name);
 
         let create_new = || -> anyhow::Result<V> {
-            let new_inner = V::default_values(config_dir);
+            let new_inner = V::default_values();
             let json: String =
                 serde_json::to_string_pretty(&new_inner).context("failed to serialise config")?;
             let mut f =
@@ -81,7 +79,7 @@ impl<V: ConfigValues> Config<V> {
                 } else {
                     serde_json::from_str(&buf).unwrap_or_else(|_| {
                         panic!(
-                            "Failed to parse config.  Try deleting {}",
+                            "Failed to parse config. Try deleting {}",
                             config_path.display()
                         )
                     })
@@ -92,13 +90,25 @@ impl<V: ConfigValues> Config<V> {
 
         Ok(Self {
             config_dir: config_dir.to_path_buf(),
-            config_name,
+            config_file_name,
             inner: Arc::new(RwLock::new(inner)),
         })
     }
 
     /// Atomically update the configuration
     pub fn persist_config_updates(&self) -> anyhow::Result<()> {
-        AtomicUpdater::new(self.config_dir.join(&self.config_name), self.inner.clone()).run()
+        AtomicUpdater::new(
+            self.config_dir.join(&self.config_file_name),
+            self.inner.clone(),
+        )
+        .run()
     }
+}
+
+pub fn build_config_path(config_dir: &Path, config_name: &str) -> PathBuf {
+    config_dir.join(&build_config_file_name(config_name))
+}
+
+fn build_config_file_name(config_name: &str) -> String {
+    format!("{}.json", config_name)
 }

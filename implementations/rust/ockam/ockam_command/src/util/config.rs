@@ -216,15 +216,17 @@ impl OckamConfig {
             return Err(ConfigError::AlreadyExists(name.to_string()).into());
         }
 
-        // Setup logging directory and store it
+        // Create node's state directory
         let state_dir = inner
             .directories
             .as_ref()
             .context("configuration is in an invalid state")?
             .data_local_dir()
             .join(slugify(&format!("node-{}", name)));
-
         create_dir_all(&state_dir).context("failed to create new node state directory")?;
+
+        // Initialize it
+        NodeConfig::init_for_new_node(&state_dir)?;
 
         // Add this node to the config lookup table
         inner.lookup.set_node(name, bind.into());
