@@ -76,7 +76,7 @@ defmodule Ockam.Credential.AttributeStorageETS do
 
   @doc """
   Save attribute set for identity id
-  Current attribute set (if exists) will be overriden.
+  Current attribute set (if exists) will be overridden.
   """
   @spec put_attribute_set(identity_id(), AttributeSet.t()) :: :ok | {:error, any()}
   def put_attribute_set(id, attribute_set) do

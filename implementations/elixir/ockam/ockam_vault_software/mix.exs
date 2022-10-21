@@ -133,7 +133,7 @@ defmodule Ockam.Vault.Software.MixProject do
 
     base_url = @ockam_release_url <> version_path
 
-    ## To donwload files we need inets and ssl
+    ## To download files we need inets and ssl
     :inets.start()
     :ssl.start()
 

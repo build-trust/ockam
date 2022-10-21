@@ -157,7 +157,7 @@ defmodule Ockam.Node do
   @spec get_random_unregistered_address(prefix :: String.t(), length_in_bytes :: integer()) ::
           binary()
   @doc """
-  Returns a random address that is currently not registed on the node.
+  Returns a random address that is currently not registered on the node.
   """
   def get_random_unregistered_address(
         prefix \\ "",

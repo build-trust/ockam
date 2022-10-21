@@ -294,7 +294,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
   @impl true
   def handle_responder(handshake_options, message, handshake_state) do
     ## TODO: maybe we need some separate handle_init_message for responder?
-    ## Currently using a flag in handshake_state ot distinguish between
+    ## Currently using a flag in handshake_state to distinguish between
     ## init message and handshake message
     case Map.get(handshake_state, :expected_message, :init) do
       :init ->

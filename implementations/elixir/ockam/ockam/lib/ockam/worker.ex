@@ -274,7 +274,7 @@ defmodule Ockam.Worker do
 
   def is_authorized(message, state) do
     ## Address check is default authorization rule for all workers
-    ## It can be overriden by implementing custom is_authorized function
+    ## It can be overridden by implementing custom is_authorized function
     with :ok <- Authorization.to_my_address(message, state) do
       Ockam.Worker.Authorization.with_state_config(message, state)
     end
