@@ -1,0 +1,5 @@
+FROM ghcr.io/cross-rs/aarch64-unknown-linux-musl@sha256:bc51668f05f063030234df49145267791963a6c36d1e858b61c86654859c369c
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install --assume-yes libdbus-1-dev
