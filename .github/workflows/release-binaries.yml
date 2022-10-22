@@ -32,7 +32,7 @@ jobs:
           ref: ${{ github.event.inputs.release_branch }}
 
       - name: Import GPG key
-        uses: build-trust/.github/actions/import_gpg@custom-actions
+        uses: build-trust/.github/actions/import_gpg@a6377d3c2dac878b92a0da26cdf3da2856c64840
         with:
           gpg_private_key: '${{ secrets.GPG_PRIVATE_KEY }}'
           gpg_password: '${{ secrets.GPG_PASSPHRASE }}'
