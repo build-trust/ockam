@@ -8,6 +8,7 @@ ARG NODEJS_VERSION=16.13.1
 ARG COSIGN_VERSION=1.9.0
 ARG MOLD_VERSION=1.3.1
 ARG SHFMT_VERSION=3.5.1
+ARG COMMITLINT_VERSION=17.1.1
 
 ARG ELIXIR_SHA256=5e8251c5d2557373ecfab986fa481844a2f659597abbfb623f45ad3a1974bb1f
 
@@ -73,6 +74,11 @@ RUN set -xe; \
     tar -xf "${NODEJS_PACKAGE}" -C /opt/; \
     mv "/opt/node-v${NODEJS_VERSION}-${NODEJS_OS}" "${NODEJS_HOME}"; \
     rm -rf "${NODEJS_PACKAGE}"; \
+    PATH="${NODEJS_HOME}/bin:$PATH" \
+# Setup Commitlint
+# set user to root in order to be able to install global dependencies
+    npm --global config set user root && \
+    npm install --global @commitlint/cli@${COMMITLINT_VERSION} \
 # Setup rust
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes \
