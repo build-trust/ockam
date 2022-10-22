@@ -73,6 +73,8 @@ RUN set -xe; \
     tar -xf "${NODEJS_PACKAGE}" -C /opt/; \
     mv "/opt/node-v${NODEJS_VERSION}-${NODEJS_OS}" "${NODEJS_HOME}"; \
     rm -rf "${NODEJS_PACKAGE}"; \
+# Setup Commitlint
+    npm install --location=global @commitlint/cli@17.1.1 \
 # Setup rust
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes \
