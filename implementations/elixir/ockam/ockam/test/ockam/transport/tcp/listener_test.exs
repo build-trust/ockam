@@ -11,7 +11,7 @@ defmodule Ockam.Transport.TCP.Listener.Tests do
 
   @tag :skip
   describe "Ockam.Transport.TCP.Listener.Handler" do
-    test "placehoder test" do
+    test "placeholder test" do
       assert true
     end
   end

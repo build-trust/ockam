@@ -146,16 +146,15 @@ download() {
   if [ "$2" ]; then
     _version="$2"
     _url="$_download_base_url/ockam_$_version/$_binary_file_name"
+
+    info "Installing $_version"
   else
-    _url=$(curl --proto '=https' --tlsv1.2 --silent --fail --show-error "$_api")
-    _url=$(echo "$_url" | grep -i browser_download_url | grep "$_binary_file_name" | head -1 | awk '{print $NF}')
-    _url=$(echo "$_url" | sed -e 's/^"//' -e 's/"$//') # remove quotes
-    _version=$(echo "$_url" | awk -F'/' '{print $(NF-1)}' | cut -d '_' -f2) # change "ockam_v0.75.0" to "v0.75.0"
+    _url="https://github.com/build-trust/ockam/releases/latest/download/$_binary_file_name"
+
+    info "Installing latest version"
   fi
 
-  info "Installing $_version"
-
-  info "Dowloading $_url"
+  info "Downloading $_url"
   curl --proto '=https' --tlsv1.2 --location --silent --fail --show-error --output "ockam" "$_url"
   info "Downloaded ockam command in the current directory $(pwd)"
 

@@ -9,6 +9,7 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::error::ApiError;
 
+pub mod addon;
 pub mod enroll;
 pub mod project;
 pub mod space;
@@ -20,6 +21,8 @@ pub mod subscription;
 /// How to use: when running a command that spawns a background node or use an embedded node
 /// add the env variable. `OCKAM_CONTROLLER_IDENTITY_ID={identity.id-contents} ockam ...`
 pub(crate) const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY_ID";
+
+pub type ProjectAddress = CowStr<'static>;
 
 /// A wrapper around a cloud request with extra fields.
 #[derive(Encode, Decode, Debug)]

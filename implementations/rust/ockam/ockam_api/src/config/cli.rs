@@ -54,7 +54,7 @@ fn default_lookup() -> ConfigLookup {
 }
 
 impl ConfigValues for OckamConfig {
-    fn default_values(_node_dir: &Path) -> Self {
+    fn default_values() -> Self {
         Self {
             directories: Some(Self::directories()),
             nodes: BTreeMap::new(),
@@ -199,7 +199,7 @@ impl AuthoritiesConfig {
 }
 
 impl ConfigValues for AuthoritiesConfig {
-    fn default_values(_: &Path) -> Self {
+    fn default_values() -> Self {
         Self::default()
     }
 }

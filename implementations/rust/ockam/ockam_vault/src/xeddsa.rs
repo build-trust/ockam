@@ -1,4 +1,4 @@
-//! Performe XEdDSA according to
+//! Perform XEdDSA according to
 //! <https://signal.org/docs/specifications/xeddsa/#xeddsa>
 
 use curve25519_dalek::{

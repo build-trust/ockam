@@ -151,5 +151,5 @@ After a release, we can test all generated assets to ensure they work accurately
 - Run Docker image
 - Build Homebrew
 - Build Terraform
-- Run our multi architechture binaries
+- Run our multi architecture binaries
 - Esure all creates are published to crates.io

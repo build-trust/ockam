@@ -17,7 +17,7 @@ pub enum StreamWorkerCmd {
     Pull {
         /// Number of messages to pull.
         ///
-        /// Zero is used as a sentinal to indicate "all messages".
+        /// Zero is used as a sentinel to indicate "all messages".
         num: usize,
     },
 }

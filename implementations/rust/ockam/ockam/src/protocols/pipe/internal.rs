@@ -11,10 +11,10 @@ pub struct Resend {
     pub idx: u64,
 }
 
-/// Acknowlege successful delivery
+/// Acknowledge successful delivery
 #[derive(Debug, Serialize, Deserialize, Message)]
 pub struct Ack {
-    /// The acknowleged index.
+    /// The acknowledged index.
     pub idx: u64,
 }
 
@@ -30,7 +30,7 @@ pub struct Handshake {
 pub enum InternalCmd {
     /// Issue the pipe sender to re-send
     Resend(Resend),
-    /// Acknowlege receival of pipe message,
+    /// Acknowledge receival of pipe message,
     Ack(Ack),
     /// Message received by pipe spawn listener
     InitHandshake,

@@ -1,99 +1,101 @@
-use crate::{Action, Key, Resource, Subject, Value};
+use core::{fmt, str};
+use ockam_core::async_trait;
+use ockam_core::compat::boxed::Box;
+use ockam_core::compat::format;
+use ockam_core::compat::string::ToString;
+use ockam_core::{AccessControl, LocalMessage, Result};
+use ockam_identity::authenticated_storage::AuthenticatedStorage;
+use ockam_identity::{credential::AttributesStorageUtils, IdentitySecureChannelLocalInfo};
+use tracing as log;
 
-use ockam_core::compat::{boxed::Box, vec::Vec};
-use serde::{Deserialize, Serialize};
+use crate::eval::eval;
+use crate::expr::str;
+use crate::{Env, Expr};
 
-use alloc::vec;
-
-/// Pimitive conditional operators used to construct ABAC policies.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Conditional {
-    /// Equality condition
-    Eq(Key, Value),
-    /// Equality condition
-    Lt(Key, Value),
-    /// Equality condition
-    Gt(Key, Value),
-    /// Boolean condition
-    Not(Box<Conditional>),
-    /// Boolean condition
-    And(Vec<Conditional>),
-    /// Boolean condition
-    Or(Vec<Conditional>),
-    /// Always true
-    True,
-    /// Always false
-    False,
+/// Evaluates a policy expression against an environment of attributes.
+///
+/// Attributes come from a pre-populated environment and are augmented
+/// by subject attributes from credential data.
+#[derive(Debug)]
+pub struct PolicyAccessControl<S> {
+    expression: Expr,
+    attributes: S,
+    environment: Env,
+    overwrite: bool,
 }
 
-impl Conditional {
-    /// Evaluate Policy for the given [`Subject`], [`Resource`],
-    /// [`Action`].
+impl<S> PolicyAccessControl<S> {
+    /// Create a new `PolicyAccessControl`.
     ///
-    /// TODO add support for resource, action attributes
-    pub fn evaluate(&self, subject: &Subject, resource: &Resource, action: &Action) -> bool {
-        let attrs = subject.attributes();
-        match self {
-            Conditional::Eq(k, v) => attrs.get(k).map(|a| a == v).unwrap_or(false),
-            Conditional::Lt(k, v) => attrs.get(k).map(|a| a < v).unwrap_or(false),
-            Conditional::Gt(k, v) => attrs.get(k).map(|a| a > v).unwrap_or(false),
-            Conditional::Not(c) => !c.evaluate(subject, resource, action),
-            Conditional::And(cs) => cs.iter().all(|c| c.evaluate(subject, resource, action)),
-            Conditional::Or(cs) => cs.iter().any(|c| c.evaluate(subject, resource, action)),
-            Conditional::True => true,
-            Conditional::False => false,
+    /// The policy expression is evaluated by getting subject attributes from
+    /// the given authenticated storage, adding them the given environment,
+    /// which may already contain other resource, action or subject attributes.
+    pub fn new(policy: Expr, store: S, env: Env) -> Self {
+        Self {
+            expression: policy,
+            attributes: store,
+            environment: env,
+            overwrite: false,
         }
     }
 
-    /// Create a new `Conditional::And` with the given `Conditional`.
-    pub fn and(&self, other: &Conditional) -> Conditional {
-        Conditional::And(vec![self.clone(), other.clone()])
-    }
-
-    /// Create a new `Conditional::Or` with the given `Conditional`.
-    pub fn or(&self, other: &Conditional) -> Conditional {
-        Conditional::Or(vec![self.clone(), other.clone()])
-    }
-
-    /// Create a new `Conditional::And` with the given [`Vec`] of `Conditional`s.
-    pub fn all(self, mut others: Vec<Conditional>) -> Conditional {
-        others.insert(0, self);
-        Conditional::And(others)
-    }
-
-    /// Create a new `Conditional::Or` with the given [`Vec`] of `Conditional`s.
-    pub fn any(self, mut others: Vec<Conditional>) -> Conditional {
-        others.insert(0, self);
-        Conditional::Or(others)
+    pub fn overwrite(&mut self) {
+        self.overwrite = true
     }
 }
 
-/// Create a new [`Conditional::Eq`].
-pub fn eq<K: Into<Key>>(k: K, a: Value) -> Conditional {
-    Conditional::Eq(k.into(), a)
-}
+#[async_trait]
+impl<S> AccessControl for PolicyAccessControl<S>
+where
+    S: AuthenticatedStorage + fmt::Debug,
+{
+    async fn is_authorized(&self, msg: &LocalMessage) -> Result<bool> {
+        let id = if let Ok(info) = IdentitySecureChannelLocalInfo::find_info(msg) {
+            info.their_identity_id().clone()
+        } else {
+            return Ok(false);
+        };
 
-/// Create a new [`Conditional::Lt`].
-pub fn lt<K: Into<Key>>(k: K, a: Value) -> Conditional {
-    Conditional::Lt(k.into(), a)
-}
+        let attrs =
+            if let Some(a) = AttributesStorageUtils::get_attributes(&id, &self.attributes).await? {
+                a
+            } else {
+                return Ok(false);
+            };
 
-/// Create a new [`Conditional::Gt`].
-pub fn gt<K: Into<Key>>(k: K, a: Value) -> Conditional {
-    Conditional::Gt(k.into(), a)
-}
+        let mut e = self.environment.clone();
 
-/// Create a new [`Conditional::Not`].
-pub fn not(c: Conditional) -> Conditional {
-    Conditional::Not(c.into())
-}
+        for (k, v) in &attrs {
+            if k.find(|c: char| c.is_whitespace()).is_some() {
+                log::warn!(%id, key = %k, "attribute key with whitespace ignored")
+            }
+            match str::from_utf8(v) {
+                Ok(s) => {
+                    if !self.overwrite && e.contains(k) {
+                        log::debug!(%id, key = %k, "attribute already present");
+                        continue;
+                    }
+                    e.put(format!("subject.{k}"), str(s.to_string()));
+                }
+                Err(e) => {
+                    log::warn!(%id, err = %e, key = %k, "failed to interpret attribute as string")
+                }
+            }
+        }
 
-/// Create a new [`Conditional::True`].
-pub fn t() -> Conditional {
-    Conditional::True
-}
-
-/// Create a new [`Conditional::False`].
-pub fn f() -> Conditional {
-    Conditional::False
+        match eval(&self.expression, &e) {
+            Ok(Expr::Bool(b)) => {
+                log::debug!(%id, is_authorized = %b, "policy evaluated");
+                Ok(b)
+            }
+            Ok(x) => {
+                log::warn!(%id, expr = %x, "evaluation did not yield a boolean result");
+                Ok(false)
+            }
+            Err(e) => {
+                log::warn!(%id, err = %e, "policy evaluation failed");
+                Ok(false)
+            }
+        }
+    }
 }

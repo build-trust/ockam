@@ -324,7 +324,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Do not drop control channel sender when processing stopworker messge
+- Do not drop control channel sender when processing stopworker message
 
 ## 0.52.0 - 2022-04-19
 

@@ -14,11 +14,14 @@ allow = [
     "BSD-2-Clause",
     "0BSD",
     "ISC",
-    "BlueOak-1.0.0"
+    "BlueOak-1.0.0",
+    "BSL-1.0"
 ]
 exceptions = [
     { allow = ["LicenseRef-Ring-ISC-OpenSSL"], name = "ring", version = "*" },
     { allow = ["Unicode-DFS-2016"], name = "unicode-ident", version = "*" },
+    { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wast", version = "*" },
+    { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wasm-encoder", version = "*" },
 ]
 
 [[licenses.clarify]]
@@ -51,8 +54,4 @@ ignore = [
     # dependency `serde-xml`
     # (https://rustsec.org/advisories/RUSTSEC-2022-0048.html)
     "RUSTSEC-2022-0048",
-
-    # `ansi_term` is unmaintained, pulled in from dependency
-    # `tracing-subscriber`
-    "RUSTSEC-2021-0139",
 ]

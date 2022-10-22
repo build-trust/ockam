@@ -1,4 +1,5 @@
-#!/usr/bin/env zsh -e
+#!/usr/bin/env zsh
+set -e
 
 # This script generates changelog for all Ockam crates that
 # are to be published.

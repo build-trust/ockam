@@ -1,4 +1,6 @@
 mod add_enroller;
+mod addon;
+mod auth;
 mod create;
 mod delete;
 mod delete_enroller;
@@ -16,6 +18,7 @@ use clap::{Args, Subcommand};
 
 pub use crate::credential::get_credential::GetCredentialCommand;
 pub use add_enroller::AddEnrollerCommand;
+pub use addon::AddonCommand;
 pub use create::CreateCommand;
 pub use delete::DeleteCommand;
 pub use delete_enroller::DeleteEnrollerCommand;
@@ -25,6 +28,7 @@ pub use list::ListCommand;
 pub use list_enrollers::ListEnrollersCommand;
 pub use show::ShowCommand;
 
+use crate::project::auth::AuthCommand;
 use crate::CommandGlobalOpts;
 
 /// Manage Projects in Ockam Orchestrator
@@ -46,6 +50,8 @@ pub enum ProjectSubcommand {
     ListEnrollers(ListEnrollersCommand),
     DeleteEnroller(DeleteEnrollerCommand),
     Enroll(EnrollCommand),
+    Addon(AddonCommand),
+    Authenticate(AuthCommand),
 }
 
 impl ProjectCommand {
@@ -60,6 +66,8 @@ impl ProjectCommand {
             ProjectSubcommand::DeleteEnroller(c) => c.run(options),
             ProjectSubcommand::Enroll(c) => c.run(options),
             ProjectSubcommand::Info(c) => c.run(options),
+            ProjectSubcommand::Addon(c) => c.run(options),
+            ProjectSubcommand::Authenticate(c) => c.run(options),
         }
     }
 }

@@ -199,7 +199,7 @@ async fn run_foreground_node(
         Some(path) => {
             let s = tokio::fs::read_to_string(path).await?;
             let p: ProjectInfo = serde_json::from_str(&s)?;
-            let project_id = p.id.as_bytes().to_vec();
+            let project_id = p.id.to_string();
             project::config::set_project(cfg, &(&p).into()).await?;
             add_project_authority(p, &cmd.node_name, cfg).await?;
             Some(project_id)
@@ -311,6 +311,13 @@ async fn start_services(
                 Some(tcp),
             )
             .await?
+        }
+    }
+    if let Some(cfg) = config.okta_identity_provider {
+        if !cfg.disabled {
+            println!("starting okta identity provider service ...");
+            start::start_okta_identity_provider(ctx, opts, &node_opts.api_node, &cfg, Some(tcp))
+                .await?
         }
     }
 

@@ -1,12 +1,14 @@
 use crate::node::NodeOpts;
+use crate::service::config::OktaIdentityProviderConfig;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 use anyhow::{anyhow, Result};
 use clap::{Args, Subcommand};
 use minicbor::Encode;
 use ockam::{Context, TcpTransport};
+use ockam_api::nodes::models::services::StartOktaIdentityProviderRequest;
 use ockam_api::DefaultAddress;
-use ockam_core::api::{RequestBuilder, Status};
+use ockam_core::api::{Request, RequestBuilder, Status};
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Args)]
@@ -225,4 +227,31 @@ pub async fn start_authenticator_service(
 ) -> Result<()> {
     let req = api::start_authenticator_service(serv_addr, enrollers, project);
     start_service_impl(ctx, opts, node_name, serv_addr, "Authenticator", req, tcp).await
+}
+
+/// Public so `ockam_command::node::create` can use it.
+pub async fn start_okta_identity_provider(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+    cfg: &OktaIdentityProviderConfig,
+    tcp: Option<&'_ TcpTransport>,
+) -> Result<()> {
+    let payload = StartOktaIdentityProviderRequest::new(
+        &cfg.address,
+        &cfg.tenant,
+        &cfg.certificate,
+        cfg.project.as_bytes(),
+    );
+    let req = Request::post("/node/services/okta_identity_provider").body(payload);
+    start_service_impl(
+        ctx,
+        opts,
+        node_name,
+        &cfg.address,
+        "Okta Identity Provider",
+        req,
+        tcp,
+    )
+    .await
 }

@@ -5,7 +5,8 @@ use crate::identity::IdentityService;
 use crate::nodes::models::services::{
     ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
     StartCredentialsService, StartEchoerServiceRequest, StartIdentityServiceRequest,
-    StartUppercaseServiceRequest, StartVaultServiceRequest, StartVerifierService,
+    StartOktaIdentityProviderRequest, StartUppercaseServiceRequest, StartVaultServiceRequest,
+    StartVerifierService,
 };
 use crate::nodes::registry::{CredentialsServiceInfo, Registry, VerifierServiceInfo};
 use crate::nodes::NodeManager;
@@ -170,6 +171,33 @@ impl NodeManager {
             .insert(addr, AuthenticatorServiceInfo::default());
         Ok(())
     }
+
+    pub(super) async fn start_okta_identity_provider_service_impl(
+        &mut self,
+        ctx: &Context,
+        addr: Address,
+        tenant: &str,
+        certificate: &str,
+        proj: &[u8],
+    ) -> Result<()> {
+        use crate::nodes::registry::OktaIdentityProviderServiceInfo;
+        if self
+            .registry
+            .okta_identity_provider_services
+            .contains_key(&addr)
+        {
+            return Err(ApiError::generic(
+                "Okta Identity Provider service already started",
+            ));
+        }
+        let db = self.authenticated_storage.async_try_clone().await?;
+        let au = crate::okta::Server::new(proj.to_vec(), db, tenant, certificate);
+        ctx.start_worker(addr.clone(), au).await?;
+        self.registry
+            .okta_identity_provider_services
+            .insert(addr, OktaIdentityProviderServiceInfo::default());
+        Ok(())
+    }
 }
 
 impl NodeManagerWorker {
@@ -260,6 +288,27 @@ impl NodeManagerWorker {
                 .await?;
         }
 
+        Ok(Response::ok(req.id()))
+    }
+
+    pub(super) async fn start_okta_identity_provider_service<'a>(
+        &mut self,
+        ctx: &Context,
+        req: &'a Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let mut node_manager = self.node_manager.write().await;
+        let body: StartOktaIdentityProviderRequest = dec.decode()?;
+        let addr: Address = body.address().into();
+        node_manager
+            .start_okta_identity_provider_service_impl(
+                ctx,
+                addr,
+                body.tenant(),
+                body.certificate(),
+                body.project(),
+            )
+            .await?;
         Ok(Response::ok(req.id()))
     }
 

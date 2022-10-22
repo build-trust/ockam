@@ -1,5 +1,6 @@
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
+use serde::Serialize;
 
 use ockam_core::CowBytes;
 
@@ -26,11 +27,12 @@ impl<'a> CreateIdentityResponse<'a> {
     }
 }
 
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Decode, Encode, Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct LongIdentityResponse<'a> {
     #[cfg(feature = "tag")]
+    #[serde(skip)]
     #[n(0)] tag: TypeTag<7961643>,
     #[b(1)] pub identity: CowBytes<'a>,
 }
@@ -45,11 +47,12 @@ impl<'a> LongIdentityResponse<'a> {
     }
 }
 
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Decode, Encode, Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ShortIdentityResponse<'a> {
     #[cfg(feature = "tag")]
+    #[serde(skip)]
     #[n(0)] tag: TypeTag<5773131>,
     #[b(1)] pub identity_id: Cow<'a, str>,
 }

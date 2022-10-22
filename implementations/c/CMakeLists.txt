@@ -1,8 +1,8 @@
 
 # Set the minimum required CMake version to 3.1...3.18
 #
-# * We require atleast CMake 3.1 (which added the target_sources command)
-# * has been tested for versions upto 3.18
+# * We require at least CMake 3.1 (which added the target_sources command)
+# * has been tested for versions up to 3.18
 #
 # The FATAL_ERROR option is accepted, but ignored, by CMake 2.6 and higher.
 # It's specified so CMake versions 2.4 and lower fail with an error instead of

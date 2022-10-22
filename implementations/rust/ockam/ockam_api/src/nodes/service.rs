@@ -108,7 +108,7 @@ pub struct NodeManager {
     enable_credential_checks: bool,
     vault: Option<Vault>,
     identity: Option<Identity<Vault>>,
-    project_id: Option<Vec<u8>>,
+    project_id: Option<String>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
     authorities: Option<Authorities>,
     pub(crate) authenticated_storage: LmdbStorage,
@@ -158,9 +158,9 @@ impl NodeManager {
     }
 
     /// Available only for member nodes
-    pub(crate) fn project_id(&self) -> Result<&Vec<u8>> {
+    pub(crate) fn project_id(&self) -> Result<&str> {
         self.project_id
-            .as_ref()
+            .as_deref()
             .ok_or_else(|| ApiError::generic("Project id is not set"))
     }
 }
@@ -194,14 +194,14 @@ impl NodeManagerGeneralOptions {
 
 pub struct NodeManagerProjectsOptions<'a> {
     ac: Option<&'a AuthoritiesConfig>,
-    project_id: Option<Vec<u8>>,
+    project_id: Option<String>,
     projects: BTreeMap<String, ProjectLookup>,
 }
 
 impl<'a> NodeManagerProjectsOptions<'a> {
     pub fn new(
         ac: Option<&'a AuthoritiesConfig>,
-        project_id: Option<Vec<u8>>,
+        project_id: Option<String>,
         projects: BTreeMap<String, ProjectLookup>,
     ) -> Self {
         Self {
@@ -621,6 +621,10 @@ impl NodeManagerWorker {
                 .start_credentials_service(ctx, req, dec)
                 .await?
                 .to_vec()?,
+            (Post, ["node", "services", "okta_identity_provider"]) => self
+                .start_okta_identity_provider_service(ctx, req, dec)
+                .await?
+                .to_vec()?,
             (Get, ["node", "services"]) => {
                 let node_manager = self.node_manager.read().await;
                 self.list_services(req, &node_manager.registry).to_vec()?
@@ -686,6 +690,15 @@ impl NodeManagerWorker {
                 self.update_subscription_space(ctx, dec, id).await?
             }
             (Put, ["subscription", id, "unsubscribe"]) => self.unsubscribe(ctx, dec, id).await?,
+
+            // ==*== Addons ==*==
+            (Get, [project_id, "addons"]) => self.list_addons(ctx, dec, project_id).await?,
+            (Put, [project_id, "addons", addon_id]) => {
+                self.configure_addon(ctx, dec, project_id, addon_id).await?
+            }
+            (Delete, [project_id, "addons", addon_id]) => {
+                self.disable_addon(ctx, dec, project_id, addon_id).await?
+            }
 
             // ==*== Messages ==*==
             (Post, ["v0", "message"]) => self.send_message(ctx, req, dec).await?,

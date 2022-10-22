@@ -15,7 +15,7 @@ categories = [
     "no-std",
 ]
 keywords = ["ockam", "crypto", "xx", "cryptography", "encryption"]
-description = """The Ockam Noise XX impementation.
+description = """The Ockam Noise XX implementation.
 """
 publish = true
 rust-version = "1.56.0"

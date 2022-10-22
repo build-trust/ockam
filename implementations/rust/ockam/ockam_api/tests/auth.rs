@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use ockam::authenticated_storage::AuthenticatedStorage;
 use ockam::identity::authenticated_storage::mem::InMemoryStorage;
 use ockam::identity::Identity;
 use ockam::route;
@@ -70,6 +71,67 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         Some(b"project42".as_slice()),
         data.attributes().get("project_id")
     );
+    assert_eq!(Some(b"member".as_slice()), data.attributes().get("role"));
+
+    ctx.stop().await
+}
+
+#[ockam_macros::test]
+async fn update_member_format(ctx: &mut Context) -> Result<()> {
+    let mut tmpf = NamedTempFile::new().unwrap();
+    serde_json::to_writer(&mut tmpf, &HashMap::<IdentityIdentifier, Enroller>::new()).unwrap();
+    // Create the authority:
+    let store = InMemoryStorage::new();
+
+    // Create a member identity:
+    let member = Identity::create(ctx, &Vault::create()).await?;
+
+    // Member was enrolled, with the old format
+    let tru = minicbor::to_vec(true)?;
+    store
+        .set(member.identifier().key_id(), "member".to_string(), tru)
+        .await?;
+    let authority = {
+        let a = Identity::create(ctx, &Vault::create()).await?;
+        a.create_secure_channel_listener("api", TrustEveryonePolicy, &InMemoryStorage::new())
+            .await?;
+        let exported = a.export().await?;
+        let auth = direct::Server::new(b"project42".to_vec(), store, tmpf.path(), a);
+        ctx.start_worker("auth", auth).await?;
+        exported
+    };
+
+    // Open a secure channel from member to authenticator:
+    let m2a = member
+        .create_secure_channel("api", TrustEveryonePolicy, &InMemoryStorage::new())
+        .await?;
+
+    let mut c = direct::Client::new(route![m2a, "auth"], ctx).await?;
+
+    // Get a fresh member credential and verify its validity. Data is loaded and
+    // transformed from the legacy format:
+    let cred = c.credential().await?;
+    let pkey = PublicIdentity::import(&authority, &Vault::create())
+        .await
+        .unwrap();
+    let data = pkey
+        .verify_credential(&cred, member.identifier(), &Vault::create())
+        .await?;
+    assert_eq!(
+        Some(b"project42".as_slice()),
+        data.attributes().get("project_id")
+    );
+
+    // Get the credential again.  It would have been updated on the store already.
+    let cred = c.credential().await?;
+    let data = pkey
+        .verify_credential(&cred, member.identifier(), &Vault::create())
+        .await?;
+    assert_eq!(
+        Some(b"project42".as_slice()),
+        data.attributes().get("project_id")
+    );
+    assert_eq!(Some(b"member".as_slice()), data.attributes().get("role"));
 
     ctx.stop().await
 }

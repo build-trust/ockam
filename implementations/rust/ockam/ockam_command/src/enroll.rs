@@ -11,7 +11,7 @@ use tracing::{debug, info};
 
 use ockam::Context;
 use ockam_api::cloud::enroll::auth0::*;
-use ockam_api::cloud::project::Project;
+use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::cloud::space::Space;
 use ockam_api::error::ApiError;
 use ockam_core::api::Status;
@@ -63,7 +63,7 @@ async fn enroll(
     cmd: &EnrollCommand,
     node_name: &str,
 ) -> anyhow::Result<()> {
-    let auth0 = Auth0Service;
+    let auth0 = Auth0Service::new(Auth0Provider::Auth0);
     let token = auth0.token().await?;
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     rpc.request(api::enroll::auth0(cmd.clone(), token)).await?;
@@ -168,12 +168,48 @@ async fn default_project<'a>(
     Ok(project)
 }
 
-pub struct Auth0Service;
+pub enum Auth0Provider {
+    Auth0,
+    Okta(OktaAuth0),
+}
+
+impl Auth0Provider {
+    fn client_id(&self) -> &str {
+        match self {
+            Self::Auth0 => "c1SAhEjrJAqEk6ArWjGjuWX11BD2gK8X",
+            Self::Okta(d) => &d.client_id,
+        }
+    }
+
+    const fn scopes(&self) -> &'static str {
+        "profile openid email"
+    }
+
+    fn device_code_url(&self) -> String {
+        match self {
+            Self::Auth0 => "https://account.ockam.io/oauth/device/code".to_string(),
+            Self::Okta(d) => format!("https://{}/oauth2/default/v1/device/authorize", &d.tenant),
+        }
+    }
+
+    fn token_request_url(&self) -> String {
+        match self {
+            Self::Auth0 => "https://account.ockam.io/oauth/token".to_string(),
+            Self::Okta(d) => format!("https://{}/oauth2/default/v1/token", &d.tenant),
+        }
+    }
+}
+
+pub struct Auth0Service(Auth0Provider);
 
 impl Auth0Service {
-    const DOMAIN: &'static str = "account.ockam.io";
-    const CLIENT_ID: &'static str = "c1SAhEjrJAqEk6ArWjGjuWX11BD2gK8X";
-    const SCOPES: &'static str = "profile openid email";
+    pub fn new(provider: Auth0Provider) -> Self {
+        Self(provider)
+    }
+
+    fn provider(&self) -> &Auth0Provider {
+        &self.0
+    }
 }
 
 #[async_trait::async_trait]
@@ -186,9 +222,12 @@ impl Auth0TokenProvider for Auth0Service {
             let res = Retry::spawn(retry_strategy, move || {
                 let client = reqwest::Client::new();
                 client
-                    .post(format!("https://{}/oauth/device/code", Self::DOMAIN))
+                    .post(self.provider().device_code_url())
                     .header("content-type", "application/x-www-form-urlencoded")
-                    .form(&[("client_id", Self::CLIENT_ID), ("scope", Self::SCOPES)])
+                    .form(&[
+                        ("client_id", self.provider().client_id()),
+                        ("scope", self.provider().scopes()),
+                    ])
                     .send()
             })
             .await
@@ -257,10 +296,10 @@ impl Auth0TokenProvider for Auth0Service {
         let tokens_res;
         loop {
             let res = client
-                .post(format!("https://{}/oauth/token", Self::DOMAIN))
+                .post(self.provider().token_request_url())
                 .header("content-type", "application/x-www-form-urlencoded")
                 .form(&[
-                    ("client_id", Self::CLIENT_ID),
+                    ("client_id", self.provider().client_id()),
                     ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
                     ("device_code", &device_code_res.device_code),
                 ])

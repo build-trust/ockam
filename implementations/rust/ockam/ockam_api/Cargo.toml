@@ -15,6 +15,7 @@ std = [
     "hex/std",
     "minicbor/std",
     "ockam_core/std",
+    "ockam_abac/std",
     "ockam_identity/std",
     "ockam_multiaddr/std",
     "ockam_node/std",
@@ -45,6 +46,7 @@ tracing         = { version = "0.1.34", default-features = false }
 lmdb-rkv        = { version = "0.14.0", optional = true }
 anyhow          = "1"
 directories     = "4"
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
 
 [dependencies.ockam_core]
 version          = "0.70.0"
@@ -71,6 +73,11 @@ version          = "0.64.0"
 path             = "../ockam_identity"
 default-features = false
 features         = ["std"]
+
+[dependencies.ockam_abac]
+version          = "0.10.0"
+path             = "../ockam_abac"
+default-features = false
 
 [dev-dependencies]
 cddl-cat            = "0.6.1"

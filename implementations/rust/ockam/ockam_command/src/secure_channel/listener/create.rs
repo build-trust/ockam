@@ -1,14 +1,16 @@
-use crate::secure_channel::HELP_DETAIL;
-use crate::util::{api, connect_to, exitcode, extract_address_value};
-use crate::{help, CommandGlobalOpts};
-
+use anyhow::anyhow;
 use clap::Args;
 
 use ockam::identity::IdentityIdentifier;
-
+use ockam::Context;
+use ockam_api::nodes::models::secure_channel::CreateSecureChannelListenerRequest;
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::Status;
+use ockam_core::api::{Request, Status};
 use ockam_core::{Address, Route};
+
+use crate::secure_channel::HELP_DETAIL;
+use crate::util::{api, exitcode, extract_address_value, node_rpc, Rpc};
+use crate::{help, CommandGlobalOpts};
 
 /// Create Secure Channel Listeners
 #[derive(Clone, Debug, Args)]
@@ -21,8 +23,8 @@ pub struct CreateCommand {
     address: Address,
 
     /// Authorized Identifiers of secure channel initiators
-    #[arg(short, long, value_name = "IDENTIFIER")]
-    authorized_identifier: Option<Vec<IdentityIdentifier>>,
+    #[arg(short, long, value_name = "IDENTIFIERS")]
+    authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 }
 
 #[derive(Clone, Debug, Args)]
@@ -33,21 +35,39 @@ pub struct SecureChannelListenerNodeOpts {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        let cfg = options.config;
-        let node = extract_address_value(&self.node_opts.at).unwrap_or_else(|_| "".to_string());
-        let port = cfg.get_node_port(&node).unwrap();
+    pub fn run(self, opts: CommandGlobalOpts) {
+        node_rpc(rpc, (opts, self));
+    }
+}
 
-        connect_to(port, self, |ctx, cmd, rte| async {
-            create_listener(&ctx, cmd.address, cmd.authorized_identifier, rte).await?;
-            drop(ctx);
+async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> crate::Result<()> {
+    run_impl(&ctx, (opts, cmd)).await
+}
+
+async fn run_impl(
+    ctx: &Context,
+    (opts, cmd): (CommandGlobalOpts, CreateCommand),
+) -> crate::Result<()> {
+    let node = extract_address_value(&cmd.node_opts.at)?;
+    let mut rpc = Rpc::background(ctx, &opts, &node)?;
+    let req = Request::post("/node/secure_channel_listener").body(
+        CreateSecureChannelListenerRequest::new(&cmd.address, cmd.authorized_identifiers),
+    );
+    rpc.request(req).await?;
+    match rpc.is_ok() {
+        Ok(_) => {
+            println!("/service/{}", cmd.address.address());
             Ok(())
-        });
+        }
+        Err(e) => Err(crate::error::Error::new(
+            exitcode::CANTCREAT,
+            anyhow!("An error occurred while creating secure channel listener").context(e),
+        )),
     }
 }
 
 pub async fn create_listener(
-    ctx: &ockam::Context,
+    ctx: &Context,
     addr: Address,
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     mut base_route: Route,

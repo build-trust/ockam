@@ -109,7 +109,7 @@ uint32_t ockam_vault_sha256(ockam_vault_t vault,
  *          generate. For EC keys and AES keys, length is ignored.
  * @param   vault[in]       Vault object to use for generating a secret key.
  * @param   secret[out]     Pointer to an ockam secret object to be populated with a handle to the secret
- * @param   attributes[in]  Desired attribtes for the secret to be generated.
+ * @param   attributes[in]  Desired attributes for the secret to be generated.
  */
 uint32_t ockam_vault_secret_generate(ockam_vault_t                   vault,
                                      ockam_vault_secret_t*           secret,
@@ -185,7 +185,7 @@ uint32_t ockam_vault_secret_destroy(ockam_vault_t vault, ockam_vault_secret_t se
 * @param   privatekey[in]            The ockam vault secret to use for the private key of ECDH.
 * @param   peer_publickey[in]        Public key data to use for ECDH.
 * @param   peer_publickey_length[in] Length of the public key.
-* @param   shared_secret[out]        Resulting shared secret from a sucessful ECDH operation. Invalid if ECDH failed.
+* @param   shared_secret[out]        Resulting shared secret from a successful ECDH operation. Invalid if ECDH failed.
 * @return  OCKAM_ERROR_NONE on success.
 */
 uint32_t ockam_vault_ecdh(ockam_vault_t*        vault,

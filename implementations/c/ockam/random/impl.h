@@ -20,7 +20,7 @@ typedef struct {
   ockam_error_t (*deinit)(ockam_random_t* random);
 
   /**
-   * @brief   Retrive a specified number of random bytes from the random implementation.
+   * @brief   Retrieve a specified number of random bytes from the random implementation.
    * @param   random[in]      The ockam random object to use.
    * @param   buffer[out]     Buffer to fill with random bytes.
    * @param   buffer_size[in] Buffer size (in bytes).

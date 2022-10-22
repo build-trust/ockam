@@ -7,7 +7,7 @@ on:
         description: Git Tag To Release From. Last Git Tag Is Used If Omitted
         required: false
       release_branch:
-        description: Release Branch Where Recent Bump Occured
+        description: Release Branch Where Recent Bump Occurred
         required: true
 
 permissions:
@@ -105,7 +105,7 @@ jobs:
           # the corresponding hash mentioned in sha256sums.txt
           cat sha256sums.txt | grep ockam.x86_64-unknown-linux-gnu | sha256sum -c
 
-          # rename the download binary and give it permission to execure
+          # rename the download binary and give it permission to execute
           mv ockam.x86_64-unknown-linux-gnu ockam
           chmod u+x ockam
           \`\`\`"
@@ -276,7 +276,7 @@ jobs:
         ls $GITHUB_WORKSPACE
 
     - name: Install Cosign
-      uses: sigstore/cosign-installer@7cc35d7fdbe70d4278a0c96779081e6fac665f88
+      uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b
 
     - name: Sign Binary
       shell: bash
@@ -367,7 +367,7 @@ jobs:
 
       - name: Install Cosign
         if: matrix.build == 'macos'
-        uses: sigstore/cosign-installer@7cc35d7fdbe70d4278a0c96779081e6fac665f88
+        uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b
 
       - name: Sign NIFs
         if: matrix.build == 'macos'
@@ -419,7 +419,7 @@ jobs:
         run: shasum -a 256 ockam.* > sha256sums.txt
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@7cc35d7fdbe70d4278a0c96779081e6fac665f88
+        uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b
 
       - name: Sign Files
         shell: bash

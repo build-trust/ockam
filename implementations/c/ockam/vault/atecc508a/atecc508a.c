@@ -592,7 +592,7 @@ OckamError Atecc508aHkdfWriteKey(const OckamMemory *p_memory, uint8_t *p_key, si
     p_buf += ATECC508A_SLOT_WRITE_SIZE_MAX;
   }
 
-  if (status != ATCA_SUCCESS) { /* Ensure the 32 byte writes were sucessful before    */
+  if (status != ATCA_SUCCESS) { /* Ensure the 32 byte writes were successful before   */
     ret_val = kOckamError;      /* attempting the 4 byte writes                       */
     goto exit_block;
   }
@@ -606,7 +606,7 @@ OckamError Atecc508aHkdfWriteKey(const OckamMemory *p_memory, uint8_t *p_key, si
     }
 
     slot_offset++;                          /* Adjust the offset and buffer pointer AFTER data    */
-    p_buf += ATECC508A_SLOT_WRITE_SIZE_MIN; /* has been sucessfully written to the ATECC508A      */
+    p_buf += ATECC508A_SLOT_WRITE_SIZE_MIN; /* has been successfully written to the ATECC508A     */
 
     if (slot_offset >= ATECC508A_SLOT_OFFSET_MAX) { /* Always check the slot offset after its been        */
       slot_offset = 0;                              /* incremented                                        */
@@ -614,7 +614,7 @@ OckamError Atecc508aHkdfWriteKey(const OckamMemory *p_memory, uint8_t *p_key, si
     }
   }
 
-  if (status != ATCA_SUCCESS) { /* Ensure the 4 byte writes were sucessful before     */
+  if (status != ATCA_SUCCESS) { /* Ensure the 4 byte writes were successful before    */
     ret_val = kOckamError;      /* proceeding, otherwise unknown data in HKDF slot    */
     goto exit_block;            /* may be used for HKDF                               */
   }
@@ -769,7 +769,7 @@ OckamError Atecc508aHkdfExpand(const OckamMemory *p_memory, uint8_t key_slot, ui
 
 exit_block:
 
-  if (p_atca_ctx) {            /* If an error occured in the loop and we exited      */
+  if (p_atca_ctx) {            /* If an error occurred in the loop and we exited     */
     p_memory->Free(p_atca_ctx, /* early, ensure the buffer is freed.                 */
                    sizeof(atca_hmac_sha256_ctx_t));
   }

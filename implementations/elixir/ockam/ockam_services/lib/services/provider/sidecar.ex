@@ -24,7 +24,7 @@ defmodule Ockam.Services.Provider.Sidecar do
   - sidecar_port - port for sidecar node, default is 4100
   - sidecar_address - worker address on the sidecar node, default is "ca_verifier_service"
 
-  :sidecar_node - service forwarding to a sidecar node (essentialy a persistent TCP client)
+  :sidecar_node - service forwarding to a sidecar node (essentially a persistent TCP client)
 
   Options:
   - service_id - atom id of the service for the supervisor

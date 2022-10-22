@@ -6,6 +6,7 @@ pub mod echoer;
 pub mod error;
 pub mod identity;
 pub mod nodes;
+pub mod okta;
 pub mod uppercase;
 pub mod vault;
 pub mod verifier;
@@ -32,6 +33,7 @@ impl DefaultAddress {
     pub const SECURE_CHANNEL_LISTENER: &'static str = "api";
     pub const AUTHENTICATOR: &'static str = "authenticator";
     pub const VERIFIER: &'static str = "verifier";
+    pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
 }
 
 use core::fmt;

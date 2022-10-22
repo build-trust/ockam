@@ -115,7 +115,7 @@ impl TcpRouterHandle {
         }
     }
 
-    /// Unregister the conenction worker for the given `Address`
+    /// Unregister the connection worker for the given `Address`
     pub async fn unregister(&self, self_addr: Address) -> Result<()> {
         let response = self
             .ctx

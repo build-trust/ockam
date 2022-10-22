@@ -5,7 +5,7 @@ defmodule Ockam.Transport.Portal.InletWorker do
   It had three states:
       :wait_for_socket : right after starting. It's waiting for the Listener to transfer control of the socket.
       :wait_for_pong :   already sent the initial :ping message, and are waiting for the pong response.
-      :connected :       pong has been recived, socket is moved into {active, once} mode to start reading from it.
+      :connected :       pong has been received, socket is moved into {active, once} mode to start reading from it.
 
   TODO: Ideally this should be implemented as a GenFsm, but that's not what Ockam.Worker expect.
         It's also a good candidate to use the session framework on Ockam.Session.*

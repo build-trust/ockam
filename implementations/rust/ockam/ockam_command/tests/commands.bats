@@ -75,6 +75,15 @@ teardown() {
   assert_success
 }
 
+@test "create a node and show its identity" {
+  run $OCKAM node create n1
+  assert_success
+
+  run $OCKAM identity show --node n1
+  assert_success
+  assert_output --regexp '^P'
+}
+
 @test "create a node with a name and do show on it" {
   run $OCKAM node create n1
   assert_success
@@ -511,6 +520,25 @@ teardown() {
   assert_success
 
   run $OCKAM space delete "${space_name}"
+  assert_success
+}
+
+@test "project addons - list addons" {
+  skip_if_orchestrator_tests_not_enabled
+
+  run --separate-stderr $OCKAM project addon list --project default
+
+  assert_success
+  assert_output "Id: okta\n  Enabled: false"
+}
+
+@test "project addons - configure/disable okta" {
+  skip_if_orchestrator_tests_not_enabled
+
+  run --separate-stderr $OCKAM project addon configure okta --project default --tenant http://my.okta.com --cert certrawcontents
+  assert_success
+
+  run --separate-stderr $OCKAM project addon disable --project default --addon okta
   assert_success
 }
 
