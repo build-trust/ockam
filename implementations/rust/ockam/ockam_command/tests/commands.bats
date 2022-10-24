@@ -524,6 +524,7 @@ teardown() {
 }
 
 @test "project addons - list addons" {
+  skip # Not ready to include on tests yet
   skip_if_orchestrator_tests_not_enabled
 
   run --separate-stderr $OCKAM project addon list --project default
@@ -533,6 +534,7 @@ teardown() {
 }
 
 @test "project addons - configure/disable okta" {
+  skip # Not ready to include on tests yet
   skip_if_orchestrator_tests_not_enabled
 
   run --separate-stderr $OCKAM project addon configure okta --project default --tenant http://my.okta.com --cert certrawcontents
