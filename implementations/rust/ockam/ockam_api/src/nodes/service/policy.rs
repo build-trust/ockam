@@ -1,4 +1,4 @@
-use crate::nodes::models::policy::Policy;
+use crate::nodes::models::policy::{Policy, PolicyList};
 use either::Either;
 use minicbor::Decoder;
 use ockam_abac::{Action, PolicyStorage, Resource};
@@ -39,5 +39,15 @@ impl NodeManager {
             }
             Ok(Either::Left(Response::not_found(req.id()).body(err)))
         }
+    }
+
+    pub(super) async fn list_policies(
+        &self,
+        req: &Request<'_>,
+        res: &str,
+    ) -> Result<ResponseBuilder<PolicyList>> {
+        let r = Resource::new(res);
+        let p = self.policies.policies(&r).await?;
+        Ok(Response::ok(req.id()).body(PolicyList::new(p)))
     }
 }

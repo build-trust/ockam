@@ -6,6 +6,7 @@ use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 
 #[derive(Default)]
@@ -56,6 +57,16 @@ impl Inner {
             .or_insert_with(BTreeMap::new)
             .insert(a.clone(), p.clone());
     }
+
+    fn policies(&self, r: &Resource) -> Vec<(Action, Expr)> {
+        if let Some(p) = self.policies.get(r) {
+            p.iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<Vec<_>>()
+        } else {
+            Vec::new()
+        }
+    }
 }
 
 #[async_trait]
@@ -72,6 +83,10 @@ impl PolicyStorage for Memory {
     async fn set_policy(&self, r: &Resource, a: &Action, p: &Expr) -> Result<()> {
         self.inner.write().unwrap().set_policy(r, a, p);
         Ok(())
+    }
+
+    async fn policies(&self, r: &Resource) -> Result<Vec<(Action, Expr)>> {
+        Ok(self.inner.write().unwrap().policies(r))
     }
 }
 
