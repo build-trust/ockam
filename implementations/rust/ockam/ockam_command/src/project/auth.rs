@@ -2,7 +2,7 @@ use clap::Args;
 
 use anyhow::{anyhow, Context as _};
 use ockam::Context;
-use ockam_api::cloud::enroll::auth0::{Auth0TokenProvider, AuthenticateAuth0Token};
+use ockam_api::cloud::enroll::auth0::AuthenticateAuth0Token;
 use ockam_api::cloud::project::OktaAuth0;
 use ockam_core::api::{Request, Status};
 use ockam_multiaddr::MultiAddr;

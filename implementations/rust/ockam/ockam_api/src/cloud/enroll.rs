@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-use ockam_core::{self, async_trait};
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq, Clone))]
@@ -32,8 +31,6 @@ mod node {
     use crate::cloud::CloudRequestWrapper;
     use crate::nodes::NodeManagerWorker;
     use ockam_identity::credential::Attributes;
-
-    use super::*;
 
     const TARGET: &str = "ockam_api::cloud::enroll";
 
@@ -116,11 +113,6 @@ mod node {
 
 pub mod auth0 {
     use super::*;
-
-    #[async_trait::async_trait]
-    pub trait Auth0TokenProvider: Send + Sync + 'static {
-        async fn token(&self) -> ockam_core::Result<Auth0Token<'_>>;
-    }
 
     // Req/Res types
 
@@ -246,68 +238,6 @@ pub mod enrollment_token {
                 tag: TypeTag,
                 token: token.token,
             }
-        }
-    }
-}
-
-#[cfg(test)]
-#[allow(non_snake_case)]
-pub(crate) mod tests {
-    use quickcheck::{Arbitrary, Gen};
-
-    use crate::cloud::enroll::enrollment_token::{AuthenticateEnrollmentToken, EnrollmentToken};
-    use crate::cloud::enroll::Token;
-
-    use super::*;
-
-    pub(crate) mod auth0 {
-        use crate::cloud::enroll::auth0::*;
-
-        use super::*;
-
-        pub struct MockAuth0Service;
-
-        #[async_trait::async_trait]
-        impl Auth0TokenProvider for MockAuth0Service {
-            async fn token(&self) -> ockam_core::Result<Auth0Token<'_>> {
-                Ok(Auth0Token {
-                    token_type: TokenType::Bearer,
-                    access_token: Token::new("access_token"),
-                })
-            }
-        }
-
-        #[derive(Debug, Clone)]
-        struct RandomAuthorizedAuth0Token(AuthenticateAuth0Token<'static>);
-
-        impl Arbitrary for RandomAuthorizedAuth0Token {
-            fn arbitrary(g: &mut Gen) -> Self {
-                RandomAuthorizedAuth0Token(AuthenticateAuth0Token::new(Auth0Token {
-                    token_type: TokenType::Bearer,
-                    access_token: Token::arbitrary(g),
-                }))
-            }
-        }
-    }
-
-    mod enrollment_token {
-        use super::*;
-
-        #[derive(Debug, Clone)]
-        struct RandomAuthorizedEnrollmentToken(AuthenticateEnrollmentToken<'static>);
-
-        impl Arbitrary for RandomAuthorizedEnrollmentToken {
-            fn arbitrary(g: &mut Gen) -> Self {
-                RandomAuthorizedEnrollmentToken(AuthenticateEnrollmentToken::new(
-                    EnrollmentToken::new(Token::arbitrary(g)),
-                ))
-            }
-        }
-    }
-
-    impl Arbitrary for Token<'static> {
-        fn arbitrary(g: &mut Gen) -> Self {
-            Token(String::arbitrary(g).into())
         }
     }
 }

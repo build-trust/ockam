@@ -6,6 +6,7 @@ use std::io::stdin;
 
 use colorful::Colorful;
 use reqwest::StatusCode;
+use tokio::time::{sleep, Duration};
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{debug, info};
 
@@ -13,7 +14,6 @@ use ockam::Context;
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::cloud::space::Space;
-use ockam_api::error::ApiError;
 use ockam_core::api::Status;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
@@ -199,19 +199,20 @@ impl Auth0Provider {
         }
     }
 
-    fn build_http_client(&self) -> reqwest::Client {
-        match self {
+    fn build_http_client(&self) -> Result<reqwest::Client> {
+        let client = match self {
             Self::Auth0 => reqwest::Client::new(),
             Self::Okta(d) => {
                 let certificate = reqwest::Certificate::from_pem(d.certificate.as_bytes())
-                    .expect("Error parsing certifate");
+                    .map_err(|e| anyhow!("Error parsing certificate: {e}"))?;
                 reqwest::ClientBuilder::new()
                     .tls_built_in_root_certs(false)
                     .add_root_certificate(certificate)
                     .build()
-                    .expect("Error building http client")
+                    .map_err(|e| anyhow!("Error building http client: {e}"))?
             }
-        }
+        };
+        Ok(client)
     }
 }
 
@@ -225,69 +226,25 @@ impl Auth0Service {
     fn provider(&self) -> &Auth0Provider {
         &self.0
     }
-}
 
-#[async_trait::async_trait]
-impl Auth0TokenProvider for Auth0Service {
-    async fn token(&self) -> ockam_core::Result<Auth0Token> {
-        // Request device code
-        // More on how to use scope and audience in https://auth0.com/docs/quickstart/native/device#device-code-parameters
-        let device_code_res = {
-            let retry_strategy = ExponentialBackoff::from_millis(10).take(5);
-            let client = self.provider().build_http_client();
-            let res = Retry::spawn(retry_strategy, move || {
-                client
-                    .post(self.provider().device_code_url())
-                    .header("content-type", "application/x-www-form-urlencoded")
-                    .form(&[
-                        ("client_id", self.provider().client_id()),
-                        ("scope", self.provider().scopes()),
-                    ])
-                    .send()
-            })
-            .await
-            .map_err(|err| ApiError::generic(&err.to_string()))?;
-            match res.status() {
-                StatusCode::OK => {
-                    let res = res
-                        .json::<DeviceCode>()
-                        .await
-                        .map_err(|err| ApiError::generic(&err.to_string()))?;
-                    debug!("device code received: {res:#?}");
-                    res
-                }
-                _ => {
-                    let res = res
-                        .text()
-                        .await
-                        .map_err(|err| ApiError::generic(&err.to_string()))?;
-                    let err = format!("couldn't get device code [response={:#?}]", res);
-                    return Err(ApiError::generic(&err));
-                }
-            }
-        };
+    pub(crate) async fn token(&self) -> Result<Auth0Token<'_>> {
+        let dc = self.device_code().await?;
 
         eprint!(
             "\nEnroll Ockam Command's default identity with Ockam Orchestrator:\n\
              {} First copy your one-time code: {}\n\
              {} Then press enter to open {} in your browser...",
             "!".light_yellow(),
-            format!(" {} ", device_code_res.user_code)
-                .bg_white()
-                .black(),
+            format!(" {} ", dc.user_code).bg_white().black(),
             ">".light_green(),
-            device_code_res.verification_uri.to_string().light_green(),
+            dc.verification_uri.to_string().light_green(),
         );
 
         let mut input = String::new();
         match stdin().read_line(&mut input) {
-            Ok(_) => eprintln!(
-                "{} Opening: {}",
-                ">".light_green(),
-                device_code_res.verification_uri
-            ),
+            Ok(_) => eprintln!("{} Opening: {}", ">".light_green(), dc.verification_uri),
             Err(_e) => {
-                return Err(ApiError::generic("couldn't read enter from stdin"));
+                return Err(anyhow!("couldn't read enter from stdin").into());
             }
         }
 
@@ -297,7 +254,7 @@ impl Auth0TokenProvider for Auth0Service {
         // want to open it on another browser, for example), the uri gets
         // invalidated and the user would have to restart the process (i.e.
         // rerun the command).
-        let uri: &str = device_code_res.verification_uri.borrow();
+        let uri: &str = dc.verification_uri.borrow();
         if open::that(uri).is_err() {
             eprintln!(
                 "{} Couldn't open activation url automatically [url={}]",
@@ -306,9 +263,48 @@ impl Auth0TokenProvider for Auth0Service {
             );
         }
 
-        // Request tokens
-        let client = self.provider().build_http_client();
-        let tokens_res;
+        self.poll_token(dc).await
+    }
+
+    /// Request device code
+    async fn device_code(&self) -> Result<DeviceCode<'_>> {
+        // More on how to use scope and audience in https://auth0.com/docs/quickstart/native/device#device-code-parameters
+        let client = self.provider().build_http_client()?;
+        let req = || {
+            client
+                .post(self.provider().device_code_url())
+                .header("content-type", "application/x-www-form-urlencoded")
+                .form(&[
+                    ("client_id", self.provider().client_id()),
+                    ("scope", self.provider().scopes()),
+                ])
+        };
+        let retry_strategy = ExponentialBackoff::from_millis(10).take(3);
+        let res = Retry::spawn(retry_strategy, move || req().send())
+            .await
+            .map_err(|e| anyhow!(e.to_string()))?;
+        match res.status() {
+            StatusCode::OK => {
+                let res = res
+                    .json::<DeviceCode>()
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                debug!(?res, "device code received: {res:#?}");
+                Ok(res)
+            }
+            _ => {
+                let res = res.text().await.map_err(|e| anyhow!(e.to_string()))?;
+                let err_msg = "couldn't get device code";
+                debug!(?res, err_msg);
+                Err(anyhow!(err_msg).into())
+            }
+        }
+    }
+
+    /// Poll for token until it's ready
+    async fn poll_token<'a>(&'a self, dc: DeviceCode<'a>) -> Result<Auth0Token<'_>> {
+        let client = self.provider().build_http_client()?;
+        let token;
         loop {
             let res = client
                 .post(self.provider().token_request_url())
@@ -316,43 +312,47 @@ impl Auth0TokenProvider for Auth0Service {
                 .form(&[
                     ("client_id", self.provider().client_id()),
                     ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
-                    ("device_code", &device_code_res.device_code),
+                    ("device_code", &dc.device_code),
                 ])
                 .send()
                 .await
-                .map_err(|err| ApiError::generic(&err.to_string()))?;
+                .map_err(|e| anyhow!(e.to_string()))?;
             match res.status() {
                 StatusCode::OK => {
-                    tokens_res = res
+                    token = res
                         .json::<Auth0Token>()
                         .await
-                        .map_err(|err| ApiError::generic(&err.to_string()))?;
-                    debug!("tokens received [tokens={tokens_res:#?}]");
-                    eprintln!("{} Tokens received, processing...", ">".light_green());
-                    return Ok(tokens_res);
+                        .map_err(|e| anyhow!(e.to_string()))?;
+                    debug!(?token, "token response received");
+                    eprintln!("{} Token received, processing...", ">".light_green());
+                    return Ok(token);
                 }
                 _ => {
-                    let err_res = res
+                    let err = res
                         .json::<TokensError>()
                         .await
-                        .map_err(|err| ApiError::generic(&err.to_string()))?;
-                    match err_res.error.borrow() {
+                        .map_err(|e| anyhow!(e.to_string()))?;
+                    match err.error.borrow() {
                         "authorization_pending" | "invalid_request" | "slow_down" => {
-                            debug!("tokens not yet received [err={err_res:#?}]");
-                            tokio::time::sleep(tokio::time::Duration::from_secs(
-                                device_code_res.interval as u64,
-                            ))
-                            .await;
+                            debug!(?err, "tokens not yet received");
+                            sleep(Duration::from_secs(dc.interval as u64)).await;
                             continue;
                         }
                         _ => {
-                            let err_msg = format!("failed to receive tokens [err={err_res:#?}]");
-                            debug!("{}", err_msg);
-                            return Err(ApiError::generic(&err_msg));
+                            let err_msg = "failed to receive tokens";
+                            debug!(?err, "{err_msg}");
+                            return Err(anyhow!(err_msg).into());
                         }
                     }
                 }
             }
         }
+    }
+
+    pub(crate) async fn validate_provider_config(&self) -> Result<()> {
+        if let Err(e) = self.device_code().await {
+            return Err(anyhow!("Invalid Auth0 configuration: {e}").into());
+        }
+        Ok(())
     }
 }
