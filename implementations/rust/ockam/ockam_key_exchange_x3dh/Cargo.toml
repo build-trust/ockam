@@ -25,17 +25,18 @@ default = ["std"]
 
 # Feature: (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "ockam_key_exchange_core/std", "alloc", "hex/std"]
+std = ["ockam_core/std", "ockam_macros/std", "ockam_key_exchange_core/std", "alloc", "hex/std"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library, requires nightly.
-no_std = ["ockam_core/no_std", "ockam_key_exchange_core/no_std"]
+no_std = ["ockam_core/no_std", "ockam_macros/no_std", "ockam_key_exchange_core/no_std"]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
-alloc = ["ockam_core/alloc", "ockam_key_exchange_core/alloc", "hex/alloc"]
+alloc = ["ockam_core/alloc", "ockam_macros/alloc", "ockam_key_exchange_core/alloc", "hex/alloc"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.70.0", default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.24.0", default_features = false }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.61.0", default_features = false }
 arrayref = "0.3"
 zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
