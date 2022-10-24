@@ -26,8 +26,8 @@ ansi_escapes_are_valid() {
   if [ -t 2 ]; then
     if [ "${TERM+set}" = 'set' ]; then
       case "$TERM" in
-        xterm*|rxvt*|urxvt*|linux*|vt*)
-            _ansi_escapes_are_valid=true
+      xterm* | rxvt* | urxvt* | linux* | vt*)
+        _ansi_escapes_are_valid=true
         ;;
       esac
     fi
@@ -88,7 +88,7 @@ heading() {
 }
 
 required() {
-  if ! command -v "$1" > /dev/null 2>&1; then
+  if ! command -v "$1" >/dev/null 2>&1; then
     error "need '$1' (command not found)"
   fi
 }
@@ -101,28 +101,28 @@ detect_binary_file_name() {
   _cpu_type="$(uname -m)"
 
   case "$_os_type" in
-    Darwin)
-      if [ "$_cpu_type" = i386 ]; then
-        # Darwin `uname -m` lies
-        if sysctl hw.optional.x86_64 | grep -q ': 1'; then
-          _cpu_type=x86_64
-        fi
+  Darwin)
+    if [ "$_cpu_type" = i386 ]; then
+      # Darwin `uname -m` lies
+      if sysctl hw.optional.x86_64 | grep -q ': 1'; then
+        _cpu_type=x86_64
       fi
+    fi
 
-      case "$_cpu_type" in
-        x86_64) _file_name="ockam.x86_64-apple-darwin";;
-        arm64) _file_name="ockam.aarch64-apple-darwin";;
-        *) error "Unsupported CPU type: ${_cpu_type} on MacOS"
-      esac
+    case "$_cpu_type" in
+    x86_64) _file_name="ockam.x86_64-apple-darwin" ;;
+    arm64) _file_name="ockam.aarch64-apple-darwin" ;;
+    *) error "Unsupported CPU type: ${_cpu_type} on MacOS" ;;
+    esac
     ;;
-    Linux)
-      case "$_cpu_type" in
-        x86_64 | aarch64) _file_name="ockam.$_cpu_type-unknown-linux-musl";;
-        armv7l) _file_name="ockam.$_cpu_type-unknown-linux-musleabihf";;
-        *) error "Unsupported CPU type: ${_cpu_type} on Linux";
-      esac
+  Linux)
+    case "$_cpu_type" in
+    x86_64 | aarch64) _file_name="ockam.$_cpu_type-unknown-linux-musl" ;;
+    armv7l) _file_name="ockam.$_cpu_type-unknown-linux-musleabihf" ;;
+    *) error "Unsupported CPU type: ${_cpu_type} on Linux" ;;
+    esac
     ;;
-    *) error "Unsupported operating system type: ${_os_type}"
+  *) error "Unsupported operating system type: ${_os_type}" ;;
   esac
 
   info "Detected Operating System Type: ${_os_type}"

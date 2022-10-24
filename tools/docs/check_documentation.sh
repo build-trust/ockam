@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 if [ -z $OCKAM_HOME ]; then
-    echo "Please set OCKAM_HOME to the repo root"
-    exit -1
+  echo "Please set OCKAM_HOME to the repo root"
+  exit -1
 fi
 
 # Getting Started Guide
@@ -37,12 +37,11 @@ export TOOLS_DIR="$OCKAM_HOME/tools/docs"
 
 # Install example_blocks binary, if needed
 if [ -z $(which example_blocks) ]; then
-    echo "Building example_blocks utility"
-    pushd "$TOOLS_DIR/example_blocks" &>/dev/null
-    cargo -q install --path .
-    popd &>/dev/null
+  echo "Building example_blocks utility"
+  pushd "$TOOLS_DIR/example_blocks" &>/dev/null
+  cargo -q install --path .
+  popd &>/dev/null
 fi
-
 
 ERR=0
 

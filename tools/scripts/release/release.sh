@@ -5,7 +5,7 @@ set -e
 log=$(mktemp)
 echo "Log directory is $log"
 
-exec 5> $log
+exec 5>$log
 BASH_XTRACEFD="5"
 
 set -x
@@ -17,11 +17,11 @@ release_name="release_$(date +'%d-%m-%Y')_$(date +'%s')"
 
 # Ensure all executables are installed
 executables_installed=true
-if ! command -v jq &> /dev/null; then
+if ! command -v jq &>/dev/null; then
   echo "JQ executable not installed. Please install at https://stedolan.github.io/jq/"
   executables_installed=false
 fi
-if ! command -v gh &> /dev/null; then
+if ! command -v gh &>/dev/null; then
   echo "Github CLI not installed. Please install at https://cli.github.com"
   executables_installed=false
 fi
@@ -58,13 +58,13 @@ function approve_deployment() {
       pending_length=$(echo "$pending_deployments" | jq '. | length')
 
       environments=""
-      for (( c=0; c<$pending_length; c++ )); do
-        environment=$(echo "$pending_deployments" | jq -r ".[$c].environment.id" )
+      for ((c = 0; c < $pending_length; c++)); do
+        environment=$(echo "$pending_deployments" | jq -r ".[$c].environment.id")
         environments="$environments $environment"
       done
 
       if [[ ! -z $environments ]]; then
-        jq -n  "{environment_ids: [$environments], state: \"approved\", comment: \"Ship It\"}" | gh api \
+        jq -n "{environment_ids: [$environments], state: \"approved\", comment: \"Ship It\"}" | gh api \
           --method POST \
           -H "Accept: application/vnd.github+json" \
           /repos/$owner/$repository/actions/runs/$run_id/pending_deployments --input -
@@ -76,9 +76,8 @@ function approve_deployment() {
 
 function ockam_bump() {
   set -e
-  gh workflow run create-release-pull-request.yml --ref develop\
-    -F branch_name="$release_name" -F git_tag="$GIT_TAG" -F ockam_bump_modified_release="$OCKAM_BUMP_MODIFIED_RELEASE"\
-    -F ockam_bump_release_version="$OCKAM_BUMP_RELEASE_VERSION" -F ockam_bump_bumped_dep_crates_version="$OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION"\
+  gh workflow run create-release-pull-request.yml --ref develop -F branch_name="$release_name" -F git_tag="$GIT_TAG" -F ockam_bump_modified_release="$OCKAM_BUMP_MODIFIED_RELEASE" \
+    -F ockam_bump_release_version="$OCKAM_BUMP_RELEASE_VERSION" -F ockam_bump_bumped_dep_crates_version="$OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION" \
     -R $owner/ockam
 
   workflow_file_name="create-release-pull-request.yml"
@@ -91,7 +90,7 @@ function ockam_bump() {
   gh run watch $run_id --exit-status -R $owner/ockam
 
   # Merge PR to a new branch to kickstart workflow
-  gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release"\
+  gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
     --base develop -H ${release_name} -r mrinalwadhwa -R $owner/ockam
 }
 
@@ -126,8 +125,7 @@ function release_ockam_package() {
   file_and_sha="$2"
   is_release="$3"
 
-
-  gh workflow run ockam-package.yml --ref develop -F tag="$tag" -F binaries_sha="$file_and_sha" -F is_release=$is_release  -R $owner/ockam
+  gh workflow run ockam-package.yml --ref develop -F tag="$tag" -F binaries_sha="$file_and_sha" -F is_release=$is_release -R $owner/ockam
   # Wait for workflow run
   sleep 10
   run_id=$(gh run list --workflow=ockam-package.yml -b develop -u $GITHUB_USERNAME -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
@@ -150,7 +148,7 @@ function homebrew_repo_bump() {
   gh run watch $run_id --exit-status -R $owner/homebrew-ockam
 
   # Create PR to kickstart workflow
-  gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release"\
+  gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
     --base main -H ${release_name} -r mrinalwadhwa -R $owner/homebrew-ockam
 }
 
@@ -159,13 +157,13 @@ function terraform_repo_bump() {
   gh workflow run create-release-pull-request.yml --ref main -R $owner/terraform-provider-ockam -F tag=$1 -F branch_name=$release_name
   # Wait for workflow run
   sleep 10
-  run_id=$(gh run list --workflow=create-release-pull-request.yml -b main -u $GITHUB_USERNAME -L 1 -R $owner/terraform-provider-ockam  --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=create-release-pull-request.yml -b main -u $GITHUB_USERNAME -L 1 -R $owner/terraform-provider-ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "terraform-provider-ockam" $run_id &
   gh run watch $run_id --exit-status -R $owner/terraform-provider-ockam
 
   # Create PR to kickstart workflow
-  gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release"\
+  gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
     --base main -H ${release_name} -r mrinalwadhwa -R $owner/terraform-provider-ockam
 }
 
@@ -174,7 +172,7 @@ function terraform_binaries_release() {
   gh workflow run release.yml --ref main -R $owner/terraform-provider-ockam -F tag=$1
   # Wait for workflow run
   sleep 10
-  run_id=$(gh run list --workflow=release.yml -b main -u $GITHUB_USERNAME -L 1 -R $owner/terraform-provider-ockam  --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=release.yml -b main -u $GITHUB_USERNAME -L 1 -R $owner/terraform-provider-ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "terraform-provider-ockam" $run_id &
   gh run watch $run_id --exit-status -R $owner/terraform-provider-ockam
@@ -185,13 +183,13 @@ function delete_ockam_draft_package() {
   versions=$(gh api -H "Accept: application/vnd.github+json" /orgs/build-trust/packages/container/ockam/versions)
   version_length=$(echo "$versions" | jq '. | length')
 
-  for (( c=0; c<$version_length; c++ )); do
+  for ((c = 0; c < $version_length; c++)); do
     id=$(echo "$versions" | jq -r ".[$c].id")
 
     tags=$(echo "$versions" | jq ".[$c].metadata.container.tags")
     tags_length=$(echo "$tags" | jq ". | length")
 
-    for (( d=0; d<$tags_length; d++ )); do
+    for ((d = 0; d < $tags_length; d++)); do
       tag_name=$(echo "$tags" | jq -r ".[$d]")
 
       if [[ $tag_name == *"-draft"* ]]; then
@@ -260,13 +258,13 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
     fi
 
     file_and_sha="$file_and_sha ${file[1]}:${file[0]}"
-  done < sha256sums.txt
+  done <sha256sums.txt
   popd
   rm -rf /tmp/$release_name
 
   echo "File and hash are $file_and_sha"
 
-  if [[ -z $SKIP_OCKAM_PACKAGE_DRAFT_RELEASE || $SKIP_OCKAM_PACKAGE_DRAFT_RELEASE  == false ]]; then
+  if [[ -z $SKIP_OCKAM_PACKAGE_DRAFT_RELEASE || $SKIP_OCKAM_PACKAGE_DRAFT_RELEASE == false ]]; then
     echo "Releasing Ockam container image"
     release_ockam_package $latest_tag_name "$file_and_sha" false
     success_info "Ockam package draft release successful.... Starting Homebrew release"
@@ -308,7 +306,7 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
   fi
 
   # Release Ockam package
-  if [[ -z $SKIP_OCKAM_PACKAGE_RELEASE || $SKIP_OCKAM_PACKAGE_RELEASE  == false ]]; then
+  if [[ -z $SKIP_OCKAM_PACKAGE_RELEASE || $SKIP_OCKAM_PACKAGE_RELEASE == false ]]; then
     echo "Making Ockam container latest"
     release_ockam_package $latest_tag_name "nil" true
     delete_ockam_draft_package

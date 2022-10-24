@@ -47,11 +47,11 @@ popd
 # the x86_64-apple-darwin rust lib as an input
 # and to be placed in the right output
 cc \
-    -I "$NIF_SOURCE_DIR" -I "$OCKAM_FFI_DIR/include" -I "$ERLANG_INCLUDE_DIR" \
-    -arch x86_64 -m64 "$OCKAM_ROOT/target/x86_64-apple-darwin/release/libockam_ffi.a" \
-    "$NIF_SOURCE_DIR/common.c" "$NIF_SOURCE_DIR/nifs.c" "$NIF_SOURCE_DIR/vault.c" \
-    -O3 -fPIC -shared -Wl,-undefined,dynamic_lookup \
-    -o "$BUILD_DIR/darwin_x86_64/native/libockam_elixir_ffi.dylib"
+  -I "$NIF_SOURCE_DIR" -I "$OCKAM_FFI_DIR/include" -I "$ERLANG_INCLUDE_DIR" \
+  -arch x86_64 -m64 "$OCKAM_ROOT/target/x86_64-apple-darwin/release/libockam_ffi.a" \
+  "$NIF_SOURCE_DIR/common.c" "$NIF_SOURCE_DIR/nifs.c" "$NIF_SOURCE_DIR/vault.c" \
+  -O3 -fPIC -shared -Wl,-undefined,dynamic_lookup \
+  -o "$BUILD_DIR/darwin_x86_64/native/libockam_elixir_ffi.dylib"
 
 echo "### Building rust code for for aarch64"
 
@@ -63,23 +63,22 @@ cargo build --release --target=aarch64-apple-darwin
 popd
 
 cc \
-    -I "$NIF_SOURCE_DIR" \
-    -I "$OCKAM_FFI_DIR/include" \
-    -I "$ERLANG_INCLUDE_DIR" \
-    -arch arm64 "$OCKAM_ROOT/target/aarch64-apple-darwin/release/libockam_ffi.a" \
-    "$NIF_SOURCE_DIR/common.c" "$NIF_SOURCE_DIR/nifs.c" "$NIF_SOURCE_DIR/vault.c" \
-    -O3 -fPIC -shared -Wl,-undefined,dynamic_lookup \
-    -o "$BUILD_DIR/darwin_arm64/native/libockam_elixir_ffi.dylib"
+  -I "$NIF_SOURCE_DIR" \
+  -I "$OCKAM_FFI_DIR/include" \
+  -I "$ERLANG_INCLUDE_DIR" \
+  -arch arm64 "$OCKAM_ROOT/target/aarch64-apple-darwin/release/libockam_ffi.a" \
+  "$NIF_SOURCE_DIR/common.c" "$NIF_SOURCE_DIR/nifs.c" "$NIF_SOURCE_DIR/vault.c" \
+  -O3 -fPIC -shared -Wl,-undefined,dynamic_lookup \
+  -o "$BUILD_DIR/darwin_arm64/native/libockam_elixir_ffi.dylib"
 
 echo "### Producing universal binary"
 # Create a universal binary
 lipo -create \
-    -output "$BUILD_DIR/darwin_universal/native/libockam_elixir_ffi.dylib" \
-    "$BUILD_DIR/darwin_arm64/native/libockam_elixir_ffi.dylib" \
-    "$BUILD_DIR/darwin_x86_64/native/libockam_elixir_ffi.dylib"
+  -output "$BUILD_DIR/darwin_universal/native/libockam_elixir_ffi.dylib" \
+  "$BUILD_DIR/darwin_arm64/native/libockam_elixir_ffi.dylib" \
+  "$BUILD_DIR/darwin_x86_64/native/libockam_elixir_ffi.dylib"
 
 # Rename to .so to make erlang load it properly
 mv "$BUILD_DIR/darwin_arm64/native/libockam_elixir_ffi.dylib" "$BUILD_DIR/darwin_arm64/native/libockam_elixir_ffi.so"
 mv "$BUILD_DIR/darwin_x86_64/native/libockam_elixir_ffi.dylib" "$BUILD_DIR/darwin_x86_64/native/libockam_elixir_ffi.so"
 mv "$BUILD_DIR/darwin_universal/native/libockam_elixir_ffi.dylib" "$BUILD_DIR/darwin_universal/native/libockam_elixir_ffi.so"
-
