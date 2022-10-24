@@ -71,8 +71,6 @@ impl From<SecretAttributes> for FfiSecretAttributes {
             SecretType::Aes => 1,
             SecretType::X25519 => 2,
             SecretType::Ed25519 => 3,
-            #[cfg(feature = "bls")]
-            SecretType::Bls => 4,
         };
 
         let persistence = match attrs.persistence() {
@@ -93,8 +91,6 @@ impl TryFrom<FfiSecretAttributes> for SecretAttributes {
             1 => Ok(SecretType::Aes),
             2 => Ok(SecretType::X25519),
             3 => Ok(SecretType::Ed25519),
-            #[cfg(feature = "bls")]
-            4 => Ok(SecretType::Bls),
             _ => Err(FfiError::InvalidParam),
         }?;
 

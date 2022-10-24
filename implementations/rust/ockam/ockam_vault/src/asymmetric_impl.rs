@@ -32,8 +32,6 @@ impl Vault {
                 let secret = sk.diffie_hellman(&pk_t);
                 Ok(secret.as_bytes().to_vec())
             }
-            #[cfg(feature = "bls")]
-            SecretType::Bls => Err(VaultError::UnknownEcdhKeyType.into()),
             SecretType::Buffer | SecretType::Aes | SecretType::Ed25519 => {
                 Err(VaultError::UnknownEcdhKeyType.into())
             }

@@ -45,27 +45,6 @@ impl Verifier for Vault {
                 let public_key = ed25519_dalek::PublicKey::from_bytes(public_key.data()).unwrap();
                 Ok(public_key.verify(data.as_ref(), &signature).is_ok())
             }
-            #[cfg(feature = "bls")]
-            SecretType::Bls => {
-                if public_key.data().len() != 96 && signature.as_ref().len() != 112 {
-                    return Err(VaultError::InvalidPublicKey.into());
-                }
-
-                use arrayref::array_ref;
-                use signature_bbs_plus::MessageGenerators;
-                use signature_bbs_plus::Signature as BBSSignature;
-                use signature_core::lib::Message;
-
-                let bls_public_key =
-                    ::signature_bls::PublicKey::from_bytes(array_ref!(public_key.as_ref(), 0, 96))
-                        .unwrap();
-                let generators = MessageGenerators::from_public_key(bls_public_key, 1);
-                let messages = [Message::hash(data.as_ref())];
-                let signature_array = array_ref!(signature.as_ref(), 0, 112);
-                let signature_bbs = BBSSignature::from_bytes(signature_array).unwrap();
-                let res = signature_bbs.verify(&bls_public_key, &generators, messages.as_ref());
-                Ok(res.unwrap_u8() == 1)
-            }
             SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidPublicKey.into()),
         }
     }
