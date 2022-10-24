@@ -3,7 +3,7 @@ use crate::{help, CommandGlobalOpts, Result};
 use clap::{Args, Subcommand};
 use ockam::Context;
 use ockam_abac::{Action, Expr, Resource};
-use ockam_api::nodes::models::policy::Policy;
+use ockam_api::nodes::models::policy::{Policy, PolicyList};
 use ockam_core::api::Request;
 
 const HELP_DETAIL: &str = "";
@@ -42,6 +42,14 @@ pub enum PolicySubcommand {
         #[arg(short, long)]
         action: Action,
     },
+    List {
+        /// Node on which to start the tcp inlet.
+        #[arg(long, display_order = 900, id = "NODE")]
+        at: String,
+
+        #[arg(short, long)]
+        resource: Resource,
+    },
 }
 
 impl PolicyCommand {
@@ -50,9 +58,9 @@ impl PolicyCommand {
     }
 }
 
+#[rustfmt::skip]
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, PolicyCommand)) -> Result<()> {
     match cmd.subcommand {
-        #[rustfmt::skip]
         PolicySubcommand::Set { at, resource, action, expression } => {
             let node = extract_address_value(&at)?;
             let bdy = Policy::new(expression);
@@ -61,7 +69,6 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, PolicyCommand)) -> R
             rpc.request(req).await?;
             rpc.is_ok()?
         }
-        #[rustfmt::skip]
         PolicySubcommand::Get { at, resource, action } => {
             let node = extract_address_value(&at)?;
             let req = Request::get(policy_path(&resource, &action));
@@ -69,6 +76,16 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, PolicyCommand)) -> R
             rpc.request(req).await?;
             let pol: Policy = rpc.parse_response()?;
             println!("{}", pol.expression())
+        }
+        PolicySubcommand::List { at, resource } => {
+            let node = extract_address_value(&at)?;
+            let req = Request::get(format!("/policy/{resource}"));
+            let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+            rpc.request(req).await?;
+            let pol: PolicyList = rpc.parse_response()?;
+            for (a, e) in pol.expressions() {
+                println!("{resource}/{a}: {e}")
+            }
         }
     }
     Ok(())

@@ -670,6 +670,13 @@ impl NodeManagerWorker {
                 .add_policy(resource, action, req, dec)
                 .await?
                 .to_vec()?,
+            (Get, ["policy", resource]) => self
+                .node_manager
+                .read()
+                .await
+                .list_policies(req, resource)
+                .await?
+                .to_vec()?,
             (Get, ["policy", resource, action]) => self
                 .node_manager
                 .read()

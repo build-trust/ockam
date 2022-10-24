@@ -1,4 +1,5 @@
-use lmdb::{Database, Environment, Transaction};
+use core::str;
+use lmdb::{Cursor, Database, Environment, Transaction};
 use ockam_abac::{Action, Expr, PolicyStorage, Resource};
 use ockam_core::async_trait;
 use ockam_core::errcode::{Kind, Origin};
@@ -8,6 +9,7 @@ use ockam_node::tokio::task::{self, JoinError};
 use std::fmt;
 use std::path::Path;
 use std::sync::Arc;
+use tracing as log;
 
 /// Lmdb AuthenticatedStorage implementation
 #[derive(Clone)]
@@ -119,6 +121,31 @@ impl PolicyStorage for LmdbStorage {
     async fn del_policy(&self, r: &Resource, a: &Action) -> Result<()> {
         self.delete(format!("{r}:{a}")).await
     }
+
+    async fn policies(&self, r: &Resource) -> Result<Vec<(Action, Expr)>> {
+        let d = self.clone();
+        let r = r.clone();
+        let t = move || {
+            let tx = d.env.begin_ro_txn().map_err(map_lmdb_err)?;
+            let mut c = tx.open_ro_cursor(d.map).map_err(map_lmdb_err)?;
+            let mut xs = Vec::new();
+            for entry in c.iter_from(r.as_str()) {
+                let (k, v) = entry.map_err(map_lmdb_err)?;
+                let ks = str::from_utf8(k).map_err(from_utf8_err)?;
+                if let Some((prefix, a)) = ks.split_once(':') {
+                    if prefix != r.as_str() {
+                        break;
+                    }
+                    let x = minicbor::decode(v)?;
+                    xs.push((Action::new(a), x))
+                } else {
+                    log::warn!(key = %ks, "malformed key in policy database")
+                }
+            }
+            Ok(xs)
+        };
+        task::spawn_blocking(t).await.map_err(map_join_err)?
+    }
 }
 
 fn map_join_err(err: JoinError) -> Error {
@@ -127,4 +154,8 @@ fn map_join_err(err: JoinError) -> Error {
 
 fn map_lmdb_err(err: lmdb::Error) -> Error {
     Error::new(Origin::Application, Kind::Io, err)
+}
+
+fn from_utf8_err(err: str::Utf8Error) -> Error {
+    Error::new(Origin::Other, Kind::Invalid, err)
 }
