@@ -97,7 +97,7 @@ async fn run_impl(
         info!("Enrolled successfully");
         let mut client = Client::new(authenticator_route, &ctx).await?;
         let credential = client.credential().await?;
-        println!("{:?}", credential); //TODO: output in human-readable format
+        println!("{}", credential);
         Ok(())
     } else {
         eprintln!("{}", rpc.parse_err_msg(res, dec));

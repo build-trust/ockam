@@ -23,6 +23,8 @@ use ockam_core::compat::{
 };
 use ockam_core::{CowBytes, CowStr, Result};
 use serde::{Serialize, Serializer};
+#[cfg(feature = "std")]
+use std::ops::Deref;
 
 #[cfg(feature = "tag")]
 use crate::TypeTag;
@@ -50,8 +52,36 @@ pub struct Credential<'a> {
 }
 
 impl fmt::Display for Credential<'_> {
+    #[cfg(feature = "std")]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.serialize(f)
+        let credential_data = CredentialData::try_from(self).map_err(|_| fmt::Error)?;
+        writeln!(f, "---")?;
+        writeln!(f, " Subject: {}", credential_data.subject)?;
+        writeln!(
+            f,
+            " Issuer: {} ({})",
+            credential_data.issuer, credential_data.issuer_key_label
+        )?;
+        //TODO: write timestamps on human-readable format. Should we add a dependency for this?
+        writeln!(f, " Created: {}", u64::from(credential_data.created))?;
+        writeln!(f, " Expires: {}", u64::from(credential_data.expires))?;
+        write!(f, " Attrributes: ")?;
+        f.debug_map()
+            .entries(
+                credential_data
+                    .attributes
+                    .iter()
+                    .map(|(k, v)| (k, std::str::from_utf8(v).unwrap_or("**binary**"))),
+            )
+            .finish()?;
+        writeln!(f, "\n")?;
+        writeln!(f, " Signature: {}", hex::encode(self.signature.deref()))?;
+        writeln!(f, "---")
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "{:?}", self)
     }
 }
 
