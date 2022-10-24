@@ -11,6 +11,7 @@ use ockam_api::cloud::project::OktaConfig;
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
 
+use crate::enroll::{Auth0Provider, Auth0Service};
 use crate::node::util::delete_embedded_node;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
@@ -158,17 +159,22 @@ async fn run_impl(
                 certificate_path,
                 client_id,
             } => {
-                //TODO: should check here that the client_id, tenant and certificate are correct.
-                //      Could do the first part of the oauth flow and request a device code,
-                //      if we can't get one, something is wrong with the config
                 let certificate = match (certificate, certificate_path) {
                     (Some(c), _) => c,
                     (_, Some(p)) => std::fs::read_to_string(p)?,
                     _ => unreachable!(),
                 };
+
+                let okta_config = OktaConfig::new(tenant, certificate, client_id);
+                let body = okta_config.clone();
+
+                // Validate okta configuration
+                let auth0 = Auth0Service::new(Auth0Provider::Okta(okta_config.into()));
+                auth0.validate_provider_config().await?;
+
+                // Do request
                 let addon_id = "okta";
                 let endpoint = format!("{}/{}", base_endpoint(&project_name)?, addon_id);
-                let body = OktaConfig::new(tenant, certificate, client_id);
                 let req =
                     Request::put(endpoint).body(CloudRequestWrapper::new(body, controller_route));
                 rpc.request(req).await?;
