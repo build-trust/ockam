@@ -51,7 +51,7 @@ pub(crate) fn list_tcp_listeners() -> RequestBuilder<'static, ()> {
 /// Construct a request to create node tcp connection
 pub(crate) fn create_tcp_connection(
     cmd: &crate::tcp::connection::CreateCommand,
-) -> Result<Vec<u8>> {
+) -> RequestBuilder<'static, models::transport::CreateTransport<'static>> {
     let (tt, addr) = (
         models::transport::TransportMode::Connect,
         cmd.address.clone(),
@@ -59,11 +59,7 @@ pub(crate) fn create_tcp_connection(
 
     let payload =
         models::transport::CreateTransport::new(models::transport::TransportType::Tcp, tt, addr);
-    let mut buf = vec![];
-    Request::post("/node/tcp/connection")
-        .body(payload)
-        .encode(&mut buf)?;
-    Ok(buf)
+    Request::post("/node/tcp/connection").body(payload)
 }
 
 /// Construct a request to create node tcp listener
