@@ -1,6 +1,7 @@
 //! Perform XEdDSA according to
 //! <https://signal.org/docs/specifications/xeddsa/#xeddsa>
 
+use aes_gcm::aead::consts::U64;
 use curve25519_dalek::{
     constants::ED25519_BASEPOINT_POINT, montgomery::MontgomeryPoint, scalar::Scalar,
 };
@@ -14,6 +15,16 @@ pub trait XEddsaSigner {
 
 pub trait XEddsaVerifier {
     fn xeddsa_verify(&self, msg: &[u8], sig: &[u8; 64]) -> bool;
+}
+
+// TODO: replace usage of this fn with Scalar::from_hash when curve25519-dalek updated dependencies
+fn scalar_to_hash<D>(hash: D) -> Scalar
+where
+    D: Digest<OutputSize = U64>,
+{
+    let mut output = [0u8; 64];
+    output.copy_from_slice(hash.finalize().as_slice());
+    Scalar::from_bytes_mod_order_wide(&output)
 }
 
 impl XEddsaSigner for XSecretKey {
@@ -62,7 +73,7 @@ impl XEddsaSigner for XSecretKey {
         hasher.update(k.as_bytes());
         hasher.update(msg);
         hasher.update(nonce.as_ref());
-        let r = Scalar::from_hash(hasher);
+        let r = scalar_to_hash(hasher);
 
         // R = rB
         let cap_r = (ED25519_BASEPOINT_POINT * r).compress();
@@ -72,7 +83,7 @@ impl XEddsaSigner for XSecretKey {
         hasher.update(cap_r.as_bytes());
         hasher.update(ce.as_bytes());
         hasher.update(msg);
-        let h = Scalar::from_hash(hasher);
+        let h = scalar_to_hash(hasher);
 
         // s = r + ha (mod q)
         let s = r + h * k;
