@@ -389,40 +389,38 @@ mod tests {
         SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
         CURVE25519_SECRET_LENGTH_U32,
     };
+    use ockam_core::Result;
     use ockam_key_exchange_core::KeyExchanger;
+    use ockam_node::Context;
     use ockam_vault::Vault;
 
-    #[test]
-    fn prologue() {
-        let (mut ctx, mut exec) = ockam_node::NodeBuilder::without_access_control().build();
-        exec.execute(async move {
-            let vault = Vault::create();
+    #[ockam_macros::test]
+    async fn prologue(ctx: &mut Context) -> Result<()> {
+        let vault = Vault::create();
 
-            let exp_h = [
-                93, 247, 43, 103, 185, 101, 173, 209, 22, 143, 10, 108, 117, 109, 242, 28, 32, 79,
-                126, 100, 252, 104, 43, 230, 163, 171, 75, 104, 44, 141, 182, 75,
-            ];
+        let exp_h = [
+            93, 247, 43, 103, 185, 101, 173, 209, 22, 143, 10, 108, 117, 109, 242, 28, 32, 79, 126,
+            100, 252, 104, 43, 230, 163, 171, 75, 104, 44, 141, 182, 75,
+        ];
 
-            let mut state = State::new(&vault).await.unwrap();
-            let res = state.prologue().await;
-            assert!(res.is_ok());
-            assert_eq!(state.h.unwrap(), exp_h);
+        let mut state = State::new(&vault).await.unwrap();
+        let res = state.prologue().await;
+        assert!(res.is_ok());
+        assert_eq!(state.h.unwrap(), exp_h);
 
-            let ck = vault
-                .secret_export(&state.dh_state.ck.unwrap())
-                .await
-                .unwrap();
+        let ck = vault
+            .secret_export(&state.dh_state.ck.unwrap())
+            .await
+            .unwrap();
 
-            assert_eq!(ck.as_ref(), *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0");
-            assert_eq!(state.nonce, 0);
+        assert_eq!(ck.as_ref(), *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0");
+        assert_eq!(state.nonce, 0);
 
-            ctx.stop().await.unwrap();
-        })
-        .unwrap();
+        ctx.stop().await
     }
 
-    #[test]
-    fn handshake_1() {
+    #[ockam_macros::test]
+    async fn handshake_1(ctx: &mut Context) -> Result<()> {
         const INIT_STATIC: &str =
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
         const INIT_EPH: &str = "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
@@ -437,28 +435,24 @@ mod tests {
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
         const MSG_3_PAYLOAD: &str = "";
 
-        let (mut ctx, mut exec) = ockam_node::NodeBuilder::without_access_control().build();
-        exec.execute(async move {
-            let mut vault = Vault::create();
+        let mut vault = Vault::create();
 
-            mock_handshake(
-                &mut vault,
-                INIT_STATIC,
-                INIT_EPH,
-                RESP_STATIC,
-                RESP_EPH,
-                MSG_1_PAYLOAD,
-                MSG_1_CIPHERTEXT,
-                MSG_2_PAYLOAD,
-                MSG_2_CIPHERTEXT,
-                MSG_3_PAYLOAD,
-                MSG_3_CIPHERTEXT,
-            )
-            .await;
+        mock_handshake(
+            &mut vault,
+            INIT_STATIC,
+            INIT_EPH,
+            RESP_STATIC,
+            RESP_EPH,
+            MSG_1_PAYLOAD,
+            MSG_1_CIPHERTEXT,
+            MSG_2_PAYLOAD,
+            MSG_2_CIPHERTEXT,
+            MSG_3_PAYLOAD,
+            MSG_3_CIPHERTEXT,
+        )
+        .await;
 
-            ctx.stop().await.unwrap();
-        })
-        .unwrap();
+        ctx.stop().await
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -513,8 +507,8 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    #[test]
-    fn handshake_2() {
+    #[ockam_macros::test]
+    async fn handshake_2(ctx: &mut Context) -> Result<()> {
         const INIT_STATIC: &str =
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
         const RESP_STATIC: &str =
@@ -529,32 +523,28 @@ mod tests {
         const MSG_3_PAYLOAD: &str = "746573745f6d73675f32";
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40232c55cd96d1350af861f6a04978f7d5e070c07602c6b84d25a331242a71c50ae31dd4c164267fd48bd2";
 
-        let (mut ctx, mut exec) = ockam_node::NodeBuilder::without_access_control().build();
-        exec.execute(async move {
-            let mut vault = Vault::create();
+        let mut vault = Vault::create();
 
-            mock_handshake(
-                &mut vault,
-                INIT_STATIC,
-                INIT_EPH,
-                RESP_STATIC,
-                RESP_EPH,
-                MSG_1_PAYLOAD,
-                MSG_1_CIPHERTEXT,
-                MSG_2_PAYLOAD,
-                MSG_2_CIPHERTEXT,
-                MSG_3_PAYLOAD,
-                MSG_3_CIPHERTEXT,
-            )
-            .await;
+        mock_handshake(
+            &mut vault,
+            INIT_STATIC,
+            INIT_EPH,
+            RESP_STATIC,
+            RESP_EPH,
+            MSG_1_PAYLOAD,
+            MSG_1_CIPHERTEXT,
+            MSG_2_PAYLOAD,
+            MSG_2_CIPHERTEXT,
+            MSG_3_PAYLOAD,
+            MSG_3_CIPHERTEXT,
+        )
+        .await;
 
-            ctx.stop().await.unwrap();
-        })
-        .unwrap();
+        ctx.stop().await
     }
 
-    #[test]
-    fn handshake_main() {
+    #[ockam_macros::test]
+    async fn handshake_main(ctx: &mut Context) -> Result<()> {
         const INIT_STATIC: &str =
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
         const INIT_EPH: &str = "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f";
@@ -569,80 +559,76 @@ mod tests {
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
         const MSG_3_PAYLOAD: &str = "";
 
-        let (mut ctx, mut exec) = ockam_node::NodeBuilder::without_access_control().build();
-        exec.execute(async move {
-            let mut vault = Vault::create();
+        let mut vault = Vault::create();
 
-            let initiator = mock_prologue(&mut vault, INIT_STATIC, INIT_EPH).await;
-            let responder = mock_prologue(&mut vault, RESP_STATIC, RESP_EPH).await;
+        let initiator = mock_prologue(&mut vault, INIT_STATIC, INIT_EPH).await;
+        let responder = mock_prologue(&mut vault, RESP_STATIC, RESP_EPH).await;
 
-            let mut initiator = Initiator::new(initiator);
-            let mut responder = Responder::new(responder);
+        let mut initiator = Initiator::new(initiator);
+        let mut responder = Responder::new(responder);
 
-            let res = initiator
-                .generate_request(&decode(MSG_1_PAYLOAD).unwrap())
-                .await;
-            assert!(res.is_ok());
-            let msg1 = res.unwrap();
-            assert_eq!(encode(&msg1), MSG_1_CIPHERTEXT);
+        let res = initiator
+            .generate_request(&decode(MSG_1_PAYLOAD).unwrap())
+            .await;
+        assert!(res.is_ok());
+        let msg1 = res.unwrap();
+        assert_eq!(encode(&msg1), MSG_1_CIPHERTEXT);
 
-            let res = responder.handle_response(&msg1).await;
-            assert!(res.is_ok());
-            let res = responder
-                .generate_request(&decode(MSG_2_PAYLOAD).unwrap())
-                .await;
-            assert!(res.is_ok());
-            let msg2 = res.unwrap();
-            assert_eq!(encode(&msg2), MSG_2_CIPHERTEXT);
+        let res = responder.handle_response(&msg1).await;
+        assert!(res.is_ok());
+        let res = responder
+            .generate_request(&decode(MSG_2_PAYLOAD).unwrap())
+            .await;
+        assert!(res.is_ok());
+        let msg2 = res.unwrap();
+        assert_eq!(encode(&msg2), MSG_2_CIPHERTEXT);
 
-            let res = initiator.handle_response(&msg2).await;
-            assert!(res.is_ok());
-            let res = initiator
-                .generate_request(&decode(MSG_3_PAYLOAD).unwrap())
-                .await;
-            assert!(res.is_ok());
-            let msg3 = res.unwrap();
-            assert_eq!(encode(&msg3), MSG_3_CIPHERTEXT);
+        let res = initiator.handle_response(&msg2).await;
+        assert!(res.is_ok());
+        let res = initiator
+            .generate_request(&decode(MSG_3_PAYLOAD).unwrap())
+            .await;
+        assert!(res.is_ok());
+        let msg3 = res.unwrap();
+        assert_eq!(encode(&msg3), MSG_3_CIPHERTEXT);
 
-            let res = responder.handle_response(&msg3).await;
-            assert!(res.is_ok());
+        let res = responder.handle_response(&msg3).await;
+        assert!(res.is_ok());
 
-            let res = initiator.finalize().await;
-            assert!(res.is_ok());
-            let alice = res.unwrap();
-            let res = responder.finalize().await;
-            assert!(res.is_ok());
-            let bob = res.unwrap();
-            assert_eq!(alice.h(), bob.h());
-            let res = vault
-                .aead_aes_gcm_encrypt(alice.encrypt_key(), b"hello bob", &[0u8; 12], alice.h())
-                .await;
+        let res = initiator.finalize().await;
+        assert!(res.is_ok());
+        let alice = res.unwrap();
+        let res = responder.finalize().await;
+        assert!(res.is_ok());
+        let bob = res.unwrap();
+        assert_eq!(alice.h(), bob.h());
+        let res = vault
+            .aead_aes_gcm_encrypt(alice.encrypt_key(), b"hello bob", &[0u8; 12], alice.h())
+            .await;
 
-            assert!(res.is_ok());
-            let ciphertext = res.unwrap();
+        assert!(res.is_ok());
+        let ciphertext = res.unwrap();
 
-            let res = vault
-                .aead_aes_gcm_decrypt(bob.decrypt_key(), &ciphertext, &[0u8; 12], bob.h())
-                .await;
-            assert!(res.is_ok());
-            let plaintext = res.unwrap();
-            assert_eq!(plaintext, b"hello bob");
+        let res = vault
+            .aead_aes_gcm_decrypt(bob.decrypt_key(), &ciphertext, &[0u8; 12], bob.h())
+            .await;
+        assert!(res.is_ok());
+        let plaintext = res.unwrap();
+        assert_eq!(plaintext, b"hello bob");
 
-            let res = vault
-                .aead_aes_gcm_encrypt(bob.encrypt_key(), b"hello alice", &[1u8; 12], bob.h())
-                .await;
-            assert!(res.is_ok());
-            let ciphertext = res.unwrap();
-            let res = vault
-                .aead_aes_gcm_decrypt(alice.decrypt_key(), &ciphertext, &[1u8; 12], alice.h())
-                .await;
-            assert!(res.is_ok());
-            let plaintext = res.unwrap();
-            assert_eq!(plaintext, b"hello alice");
+        let res = vault
+            .aead_aes_gcm_encrypt(bob.encrypt_key(), b"hello alice", &[1u8; 12], bob.h())
+            .await;
+        assert!(res.is_ok());
+        let ciphertext = res.unwrap();
+        let res = vault
+            .aead_aes_gcm_decrypt(alice.decrypt_key(), &ciphertext, &[1u8; 12], alice.h())
+            .await;
+        assert!(res.is_ok());
+        let plaintext = res.unwrap();
+        assert_eq!(plaintext, b"hello alice");
 
-            ctx.stop().await.unwrap();
-        })
-        .unwrap();
+        ctx.stop().await
     }
 
     async fn mock_prologue<V: XXVault>(

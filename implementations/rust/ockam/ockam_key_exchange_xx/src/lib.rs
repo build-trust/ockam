@@ -67,55 +67,52 @@ use ockam_core::vault::{AsymmetricVault, Hasher, SecretVault, SymmetricVault};
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ockam_core::Result;
     use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
+    use ockam_node::Context;
     use ockam_vault::Vault;
 
     #[allow(non_snake_case)]
-    #[test]
-    fn full_flow__correct_credentials__keys_should_match() {
-        let (mut ctx, mut exec) = ockam_node::NodeBuilder::without_access_control().build();
-        exec.execute(async move {
-            let vault = Vault::create();
+    #[ockam_macros::test]
+    async fn full_flow__correct_credentials__keys_should_match(ctx: &mut Context) -> Result<()> {
+        let vault = Vault::create();
 
-            let key_exchanger = XXNewKeyExchanger::new(vault.async_try_clone().await.unwrap());
+        let key_exchanger = XXNewKeyExchanger::new(vault.async_try_clone().await.unwrap());
 
-            let mut initiator = key_exchanger.initiator().await.unwrap();
-            let mut responder = key_exchanger.responder().await.unwrap();
+        let mut initiator = key_exchanger.initiator().await.unwrap();
+        let mut responder = key_exchanger.responder().await.unwrap();
 
-            loop {
-                if !initiator.is_complete().await.unwrap() {
-                    let m = initiator.generate_request(&[]).await.unwrap();
-                    let _ = responder.handle_response(&m).await.unwrap();
-                }
-
-                if !responder.is_complete().await.unwrap() {
-                    let m = responder.generate_request(&[]).await.unwrap();
-                    let _ = initiator.handle_response(&m).await.unwrap();
-                }
-
-                if initiator.is_complete().await.unwrap() && responder.is_complete().await.unwrap()
-                {
-                    break;
-                }
+        loop {
+            if !initiator.is_complete().await.unwrap() {
+                let m = initiator.generate_request(&[]).await.unwrap();
+                let _ = responder.handle_response(&m).await.unwrap();
             }
 
-            let initiator = initiator.finalize().await.unwrap();
-            let responder = responder.finalize().await.unwrap();
+            if !responder.is_complete().await.unwrap() {
+                let m = responder.generate_request(&[]).await.unwrap();
+                let _ = initiator.handle_response(&m).await.unwrap();
+            }
 
-            assert_eq!(initiator.h(), responder.h());
+            if initiator.is_complete().await.unwrap() && responder.is_complete().await.unwrap() {
+                break;
+            }
+        }
 
-            let s1 = vault.secret_export(initiator.encrypt_key()).await.unwrap();
-            let s2 = vault.secret_export(responder.decrypt_key()).await.unwrap();
+        let initiator = initiator.finalize().await.unwrap();
+        let responder = responder.finalize().await.unwrap();
 
-            assert_eq!(s1, s2);
+        assert_eq!(initiator.h(), responder.h());
 
-            let s1 = vault.secret_export(initiator.decrypt_key()).await.unwrap();
-            let s2 = vault.secret_export(responder.encrypt_key()).await.unwrap();
+        let s1 = vault.secret_export(initiator.encrypt_key()).await.unwrap();
+        let s2 = vault.secret_export(responder.decrypt_key()).await.unwrap();
 
-            assert_eq!(s1, s2);
+        assert_eq!(s1, s2);
 
-            ctx.stop().await.unwrap();
-        })
-        .unwrap();
+        let s1 = vault.secret_export(initiator.decrypt_key()).await.unwrap();
+        let s2 = vault.secret_export(responder.encrypt_key()).await.unwrap();
+
+        assert_eq!(s1, s2);
+
+        ctx.stop().await
     }
 }
