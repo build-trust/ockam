@@ -37,10 +37,6 @@ pub enum VaultError {
     InvalidX25519SecretLength,
     /// Invalid Ed25519 secret
     InvalidEd25519Secret,
-    /// Invalid BLS secret length
-    InvalidBlsSecretLength,
-    /// Invalid BLS secret
-    InvalidBlsSecret,
     /// Invalid Secret Attributes
     InvalidSecretAttributes,
     /// IO error
@@ -68,8 +64,6 @@ impl core::fmt::Display for VaultError {
             Self::SecretNotFound => write!(f, "secret not found"),
             Self::InvalidX25519SecretLength => write!(f, "invalid X25519 secret length"),
             Self::InvalidEd25519Secret => write!(f, "invalid Ed25519 secret"),
-            Self::InvalidBlsSecretLength => write!(f, "invalid BLS secret length"),
-            Self::InvalidBlsSecret => write!(f, "invalid BLS secret"),
             Self::InvalidSecretAttributes => write!(f, "invalid secret attributes"),
             Self::StorageError => write!(f, "invalid storage"),
             Self::InvalidStorageData => write!(f, "invalid storage data"),

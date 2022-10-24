@@ -184,9 +184,6 @@ pub enum SecretType {
     #[n(3)] X25519,
     /// Curve 22519 key
     #[n(4)] Ed25519,
-    /// BLS key
-    #[cfg(feature = "bls")]
-    #[n(5)] Bls,
 }
 
 /// All possible [`SecretKey`] persistence types

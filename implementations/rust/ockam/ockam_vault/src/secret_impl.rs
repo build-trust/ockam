@@ -1,7 +1,6 @@
 use crate::vault::Vault;
 use crate::VaultError;
 use arrayref::array_ref;
-use cfg_if::cfg_if;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::vault::{
     AsymmetricVault, KeyId, PublicKey, SecretAttributes, SecretKey, SecretPersistence, SecretType,
@@ -9,12 +8,6 @@ use ockam_core::vault::{
     CURVE25519_SECRET_LENGTH_USIZE,
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
-cfg_if! {
-    if #[cfg(feature = "bls")] {
-        use signature_bbs_plus::PublicKey as BlsPublicKey;
-        use signature_bbs_plus::SecretKey as BlsSecretKey;
-    }
-}
 
 impl Vault {
     /// Compute key id from secret and attributes. Only Curve25519 and Buffer types are supported
@@ -46,15 +39,6 @@ impl Vault {
                 ))
                 .await?
             }
-            #[cfg(feature = "bls")]
-            SecretType::Bls => {
-                let bls_secret_key = BlsSecretKey::from_bytes(secret.try_into().unwrap()).unwrap();
-                let public_key = PublicKey::new(
-                    BlsPublicKey::from(&bls_secret_key).to_bytes().into(),
-                    SecretType::Bls,
-                );
-                self.compute_key_id_for_public_key(&public_key).await?
-            }
             SecretType::Buffer | SecretType::Aes => {
                 // NOTE: Buffer and Aes secrets in the system are ephemeral and it should be fine,
                 // that every time we import the same secret - it gets different KeyId value.
@@ -74,14 +58,6 @@ impl Vault {
             return Err(VaultError::InvalidSecretLength.into());
         }
         match attributes.stype() {
-            #[cfg(feature = "bls")]
-            SecretType::Bls => {
-                let bytes = TryInto::<[u8; BlsSecretKey::BYTES]>::try_into(secret)
-                    .map_err(|_| VaultError::InvalidBlsSecretLength)?;
-                if BlsSecretKey::from_bytes(&bytes).is_none().into() {
-                    return Err(VaultError::InvalidBlsSecret.into());
-                }
-            }
             SecretType::Buffer | SecretType::Aes | SecretType::X25519 | SecretType::Ed25519 => {
                 // Avoid unused variable warning
                 let _ = secret;
@@ -146,13 +122,6 @@ impl SecretVault for Vault {
                 };
 
                 SecretKey::new(key)
-            }
-            #[cfg(feature = "bls")]
-            SecretType::Bls => {
-                let mut rng = thread_rng();
-                let bls_secret_key = BlsSecretKey::random(&mut rng).unwrap();
-
-                SecretKey::new(bls_secret_key.to_bytes().to_vec())
             }
         };
         let key_id = self.compute_key_id(key.as_ref(), &attributes).await?;
@@ -246,15 +215,6 @@ impl SecretVault for Vault {
                 let pk = ed25519_dalek::PublicKey::from(&sk);
                 Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::Ed25519))
             }
-            #[cfg(feature = "bls")]
-            SecretType::Bls => {
-                let bls_secret_key =
-                    BlsSecretKey::from_bytes(&entry.key().as_ref().try_into().unwrap()).unwrap();
-                Ok(PublicKey::new(
-                    BlsPublicKey::from(&bls_secret_key).to_bytes().into(),
-                    SecretType::Bls,
-                ))
-            }
             SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
         }
     }
@@ -291,7 +251,6 @@ mod tests {
         ockam_core::vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32},
         SecretAttributes, SecretVault, Vault,
     };
-    use cfg_if::cfg_if;
 
     fn new_vault() -> Vault {
         Vault::default()
@@ -331,22 +290,5 @@ mod tests {
             "f0e6821043434a9353e6c213a098f6d75ac916b23b3632c7c4c9c6d2e1fa1cf8",
             &key_id
         );
-
-        cfg_if! {
-            if #[cfg(feature = "bls")] {
-                let bytes_bls = &[
-                    0x3b, 0xcd, 0x36, 0xf3, 0xe2, 0x18, 0xf1, 0x8a, 0x37, 0xd6, 0x4d, 0x62, 0xe4, 0xb7,
-                    0x27, 0xc9, 0xc7, 0xf8, 0xcc, 0x32, 0x6c, 0xf6, 0x66, 0x94, 0x7c, 0x62, 0xfd, 0xff,
-                    0x18, 0xc0, 0x0e, 0x08,
-                ];
-                let attrs = new_bls_attrs().unwrap();
-                let mut vault = new_vault();
-                let key_id = import_key(&mut vault, bytes_bls, attrs).await;
-                assert_eq!(
-                    "604b7cf225a832c8fa822792dc7c484f5c49fb7a70ce87f1636b294ba7dbdc7b",
-                    &key_id
-                );
-            }
-        }
     }
 }
