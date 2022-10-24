@@ -260,6 +260,12 @@ teardown() {
   # TODO: add test for authenticator
 }
 
+@test "create a tcp connection" {
+  run $OCKAM node create n1
+  run $OCKAM tcp-connection create --from n1 --to 127.0.0.1:5000 --output json
+  assert_success
+  assert_output --regexp '[{"route":"/dnsaddr/localhost/tcp/[[:digit:]]+/ip4/127.0.0.1/tcp/5000"}]'
+}
 
 # the below tests will only succeed if already enrolled with `ockam enroll`
 
