@@ -48,7 +48,9 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - run: cd implementations/rust && ../../gradlew lint_cargo_fmt_check
+      - run: |
+          rustc --version
+          cd implementations/rust && ../../gradlew lint_cargo_fmt_check
 
   lint_cargo_clippy:
     name: Rust - Lint with Cargo Clippy
@@ -62,7 +64,9 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - run: cd implementations/rust && ../../gradlew lint_cargo_clippy
+      - run: |
+          rustc --version
+          cd implementations/rust && ../../gradlew lint_cargo_clippy
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   lint_cargo_deny:
@@ -75,7 +79,9 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/gradle_cache
-      - run: cd implementations/rust && ../../gradlew lint_cargo_deny
+      - run: |
+          rustc --version
+          cd implementations/rust && ../../gradlew lint_cargo_deny
 
   build_docs:
     name: Rust - Build Documentation
@@ -89,7 +95,9 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - run: cd implementations/rust && ../../gradlew build_docs
+      - run: |
+          rustc --version
+          cd implementations/rust && ../../gradlew build_docs
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   build:
@@ -104,7 +112,9 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - run: cd implementations/rust && ../../gradlew build
+      - run: |
+          rustc --version
+          cd implementations/rust && ../../gradlew build
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   build_examples:
@@ -119,7 +129,9 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - run: cd implementations/rust && ../../gradlew build_examples
+      - run: |
+          rustc --version
+          cd implementations/rust && ../../gradlew build_examples
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   test:
@@ -139,7 +151,9 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - run: cd implementations/rust && ../../gradlew test
+      - run: |
+          rustc --version
+          cd implementations/rust && ../../gradlew test
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_no_std:
@@ -155,6 +169,7 @@ jobs:
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: |
+          rustc --version
           cd implementations/rust/ockam/ockam
           RUSTFLAGS='-Dwarnings' cargo check --no-default-features --features 'no_std alloc software_vault'
       - uses: ./.github/actions/cargo_target_dir_pre_cache
@@ -172,6 +187,7 @@ jobs:
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: |
+          rustc --version
           cd examples/rust/get_started
           rm -rf Cargo.lock
           cargo update
@@ -192,7 +208,9 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - run: RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
+      - run: |
+          rustc --version
+          RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   build_nightly:
@@ -209,7 +227,9 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - run: cd implementations/rust && ../../gradlew build
+      - run: |
+          rustc --version
+          cd implementations/rust && ../../gradlew build
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   test_nightly:
@@ -226,7 +246,9 @@ jobs:
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
-      - run: cd implementations/rust && ../../gradlew test
+      - run: |
+          rustc --version
+          cd implementations/rust && ../../gradlew test
         env:
           NIGHTLY_CI: 1
       - uses: ./.github/actions/cargo_target_dir_pre_cache

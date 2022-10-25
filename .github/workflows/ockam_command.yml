@@ -59,6 +59,7 @@ jobs:
       - name: Build Binary
         shell: bash
         run: |
+          rustc --version
           set -x
           cargo build --bin ockam
 
