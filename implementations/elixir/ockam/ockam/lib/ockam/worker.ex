@@ -120,6 +120,10 @@ defmodule Ockam.Worker do
         Ockam.Worker.handle_message(__MODULE__, message, state)
       end
 
+      def handle_info(:idle_timeout, state) do
+        Ockam.Worker.handle_idle_timeout(state)
+      end
+
       @doc false
       @impl true
       def handle_continue(:post_init, options) do
@@ -210,15 +214,20 @@ defmodule Ockam.Worker do
              authorization when is_list(authorization) or is_map(authorization) <-
                Keyword.get(options, :authorization, []) do
           attributes = Keyword.get(options, :attributes, %{}) |> Map.new()
+          idle_timeout = Keyword.get(options, :idle_timeout, :infinity)
 
           base_state = %{
             address: address,
             all_addresses: [address],
             module: module,
+            started_at: System.os_time(:millisecond),
             last_message_ts: nil,
             authorization: Authorization.expand_config(authorization),
-            attributes: attributes
+            attributes: attributes,
+            idle_timeout: idle_timeout
           }
+
+          base_state = schedule_idle_timeout(base_state)
 
           with {:ok, state} <-
                  register_extra_addresses(
@@ -243,6 +252,63 @@ defmodule Ockam.Worker do
 
       {:error, reason} ->
         {:stop, reason, {:post_init, options}}
+    end
+  end
+
+  def schedule_idle_timeout(state) do
+    case Map.get(state, :idle_timeout, :infinity) do
+      :infinity ->
+        state
+
+      timeout when is_integer(timeout) and timeout > 0 ->
+        Process.send_after(self(), :idle_timeout, div(timeout, 2))
+        state
+
+      other ->
+        Logger.warn("Invalid idle timeout configuration: #{inspect(other)}")
+        state
+    end
+  end
+
+  def handle_idle_timeout(state) do
+    case is_idle?(state) do
+      true ->
+        Logger.warn("Worker #{state.address} is idle. Terminating.")
+        {:stop, {:shutdown, :idle_timeout}, state}
+
+      false ->
+        {:noreply, schedule_idle_timeout(state)}
+    end
+  end
+
+  def is_idle?(state) do
+    idle_timeout = Map.get(state, :idle_timeout, :infinity)
+
+    now = System.os_time(:millisecond)
+
+    last_activity =
+      case Map.get(state, :last_message_ts) do
+        nil ->
+          Map.get(state, :started_at)
+
+        value when is_integer(value) ->
+          value
+
+        other ->
+          Logger.warn("Invalid last_message_ts state: #{inspect(other)}")
+          Map.get(state, :started_at)
+      end
+
+    case idle_timeout do
+      :infinity ->
+        false
+
+      value when is_integer(value) ->
+        now > last_activity + idle_timeout
+
+      other ->
+        Logger.warn("Invalid idle timeout configuration: #{inspect(other)}")
+        false
     end
   end
 

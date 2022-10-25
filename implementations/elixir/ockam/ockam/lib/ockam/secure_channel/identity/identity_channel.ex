@@ -58,12 +58,14 @@ defmodule Ockam.Identity.SecureChannel do
   defp spawner_options(options) do
     listener_keys = [:address, :inner_address, :restart_type, :authorization]
     handshake_options = Keyword.drop(options, listener_keys)
+    idle_timeout = Keyword.get(options, :idle_timeout, :infinity)
 
     responder_options = [
       address_prefix: "ISC_R_",
       worker_mod: Ockam.Identity.SecureChannel.Data,
       handshake: Ockam.Identity.SecureChannel.Handshake,
       handshake_options: handshake_options,
+      idle_timeout: idle_timeout,
       ## TODO: probably all spawners should do that
       restart_type: :temporary
     ]
