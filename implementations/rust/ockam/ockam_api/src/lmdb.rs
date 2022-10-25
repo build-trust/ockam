@@ -61,7 +61,10 @@ impl LmdbStorage {
         let d = self.clone();
         let t = move || {
             let mut w = d.env.begin_rw_txn().map_err(map_lmdb_err)?;
-            w.del(d.map, &k, None).map_err(map_lmdb_err)?;
+            match w.del(d.map, &k, None) {
+                Ok(()) | Err(lmdb::Error::NotFound) => {}
+                Err(e) => return Err(map_lmdb_err(e)),
+            }
             w.commit().map_err(map_lmdb_err)?;
             Ok(())
         };

@@ -684,6 +684,13 @@ impl NodeManagerWorker {
                 .get_policy(req, resource, action)
                 .await?
                 .either(ResponseBuilder::to_vec, ResponseBuilder::to_vec)?,
+            (Delete, ["policy", resource, action]) => self
+                .node_manager
+                .read()
+                .await
+                .del_policy(req, resource, action)
+                .await?
+                .to_vec()?,
 
             // ==*== Spaces ==*==
             (Post, ["v0", "spaces"]) => self.create_space(ctx, dec).await?,

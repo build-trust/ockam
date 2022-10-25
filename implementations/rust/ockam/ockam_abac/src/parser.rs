@@ -13,7 +13,7 @@ use wast::lexer::{FloatVal, Lexer, Token};
 fn ident_pattern() -> &'static Regex {
     static INSTANCE: OnceBox<Regex> = OnceBox::new();
     INSTANCE.get_or_init(|| {
-        Box::new(Regex::new("^[a-zA-Z!$%&*/:<=>?~_^][a-zA-Z0-9!$%&*/:<=>?~_^.+-@]*$").unwrap())
+        Box::new(Regex::new("^[a-zA-Z!$%&*/<=>?~_^][a-zA-Z0-9!$%&*/<=>?~_^.+-@]*$").unwrap())
     })
 }
 
