@@ -42,6 +42,17 @@ pub enum PolicySubcommand {
         #[arg(short, long)]
         action: Action,
     },
+    Delete {
+        /// Node on which to start the tcp inlet.
+        #[arg(long, display_order = 900, id = "NODE")]
+        at: String,
+
+        #[arg(short, long)]
+        resource: Resource,
+
+        #[arg(short, long)]
+        action: Action,
+    },
     List {
         /// Node on which to start the tcp inlet.
         #[arg(long, display_order = 900, id = "NODE")]
@@ -76,6 +87,13 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, PolicyCommand)) -> R
             rpc.request(req).await?;
             let pol: Policy = rpc.parse_response()?;
             println!("{}", pol.expression())
+        }
+        PolicySubcommand::Delete { at, resource, action } => {
+            let node = extract_address_value(&at)?;
+            let req = Request::delete(policy_path(&resource, &action));
+            let mut rpc = Rpc::background(&ctx, &opts, &node)?;
+            rpc.request(req).await?;
+            rpc.is_ok()?
         }
         PolicySubcommand::List { at, resource } => {
             let node = extract_address_value(&at)?;

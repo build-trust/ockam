@@ -50,4 +50,16 @@ impl NodeManager {
         let p = self.policies.policies(&r).await?;
         Ok(Response::ok(req.id()).body(PolicyList::new(p)))
     }
+
+    pub(super) async fn del_policy(
+        &self,
+        req: &Request<'_>,
+        res: &str,
+        act: &str,
+    ) -> Result<ResponseBuilder<()>> {
+        let r = Resource::new(res);
+        let a = Action::new(act);
+        self.policies.del_policy(&r, &a).await?;
+        Ok(Response::ok(req.id()))
+    }
 }
