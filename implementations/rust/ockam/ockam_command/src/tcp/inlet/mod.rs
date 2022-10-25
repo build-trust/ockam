@@ -19,7 +19,7 @@ pub enum TcpInletSubCommand {
 impl TcpInletCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         match self.subcommand {
-            TcpInletSubCommand::Create(c) => c.run(options).unwrap(),
+            TcpInletSubCommand::Create(c) => c.run(options),
         }
     }
 }

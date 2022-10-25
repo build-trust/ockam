@@ -60,40 +60,40 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(mut self, options: CommandGlobalOpts) -> Result<()> {
-        let lookup = options.config.lookup();
-        self.to = {
-            let mut to = MultiAddr::default();
-            for proto in self.to.iter() {
-                match proto.code() {
-                    Node::CODE => {
-                        let alias = proto
-                            .cast::<Node>()
-                            .ok_or_else(|| anyhow!("invalid node address protocol"))?;
-                        let addr = lookup
-                            .node_address(&alias)
-                            .ok_or_else(|| anyhow!("no address for node {}", &*alias))?;
-                        to.try_extend(&addr)?
-                    }
-                    _ => to.push_back_value(&proto)?,
-                }
-            }
-            to
-        };
-
-        // Check if the port is used by some other services or process
-        if !bind_to_port_check(&self.from) {
-            eprintln!("Another process is listening on the provided port!");
-            std::process::exit(exitcode::IOERR);
-        }
-
+    pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(rpc, (options, self));
-
-        Ok(())
     }
 }
 
-async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+    let lookup = opts.config.lookup();
+    cmd.to = {
+        let mut to = MultiAddr::default();
+        for proto in cmd.to.iter() {
+            match proto.code() {
+                Node::CODE => {
+                    let alias = proto
+                        .cast::<Node>()
+                        .ok_or_else(|| anyhow!("invalid node address protocol"))?;
+                    let addr = lookup
+                        .node_address(&alias)
+                        .ok_or_else(|| anyhow!("no address for node {}", &*alias))?;
+                    to.try_extend(&addr)?
+                }
+                _ => to.push_back_value(&proto)?,
+            }
+        }
+        to
+    };
+
+    // Check if the port is used by some other services or process
+    if !bind_to_port_check(&cmd.from) {
+        return Err(crate::error::Error::new(
+            exitcode::IOERR,
+            anyhow!("Another process is listening on the provided port!"),
+        ));
+    }
+
     let tcp = TcpTransport::create(&ctx).await?;
     let node = extract_address_value(&cmd.at)?;
 
