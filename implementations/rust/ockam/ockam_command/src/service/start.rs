@@ -241,6 +241,7 @@ pub async fn start_okta_identity_provider(
         &cfg.address,
         &cfg.tenant,
         &cfg.certificate,
+        cfg.attributes.iter().map(|s| s as &str).collect(),
         cfg.project.as_bytes(),
     );
     let req = Request::post("/node/services/okta_identity_provider").body(payload);

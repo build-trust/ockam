@@ -203,17 +203,25 @@ pub struct StartOktaIdentityProviderRequest<'a> {
     #[b(1)] addr: &'a str,
     #[b(2)] tenant: &'a str,
     #[b(3)] certificate: &'a str,
-    #[b(4)] proj: &'a ByteSlice
+    #[b(4)] attributes: Vec<&'a str>,
+    #[b(5)] proj: &'a ByteSlice
 }
 
 impl<'a> StartOktaIdentityProviderRequest<'a> {
-    pub fn new(addr: &'a str, tenant: &'a str, certificate: &'a str, proj: &'a [u8]) -> Self {
+    pub fn new(
+        addr: &'a str,
+        tenant: &'a str,
+        certificate: &'a str,
+        attributes: Vec<&'a str>,
+        proj: &'a [u8],
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             addr,
             tenant,
             certificate,
+            attributes,
             proj: proj.into(),
         }
     }
@@ -229,6 +237,9 @@ impl<'a> StartOktaIdentityProviderRequest<'a> {
     }
     pub fn project(&self) -> &'a [u8] {
         self.proj
+    }
+    pub fn attributes(&self) -> &Vec<&'a str> {
+        &self.attributes
     }
 }
 
