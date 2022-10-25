@@ -107,6 +107,10 @@ pub enum ConfigureAddonCommand {
             value_parser(NonEmptyStringValueParser::new())
         )]
         client_id: String,
+
+        /// Attributes to copy from Okta userprofile into Ockam credential.
+        #[arg(long, id = "attributes", value_name = "ATTRIBUTES")]
+        attributes: Vec<String>,
     },
 }
 
@@ -158,6 +162,7 @@ async fn run_impl(
                 certificate,
                 certificate_path,
                 client_id,
+                attributes,
             } => {
                 let certificate = match (certificate, certificate_path) {
                     (Some(c), _) => c,
@@ -165,7 +170,7 @@ async fn run_impl(
                     _ => unreachable!(),
                 };
 
-                let okta_config = OktaConfig::new(tenant, certificate, client_id);
+                let okta_config = OktaConfig::new(tenant, certificate, client_id, &attributes);
                 let body = okta_config.clone();
 
                 // Validate okta configuration

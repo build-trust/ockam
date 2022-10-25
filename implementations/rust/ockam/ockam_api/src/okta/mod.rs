@@ -18,6 +18,7 @@ pub struct Server<S> {
     store: S,
     tenant: String,
     certificate: reqwest::Certificate,
+    attributes: Vec<String>,
 }
 
 #[ockam_core::worker]
@@ -45,7 +46,13 @@ impl<S> Server<S>
 where
     S: AuthenticatedStorage,
 {
-    pub fn new(project: Vec<u8>, store: S, tenant: &str, certificate: &str) -> Result<Self> {
+    pub fn new(
+        project: Vec<u8>,
+        store: S,
+        tenant: &str,
+        certificate: &str,
+        attributes: &[&str],
+    ) -> Result<Self> {
         let certificate = reqwest::Certificate::from_pem(certificate.as_bytes())
             .map_err(|err| ApiError::generic(&err.to_string()))?;
         Ok(Server {
@@ -53,6 +60,7 @@ where
             store,
             tenant: tenant.to_string(),
             certificate,
+            attributes: attributes.iter().map(|s| s.to_string()).collect(),
         })
     }
 
@@ -79,12 +87,10 @@ where
                     let token: crate::cloud::enroll::auth0::AuthenticateAuth0Token =
                         dec.decode()?;
                     debug!("device code received: {token:#?}");
-                    if self.check_token(&token.access_token.0).await? {
-                        let tru = minicbor::to_vec(true)?;
-                        // TODO  It's not a "MEMBER" .. the attributes must come from the
-                        // userinfo' response.
+                    if let Some(attrs) = self.check_token(&token.access_token.0).await? {
+                        let encoded_attrs = minicbor::to_vec(attrs)?;
                         self.store
-                            .set(from.key_id(), MEMBER.to_string(), tru)
+                            .set(from.key_id(), MEMBER.to_string(), encoded_attrs)
                             .await?;
                         Response::ok(req.id()).to_vec()?
                     } else {
@@ -98,7 +104,7 @@ where
         Ok(res)
     }
 
-    async fn check_token(&mut self, token: &str) -> Result<bool> {
+    async fn check_token(&mut self, token: &str) -> Result<Option<HashMap<String, String>>> {
         let client = reqwest::ClientBuilder::new()
             .tls_built_in_root_certs(false)
             .add_root_certificate(self.certificate.clone())
@@ -122,12 +128,18 @@ where
                         .await
                         .map_err(|_err| ApiError::generic("Failed to authenticate with Okta"))?;
                     debug!("userinfo received: {doc:?}");
-                    Ok(true)
+                    let mut custom_attrs = HashMap::new();
+                    for a in self.attributes.iter() {
+                        if let Some(v) = doc.get(a).and_then(|v| v.as_str()) {
+                            custom_attrs.insert(a.to_owned(), v.to_string());
+                        }
+                    }
+                    Ok(Some(custom_attrs))
                 }
-                _ => Ok(false),
+                _ => Ok(None),
             }
         } else {
-            Ok(false)
+            Ok(None)
         }
     }
 }

@@ -140,16 +140,28 @@ pub struct OktaConfig<'a> {
 
     #[serde(borrow)]
     #[cbor(b(3))] pub client_id: CowStr<'a>,
+
+    #[serde(borrow)]
+    #[cbor(b(4))] pub attributes: Vec<CowStr<'a>>,
 }
 
 impl<'a> OktaConfig<'a> {
-    pub fn new<S: Into<CowStr<'a>>>(tenant: S, certificate: S, client_id: S) -> Self {
+    pub fn new<S: Into<CowStr<'a>>, T: AsRef<str>>(
+        tenant: S,
+        certificate: S,
+        client_id: S,
+        attributes: &'a [T],
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             tenant: tenant.into(),
             certificate: certificate.into(),
             client_id: client_id.into(),
+            attributes: attributes
+                .iter()
+                .map(|x| CowStr::from(x.as_ref()))
+                .collect(),
         }
     }
 }
@@ -167,6 +179,7 @@ impl OktaConfig<'_> {
             tenant: self.tenant.to_owned(),
             certificate: self.certificate.to_owned(),
             client_id: self.client_id.to_owned(),
+            attributes: self.attributes.iter().map(|x| x.to_owned()).collect(),
         }
     }
 }

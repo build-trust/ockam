@@ -67,6 +67,8 @@ pub struct OktaIdentityProviderConfig {
 
     pub(crate) project: String,
 
+    pub(crate) attributes: Vec<String>,
+
     #[serde(default)]
     pub(crate) disabled: bool,
 }

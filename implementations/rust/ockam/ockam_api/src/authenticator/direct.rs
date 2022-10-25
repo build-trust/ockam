@@ -112,17 +112,17 @@ where
                 // Member wants a credential.
                 ["credential"] => match self.get_member(&req, from).await {
                     Ok(Some(attrs)) => {
-                        if let Some(role) = attrs.get(&ROLE.to_string()) {
-                            let crd = Credential::builder(from.clone())
-                                .with_schema(PROJECT_MEMBER_SCHEMA)
-                                .with_attribute(PROJECT_ID, &self.project)
-                                .with_attribute(ROLE, role.as_bytes());
+                        let crd = attrs
+                            .iter()
+                            .fold(
+                                Credential::builder(from.clone())
+                                    .with_schema(PROJECT_MEMBER_SCHEMA),
+                                |crd, (a, v)| crd.with_attribute(a, v.as_bytes()),
+                            )
+                            .with_attribute(PROJECT_ID, &self.project);
 
-                            let crd = self.ident.issue_credential(crd).await?;
-                            Response::ok(req.id()).body(crd).to_vec()?
-                        } else {
-                            api::internal_error(&req, "missing role").to_vec()?
-                        }
+                        let crd = self.ident.issue_credential(crd).await?;
+                        Response::ok(req.id()).body(crd).to_vec()?
                     }
                     Ok(None) => api::forbidden(&req, "unauthorized member").to_vec()?,
                     Err(error) => api::internal_error(&req, &error.to_string()).to_vec()?,
