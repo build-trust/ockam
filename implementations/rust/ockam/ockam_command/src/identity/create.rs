@@ -4,6 +4,7 @@ use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
+use ockam_api::nodes::models::identity::CreateIdentityResponse;
 use ockam_core::api::Request;
 
 #[derive(Clone, Debug, Args)]
@@ -26,8 +27,7 @@ async fn run_impl(
     let mut rpc = Rpc::background(&ctx, &options, &cmd.node_opts.api_node)?;
     let request = Request::post("/node/identity");
     rpc.request(request).await?;
-    rpc.parse_response()?;
-
-    println!("Identity created!");
+    let res = rpc.parse_response::<CreateIdentityResponse>()?;
+    println!("Identity {} created!", res.identity_id);
     Ok(())
 }

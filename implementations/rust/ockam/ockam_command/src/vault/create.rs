@@ -18,7 +18,7 @@ pub struct CreateCommand {
     #[command(flatten)]
     node_opts: Option<NodeOpts>,
 
-    #[arg(short, long, conflicts_with = "node")]
+    #[arg(long, conflicts_with = "node")]
     vault_name: Option<String>,
 
     /// Path to the Vault storage file
@@ -39,7 +39,7 @@ async fn run_impl(ctx: Context, (options, cmd): (CommandGlobalOpts, CreateComman
         let request = Request::post("/node/vault").body(CreateVaultRequest::new(cmd.path));
 
         rpc.request(request).await?;
-        rpc.parse_response()?;
+        rpc.is_ok()?;
 
         println!("Vault created for the Node {}!", node_name);
     } else if let Some(vault_name) = cmd.vault_name {
