@@ -98,11 +98,9 @@ where
                 ["members"] => match self.check_enroller(&req, from).await {
                     Ok(None) => {
                         let add: AddMember = dec.decode()?;
-                        let member_attributes =
-                            HashMap::from([(ROLE.to_string(), MEMBER.to_string())]);
-                        let tru = minicbor::to_vec(member_attributes)?;
+                        let attributes = minicbor::to_vec(add.attributes())?;
                         self.store
-                            .set(add.member().key_id(), MEMBER.to_string(), tru)
+                            .set(add.member().key_id(), MEMBER.to_string(), attributes)
                             .await?;
                         Response::ok(req.id()).to_vec()?
                     }
@@ -230,8 +228,12 @@ impl Client {
         })
     }
 
-    pub async fn add_member(&mut self, id: IdentityIdentifier) -> Result<()> {
-        let req = Request::post("/members").body(AddMember::new(id));
+    pub async fn add_member(
+        &mut self,
+        id: IdentityIdentifier,
+        attributes: HashMap<&str, &str>,
+    ) -> Result<()> {
+        let req = Request::post("/members").body(AddMember::new(id).with_attributes(attributes));
         self.buf = self.request("add-member", "add_member", &req).await?;
         assert_response_match(None, &self.buf);
         let mut d = Decoder::new(&self.buf);
