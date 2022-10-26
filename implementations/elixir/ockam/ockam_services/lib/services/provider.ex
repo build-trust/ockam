@@ -76,7 +76,15 @@ defmodule Ockam.Services.Provider do
               {:ok, [single_spec_map]}
 
             single_spec ->
-              {:ok, [Supervisor.child_spec(single_spec, id: service_name)]}
+              ## Temporary measure to allow multiple services of the same type.
+              ## TODO: redo the way address, service name and id are related
+              id =
+                case Keyword.fetch(service_args, :address) do
+                  {:ok, address} -> String.to_atom(address)
+                  :error -> service_name
+                end
+
+              {:ok, [Supervisor.child_spec(single_spec, id: id)]}
           end
         rescue
           err ->
