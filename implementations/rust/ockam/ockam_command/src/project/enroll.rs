@@ -1,6 +1,7 @@
 use clap::Args;
+use std::collections::HashMap;
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context as _};
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::types::AddMember;
@@ -18,7 +19,7 @@ use crate::{help, CommandGlobalOpts, Result};
 
 /// An authorised enroller can add members to a project.
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide())]
+#[command(hide = help::hide(), arg_required_else_help = true)]
 pub struct EnrollCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]
@@ -32,6 +33,10 @@ pub struct EnrollCommand {
 
     #[arg(long, short)]
     to: MultiAddr,
+
+    /// Attributes in `key=value` format to be attached to the member
+    #[arg(long = "attr", value_name = "ATTRIBUTE")]
+    attributes: Vec<String>,
 }
 
 impl EnrollCommand {
@@ -40,6 +45,17 @@ impl EnrollCommand {
             |ctx, (opts, cmd)| Runner::new(ctx, opts, cmd).run(),
             (options, self),
         );
+    }
+
+    fn attributes(&self) -> Result<HashMap<String, String>> {
+        let mut attributes = HashMap::new();
+        for attr in &self.attributes {
+            let mut parts = attr.splitn(2, '=');
+            let key = parts.next().context("key expected")?;
+            let value = parts.next().context("value expected)")?;
+            attributes.insert(key.to_string(), value.to_string());
+        }
+        Ok(attributes)
     }
 }
 
@@ -74,16 +90,16 @@ impl Runner {
         } else {
             self.cmd.to.clone()
         };
-        let req = Request::post("/members").body(AddMember::new(self.cmd.member.clone()));
+        debug!(addr = %to, member = %self.cmd.member, attrs = ?self.cmd.attributes, "requesting to add member");
+        let req = Request::post("/members")
+            .body(AddMember::new(self.cmd.member.clone()).with_attributes(self.cmd.attributes()?));
         let mut rpc = RpcBuilder::new(&self.ctx, &self.opts, &node_name)
             .to(&to)?
             .build();
-        debug!(addr = %to, member = %self.cmd.member, "requesting to add member");
         rpc.request(req).await?;
         rpc.is_ok()?;
 
         delete_embedded_node(&self.opts.config, &node_name).await;
-
         Ok(())
     }
 }

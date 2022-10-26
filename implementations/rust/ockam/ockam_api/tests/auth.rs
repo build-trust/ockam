@@ -44,13 +44,18 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let mut c = direct::Client::new(route![e2a, "auth"], ctx).await?;
 
     // Enroller is not configured -> fail
-    assert!(c.add_member(member.identifier().clone()).await.is_err());
+    assert!(c
+        .add_member(member.identifier().clone(), HashMap::new())
+        .await
+        .is_err());
 
     // Configure enroller
     let enrollers = [(enroller.identifier().clone(), Enroller::default())];
     let mut tmpf = tmpf.reopen().unwrap();
     serde_json::to_writer(&mut tmpf, &HashMap::from(enrollers)).unwrap();
-    c.add_member(member.identifier().clone()).await?;
+    let member_attrs = HashMap::from([("role", "member")]);
+    c.add_member(member.identifier().clone(), member_attrs)
+        .await?;
 
     // Open a secure channel from member to authenticator:
     let m2a = member
