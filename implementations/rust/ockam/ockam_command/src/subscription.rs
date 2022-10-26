@@ -31,6 +31,7 @@ pub struct SubscriptionCommand {
 pub enum SubscriptionSubcommand {
     /// Show the details of a single subscription.
     /// You can use either the subscription ID or the space ID.
+    #[command(arg_required_else_help = true)]
     Show {
         /// Subscription ID
         #[arg(group = "id")]
