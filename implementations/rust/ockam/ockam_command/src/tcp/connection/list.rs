@@ -1,13 +1,12 @@
 use crate::node::NodeOpts;
-use crate::util::{api, connect_to, exitcode, extract_address_value};
+use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
+use anyhow::Context;
 use clap::Args;
 use cli_table::{print_stdout, Cell, Style, Table};
-use ockam::{Context, Route};
-use ockam_api::nodes::{
-    models::transport::{TransportList, TransportStatus},
-    NODEMANAGER_ADDR,
-};
+use ockam_api::nodes::models;
+use ockam_api::nodes::models::transport::TransportStatus;
+use ockam_core::api::Request;
 
 #[derive(Args, Clone, Debug)]
 pub struct ListCommand {
@@ -17,33 +16,21 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        let cfg = &options.config;
-        let node =
-            extract_address_value(&self.node_opts.api_node).unwrap_or_else(|_| "".to_string());
-        let port = cfg.get_node_port(&node).unwrap();
-
-        connect_to(port, (), list_connections);
+        node_rpc(run_impl, (options, self))
     }
 }
 
-pub async fn list_connections(ctx: Context, _: (), mut base_route: Route) -> anyhow::Result<()> {
-    let resp: Vec<u8> = match ctx
-        .send_and_receive(
-            base_route.modify().append(NODEMANAGER_ADDR),
-            api::list_tcp_connections()?,
-        )
-        .await
-    {
-        Ok(sr_msg) => sr_msg,
-        Err(e) => {
-            eprintln!("Wasn't able to send or receive `Message`: {}", e);
-            std::process::exit(exitcode::IOERR);
-        }
-    };
+async fn run_impl(
+    ctx: ockam::Context,
+    (options, command): (CommandGlobalOpts, ListCommand),
+) -> crate::Result<()> {
+    let node_name = extract_address_value(&command.node_opts.api_node)?;
+    let mut rpc = Rpc::background(&ctx, &options, &node_name)?;
+    rpc.request(Request::get("/node/tcp/connection")).await?;
+    let response = rpc.parse_response::<models::transport::TransportList>()?;
 
-    let TransportList { list, .. } = api::parse_tcp_list(&resp)?;
-
-    let table = list
+    let table = response
+        .list
         .iter()
         .fold(
             vec![],
@@ -68,10 +55,6 @@ pub async fn list_connections(ctx: Context, _: (), mut base_route: Route) -> any
             "Address bind".cell().bold(true),
         ]);
 
-    if let Err(e) = print_stdout(table) {
-        eprintln!("failed to print node status: {}", e);
-        std::process::exit(exitcode::IOERR);
-    }
-
+    print_stdout(table).context("failed to print node status")?;
     Ok(())
 }
