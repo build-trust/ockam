@@ -351,7 +351,7 @@ impl Auth0Service {
 
     pub(crate) async fn validate_provider_config(&self) -> Result<()> {
         if let Err(e) = self.device_code().await {
-            return Err(anyhow!("Invalid Auth0 configuration: {e}").into());
+            return Err(anyhow!("Invalid OIDC configuration: {e}").into());
         }
         Ok(())
     }
