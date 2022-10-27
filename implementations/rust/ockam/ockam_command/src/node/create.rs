@@ -7,11 +7,8 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
+use tracing::error;
 
-use crate::node::util::run::CommandsRunner;
-use crate::node::util::{
-    add_project_authority, create_default_identity_if_needed, get_identity_override,
-};
 use crate::project::ProjectInfo;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
@@ -22,8 +19,13 @@ use crate::{
     node::show::print_query_status,
     node::HELP_DETAIL,
     project,
-    util::{connect_to, embedded_node, find_available_port, startup},
+    util::{find_available_port, startup},
     CommandGlobalOpts,
+};
+use crate::{node::util::run::CommandsRunner, util::node_rpc};
+use crate::{
+    node::util::{add_project_authority, create_default_identity_if_needed, get_identity_override},
+    util::RpcBuilder,
 };
 use ockam::{Address, AsyncTryClone, TCP};
 use ockam::{Context, TcpTransport};
@@ -113,10 +115,17 @@ impl Default for CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        if let Err(e) = run_impl(opts, self) {
-            eprintln!("{}", e);
-            std::process::exit(e.code());
+    pub fn run(self, options: CommandGlobalOpts) {
+        if self.foreground {
+            // Create a new node in the foreground (i.e. in this OS process)
+            if let Err(e) = create_foreground_node(&options, &self) {
+                error!(%e);
+                eprintln!("{e:?}");
+                std::process::exit(e.code());
+            }
+        } else {
+            // Create a new node running in the background (i.e. another, new OS process)
+            node_rpc(run_impl, (options, self))
         }
     }
 
@@ -135,46 +144,60 @@ impl CreateCommand {
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: CreateCommand) -> crate::Result<()> {
-    let verbose = opts.global_args.verbose;
+async fn run_impl(
+    ctx: ockam::Context,
+    (opts, cmd): (CommandGlobalOpts, CreateCommand),
+) -> crate::Result<()> {
+    let node_name = &cmd.node_name;
     let cfg = &opts.config;
-    if cmd.foreground {
-        let cmd = cmd.overwrite_addr()?;
-        let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
-        // HACK: try to get the current node dir.  If it doesn't
-        // exist the user PROBABLY started a non-detached node.
-        // Thus we need to create the node dir so that subsequent
-        // calls to it don't fail
-        if cfg.get_node_dir(&cmd.node_name).is_err() {
-            println!("Creating node directory...");
-            cfg.create_node(&cmd.node_name, addr, verbose)?;
-            cfg.persist_config_updates()?;
-        }
-        embedded_node_that_is_not_stopped(run_foreground_node, (opts.clone(), cmd, addr))?;
-    } else {
-        if cmd.child_process {
-            return Err(crate::Error::new(
-                exitcode::CONFIG,
-                anyhow!("Cannot create a background node from background node"),
-            ));
-        }
-
-        let cmd = cmd.overwrite_addr()?;
-        let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
-        embedded_node(spawn_background_node, (opts.clone(), cmd.clone(), addr))?;
-        connect_to(
-            addr.port(),
-            (cfg.clone(), cmd.node_name.clone(), true),
-            print_query_status,
-        );
-        if let Some(config_path) = &cmd.config {
-            let node_config = cfg.node(&cmd.node_name)?;
-            let commands = CommandsRunner::new(config_path.clone())?;
-            node_config.commands().set(commands.commands)?;
-            CommandsRunner::run_node_init(config_path).context("Failed to run init commands")?;
-            CommandsRunner::run_node_startup(config_path).context("Failed to startup commands")?;
-        }
+    if cmd.child_process {
+        return Err(crate::Error::new(
+            exitcode::CONFIG,
+            anyhow!("Cannot create a background node from background node"),
+        ));
     }
+
+    // Spawn node in another, new process
+    let cmd = cmd.overwrite_addr()?;
+    let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
+    spawn_background_node(&ctx, &opts, &cmd, addr).await?;
+
+    // Print node status
+    let tcp = TcpTransport::create(&ctx).await?;
+    let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
+    let port = cfg.get_node_port(node_name)?;
+    print_query_status(&mut rpc, port, node_name, true).await?;
+
+    // Run init and startup commands
+    if let Some(config_path) = &cmd.config {
+        let node_config = cfg.node(&cmd.node_name)?;
+        let commands = CommandsRunner::new(config_path.clone())?;
+        node_config.commands().set(commands.commands)?;
+        CommandsRunner::run_node_init(config_path).context("Failed to run init commands")?;
+        CommandsRunner::run_node_startup(config_path).context("Failed to startup commands")?;
+    }
+    Ok(())
+}
+
+fn create_foreground_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> crate::Result<()> {
+    let verbose = opts.global_args.verbose;
+    let node_name = &cmd.node_name;
+    let cfg = &opts.config;
+
+    let cmd = cmd.overwrite_addr()?;
+    let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
+
+    // HACK: try to get the current node dir.  If it doesn't
+    // exist the user PROBABLY started a non-detached node.
+    // Thus we need to create the node dir so that subsequent
+    // calls to it don't fail
+    if cfg.get_node_dir(node_name).is_err() {
+        println!("Creating node directory...");
+        cfg.create_node(node_name, addr, verbose)?;
+        cfg.persist_config_updates()?;
+    }
+
+    embedded_node_that_is_not_stopped(run_foreground_node, (opts.clone(), cmd, addr))?;
     Ok(())
 }
 
@@ -238,11 +261,11 @@ async fn run_foreground_node(
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
         .await?;
 
-    if let Some(path) = cmd.launch_config {
+    if let Some(path) = &cmd.launch_config {
         let node_opts = super::NodeOpts {
             api_node: cmd.node_name,
         };
-        start_services(&ctx, &tcp, &path, addr, node_opts, &opts).await?
+        start_services(&ctx, &tcp, path, addr, node_opts, &opts).await?
     }
 
     Ok(())
@@ -325,8 +348,10 @@ async fn start_services(
 }
 
 async fn spawn_background_node(
-    ctx: Context,
-    (opts, cmd, addr): (CommandGlobalOpts, CreateCommand, SocketAddr),
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    cmd: &CreateCommand,
+    addr: SocketAddr,
 ) -> crate::Result<()> {
     let verbose = opts.global_args.verbose;
     let cfg = &opts.config;
@@ -345,7 +370,7 @@ async fn spawn_background_node(
     cfg.create_node(&cmd.node_name, addr, verbose)?;
     cfg.persist_config_updates()?;
 
-    create_default_identity_if_needed(&ctx, cfg).await?;
+    create_default_identity_if_needed(ctx, cfg).await?;
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node

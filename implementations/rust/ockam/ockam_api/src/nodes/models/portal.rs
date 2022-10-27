@@ -131,12 +131,12 @@ impl<'a> CreateOutlet<'a> {
 pub struct InletStatus<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<9302588>,
-    #[b(1)] pub bind_addr: Cow<'a, str>,
-    #[b(2)] pub worker_addr: Cow<'a, str>,
-    #[b(3)] pub alias: Cow<'a, str>,
+    #[b(1)] pub bind_addr: CowStr<'a>,
+    #[b(2)] pub worker_addr: CowStr<'a>,
+    #[b(3)] pub alias: CowStr<'a>,
     /// An optional status payload
-    #[b(4)] pub payload: Option<Cow<'a, str>>,
-    #[b(5)] pub outlet_route: Cow<'a, str>,
+    #[b(4)] pub payload: Option<CowStr<'a>>,
+    #[b(5)] pub outlet_route: CowStr<'a>,
 }
 
 impl<'a> InletStatus<'a> {
@@ -153,11 +153,11 @@ impl<'a> InletStatus<'a> {
     }
 
     pub fn new(
-        bind_addr: impl Into<Cow<'a, str>>,
-        worker_addr: impl Into<Cow<'a, str>>,
-        alias: impl Into<Cow<'a, str>>,
-        payload: impl Into<Option<Cow<'a, str>>>,
-        outlet_route: impl Into<Cow<'a, str>>,
+        bind_addr: impl Into<CowStr<'a>>,
+        worker_addr: impl Into<CowStr<'a>>,
+        alias: impl Into<CowStr<'a>>,
+        payload: impl Into<Option<CowStr<'a>>>,
+        outlet_route: impl Into<CowStr<'a>>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -178,11 +178,11 @@ impl<'a> InletStatus<'a> {
 pub struct OutletStatus<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<4012569>,
-    #[b(1)] pub tcp_addr: Cow<'a, str>,
-    #[b(2)] pub worker_addr: Cow<'a, str>,
-    #[b(3)] pub alias: Cow<'a, str>,
+    #[b(1)] pub tcp_addr: CowStr<'a>,
+    #[b(2)] pub worker_addr: CowStr<'a>,
+    #[b(3)] pub alias: CowStr<'a>,
     /// An optional status payload
-    #[b(4)] pub payload: Option<Cow<'a, str>>,
+    #[b(4)] pub payload: Option<CowStr<'a>>,
 }
 
 impl<'a> OutletStatus<'a> {
@@ -198,10 +198,10 @@ impl<'a> OutletStatus<'a> {
     }
 
     pub fn new(
-        tcp_addr: impl Into<Cow<'a, str>>,
-        worker_addr: impl Into<Cow<'a, str>>,
-        alias: impl Into<Cow<'a, str>>,
-        payload: impl Into<Option<Cow<'a, str>>>,
+        tcp_addr: impl Into<CowStr<'a>>,
+        worker_addr: impl Into<CowStr<'a>>,
+        alias: impl Into<CowStr<'a>>,
+        payload: impl Into<Option<CowStr<'a>>>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
