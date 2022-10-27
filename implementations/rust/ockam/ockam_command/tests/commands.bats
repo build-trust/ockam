@@ -276,6 +276,10 @@ teardown() {
   run $OCKAM tcp-connection create --from n1 --to 127.0.0.1:5000 --output json
   assert_success
   assert_output --regexp '[{"route":"/dnsaddr/localhost/tcp/[[:digit:]]+/ip4/127.0.0.1/tcp/5000"}]'
+
+  run $OCKAM tcp-connection list --node n1
+  assert_success
+  assert_output --partial "127.0.0.1:5000"
 }
 
 # the below tests will only succeed if already enrolled with `ockam enroll`

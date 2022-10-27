@@ -35,14 +35,6 @@ pub(crate) fn query_status() -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-/// Construct a request to query node tcp connections
-pub(crate) fn list_tcp_connections() -> Result<Vec<u8>> {
-    let mut buf = vec![];
-    let builder = Request::get("/node/tcp/connection");
-    builder.encode(&mut buf)?;
-    Ok(buf)
-}
-
 /// Construct a request to query node tcp listeners
 pub(crate) fn list_tcp_listeners() -> RequestBuilder<'static, ()> {
     Request::get("/node/tcp/listener")
