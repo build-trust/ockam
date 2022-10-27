@@ -5,7 +5,7 @@ set -e
 log=$(mktemp)
 echo "Log directory is $log"
 
-exec 5>$log
+exec 5>"$log"
 BASH_XTRACEFD="5"
 
 set -x
@@ -13,7 +13,7 @@ set -x
 GITHUB_USERNAME=$(gh api user | jq -r '.login')
 owner="build-trust"
 
-if [[ ! -z $RELEASE_VERSION && $RELEASE_VERSION != *"ockam_v"* ]]; then
+if [[ -n $RELEASE_VERSION && $RELEASE_VERSION != *"ockam_v"* ]]; then
   echo "Please set RELEASE_VERSION variable, e.g. ockam_v0.63.0"
   exit 1
 fi
@@ -27,12 +27,12 @@ fi
 function test_published_crates_io_release() {
   set -e
   ockam_version=${RELEASE_VERSION}
-  gh workflow run acceptance_test.yml --ref docker -R $owner/artifacts -F ockam_version=$ockam_version
+  gh workflow run acceptance_test.yml --ref docker -R $owner/artifacts -F ockam_version="$ockam_version"
 
   # Wait for workflow run
   sleep 10
-  run_id=$(gh run list --workflow=acceptance_test.yml -b docker -u $GITHUB_USERNAME -L 1 -R $owner/artifacts --json databaseId | jq -r .[0].databaseId)
-  gh run watch $run_id --exit-status -R $owner/artifacts
+  run_id=$(gh run list --workflow=acceptance_test.yml -b docker -u "$GITHUB_USERNAME" -L 1 -R $owner/artifacts --json databaseId | jq -r .[0].databaseId)
+  gh run watch "$run_id" --exit-status -R $owner/artifacts
 }
 
 test_published_crates_io_release
