@@ -45,8 +45,12 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
         authorization: [{:with_metadata, [:message, %{from_pid: self()}]}]
       )
 
+    key_exchange_timeout =
+      Keyword.get(handshake_options, :key_exchange_timeout, @key_exchange_timeout)
+
     with {:ok, _pid, enc_channel} <- SecureChannel.start_link(encryption_options),
-         {:ok, auth_hash} <- wait_for_key_exchange(enc_channel, handshake_address) do
+         {:ok, auth_hash} <-
+           wait_for_key_exchange(enc_channel, handshake_address, key_exchange_timeout) do
       new_handshake_state =
         Map.merge(handshake_state, %{
           encryption_channel_options: encryption_options,
@@ -139,8 +143,12 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
           authorization: [{:with_metadata, [:message, %{from_pid: self()}]}]
         )
 
+      key_exchange_timeout =
+        Keyword.get(handshake_options, :key_exchange_timeout, @key_exchange_timeout)
+
       with {:ok, _pid, enc_channel} <- SecureChannel.start_link(encryption_options),
-           {:ok, auth_hash} <- wait_for_key_exchange(enc_channel, handshake_address) do
+           {:ok, auth_hash} <-
+             wait_for_key_exchange(enc_channel, handshake_address, key_exchange_timeout) do
         handshake_state =
           Map.merge(handshake_state, %{
             encryption_channel_options: encryption_options,
@@ -238,7 +246,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
     end
   end
 
-  defp wait_for_key_exchange(enc_channel, inner_address, timeout \\ @key_exchange_timeout) do
+  defp wait_for_key_exchange(enc_channel, inner_address, timeout) do
     receive do
       %Message{payload: auth_hash, onward_route: [^inner_address], return_route: [^enc_channel]} ->
         {:ok, auth_hash}

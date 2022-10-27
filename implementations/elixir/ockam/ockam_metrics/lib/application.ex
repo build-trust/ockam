@@ -32,6 +32,8 @@ defmodule Ockam.Metrics.Application do
         [
           period: period,
           measurements: measurements
+          ## TODO: uncomment that when filter_misbehaving is supported
+          # filter_misbehaving: false
         ]
       }
     ]

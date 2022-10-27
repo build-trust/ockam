@@ -161,6 +161,9 @@ defmodule Ockam.Worker do
           :sys.get_state(pid, timeout)
           {:ok, worker}
         catch
+          _type, {err, {:sys, :get_state, _args}} ->
+            {:error, {:worker_init, worker, err}}
+
           _type, err ->
             {:error, {:worker_init, worker, err}}
         end

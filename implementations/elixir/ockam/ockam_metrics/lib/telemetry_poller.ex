@@ -32,6 +32,9 @@ defmodule Ockam.Metrics.TelemetryPoller do
       else
         Logger.error("Cannot report Ockam workers. :ockam application is not started")
       end
+    catch
+      type, error ->
+        {type, error}
     end
 
     @channel_data_mod Ockam.Identity.SecureChannel.Data
@@ -69,6 +72,9 @@ defmodule Ockam.Metrics.TelemetryPoller do
       else
         Logger.error("Cannot report secure channels. :ockam application is not started")
       end
+    catch
+      type, error ->
+        {type, error}
     end
 
     def secure_channels() do
@@ -139,6 +145,9 @@ defmodule Ockam.Metrics.TelemetryPoller do
     else
       Logger.error("Cannot report number of TCP connections. :ranch application is not started")
     end
+  catch
+    type, error ->
+      {type, error}
   end
 
   defp application_started?(app) do

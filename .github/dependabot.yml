@@ -57,9 +57,20 @@ updates:
       - "Type: Dependencies"
       - "Implementation: Elixir"
 
-    # Maintain dependencies for elixir ockam_metrics application
+  # Maintain dependencies for elixir ockam_metrics application
   - package-ecosystem: "mix"
     directory: "/implementations/elixir/ockam/ockam_metrics"
+    commit-message:
+      prefix: "build:"
+    schedule:
+      interval: "daily"
+    labels:
+      - "Type: Dependencies"
+      - "Implementation: Elixir"
+
+  # Maintain dependencies for elixir ockam_healthcheck application
+  - package-ecosystem: "mix"
+    directory: "/implementations/elixir/ockam/ockam_healthcheck"
     commit-message:
       prefix: "build:"
     schedule:

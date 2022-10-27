@@ -105,6 +105,24 @@ defmodule Ockam.Identity.SecureChannel do
   end
 
   @doc """
+  Deprecated see `start_link_channel/1,2`
+  """
+  def create_channel(options, timeout \\ 30_000) do
+    with {:ok, initiator_options} <- initiator_options(options) do
+      case Initiator.create_and_wait(initiator_options, 100, timeout) do
+        {:ok, channel} ->
+          {:ok, channel}
+
+        {:error, :initiator_start_error} ->
+          {:error, :channel_start_error}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
+  @doc """
   Start an identity secure channel.
 
   Options:
@@ -120,7 +138,7 @@ defmodule Ockam.Identity.SecureChannel do
   Usage:
   {:ok, bob, bob_id} = Ockam.Identity.create()
   {:ok, vault} = Ockam.Vault.Software.init()
-  create_channel(
+  start_link_channel(
     identity: bob,
     encryption_options: [vault: vault],
     address: "bob_channel",
@@ -130,14 +148,27 @@ defmodule Ockam.Identity.SecureChannel do
   By default the function waits for channel session to be established for 30 seconds.
   You can specify a different timeout as a second argument:
 
-  `create_channel(options, timeout)`
+  `start_link_channel(options, timeout)`
 
   Timeout can be integer or :infinity
 
   If the session is not established within timeout,
   it will return `{:error, {:timeout, worker}}`
   """
-  def create_channel(options, timeout \\ 30_000) do
+  def start_link_channel(options, timeout \\ 30_000) do
+    with {:ok, initiator_options} <- initiator_options(options) do
+      case Initiator.start_link(initiator_options) do
+        {:ok, _pid, channel} ->
+          ## TODO: do we want to support :no_wait option?
+          Initiator.wait_for_session(channel, 100, timeout)
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
+  defp initiator_options(options) do
     init_route = Keyword.fetch!(options, :route)
 
     encryption_options =
@@ -153,16 +184,16 @@ defmodule Ockam.Identity.SecureChannel do
     with {:ok, identity} <- get_identity(options) do
       options = Keyword.merge(options, identity: identity, encryption_options: encryption_options)
 
-      initiator_options = [
-        address_prefix: "ISC_I_",
-        address: Keyword.get(options, :address),
-        data_worker_mod: Ockam.Identity.SecureChannel.Data,
-        init_route: init_route,
-        handshake_mod: Ockam.Identity.SecureChannel.Handshake,
-        handshake_options: options
-      ]
-
-      Initiator.create_and_wait(initiator_options, 100, timeout)
+      {:ok,
+       [
+         address_prefix: "ISC_I_",
+         address: Keyword.get(options, :address),
+         data_worker_mod: Ockam.Identity.SecureChannel.Data,
+         init_route: init_route,
+         handshake_mod: Ockam.Identity.SecureChannel.Handshake,
+         handshake_options: options,
+         restart_type: :temporary
+       ]}
     end
   end
 

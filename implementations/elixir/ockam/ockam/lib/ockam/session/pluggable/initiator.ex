@@ -74,9 +74,15 @@ defmodule Ockam.Session.Pluggable.Initiator do
       {:ok, address}
     end
   catch
-    type, reason ->
-      ## TODO: match Worker not found error?
-      {:error, {type, reason}}
+    :error, %RuntimeError{message: error_message} ->
+      ## TODO: make worker not found error more structured (easier to match)
+      case String.match?(error_message, ~r/Worker .* not found/) do
+        true -> {:error, :initiator_start_error}
+        false -> {:error, error_message}
+      end
+
+    _type, reason ->
+      {:error, reason}
   end
 
   @impl true

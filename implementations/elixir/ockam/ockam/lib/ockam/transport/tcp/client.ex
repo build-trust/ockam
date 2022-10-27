@@ -51,10 +51,7 @@ defmodule Ockam.Transport.TCP.Client do
         {:ok, state}
 
       {:error, reason} ->
-        Logger.error("Error starting TCP client: #{inspect(reason)}")
-        ## Return `normal` so the supervisor will not restart it
-        ## TODO: solve this with supervision trees instead
-        {:error, :normal}
+        {:error, reason}
     end
   end
 

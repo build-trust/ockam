@@ -45,18 +45,21 @@ pull_request_rules:
       - check-failure!=Elixir - lint_ockam_kafka
       - check-failure!=Elixir - lint_ockam_services
       - check-failure!=Elixir - lint_ockam_metrics
+      - check-failure!=Elixir - lint_ockam_healthcheck
       - check-failure!=Elixir - lint_ockam_cloud_node
       - check-failure!=Elixir - build_ockam_vault_software
       - check-failure!=Elixir - build_ockam
       - check-failure!=Elixir - build_ockam_kafka
       - check-failure!=Elixir - build_ockam_services
       - check-failure!=Elixir - build_ockam_metrics
+      - check-failure!=Elixir - build_ockam_healthcheck
       - check-failure!=Elixir - build_ockam_cloud_node
       - check-failure!=Elixir - test_ockam_vault_software
       - check-failure!=Elixir - test_ockam
       - check-failure!=Elixir - test_ockam_kafka
       - check-failure!=Elixir - test_ockam_services
       - check-failure!=Elixir - test_ockam_metrics
+      - check-failure!=Elixir - test_ockam_healthcheck
       - check-failure!=Elixir - test_ockam_cloud_node
       # rust.yml
       - check-failure!=Rust - Lint Formatting
@@ -90,18 +93,21 @@ pull_request_rules:
       - check-pending!=Elixir - lint_ockam_kafka
       - check-pending!=Elixir - lint_ockam_services
       - check-pending!=Elixir - lint_ockam_metrics
+      - check-pending!=Elixir - lint_ockam_healthcheck
       - check-pending!=Elixir - lint_ockam_cloud_node
       - check-pending!=Elixir - build_ockam_vault_software
       - check-pending!=Elixir - build_ockam
       - check-pending!=Elixir - build_ockam_kafka
       - check-pending!=Elixir - build_ockam_services
       - check-pending!=Elixir - build_ockam_metrics
+      - check-pending!=Elixir - build_ockam_healthcheck
       - check-pending!=Elixir - build_ockam_cloud_node
       - check-pending!=Elixir - test_ockam_vault_software
       - check-pending!=Elixir - test_ockam
       - check-pending!=Elixir - test_ockam_kafka
       - check-pending!=Elixir - test_ockam_services
       - check-pending!=Elixir - test_ockam_metrics
+      - check-pending!=Elixir - test_ockam_healthcheck
       - check-pending!=Elixir - test_ockam_cloud_node
       # rust.yml
       - check-pending!=Rust - Lint Formatting
@@ -135,18 +141,21 @@ pull_request_rules:
       - check-stale!=Elixir - lint_ockam_kafka
       - check-stale!=Elixir - lint_ockam_services
       - check-stale!=Elixir - lint_ockam_metrics
+      - check-stale!=Elixir - lint_ockam_healthcheck
       - check-stale!=Elixir - lint_ockam_cloud_node
       - check-stale!=Elixir - build_ockam_vault_software
       - check-stale!=Elixir - build_ockam
       - check-stale!=Elixir - build_ockam_kafka
       - check-stale!=Elixir - build_ockam_services
       - check-stale!=Elixir - build_ockam_metrics
+      - check-stale!=Elixir - build_ockam_healthcheck
       - check-stale!=Elixir - build_ockam_cloud_node
       - check-stale!=Elixir - test_ockam_vault_software
       - check-stale!=Elixir - test_ockam
       - check-stale!=Elixir - test_ockam_kafka
       - check-stale!=Elixir - test_ockam_services
       - check-stale!=Elixir - test_ockam_metrics
+      - check-stale!=Elixir - test_ockam_healthcheck
       - check-stale!=Elixir - test_ockam_cloud_node
       # rust.yml
       - check-stale!=Rust - Lint Formatting

@@ -27,8 +27,8 @@ defmodule Ockam.Services.Metrics.TelemetryPoller do
 
     ## We want poller to recover and continue polling after crashes
   catch
-    _type, _error ->
-      :ok
+    type, error ->
+      {type, error}
   end
 
   def dispatch_credential_attributes() do
@@ -40,8 +40,8 @@ defmodule Ockam.Services.Metrics.TelemetryPoller do
 
     ## We want poller to recover and continue polling after crashes
   catch
-    _type, _error ->
-      :ok
+    type, error ->
+      {type, error}
   end
 
   ## TODO: update to initiators after implementing symmetrical exchange
@@ -62,5 +62,8 @@ defmodule Ockam.Services.Metrics.TelemetryPoller do
     Telemetry.emit_event([:workers, :secure_channels, :with_credentials],
       measurements: %{count: Enum.count(channels_with_credentials)}
     )
+  catch
+    type, error ->
+      {type, error}
   end
 end

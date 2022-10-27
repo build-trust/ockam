@@ -34,6 +34,9 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Responder do
          {:ok, encoded_message2, data} <- Protocol.encode(:message2, data),
          :ok <- send(encoded_message2, message2_onward_route, message2_return_route) do
       {:next_state, {:key_establishment, @role, :awaiting_message3}, data}
+    else
+      {:error, reason} ->
+        {:stop, reason}
     end
   end
 
@@ -47,11 +50,14 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Responder do
          {:ok, data} <- set_peer(payload, data),
          {:ok, data} <- set_encrypted_transport_state(data) do
       {:next_state, {:encrypted_transport, :ready}, data}
+    else
+      {:error, reason} ->
+        {:stop, reason}
     end
   end
 
   def handle_message(_message, _state, _data) do
-    {:error, :invalid_message_or_state}
+    {:stop, :invalid_message_or_state}
   end
 
   def send(message, onward_route, return_route) do

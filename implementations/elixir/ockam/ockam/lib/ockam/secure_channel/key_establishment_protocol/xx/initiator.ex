@@ -19,6 +19,9 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
          init_handshake = encode_init_handshake(encoded_message1, data),
          :ok <- send(init_handshake, message1_onward_route, message1_return_route) do
       {:next_state, {:key_establishment, @role, :awaiting_message2}, data}
+    else
+      {:error, reason} ->
+        {:stop, reason}
     end
   end
 
@@ -36,11 +39,14 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Initiator do
          :ok <- send(encoded_message3, message3_onward_route, message3_return_route),
          {:ok, data} <- set_encrypted_transport_state(data) do
       {:next_state, {:encrypted_transport, :ready}, data}
+    else
+      {:error, reason} ->
+        {:stop, reason}
     end
   end
 
   def handle_message(_message, _state, _data) do
-    {:error, :invalid_message_or_state}
+    {:stop, :invalid_message_or_state}
   end
 
   def send(message, onward_route, return_route) do

@@ -11,18 +11,7 @@ if Code.ensure_loaded?(:telemetry) do
       )
     end
 
-    def attach() do
-      subscribe_events = [
-        [:ockam, Ockam.Worker, :init, :start],
-        [:ockam, Ockam.Worker, :init, :stop],
-        [:ockam, Ockam.Router, :route, :start],
-        [:ockam, Ockam.Worker, :handle_message, :stop],
-        [:ockam, :services, :service],
-        [:ockam, :workers, :type],
-        [:ockam, :workers, :secure_channels],
-        [:ockam, :attributes, :count]
-      ]
-
+    def attach(subscribe_events) do
       :telemetry.attach_many(
         "logger",
         subscribe_events,

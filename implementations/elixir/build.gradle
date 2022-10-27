@@ -5,7 +5,7 @@ ext {
   mode = (mode == 'release') ? 'prod' : mode
   mode = (mode == 'debug') ? 'dev' : mode
 
-  apps = ['ockam_vault_software', 'ockam', 'ockam_services', 'ockam_kafka', 'ockam_metrics', 'ockam_cloud_node', 'ockam_typed_cbor'].collect { app ->
+  apps = ['ockam_vault_software', 'ockam', 'ockam_services', 'ockam_kafka', 'ockam_metrics', 'ockam_healthcheck', 'ockam_cloud_node', 'ockam_typed_cbor'].collect { app ->
     [name: app, path: Paths.get(projectDir.toPath().toString(), 'ockam', app)]
   }
 

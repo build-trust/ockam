@@ -44,6 +44,7 @@ defmodule Ockam.Transport.TCP do
     end
   end
 
+  ## TODO: rename to start_link
   @doc """
   Start a TCP transport
 
@@ -90,14 +91,19 @@ defmodule Ockam.Transport.TCP do
   def handle_transport_message(message, client_options) do
     case get_destination(message) do
       {:ok, destination} ->
-        ## TODO: reuse clients when using tcp address
-        with {:ok, client_address} <-
-               Client.create([
-                 {:destination, destination},
-                 {:restart_type, :temporary} | client_options
-               ]) do
-          [_tcp_address | onward_route] = Message.onward_route(message)
-          Router.route(Message.set_onward_route(message, [client_address | onward_route]))
+        case Client.create([
+               {:destination, destination},
+               {:restart_type, :temporary} | client_options
+             ]) do
+          {:ok, client_address} ->
+            [_tcp_address | onward_route] = Message.onward_route(message)
+            Router.route(Message.set_onward_route(message, [client_address | onward_route]))
+
+          {:error, {:worker_init, _worker, reason}} ->
+            {:error, reason}
+
+          {:error, reason} ->
+            {:error, reason}
         end
 
       e ->
