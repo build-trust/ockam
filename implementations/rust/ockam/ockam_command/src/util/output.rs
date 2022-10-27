@@ -90,8 +90,6 @@ impl Output for Project<'_> {
         write!(w, "Project")?;
         write!(w, "\n  Id: {}", self.id)?;
         write!(w, "\n  Name: {}", self.name)?;
-        write!(w, "\n  Users: {}", comma_separated(&self.users))?;
-        write!(w, "\n  Services: {}", comma_separated(&self.services))?;
         write!(w, "\n  Access route: {}", self.access_route)?;
         write!(
             w,
@@ -100,16 +98,6 @@ impl Output for Project<'_> {
                 .as_ref()
                 .map(|i| i.to_string())
                 .unwrap_or_default()
-        )?;
-        write!(
-            w,
-            "\n  Authority access route: {}",
-            self.authority_access_route.as_deref().unwrap_or("N/A")
-        )?;
-        write!(
-            w,
-            "\n  Authority identity: {}",
-            self.authority_identity.as_deref().unwrap_or_default()
         )?;
         Ok(w)
     }
