@@ -77,7 +77,7 @@ tracing-error = "0.2"
 tracing-subscriber = "0.3.9"
 validator = "0.15"
 colorful = "0.2"
-clap_complete = "4.0.2"
+clap_complete = "4.0.3"
 regex = "1.6.0"
 
 ockam = { path = "../ockam", version = "^0.76.0", features = ["software_vault"] }
