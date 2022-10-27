@@ -7,7 +7,6 @@ use std::{
 };
 
 use anyhow::{anyhow, Context as _, Result};
-use crossbeam_channel::{bounded, Sender};
 use minicbor::{data::Type, Decode, Decoder, Encode};
 use tracing::{debug, error, trace};
 use tracing_subscriber::prelude::*;
@@ -16,8 +15,8 @@ use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 pub use addon::AddonCommand;
 pub use config::*;
 use ockam::{route, Address, Context, NodeBuilder, Route, TcpTransport, TCP};
-use ockam_api::config::cli::NodeConfigOld;
 use ockam_api::nodes::NODEMANAGER_ADDR;
+use ockam_api::{config::cli::NodeConfigOld, nodes::models::base::NodeStatus};
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 
@@ -35,6 +34,7 @@ pub(crate) mod output;
 
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
 
+#[derive(Clone)]
 pub enum RpcMode<'a> {
     Embedded,
     Background {
@@ -94,6 +94,7 @@ impl<'a> RpcBuilder<'a> {
     }
 }
 
+#[derive(Clone)]
 pub struct Rpc<'a> {
     ctx: &'a Context,
     buf: Vec<u8>,
@@ -536,53 +537,47 @@ pub fn bind_to_port_check(address: &SocketAddr) -> bool {
     std::net::TcpListener::bind((ip, port)).is_ok()
 }
 
-pub fn verify_pids(cfg: &OckamConfig, nodes: Vec<String>) {
+/// Update the persisted configuration data with the pids
+/// responded by nodes.
+pub async fn verify_pids(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    tcp: &TcpTransport,
+    cfg: &OckamConfig,
+    nodes: &Vec<String>,
+) -> crate::Result<()> {
+    let mut persist_needed = false;
     for node_name in nodes {
-        let node_cfg = cfg.get_node(&node_name).unwrap();
+        if let Ok(node_cfg) = cfg.get_node(node_name) {
+            // Query node for its pid (if it does not respond, don't let it block us)
+            let mut rpc = RpcBuilder::new(ctx, opts, node_name).tcp(tcp)?.build();
+            if rpc
+                .request_with_timeout(api::query_status(), Duration::from_millis(200))
+                .await
+                .is_ok()
+            {
+                let resp = rpc.parse_response::<NodeStatus>()?;
 
-        let (tx, rx) = bounded(1);
-
-        connect_to(node_cfg.port(), tx, query_pid);
-        let verified_pid = rx.recv().unwrap();
-
-        if node_cfg.pid() != verified_pid {
-            if let Err(e) = cfg.set_node_pid(&node_name, verified_pid) {
-                eprintln!("Failed to update pid for node {}: {}", node_name, e);
-                std::process::exit(exitcode::IOERR);
+                // Update config, if needed
+                if node_cfg.pid() != Some(resp.pid) {
+                    if let Err(e) = cfg.set_node_pid(node_name, resp.pid) {
+                        return Err(crate::Error::new(
+                            exitcode::IOERR,
+                            anyhow!("Failed to update pid for node {}: {}", node_name, e),
+                        ));
+                    }
+                    persist_needed = true;
+                }
+            }
+            // Persist changes
+            if persist_needed && cfg.persist_config_updates().is_err() {
+                return Err(crate::Error::new(
+                    exitcode::IOERR,
+                    anyhow!("Failed to update PID information in config!"),
+                ));
             }
         }
     }
-
-    if cfg.persist_config_updates().is_err() {
-        eprintln!("Failed to update PID information in config!");
-        std::process::exit(exitcode::IOERR);
-    }
-}
-
-pub async fn query_pid(
-    mut ctx: Context,
-    tx: Sender<Option<i32>>,
-    mut base_route: Route,
-) -> anyhow::Result<()> {
-    ctx.send(
-        base_route.modify().append(NODEMANAGER_ADDR),
-        api::query_status()?,
-    )
-    .await?;
-
-    let resp = match ctx
-        .receive_duration_timeout::<Vec<u8>>(Duration::from_millis(200))
-        .await
-    {
-        Ok(r) => r.take().body(),
-        Err(_) => {
-            tx.send(None).unwrap();
-            return Ok(());
-        }
-    };
-
-    let status = api::parse_status(&resp)?;
-    tx.send(Some(status.pid)).unwrap();
     Ok(())
 }
 

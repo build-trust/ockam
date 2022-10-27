@@ -29,10 +29,8 @@ use crate::util::DEFAULT_CONTROLLER_ADDRESS;
 ////////////// !== generators
 
 /// Construct a request to query node status
-pub(crate) fn query_status() -> Result<Vec<u8>> {
-    let mut buf = vec![];
-    Request::get("/node").encode(&mut buf)?;
-    Ok(buf)
+pub(crate) fn query_status() -> RequestBuilder<'static, ()> {
+    Request::get("/node")
 }
 
 /// Construct a request to query node tcp listeners
@@ -331,49 +329,6 @@ pub(crate) mod project {
 pub(crate) fn parse_response(resp: &[u8]) -> Result<Response> {
     let mut dec = Decoder::new(resp);
     Ok(dec.decode::<Response>()?)
-}
-
-/// Parse the returned status response
-pub(crate) fn parse_status(resp: &[u8]) -> Result<models::base::NodeStatus> {
-    let mut dec = Decoder::new(resp);
-    let _ = dec.decode::<Response>()?;
-    Ok(dec.decode::<models::base::NodeStatus>()?)
-}
-
-/// Parse the returned status response
-pub(crate) fn parse_tcp_list(resp: &[u8]) -> Result<models::transport::TransportList> {
-    let mut dec = Decoder::new(resp);
-    let _ = dec.decode::<Response>()?;
-    Ok(dec.decode::<models::transport::TransportList>()?)
-}
-
-pub(crate) fn parse_short_identity_response(
-    resp: &[u8],
-) -> Result<(Response, models::identity::ShortIdentityResponse<'_>)> {
-    let mut dec = Decoder::new(resp);
-    let response = dec.decode::<Response>()?;
-    Ok((
-        response,
-        dec.decode::<models::identity::ShortIdentityResponse>()?,
-    ))
-}
-
-pub(crate) fn parse_list_services_response(resp: &[u8]) -> Result<models::services::ServiceList> {
-    let mut dec = Decoder::new(resp);
-    let _ = dec.decode::<Response>()?;
-    Ok(dec.decode::<models::services::ServiceList>()?)
-}
-
-pub(crate) fn parse_list_inlets_response(resp: &[u8]) -> Result<models::portal::InletList> {
-    let mut dec = Decoder::new(resp);
-    let _ = dec.decode::<Response>()?;
-    Ok(dec.decode::<models::portal::InletList>()?)
-}
-
-pub(crate) fn parse_list_outlets_response(resp: &[u8]) -> Result<models::portal::OutletList> {
-    let mut dec = Decoder::new(resp);
-    let _ = dec.decode::<Response>()?;
-    Ok(dec.decode::<models::portal::OutletList>()?)
 }
 
 pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Result<Response> {

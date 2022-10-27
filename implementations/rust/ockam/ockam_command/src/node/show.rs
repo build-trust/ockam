@@ -1,26 +1,20 @@
-use crate::util::{api, node_rpc, OckamConfig, RpcBuilder};
+use crate::util::{api, node_rpc, Rpc, RpcBuilder};
 use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
-use anyhow::Context;
 use clap::Args;
 use colorful::Colorful;
-use minicbor::Decoder;
-use ockam::{route, TcpTransport, TCP};
-use ockam_api::config::cli::NodeConfigOld;
+use core::time::Duration;
+use ockam::TcpTransport;
 use ockam_api::nodes::models::identity::ShortIdentityResponse;
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
-use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_api::{addr_to_multiaddr, route_to_multiaddr};
-use ockam_core::api::{Request, Response, Status};
-use ockam_core::{Result, Route};
+use ockam_core::Route;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
-use std::time::Duration;
 
-const IS_NODE_UP_ATTEMPTS: usize = 10;
-const IS_NODE_UP_SLEEP_MILLIS: u64 = 250;
-const SEND_RECEIVE_TIMEOUT_SECS: u64 = 1;
+const IS_NODE_UP_ATTEMPTS: usize = 50;
+const IS_NODE_UP_TIMEOUT: Duration = Duration::from_millis(100);
 
 /// Show Nodes
 #[derive(Clone, Debug, Args)]
@@ -38,73 +32,15 @@ impl ShowCommand {
 }
 
 async fn run_impl(
-    mut ctx: ockam::Context,
+    ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
     let node_name = cmd.node_name;
     let cfg = &opts.config;
     let node_cfg = cfg.get_node(&node_name)?;
     let tcp = TcpTransport::create(&ctx).await?;
-    let port = cfg.get_node_port(&node_name)?;
-    let mut base_route = route![(TCP, format!("localhost:{}", port))];
-    let route = base_route.modify().append(NODEMANAGER_ADDR).into();
-    let duration = Duration::new(SEND_RECEIVE_TIMEOUT_SECS, 0);
-    if !is_node_up(&mut ctx, &route, true).await? {
-        print_node_info(&node_cfg, &node_name, "DOWN", "N/A", None, None, None, None);
-    } else {
-        // Get short id for the node
-        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
-        let req = Request::post("/node/identity/actions/show/short");
-        rpc.request_with_timeout(req, duration).await?;
-        let default_id = match rpc.is_ok() {
-            Ok(()) => {
-                let resp = rpc.parse_response::<ShortIdentityResponse>()?;
-                format!("{}", resp.identity_id)
-            }
-            _ => String::from("Not found"),
-        };
-
-        // Get list of services for the node
-        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
-        let req = Request::get("/node/services");
-        rpc.request_with_timeout(req, duration).await?;
-        let services = rpc.parse_response::<ServiceList>()?;
-
-        // Get list of TCP listeners for node
-        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
-        let req = Request::get("/node/tcp/listener");
-        rpc.request_with_timeout(req, duration).await?;
-        let tcp_listeners = rpc.parse_response::<TransportList>()?;
-
-        // Get list of Secure Channel Listeners
-        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
-        let req = Request::get("/node/secure_channel_listener");
-        rpc.request_with_timeout(req, duration).await?;
-        let secure_channel_listeners = rpc.parse_response::<Vec<String>>()?;
-
-        // Get list of inlets
-        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
-        let req = Request::get("/node/inlet");
-        rpc.request_with_timeout(req, duration).await?;
-        let inlets = rpc.parse_response::<InletList>()?;
-
-        // Get list of outlets
-        let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
-        let req = Request::get("/node/outlet");
-        rpc.request_with_timeout(req, duration).await?;
-        let outlets = rpc.parse_response::<OutletList>()?;
-
-        print_node_info(
-            &node_cfg,
-            &node_name,
-            "UP",
-            &default_id,
-            Some(&services),
-            Some(&tcp_listeners),
-            Some(&secure_channel_listeners),
-            Some((&inlets, &outlets)),
-        );
-    }
+    let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
+    print_query_status(&mut rpc, node_cfg.port(), &node_name, false).await?;
     Ok(())
 }
 
@@ -113,10 +49,10 @@ async fn run_impl(
 // clippy to stop complainaing about it.
 #[allow(clippy::too_many_arguments)]
 fn print_node_info(
-    node_cfg: &NodeConfigOld,
+    node_port: u16,
     node_name: &str,
-    status: &str,
-    default_id: &str,
+    status_is_up: bool,
+    default_id: Option<&str>,
     services: Option<&ServiceList>,
     tcp_listeners: Option<&TransportList>,
     secure_channel_listeners: Option<&Vec<String>>,
@@ -127,10 +63,9 @@ fn print_node_info(
     println!("  Name: {}", node_name);
     println!(
         "  Status: {}",
-        match status {
-            "UP" => status.light_green(),
-            "DOWN" => status.light_red(),
-            _ => status.white(),
+        match status_is_up {
+            true => "UP".light_green(),
+            false => "DOWN".light_red(),
         }
     );
 
@@ -141,12 +76,13 @@ fn print_node_info(
     }
 
     let mut m = MultiAddr::default();
-    if m.push_back(DnsAddr::new("localhost")).is_ok()
-        && m.push_back(Tcp::new(node_cfg.port())).is_ok()
-    {
+    if m.push_back(DnsAddr::new("localhost")).is_ok() && m.push_back(Tcp::new(node_port)).is_ok() {
         println!("    Verbose: {}", m);
     }
-    println!("  Identity: {}", default_id);
+
+    if let Some(id) = default_id {
+        println!("  Identity: {}", id);
+    }
 
     if let Some(list) = tcp_listeners {
         println!("  Transports:");
@@ -203,95 +139,47 @@ fn print_node_info(
 }
 
 pub async fn print_query_status(
-    mut ctx: ockam::Context,
-    (cfg, node_name, wait_until_ready): (OckamConfig, String, bool),
-    mut base_route: Route,
+    rpc: &mut Rpc<'_>,
+    node_port: u16,
+    node_name: &str,
+    wait_until_ready: bool,
 ) -> anyhow::Result<()> {
-    let route = base_route.modify().append(NODEMANAGER_ADDR).into();
-    let node_cfg = cfg.get_node(&node_name)?;
-
-    if !is_node_up(&mut ctx, &route, wait_until_ready).await? {
-        print_node_info(&node_cfg, &node_name, "DOWN", "N/A", None, None, None, None);
+    if !is_node_up(rpc, wait_until_ready).await? {
+        print_node_info(node_port, node_name, false, None, None, None, None, None);
     } else {
         // Get short id for the node
-        let resp: Vec<u8> = ctx
-            .send_and_receive_with_timeout(
-                route.clone(),
-                api::short_identity().to_vec()?,
-                SEND_RECEIVE_TIMEOUT_SECS,
-            )
-            .await
-            .context("Failed to get short identity from node")?;
-        let (response, result) = api::parse_short_identity_response(&resp)?;
-        let default_id = match response.status() {
-            Some(Status::Ok) => {
-                format!("{}", result.identity_id)
-            }
-            _ => String::from("NOT FOUND"),
+        rpc.request(api::short_identity()).await?;
+        let default_id = match rpc.parse_response::<ShortIdentityResponse>() {
+            Ok(resp) => String::from(resp.identity_id),
+            Err(_) => String::from("None"),
         };
 
         // Get list of services for the node
-        let resp: Vec<u8> = ctx
-            .send_and_receive_with_timeout(
-                route.clone(),
-                api::list_services().to_vec()?,
-                SEND_RECEIVE_TIMEOUT_SECS,
-            )
-            .await
-            .context("Failed to get list of services from node")?;
-        let services = api::parse_list_services_response(&resp)?;
+        rpc.request(api::list_services()).await?;
+        let services = rpc.parse_response::<ServiceList>()?;
 
         // Get list of TCP listeners for node
-        let resp: Vec<u8> = ctx
-            .send_and_receive_with_timeout(
-                route.clone(),
-                api::list_tcp_listeners().to_vec()?,
-                SEND_RECEIVE_TIMEOUT_SECS,
-            )
-            .await
-            .context("Failed to get list of tcp listeners from node")?;
-        let tcp_listeners = api::parse_tcp_list(&resp)?;
+        rpc.request(api::list_tcp_listeners()).await?;
+        let tcp_listeners = rpc.parse_response::<TransportList>()?;
 
         // Get list of Secure Channel Listeners
-        let resp: Vec<u8> = ctx
-            .send_and_receive_with_timeout(
-                route.clone(),
-                api::list_secure_channel_listener().to_vec()?,
-                SEND_RECEIVE_TIMEOUT_SECS,
-            )
-            .await
-            .context("Failed to get list of secure channel listeners from node")?;
-        let mut dec = Decoder::new(&resp);
-        let _ = dec.decode::<Response>()?;
-        let secure_channel_listeners = dec.decode::<Vec<String>>()?;
+        rpc.request(api::list_secure_channel_listener()).await?;
+        let secure_channel_listeners = rpc.parse_response::<Vec<String>>()?;
 
         // Get list of inlets
-        let resp: Vec<u8> = ctx
-            .send_and_receive_with_timeout(
-                route.clone(),
-                api::list_inlets().to_vec()?,
-                SEND_RECEIVE_TIMEOUT_SECS,
-            )
-            .await
-            .context("Failed to get list of inlets from node")?;
-        let inlets = api::parse_list_inlets_response(&resp)?;
+        rpc.request(api::list_inlets()).await?;
+        let inlets = rpc.parse_response::<InletList>()?;
 
         // Get list of outlets
-        let resp: Vec<u8> = ctx
-            .send_and_receive_with_timeout(
-                route.clone(),
-                api::list_outlets().to_vec()?,
-                SEND_RECEIVE_TIMEOUT_SECS,
-            )
-            .await
-            .context("Failed to get list of outlets from node")?;
-        let outlets = api::parse_list_outlets_response(&resp)?;
+        let mut rpc = rpc.clone(); // Clone Rpc so we can use above InletList (which has borrows) later
+        rpc.request(api::list_outlets()).await?;
+        let outlets = rpc.parse_response::<OutletList>()?;
 
         print_node_info(
-            &node_cfg,
-            &node_name,
-            "UP",
-            &default_id,
+            node_port,
+            node_name,
+            true,
+            Some(&default_id),
             Some(&services),
             Some(&tcp_listeners),
             Some(&secure_channel_listeners),
@@ -309,35 +197,23 @@ pub async fn print_query_status(
 /// appear to be 'up', retry the test at time intervals up to
 /// a maximum number of retries. A use case for this is to
 /// allow a node time to start up and become ready.
-async fn is_node_up(
-    ctx: &mut ockam::Context,
-    route: &Route,
-    wait_until_ready: bool,
-) -> anyhow::Result<bool> {
+async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> anyhow::Result<bool> {
     let attempts = match wait_until_ready {
         true => IS_NODE_UP_ATTEMPTS,
         false => 1,
     };
 
-    for att in 0..attempts {
-        // Sleep, if this not the first loop
-        if att > 0 {
-            tokio::time::sleep(Duration::from_millis(IS_NODE_UP_SLEEP_MILLIS)).await;
-        }
-
+    for _ in 0..attempts {
         // Test if node is up
-        let tx_result: Result<Vec<u8>> = ctx
-            .send_and_receive_with_timeout(
-                route.clone(),
-                api::query_status()?,
-                SEND_RECEIVE_TIMEOUT_SECS,
-            )
-            .await;
-        if let Ok(data) = tx_result {
-            if api::parse_status(&data).is_ok() {
-                // Node is up, return
-                return Ok(true);
-            }
+        // If node is down, we expect it won't reply and the timeout
+        // will trigger the next loop (i.e. no need to sleep here).
+        if rpc
+            .request_with_timeout(api::query_status(), IS_NODE_UP_TIMEOUT)
+            .await
+            .is_ok()
+            && rpc.is_ok().is_ok()
+        {
+            return Ok(true);
         }
     }
 

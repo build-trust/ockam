@@ -3,11 +3,11 @@ use clap::Args;
 use nix::unistd::Pid;
 use rand::prelude::random;
 
-use ockam::Context;
+use ockam::TcpTransport;
 
 use crate::node::show::print_query_status;
 use crate::node::util::run::CommandsRunner;
-use crate::util::{connect_to, embedded_node};
+use crate::util::{node_rpc, RpcBuilder};
 use crate::{
     help,
     node::HELP_DETAIL,
@@ -25,17 +25,18 @@ pub struct StartCommand {
 }
 
 impl StartCommand {
-    pub fn run(self, opts: CommandGlobalOpts) {
-        if let Err(e) = run_impl(opts, self) {
-            eprintln!("{}", e);
-            std::process::exit(e.code());
-        }
+    pub fn run(self, options: CommandGlobalOpts) {
+        node_rpc(run_impl, (options, self))
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: StartCommand) -> crate::Result<()> {
+async fn run_impl(
+    ctx: ockam::Context,
+    (opts, cmd): (CommandGlobalOpts, StartCommand),
+) -> crate::Result<()> {
     let cfg = &opts.config;
-    let cfg_node = cfg.get_node(&cmd.node_name)?;
+    let node_name = &cmd.node_name;
+    let cfg_node = cfg.get_node(node_name)?;
 
     // First we check whether a PID was registered and if it is still alive.
     if let Some(pid) = cfg_node.pid() {
@@ -47,19 +48,22 @@ fn run_impl(opts: CommandGlobalOpts, cmd: StartCommand) -> crate::Result<()> {
                 exitcode::IOERR,
                 anyhow!(
                     "Node '{}' already appears to be running as PID {}",
-                    cmd.node_name,
+                    node_name,
                     pid
                 ),
             ));
         }
     }
 
-    embedded_node(restart_background_node, (opts.clone(), cmd.clone()))?;
-    connect_to(
-        cfg_node.port(),
-        (cfg.clone(), cmd.node_name.clone(), true),
-        print_query_status,
-    );
+    // Restart node
+    restart_background_node(&opts, &cmd).await?;
+
+    // Print node status
+    let tcp = TcpTransport::create(&ctx).await?;
+    let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
+    print_query_status(&mut rpc, cfg_node.port(), node_name, true).await?;
+
+    // Run startup commands
     if let Ok(cfg) = cfg.node(&cmd.node_name) {
         CommandsRunner::run_node_startup(cfg.commands().config_path())
             .context("Failed to startup commands")?;
@@ -69,8 +73,8 @@ fn run_impl(opts: CommandGlobalOpts, cmd: StartCommand) -> crate::Result<()> {
 }
 
 async fn restart_background_node(
-    _ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, StartCommand),
+    opts: &CommandGlobalOpts,
+    cmd: &StartCommand,
 ) -> crate::Result<()> {
     let cfg = &opts.config;
     let cfg_node = cfg.get_node(&cmd.node_name)?;

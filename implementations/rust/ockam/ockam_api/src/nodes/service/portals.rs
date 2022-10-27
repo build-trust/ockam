@@ -66,9 +66,9 @@ impl NodeManagerWorker {
                 .iter()
                 .map(|(alias, info)| {
                     InletStatus::new(
-                        &info.bind_addr,
+                        info.bind_addr.as_str(),
                         info.worker_addr.to_string(),
-                        alias,
+                        alias.as_str(),
                         None,
                         info.outlet_route.to_string(),
                     )
@@ -87,7 +87,12 @@ impl NodeManagerWorker {
                 .outlets
                 .iter()
                 .map(|(alias, info)| {
-                    OutletStatus::new(&info.tcp_addr, info.worker_addr.to_string(), alias, None)
+                    OutletStatus::new(
+                        info.tcp_addr.as_str(),
+                        info.worker_addr.to_string(),
+                        alias.as_str(),
+                        None,
+                    )
                 })
                 .collect(),
         ))
