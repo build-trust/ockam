@@ -157,6 +157,14 @@ teardown() {
   # Should not be able to create a vault when one exists
   run $OCKAM vault create --node n1
   assert_failure
+
+  vault_name=$(openssl rand -hex 4)
+  run $OCKAM vault create --vault-name "${vault_name}"
+  assert_success
+
+  # Should not be able to create a vault when one exists
+  run $OCKAM vault create --vault-name "${vault_name}"
+  assert_failure
 }
 
 @test "identity create" {
