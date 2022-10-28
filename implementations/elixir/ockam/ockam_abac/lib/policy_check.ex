@@ -10,27 +10,28 @@ defmodule Ockam.ABAC.PolicyCheck do
 
   def with_check(%Request{} = request, policies_or_storage, fun)
       when is_list(policies_or_storage) or is_atom(policies_or_storage) do
-    case is_authorized?(request, policies_or_storage) do
-      true ->
-        fun.()
-
-      false ->
-        ## TODO: expand error reason
-        {:error, :abac_policy_mismatch}
+    with :ok <- match_policies(request, policies_or_storage) do
+      fun.()
     end
   end
 
-  def is_authorized?(%Request{} = request, policies) when is_list(policies) do
-    Enum.any?(policies, fn policy -> Policy.match_policy?(policy, request) end)
+  def match_policies(%Request{} = request, policies) when is_list(policies) do
+    case Enum.any?(policies, fn policy -> Policy.match_policy?(policy, request) end) do
+      true -> :ok
+      false -> {:error, {:abac_policy_mismatch, policies}}
+    end
   end
 
-  def is_authorized?(%Request{action_id: action_id} = request, storage) when is_atom(storage) do
+  def match_policies(%Request{action_id: action_id} = request, storage) when is_atom(storage) do
     case get_policy(storage, action_id) do
       {:ok, policy} ->
-        Policy.match_policy?(policy, request)
+        case Policy.match_policy?(policy, request) do
+          true -> :ok
+          false -> {:error, {:abac_policy_mismatch, [policy]}}
+        end
 
       {:error, _reason} ->
-        false
+        {:error, {:abac_policy_mismatch, []}}
     end
   end
 

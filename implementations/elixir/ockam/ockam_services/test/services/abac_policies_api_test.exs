@@ -39,7 +39,7 @@ defmodule Ockam.Services.API.ABAC.PoliciesApi.Test do
       action_attributes: %{}
     }
 
-    assert PolicyCheck.is_authorized?(request, [policy])
+    assert :ok == PolicyCheck.match_policies(request, [policy])
   end
 
   test "get policy", %{api: api} do
