@@ -11,6 +11,7 @@ use clap::{Args, Subcommand};
 
 /// Manage TCP Connections
 #[derive(Args, Clone, Debug)]
+#[command(arg_required_else_help = true)]
 pub struct TcpConnectionCommand {
     #[command(subcommand)]
     subcommand: TcpConnectionSubCommand,

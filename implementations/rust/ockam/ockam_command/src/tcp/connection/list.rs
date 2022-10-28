@@ -9,6 +9,7 @@ use ockam_api::nodes::models::transport::TransportStatus;
 use ockam_core::api::Request;
 
 #[derive(Args, Clone, Debug)]
+#[command(arg_required_else_help = true)]
 pub struct ListCommand {
     #[command(flatten)]
     node_opts: NodeOpts,
