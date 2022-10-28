@@ -24,6 +24,7 @@ pub struct TcpConnectionNodeOpts {
 }
 
 #[derive(Args, Clone, Debug)]
+#[command(arg_required_else_help = true)]
 pub struct CreateCommand {
     #[command(flatten)]
     node_opts: TcpConnectionNodeOpts,

@@ -11,6 +11,7 @@ use crate::{
 };
 
 #[derive(Clone, Debug, Args)]
+#[command(arg_required_else_help = true)]
 pub struct DeleteCommand {
     #[command(flatten)]
     node_opts: NodeOpts,
