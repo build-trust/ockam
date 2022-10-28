@@ -1,4 +1,6 @@
-use crate::util::{bind_to_port_check, exitcode, extract_address_value, node_rpc, RpcBuilder};
+use crate::util::{
+    bind_to_port_check, exitcode, extract_address_value, node_rpc, process_multi_addr, RpcBuilder,
+};
 use crate::Result;
 use crate::{help, CommandGlobalOpts};
 use anyhow::anyhow;
@@ -9,7 +11,7 @@ use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::portal::CreateInlet;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_core::api::Request;
-use ockam_multiaddr::proto::{Node, Project};
+use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
 use std::net::SocketAddr;
 
@@ -88,24 +90,7 @@ impl CreateCommand {
 
 async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
     let lookup = opts.config.lookup();
-    cmd.to = {
-        let mut to = MultiAddr::default();
-        for proto in cmd.to.iter() {
-            match proto.code() {
-                Node::CODE => {
-                    let alias = proto
-                        .cast::<Node>()
-                        .ok_or_else(|| anyhow!("invalid node address protocol"))?;
-                    let addr = lookup
-                        .node_address(&alias)
-                        .ok_or_else(|| anyhow!("no address for node {}", &*alias))?;
-                    to.try_extend(&addr)?
-                }
-                _ => to.push_back_value(&proto)?,
-            }
-        }
-        to
-    };
+    cmd.to = process_multi_addr(&cmd.to, &lookup)?;
 
     // Check if the port is used by some other services or process
     if !bind_to_port_check(&cmd.from) {

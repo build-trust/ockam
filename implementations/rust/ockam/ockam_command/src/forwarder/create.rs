@@ -8,11 +8,11 @@ use ockam::{Context, TcpTransport};
 use ockam_api::is_local_node;
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_core::api::Request;
-use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
+use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::forwarder::HELP_DETAIL;
 use crate::util::output::Output;
-use crate::util::{extract_address_value, node_rpc, RpcBuilder};
+use crate::util::{extract_address_value, node_rpc, process_multi_addr, RpcBuilder};
 use crate::Result;
 use crate::{help, CommandGlobalOpts};
 
@@ -52,23 +52,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     let at_rust_node = is_local_node(&cmd.at).context("Argument --at is not valid")?;
 
     let lookup = opts.config.lookup();
-
-    let mut ma = MultiAddr::default();
-
-    for proto in cmd.at.iter() {
-        match proto.code() {
-            Node::CODE => {
-                let alias = proto
-                    .cast::<Node>()
-                    .ok_or_else(|| anyhow!("invalid node address protocol"))?;
-                let addr = lookup
-                    .node_address(&alias)
-                    .ok_or_else(|| anyhow!("no address for node {}", &*alias))?;
-                ma.try_extend(&addr)?
-            }
-            _ => ma.push_back_value(&proto)?,
-        }
-    }
+    let ma = process_multi_addr(&cmd.at, &lookup)?;
 
     let req = {
         let alias = if at_rust_node {

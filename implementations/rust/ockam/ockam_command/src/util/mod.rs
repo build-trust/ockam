@@ -16,9 +16,14 @@ pub use addon::AddonCommand;
 pub use config::*;
 use ockam::{route, Address, Context, NodeBuilder, Route, TcpTransport, TCP};
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_api::{config::cli::NodeConfigOld, nodes::models::base::NodeStatus};
+use ockam_api::{
+    config::cli::NodeConfigOld, config::lookup::ConfigLookup, nodes::models::base::NodeStatus,
+};
 use ockam_core::api::{RequestBuilder, Response, Status};
-use ockam_multiaddr::{proto, MultiAddr, Protocol};
+use ockam_multiaddr::{
+    proto::{self, Node},
+    MultiAddr, Protocol,
+};
 
 use crate::node::util::start_embedded_node;
 use crate::util::output::Output;
@@ -524,6 +529,30 @@ pub fn extract_address_value(input: &str) -> anyhow::Result<String> {
     Ok(addr)
 }
 
+/// Replace the node's name with its address or leave it if it's another type of address.
+///
+/// Example:
+///     if n1 has address of 127.0.0.1:1234
+///     `/node/n1` -> `/ip4/127.0.0.1/tcp/1234`
+pub fn process_multi_addr(addr: &MultiAddr, lookup: &ConfigLookup) -> anyhow::Result<MultiAddr> {
+    let mut processed_addr = MultiAddr::default();
+    for proto in addr.iter() {
+        match proto.code() {
+            Node::CODE => {
+                let alias = proto
+                    .cast::<Node>()
+                    .ok_or_else(|| anyhow!("invalid node address protocol"))?;
+                let addr = lookup
+                    .node_address(&alias)
+                    .ok_or_else(|| anyhow!("no address for node {}", &*alias))?;
+                processed_addr.try_extend(&addr)?
+            }
+            _ => processed_addr.push_back_value(&proto)?,
+        }
+    }
+    Ok(processed_addr)
+}
+
 pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {
     use itertools::Itertools;
 
@@ -584,6 +613,7 @@ pub async fn verify_pids(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ockam_core::compat::net::SocketAddr;
 
     #[test]
     fn test_extract_address_value() {
@@ -607,6 +637,50 @@ mod tests {
                 assert_eq!(extract_address_value(input).unwrap(), addr);
             } else {
                 assert!(extract_address_value(input).is_err());
+            }
+        }
+    }
+
+    #[test]
+    fn test_process_multi_addr() {
+        let lookup = |node: &str, addr: &str| {
+            let mut l = ConfigLookup::new();
+            l.set_node(node, SocketAddr::from_str(addr).unwrap().into());
+            l
+        };
+        let test_cases = vec![
+            (
+                MultiAddr::from_str("/node/n1").unwrap(),
+                lookup("n1", "127.0.0.0:4000"),
+                Ok("/ip4/127.0.0.0/tcp/4000"),
+            ),
+            (
+                MultiAddr::from_str("/project/p1").unwrap(),
+                ConfigLookup::new(),
+                Ok("/project/p1"),
+            ),
+            (
+                MultiAddr::from_str("/service/s1").unwrap(),
+                lookup("n1", "127.0.0.0:4000"),
+                Ok("/service/s1"),
+            ),
+            (
+                MultiAddr::from_str("/project/p1/node/n1/service/echo").unwrap(),
+                lookup("n1", "127.0.0.0:4000"),
+                Ok("/project/p1/ip4/127.0.0.0/tcp/4000/service/echo"),
+            ),
+            (
+                MultiAddr::from_str("/node/n1").unwrap(),
+                lookup("n2", "127.0.0.0:4000"),
+                Err(()),
+            ),
+        ];
+        for (ma, lookup, expected) in test_cases {
+            if let Ok(addr) = expected {
+                let result = process_multi_addr(&ma, &lookup).unwrap().to_string();
+                assert_eq!(result, addr);
+            } else {
+                assert!(process_multi_addr(&ma, &lookup).is_err());
             }
         }
     }
