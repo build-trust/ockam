@@ -73,8 +73,11 @@ RUN set -xe; \
     tar -xf "${NODEJS_PACKAGE}" -C /opt/; \
     mv "/opt/node-v${NODEJS_VERSION}-${NODEJS_OS}" "${NODEJS_HOME}"; \
     rm -rf "${NODEJS_PACKAGE}"; \
+    PATH="${NODEJS_HOME}/bin:$PATH" \
 # Setup Commitlint
-    npm install --location=global @commitlint/cli@17.1.1 \
+# set user to root in order to be able to install global dependencies
+    npm --global config set user root && \
+    npm install --global @commitlint/cli@17.1.1 \
 # Setup rust
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes \
