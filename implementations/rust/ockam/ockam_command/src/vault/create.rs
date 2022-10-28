@@ -1,7 +1,9 @@
 use crate::node::NodeOpts;
+use crate::util::exitcode::CANTCREAT;
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use crate::Result;
+use anyhow::anyhow;
 use clap::Args;
 use ockam::Context;
 use ockam_api::config::cli;
@@ -58,7 +60,10 @@ async fn create_new_vault(vault_name: String) -> Result<()> {
         .join(slugify(&format!("vault-{}", vault_name)));
 
     if dir.as_path().exists() {
-        println!("Vault with name {} already exists!", vault_name);
+        return Err(crate::error::Error::new(
+            CANTCREAT,
+            anyhow!("Vault with name {} already exists!", vault_name),
+        ));
     } else {
         tokio::fs::create_dir_all(dir.as_path()).await?;
         let file = dir.join("vault.json");
