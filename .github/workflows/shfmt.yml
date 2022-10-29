@@ -1,0 +1,25 @@
+name: Shfmt
+
+# shfmt formats shell programs
+# https://github.com/mvdan/sh#shfmt
+
+permissions:
+  contents: read
+
+on: [workflow_dispatch, pull_request, push]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Shfmt - Lint
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/build-trust/ockam-builder@sha256:9598b7bc30bb23e9e64cd95cb96a30af9695e6a16ce1834e6c17c3c62bc81c2e
+    steps:
+      - name: Check out ockam repository
+        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+      - name: Run Shfmt on all '.sh' files
+        run: shfmt -d $(find . -iname "*.sh")
