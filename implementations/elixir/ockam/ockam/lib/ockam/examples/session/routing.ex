@@ -22,8 +22,8 @@ defmodule Ockam.Examples.Session.Routing do
 
   def create_spawner() do
     responder_options = [
-      worker_mod: DataWorker,
-      worker_options: [messages: [:message_from_options]]
+      data_worker_mod: DataWorker,
+      data_worker_options: [messages: [:message_from_options]]
     ]
 
     spawner_options = [
@@ -36,8 +36,8 @@ defmodule Ockam.Examples.Session.Routing do
 
   def create_responder() do
     responder_options = [
-      worker_mod: DataWorker,
-      worker_options: [messages: [:message_from_options]]
+      data_worker_mod: DataWorker,
+      data_worker_options: [messages: [:message_from_options]]
     ]
 
     Session.Responder.create(responder_options)
@@ -45,8 +45,8 @@ defmodule Ockam.Examples.Session.Routing do
 
   def create_initiator(init_route) do
     Session.Initiator.create(
-      worker_mod: DataWorker,
-      worker_options: [messages: [:message_from_options_initiator]],
+      data_worker_mod: DataWorker,
+      data_worker_options: [messages: [:message_from_options_initiator]],
       init_route: init_route
     )
   end

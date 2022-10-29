@@ -8,8 +8,8 @@ defmodule Ockam.Examples.Session.CountTo do
 
   def create_spawner() do
     responder_options = [
-      worker_mod: DataWorker,
-      handshake: Ockam.Examples.Session.CountTo.Handshake,
+      data_worker_mod: DataWorker,
+      handshake_mod: Ockam.Examples.Session.CountTo.Handshake,
       handshake_options: [count_to: 10]
     ]
 
@@ -23,9 +23,9 @@ defmodule Ockam.Examples.Session.CountTo do
 
   def create_initiator(init_route) do
     Session.Initiator.create(
-      worker_mod: DataWorker,
+      data_worker_mod: DataWorker,
       init_route: init_route,
-      handshake: Ockam.Examples.Session.CountTo.Handshake,
+      handshake_mod: Ockam.Examples.Session.CountTo.Handshake,
       handshake_options: [count_to: 10]
     )
   end

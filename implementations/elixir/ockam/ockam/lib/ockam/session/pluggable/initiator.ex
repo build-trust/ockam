@@ -10,7 +10,7 @@ defmodule Ockam.Session.Pluggable.Initiator do
   After receiving a handshake response, runs Handshake.handle_initiator
   and starts the data worker on the same process and moves to the :data stage
 
-  Data worker is started with `worker_options` merged with
+  Data worker is started with `data_worker_options` merged with
   the options from handle_initiator
 
   In the :data stage processes all messages with the data worker module
@@ -19,10 +19,10 @@ defmodule Ockam.Session.Pluggable.Initiator do
 
   `init_route` - route to responder (or spawner)
 
-  `worker_mod` - data worker module
-  `worker_options` - data worker options
+  `data_worker_mod` - data worker module
+  `data_worker_options` - data worker options
 
-  `handshake` - handshake module (defaults to `Ockam.Session.Handshake.Default`)
+  `handshake_mod` - handshake module (defaults to `Ockam.Session.Handshake.Default`)
   `handshake_options` - options for handshake module
   """
   use Ockam.AsymmetricWorker
@@ -88,16 +88,16 @@ defmodule Ockam.Session.Pluggable.Initiator do
     init_route = Keyword.fetch!(options, :init_route)
 
     ## rename to data_mod
-    worker_mod = Keyword.fetch!(options, :worker_mod)
-    worker_options = Keyword.get(options, :worker_options, [])
+    data_worker_mod = Keyword.fetch!(options, :data_worker_mod)
+    data_worker_options = Keyword.get(options, :data_worker_options, [])
 
-    base_state = Map.put(state, :module, worker_mod)
+    base_state = Map.put(state, :module, data_worker_mod)
 
-    handshake = Keyword.get(options, :handshake, Ockam.Session.Handshake.Default)
+    handshake_mod = Keyword.get(options, :handshake_mod, Ockam.Session.Handshake.Default)
     handshake_options = Keyword.get(options, :handshake_options, [])
 
-    ## Set the module to handshake
-    Session.set_module(state, handshake)
+    ## Set the module to handshake_mod
+    Session.set_module(state, handshake_mod)
 
     handshake_state = %{
       init_route: init_route,
@@ -107,22 +107,23 @@ defmodule Ockam.Session.Pluggable.Initiator do
 
     state =
       Map.merge(state, %{
-        worker_mod: worker_mod,
-        worker_options: worker_options,
+        data_worker_mod: data_worker_mod,
+        data_worker_options: data_worker_options,
         base_state: base_state,
-        handshake: handshake,
+        handshake_mod: handshake_mod,
         handshake_options: handshake_options,
         stage: :handshake
       })
 
-    with {:ok, handshake_state} <- init_handshake(handshake, handshake_options, handshake_state) do
+    with {:ok, handshake_state} <-
+           init_handshake(handshake_mod, handshake_options, handshake_state) do
       state = Session.update_handshake_state(state, handshake_state)
       {:ok, state}
     end
   end
 
-  def init_handshake(handshake, handshake_options, handshake_state) do
-    case handshake.init(handshake_options, handshake_state) do
+  def init_handshake(handshake_mod, handshake_options, handshake_state) do
+    case handshake_mod.init(handshake_options, handshake_state) do
       {:next, handshake_msg, handshake_state} ->
         maybe_send_message(handshake_msg)
         {:ok, handshake_state}
@@ -160,16 +161,16 @@ defmodule Ockam.Session.Pluggable.Initiator do
     end
   end
 
-  def handle_message(message, %{stage: :data, data_state: _, worker_mod: _} = state) do
+  def handle_message(message, %{stage: :data, data_state: _, data_worker_mod: _} = state) do
     Session.handle_data_message(message, state)
   end
 
   def handle_handshake_message(message, state) do
-    handshake = Map.fetch!(state, :handshake)
+    handshake_mod = Map.fetch!(state, :handshake_mod)
     handshake_options = Map.fetch!(state, :handshake_options)
     handshake_state = Map.fetch!(state, :handshake_state)
 
-    case handshake.handle_initiator(handshake_options, message, handshake_state) do
+    case handshake_mod.handle_initiator(handshake_options, message, handshake_state) do
       {:ready, options, handshake_state} ->
         Session.switch_to_data_stage(options, handshake_state, state)
 

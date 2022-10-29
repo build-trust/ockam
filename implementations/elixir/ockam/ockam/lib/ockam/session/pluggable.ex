@@ -24,8 +24,8 @@ defmodule Ockam.Session.Pluggable do
     Ockam.Worker.call(server, :get_handshake_mod)
   end
 
-  def worker_mod(server) do
-    Ockam.Worker.call(server, :get_worker_mod)
+  def data_worker_mod(server) do
+    Ockam.Worker.call(server, :get_data_worker_mod)
   end
 
   def role(server) do
@@ -35,15 +35,19 @@ defmodule Ockam.Session.Pluggable do
   @doc """
   Shared function for data stage of the session
 
-  State MUST have :data_state and :worker_mod keys
+  State MUST have :data_state and :data_worker_mod keys
   """
-  @spec handle_data_message(any(), %{:data_state => any(), :worker_mod => atom(), any() => any()}) ::
+  @spec handle_data_message(any(), %{
+          :data_state => any(),
+          :data_worker_mod => atom(),
+          any() => any()
+        }) ::
           {:ok, %{data_state: any()}} | {:error, any()} | {:stop, any(), %{data_state: any()}}
   def handle_data_message(message, state) do
     data_state = Map.fetch!(state, :data_state)
-    worker_mod = Map.fetch!(state, :worker_mod)
+    data_worker_mod = Map.fetch!(state, :data_worker_mod)
 
-    case worker_mod.handle_message(message, data_state) do
+    case data_worker_mod.handle_message(message, data_state) do
       {:ok, new_data_state} ->
         {:ok, update_data_state(state, new_data_state)}
 
@@ -56,17 +60,17 @@ defmodule Ockam.Session.Pluggable do
   end
 
   def handle_call(:get_handshake_mod, _from, state) do
-    handshake_mod = Map.fetch!(state, :handshake)
+    handshake_mod = Map.fetch!(state, :handshake_mod)
     {:reply, handshake_mod, state}
   end
 
-  def handle_call(:get_worker_mod, _from, state) do
-    worker_mod = Map.fetch!(state, :worker_mod)
-    {:reply, worker_mod, state}
+  def handle_call(:get_data_worker_mod, _from, state) do
+    data_worker_mod = Map.fetch!(state, :data_worker_mod)
+    {:reply, data_worker_mod, state}
   end
 
   def handle_call(call, from, %{stage: :handshake} = state) do
-    handshake_mod = Map.fetch!(state, :handshake)
+    handshake_mod = Map.fetch!(state, :handshake_mod)
     handshake_state = Map.fetch!(state, :handshake_state)
 
     case handshake_mod.handle_call(call, from, handshake_state) do
@@ -92,9 +96,9 @@ defmodule Ockam.Session.Pluggable do
 
   def handle_call(call, from, %{stage: :data} = state) do
     data_state = Map.fetch!(state, :data_state)
-    worker_mod = Map.fetch!(state, :worker_mod)
+    data_worker_mod = Map.fetch!(state, :data_worker_mod)
 
-    case worker_mod.handle_call(call, from, data_state) do
+    case data_worker_mod.handle_call(call, from, data_state) do
       {:reply, reply, data_state} ->
         {:reply, reply, update_data_state(state, data_state)}
 
@@ -119,15 +123,15 @@ defmodule Ockam.Session.Pluggable do
 
   def switch_to_data_stage(message \\ nil, start_options, handshake_state, state) do
     base_state = Map.fetch!(state, :base_state)
-    worker_mod = Map.fetch!(state, :worker_mod)
-    worker_options = Map.fetch!(state, :worker_options)
+    data_worker_mod = Map.fetch!(state, :data_worker_mod)
+    data_worker_options = Map.fetch!(state, :data_worker_options)
 
     ## Set registered module to data mod
-    set_module(state, worker_mod)
+    set_module(state, data_worker_mod)
 
-    options = Keyword.merge(worker_options, start_options)
+    options = Keyword.merge(data_worker_options, start_options)
 
-    case worker_mod.setup(options, base_state) do
+    case data_worker_mod.setup(options, base_state) do
       {:ok, data_state} ->
         case message do
           nil -> :ok

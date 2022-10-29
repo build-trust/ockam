@@ -6,10 +6,10 @@ defmodule Ockam.Session.Pluggable.Responder do
   If :init_message is present in the options - processes the message,
   otherwise waits for it in :handshake stage
 
-  On processing the handshake calls `handshake.handle_responder/1`, which
+  On processing the handshake calls `handshake_mod.handle_responder/1`, which
   generates handshake response message and options
 
-  Starts the data worker with worker_options merged with
+  Starts the data worker with data_worker_options merged with
   the options from `handshake.handle_responder/1`
 
   If worker started successfully, sends the handshake response
@@ -19,10 +19,10 @@ defmodule Ockam.Session.Pluggable.Responder do
 
   Options:
 
-  `worker_mod` - data worker module
-  `worker_options` - data worker options, defaults to []
+  `data_worker_mod` - data worker module
+  `data_worker_options` - data worker options, defaults to []
 
-  `handshake` - handshake module (defaults to `Ockam.Session.Handshake.Default`)
+  `handshake_mod` - handshake module (defaults to `Ockam.Session.Handshake.Default`)
   `handshake_options` - options for handshake module, defaults to []
 
   `init_message` - optional init message
@@ -42,14 +42,14 @@ defmodule Ockam.Session.Pluggable.Responder do
   @impl true
   def inner_setup(options, state) do
     base_state = state
-    worker_mod = Keyword.fetch!(options, :worker_mod)
-    worker_options = Keyword.get(options, :worker_options, [])
+    data_worker_mod = Keyword.fetch!(options, :data_worker_mod)
+    data_worker_options = Keyword.get(options, :data_worker_options, [])
 
-    handshake = Keyword.get(options, :handshake, Ockam.Session.Handshake.Default)
+    handshake_mod = Keyword.get(options, :handshake_mod, Ockam.Session.Handshake.Default)
     handshake_options = Keyword.get(options, :handshake_options, [])
 
     ## Set the module to handshake
-    Session.set_module(state, handshake)
+    Session.set_module(state, handshake_mod)
 
     handshake_state = %{
       worker_address: state.inner_address,
@@ -58,11 +58,11 @@ defmodule Ockam.Session.Pluggable.Responder do
 
     state =
       Map.merge(state, %{
-        worker_mod: worker_mod,
-        worker_options: worker_options,
+        data_worker_mod: data_worker_mod,
+        data_worker_options: data_worker_options,
         base_state: base_state,
         stage: :handshake,
-        handshake: handshake,
+        handshake_mod: handshake_mod,
         handshake_options: handshake_options,
         handshake_state: handshake_state
       })
@@ -109,11 +109,11 @@ defmodule Ockam.Session.Pluggable.Responder do
   end
 
   def handle_handshake_message(message, state) do
-    handshake = Map.fetch!(state, :handshake)
+    handshake_mod = Map.fetch!(state, :handshake_mod)
     handshake_options = Map.fetch!(state, :handshake_options)
     handshake_state = Map.fetch!(state, :handshake_state)
 
-    case handshake.handle_responder(handshake_options, message, handshake_state) do
+    case handshake_mod.handle_responder(handshake_options, message, handshake_state) do
       {:ready, response, options, handshake_state} ->
         Session.switch_to_data_stage(response, options, handshake_state, state)
 

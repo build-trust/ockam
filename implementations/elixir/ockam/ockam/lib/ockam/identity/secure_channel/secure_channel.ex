@@ -60,8 +60,8 @@ defmodule Ockam.Identity.SecureChannel do
 
     responder_options = [
       address_prefix: "ISC_R_",
-      worker_mod: Ockam.Identity.SecureChannel.Data,
-      handshake: Ockam.Identity.SecureChannel.Handshake,
+      data_worker_mod: Ockam.Identity.SecureChannel.Data,
+      handshake_mod: Ockam.Identity.SecureChannel.Handshake,
       handshake_options: handshake_options,
       idle_timeout: idle_timeout,
       ## TODO: probably all spawners should do that
@@ -156,9 +156,9 @@ defmodule Ockam.Identity.SecureChannel do
       initiator_options = [
         address_prefix: "ISC_I_",
         address: Keyword.get(options, :address),
-        worker_mod: Ockam.Identity.SecureChannel.Data,
+        data_worker_mod: Ockam.Identity.SecureChannel.Data,
         init_route: init_route,
-        handshake: Ockam.Identity.SecureChannel.Handshake,
+        handshake_mod: Ockam.Identity.SecureChannel.Handshake,
         handshake_options: options
       ]
 
