@@ -12,8 +12,8 @@ defmodule Ockam.Session.Tests do
     {:ok, initiator} =
       Session.Initiator.create(
         init_route: [me],
-        handshake: Handshake,
-        worker_mod: DataModule
+        handshake_mod: Handshake,
+        data_worker_mod: DataModule
       )
 
     on_exit(fn ->
@@ -34,8 +34,8 @@ defmodule Ockam.Session.Tests do
 
     {:ok, responder} =
       Session.Responder.create(
-        handshake: Handshake,
-        worker_mod: DataModule,
+        handshake_mod: Handshake,
+        data_worker_mod: DataModule,
         handshake_options: [reply_to: [me]]
       )
 
@@ -44,8 +44,8 @@ defmodule Ockam.Session.Tests do
     {:ok, initiator} =
       Session.Initiator.create(
         init_route: [responder_inner],
-        handshake: Handshake,
-        worker_mod: DataModule
+        handshake_mod: Handshake,
+        data_worker_mod: DataModule
       )
 
     on_exit(fn ->
@@ -67,8 +67,8 @@ defmodule Ockam.Session.Tests do
 
     {:ok, responder} =
       Session.Responder.create(
-        handshake: Handshake,
-        worker_mod: DataModule
+        handshake_mod: Handshake,
+        data_worker_mod: DataModule
       )
 
     {:ok, responder_inner} = Ockam.AsymmetricWorker.get_inner_address(responder)
@@ -76,8 +76,8 @@ defmodule Ockam.Session.Tests do
     {:ok, initiator} =
       Session.Initiator.create(
         init_route: [responder_inner],
-        worker_mod: DataModule,
-        handshake: Handshake,
+        data_worker_mod: DataModule,
+        handshake_mod: Handshake,
         handshake_options: [reply_to: [me]]
       )
 

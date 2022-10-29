@@ -29,8 +29,8 @@ defmodule Ockam.Messaging.PipeChannel.Responder do
       address_options ++
         [
           init_message: init_message,
-          worker_mod: PipeChannel.Simple,
-          handshake: PipeChannel.Handshake,
+          data_worker_mod: PipeChannel.Simple,
+          handshake_mod: PipeChannel.Handshake,
           handshake_options: [
             pipe_mod: pipe_mod,
             sender_options: sender_options,

@@ -26,9 +26,9 @@ defmodule Ockam.Messaging.PipeChannel.Initiator do
 
     Session.Initiator.create(
       init_route: init_route,
-      worker_mod: PipeChannel.Simple,
-      worker_options: [],
-      handshake: PipeChannel.Handshake,
+      data_worker_mod: PipeChannel.Simple,
+      data_worker_options: [],
+      handshake_mod: PipeChannel.Handshake,
       handshake_options: [
         pipe_mod: pipe_mod,
         sender_options: sender_options,

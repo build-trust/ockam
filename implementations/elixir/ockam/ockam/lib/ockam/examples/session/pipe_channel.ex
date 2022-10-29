@@ -17,8 +17,8 @@ defmodule Ockam.Examples.Session.PipeChannel do
     spawner_options = [
       worker_mod: Session.Responder,
       worker_options: [
-        worker_mod: PipeChannel.Simple,
-        handshake: PipeChannel.Handshake,
+        data_worker_mod: PipeChannel.Simple,
+        handshake_mod: PipeChannel.Handshake,
         handshake_options: [
           pipe_mod: ResendPipe,
           sender_options: [confirm_timeout: 200]
@@ -31,8 +31,8 @@ defmodule Ockam.Examples.Session.PipeChannel do
 
   def create_responder() do
     responder_options = [
-      worker_mod: PipeChannel.Simple,
-      handshake: PipeChannel.Handshake,
+      data_worker_mod: PipeChannel.Simple,
+      handshake_mod: PipeChannel.Handshake,
       handshake_options: [
         pipe_mod: ResendPipe,
         sender_options: [confirm_timeout: 200]
@@ -45,9 +45,9 @@ defmodule Ockam.Examples.Session.PipeChannel do
   def create_initiator(init_route) do
     Session.Initiator.create_and_wait(
       init_route: init_route,
-      worker_mod: PipeChannel.Simple,
-      worker_options: [],
-      handshake: PipeChannel.Handshake,
+      data_worker_mod: PipeChannel.Simple,
+      data_worker_options: [],
+      handshake_mod: PipeChannel.Handshake,
       handshake_options: [
         pipe_mod: ResendPipe,
         sender_options: [confirm_timeout: 200]
