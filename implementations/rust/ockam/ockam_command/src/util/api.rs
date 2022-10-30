@@ -54,22 +54,6 @@ pub(crate) fn create_tcp_connection(
     Request::post("/node/tcp/connection").body(payload)
 }
 
-/// Construct a request to create node tcp listener
-pub(crate) fn create_tcp_listener(cmd: &crate::tcp::listener::CreateCommand) -> Result<Vec<u8>> {
-    let (tt, addr) = (
-        models::transport::TransportMode::Listen,
-        cmd.address.clone(),
-    );
-
-    let payload =
-        models::transport::CreateTransport::new(models::transport::TransportType::Tcp, tt, addr);
-    let mut buf = vec![];
-    Request::post("/node/tcp/listener")
-        .body(payload)
-        .encode(&mut buf)?;
-    Ok(buf)
-}
-
 /// Construct a request to delete node tcp connection
 pub(crate) fn delete_tcp_connection(
     cmd: &crate::tcp::connection::DeleteCommand,
@@ -361,18 +345,6 @@ pub(crate) fn parse_tcp_list(resp: &[u8]) -> Result<models::transport::Transport
     let mut dec = Decoder::new(resp);
     let _ = dec.decode::<Response>()?;
     Ok(dec.decode::<models::transport::TransportList>()?)
-}
-
-/// Parse the returned status response
-pub(crate) fn parse_transport_status(
-    resp: &[u8],
-) -> Result<(Response, models::transport::TransportStatus<'_>)> {
-    let mut dec = Decoder::new(resp);
-    let response = dec.decode::<Response>()?;
-    Ok((
-        response,
-        dec.decode::<models::transport::TransportStatus>()?,
-    ))
 }
 
 pub(crate) fn parse_short_identity_response(

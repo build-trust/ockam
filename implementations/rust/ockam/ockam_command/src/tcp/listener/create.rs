@@ -1,17 +1,12 @@
-use crate::util::{bind_to_port_check, extract_address_value};
-use crate::{
-    util::{api, connect_to, exitcode},
-    CommandGlobalOpts,
-};
+use crate::util::extract_address_value;
+use crate::util::node_rpc;
+use crate::util::Rpc;
+use crate::CommandGlobalOpts;
+use anyhow::Context;
 use clap::Args;
-use ockam::{Context, Route, TCP};
-use ockam_api::{
-    nodes::{models::transport::TransportStatus, NODEMANAGER_ADDR},
-    route_to_multiaddr,
-};
-use ockam_core::api::Status;
-use std::str::FromStr;
-
+use ockam::{route, Route, TCP};
+use ockam_api::{nodes::models, route_to_multiaddr};
+use ockam_core::api::Request;
 #[derive(Args, Clone, Debug)]
 pub struct CreateCommand {
     #[command(flatten)]
@@ -30,76 +25,29 @@ pub struct TCPListenerNodeOpts {
 
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        let cfg = &options.config;
-        let node = extract_address_value(&self.node_opts.at).unwrap_or_else(|_| "".to_string());
-        let port = cfg.get_node_port(&node).unwrap();
-
-        let input_addr = match std::net::SocketAddr::from_str(&self.address) {
-            Ok(value) => value,
-            _ => {
-                eprintln!("Invalid Input Address");
-                std::process::exit(exitcode::IOERR);
-            }
-        };
-
-        // Check if the port is used by some other services or process
-        if !bind_to_port_check(&input_addr) {
-            eprintln!("Another process is listening on the provided port!");
-            std::process::exit(exitcode::IOERR);
-        }
-
-        connect_to(port, self, create_listener);
+        node_rpc(run_impl, (options, self))
     }
 }
 
-pub async fn create_listener(
-    ctx: Context,
-    cmd: CreateCommand,
-    mut base_route: Route,
-) -> anyhow::Result<()> {
-    let resp: Vec<u8> = match ctx
-        .send_and_receive(
-            base_route.modify().append(NODEMANAGER_ADDR),
-            api::create_tcp_listener(&cmd)?,
-        )
-        .await
-    {
-        Ok(sr_msg) => sr_msg,
-        Err(e) => {
-            eprintln!("Wasn't able to send or receive `Message`: {}", e);
-            std::process::exit(exitcode::IOERR);
-        }
-    };
+async fn run_impl(
+    ctx: ockam::Context,
+    (opts, cmd): (CommandGlobalOpts, CreateCommand),
+) -> crate::Result<()> {
+    let node_name = extract_address_value(&cmd.node_opts.at)?;
+    let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
+    rpc.request(Request::post("/node/tcp/listener")).await?;
+    let response = rpc.parse_response::<models::transport::TransportStatus>()?;
 
-    let (response, TransportStatus { payload, .. }) = api::parse_transport_status(&resp)?;
+    let port = opts.config.get_node_port(&node_name)?;
+    let mut base_route = route![(TCP, format!("localhost:{}", port))];
+    let r: Route = base_route
+        .modify()
+        .pop_back()
+        .append_t(TCP, response.payload.to_string())
+        .into();
+    let multiaddr =
+        route_to_multiaddr(&r).context("Couldn't convert given address into `MultiAddr`")?;
+    println!("Tcp listener created! You can send messages to it via this route:\n`{multiaddr}`",);
 
-    match response.status() {
-        Some(Status::Ok) => {
-            let r: Route = base_route
-                .modify()
-                .pop_back()
-                .append_t(TCP, payload.to_string())
-                .into();
-            let multiaddr = match route_to_multiaddr(&r) {
-                Some(addr) => addr,
-                None => {
-                    eprintln!("Couldn't convert given address into `MultiAddr`");
-                    std::process::exit(exitcode::SOFTWARE);
-                }
-            };
-
-            println!(
-                "Tcp listener created! You can send messages to it via this route:\n`{}`",
-                multiaddr
-            )
-        }
-        _ => {
-            eprintln!(
-                "An error occurred while creating the tcp listener: {}",
-                payload
-            );
-            std::process::exit(exitcode::CANTCREAT);
-        }
-    }
     Ok(())
 }
