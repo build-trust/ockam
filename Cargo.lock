@@ -775,7 +775,7 @@ dependencies = [
  "bare-metal 1.0.0",
  "cfg-if",
  "cortex-m 0.7.6",
- "riscv",
+ "riscv 0.7.0",
 ]
 
 [[package]]
@@ -2587,7 +2587,7 @@ dependencies = [
  "ockam_transport_core",
  "ockam_vault",
  "pic32-hal",
- "riscv",
+ "riscv 0.9.0",
  "serde",
  "stm32-device-signature",
  "stm32f4xx-hal",
@@ -3202,6 +3202,17 @@ dependencies = [
  "bare-metal 1.0.0",
  "bit_field",
  "riscv-target",
+]
+
+[[package]]
+name = "riscv"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73fc4bc7113424814738fe79755a5764e392b3d4d1bc757e6aa6f61cede32095"
+dependencies = [
+ "bare-metal 1.0.0",
+ "bit_field",
+ "embedded-hal",
 ]
 
 [[package]]
