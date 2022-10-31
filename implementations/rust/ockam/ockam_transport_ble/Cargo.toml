@@ -121,7 +121,7 @@ cortex-m = "0.7.3"
 
 # Architecture RISCV: TODO move this into its own "Ockam Addon" crate
 [target.'cfg(any(target_arch = "riscv32", target_arch = "riscv64"))'.dependencies]
-riscv = "0.7.0"
+riscv = "0.9.0"
 
 [dev-dependencies]
 ockam_identity = { path = "../ockam_identity", version = "^0.64.0" }
