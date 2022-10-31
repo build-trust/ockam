@@ -2615,6 +2615,7 @@ dependencies = [
  "ockam_transport_core",
  "rand 0.7.3",
  "serde",
+ "socket2",
  "tokio",
  "tracing",
  "trybuild",

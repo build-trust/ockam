@@ -1,10 +1,11 @@
 use crate::{TcpRecvProcessor, TcpRouterHandle};
 use core::time::Duration;
-use ockam_core::{async_trait, compat::net::SocketAddr, route, Any, Decodable, LocalMessage};
+use ockam_core::{async_trait, compat::net::SocketAddr, Any, Decodable, LocalMessage};
 use ockam_core::{Address, Encodable, Message, Result, Routed, TransportMessage, Worker};
-use ockam_node::{Context, DelayedEvent};
+use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
+use socket2::{SockRef, TcpKeepalive};
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
@@ -37,7 +38,6 @@ impl WorkerPair {
 
 #[derive(Serialize, Deserialize, Message, Clone)]
 pub(crate) enum TcpSendWorkerMsg {
-    Heartbeat,
     ConnectionClosed,
 }
 
@@ -56,8 +56,6 @@ pub(crate) struct TcpSendWorker {
     peer: SocketAddr,
     internal_addr: Address,
     rx_addr: Option<Address>,
-    heartbeat: DelayedEvent<TcpSendWorkerMsg>,
-    heartbeat_interval: Option<Duration>,
 }
 
 impl TcpSendWorker {
@@ -67,7 +65,6 @@ impl TcpSendWorker {
         stream: Option<TcpStream>,
         peer: SocketAddr,
         internal_addr: Address,
-        heartbeat: DelayedEvent<TcpSendWorkerMsg>,
     ) -> Self {
         let (rx, tx) = match stream {
             Some(s) => {
@@ -84,8 +81,6 @@ impl TcpSendWorker {
             peer,
             internal_addr,
             rx_addr: None,
-            heartbeat,
-            heartbeat_interval: Some(Duration::from_secs(5 * 60)),
         }
     }
 
@@ -95,7 +90,6 @@ impl TcpSendWorker {
 
     /// Create a `(TcpSendWorker, WorkerPair)` without spawning the worker.
     pub(crate) async fn new_pair(
-        ctx: &Context,
         router_handle: TcpRouterHandle,
         stream: Option<TcpStream>,
         peer: SocketAddr,
@@ -103,13 +97,7 @@ impl TcpSendWorker {
     ) -> Result<(Self, WorkerPair)> {
         let tx_addr = Address::random_local();
         let int_addr = Address::random_local();
-        let sender = TcpSendWorker::new(
-            router_handle,
-            stream,
-            peer,
-            int_addr.clone(),
-            DelayedEvent::create(ctx, int_addr.clone(), TcpSendWorkerMsg::Heartbeat).await?,
-        );
+        let sender = TcpSendWorker::new(router_handle, stream, peer, int_addr);
         Ok((
             sender,
             WorkerPair {
@@ -130,20 +118,10 @@ impl TcpSendWorker {
         hostnames: Vec<String>,
     ) -> Result<WorkerPair> {
         trace!("Creating new TCP worker pair");
-        let (worker, pair) = Self::new_pair(ctx, router_handle, stream, peer, hostnames).await?;
+        let (worker, pair) = Self::new_pair(router_handle, stream, peer, hostnames).await?;
         ctx.start_worker(vec![pair.tx_addr(), worker.internal_addr().clone()], worker)
             .await?;
         Ok(pair)
-    }
-
-    /// Schedule a heartbeat
-    async fn schedule_heartbeat(&mut self) -> Result<()> {
-        let heartbeat_interval = match &self.heartbeat_interval {
-            Some(hi) => *hi,
-            None => return Ok(()),
-        };
-
-        self.heartbeat.schedule(heartbeat_interval).await
     }
 
     async fn stop_and_unregister(&self, ctx: &Context) -> Result<()> {
@@ -177,6 +155,14 @@ impl Worker for TcpSendWorker {
                     return Err(TransportError::from(e).into());
                 }
             };
+
+            let keepalive = TcpKeepalive::new()
+                .with_time(Duration::from_secs(300))
+                .with_retries(2)
+                .with_interval(Duration::from_secs(75));
+            let socket = SockRef::from(&connection);
+            socket.set_tcp_keepalive(&keepalive).unwrap();
+
             let (rx, tx) = connection.into_split();
             self.tx = Some(tx);
             self.rx = Some(rx);
@@ -193,8 +179,6 @@ impl Worker for TcpSendWorker {
         ctx.start_processor(rx_addr.clone(), receiver).await?;
 
         self.rx_addr = Some(rx_addr);
-
-        self.schedule_heartbeat().await?;
 
         Ok(())
     }
@@ -214,8 +198,6 @@ impl Worker for TcpSendWorker {
         ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        self.heartbeat.cancel();
-
         let tx = match &mut self.tx {
             Some(tx) => tx,
             None => return Err(TransportError::PeerNotFound.into()),
@@ -226,19 +208,6 @@ impl Worker for TcpSendWorker {
             let msg = TcpSendWorkerMsg::decode(msg.payload())?;
 
             match msg {
-                TcpSendWorkerMsg::Heartbeat => {
-                    let msg = TransportMessage::v1(route![], route![], vec![]);
-                    let msg = prepare_message(msg)?;
-                    // Sending empty heartbeat
-                    if tx.write_all(&msg).await.is_err() {
-                        warn!("Failed to send heartbeat to peer {}", self.peer);
-                        self.stop_and_unregister(ctx).await?;
-
-                        return Ok(());
-                    }
-
-                    debug!("Sent heartbeat to peer {}", self.peer);
-                }
                 TcpSendWorkerMsg::ConnectionClosed => {
                     warn!("Stopping sender due to closed connection {}", self.peer);
                     // No need to stop Receiver as it notified us about connection drop and will
@@ -264,8 +233,6 @@ impl Worker for TcpSendWorker {
                 return Ok(());
             }
         }
-
-        self.schedule_heartbeat().await?;
 
         Ok(())
     }

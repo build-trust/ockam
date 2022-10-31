@@ -44,6 +44,7 @@ tokio = { version = "1.8", features = [
 rand = "0.7"
 hashbrown = { version = "0.12", default-features = false }
 tracing = { version = "0.1", default-features = false }
+socket2 = "0.4.7"
 
 [dev-dependencies]
 trybuild = { version = "1.0", features = ["diff"] }

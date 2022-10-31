@@ -56,7 +56,7 @@ impl Processor for TcpListenProcessor {
         let handle_clone = self.router_handle.async_try_clone().await?;
         // And create a connection worker for it
         let (worker, pair) =
-            TcpSendWorker::new_pair(ctx, handle_clone, Some(stream), peer, Vec::new()).await?;
+            TcpSendWorker::new_pair(handle_clone, Some(stream), peer, Vec::new()).await?;
 
         // Register the connection with the local TcpRouter
         self.router_handle.register(&pair).await?;
