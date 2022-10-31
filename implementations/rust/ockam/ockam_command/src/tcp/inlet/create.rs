@@ -2,6 +2,7 @@ use crate::util::{bind_to_port_check, exitcode, extract_address_value, node_rpc,
 use crate::Result;
 use crate::{help, CommandGlobalOpts};
 use anyhow::anyhow;
+use anyhow::ensure;
 use clap::Args;
 use ockam::identity::IdentityIdentifier;
 use ockam::{Context, TcpTransport};
@@ -57,6 +58,10 @@ pub struct CreateCommand {
     /// Enable credentials authorization
     #[arg(long, short, display_order = 802)]
     check_credential: bool,
+
+    /// Assign a name to this inlet.
+    #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
+    alias: Option<String>,
 }
 
 impl CreateCommand {
@@ -98,7 +103,7 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
     let node = extract_address_value(&cmd.at)?;
 
     let req = {
-        let payload = if cmd.to.matches(0, &[Project::CODE.into()]) {
+        let mut payload = if cmd.to.matches(0, &[Project::CODE.into()]) {
             if cmd.authorized.is_some() {
                 return Err(anyhow!("--authorized can not be used with project addresses").into());
             }
@@ -106,6 +111,9 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
         } else {
             CreateInlet::to_node(cmd.from, cmd.to, cmd.check_credential, cmd.authorized)
         };
+        if let Some(a) = cmd.alias {
+            payload.set_alias(a)
+        }
         Request::post("/node/inlet").body(payload)
     };
 
@@ -114,4 +122,12 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
     rpc.parse_response::<InletStatus>()?;
 
     Ok(())
+}
+
+fn alias_parser(arg: &str) -> anyhow::Result<String> {
+    ensure! {
+        !arg.contains(':'),
+        "an inlet alias must not contain ':' characters"
+    }
+    Ok(arg.to_string())
 }

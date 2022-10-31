@@ -39,15 +39,24 @@ impl NodeManager {
             env.put("resource.id", str(r.as_str()));
             env.put("action.id", str(a.as_str()));
             env.put("resource.project_id", str(pid));
-            // Load the policy from storage or use the default one:
-            let policy = self.policies.get_policy(r, a).await?.unwrap_or_else(|| {
-                and([
+            // Check if a policy exists for (resource, action) and if not, then
+            // create a default entry:
+            if self.policies.get_policy(r, a).await?.is_none() {
+                let fallback = and([
                     eq([ident("resource.project_id"), ident("subject.project_id")]),
                     eq([ident("subject.role"), str("member")]),
-                ])
-            });
+                ]);
+                self.policies.set_policy(r, a, &fallback).await?
+            }
             let store = self.authenticated_storage.clone();
-            Ok(Arc::new(PolicyAccessControl::new(policy, store, env)))
+            let policies = self.policies.clone();
+            Ok(Arc::new(PolicyAccessControl::new(
+                policies,
+                store,
+                r.clone(),
+                a.clone(),
+                env,
+            )))
         } else {
             Ok(Arc::new(AllowAll))
         }
@@ -149,9 +158,11 @@ impl NodeManagerWorker {
             }
         };
 
+        let resource = req.alias().map(Resource::new).unwrap_or(resources::INLET);
+
         let access_control = node_manager
             .access_control(
-                &resources::INLET,
+                &resource,
                 &actions::HANDLE_MESSAGE,
                 if req.is_check_credential() {
                     let pid = req
@@ -253,7 +264,10 @@ impl NodeManagerWorker {
             ..
         } = dec.decode()?;
         let tcp_addr = tcp_addr.to_string();
-
+        let resource = alias
+            .as_deref()
+            .map(Resource::new)
+            .unwrap_or(resources::OUTLET);
         let alias = alias.map(|a| a.0.into()).unwrap_or_else(random_alias);
 
         info!("Handling request to create outlet portal");
@@ -261,7 +275,7 @@ impl NodeManagerWorker {
 
         let access_control = node_manager
             .access_control(
-                &resources::OUTLET,
+                &resource,
                 &actions::HANDLE_MESSAGE,
                 if check_credential {
                     Some(node_manager.project_id()?.to_string())

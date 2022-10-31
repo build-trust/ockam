@@ -1,5 +1,6 @@
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::{help, CommandGlobalOpts};
+use anyhow::ensure;
 use clap::Args;
 use ockam::Context;
 use ockam_api::{
@@ -51,7 +52,11 @@ pub struct CreateCommand {
 
     /// Enable credentials authorization
     #[arg(long, short, display_order = 802)]
-    pub check_credential: bool,
+    check_credential: bool,
+
+    /// Assign a name to this outlet.
+    #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
+    alias: Option<String>,
 }
 
 impl CreateCommand {
@@ -86,9 +91,16 @@ pub async fn run_impl(
 fn make_api_request<'a>(cmd: CreateCommand) -> crate::Result<RequestBuilder<'a, CreateOutlet<'a>>> {
     let tcp_addr = cmd.to.to_string();
     let worker_addr = cmd.from;
-    let alias = (None::<String>).as_ref().map(|x| x.as_str().into());
+    let alias = cmd.alias.map(|a| a.into());
     let payload = CreateOutlet::new(tcp_addr, worker_addr, alias, cmd.check_credential);
-
     let request = Request::post("/node/outlet").body(payload);
     Ok(request)
+}
+
+fn alias_parser(arg: &str) -> anyhow::Result<String> {
+    ensure! {
+        !arg.contains(':'),
+        "an outlet alias must not contain ':' characters"
+    }
+    Ok(arg.to_string())
 }
