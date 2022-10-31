@@ -1,24 +1,10 @@
-defmodule Ockam.Identity.SecureChannel.IdentityChannelMessage.Request do
+defmodule Ockam.Identity.SecureChannel.HandshakeMessage do
   @moduledoc """
-  Identity channel handshake request
-  """
-  defstruct [:contact, :proof]
-end
-
-defmodule Ockam.Identity.SecureChannel.IdentityChannelMessage.Response do
-  @moduledoc """
-  Identity channel handshake response
-  """
-  defstruct [:contact, :proof]
-end
-
-defmodule Ockam.Identity.SecureChannel.IdentityChannelMessage do
-  @moduledoc """
-  Data encoding/decoding for IdentityChannelMessage
+  Data encoding/decoding for HandshakeMessage
   """
 
-  alias Ockam.Identity.SecureChannel.IdentityChannelMessage.Request
-  alias Ockam.Identity.SecureChannel.IdentityChannelMessage.Response
+  alias Ockam.Identity.SecureChannel.HandshakeMessage.Request
+  alias Ockam.Identity.SecureChannel.HandshakeMessage.Response
 
   @request {:struct, [contact: :data, proof: :data]}
   @response {:struct, [contact: :data, proof: :data]}
