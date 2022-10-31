@@ -15,7 +15,7 @@ defmodule Ockam.API.Client.DiscoveryClient do
     case Client.sync_request(
            :put,
            id,
-           ServiceInfo.encode(service_info),
+           ServiceInfo.encode!(service_info),
            api_route,
            timeout,
            self_address

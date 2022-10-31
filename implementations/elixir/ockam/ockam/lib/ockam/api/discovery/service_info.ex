@@ -29,8 +29,8 @@ defmodule Ockam.API.Discovery.ServiceInfo do
     end
   end
 
-  def encode_list(service_infos) do
-    service_infos |> Enum.map(&normalize/1) |> NormalizedServiceInfo.encode_list()
+  def encode_list!(service_infos) do
+    service_infos |> Enum.map(&normalize/1) |> NormalizedServiceInfo.encode_list!()
   end
 
   def decode_list(data) do
@@ -47,8 +47,8 @@ defmodule Ockam.API.Discovery.ServiceInfo do
     end
   end
 
-  def encode(%__MODULE__{} = service_info) do
-    normalize(service_info) |> NormalizedServiceInfo.encode()
+  def encode!(%__MODULE__{} = service_info) do
+    normalize(service_info) |> NormalizedServiceInfo.encode!()
   end
 
   def decode(data) do

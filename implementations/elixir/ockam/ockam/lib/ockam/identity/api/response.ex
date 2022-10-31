@@ -38,22 +38,22 @@ defmodule Ockam.Identity.API.Response do
   ## For testing purposes
 
   def encode_create(decoded) do
-    TypedCBOR.encode(@create, decoded)
+    TypedCBOR.encode!(@create, decoded)
   end
 
   def encode_validate_identity_change_history(decoded) do
-    TypedCBOR.encode(@validate_identity_change_history, decoded)
+    TypedCBOR.encode!(@validate_identity_change_history, decoded)
   end
 
   def encode_create_signature(decoded) do
-    TypedCBOR.encode(@create_signature, decoded)
+    TypedCBOR.encode!(@create_signature, decoded)
   end
 
   def encode_verify_signature(decoded) do
-    TypedCBOR.encode(@verify_signature, decoded)
+    TypedCBOR.encode!(@verify_signature, decoded)
   end
 
   def encode_compare_identity_change_history(decoded) do
-    TypedCBOR.encode(@compare_identity_change_history, decoded)
+    TypedCBOR.encode!(@compare_identity_change_history, decoded)
   end
 end

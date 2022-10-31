@@ -27,19 +27,19 @@ defmodule Ockam.Identity.API.Request do
   end
 
   def validate_identity_change_history(identity) do
-    TypedCBOR.encode(@validate_identity_change_history, %{identity: identity})
+    TypedCBOR.encode!(@validate_identity_change_history, %{identity: identity})
   end
 
   def create_signature(identity, auth_hash) do
-    TypedCBOR.encode(@create_signature, %{identity: identity, state: auth_hash})
+    TypedCBOR.encode!(@create_signature, %{identity: identity, state: auth_hash})
   end
 
   def verify_signature(identity, proof, auth_hash) do
-    TypedCBOR.encode(@verify_signature, %{identity: identity, state: auth_hash, proof: proof})
+    TypedCBOR.encode!(@verify_signature, %{identity: identity, state: auth_hash, proof: proof})
   end
 
   def compare_identity_change_history(identity, known_identity) do
-    TypedCBOR.encode(@compare_identity_change_history, %{
+    TypedCBOR.encode!(@compare_identity_change_history, %{
       identity: identity,
       known_identity: known_identity
     })

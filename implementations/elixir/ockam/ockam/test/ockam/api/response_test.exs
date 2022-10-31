@@ -8,7 +8,7 @@ defmodule Ockam.API.Response.Tests do
   alias Ockam.Message
 
   test "Encode/decode" do
-    ## Only these 4 firelds are encoded
+    ## Only these 4 fields are encoded
     response = %Response{
       id: Response.gen_id(),
       request_id: Request.gen_id(),
@@ -16,7 +16,7 @@ defmodule Ockam.API.Response.Tests do
       body: "something"
     }
 
-    encoded = Response.encode(response)
+    encoded = Response.encode!(response)
     {:ok, decoded} = Response.decode(encoded)
     assert response == decoded
   end

@@ -263,7 +263,12 @@ defmodule Ockam.TypedCBOR do
   def encode!(schema, d),
     do: CBOR.encode(to_cbor_term(schema, d))
 
-  def encode(schema, d), do: wrap_exception(&encode!(schema, &1), d)
+  def encode(schema, d) do
+    case wrap_exception(&encode!(schema, &1), d) do
+      data when is_binary(data) -> {:ok, data}
+      {:error, _reason} = error -> error
+    end
+  end
 
   def decode!(schema, data) do
     with {:ok, map, rest} <- CBOR.decode(data) do

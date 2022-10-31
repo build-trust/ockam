@@ -25,7 +25,7 @@ defmodule Ockam.Services.API.Discovery do
   def handle_request(%Request{method: :get, path: ""}, state) do
     case list(state) do
       {infos, state} when is_list(infos) ->
-        {:reply, :ok, ServiceInfo.encode_list(infos), state}
+        {:reply, :ok, ServiceInfo.encode_list!(infos), state}
 
       {:error, _reason} = error ->
         error
@@ -35,7 +35,7 @@ defmodule Ockam.Services.API.Discovery do
   def handle_request(%Request{method: :get, path: id}, state) do
     case get(id, state) do
       {{:ok, info}, state} ->
-        {:reply, :ok, ServiceInfo.encode(info), state}
+        {:reply, :ok, ServiceInfo.encode!(info), state}
 
       {{:error, reason}, state} ->
         {:error, reason, state}
