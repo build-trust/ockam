@@ -14,16 +14,16 @@ source tools/scripts/release/crates-to-publish.sh
 declare -A bumped_crates
 
 # Get crates that were updated, this will be published.
-for crate in ${updated_crates[@]}; do
-  name=$(eval "tomlq package.name -f implementations/rust/ockam/$crate/Cargo.toml")
+for crate in "${updated_crates[@]}"; do
+  name=$(eval "tomlq package.name -f $crate/Cargo.toml")
   bumped_crates[$name]=true
 done
 
-crates_specified_to_be_excluded=($OCKAM_PUBLISH_EXCLUDE_CRATES)
+crates_specified_to_be_excluded=("$OCKAM_PUBLISH_EXCLUDE_CRATES")
 exclude_string=""
 
 # Get crates that are indicated to be excluded.
-for crate in ${crates_specified_to_be_excluded[@]}; do
+for crate in "${crates_specified_to_be_excluded[@]}"; do
   echo "Excluding $crate from publishing as specified in env"
   exclude_string="$exclude_string --exclude $crate"
   bumped_crates[$crate]=false
@@ -32,16 +32,16 @@ done
 declare -A crates_version
 
 # Every other crate that were not updated...
-for crate in $(ls "implementations/rust/ockam"); do
-  if [[ -f implementations/rust/ockam/$crate ]]; then
+for crate in implementations/rust/ockam/*; do
+  if [[ -f $crate ]]; then
     echo "$crate is a file, skipping."
     continue
   fi
 
   # There are some crates that differ from their folder name, e.g. ockam_ffi
   # so we need the crate name source of truth from Cargo.toml.
-  name=$(eval "tomlq package.name -f implementations/rust/ockam/$crate/Cargo.toml")
-  version=$(eval "tomlq package.version -f implementations/rust/ockam/$crate/Cargo.toml")
+  name=$(eval "tomlq package.name -f $crate/Cargo.toml")
+  version=$(eval "tomlq package.version -f $crate/Cargo.toml")
   crates_version[$name]="$version"
 
   # Add crates that have not been updated and not recently excluded to excluded crate.
@@ -70,4 +70,4 @@ if [[ $OCKAM_PUBLISH_RECENT_FAILURE == true ]]; then
   done
 fi
 
-echo y | cargo release release --config tools/scripts/release/release.toml --no-tag --no-verify --no-dev-version $exclude_string --token $OCKAM_PUBLISH_TOKEN --execute
+echo y | cargo release release --config tools/scripts/release/release.toml --no-tag --no-verify --no-dev-version "$exclude_string" --token "$OCKAM_PUBLISH_TOKEN" --execute

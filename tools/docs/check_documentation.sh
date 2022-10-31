@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-if [ -z $OCKAM_HOME ]; then
+if [ -z "$OCKAM_HOME" ]; then
   echo "Please set OCKAM_HOME to the repo root"
-  exit -1
+  exit 1
 fi
 
 # Getting Started Guide
@@ -36,11 +36,11 @@ export E2EAALC_EXAMPLES="$OCKAM_HOME/examples/rust/tcp_inlet_and_outlet/examples
 export TOOLS_DIR="$OCKAM_HOME/tools/docs"
 
 # Install example_blocks binary, if needed
-if [ -z $(which example_blocks) ]; then
+if [ -z "$(which example_blocks)" ]; then
   echo "Building example_blocks utility"
-  pushd "$TOOLS_DIR/example_blocks" &>/dev/null
+  pushd "$TOOLS_DIR/example_blocks" &>/dev/null || exit
   cargo -q install --path .
-  popd &>/dev/null
+  popd &>/dev/null || exit
 fi
 
 ERR=0
@@ -48,8 +48,8 @@ ERR=0
 function check_directory {
   doc_dir=$1
   dir=$2
-  for page in $(find $doc_dir -name README.md); do
-    check_readme $page $dir
+  for page in $(find "$doc_dir" -name README.md); do
+    check_readme "$page" "$dir"
   done
 }
 
@@ -57,20 +57,19 @@ function check_readme {
   page=$1
   export EXAMPLES_DIR=$2
 
-  $TOOLS_DIR/verify_md.sh $page
-  if [[ $? -ne 0 ]]; then
+  if ! "$TOOLS_DIR"/verify_md.sh "$page"; then
     echo "$page has outdated examples differing from $EXAMPLES_DIR"
     ERR=1
   fi
 }
 
-check_directory $GUIDE_DOCS $GUIDE_EXAMPLES
-check_directory $KAFKA_DOCS $KAFKA_EXAMPLES
-check_directory $E2E_DOCS $E2E_EXAMPLES
-check_directory $INLET_DOCS $INLET_EXAMPLES
-check_directory $E2EAALC_DOCS $E2EAALC_EXAMPLES
+check_directory "$GUIDE_DOCS" "$GUIDE_EXAMPLES"
+check_directory "$KAFKA_DOCS" "$KAFKA_EXAMPLES"
+check_directory "$E2E_DOCS" "$E2E_EXAMPLES"
+check_directory "$INLET_DOCS" "$INLET_EXAMPLES"
+check_directory "$E2EAALC_DOCS" "$E2EAALC_EXAMPLES"
 
-check_readme $HELLO_DOC $HELLO_EXAMPLE
+check_readme "$HELLO_DOC" "$HELLO_EXAMPLE"
 
 if [[ $ERR -eq 0 ]]; then
   echo "All okay"

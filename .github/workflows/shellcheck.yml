@@ -6,7 +6,19 @@ name: Shellcheck
 permissions:
   contents: read
 
-on: [workflow_dispatch, pull_request, push]
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: SHA to test workflow
+  pull_request:
+    paths:
+      - "**.sh"
+  push:
+    paths:
+      - "**.sh"
+  schedule:
+    - cron: "0 1 * * *"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,5 +31,7 @@ jobs:
     steps:
       - name: Check out ockam repository
         uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
       - name: Run ShellCheck on all '.sh' files
-        run: shellcheck $(find . -iname "*.sh")
+        run: shellcheck -S error $(find . -iname "*.sh")

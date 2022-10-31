@@ -143,8 +143,8 @@ jobs:
             [CHANGELOG](https://github.com/build-trust/ockam/blob/ockam_v$ockam_version/implementations/rust/ockam/$name/CHANGELOG.md))"
 
           for crate in ${updated_crates[@]}; do
-            version=$(eval "tomlq package.version -f implementations/rust/ockam/$crate/Cargo.toml")
-            name=$(eval "tomlq package.name -f implementations/rust/ockam/$crate/Cargo.toml")
+            version=$(eval "tomlq package.version -f $crate/Cargo.toml")
+            name=$(eval "tomlq package.name -f $crate/Cargo.toml")
 
             if [[ $name == "ockam" ]]; then
               echo "Skipping ockam crate"

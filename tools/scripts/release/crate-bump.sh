@@ -17,14 +17,13 @@ fi
 
 if [[ -z $OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION ]]; then
   echo "Version of bumped transitive dependencies set to minor"
-  BUMPED_DEP_CRATES_VERSION="minor"
+  OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION="minor"
 fi
 
 declare -A specified_crate_version
+IFS=" " read -r -a crate_array <<<"$OCKAM_BUMP_MODIFIED_RELEASE"
 
-crate_array=($OCKAM_BUMP_MODIFIED_RELEASE)
-
-for word in ${crate_array[@]}; do
+for word in "${crate_array[@]}"; do
   key="${word%%:*}"
   value="${word##*:}"
   specified_crate_version[$key]=$value
@@ -62,9 +61,9 @@ bumping_transitive_deps=false
 # on the second iteration, (crateC and crateB) version is then bumped, on the third iteration
 # we do not bump crateC version even though its dep has been modified as it's version has already
 # been bumped for a release.
-while [[ $updated_crates != $recently_updated_crates ]]; do
-  for crate in ${updated_crates[@]}; do
-    if [[ ! -z "${bumped_crates[$crate]}" ]]; then
+while [[ "$updated_crates" != "$recently_updated_crates" ]]; do
+  for crate in "${updated_crates[@]}"; do
+    if [[ -n "${bumped_crates[$crate]}" ]]; then
       echo "===> $crate has been bumped recently ignoring"
       continue
     fi
@@ -75,10 +74,10 @@ while [[ $updated_crates != $recently_updated_crates ]]; do
       echo "Bumping transitive dependent crate $crate version to $version"
     fi
 
-    name=$(eval "tomlq package.name -f implementations/rust/ockam/$crate/Cargo.toml")
+    name=$(eval "tomlq package.name -f $crate/Cargo.toml")
 
     # Check if crate version was specified manually
-    if [[ ! -z "${specified_crate_version[$crate]}" ]]; then
+    if [[ -n "${specified_crate_version[$crate]}" ]]; then
       echo "Bumping $crate version specified manually as ${specified_crate_version[$crate]}"
       version="${specified_crate_version[$crate]}"
     fi
@@ -86,14 +85,14 @@ while [[ $updated_crates != $recently_updated_crates ]]; do
     bumped_crates[$crate]=true
 
     echo "Bumping $crate crate"
-    echo y | cargo release $version --config tools/scripts/release/release.toml --no-push --no-publish --no-tag --no-dev-version --package $name --execute
+    echo y | cargo release "$version" --config tools/scripts/release/release.toml --no-push --no-publish --no-tag --no-dev-version --package "$name" --execute
   done
 
   recently_updated_crates=$updated_crates
   bumping_transitive_deps=true
 
   source tools/scripts/release/crates-to-publish.sh
-  echo "Recently bumped crates are $recently_updated_crates \n updated crates are $updated_crates"
+  printf "Recently bumped crates are %s \n updated crates are %s" "$recently_updated_crates" "$updated_crates"
 done
 
 echo "Bumped crates $recently_updated_crates"
