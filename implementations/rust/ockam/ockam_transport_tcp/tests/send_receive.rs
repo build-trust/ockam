@@ -3,6 +3,8 @@ use ockam_core::{route, Address, Result, Routed, Worker};
 use ockam_node::Context;
 
 use ockam_transport_tcp::{TcpTransport, TCP};
+use std::time::Duration;
+use tracing::info;
 
 #[ockam_macros::test]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
@@ -86,6 +88,54 @@ async fn tcp_lifecycle__reconnect__should_not_error(ctx: &mut Context) -> Result
 
     let reply = child_ctx.receive::<String>().await?;
     assert_eq!(reply, msg, "Should receive the same message");
+
+    if let Err(e) = ctx.stop().await {
+        println!("Unclean stop: {}", e)
+    }
+
+    Ok(())
+}
+
+#[ignore]
+#[ockam_macros::test(timeout = 400000)]
+async fn tcp_keepalive_test(ctx: &mut Context) -> Result<()> {
+    TcpTransport::create(ctx).await?;
+
+    let message: String = rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(256)
+        .map(char::from)
+        .collect();
+
+    // Send the message to the cloud node echoer
+    ctx.send(
+        route![(TCP, "1.node.ockam.network:4000"), "echo"],
+        message.to_string(),
+    )
+    .await?;
+
+    // Wait to receive an echo and print it.
+    let reply = ctx.receive::<String>().await?;
+    info!("Sender has received the following echo: {}\n", reply);
+
+    // Sleep the thread to allow the tcp socket to send keepalive probes
+    let sleep_duration = Duration::from_secs(350);
+    info!("Sleeping task now for {:?}", sleep_duration);
+    ctx.sleep(sleep_duration).await;
+
+    // Resend the message to the cloud node echoer to check if connection is still alive
+    ctx.send(
+        route![(TCP, "1.node.ockam.network:4000"), "echo"],
+        message.to_string(),
+    )
+    .await?;
+
+    // Wait to receive an echo and print it.
+    let reply = ctx.receive::<String>().await?;
+    info!(
+        "Sender has received the following echo after sleeping for {:?}: {}\n",
+        sleep_duration, reply
+    );
 
     if let Err(e) = ctx.stop().await {
         println!("Unclean stop: {}", e)
