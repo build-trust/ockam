@@ -25,7 +25,7 @@ defmodule Ockam.API.Response do
     end
   end
 
-  def encode(response) when is_map(response) do
+  def encode!(response) when is_map(response) do
     body = response.body
 
     has_body =
@@ -36,7 +36,7 @@ defmodule Ockam.API.Response do
       end
 
     base =
-      Header.encode(%Header{
+      Header.encode!(%Header{
         id: response.id,
         request_id: response.request_id,
         status: response.status,
@@ -113,7 +113,7 @@ defmodule Ockam.API.Response do
 
   def to_message(%__MODULE__{to_route: to_route} = response, return_route) do
     %Ockam.Message{
-      payload: encode(response),
+      payload: encode!(response),
       onward_route: to_route,
       return_route: return_route
     }

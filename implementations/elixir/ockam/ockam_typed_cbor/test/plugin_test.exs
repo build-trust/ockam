@@ -32,10 +32,12 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
 
   test "encode-decode" do
     p = %Test.Person{name: "Test", age: 23, gender: :male, addresses: [], like_shoes: false}
-    {:ok, ^p, ""} = Test.Person.decode(Test.Person.encode(p))
+    {:ok, data} = Test.Person.encode(p)
+    {:ok, ^p, ""} = Test.Person.decode(data)
 
     p = %Test.Person{p | age: nil}
-    {:ok, ^p, ""} = Test.Person.decode(Test.Person.encode(p))
+    {:ok, data} = Test.Person.encode(p)
+    {:ok, ^p, ""} = Test.Person.decode(data)
 
     p = %Test.Person{
       p
@@ -45,12 +47,15 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
         ]
     }
 
-    {:ok, ^p, ""} = Test.Person.decode(Test.Person.encode(p))
+    {:ok, data} = Test.Person.encode(p)
+    {:ok, ^p, ""} = Test.Person.decode(data)
 
     p = %Test.Person{p | nicknames: ["aa", "bb"]}
-    {:ok, ^p, ""} = Test.Person.decode(Test.Person.encode(p))
+    {:ok, data} = Test.Person.encode(p)
+    {:ok, ^p, ""} = Test.Person.decode(data)
 
-    {:ok, [^p, ^p], ""} = Test.Person.decode_list(Test.Person.encode_list([p, p]))
+    {:ok, data} = Test.Person.encode_list([p, p])
+    {:ok, [^p, ^p], ""} = Test.Person.decode_list(data)
   end
 
   test "encode errors" do

@@ -8,7 +8,7 @@ defmodule Ockam.API.Request.Tests do
   test "Encode/decode" do
     ## Only these 4 firelds are encoded
     request = %Request{id: Request.gen_id(), path: "my_path", method: :get, body: "something"}
-    encoded = Request.encode(request)
+    encoded = Request.encode!(request)
     {:ok, decoded} = Request.decode(encoded)
     assert request == decoded
   end
