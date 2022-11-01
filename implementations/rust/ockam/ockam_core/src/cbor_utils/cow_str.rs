@@ -46,6 +46,12 @@ impl<'a> From<&'a str> for CowStr<'a> {
     }
 }
 
+impl<'a> From<&'a String> for CowStr<'a> {
+    fn from(s: &'a String) -> Self {
+        CowStr(Cow::Borrowed(s.as_str()))
+    }
+}
+
 impl From<String> for CowStr<'_> {
     fn from(s: String) -> Self {
         CowStr(Cow::Owned(s))

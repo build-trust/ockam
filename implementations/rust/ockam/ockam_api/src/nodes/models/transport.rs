@@ -1,5 +1,5 @@
 use minicbor::{Decode, Encode};
-use ockam_core::compat::borrow::Cow;
+use ockam_core::CowStr;
 use std::fmt::{self, Display};
 
 #[cfg(feature = "tag")]
@@ -13,18 +13,17 @@ use ockam_core::TypeTag;
 #[cbor(map)]
 pub struct CreateTransport<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    tag: TypeTag<1503320>,
+    #[n(0)] tag: TypeTag<1503320>,
     /// The type of transport to create
     #[n(1)] pub tt: TransportType,
     /// The mode the transport should operate in
     #[n(2)] pub tm: TransportMode,
     /// The address payload for the transport
-    #[n(3)] pub addr: Cow<'a, str>,
+    #[b(3)] pub addr: CowStr<'a>,
 }
 
 impl<'a> CreateTransport<'a> {
-    pub fn new<S: Into<Cow<'a, str>>>(tt: TransportType, tm: TransportMode, addr: S) -> Self {
+    pub fn new<S: Into<CowStr<'a>>>(tt: TransportType, tm: TransportMode, addr: S) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -41,16 +40,15 @@ impl<'a> CreateTransport<'a> {
 #[cbor(map)]
 pub struct DeleteTransport<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)]
-    tag: TypeTag<4739996>,
+    #[n(0)] tag: TypeTag<4739996>,
     /// The transport ID to delete
-    #[n(1)] pub tid: Cow<'a, str>,
+    #[b(1)] pub tid: CowStr<'a>,
     /// The user has indicated that deleting the API transport is A-OK
     #[n(2)] pub force: bool,
 }
 
 impl<'a> DeleteTransport<'a> {
-    pub fn new<S: Into<Cow<'a, str>>>(tid: S, force: bool) -> Self {
+    pub fn new<S: Into<CowStr<'a>>>(tid: S, force: bool) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -118,16 +116,16 @@ pub struct TransportStatus<'a> {
     /// The mode the transport should operate in
     #[n(3)] pub tm: TransportMode,
     /// The status payload
-    #[n(4)] pub payload: Cow<'a, str>,
+    #[b(4)] pub payload: CowStr<'a>,
     /// Transport ID inside the node manager
     ///
     /// We use this as a kind of URI to be able to address a transport
     /// by a unique value for specific updates and deletion events.
-    #[n(5)] pub tid: Cow<'a, str>,
+    #[b(5)] pub tid: CowStr<'a>,
 }
 
 impl<'a> TransportStatus<'a> {
-    pub fn new<S: Into<Cow<'a, str>>>(
+    pub fn new<S: Into<CowStr<'a>>>(
         tt: TransportType,
         tm: TransportMode,
         payload: S,
@@ -151,7 +149,7 @@ impl<'a> TransportStatus<'a> {
 pub struct TransportList<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<5212817>,
-    #[n(1)] pub list: Vec<TransportStatus<'a>>
+    #[b(1)] pub list: Vec<TransportStatus<'a>>
 }
 
 impl<'a> TransportList<'a> {

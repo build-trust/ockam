@@ -84,7 +84,7 @@ impl NodeManagerWorker {
         let body: DeleteTransport = dec.decode()?;
         info!("Handling request to delete transport: {}", body.tid);
 
-        let tid: Alias = body.tid.into();
+        let tid: Alias = body.tid.to_string();
 
         if node_manager.api_transport_id == tid && !body.force {
             warn!("User requested to delete the API transport without providing force OP flag...");

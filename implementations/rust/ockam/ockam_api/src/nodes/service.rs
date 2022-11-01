@@ -525,7 +525,7 @@ impl NodeManagerWorker {
                 let node_manager = self.node_manager.read().await;
                 Response::ok(req.id())
                     .body(NodeStatus::new(
-                        node_manager.node_name.as_str(),
+                        &node_manager.node_name,
                         "Running",
                         ctx.list_workers().await?.len() as u32,
                         std::process::id() as i32,
