@@ -19,7 +19,7 @@ pub struct CreateInlet<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<1407961>,
     /// The address the portal should listen at.
-    #[b(1)] listen_addr: SocketAddr,
+    #[n(1)] listen_addr: SocketAddr,
     /// The peer address.
     /// This can either be the address of an already
     /// created outlet, or a forwarding mechanism via ockam cloud.

@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use minicbor::{bytes::ByteSlice, Decode, Encode};
-use ockam_core::compat::borrow::Cow;
+use minicbor::{Decode, Encode};
+use ockam_core::{CowBytes, CowStr};
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
@@ -13,11 +13,11 @@ use ockam_core::TypeTag;
 pub struct StartVaultServiceRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<9798850>,
-    #[b(1)] pub addr: Cow<'a, str>,
+    #[b(1)] pub addr: CowStr<'a>,
 }
 
 impl<'a> StartVaultServiceRequest<'a> {
-    pub fn new(addr: impl Into<Cow<'a, str>>) -> Self {
+    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -33,11 +33,11 @@ impl<'a> StartVaultServiceRequest<'a> {
 pub struct StartIdentityServiceRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6129106>,
-    #[b(1)] pub addr: Cow<'a, str>,
+    #[b(1)] pub addr: CowStr<'a>,
 }
 
 impl<'a> StartIdentityServiceRequest<'a> {
-    pub fn new(addr: impl Into<Cow<'a, str>>) -> Self {
+    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -53,11 +53,11 @@ impl<'a> StartIdentityServiceRequest<'a> {
 pub struct StartAuthenticatedServiceRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<5179596>,
-    #[b(1)] pub addr: Cow<'a, str>,
+    #[b(1)] pub addr: CowStr<'a>,
 }
 
 impl<'a> StartAuthenticatedServiceRequest<'a> {
-    pub fn new(addr: impl Into<Cow<'a, str>>) -> Self {
+    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -73,11 +73,11 @@ impl<'a> StartAuthenticatedServiceRequest<'a> {
 pub struct StartUppercaseServiceRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8177400>,
-    #[b(1)] pub addr: Cow<'a, str>,
+    #[b(1)] pub addr: CowStr<'a>,
 }
 
 impl<'a> StartUppercaseServiceRequest<'a> {
-    pub fn new(addr: impl Into<Cow<'a, str>>) -> Self {
+    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -93,11 +93,11 @@ impl<'a> StartUppercaseServiceRequest<'a> {
 pub struct StartEchoerServiceRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<7636656>,
-    #[b(1)] pub addr: Cow<'a, str>,
+    #[b(1)] pub addr: CowStr<'a>,
 }
 
 impl<'a> StartEchoerServiceRequest<'a> {
-    pub fn new(addr: impl Into<Cow<'a, str>>) -> Self {
+    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -112,32 +112,32 @@ impl<'a> StartEchoerServiceRequest<'a> {
 pub struct StartAuthenticatorRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<2749734>,
-    #[b(1)] addr: &'a str,
+    #[b(1)] addr: CowStr<'a>,
     #[b(2)] path: &'a Path,
-    #[b(3)] proj: &'a ByteSlice
+    #[b(3)] proj: CowBytes<'a>
 }
 
 impl<'a> StartAuthenticatorRequest<'a> {
-    pub fn new(addr: &'a str, path: &'a Path, proj: &'a [u8]) -> Self {
+    pub fn new(addr: impl Into<CowStr<'a>>, path: &'a Path, proj: impl Into<CowBytes<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr,
+            addr: addr.into(),
             path,
             proj: proj.into(),
         }
     }
 
-    pub fn address(&self) -> &'a str {
-        self.addr
+    pub fn address(&'a self) -> &'a str {
+        &self.addr
     }
 
     pub fn path(&self) -> &'a Path {
         self.path
     }
 
-    pub fn project(&self) -> &'a [u8] {
-        self.proj
+    pub fn project(&'a self) -> &'a [u8] {
+        &self.proj
     }
 }
 
@@ -147,20 +147,20 @@ impl<'a> StartAuthenticatorRequest<'a> {
 pub struct StartVerifierService<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<9580740>,
-    #[b(1)] addr: &'a str,
+    #[b(1)] addr: CowStr<'a>,
 }
 
 impl<'a> StartVerifierService<'a> {
-    pub fn new(addr: &'a str) -> Self {
+    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr,
+            addr: addr.into(),
         }
     }
 
-    pub fn address(&self) -> &'a str {
-        self.addr
+    pub fn address(&'a self) -> &'a str {
+        &self.addr
     }
 }
 
@@ -170,22 +170,22 @@ impl<'a> StartVerifierService<'a> {
 pub struct StartCredentialsService<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6467937>,
-    #[b(1)] addr: &'a str,
+    #[b(1)] addr: CowStr<'a>,
     #[n(2)] oneway: bool,
 }
 
 impl<'a> StartCredentialsService<'a> {
-    pub fn new(addr: &'a str, oneway: bool) -> Self {
+    pub fn new(addr: impl Into<CowStr<'a>>, oneway: bool) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr,
+            addr: addr.into(),
             oneway,
         }
     }
 
-    pub fn address(&self) -> &'a str {
-        self.addr
+    pub fn address(&'a self) -> &'a str {
+        &self.addr
     }
 
     pub fn oneway(&self) -> bool {
@@ -200,45 +200,45 @@ impl<'a> StartCredentialsService<'a> {
 pub struct StartOktaIdentityProviderRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<2291842>,
-    #[b(1)] addr: &'a str,
-    #[b(2)] tenant_base_url: &'a str,
-    #[b(3)] certificate: &'a str,
+    #[b(1)] addr: CowStr<'a>,
+    #[b(2)] tenant_base_url: CowStr<'a>,
+    #[b(3)] certificate: CowStr<'a>,
     #[b(4)] attributes: Vec<&'a str>,
-    #[b(5)] proj: &'a ByteSlice
+    #[b(5)] proj: CowBytes<'a>
 }
 
 impl<'a> StartOktaIdentityProviderRequest<'a> {
     pub fn new(
-        addr: &'a str,
-        tenant_base_url: &'a str,
-        certificate: &'a str,
+        addr: impl Into<CowStr<'a>>,
+        tenant_base_url: impl Into<CowStr<'a>>,
+        certificate: impl Into<CowStr<'a>>,
         attributes: Vec<&'a str>,
-        proj: &'a [u8],
+        proj: impl Into<CowBytes<'a>>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            addr,
-            tenant_base_url,
-            certificate,
+            addr: addr.into(),
+            tenant_base_url: tenant_base_url.into(),
+            certificate: certificate.into(),
             attributes,
             proj: proj.into(),
         }
     }
 
-    pub fn address(&self) -> &'a str {
-        self.addr
+    pub fn address(&'a self) -> &'a str {
+        &self.addr
     }
-    pub fn tenant_base_url(&self) -> &'a str {
-        self.tenant_base_url
+    pub fn tenant_base_url(&'a self) -> &'a str {
+        &self.tenant_base_url
     }
-    pub fn certificate(&self) -> &'a str {
-        self.certificate
+    pub fn certificate(&'a self) -> &'a str {
+        &self.certificate
     }
-    pub fn project(&self) -> &'a [u8] {
-        self.proj
+    pub fn project(&'a self) -> &'a [u8] {
+        &self.proj
     }
-    pub fn attributes(&self) -> &Vec<&'a str> {
+    pub fn attributes(&self) -> &[&str] {
         &self.attributes
     }
 }
@@ -249,12 +249,12 @@ impl<'a> StartOktaIdentityProviderRequest<'a> {
 pub struct ServiceStatus<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8542064>,
-    #[n(2)] pub addr: Cow<'a, str>,
-    #[n(3)] pub service_type: Cow<'a, str>,
+    #[b(2)] pub addr: CowStr<'a>,
+    #[b(3)] pub service_type: CowStr<'a>,
 }
 
 impl<'a> ServiceStatus<'a> {
-    pub fn new(addr: impl Into<Cow<'a, str>>, service_type: impl Into<Cow<'a, str>>) -> Self {
+    pub fn new(addr: impl Into<CowStr<'a>>, service_type: impl Into<CowStr<'a>>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -271,7 +271,7 @@ impl<'a> ServiceStatus<'a> {
 pub struct ServiceList<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<9587601>,
-    #[n(1)] pub list: Vec<ServiceStatus<'a>>
+    #[b(1)] pub list: Vec<ServiceStatus<'a>>
 }
 
 impl<'a> ServiceList<'a> {

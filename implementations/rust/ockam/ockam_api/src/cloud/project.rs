@@ -258,12 +258,14 @@ pub struct Enroller<'a> {
 }
 
 impl<'a> AddEnroller<'a> {
-    pub fn new<S: Into<CowStr<'a>>>(identity_id: S, description: Option<S>) -> Self {
+    pub fn new(
+        identity_id: impl Into<CowStr<'a>>,
+        description: Option<impl Into<CowStr<'a>>>,
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             identity_id: identity_id.into(),
-
             description: description.map(|s| s.into()),
         }
     }

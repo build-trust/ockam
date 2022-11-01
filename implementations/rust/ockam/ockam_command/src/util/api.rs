@@ -232,7 +232,7 @@ pub(crate) mod space {
     use super::*;
 
     pub(crate) fn create(cmd: &CreateCommand) -> RequestBuilder<CloudRequestWrapper<CreateSpace>> {
-        let b = CreateSpace::new(cmd.name.as_str(), &cmd.admins);
+        let b = CreateSpace::new(&cmd.name, &cmd.admins);
         Request::post("v0/spaces").body(CloudRequestWrapper::new(b, &cmd.cloud_opts.route()))
     }
 
@@ -297,10 +297,7 @@ pub(crate) mod project {
     pub(crate) fn add_enroller(
         cmd: &AddEnrollerCommand,
     ) -> RequestBuilder<CloudRequestWrapper<AddEnroller>> {
-        let b = AddEnroller::new(
-            cmd.enroller_identity_id.as_str(),
-            cmd.description.as_deref(),
-        );
+        let b = AddEnroller::new(&cmd.enroller_identity_id, cmd.description.as_deref());
         Request::post(format!("v0/project-enrollers/{}", cmd.project_id))
             .body(CloudRequestWrapper::new(b, &cmd.cloud_opts.route()))
     }
