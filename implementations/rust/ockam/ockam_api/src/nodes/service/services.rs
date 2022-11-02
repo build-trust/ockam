@@ -176,7 +176,7 @@ impl NodeManager {
         &mut self,
         ctx: &Context,
         addr: Address,
-        tenant: &str,
+        tenant_base_url: &str,
         certificate: &str,
         attributes: &[&str],
         proj: &[u8],
@@ -192,7 +192,8 @@ impl NodeManager {
             ));
         }
         let db = self.authenticated_storage.async_try_clone().await?;
-        let au = crate::okta::Server::new(proj.to_vec(), db, tenant, certificate, attributes)?;
+        let au =
+            crate::okta::Server::new(proj.to_vec(), db, tenant_base_url, certificate, attributes)?;
         ctx.start_worker(addr.clone(), au).await?;
         self.registry
             .okta_identity_provider_services
@@ -305,7 +306,7 @@ impl NodeManagerWorker {
             .start_okta_identity_provider_service_impl(
                 ctx,
                 addr,
-                body.tenant(),
+                body.tenant_base_url(),
                 body.certificate(),
                 body.attributes(),
                 body.project(),

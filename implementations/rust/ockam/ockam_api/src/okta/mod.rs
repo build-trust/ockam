@@ -16,7 +16,7 @@ const MEMBER: &str = "member";
 pub struct Server<S> {
     project: Vec<u8>,
     store: S,
-    tenant: String,
+    tenant_base_url: String,
     certificate: reqwest::Certificate,
     attributes: Vec<String>,
 }
@@ -49,7 +49,7 @@ where
     pub fn new(
         project: Vec<u8>,
         store: S,
-        tenant: &str,
+        tenant_base_url: &str,
         certificate: &str,
         attributes: &[&str],
     ) -> Result<Self> {
@@ -58,7 +58,7 @@ where
         Ok(Server {
             project,
             store,
-            tenant: tenant.to_string(),
+            tenant_base_url: tenant_base_url.to_string(),
             certificate,
             attributes: attributes.iter().map(|s| s.to_string()).collect(),
         })
@@ -111,10 +111,7 @@ where
             .build()
             .map_err(|err| ApiError::generic(&err.to_string()))?;
         let res = client
-            .get(format!(
-                "https://{}/oauth2/default/v1/userinfo",
-                &self.tenant
-            ))
+            .get(format!("{}/v1/userinfo", &self.tenant_base_url))
             .header("Authorization", format!("Bearer {}", token))
             .send()
             .await;

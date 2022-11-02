@@ -61,7 +61,7 @@ pub struct OktaIdentityProviderConfig {
     #[serde(default = "okta_identity_provider_default_addr")]
     pub(crate) address: String,
 
-    pub(crate) tenant: String,
+    pub(crate) tenant_base_url: String,
 
     pub(crate) certificate: String,
 
