@@ -1,11 +1,13 @@
 use core::str;
 use lmdb::{Cursor, Database, Environment, Transaction};
+use minicbor::{Decode, Encode};
 use ockam_abac::{Action, Expr, PolicyStorage, Resource};
 use ockam_core::async_trait;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_node::tokio::task::{self, JoinError};
+use std::borrow::Cow;
 use std::fmt;
 use std::path::Path;
 use std::sync::Arc;
@@ -97,6 +99,16 @@ impl AuthenticatedStorage for LmdbStorage {
     }
 }
 
+/// Policy storage entry.
+///
+/// Used instead of storing plain `Expr` values to allow for additional
+/// metadata, versioning, etc.
+#[derive(Debug, Encode, Decode)]
+#[rustfmt::skip]
+struct PolicyEntry<'a> {
+    #[b(0)] expr: Cow<'a, Expr>
+}
+
 #[async_trait]
 impl PolicyStorage for LmdbStorage {
     async fn get_policy(&self, r: &Resource, a: &Action) -> Result<Option<Expr>> {
@@ -106,8 +118,8 @@ impl PolicyStorage for LmdbStorage {
             let r = d.env.begin_ro_txn().map_err(map_lmdb_err)?;
             match r.get(d.map, &k) {
                 Ok(value) => {
-                    let e: Expr = minicbor::decode(value)?;
-                    Ok(Some(e))
+                    let e: PolicyEntry = minicbor::decode(value)?;
+                    Ok(Some(e.expr.into_owned()))
                 }
                 Err(lmdb::Error::NotFound) => Ok(None),
                 Err(e) => Err(map_lmdb_err(e)),
@@ -117,7 +129,9 @@ impl PolicyStorage for LmdbStorage {
     }
 
     async fn set_policy(&self, r: &Resource, a: &Action, c: &Expr) -> Result<()> {
-        let v = minicbor::to_vec(c)?;
+        let v = minicbor::to_vec(PolicyEntry {
+            expr: Cow::Borrowed(c),
+        })?;
         self.write(format!("{r}:{a}"), v).await
     }
 
@@ -139,8 +153,8 @@ impl PolicyStorage for LmdbStorage {
                     if prefix != r.as_str() {
                         break;
                     }
-                    let x = minicbor::decode(v)?;
-                    xs.push((Action::new(a), x))
+                    let x: PolicyEntry = minicbor::decode(v)?;
+                    xs.push((Action::new(a), x.expr.into_owned()))
                 } else {
                     log::warn!(key = %ks, "malformed key in policy database")
                 }
