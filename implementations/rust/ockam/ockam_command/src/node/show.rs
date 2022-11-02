@@ -231,3 +231,24 @@ async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> anyhow::Result
 
     Ok(false)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::test_utils::get_test_node;
+    use assert_cmd::prelude::*;
+    use std::process::Command;
+
+    #[test]
+    fn show() -> Result<(), Box<dyn std::error::Error>> {
+        let node = get_test_node();
+        let mut cmd = Command::cargo_bin("ockam")?;
+        cmd.args(&["node", "show", node.name()]);
+        cmd.assert().success();
+        let output = cmd.output()?;
+        let stdout = std::str::from_utf8(&output.stdout)?;
+        assert!(stdout.contains("/dnsaddr/localhost/tcp/"));
+        assert!(stdout.contains("/service/api"));
+        assert!(stdout.contains("/service/uppercase"));
+        Ok(())
+    }
+}

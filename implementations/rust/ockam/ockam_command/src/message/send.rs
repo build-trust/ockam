@@ -95,3 +95,70 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
 pub(crate) fn req<'a>(to: &'a MultiAddr, message: &'a str) -> RequestBuilder<'a, SendMessage<'a>> {
     Request::post("v0/message").body(SendMessage::new(to, message.as_bytes()))
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::test_utils::get_test_node;
+    use assert_cmd::prelude::*;
+    use std::process::Command;
+
+    #[test]
+    fn send_to_node() -> Result<(), Box<dyn std::error::Error>> {
+        let node = get_test_node();
+        let mut cmd = Command::cargo_bin("ockam")?;
+        cmd.args(&[
+            "message",
+            "send",
+            "--to",
+            &format!("/node/{}/service/uppercase", node.name()),
+            "hello",
+        ]);
+        cmd.assert().success();
+        let output = cmd.output()?;
+        let stdout = std::str::from_utf8(&output.stdout)?;
+        assert!(stdout.contains("HELLO"));
+        Ok(())
+    }
+
+    #[test]
+    fn send_between_nodes() -> Result<(), Box<dyn std::error::Error>> {
+        let node_1 = get_test_node();
+        let node_2 = get_test_node();
+        let mut cmd = Command::cargo_bin("ockam")?;
+        cmd.args(&[
+            "message",
+            "send",
+            "--from",
+            &format!("{}", node_1.name()),
+            "--to",
+            &format!("/node/{}/service/uppercase", node_2.name()),
+            "hello",
+        ]);
+        cmd.assert().success();
+        let output = cmd.output()?;
+        let stdout = std::str::from_utf8(&output.stdout)?;
+        assert!(stdout.contains("HELLO"));
+        Ok(())
+    }
+
+    #[test]
+    fn send_between_nodes_with_node_multiaddr() -> Result<(), Box<dyn std::error::Error>> {
+        let node_1 = get_test_node();
+        let node_2 = get_test_node();
+        let mut cmd = Command::cargo_bin("ockam")?;
+        cmd.args(&[
+            "message",
+            "send",
+            "--from",
+            &format!("/node/{}", node_1.name()),
+            "--to",
+            &format!("/node/{}/service/uppercase", node_2.name()),
+            "hello",
+        ]);
+        cmd.assert().success();
+        let output = cmd.output()?;
+        let stdout = std::str::from_utf8(&output.stdout)?;
+        assert!(stdout.contains("HELLO"));
+        Ok(())
+    }
+}

@@ -22,6 +22,8 @@ mod space;
 mod subscription;
 mod tcp;
 mod terminal;
+#[cfg(test)]
+pub(crate) mod test_utils;
 mod upgrade;
 mod util;
 mod vault;

@@ -1,4 +1,3 @@
-use crate::node::util::delete_embedded_node;
 use crate::node::NodeOpts;
 use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, Rpc};
@@ -39,7 +38,6 @@ async fn run_impl(
         rpc.request(req).await?;
         rpc.parse_and_print_response::<ShortIdentityResponse>()?;
     }
-    delete_embedded_node(&opts.config, &node_name).await;
     Ok(())
 }
 
@@ -57,5 +55,38 @@ impl Output for ShortIdentityResponse<'_> {
         let mut w = String::new();
         write!(w, "{}", self.identity_id)?;
         Ok(w)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::test_utils::get_test_node;
+    use assert_cmd::prelude::*;
+    use std::process::Command;
+
+    #[test]
+    fn show() -> Result<(), Box<dyn std::error::Error>> {
+        let node = get_test_node();
+        let mut cmd = Command::cargo_bin("ockam")?;
+        cmd.args(&["identity", "show", "-n", node.name()]);
+        cmd.assert().success();
+        let output = cmd.output()?;
+        let stdout = std::str::from_utf8(&output.stdout)?;
+        assert!(stdout.starts_with("P"));
+        Ok(())
+    }
+
+    #[test]
+    fn show_full() -> Result<(), Box<dyn std::error::Error>> {
+        let node = get_test_node();
+        let mut cmd = Command::cargo_bin("ockam")?;
+        cmd.args(&["identity", "show", "--full", "-n", node.name()]);
+        cmd.assert().success();
+        let output = cmd.output()?;
+        let stdout = std::str::from_utf8(&output.stdout)?;
+        assert!(stdout.contains("Change History"));
+        assert!(stdout.contains("identifier"));
+        assert!(stdout.contains("signatures"));
+        Ok(())
     }
 }

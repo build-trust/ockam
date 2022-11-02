@@ -2391,6 +2391,7 @@ dependencies = [
  "dirs",
  "hex",
  "itertools",
+ "lazy_static",
  "minicbor",
  "nix",
  "ockam",

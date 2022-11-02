@@ -75,65 +75,6 @@ teardown() {
   assert_success
 }
 
-@test "create a node and show its identity" {
-  run $OCKAM node create n1
-  assert_success
-
-  run $OCKAM identity show --node n1
-  assert_success
-  assert_output --regexp '^P'
-}
-
-@test "create a node and show identity change history" {
-  run $OCKAM node create n1
-  assert_success
-
-  run $OCKAM identity show --full --node n1
-  assert_success
-  assert_output --partial "Change History"
-  assert_output --partial "identifier"
-  assert_output --partial "signatures"
-}
-
-@test "create a node with a name and do show on it" {
-  run $OCKAM node create n1
-  assert_success
-
-  run $OCKAM node show n1
-  assert_success
-  assert_output --partial "/dnsaddr/localhost/tcp/"
-  assert_output --partial "/service/api"
-  assert_output --partial "/service/uppercase"
-}
-
-@test "create a node with a name and send it a message" {
-  $OCKAM node create n1
-  run --separate-stderr $OCKAM message send "hello" --to /node/n1/service/uppercase
-
-  assert_success
-  assert_output "HELLO"
-}
-
-@test "create two nodes and send message from one to the other" {
-  $OCKAM node create n1
-  $OCKAM node create n2
-
-  run --separate-stderr $OCKAM message send "hello" --from n1 --to /node/n2/service/uppercase
-
-  assert_success
-  assert_output "HELLO"
-}
-
-@test "create two nodes and send message from one to the other - with /node in --from argument" {
-  $OCKAM node create n1
-  $OCKAM node create n2
-
-  run --separate-stderr $OCKAM message send "hello" --from /node/n1 --to /node/n2/service/uppercase
-
-  assert_success
-  assert_output "HELLO"
-}
-
 @test "create node with a startup command, stop it and restart it" {
   echo '{"on_node_startup": ["secure-channel create --from /node/n1 --to /node/n2/service/api"]}' > "$BATS_TMPDIR/configuration.json"
   $OCKAM node create n2
