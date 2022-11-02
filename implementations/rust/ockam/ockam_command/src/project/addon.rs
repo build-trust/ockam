@@ -80,11 +80,11 @@ pub enum ConfigureAddonCommand {
         /// Plugin tenant URL
         #[arg(
             long,
-            id = "tenant",
+            id = "tenant_base_url",
             value_name = "TENANT",
             value_parser(NonEmptyStringValueParser::new())
         )]
-        tenant: String,
+        tenant_base_url: String,
 
         /// Certificate. Use either this or --cert-path
         #[arg(
@@ -158,7 +158,7 @@ async fn run_impl(
         AddonSubcommand::Configure(cmd) => match cmd {
             ConfigureAddonCommand::Okta {
                 project_name,
-                tenant,
+                tenant_base_url,
                 certificate,
                 certificate_path,
                 client_id,
@@ -170,7 +170,8 @@ async fn run_impl(
                     _ => unreachable!(),
                 };
 
-                let okta_config = OktaConfig::new(tenant, certificate, client_id, &attributes);
+                let okta_config =
+                    OktaConfig::new(tenant_base_url, certificate, client_id, &attributes);
                 let body = okta_config.clone();
 
                 // Validate okta configuration

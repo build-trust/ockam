@@ -133,7 +133,7 @@ pub struct OktaConfig<'a> {
     #[cbor(n(0))] pub tag: TypeTag<6434814>,
 
     #[serde(borrow)]
-    #[cbor(b(1))] pub tenant: CowStr<'a>,
+    #[cbor(b(1))] pub tenant_base_url: CowStr<'a>,
 
     #[serde(borrow)]
     #[cbor(b(2))] pub certificate: CowStr<'a>,
@@ -147,7 +147,7 @@ pub struct OktaConfig<'a> {
 
 impl<'a> OktaConfig<'a> {
     pub fn new<S: Into<CowStr<'a>>, T: AsRef<str>>(
-        tenant: S,
+        tenant_base_url: S,
         certificate: S,
         client_id: S,
         attributes: &'a [T],
@@ -155,7 +155,7 @@ impl<'a> OktaConfig<'a> {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            tenant: tenant.into(),
+            tenant_base_url: tenant_base_url.into(),
             certificate: certificate.into(),
             client_id: client_id.into(),
             attributes: attributes
@@ -176,7 +176,7 @@ impl OktaConfig<'_> {
         OktaConfig {
             #[cfg(feature = "tag")]
             tag: self.tag.to_owned(),
-            tenant: self.tenant.to_owned(),
+            tenant_base_url: self.tenant_base_url.to_owned(),
             certificate: self.certificate.to_owned(),
             client_id: self.client_id.to_owned(),
             attributes: self.attributes.iter().map(|x| x.to_owned()).collect(),
@@ -186,7 +186,7 @@ impl OktaConfig<'_> {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OktaAuth0 {
-    pub tenant: String,
+    pub tenant_base_url: String,
     pub client_id: String,
     pub certificate: String,
 }
@@ -194,7 +194,7 @@ pub struct OktaAuth0 {
 impl From<OktaConfig<'_>> for OktaAuth0 {
     fn from(c: OktaConfig) -> Self {
         Self {
-            tenant: c.tenant.to_string(),
+            tenant_base_url: c.tenant_base_url.to_string(),
             client_id: c.client_id.to_string(),
             certificate: c.certificate.to_string(),
         }

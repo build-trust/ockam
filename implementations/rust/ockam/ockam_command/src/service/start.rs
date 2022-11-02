@@ -239,7 +239,7 @@ pub async fn start_okta_identity_provider(
 ) -> Result<()> {
     let payload = StartOktaIdentityProviderRequest::new(
         &cfg.address,
-        &cfg.tenant,
+        &cfg.tenant_base_url,
         &cfg.certificate,
         cfg.attributes.iter().map(|s| s as &str).collect(),
         cfg.project.as_bytes(),
