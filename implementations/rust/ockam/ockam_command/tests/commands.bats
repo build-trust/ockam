@@ -234,15 +234,15 @@ teardown() {
   assert_failure
 
   # Check we can start service, but only once with the same name
-  run $OCKAM service start verifier --addr my_verifier --node n1
+  run $OCKAM service start verifier my_verifier --node n1
   assert_success
-  run $OCKAM service start verifier --addr my_verifier --node n1
+  run $OCKAM service start verifier my_verifier --node n1
   assert_failure
 
   # Check we can start service, but only once with the same name
-  run $OCKAM service start credentials --addr my_credentials --node n1
+  run $OCKAM service start credentials my_credentials --node n1
   assert_success
-  run $OCKAM service start credentials --addr my_credentials --node n1
+  run $OCKAM service start credentials my_credentials --node n1
   assert_failure
 
   # TODO: add test for authenticator

@@ -100,5 +100,8 @@ ockam_identity = { path = "../ockam_identity", version = "^0.65.0" }
 
 [dev-dependencies]
 assert_cmd = "2"
-lazy_static = "1"
+duct = "0.13"
+once_cell = "1"
+predicates = "2"
+shellwords = "1"
 tempfile = "3"

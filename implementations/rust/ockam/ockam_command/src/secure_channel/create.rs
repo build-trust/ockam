@@ -60,18 +60,22 @@ impl CreateCommand {
         let config = &opts.config.lookup();
         let (to, meta) = clean_multiaddr(&self.to, config)
             .context(format!("Could not convert {} into route", &self.to))?;
-
-        let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
-            ctx,
-            opts,
-            &meta,
-            cloud_addr,
-            api_node,
-            Some(tcp),
-            CredentialExchangeMode::Oneway,
-        )
-        .await?;
-        crate::project::util::clean_projects_multiaddr(to, projects_sc)
+        if meta.project.is_empty() {
+            Ok(to)
+        } else {
+            let projects_sc =
+                crate::project::util::get_projects_secure_channels_from_config_lookup(
+                    ctx,
+                    opts,
+                    &meta,
+                    cloud_addr,
+                    api_node,
+                    Some(tcp),
+                    CredentialExchangeMode::Oneway,
+                )
+                .await?;
+            crate::project::util::clean_projects_multiaddr(to, projects_sc)
+        }
     }
 
     // Read the `from` argument and return node name
@@ -162,7 +166,6 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     let to = &cmd
         .parse_to_route(&ctx, &opts, &cmd.cloud_opts.route(), from, &tcp)
         .await?;
-
     let authorized_identifiers = cmd.authorized.clone();
 
     // Delegate the request to create a secure channel to the from node.
@@ -176,4 +179,63 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     cmd.print_output(from, to, &opts, response);
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::test_utils::{read_to_str, CmdBuilder, NodePool};
+    use anyhow::Result;
+    use assert_cmd::prelude::*;
+    use predicates::prelude::*;
+
+    #[test]
+    fn create_and_send_message_through_it() -> Result<()> {
+        let node_1 = NodePool::pull();
+        let node_2 = NodePool::pull();
+
+        // Create secure channel
+        let output = CmdBuilder::ockam(&format!(
+            "secure-channel create --from /node/{} --to /node/{}/service/api",
+            &node_1.name(),
+            &node_2.name()
+        ))?
+        .run()?;
+        let assert = output.assert().success();
+        let secure_channel = read_to_str(&assert.get_output().stdout);
+        assert!(secure_channel.contains("/service/"));
+
+        // Send message through secure channel
+        let output = CmdBuilder::ockam(&format!(
+            "message send --from /node/{} --to {}/service/uppercase hello",
+            &node_1.name(),
+            &secure_channel
+        ))?
+        .run()?;
+        output
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("HELLO"));
+        Ok(())
+    }
+
+    #[test]
+    fn create_and_send_message_through_it_piped() -> Result<()> {
+        let node_1 = NodePool::pull();
+        let node_2 = NodePool::pull();
+        let output = CmdBuilder::ockam(&format!(
+            "secure-channel create --from /node/{} --to /node/{}/service/api",
+            &node_1.name(),
+            &node_2.name()
+        ))?
+        .pipe(&format!(
+            "message send --from /node/{} --to -/service/uppercase hello",
+            &node_1.name()
+        ))?
+        .run()?;
+        output
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("HELLO"));
+        Ok(())
+    }
 }

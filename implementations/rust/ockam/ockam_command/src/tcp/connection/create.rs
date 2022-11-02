@@ -92,3 +92,30 @@ async fn run_impl(
 
     command.print_output(&node_name, &options, &response)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::test_utils::{CmdBuilder, NodePool};
+    use crate::util::find_available_port;
+    use anyhow::Result;
+    use assert_cmd::prelude::*;
+    use predicates::prelude::predicate;
+
+    #[test]
+    fn create() -> Result<()> {
+        let node = NodePool::pull();
+        let port = find_available_port().unwrap();
+        let output = CmdBuilder::ockam(&format!(
+            "tcp-connection create --from {} --to 127.0.0.1:{port} --output json",
+            &node.name()
+        ))?
+        .run()?;
+        output.assert().success().stdout(
+            predicate::str::is_match(&format!(
+                r"dnsaddr/localhost/tcp/\d+/ip4/127.0.0.1/tcp/{port}"
+            ))
+            .unwrap(),
+        );
+        Ok(())
+    }
+}

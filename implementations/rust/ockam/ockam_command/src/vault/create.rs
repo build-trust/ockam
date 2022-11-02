@@ -65,3 +65,22 @@ async fn run_impl(ctx: Context, (options, cmd): (CommandGlobalOpts, CreateComman
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::test_utils::CmdBuilder;
+    use anyhow::Result;
+    use assert_cmd::prelude::*;
+    use rand::random;
+
+    #[test]
+    fn create_named() -> Result<()> {
+        let cmd = CmdBuilder::ockam(&format!(
+            "vault create --name {}",
+            hex::encode(&random::<[u8; 4]>())
+        ))?;
+        cmd.clone().run()?.assert().success();
+        cmd.run()?.assert().failure(); // Will fail when trying to create a vault with the same name
+        Ok(())
+    }
+}

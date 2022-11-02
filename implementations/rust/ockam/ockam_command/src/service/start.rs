@@ -35,18 +35,18 @@ pub enum StartSubCommand {
         addr: String,
     },
     Verifier {
-        #[arg(long, default_value_t = verifier_default_addr())]
+        #[arg(default_value_t = verifier_default_addr())]
         addr: String,
     },
     Credentials {
-        #[arg(long, default_value_t = credentials_default_addr())]
+        #[arg(default_value_t = credentials_default_addr())]
         addr: String,
 
         #[arg(long)]
         oneway: bool,
     },
     Authenticator {
-        #[arg(long, default_value_t = authenticator_default_addr())]
+        #[arg(default_value_t = authenticator_default_addr())]
         addr: String,
 
         #[arg(long)]
@@ -255,4 +255,36 @@ pub async fn start_okta_identity_provider(
         tcp,
     )
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::test_utils::{CmdBuilder, NodePool};
+    use anyhow::Result;
+    use assert_cmd::prelude::*;
+
+    #[test]
+    fn start_services() -> Result<()> {
+        let node = NodePool::pull();
+        let services = [
+            "vault",
+            "identity",
+            "authenticated",
+            "verifier",
+            "credentials",
+            // "authenticator", TODO
+        ];
+        for service in services {
+            let cmd = CmdBuilder::ockam(&format!(
+                "service start {service} my_{service} --node {}",
+                &node.name()
+            ))?;
+            let output = cmd.clone().run()?;
+            output.assert().success();
+
+            let output = cmd.run()?;
+            output.assert().failure(); // Will fail when trying to create the service with the same name
+        }
+        Ok(())
+    }
 }

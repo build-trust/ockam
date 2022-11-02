@@ -60,33 +60,33 @@ impl Output for ShortIdentityResponse<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::get_test_node;
+    use crate::test_utils::{CmdBuilder, NodePool};
+    use anyhow::Result;
     use assert_cmd::prelude::*;
-    use std::process::Command;
+    use predicates::prelude::predicate;
 
     #[test]
-    fn show() -> Result<(), Box<dyn std::error::Error>> {
-        let node = get_test_node();
-        let mut cmd = Command::cargo_bin("ockam")?;
-        cmd.args(&["identity", "show", "-n", node.name()]);
-        cmd.assert().success();
-        let output = cmd.output()?;
-        let stdout = std::str::from_utf8(&output.stdout)?;
-        assert!(stdout.starts_with("P"));
+    fn show() -> Result<()> {
+        let node = NodePool::pull();
+        let output = CmdBuilder::ockam(&format!("identity show -n {}", &node.name()))?.run()?;
+        output
+            .assert()
+            .success()
+            .stdout(predicate::str::starts_with("P"));
         Ok(())
     }
 
     #[test]
-    fn show_full() -> Result<(), Box<dyn std::error::Error>> {
-        let node = get_test_node();
-        let mut cmd = Command::cargo_bin("ockam")?;
-        cmd.args(&["identity", "show", "--full", "-n", node.name()]);
-        cmd.assert().success();
-        let output = cmd.output()?;
-        let stdout = std::str::from_utf8(&output.stdout)?;
-        assert!(stdout.contains("Change History"));
-        assert!(stdout.contains("identifier"));
-        assert!(stdout.contains("signatures"));
+    fn show_full() -> Result<()> {
+        let node = NodePool::pull();
+        let output =
+            CmdBuilder::ockam(&format!("identity show --full -n {}", &node.name()))?.run()?;
+        output
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("Change History"))
+            .stdout(predicate::str::contains("identifier"))
+            .stdout(predicate::str::contains("signatures"));
         Ok(())
     }
 }

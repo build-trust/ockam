@@ -1,13 +1,13 @@
 use anyhow::{anyhow, Context as _};
 use clap::Args;
-use ockam::identity::IdentityIdentifier;
-use ockam_multiaddr::proto::Project;
 use rand::prelude::random;
 
+use ockam::identity::IdentityIdentifier;
 use ockam::{Context, TcpTransport};
 use ockam_api::is_local_node;
 use ockam_api::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use ockam_core::api::Request;
+use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::forwarder::HELP_DETAIL;
@@ -81,5 +81,49 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
 impl Output for ForwarderInfo<'_> {
     fn output(&self) -> anyhow::Result<String> {
         Ok(format!("/service/{}", self.remote_address()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::test_utils::{read_to_str, CmdBuilder, NodePool};
+    use anyhow::Result;
+    use assert_cmd::prelude::*;
+    use predicates::prelude::predicate;
+
+    #[test]
+    #[ignore]
+    fn create_and_send_message_through_it() -> Result<()> {
+        let node_1 = NodePool::pull();
+        let node_2 = NodePool::pull();
+        let forwarder_alias = hex::encode(&rand::random::<[u8; 4]>());
+        let output = CmdBuilder::ockam(&format!(
+            "forwarder create {} --at /node/{} --to /node/{}",
+            &forwarder_alias,
+            &node_1.name(),
+            &node_2.name(),
+        ))?
+        .run()?;
+        let assert = output.assert().success();
+        let forwarder = read_to_str(&assert.get_output().stdout);
+        assert_eq!(
+            forwarder,
+            &format!("/service/forward_to_{}", &forwarder_alias)
+        );
+
+        // Send message through forwarder
+        let node_3 = NodePool::pull();
+        let output = CmdBuilder::ockam(&format!(
+            "message send --from /node/{} --to /node/{}/service/forward_to_{}/service/uppercase hello",
+            &node_3.name(),
+            &node_1.name(),
+            &forwarder_alias
+        ))?
+            .run()?;
+        output
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("HELLO"));
+        Ok(())
     }
 }
