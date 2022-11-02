@@ -3,14 +3,14 @@ FROM gcc:11.2.0@sha256:0eaeaee298c154ecd383cabe5301a5df9fde0cd3a729124caf574500b
 ARG RUSTUP_INIT_VERSION=1.24.3
 ARG RUST_VERSION=1.64.0
 ARG ERLANG_VERSION=24.1.7-1~debian~buster
-ARG ELIXIR_VERSION=1.12.2-1~debian~buster
+ARG ELIXIR_VERSION=1.13.0-1~debian~buster
 ARG NODEJS_VERSION=16.13.1
 ARG COSIGN_VERSION=1.9.0
 ARG MOLD_VERSION=1.3.1
 ARG SHFMT_VERSION=3.5.1
 ARG COMMITLINT_VERSION=17.1.1
 
-ARG ELIXIR_SHA256=5e8251c5d2557373ecfab986fa481844a2f659597abbfb623f45ad3a1974bb1f
+ARG ELIXIR_SHA256=fb7a7f1ad171f87c2670e4759334daab18e4440a23f0d85802397b7e9d8b2b2f
 
 ENV RUSTUP_HOME=/opt/rust/rustup \
     CARGO_HOME=/usr/rust/cargo \
@@ -74,11 +74,11 @@ RUN set -xe; \
     tar -xf "${NODEJS_PACKAGE}" -C /opt/; \
     mv "/opt/node-v${NODEJS_VERSION}-${NODEJS_OS}" "${NODEJS_HOME}"; \
     rm -rf "${NODEJS_PACKAGE}"; \
-    PATH="${NODEJS_HOME}/bin:$PATH" \
+    PATH="${NODEJS_HOME}/bin:$PATH"; \
 # Setup Commitlint
 # set user to root in order to be able to install global dependencies
     npm --global config set user root && \
-    npm install --global @commitlint/cli@${COMMITLINT_VERSION} \
+    npm install --global @commitlint/cli@${COMMITLINT_VERSION}; \
 # Setup rust
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes \
