@@ -17,7 +17,7 @@ jobs:
     name: Shfmt - Lint
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:9598b7bc30bb23e9e64cd95cb96a30af9695e6a16ce1834e6c17c3c62bc81c2e
+      image: ghcr.io/build-trust/ockam-builder@sha256:55b60f7efe2c48c098bd52db2e9dbf0a1b6f6c7e583ff278987d2d11adea04e2
     steps:
       - name: Check out ockam repository
         uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
