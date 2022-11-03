@@ -31,11 +31,11 @@ pub struct EnrollCommand {
     #[arg(long, short)]
     member: IdentityIdentifier,
 
-    #[arg(long, short)]
+    #[arg(long, short, default_value = "/project/default/service/authenticator")]
     to: MultiAddr,
 
     /// Attributes in `key=value` format to be attached to the member
-    #[arg(long = "attr", value_name = "ATTRIBUTE")]
+    #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     attributes: Vec<String>,
 }
 
