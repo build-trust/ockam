@@ -26,8 +26,9 @@ pub struct CreateInlet<'a> {
     #[n(2)] outlet_addr: MultiAddr,
     /// A human-friendly alias for this portal endpoint
     #[b(3)] alias: Option<CowStr<'a>>,
-    /// Enable credentials authorization
-    #[n(4)] check_credential: bool,
+    /// Enable credentials authorization.
+    /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
+    #[n(4)] check_credential: Option<bool>,
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
@@ -35,7 +36,7 @@ pub struct CreateInlet<'a> {
 }
 
 impl<'a> CreateInlet<'a> {
-    pub fn via_project(listen: SocketAddr, to: MultiAddr, check_credential: bool) -> Self {
+    pub fn via_project(listen: SocketAddr, to: MultiAddr, check_credential: Option<bool>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -50,7 +51,7 @@ impl<'a> CreateInlet<'a> {
     pub fn to_node(
         listen: SocketAddr,
         to: MultiAddr,
-        check_credential: bool,
+        check_credential: Option<bool>,
         auth: Option<IdentityIdentifier>,
     ) -> Self {
         Self {
@@ -84,7 +85,7 @@ impl<'a> CreateInlet<'a> {
         self.alias.as_deref()
     }
 
-    pub fn is_check_credential(&self) -> bool {
+    pub fn check_credential(&self) -> Option<bool> {
         self.check_credential
     }
 }
@@ -102,8 +103,9 @@ pub struct CreateOutlet<'a> {
     #[b(2)] pub worker_addr: Cow<'a, str>,
     /// A human-friendly alias for this portal endpoint
     #[b(3)] pub alias: Option<CowStr<'a>>,
-    /// Enable credentials authorization
-    #[n(4)] pub check_credential: bool,
+    /// Enable credentials authorization.
+    /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
+    #[n(4)] pub check_credential: Option<bool>,
 }
 
 impl<'a> CreateOutlet<'a> {
@@ -111,7 +113,7 @@ impl<'a> CreateOutlet<'a> {
         tcp_addr: impl Into<Cow<'a, str>>,
         worker_addr: impl Into<Cow<'a, str>>,
         alias: impl Into<Option<CowStr<'a>>>,
-        check_credential: bool,
+        check_credential: Option<bool>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]

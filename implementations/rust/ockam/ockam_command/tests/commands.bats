@@ -429,14 +429,14 @@ teardown() {
   run $OCKAM project enroll --member $green_identifer --attribute role=member
   assert_success
 
-  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
+  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
   assert_success
   run  $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"
   assert_success
 
   run bash -c " $OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
-              | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet --check-credential"
+              | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet"
   assert_success
 
   # Green can't establish secure channel with blue, because it doesn't exchange credentials with it.
@@ -464,13 +464,13 @@ teardown() {
   run $OCKAM project enroll --member $green_identifer --attribute role=member
   assert_success
 
-  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
+  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
   assert_success
   run  $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"
   assert_success
 
-  run $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to /project/default/service/forward_to_blue/secure/api/service/outlet --check-credential
+  run $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to /project/default/service/forward_to_blue/secure/api/service/outlet
   assert_success
 
   # Green can't establish secure channel with blue, because it doesn't exchange credentials with it.
@@ -497,14 +497,14 @@ teardown() {
   run $OCKAM project enroll --member $green_identifer --attribute role=member
   assert_success
 
-  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
+  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
   assert_success
   run  $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"
   assert_success
 
   run bash -c " $OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
-              | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet --check-credential"
+              | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet"
   assert_success
 
   run curl --fail --head --max-time 10 127.0.0.1:7000
@@ -530,13 +530,13 @@ teardown() {
   run $OCKAM project enroll --member $green_identifer --attribute role=member
   assert_success
 
-  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
+  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
   assert_success
   run  $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"
   assert_success
 
-  run $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to /project/default/service/forward_to_blue/secure/api/service/outlet --check-credential
+  run $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to /project/default/service/forward_to_blue/secure/api/service/outlet
   assert_success
 
   run curl --fail --head --max-time 10 127.0.0.1:7000

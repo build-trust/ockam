@@ -50,9 +50,15 @@ pub struct CreateCommand {
     #[arg(long, display_order = 902, id = "SOCKET_ADDRESS")]
     to: SocketAddr,
 
-    /// Enable credentials authorization
-    #[arg(long, short, display_order = 802)]
+    /// Enable credentials authorization.
+    /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
+    #[arg(long, display_order = 900, conflicts_with = "disable_check_credential")]
     check_credential: bool,
+
+    /// Disable credentials authorization.
+    /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
+    #[arg(long, display_order = 900, conflicts_with = "check_credential")]
+    disable_check_credential: bool,
 
     /// Assign a name to this outlet.
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
@@ -62,6 +68,16 @@ pub struct CreateCommand {
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(run_impl, (options, self))
+    }
+
+    pub fn check_credential(&self) -> Option<bool> {
+        if self.check_credential {
+            Some(true)
+        } else if self.disable_check_credential {
+            Some(false)
+        } else {
+            None
+        }
     }
 }
 
@@ -90,9 +106,10 @@ pub async fn run_impl(
 /// Construct a request to create a tcp outlet
 fn make_api_request<'a>(cmd: CreateCommand) -> crate::Result<RequestBuilder<'a, CreateOutlet<'a>>> {
     let tcp_addr = cmd.to.to_string();
+    let check_credential = cmd.check_credential();
     let worker_addr = cmd.from;
     let alias = cmd.alias.map(|a| a.into());
-    let payload = CreateOutlet::new(tcp_addr, worker_addr, alias, cmd.check_credential);
+    let payload = CreateOutlet::new(tcp_addr, worker_addr, alias, check_credential);
     let request = Request::post("/node/outlet").body(payload);
     Ok(request)
 }
