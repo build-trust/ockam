@@ -424,9 +424,9 @@ teardown() {
   assert_success
   blue_identifer=$($OCKAM identity show -n blue)
 
-  run $OCKAM project enroll --member $blue_identifer --to /project/default/service/authenticator --attr role=member
+  run $OCKAM project enroll --member $blue_identifer --attribute role=member
   assert_success
-  run $OCKAM project enroll --member $green_identifer --to /project/default/service/authenticator --attr role=member
+  run $OCKAM project enroll --member $green_identifer --attribute role=member
   assert_success
 
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
@@ -459,9 +459,9 @@ teardown() {
   assert_success
   blue_identifer=$($OCKAM identity show -n blue)
 
-  run $OCKAM project enroll --member $blue_identifer --to /project/default/service/authenticator --attr role=member
+  run $OCKAM project enroll --member $blue_identifer --attribute role=member
   assert_success
-  run $OCKAM project enroll --member $green_identifer --to /project/default/service/authenticator --attr role=member
+  run $OCKAM project enroll --member $green_identifer --attribute role=member
   assert_success
 
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
@@ -492,9 +492,9 @@ teardown() {
   assert_success
   blue_identifer=$($OCKAM identity show -n blue)
 
-  run $OCKAM project enroll --member $blue_identifer --to /project/default/service/authenticator --attr role=member
+  run $OCKAM project enroll --member $blue_identifer --attribute role=member
   assert_success
-  run $OCKAM project enroll --member $green_identifer --to /project/default/service/authenticator --attr role=member
+  run $OCKAM project enroll --member $green_identifer --attribute role=member
   assert_success
 
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
@@ -525,9 +525,9 @@ teardown() {
   assert_success
   blue_identifer=$($OCKAM identity show -n blue)
 
-  run $OCKAM project enroll --member $blue_identifer --to /project/default/service/authenticator --attr role=member
+  run $OCKAM project enroll --member $blue_identifer --attribute role=member
   assert_success
-  run $OCKAM project enroll --member $green_identifer --to /project/default/service/authenticator --attr role=member
+  run $OCKAM project enroll --member $green_identifer --attribute role=member
   assert_success
 
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
