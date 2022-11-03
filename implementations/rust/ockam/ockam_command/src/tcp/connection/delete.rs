@@ -1,14 +1,9 @@
 use clap::Args;
-use ockam::{Context, Route};
-use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_core::api::{Response, Status};
+use ockam_api::nodes::models::transport::DeleteTransport;
+use ockam_core::api::Request;
 
-use crate::util::extract_address_value;
-use crate::{
-    node::NodeOpts,
-    util::{api, connect_to, exitcode},
-    CommandGlobalOpts,
-};
+use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::{node::NodeOpts, CommandGlobalOpts};
 
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true)]
@@ -26,43 +21,21 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        let cfg = &options.config;
-        let node =
-            extract_address_value(&self.node_opts.api_node).unwrap_or_else(|_| "".to_string());
-        let port = cfg.get_node_port(&node).unwrap();
-        connect_to(port, self, delete_connection);
+        node_rpc(run_impl, (options, self))
     }
 }
 
-pub async fn delete_connection(
-    ctx: Context,
-    cmd: DeleteCommand,
-    mut base_route: Route,
-) -> anyhow::Result<()> {
-    let resp: Vec<u8> = match ctx
-        .send_and_receive(
-            base_route.modify().append(NODEMANAGER_ADDR),
-            api::delete_tcp_connection(&cmd)?,
-        )
-        .await
-    {
-        Ok(sr_msg) => sr_msg,
-        Err(e) => {
-            eprintln!("Wasn't able to send or receive `Message`: {}", e);
-            std::process::exit(exitcode::IOERR);
-        }
-    };
-    let r: Response = api::parse_response(&resp)?;
+async fn run_impl(
+    ctx: ockam::Context,
+    (options, command): (CommandGlobalOpts, DeleteCommand),
+) -> crate::Result<()> {
+    let node_name = extract_address_value(&command.node_opts.api_node)?;
+    let mut rpc = Rpc::background(&ctx, &options, &node_name)?;
+    let request = Request::delete("/node/tcp/connection")
+        .body(DeleteTransport::new(&command.id, command.force));
+    rpc.request(request).await?;
+    rpc.is_ok()?;
 
-    match r.status() {
-        Some(Status::Ok) => println!("Tcp connection `{}` successfully delete", cmd.id),
-        _ => {
-            eprintln!("Failed to delete tcp connection");
-            if !cmd.force {
-                eprintln!("You may have to provide --force to delete the API transport");
-                std::process::exit(exitcode::UNAVAILABLE);
-            }
-        }
-    }
+    println!("Tcp connection `{}` successfully deleted", command.id);
     Ok(())
 }

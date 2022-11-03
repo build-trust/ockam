@@ -307,7 +307,7 @@ teardown() {
   # TODO: add test for authenticator
 }
 
-@test "create a tcp connection" {
+@test "create a tcp connection, delete a tcp connection" {
   run $OCKAM node create n1
   run $OCKAM tcp-connection create --from n1 --to 127.0.0.1:5000 --output json
   assert_success
@@ -316,6 +316,15 @@ teardown() {
   run $OCKAM tcp-connection list --node n1
   assert_success
   assert_output --partial "127.0.0.1:5000"
+
+  id=$($OCKAM tcp-connection list --node n1 | grep -o "[0-9a-f]\{32\}")
+  run $OCKAM tcp-connection delete --node n1 $id
+  assert_success
+  assert_output "Tcp connection \`$id\` successfully deleted"
+
+  run $OCKAM tcp-connection list --node n1
+  assert_success
+  refute_output --partial "127.0.0.1:5000"
 }
 
 # the below tests will only succeed if already enrolled with `ockam enroll`

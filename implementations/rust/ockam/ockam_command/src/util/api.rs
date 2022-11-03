@@ -52,18 +52,6 @@ pub(crate) fn create_tcp_connection(
     Request::post("/node/tcp/connection").body(payload)
 }
 
-/// Construct a request to delete node tcp connection
-pub(crate) fn delete_tcp_connection(
-    cmd: &crate::tcp::connection::DeleteCommand,
-) -> Result<Vec<u8>> {
-    let mut buf = vec![];
-    Request::delete("/node/tcp/connection")
-        .body(models::transport::DeleteTransport::new(&cmd.id, cmd.force))
-        .encode(&mut buf)?;
-
-    Ok(buf)
-}
-
 /// Construct a request to print Identity Id
 pub(crate) fn short_identity() -> RequestBuilder<'static, ()> {
     Request::post("/node/identity/actions/show/short")
@@ -324,12 +312,6 @@ pub(crate) mod project {
 }
 
 ////////////// !== parsers
-
-/// Parse the base response without the inner payload
-pub(crate) fn parse_response(resp: &[u8]) -> Result<Response> {
-    let mut dec = Decoder::new(resp);
-    Ok(dec.decode::<Response>()?)
-}
 
 pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Result<Response> {
     let mut dec = Decoder::new(resp);
