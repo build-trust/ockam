@@ -109,7 +109,7 @@ pub enum ConfigureAddonCommand {
         client_id: String,
 
         /// Attributes names to copy from Okta userprofile into Ockam credential.
-        #[arg(long = "attr", value_name = "ATTRIBUTE")]
+        #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
         attributes: Vec<String>,
     },
 }
