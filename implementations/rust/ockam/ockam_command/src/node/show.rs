@@ -12,9 +12,11 @@ use ockam_api::{addr_to_multiaddr, route_to_multiaddr};
 use ockam_core::Route;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
+use tokio_retry::strategy::FibonacciBackoff;
+use tracing::debug;
 
-const IS_NODE_UP_ATTEMPTS: usize = 50;
-const IS_NODE_UP_TIMEOUT: Duration = Duration::from_secs(1);
+const IS_NODE_UP_MAX_ATTEMPTS: usize = 50;
+const IS_NODE_UP_MAX_TIMEOUT: Duration = Duration::from_secs(1);
 
 /// Show Nodes
 #[derive(Clone, Debug, Args)]
@@ -199,20 +201,26 @@ pub async fn print_query_status(
 /// allow a node time to start up and become ready.
 async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> anyhow::Result<bool> {
     let attempts = match wait_until_ready {
-        true => IS_NODE_UP_ATTEMPTS,
+        true => IS_NODE_UP_MAX_ATTEMPTS,
         false => 1,
     };
 
-    for _ in 0..attempts {
+    let timeout = FibonacciBackoff::from_millis(250)
+        .max_delay(IS_NODE_UP_MAX_TIMEOUT)
+        .take(attempts);
+
+    let now = std::time::Instant::now();
+    for t in timeout {
         // Test if node is up
         // If node is down, we expect it won't reply and the timeout
         // will trigger the next loop (i.e. no need to sleep here).
         if rpc
-            .request_with_timeout(api::query_status(), IS_NODE_UP_TIMEOUT)
+            .request_with_timeout(api::query_status(), t)
             .await
             .is_ok()
             && rpc.is_ok().is_ok()
         {
+            debug!("Node is up. Took {:?}", now.elapsed());
             return Ok(true);
         }
     }
