@@ -51,13 +51,19 @@ pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "ROUTE")]
     to: MultiAddr,
 
-    /// Authorized identity for secure channel connection (optional)
+    /// Authorized identity for secure channel connection
     #[arg(long, name = "AUTHORIZED", display_order = 900)]
     authorized: Option<IdentityIdentifier>,
 
-    /// Enable credentials authorization
-    #[arg(long, short, display_order = 802)]
+    /// Enable credentials authorization.
+    /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
+    #[arg(long, display_order = 900, conflicts_with = "disable_check_credential")]
     check_credential: bool,
+
+    /// Disable credentials authorization.
+    /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
+    #[arg(long, display_order = 900, conflicts_with = "check_credential")]
+    disable_check_credential: bool,
 
     /// Assign a name to this inlet.
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
@@ -67,6 +73,16 @@ pub struct CreateCommand {
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(rpc, (options, self));
+    }
+
+    pub fn check_credential(&self) -> Option<bool> {
+        if self.check_credential {
+            Some(true)
+        } else if self.disable_check_credential {
+            Some(false)
+        } else {
+            None
+        }
     }
 }
 
@@ -103,13 +119,14 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
     let node = extract_address_value(&cmd.at)?;
 
     let req = {
+        let check_credential = cmd.check_credential();
         let mut payload = if cmd.to.matches(0, &[Project::CODE.into()]) {
             if cmd.authorized.is_some() {
                 return Err(anyhow!("--authorized can not be used with project addresses").into());
             }
-            CreateInlet::via_project(cmd.from, cmd.to, cmd.check_credential)
+            CreateInlet::via_project(cmd.from, cmd.to, check_credential)
         } else {
-            CreateInlet::to_node(cmd.from, cmd.to, cmd.check_credential, cmd.authorized)
+            CreateInlet::to_node(cmd.from, cmd.to, check_credential, cmd.authorized)
         };
         if let Some(a) = cmd.alias {
             payload.set_alias(a)

@@ -160,33 +160,35 @@ impl NodeManagerWorker {
 
         let resource = req.alias().map(Resource::new).unwrap_or(resources::INLET);
 
-        let access_control = node_manager
-            .access_control(
-                &resource,
-                &actions::HANDLE_MESSAGE,
-                if req.is_check_credential() {
-                    let pid = req
-                        .outlet_addr()
-                        .first()
-                        .and_then(|p| {
-                            if let Some(p) = p.cast::<Project>() {
-                                node_manager
-                                    .projects
-                                    .get(&*p)
-                                    .map(|info| info.id.to_string())
-                            } else {
-                                None
-                            }
-                        })
-                        .or_else(|| node_manager.project_id.clone());
-                    if pid.is_none() {
-                        return Err(ApiError::generic("credential check requires project"));
+        let check_credential = match req.check_credential() {
+            Some(b) => b,
+            None => node_manager.enable_credential_checks,
+        };
+        let project_id = if check_credential {
+            let pid = req
+                .outlet_addr()
+                .first()
+                .and_then(|p| {
+                    if let Some(p) = p.cast::<Project>() {
+                        node_manager
+                            .projects
+                            .get(&*p)
+                            .map(|info| info.id.to_string())
+                    } else {
+                        None
                     }
-                    pid
-                } else {
-                    None
-                },
-            )
+                })
+                .or_else(|| node_manager.project_id.clone());
+            if pid.is_none() {
+                return Err(ApiError::generic("credential check requires project"));
+            }
+            pid
+        } else {
+            None
+        };
+
+        let access_control = node_manager
+            .access_control(&resource, &actions::HANDLE_MESSAGE, project_id)
             .await?;
 
         let options = InletOptions::new(
@@ -273,16 +275,18 @@ impl NodeManagerWorker {
         info!("Handling request to create outlet portal");
         let worker_addr = Address::from(worker_addr.as_ref());
 
+        let check_credential = match check_credential {
+            Some(b) => b,
+            None => node_manager.enable_credential_checks,
+        };
+        let project_id = if check_credential {
+            Some(node_manager.project_id()?.to_string())
+        } else {
+            None
+        };
+
         let access_control = node_manager
-            .access_control(
-                &resource,
-                &actions::HANDLE_MESSAGE,
-                if check_credential {
-                    Some(node_manager.project_id()?.to_string())
-                } else {
-                    None
-                },
-            )
+            .access_control(&resource, &actions::HANDLE_MESSAGE, project_id)
             .await?;
 
         let options = OutletOptions::new(worker_addr.clone(), tcp_addr.clone(), access_control);
