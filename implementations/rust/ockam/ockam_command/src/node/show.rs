@@ -14,7 +14,7 @@ use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
 
 const IS_NODE_UP_ATTEMPTS: usize = 50;
-const IS_NODE_UP_TIMEOUT: Duration = Duration::from_millis(100);
+const IS_NODE_UP_TIMEOUT: Duration = Duration::from_secs(1);
 
 /// Show Nodes
 #[derive(Clone, Debug, Args)]
