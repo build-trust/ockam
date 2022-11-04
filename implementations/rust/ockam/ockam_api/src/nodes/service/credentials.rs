@@ -50,12 +50,18 @@ impl NodeManager {
             .await?;
         debug!("Created secure channel to project authority");
 
+        let invite = self.invite.take();
+
         // Borrow checker issues...
         let authorities = self.authorities()?;
 
         let mut client =
             Client::new(route![sc, DefaultAddress::AUTHENTICATOR], identity.ctx()).await?;
-        let credential = client.credential().await?;
+        let credential = if let Some(code) = invite {
+            client.credential_with(&code).await?
+        } else {
+            client.credential().await?
+        };
         debug!("Got credential");
 
         identity
@@ -78,7 +84,9 @@ impl NodeManagerWorker {
         let mut node_manager = self.node_manager.write().await;
         let request: GetCredentialRequest = dec.decode()?;
 
-        node_manager.get_credential_impl(request.overwrite).await?;
+        node_manager
+            .get_credential_impl(request.is_overwrite())
+            .await?;
 
         let response = Response::ok(req.id());
         Ok(response)

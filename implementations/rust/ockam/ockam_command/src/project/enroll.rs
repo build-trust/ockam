@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use anyhow::{anyhow, Context as _};
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
-use ockam_api::authenticator::direct::types::AddMember;
+use ockam_api::authenticator::direct::types::{AddMember, CreateInvite, OneTimeCode};
 use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority};
 use ockam_core::api::Request;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
@@ -29,7 +29,7 @@ pub struct EnrollCommand {
     node_opts: NodeOpts,
 
     #[arg(long, short)]
-    member: IdentityIdentifier,
+    member: Option<IdentityIdentifier>,
 
     #[arg(long, short, default_value = "/project/default/service/authenticator")]
     to: MultiAddr,
@@ -90,14 +90,27 @@ impl Runner {
         } else {
             self.cmd.to.clone()
         };
-        debug!(addr = %to, member = %self.cmd.member, attrs = ?self.cmd.attributes, "requesting to add member");
-        let req = Request::post("/members")
-            .body(AddMember::new(self.cmd.member.clone()).with_attributes(self.cmd.attributes()?));
         let mut rpc = RpcBuilder::new(&self.ctx, &self.opts, &node_name)
             .to(&to)?
             .build();
-        rpc.request(req).await?;
-        rpc.is_ok()?;
+
+        // If an indentity identifier is given add it as a member, otherwise
+        // request an invitation code that a future member can use to get a
+        // credential.
+        if let Some(id) = &self.cmd.member {
+            debug!(addr = %to, member = %id, attrs = ?self.cmd.attributes, "requesting to add member");
+            let req = Request::post("/members")
+                .body(AddMember::new(id.clone()).with_attributes(self.cmd.attributes()?));
+            rpc.request(req).await?;
+            rpc.is_ok()?;
+        } else {
+            debug!(addr = %to, attrs = ?self.cmd.attributes, "requesting invite");
+            let req = Request::post("/invites")
+                .body(CreateInvite::new().with_attributes(self.cmd.attributes()?));
+            rpc.request(req).await?;
+            let res: OneTimeCode = rpc.parse_response()?;
+            println!("Invitation code: {}", hex::encode(res.code()))
+        }
 
         delete_embedded_node(&self.opts.config, &node_name).await;
         Ok(())

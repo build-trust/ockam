@@ -1,6 +1,7 @@
 pub mod types;
 
 use core::{fmt, str};
+use lru::LruCache;
 use minicbor::{Decoder, Encode};
 use ockam_core::api::{self, assert_request_match, assert_response_match};
 use ockam_core::api::{Error, Method, Request, RequestBuilder, Response, ResponseBuilder, Status};
@@ -12,13 +13,18 @@ use ockam_identity::{Identity, IdentityIdentifier, IdentitySecureChannelLocalInf
 use ockam_node::Context;
 use serde_json as json;
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 use tracing::{trace, warn};
 use types::AddMember;
+
+use crate::authenticator::direct::types::{CreateInvite, OneTimeCode};
 
 use self::types::Enroller;
 
 const MEMBER: &str = "member";
+const MAX_INVITE_DURATION: Duration = Duration::from_secs(600);
 
 /// Schema identifier for a project membership credential.
 ///
@@ -36,6 +42,12 @@ pub struct Server<S, V: IdentityVault> {
     ident: Identity<V>,
     epath: PathBuf,
     enrollers: HashMap<IdentityIdentifier, Enroller>,
+    invites: LruCache<[u8; 32], Invite>,
+}
+
+struct Invite {
+    attrs: HashMap<String, String>,
+    time: Instant,
 }
 
 #[ockam_core::worker]
@@ -75,6 +87,7 @@ where
             ident: identity,
             epath: enrollers.as_ref().to_path_buf(),
             enrollers: HashMap::new(),
+            invites: LruCache::new(NonZeroUsize::new(128).expect("0 < 128")),
         }
     }
 
@@ -94,6 +107,22 @@ where
 
         let res = match req.method() {
             Some(Method::Post) => match req.path_segments::<2>().as_slice() {
+                // Enroller wants to create a member invitation.
+                ["invites"] => match self.check_enroller(&req, from).await {
+                    Ok(None) => {
+                        let att: CreateInvite = dec.decode()?;
+                        let otc = OneTimeCode::new();
+                        let res = Response::ok(req.id()).body(&otc).to_vec()?;
+                        let inv = Invite {
+                            attrs: att.into_owned_attributes(),
+                            time: Instant::now(),
+                        };
+                        self.invites.put(*otc.code(), inv);
+                        res
+                    }
+                    Ok(Some(e)) => e.to_vec()?,
+                    Err(e) => api::internal_error(&req, &e.to_string()).to_vec()?,
+                },
                 // Enroller wants to add a member.
                 ["members"] => match self.check_enroller(&req, from).await {
                     Ok(None) => {
@@ -107,6 +136,32 @@ where
                     Ok(Some(e)) => e.to_vec()?,
                     Err(error) => api::internal_error(&req, &error.to_string()).to_vec()?,
                 },
+                // New member with invitation code wants its first credential.
+                ["credential"] if req.has_body() => {
+                    let otc: OneTimeCode = dec.decode()?;
+                    if let Some(inv) = self.invites.pop(otc.code()) {
+                        if inv.time.elapsed() > MAX_INVITE_DURATION {
+                            api::forbidden(&req, "expired invite").to_vec()?
+                        } else {
+                            let attributes = minicbor::to_vec(&inv.attrs)?;
+                            self.store
+                                .set(from.key_id(), MEMBER.to_string(), attributes)
+                                .await?;
+                            let crd = inv
+                                .attrs
+                                .iter()
+                                .fold(Credential::builder(from.clone()), |crd, (a, v)| {
+                                    crd.with_attribute(a, v.as_bytes())
+                                })
+                                .with_schema(PROJECT_MEMBER_SCHEMA)
+                                .with_attribute(PROJECT_ID, &self.project);
+                            let crd = self.ident.issue_credential(crd).await?;
+                            Response::ok(req.id()).body(crd).to_vec()?
+                        }
+                    } else {
+                        api::forbidden(&req, "unknown invite").to_vec()?
+                    }
+                }
                 // Member wants a credential.
                 ["credential"] => match self.get_member(&req, from).await {
                     Ok(Some(attrs)) => {
@@ -118,7 +173,6 @@ where
                                 |crd, (a, v)| crd.with_attribute(a, v.as_bytes()),
                             )
                             .with_attribute(PROJECT_ID, &self.project);
-
                         let crd = self.ident.issue_credential(crd).await?;
                         Response::ok(req.id()).body(crd).to_vec()?
                     }
@@ -245,8 +299,34 @@ impl Client {
         }
     }
 
+    pub async fn invite_member(&mut self, attributes: HashMap<&str, &str>) -> Result<OneTimeCode> {
+        let req = Request::post("/invites").body(CreateInvite::new().with_attributes(attributes));
+        self.buf = self.request("invite-member", "invite_member", &req).await?;
+        assert_response_match("invite", &self.buf);
+        let mut d = Decoder::new(&self.buf);
+        let res = response("new-invite", &mut d)?;
+        if res.status() == Some(Status::Ok) {
+            Ok(d.decode()?)
+        } else {
+            Err(error("invite-member", &res, &mut d))
+        }
+    }
+
     pub async fn credential(&mut self) -> Result<Credential<'_>> {
         let req = Request::post("/credential");
+        self.buf = self.request("new-credential", None, &req).await?;
+        assert_response_match("credential", &self.buf);
+        let mut d = Decoder::new(&self.buf);
+        let res = response("new-credential", &mut d)?;
+        if res.status() == Some(Status::Ok) {
+            Ok(d.decode()?)
+        } else {
+            Err(error("new-credential", &res, &mut d))
+        }
+    }
+
+    pub async fn credential_with(&mut self, c: &OneTimeCode) -> Result<Credential<'_>> {
+        let req = Request::post("/credential").body(c);
         self.buf = self.request("new-credential", None, &req).await?;
         assert_response_match("credential", &self.buf);
         let mut d = Decoder::new(&self.buf);

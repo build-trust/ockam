@@ -30,6 +30,7 @@ use crate::{
 use ockam::{Address, AsyncTryClone, TCP};
 use ockam::{Context, TcpTransport};
 use ockam_api::{
+    authenticator::direct::types::OneTimeCode,
     nodes::models::transport::{TransportMode, TransportType},
     nodes::{
         service::{
@@ -78,6 +79,10 @@ pub struct CreateCommand {
     #[arg(display_order = 900, long, hide = true)]
     pub child_process: bool,
 
+    /// An invitation code to allow this node to enroll into a project.
+    #[arg(long, value_parser = otc_parser)]
+    invite: Option<OneTimeCode>,
+
     /// JSON config to setup a foreground node
     ///
     /// This argument is currently ignored on background nodes.  Node
@@ -110,6 +115,7 @@ impl Default for CreateCommand {
             no_watchdog: false,
             project: None,
             config: None,
+            invite: None,
         }
     }
 }
@@ -249,6 +255,7 @@ async fn run_foreground_node(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
             project_id,
             projects,
+            cmd.invite,
         ),
         NodeManagerTransportOptions::new(
             (TransportType::Tcp, TransportMode::Listen, bind),
@@ -386,4 +393,10 @@ async fn spawn_background_node(
     )?;
 
     Ok(())
+}
+
+fn otc_parser(val: &str) -> anyhow::Result<OneTimeCode> {
+    let bytes = hex::decode(val)?;
+    let code = <[u8; 32]>::try_from(bytes.as_slice())?;
+    Ok(code.into())
 }
