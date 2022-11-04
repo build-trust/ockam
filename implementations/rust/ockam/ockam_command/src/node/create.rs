@@ -390,6 +390,7 @@ async fn spawn_background_node(
         &cmd.node_name,
         &cmd.tcp_listener_address,
         cmd.project.as_deref(),
+        cmd.invite.as_ref(),
     )?;
 
     Ok(())

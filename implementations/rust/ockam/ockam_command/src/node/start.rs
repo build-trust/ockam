@@ -90,6 +90,7 @@ async fn restart_background_node(
         cfg_node.name(),              // The selected node name
         &cfg_node.addr().to_string(), // The selected node api address
         None,                         // No project information available
+        None,                         // No invitation code available
     )?;
 
     Ok(())
