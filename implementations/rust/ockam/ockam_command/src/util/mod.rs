@@ -387,23 +387,15 @@ where
     T: Send + 'static,
 {
     let (ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
-    let r = executor.execute(async move {
+    executor.execute(async move {
         let child_ctx = ctx
             .new_detached(Address::random_local())
             .await
             .expect("Embedded node child ctx can't be created");
         let r = f(child_ctx, a).await;
         stop_node(ctx).await.unwrap();
-        match r {
-            Err(e) => {
-                error!(%e);
-                eprintln!("{e:?}");
-                std::process::exit(e.code());
-            }
-            Ok(v) => v,
-        }
-    })?;
-    Ok(r)
+        r
+    })?
 }
 
 pub fn embedded_node_that_is_not_stopped<A, F, Fut, T>(f: F, a: A) -> crate::Result<T>
@@ -414,21 +406,13 @@ where
     T: Send + 'static,
 {
     let (ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
-    let r = executor.execute(async move {
+    executor.execute(async move {
         let child_ctx = ctx
             .new_detached(Address::random_local())
             .await
             .expect("Embedded node child ctx can't be created");
-        match f(child_ctx, a).await {
-            Err(e) => {
-                error!(%e);
-                eprintln!("{e:?}");
-                std::process::exit(e.code());
-            }
-            Ok(v) => v,
-        }
-    })?;
-    Ok(r)
+        f(child_ctx, a).await
+    })?
 }
 
 pub fn find_available_port() -> Result<u16> {

@@ -2,6 +2,7 @@ use std::convert::Infallible;
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::util::ConfigError;
+use crate::version::Version;
 use crate::{exitcode, ExitCode};
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -24,13 +25,15 @@ impl Error {
 
 impl Debug for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", Version::short())?;
         std::fmt::Debug::fmt(&self.inner, f)
     }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{code: {}, err: {}}}", self.code, self.inner)
+        writeln!(f, "{}", Version::short())?;
+        writeln!(f, "{{code: {}, err: {}}}", self.code, self.inner)
     }
 }
 
