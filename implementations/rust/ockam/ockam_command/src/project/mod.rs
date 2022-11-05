@@ -45,7 +45,7 @@ pub enum ProjectSubcommand {
     Delete(DeleteCommand),
     List(ListCommand),
     Show(ShowCommand),
-    Info(InfoCommand),
+    Information(InfoCommand),
     AddEnroller(AddEnrollerCommand),
     ListEnrollers(ListEnrollersCommand),
     DeleteEnroller(DeleteEnrollerCommand),
@@ -65,7 +65,7 @@ impl ProjectCommand {
             ProjectSubcommand::ListEnrollers(c) => c.run(options),
             ProjectSubcommand::DeleteEnroller(c) => c.run(options),
             ProjectSubcommand::Enroll(c) => c.run(options),
-            ProjectSubcommand::Info(c) => c.run(options),
+            ProjectSubcommand::Information(c) => c.run(options),
             ProjectSubcommand::Addon(c) => c.run(options),
             ProjectSubcommand::Authenticate(c) => c.run(options),
         }
