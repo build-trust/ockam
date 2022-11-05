@@ -25,7 +25,7 @@ pub enum PolicySubcommand {
         #[arg(short, long)]
         resource: Resource,
 
-        #[arg(short, long)]
+        #[arg(short, long, default_value = "handle_message")]
         action: Action,
 
         #[arg(short, long)]
