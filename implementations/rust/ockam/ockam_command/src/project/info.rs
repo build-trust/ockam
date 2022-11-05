@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Args)]
 pub struct InfoCommand {
     /// Name of the project.
-    #[arg(long)]
+    #[arg(default_value = "default")]
     pub name: String,
 
     #[command(flatten)]
