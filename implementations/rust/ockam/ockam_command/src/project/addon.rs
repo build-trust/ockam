@@ -73,6 +73,7 @@ pub enum ConfigureAddonCommand {
             long = "project",
             id = "project",
             value_name = "PROJECT_NAME",
+            default_value = "default",
             value_parser(NonEmptyStringValueParser::new())
         )]
         project_name: String,
