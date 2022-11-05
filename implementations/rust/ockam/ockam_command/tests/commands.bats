@@ -413,7 +413,7 @@ teardown() {
   skip #TODO: custom attrs not available on cloud
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project info --name default --output json  > /tmp/project.json
+  $OCKAM project information --name default --output json  > /tmp/project.json
 
   # Green doesn't enable credentials exchange
   run $OCKAM node create green --project /tmp/project.json --no-shared-identity
@@ -448,7 +448,7 @@ teardown() {
   skip #TODO: custom attrs not available on cloud
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project info --name default --output json  > /tmp/project.json
+  $OCKAM project information --name default --output json  > /tmp/project.json
 
   # Green doesn't enable credentials exchange
   run $OCKAM node create green --project /tmp/project.json --no-shared-identity
@@ -482,7 +482,7 @@ teardown() {
   skip #TODO: custom attrs not available on cloud
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project info --name default --output json  > /tmp/project.json
+  $OCKAM project information --name default --output json  > /tmp/project.json
 
   run $OCKAM node create green --project /tmp/project.json --enable-credential-checks --no-shared-identity
   assert_success
@@ -515,7 +515,7 @@ teardown() {
   skip #TODO: custom attrs not available on cloud
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project info --name default --output json  > /tmp/project.json
+  $OCKAM project information --name default --output json  > /tmp/project.json
 
   run $OCKAM node create green --project /tmp/project.json --enable-credential-checks --no-shared-identity
   assert_success
@@ -557,7 +557,7 @@ teardown() {
   run $OCKAM project create "${space_name}" "${project_name}" --enforce-credentials true
   assert_success
 
-  $OCKAM project info --name "${project_name}" --output json  > "/tmp/${project_name}_project.json"
+  $OCKAM project information --name "${project_name}" --output json  > "/tmp/${project_name}_project.json"
 
   run $OCKAM node create green --project "/tmp/${project_name}_project.json" --enable-credential-checks --no-shared-identity
   assert_success
