@@ -94,7 +94,7 @@ impl Runner {
             .to(&to)?
             .build();
 
-        // If an indentity identifier is given add it as a member, otherwise
+        // If an identity identifier is given add it as a member, otherwise
         // request an invitation code that a future member can use to get a
         // credential.
         if let Some(id) = &self.cmd.member {
@@ -109,7 +109,7 @@ impl Runner {
                 .body(CreateInvite::new().with_attributes(self.cmd.attributes()?));
             rpc.request(req).await?;
             let res: OneTimeCode = rpc.parse_response()?;
-            println!("Invitation code: {}", hex::encode(res.code()))
+            println!("{}", hex::encode(res.code()))
         }
 
         delete_embedded_node(&self.opts.config, &node_name).await;
