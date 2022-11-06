@@ -102,7 +102,7 @@ pub fn spawn_node(
     }
 
     if let Some(c) = invite {
-        args.push("--invite".to_string());
+        args.push("--enrollment-token".to_string());
         args.push(hex::encode(c.code()))
     }
 
