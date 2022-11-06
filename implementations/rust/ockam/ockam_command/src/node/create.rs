@@ -67,7 +67,7 @@ pub struct CreateCommand {
     #[arg(long, short, hide = true)]
     pub skip_defaults: bool,
 
-    /// Skip credential checks
+    /// Enable credential checks
     #[arg(long, hide = true)]
     pub enable_credential_checks: bool,
 
@@ -79,8 +79,8 @@ pub struct CreateCommand {
     #[arg(display_order = 900, long, hide = true)]
     pub child_process: bool,
 
-    /// An invitation code to allow this node to enroll into a project.
-    #[arg(long, value_parser = otc_parser)]
+    /// An enrollment token to allow this node to enroll into a project.
+    #[arg(long = "enrollment-token", value_name = "ENROLLMENT_TOKEN", value_parser = otc_parser)]
     invite: Option<OneTimeCode>,
 
     /// JSON config to setup a foreground node
