@@ -80,6 +80,9 @@ validator = "0.15"
 colorful = "0.2"
 clap_complete = "4.0.3"
 regex = "1.6.0"
+rustls = "0.20.7"
+rustls-native-certs = "0.6.2"
+pem-rfc7468 = { version = "0.6.0", features = ["std"]}
 
 ockam = { path = "../ockam", version = "^0.76.0", features = ["software_vault"] }
 ockam_abac = { path = "../ockam_abac", version = "0.10.0", features = ["std"] }
