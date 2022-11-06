@@ -1,9 +1,13 @@
 use core::fmt::Write;
+use std::net::TcpStream;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::Context as _;
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
+use reqwest::Url;
+use rustls::{Certificate, ClientConfig, ClientConnection, Connection, RootCertStore, Stream};
 
 use ockam::Context;
 use ockam_api::cloud::addon::Addon;
@@ -81,11 +85,11 @@ pub enum ConfigureAddonCommand {
         /// Plugin tenant URL
         #[arg(
             long,
-            id = "tenant_base_url",
+            id = "tenant",
             value_name = "TENANT",
             value_parser(NonEmptyStringValueParser::new())
         )]
-        tenant_base_url: String,
+        tenant: String,
 
         /// Certificate. Use either this or --cert-path
         #[arg(
@@ -159,20 +163,24 @@ async fn run_impl(
         AddonSubcommand::Configure(cmd) => match cmd {
             ConfigureAddonCommand::Okta {
                 project_name,
-                tenant_base_url,
+                tenant,
                 certificate,
                 certificate_path,
                 client_id,
                 attributes,
             } => {
+                let base_url = Url::parse(tenant.as_str()).expect("could not parse tenant url");
+                let domain = base_url
+                    .host_str()
+                    .expect("could not read domain from tenant url");
+
                 let certificate = match (certificate, certificate_path) {
                     (Some(c), _) => c,
                     (_, Some(p)) => std::fs::read_to_string(p)?,
-                    _ => unreachable!(),
+                    _ => query_certificate_chain(domain)?,
                 };
 
-                let okta_config =
-                    OktaConfig::new(tenant_base_url, certificate, client_id, &attributes);
+                let okta_config = OktaConfig::new(tenant, certificate, client_id, &attributes);
                 let body = okta_config.clone();
 
                 // Validate okta configuration
@@ -220,4 +228,54 @@ impl Output for Vec<Addon<'_>> {
         }
         Ok(w)
     }
+}
+
+pub fn query_certificate_chain(domain: &str) -> Result<String, anyhow::Error> {
+    use std::io::Write;
+    let domain_with_port = domain.to_string() + ":443";
+
+    // Setup Root Certificate Store
+    let mut root_certificate_store = RootCertStore::empty();
+    for c in rustls_native_certs::load_native_certs()? {
+        root_certificate_store.add(&Certificate(c.0))?;
+    }
+
+    // Configure TLS Client
+    let client_configuration = Arc::new(
+        ClientConfig::builder()
+            .with_safe_defaults()
+            .with_root_certificates(root_certificate_store)
+            .with_no_client_auth(),
+    );
+
+    // Make an HTTP request
+    let mut client_connection = ClientConnection::new(client_configuration, domain.try_into()?)?;
+    let mut tcp_stream = TcpStream::connect(domain_with_port)?;
+    let mut stream = Stream::new(&mut client_connection, &mut tcp_stream);
+    stream
+        .write_all(
+            format!(
+                "GET / HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nAccept-Encoding: identity\r\n\r\n",
+                domain
+            )
+                .as_bytes(),
+        )
+        .expect("failed to write to tcp stream");
+
+    let connection = Connection::try_from(client_connection)?;
+    let certificate_chain = connection
+        .peer_certificates()
+        .expect("could not discover certificate chain");
+
+    // Encode a PEM encoded certificate chain
+    let label = "CERTIFICATE";
+    let mut encoded = String::new();
+    for certificate in certificate_chain {
+        let bytes = certificate.0.clone();
+        let pem = pem_rfc7468::encode_string(label, pem_rfc7468::LineEnding::LF, &bytes)
+            .expect("could not encode certificate to PEM");
+        encoded = encoded + &pem;
+    }
+
+    Ok(encoded)
 }
