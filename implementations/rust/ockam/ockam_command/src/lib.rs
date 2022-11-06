@@ -223,7 +223,7 @@ pub enum OutputFormat {
 pub struct ExportCommandArgs {
     /// Export the command input to a file.
     /// Used to run a set of commands after creating a node with `ockam node create --run commands.json`
-    #[arg(global = true, long = "export", hide_short_help = true)]
+    #[arg(global = true, long = "export", hide_short_help = true, hide = true)]
     export_path: Option<PathBuf>,
 
     /// Section of the config file to export the command to.
@@ -231,12 +231,13 @@ pub struct ExportCommandArgs {
         global = true,
         long = "export-section",
         hide_short_help = true,
+        hide = true,
         value_enum
     )]
     section: Option<CommandSection>,
 
     /// Flag to indicate that the exported command should pipe its output.
-    #[arg(global = true, long, hide_short_help = true, action = ArgAction::SetTrue)]
+    #[arg(global = true, long, hide_short_help = true, hide = true, action = ArgAction::SetTrue)]
     pipe: Option<bool>,
 }
 
