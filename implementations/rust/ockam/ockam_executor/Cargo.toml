@@ -36,7 +36,7 @@ no_std = ["ockam_core/no_std"]
 crossbeam-queue = { version = "0.3.2", default_features = false, features = [
     "alloc",
 ] }
-futures = { version = "0.3.15", default-features = false, features = [
+futures = { version = "0.3.25", default-features = false, features = [
     "async-await",
 ] }
 heapless = { version = "0.7", features = ["mpmc_large"] }
