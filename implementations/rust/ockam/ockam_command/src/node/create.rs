@@ -2,6 +2,7 @@ use clap::Args;
 use minicbor::Decoder;
 use ockam_identity::credential::Credential;
 use rand::prelude::random;
+use tokio::io::AsyncBufReadExt;
 
 use anyhow::{anyhow, Context as _};
 use std::{
@@ -58,6 +59,10 @@ pub struct CreateCommand {
     #[arg(display_order = 900, long, short)]
     pub foreground: bool,
 
+    /// Watch stdin for EOF
+    #[arg(display_order = 900, long = "exit-on-eof", short)]
+    pub exit_on_eof: bool,
+
     /// TCP listener address
     #[arg(
         display_order = 900,
@@ -98,6 +103,7 @@ impl Default for CreateCommand {
     fn default() -> Self {
         Self {
             node_name: hex::encode(random::<[u8; 4]>()),
+            exit_on_eof: false,
             tcp_listener_address: "127.0.0.1:0".to_string(),
             foreground: false,
             child_process: false,
@@ -193,7 +199,7 @@ fn create_foreground_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> crat
 }
 
 async fn run_foreground_node(
-    ctx: Context,
+    mut ctx: Context,
     (opts, cmd, addr): (CommandGlobalOpts, CreateCommand, SocketAddr),
 ) -> crate::Result<()> {
     let cfg = &opts.config;
@@ -285,6 +291,32 @@ async fn run_foreground_node(
         }
     }
 
+    if cmd.exit_on_eof {
+        stop_node_on_eof(&mut ctx, &opts, &cmd.node_name).await?;
+    }
+
+    Ok(())
+}
+
+// Read STDIN until EOF is encountered and then stop the node
+async fn stop_node_on_eof(
+    ctx: &mut Context,
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+) -> crate::Result<()> {
+    let reader = tokio::io::BufReader::new(tokio::io::stdin());
+    let mut lines = reader.lines();
+
+    loop {
+        match lines.next_line().await {
+            Ok(Some(_)) => (),
+            Ok(None) => break,
+            Err(_) => unreachable!(),
+        }
+    }
+
+    ctx.stop().await?;
+    opts.state.nodes.get(node_name)?.kill_process(false)?;
     Ok(())
 }
 
