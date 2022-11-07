@@ -52,16 +52,16 @@ pub struct Enroller {}
 #[derive(Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateInvite<'a> {
+pub struct CreateToken<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<2502742>,
     #[b(1)] attributes: HashMap<CowStr<'a>, CowStr<'a>>,
 }
 
-impl<'a> CreateInvite<'a> {
+impl<'a> CreateToken<'a> {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        CreateInvite {
+        CreateToken {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             attributes: HashMap::new(),

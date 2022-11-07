@@ -19,12 +19,12 @@ use std::time::{Duration, Instant};
 use tracing::{trace, warn};
 use types::AddMember;
 
-use crate::authenticator::direct::types::{CreateInvite, OneTimeCode};
+use crate::authenticator::direct::types::{CreateToken, OneTimeCode};
 
 use self::types::Enroller;
 
 const MEMBER: &str = "member";
-const MAX_INVITE_DURATION: Duration = Duration::from_secs(600);
+const MAX_TOKEN_DURATION: Duration = Duration::from_secs(600);
 
 /// Schema identifier for a project membership credential.
 ///
@@ -42,10 +42,10 @@ pub struct Server<S, V: IdentityVault> {
     ident: Identity<V>,
     epath: PathBuf,
     enrollers: HashMap<IdentityIdentifier, Enroller>,
-    invites: LruCache<[u8; 32], Invite>,
+    tokens: LruCache<[u8; 32], Token>,
 }
 
-struct Invite {
+struct Token {
     attrs: HashMap<String, String>,
     time: Instant,
 }
@@ -87,7 +87,7 @@ where
             ident: identity,
             epath: enrollers.as_ref().to_path_buf(),
             enrollers: HashMap::new(),
-            invites: LruCache::new(NonZeroUsize::new(128).expect("0 < 128")),
+            tokens: LruCache::new(NonZeroUsize::new(128).expect("0 < 128")),
         }
     }
 
@@ -107,17 +107,17 @@ where
 
         let res = match req.method() {
             Some(Method::Post) => match req.path_segments::<2>().as_slice() {
-                // Enroller wants to create a member invitation.
-                ["invites"] => match self.check_enroller(&req, from).await {
+                // Enroller wants to create an enrollment token.
+                ["tokens"] => match self.check_enroller(&req, from).await {
                     Ok(None) => {
-                        let att: CreateInvite = dec.decode()?;
+                        let att: CreateToken = dec.decode()?;
                         let otc = OneTimeCode::new();
                         let res = Response::ok(req.id()).body(&otc).to_vec()?;
-                        let inv = Invite {
+                        let tkn = Token {
                             attrs: att.into_owned_attributes(),
                             time: Instant::now(),
                         };
-                        self.invites.put(*otc.code(), inv);
+                        self.tokens.put(*otc.code(), tkn);
                         res
                     }
                     Ok(Some(e)) => e.to_vec()?,
@@ -136,18 +136,18 @@ where
                     Ok(Some(e)) => e.to_vec()?,
                     Err(error) => api::internal_error(&req, &error.to_string()).to_vec()?,
                 },
-                // New member with invitation code wants its first credential.
+                // New member with an enrollment token wants its first credential.
                 ["credential"] if req.has_body() => {
                     let otc: OneTimeCode = dec.decode()?;
-                    if let Some(inv) = self.invites.pop(otc.code()) {
-                        if inv.time.elapsed() > MAX_INVITE_DURATION {
-                            api::forbidden(&req, "expired invite").to_vec()?
+                    if let Some(tkn) = self.tokens.pop(otc.code()) {
+                        if tkn.time.elapsed() > MAX_TOKEN_DURATION {
+                            api::forbidden(&req, "expired token").to_vec()?
                         } else {
-                            let attributes = minicbor::to_vec(&inv.attrs)?;
+                            let attributes = minicbor::to_vec(&tkn.attrs)?;
                             self.store
                                 .set(from.key_id(), MEMBER.to_string(), attributes)
                                 .await?;
-                            let crd = inv
+                            let crd = tkn
                                 .attrs
                                 .iter()
                                 .fold(Credential::builder(from.clone()), |crd, (a, v)| {
@@ -159,7 +159,7 @@ where
                             Response::ok(req.id()).body(crd).to_vec()?
                         }
                     } else {
-                        api::forbidden(&req, "unknown invite").to_vec()?
+                        api::forbidden(&req, "unknown token").to_vec()?
                     }
                 }
                 // Member wants a credential.
@@ -299,16 +299,16 @@ impl Client {
         }
     }
 
-    pub async fn invite_member(&mut self, attributes: HashMap<&str, &str>) -> Result<OneTimeCode> {
-        let req = Request::post("/invites").body(CreateInvite::new().with_attributes(attributes));
-        self.buf = self.request("invite-member", "invite_member", &req).await?;
-        assert_response_match("invite", &self.buf);
+    pub async fn create_token(&mut self, attributes: HashMap<&str, &str>) -> Result<OneTimeCode> {
+        let req = Request::post("/tokens").body(CreateToken::new().with_attributes(attributes));
+        self.buf = self.request("create-token", "create_token", &req).await?;
+        assert_response_match("onetime_code", &self.buf);
         let mut d = Decoder::new(&self.buf);
-        let res = response("new-invite", &mut d)?;
+        let res = response("create-token", &mut d)?;
         if res.status() == Some(Status::Ok) {
             Ok(d.decode()?)
         } else {
-            Err(error("invite-member", &res, &mut d))
+            Err(error("create-token", &res, &mut d))
         }
     }
 
