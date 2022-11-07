@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use anyhow::{anyhow, Context as _};
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
-use ockam_api::authenticator::direct::types::{AddMember, CreateInvite, OneTimeCode};
+use ockam_api::authenticator::direct::types::{AddMember, CreateToken, OneTimeCode};
 use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority};
 use ockam_core::api::Request;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
@@ -95,7 +95,7 @@ impl Runner {
             .build();
 
         // If an identity identifier is given add it as a member, otherwise
-        // request an invitation code that a future member can use to get a
+        // request an enrollment token that a future member can use to get a
         // credential.
         if let Some(id) = &self.cmd.member {
             debug!(addr = %to, member = %id, attrs = ?self.cmd.attributes, "requesting to add member");
@@ -104,9 +104,9 @@ impl Runner {
             rpc.request(req).await?;
             rpc.is_ok()?;
         } else {
-            debug!(addr = %to, attrs = ?self.cmd.attributes, "requesting invite");
-            let req = Request::post("/invites")
-                .body(CreateInvite::new().with_attributes(self.cmd.attributes()?));
+            debug!(addr = %to, attrs = ?self.cmd.attributes, "requesting token");
+            let req = Request::post("/tokens")
+                .body(CreateToken::new().with_attributes(self.cmd.attributes()?));
             rpc.request(req).await?;
             let res: OneTimeCode = rpc.parse_response()?;
             println!("{}", hex::encode(res.code()))
