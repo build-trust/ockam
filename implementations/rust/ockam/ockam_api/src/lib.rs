@@ -43,8 +43,8 @@ pub mod actions {
 
 pub mod resources {
     use ockam_abac::Resource;
-    pub const INLET: Resource = Resource::assert_inline("inlet");
-    pub const OUTLET: Resource = Resource::assert_inline("outlet");
+    pub const INLET: Resource = Resource::assert_inline("tcp-inlet");
+    pub const OUTLET: Resource = Resource::assert_inline("tcp-outlet");
 }
 
 use core::fmt;
