@@ -76,7 +76,7 @@ pub struct CreateCommand {
 
     /// An enrollment token to allow this node to enroll into a project.
     #[arg(long = "enrollment-token", value_name = "ENROLLMENT_TOKEN", value_parser = otc_parser)]
-    invite: Option<OneTimeCode>,
+    token: Option<OneTimeCode>,
 
     /// JSON config to setup a foreground node
     ///
@@ -109,7 +109,7 @@ impl Default for CreateCommand {
             no_watchdog: false,
             project: None,
             config: None,
-            invite: None,
+            token: None,
         }
     }
 }
@@ -248,7 +248,7 @@ async fn run_foreground_node(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
             project_id,
             projects,
-            cmd.invite,
+            cmd.token,
         ),
         NodeManagerTransportOptions::new(
             (TransportType::Tcp, TransportMode::Listen, bind),
@@ -382,7 +382,7 @@ async fn spawn_background_node(
         &cmd.node_name,
         &cmd.tcp_listener_address,
         cmd.project.as_deref(),
-        cmd.invite.as_ref(),
+        cmd.token.as_ref(),
     )?;
 
     Ok(())

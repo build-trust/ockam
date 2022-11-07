@@ -236,6 +236,16 @@ add_member = {
      1: identity_id,
 }
 
+create_token = {
+	?0: 2502742,
+     1: {* text => text } ;; attributes
+}
+
+onetime_code = {
+    ?0: 5112299,
+	 1: bytes    ;; 32 bytes code
+}
+
 ;;; Subscription ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 activate_request = {
