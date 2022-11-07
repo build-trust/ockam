@@ -5,10 +5,12 @@ use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialR
 use crate::nodes::service::map_multiaddr_err;
 use crate::nodes::NodeManager;
 use crate::DefaultAddress;
+use either::Either;
 use minicbor::Decoder;
 use ockam::Result;
-use ockam_core::api::{Request, Response, ResponseBuilder};
+use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::{route, AsyncTryClone};
+use ockam_identity::credential::Credential;
 use ockam_multiaddr::MultiAddr;
 use std::str::FromStr;
 
@@ -50,14 +52,14 @@ impl NodeManager {
             .await?;
         debug!("Created secure channel to project authority");
 
-        let invite = self.invite.take();
+        let enrollment_token = self.token.take();
 
         // Borrow checker issues...
         let authorities = self.authorities()?;
 
         let mut client =
             Client::new(route![sc, DefaultAddress::AUTHENTICATOR], identity.ctx()).await?;
-        let credential = if let Some(code) = invite {
+        let credential = if let Some(code) = enrollment_token {
             client.credential_with(&code).await?
         } else {
             client.credential().await?
@@ -80,7 +82,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<ResponseBuilder> {
+    ) -> Result<Either<ResponseBuilder<Error<'_>>, ResponseBuilder<Credential<'_>>>> {
         let mut node_manager = self.node_manager.write().await;
         let request: GetCredentialRequest = dec.decode()?;
 
@@ -88,8 +90,14 @@ impl NodeManagerWorker {
             .get_credential_impl(request.is_overwrite())
             .await?;
 
-        let response = Response::ok(req.id());
-        Ok(response)
+        let ident = node_manager.identity()?;
+
+        if let Some(c) = ident.credential().await {
+            Ok(Either::Right(Response::ok(req.id()).body(c)))
+        } else {
+            let err = Error::default().with_message("error getting credential");
+            Ok(Either::Left(Response::internal_error(req.id()).body(err)))
+        }
     }
 
     pub(super) async fn present_credential(

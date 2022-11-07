@@ -1,3 +1,4 @@
+use std::convert::Infallible;
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::util::ConfigError;
@@ -66,6 +67,18 @@ impl From<std::io::Error> for Error {
 impl From<ockam_multiaddr::Error> for Error {
     fn from(e: ockam_multiaddr::Error) -> Self {
         Error::new(exitcode::SOFTWARE, e.into())
+    }
+}
+
+impl From<minicbor::decode::Error> for Error {
+    fn from(e: minicbor::decode::Error) -> Self {
+        Error::new(exitcode::DATAERR, e.into())
+    }
+}
+
+impl From<minicbor::encode::Error<Infallible>> for Error {
+    fn from(e: minicbor::encode::Error<Infallible>) -> Self {
+        Error::new(exitcode::DATAERR, e.into())
     }
 }
 

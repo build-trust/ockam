@@ -23,7 +23,7 @@ impl<V: IdentityVault> Identity<V> {
         *self.credential.write().await = credential;
     }
 
-    pub async fn credential(&self) -> Option<Credential<'_>> {
+    pub async fn credential<'a>(&self) -> Option<Credential<'a>> {
         self.credential.read().await.clone()
     }
 

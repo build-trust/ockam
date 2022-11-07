@@ -118,7 +118,7 @@ pub struct NodeManager {
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
     policies: LmdbStorage,
-    invite: Option<OneTimeCode>,
+    token: Option<OneTimeCode>,
 }
 
 pub struct NodeManagerWorker {
@@ -197,7 +197,7 @@ pub struct NodeManagerProjectsOptions<'a> {
     ac: Option<&'a AuthoritiesConfig>,
     project_id: Option<String>,
     projects: BTreeMap<String, ProjectLookup>,
-    invite: Option<OneTimeCode>,
+    token: Option<OneTimeCode>,
 }
 
 impl<'a> NodeManagerProjectsOptions<'a> {
@@ -205,13 +205,13 @@ impl<'a> NodeManagerProjectsOptions<'a> {
         ac: Option<&'a AuthoritiesConfig>,
         project_id: Option<String>,
         projects: BTreeMap<String, ProjectLookup>,
-        invite: Option<OneTimeCode>,
+        token: Option<OneTimeCode>,
     ) -> Self {
         Self {
             ac,
             project_id,
             projects,
-            invite,
+            token,
         }
     }
 }
@@ -345,7 +345,7 @@ impl NodeManager {
             },
             sessions,
             policies: policies_storage,
-            invite: projects_options.invite,
+            token: projects_options.token,
         };
 
         if !general_options.skip_defaults {
@@ -568,9 +568,10 @@ impl NodeManagerWorker {
             }
 
             // ==*== Credentials ==*==
-            (Post, ["node", "credentials", "actions", "get"]) => {
-                self.get_credential(req, dec).await?.to_vec()?
-            }
+            (Post, ["node", "credentials", "actions", "get"]) => self
+                .get_credential(req, dec)
+                .await?
+                .either(ResponseBuilder::to_vec, ResponseBuilder::to_vec)?,
             (Post, ["node", "credentials", "actions", "present"]) => {
                 self.present_credential(req, dec).await?.to_vec()?
             }

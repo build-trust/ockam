@@ -103,7 +103,7 @@ impl OneTimeCode {
     }
 
     pub fn code(&self) -> &[u8; 32] {
-        &*self.code
+        &self.code
     }
 }
 

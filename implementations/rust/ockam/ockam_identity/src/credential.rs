@@ -65,7 +65,7 @@ impl fmt::Display for Credential<'_> {
         //TODO: write timestamps on human-readable format. Should we add a dependency for this?
         writeln!(f, " Created: {}", u64::from(credential_data.created))?;
         writeln!(f, " Expires: {}", u64::from(credential_data.expires))?;
-        write!(f, " Attrributes: ")?;
+        write!(f, " Attributes: ")?;
         f.debug_map()
             .entries(
                 credential_data

@@ -1,4 +1,6 @@
 use clap::Args;
+use minicbor::Decoder;
+use ockam_identity::credential::Credential;
 use rand::prelude::random;
 
 use anyhow::{anyhow, Context as _, Result};
@@ -9,7 +11,6 @@ use std::{
 };
 use tracing::error;
 
-use crate::project::ProjectInfo;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start;
@@ -27,6 +28,7 @@ use crate::{
     node::util::{add_project_authority, create_default_identity_if_needed, get_identity_override},
     util::RpcBuilder,
 };
+use crate::{project::ProjectInfo, util::api};
 use ockam::{Address, AsyncTryClone, TCP};
 use ockam::{Context, TcpTransport};
 use ockam_api::{
@@ -39,7 +41,12 @@ use ockam_api::{
         NodeManager, NodeManagerWorker, NODEMANAGER_ADDR,
     },
 };
-use ockam_core::LOCAL;
+use ockam_core::{
+    api::{Response, Status},
+    LOCAL,
+};
+
+use super::util::delete_node;
 
 /// Create Nodes
 #[derive(Clone, Debug, Args)]
@@ -157,6 +164,9 @@ async fn run_impl(
         ));
     }
 
+    // Do we need to eagerly fetch a project membership credential?
+    let get_credential = cmd.project.is_some() && cmd.token.is_some();
+
     // Spawn node in another, new process
     let cmd = cmd.overwrite_addr()?;
     let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
@@ -167,6 +177,15 @@ async fn run_impl(
     let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
     let port = cfg.get_node_port(node_name)?;
     print_query_status(&mut rpc, port, node_name, true).await?;
+
+    if get_credential {
+        rpc.request(api::credentials::get_credential(false)).await?;
+        if rpc.parse_and_print_response::<Credential>().is_err() {
+            eprintln!("failed to fetch membership credential");
+            delete_node(&opts, node_name, true);
+            opts.config.persist_config_updates()?
+        }
+    }
 
     // Run init and startup commands
     if let Some(config_path) = &cmd.config {
@@ -230,6 +249,9 @@ async fn run_foreground_node(
         None => None,
     };
 
+    // Do we need to eagerly fetch a project membership credential?
+    let get_credential = !cmd.child_process && cmd.project.is_some() && cmd.token.is_some();
+
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = cmd.tcp_listener_address;
     tcp.listen(&bind).await?;
@@ -263,9 +285,26 @@ async fn run_foreground_node(
 
     if let Some(path) = &cmd.launch_config {
         let node_opts = super::NodeOpts {
-            api_node: cmd.node_name,
+            api_node: cmd.node_name.clone(),
         };
         start_services(&ctx, &tcp, path, addr, node_opts, &opts).await?
+    }
+
+    if get_credential {
+        let req = api::credentials::get_credential(false).to_vec()?;
+        let res: Vec<u8> = ctx.send_and_receive(NODEMANAGER_ADDR, req).await?;
+        let mut d = Decoder::new(&res);
+        match d.decode::<Response>() {
+            Ok(hdr) if hdr.status() == Some(Status::Ok) && hdr.has_body() => {
+                let c: Credential = d.decode()?;
+                println!("{c}")
+            }
+            Ok(_) | Err(_) => {
+                eprintln!("failed to fetch membership credential");
+                delete_node(&opts, &cmd.node_name, true);
+                opts.config.persist_config_updates()?
+            }
+        }
     }
 
     Ok(())
