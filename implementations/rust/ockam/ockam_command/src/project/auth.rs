@@ -4,6 +4,7 @@ use anyhow::{anyhow, Context as _};
 use ockam::Context;
 use ockam_api::cloud::enroll::auth0::AuthenticateAuth0Token;
 use ockam_api::cloud::project::OktaAuth0;
+use ockam_api::nodes::models::credentials::GetCredentialRequest;
 use ockam_core::api::{Request, Status};
 use ockam_multiaddr::MultiAddr;
 use tracing::{debug, info};
@@ -12,22 +13,49 @@ use crate::enroll::{Auth0Provider, Auth0Service};
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::ProjectInfo;
 use crate::util::api::CloudOpts;
-use crate::util::{node_rpc, RpcBuilder};
-use crate::{help, CommandGlobalOpts};
+use crate::util::{node_rpc, Rpc, RpcBuilder};
+use crate::{help, CommandGlobalOpts, Result};
 use std::path::PathBuf;
 
 use crate::project::util::create_secure_channel_to_authority;
+use ockam_api::authenticator::direct::types::OneTimeCode;
 use ockam_api::authenticator::direct::Client;
 use ockam_api::config::lookup::ProjectAuthority;
 use ockam_api::DefaultAddress;
 
-/// Authenticate using okta addon
+/// Authenticate a node either with Okta or an enrollment token.
 #[derive(Clone, Debug, Args)]
 #[command(hide = help::hide())]
 pub struct AuthCommand {
     /// Project config file
-    #[arg(long = "project", value_name = "PROJECT_JSON_PATH")]
-    project: PathBuf,
+    #[arg(
+        id = "PROJECT",
+        long = "project",
+        value_name = "PROJECT_JSON_PATH",
+        conflicts_with_all = ["NODE", "TOKEN"]
+    )]
+    project: Option<PathBuf>,
+
+    /// Node to enroll into a project.
+    #[arg(
+        id = "NODE",
+        long = "node",
+        display_order = 900,
+        requires = "TOKEN",
+        conflicts_with = "PROJECT"
+    )]
+    node: Option<String>,
+
+    /// An enrollment token to allow this node to enroll into a project.
+    #[arg(
+        id = "TOKEN",
+        long = "enrollment-token",
+        value_name = "ENROLLMENT_TOKEN",
+        value_parser = otc_parser,
+        requires = "NODE",
+        conflicts_with = "PROJECT"
+    )]
+    token: Option<OneTimeCode>,
 
     #[command(flatten)]
     cloud_opts: CloudOpts,
@@ -39,14 +67,27 @@ impl AuthCommand {
     }
 }
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, AuthCommand),
-) -> crate::Result<()> {
+#[rustfmt::skip]
+async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, AuthCommand)) -> Result<()> {
+    match cmd {
+        AuthCommand { project: Some(p), .. } => run_okta_impl(ctx, opts, p).await?,
+        AuthCommand { node: Some(n), token: Some(c), .. } => {
+            let bdy = GetCredentialRequest::new(false).with_code(c);
+            let req = Request::post("/node/credentials/actions/get").body(bdy);
+            let mut rpc = Rpc::background(&ctx, &opts, &n)?;
+            rpc.request(req).await?;
+            rpc.is_ok()?;
+        }
+        _ => return Err(anyhow!("invalid combination of command-line options").into()),
+    }
+    Ok(())
+}
+
+async fn run_okta_impl(ctx: Context, opts: CommandGlobalOpts, project: PathBuf) -> Result<()> {
     let node_name = start_embedded_node(&ctx, &opts.config).await?;
 
     // Read (okta and authority) project parameters from project.json
-    let s = tokio::fs::read_to_string(cmd.project).await?;
+    let s = tokio::fs::read_to_string(project).await?;
     let p: ProjectInfo = serde_json::from_str(&s)?;
 
     // Get auth0 token
@@ -105,4 +146,10 @@ async fn run_impl(
     };
     delete_embedded_node(&opts.config, &node_name).await;
     res
+}
+
+fn otc_parser(val: &str) -> anyhow::Result<OneTimeCode> {
+    let bytes = hex::decode(val)?;
+    let code = <[u8; 32]>::try_from(bytes.as_slice())?;
+    Ok(code.into())
 }

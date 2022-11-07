@@ -7,6 +7,8 @@ use ockam_core::compat::borrow::Cow;
 use ockam_core::TypeTag;
 use ockam_multiaddr::MultiAddr;
 
+use crate::authenticator::direct::types::OneTimeCode;
+
 #[derive(Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
@@ -14,6 +16,7 @@ pub struct GetCredentialRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8479533>,
     #[n(1)] overwrite: bool,
+    #[n(2)] code: Option<OneTimeCode>
 }
 
 impl GetCredentialRequest {
@@ -22,11 +25,21 @@ impl GetCredentialRequest {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             overwrite,
+            code: None,
         }
+    }
+
+    pub fn with_code(mut self, c: OneTimeCode) -> Self {
+        self.code = Some(c);
+        self
     }
 
     pub fn is_overwrite(&self) -> bool {
         self.overwrite
+    }
+
+    pub fn code(&self) -> Option<&OneTimeCode> {
+        self.code.as_ref()
     }
 }
 

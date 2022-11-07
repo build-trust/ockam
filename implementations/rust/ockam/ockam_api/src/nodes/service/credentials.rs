@@ -1,3 +1,4 @@
+use crate::authenticator::direct::types::OneTimeCode;
 use crate::authenticator::direct::Client;
 use crate::error::ApiError;
 use crate::multiaddr_to_route;
@@ -15,7 +16,11 @@ use std::str::FromStr;
 use super::NodeManagerWorker;
 
 impl NodeManager {
-    pub(super) async fn get_credential_impl(&mut self, overwrite: bool) -> Result<()> {
+    pub(super) async fn get_credential_impl(
+        &mut self,
+        overwrite: bool,
+        code: Option<&OneTimeCode>,
+    ) -> Result<()> {
         debug!("Credential check: looking for identity");
         let identity = self.identity()?.async_try_clone().await?;
 
@@ -50,18 +55,18 @@ impl NodeManager {
             .await?;
         debug!("Created secure channel to project authority");
 
-        let invite = self.invite.take();
-
         // Borrow checker issues...
         let authorities = self.authorities()?;
 
         let mut client =
             Client::new(route![sc, DefaultAddress::AUTHENTICATOR], identity.ctx()).await?;
-        let credential = if let Some(code) = invite {
-            client.credential_with(&code).await?
+
+        let credential = if let Some(c) = code {
+            client.credential_with(c).await?
         } else {
             client.credential().await?
         };
+
         debug!("Got credential");
 
         identity
@@ -85,7 +90,7 @@ impl NodeManagerWorker {
         let request: GetCredentialRequest = dec.decode()?;
 
         node_manager
-            .get_credential_impl(request.is_overwrite())
+            .get_credential_impl(request.is_overwrite(), request.code())
             .await?;
 
         let response = Response::ok(req.id());

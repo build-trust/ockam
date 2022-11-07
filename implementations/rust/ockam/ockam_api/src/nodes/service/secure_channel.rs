@@ -29,7 +29,7 @@ impl NodeManager {
         }
 
         debug!("Credential check: requesting...");
-        self.get_credential_impl(false).await?;
+        self.get_credential_impl(false, None).await?;
         debug!("Credential check: got new credential...");
 
         Ok(())

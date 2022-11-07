@@ -7,7 +7,6 @@ use crate::util::OckamConfig;
 use anyhow::Context;
 use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
-use ockam_api::authenticator::direct::types::OneTimeCode;
 use std::collections::VecDeque;
 use std::io::Stdout;
 use std::process::Stdio;
@@ -46,7 +45,6 @@ pub fn spawn_node(
     name: &str,
     address: &str,
     project: Option<&Path>,
-    invite: Option<&OneTimeCode>,
 ) -> crate::Result<()> {
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
@@ -99,11 +97,6 @@ pub fn spawn_node(
 
     if enable_credential_checks {
         args.push("--enable-credential-checks".to_string());
-    }
-
-    if let Some(c) = invite {
-        args.push("--enrollment-token".to_string());
-        args.push(hex::encode(c.code()))
     }
 
     args.push(name.to_owned());

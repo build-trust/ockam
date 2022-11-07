@@ -26,7 +26,6 @@ use std::time::Duration;
 
 use super::models::secure_channel::CredentialExchangeMode;
 use super::registry::Registry;
-use crate::authenticator::direct::types::OneTimeCode;
 use crate::config::cli::AuthoritiesConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
@@ -118,7 +117,6 @@ pub struct NodeManager {
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
     policies: LmdbStorage,
-    invite: Option<OneTimeCode>,
 }
 
 pub struct NodeManagerWorker {
@@ -200,7 +198,6 @@ pub struct NodeManagerProjectsOptions<'a> {
     ac: Option<&'a AuthoritiesConfig>,
     project_id: Option<String>,
     projects: BTreeMap<String, ProjectLookup>,
-    invite: Option<OneTimeCode>,
 }
 
 impl<'a> NodeManagerProjectsOptions<'a> {
@@ -208,13 +205,11 @@ impl<'a> NodeManagerProjectsOptions<'a> {
         ac: Option<&'a AuthoritiesConfig>,
         project_id: Option<String>,
         projects: BTreeMap<String, ProjectLookup>,
-        invite: Option<OneTimeCode>,
     ) -> Self {
         Self {
             ac,
             project_id,
             projects,
-            invite,
         }
     }
 }
@@ -359,7 +354,6 @@ impl NodeManager {
             },
             sessions,
             policies: policies_storage,
-            invite: projects_options.invite,
         };
 
         if !general_options.skip_defaults {
@@ -849,7 +843,7 @@ pub(crate) mod tests {
                     false,
                     None,
                 ),
-                NodeManagerProjectsOptions::new(None, None, Default::default(), None),
+                NodeManagerProjectsOptions::new(None, None, Default::default()),
                 NodeManagerTransportOptions::new(
                     (
                         TransportType::Tcp,
