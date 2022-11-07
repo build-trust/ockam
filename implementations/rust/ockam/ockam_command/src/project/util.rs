@@ -165,7 +165,7 @@ pub async fn check_project_readiness<'a>(
     config::set_project_id(&opts.config, &project).await?;
 
     if !project.is_ready() {
-        print!("\nProject created. Waiting until it's operative...");
+        print!("Project created. Waiting until it's operative...");
         let cloud_route = &cloud_opts.route();
         loop {
             print!(".");
@@ -177,23 +177,25 @@ pub async fn check_project_readiness<'a>(
             let p = rpc.parse_response::<Project>()?;
             if p.is_ready() {
                 project = p.to_owned();
+                println!();
                 break;
             }
         }
     }
     if !project.is_reachable().await? {
-        print!("\nEstablishing connection (this can take a few minutes)...");
+        print!("Establishing connection (this can take a few minutes)...");
         loop {
             print!(".");
             std::io::stdout().flush()?;
             tokio::time::sleep(std::time::Duration::from_secs(10)).await;
             if project.is_reachable().await? {
+                println!();
                 break;
             }
         }
     }
     {
-        print!("\nEstablishing secure channel...");
+        print!("Establishing secure channel...");
         std::io::stdout().flush()?;
         let project_route = project.access_route()?;
         let project_identity = project

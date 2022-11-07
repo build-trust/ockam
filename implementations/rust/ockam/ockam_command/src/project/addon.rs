@@ -11,15 +11,17 @@ use rustls::{Certificate, ClientConfig, ClientConnection, Connection, RootCertSt
 
 use ockam::Context;
 use ockam_api::cloud::addon::Addon;
-use ockam_api::cloud::project::OktaConfig;
+use ockam_api::cloud::project::{OktaConfig, Project};
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
 
 use crate::enroll::{Auth0Provider, Auth0Service};
 use crate::node::util::delete_embedded_node;
+use crate::project::config;
+use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
-use crate::util::{node_rpc, Rpc};
+use crate::util::{api, node_rpc, Rpc};
 use crate::{help, CommandGlobalOpts};
 
 const HELP_DETAIL: &str = "";
@@ -160,7 +162,7 @@ async fn run_impl(
             rpc.request(req).await?;
             rpc.is_ok()?;
         }
-        AddonSubcommand::Configure(cmd) => match cmd {
+        AddonSubcommand::Configure(scmd) => match scmd {
             ConfigureAddonCommand::Okta {
                 project_name,
                 tenant,
@@ -194,6 +196,27 @@ async fn run_impl(
                     Request::put(endpoint).body(CloudRequestWrapper::new(body, controller_route));
                 rpc.request(req).await?;
                 rpc.is_ok()?;
+                println!("Okta addon enabled");
+
+                // Wait until project is ready again
+                println!("Getting things ready for project...");
+                tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+                let project_id = config::get_project(&opts.config, &project_name)
+                    .context("project not found in lookup")?;
+                rpc.request(api::project::show(&project_id, controller_route))
+                    .await?;
+                let project: Project = rpc.parse_response()?;
+                check_project_readiness(
+                    &ctx,
+                    &opts,
+                    &cmd.cloud_opts,
+                    rpc.node_name(),
+                    None,
+                    project,
+                )
+                .await?;
+
+                println!("Okta addon configured successfully");
             }
         },
     };
