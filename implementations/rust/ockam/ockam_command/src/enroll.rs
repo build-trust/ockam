@@ -122,7 +122,7 @@ async fn default_space<'a>(
             .to_owned()
     };
     config::set_space(&opts.config, &default_space)?;
-    println!("\n{}", default_space.output()?);
+    println!("\n{}\n", default_space.output()?);
     Ok(default_space)
 }
 
