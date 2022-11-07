@@ -169,10 +169,10 @@ async fn run_impl(
                 client_id,
                 attributes,
             } => {
-                let base_url = Url::parse(tenant.as_str()).expect("could not parse tenant url");
+                let base_url = Url::parse(tenant.as_str()).context("could not parse tenant url")?;
                 let domain = base_url
                     .host_str()
-                    .expect("could not read domain from tenant url");
+                    .context("could not read domain from tenant url")?;
 
                 let certificate = match (certificate, certificate_path) {
                     (Some(c), _) => c,
@@ -230,7 +230,7 @@ impl Output for Vec<Addon<'_>> {
     }
 }
 
-pub fn query_certificate_chain(domain: &str) -> Result<String, anyhow::Error> {
+pub fn query_certificate_chain(domain: &str) -> anyhow::Result<String> {
     use std::io::Write;
     let domain_with_port = domain.to_string() + ":443";
 
@@ -260,12 +260,12 @@ pub fn query_certificate_chain(domain: &str) -> Result<String, anyhow::Error> {
             )
                 .as_bytes(),
         )
-        .expect("failed to write to tcp stream");
+        .context("failed to write to tcp stream")?;
 
     let connection = Connection::try_from(client_connection)?;
     let certificate_chain = connection
         .peer_certificates()
-        .expect("could not discover certificate chain");
+        .context("could not discover certificate chain")?;
 
     // Encode a PEM encoded certificate chain
     let label = "CERTIFICATE";
@@ -273,7 +273,7 @@ pub fn query_certificate_chain(domain: &str) -> Result<String, anyhow::Error> {
     for certificate in certificate_chain {
         let bytes = certificate.0.clone();
         let pem = pem_rfc7468::encode_string(label, pem_rfc7468::LineEnding::LF, &bytes)
-            .expect("could not encode certificate to PEM");
+            .context("could not encode certificate to PEM")?;
         encoded = encoded + &pem;
     }
 
