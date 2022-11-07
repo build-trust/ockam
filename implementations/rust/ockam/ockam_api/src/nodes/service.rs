@@ -356,6 +356,8 @@ impl NodeManager {
             }
         }
 
+        // Always start the echoer service as ockam_api::Medic assumes it will be
+        // started unconditionally on every node. It's used for liveness checks.
         s.start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
             .await?;
 
