@@ -67,11 +67,6 @@ pub struct CreateCommand {
     #[arg(long, short, hide = true)]
     pub skip_defaults: bool,
 
-    /// Enable credential checks
-    #[arg(long, hide = true)]
-    pub enable_credential_checks: bool,
-
-    /// Don't share default identity with this node
     #[arg(long, hide = true)]
     pub no_shared_identity: bool,
 
@@ -108,7 +103,6 @@ impl Default for CreateCommand {
             foreground: false,
             tcp_listener_address: "127.0.0.1:0".to_string(),
             skip_defaults: false,
-            enable_credential_checks: false,
             no_shared_identity: false,
             child_process: false,
             launch_config: None,
@@ -248,7 +242,6 @@ async fn run_foreground_node(
             cmd.node_name.clone(),
             node_dir,
             cmd.skip_defaults || cmd.launch_config.is_some(),
-            cmd.enable_credential_checks,
             identity_override,
         ),
         NodeManagerProjectsOptions::new(
@@ -386,7 +379,6 @@ async fn spawn_background_node(
         verbose,
         cmd.skip_defaults,
         cmd.no_shared_identity,
-        cmd.enable_credential_checks,
         &cmd.node_name,
         &cmd.tcp_listener_address,
         cmd.project.as_deref(),

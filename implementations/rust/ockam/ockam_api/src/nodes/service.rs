@@ -173,7 +173,6 @@ pub struct NodeManagerGeneralOptions {
     node_name: String,
     node_dir: PathBuf,
     skip_defaults: bool,
-    enable_credential_checks: bool,
     // Should be passed only when creating fresh node and we want it to get default root Identity
     identity_override: Option<IdentityOverride>,
 }
@@ -183,14 +182,12 @@ impl NodeManagerGeneralOptions {
         node_name: String,
         node_dir: PathBuf,
         skip_defaults: bool,
-        enable_credential_checks: bool,
         identity_override: Option<IdentityOverride>,
     ) -> Self {
         Self {
             node_name,
             node_dir,
             skip_defaults,
-            enable_credential_checks,
             identity_override,
         }
     }
@@ -321,18 +318,6 @@ impl NodeManager {
             None => None,
         };
 
-        if general_options.enable_credential_checks
-            && (projects_options.ac.is_none() || projects_options.project_id.is_none())
-        {
-            error!("Invalid NodeManager options: enable_credential_checks was provided, while not enough \
-                information was provided to enforce the checks");
-            return Err(ockam_core::Error::new(
-                Origin::Ockam,
-                Kind::Invalid,
-                "Invalid NodeManager options",
-            ));
-        }
-
         let medic = Medic::new();
         let sessions = medic.sessions();
 
@@ -345,7 +330,8 @@ impl NodeManager {
             tcp_transport: transport_options.tcp_transport,
             controller_identity_id: Self::load_controller_identity_id()?,
             skip_defaults: general_options.skip_defaults,
-            enable_credential_checks: general_options.enable_credential_checks,
+            enable_credential_checks: projects_options.ac.is_some()
+                && projects_options.project_id.is_some(),
             vault,
             identity,
             projects: Arc::new(projects_options.projects),
@@ -846,7 +832,6 @@ pub(crate) mod tests {
                     "node".to_string(),
                     node_dir.into_path(),
                     true,
-                    false,
                     None,
                 ),
                 NodeManagerProjectsOptions::new(None, None, Default::default(), None),

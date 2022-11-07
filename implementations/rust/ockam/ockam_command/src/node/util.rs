@@ -62,7 +62,6 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
             cmd.node_name.clone(),
             node_dir,
             cmd.skip_defaults || cmd.launch_config.is_some(),
-            cmd.enable_credential_checks,
             identity_override,
         ),
         NodeManagerProjectsOptions::new(

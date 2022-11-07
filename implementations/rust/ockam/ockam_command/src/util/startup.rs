@@ -42,7 +42,6 @@ pub fn spawn_node(
     verbose: u8,
     skip_defaults: bool,
     no_shared_identity: bool,
-    enable_credential_checks: bool,
     name: &str,
     address: &str,
     project: Option<&Path>,
@@ -95,10 +94,6 @@ pub fn spawn_node(
 
     if no_shared_identity {
         args.push("--no-shared-identity".to_string());
-    }
-
-    if enable_credential_checks {
-        args.push("--enable-credential-checks".to_string());
     }
 
     if let Some(c) = invite {
