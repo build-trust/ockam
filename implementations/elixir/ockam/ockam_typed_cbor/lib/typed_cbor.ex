@@ -237,8 +237,8 @@ defmodule Ockam.TypedCBOR do
 
   def to_cbor_term(:term, any), do: any
 
-  def to_cbor_term(schema, _) do
-    raise(Exception, "type mismatch, expected schema #{inspect(schema)}")
+  def to_cbor_term(schema, val) do
+    raise(Exception, "type mismatch, expected schema #{inspect(schema)}, value: #{inspect(val)}")
   end
 
   def to_cbor_fields([], _), do: []

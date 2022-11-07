@@ -26,12 +26,13 @@ defmodule Ockam.Services.API.CredentialExchange do
   @impl true
   def setup(options, state) do
     ## TODO: API to update authorities
-    authorities = Keyword.fetch!(options, :authorities) |> prepare_authorities()
-    verifier_module = Keyword.get(options, :verifier_module, @default_verifier)
+    with {:ok, authorities} <- Keyword.fetch!(options, :authorities) |> prepare_authorities() do
+      verifier_module = Keyword.get(options, :verifier_module, @default_verifier)
 
-    :ok = AttributeStorage.init()
+      :ok = AttributeStorage.init()
 
-    {:ok, Map.merge(state, %{authorities: authorities, verifier_module: verifier_module})}
+      {:ok, Map.merge(state, %{authorities: authorities, verifier_module: verifier_module})}
+    end
   end
 
   @impl true
@@ -88,16 +89,28 @@ defmodule Ockam.Services.API.CredentialExchange do
   end
 
   defp prepare_authorities(authorities_config) when is_map(authorities_config) do
-    authorities_config
+    {:ok, authorities_config}
   end
 
   defp prepare_authorities(authorities_config) when is_list(authorities_config) do
-    Enum.map(authorities_config, fn identity_data ->
-      with {:ok, identity} <- Identity.make_identity(identity_data),
-           {:ok, identity_id} <- Identity.validate_identity_change_history(identity) do
-        {identity_id, Identity.get_data(identity)}
-      end
-    end)
-    |> Map.new()
+    prepare_result =
+      Enum.reduce(authorities_config, {:ok, []}, fn
+        identity_data, {:ok, tuple_list} ->
+          with {:ok, identity} <- Identity.make_identity(identity_data),
+               {:ok, identity_id} <- Identity.validate_identity_change_history(identity) do
+            {:ok, [{identity_id, Identity.get_data(identity)} | tuple_list]}
+          end
+
+        _identity_data, {:error, _reason} = error ->
+          error
+      end)
+
+    case prepare_result do
+      {:ok, tuple_list} ->
+        {:ok, Map.new(tuple_list)}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 end
