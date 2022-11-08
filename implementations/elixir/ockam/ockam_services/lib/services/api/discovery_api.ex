@@ -49,6 +49,9 @@ defmodule Ockam.Services.API.Discovery do
         {:ok, state} ->
           {:reply, :ok, nil, state}
 
+        {{:error, :not_supported}, state} ->
+          {:error, :method_not_allowed, state}
+
         {{:error, reason}, state} ->
           {:error, reason, state}
       end

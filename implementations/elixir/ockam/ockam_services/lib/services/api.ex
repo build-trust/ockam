@@ -122,6 +122,10 @@ defmodule Ockam.Services.API do
     400
   end
 
+  def status_code({:decode_error, _reason, _data}) do
+    400
+  end
+
   def status_code(:unauthorized) do
     401
   end
@@ -149,6 +153,10 @@ defmodule Ockam.Services.API do
   ## TODO: better standard error messages
   def error_message({:bad_request, data}) do
     error_message(data)
+  end
+
+  def error_message({:decode_error, reason, _data}) do
+    error_message(reason)
   end
 
   def error_message({:unauthorized, data}) do

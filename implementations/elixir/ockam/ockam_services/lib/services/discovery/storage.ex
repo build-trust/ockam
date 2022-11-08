@@ -8,8 +8,9 @@ defmodule Ockam.Services.Discovery.Storage do
   @type metadata() :: %{binary() => binary()}
 
   @callback init(options :: Keyword.t()) :: storage_state()
-  @callback list(storage_state()) :: [ServiceInfo.t()]
-  @callback get(id :: binary(), storage_state()) :: {:ok, ServiceInfo.t()} | {:error, :not_found}
+  @callback list(storage_state()) :: {[ServiceInfo.t()], storage_state()}
+  @callback get(id :: binary(), storage_state()) ::
+              {{:ok, ServiceInfo.t()} | {:error, :not_found}, storage_state()}
   @callback register(id :: binary(), route :: [Ockam.Address.t()], metadata(), storage_state()) ::
-              :ok | {:error, reason :: any()}
+              {:ok | {:error, reason :: any()}, storage_state()}
 end

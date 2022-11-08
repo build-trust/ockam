@@ -23,7 +23,7 @@ defmodule Ockam.API.Discovery.ServiceInfo do
 
     typedstruct do
       plugin(Ockam.TypedCBOR.Plugin)
-      field(:id, binary(), minicbor: [key: 1])
+      field(:id, String.t(), minicbor: [key: 1])
       field(:route, list(map()), minicbor: [key: 2])
       field(:metadata, %{binary() => binary()}, minicbor: [key: 3])
     end
