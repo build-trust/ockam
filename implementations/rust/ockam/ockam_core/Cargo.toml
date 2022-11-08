@@ -1,6 +1,6 @@
 [package]
 name = "ockam_core"
-version = "0.70.0"
+version = "0.71.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
@@ -59,7 +59,7 @@ error-traces = ["backtrace", "tracing-error", "once_cell"]
 tag = ["cddl-cat"]
 
 [dependencies]
-ockam_macros = { path = "../ockam_macros", version = "^0.24.0", default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.25.0", default_features = false }
 async-trait = "0.1.58"
 hashbrown = { version = "0.12", default-features = false, features = [
     "ahash",

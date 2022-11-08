@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.77.0 - 2022-11-08
+
+### Added
+
+- Support `Route` instead of `Address` for `RemoteForwarder` initialization
+- Add `credential` module to `ockam` crate
+- Add static forwarding service
+- Add support for access control for inlets&outlets
+
+### Changed
+
+- Implement attribute-based access control for message flow authorization
+- Cleanup ockam test macro
+- Move credentials to `ockam_identity`
+- Recover remote forwarder
+- Updated dependencies
+
+### Fixed
+
+- Fix forwarding service did not include onward route after forwarding
+- Creation of static forwarder without heartbeats
+- Creation of static forwarder at local nodes
+- Cleanup
+
+### Removed
+
+- Remove old credentials and signatures code
+
 ## 0.76.0 - 2022-09-21
 
 ### Added
