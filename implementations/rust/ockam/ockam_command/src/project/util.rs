@@ -106,6 +106,7 @@ async fn create_secure_channel_to_project(
     project_identity: &str,
     credential_exchange_mode: CredentialExchangeMode,
 ) -> crate::Result<MultiAddr> {
+    debug!(addr = %project_access_route, "establishing secure channel to project");
     let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
     rpc.request(api::create_secure_channel(
@@ -125,8 +126,8 @@ pub async fn create_secure_channel_to_authority(
     authority: &ProjectAuthority,
     addr: &MultiAddr,
 ) -> crate::Result<MultiAddr> {
-    let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     debug!(%addr, "establishing secure channel to project authority");
+    let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     let allowed = vec![authority.identity_id().clone()];
     rpc.request(api::create_secure_channel(
         addr,
@@ -194,55 +195,64 @@ pub async fn check_project_readiness<'a>(
             }
         }
     }
+    print!("Establishing secure channel...");
+    std::io::stdout().flush()?;
     {
-        print!("Establishing secure channel...");
-        std::io::stdout().flush()?;
+        // To project node
         let project_route = project.access_route()?;
         let project_identity = project
             .identity
             .as_ref()
             .context("We already checked that the project has an identity")?
             .to_string();
-        match create_secure_channel_to_project(
-            ctx,
-            opts,
-            api_node,
-            tcp,
-            &project_route,
-            &project_identity,
-            CredentialExchangeMode::None,
-        )
-        .await
-        {
-            Ok(sc_addr) => {
+        loop {
+            if let Ok(sc_addr) = create_secure_channel_to_project(
+                ctx,
+                opts,
+                api_node,
+                tcp,
+                &project_route,
+                &project_identity,
+                CredentialExchangeMode::None,
+            )
+            .await
+            {
                 // Try to delete secure channel, ignore result.
                 let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
-            }
-            Err(_) => {
-                loop {
-                    print!(".");
-                    std::io::stdout().flush()?;
-                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                    if let Ok(sc_addr) = create_secure_channel_to_project(
-                        ctx,
-                        opts,
-                        api_node,
-                        tcp,
-                        &project_route,
-                        &project_identity,
-                        CredentialExchangeMode::None,
-                    )
-                    .await
-                    {
-                        // Try to delete secure channel, ignore result.
-                        let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
-                        break;
-                    }
-                }
+                break;
+            } else {
+                print!(".");
+                std::io::stdout().flush()?;
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
             }
         }
-        println!();
     }
+    {
+        // To authority node
+        let authority = ProjectAuthority::from_project(&project)
+            .await?
+            .context("Project has no authority")?;
+        loop {
+            if let Ok(sc_addr) = create_secure_channel_to_authority(
+                ctx,
+                opts,
+                api_node,
+                &authority,
+                authority.address(),
+            )
+            .await
+            {
+                // Try to delete secure channel, ignore result.
+                let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
+                break;
+            } else {
+                print!(".");
+                std::io::stdout().flush()?;
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            }
+        }
+    }
+    println!();
     std::io::stdout().flush()?;
     // Persist project config with all its fields
     config::set_project(&opts.config, &project).await?;

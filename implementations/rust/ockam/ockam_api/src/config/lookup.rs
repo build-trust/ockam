@@ -1,4 +1,4 @@
-use crate::cloud::project::OktaAuth0;
+use crate::cloud::project::{OktaAuth0, Project};
 use crate::error::ApiError;
 use bytes::Bytes;
 use ockam_core::compat::collections::VecDeque;
@@ -280,6 +280,10 @@ impl ProjectAuthority {
         } else {
             Ok(None)
         }
+    }
+
+    pub async fn from_project<'a>(project: &'a Project<'a>) -> Result<Option<Self>> {
+        Self::from_raw(&project.authority_access_route, &project.authority_identity).await
     }
 
     pub fn identity(&self) -> &[u8] {
