@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.11.0 - 2022-11-08
+
+### Added
+
+- Add small language for abac
+- Add `PolicyAccessControl`
+- Add policy command
+- Add command to list policies of a resource
+- Add null expression
+
+### Changed
+
+- Implement `PolicyStorage` trait for lmdb
+- Codespell implementations/rust/
+- Avoid recursion when processing policies
+- Complete policy delete functionality
+- Always load policy from storage
+- Evaluate null == null to false
+- Updated dependencies
+
+### Fixed
+
+- Manually implement `PartialEq` and `PartialOrd`
+- Align features with other crates
+
 ## 0.10.0 - 2022-09-21
 
 ### Changed
