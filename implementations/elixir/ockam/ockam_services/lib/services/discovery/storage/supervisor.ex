@@ -26,7 +26,7 @@ defmodule Ockam.Services.Discovery.Storage.Supervisor do
 
   def register(_id, _route, _metadata, state) do
     ## TODO: register remote workers with aliases?
-    {:ok, state}
+    {{:error, :not_supported}, state}
   end
 
   def get_service(id, supervisor) do
