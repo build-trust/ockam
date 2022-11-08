@@ -44,9 +44,3 @@ overflow-checks = false
 incremental = false
 codegen-units = 1
 inherits = "test"
-
-[ockam_command.metadata.cross.target.aarch64-unknown-linux-musl]
-dockerfile = "./tools/cross/Cross.Dockerfile.aarch64"
-
-[ockam_command.metadata.cross.target.armv7-unknown-linux-musleabihf]
-dockerfile = "./tools/cross/Cross.Dockerfile.armv7"

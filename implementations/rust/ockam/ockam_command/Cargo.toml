@@ -26,6 +26,12 @@ rust-version = "1.58.1"
 publish = true
 version = "0.77.0"
 
+[package.metadata.cross.target.aarch64-unknown-linux-musl]
+dockerfile = "../../../../tools/cross/Cross.Dockerfile.aarch64"
+
+[package.metadata.cross.target.armv7-unknown-linux-musleabihf]
+dockerfile = "../../../../tools/cross/Cross.Dockerfile.armv7"
+
 [[bin]]
 # You may be wondering "Why are the tests and docs disabled?". The long and
 # short of it is: To avoid certain bugs in `rustdoc`, `cargo`, and other tools
