@@ -52,7 +52,13 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
                             if nargs != 3 {
                                 return Err(EvalError::malformed("'if' requires three arguments"))
                             }
-                            ctrl.push(Op::If)
+                            // We first evaluate the test and only then, depending on the result
+                            // do we either evaluate the true branch or the false branch.
+                            ctrl.push(Op::Eval(&xs[3])); // false branch
+                            ctrl.push(Op::Eval(&xs[2])); // true branch
+                            ctrl.push(Op::If);
+                            ctrl.push(Op::Eval(&xs[1])); // test
+                            continue
                         }
                         "<" => {
                             if nargs < 2 {
@@ -159,11 +165,11 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
                 }
             }
             Op::If => {
-                let f = pop(&mut args);
-                let t = pop(&mut args);
+                let t = pop(&mut ctrl);
+                let f = pop(&mut ctrl);
                 match pop(&mut args) {
-                    Expr::Bool(true)  => args.push(t),
-                    Expr::Bool(false) => args.push(f),
+                    Expr::Bool(true)  => ctrl.push(t),
+                    Expr::Bool(false) => ctrl.push(f),
                     other => {
                         let msg = "'if' expects test to evaluate to bool";
                         return Err(EvalError::InvalidType(other, msg))
