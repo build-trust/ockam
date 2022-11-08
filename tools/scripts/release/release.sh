@@ -251,7 +251,7 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
 
   # TODO Ensure that SHA are cosign verified
   while read -r line; do
-    file=("$line")
+    IFS=" " read -r -a file <<<"$line"
     if [[ ${file[1]} == *".so"* || ${file[1]} == *".sig"* ]]; then
       continue
     fi
