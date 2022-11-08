@@ -165,7 +165,7 @@ pub async fn check_project_readiness<'a>(
     config::set_project_id(&opts.config, &project).await?;
 
     if !project.is_ready() {
-        print!("Project created. Waiting until it's operative...");
+        print!("Project created. Waiting for it be ready...");
         let cloud_route = &cloud_opts.route();
         loop {
             print!(".");
