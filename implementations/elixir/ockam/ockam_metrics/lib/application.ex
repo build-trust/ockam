@@ -40,6 +40,7 @@ defmodule Ockam.Metrics.Application do
   def get_poller_measurements() do
     ockam_measurements = [
       {Ockam.Metrics.TelemetryPoller, :dispatch_worker_count, []},
+      {Ockam.Metrics.TelemetryPoller, :dispatch_api_worker_count, []},
       {Ockam.Metrics.TelemetryPoller, :dispatch_secure_channels_count, []},
       {Ockam.Metrics.TelemetryPoller, :dispatch_tcp_connections, []}
     ]

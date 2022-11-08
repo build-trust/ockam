@@ -34,6 +34,23 @@ defmodule Ockam.Metrics.TelemetryPoller do
       end
     end
 
+    @api_worker_address "api"
+
+    def dispatch_api_worker_count() do
+      ## Report API worker livensess
+
+      if application_started?(:ockam) do
+        api_workers =
+          Enum.filter(Ockam.Node.list_workers(), fn {address, _pid, _module} ->
+            address == @api_worker_address
+          end)
+
+        Telemetry.emit_event([:workers, :api],
+          measurements: %{count: Enum.count(api_workers)}
+        )
+      end
+    end
+
     @channel_data_mod Ockam.Identity.SecureChannel.Data
     @channel_handshake_mod Ockam.Identity.SecureChannel.Handshake
 

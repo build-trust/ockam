@@ -136,6 +136,7 @@ defmodule Ockam.Metrics.Prometheus do
 
     [
       last_value("ockam.workers.type.count", tags: [:type]),
+      last_value("ockam.workers.api.count"),
       last_value("ockam.tcp.connections.count", tags: [:port]),
       last_value("vm.total_run_queue_lengths.total"),
       last_value("vm.total_run_queue_lengths.io"),
