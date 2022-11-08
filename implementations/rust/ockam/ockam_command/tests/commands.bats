@@ -349,6 +349,7 @@ teardown() {
 }
 
 @test "create space, create project, send message, delete project, delete space" {
+  skip # TODO: review message send / echo permissions
   skip_if_orchestrator_tests_not_enabled
   skip_if_long_tests_not_enabled
 
@@ -358,7 +359,7 @@ teardown() {
   run $OCKAM space create "${space_name}"
   assert_success
 
-  run $OCKAM project create "${space_name}" "${project_name}"
+  run $OCKAM project create "${space_name}" "${project_name}" --enforce-credentials false
   assert_success
 
   run --separate-stderr $OCKAM message send hello --to "/project/${project_name}/service/echo"
@@ -410,23 +411,20 @@ teardown() {
 }
 
 @test "inlet/outlet example with credentials, not provided" {
-  skip #TODO: custom attrs not available on cloud
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project information --name default --output json  > /tmp/project.json
+  $OCKAM project information default --output json  > /tmp/project.json
 
-  # Green doesn't enable credentials exchange
   run $OCKAM node create green --project /tmp/project.json --no-shared-identity
   assert_success
   green_identifer=$($OCKAM identity show -n green)
 
-  run $OCKAM node create blue --project /tmp/project.json --enable-credential-checks --no-shared-identity
+  run $OCKAM node create blue --project /tmp/project.json  --no-shared-identity
   assert_success
   blue_identifer=$($OCKAM identity show -n blue)
 
+  # Green isn't enrolled as project member
   run $OCKAM project enroll --member $blue_identifer --attribute role=member
-  assert_success
-  run $OCKAM project enroll --member $green_identifer --attribute role=member
   assert_success
 
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
@@ -445,23 +443,19 @@ teardown() {
 }
 
 @test "inlet (with implicit secure channel creation) / outlet example with credentials, not provided" {
-  skip #TODO: custom attrs not available on cloud
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project information --name default --output json  > /tmp/project.json
+  $OCKAM project information default --output json  > /tmp/project.json
 
-  # Green doesn't enable credentials exchange
   run $OCKAM node create green --project /tmp/project.json --no-shared-identity
   assert_success
-  green_identifer=$($OCKAM identity show -n green)
 
-  run $OCKAM node create blue --project /tmp/project.json --enable-credential-checks --no-shared-identity
+  run $OCKAM node create blue --project /tmp/project.json --no-shared-identity
   assert_success
   blue_identifer=$($OCKAM identity show -n blue)
 
+  # Green isn't enrolled as project member
   run $OCKAM project enroll --member $blue_identifer --attribute role=member
-  assert_success
-  run $OCKAM project enroll --member $green_identifer --attribute role=member
   assert_success
 
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
@@ -470,25 +464,21 @@ teardown() {
   assert_output --partial "forward_to_blue"
   assert_success
 
+  # Green can't establish secure channel with blue, because it isn't a member
   run $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to /project/default/service/forward_to_blue/secure/api/service/outlet
-  assert_success
-
-  # Green can't establish secure channel with blue, because it doesn't exchange credentials with it.
-  run curl --fail --head --max-time 10 127.0.0.1:7000
   assert_failure
 }
 
 @test "inlet/outlet example with credentials" {
-  skip #TODO: custom attrs not available on cloud
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project information --name default --output json  > /tmp/project.json
+  $OCKAM project information default --output json  > /tmp/project.json
 
-  run $OCKAM node create green --project /tmp/project.json --enable-credential-checks --no-shared-identity
+  run $OCKAM node create green --project /tmp/project.json  --no-shared-identity
   assert_success
   green_identifer=$($OCKAM identity show -n green)
 
-  run $OCKAM node create blue --project /tmp/project.json --enable-credential-checks --no-shared-identity
+  run $OCKAM node create blue --project /tmp/project.json --no-shared-identity
   assert_success
   blue_identifer=$($OCKAM identity show -n blue)
 
@@ -511,23 +501,23 @@ teardown() {
   assert_success
 }
 
-@test "inlet (with implicit secure channel creation) / outlet example with credentials" {
-  skip #TODO: custom attrs not available on cloud
+@test "inlet (with implicit secure channel creation) / outlet example with enrollment token" {
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project information --name default --output json  > /tmp/project.json
+  $OCKAM project information  default --output json  > /tmp/project.json
 
-  run $OCKAM node create green --project /tmp/project.json --enable-credential-checks --no-shared-identity
-  assert_success
-  green_identifer=$($OCKAM identity show -n green)
 
-  run $OCKAM node create blue --project /tmp/project.json --enable-credential-checks --no-shared-identity
-  assert_success
-  blue_identifer=$($OCKAM identity show -n blue)
+  green_token=$($OCKAM project enroll --attribute app=app1)
+  blue_token=$($OCKAM project enroll --attribute app=app1)
 
-  run $OCKAM project enroll --member $blue_identifer --attribute role=member
+  run $OCKAM node create green --project /tmp/project.json --no-shared-identity --enrollment-token $green_token
   assert_success
-  run $OCKAM project enroll --member $green_identifer --attribute role=member
+  run $OCKAM node create blue --project /tmp/project.json --no-shared-identity --enrollment-token $blue_token
+  assert_success
+
+  run $OCKAM policy set --at blue --resource tcp-outlet --expression '(= subject.app "app1")'
+  assert_success
+  run $OCKAM policy set --at green --resource tcp-inlet --expression '(= subject.app "app1")'
   assert_success
 
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
@@ -544,7 +534,6 @@ teardown() {
 }
 
 @test "project requiring credentials" {
-  skip #TODO: custom attrs not available on cloud
   skip_if_orchestrator_tests_not_enabled
   skip_if_long_tests_not_enabled
 
@@ -557,21 +546,21 @@ teardown() {
   run $OCKAM project create "${space_name}" "${project_name}" --enforce-credentials true
   assert_success
 
-  $OCKAM project information --name "${project_name}" --output json  > "/tmp/${project_name}_project.json"
+  $OCKAM project information "${project_name}" --output json  > "/tmp/${project_name}_project.json"
 
-  run $OCKAM node create green --project "/tmp/${project_name}_project.json" --enable-credential-checks --no-shared-identity
+  run $OCKAM node create green --project "/tmp/${project_name}_project.json" --no-shared-identity
   assert_success
   green_identifer=$($OCKAM identity show -n green)
 
   run $OCKAM node create blue --project "/tmp/${project_name}_project.json" --no-shared-identity
   assert_success
 
-  # Blue can't create forwarder as it doesn't present credential (it isn't a member neither)
+  # Blue can't create forwarder as it isn't a member
   run  $OCKAM forwarder create blue --at "/project/${project_name}" --to /node/blue
   assert_failure
 
   # add green as a member
-  run $OCKAM project enroll --member $green_identifer --to "/project/${project_name}/service/authenticator" --attr role=member
+  run $OCKAM project enroll --member $green_identifer --to "/project/${project_name}/service/authenticator" --attribute role=member
   assert_success
 
   # Now green can access project' services
@@ -586,24 +575,12 @@ teardown() {
 }
 
 @test "project addons - list addons" {
-  skip # Not ready to include on tests yet
   skip_if_orchestrator_tests_not_enabled
 
   run --separate-stderr $OCKAM project addon list --project default
 
   assert_success
-  assert_output "Id: okta\n  Enabled: false"
-}
-
-@test "project addons - configure/disable okta" {
-  skip # Not ready to include on tests yet
-  skip_if_orchestrator_tests_not_enabled
-
-  run --separate-stderr $OCKAM project addon configure okta --project default --tenant http://my.okta.com --cert certrawcontents
-  assert_success
-
-  run --separate-stderr $OCKAM project addon disable --project default --addon okta
-  assert_success
+  assert_output --partial "Id: okta"
 }
 
 function skip_if_orchestrator_tests_not_enabled() {
