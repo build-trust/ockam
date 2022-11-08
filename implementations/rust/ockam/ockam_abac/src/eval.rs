@@ -34,7 +34,7 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
 
     while let Some(x) = ctrl.pop() {
         match x {
-            Op::Eval(Expr::Ident(id)) => ctrl.push(Op::Eval(env.get(id)?)),
+            Op::Eval(Expr::Ident(id)) => ctrl.push(Op::Eval(env.get(id))),
             Op::Eval(Expr::List(xs))  => match &xs[..] {
                 []                    => args.push(unit()),
                 [Expr::Ident(id), ..] => {
