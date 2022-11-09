@@ -18,8 +18,7 @@ pub enum Expr {
     #[n(4)] Bool  (#[n(0)] bool),
     #[n(5)] Ident (#[n(0)] String),
     #[n(6)] Seq   (#[n(0)] Vec<Expr>),
-    #[n(7)] List  (#[n(0)] Vec<Expr>),
-    #[n(8)] Null
+    #[n(7)] List  (#[n(0)] Vec<Expr>)
 }
 
 #[derive(Debug, Clone, Encode, Decode)]
@@ -29,8 +28,7 @@ pub enum Val {
     #[n(2)] Int   (#[n(0)] i64),
     #[n(3)] Float (#[n(0)] f64),
     #[n(4)] Bool  (#[n(0)] bool),
-    #[n(5)] Seq   (#[n(0)] Vec<Val>),
-    #[n(6)] Null
+    #[n(5)] Seq   (#[n(0)] Vec<Val>)
 }
 
 impl From<Val> for Expr {
@@ -41,7 +39,6 @@ impl From<Val> for Expr {
             Val::Float(f) => Expr::Float(f),
             Val::Bool(b) => Expr::Bool(b),
             Val::Seq(s) => Expr::Seq(s.into_iter().map(Expr::from).collect()),
-            Val::Null => Expr::Null,
         }
     }
 }
@@ -76,8 +73,7 @@ impl PartialEq for Expr {
                         ctrl.push((a, b))
                     }
                 }
-                (Expr::Null, Expr::Null) => {}
-                _                        => return false
+                _ => return false
             }
         }
 
@@ -123,8 +119,7 @@ impl PartialOrd for Expr {
                         return result
                     }
                 }
-                (Expr::Null, Expr::Null) => { result = Some(Ordering::Equal) }
-                _                        => return None
+                _ => return None
             }
             if Some(Ordering::Equal) != result {
                 return result
@@ -265,7 +260,6 @@ impl fmt::Display for Expr {
             match e {
                 Op::Show(Expr::Str(s)) => write!(f, "{s:?}")?,
                 Op::Show(Expr::Int(i)) => write!(f, "{i}")?,
-                Op::Show(Expr::Null)   => f.write_str("null")?,
                 Op::Show(Expr::Float(x)) => {
                     if x.is_nan() {
                         f.write_str("nan")?
@@ -353,7 +347,7 @@ impl Arbitrary for Expr {
             s.insert(0, 'a');
             s
         }
-        match g.choose(&[1, 2, 3, 4, 5, 6, 7, 8]).unwrap() {
+        match g.choose(&[1, 2, 3, 4, 5, 6, 7]).unwrap() {
             1 => Expr::Str(gen_string()),
             2 => Expr::Int(i64::arbitrary(g)),
             3 => Expr::Float({
@@ -367,8 +361,7 @@ impl Arbitrary for Expr {
             4 => Expr::Bool(bool::arbitrary(g)),
             5 => Expr::Ident(gen_string()),
             6 => Expr::Seq(Arbitrary::arbitrary(g)),
-            7 => Expr::List(Arbitrary::arbitrary(g)),
-            _ => Expr::Null,
+            _ => Expr::List(Arbitrary::arbitrary(g)),
         }
     }
 }

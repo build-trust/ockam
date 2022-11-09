@@ -16,6 +16,7 @@ pub enum ParseError {
 
 #[derive(Debug)]
 pub enum EvalError {
+    Unbound(String),
     Unknown(String),
     InvalidType(Expr, &'static str),
     Malformed(String),
@@ -35,6 +36,10 @@ impl ParseError {
 impl EvalError {
     pub fn malformed<S: Into<String>>(s: S) -> Self {
         EvalError::Malformed(s.into())
+    }
+
+    pub fn is_unbound(&self) -> bool {
+        matches!(self, EvalError::Unbound(_))
     }
 }
 
@@ -77,6 +82,7 @@ impl fmt::Display for ParseError {
 impl fmt::Display for EvalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            EvalError::Unbound(id) => write!(f, "unbound identifier: {id}"),
             EvalError::Unknown(id) => write!(f, "unknown operator: {id}"),
             EvalError::InvalidType(e, m) => write!(f, "invalid type of expression {e}: {m}"),
             EvalError::Malformed(m) => write!(f, "malformed expression: {m}"),
