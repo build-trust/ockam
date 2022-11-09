@@ -40,8 +40,46 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
                 [Expr::Ident(id), ..] => {
                     let nargs = xs.len() - 1; // number of arguments
                     match id.as_str() {
-                        "and" => ctrl.push(Op::And(nargs)),
-                        "or"  => ctrl.push(Op::Or(nargs)),
+                        "and" => {
+                            // 'and' evaluates its arguments lazily. As soon as a
+                            // false value is encountered evaluation stops and
+                            // the remaining arguments are just popped off the
+                            // control stack. To implement this the `And` operator
+                            // is put behind the first ergument and will later put
+                            // itself behind each successive argument, stopping
+                            // evaluation as soon as an argument evaluates to
+                            // false.
+                            if nargs == 0 {
+                                args.push(Expr::Bool(true))
+                            } else {
+                                for x in xs[2 ..].iter().rev() {
+                                    ctrl.push(Op::Eval(x))
+                                }
+                                ctrl.push(Op::And(nargs - 1));
+                                ctrl.push(Op::Eval(&xs[1]))
+                            }
+                            continue
+                        }
+                        "or" => {
+                            // 'or' evaluates its arguments lazily. As soon as a
+                            // true value is encountered evaluation stops and
+                            // the remaining arguments are just popped off the
+                            // control stack. To implement this the `Or` operator
+                            // is put behind the first ergument and will later put
+                            // itself behind each successive argument, stopping
+                            // evaluation as soon as an argument evaluates to
+                            // true.
+                            if nargs == 0 {
+                                args.push(Expr::Bool(false))
+                            } else {
+                                for x in xs[2 ..].iter().rev() {
+                                    ctrl.push(Op::Eval(x))
+                                }
+                                ctrl.push(Op::Or(nargs - 1));
+                                ctrl.push(Op::Eval(&xs[1]))
+                            }
+                            continue
+                        }
                         "not" => {
                             if nargs != 1 {
                                 return Err(EvalError::malformed("'not' requires one argument"))
@@ -127,33 +165,45 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
                 }
             }
             Op::Eval(expr) => args.push(expr.clone()),
+            Op::And(0) => {} // the top-level element of the arg stack is the result
             Op::And(n) => {
-                let mut b = true;
-                for x in args.drain(args.len() - n ..) {
-                    match x {
-                        Expr::Bool(true)  => continue,
-                        Expr::Bool(false) => { b = false; break }
-                        other => {
-                            let msg = "'and' expects boolean arguments";
-                            return Err(EvalError::InvalidType(other, msg))
+                match pop(&mut args) {
+                    Expr::Bool(true) => {
+                        let x = pop(&mut ctrl);
+                        ctrl.push(Op::And(n - 1));
+                        ctrl.push(x)
+                    }
+                    Expr::Bool(false) => {
+                        for _ in 0 .. n {
+                            pop(&mut ctrl);
                         }
+                        args.push(Expr::Bool(false))
+                    }
+                    other => {
+                        let msg = "'and' expects boolean arguments";
+                        return Err(EvalError::InvalidType(other, msg))
                     }
                 }
-                args.push(Expr::Bool(b))
             }
+            Op::Or(0) => {} // the top-level element of the arg stack is the result
             Op::Or(n) => {
-                let mut b = false ;
-                for x in args.drain(args.len() - n ..) {
-                    match x {
-                        Expr::Bool(true)  => { b = true; break }
-                        Expr::Bool(false) => continue,
-                        other => {
-                            let msg = "'or' expects boolean arguments";
-                            return Err(EvalError::InvalidType(other, msg))
+                match pop(&mut args) {
+                    Expr::Bool(false) => {
+                        let x = pop(&mut ctrl);
+                        ctrl.push(Op::Or(n - 1));
+                        ctrl.push(x)
+                    }
+                    Expr::Bool(true) => {
+                        for _ in 0 .. n {
+                            pop(&mut ctrl);
                         }
+                        args.push(Expr::Bool(true))
+                    }
+                    other => {
+                        let msg = "'or' expects boolean arguments";
+                        return Err(EvalError::InvalidType(other, msg))
                     }
                 }
-                args.push(Expr::Bool(b))
             }
             Op::Not => {
                 match pop(&mut args) {
