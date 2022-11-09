@@ -163,26 +163,32 @@ dependencies = [
 
 [[package]]
 name = "atsamd-hal"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "868f22ff864d664efd9a0134cad0905d918f62f3b14d7761ca6d64bdcb1df96b"
+checksum = "eb5dce6169ab96f922232f87f2f301429bd947ff417cd6695b4ad1e1c5b83a01"
 dependencies = [
  "atsame54p",
  "bitfield",
+ "bitflags",
  "cortex-m 0.6.7",
  "embedded-hal",
+ "modular-bitfield",
  "nb 0.1.3",
+ "num-traits",
  "paste",
  "rand_core 0.5.1",
+ "replace_with",
+ "seq-macro",
+ "typenum",
  "vcell",
  "void",
 ]
 
 [[package]]
 name = "atsame54_xpro"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1d838033a755fa931bb1c560fb9771d9dca0e0daa44e6bdc45c6cfb22dd8f82"
+checksum = "f8c0e53fe7ef5040d0fe8f369e8a0c6ad3bff39506b4523fa0eb46567863c8d8"
 dependencies = [
  "atsamd-hal",
  "cortex-m 0.6.7",
@@ -193,9 +199,9 @@ dependencies = [
 
 [[package]]
 name = "atsame54p"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3717f3a978e0a867c55823e78e2d2c0d087dd5016ffac4b0c2467a5fc38052eb"
+checksum = "02cc7dfeddfe108755f6ae23ded351ab183cb5e9682eb3aa08ce5eb003fce499"
 dependencies = [
  "bare-metal 0.2.5",
  "cortex-m 0.6.7",
@@ -2520,6 +2526,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "modular-bitfield"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a53d79ba8304ac1c4f9eb3b9d281f21f7be9d4626f72ce7df4ad8fbde4f38a74"
+dependencies = [
+ "modular-bitfield-impl",
+ "static_assertions",
+]
+
+[[package]]
+name = "modular-bitfield-impl"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a7d5f7076603ebc68de2dc6a650ec331a062a13abaa346975be747bbfa4b789"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "multiaddr"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3655,6 +3682,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "replace_with"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3a8614ee435691de62bcffcf4a66d91b3594bf1428a5722e79103249a095690"
+
+[[package]]
 name = "reqwest"
 version = "0.11.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4015,6 +4048,12 @@ name = "semver-parser"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
+
+[[package]]
+name = "seq-macro"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a9f47faea3cad316faa914d013d24f471cd90bfca1a0c70f05a3f42c6441e99"
 
 [[package]]
 name = "serde"
