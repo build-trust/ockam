@@ -4,6 +4,9 @@ use minicbor::{Decode, Encode};
 use ockam_core::compat::string::String;
 use ockam_core::compat::vec::{vec, Vec};
 
+#[cfg(test)]
+use quickcheck::{Arbitrary, Gen};
+
 use crate::ParseError;
 
 #[derive(Debug, Clone, Encode, Decode)]
@@ -73,7 +76,8 @@ impl PartialEq for Expr {
                         ctrl.push((a, b))
                     }
                 }
-                _ => return false
+                (Expr::Null, Expr::Null) => {}
+                _                        => return false
             }
         }
 
@@ -119,7 +123,8 @@ impl PartialOrd for Expr {
                         return result
                     }
                 }
-                _ => return None
+                (Expr::Null, Expr::Null) => { result = Some(Ordering::Equal) }
+                _                        => return None
             }
             if Some(Ordering::Equal) != result {
                 return result
@@ -339,6 +344,36 @@ impl FromStr for Expr {
 }
 
 #[cfg(test)]
+impl Arbitrary for Expr {
+    fn arbitrary(g: &mut Gen) -> Self {
+        fn gen_string() -> String {
+            use rand::distributions::{Alphanumeric, DistString};
+            let mut s = Alphanumeric.sample_string(&mut rand::thread_rng(), 23);
+            s.retain(|c| !['(', ')', '[', ']'].contains(&c));
+            s.insert(0, 'a');
+            s
+        }
+        match g.choose(&[1, 2, 3, 4, 5, 6, 7, 8]).unwrap() {
+            1 => Expr::Str(gen_string()),
+            2 => Expr::Int(i64::arbitrary(g)),
+            3 => Expr::Float({
+                let x = f64::arbitrary(g);
+                if x.is_nan() {
+                    1.0
+                } else {
+                    x
+                }
+            }),
+            4 => Expr::Bool(bool::arbitrary(g)),
+            5 => Expr::Ident(gen_string()),
+            6 => Expr::Seq(Arbitrary::arbitrary(g)),
+            7 => Expr::List(Arbitrary::arbitrary(g)),
+            _ => Expr::Null,
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::Expr;
     use crate::{eval, parser::parse, Env};
@@ -346,93 +381,12 @@ mod tests {
     use ockam_core::compat::string::ToString;
     use quickcheck::{Arbitrary, Gen, QuickCheck};
 
-    #[derive(Debug, Clone)]
-    struct Xpr {
-        contains_null: bool,
-        expr: Expr,
-    }
-
-    impl Arbitrary for Xpr {
-        fn arbitrary(g: &mut Gen) -> Self {
-            fn gen_string() -> String {
-                use rand::distributions::{Alphanumeric, DistString};
-                let mut s = Alphanumeric.sample_string(&mut rand::thread_rng(), 23);
-                s.retain(|c| !['(', ')', '[', ']'].contains(&c));
-                s.insert(0, 'a');
-                s
-            }
-            match g.choose(&[1, 2, 3, 4, 5, 6, 7, 8]).unwrap() {
-                1 => Xpr {
-                    contains_null: false,
-                    expr: Expr::Str(gen_string()),
-                },
-                2 => Xpr {
-                    contains_null: false,
-                    expr: Expr::Int(i64::arbitrary(g)),
-                },
-                3 => Xpr {
-                    contains_null: false,
-                    expr: Expr::Float({
-                        let x = f64::arbitrary(g);
-                        if x.is_nan() {
-                            1.0
-                        } else {
-                            x
-                        }
-                    }),
-                },
-                4 => Xpr {
-                    contains_null: false,
-                    expr: Expr::Bool(bool::arbitrary(g)),
-                },
-                5 => Xpr {
-                    contains_null: false,
-                    expr: Expr::Ident(gen_string()),
-                },
-                6 => {
-                    let mut b = false;
-                    let vec: Vec<Xpr> = Arbitrary::arbitrary(g);
-                    let mut seq: Vec<Expr> = Vec::new();
-                    for x in vec {
-                        b |= x.contains_null;
-                        seq.push(x.expr);
-                    }
-                    Xpr {
-                        contains_null: b,
-                        expr: Expr::Seq(seq),
-                    }
-                }
-                7 => {
-                    let mut b = false;
-                    let vec: Vec<Xpr> = Arbitrary::arbitrary(g);
-                    let mut seq: Vec<Expr> = Vec::new();
-                    for x in vec {
-                        b |= x.contains_null;
-                        seq.push(x.expr);
-                    }
-                    Xpr {
-                        contains_null: b,
-                        expr: Expr::List(seq),
-                    }
-                }
-                _ => Xpr {
-                    contains_null: true,
-                    expr: Expr::Null,
-                },
-            }
-        }
-    }
-
     #[test]
     fn write_read() {
-        fn property(e: Xpr) -> bool {
-            let s = e.expr.to_string();
+        fn property(e: Expr) -> bool {
+            let s = e.to_string();
             let x = parse(&s).unwrap();
-            if e.contains_null {
-                Some(e.expr) != x
-            } else {
-                Some(e.expr) == x
-            }
+            Some(e) == x
         }
         QuickCheck::new()
             .gen(Gen::new(4))
@@ -443,11 +397,11 @@ mod tests {
 
     #[test]
     fn symm_eq() {
-        fn property(a: Xpr, b: Xpr) {
-            if a.expr == b.expr {
-                assert_eq!(b.expr, a.expr);
-                assert_eq!(a.expr.partial_cmp(&b.expr), Some(Ordering::Equal));
-                assert_eq!(b.expr.partial_cmp(&a.expr), Some(Ordering::Equal))
+        fn property(a: Expr, b: Expr) {
+            if a == b {
+                assert_eq!(b, a);
+                assert_eq!(a.partial_cmp(&b), Some(Ordering::Equal));
+                assert_eq!(b.partial_cmp(&a), Some(Ordering::Equal))
             }
         }
         QuickCheck::new()
@@ -459,9 +413,9 @@ mod tests {
 
     #[test]
     fn trans_eq() {
-        fn property(a: Xpr, b: Xpr, c: Xpr) {
-            if a.expr == b.expr && b.expr == c.expr {
-                assert_eq!(a.expr, c.expr)
+        fn property(a: Expr, b: Expr, c: Expr) {
+            if a == b && b == c {
+                assert_eq!(a, c)
             }
         }
         QuickCheck::new()
@@ -473,12 +427,12 @@ mod tests {
 
     #[test]
     fn not_eq() {
-        fn property(a: Xpr, b: Xpr) {
-            if a.expr != b.expr {
-                assert!(!(a.expr == b.expr))
+        fn property(a: Expr, b: Expr) {
+            if a != b {
+                assert!(!(a == b))
             }
-            if !(a.expr == b.expr) {
-                assert!(a.expr != b.expr)
+            if !(a == b) {
+                assert!(a != b)
             }
         }
         QuickCheck::new()
@@ -490,12 +444,12 @@ mod tests {
 
     #[test]
     fn lt() {
-        fn property(a: Xpr, b: Xpr) {
-            if a.expr.partial_cmp(&b.expr) == Some(Ordering::Less) {
-                assert!(a.expr < b.expr)
+        fn property(a: Expr, b: Expr) {
+            if a.partial_cmp(&b) == Some(Ordering::Less) {
+                assert!(a < b)
             }
-            if a.expr < b.expr {
-                assert_eq!(a.expr.partial_cmp(&b.expr), Some(Ordering::Less))
+            if a < b {
+                assert_eq!(a.partial_cmp(&b), Some(Ordering::Less))
             }
         }
         QuickCheck::new()
@@ -507,12 +461,12 @@ mod tests {
 
     #[test]
     fn lt_eq() {
-        fn property(a: Xpr, b: Xpr) {
-            if a.expr <= b.expr {
-                assert!(a.expr < b.expr || a.expr == b.expr)
+        fn property(a: Expr, b: Expr) {
+            if a <= b {
+                assert!(a < b || a == b)
             }
-            if a.expr < b.expr || a.expr == b.expr {
-                assert!(a.expr <= b.expr)
+            if a < b || a == b {
+                assert!(a <= b)
             }
         }
         QuickCheck::new()
@@ -524,12 +478,12 @@ mod tests {
 
     #[test]
     fn gt() {
-        fn property(a: Xpr, b: Xpr) {
-            if a.expr.partial_cmp(&b.expr) == Some(Ordering::Greater) {
-                assert!(a.expr > b.expr)
+        fn property(a: Expr, b: Expr) {
+            if a.partial_cmp(&b) == Some(Ordering::Greater) {
+                assert!(a > b)
             }
-            if a.expr > b.expr {
-                assert_eq!(a.expr.partial_cmp(&b.expr), Some(Ordering::Greater))
+            if a > b {
+                assert_eq!(a.partial_cmp(&b), Some(Ordering::Greater))
             }
         }
         QuickCheck::new()
@@ -541,12 +495,12 @@ mod tests {
 
     #[test]
     fn gt_eq() {
-        fn property(a: Xpr, b: Xpr) {
-            if a.expr >= b.expr {
-                assert!(a.expr > b.expr || a.expr == b.expr)
+        fn property(a: Expr, b: Expr) {
+            if a >= b {
+                assert!(a > b || a == b)
             }
-            if a.expr > b.expr || a.expr == b.expr {
-                assert!(a.expr >= b.expr)
+            if a > b || a == b {
+                assert!(a >= b)
             }
         }
         QuickCheck::new()
@@ -558,9 +512,9 @@ mod tests {
 
     #[test]
     fn trans_lt() {
-        fn property(a: Xpr, b: Xpr, c: Xpr) {
-            if a.expr < b.expr && b.expr < c.expr {
-                assert!(a.expr < c.expr)
+        fn property(a: Expr, b: Expr, c: Expr) {
+            if a < b && b < c {
+                assert!(a < c)
             }
         }
         QuickCheck::new()
@@ -572,9 +526,9 @@ mod tests {
 
     #[test]
     fn trans_gt() {
-        fn property(a: Xpr, b: Xpr, c: Xpr) {
-            if a.expr > b.expr && b.expr > c.expr {
-                assert!(a.expr > c.expr)
+        fn property(a: Expr, b: Expr, c: Expr) {
+            if a > b && b > c {
+                assert!(a > c)
             }
         }
         QuickCheck::new()
@@ -586,12 +540,12 @@ mod tests {
 
     #[test]
     fn dual() {
-        fn property(a: Xpr, b: Xpr) {
-            if a.expr > b.expr {
-                assert!(b.expr < a.expr)
+        fn property(a: Expr, b: Expr) {
+            if a > b {
+                assert!(b < a)
             }
-            if b.expr < a.expr {
-                assert!(a.expr > b.expr)
+            if b < a {
+                assert!(a > b)
             }
         }
         QuickCheck::new()
