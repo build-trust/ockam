@@ -14,7 +14,7 @@ use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 pub use addon::AddonCommand;
 pub use config::*;
-use ockam::{route, Address, Context, NodeBuilder, Route, TcpTransport, TCP};
+use ockam::{Address, Context, NodeBuilder, Route, TcpTransport, TCP};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_api::{
     config::cli::NodeConfigOld, config::lookup::ConfigLookup, nodes::models::base::NodeStatus,
@@ -310,49 +310,6 @@ pub async fn stop_node(mut ctx: Context) -> Result<()> {
         eprintln!("an error occurred while shutting down local node: {}", e);
     }
     Ok(())
-}
-
-/// Connect to a remote node (on localhost for now)
-///
-/// This function requires the "remote" port, some command payload,
-/// and a user function to run.  It uses `embedded_node` internally,
-/// while also configuring a TcpTransport and connecting to another
-/// node.
-///
-pub fn connect_to<A, F, Fut>(port: u16, a: A, lambda: F)
-where
-    A: Send + Sync + 'static,
-    F: FnOnce(Context, A, Route) -> Fut + Send + Sync + 'static,
-    Fut: core::future::Future<Output = Result<()>> + Send + 'static,
-{
-    let res = embedded_node(
-        move |ctx, a| async move {
-            let tcp = match TcpTransport::create(&ctx).await {
-                Ok(tcp) => tcp,
-                Err(e) => {
-                    eprintln!("Failed to create TcpTransport. {e}");
-                    error!(%e);
-                    std::process::exit(exitcode::CANTCREAT);
-                }
-            };
-            if let Err(e) = tcp.connect(format!("localhost:{}", port)).await {
-                eprintln!("Failed to connect to node. {e}");
-                error!(%e);
-                std::process::exit(exitcode::IOERR);
-            }
-            let route = route![(TCP, format!("localhost:{}", port))];
-            if let Err(e) = lambda(ctx, a, route).await {
-                eprintln!("Encountered an error in command handler code. {e}");
-                error!(%e);
-                std::process::exit(exitcode::IOERR);
-            }
-            Ok(())
-        },
-        a,
-    );
-    if let Err(e) = res {
-        eprintln!("Ockam node failed: {:?}", e,);
-    }
 }
 
 pub fn node_rpc<A, F, Fut>(f: F, a: A)
