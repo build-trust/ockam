@@ -93,10 +93,6 @@ pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
                     ctrl.push(Op::Value(Expr::Bool(false)));
                     ctrl.push(Op::Next)
                 }
-                Some(Token::Keyword("null")) => {
-                    ctrl.push(Op::Value(Expr::Null));
-                    ctrl.push(Op::Next)
-                }
                 Some(Token::Id(v)) => {
                     ctrl.push(Op::Value(Expr::Ident(v.to_string())));
                     ctrl.push(Op::Next)
