@@ -104,7 +104,7 @@ nb = { version = "1.0.0", optional = true }
 heapless = { version = "0.7.7", optional = true }
 
 # Processor atsame: TODO move this into its own "Ockam Addon" crate
-atsame54_xpro = { version = "0.2.0", optional = true }
+atsame54_xpro = { version = "0.3.0", optional = true }
 embedded-hal = { version = "0.2.3", optional = true }
 
 # Processor stm32: TODO move this into its own "Ockam Addon" crate
