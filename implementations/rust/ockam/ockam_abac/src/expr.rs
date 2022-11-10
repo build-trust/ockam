@@ -4,10 +4,7 @@ use minicbor::{Decode, Encode};
 use ockam_core::compat::string::String;
 use ockam_core::compat::vec::{vec, Vec};
 
-#[cfg(test)]
-use quickcheck::{Arbitrary, Gen};
-
-use crate::ParseError;
+use crate::{EvalError, ParseError};
 
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
@@ -43,93 +40,6 @@ impl From<Val> for Expr {
     }
 }
 
-#[rustfmt::skip]
-impl PartialEq for Expr {
-    fn eq(&self, other: &Self) -> bool {
-        let mut ctrl = vec![(self, other)];
-
-        while let Some(x) = ctrl.pop() {
-            match x {
-                (Expr::Str(a),   Expr::Str(b))   => if !a.eq(b) { return false }
-                (Expr::Bool(a),  Expr::Bool(b))  => if !a.eq(b) { return false }
-                (Expr::Ident(a), Expr::Ident(b)) => if !a.eq(b) { return false }
-                (Expr::Int(a),   Expr::Int(b))   => if !a.eq(b) { return false }
-                (Expr::Float(a), Expr::Float(b)) => if !a.eq(b) { return false }
-                (Expr::Int(a),   Expr::Float(b)) => if !(*a as f64).eq(b)  { return false }
-                (Expr::Float(a), Expr::Int(b))   => if !a.eq(&(*b as f64)) { return false }
-                (Expr::Seq(a),   Expr::Seq(b))   => {
-                    if a.len() != b.len() {
-                        return false
-                    }
-                    for (a, b) in a.iter().zip(b).rev() {
-                        ctrl.push((a, b))
-                    }
-                }
-                (Expr::List(a), Expr::List(b)) => {
-                    if a.len() != b.len() {
-                        return false
-                    }
-                    for (a, b) in a.iter().zip(b).rev() {
-                        ctrl.push((a, b))
-                    }
-                }
-                _ => return false
-            }
-        }
-
-        true
-    }
-}
-
-#[rustfmt::skip]
-impl PartialOrd for Expr {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        let mut ctrl = vec![(self, other)];
-
-        let mut result = None;
-
-        while let Some(x) = ctrl.pop() {
-            match x {
-                (Expr::Str(a),   Expr::Str(b))   => { result = a.partial_cmp(b) }
-                (Expr::Bool(a),  Expr::Bool(b))  => { result = a.partial_cmp(b) }
-                (Expr::Ident(a), Expr::Ident(b)) => { result = a.partial_cmp(b) }
-                (Expr::Int(a),   Expr::Int(b))   => { result = a.partial_cmp(b) }
-                (Expr::Float(a), Expr::Float(b)) => { result = a.partial_cmp(b) }
-                (Expr::Int(a),   Expr::Float(b)) => { result = (*a as f64).partial_cmp(b) }
-                (Expr::Float(a), Expr::Int(b))   => { result = a.partial_cmp(&(*b as f64)) }
-                (Expr::Seq(a),   Expr::Seq(b))   => {
-                    result = a.len().partial_cmp(&b.len());
-                    if Some(Ordering::Equal) == result {
-                        for (a, b) in a.iter().zip(b).rev() {
-                            ctrl.push((a, b))
-                        }
-                        continue
-                    } else {
-                        return result
-                    }
-                }
-                (Expr::List(a), Expr::List(b)) => {
-                    result = a.len().partial_cmp(&b.len());
-                    if Some(Ordering::Equal) == result {
-                        for (a, b) in a.iter().zip(b).rev() {
-                            ctrl.push((a, b))
-                        }
-                        continue
-                    } else {
-                        return result
-                    }
-                }
-                _ => return None
-            }
-            if Some(Ordering::Equal) != result {
-                return result
-            }
-        }
-
-        result
-    }
-}
-
 impl Expr {
     pub fn is_true(&self) -> bool {
         matches!(self, Expr::Bool(true))
@@ -149,6 +59,87 @@ impl Expr {
 
     pub fn is_ident(&self) -> bool {
         matches!(self, Expr::Ident(_))
+    }
+
+    /// Like `PartialEq` but errors if expressions are of different types.
+    #[rustfmt::skip]
+    pub fn equals(&self, other: &Expr) -> Result<bool, EvalError> {
+        let mut ctrl = vec![(self, other)];
+
+        while let Some(x) = ctrl.pop() {
+            match x {
+                (Expr::Str(a),   Expr::Str(b))   => if a != b { return Ok(false) }
+                (Expr::Bool(a),  Expr::Bool(b))  => if a != b { return Ok(false) }
+                (Expr::Ident(a), Expr::Ident(b)) => if a != b { return Ok(false) }
+                (Expr::Int(a),   Expr::Int(b))   => if a != b { return Ok(false) }
+                (Expr::Float(a), Expr::Float(b)) => if a != b { return Ok(false) }
+                (Expr::Seq(a),   Expr::Seq(b))   => {
+                    if a.len() != b.len() {
+                        return Ok(false)
+                    }
+                    for (a, b) in a.iter().zip(b).rev() {
+                        ctrl.push((a, b))
+                    }
+                }
+                (Expr::List(a), Expr::List(b)) => {
+                    if a.len() != b.len() {
+                        return Ok(false)
+                    }
+                    for (a, b) in a.iter().zip(b).rev() {
+                        ctrl.push((a, b))
+                    }
+                }
+                (a, b) => return Err(EvalError::TypeMismatch(a.clone(), b.clone()))
+            }
+        }
+
+        Ok(true)
+    }
+
+    /// Like `PartialOrd` but errors if expressions are of different types.
+    #[rustfmt::skip]
+    pub fn compare(&self, other: &Expr) -> Result<Option<Ordering>, EvalError> {
+        let mut ctrl = vec![(self, other)];
+
+        let mut result = None;
+
+        while let Some(x) = ctrl.pop() {
+            match x {
+                (Expr::Str(a),   Expr::Str(b))   => result = a.partial_cmp(b),
+                (Expr::Bool(a),  Expr::Bool(b))  => result = a.partial_cmp(b),
+                (Expr::Ident(a), Expr::Ident(b)) => result = a.partial_cmp(b),
+                (Expr::Int(a),   Expr::Int(b))   => result = a.partial_cmp(b),
+                (Expr::Float(a), Expr::Float(b)) => result = a.partial_cmp(b),
+                (Expr::Seq(a),   Expr::Seq(b))   => {
+                    result = a.len().partial_cmp(&b.len());
+                    if Some(Ordering::Equal) == result {
+                        for (a, b) in a.iter().zip(b).rev() {
+                            ctrl.push((a, b))
+                        }
+                        continue
+                    } else {
+                        return Ok(result)
+                    }
+                }
+                (Expr::List(a), Expr::List(b)) => {
+                    result = a.len().partial_cmp(&b.len());
+                    if Some(Ordering::Equal) == result {
+                        for (a, b) in a.iter().zip(b).rev() {
+                            ctrl.push((a, b))
+                        }
+                        continue
+                    } else {
+                        return Ok(result)
+                    }
+                }
+                (a, b) => return Err(EvalError::TypeMismatch(a.clone(), b.clone()))
+            }
+            if Some(Ordering::Equal) != result {
+                return Ok(result)
+            }
+        }
+
+        Ok(result)
     }
 }
 
@@ -338,35 +329,6 @@ impl FromStr for Expr {
 }
 
 #[cfg(test)]
-impl Arbitrary for Expr {
-    fn arbitrary(g: &mut Gen) -> Self {
-        fn gen_string() -> String {
-            use rand::distributions::{Alphanumeric, DistString};
-            let mut s = Alphanumeric.sample_string(&mut rand::thread_rng(), 23);
-            s.retain(|c| !['(', ')', '[', ']'].contains(&c));
-            s.insert(0, 'a');
-            s
-        }
-        match g.choose(&[1, 2, 3, 4, 5, 6, 7]).unwrap() {
-            1 => Expr::Str(gen_string()),
-            2 => Expr::Int(i64::arbitrary(g)),
-            3 => Expr::Float({
-                let x = f64::arbitrary(g);
-                if x.is_nan() {
-                    1.0
-                } else {
-                    x
-                }
-            }),
-            4 => Expr::Bool(bool::arbitrary(g)),
-            5 => Expr::Ident(gen_string()),
-            6 => Expr::Seq(Arbitrary::arbitrary(g)),
-            _ => Expr::List(Arbitrary::arbitrary(g)),
-        }
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use super::Expr;
     use crate::{eval, parser::parse, Env};
@@ -374,12 +336,54 @@ mod tests {
     use ockam_core::compat::string::ToString;
     use quickcheck::{Arbitrary, Gen, QuickCheck};
 
+    impl Arbitrary for Expr {
+        fn arbitrary(g: &mut Gen) -> Self {
+            fn gen_string() -> String {
+                use rand::distributions::{Alphanumeric, DistString};
+                let mut s = Alphanumeric.sample_string(&mut rand::thread_rng(), 23);
+                s.retain(|c| !['(', ')', '[', ']'].contains(&c));
+                s.insert(0, 'a');
+                s
+            }
+
+            fn go(n: u8, g: &mut Gen) -> Expr {
+                match n {
+                    1 => Expr::Str(gen_string()),
+                    2 => Expr::Int(i64::arbitrary(g)),
+                    3 => Expr::Float({
+                        let x = f64::arbitrary(g);
+                        if x.is_nan() {
+                            1.0
+                        } else {
+                            x
+                        }
+                    }),
+                    4 => Expr::Bool(bool::arbitrary(g)),
+                    5 => Expr::Ident(gen_string()),
+                    6 => {
+                        let typ = *g.choose(&[1, 2, 3, 4, 5]).unwrap();
+                        let mut v = Vec::new();
+                        for _ in 0..u8::arbitrary(g) % 9 {
+                            v.push(go(typ, g))
+                        }
+                        Expr::Seq(v)
+                    }
+                    7 => Expr::List(Arbitrary::arbitrary(g)),
+                    _ => unreachable!(),
+                }
+            }
+
+            let typ = *g.choose(&[1, 2, 3, 4, 5, 6, 7]).unwrap();
+            go(typ, g)
+        }
+    }
+
     #[test]
     fn write_read() {
         fn property(e: Expr) -> bool {
             let s = e.to_string();
-            let x = parse(&s).unwrap();
-            Some(e) == x
+            let x = parse(&s).unwrap().unwrap();
+            e.equals(&x).unwrap()
         }
         QuickCheck::new()
             .gen(Gen::new(4))
@@ -391,10 +395,10 @@ mod tests {
     #[test]
     fn symm_eq() {
         fn property(a: Expr, b: Expr) {
-            if a == b {
-                assert_eq!(b, a);
-                assert_eq!(a.partial_cmp(&b), Some(Ordering::Equal));
-                assert_eq!(b.partial_cmp(&a), Some(Ordering::Equal))
+            if a.equals(&b).unwrap_or(false) {
+                assert!(b.equals(&a).unwrap());
+                assert_eq!(a.compare(&b).unwrap(), Some(Ordering::Equal));
+                assert_eq!(b.compare(&a).unwrap(), Some(Ordering::Equal))
             }
         }
         QuickCheck::new()
@@ -407,8 +411,8 @@ mod tests {
     #[test]
     fn trans_eq() {
         fn property(a: Expr, b: Expr, c: Expr) {
-            if a == b && b == c {
-                assert_eq!(a, c)
+            if a.equals(&b).unwrap_or(false) && b.equals(&c).unwrap_or(false) {
+                assert!(a.equals(&c).unwrap())
             }
         }
         QuickCheck::new()
@@ -419,95 +423,12 @@ mod tests {
     }
 
     #[test]
-    fn not_eq() {
-        fn property(a: Expr, b: Expr) {
-            if a != b {
-                assert!(!(a == b))
-            }
-            if !(a == b) {
-                assert!(a != b)
-            }
-        }
-        QuickCheck::new()
-            .gen(Gen::new(4))
-            .tests(1000)
-            .min_tests_passed(1000)
-            .quickcheck(property as fn(_, _))
-    }
-
-    #[test]
-    fn lt() {
-        fn property(a: Expr, b: Expr) {
-            if a.partial_cmp(&b) == Some(Ordering::Less) {
-                assert!(a < b)
-            }
-            if a < b {
-                assert_eq!(a.partial_cmp(&b), Some(Ordering::Less))
-            }
-        }
-        QuickCheck::new()
-            .gen(Gen::new(4))
-            .tests(1000)
-            .min_tests_passed(1000)
-            .quickcheck(property as fn(_, _))
-    }
-
-    #[test]
-    fn lt_eq() {
-        fn property(a: Expr, b: Expr) {
-            if a <= b {
-                assert!(a < b || a == b)
-            }
-            if a < b || a == b {
-                assert!(a <= b)
-            }
-        }
-        QuickCheck::new()
-            .gen(Gen::new(4))
-            .tests(1000)
-            .min_tests_passed(1000)
-            .quickcheck(property as fn(_, _))
-    }
-
-    #[test]
-    fn gt() {
-        fn property(a: Expr, b: Expr) {
-            if a.partial_cmp(&b) == Some(Ordering::Greater) {
-                assert!(a > b)
-            }
-            if a > b {
-                assert_eq!(a.partial_cmp(&b), Some(Ordering::Greater))
-            }
-        }
-        QuickCheck::new()
-            .gen(Gen::new(4))
-            .tests(1000)
-            .min_tests_passed(1000)
-            .quickcheck(property as fn(_, _))
-    }
-
-    #[test]
-    fn gt_eq() {
-        fn property(a: Expr, b: Expr) {
-            if a >= b {
-                assert!(a > b || a == b)
-            }
-            if a > b || a == b {
-                assert!(a >= b)
-            }
-        }
-        QuickCheck::new()
-            .gen(Gen::new(4))
-            .tests(1000)
-            .min_tests_passed(1000)
-            .quickcheck(property as fn(_, _))
-    }
-
-    #[test]
     fn trans_lt() {
         fn property(a: Expr, b: Expr, c: Expr) {
-            if a < b && b < c {
-                assert!(a < c)
+            if a.compare(&b).unwrap_or(None) == Some(Ordering::Less)
+                && b.compare(&c).unwrap_or(None) == Some(Ordering::Less)
+            {
+                assert!(a.compare(&c).unwrap() == Some(Ordering::Less))
             }
         }
         QuickCheck::new()
@@ -520,8 +441,10 @@ mod tests {
     #[test]
     fn trans_gt() {
         fn property(a: Expr, b: Expr, c: Expr) {
-            if a > b && b > c {
-                assert!(a > c)
+            if a.compare(&b).unwrap_or(None) == Some(Ordering::Greater)
+                && b.compare(&c).unwrap_or(None) == Some(Ordering::Greater)
+            {
+                assert!(a.compare(&c).unwrap() == Some(Ordering::Greater))
             }
         }
         QuickCheck::new()
@@ -534,11 +457,11 @@ mod tests {
     #[test]
     fn dual() {
         fn property(a: Expr, b: Expr) {
-            if a > b {
-                assert!(b < a)
+            if a.compare(&b).unwrap_or(None) == Some(Ordering::Greater) {
+                assert!(b.compare(&a).unwrap() == Some(Ordering::Less))
             }
-            if b < a {
-                assert!(a > b)
+            if b.compare(&a).unwrap_or(None) == Some(Ordering::Less) {
+                assert!(a.compare(&b).unwrap() == Some(Ordering::Greater))
             }
         }
         QuickCheck::new()
@@ -617,9 +540,8 @@ mod tests {
         eval(&x, &Env::new()).unwrap();
         let y = x.to_string();
         let z = parse(&y).unwrap().unwrap();
-        assert_eq!(x, z);
-        assert!(x == z);
-        assert_eq!(Some(Ordering::Equal), x.partial_cmp(&z));
+        assert!(x.equals(&z).unwrap());
+        assert_eq!(Some(Ordering::Equal), x.compare(&z).unwrap());
     }
 
     #[derive(Debug, Clone)]

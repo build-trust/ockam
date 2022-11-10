@@ -1,5 +1,5 @@
-use crate::error::ParseError;
 use crate::expr::Expr;
+use crate::{error::ParseError, EvalError};
 use core::str;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::format;
@@ -136,6 +136,11 @@ pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
                     }
                 }
                 v.reverse();
+                for (x, y) in v.iter().zip(v.iter().skip(1)) {
+                    if let Err(EvalError::TypeMismatch(x, y)) = x.equals(y) {
+                        return Err(ParseError::TypeMismatch(x, y))
+                    }
+                }
                 ctrl.push(Op::Value(Expr::Seq(v)));
                 ctrl.push(Op::Next)
             }

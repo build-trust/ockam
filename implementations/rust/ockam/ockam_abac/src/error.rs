@@ -12,6 +12,7 @@ pub enum ParseError {
     Float(ParseFloatError),
     Other(wast::Error),
     Message(String),
+    TypeMismatch(Expr, Expr),
 }
 
 #[derive(Debug)]
@@ -19,6 +20,7 @@ pub enum EvalError {
     Unbound(String),
     Unknown(String),
     InvalidType(Expr, &'static str),
+    TypeMismatch(Expr, Expr),
     Malformed(String),
 }
 
@@ -75,6 +77,7 @@ impl fmt::Display for ParseError {
             ParseError::Int(e) => write!(f, "{e}"),
             ParseError::Utf8(e) => write!(f, "{e}"),
             ParseError::Message(m) => f.write_str(m),
+            ParseError::TypeMismatch(a, b) => write!(f, "{a} and {b} are not of the same type"),
         }
     }
 }
@@ -86,6 +89,7 @@ impl fmt::Display for EvalError {
             EvalError::Unknown(id) => write!(f, "unknown operator: {id}"),
             EvalError::InvalidType(e, m) => write!(f, "invalid type of expression {e}: {m}"),
             EvalError::Malformed(m) => write!(f, "malformed expression: {m}"),
+            EvalError::TypeMismatch(a, b) => write!(f, "{a} and {b} are not of the same type"),
         }
     }
 }
@@ -99,6 +103,7 @@ impl std::error::Error for ParseError {
             ParseError::Int(e) => Some(e),
             ParseError::Utf8(e) => Some(e),
             ParseError::Message(_) => None,
+            ParseError::TypeMismatch(..) => None,
         }
     }
 }
