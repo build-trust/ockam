@@ -183,9 +183,14 @@ async fn run_impl(
         }
     }
 
+    // Persist skip_defaults usage
+    let node_config = cfg.node(&cmd.node_name)?;
+    let state = node_config.state();
+    state.write().skip_defaults_used = cmd.skip_defaults;
+    state.persist_config_updates()?;
+
     // Run init and startup commands
     if let Some(config_path) = &cmd.config {
-        let node_config = cfg.node(&cmd.node_name)?;
         let commands = CommandsRunner::new(config_path.clone())?;
         node_config.commands().set(commands.commands)?;
         CommandsRunner::run_node_init(config_path).context("Failed to run init commands")?;

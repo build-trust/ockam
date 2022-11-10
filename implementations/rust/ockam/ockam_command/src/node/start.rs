@@ -56,7 +56,9 @@ async fn run_impl(
     }
 
     // Restart node
-    restart_background_node(&opts, &cmd).await?;
+    let node_config = cfg.node(node_name)?;
+    let skip_defaults = node_config.state().read().skip_defaults_used;
+    restart_background_node(&opts, &cmd, skip_defaults).await?;
 
     // Print node status
     let tcp = TcpTransport::create(&ctx).await?;
@@ -75,6 +77,7 @@ async fn run_impl(
 async fn restart_background_node(
     opts: &CommandGlobalOpts,
     cmd: &StartCommand,
+    skip_defaults: bool,
 ) -> crate::Result<()> {
     let cfg = &opts.config;
     let cfg_node = cfg.get_node(&cmd.node_name)?;
@@ -84,7 +87,7 @@ async fn restart_background_node(
     spawn_node(
         &opts.config,
         cfg_node.verbose(),           // Previously user-chosen verbosity level
-        true,                         // skip-defaults because the node already exists
+        skip_defaults,                //
         cfg_node.name(),              // The selected node name
         &cfg_node.addr().to_string(), // The selected node api address
         None,                         // No project information available

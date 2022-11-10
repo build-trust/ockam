@@ -126,6 +126,30 @@ teardown() {
   assert_output "HELLO"
 }
 
+@test "check node re-starts default services depending on --skip-defaults" {
+  # Not using --skip-defaults, node should re-start with default
+  # services running
+  run $OCKAM node create n1
+  assert_success
+  assert_output --partial "/service/vault_service"
+
+  $OCKAM node stop n1
+  run $OCKAM node start n1
+  assert_success
+  assert_output --partial "/service/vault_service"
+
+  # When using --skip-defaults, node should NOT re-start with default
+  # services running
+  run $OCKAM node create n2 --skip-defaults
+  assert_success
+  refute_output --partial "/service/vault_service"
+
+  $OCKAM node stop n2
+  run $OCKAM node start n2
+  assert_success
+  refute_output --partial "/service/vault_service"
+}
+
 @test "create two nodes and send message from one to the other - with /node in --from argument" {
   $OCKAM node create n1
   $OCKAM node create n2

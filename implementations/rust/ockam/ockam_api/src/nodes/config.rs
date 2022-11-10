@@ -174,6 +174,8 @@ pub struct NodeStateConfig {
     pub identity: Option<Vec<u8>>,
     /// Identity was overridden
     pub identity_was_overridden: bool,
+    /// skip_defaults specified on node creation
+    pub skip_defaults_used: bool,
 }
 
 impl ConfigValues for NodeStateConfig {
