@@ -1,3 +1,5 @@
+use core::cmp::Ordering;
+
 use crate::env::Env;
 use crate::error::EvalError;
 use crate::expr::{unit, Expr};
@@ -226,14 +228,27 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
                     }
                 }
             }
-            Op::Eq(n) => eval_predicate(n, &mut args, |x, y| x == y),
-            Op::Lt(n) => eval_predicate(n, &mut args, |x, y| x < y),
-            Op::Gt(n) => eval_predicate(n, &mut args, |x, y| x > y),
+            Op::Eq(n) => eval_predicate(n, &mut args, |x, y| x.equals(y))?,
+            Op::Lt(n) => eval_predicate(n, &mut args, |x, y| {
+                x.compare(y).map(|o| o == Some(Ordering::Less))
+            })?,
+            Op::Gt(n) => eval_predicate(n, &mut args, |x, y| {
+                x.compare(y).map(|o| o == Some(Ordering::Greater))
+            })?,
             Op::Member => {
                 let s = pop(&mut args);
-                let x = pop(&mut args);
+                let y = pop(&mut args);
                 match s {
-                    Expr::Seq(xs) => args.push(Expr::Bool(xs.contains(&x))),
+                    Expr::Seq(xs) => {
+                        let mut b = false;
+                        for x in &xs {
+                            if y.equals(x)? {
+                                b = true;
+                                break
+                            }
+                        }
+                        args.push(Expr::Bool(b))
+                    }
                     other => {
                         let msg = "'member?' expects sequence as second argument";
                         return Err(EvalError::InvalidType(other, msg))
@@ -261,18 +276,19 @@ fn pop<T>(s: &mut Vec<T>) -> T {
 }
 
 /// Evaluate a predicate against the `n` topmost arguments.
-fn eval_predicate<F>(n: usize, args: &mut Vec<Expr>, f: F)
+fn eval_predicate<F>(n: usize, args: &mut Vec<Expr>, f: F) -> Result<(), EvalError>
 where
-    F: Fn(&Expr, &Expr) -> bool,
+    F: Fn(&Expr, &Expr) -> Result<bool, EvalError>,
 {
     let mut b = true;
     let start = args.len() - n;
     for (x, y) in args.iter().skip(start).zip(args.iter().skip(start + 1)) {
-        if !f(x, y) {
+        if !f(x, y)? {
             b = false;
             break;
         }
     }
     args.truncate(start);
-    args.push(Expr::Bool(b))
+    args.push(Expr::Bool(b));
+    Ok(())
 }
