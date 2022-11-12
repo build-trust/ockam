@@ -56,6 +56,11 @@ jobs:
         with:
           ref: ${{ github.event.inputs.release_branch }}
 
+      - name: Use cache cargo_home
+        uses: ./.github/actions/cargo_home_cache
+      - name: Use cache cargo_target
+        uses: ./.github/actions/cargo_target_dir_cache
+
       - name: Build Binary
         shell: bash
         run: |
@@ -70,3 +75,6 @@ jobs:
           export PATH=$(pwd)/target/debug:$PATH;
           cd implementations/rust/ockam/ockam_command/tests;
           bats commands.bats;
+
+      - name: Prep cache cargo_target before persisting
+        uses: ./.github/actions/cargo_target_dir_pre_cache
