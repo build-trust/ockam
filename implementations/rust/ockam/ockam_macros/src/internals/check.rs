@@ -16,7 +16,7 @@ pub(crate) mod item_fn {
     pub(crate) fn is_async(ctx: &Context, input_fn: &ItemFn) {
         if input_fn.sig.asyncness.is_none() {
             let msg = "the `async` keyword is missing from the function declaration";
-            ctx.error_spanned_by(&input_fn.sig.fn_token, msg);
+            ctx.error_spanned_by(input_fn.sig.fn_token, msg);
         }
     }
 
@@ -43,11 +43,11 @@ pub(crate) mod item_fn {
         if let Some(ockam_ctx) = ockam_ctx {
             if ockam_ctx.and_token.is_none() {
                 let msg = "the `Context` argument must be passed as reference";
-                ctx.error_spanned_by(&ockam_ctx.arg, msg);
+                ctx.error_spanned_by(ockam_ctx.arg, msg);
             }
             if ockam_ctx.mutability.is_none() {
                 let msg = "the `Context` argument must be mutable";
-                ctx.error_spanned_by(&ockam_ctx.arg, msg);
+                ctx.error_spanned_by(ockam_ctx.arg, msg);
             }
         }
     }
@@ -70,12 +70,12 @@ pub(crate) mod item_fn {
                         .iter()
                         .any(|s| s.ident.to_string().contains("Result"))
                     {
-                        ctx.error_spanned_by(&ret_ty, msg);
+                        ctx.error_spanned_by(ret_ty, msg);
                     }
                 }
                 // In any other case, the return type is not valid.
                 _ => {
-                    ctx.error_spanned_by(&ret_ty, msg);
+                    ctx.error_spanned_by(ret_ty, msg);
                 }
             },
         }

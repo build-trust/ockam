@@ -425,7 +425,7 @@ pub mod run {
                 //  1. Pipe output to next command
                 //  2. Pipe input from previous command
                 //  3. Both 1 and 2
-                let mut child = std::process::Command::new(&exe)
+                let mut child = std::process::Command::new(exe)
                     .args(&args)
                     .stdout(Stdio::piped())
                     .stdin(stdin)
@@ -497,7 +497,7 @@ pub mod run {
                     let mut optional_args = CommandsRunner::ask_for_node_args()?;
                     args.append(&mut optional_args);
                     trace!("Running command {:?}", args);
-                    let status = std::process::Command::new(&exe)
+                    let status = std::process::Command::new(exe)
                         .args(args)
                         .stdout(Stdio::inherit())
                         .stderr(Stdio::inherit())

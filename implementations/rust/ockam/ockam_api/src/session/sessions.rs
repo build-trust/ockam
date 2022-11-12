@@ -170,7 +170,7 @@ impl Key {
 
 impl fmt::Display for Key {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(&*self.0))
+        write!(f, "{}", hex::encode(*self.0))
     }
 }
 

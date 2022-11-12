@@ -240,7 +240,7 @@ impl<'a> Request<'a> {
     }
 
     pub fn path(&self) -> &str {
-        &*self.path
+        &self.path
     }
 
     pub fn path_segments<const N: usize>(&self) -> Segments<N> {

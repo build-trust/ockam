@@ -118,12 +118,12 @@ impl<'a> Data<'a> {
             Struct(s) => match &s.fields {
                 syn::Fields::Named(f) => Some(&f.named),
                 _ => {
-                    ctx.error_spanned_by(&input_derive, "the struct must have named fields only");
+                    ctx.error_spanned_by(input_derive, "the struct must have named fields only");
                     None
                 }
             },
             _ => {
-                ctx.error_spanned_by(&input_derive, "this macro can only be used on Structs");
+                ctx.error_spanned_by(input_derive, "this macro can only be used on Structs");
                 None
             }
         };

@@ -83,7 +83,7 @@ impl Serialize for HexByteVec {
         if s.is_human_readable() {
             hex::serde::serialize(&*self.0, s)
         } else {
-            s.serialize_bytes(&*self.0)
+            s.serialize_bytes(&self.0)
         }
     }
 }
