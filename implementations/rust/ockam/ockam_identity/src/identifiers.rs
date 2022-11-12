@@ -137,7 +137,7 @@ impl ChangeIdentifier {
     }
     /// Human-readable form of the id
     pub fn to_string_representation(&self) -> String {
-        format!("E_ID.{}", hex::encode(&self.0))
+        format!("E_ID.{}", hex::encode(self.0))
     }
 }
 

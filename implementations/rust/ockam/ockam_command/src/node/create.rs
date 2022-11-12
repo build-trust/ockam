@@ -106,7 +106,7 @@ pub struct CreateCommand {
 impl Default for CreateCommand {
     fn default() -> Self {
         Self {
-            node_name: hex::encode(&random::<[u8; 4]>()),
+            node_name: hex::encode(random::<[u8; 4]>()),
             foreground: false,
             tcp_listener_address: "127.0.0.1:0".to_string(),
             skip_defaults: false,
