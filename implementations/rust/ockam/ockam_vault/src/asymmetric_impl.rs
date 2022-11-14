@@ -32,7 +32,7 @@ impl Vault {
                 let secret = sk.diffie_hellman(&pk_t);
                 Ok(secret.as_bytes().to_vec())
             }
-            SecretType::Buffer | SecretType::Aes | SecretType::Ed25519 => {
+            SecretType::NistP256 | SecretType::Buffer | SecretType::Aes | SecretType::Ed25519 => {
                 Err(VaultError::UnknownEcdhKeyType.into())
             }
         }

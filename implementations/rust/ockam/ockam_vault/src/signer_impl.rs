@@ -1,7 +1,14 @@
+use cfg_if::cfg_if;
 use crate::vault::Vault;
 use crate::VaultError;
 use ockam_core::vault::{KeyId, SecretType, Signature, Signer};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
+
+#[cfg(feature = "ring")]
+use crate::error::{from_ring_unspecified, ring_key_rejected};
+
+#[cfg(feature = "rustcrypto")]
+use crate::error::from_pkcs8;
 
 #[async_trait]
 impl Signer for Vault {
@@ -47,7 +54,30 @@ impl Signer for Vault {
                 let sig = kp.sign(data.as_ref());
                 Ok(Signature::new(sig.to_bytes().to_vec()))
             }
-            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
+            SecretType::NistP256 => {
+                cfg_if! {
+                    if #[cfg(feature = "ring")] {
+                        use ring::rand::SystemRandom;
+                        use ring::signature::{ECDSA_P256_SHA256_ASN1_SIGNING, EcdsaKeyPair};
+                        let sec = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, key)
+                            .map_err(ring_key_rejected)?;
+                        let rng = SystemRandom::new();
+                        let sig = sec.sign(&rng, data).map_err(from_ring_unspecified)?;
+                        Ok(Signature::new(sig.as_ref().to_vec()))
+                    } else if #[cfg(feature = "rustcrypto")] {
+                        use p256::ecdsa::{self, signature::Signer as _};
+                        use p256::pkcs8::DecodePrivateKey;
+                        let sec = ecdsa::SigningKey::from_pkcs8_der(key).map_err(from_pkcs8)?;
+                        let sig = sec.sign(data);
+                        Ok(Signature::new(sig.to_der().as_bytes().to_vec()))
+                    } else {
+                        Err(VaultError::InvalidKeyType.into())
+                    }
+                }
+            }
+            SecretType::Buffer | SecretType::Aes => {
+                Err(VaultError::InvalidKeyType.into())
+            }
         }
     }
 }
