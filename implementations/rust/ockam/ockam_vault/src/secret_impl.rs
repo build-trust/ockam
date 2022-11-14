@@ -1,3 +1,4 @@
+use cfg_if::cfg_if;
 use crate::vault::Vault;
 use crate::VaultError;
 use arrayref::array_ref;
@@ -8,6 +9,12 @@ use ockam_core::vault::{
     CURVE25519_SECRET_LENGTH_USIZE,
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
+
+#[cfg(feature = "ring")]
+use crate::error::{from_ring_unspecified, ring_key_rejected};
+
+#[cfg(feature = "rustcrypto")]
+use crate::error::from_pkcs8;
 
 impl Vault {
     /// Compute key id from secret and attributes. Only Curve25519 and Buffer types are supported
@@ -39,6 +46,19 @@ impl Vault {
                 ))
                 .await?
             }
+            SecretType::NistP256 => {
+                cfg_if! {
+                    if #[cfg(feature = "ring")] {
+                        let pk = ring_public_key(secret)?;
+                        self.compute_key_id_for_public_key(&pk).await?
+                    } else if #[cfg(feature = "rustcrypto")] {
+                        let pk = p256_public_key(secret)?;
+                        self.compute_key_id_for_public_key(&pk).await?
+                    } else {
+                        return Err(VaultError::InvalidKeyType.into())
+                    }
+                }
+            }
             SecretType::Buffer | SecretType::Aes => {
                 // NOTE: Buffer and Aes secrets in the system are ephemeral and it should be fine,
                 // that every time we import the same secret - it gets different KeyId value.
@@ -56,12 +76,6 @@ impl Vault {
     pub fn check_secret(&self, secret: &[u8], attributes: &SecretAttributes) -> Result<()> {
         if secret.len() != attributes.length() as usize {
             return Err(VaultError::InvalidSecretLength.into());
-        }
-        match attributes.stype() {
-            SecretType::Buffer | SecretType::Aes | SecretType::X25519 | SecretType::Ed25519 => {
-                // Avoid unused variable warning
-                let _ = secret;
-            }
         }
         Ok(())
     }
@@ -122,6 +136,27 @@ impl SecretVault for Vault {
                 };
 
                 SecretKey::new(key)
+            }
+            SecretType::NistP256 => {
+                cfg_if! {
+                    if #[cfg(feature = "ring")] {
+                        use ring::rand::SystemRandom;
+                        use ring::signature::{ECDSA_P256_SHA256_ASN1_SIGNING, EcdsaKeyPair};
+                        let rng = SystemRandom::new();
+                        let sec = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, &rng)
+                            .map_err(from_ring_unspecified)?;
+                        SecretKey::new(sec.as_ref().to_vec())
+                    } else if #[cfg(feature = "rustcrypto")] {
+                        use p256::ecdsa::SigningKey;
+                        use p256::pkcs8::EncodePrivateKey;
+                        let sec = SigningKey::random(thread_rng());
+                        let sec = p256::SecretKey::from_be_bytes(&sec.to_bytes()).unwrap(); // TODO
+                        let doc = sec.to_pkcs8_der().map_err(from_pkcs8)?;
+                        SecretKey::new(doc.as_bytes().to_vec())
+                    } else {
+                        return Err(VaultError::InvalidKeyType.into())
+                    }
+                }
             }
         };
         let key_id = self.compute_key_id(key.as_ref(), &attributes).await?;
@@ -215,7 +250,20 @@ impl SecretVault for Vault {
                 let pk = ed25519_dalek::PublicKey::from(&sk);
                 Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::Ed25519))
             }
-            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
+            SecretType::NistP256 => {
+                cfg_if! {
+                    if #[cfg(feature = "ring")] {
+                        ring_public_key(entry.key().as_ref())
+                    } else if #[cfg(feature = "rustcrypto")] {
+                        p256_public_key(entry.key().as_ref())
+                    } else {
+                        Err(VaultError::InvalidKeyType.into())
+                    }
+                }
+            }
+            SecretType::Buffer | SecretType::Aes => {
+                Err(VaultError::InvalidKeyType.into())
+            }
         }
     }
 
@@ -243,6 +291,21 @@ impl SecretVault for Vault {
 
         res
     }
+}
+
+#[cfg(feature = "ring")]
+fn ring_public_key(secret: &[u8]) -> Result<PublicKey> {
+    use ring::signature::{ECDSA_P256_SHA256_ASN1_SIGNING, KeyPair, EcdsaKeyPair};
+    let sec = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, secret).map_err(ring_key_rejected)?;
+    Ok(PublicKey::new(sec.public_key().as_ref().to_vec(), SecretType::NistP256))
+}
+
+#[cfg(feature = "rustcrypto")]
+fn p256_public_key(secret: &[u8]) -> Result<PublicKey> {
+    use p256::pkcs8::{DecodePrivateKey, EncodePublicKey};
+    let sec = p256::ecdsa::SigningKey::from_pkcs8_der(secret).map_err(from_pkcs8)?;
+    let pky = sec.verifying_key().to_public_key_der().unwrap();
+    Ok(PublicKey::new(pky.as_ref().to_vec(), SecretType::NistP256))
 }
 
 #[cfg(test)]

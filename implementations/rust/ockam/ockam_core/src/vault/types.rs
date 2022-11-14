@@ -191,6 +191,8 @@ pub enum SecretType {
     #[n(3)] X25519,
     /// Curve 22519 key
     #[n(4)] Ed25519,
+    /// NIST P-256 key
+    #[n(5)] NistP256
 }
 
 /// All possible [`SecretKey`] persistence types

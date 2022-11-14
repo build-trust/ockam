@@ -71,6 +71,7 @@ impl From<SecretAttributes> for FfiSecretAttributes {
             SecretType::Aes => 1,
             SecretType::X25519 => 2,
             SecretType::Ed25519 => 3,
+            SecretType::NistP256 => 4,
         };
 
         let persistence = match attrs.persistence() {
