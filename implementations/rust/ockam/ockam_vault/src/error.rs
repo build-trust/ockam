@@ -90,3 +90,24 @@ impl From<VaultError> for Error {
         Error::new(Origin::Vault, kind, err)
     }
 }
+
+#[cfg(feature = "ring")]
+pub(crate) fn from_ring_unspecified(e: ring::error::Unspecified) -> Error {
+    Error::new(Origin::Vault, Kind::Unknown, e)
+}
+
+#[cfg(feature = "ring")]
+pub(crate) fn ring_key_rejected(e: ring::error::KeyRejected) -> Error {
+    Error::new(Origin::Vault, Kind::Invalid, e)
+}
+
+#[cfg(feature = "rustcrypto")]
+pub(crate) fn from_pkcs8<T: core::fmt::Display>(e: T) -> Error {
+    Error::new(Origin::Vault, Kind::Unknown, e.to_string())
+}
+
+#[cfg(feature = "rustcrypto")]
+pub(crate) fn from_ecdsa(e: p256::ecdsa::Error) -> Error {
+    Error::new(Origin::Vault, Kind::Unknown, e)
+}
+

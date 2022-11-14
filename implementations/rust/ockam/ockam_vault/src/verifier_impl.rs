@@ -1,9 +1,13 @@
+use cfg_if::cfg_if;
 use crate::vault::Vault;
 use crate::VaultError;
 use ockam_core::vault::{
     PublicKey, SecretType, Signature, Verifier, CURVE25519_PUBLIC_LENGTH_USIZE,
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
+
+#[cfg(feature = "rustcrypto")]
+use crate::error::{from_ecdsa, from_pkcs8};
 
 #[async_trait]
 impl Verifier for Vault {
@@ -45,7 +49,26 @@ impl Verifier for Vault {
                 let public_key = ed25519_dalek::PublicKey::from_bytes(public_key.data()).unwrap();
                 Ok(public_key.verify(data.as_ref(), &signature).is_ok())
             }
-            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidPublicKey.into()),
+            SecretType::NistP256 => {
+                cfg_if! {
+                    if #[cfg(feature = "ring")] {
+                        use ring::signature::{ECDSA_P256_SHA256_ASN1, UnparsedPublicKey};
+                        let pk = UnparsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, public_key.data());
+                        Ok(pk.verify(data, signature.as_ref()).is_ok())
+                    } else if #[cfg(feature = "rustcrypto")] {
+                        use p256::ecdsa::{VerifyingKey, Signature, signature::Verifier as _};
+                        use p256::pkcs8::DecodePublicKey;
+                        let k = VerifyingKey::from_public_key_der(public_key.data()).map_err(from_pkcs8)?;
+                        let s = Signature::from_der(signature.as_ref()).map_err(from_ecdsa)?;
+                        Ok(k.verify(data, &s).is_ok())
+                    } else {
+                        Err(VaultError::InvalidPublicKey.into())
+                    }
+                }
+            }
+            SecretType::Buffer | SecretType::Aes => {
+                Err(VaultError::InvalidPublicKey.into())
+            }
         }
     }
 }

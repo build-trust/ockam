@@ -27,6 +27,10 @@ mod hasher_impl;
 mod secret_impl;
 mod signer_impl;
 
+/// AWS KMS
+#[cfg(feature = "aws")]
+pub mod aws;
+
 /// Storage
 #[cfg(feature = "storage")]
 pub mod storage;
