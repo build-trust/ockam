@@ -1,5 +1,5 @@
 use crate::channel_types::{MessageSender, SmallSender};
-use crate::relay::{CtrlSignal, RelayMessage};
+use crate::relay::CtrlSignal;
 use crate::{
     error::{NodeError, NodeReason},
     NodeReplyResult, RouterReply,
@@ -12,7 +12,7 @@ use ockam_core::{
         sync::Arc,
         vec::Vec,
     },
-    Address, AddressSet, Result,
+    Address, RelayMessage, Result,
 };
 
 /// Address states and associated logic
@@ -64,11 +64,11 @@ impl InternalMap {
         }
 
         // Add all addresses to the cluster set
-        for addr in rec.address_set().clone() {
+        for addr in rec.address_set() {
             self.clusters
                 .get_mut(&label)
                 .expect("No such cluster??")
-                .insert(addr);
+                .insert(addr.clone());
         }
 
         RouterReply::ok()
@@ -162,7 +162,7 @@ pub struct AddressMeta {
 
 #[derive(Debug)]
 pub struct AddressRecord {
-    address_set: AddressSet,
+    address_set: Vec<Address>,
     sender: Option<MessageSender<RelayMessage>>,
     ctrl_tx: SmallSender<CtrlSignal>,
     state: AddressState,
@@ -172,7 +172,7 @@ pub struct AddressRecord {
 }
 
 impl AddressRecord {
-    pub fn address_set(&self) -> &AddressSet {
+    pub fn address_set(&self) -> &[Address] {
         &self.address_set
     }
     pub fn sender(&self) -> MessageSender<RelayMessage> {
@@ -182,7 +182,7 @@ impl AddressRecord {
         self.sender = None;
     }
     pub fn new(
-        address_set: AddressSet,
+        address_set: Vec<Address>,
         sender: MessageSender<RelayMessage>,
         ctrl_tx: SmallSender<CtrlSignal>,
         msg_count: Arc<AtomicUsize>,

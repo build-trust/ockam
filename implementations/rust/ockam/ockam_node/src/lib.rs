@@ -44,6 +44,9 @@ pub mod access_control;
 /// Api helpers
 pub mod api;
 
+/// Debugger
+pub mod debugger;
+
 mod async_drop;
 mod cancel;
 mod context;
@@ -54,6 +57,7 @@ mod local_info;
 mod messages;
 mod node;
 mod parser;
+mod processor_builder;
 mod relay;
 mod router;
 mod worker_builder;
@@ -65,6 +69,7 @@ pub use error::*;
 pub use executor::*;
 pub use local_info::*;
 pub use messages::*;
+pub use processor_builder::ProcessorBuilder;
 pub use worker_builder::WorkerBuilder;
 
 pub use node::{NodeBuilder, NullWorker};

@@ -2,15 +2,18 @@ use super::{AddressMeta, AddressRecord, NodeState, Router, SenderPair};
 use crate::channel_types::SmallSender;
 use crate::{
     error::{NodeError, NodeReason},
-    NodeReplyResult, RouterReply,
+    NodeReplyResult, RouterReason, RouterReply,
 };
 use core::sync::atomic::AtomicUsize;
-use ockam_core::{compat::sync::Arc, AddressSet, Result};
+use ockam_core::{
+    compat::{sync::Arc, vec::Vec},
+    Address, Result,
+};
 
 /// Execute a `StartWorker` command
 pub(super) async fn exec(
     router: &mut Router,
-    addrs: AddressSet,
+    addrs: Vec<Address>,
     senders: SenderPair,
     detached: bool,
     metrics: Arc<AtomicUsize>,
@@ -26,17 +29,19 @@ pub(super) async fn exec(
 
 async fn start(
     router: &mut Router,
-    addrs: AddressSet,
+    addrs: Vec<Address>,
     senders: SenderPair,
     detached: bool,
     metrics: Arc<AtomicUsize>,
     reply: &SmallSender<NodeReplyResult>,
 ) -> Result<()> {
-    let primary_addr = addrs.first();
+    let primary_addr = addrs
+        .first()
+        .ok_or_else(|| NodeError::RouterState(RouterReason::EmptyAddressSet).internal())?;
 
-    router.check_addr_not_exist(&primary_addr, reply).await?;
+    router.check_addr_not_exist(primary_addr, reply).await?;
 
-    debug!("Starting new worker '{}'", addrs.first());
+    debug!("Starting new worker '{}'", primary_addr);
 
     let SenderPair { msgs, ctrl } = senders;
 

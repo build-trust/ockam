@@ -1,12 +1,10 @@
 use crate::async_drop::AsyncDrop;
 use crate::channel_types::{message_channel, small_channel, SmallReceiver, SmallSender};
+use crate::debugger;
 use crate::tokio::{self, runtime::Handle, time::timeout};
 use crate::{
-    error::*,
-    parser,
-    relay::{CtrlSignal, ProcessorRelay, RelayMessage},
-    router::SenderPair,
-    Cancel, NodeMessage, ShutdownType, WorkerBuilder,
+    error::*, parser, relay::CtrlSignal, router::SenderPair, Cancel, NodeMessage, ProcessorBuilder,
+    ShutdownType, WorkerBuilder,
 };
 use core::{
     sync::atomic::{AtomicUsize, Ordering},
@@ -15,10 +13,10 @@ use core::{
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
-    Address, AddressSet, AllowAll, AsyncTryClone, Error, LocalMessage, Mailbox, Mailboxes, Message,
-    Processor, Result, Route, TransportMessage, TransportType, Worker,
+    Address, AsyncTryClone, Error, LocalMessage, Mailboxes, Message, Processor, RelayMessage,
+    Result, Route, TransportMessage, TransportType, Worker,
 };
-use ockam_core::{AccessControl, LocalInfo};
+use ockam_core::{LocalInfo, Mailbox};
 
 /// A default timeout in seconds
 pub const DEFAULT_TIMEOUT: u64 = 30;
@@ -72,7 +70,22 @@ impl Drop for Context {
 #[ockam_core::async_trait]
 impl AsyncTryClone for Context {
     async fn async_try_clone(&self) -> Result<Self> {
-        self.new_detached(Address::random_local()).await
+        // TODO @ac Context.async_try_clone.detached
+        // in:  ?
+        // out: ?
+        /*let mailboxes = Mailboxes::new(
+            Mailbox::new(
+                Address::random_tagged("Context.async_try_clone.detached"),
+                Arc::new(crate::access_control::LocalOriginOnly),
+                Arc::new(crate::access_control::LocalOriginOnly),
+            ),
+            vec![],
+        );
+        self.new_detached_with_mailboxes(mailboxes).await*/
+
+        // TODO @ac for now we'll just inherit from the parent context
+        self.new_detached(Address::random_tagged("Context.async_try_clone.detached"))
+            .await
     }
 }
 
@@ -105,15 +118,18 @@ impl Context {
             }) {
                 msg
             } else {
+                // no more messages
                 return Ok(None);
             };
 
-            if !self
-                .mailboxes
-                .is_authorized(&relay_msg.addr, &relay_msg.local_msg)
-                .await?
-            {
-                warn!("Message for {} did not pass access control", relay_msg.addr);
+            debugger::log_incoming_message(self, &relay_msg);
+
+            if !self.mailboxes.is_incoming_authorized(&relay_msg).await? {
+                warn!(
+                    "Message received from {} for {} did not pass incoming access control",
+                    relay_msg.local_msg.transport().return_route,
+                    relay_msg.destination
+                );
                 continue;
             }
 
@@ -161,7 +177,7 @@ impl Context {
     }
 
     /// Return all addresses of the current worker
-    pub fn aliases(&self) -> AddressSet {
+    pub fn aliases(&self) -> Vec<Address> {
         self.mailboxes.aliases()
     }
 
@@ -176,36 +192,47 @@ impl Context {
         tokio::time::sleep(dur).await;
     }
 
-    /// Create a new detached `Context` that will apply the given
-    /// [`AccessControl`] to any incoming messages it receives
-    pub async fn new_repeater<AC>(&self, access_control: AC) -> Result<RepeaterContext>
-    where
-        AC: AccessControl,
-    {
-        let repeater_ctx = self
-            .new_detached_impl(Mailboxes::main(
-                Address::random_local(),
-                Arc::new(access_control),
-            ))
-            .await?;
-        Ok(repeater_ctx)
+    /// TODO basically we can just rename `Self::new_detached_impl()`
+    pub async fn new_detached_with_mailboxes(
+        &self,
+        mailboxes: Mailboxes,
+    ) -> Result<DetachedContext> {
+        let ctx = self.new_detached_impl(mailboxes).await?;
+
+        debugger::log_inherit_context("DETACHED_WITH_MB", self, &ctx);
+
+        Ok(ctx)
     }
 
     /// Create a new detached `Context` without spawning a full worker
     ///
     /// Note: this function is very low-level.  For most users
-    /// [`start_worker()`](Self::start_worker) is the recommended to
-    /// way to create a new worker context.
-    pub async fn new_detached<S: Into<AddressSet>>(
-        &self,
-        address_set: S,
-    ) -> Result<DetachedContext> {
-        // Inherit access control
-        let access_control = self.mailboxes.main_mailbox().access_control().clone();
+    /// [`start_worker()`](Self::start_worker) is the recommended way
+    /// to create a new worker context.
+    ///
+    pub async fn new_detached(&self, address: impl Into<Address>) -> Result<DetachedContext> {
+        // TODO: Avoid inheriting access control, as they may lead to unwanted behaviour
+        let incoming_access_control = self
+            .mailboxes
+            .main_mailbox()
+            .incoming_access_control()
+            .clone();
+        let outgoing_access_control = self
+            .mailboxes
+            .main_mailbox()
+            .outgoing_access_control()
+            .clone();
 
-        let mailboxes = Mailboxes::from_address_set(address_set.into(), access_control);
+        let mailboxes = Mailboxes::main(
+            address.into(),
+            incoming_access_control,
+            outgoing_access_control,
+        );
+        let ctx = self.new_detached_impl(mailboxes).await?;
 
-        self.new_detached_impl(mailboxes).await
+        debugger::log_inherit_context("DETACHED", self, &ctx);
+
+        Ok(ctx)
     }
 
     async fn new_detached_impl(&self, mailboxes: Mailboxes) -> Result<DetachedContext> {
@@ -278,9 +305,8 @@ impl Context {
     ///     ctx.start_worker("my-worker-address", MyWorker).await
     /// }
     /// ```
-    pub async fn start_worker<NM, NW, S>(&self, address: S, worker: NW) -> Result<()>
+    pub async fn start_worker<NM, NW>(&self, address: impl Into<Address>, worker: NW) -> Result<()>
     where
-        S: Into<AddressSet>,
         NM: Message + Send + 'static,
         NW: Worker<Context = Context, Message = NM>,
     {
@@ -297,39 +323,17 @@ impl Context {
     /// receive messages.  If your code is built around responding to
     /// message events, consider using
     /// [`start_worker()`](Self::start_worker) instead!
+    ///
+    /// The processor will inherit its [`AccessControl`] from this
+    /// context. Use [`ProcessorBuilder`] to start a worker with custom
+    /// access control.
     pub async fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
     where
         P: Processor<Context = Context>,
     {
-        self.start_processor_impl(address.into(), processor).await
-    }
-
-    async fn start_processor_impl<P>(&self, address: Address, processor: P) -> Result<()>
-    where
-        P: Processor<Context = Context>,
-    {
-        let addr = address.clone();
-
-        let main_mailbox = Mailbox::new(addr, Arc::new(AllowAll)); // TODO FIXME
-        let mailboxes = Mailboxes::new(main_mailbox, vec![]);
-
-        let (ctx, senders, ctrl_rx) =
-            Context::new(self.rt.clone(), self.sender.clone(), mailboxes, None);
-
-        // Initialise the processor relay with the ctrl receiver
-        ProcessorRelay::<P>::init(&self.rt, processor, ctx, ctrl_rx);
-
-        // Send start request to router
-        let (msg, mut rx) = NodeMessage::start_processor(address, senders);
-        self.sender
-            .send(msg)
-            .await
-            .map_err(|e| Error::new(Origin::Node, Kind::Invalid, e))?;
-
-        // Wait for the actual return code
-        rx.recv()
-            .await
-            .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??;
+        ProcessorBuilder::with_inherited_access_control(self, address.into(), processor)
+            .start(self)
+            .await?;
         Ok(())
     }
 
@@ -422,7 +426,20 @@ impl Context {
         M: Message + Send + 'static,
         N: Message,
     {
-        let mut child_ctx = self.new_detached(Address::random_local()).await?;
+        let route: Route = route.into();
+
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(
+                Address::random_tagged("Context.send_and_receive.detached"),
+                //Arc::new(ockam_core::AllowSourceAddress(route.recipient())),
+                //Arc::new(ockam_core::AllowDestinationAddress(route.next().unwrap().clone())),
+                Arc::new(ockam_core::AllowAll), // FIXME @ac
+                Arc::new(ockam_core::AllowAll), // FIXME @ac
+            ),
+            vec![],
+        );
+        let mut child_ctx = self.new_detached_with_mailboxes(mailboxes).await?;
+
         child_ctx.send(route, msg).await?;
         Ok(child_ctx.receive::<N>().await?.take().body())
     }
@@ -573,7 +590,15 @@ impl Context {
 
         // First resolve the next hop in the route
         let (reply_tx, mut reply_rx) = small_channel();
-        let next = route.next().unwrap(); // TODO: communicate bad routes
+        let next = match route.next() {
+            Ok(next) => next,
+            Err(_) => {
+                // TODO: communicate bad routes to calling function
+                tracing::error!("Invalid route for message sent from {}", sending_address);
+                panic!("invalid destination route");
+            }
+        };
+
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
         self.sender
             .send(req)
@@ -588,16 +613,40 @@ impl Context {
         // Pack the payload into a TransportMessage
         let payload = msg.encode().unwrap();
         let mut transport_msg = TransportMessage::v1(route.clone(), Route::new(), payload);
-        transport_msg.return_route.modify().append(sending_address);
+        transport_msg
+            .return_route
+            .modify()
+            .append(sending_address.clone());
 
         // Pack transport message into a LocalMessage wrapper
         let local_msg = LocalMessage::new(transport_msg, local_info);
 
         // Pack local message into a RelayMessage wrapper
-        let msg = RelayMessage::new(addr, local_msg, route, needs_wrapping);
+        let relay_msg = RelayMessage::new(
+            sending_address.clone(),
+            addr,
+            local_msg,
+            route,
+            needs_wrapping,
+        );
+
+        debugger::log_outgoing_message(self, &relay_msg);
+
+        // TODO: @ac check if the sender_address is allowed to send the message
+        //      to the next hop in the route
+        if !self.mailboxes.is_outgoing_authorized(&relay_msg).await? {
+            warn!(
+                "Message sent from {} to {} did not pass outgoing access control",
+                relay_msg.source, relay_msg.destination
+            );
+            return Ok(());
+        }
 
         // Send the packed user message with associated route
-        sender.send(msg).await.map_err(NodeError::from_send_err)?;
+        sender
+            .send(relay_msg)
+            .await
+            .map_err(NodeError::from_send_err)?;
 
         Ok(())
     }
@@ -617,7 +666,17 @@ impl Context {
     pub async fn forward(&self, local_msg: LocalMessage) -> Result<()> {
         // First resolve the next hop in the route
         let (reply_tx, mut reply_rx) = small_channel();
-        let next = local_msg.transport().onward_route.next().unwrap(); // TODO: communicate bad routes
+        let next = match local_msg.transport().onward_route.next() {
+            Ok(next) => next,
+            Err(_) => {
+                // TODO: communicate bad routes to calling function
+                tracing::error!(
+                    "Invalid onward route for message forwarded from {}",
+                    local_msg.transport().return_route
+                );
+                panic!("invalid destination route");
+            }
+        };
         let req = NodeMessage::SenderReq(next.clone(), reply_tx);
         self.sender
             .send(req)
@@ -629,13 +688,27 @@ impl Context {
             .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??
             .take_sender()?;
 
-        // Pack the transport message into a relay message
+        // Pack the transport message into a RelayMessage wrapper
         let onward = local_msg.transport().onward_route.clone();
-        // let msg = RelayMessage::direct(addr, data, onward);
-        let msg = RelayMessage::new(addr, local_msg, onward, needs_wrapping);
+        let relay_msg = RelayMessage::new(self.address(), addr, local_msg, onward, needs_wrapping);
+
+        debugger::log_outgoing_message(self, &relay_msg);
+
+        // TODO check if this context is allowed to forward the message
+        //      to the next hop in the route
+        if !self.mailboxes.is_outgoing_authorized(&relay_msg).await? {
+            warn!(
+                "Message forwarded from {} to {} did not pass outgoing access control",
+                relay_msg.source, relay_msg.destination,
+            );
+            return Ok(());
+        }
 
         // Forward the message
-        sender.send(msg).await.map_err(NodeError::from_send_err)?;
+        sender
+            .send(relay_msg)
+            .await
+            .map_err(NodeError::from_send_err)?;
 
         Ok(())
     }
@@ -809,7 +882,7 @@ impl Context {
                 .receiver_next()
                 .await?
                 .ok_or_else(|| NodeError::Data.not_found())?;
-            let addr = msg.addr;
+            let addr = msg.destination;
             let local_msg = msg.local_msg;
 
             // FIXME: make message parsing idempotent to avoid cloning

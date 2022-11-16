@@ -23,7 +23,8 @@ use crate::{
     system::hooks::pipe::{ReceiverConfirm, ReceiverOrdering, SenderConfirm, SenderOrdering},
     Context, OckamMessage, SystemBuilder, WorkerSystem,
 };
-use ockam_core::{compat::collections::BTreeSet, Address, Result, Route};
+use ockam_core::{compat::collections::BTreeSet, Address, Mailbox, Mailboxes, Result, Route};
+use ockam_node::WorkerBuilder;
 
 const CLUSTER_NAME: &str = "_internal.pipe2";
 type PipeSystem = WorkerSystem<Context, OckamMessage>;
@@ -289,24 +290,37 @@ impl PipeBuilder {
         if let Some(peer) = self.peer {
             let addr = Address::random_local();
             tx_addr = Some(addr.clone());
-            let mut addr_set = vec![addr.clone(), self.tx_fin.clone()];
-            addr_set.append(&mut tx_sys.addresses());
-            ctx.start_worker(
-                addr_set,
+
+            let mut additional_mailboxes = vec![Mailbox::allow_all(self.tx_fin.clone())];
+            for addr in tx_sys.addresses() {
+                additional_mailboxes.push(Mailbox::allow_all(addr));
+            }
+            // TODO: @ac
+            let mailboxes = Mailboxes::new(Mailbox::allow_all(addr.clone()), additional_mailboxes);
+            WorkerBuilder::with_mailboxes(
+                mailboxes,
                 PipeSender::new(tx_sys, PeerRoute::Peer(peer), addr, self.tx_fin.clone()),
             )
+            .start(ctx)
             .await?;
         };
 
         // Create a receiver
         if let Some(addr) = self.recv {
             rx_addr = Some(addr.clone());
-            let mut addr_set = vec![addr.clone(), self.rx_fin.clone()];
-            addr_set.append(&mut rx_sys.addresses());
-            ctx.start_worker(
-                addr_set,
+
+            // TODO: @ac
+            let mut additional_mailboxes = vec![Mailbox::allow_all(self.rx_fin.clone())];
+            for addr in rx_sys.addresses() {
+                additional_mailboxes.push(Mailbox::allow_all(addr));
+            }
+            // TODO: @ac
+            let mailboxes = Mailboxes::new(Mailbox::allow_all(addr.clone()), additional_mailboxes);
+            WorkerBuilder::with_mailboxes(
+                mailboxes,
                 PipeReceiver::new(rx_sys, self.rx_fin.clone(), None),
             )
+            .start(ctx)
             .await?;
         }
 
@@ -330,10 +344,18 @@ impl PipeBuilder {
             let (addr, init_addr) = (Address::random_local(), Address::random_local());
             tx_addr = Some(addr.clone());
 
-            let mut addr_set = vec![addr.clone(), init_addr.clone(), self.tx_fin.clone()];
-            addr_set.append(&mut tx_sys.addresses());
-            ctx.start_worker(
-                addr_set,
+            // TODO: @ac
+            let mut additional_mailboxes = vec![
+                Mailbox::allow_all(init_addr.clone()),
+                Mailbox::allow_all(self.tx_fin.clone()),
+            ];
+            for addr in tx_sys.addresses() {
+                additional_mailboxes.push(Mailbox::allow_all(addr));
+            }
+            // TODO: @ac
+            let mailboxes = Mailboxes::new(Mailbox::allow_all(addr.clone()), additional_mailboxes);
+            WorkerBuilder::with_mailboxes(
+                mailboxes,
                 PipeSender::new(
                     tx_sys,
                     PeerRoute::Listener(peer, init_addr),
@@ -341,6 +363,7 @@ impl PipeBuilder {
                     self.tx_fin.clone(),
                 ),
             )
+            .start(ctx)
             .await?;
         }
 

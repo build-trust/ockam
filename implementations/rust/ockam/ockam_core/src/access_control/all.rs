@@ -1,5 +1,5 @@
 use crate::access_control::AccessControl;
-use crate::{async_trait, compat::boxed::Box, LocalMessage, Result};
+use crate::{async_trait, compat::boxed::Box, RelayMessage, Result};
 
 /// Allows message that are allowed buy both AccessControls
 #[derive(Debug)]
@@ -18,9 +18,9 @@ impl<F: AccessControl, S: AccessControl> AllAccessControl<F, S> {
 
 #[async_trait]
 impl<F: AccessControl, S: AccessControl> AccessControl for AllAccessControl<F, S> {
-    async fn is_authorized(&self, local_msg: &LocalMessage) -> Result<bool> {
-        Ok(self.first.is_authorized(local_msg).await?
-            && self.second.is_authorized(local_msg).await?)
+    async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
+        Ok(self.first.is_authorized(relay_msg).await?
+            && self.second.is_authorized(relay_msg).await?)
     }
 }
 

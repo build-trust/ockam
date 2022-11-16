@@ -1,6 +1,6 @@
-use crate::{Context, Executor};
+use crate::{debugger, Context, Executor};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{AccessControl, Address, AllowAll, Mailbox, Mailboxes};
+use ockam_core::{AccessControl, Address, AllowAll, Mailbox, Mailboxes, ToDoAccessControl};
 
 /// A minimal worker implementation that does nothing
 pub struct NullWorker;
@@ -70,12 +70,16 @@ where
 
         // The root application worker needs a mailbox and relay to accept
         // messages from workers, and to buffer incoming transcoded data.
+        let incoming = Arc::new(self.access_control);
+        let outgoing = Arc::new(ToDoAccessControl); // TODO: @ac
         let (ctx, sender, _) = Context::new(
             exe.runtime().clone(),
             exe.sender(),
-            Mailboxes::new(Mailbox::new(addr, Arc::new(self.access_control)), vec![]),
+            Mailboxes::new(Mailbox::new(addr, incoming, outgoing), vec![]),
             None,
         );
+
+        debugger::log_inherit_context("NODE", &ctx, &ctx);
 
         // Register this mailbox handle with the executor
         exe.initialize_system("app", sender);

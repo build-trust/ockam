@@ -1,10 +1,9 @@
 use crate::channel_types::SmallReceiver;
 use crate::relay::CtrlSignal;
-use crate::relay::RelayMessage;
 use crate::tokio::runtime::Handle;
 use crate::{parser, Context};
 use core::marker::PhantomData;
-use ockam_core::{Message, Result, Routed, Worker};
+use ockam_core::{Message, RelayMessage, Result, Routed, Worker};
 
 /// Worker relay machinery
 ///
@@ -56,7 +55,11 @@ where
             error!("Failed to decode message payload for worker" /* FIXME */);
             e
         })?;
-        let routed = Routed::new(msg, relay_msg.addr.clone(), relay_msg.local_msg.clone());
+        let routed = Routed::new(
+            msg,
+            relay_msg.destination.clone(),
+            relay_msg.local_msg.clone(),
+        );
         Ok(routed)
     }
 
@@ -78,7 +81,7 @@ where
         if !self.worker.is_authorized(&mut self.ctx, routed).await? {
             warn!(
                 "Message for {} did not pass worker relay access control",
-                relay_msg.addr
+                relay_msg.destination
             );
             return Ok(true);
         }

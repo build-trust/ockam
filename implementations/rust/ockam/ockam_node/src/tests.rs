@@ -458,7 +458,7 @@ async fn worker_calls_stopworker_from_handlemessage(ctx: &mut Context) -> Result
                 counter_b: counter_b_clone.clone(),
             };
             let addr = Address::random(LOCAL);
-            ctx.start_worker(&addr, worker).await.unwrap();
+            ctx.start_worker(addr.clone(), worker).await.unwrap();
             addrs.push(addr);
         }
 

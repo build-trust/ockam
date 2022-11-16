@@ -7,6 +7,7 @@ pub(crate) use listener::*;
 mod messages;
 pub(crate) use messages::*;
 mod trust_policy;
+use ockam_node::WorkerBuilder;
 pub use trust_policy::*;
 pub mod access_control;
 mod local_info;
@@ -16,7 +17,7 @@ use crate::authenticated_storage::AuthenticatedStorage;
 use crate::{Identity, IdentityVault};
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, AsyncTryClone, Result, Route};
+use ockam_core::{Address, AllowAll, AsyncTryClone, Mailbox, Mailboxes, Result, Route};
 
 impl<V: IdentityVault> Identity<V> {
     pub async fn create_secure_channel_listener(
@@ -28,7 +29,17 @@ impl<V: IdentityVault> Identity<V> {
         let identity_clone = self.async_try_clone().await?;
         let storage_clone = storage.async_try_clone().await?;
         let listener = IdentityChannelListener::new(trust_policy, identity_clone, storage_clone);
-        self.ctx.start_worker(address.into(), listener).await?;
+
+        // TODO @ac
+        let mailbox = Mailbox::new(
+            address.into(),
+            Arc::new(AllowAll),
+            Arc::new(ockam_core::ToDoAccessControl), // TODO @ac
+        );
+        WorkerBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), listener)
+            .start(&self.ctx)
+            .await?;
+
         Ok(())
     }
 
@@ -87,7 +98,7 @@ mod test {
     use core::sync::atomic::{AtomicU8, Ordering};
     use core::time::Duration;
     use ockam_core::compat::sync::Arc;
-    use ockam_core::{route, Any, Result, Routed, Worker};
+    use ockam_core::{route, AllowAll, Any, Result, Routed, Worker};
     use ockam_node::{Context, WorkerBuilder};
     use ockam_vault::Vault;
     use tokio::time::sleep;
@@ -354,9 +365,14 @@ mod test {
         let bob = Identity::create(ctx, &vault).await?;
 
         let access_control = IdentityAccessControlBuilder::new_with_id(alice.identifier().clone());
-        WorkerBuilder::with_access_control(access_control, "receiver", receiver)
-            .start(ctx)
-            .await?;
+        WorkerBuilder::with_access_control(
+            Arc::new(access_control),
+            Arc::new(AllowAll),
+            "receiver",
+            receiver,
+        )
+        .start(ctx)
+        .await?;
 
         bob.create_secure_channel_listener("listener", TrustEveryonePolicy, &bob_storage)
             .await?;
@@ -394,9 +410,14 @@ mod test {
         let bob = Identity::create(ctx, &vault).await?;
 
         let access_control = IdentityAccessControlBuilder::new_with_id(bob.identifier().clone());
-        WorkerBuilder::with_access_control(access_control, "receiver", receiver)
-            .start(ctx)
-            .await?;
+        WorkerBuilder::with_access_control(
+            Arc::new(access_control),
+            Arc::new(AllowAll),
+            "receiver",
+            receiver,
+        )
+        .start(ctx)
+        .await?;
 
         bob.create_secure_channel_listener("listener", TrustEveryonePolicy, &bob_storage)
             .await?;
@@ -428,9 +449,14 @@ mod test {
         let access_control = IdentityAccessControlBuilder::new_with_id(
             "P79b26ba2ea5ad9b54abe5bebbcce7c446beda8c948afc0de293250090e5270b6".try_into()?,
         );
-        WorkerBuilder::with_access_control(access_control, "receiver", receiver)
-            .start(ctx)
-            .await?;
+        WorkerBuilder::with_access_control(
+            Arc::new(access_control),
+            Arc::new(AllowAll),
+            "receiver",
+            receiver,
+        )
+        .start(ctx)
+        .await?;
 
         ctx.send(route!["receiver"], "Hello, Bob!".to_string())
             .await?;

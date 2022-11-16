@@ -4,8 +4,8 @@ use crate::IdentitySecureChannelLocalInfo;
 use core::fmt::{Debug, Formatter};
 use ockam_core::access_control::AccessControl;
 use ockam_core::compat::{string::String, vec::Vec};
-use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_core::{LocalMessage, Result};
+use ockam_core::Result;
+use ockam_core::{async_trait, compat::boxed::Box, RelayMessage};
 
 #[derive(Clone)]
 pub struct CredentialAccessControl<S: AuthenticatedStorage> {
@@ -34,8 +34,10 @@ impl<S: AuthenticatedStorage> Debug for CredentialAccessControl<S> {
 
 #[async_trait]
 impl<S: AuthenticatedStorage> AccessControl for CredentialAccessControl<S> {
-    async fn is_authorized(&self, local_msg: &LocalMessage) -> Result<bool> {
-        if let Ok(msg_identity_id) = IdentitySecureChannelLocalInfo::find_info(local_msg) {
+    async fn is_authorized(&self, relay_message: &RelayMessage) -> Result<bool> {
+        if let Ok(msg_identity_id) =
+            IdentitySecureChannelLocalInfo::find_info(&relay_message.local_msg)
+        {
             let attributes = match AttributesStorageUtils::get_attributes(
                 msg_identity_id.their_identity_id(),
                 &self.storage,

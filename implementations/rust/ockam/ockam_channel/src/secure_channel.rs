@@ -2,9 +2,9 @@ use crate::{
     KeyExchangeCompleted, SecureChannelDecryptor, SecureChannelKeyExchanger, SecureChannelListener,
     SecureChannelNewKeyExchanger, SecureChannelVault,
 };
-use ockam_core::compat::{rand::random, vec::Vec};
-use ockam_core::{Address, Result, Route};
-use ockam_node::Context;
+use ockam_core::compat::{sync::Arc, vec::Vec};
+use ockam_core::{Address, Mailbox, Mailboxes, Result, Route};
+use ockam_node::{Context, WorkerBuilder};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
@@ -97,27 +97,44 @@ impl SecureChannel {
         key_exchanger: impl SecureChannelKeyExchanger,
         vault: impl SecureChannelVault,
     ) -> Result<SecureChannelInfo> {
-        let address_remote: Address = random();
-
-        debug!(
-            "Starting SecureChannel initiator at remote: {}",
-            &address_remote
-        );
-
         let route = route.into();
 
-        let callback_address: Address = random();
+        let callback_address =
+            Address::random_tagged("SecureChannel.initiator.callback_address.detached");
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(
+                callback_address.clone(),
+                Arc::new(ockam_core::ToDoAccessControl), // TODO: @ac Allow only from the Decryptor
+                Arc::new(ockam_core::ToDoAccessControl), // TODO: @ac Allow only to the Decryptor
+            ),
+            vec![],
+        );
+        let mut child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
+
         let decryptor = SecureChannelDecryptor::new_initiator(
             key_exchanger,
-            Some(callback_address.clone()),
+            Some(callback_address),
             route,
             custom_payload,
             vault.async_try_clone().await?,
         )
         .await?;
 
-        let mut child_ctx = ctx.new_detached(callback_address).await?;
-        ctx.start_worker(address_remote.clone(), decryptor).await?;
+        let address_remote = Address::random_tagged("SecureChannel.initiator.decryptor");
+
+        debug!(
+            "Starting SecureChannel initiator at remote: {}",
+            &address_remote
+        );
+
+        let mailbox = Mailbox::new(
+            address_remote,
+            Arc::new(ockam_core::ToDoAccessControl), // TODO @ac Any
+            Arc::new(ockam_core::ToDoAccessControl), // TODO @ac Any
+        );
+        WorkerBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), decryptor)
+            .start(ctx)
+            .await?;
 
         let resp = child_ctx
             .receive_timeout::<KeyExchangeCompleted>(120)

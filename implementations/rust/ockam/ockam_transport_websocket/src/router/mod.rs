@@ -4,9 +4,10 @@ use std::ops::Deref;
 
 pub(crate) use handle::WebSocketRouterHandle;
 use ockam_core::{
-    async_trait, Address, Any, Decodable, LocalMessage, Message, Result, Routed, Worker,
+    async_trait, Address, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Message, Result,
+    Routed, Worker,
 };
-use ockam_node::Context;
+use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 
 use crate::workers::WorkerPair;
@@ -66,7 +67,13 @@ impl WebSocketRouter {
 
         let handle = router.create_self_handle(ctx).await?;
 
-        ctx.start_worker(vec![main_addr.clone(), api_addr], router)
+        // TODO: @ac
+        let mailboxes = Mailboxes::new(
+            Mailbox::allow_all(main_addr.clone()),
+            vec![Mailbox::allow_all(api_addr)],
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, router)
+            .start(ctx)
             .await?;
         trace!("Registering WS router for type = {}", WS);
         ctx.register(WS, main_addr).await?;

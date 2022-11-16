@@ -86,6 +86,8 @@ pub enum RouterReason {
     Duplicate,
     /// The provided router address type is not valid
     InvalidAddrType,
+    /// Empty Address Set
+    EmptyAddressSet,
 }
 
 impl fmt::Display for RouterReason {
@@ -96,6 +98,7 @@ impl fmt::Display for RouterReason {
             match self {
                 Self::Duplicate => "a router for this type already exists",
                 Self::InvalidAddrType => "you can not register router for this address type",
+                Self::EmptyAddressSet => "address set cannot be empty",
             }
         )
     }

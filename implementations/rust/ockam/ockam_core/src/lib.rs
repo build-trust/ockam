@@ -52,6 +52,8 @@ extern crate futures_util;
 pub mod access_control;
 pub mod api;
 pub mod compat;
+/// Debugger
+pub mod debugger;
 pub mod vault;
 
 mod cbor_utils;

@@ -8,7 +8,8 @@ use crate::{
     Context,
 };
 use ockam_core::compat::boxed::Box;
-use ockam_core::{Address, Any, LocalMessage, Result, Route, Routed, Worker};
+use ockam_core::{Address, Any, LocalMessage, Mailbox, Mailboxes, Result, Route, Routed, Worker};
+use ockam_node::WorkerBuilder;
 
 /// Encode the channel creation handshake stage a worker is in
 enum WorkerStage {
@@ -49,21 +50,28 @@ impl ChannelWorker {
         rx_hooks: PipeBehavior,
     ) -> Result<()> {
         let pub_addr = Address::random_local();
-        ctx.start_worker(
-            vec![int_addr.clone(), pub_addr.clone()],
-            ChannelWorker {
-                stage: WorkerStage::Stage2,
-                listener: None,
-                tx_addr: Address::random_local(),
-                rx_addr: Address::random_local(),
-                peer_routes: Some((peer_tx_route, peer_rx_route)),
-                self_addrs: (pub_addr, int_addr),
-                peer_addr,
-                tx_hooks,
-                rx_hooks,
-            },
-        )
-        .await
+        let worker = ChannelWorker {
+            stage: WorkerStage::Stage2,
+            listener: None,
+            tx_addr: Address::random_local(),
+            rx_addr: Address::random_local(),
+            peer_routes: Some((peer_tx_route, peer_rx_route)),
+            self_addrs: (pub_addr.clone(), int_addr.clone()),
+            peer_addr,
+            tx_hooks,
+            rx_hooks,
+        };
+
+        // TODO: @ac
+        let mailboxes = Mailboxes::new(
+            Mailbox::allow_all(int_addr),
+            vec![Mailbox::allow_all(pub_addr)],
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, worker)
+            .start(ctx)
+            .await?;
+
+        Ok(())
     }
 
     /// Create a new stage-1 channel worker
@@ -78,25 +86,31 @@ impl ChannelWorker {
         rx_hooks: PipeBehavior,
     ) -> Result<()> {
         let int_addr = Address::random_local();
-        ctx.start_worker(
-            vec![int_addr.clone(), pub_addr.clone()],
-            ChannelWorker {
-                stage: WorkerStage::Stage1,
-                listener: Some(listener),
-                peer_routes: None,
-                // This is a bit of a hack so that we don't have to
-                // create an outgoing message cache in the channel
-                // endpoint and can instead use the PipeSender cache
-                // mechanism instead
-                peer_addr: Address::random_local(),
-                rx_addr: Address::random_local(),
-                tx_addr: Address::random_local(),
-                self_addrs: (pub_addr, int_addr),
-                tx_hooks,
-                rx_hooks,
-            },
-        )
-        .await
+        let worker = ChannelWorker {
+            stage: WorkerStage::Stage1,
+            listener: Some(listener),
+            peer_routes: None,
+            // This is a bit of a hack so that we don't have to
+            // create an outgoing message cache in the channel
+            // endpoint and can instead use the PipeSender cache
+            // mechanism instead
+            peer_addr: Address::random_local(),
+            rx_addr: Address::random_local(),
+            tx_addr: Address::random_local(),
+            self_addrs: (pub_addr.clone(), int_addr.clone()),
+            tx_hooks,
+            rx_hooks,
+        };
+        // TODO: @ac
+        let mailboxes = Mailboxes::new(
+            Mailbox::allow_all(int_addr),
+            vec![Mailbox::allow_all(pub_addr)],
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, worker)
+            .start(ctx)
+            .await?;
+
+        Ok(())
     }
 }
 

@@ -1,8 +1,9 @@
 use crate::access_control::AccessControl;
-use crate::{async_trait, compat::boxed::Box, LocalMessage, Result};
+use crate::{async_trait, compat::boxed::Box, RelayMessage, Result};
+
+use core::fmt::{self, Debug};
 
 /// Allows message that are allowed buy either AccessControls
-#[derive(Debug)]
 pub struct AnyAccessControl<F: AccessControl, S: AccessControl> {
     // TODO: Extend for more than 2 policies
     first: F,
@@ -18,9 +19,15 @@ impl<F: AccessControl, S: AccessControl> AnyAccessControl<F, S> {
 
 #[async_trait]
 impl<F: AccessControl, S: AccessControl> AccessControl for AnyAccessControl<F, S> {
-    async fn is_authorized(&self, local_msg: &LocalMessage) -> Result<bool> {
-        Ok(self.first.is_authorized(local_msg).await?
-            || self.second.is_authorized(local_msg).await?)
+    async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
+        Ok(self.first.is_authorized(relay_msg).await?
+            || self.second.is_authorized(relay_msg).await?)
+    }
+}
+
+impl<F: AccessControl, S: AccessControl> Debug for AnyAccessControl<F, S> {
+    fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "AllowAny({:?} OR {:?})", self.first, self.second)
     }
 }
 

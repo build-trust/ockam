@@ -3,10 +3,10 @@ mod handle;
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, collections::BTreeMap, vec::Vec},
-    Any,
+    Any, Mailbox, Mailboxes,
 };
 use ockam_core::{Address, Decodable, LocalMessage, Message, Result, Routed, Worker};
-use ockam_node::Context;
+use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
 
@@ -149,7 +149,14 @@ impl BleRouter {
         let handle = router.create_self_handle(ctx).await?;
 
         trace!("Start Ble router for address = {:?}", main_addr.clone());
-        ctx.start_worker(vec![main_addr.clone(), api_addr], router)
+
+        // TODO: @ac
+        let mailboxes = Mailboxes::new(
+            Mailbox::allow_all(main_addr.clone()),
+            vec![Mailbox::allow_all(api_addr)],
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, router)
+            .start(ctx)
             .await?;
 
         trace!("Registering Ble router for type = {}", crate::BLE);

@@ -25,7 +25,7 @@ publish = true
 rust-version = "1.56.0"
 
 [features]
-default = ["std"]
+default = ["std", "debugger"] # TODO
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -43,6 +43,10 @@ alloc = ["ockam_core/alloc", "ockam_executor/alloc", "futures/alloc", "minicbor/
 dump_internals = []
 # TODO should these features be combined?
 metrics = []
+
+# Feature: "debugger" enables functionality to trace addresses and
+# message flows within Ockam apps.
+debugger = ["ockam_core/debugger"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.71.0", default_features = false }

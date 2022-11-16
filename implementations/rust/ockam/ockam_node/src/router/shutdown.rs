@@ -29,9 +29,14 @@ async fn stop_next_cluster(r: &mut Router) -> Result<bool> {
     match r.map.next_cluster() {
         Some(mut vec) => {
             let mut addrs = vec![];
+
             for record in vec.iter_mut() {
                 record.stop().await?;
-                addrs.push(record.address_set().first().clone());
+                if let Some(first_address) = record.address_set().first().cloned() {
+                    addrs.push(first_address);
+                } else {
+                    error!("Empty Address Set during cluster stop");
+                }
             }
 
             addrs.into_iter().for_each(|addr| r.map.init_stop(addr));
@@ -56,9 +61,13 @@ pub(super) async fn graceful(
     // Start by shutting down clusterless workers
     let mut cluster = vec![];
     for rec in router.map.non_cluster_workers().iter_mut() {
-        debug!("Stopping address {}", rec.address_set().first());
-        rec.stop().await?;
-        cluster.push(rec.address_set().first());
+        if let Some(first_address) = rec.address_set().first().cloned() {
+            debug!("Stopping address {}", first_address);
+            rec.stop().await?;
+            cluster.push(first_address);
+        } else {
+            error!("Empty Address Set during graceful shutdown");
+        }
     }
 
     // If there _are_ no clusterless workers we go to the next cluster
