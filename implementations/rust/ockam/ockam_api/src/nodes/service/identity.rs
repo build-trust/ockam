@@ -1,12 +1,16 @@
-use super::{map_anyhow_err, NodeManagerWorker};
+use ockam::identity::{Identity, IdentityIdentifier};
+use ockam::{Context, Result};
+use ockam_core::api::{Request, Response, ResponseBuilder};
+use ockam_core::compat::collections::HashMap;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_vault::Vault;
+
 use crate::nodes::models::identity::{
     CreateIdentityResponse, LongIdentityResponse, ShortIdentityResponse,
 };
 use crate::nodes::NodeManager;
-use ockam::identity::{Identity, IdentityIdentifier};
-use ockam::{Context, Result};
-use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::errcode::{Kind, Origin};
+
+use super::{map_anyhow_err, NodeManagerWorker};
 
 impl NodeManager {
     pub(super) async fn create_identity_impl(
@@ -14,30 +18,26 @@ impl NodeManager {
         ctx: &Context,
         reuse_if_exists: bool,
     ) -> Result<IdentityIdentifier> {
-        if let Some(identity) = &self.identity {
-            return if reuse_if_exists {
-                debug!("Using existing identity");
-                Ok(identity.identifier().clone())
-            } else {
-                Err(ockam_core::Error::new(
-                    Origin::Application,
-                    Kind::AlreadyExists,
-                    "Identity already exists",
-                ))
-            };
+        if reuse_if_exists && self.default_identity.is_some() {
+            return self.default_identity.ok_or_else(|| {
+                ockam_core::Error::new(
+                    Origin::Identity,
+                    Kind::NotFound,
+                    "default identity doesn't exist",
+                )
+            });
         }
 
         let vault = self.vault()?;
 
         let identity = Identity::create(ctx, vault).await?;
         let identifier = identity.identifier().clone();
-        let exported_identity = identity.export().await?;
 
-        let state = self.config.state();
-        state.write().identity = Some(exported_identity);
+        self.config.state().write().add_identity(&identity)?;
+
         state.persist_config_updates().map_err(map_anyhow_err)?;
 
-        self.identity = Some(identity);
+        self.add_identity(identifier.clone(), identity);
 
         Ok(identifier)
     }

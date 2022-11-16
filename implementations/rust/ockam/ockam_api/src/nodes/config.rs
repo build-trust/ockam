@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 pub use commands::*;
 use ockam_core::compat::collections::HashMap;
 use ockam_identity::{Identity, IdentityIdentifier};
+use ockam_vault::Vault;
 
 use crate::config::{build_config_path, Config, ConfigValues};
 
@@ -178,9 +179,24 @@ pub struct NodeStateConfig {
     pub vault_path: Option<PathBuf>,
     /// Exported identity value
     //pub identity: Option<Vec<u8>>,
-    pub identity: Option<HashMap<IdentityIdentifier, Identity<Vec<u8>>>>,
+    pub identity: Option<Vec<Vec<u8>>>,
+    /// Identifier of default Identity, which is used when no IdentityIdentifier is provided
+    pub default_identity: Option<IdentityIdentifier>,
     /// Identity was overridden
     pub identity_was_overridden: bool,
+}
+
+impl NodeStateConfig {
+    pub(crate) fn add_identity(&mut self, identity: &Identity<Vault>) -> anyhow::Result<()> {
+        match self.identity.as_mut() {
+            Some(mut identities) => identities.push(identity.export()?),
+            None => {
+                self.default_identity = Some(identity.identifier().clone());
+                self.identity = Some(vec![identity.export()?])
+            }
+        }
+        Ok(())
+    }
 }
 
 impl ConfigValues for NodeStateConfig {

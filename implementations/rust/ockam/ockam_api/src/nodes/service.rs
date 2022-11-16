@@ -1,10 +1,16 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
+use std::collections::BTreeMap;
+use std::error::Error as _;
+use std::path::PathBuf;
+use std::time::Duration;
+
 use minicbor::Decoder;
 
 use ockam::compat::asynchronous::RwLock;
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
+use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::{
     boxed::Box,
     string::String,
@@ -19,13 +25,7 @@ use ockam_node::tokio;
 use ockam_node::tokio::task::JoinHandle;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
-use std::collections::BTreeMap;
-use std::error::Error as _;
-use std::path::PathBuf;
-use std::time::Duration;
 
-use super::models::secure_channel::CredentialExchangeMode;
-use super::registry::Registry;
 use crate::authenticator::direct::types::OneTimeCode;
 use crate::config::cli::AuthoritiesConfig;
 use crate::config::lookup::ProjectLookup;
@@ -37,6 +37,9 @@ use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::session::util::starts_with_host_tcp_secure;
 use crate::session::{Medic, Sessions};
 use crate::{multiaddr_to_route, try_address_to_multiaddr, DefaultAddress};
+
+use super::models::secure_channel::CredentialExchangeMode;
+use super::registry::Registry;
 
 pub mod message;
 
@@ -109,7 +112,8 @@ pub struct NodeManager {
     skip_defaults: bool,
     enable_credential_checks: bool,
     vault: Option<Vault>,
-    identity: Option<Identity<Vault>>,
+    identities: Option<HashMap<IdentityIdentifier, Identity<Vault>>>,
+    default_identity: Option<IdentityIdentifier>,
     project_id: Option<String>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
     authorities: Option<Authorities>,
@@ -143,10 +147,34 @@ pub struct IdentityOverride {
 }
 
 impl NodeManager {
-    pub(crate) fn identity(&self) -> Result<&Identity<Vault>> {
-        self.identity
-            .as_ref()
+    pub(crate) fn identity(
+        &self,
+        identity_identifier: Option<&IdentityIdentifier>,
+    ) -> Result<&Identity<Vault>> {
+        let identity_id = identity_identifier
+            .or(self.default_identity.as_ref())
+            .ok_or_else(|| ApiError::generic("No identity ID to look up"))?;
+
+        self.identities
+            .map(|identity| identity.get(identity_id))
+            .flatten()
             .ok_or_else(|| ApiError::generic("Identity doesn't exist"))
+    }
+
+    pub(crate) fn add_identity(
+        &mut self,
+        identity_identifier: IdentityIdentifier,
+        identity: Identity<Vault>,
+    ) {
+        match self.identities.as_mut() {
+            Some(identity_map) => identity_map.insert(identity_identifier, identity),
+            None => {
+                self.default_identity = Some(identity_identifier.clone());
+                let mut map = HashMap::new();
+                map.insert(identity_identifier, identity);
+                self.identities = Some(map);
+            }
+        };
     }
 
     pub(crate) fn vault(&self) -> Result<&Vault> {
@@ -289,7 +317,7 @@ impl NodeManager {
                     .map_err(|_| ApiError::generic("Error while copying default node"))?;
 
                 state.write().vault_path = Some(vault_path);
-                state.write().identity = Some(identity_override.identity);
+                state.write().identity = Some(vec![identity_override.identity]);
                 state.write().identity_was_overridden = true;
 
                 state.persist_config_updates().map_err(map_anyhow_err)?;
@@ -308,13 +336,24 @@ impl NodeManager {
             None => None,
         };
 
-        // Check if we had existing Identity
-        let identity_info = state.read().identity.clone();
-        let identity = match identity_info {
-            Some(identity) => match vault.as_ref() {
-                Some(vault) => Some(Identity::import(ctx, &identity, vault).await?),
-                None => None,
-            },
+        // Check if we had existing Identities
+        let identity_map = match (state.read().identity.clone(), vault.as_ref()) {
+            (Some(identities), Some(vault)) => {
+                let mut map = HashMap::new();
+                let mut default_identity = None;
+
+                if let Some(first_identity_data) = identities.first() {
+                    let identity = Identity::import(ctx, &first_identity_data, vault).await?;
+                    default_identity = Some(identity.identifier().clone());
+                    map.insert(identity.identifier().clone(), identity);
+                }
+
+                for identity_data in identities.iter().skip(1) {
+                    let identity = Identity::import(ctx, &identity_data, vault).await?;
+                    map.insert(identity.identifier().clone(), identity);
+                }
+                Some(map)
+            }
             None => None,
         };
 
@@ -333,7 +372,8 @@ impl NodeManager {
             enable_credential_checks: projects_options.ac.is_some()
                 && projects_options.project_id.is_some(),
             vault,
-            identity,
+            identities: identity_map,
+            default_identity: state.read().default_identity.clone(),
             projects: Arc::new(projects_options.projects),
             project_id: projects_options.project_id,
             authorities: None,
@@ -818,8 +858,9 @@ impl Worker for NodeManagerWorker {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::nodes::NodeManager;
     use ockam::{route, Route};
+
+    use crate::nodes::NodeManager;
 
     use super::*;
 
