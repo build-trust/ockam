@@ -12,6 +12,8 @@ use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
 pub use commands::*;
+use ockam_core::compat::collections::HashMap;
+use ockam_identity::{Identity, IdentityIdentifier};
 
 use crate::config::{build_config_path, Config, ConfigValues};
 
@@ -175,7 +177,8 @@ pub struct NodeStateConfig {
     /// Vault info
     pub vault_path: Option<PathBuf>,
     /// Exported identity value
-    pub identity: Option<Vec<u8>>,
+    //pub identity: Option<Vec<u8>>,
+    pub identity: Option<HashMap<IdentityIdentifier, Identity<Vec<u8>>>>,
     /// Identity was overridden
     pub identity_was_overridden: bool,
 }
