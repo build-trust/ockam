@@ -1,5 +1,5 @@
 use ockam_core::compat::{boxed::Box, sync::Arc};
-use ockam_core::{async_trait, Any};
+use ockam_core::{async_trait, AllowAll, Any};
 use ockam_core::{route, Result, Routed, Worker};
 use ockam_identity::authenticated_storage::mem::InMemoryStorage;
 use ockam_identity::credential::access_control::CredentialAccessControl;
@@ -201,9 +201,14 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let required_attributes = vec![("is_superuser".to_string(), b"true".to_vec())];
     let access_control = CredentialAccessControl::new(&required_attributes, server_storage);
 
-    WorkerBuilder::with_access_control(access_control, "counter", worker)
-        .start(ctx)
-        .await?;
+    WorkerBuilder::with_access_control(
+        Arc::new(access_control),
+        Arc::new(AllowAll),
+        "counter",
+        worker,
+    )
+    .start(ctx)
+    .await?;
     ctx.sleep(Duration::from_millis(100)).await;
     assert_eq!(counter.load(Ordering::Relaxed), 0);
 

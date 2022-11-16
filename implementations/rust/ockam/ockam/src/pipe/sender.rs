@@ -5,7 +5,8 @@ use crate::{
     Context,
 };
 use ockam_core::compat::{boxed::Box, collections::VecDeque};
-use ockam_core::{Address, Any, Result, Route, Routed, Worker};
+use ockam_core::{Address, Any, Mailbox, Mailboxes, Result, Route, Routed, Worker};
+use ockam_node::WorkerBuilder;
 
 enum PeerRoute {
     Peer(Route),
@@ -67,18 +68,23 @@ impl PipeSender {
         int_addr: Address,
         hooks: PipeBehavior,
     ) -> Result<()> {
-        ctx.start_worker(
-            vec![addr, int_addr.clone()],
-            Self {
-                // Ordered pipes expect a 1-indexed message
-                index: Monotonic::from(1),
-                out_buf: VecDeque::new(),
-                peer: Some(PeerRoute::Peer(peer)),
-                int_addr,
-                hooks,
-            },
-        )
-        .await
+        let worker = Self {
+            // Ordered pipes expect a 1-indexed message
+            index: Monotonic::from(1),
+            out_buf: VecDeque::new(),
+            peer: Some(PeerRoute::Peer(peer)),
+            int_addr: int_addr.clone(),
+            hooks,
+        };
+
+        // TODO: @ac
+        let mailboxes =
+            Mailboxes::new(Mailbox::allow_all(addr), vec![Mailbox::allow_all(int_addr)]);
+        WorkerBuilder::with_mailboxes(mailboxes, worker)
+            .start(ctx)
+            .await?;
+
+        Ok(())
     }
 
     /// Create a sender without a peer route
@@ -92,17 +98,21 @@ impl PipeSender {
         listener: Option<Route>,
         hooks: PipeBehavior,
     ) -> Result<()> {
-        ctx.start_worker(
-            vec![addr, int_addr.clone()],
-            Self {
-                index: Monotonic::from(1),
-                out_buf: VecDeque::new(),
-                peer: listener.map(PeerRoute::Listener),
-                int_addr,
-                hooks,
-            },
-        )
-        .await
+        let worker = Self {
+            index: Monotonic::from(1),
+            out_buf: VecDeque::new(),
+            peer: listener.map(PeerRoute::Listener),
+            int_addr: int_addr.clone(),
+            hooks,
+        };
+        // TODO: @ac
+        let mailboxes =
+            Mailboxes::new(Mailbox::allow_all(addr), vec![Mailbox::allow_all(int_addr)]);
+        WorkerBuilder::with_mailboxes(mailboxes, worker)
+            .start(ctx)
+            .await?;
+
+        Ok(())
     }
 
     /// Handle internal command payloads

@@ -34,7 +34,7 @@ async fn start(
     let SenderPair { msgs, ctrl } = senders;
 
     let record = AddressRecord::new(
-        addr.clone().into(),
+        vec![addr.clone()],
         msgs,
         ctrl,
         // We don't keep track of the mailbox count for processors

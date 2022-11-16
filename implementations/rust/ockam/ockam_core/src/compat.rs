@@ -204,6 +204,12 @@ pub mod string {
     use heapless::String as ByteString;
 }
 
+/// Provides `std::str`.
+pub mod str {
+    #[cfg(feature = "alloc")]
+    pub use alloc::str::FromStr;
+}
+
 /// Provides `std::sync` for `no_std` targets.
 #[cfg(not(feature = "std"))]
 pub mod sync {
@@ -250,7 +256,7 @@ pub mod sync {
     pub struct Mutex<T>(spin::Mutex<T>);
     impl<T> Mutex<T> {
         /// Creates a new mutex in an unlocked state ready for use.
-        pub fn new(value: T) -> Self {
+        pub const fn new(value: T) -> Self {
             Mutex(spin::Mutex::new(value))
         }
         /// Acquires a mutex, blocking the current thread until it is able to do so.

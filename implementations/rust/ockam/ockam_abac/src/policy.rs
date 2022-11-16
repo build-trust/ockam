@@ -1,9 +1,9 @@
 use core::{fmt, str};
-use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
-use ockam_core::{AccessControl, LocalMessage, Result};
+use ockam_core::{async_trait, RelayMessage};
+use ockam_core::{AccessControl, Result};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_identity::{credential::AttributesStorageUtils, IdentitySecureChannelLocalInfo};
 use tracing as log;
@@ -56,7 +56,7 @@ where
     S: AuthenticatedStorage + fmt::Debug,
     P: PolicyStorage + fmt::Debug,
 {
-    async fn is_authorized(&self, msg: &LocalMessage) -> Result<bool> {
+    async fn is_authorized(&self, msg: &RelayMessage) -> Result<bool> {
         // Load the policy expression for resource and action:
         let expr = if let Some(expr) = self
             .policies
@@ -81,7 +81,7 @@ where
         };
 
         // Get identity identifier from message metadata:
-        let id = if let Ok(info) = IdentitySecureChannelLocalInfo::find_info(msg) {
+        let id = if let Ok(info) = IdentitySecureChannelLocalInfo::find_info(&msg.local_msg) {
             info.their_identity_id().clone()
         } else {
             log::debug! {

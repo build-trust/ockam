@@ -1,9 +1,11 @@
+use ockam_core::compat::{collections::BTreeMap, str::FromStr};
 use std::ops::Deref;
-use std::{collections::BTreeMap, str::FromStr};
 
 use futures_util::StreamExt;
-use ockam_core::{async_trait, Address, Any, Decodable, LocalMessage, Result, Routed, Worker};
-use ockam_node::Context;
+use ockam_core::{
+    async_trait, Address, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Result, Routed, Worker,
+};
+use ockam_node::{Context, WorkerBuilder};
 
 use ockam_transport_core::TransportError;
 use tokio::net::UdpSocket;
@@ -48,7 +50,13 @@ impl UdpRouter {
 
         let handle = router.create_self_handle(ctx).await?;
 
-        ctx.start_worker(vec![main_addr.clone(), api_addr], router)
+        // TODO: @ac
+        let mailboxes = Mailboxes::new(
+            Mailbox::allow_all(main_addr.clone()),
+            vec![Mailbox::allow_all(api_addr)],
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, router)
+            .start(ctx)
             .await?;
         trace!("Registering UDP router for type = {}", crate::UDP);
         ctx.register(crate::UDP, main_addr).await?;

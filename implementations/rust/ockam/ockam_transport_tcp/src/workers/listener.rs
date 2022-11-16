@@ -1,7 +1,11 @@
 use crate::{TcpRouterHandle, TcpSendWorker};
-use ockam_core::{async_trait, compat::net::SocketAddr, AsyncTryClone};
-use ockam_core::{Address, Processor, Result};
-use ockam_node::Context;
+use ockam_core::{
+    async_trait,
+    compat::{net::SocketAddr, sync::Arc},
+    AllowAll, AsyncTryClone,
+};
+use ockam_core::{Address, Mailbox, Mailboxes, Processor, Result};
+use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
 use tracing::{debug, trace};
@@ -27,12 +31,25 @@ impl TcpListenProcessor {
             .await
             .map_err(TransportError::from)?;
         let saddr = inner.local_addr().map_err(TransportError::from)?;
-        let worker = Self {
+        let processor = Self {
             inner,
             router_handle,
         };
 
-        ctx.start_processor(Address::random_local(), worker).await?;
+        // TODO @ac 0#TcpListenProcessor
+        // in:  n/a - but it breaks if we set DenyAll - anything inheriting
+        //            context from us maybe like TcpSendWorker_tx_addr or DelayedEvent ?
+        // out: n/a
+        let mailbox = Mailbox::new(
+            Address::random_tagged("TcpListenProcessor"),
+            Arc::new(AllowAll),
+            // ockam_node::access_control::LocalOriginOnly), // DEBUG
+            Arc::new(AllowAll),
+            // Arc::new(ockam_core::DenyAll),
+        );
+        ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), processor)
+            .start(ctx)
+            .await?;
 
         Ok(saddr)
     }
@@ -69,7 +86,13 @@ impl Processor for TcpListenProcessor {
             "starting tcp connection worker"
         };
 
-        ctx.start_worker(vec![pair.tx_addr(), worker.internal_addr().clone()], worker)
+        // TODO: @ac
+        let mailboxes = Mailboxes::new(
+            Mailbox::allow_all(pair.tx_addr()),
+            vec![Mailbox::allow_all(worker.internal_addr().clone())],
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, worker)
+            .start(ctx)
             .await?;
 
         Ok(true)

@@ -1,6 +1,9 @@
 use crate::{Context, OckamMessage, SystemHandler, WorkerSystem};
 use ockam_core::compat::{collections::BTreeMap, string::String};
-use ockam_core::{Address, Any, Decodable, LocalMessage, Message, Result, Routed, Worker};
+use ockam_core::{
+    Address, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Message, Result, Routed, Worker,
+};
+use ockam_node::WorkerBuilder;
 
 #[derive(Default)]
 struct TestWorker {
@@ -76,8 +79,17 @@ async fn send_messages(ctx: &mut Context) -> Result<()> {
     w.system.attach("worker.1", StepHandler::new("worker.2"));
     w.system.attach("worker.2", StepHandler::new("app"));
 
+    let mailboxes = Mailboxes::new(
+        Mailbox::allow_all("worker"),
+        vec![
+            Mailbox::allow_all("worker.1"),
+            Mailbox::allow_all("worker.2"),
+        ],
+    );
+
     // Start the worker with three publicly mapped addresses
-    ctx.start_worker(vec!["worker", "worker.1", "worker.2"], w)
+    WorkerBuilder::with_mailboxes(mailboxes, w)
+        .start(ctx)
         .await?;
 
     // Send a message and wait for a reply
@@ -142,8 +154,17 @@ async fn attach_metadata(ctx: &mut Context) -> Result<()> {
     w.system
         .attach("worker.2", AddMetadata::new("bar", vec![7], "app")); // my favourite number
 
+    let mailboxes = Mailboxes::new(
+        Mailbox::allow_all("worker"),
+        vec![
+            Mailbox::allow_all("worker.1"),
+            Mailbox::allow_all("worker.2"),
+        ],
+    );
+
     // Start the worker with three publicly mapped addresses
-    ctx.start_worker(vec!["worker", "worker.1", "worker.2"], w)
+    WorkerBuilder::with_mailboxes(mailboxes, w)
+        .start(ctx)
         .await?;
 
     // Send an OckamMessage wrapping a simple String payload.  In

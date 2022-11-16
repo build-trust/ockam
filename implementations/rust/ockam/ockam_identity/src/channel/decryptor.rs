@@ -11,17 +11,16 @@ use ockam_channel::{
     CreateResponderChannelMessage, KeyExchangeCompleted, SecureChannel, SecureChannelDecryptor,
     SecureChannelInfo,
 };
-use ockam_core::async_trait;
-use ockam_core::compat::rand::random;
 use ockam_core::compat::{boxed::Box, sync::Arc, vec::Vec};
 use ockam_core::vault::Signature;
+use ockam_core::{async_trait, AllowAll, Mailbox, Mailboxes};
 use ockam_core::{
     route, Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
     TransportMessage, Worker,
 };
 use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::XXNewKeyExchanger;
-use ockam_node::Context;
+use ockam_node::{Context, WorkerBuilder};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
@@ -88,10 +87,24 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
         trust_policy: Arc<dyn TrustPolicy>,
         timeout: Duration,
     ) -> Result<Address> {
-        let child_address = Address::random_local();
-        let mut child_ctx = ctx.new_detached(child_address.clone()).await?;
+        let child_address = Address::random_tagged(
+            "IdentitySecureChannel.initiator.decryptor.kex_callback_address",
+        );
 
-        let self_address: Address = random();
+        // TODO @ac 0#InitiatorStartChannel.callback_address.detached
+        // in:
+        // out:
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(
+                child_address.clone(),
+                Arc::new(ockam_core::ToDoAccessControl),
+                Arc::new(ockam_core::ToDoAccessControl),
+            ),
+            vec![],
+        );
+        let mut child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
+
+        let self_address = Address::random_tagged("IdentitySecureChannel.initiator.decryptor.self");
 
         let vault = identity.vault.async_try_clone().await?;
         let initiator = XXNewKeyExchanger::new(vault.async_try_clone().await?)
@@ -99,7 +112,11 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             .await?;
         // Create regular secure channel and set self address as first responder
         let custom_payload = self_address.encode()?;
-        let temp_ctx = ctx.new_detached(Address::random_local()).await?;
+        let temp_ctx = ctx
+            .new_detached(Address::random_tagged(
+                "IdentitySecureChannel.initiator.decryptor.temp",
+            ))
+            .await?;
         let channel_future = Box::pin(async move {
             SecureChannel::create_extended(&temp_ctx, route, Some(custom_payload), initiator, vault)
                 .await
@@ -120,7 +137,17 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             state: Some(state),
         };
 
-        ctx.start_worker(self_address.clone(), worker).await?;
+        // TODO @ac 0#DecryptorWorker_create_initiator
+        // in:
+        // out:
+        let mailbox = Mailbox::new(
+            self_address.clone(),
+            Arc::new(ockam_core::ToDoAccessControl),
+            Arc::new(ockam_core::ToDoAccessControl),
+        );
+        WorkerBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), worker)
+            .start(ctx)
+            .await?;
 
         debug!(
             "Starting IdentitySecureChannel Initiator at remote: {}",
@@ -154,14 +181,16 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             .ok_or(IdentityError::SecureChannelCannotBeAuthenticated)?;
         let first_responder_address = Address::decode(custom_payload)?;
 
-        let self_address: Address = random();
+        let self_address = Address::random_tagged("IdentitySecureChannel.responder.decryptor.self");
 
         let vault = identity.vault.async_try_clone().await?;
         let state = State::ResponderWaitForKex(ResponderWaitForKex {
             first_responder_address,
         });
 
-        let kex_callback_address = Address::random_local();
+        let kex_callback_address = Address::random_tagged(
+            "IdentitySecureChannel.responder.decryptor.kex_callback_address",
+        );
         let worker = DecryptorWorker {
             is_initiator: false,
             self_address: self_address.clone(),
@@ -172,18 +201,25 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             state: Some(state),
         };
 
-        ctx.start_worker(
-            vec![self_address.clone(), kex_callback_address.clone()],
-            worker,
-        )
-        .await?;
+        // TODO: @ac
+        let mailboxes = Mailboxes::new(
+            Mailbox::allow_all(self_address.clone()),
+            vec![Mailbox::new(
+                kex_callback_address.clone(),
+                Arc::new(AllowAll), // TODO: @ac only kex
+                Arc::new(AllowAll), // TODO: @ac deny all
+            )],
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, worker)
+            .start(ctx)
+            .await?;
 
         debug!(
             "Starting IdentitySecureChannel Responder at remote: {}",
             &self_address
         );
 
-        let regular_responder_address = Address::random_local();
+        let regular_responder_address = Address::random_tagged("SecureChannel.responder.decryptor");
 
         let responder = XXNewKeyExchanger::new(vault.async_try_clone().await?)
             .responder()
@@ -194,7 +230,17 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             SecureChannelDecryptor::new_responder(responder, Some(kex_callback_address), vault)
                 .await?;
 
-        ctx.start_worker(vec![regular_responder_address.clone()], regular_decryptor)
+        // TODO: @ac
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(
+                regular_responder_address.clone(),
+                Arc::new(AllowAll), // TODO: @ac
+                Arc::new(AllowAll), // TODO: @ac only to our decryptor
+            ),
+            vec![],
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, regular_decryptor)
+            .start(ctx)
             .await?;
 
         onward_route.step()?;
@@ -321,7 +367,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
                 .await?;
             debug!("Sent Authentication response");
 
-            let encryptor_address = Address::random_local();
+            let encryptor_address =
+                Address::random_tagged("IdentitySecureChannel.initiator.encryptor");
 
             self.state = Some(State::Initialized(Initialized {
                 local_secure_channel_address: state.channel.address(),
@@ -419,7 +466,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
 
             let remote_identity_secure_channel_address = return_route.recipient();
 
-            let encryptor_address = Address::random_local();
+            let encryptor_address =
+                Address::random_tagged("IdentitySecureChannel.responder.encryptor");
 
             self.state = Some(State::Initialized(Initialized {
                 local_secure_channel_address: state.local_secure_channel_address.clone(),

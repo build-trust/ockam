@@ -9,8 +9,8 @@ use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
 };
-use ockam_core::{Address, AddressSet, Any, Decodable, Result, Route, Routed, Worker};
-use ockam_node::DelayedEvent;
+use ockam_core::{Address, Any, Decodable, Mailbox, Mailboxes, Result, Route, Routed, Worker};
+use ockam_node::{DelayedEvent, WorkerBuilder};
 use rand::distributions::{Distribution, Standard};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -54,12 +54,6 @@ impl Distribution<Addresses> for Standard {
             main_address: rng.gen(),
             heartbeat_address: rng.gen(),
         }
-    }
-}
-
-impl Addresses {
-    fn into_set(self) -> AddressSet {
-        vec![self.main_address, self.heartbeat_address].into()
     }
 }
 
@@ -125,7 +119,15 @@ impl RemoteForwarder {
             "Starting static RemoteForwarder at {}",
             &addresses.heartbeat_address
         );
-        ctx.start_worker(addresses.into_set(), forwarder).await?;
+
+        // TODO: @ac
+        let mailboxes = Mailboxes::new(
+            Mailbox::allow_all(addresses.main_address),
+            vec![Mailbox::allow_all(addresses.heartbeat_address)],
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, forwarder)
+            .start(ctx)
+            .await?;
 
         let resp = child_ctx
             .receive::<RemoteForwarderInfo>()

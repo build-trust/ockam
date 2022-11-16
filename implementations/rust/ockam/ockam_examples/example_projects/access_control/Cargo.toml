@@ -10,7 +10,7 @@ rust-version = "1.56.0"
 [workspace]
 
 [features]
-default = ["std"]
+default = ["std", "debugger"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -24,13 +24,18 @@ no_std = ["ockam/no_std"]
 # platforms, requires nightly.
 alloc = ["ockam/alloc"]
 
+# Feature: "debugger" enables functionality to trace addresses and
+# message flows within Ockam apps.
+debugger = ["ockam/debugger"]
+
 [dependencies]
 ockam = { path = "../../../ockam", default_features = false, features = [
     "software_vault",
 ] }
-ockam_core = { path = "../../../ockam_core" }
+ockam_core = { path = "../../../ockam_core" } # for transport examples
 serde = { version = "1", default_features = false, features = ["derive"] }
 tracing = { version = "0.1", default_features = false }
+tokio = { version = "1.8", default_features = false } # for tokio::time::sleep
 
 [dev-dependencies]
 example_test_helper = { path = "../../../../../../tools/docs/example_test_helper" }

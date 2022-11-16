@@ -1,6 +1,6 @@
 use crate::access_control::AccessControl;
 use crate::compat::boxed::Box;
-use crate::{LocalMessage, Result};
+use crate::{RelayMessage, Result};
 
 /// An Access Control type that blocks all messages from passing through.
 #[derive(Debug)]
@@ -8,7 +8,7 @@ pub struct DenyAll;
 
 #[async_trait]
 impl AccessControl for DenyAll {
-    async fn is_authorized(&self, _local_msg: &LocalMessage) -> Result<bool> {
+    async fn is_authorized(&self, _relay_msg: &RelayMessage) -> Result<bool> {
         crate::deny()
     }
 }
@@ -17,7 +17,7 @@ impl AccessControl for DenyAll {
 #[cfg(test)]
 mod tests {
     use crate::compat::future::poll_once;
-    use crate::{route, LocalMessage, TransportMessage};
+    use crate::{route, Address, LocalMessage, RelayMessage, TransportMessage};
 
     use super::{AccessControl, DenyAll};
 
@@ -26,7 +26,14 @@ mod tests {
         let is_authorized = poll_once(async {
             let local_message =
                 LocalMessage::new(TransportMessage::v1(route![], route![], vec![]), vec![]);
-            DenyAll.is_authorized(&local_message).await
+            let relay_message = RelayMessage::new(
+                Address::random_local(),
+                Address::random_local(),
+                local_message,
+                route![],
+                false,
+            );
+            DenyAll.is_authorized(&relay_message).await
         });
         assert!(
             is_authorized.is_ok(),

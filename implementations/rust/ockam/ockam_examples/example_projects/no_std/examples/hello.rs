@@ -108,6 +108,11 @@ async fn main(mut ctx: Context) -> Result<()> {
     let message = ctx.receive::<String>().await?;
     info!("App Received: {}", message); // should print "Hello Ockam!"
 
+    #[cfg(feature = "debugger")]
+    {
+        ockam::debugger::display_log();
+    }
+
     // Stop all workers, stop the node, cleanup and return.
     let result = ctx.stop().await;
 

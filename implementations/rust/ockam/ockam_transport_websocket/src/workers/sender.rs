@@ -7,10 +7,10 @@ use tokio_tungstenite::tungstenite::protocol::Message as WebSocketMessage;
 
 use crate::error::WebSocketError;
 use ockam_core::{
-    async_trait, route, Address, Any, Decodable, Encodable, LocalMessage, Result, Routed,
-    TransportMessage, Worker,
+    async_trait, route, Address, Any, Decodable, Encodable, LocalMessage, Mailbox, Mailboxes,
+    Result, Routed, TransportMessage, Worker,
 };
-use ockam_node::{Context, DelayedEvent};
+use ockam_node::{Context, DelayedEvent, WorkerBuilder};
 use ockam_transport_core::TransportError;
 
 use crate::workers::{
@@ -56,7 +56,14 @@ impl WorkerPair {
         );
 
         let tx_addr = Address::random_local();
-        ctx.start_worker(vec![tx_addr.clone(), internal_addr], sender)
+
+        // TODO: @ac
+        let mailboxes = Mailboxes::new(
+            Mailbox::allow_all(tx_addr.clone()),
+            vec![Mailbox::allow_all(internal_addr)],
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, sender)
+            .start(ctx)
             .await?;
 
         // Return a handle to the worker pair
@@ -86,7 +93,13 @@ impl WorkerPair {
         );
 
         let tx_addr = Address::random_local();
-        ctx.start_worker(vec![tx_addr.clone(), internal_addr], sender)
+        // TODO: @ac
+        let mailboxes = Mailboxes::new(
+            Mailbox::allow_all(tx_addr.clone()),
+            vec![Mailbox::allow_all(internal_addr)],
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, sender)
+            .start(ctx)
             .await?;
 
         // Return a handle to the worker pair

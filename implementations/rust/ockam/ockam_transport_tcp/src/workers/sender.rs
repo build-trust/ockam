@@ -1,8 +1,15 @@
 use crate::{TcpRecvProcessor, TcpRouterHandle};
 use core::time::Duration;
-use ockam_core::{async_trait, compat::net::SocketAddr, Any, Decodable, LocalMessage};
-use ockam_core::{Address, Encodable, Message, Result, Routed, TransportMessage, Worker};
-use ockam_node::Context;
+use ockam_core::{
+    async_trait,
+    compat::{net::SocketAddr, sync::Arc},
+    AllowAll,
+};
+use ockam_core::{
+    Address, Any, Decodable, Encodable, LocalMessage, Mailbox, Mailboxes, Message, Result, Routed,
+    TransportMessage, Worker,
+};
+use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
 use socket2::{SockRef, TcpKeepalive};
@@ -95,8 +102,8 @@ impl TcpSendWorker {
         peer: SocketAddr,
         hostnames: Vec<String>,
     ) -> Result<(Self, WorkerPair)> {
-        let tx_addr = Address::random_local();
-        let int_addr = Address::random_local();
+        let tx_addr = Address::random_tagged("TcpSendWorker_tx_addr");
+        let int_addr = Address::random_tagged("TcpSendWorker_int_addr");
         let sender = TcpSendWorker::new(router_handle, stream, peer, int_addr);
         Ok((
             sender,
@@ -111,16 +118,49 @@ impl TcpSendWorker {
     /// Start a `(TcpSendWorker, TcpRecvProcessor)` pair that opens and
     /// manages the connection with the given peer
     pub(crate) async fn start_pair(
+        // NOTE context is 0#TcpRouter.detached _not_ 0#TcpRouter_main_addr!
         ctx: &Context,
         router_handle: TcpRouterHandle,
         stream: Option<TcpStream>,
         peer: SocketAddr,
         hostnames: Vec<String>,
     ) -> Result<WorkerPair> {
+        // save the TcpRouter main address
+        let _tcprouter_main_addr = router_handle.main_addr().clone();
+
         trace!("Creating new TCP worker pair");
-        let (worker, pair) = Self::new_pair(router_handle, stream, peer, hostnames).await?;
-        ctx.start_worker(vec![pair.tx_addr(), worker.internal_addr().clone()], worker)
+        let (mut worker, pair) = Self::new_pair(router_handle, stream, peer, hostnames).await?;
+
+        // TODO @ac gawd this is bad. Also assigned in `TcpSendWorker::initialize` depending on context.
+        let rx_addr = Address::random_tagged("TcpRecvProcessor");
+        worker.rx_addr = Some(rx_addr.clone());
+
+        // TODO: @ac 0#TcpSendWorker_tx_addr
+        // in:  0#TcpSendWorker_tx_addr_9  <=  [0#TcpRouter_main_addr_0]
+        // out: n/a
+        let tx_mailbox = Mailbox::new(
+            pair.tx_addr(),
+            Arc::new(AllowAll),
+            // Arc::new(ockam_core::AllowSourceAddress(tcprouter_main_addr)),
+            Arc::new(AllowAll),
+            // Arc::new(ockam_core::DenyAll),
+        );
+
+        // @ac 0#TcpSendWorker_int_addr
+        // in:  0#TcpSendWorker_int_addr_10  <=  [0#TcpRecvProcessor_12]
+        // out: n/a
+        let internal_mailbox = Mailbox::new(
+            worker.internal_addr().clone(),
+            Arc::new(AllowAll),
+            // Arc::new(ockam_core::AllowSourceAddress(rx_addr)),
+            Arc::new(AllowAll),
+            // Arc::new(ockam_core::DenyAll),
+        );
+
+        WorkerBuilder::with_mailboxes(Mailboxes::new(tx_mailbox, vec![internal_mailbox]), worker)
+            .start(ctx)
             .await?;
+
         Ok(pair)
     }
 
@@ -170,15 +210,35 @@ impl Worker for TcpSendWorker {
 
         let rx = self.rx.take().ok_or(TransportError::GenericIo)?;
 
-        let rx_addr = Address::random_local();
+        //let rx_addr = Address::random_tagged("TcpRecvProcessor");
+        let rx_addr = if let Some(rx_addr) = &self.rx_addr {
+            rx_addr.clone()
+        } else {
+            // TODO @ac gawd this is bad. Also assigned in `TcpSendWorker.start_pair` depending on context.
+            Address::random_tagged("TcpRecvProcessor")
+        };
         let receiver = TcpRecvProcessor::new(
             rx,
             format!("{}#{}", crate::TCP, self.peer).into(),
             self.internal_addr.clone(),
         );
-        ctx.start_processor(rx_addr.clone(), receiver).await?;
 
-        self.rx_addr = Some(rx_addr);
+        // TODO @ac 0#TcpRecvProcessor
+        // in:  n/a
+        // out: 0#TcpRecvProcessor_12  =>  [0#TcpPortalWorker_remote_6, 0#TcpSendWorker_int_addr_10, 0#outlet]
+        let mailbox = Mailbox::new(
+            rx_addr,
+            Arc::new(AllowAll),
+            // Arc::new(ockam_core::DenyAll),
+            Arc::new(AllowAll),
+            // Arc::new(ockam_core::ToDoAccessControl), // TODO @ac at least LocalOriginOnly
+        );
+        ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), receiver)
+            .start(ctx)
+            .await?;
+
+        // TODO see above
+        //self.rx_addr = Some(rx_addr);
 
         Ok(())
     }

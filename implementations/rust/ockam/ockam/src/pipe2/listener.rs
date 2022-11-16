@@ -1,5 +1,8 @@
 use crate::{pipe2::PipeReceiver, Context, OckamMessage, SystemBuilder};
-use ockam_core::{compat::boxed::Box, Address, Any, Encodable, Result, Routed, Worker};
+use ockam_core::{
+    compat::boxed::Box, Address, Any, Encodable, Mailbox, Mailboxes, Result, Routed, Worker,
+};
+use ockam_node::WorkerBuilder;
 
 /// Listen for pipe2 handshakes and creates PipeReceiver workers
 pub struct PipeListener {
@@ -35,14 +38,27 @@ impl Worker for PipeListener {
 
         // Build the system and initialise the PipeReceiver worker
         let system = sys_builder.finalise(ctx).await?;
-        let mut system_addrs = system.addresses();
+        let system_addrs = system.addresses();
 
         let worker = PipeReceiver::new(system, fin_addr.clone(), Some(init_addr.clone()));
 
         // Finally start the worker with the full set of used addresses
-        let mut worker_addrs = vec![Address::random_local(), init_addr.clone(), fin_addr];
-        worker_addrs.append(&mut system_addrs);
-        ctx.start_worker(worker_addrs, worker).await?;
+        // TODO: @ac
+        let mut additional_mailboxes = vec![
+            Mailbox::allow_all(init_addr.clone()),
+            Mailbox::allow_all(fin_addr),
+        ];
+        for addr in system_addrs {
+            additional_mailboxes.push(Mailbox::allow_all(addr.clone()));
+        }
+        // TODO: @ac
+        let mailboxes = Mailboxes::new(
+            Mailbox::allow_all(Address::random_local()),
+            additional_mailboxes,
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, worker)
+            .start(ctx)
+            .await?;
 
         // Store the return route of the request in the scope metadata section
         let ockam_msg = OckamMessage::new(Any)?.scope_data(msg.return_route().encode()?);

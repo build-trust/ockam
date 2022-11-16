@@ -1,12 +1,11 @@
 use crate::channel_types::{small_channel, MessageSender, SmallReceiver, SmallSender};
 use crate::{
     error::{NodeError, NodeReason, RouterReason, WorkerReason},
-    relay::RelayMessage,
     router::SenderPair,
 };
 use core::{fmt, sync::atomic::AtomicUsize};
 use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
-use ockam_core::{Address, AddressSet, Error, Result, TransportType};
+use ockam_core::{Address, Error, RelayMessage, Result, TransportType};
 
 /// Messages sent from the Node to the Executor
 #[derive(Debug)]
@@ -14,7 +13,7 @@ pub enum NodeMessage {
     /// Start a new worker and store the send handle
     StartWorker {
         /// The set of addresses in use by this worker
-        addrs: AddressSet,
+        addrs: Vec<Address>,
         /// Pair of senders to the worker relay (msgs and ctrl)
         senders: SenderPair,
         /// A detached context/ "worker" runs no relay state
@@ -80,7 +79,7 @@ impl NodeMessage {
     ///               commands.  Setting this to `true` will disable
     ///               stop ACK support in the router
     pub fn start_worker(
-        addrs: AddressSet,
+        addrs: Vec<Address>,
         senders: SenderPair,
         detached: bool,
         mailbox_count: Arc<AtomicUsize>,
@@ -173,6 +172,7 @@ pub enum RouterReply {
         sender: MessageSender<RelayMessage>,
         /// Indicate whether the relay message needs to be constructed
         /// with router wrapping.
+        /// TODO Is this still used in the code-base?
         wrap: bool,
     },
     /// Indicate the 'ready' state of an address

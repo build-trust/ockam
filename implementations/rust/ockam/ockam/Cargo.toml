@@ -83,6 +83,10 @@ alloc = [
     "serde/alloc",
 ]
 
+# Feature: "debugger" enables functionality to trace addresses and
+# message flows within Ockam apps.
+debugger = ["ockam_node/debugger", "ockam_core/debugger"]
+
 [[test]]
 name = "tests"
 path = "tests/main.rs"
