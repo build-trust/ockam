@@ -1,7 +1,7 @@
-use cfg_if::cfg_if;
 use crate::vault::Vault;
 use crate::VaultError;
 use arrayref::array_ref;
+use cfg_if::cfg_if;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::vault::{
     AsymmetricVault, KeyId, PublicKey, SecretAttributes, SecretKey, SecretPersistence, SecretType,
@@ -10,10 +10,7 @@ use ockam_core::vault::{
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
-#[cfg(feature = "ring")]
-use crate::error::{from_ring_unspecified, ring_key_rejected};
-
-#[cfg(feature = "rustcrypto")]
+#[cfg(any(feature = "evercrypt", feature = "rustcrypto"))]
 use crate::error::from_pkcs8;
 
 impl Vault {
@@ -48,11 +45,8 @@ impl Vault {
             }
             SecretType::NistP256 => {
                 cfg_if! {
-                    if #[cfg(feature = "ring")] {
-                        let pk = ring_public_key(secret)?;
-                        self.compute_key_id_for_public_key(&pk).await?
-                    } else if #[cfg(feature = "rustcrypto")] {
-                        let pk = p256_public_key(secret)?;
+                    if #[cfg(any(feature = "evercrypt", feature = "rustcrypto"))] {
+                        let pk = public_key(secret)?;
                         self.compute_key_id_for_public_key(&pk).await?
                     } else {
                         return Err(VaultError::InvalidKeyType.into())
@@ -139,14 +133,7 @@ impl SecretVault for Vault {
             }
             SecretType::NistP256 => {
                 cfg_if! {
-                    if #[cfg(feature = "ring")] {
-                        use ring::rand::SystemRandom;
-                        use ring::signature::{ECDSA_P256_SHA256_ASN1_SIGNING, EcdsaKeyPair};
-                        let rng = SystemRandom::new();
-                        let sec = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, &rng)
-                            .map_err(from_ring_unspecified)?;
-                        SecretKey::new(sec.as_ref().to_vec())
-                    } else if #[cfg(feature = "rustcrypto")] {
+                    if #[cfg(any(feature = "evercrypt", feature = "rustcrypto"))] {
                         use p256::ecdsa::SigningKey;
                         use p256::pkcs8::EncodePrivateKey;
                         let sec = SigningKey::random(thread_rng());
@@ -252,18 +239,14 @@ impl SecretVault for Vault {
             }
             SecretType::NistP256 => {
                 cfg_if! {
-                    if #[cfg(feature = "ring")] {
-                        ring_public_key(entry.key().as_ref())
-                    } else if #[cfg(feature = "rustcrypto")] {
-                        p256_public_key(entry.key().as_ref())
+                    if #[cfg(any(feature = "evercrypt", feature = "rustcrypto"))] {
+                        public_key(entry.key().as_ref())
                     } else {
                         Err(VaultError::InvalidKeyType.into())
                     }
                 }
             }
-            SecretType::Buffer | SecretType::Aes => {
-                Err(VaultError::InvalidKeyType.into())
-            }
+            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
         }
     }
 
@@ -293,18 +276,11 @@ impl SecretVault for Vault {
     }
 }
 
-#[cfg(feature = "ring")]
-fn ring_public_key(secret: &[u8]) -> Result<PublicKey> {
-    use ring::signature::{ECDSA_P256_SHA256_ASN1_SIGNING, KeyPair, EcdsaKeyPair};
-    let sec = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, secret).map_err(ring_key_rejected)?;
-    Ok(PublicKey::new(sec.public_key().as_ref().to_vec(), SecretType::NistP256))
-}
-
-#[cfg(feature = "rustcrypto")]
-fn p256_public_key(secret: &[u8]) -> Result<PublicKey> {
+#[cfg(any(feature = "evercrypt", feature = "rustcrypto"))]
+fn public_key(secret: &[u8]) -> Result<PublicKey> {
     use p256::pkcs8::{DecodePrivateKey, EncodePublicKey};
     let sec = p256::ecdsa::SigningKey::from_pkcs8_der(secret).map_err(from_pkcs8)?;
-    let pky = sec.verifying_key().to_public_key_der().unwrap();
+    let pky = sec.verifying_key().to_public_key_der().unwrap(); // TODO
     Ok(PublicKey::new(pky.as_ref().to_vec(), SecretType::NistP256))
 }
 
