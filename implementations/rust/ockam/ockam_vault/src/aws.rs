@@ -163,13 +163,13 @@ impl From<Error> for ockam_core::Error {
 
 #[cfg(test)]
 mod tests {
-    use crate::Vault;
     use super::AwsKms;
+    use crate::Vault;
     use ockam_core::vault::{Signer, Verifier};
     use ockam_node::tokio;
 
     // A key ID that refers to an existing AWS KMS NIST P-256 key.
-    const PREEXISTING_KEY_ID: &str = "2b287f41-8904-4a2a-95d3-4c42a7407090";
+    const PREEXISTING_KEY_ID: &str = "9a573bc4-ea26-4c41-906d-532ab6d176ca";
 
     #[tokio::test]
     async fn sign_verify_with_existing_key() {
@@ -188,14 +188,14 @@ mod tests {
         let sig = aws.sign(&keyid, &msg[..]).await.unwrap();
         let pky = aws.public_key(&keyid).await.unwrap();
         let vlt = Vault::create();
-        // {
-        //     use ockam_core::vault::{SecretVault, SecretAttributes, SecretType, SecretPersistence};
-        //     let att = SecretAttributes::new(SecretType::NistP256, SecretPersistence::Ephemeral, 32);
-        //     let kid = vlt.secret_generate(att).await.unwrap();
-        //     let pky = vlt.secret_public_key_get(&kid).await.unwrap();
-        //     let sig = vlt.sign(&kid, &msg[..]).await.unwrap();
-        //     assert!(vlt.verify(&sig, &pky, msg).await.unwrap())
-        // }
+        {
+            use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
+            let att = SecretAttributes::new(SecretType::NistP256, SecretPersistence::Ephemeral, 32);
+            let kid = vlt.secret_generate(att).await.unwrap();
+            let pky = vlt.secret_public_key_get(&kid).await.unwrap();
+            let sig = vlt.sign(&kid, &msg[..]).await.unwrap();
+            assert!(vlt.verify(&sig, &pky, msg).await.unwrap())
+        }
         assert!(vlt.verify(&sig, &pky, msg).await.unwrap())
     }
 }
