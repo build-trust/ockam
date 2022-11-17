@@ -1,7 +1,9 @@
 mod create;
+mod rotate_key;
 mod show;
 
 pub(crate) use create::CreateCommand;
+pub(crate) use rotate_key::RotateKeyCommand;
 pub(crate) use show::ShowCommand;
 
 use crate::CommandGlobalOpts;
@@ -20,6 +22,8 @@ pub enum IdentitySubcommand {
     Create(CreateCommand),
     /// Print short existing identity, `--full` for long identity
     Show(ShowCommand),
+    /// Rotate Keys,
+    RotateKey(RotateKeyCommand),
 }
 
 impl IdentityCommand {
@@ -27,6 +31,7 @@ impl IdentityCommand {
         match self.subcommand {
             IdentitySubcommand::Create(c) => c.run(options),
             IdentitySubcommand::Show(c) => c.run(options),
+            IdentitySubcommand::RotateKey(c) => c.run(options),
         }
     }
 }

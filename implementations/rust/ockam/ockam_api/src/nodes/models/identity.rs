@@ -66,3 +66,43 @@ impl<'a> ShortIdentityResponse<'a> {
         }
     }
 }
+
+#[derive(Debug, Clone, Decode, Encode, Serialize)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct RotateKeyResponse<'a> {
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[n(0)] tag: TypeTag<6005979>,
+    #[b(1)] pub label: Cow<'a, str>,
+}
+
+impl<'a> RotateKeyResponse<'a> {
+    pub fn new(label: impl Into<Cow<'a, str>>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            label: label.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Decode, Encode, Serialize)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct RotateKeyRequest<'a> {
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[n(0)] tag: TypeTag<4029174>,
+    #[b(1)] pub label: Cow<'a, str>,
+}
+
+impl<'a> RotateKeyRequest<'a> {
+    pub fn new(label: impl Into<Cow<'a, str>>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            label: label.into(),
+        }
+    }
+}

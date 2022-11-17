@@ -1,8 +1,10 @@
 use super::{map_anyhow_err, NodeManagerWorker};
 use crate::nodes::models::identity::{
-    CreateIdentityResponse, LongIdentityResponse, ShortIdentityResponse,
+    CreateIdentityResponse, LongIdentityResponse, RotateKeyRequest, RotateKeyResponse,
+    ShortIdentityResponse,
 };
 use crate::nodes::NodeManager;
+use minicbor::Decoder;
 use ockam::identity::{Identity, IdentityIdentifier};
 use ockam::{Context, Result};
 use ockam_core::api::{Request, Response, ResponseBuilder};
@@ -79,6 +81,21 @@ impl NodeManagerWorker {
 
         let response =
             Response::ok(req.id()).body(ShortIdentityResponse::new(identifier.to_string()));
+        Ok(response)
+    }
+
+    pub(super) async fn rotate_key(
+        &mut self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<RotateKeyResponse<'_>>> {
+        let node_manager = self.node_manager.read().await;
+        let identity = node_manager.identity()?;
+        let rotate_args = dec.decode::<RotateKeyRequest>()?;
+        identity.rotate_key(&rotate_args.label).await?;
+
+        let response =
+            Response::ok(req.id()).body(RotateKeyResponse::new(rotate_args.label.to_string()));
         Ok(response)
     }
 }

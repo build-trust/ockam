@@ -95,6 +95,23 @@ teardown() {
   assert_output --partial "signatures"
 }
 
+@test "create a node and show its identity then rotate keys" {
+  run $OCKAM node create n1
+  assert_success
+
+  run $OCKAM identity rotate-key --node n1
+  assert_success
+  assert_output --regexp '^key rotated'
+
+  run $OCKAM identity show --node n1
+  assert_success
+  assert_output --regexp '^P'
+
+  run $OCKAM identity rotate-key --node n1
+  assert_success
+  assert_output --regexp '^key rotated'
+}
+
 @test "create a node with a name and do show on it" {
   run $OCKAM node create n1
   assert_success

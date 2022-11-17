@@ -568,6 +568,9 @@ impl NodeManagerWorker {
             (Post, ["node", "identity", "actions", "show", "long"]) => {
                 self.long_identity(req).await?.to_vec()?
             }
+            (Post, ["node", "identity", "actions", "rotate_key"]) => {
+                self.rotate_key(req, dec).await?.to_vec()?
+            }
 
             // ==*== Credentials ==*==
             (Post, ["node", "credentials", "actions", "get"]) => self
