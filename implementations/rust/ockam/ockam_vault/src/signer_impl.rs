@@ -1,13 +1,10 @@
-use cfg_if::cfg_if;
 use crate::vault::Vault;
 use crate::VaultError;
+use cfg_if::cfg_if;
 use ockam_core::vault::{KeyId, SecretType, Signature, Signer};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
-#[cfg(feature = "ring")]
-use crate::error::{from_ring_unspecified, ring_key_rejected};
-
-#[cfg(feature = "rustcrypto")]
+#[cfg(any(feature = "evercrypt", feature = "rustcrypto"))]
 use crate::error::from_pkcs8;
 
 #[async_trait]
@@ -56,14 +53,21 @@ impl Signer for Vault {
             }
             SecretType::NistP256 => {
                 cfg_if! {
-                    if #[cfg(feature = "ring")] {
-                        use ring::rand::SystemRandom;
-                        use ring::signature::{ECDSA_P256_SHA256_ASN1_SIGNING, EcdsaKeyPair};
-                        let sec = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, key)
-                            .map_err(ring_key_rejected)?;
-                        let rng = SystemRandom::new();
-                        let sig = sec.sign(&rng, data).map_err(from_ring_unspecified)?;
-                        Ok(Signature::new(sig.as_ref().to_vec()))
+                    if #[cfg(feature = "evercrypt")] {
+                        use evercrypt::digest;
+                        use p256::ecdsa;
+                        use p256::pkcs8::DecodePrivateKey;
+                        let sec: [u8; 32] = ecdsa::SigningKey::from_pkcs8_der(key)
+                            .map_err(from_pkcs8)?
+                            .to_bytes()
+                            .into();
+                        let nonce = evercrypt::p256::random_nonce().unwrap();
+                        let sig = evercrypt::p256::ecdsa_sign(digest::Mode::Sha256, data, &sec, &nonce).unwrap(); // TODO
+                        let rs = sig.raw();
+                        let r: [u8; 32] = rs[.. 32].try_into().expect("32 = 32");
+                        let s: [u8; 32] = rs[32 ..].try_into().expect("32 = 32");
+                        let sig = ecdsa::Signature::from_scalars(r, s).unwrap().to_der();
+                        Ok(Signature::new(sig.as_bytes().to_vec()))
                     } else if #[cfg(feature = "rustcrypto")] {
                         use p256::ecdsa::{self, signature::Signer as _};
                         use p256::pkcs8::DecodePrivateKey;
@@ -75,9 +79,7 @@ impl Signer for Vault {
                     }
                 }
             }
-            SecretType::Buffer | SecretType::Aes => {
-                Err(VaultError::InvalidKeyType.into())
-            }
+            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
         }
     }
 }
