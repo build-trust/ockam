@@ -89,6 +89,10 @@ impl<V: IdentityVault> Identity<V> {
         &self.vault
     }
 
+    pub async fn change_history(&self) -> IdentityChangeHistory {
+        self.change_history.read().await.clone()
+    }
+
     pub fn ctx(&self) -> &Context {
         &self.ctx
     }
