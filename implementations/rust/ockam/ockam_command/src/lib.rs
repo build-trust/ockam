@@ -19,6 +19,8 @@ mod reset;
 mod secure_channel;
 mod service;
 mod space;
+#[allow(unused)]
+mod state;
 mod subscription;
 mod tcp;
 mod terminal;
