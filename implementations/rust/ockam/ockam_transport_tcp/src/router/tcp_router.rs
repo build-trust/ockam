@@ -235,7 +235,8 @@ impl TcpRouter {
             .prepend(next.clone());
 
         // Send the transport message to the connection worker
-        ctx.send(next.clone(), msg).await?;
+        ctx.send_from_address(next.clone(), msg, self.main_addr.clone())
+            .await?;
 
         Ok(())
     }
@@ -298,26 +299,42 @@ impl Worker for TcpRouter {
                 TcpRouterRequest::Register { accepts, self_addr } => {
                     let res = self.handle_register(accepts, self_addr).await;
 
-                    ctx.send(return_route, TcpRouterResponse::Register(res))
-                        .await?;
+                    ctx.send_from_address(
+                        return_route,
+                        TcpRouterResponse::Register(res),
+                        self.api_addr.clone(),
+                    )
+                    .await?;
                 }
                 TcpRouterRequest::Unregister { self_addr } => {
                     let res = self.handle_unregister(self_addr).await;
 
-                    ctx.send(return_route, TcpRouterResponse::Unregister(res))
-                        .await?;
+                    ctx.send_from_address(
+                        return_route,
+                        TcpRouterResponse::Unregister(res),
+                        self.api_addr.clone(),
+                    )
+                    .await?;
                 }
                 TcpRouterRequest::Connect { peer } => {
                     let res = self.handle_connect(peer).await;
 
-                    ctx.send(return_route, TcpRouterResponse::Connect(res))
-                        .await?;
+                    ctx.send_from_address(
+                        return_route,
+                        TcpRouterResponse::Connect(res),
+                        self.api_addr.clone(),
+                    )
+                    .await?;
                 }
                 TcpRouterRequest::Disconnect { peer } => {
                     let res = self.handle_disconnect(peer).await;
 
-                    ctx.send(return_route, TcpRouterResponse::Disconnect(res))
-                        .await?;
+                    ctx.send_from_address(
+                        return_route,
+                        TcpRouterResponse::Disconnect(res),
+                        self.api_addr.clone(),
+                    )
+                    .await?;
                 }
             };
         } else {
