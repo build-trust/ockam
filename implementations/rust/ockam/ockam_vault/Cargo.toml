@@ -24,7 +24,7 @@ rust-version = "1.56.0"
 crate-type = ["rlib"]
 
 [features]
-default = ["std", "storage"]
+default = ["std", "storage", "rustcrypto"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
