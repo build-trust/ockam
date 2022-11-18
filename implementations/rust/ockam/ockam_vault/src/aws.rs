@@ -1,43 +1,50 @@
-use aws_sdk_kms::error::CreateKeyError;
-use aws_sdk_kms::error::GetPublicKeyError;
-use aws_sdk_kms::error::SignError;
-use aws_sdk_kms::error::VerifyError;
-use aws_sdk_kms::model::KeySpec;
-use aws_sdk_kms::model::KeyUsageType;
-use aws_sdk_kms::model::MessageType;
-use aws_sdk_kms::model::SigningAlgorithmSpec;
-use aws_sdk_kms::types::Blob;
-use aws_sdk_kms::types::SdkError;
+use aws_sdk_kms::error::{SignError, VerifyError, GetPublicKeyError, CreateKeyError};
+use aws_sdk_kms::error::{ScheduleKeyDeletionError, ScheduleKeyDeletionErrorKind};
+use aws_sdk_kms::model::{KeySpec, KeyUsageType, MessageType, SigningAlgorithmSpec};
+use aws_sdk_kms::types::{Blob, SdkError};
 use aws_sdk_kms::Client;
-use ockam_core::async_trait;
 use ockam_core::vault::SecretType;
-use ockam_core::vault::{KeyId, PublicKey, Signature, Signer};
+use ockam_core::vault::{KeyId, PublicKey, Signature};
 use ockam_core::Result;
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 
-/// AWS KMS client.
-#[derive(Debug)]
-pub struct AwsKms {
-    client: Client,
+/// AWS KMS configuration.
+#[derive(Debug, Default, Clone)]
+pub struct Config {
     multi_region: bool,
 }
 
-impl AwsKms {
+impl Config {
+    /// Create multi-region keys.
+    pub fn multi_region(mut self, val: bool) -> Self {
+        self.multi_region = val;
+        self
+    }
+}
+
+
+/// AWS KMS client.
+#[derive(Debug, Clone)]
+pub struct Kms {
+    client: Client,
+    config: Config
+}
+
+impl Kms {
     /// Create a new AWS KMS client.
-    pub async fn new() -> Result<Self> {
+    pub async fn new(c: Config) -> Result<Self> {
         let config = aws_config::load_from_env().await;
         let client = Client::new(&config);
         Ok(Self {
             client,
-            multi_region: false,
+            config: c
         })
     }
 
-    /// Configure the client to create multi-region keys.
-    pub fn multi_region(mut self, val: bool) -> Self {
-        self.multi_region = val;
-        self
+    /// Create an AWS KMS client using the default configutation.
+    pub async fn default() -> Result<Self> {
+        Self::new(Config::default()).await
     }
 
     /// Create a new NIST P-256 key-pair in AWS KMS and return its ID.
@@ -47,7 +54,7 @@ impl AwsKms {
             .create_key()
             .key_usage(KeyUsageType::SignVerify)
             .key_spec(KeySpec::EccNistP256);
-        if self.multi_region {
+        if self.config.multi_region {
             client = client.multi_region(true)
         }
         let output = client.send().await.map_err(Error::Create)?;
@@ -55,6 +62,23 @@ impl AwsKms {
             return Ok(kid.to_string());
         }
         Err(Error::MissingKeyId.into())
+    }
+
+    /// Have AWS KMS schedule key deletion.
+    pub async fn delete_key(&self, id: &KeyId) -> Result<bool> {
+        let client = self
+            .client
+            .schedule_key_deletion()
+            .key_id(id)
+            .pending_window_in_days(7);
+        match client.send().await {
+            Err(SdkError::ServiceError { err, .. })
+                if matches!(err.kind, ScheduleKeyDeletionErrorKind::NotFoundException(_)) => {
+                    Ok(false)
+                }
+            Err(e) => Err(Error::Delete { keyid: id.to_string(), error: e }.into()),
+            Ok(_)  => Ok(true)
+        }
     }
 
     /// Get the public key part of a AWS KMS key-pair.
@@ -97,11 +121,9 @@ impl AwsKms {
         })?;
         Ok(output.signature_valid())
     }
-}
 
-#[async_trait]
-impl Signer for AwsKms {
-    async fn sign(&self, id: &KeyId, msg: &[u8]) -> Result<Signature> {
+    /// Have AWS KMS sign a message.
+    pub async fn sign(&self, id: &KeyId, msg: &[u8]) -> Result<Signature> {
         let client = self
             .client
             .sign()
@@ -146,6 +168,12 @@ enum Error {
         #[source]
         error: SdkError<GetPublicKeyError>,
     },
+    #[error("aws sdk error exporting public key {keyid}")]
+    Delete {
+        keyid: String,
+        #[source]
+        error: SdkError<ScheduleKeyDeletionError>,
+    },
     #[error("aws did not return a key id")]
     MissingKeyId,
     #[error("aws did not return a signature")]
@@ -163,7 +191,7 @@ impl From<Error> for ockam_core::Error {
 
 #[cfg(test)]
 mod tests {
-    use super::AwsKms;
+    use super::Kms;
     use crate::Vault;
     use ockam_core::vault::{Signer, Verifier};
     use ockam_node::tokio;
@@ -174,19 +202,19 @@ mod tests {
     #[tokio::test]
     async fn sign_verify_with_existing_key() {
         let keyid = PREEXISTING_KEY_ID.to_string();
-        let aws = AwsKms::new().await.unwrap();
+        let kms = Kms::new().await.unwrap();
         let msg = b"hello world";
-        let sig = aws.sign(&keyid, &msg[..]).await.unwrap();
-        assert!(aws.verify(&keyid, &msg[..], &sig).await.unwrap())
+        let sig = kms.sign(&keyid, &msg[..]).await.unwrap();
+        assert!(kms.verify(&keyid, &msg[..], &sig).await.unwrap())
     }
 
     #[tokio::test]
     async fn sign_with_aws_verify_locally() {
         let keyid = PREEXISTING_KEY_ID.to_string();
-        let aws = AwsKms::new().await.unwrap();
+        let kms = Kms::new().await.unwrap();
         let msg = b"hello world";
-        let sig = aws.sign(&keyid, &msg[..]).await.unwrap();
-        let pky = aws.public_key(&keyid).await.unwrap();
+        let sig = kms.sign(&keyid, &msg[..]).await.unwrap();
+        let pky = kms.public_key(&keyid).await.unwrap();
         let vlt = Vault::create();
         {
             use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};

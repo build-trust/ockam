@@ -94,4 +94,5 @@ mockall             = "0.11"
 ockam_api           = { path = ".", features = ["std", "authenticators"] }
 ockam_macros        = { version = "0.25.0", path = "../ockam_macros", features = ["std"] }
 ockam_transport_tcp = { version = "0.72.0", path = "../ockam_transport_tcp" }
+ockam_vault         = { path = "../ockam_vault", features = ["rustcrypto"] }
 quickcheck          = "1.0.1"

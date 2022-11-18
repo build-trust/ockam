@@ -35,6 +35,8 @@ use ockam_node::compat::asynchronous::RwLock;
 pub struct Vault {
     pub(crate) data: VaultData,
     pub(crate) storage: Option<Arc<dyn Storage>>,
+    #[cfg(feature = "aws")]
+    pub(crate) aws_kms: Option<crate::aws::Kms>
 }
 
 #[derive(Default, Clone)]
@@ -48,12 +50,22 @@ impl Vault {
         Self {
             data: Default::default(),
             storage,
+            #[cfg(feature = "aws")]
+            aws_kms: None
         }
     }
 
     /// Same as ```Vault::new()```
     pub fn create() -> Self {
         Self::new(None)
+    }
+
+    /// Enable AWS KMS.
+    #[cfg(feature = "aws")]
+    pub async fn enable_aws_kms(&mut self) -> Result<(), ockam_core::Error> {
+        let kms = crate::aws::Kms::default().await?;
+        self.aws_kms = Some(kms);
+        Ok(())
     }
 
     pub(crate) async fn preload_from_storage(&self, key_id: &KeyId) {
