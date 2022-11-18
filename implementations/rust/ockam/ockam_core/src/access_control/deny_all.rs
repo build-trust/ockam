@@ -31,7 +31,6 @@ mod tests {
                 Address::random_local(),
                 local_message,
                 route![],
-                false,
             );
             DenyAll.is_authorized(&relay_message).await
         });

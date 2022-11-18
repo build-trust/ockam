@@ -12,11 +12,6 @@ pub struct RelayMessage {
     pub local_msg: LocalMessage,
     /// The onward route of the wrapped `LocalMessage`
     pub onward: Route,
-    /// Set in [`Router::handle_msg`] the value is `false` for
-    /// [`RouteType::Internal`] and `true` for [`RouteType::External`]
-    /// TODO Is this still used in the code-base?
-    /// TODO suggest refactoring it to `route_type: RouteType` if it is
-    pub needs_wrapping: bool,
 }
 
 impl RelayMessage {
@@ -26,14 +21,12 @@ impl RelayMessage {
         destination: Address,
         local_msg: LocalMessage,
         onward: Route,
-        needs_wrapping: bool,
     ) -> Self {
         Self {
             source: origin,
             destination,
             local_msg,
             onward,
-            needs_wrapping,
         }
     }
 }

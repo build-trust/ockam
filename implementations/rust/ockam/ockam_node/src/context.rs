@@ -604,7 +604,7 @@ impl Context {
             .send(req)
             .await
             .map_err(NodeError::from_send_err)?;
-        let (addr, sender, needs_wrapping) = reply_rx
+        let (addr, sender) = reply_rx
             .recv()
             .await
             .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??
@@ -622,13 +622,7 @@ impl Context {
         let local_msg = LocalMessage::new(transport_msg, local_info);
 
         // Pack local message into a RelayMessage wrapper
-        let relay_msg = RelayMessage::new(
-            sending_address.clone(),
-            addr,
-            local_msg,
-            route,
-            needs_wrapping,
-        );
+        let relay_msg = RelayMessage::new(sending_address.clone(), addr, local_msg, route);
 
         debugger::log_outgoing_message(self, &relay_msg);
 
@@ -682,7 +676,7 @@ impl Context {
             .send(req)
             .await
             .map_err(NodeError::from_send_err)?;
-        let (addr, sender, needs_wrapping) = reply_rx
+        let (addr, sender) = reply_rx
             .recv()
             .await
             .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??
@@ -690,7 +684,7 @@ impl Context {
 
         // Pack the transport message into a RelayMessage wrapper
         let onward = local_msg.transport().onward_route.clone();
-        let relay_msg = RelayMessage::new(self.address(), addr, local_msg, onward, needs_wrapping);
+        let relay_msg = RelayMessage::new(self.address(), addr, local_msg, onward);
 
         debugger::log_outgoing_message(self, &relay_msg);
 
