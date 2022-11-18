@@ -51,7 +51,13 @@ impl Verifier for Vault {
             }
             SecretType::NistP256 => {
                 cfg_if! {
-                    if #[cfg(feature = "evercrypt")] {
+                    if #[cfg(feature = "rustcrypto")] {
+                        use p256::ecdsa::{VerifyingKey, Signature, signature::Verifier as _};
+                        use p256::pkcs8::DecodePublicKey;
+                        let k = VerifyingKey::from_public_key_der(public_key.data()).map_err(from_pkcs8)?;
+                        let s = Signature::from_der(signature.as_ref()).map_err(from_ecdsa)?;
+                        Ok(k.verify(data, &s).is_ok())
+                    } else if #[cfg(feature = "evercrypt")] {
                         use evercrypt::digest;
                         use p256::ecdsa::{VerifyingKey, Signature};
                         use p256::pkcs8::DecodePublicKey;
@@ -62,14 +68,8 @@ impl Verifier for Vault {
                         let s = evercrypt::p256::Signature::new(&r.into(), &s.into());
                         let b = evercrypt::p256::ecdsa_verify(digest::Mode::Sha256, data, k.as_ref(), &s).unwrap();
                         Ok(b)
-                    } else if #[cfg(feature = "rustcrypto")] {
-                        use p256::ecdsa::{VerifyingKey, Signature, signature::Verifier as _};
-                        use p256::pkcs8::DecodePublicKey;
-                        let k = VerifyingKey::from_public_key_der(public_key.data()).map_err(from_pkcs8)?;
-                        let s = Signature::from_der(signature.as_ref()).map_err(from_ecdsa)?;
-                        Ok(k.verify(data, &s).is_ok())
                     } else {
-                        Err(VaultError::InvalidPublicKey.into())
+                        compile_error!("one of features {evercrypt,rustcrypto} must be given")
                     }
                 }
             }

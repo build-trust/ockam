@@ -11,6 +11,11 @@ use crate::error::from_pkcs8;
 impl Signer for Vault {
     /// Sign data.
     async fn sign(&self, secret_key: &KeyId, data: &[u8]) -> Result<Signature> {
+        #[cfg(feature = "aws")]
+        if let Some(kms) = &self.aws_kms {
+            return kms.sign(secret_key, data).await
+        }
+
         self.preload_from_storage(secret_key).await;
 
         let entries = self.data.entries.read().await;
@@ -53,7 +58,13 @@ impl Signer for Vault {
             }
             SecretType::NistP256 => {
                 cfg_if! {
-                    if #[cfg(feature = "evercrypt")] {
+                    if #[cfg(feature = "rustcrypto")] {
+                        use p256::ecdsa::{self, signature::Signer as _};
+                        use p256::pkcs8::DecodePrivateKey;
+                        let sec = ecdsa::SigningKey::from_pkcs8_der(key).map_err(from_pkcs8)?;
+                        let sig = sec.sign(data);
+                        Ok(Signature::new(sig.to_der().as_bytes().to_vec()))
+                    } else if #[cfg(feature = "evercrypt")] {
                         use evercrypt::digest;
                         use p256::ecdsa;
                         use p256::pkcs8::DecodePrivateKey;
@@ -68,14 +79,8 @@ impl Signer for Vault {
                         let s: [u8; 32] = rs[32 ..].try_into().expect("32 = 32");
                         let sig = ecdsa::Signature::from_scalars(r, s).unwrap().to_der();
                         Ok(Signature::new(sig.as_bytes().to_vec()))
-                    } else if #[cfg(feature = "rustcrypto")] {
-                        use p256::ecdsa::{self, signature::Signer as _};
-                        use p256::pkcs8::DecodePrivateKey;
-                        let sec = ecdsa::SigningKey::from_pkcs8_der(key).map_err(from_pkcs8)?;
-                        let sig = sec.sign(data);
-                        Ok(Signature::new(sig.to_der().as_bytes().to_vec()))
                     } else {
-                        Err(VaultError::InvalidKeyType.into())
+                        compile_error!("one of features {evercrypt,rustcrypto} must be given")
                     }
                 }
             }

@@ -33,7 +33,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["std", "ockam_transport_tcp", "software_vault", "software_vault_storage", "noise_xx"]
 software_vault = [
-    "ockam_vault",
+    "ockam_vault/rustcrypto",
     "ockam_channel/software_vault",
 ]
 software_vault_storage = ["software_vault", "ockam_vault/storage"]

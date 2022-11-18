@@ -132,6 +132,13 @@ impl SecretVault for Vault {
                 SecretKey::new(key)
             }
             SecretType::NistP256 => {
+                #[cfg(feature = "aws")]
+                if attributes.persistence() == SecretPersistence::Persistent {
+                    if let Some(kms) = &self.aws_kms {
+                        return Ok(kms.create_key().await?)
+                    }
+                }
+
                 cfg_if! {
                     if #[cfg(any(feature = "evercrypt", feature = "rustcrypto"))] {
                         use p256::ecdsa::SigningKey;
@@ -141,7 +148,7 @@ impl SecretVault for Vault {
                         let doc = sec.to_pkcs8_der().map_err(from_pkcs8)?;
                         SecretKey::new(doc.as_bytes().to_vec())
                     } else {
-                        return Err(VaultError::InvalidKeyType.into())
+                        compile_error!("one of features {evercrypt,rustcrypto} must be given")
                     }
                 }
             }
@@ -195,15 +202,24 @@ impl SecretVault for Vault {
 
     async fn secret_attributes_get(&self, key_id: &KeyId) -> Result<SecretAttributes> {
         self.preload_from_storage(key_id).await;
+        let entries = self.data.entries.read().await;
 
-        Ok(self
-            .data
-            .entries
-            .read()
-            .await
-            .get(key_id)
-            .ok_or(VaultError::EntryNotFound)?
-            .key_attributes())
+        if let Some(e) = entries.get(key_id) {
+            return Ok(e.key_attributes())
+        }
+
+        drop(entries);
+
+        #[cfg(feature = "aws")]
+        if let Some(kms) = &self.aws_kms {
+            if kms.public_key(key_id).await.is_ok() {
+                let ty = SecretType::NistP256;
+                let ps = SecretPersistence::Persistent;
+                return Ok(SecretAttributes::new(ty, ps, 32))
+            }
+        }
+
+        Err(VaultError::EntryNotFound.into())
     }
 
     /// Extract public key from secret. Only Curve25519 type is supported
@@ -211,7 +227,15 @@ impl SecretVault for Vault {
         self.preload_from_storage(key_id).await;
 
         let entries = self.data.entries.read().await;
-        let entry = entries.get(key_id).ok_or(VaultError::EntryNotFound)?;
+        let entry = if let Some(entry) = entries.get(key_id) {
+            entry
+        } else {
+            #[cfg(feature = "aws")]
+            if let Some(kms) = &self.aws_kms {
+                return Ok(kms.public_key(key_id).await?)
+            }
+            return Err(VaultError::EntryNotFound.into())
+        };
 
         match entry.key_attributes().stype() {
             SecretType::X25519 => {
@@ -268,7 +292,15 @@ impl SecretVault for Vault {
         };
 
         match entries.remove(&key_id) {
-            None => return Err(VaultError::EntryNotFound.into()),
+            None => '_block: {
+                #[cfg(feature = "aws")]
+                if let Some(kms) = &self.aws_kms {
+                    if kms.delete_key(&key_id).await? {
+                        break '_block
+                    }
+                }
+                return Err(VaultError::EntryNotFound.into())
+            }
             Some(_) => {}
         }
 

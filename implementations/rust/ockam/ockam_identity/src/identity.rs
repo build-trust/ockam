@@ -12,7 +12,7 @@ use ockam_core::compat::{
     sync::Arc,
     vec::Vec,
 };
-use ockam_core::vault::{SecretPersistence, SecretType, Signature, CURVE25519_SECRET_LENGTH_U32};
+use ockam_core::vault::{SecretPersistence, SecretType, Signature};
 use ockam_core::AsyncTryClone;
 use ockam_core::{Address, Result};
 use ockam_node::compat::asynchronous::RwLock;
@@ -106,11 +106,7 @@ impl<V: IdentityVault> Identity<V> {
 
         let key_attribs = KeyAttributes::new(
             IdentityStateConst::ROOT_LABEL.to_string(),
-            SecretAttributes::new(
-                SecretType::Ed25519,
-                SecretPersistence::Persistent,
-                CURVE25519_SECRET_LENGTH_U32,
-            ),
+            SecretAttributes::new(SecretType::NistP256, SecretPersistence::Persistent, 32)
         );
 
         let create_key_change = Self::make_create_key_change_static(
