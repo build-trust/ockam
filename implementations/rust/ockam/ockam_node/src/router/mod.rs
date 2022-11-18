@@ -282,10 +282,10 @@ impl Router {
 
             // Handle route/ sender requests
             SenderReq(ref addr, ref reply) => match determine_type(addr) {
-                RouteType::Internal(ref addr) => utils::resolve(self, addr, reply, false).await?,
+                RouteType::Internal(ref addr) => utils::resolve(self, addr, reply).await?,
                 RouteType::External(tt) => {
                     let addr = utils::router_addr(self, tt)?;
-                    utils::resolve(self, &addr, reply, true).await?
+                    utils::resolve(self, &addr, reply).await?
                 }
             },
         }

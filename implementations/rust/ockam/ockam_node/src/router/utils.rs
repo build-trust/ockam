@@ -15,7 +15,6 @@ pub(super) async fn resolve(
     router: &mut Router,
     addr: &Address,
     reply: &SmallSender<NodeReplyResult>,
-    wrap: bool,
 ) -> Result<()> {
     let base = format!("Resolving worker address '{}'...", addr);
 
@@ -35,7 +34,7 @@ pub(super) async fn resolve(
         Some(record) if record.check() => {
             trace!("{} OK", base);
             record.increment_msg_count();
-            reply.send(RouterReply::sender(addr.clone(), record.sender(), wrap))
+            reply.send(RouterReply::sender(addr.clone(), record.sender()))
         }
         Some(_) => {
             trace!("{} REJECTED; worker shutting down", base);

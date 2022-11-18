@@ -170,10 +170,6 @@ pub enum RouterReply {
         addr: Address,
         /// The relay sender
         sender: MessageSender<RelayMessage>,
-        /// Indicate whether the relay message needs to be constructed
-        /// with router wrapping.
-        /// TODO Is this still used in the code-base?
-        wrap: bool,
     },
     /// Indicate the 'ready' state of an address
     State(bool),
@@ -264,18 +260,14 @@ impl RouterReply {
     }
 
     /// Return [NodeReply::Sender] for the given information
-    pub fn sender(
-        addr: Address,
-        sender: MessageSender<RelayMessage>,
-        wrap: bool,
-    ) -> NodeReplyResult {
-        Ok(RouterReply::Sender { addr, sender, wrap })
+    pub fn sender(addr: Address, sender: MessageSender<RelayMessage>) -> NodeReplyResult {
+        Ok(RouterReply::Sender { addr, sender })
     }
 
     /// Consume the wrapper and return [NodeReply::Sender]
-    pub fn take_sender(self) -> Result<(Address, MessageSender<RelayMessage>, bool)> {
+    pub fn take_sender(self) -> Result<(Address, MessageSender<RelayMessage>)> {
         match self {
-            Self::Sender { addr, sender, wrap } => Ok((addr, sender, wrap)),
+            Self::Sender { addr, sender } => Ok((addr, sender)),
             _ => Err(NodeError::NodeState(NodeReason::Unknown).internal()),
         }
     }
