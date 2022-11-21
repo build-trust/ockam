@@ -3,7 +3,6 @@
 use std::{fs::create_dir_all, net::SocketAddr, ops::Deref, path::PathBuf, sync::RwLockReadGuard};
 
 use anyhow::{Context, Result};
-use slug::slugify;
 use tracing::{error, trace};
 
 use ockam::identity::IdentityIdentifier;
@@ -45,46 +44,29 @@ pub enum ConfigError {
 
 impl OckamConfig {
     pub fn load() -> Result<OckamConfig> {
-        let directories = cli::OckamConfig::directories();
-        let config_dir = directories.config_dir();
-        let inner = Config::<cli::OckamConfig>::load(config_dir, "config")?;
-        inner.write().directories = Some(directories);
+        let dir = cli::OckamConfig::dir();
+        let inner = Config::<cli::OckamConfig>::load(&dir, "config")?;
+        inner.write().dir = Some(dir);
         Ok(Self { inner })
     }
 
     pub fn node(&self, name: &str) -> Result<NodeConfig> {
-        let directories = cli::OckamConfig::directories();
-        let nodes_dir = directories.data_local_dir();
-        let node_dir = nodes_dir.join(format!("node-{name}"));
-        if !node_dir.exists() {
+        let dir = cli::OckamConfig::node_dir(name);
+        if !dir.exists() {
             return Err(ConfigError::NotFound(name.to_string()).into());
         }
-        NodeConfig::new(&node_dir)
+        NodeConfig::new(&dir)
     }
 
     pub fn remove(self) -> Result<()> {
         let inner = self.inner.write();
-        // Try to delete the config directory. If the directory is not found,
-        // we continue. Otherwise, we return the error.
-        let config_dir = inner
-            .directories
+        // Try to delete CLI directory. If the directory is not found,
+        // we do nothing. Otherwise, we return the error.
+        let dir = inner
+            .dir
             .as_ref()
-            .context("configuration is in an invalid state")?
-            .config_dir();
-        if let Err(e) = std::fs::remove_dir_all(config_dir) {
-            match e.kind() {
-                std::io::ErrorKind::NotFound => {}
-                _ => return Err(e.into()),
-            }
-        };
-        // Try to delete the nodes directory. If the directory is not found,
-        // we continue. Otherwise, we return the error.
-        let nodes_dir = inner
-            .directories
-            .as_ref()
-            .context("configuration is in an invalid state")?
-            .data_local_dir();
-        if let Err(e) = std::fs::remove_dir_all(nodes_dir) {
+            .context("configuration is in an invalid state")?;
+        if let Err(e) = std::fs::remove_dir_all(dir) {
             match e.kind() {
                 std::io::ErrorKind::NotFound => {}
                 _ => return Err(e.into()),
@@ -115,11 +97,8 @@ impl OckamConfig {
     }
 
     /// Get the node state directory
-    pub fn get_node_dir_raw(&self, name: &str) -> Result<PathBuf> {
-        let dirs = cli::OckamConfig::directories();
-        let nodes_dir = dirs.data_local_dir();
-        let node_path = nodes_dir.join(slugify(&format!("node-{}", name)));
-        Ok(node_path)
+    pub fn get_node_dir_unchecked(&self, name: &str) -> PathBuf {
+        cli::OckamConfig::node_dir(name)
     }
 
     /// Get the API port used by a node
@@ -194,7 +173,7 @@ impl OckamConfig {
     }
 
     pub fn authorities(&self, node: &str) -> Result<AuthoritiesConfig> {
-        let path = self.get_node_dir_raw(node)?;
+        let path = self.get_node_dir_unchecked(node);
         AuthoritiesConfig::load(path)
     }
 
@@ -217,16 +196,11 @@ impl OckamConfig {
         }
 
         // Create node's state directory
-        let state_dir = inner
-            .directories
-            .as_ref()
-            .context("configuration is in an invalid state")?
-            .data_local_dir()
-            .join(slugify(&format!("node-{}", name)));
-        create_dir_all(&state_dir).context("failed to create new node state directory")?;
+        let dir = cli::OckamConfig::node_dir(name);
+        create_dir_all(&dir).context("failed to create new node state directory")?;
 
         // Initialize it
-        NodeConfig::init_for_new_node(&state_dir)?;
+        NodeConfig::init_for_new_node(&dir)?;
 
         // Add this node to the config lookup table
         inner.lookup.set_node(name, bind.into());
@@ -245,7 +219,7 @@ impl OckamConfig {
                 bind.port(),
                 verbose,
                 None,
-                Some(state_dir),
+                Some(dir),
             ),
         );
         Ok(())

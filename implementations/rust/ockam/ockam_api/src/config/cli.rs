@@ -5,7 +5,7 @@ use crate::config::{
     ConfigValues,
 };
 use crate::HexByteVec;
-use directories::ProjectDirs;
+use anyhow::Context;
 use ockam_core::Result;
 use ockam_identity::{IdentityIdentifier, IdentityVault, PublicIdentity};
 use ockam_multiaddr::MultiAddr;
@@ -32,7 +32,7 @@ pub struct OckamConfig {
     /// We keep track of the project directories at runtime but don't
     /// persist this data to the configuration
     #[serde(skip)]
-    pub directories: Option<ProjectDirs>,
+    pub dir: Option<PathBuf>,
     #[serde(default = "default_nodes")]
     pub nodes: BTreeMap<String, NodeConfigOld>,
 
@@ -56,7 +56,7 @@ fn default_lookup() -> ConfigLookup {
 impl ConfigValues for OckamConfig {
     fn default_values() -> Self {
         Self {
-            directories: Some(Self::directories()),
+            dir: Some(Self::dir()),
             nodes: BTreeMap::new(),
             lookup: default_lookup(),
             default_identity: None,
@@ -68,21 +68,32 @@ impl ConfigValues for OckamConfig {
 
 impl OckamConfig {
     /// Determine the default storage location for the ockam config
-    pub fn directories() -> ProjectDirs {
-        match env::var("OCKAM_PROJECT_PATH") {
-            Ok(dir) => {
-                let dir = PathBuf::from(&dir);
-                ProjectDirs::from_path(dir).expect(
-                    "failed to determine configuration storage location.
-Verify that your OCKAM_PROJECT_PATH environment variable is valid.",
-                )
-            }
-            Err(_) => ProjectDirs::from("io", "ockam", "ockam-cli").expect(
-                "failed to determine configuration storage location.
-Verify that your XDG_CONFIG_HOME and XDG_DATA_HOME environment variables are correctly set.
-Otherwise your OS or OS configuration may not be supported!",
-            ),
+    pub fn dir() -> PathBuf {
+        if let Ok(dir) = env::var("OCKAM_PROJECT_PATH") {
+            println!(
+                "The OCKAM_PROJECT_PATH is now deprecated, consider using the OCKAM_HOME variable"
+            );
+            env::set_var("OCKAM_HOME", dir);
         }
+        match env::var("OCKAM_HOME") {
+            Ok(dir) => PathBuf::from(&dir),
+            Err(_) => {
+                let b = directories::BaseDirs::new()
+                    .context("Unable to determine home directory")
+                    .unwrap();
+                b.home_dir().join(".ockam")
+            }
+        }
+    }
+
+    pub fn nodes_dir() -> PathBuf {
+        let dir = Self::dir().join("nodes");
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    pub fn node_dir(name: &str) -> PathBuf {
+        Self::nodes_dir().join(name)
     }
 
     /// This function could be zero-copy if we kept the lock on the

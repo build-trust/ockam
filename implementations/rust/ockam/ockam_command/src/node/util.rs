@@ -26,7 +26,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
     let cmd = CreateCommand::default();
 
     // Create node directory if it doesn't exist
-    tokio::fs::create_dir_all(&cfg.get_node_dir_raw(&cmd.node_name)?).await?;
+    tokio::fs::create_dir_all(&cfg.get_node_dir_unchecked(&cmd.node_name)).await?;
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
@@ -54,7 +54,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
     let tcp = TcpTransport::create(ctx).await?;
     let bind = cmd.tcp_listener_address;
     tcp.listen(&bind).await?;
-    let node_dir = cfg.get_node_dir_raw(&cmd.node_name)?;
+    let node_dir = cfg.get_node_dir_unchecked(&cmd.node_name);
     let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
         ctx,
@@ -88,12 +88,8 @@ pub(super) async fn create_default_identity_if_needed(
 ) -> Result<()> {
     // Get default root vault (create if needed)
     let default_vault_path = cfg.get_default_vault_path().unwrap_or_else(|| {
-        let default_vault_path = cli::OckamConfig::directories()
-            .config_dir()
-            .join("default_vault.json");
-
+        let default_vault_path = cli::OckamConfig::dir().join("default_vault.json");
         cfg.set_default_vault_path(Some(default_vault_path.clone()));
-
         default_vault_path
     });
 
@@ -164,9 +160,8 @@ pub(super) async fn add_project_authority(
 
 pub async fn delete_embedded_node(cfg: &OckamConfig, name: &str) {
     // Try removing the node's directory
-    if let Ok(dir) = cfg.get_node_dir_raw(name) {
-        let _ = tokio::fs::remove_dir_all(dir).await;
-    }
+    let dir = cfg.get_node_dir_unchecked(name);
+    let _ = tokio::fs::remove_dir_all(dir).await;
 }
 
 pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> anyhow::Result<()> {
@@ -180,8 +175,7 @@ pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> anyhow::Result<
     }
 
     // Try to delete dangling embedded nodes directories
-    let dirs = OckamConfigApi::directories();
-    let nodes_dir = dirs.data_local_dir();
+    let nodes_dir = OckamConfigApi::nodes_dir();
     if nodes_dir.exists() {
         for entry in nodes_dir.read_dir()? {
             let dir = entry?;
@@ -250,10 +244,8 @@ fn delete_node_config(opts: &CommandGlobalOpts, node_name: &str) {
 
     // Try removing the node's directory.
     // If the directory is not found, we ignore the result and continue.
-    let _ = opts
-        .config
-        .get_node_dir_raw(node_name)
-        .map(std::fs::remove_dir_all);
+    let dir = opts.config.get_node_dir_unchecked(node_name);
+    let _ = std::fs::remove_dir_all(dir);
 
     // Try removing the node's info from the config file.
     opts.config.remove_node(node_name);
