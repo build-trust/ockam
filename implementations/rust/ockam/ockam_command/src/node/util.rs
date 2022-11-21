@@ -33,7 +33,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
         create_default_identity_if_needed(ctx, cfg).await?;
     }
 
-    let identity_override = if cmd.skip_defaults || cmd.no_shared_identity {
+    let identity_override = if cmd.skip_defaults {
         None
     } else {
         Some(get_identity_override(ctx, cfg).await?)
