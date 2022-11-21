@@ -168,10 +168,6 @@ impl FromStr for NodeConfigVersion {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct NodeStateConfig {
-    /// Lmdb file location
-    pub authenticated_storage_path: Option<PathBuf>,
-    /// Lmdb file location
-    pub policies_storage_path: Option<PathBuf>,
     /// Vault info
     pub vault_path: Option<PathBuf>,
     /// Exported identity value
@@ -183,6 +179,16 @@ pub struct NodeStateConfig {
 impl ConfigValues for NodeStateConfig {
     fn default_values() -> Self {
         Self::default()
+    }
+}
+
+impl Config<NodeStateConfig> {
+    pub fn authenticated_storage_path(&self) -> PathBuf {
+        self.config_dir().join("authenticated_storage.lmdb")
+    }
+
+    pub fn policies_storage_path(&self) -> PathBuf {
+        self.config_dir().join("policies_storage.lmdb")
     }
 }
 

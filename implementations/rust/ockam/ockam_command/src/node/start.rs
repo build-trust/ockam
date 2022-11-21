@@ -65,7 +65,7 @@ async fn run_impl(
 
     // Run startup commands
     if let Ok(cfg) = cfg.node(&cmd.node_name) {
-        CommandsRunner::run_node_startup(cfg.commands().config_path())
+        CommandsRunner::run_node_startup(cfg.commands().config_file_path())
             .context("Failed to startup commands")?;
     }
 

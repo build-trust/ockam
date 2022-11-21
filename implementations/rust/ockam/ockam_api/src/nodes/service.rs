@@ -249,36 +249,11 @@ impl NodeManager {
         let state = config.state();
 
         // Check if we had existing AuthenticatedStorage, create with default location otherwise
-        let authenticated_storage_path = state.read().authenticated_storage_path.clone();
-        let authenticated_storage = {
-            let authenticated_storage_path = match authenticated_storage_path {
-                Some(p) => p,
-                None => {
-                    let default_location =
-                        general_options.node_dir.join("authenticated_storage.lmdb");
+        let authenticated_storage_path = state.authenticated_storage_path();
+        let authenticated_storage = LmdbStorage::new(&authenticated_storage_path).await?;
 
-                    state.write().authenticated_storage_path = Some(default_location.clone());
-                    state.persist_config_updates().map_err(map_anyhow_err)?;
-
-                    default_location
-                }
-            };
-            LmdbStorage::new(&authenticated_storage_path).await?
-        };
-
-        let policies_storage_path = state.read().policies_storage_path.clone();
-        let policies_storage = {
-            let path = match policies_storage_path {
-                Some(p) => p,
-                None => {
-                    let default_location = general_options.node_dir.join("policies_storage.lmdb");
-                    state.write().policies_storage_path = Some(default_location.clone());
-                    state.persist_config_updates().map_err(map_anyhow_err)?;
-                    default_location
-                }
-            };
-            LmdbStorage::new(&path).await?
-        };
+        let policies_storage_path = state.policies_storage_path();
+        let policies_storage = LmdbStorage::new(&policies_storage_path).await?;
 
         // Skip override if we already had vault
         if state.read().vault_path.is_none() {

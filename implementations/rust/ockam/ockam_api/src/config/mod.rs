@@ -37,7 +37,11 @@ impl<V: ConfigValues> Default for Config<V> {
 }
 
 impl<V: ConfigValues> Config<V> {
-    pub fn config_path(&self) -> PathBuf {
+    pub fn config_dir(&self) -> &Path {
+        &self.config_dir
+    }
+
+    pub fn config_file_path(&self) -> PathBuf {
         self.config_dir.join(&self.config_file_name)
     }
 
