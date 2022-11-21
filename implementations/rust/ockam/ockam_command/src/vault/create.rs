@@ -10,7 +10,6 @@ use ockam_api::config::cli;
 use ockam_api::nodes::models::vault::CreateVaultRequest;
 use ockam_core::api::Request;
 use ockam_vault::storage::FileStorage;
-use slug::slugify;
 
 /// Create vaults
 #[derive(Clone, Debug, Args)]
@@ -44,12 +43,7 @@ async fn run_impl(ctx: Context, (options, cmd): (CommandGlobalOpts, CreateComman
             println!("Vault created for the Node {}!", node_name);
         }
         (None, Some(vault_name)) => {
-            let dirs = cli::OckamConfig::directories();
-            let dir = dirs
-                .config_dir()
-                .to_path_buf()
-                .join("vaults")
-                .join(slugify(&format!("vault-{}", vault_name)));
+            let dir = cli::OckamConfig::dir().join("vaults").join(&vault_name);
             if dir.as_path().exists() {
                 return Err(crate::error::Error::new(
                     CANTCREAT,

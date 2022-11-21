@@ -72,7 +72,6 @@ reqwest = { version = "0.11", default-features = false, features = ["json", "rus
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
-slug = "0.1"
 sysinfo = { version = "0.26", default-features = false }
 syntect = "5"
 tempfile = "3.3"
