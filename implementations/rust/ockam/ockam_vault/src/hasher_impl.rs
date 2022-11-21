@@ -3,8 +3,8 @@ use crate::VaultError;
 use arrayref::array_ref;
 use ockam_core::compat::vec::Vec;
 use ockam_core::vault::{
-    Hasher, KeyId, SecretAttributes, SecretType, SecretVault, AES128_SECRET_LENGTH_USIZE,
-    AES256_SECRET_LENGTH_USIZE,
+    Hasher, KeyId, Secret, SecretAttributes, SecretKey, SecretType, SecretVault,
+    AES128_SECRET_LENGTH_USIZE, AES256_SECRET_LENGTH_USIZE,
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 use sha2::{Digest, Sha256};
@@ -37,7 +37,7 @@ impl Hasher for Vault {
             Some(ikm) => {
                 let ikm = entries.get(ikm).ok_or(VaultError::EntryNotFound)?;
                 if ikm.key_attributes().stype() == SecretType::Buffer {
-                    Ok(ikm.key().as_ref())
+                    Ok(ikm.secret().try_as_key()?.as_ref())
                 } else {
                     Err(VaultError::InvalidKeyType.into())
                 }
@@ -58,7 +58,7 @@ impl Hasher for Vault {
 
         let okm = {
             let mut okm = vec![0u8; okm_len];
-            let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.key().as_ref()), ikm);
+            let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.secret().try_as_key()?.as_ref()), ikm);
 
             prk.expand(info, okm.as_mut_slice())
                 .map_err(|_| Into::<ockam_core::Error>::into(VaultError::HkdfExpandError))?;
@@ -80,7 +80,7 @@ impl Hasher for Vault {
             } else if attributes.stype() != SecretType::Buffer {
                 return Err(VaultError::InvalidHkdfOutputType.into());
             }
-            let secret = &okm[index..index + length];
+            let secret = Secret::Key(SecretKey::new(okm[index..index + length].to_vec()));
             let secret = self.secret_import(secret, attributes).await?;
 
             secrets.push(secret);

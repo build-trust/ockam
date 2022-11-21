@@ -97,8 +97,17 @@ impl<V: IdentityVault> Identity<V> {
         &self.ctx
     }
 
-    /// Create Identity
+    /// Create Identity with external key.
+    pub async fn create_with_key(ctx: &Context, vault: &V, kid: &KeyId) -> Result<Self> {
+        Self::create_impl(ctx, vault, Some(kid)).await
+    }
+
+    /// Create Identity with a new secret key.
     pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
+        Self::create_impl(ctx, vault, None).await
+    }
+
+    async fn create_impl(ctx: &Context, vault: &V, kid: Option<&KeyId>) -> Result<Self> {
         let child_ctx = ctx
             .new_detached(Address::random_tagged("Identity.create.detached"))
             .await?;
@@ -106,11 +115,11 @@ impl<V: IdentityVault> Identity<V> {
 
         let key_attribs = KeyAttributes::new(
             IdentityStateConst::ROOT_LABEL.to_string(),
-            SecretAttributes::new(SecretType::NistP256, SecretPersistence::Persistent, 32)
+            SecretAttributes::new(SecretType::NistP256, SecretPersistence::Persistent, 32),
         );
 
         let create_key_change = Self::make_create_key_change_static(
-            None,
+            kid,
             initial_change_id,
             key_attribs.clone(),
             None,

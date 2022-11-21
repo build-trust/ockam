@@ -31,9 +31,9 @@ impl SymmetricVault for Vault {
             msg: plaintext,
         };
 
-        let key = entry.key().as_ref();
         match entry.key_attributes().length() {
             AES128_SECRET_LENGTH_U32 => {
+                let key = entry.secret().try_as_key()?.as_ref();
                 if key.len() != AES128_SECRET_LENGTH_USIZE {
                     return Err(VaultError::AeadAesGcmEncrypt.into());
                 }
@@ -44,6 +44,7 @@ impl SymmetricVault for Vault {
                     .map_err(|_| VaultError::AeadAesGcmEncrypt.into())
             }
             AES256_SECRET_LENGTH_U32 => {
+                let key = entry.secret().try_as_key()?.as_ref();
                 if key.len() != AES256_SECRET_LENGTH_USIZE {
                     return Err(VaultError::AeadAesGcmEncrypt.into());
                 }
@@ -79,9 +80,9 @@ impl SymmetricVault for Vault {
             msg: cipher_text,
         };
 
-        let key = entry.key().as_ref();
         match entry.key_attributes().length() {
             AES128_SECRET_LENGTH_U32 => {
+                let key = entry.secret().try_as_key()?.as_ref();
                 if key.len() != AES128_SECRET_LENGTH_USIZE {
                     return Err(VaultError::AeadAesGcmEncrypt.into());
                 }
@@ -91,6 +92,7 @@ impl SymmetricVault for Vault {
                     .map_err(|_| VaultError::AeadAesGcmEncrypt.into())
             }
             AES256_SECRET_LENGTH_U32 => {
+                let key = entry.secret().try_as_key()?.as_ref();
                 if key.len() != AES256_SECRET_LENGTH_USIZE {
                     return Err(VaultError::AeadAesGcmEncrypt.into());
                 }

@@ -3,7 +3,7 @@ use fs2::FileExt; //locking
 use ockam_core::compat::boxed::Box;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::storage::Storage;
-use ockam_core::vault::{KeyId, SecretAttributes, SecretKey, SecretPersistence, VaultEntry};
+use ockam_core::vault::{KeyId, Secret, SecretAttributes, SecretPersistence, VaultEntry};
 use ockam_core::{async_trait, Error, Result};
 use ockam_node::tokio::task::{self, JoinError};
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 struct LegacyVaultEntry {
     key_id: Option<String>,
     key_attributes: SecretAttributes,
-    key: SecretKey,
+    key: Secret,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -183,7 +183,7 @@ impl Storage for FileStorage {
     async fn store(&self, key_id: &KeyId, key: &VaultEntry) -> Result<()> {
         let key_id = key_id.clone();
         let attributes = key.key_attributes();
-        let key = key.key().clone();
+        let key = key.secret().clone();
         let t = move |v: LegacySerializedVault| {
             let new_entry = (
                 0,

@@ -1,4 +1,6 @@
-use crate::vault::{Hasher, SecretAttributes, SecretPersistence, SecretType, SecretVault};
+use crate::vault::{
+    Hasher, Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType, SecretVault,
+};
 use hex::encode;
 
 pub async fn sha256(vault: &mut impl Hasher) {
@@ -19,7 +21,7 @@ pub async fn hkdf(vault: &mut (impl Hasher + SecretVault)) {
         salt_value.len() as u32,
     );
     let salt = vault
-        .secret_import(&salt_value[..], attributes)
+        .secret_import(Secret::Key(SecretKey::new(salt_value.to_vec())), attributes)
         .await
         .unwrap();
 
@@ -30,7 +32,7 @@ pub async fn hkdf(vault: &mut (impl Hasher + SecretVault)) {
         ikm_value.len() as u32,
     );
     let ikm = vault
-        .secret_import(&ikm_value[..], attributes)
+        .secret_import(Secret::Key(SecretKey::new(ikm_value.to_vec())), attributes)
         .await
         .unwrap();
 
@@ -44,7 +46,7 @@ pub async fn hkdf(vault: &mut (impl Hasher + SecretVault)) {
     assert_eq!(digest.len(), 1);
     let digest = vault.secret_export(&digest[0]).await.unwrap();
     assert_eq!(
-        encode(digest.as_ref()),
+        encode(digest.cast_as_key().as_ref()),
         "921ab9f260544b71941dbac2ca2d42c417aa07b53e055a8f"
     );
 }

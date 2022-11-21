@@ -24,7 +24,7 @@ rust-version = "1.56.0"
 crate-type = ["rlib"]
 
 [features]
-default = ["std", "storage", "rustcrypto"]
+default = ["std", "storage"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -60,7 +60,7 @@ alloc = ["ockam_core/alloc", "ockam_node/alloc", "aes-gcm/alloc"]
 
 storage = ["std", "serde", "serde_json"]
 
-aws = ["std", "aws-config", "aws-sdk-kms", "thiserror"]
+aws        = ["std", "aws-config", "aws-sdk-kms", "thiserror"]
 rustcrypto = []
 evercrypt  = ["dep:evercrypt"]
 
@@ -87,7 +87,7 @@ fs2 = "0.4.3"
 aws-config  = { version = "0.51.0", optional = true }
 aws-sdk-kms = { version = "0.21.0", optional = true }
 thiserror   = { version = "1.0.37", optional = true }
-# ECDSA providers
+# ECDSA providers:
 p256      = { version = "0.11.1", features = ["pem"] }
 evercrypt = { version = "0.0.11", optional = true }
 

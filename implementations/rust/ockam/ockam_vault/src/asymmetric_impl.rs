@@ -1,8 +1,8 @@
 use crate::{Vault, VaultError};
 use arrayref::array_ref;
 use ockam_core::vault::{
-    AsymmetricVault, Buffer, Hasher, KeyId, PublicKey, SecretAttributes, SecretPersistence,
-    SecretType, SecretVault, VaultEntry, CURVE25519_PUBLIC_LENGTH_USIZE,
+    AsymmetricVault, Buffer, Hasher, KeyId, PublicKey, Secret, SecretAttributes, SecretKey,
+    SecretPersistence, SecretType, SecretVault, VaultEntry, CURVE25519_PUBLIC_LENGTH_USIZE,
     CURVE25519_SECRET_LENGTH_USIZE,
 };
 use ockam_core::Result;
@@ -10,9 +10,9 @@ use ockam_core::{async_trait, compat::boxed::Box};
 
 impl Vault {
     fn ecdh_internal(vault_entry: &VaultEntry, peer_public_key: &PublicKey) -> Result<Buffer<u8>> {
-        let key = vault_entry.key();
         match vault_entry.key_attributes().stype() {
             SecretType::X25519 => {
+                let key = vault_entry.secret().try_as_key()?;
                 if peer_public_key.data().len() != CURVE25519_PUBLIC_LENGTH_USIZE
                     || key.as_ref().len() != CURVE25519_SECRET_LENGTH_USIZE
                 {
@@ -59,7 +59,8 @@ impl AsymmetricVault for Vault {
             SecretPersistence::Ephemeral,
             dh.len() as u32,
         );
-        self.secret_import(&dh, attributes).await
+        self.secret_import(Secret::Key(SecretKey::new(dh)), attributes)
+            .await
     }
 
     async fn compute_key_id_for_public_key(&self, public_key: &PublicKey) -> Result<KeyId> {

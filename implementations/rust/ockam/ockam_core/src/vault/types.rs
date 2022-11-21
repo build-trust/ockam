@@ -1,3 +1,7 @@
+use crate::{
+    errcode::{Kind, Origin},
+    Error,
+};
 use cfg_if::cfg_if;
 use core::fmt;
 use minicbor::{Decode, Encode};
@@ -67,9 +71,10 @@ cfg_if! {
 }
 
 /// Binary representation of a Secret.
-#[derive(Serialize, Deserialize, Clone, Zeroize)]
+#[derive(Serialize, Deserialize, Clone, Zeroize, Encode, Decode)]
 #[zeroize(drop)]
-pub struct SecretKey(SecretKeyVec);
+#[cbor(transparent)]
+pub struct SecretKey(#[n(0)] SecretKeyVec);
 
 impl SecretKey {
     /// Create a new secret key.
@@ -283,7 +288,41 @@ impl KeyPair {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct VaultEntry {
     key_attributes: SecretAttributes,
-    key: SecretKey,
+    secret: Secret,
+}
+
+/// A secret key or reference.
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
+#[rustfmt::skip]
+pub enum Secret {
+    /// A secret key.
+    #[n(0)] Key(#[n(0)] SecretKey),
+    /// Reference to an unmanaged, external secret key.
+    #[n(1)] Ref(#[n(1)] KeyId)
+}
+
+impl Secret {
+    /// Treat this secret as a secret key and pull the key out.
+    ///
+    /// # Panics
+    ///
+    /// If the secret does not hold a key.
+    pub fn cast_as_key(&self) -> &SecretKey {
+        self.try_as_key().expect("`Secret` holds a key")
+    }
+
+    /// Treat this secret as a secret key and try to pull the key out.
+    pub fn try_as_key(&self) -> Result<&SecretKey, Error> {
+        if let Secret::Key(k) = self {
+            Ok(k)
+        } else {
+            Err(Error::new(
+                Origin::Other,
+                Kind::Misuse,
+                "`Secret` does not hold a key",
+            ))
+        }
+    }
 }
 
 impl VaultEntry {
@@ -291,18 +330,35 @@ impl VaultEntry {
     pub fn key_attributes(&self) -> SecretAttributes {
         self.key_attributes
     }
-    /// Raw secret's bytes
-    pub fn key(&self) -> &SecretKey {
-        &self.key
+
+    /// Get the secret part of this vault entry.
+    pub fn secret(&self) -> &Secret {
+        &self.secret
     }
 }
 
 impl VaultEntry {
-    /// Constructor
-    pub fn new(key_attributes: SecretAttributes, key: SecretKey) -> Self {
+    /// Create a new vault entry.
+    pub fn new(key_attributes: SecretAttributes, secret: Secret) -> Self {
         VaultEntry {
             key_attributes,
-            key,
+            secret,
+        }
+    }
+
+    /// Create a new vault entry with a secret key.
+    pub fn new_key(key_attributes: SecretAttributes, key: SecretKey) -> Self {
+        VaultEntry {
+            key_attributes,
+            secret: Secret::Key(key),
+        }
+    }
+
+    /// Create a new vault entry with an external secret key.
+    pub fn new_ref(key_attributes: SecretAttributes, kid: KeyId) -> Self {
+        VaultEntry {
+            key_attributes,
+            secret: Secret::Ref(kid),
         }
     }
 }

@@ -1,6 +1,8 @@
-use crate::vault::{KeyId, PublicKey, SecretAttributes, SecretKey};
+use crate::vault::{KeyId, PublicKey, SecretAttributes};
 use crate::Result;
 use crate::{async_trait, compat::boxed::Box};
+
+use super::Secret;
 
 /// Defines the `Secret` management interface for Ockam Vaults.
 ///
@@ -13,9 +15,9 @@ pub trait SecretVault {
     /// Generate a fresh secret with the given attributes.
     async fn secret_generate(&self, attributes: SecretAttributes) -> Result<KeyId>;
     /// Import a secret with the given attributes from binary form into the vault.
-    async fn secret_import(&self, secret: &[u8], attributes: SecretAttributes) -> Result<KeyId>;
+    async fn secret_import(&self, secret: Secret, attributes: SecretAttributes) -> Result<KeyId>;
     /// Export a secret key to the binary form represented as [`SecretKey`].
-    async fn secret_export(&self, key_id: &KeyId) -> Result<SecretKey>;
+    async fn secret_export(&self, key_id: &KeyId) -> Result<Secret>;
     /// Return the attributes for a secret.
     async fn secret_attributes_get(&self, key_id: &KeyId) -> Result<SecretAttributes>;
     /// Return the associated public key given the secret key.

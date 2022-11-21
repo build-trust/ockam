@@ -72,7 +72,7 @@ path             = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
 # breaks building ockam_vault with feature set "no_std,std":
-features         = ["std"]
+features         = ["std", "aws", "rustcrypto"]
 
 [dependencies.ockam_identity]
 version          = "0.65.0"
@@ -94,5 +94,4 @@ mockall             = "0.11"
 ockam_api           = { path = ".", features = ["std", "authenticators"] }
 ockam_macros        = { version = "0.25.0", path = "../ockam_macros", features = ["std"] }
 ockam_transport_tcp = { version = "0.72.0", path = "../ockam_transport_tcp" }
-ockam_vault         = { path = "../ockam_vault", features = ["rustcrypto"] }
 quickcheck          = "1.0.1"

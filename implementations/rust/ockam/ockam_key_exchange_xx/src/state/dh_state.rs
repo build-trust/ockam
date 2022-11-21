@@ -1,6 +1,7 @@
 use crate::{XXError, XXVault, SHA256_SIZE_U32};
 use ockam_core::vault::{
-    KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH_U32,
+    KeyId, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType,
+    AES256_SECRET_LENGTH_U32,
 };
 use ockam_core::Result;
 
@@ -26,7 +27,8 @@ impl<V: XXVault> DhState<V> {
             SHA256_SIZE_U32,
         );
 
-        let ck = vault.secret_import(protocol_name, attributes).await?;
+        let sk = Secret::Key(SecretKey::new(protocol_name.to_vec()));
+        let ck = vault.secret_import(sk, attributes).await?;
 
         Ok(Self {
             key: None,

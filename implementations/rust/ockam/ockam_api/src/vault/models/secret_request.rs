@@ -1,6 +1,6 @@
 use minicbor::{Decode, Encode};
+use ockam::vault::Secret;
 use ockam_core::vault::SecretAttributes;
-use ockam_core::CowBytes;
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
@@ -8,21 +8,27 @@ use ockam_core::TypeTag;
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CreateSecretRequest<'a> {
+pub struct CreateSecretRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8005583>,
     #[n(1)] attributes: SecretAttributes,
-    #[b(2)] secret: Option<CowBytes<'a>>,
+    #[n(2)] secret: Option<Secret>,
 }
 
-impl<'a> CreateSecretRequest<'a> {
+impl CreateSecretRequest {
     /// Path to the main storage file
     pub fn attributes(&self) -> &SecretAttributes {
         &self.attributes
     }
-    pub fn secret(&self) -> Option<&[u8]> {
-        self.secret.as_deref()
+
+    pub fn secret(&self) -> Option<&Secret> {
+        self.secret.as_ref()
     }
+
+    pub fn into_secret(self) -> Option<Secret> {
+        self.secret
+    }
+
     pub fn new_generate(attributes: SecretAttributes) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -31,12 +37,13 @@ impl<'a> CreateSecretRequest<'a> {
             secret: None,
         }
     }
-    pub fn new_import(attributes: SecretAttributes, secret: impl Into<CowBytes<'a>>) -> Self {
+
+    pub fn new_import(attributes: SecretAttributes, secret: Secret) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             attributes,
-            secret: Some(secret.into()),
+            secret: Some(secret),
         }
     }
 }
