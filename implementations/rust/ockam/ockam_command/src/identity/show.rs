@@ -1,4 +1,3 @@
-use crate::node::util::delete_embedded_node;
 use crate::node::NodeOpts;
 use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, Rpc};
@@ -39,7 +38,6 @@ async fn run_impl(
         rpc.request(req).await?;
         rpc.parse_and_print_response::<ShortIdentityResponse>()?;
     }
-    delete_embedded_node(&opts.config, &node_name).await;
     Ok(())
 }
 
