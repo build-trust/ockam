@@ -386,8 +386,8 @@ mod tests {
     use crate::{Initiator, Responder, XXVault};
     use hex::{decode, encode};
     use ockam_core::vault::{
-        SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
-        CURVE25519_SECRET_LENGTH_U32,
+        Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType, SecretVault,
+        SymmetricVault, CURVE25519_SECRET_LENGTH_U32,
     };
     use ockam_core::Result;
     use ockam_key_exchange_core::KeyExchanger;
@@ -413,7 +413,10 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(ck.as_ref(), *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0");
+        assert_eq!(
+            ck.cast_as_key().as_ref(),
+            *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0"
+        );
         assert_eq!(state.nonce, 0);
 
         ctx.stop().await
@@ -643,7 +646,10 @@ mod tests {
         );
         // Static x25519 for this handshake, `s`
         let static_secret_handle = vault
-            .secret_import(&decode(static_private).unwrap(), attributes)
+            .secret_import(
+                Secret::Key(SecretKey::new(decode(static_private).unwrap())),
+                attributes,
+            )
             .await
             .unwrap();
         let static_public_key = vault
@@ -653,7 +659,10 @@ mod tests {
 
         // Ephemeral x25519 for this handshake, `e`
         let ephemeral_secret_handle = vault
-            .secret_import(&decode(ephemeral_private).unwrap(), attributes)
+            .secret_import(
+                Secret::Key(SecretKey::new(decode(ephemeral_private).unwrap())),
+                attributes,
+            )
             .await
             .unwrap();
         let ephemeral_public_key = vault
@@ -672,7 +681,10 @@ mod tests {
             SecretPersistence::Ephemeral,
             ck.len() as u32,
         );
-        let ck = vault.secret_import(&ck[..], attributes).await.unwrap();
+        let ck = vault
+            .secret_import(Secret::Key(SecretKey::new(ck[..].to_vec())), attributes)
+            .await
+            .unwrap();
 
         State {
             run_prologue: false,

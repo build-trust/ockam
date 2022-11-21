@@ -121,7 +121,7 @@ impl VaultService {
                         }
                         GetSecretRequestOperation::GetSecretBytes => {
                             let resp = self.vault.secret_export(&key_id).await?;
-                            let body = ExportSecretResponse::new(resp.as_ref());
+                            let body = ExportSecretResponse::new(resp);
 
                             Self::ok_response(req, Some(body), enc)
                         }
@@ -147,12 +147,8 @@ impl VaultService {
 
                     let attributes = *args.attributes();
 
-                    let key_id = match args.secret() {
-                        Some(secret) => {
-                            self.vault
-                                .secret_import(secret.as_ref(), attributes)
-                                .await?
-                        }
+                    let key_id = match args.into_secret() {
+                        Some(secret) => self.vault.secret_import(secret, attributes).await?,
                         None => self.vault.secret_generate(attributes).await?,
                     };
 
