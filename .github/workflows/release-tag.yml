@@ -1,0 +1,39 @@
+# This workflow releases Ockam asset/release as production
+# and also update git tag commit to that updated by mergify.
+name: Ockam GitHub Release Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_tag:
+        description: Git Tag To Update To Ockam Develop Commit
+        required: false
+
+permissions:
+  # Contents permission allows us read this repository.
+  contents: write
+
+jobs:
+  release_ockam:
+    runs-on: ubuntu-20.04
+    environment: release
+    name: "Release Ockam Assets"
+
+    steps:
+      - name: Get Commit Of Develop
+        id: develop_sha
+        shell: bash
+        run: |
+          develop_sha=$(git ls-remote https://github.com/build-trust/ockam.git refs/heads/develop | head -1 | cut -f 1)
+          echo "sha=$develop_sha" >> $GITHUB_OUTPUT
+
+      - name: Update Tag Commit To That Merged by Mergify On Develop
+        shell: bash
+        run: |
+          git tag -s -a ${{ github.event.inputs.git_tag }} ${{ steps.develop_sha.outputs.sha }} -m "Ockam Release" -f
+          git push origin ${{ github.event.inputs.git_tag }} -f
+
+      - name: Release GitHub Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.event.inputs.git_tag }}" --draft=false -R $owner/ockam
