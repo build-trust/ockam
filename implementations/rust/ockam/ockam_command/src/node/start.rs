@@ -85,7 +85,6 @@ async fn restart_background_node(
         &opts.config,
         cfg_node.verbose(),           // Previously user-chosen verbosity level
         true,                         // skip-defaults because the node already exists
-        false,                        // Default value. TODO: implement persistence of this option
         cfg_node.name(),              // The selected node name
         &cfg_node.addr().to_string(), // The selected node api address
         None,                         // No project information available

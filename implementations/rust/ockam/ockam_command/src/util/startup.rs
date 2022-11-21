@@ -41,7 +41,6 @@ pub fn spawn_node(
     cfg: &OckamConfig,
     verbose: u8,
     skip_defaults: bool,
-    no_shared_identity: bool,
     name: &str,
     address: &str,
     project: Option<&Path>,
@@ -90,10 +89,6 @@ pub fn spawn_node(
 
     if skip_defaults {
         args.push("--skip-defaults".to_string());
-    }
-
-    if no_shared_identity {
-        args.push("--no-shared-identity".to_string());
     }
 
     if let Some(c) = invite {
