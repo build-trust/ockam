@@ -118,6 +118,20 @@ function release_ockam_binaries() {
   gh run watch "$run_id" --exit-status -R $owner/ockam
 }
 
+function release_ockam_binaries_as_production() {
+  set -e
+  release_git_tag=$1
+  workflow_name="release-tag.yml"
+
+  gh workflow run $workflow_name --ref develop -F git_tag="$release_git_tag" -R $owner/ockam
+
+  sleep 10
+  run_id=$(gh run list --workflow="$workflow_name" -b develop -u "$GITHUB_USERNAME" -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
+
+  approve_deployment "ockam" "$run_id" &
+  gh run watch "$run_id" --exit-status -R $owner/ockam
+}
+
 function release_ockam_package() {
   set -e
   tag="$1"
@@ -294,7 +308,7 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
   # Make Ockam Github draft as latest
   if [[ -z $SKIP_OCKAM_DRAFT_RELEASE || $SKIP_OCKAM_DRAFT_RELEASE == false ]]; then
     echo "Releasing Ockam Github release"
-    gh release edit "$latest_tag_name" --draft=false -R $owner/ockam
+    release_ockam_binaries_as_production "$latest_tag_name"
   fi
 
   # Release Terraform Github release
