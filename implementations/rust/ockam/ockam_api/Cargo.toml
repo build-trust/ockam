@@ -67,7 +67,7 @@ path             = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
 # breaks building ockam_vault with feature set "no_std,std":
-features         = ["std"]
+features         = ["std", "aws"]
 
 [dependencies.ockam_identity]
 version          = "0.65.0"

@@ -37,7 +37,7 @@ impl Hasher for Vault {
             Some(ikm) => {
                 let ikm = entries.get(ikm).ok_or(VaultError::EntryNotFound)?;
                 if ikm.key_attributes().stype() == SecretType::Buffer {
-                    Ok(ikm.key().as_ref())
+                    Ok(ikm.secret().cast_as_key().as_ref())
                 } else {
                     Err(VaultError::InvalidKeyType.into())
                 }
@@ -58,7 +58,7 @@ impl Hasher for Vault {
 
         let okm = {
             let mut okm = vec![0u8; okm_len];
-            let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.key().as_ref()), ikm);
+            let prk = hkdf::Hkdf::<Sha256>::new(Some(salt.secret().cast_as_key().as_ref()), ikm);
 
             prk.expand(info, okm.as_mut_slice())
                 .map_err(|_| Into::<ockam_core::Error>::into(VaultError::HkdfExpandError))?;

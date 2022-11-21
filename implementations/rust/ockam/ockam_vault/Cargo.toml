@@ -60,7 +60,7 @@ alloc = ["ockam_core/alloc", "ockam_node/alloc", "aes-gcm/alloc"]
 
 storage = ["std", "serde", "serde_json"]
 
-aws = ["std", "aws-config", "aws-sdk-kms", "thiserror"]
+aws        = ["std", "aws-config", "aws-sdk-kms", "thiserror"]
 rustcrypto = []
 evercrypt  = ["dep:evercrypt"]
 

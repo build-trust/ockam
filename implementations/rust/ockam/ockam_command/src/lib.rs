@@ -306,6 +306,9 @@ pub enum OckamSubcommand {
     #[command(display_order = 900)]
     Completion(CompletionCommand),
 
+    #[command(display_order = 900)]
+    EnableAwsKms,
+
     Authenticated(AuthenticatedCommand),
     Configuration(ConfigurationCommand),
     Credential(CredentialCommand),
@@ -382,6 +385,13 @@ impl OckamCommand {
             OckamSubcommand::Subscription(c) => c.run(options),
             OckamSubcommand::Reset(c) => c.run(options),
             OckamSubcommand::Admin(c) => c.run(options),
+            OckamSubcommand::EnableAwsKms => {
+                options.config.enable_aws_kms(true);
+                if let Err(e) = options.config.persist_config_updates() {
+                    eprintln!("Failed to persist config file: {:?}", anyhow::Error::from(e));
+                    std::process::exit(exitcode::IOERR)
+                }
+            }
         }
     }
 }

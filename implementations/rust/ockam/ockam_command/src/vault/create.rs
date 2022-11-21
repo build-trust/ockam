@@ -20,6 +20,9 @@ pub struct CreateCommand {
     /// Path to the Vault storage file
     #[arg(short, long)]
     path: Option<String>,
+
+    #[arg(long, default_value = "false")]
+    aws_kms: bool
 }
 
 impl CreateCommand {
@@ -32,7 +35,8 @@ async fn run_impl(ctx: Context, (options, cmd): (CommandGlobalOpts, CreateComman
     if let Some(node_opts) = cmd.node_opts {
         let node_name = node_opts.api_node.clone();
         let mut rpc = Rpc::background(&ctx, &options, &node_name)?;
-        let request = Request::post("/node/vault").body(CreateVaultRequest::new(cmd.path));
+        let request = Request::post("/node/vault")
+            .body(CreateVaultRequest::new(cmd.path).with_aws_kms(cmd.aws_kms));
         rpc.request(request).await?;
         rpc.is_ok()?;
         println!("Vault created for the Node {}", node_name);

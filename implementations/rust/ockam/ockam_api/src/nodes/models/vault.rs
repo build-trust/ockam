@@ -12,6 +12,7 @@ pub struct CreateVaultRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8008758>,
     #[b(1)] pub path: Option<CowStr<'a>>,
+    #[n(2)] with_aws: Option<bool>
 }
 
 impl<'a> CreateVaultRequest<'a> {
@@ -20,6 +21,16 @@ impl<'a> CreateVaultRequest<'a> {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             path: path.map(|p| p.into()),
+            with_aws: None
         }
+    }
+
+    pub fn with_aws_kms(mut self, val: bool) -> Self {
+        self.with_aws = val.then_some(true);
+        self
+    }
+
+    pub fn is_aws_enabled(&self) -> bool {
+        self.with_aws.unwrap_or(false)
     }
 }

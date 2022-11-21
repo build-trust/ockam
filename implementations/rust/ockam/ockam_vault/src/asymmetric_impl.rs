@@ -10,9 +10,9 @@ use ockam_core::{async_trait, compat::boxed::Box};
 
 impl Vault {
     fn ecdh_internal(vault_entry: &VaultEntry, peer_public_key: &PublicKey) -> Result<Buffer<u8>> {
-        let key = vault_entry.key();
         match vault_entry.key_attributes().stype() {
             SecretType::X25519 => {
+                let key = vault_entry.secret().cast_as_key();
                 if peer_public_key.data().len() != CURVE25519_PUBLIC_LENGTH_USIZE
                     || key.as_ref().len() != CURVE25519_SECRET_LENGTH_USIZE
                 {

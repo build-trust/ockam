@@ -19,6 +19,7 @@ impl NodeManager {
         &mut self,
         path: Option<PathBuf>,
         reuse_if_exists: bool,
+        enable_aws_kms: bool
     ) -> Result<()> {
         if self.vault.is_some() {
             return if reuse_if_exists {
@@ -36,7 +37,11 @@ impl NodeManager {
         let path = path.unwrap_or_else(|| Self::default_vault_path(&self.node_dir));
 
         let vault_storage = FileStorage::create(path.clone()).await?;
-        let vault = Vault::new(Some(Arc::new(vault_storage)));
+        let mut vault = Vault::new(Some(Arc::new(vault_storage)));
+
+        if enable_aws_kms {
+            vault.enable_aws_kms().await?
+        }
 
         let state = self.config.state();
         state.write().vault_path = Some(path);
@@ -57,9 +62,9 @@ impl NodeManagerWorker {
         let mut node_manager = self.node_manager.write().await;
         let req_body: CreateVaultRequest = dec.decode()?;
 
-        let path = req_body.path.map(|p| PathBuf::from(p.0.as_ref()));
+        let path = req_body.path.as_ref().map(|p| PathBuf::from(p.0.as_ref()));
 
-        node_manager.create_vault_impl(path, false).await?;
+        node_manager.create_vault_impl(path, false, req_body.is_aws_enabled()).await?;
 
         let response = Response::ok(req.id());
 

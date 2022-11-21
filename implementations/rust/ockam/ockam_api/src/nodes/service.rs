@@ -175,6 +175,7 @@ pub struct NodeManagerGeneralOptions {
     skip_defaults: bool,
     // Should be passed only when creating fresh node and we want it to get default root Identity
     identity_override: Option<IdentityOverride>,
+    enable_aws_kms: bool
 }
 
 impl NodeManagerGeneralOptions {
@@ -183,12 +184,14 @@ impl NodeManagerGeneralOptions {
         node_dir: PathBuf,
         skip_defaults: bool,
         identity_override: Option<IdentityOverride>,
+        enable_aws_kms: bool
     ) -> Self {
         Self {
             node_name,
             node_dir,
             skip_defaults,
             identity_override,
+            enable_aws_kms
         }
     }
 }
@@ -276,8 +279,10 @@ impl NodeManager {
         let vault = match vault_path {
             Some(vault_path) => {
                 let vault_storage = FileStorage::create(vault_path).await?;
-                let vault = Vault::new(Some(Arc::new(vault_storage)));
-
+                let mut vault = Vault::new(Some(Arc::new(vault_storage)));
+                if general_options.enable_aws_kms {
+                    vault.enable_aws_kms().await?
+                }
                 Some(vault)
             }
             None => None,
@@ -324,7 +329,7 @@ impl NodeManager {
         };
 
         if !general_options.skip_defaults {
-            s.create_defaults(ctx).await?;
+            s.create_defaults(ctx, general_options.enable_aws_kms).await?;
 
             if let Some(ac) = projects_options.ac {
                 s.configure_authorities(ac).await?;
@@ -356,9 +361,9 @@ impl NodeManager {
         Ok(())
     }
 
-    async fn create_defaults(&mut self, ctx: &Context) -> Result<()> {
+    async fn create_defaults(&mut self, ctx: &Context, enable_aws: bool) -> Result<()> {
         // Create default vault and identity, if they don't exists already
-        self.create_vault_impl(None, true).await?;
+        self.create_vault_impl(None, true, enable_aws).await?;
         self.create_identity_impl(ctx, true).await?;
 
         Ok(())
@@ -811,6 +816,7 @@ pub(crate) mod tests {
                     node_dir.into_path(),
                     true,
                     None,
+                    false
                 ),
                 NodeManagerProjectsOptions::new(None, None, Default::default(), None),
                 NodeManagerTransportOptions::new(
@@ -825,7 +831,7 @@ pub(crate) mod tests {
             .await?;
 
             // Initialize identity
-            node_man.create_vault_impl(None, false).await?;
+            node_man.create_vault_impl(None, false, false).await?;
             node_man.create_identity_impl(ctx, false).await?;
 
             let node_manager_worker = NodeManagerWorker::new(node_man);

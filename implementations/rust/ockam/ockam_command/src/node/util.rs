@@ -63,6 +63,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
             node_dir,
             cmd.skip_defaults || cmd.launch_config.is_some(),
             identity_override,
+            cfg.is_aws_kms_enabled()
         ),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
@@ -94,7 +95,11 @@ pub(super) async fn create_default_identity_if_needed(
     });
 
     let storage = FileStorage::create(default_vault_path.clone()).await?;
-    let vault = Vault::new(Some(Arc::new(storage)));
+    let mut vault = Vault::new(Some(Arc::new(storage)));
+
+    if cfg.is_aws_kms_enabled() {
+        vault.enable_aws_kms().await?
+    }
 
     // Get default root identity (create if needed)
     if cfg.get_default_identity().is_none() {
@@ -118,7 +123,11 @@ pub(super) async fn get_identity_override(
         .context("Default vault was not found")?;
 
     let storage = FileStorage::create(default_vault_path.clone()).await?;
-    let vault = Vault::new(Some(Arc::new(storage)));
+    let mut vault = Vault::new(Some(Arc::new(storage)));
+
+    if cfg.is_aws_kms_enabled() {
+        vault.enable_aws_kms().await?
+    }
 
     // Get default root identity
     let default_identity = cfg

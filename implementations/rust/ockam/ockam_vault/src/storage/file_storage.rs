@@ -1,7 +1,7 @@
 use crate::VaultError;
 use ockam_core::compat::boxed::Box;
 use ockam_core::vault::storage::Storage;
-use ockam_core::vault::{KeyId, SecretAttributes, SecretKey, SecretPersistence, VaultEntry};
+use ockam_core::vault::{KeyId, SecretAttributes, SecretPersistence, VaultEntry, Secret};
 use ockam_core::{async_trait, Result};
 use ockam_node::compat::asynchronous::RwLock;
 use serde::{Deserialize, Serialize};
@@ -13,7 +13,7 @@ use tracing::debug;
 struct LegacyVaultEntry {
     key_id: Option<String>,
     key_attributes: SecretAttributes,
-    key: SecretKey,
+    key: Secret,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -75,7 +75,7 @@ impl FileStorage {
                     LegacyVaultEntry {
                         key_id: Some(k.clone()),
                         key_attributes: e.key_attributes(),
-                        key: e.key().clone(),
+                        key: e.secret().clone(),
                     },
                 )
             })

@@ -283,7 +283,23 @@ impl KeyPair {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct VaultEntry {
     key_attributes: SecretAttributes,
-    key: SecretKey,
+    secret: Secret,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+pub enum Secret {
+    Key(SecretKey),
+    Ref(KeyId)
+}
+
+impl Secret {
+    pub fn cast_as_key(&self) -> &SecretKey {
+        if let Secret::Key(k) = self {
+            k
+        } else {
+            panic!("`Secret` does not hold a key")
+        }
+    }
 }
 
 impl VaultEntry {
@@ -291,18 +307,31 @@ impl VaultEntry {
     pub fn key_attributes(&self) -> SecretAttributes {
         self.key_attributes
     }
-    /// Raw secret's bytes
-    pub fn key(&self) -> &SecretKey {
-        &self.key
+
+    pub fn secret(&self) -> &Secret {
+        &self.secret
     }
 }
 
 impl VaultEntry {
-    /// Constructor
-    pub fn new(key_attributes: SecretAttributes, key: SecretKey) -> Self {
+    pub fn new(key_attributes: SecretAttributes, secret: Secret) -> Self {
         VaultEntry {
             key_attributes,
-            key,
+            secret
+        }
+    }
+
+    pub fn new_key(key_attributes: SecretAttributes, key: SecretKey) -> Self {
+        VaultEntry {
+            key_attributes,
+            secret: Secret::Key(key)
+        }
+    }
+
+    pub fn new_ref(key_attributes: SecretAttributes, kid: KeyId) -> Self {
+        VaultEntry {
+            key_attributes,
+            secret: Secret::Ref(kid)
         }
     }
 }

@@ -261,6 +261,7 @@ async fn run_foreground_node(
             node_dir,
             cmd.skip_defaults || cmd.launch_config.is_some(),
             identity_override,
+            cfg.is_aws_kms_enabled()
         ),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
