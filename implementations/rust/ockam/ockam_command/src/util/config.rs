@@ -150,16 +150,12 @@ impl OckamConfig {
 
     /// Get the log path for a specific node
     ///
-    /// The convention is to name the main log `node-name.log` and the
-    /// supplementary log `node-name.log.stderr`
+    /// The convention is to name the main log `stdout.log` and the
+    /// supplementary log `stderr.log`
     pub fn node_log_paths(&self, node_name: &str) -> Option<(PathBuf, PathBuf)> {
         let inner = self.inner.read();
         let base = inner.nodes.get(node_name)?.state_dir()?;
-        // TODO: sluggify node names
-        Some((
-            base.join(format!("{}.log", node_name)),
-            base.join(format!("{}.log.stderr", node_name)),
-        ))
+        Some((base.join("stdout.log"), base.join("stderr.log")))
     }
 
     /// Get read access to the inner raw configuration
