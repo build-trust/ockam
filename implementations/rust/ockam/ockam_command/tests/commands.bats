@@ -63,12 +63,18 @@ teardown_file() {
 setup() {
   load "$BATS_LIB/bats-support/load.bash"
   load "$BATS_LIB/bats-assert/load.bash"
+  unset OCKAM_HOME
   $OCKAM node delete --all || true
+  OCKAM_HOME=/tmp/ockam/green $OCKAM node delete --all || true
+  OCKAM_HOME=/tmp/ockam/blue $OCKAM node delete --all || true
   rm -rf /tmp/ockam
 }
 
 teardown() {
+  unset OCKAM_HOME
   $OCKAM node delete --all || true
+  OCKAM_HOME=/tmp/ockam/green $OCKAM node delete --all || true
+  OCKAM_HOME=/tmp/ockam/blue $OCKAM node delete --all || true
   rm -rf /tmp/ockam
 }
 
@@ -431,12 +437,12 @@ teardown() {
 
   $OCKAM project information default --output json  > /tmp/project.json
 
-  OCKAM_HOME=/tmp/ockam/green
+  export OCKAM_HOME=/tmp/ockam/green
   run $OCKAM node create green --project /tmp/project.json
   assert_success
   green_identifier=$($OCKAM identity show -n green)
 
-  OCKAM_HOME=/tmp/ockam/blue
+  export OCKAM_HOME=/tmp/ockam/blue
   run $OCKAM node create blue --project /tmp/project.json
   assert_success
   blue_identifier=$($OCKAM identity show -n blue)
@@ -446,7 +452,7 @@ teardown() {
   run $OCKAM project enroll --member $blue_identifier --attribute role=member
   assert_success
 
-  OCKAM_HOME=/tmp/ockam/blue
+  export OCKAM_HOME=/tmp/ockam/blue
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
   assert_success
 
@@ -454,10 +460,12 @@ teardown() {
   assert_output --partial "forward_to_blue"
   assert_success
 
-  OCKAM_HOME=/tmp/ockam/green
+  export OCKAM_HOME=/tmp/ockam/green
   run bash -c " $OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet"
   assert_success
+
+  unset OCKAM_HOME
 
   # Green can't establish secure channel with blue, because it doesn't exchange credentials with it.
   run curl --fail --head --max-time 10 127.0.0.1:7000
@@ -469,11 +477,11 @@ teardown() {
 
   $OCKAM project information default --output json  > /tmp/project.json
 
-  OCKAM_HOME=/tmp/ockam/green
+  export OCKAM_HOME=/tmp/ockam/green
   run $OCKAM node create green --project /tmp/project.json
   assert_success
 
-  OCKAM_HOME=/tmp/ockam/blue
+  export OCKAM_HOME=/tmp/ockam/blue
   run $OCKAM node create blue --project /tmp/project.json
   assert_success
   blue_identifier=$($OCKAM identity show -n blue)
@@ -483,17 +491,18 @@ teardown() {
   run $OCKAM project enroll --member $blue_identifier --attribute role=member
   assert_success
 
-  OCKAM_HOME=/tmp/ockam/blue
+  export OCKAM_HOME=/tmp/ockam/blue
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
   assert_success
   run  $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"
   assert_success
 
-  OCKAM_HOME=/tmp/ockam/green
+  export OCKAM_HOME=/tmp/ockam/green
   # Green can't establish secure channel with blue, because it isn't a member
   run $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to /project/default/service/forward_to_blue/secure/api/service/outlet
   assert_failure
+  unset OCKAM_HOME
 }
 
 @test "inlet/outlet example with credentials" {
@@ -511,7 +520,7 @@ teardown() {
   assert_success
   blue_identifier=$($OCKAM identity show -n blue)
 
-  OCKAM_HOME=/tmp/ockam/enroller
+  unset OCKAM_HOME
   run $OCKAM project enroll --member $blue_identifier --attribute role=member
   assert_success
   run $OCKAM project enroll --member $green_identifier --attribute role=member
@@ -528,6 +537,7 @@ teardown() {
   run bash -c " $OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet"
   assert_success
+  unset OCKAM_HOME
 
   run curl --fail --head --max-time 10 127.0.0.1:7000
   assert_success
@@ -583,12 +593,12 @@ teardown() {
 
   $OCKAM project information "${project_name}" --output json  > "/tmp/${project_name}_project.json"
 
-  OCKAM_HOME=/tmp/ockam/green
+  export OCKAM_HOME=/tmp/ockam/green
   run $OCKAM node create green --project "/tmp/${project_name}_project.json"
   assert_success
   green_identifier=$($OCKAM identity show -n green)
 
-  OCKAM_HOME=/tmp/ockam/blue
+  export OCKAM_HOME=/tmp/ockam/blue
   run $OCKAM node create blue --project "/tmp/${project_name}_project.json"
   assert_success
 
@@ -602,7 +612,7 @@ teardown() {
   assert_success
 
   # Now green can access project' services
-  OCKAM_HOME=/tmp/ockam/green
+  export OCKAM_HOME=/tmp/ockam/green
   run $OCKAM forwarder create green --at "/project/${project_name}" --to /node/green
   assert_success
 
