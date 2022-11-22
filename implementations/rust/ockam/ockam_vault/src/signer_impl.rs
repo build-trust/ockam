@@ -1,7 +1,7 @@
 use crate::vault::Vault;
 use crate::VaultError;
 use cfg_if::cfg_if;
-use ockam_core::vault::{KeyId, SecretType, Signature, Signer, Secret};
+use ockam_core::vault::{KeyId, Secret, SecretType, Signature, Signer};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 #[cfg(any(feature = "evercrypt", feature = "rustcrypto"))]
@@ -22,7 +22,7 @@ impl Signer for Vault {
                 use arrayref::array_ref;
                 use ockam_core::compat::rand::{thread_rng, RngCore};
                 use ockam_core::vault::CURVE25519_SECRET_LENGTH_USIZE;
-                let key = entry.secret().cast_as_key().as_ref();
+                let key = entry.secret().try_as_key()?.as_ref();
                 if key.len() != CURVE25519_SECRET_LENGTH_USIZE {
                     return Err(VaultError::InvalidX25519SecretLength.into());
                 }
@@ -40,7 +40,7 @@ impl Signer for Vault {
             }
             SecretType::Ed25519 => {
                 use ed25519_dalek::Signer;
-                let key = entry.secret().cast_as_key().as_ref();
+                let key = entry.secret().try_as_key()?.as_ref();
                 let sk = ed25519_dalek::SecretKey::from_bytes(key).unwrap();
                 let pk = ed25519_dalek::PublicKey::from(&sk);
 
@@ -56,10 +56,10 @@ impl Signer for Vault {
                 #[cfg(feature = "aws")]
                 if let Some(kms) = &self.aws_kms {
                     if let Secret::Ref(kid) = entry.secret() {
-                        return kms.sign(kid, data).await
+                        return kms.sign(kid, data).await;
                     }
                 }
-                let key = entry.secret().cast_as_key().as_ref();
+                let key = entry.secret().try_as_key()?.as_ref();
                 cfg_if! {
                     if #[cfg(feature = "rustcrypto")] {
                         use p256::ecdsa::{self, signature::Signer as _};

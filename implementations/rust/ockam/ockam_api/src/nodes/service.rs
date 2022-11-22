@@ -175,7 +175,7 @@ pub struct NodeManagerGeneralOptions {
     skip_defaults: bool,
     // Should be passed only when creating fresh node and we want it to get default root Identity
     identity_override: Option<IdentityOverride>,
-    enable_aws_kms: bool
+    enable_aws_kms: bool,
 }
 
 impl NodeManagerGeneralOptions {
@@ -184,14 +184,14 @@ impl NodeManagerGeneralOptions {
         node_dir: PathBuf,
         skip_defaults: bool,
         identity_override: Option<IdentityOverride>,
-        enable_aws_kms: bool
+        enable_aws_kms: bool,
     ) -> Self {
         Self {
             node_name,
             node_dir,
             skip_defaults,
             identity_override,
-            enable_aws_kms
+            enable_aws_kms,
         }
     }
 }
@@ -329,7 +329,8 @@ impl NodeManager {
         };
 
         if !general_options.skip_defaults {
-            s.create_defaults(ctx, general_options.enable_aws_kms).await?;
+            s.create_defaults(ctx, general_options.enable_aws_kms)
+                .await?;
 
             if let Some(ac) = projects_options.ac {
                 s.configure_authorities(ac).await?;
@@ -816,7 +817,7 @@ pub(crate) mod tests {
                     node_dir.into_path(),
                     true,
                     None,
-                    false
+                    false,
                 ),
                 NodeManagerProjectsOptions::new(None, None, Default::default(), None),
                 NodeManagerTransportOptions::new(

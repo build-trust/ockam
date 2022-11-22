@@ -1,3 +1,7 @@
+use crate::{
+    errcode::{Kind, Origin},
+    Error,
+};
 use cfg_if::cfg_if;
 use core::fmt;
 use minicbor::{Decode, Encode};
@@ -67,9 +71,10 @@ cfg_if! {
 }
 
 /// Binary representation of a Secret.
-#[derive(Serialize, Deserialize, Clone, Zeroize)]
+#[derive(Serialize, Deserialize, Clone, Zeroize, Encode, Decode)]
 #[zeroize(drop)]
-pub struct SecretKey(SecretKeyVec);
+#[cbor(transparent)]
+pub struct SecretKey(#[n(0)] SecretKeyVec);
 
 impl SecretKey {
     /// Create a new secret key.
@@ -286,10 +291,11 @@ pub struct VaultEntry {
     secret: Secret,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
+#[rustfmt::skip]
 pub enum Secret {
-    Key(SecretKey),
-    Ref(KeyId)
+    #[n(0)] Key(#[n(0)] SecretKey),
+    #[n(1)] Ref(#[n(1)] KeyId)
 }
 
 impl Secret {
@@ -298,6 +304,18 @@ impl Secret {
             k
         } else {
             panic!("`Secret` does not hold a key")
+        }
+    }
+
+    pub fn try_as_key(&self) -> Result<&SecretKey, Error> {
+        if let Secret::Key(k) = self {
+            Ok(k)
+        } else {
+            Err(Error::new(
+                Origin::Other,
+                Kind::Misuse,
+                "`Secret` does not hold a key",
+            ))
         }
     }
 }
@@ -317,21 +335,21 @@ impl VaultEntry {
     pub fn new(key_attributes: SecretAttributes, secret: Secret) -> Self {
         VaultEntry {
             key_attributes,
-            secret
+            secret,
         }
     }
 
     pub fn new_key(key_attributes: SecretAttributes, key: SecretKey) -> Self {
         VaultEntry {
             key_attributes,
-            secret: Secret::Key(key)
+            secret: Secret::Key(key),
         }
     }
 
     pub fn new_ref(key_attributes: SecretAttributes, kid: KeyId) -> Self {
         VaultEntry {
             key_attributes,
-            secret: Secret::Ref(kid)
+            secret: Secret::Ref(kid),
         }
     }
 }

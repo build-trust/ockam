@@ -22,7 +22,7 @@ pub struct CreateCommand {
     path: Option<String>,
 
     #[arg(long, default_value = "false")]
-    aws_kms: bool
+    aws_kms: bool,
 }
 
 impl CreateCommand {

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context as _, Result};
+use ockam::vault::{Secret, SecretPersistence, SecretType};
 use sysinfo::{get_current_pid, ProcessExt, System, SystemExt};
 use tracing::trace;
 
@@ -15,7 +16,7 @@ use ockam_api::nodes::service::{
 use ockam_api::nodes::{IdentityOverride, NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::storage::FileStorage;
-use ockam_vault::Vault;
+use ockam_vault::{KeyId, SecretAttributes, SecretVault, Vault};
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
@@ -30,7 +31,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        create_default_identity_if_needed(ctx, cfg).await?;
+        create_default_identity_if_needed(ctx, cfg, None).await?;
     }
 
     let identity_override = if cmd.skip_defaults {
@@ -63,7 +64,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
             node_dir,
             cmd.skip_defaults || cmd.launch_config.is_some(),
             identity_override,
-            cfg.is_aws_kms_enabled()
+            cfg.is_aws_kms_enabled(),
         ),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
@@ -86,6 +87,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
 pub(super) async fn create_default_identity_if_needed(
     ctx: &Context,
     cfg: &OckamConfig,
+    kid: Option<&KeyId>,
 ) -> Result<()> {
     // Get default root vault (create if needed)
     let default_vault_path = cfg.get_default_vault_path().unwrap_or_else(|| {
@@ -103,7 +105,16 @@ pub(super) async fn create_default_identity_if_needed(
 
     // Get default root identity (create if needed)
     if cfg.get_default_identity().is_none() {
-        let identity = Identity::create(ctx, &vault).await?;
+        let identity = if let Some(kid) = kid {
+            let attrs =
+                SecretAttributes::new(SecretType::NistP256, SecretPersistence::Persistent, 32);
+            let kid = vault
+                .secret_import(Secret::Ref(kid.to_string()), attrs)
+                .await?;
+            Identity::create_with_key(ctx, &vault, &kid).await?
+        } else {
+            Identity::create(ctx, &vault).await?
+        };
         let exported_data = identity.export().await?;
         cfg.set_default_identity(Some(exported_data));
     };

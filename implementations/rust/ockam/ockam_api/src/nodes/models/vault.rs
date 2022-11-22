@@ -21,7 +21,7 @@ impl<'a> CreateVaultRequest<'a> {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             path: path.map(|p| p.into()),
-            with_aws: None
+            with_aws: None,
         }
     }
 

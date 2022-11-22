@@ -82,6 +82,10 @@ pub struct CreateCommand {
     #[arg(long = "enrollment-token", value_name = "ENROLLMENT_TOKEN", value_parser = otc_parser)]
     token: Option<OneTimeCode>,
 
+    /// Use an existing AWS KMS key.
+    #[arg(long)]
+    key_id: Option<String>,
+
     /// JSON config to setup a foreground node
     ///
     /// This argument is currently ignored on background nodes.  Node
@@ -113,6 +117,7 @@ impl Default for CreateCommand {
             project: None,
             config: None,
             token: None,
+            key_id: None,
         }
     }
 }
@@ -224,7 +229,7 @@ async fn run_foreground_node(
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        create_default_identity_if_needed(&ctx, cfg).await?;
+        create_default_identity_if_needed(&ctx, cfg, cmd.key_id.as_ref()).await?;
     }
 
     let identity_override = if cmd.skip_defaults {
@@ -261,7 +266,7 @@ async fn run_foreground_node(
             node_dir,
             cmd.skip_defaults || cmd.launch_config.is_some(),
             identity_override,
-            cfg.is_aws_kms_enabled()
+            cfg.is_aws_kms_enabled(),
         ),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
@@ -406,7 +411,7 @@ async fn spawn_background_node(
     cfg.create_node(&cmd.node_name, addr, verbose)?;
     cfg.persist_config_updates()?;
 
-    create_default_identity_if_needed(ctx, cfg).await?;
+    create_default_identity_if_needed(ctx, cfg, cmd.key_id.as_ref()).await?;
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node

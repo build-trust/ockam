@@ -7,7 +7,8 @@ use lazy_static::lazy_static;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::vault::{
-    AsymmetricVault, Hasher, KeyId, PublicKey, SecretAttributes, SecretVault, SymmetricVault,
+    AsymmetricVault, Hasher, KeyId, PublicKey, Secret, SecretAttributes, SecretKey, SecretVault,
+    SymmetricVault,
 };
 use ockam_core::{Error, Result};
 use ockam_vault::Vault;
@@ -179,7 +180,8 @@ pub extern "C" fn ockam_vault_secret_import(
 
             let secret_data = unsafe { core::slice::from_raw_parts(input, input_length as usize) };
 
-            let key_id = entry.vault.secret_import(secret_data, atts).await?;
+            let secret = Secret::Key(SecretKey::new(secret_data.to_vec()));
+            let key_id = entry.vault.secret_import(secret, atts).await?;
 
             let index = entry.insert(key_id).await;
 
@@ -204,16 +206,16 @@ pub extern "C" fn ockam_vault_secret_export(
             let entry = get_vault_entry(context).await?;
             let key_id = entry.get(secret).await?;
             let key = entry.vault.secret_export(&key_id).await?;
-            if output_buffer_size < key.as_ref().len() as u32 {
+            if output_buffer_size < key.try_as_key()?.as_ref().len() as u32 {
                 return Err(FfiError::BufferTooSmall.into());
             }
-            *output_buffer_length = key.as_ref().len() as u32;
+            *output_buffer_length = key.try_as_key()?.as_ref().len() as u32;
 
             unsafe {
                 std::ptr::copy_nonoverlapping(
-                    key.as_ref().as_ptr(),
+                    key.try_as_key()?.as_ref().as_ptr(),
                     output_buffer,
-                    key.as_ref().len(),
+                    key.try_as_key()?.as_ref().len(),
                 );
             };
             Ok::<(), Error>(())

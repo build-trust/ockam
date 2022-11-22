@@ -1,4 +1,4 @@
-use aws_sdk_kms::error::{SignError, VerifyError, GetPublicKeyError, CreateKeyError};
+use aws_sdk_kms::error::{CreateKeyError, GetPublicKeyError, SignError, VerifyError};
 use aws_sdk_kms::error::{ScheduleKeyDeletionError, ScheduleKeyDeletionErrorKind};
 use aws_sdk_kms::model::{KeySpec, KeyUsageType, MessageType, SigningAlgorithmSpec};
 use aws_sdk_kms::types::{Blob, SdkError};
@@ -24,12 +24,11 @@ impl Config {
     }
 }
 
-
 /// AWS KMS client.
 #[derive(Debug, Clone)]
 pub struct Kms {
     client: Client,
-    config: Config
+    config: Config,
 }
 
 impl Kms {
@@ -37,10 +36,7 @@ impl Kms {
     pub async fn new(c: Config) -> Result<Self> {
         let config = aws_config::load_from_env().await;
         let client = Client::new(&config);
-        Ok(Self {
-            client,
-            config: c
-        })
+        Ok(Self { client, config: c })
     }
 
     /// Create an AWS KMS client using the default configutation.
@@ -63,7 +59,7 @@ impl Kms {
             Ok(out) => out,
             Err(err) => {
                 log::error!(%err, "failed to create new key");
-                return Err(Error::Create(err).into())
+                return Err(Error::Create(err).into());
             }
         };
         if let Some(kid) = output.key_metadata().and_then(|meta| meta.key_id()) {
@@ -84,13 +80,18 @@ impl Kms {
             .pending_window_in_days(DAYS);
         match client.send().await {
             Err(SdkError::ServiceError { err, .. })
-                if matches!(err.kind, ScheduleKeyDeletionErrorKind::NotFoundException(_)) => {
-                    log::debug!(%kid, "key does not exist");
-                    Ok(false)
-                }
+                if matches!(err.kind, ScheduleKeyDeletionErrorKind::NotFoundException(_)) =>
+            {
+                log::debug!(%kid, "key does not exist");
+                Ok(false)
+            }
             Err(err) => {
                 log::error!(%kid, %err, "failed to schedule key for deletion");
-                Err(Error::Delete { keyid: kid.to_string(), error: err }.into())
+                Err(Error::Delete {
+                    keyid: kid.to_string(),
+                    error: err,
+                }
+                .into())
             }
             Ok(_) => {
                 log::debug!(%kid, "key is scheduled for deletion in {DAYS} days");
@@ -112,7 +113,7 @@ impl Kms {
                 log::error!(%kid, %err, "failed to get public key");
                 Error::Export {
                     keyid: kid.to_string(),
-                    error: err
+                    error: err,
                 }
             })?;
         if output.key_spec() != Some(&KeySpec::EccNistP256) {
@@ -146,7 +147,7 @@ impl Kms {
             log::error!(%kid, %err, "failed to verify message signature");
             Error::Verify {
                 keyid: kid.to_string(),
-                error: err
+                error: err,
             }
         })?;
         let is_valid = output.signature_valid();
@@ -168,7 +169,7 @@ impl Kms {
             log::error!(%kid, %err, "failed to sign message");
             Error::Sign {
                 keyid: kid.to_string(),
-                error: err
+                error: err,
             }
         })?;
         if let Some(sig) = output.signature() {

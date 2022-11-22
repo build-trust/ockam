@@ -1,7 +1,7 @@
 use crate::VaultError;
 use ockam_core::compat::boxed::Box;
 use ockam_core::vault::storage::Storage;
-use ockam_core::vault::{KeyId, SecretAttributes, SecretPersistence, VaultEntry, Secret};
+use ockam_core::vault::{KeyId, Secret, SecretAttributes, SecretPersistence, VaultEntry};
 use ockam_core::{async_trait, Result};
 use ockam_node::compat::asynchronous::RwLock;
 use serde::{Deserialize, Serialize};

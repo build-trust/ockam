@@ -36,7 +36,7 @@ pub struct Vault {
     pub(crate) data: VaultData,
     pub(crate) storage: Option<Arc<dyn Storage>>,
     #[cfg(feature = "aws")]
-    pub(crate) aws_kms: Option<crate::aws::Kms>
+    pub(crate) aws_kms: Option<crate::aws::Kms>,
 }
 
 #[derive(Default, Clone)]
@@ -51,7 +51,7 @@ impl Vault {
             data: Default::default(),
             storage,
             #[cfg(feature = "aws")]
-            aws_kms: None
+            aws_kms: None,
         }
     }
 

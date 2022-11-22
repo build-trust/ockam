@@ -19,7 +19,7 @@ impl NodeManager {
         &mut self,
         path: Option<PathBuf>,
         reuse_if_exists: bool,
-        enable_aws_kms: bool
+        enable_aws_kms: bool,
     ) -> Result<()> {
         if self.vault.is_some() {
             return if reuse_if_exists {
@@ -64,7 +64,9 @@ impl NodeManagerWorker {
 
         let path = req_body.path.as_ref().map(|p| PathBuf::from(p.0.as_ref()));
 
-        node_manager.create_vault_impl(path, false, req_body.is_aws_enabled()).await?;
+        node_manager
+            .create_vault_impl(path, false, req_body.is_aws_enabled())
+            .await?;
 
         let response = Response::ok(req.id());
 
