@@ -559,6 +559,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap_mangen"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa149477df7854a1497db0def32b8a65bf98f72a14d04ac75b01938285d83420"
+dependencies = [
+ "clap 4.0.14",
+ "roff",
+]
+
+[[package]]
 name = "cli-table"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2376,6 +2386,7 @@ dependencies = [
  "atty",
  "clap 4.0.14",
  "clap_complete",
+ "clap_mangen",
  "cli-table",
  "colorful",
  "const-str",
@@ -2383,6 +2394,7 @@ dependencies = [
  "dialoguer",
  "directories",
  "dirs",
+ "flate2",
  "hex",
  "itertools",
  "minicbor",
@@ -3247,6 +3259,12 @@ dependencies = [
  "lazy_static",
  "regex",
 ]
+
+[[package]]
+name = "roff"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b833d8d034ea094b1ea68aa6d5c740e0d04bad9d16568d08ba6f76823a114316"
 
 [[package]]
 name = "rtcc"
