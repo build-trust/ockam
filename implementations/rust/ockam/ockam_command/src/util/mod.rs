@@ -509,6 +509,11 @@ pub fn bind_to_port_check(address: &SocketAddr) -> bool {
     TcpListener::bind((ip, port)).is_ok()
 }
 
+pub fn is_tty<S: io_lifetimes::AsFilelike>(s: S) -> bool {
+    use is_terminal::IsTerminal;
+    s.is_terminal()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

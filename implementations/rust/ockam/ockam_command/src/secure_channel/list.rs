@@ -1,4 +1,3 @@
-use atty::Stream;
 use clap::Args;
 use colorful::Colorful;
 
@@ -10,7 +9,7 @@ use ockam_core::{route, Address};
 use serde_json::json;
 
 use crate::secure_channel::HELP_DETAIL;
-use crate::util::RpcBuilder;
+use crate::util::{is_tty, RpcBuilder};
 use crate::{
     exitcode, help,
     util::{api, node_rpc},
@@ -78,7 +77,7 @@ impl ListCommand {
 
             // if stdout is not interactive/tty write the secure channel address to it
             // in case some other program is trying to read it as piped input
-            if !atty::is(Stream::Stdout) {
+            if !is_tty(std::io::stdout()) {
                 println!("{}", at)
             }
 
@@ -117,7 +116,7 @@ impl ListCommand {
 
 #[inline]
 fn has_plain_stderr(options: &CommandGlobalOpts) -> bool {
-    atty::is(Stream::Stderr)
+    is_tty(std::io::stderr())
         && !options.global_args.quiet
         && options.global_args.output_format == OutputFormat::Plain
 }
@@ -153,7 +152,7 @@ async fn rpc(
     let responses = results?;
 
     if let Err(e) = command.print_output(&options, channel_identifiers, responses) {
-        if atty::is(Stream::Stderr)
+        if is_tty(std::io::stderr())
             && !options.global_args.quiet
             && options.global_args.output_format == OutputFormat::Plain
         {
