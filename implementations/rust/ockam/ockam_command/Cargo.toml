@@ -54,7 +54,6 @@ test = false
 anyhow = "1"
 async-recursion = { version = "1.0.0" }
 async-trait = "0.1"
-atty = "0.2"
 clap = { version = "4.0.11", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.0.3"
 clap_mangen = "0.2.4"
@@ -66,6 +65,8 @@ directories = "4"
 dirs = "4.0.0"
 flate2 = "1.0.24"
 hex = "0.4"
+io-lifetimes = "1"
+is-terminal = "0.4"
 itertools = "0.10"
 minicbor = { version = "0.18.0", features = ["derive", "alloc", "half"] }
 nix = "0.26"

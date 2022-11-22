@@ -6,10 +6,10 @@ use crate::{
 };
 use std::str::FromStr;
 
-use atty::Stream;
 use colorful::Colorful;
 use serde_json::json;
 
+use crate::util::is_tty;
 use clap::Parser;
 use ockam::{route, Context};
 use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
@@ -52,7 +52,7 @@ impl DeleteCommand {
                     Some(multiaddr) => {
                         // if stdout is not interactive/tty write the secure channel address to it
                         // in case some other program is trying to read it as piped input
-                        if !atty::is(Stream::Stdout) {
+                        if !is_tty(std::io::stdout()) {
                             println!("{}", multiaddr)
                         }
 
@@ -64,7 +64,7 @@ impl DeleteCommand {
 
                         // if stderr is interactive/tty and we haven't been asked to be quiet
                         // and output format is plain then write a plain info to stderr.
-                        if atty::is(Stream::Stderr)
+                        if is_tty(std::io::stderr())
                             && !options.global_args.quiet
                             && options.global_args.output_format == OutputFormat::Plain
                         {
@@ -88,7 +88,7 @@ impl DeleteCommand {
                     None => {
                         // if stderr is interactive/tty and we haven't been asked to be quiet
                         // and output format is plain then write a plain info to stderr.
-                        if atty::is(Stream::Stderr)
+                        if is_tty(std::io::stderr())
                             && !options.global_args.quiet
                             && options.global_args.output_format == OutputFormat::Plain
                         {
@@ -107,7 +107,7 @@ impl DeleteCommand {
             None => {
                 // if stderr is interactive/tty and we haven't been asked to be quiet
                 // and output format is plain then write a plain info to stderr.
-                if atty::is(Stream::Stderr)
+                if is_tty(std::io::stderr())
                     && !options.global_args.quiet
                     && options.global_args.output_format == OutputFormat::Plain
                 {

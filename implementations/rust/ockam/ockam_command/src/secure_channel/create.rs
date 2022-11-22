@@ -5,14 +5,13 @@ use crate::{
 };
 
 use anyhow::Context as _;
-use atty::Stream;
 use clap::Args;
 use colorful::Colorful;
 use serde_json::json;
 
 use crate::secure_channel::HELP_DETAIL;
 use crate::util::api::CloudOpts;
-use crate::util::RpcBuilder;
+use crate::util::{is_tty, RpcBuilder};
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
 use ockam_api::config::lookup::ConfigLookup;
 use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
@@ -90,7 +89,7 @@ impl CreateCommand {
             Some(multiaddr) => {
                 // if stdout is not interactive/tty write the secure channel address to it
                 // in case some other program is trying to read it as piped input
-                if !atty::is(Stream::Stdout) {
+                if !is_tty(std::io::stdout()) {
                     println!("{}", multiaddr)
                 }
 
@@ -102,7 +101,7 @@ impl CreateCommand {
 
                 // if stderr is interactive/tty and we haven't been asked to be quiet
                 // and output format is plain then write a plain info to stderr.
-                if atty::is(Stream::Stderr)
+                if is_tty(std::io::stderr())
                     && !options.global_args.quiet
                     && options.global_args.output_format == OutputFormat::Plain
                 {
@@ -132,7 +131,7 @@ impl CreateCommand {
             None => {
                 // if stderr is interactive/tty and we haven't been asked to be quiet
                 // and output format is plain then write a plain info to stderr.
-                if atty::is(Stream::Stderr)
+                if is_tty(std::io::stderr())
                     && !options.global_args.quiet
                     && options.global_args.output_format == OutputFormat::Plain
                 {
