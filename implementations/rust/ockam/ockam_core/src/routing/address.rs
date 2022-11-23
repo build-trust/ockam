@@ -5,7 +5,7 @@ use crate::compat::{
     sync::Arc,
     vec::Vec,
 };
-use crate::{debugger, AllowAll, RelayMessage, Result};
+use crate::{debugger, DenyAll, RelayMessage, Result};
 use core::cmp::Ordering;
 use core::fmt::{self, Debug, Display};
 use core::ops::Deref;
@@ -62,11 +62,11 @@ impl Mailbox {
         }
     }
     /// Create a new `Mailbox` allowed to send and receive all messages
-    pub fn allow_all(address: impl Into<Address>) -> Self {
+    pub fn deny_all(address: impl Into<Address>) -> Self {
         Self {
             address: address.into(),
-            incoming: Arc::new(AllowAll),
-            outgoing: Arc::new(AllowAll),
+            incoming: Arc::new(DenyAll),
+            outgoing: Arc::new(DenyAll),
         }
     }
     /// Return a reference to the [`Address`] of this mailbox
