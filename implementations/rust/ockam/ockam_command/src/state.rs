@@ -230,33 +230,33 @@ pub struct IdentityState {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct IdentityConfig {
-    vault: VaultConfig,
     identifier: IdentityIdentifier,
     change_history: IdentityChangeHistory,
 }
 
 impl IdentityConfig {
-    pub async fn new(identity: &Identity<Vault>, vault_config: VaultConfig) -> Self {
+    pub async fn new(identity: &Identity<Vault>) -> Self {
         let identifier = identity.identifier().clone();
         let change_history = identity.change_history().await;
         Self {
-            vault: vault_config,
             identifier,
             change_history,
         }
     }
 
-    pub async fn get(&self, ctx: &ockam::Context) -> anyhow::Result<Identity<Vault>> {
+    pub async fn get(
+        &self,
+        ctx: &ockam::Context,
+        vault: &Vault,
+    ) -> anyhow::Result<Identity<Vault>> {
         let data = self.change_history.export()?;
-        let vault = self.vault.get().await?;
-        Ok(Identity::import(ctx, &data, &vault).await?)
+        Ok(Identity::import(ctx, &data, vault).await?)
     }
 }
 
 impl PartialEq for IdentityConfig {
     fn eq(&self, other: &Self) -> bool {
-        self.vault == other.vault
-            && self.identifier == other.identifier
+        self.identifier == other.identifier
             && self.change_history.compare(&other.change_history)
                 == IdentityHistoryComparison::Equal
     }
@@ -446,7 +446,7 @@ mod tests {
 
         // Vaults
         let vault_name = {
-            let name = hex::encode(&rand::random::<[u8; 4]>());
+            let name = hex::encode(rand::random::<[u8; 4]>());
 
             let path = rnd_dir.path().join("vaults").join(&format!("{name}.data"));
             let vault_storage = FileStorage::create(path.clone()).await?;
@@ -466,13 +466,13 @@ mod tests {
 
         // Identities
         let identity_name = {
-            let name = hex::encode(&rand::random::<[u8; 4]>());
+            let name = hex::encode(rand::random::<[u8; 4]>());
             let vault_config = sut.vaults.get(&vault_name).unwrap().config;
             let vault = vault_config.get().await.unwrap();
             let identity = Identity::create(ctx, &vault).await.unwrap();
             let identifier =
-                IdentityIdentifier::from_key_id(&hex::encode(&rand::random::<[u8; 32]>()));
-            let config = IdentityConfig::new(&identity, vault_config).await;
+                IdentityIdentifier::from_key_id(&hex::encode(rand::random::<[u8; 32]>()));
+            let config = IdentityConfig::new(&identity).await;
 
             let state = sut.identities.create(&name, config).unwrap();
             let got = sut.identities.get(&name).unwrap();
@@ -486,7 +486,7 @@ mod tests {
 
         // Nodes
         let node_name = {
-            let name = hex::encode(&rand::random::<[u8; 4]>());
+            let name = hex::encode(rand::random::<[u8; 4]>());
             let config = NodeConfig::default().unwrap();
 
             let state = sut.nodes.create(&name, config).unwrap();

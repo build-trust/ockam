@@ -39,7 +39,8 @@ async fn run_impl(ctx: Context, (options, cmd): (CommandGlobalOpts, CreateComman
     } else {
         let path = state::VaultConfig::fs_path(&cmd.name, cmd.path)?;
         let config = state::VaultConfig::fs(path).await?;
-        options.state.vaults.create(&cmd.name, config)?;
+        options.state.vaults.create(&cmd.name, config.clone())?;
+        config.get().await?;
         println!("Vault created with name: {}!", &cmd.name);
     }
     Ok(())

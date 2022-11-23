@@ -198,6 +198,32 @@ teardown() {
   assert_failure
 }
 
+@test "identity create without node" {
+  vault_name=$(openssl rand -hex 4)
+  run $OCKAM vault create "${vault_name}"
+  assert_success
+
+  # With random name
+  run $OCKAM identity create
+  assert_success
+  assert_output --partial "Identity created"
+
+  # Named
+  idt_name=$(openssl rand -hex 4)
+  run $OCKAM identity create "${idt_name}"
+  assert_success
+  assert_output --partial "Identity created"
+
+  # Fails if already exists
+  run $OCKAM identity create "${idt_name}"
+  assert_failure
+
+  # Specifying vault
+  run $OCKAM identity create --vault "${vault_name}"
+  assert_success
+  assert_output --partial "Identity created"
+}
+
 @test "create a secure channel between two nodes and send message through it" {
   $OCKAM node create n1
   $OCKAM node create n2
