@@ -1,5 +1,5 @@
 use crate::compat::boxed::Box;
-use crate::{RelayMessage, Result};
+use crate::{RelayMessage, Result, LOCAL};
 use core::fmt::Debug;
 
 /// Defines the interface for message flow authorization.
@@ -89,6 +89,23 @@ impl AccessControl for AllowDestinationAddress {
         crate::allow()
     }
 }
+
+/// Allows only messages to local workers
+#[derive(Debug)]
+pub struct LocalDestinationOnly;
+
+#[async_trait]
+impl AccessControl for LocalDestinationOnly {
+    async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
+        let onward_route = &relay_msg.onward;
+        let next_hop = onward_route.next()?;
+
+        // Check if next hop is local (note that further hops may be non-local)
+        if next_hop.transport_type() != LOCAL {
+            return crate::deny();
+        }
+
+        crate::allow()
     }
 }
 
