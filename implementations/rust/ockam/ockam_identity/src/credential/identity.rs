@@ -11,11 +11,13 @@ use crate::{
 use core::marker::PhantomData;
 use minicbor::Decoder;
 use ockam_core::api::{Request, Response, Status};
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::SignatureVec;
-use ockam_core::{Address, AsyncTryClone, CowStr, Error, Result, Route};
+use ockam_core::{Address, AllowAll, AsyncTryClone, CowStr, Error, Mailboxes, Result, Route};
 use ockam_node::api::{request, request_with_local_info};
+use ockam_node::WorkerBuilder;
 
 impl<V: IdentityVault> Identity<V> {
     pub async fn set_credential(&self, credential: Option<Credential<'static>>) {
@@ -65,7 +67,18 @@ impl<V: IdentityVault> Identity<V> {
         let worker =
             CredentialExchangeWorker::new(authorities, present_back, authenticated_storage, s);
 
-        self.ctx.start_worker(address.into(), worker).await
+        WorkerBuilder::with_mailboxes(
+            Mailboxes::main(
+                address.into(),
+                Arc::new(AllowAll), // We check for Identity secure channel inside the worker
+                Arc::new(AllowAll), // FIXME: @ac Allow to respond anywhere using return_route
+            ),
+            worker,
+        )
+        .start(&self.ctx)
+        .await?;
+
+        Ok(())
     }
 
     /// Present credential to other party, route shall use secure channel
