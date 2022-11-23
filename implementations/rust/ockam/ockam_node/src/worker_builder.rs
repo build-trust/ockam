@@ -4,7 +4,7 @@ use crate::{relay::WorkerRelay, Context, NodeMessage};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
     errcode::{Kind, Origin},
-    AccessControl, Address, AllowAll, Error, Mailboxes, Message, Result, Worker,
+    AccessControl, Address, DenyAll, Error, Mailboxes, Message, Result, Worker,
 };
 
 /// Start a [`Worker`] with a custom [`AccessControl`] configuration
@@ -31,7 +31,7 @@ where
     /// Create a worker with `AllowAll` access control
     pub fn without_access_control(address: impl Into<Address>, worker: W) -> Self {
         // TODO: @ac default to DenyAll
-        let mailboxes = Mailboxes::main(address.into(), Arc::new(AllowAll), Arc::new(AllowAll));
+        let mailboxes = Mailboxes::main(address.into(), Arc::new(DenyAll), Arc::new(DenyAll));
 
         Self { mailboxes, worker }
     }
@@ -42,6 +42,7 @@ where
         address: impl Into<Address>,
         worker: W,
     ) -> Self {
+        // TODO: @ac stop using that method
         let address = address.into();
 
         // Inherit access control from the given context's main mailbox
