@@ -3,7 +3,10 @@ use crate::{
     SecureChannelNewKeyExchanger, SecureChannelVault,
 };
 use ockam_core::compat::{sync::Arc, vec::Vec};
-use ockam_core::{Address, Mailbox, Mailboxes, Result, Route};
+use ockam_core::{
+    AccessControl, Address, AllowAll, AllowDestinationAddresses, AllowSourceAddress, DenyAll,
+    LocalDestinationOnly, Mailbox, Mailboxes, Result, Route,
+};
 use ockam_node::{Context, WorkerBuilder};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
@@ -64,7 +67,10 @@ impl SecureChannel {
         let address = address.into();
         let channel_listener = SecureChannelListener::new(new_key_exchanger, vault);
         info!("Starting SecureChannel listener at {}", &address);
-        ctx.start_worker(address, channel_listener).await?;
+        let mailboxes = Mailboxes::main(address, Arc::new(AllowAll), Arc::new(DenyAll));
+        WorkerBuilder::with_mailboxes(mailboxes, channel_listener)
+            .start(ctx)
+            .await?;
 
         Ok(())
     }
@@ -97,15 +103,35 @@ impl SecureChannel {
         key_exchanger: impl SecureChannelKeyExchanger,
         vault: impl SecureChannelVault,
     ) -> Result<SecureChannelInfo> {
+        Self::create_extended_wrapped(ctx, route, custom_payload, key_exchanger, vault, None, None)
+            .await
+    }
+
+    /// Create initiator channel with given route to a remote channel listener.
+    /// Used while this channel is wrapped inside an Identity Secure Channel
+    pub async fn create_extended_wrapped(
+        ctx: &Context,
+        route: impl Into<Route>,
+        custom_payload: Option<Vec<u8>>,
+        key_exchanger: impl SecureChannelKeyExchanger,
+        vault: impl SecureChannelVault,
+        wrapped_outgoing_address: Option<Address>,
+        address_internal: Option<Address>,
+    ) -> Result<SecureChannelInfo> {
         let route = route.into();
 
+        let address_remote = Address::random_tagged("SecureChannel.initiator.decryptor.remote");
+        let address_internal = address_internal.unwrap_or_else(|| {
+            Address::random_tagged("SecureChannel.initiator.decryptor.internal")
+        });
         let callback_address =
             Address::random_tagged("SecureChannel.initiator.callback_address.detached");
+
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 callback_address.clone(),
-                Arc::new(ockam_core::ToDoAccessControl), // TODO: @ac Allow only from the Decryptor
-                Arc::new(ockam_core::ToDoAccessControl), // TODO: @ac Allow only to the Decryptor
+                Arc::new(AllowSourceAddress(address_internal.clone())), // Allow only from the Decryptor
+                Arc::new(DenyAll),
             ),
             vec![],
         );
@@ -113,28 +139,46 @@ impl SecureChannel {
 
         let decryptor = SecureChannelDecryptor::new_initiator(
             key_exchanger,
-            Some(callback_address),
+            address_remote.clone(),
+            address_internal.clone(),
+            Some(callback_address.clone()),
             route,
             custom_payload,
             vault.async_try_clone().await?,
+            vec![],
         )
         .await?;
-
-        let address_remote = Address::random_tagged("SecureChannel.initiator.decryptor");
 
         debug!(
             "Starting SecureChannel initiator at remote: {}",
             &address_remote
         );
 
-        let mailbox = Mailbox::new(
+        let remote_mailbox = Mailbox::new(
             address_remote,
-            Arc::new(ockam_core::ToDoAccessControl), // TODO @ac Any
-            Arc::new(ockam_core::ToDoAccessControl), // TODO @ac Any
+            // Doesn't matter since we check incoming messages cryptographically,
+            // but this may be reduced to allowing only from the transport connection that was used
+            // to create this channel initially
+            Arc::new(AllowAll),
+            // Communicate to the other side of the channel
+            Arc::new(AllowAll),
         );
-        WorkerBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), decryptor)
-            .start(ctx)
-            .await?;
+        let outgoing_access_control: Arc<dyn AccessControl> = match wrapped_outgoing_address {
+            // FIXME: @ac Also deny to other secure channels
+            None => Arc::new(LocalDestinationOnly), // Prevent exploit of using our node as an authorized proxy
+            Some(outgoing_address) => Arc::new(AllowDestinationAddresses(vec![
+                outgoing_address,
+                callback_address,
+            ])),
+        };
+        let internal_mailbox =
+            Mailbox::new(address_internal, Arc::new(DenyAll), outgoing_access_control);
+        WorkerBuilder::with_mailboxes(
+            Mailboxes::new(remote_mailbox, vec![internal_mailbox]),
+            decryptor,
+        )
+        .start(ctx)
+        .await?;
 
         let resp = child_ctx
             .receive_timeout::<KeyExchangeCompleted>(120)
