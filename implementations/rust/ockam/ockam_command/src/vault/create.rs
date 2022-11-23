@@ -6,7 +6,6 @@ use clap::Args;
 use ockam::Context;
 use ockam_api::nodes::models::vault::CreateVaultRequest;
 use ockam_core::api::Request;
-use ockam_vault::storage::FileStorage;
 use rand::prelude::random;
 
 /// Create vaults
@@ -38,14 +37,10 @@ async fn run_impl(ctx: Context, (options, cmd): (CommandGlobalOpts, CreateComman
         rpc.is_ok()?;
         println!("Vault created for the Node {}!", node_name);
     } else {
-        // Only file-backed vaults for now
         let path = state::VaultConfig::fs_path(&cmd.name, cmd.path)?;
-        if !path.exists() {
-            FileStorage::create(path.clone()).await?;
-        }
-        let config = state::VaultConfig::fs(path.clone()).await?;
+        let config = state::VaultConfig::fs(path).await?;
         options.state.vaults.create(&cmd.name, config)?;
-        println!("Vault created with name: {} at {:?}!", &cmd.name, path);
+        println!("Vault created with name: {}!", &cmd.name);
     }
     Ok(())
 }
