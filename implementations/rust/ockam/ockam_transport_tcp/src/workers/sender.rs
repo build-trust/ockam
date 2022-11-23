@@ -3,7 +3,7 @@ use core::time::Duration;
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
-    AllowAll,
+    AllowSourceAddress, DenyAll, LocalDestinationOnly,
 };
 use ockam_core::{
     Address, Any, Decodable, Encodable, LocalMessage, Mailbox, Mailboxes, Message, Result, Routed,
@@ -62,7 +62,8 @@ pub(crate) struct TcpSendWorker {
     tx: Option<OwnedWriteHalf>,
     peer: SocketAddr,
     internal_addr: Address,
-    rx_addr: Option<Address>,
+    rx_addr: Address,
+    rx_should_be_stopped: bool,
 }
 
 impl TcpSendWorker {
@@ -72,6 +73,7 @@ impl TcpSendWorker {
         stream: Option<TcpStream>,
         peer: SocketAddr,
         internal_addr: Address,
+        rx_addr: Address,
     ) -> Self {
         let (rx, tx) = match stream {
             Some(s) => {
@@ -87,12 +89,18 @@ impl TcpSendWorker {
             tx,
             peer,
             internal_addr,
-            rx_addr: None,
+            rx_addr,
+            rx_should_be_stopped: true,
         }
     }
 
     pub(crate) fn internal_addr(&self) -> &Address {
         &self.internal_addr
+    }
+
+    // Receiver processor address
+    pub(crate) fn rx_addr(&self) -> &Address {
+        &self.rx_addr
     }
 
     /// Create a `(TcpSendWorker, WorkerPair)` without spawning the worker.
@@ -102,9 +110,16 @@ impl TcpSendWorker {
         peer: SocketAddr,
         hostnames: Vec<String>,
     ) -> Result<(Self, WorkerPair)> {
-        let tx_addr = Address::random_tagged("TcpSendWorker_tx_addr");
-        let int_addr = Address::random_tagged("TcpSendWorker_int_addr");
-        let sender = TcpSendWorker::new(router_handle, stream, peer, int_addr);
+        let role_str = if stream.is_none() {
+            "initiator"
+        } else {
+            "responder"
+        };
+
+        let tx_addr = Address::random_tagged(&format!("TcpSendWorker_tx_addr_{}", role_str));
+        let int_addr = Address::random_tagged(&format!("TcpSendWorker_int_addr_{}", role_str));
+        let rx_addr = Address::random_tagged(&format!("TcpRecvProcessor_{}", role_str));
+        let sender = TcpSendWorker::new(router_handle, stream, peer, int_addr, rx_addr);
         Ok((
             sender,
             WorkerPair {
@@ -118,46 +133,31 @@ impl TcpSendWorker {
     /// Start a `(TcpSendWorker, TcpRecvProcessor)` pair that opens and
     /// manages the connection with the given peer
     pub(crate) async fn start_pair(
-        // NOTE context is 0#TcpRouter.detached _not_ 0#TcpRouter_main_addr!
         ctx: &Context,
         router_handle: TcpRouterHandle,
         stream: Option<TcpStream>,
         peer: SocketAddr,
         hostnames: Vec<String>,
     ) -> Result<WorkerPair> {
-        // save the TcpRouter main address
-        let _tcprouter_main_addr = router_handle.main_addr().clone();
+        let tcprouter_main_addr = router_handle.main_addr().clone();
 
         trace!("Creating new TCP worker pair");
-        let (mut worker, pair) = Self::new_pair(router_handle, stream, peer, hostnames).await?;
+        let (sender, pair) = Self::new_pair(router_handle, stream, peer, hostnames).await?;
 
-        // TODO @ac gawd this is bad. Also assigned in `TcpSendWorker::initialize` depending on context.
-        let rx_addr = Address::random_tagged("TcpRecvProcessor");
-        worker.rx_addr = Some(rx_addr.clone());
-
-        // TODO: @ac 0#TcpSendWorker_tx_addr
-        // in:  0#TcpSendWorker_tx_addr_9  <=  [0#TcpRouter_main_addr_0]
-        // out: n/a
+        // Allow messages routed from Tcp Router
         let tx_mailbox = Mailbox::new(
             pair.tx_addr(),
-            Arc::new(AllowAll),
-            // Arc::new(ockam_core::AllowSourceAddress(tcprouter_main_addr)),
-            Arc::new(AllowAll),
-            // Arc::new(ockam_core::DenyAll),
+            Arc::new(AllowSourceAddress(tcprouter_main_addr)),
+            Arc::new(DenyAll),
         );
 
-        // @ac 0#TcpSendWorker_int_addr
-        // in:  0#TcpSendWorker_int_addr_10  <=  [0#TcpRecvProcessor_12]
-        // out: n/a
         let internal_mailbox = Mailbox::new(
-            worker.internal_addr().clone(),
-            Arc::new(AllowAll),
-            // Arc::new(ockam_core::AllowSourceAddress(rx_addr)),
-            Arc::new(AllowAll),
-            // Arc::new(ockam_core::DenyAll),
+            sender.internal_addr().clone(),
+            Arc::new(AllowSourceAddress(sender.rx_addr().clone())),
+            Arc::new(DenyAll),
         );
 
-        WorkerBuilder::with_mailboxes(Mailboxes::new(tx_mailbox, vec![internal_mailbox]), worker)
+        WorkerBuilder::with_mailboxes(Mailboxes::new(tx_mailbox, vec![internal_mailbox]), sender)
             .start(ctx)
             .await?;
 
@@ -210,42 +210,27 @@ impl Worker for TcpSendWorker {
 
         let rx = self.rx.take().ok_or(TransportError::GenericIo)?;
 
-        //let rx_addr = Address::random_tagged("TcpRecvProcessor");
-        let rx_addr = if let Some(rx_addr) = &self.rx_addr {
-            rx_addr.clone()
-        } else {
-            // TODO @ac gawd this is bad. Also assigned in `TcpSendWorker.start_pair` depending on context.
-            Address::random_tagged("TcpRecvProcessor")
-        };
         let receiver = TcpRecvProcessor::new(
             rx,
             format!("{}#{}", crate::TCP, self.peer).into(),
             self.internal_addr.clone(),
         );
 
-        // TODO @ac 0#TcpRecvProcessor
-        // in:  n/a
-        // out: 0#TcpRecvProcessor_12  =>  [0#TcpPortalWorker_remote_6, 0#TcpSendWorker_int_addr_10, 0#outlet]
         let mailbox = Mailbox::new(
-            rx_addr,
-            Arc::new(AllowAll),
-            // Arc::new(ockam_core::DenyAll),
-            Arc::new(AllowAll),
-            // Arc::new(ockam_core::ToDoAccessControl), // TODO @ac at least LocalOriginOnly
+            self.rx_addr().clone(),
+            Arc::new(DenyAll),
+            Arc::new(LocalOnwardOnly), // Sending to this sender and workers that can receive messages from TCP
         );
         ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), receiver)
             .start(ctx)
             .await?;
 
-        // TODO see above
-        //self.rx_addr = Some(rx_addr);
-
         Ok(())
     }
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        if let Some(rx_addr) = self.rx_addr.take() {
-            let _ = ctx.stop_processor(rx_addr).await;
+        if self.rx_should_be_stopped {
+            let _ = ctx.stop_processor(self.rx_addr().clone()).await;
         }
 
         Ok(())
@@ -272,7 +257,7 @@ impl Worker for TcpSendWorker {
                     warn!("Stopping sender due to closed connection {}", self.peer);
                     // No need to stop Receiver as it notified us about connection drop and will
                     // stop itself
-                    self.rx_addr = None;
+                    self.rx_should_be_stopped = false;
                     self.stop_and_unregister(ctx).await?;
 
                     return Ok(());

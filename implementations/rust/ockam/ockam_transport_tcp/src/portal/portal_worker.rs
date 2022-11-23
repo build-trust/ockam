@@ -1,7 +1,10 @@
 use crate::{PortalInternalMessage, PortalMessage, TcpPortalRecvProcessor};
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
-use ockam_core::{async_trait, AccessControl, AllowAll, Decodable, Mailbox, Mailboxes};
+use ockam_core::{
+    async_trait, AccessControl, AllowAll, AllowDestinationAddresses, AllowSourceAddress, Decodable,
+    DenyAll, Mailbox, Mailboxes,
+};
 use ockam_core::{Address, Any, Result, Route, Routed, Worker};
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::TransportError;
@@ -42,7 +45,6 @@ pub(crate) struct TcpPortalWorker {
     tx: Option<OwnedWriteHalf>,
     rx: Option<OwnedReadHalf>,
     peer: SocketAddr,
-    // router_address: Address, // TODO @ac for AccessControl
     internal_address: Address,
     remote_address: Address,
     receiver_address: Address,
@@ -57,14 +59,12 @@ impl TcpPortalWorker {
         ctx: &Context,
         stream: TcpStream,
         peer: SocketAddr,
-        // router_address: Address, // for AccessControl
         ping_route: Route,
         access_control: Arc<dyn AccessControl>,
     ) -> Result<Address> {
         Self::start(
             ctx,
             peer,
-            // router_address,
             State::SendPing { ping_route },
             Some(stream),
             TypeName::Inlet,
@@ -77,14 +77,12 @@ impl TcpPortalWorker {
     pub(crate) async fn start_new_outlet(
         ctx: &Context,
         peer: SocketAddr,
-        // router_address: Address, // for AccessControl
         pong_route: Route,
         access_control: Arc<dyn AccessControl>,
     ) -> Result<Address> {
         Self::start(
             ctx,
             peer,
-            // router_address,
             State::SendPong { pong_route },
             None,
             TypeName::Outlet,
@@ -97,7 +95,6 @@ impl TcpPortalWorker {
     async fn start(
         ctx: &Context,
         peer: SocketAddr,
-        // router_address: Address,
         state: State,
         stream: Option<TcpStream>,
         type_name: TypeName,
@@ -125,50 +122,24 @@ impl TcpPortalWorker {
             tx,
             rx,
             peer,
-            // router_address,
             internal_address,
             remote_address: remote_address.clone(),
             remote_route: None,
-            receiver_address,
+            receiver_address: receiver_address.clone(),
             is_disconnecting: false,
             type_name,
         };
 
-        // TODO: @ac 0#TcpPortalWorker_internal
-        // in:  0#TcpPortalWorker_internal  <=  [0#TcpPortalRecvProcessor]
-        // out: n/a
         let internal_mailbox = Mailbox::new(
             worker.internal_address.clone(),
-            Arc::new(AllowAll),
-            /*ockam_core::AllowSourceAddress(
-                worker.receiver_address.clone(),
-            )),
-            */
-            Arc::new(AllowAll),
+            Arc::new(AllowSourceAddress(receiver_address)),
+            Arc::new(DenyAll),
         );
 
-        // TODO: @ac 0#TcpPortalWorker_remote
-        // in:  0#TcpPortalWorker_remote_6  <=  [0#TcpRecvProcessor_12]
-        // out: 0#TcpPortalWorker_remote_6  =>  [0#TcpRouter_main_addr_0, 0#outlet, 0#TcpPortWorker_remote_n]
         let remote_mailbox = Mailbox::new(
-            worker.remote_address.clone(),
+            remote_address.clone(),
             access_control,
-            Arc::new(AllowAll),
-            // FIXME: uncomment below:
-            /*
-            // TODO @ac need a way to specify AC for incoming from client API because we
-            //          don't know if this is coming in over Transport or SecureChannel or...
-            Arc::new(ockam_core::AnyAccessControl::new(
-                ockam_core::CredentialAccessControl,
-                //ockam_node::access_control::AllowTransport::single(crate::TCP),
-                ockam_core::ToDoAccessControl,
-            )),
-            Arc::new(ockam_core::AnyAccessControl::new(
-                AllowDestinationAddress(worker.router_address.clone()),
-                ockam_core::ToDoAccessControl, // TODO @ac this needs Allow dynamic addresses
-            )),
-
-            */
+            Arc::new(AllowAll), // FIXME: @ac Allow to respond anywhere using return_route
         );
 
         // start worker
@@ -197,27 +168,17 @@ impl TcpPortalWorker {
     /// Start a `TcpPortalRecvProcessor`
     async fn start_receiver(&mut self, ctx: &Context, onward_route: Route) -> Result<()> {
         if let Some(rx) = self.rx.take() {
+            let next_hop = onward_route.next().cloned().unwrap(); // FIXME
             let receiver =
                 TcpPortalRecvProcessor::new(rx, self.internal_address.clone(), onward_route);
 
-            // TODO: @ac 0#TcpPortalRecvProcessor
-            // in:  n/a
-            // out: 0#TcpPortalRecvProcessor_7  =>  [0#TcpPortalWorker_internal_5, 0#TcpRouter_main_addr_0]
-            // TODO processors can't receive messages, should they be incoming:DenyAll by default?
             let mailbox = Mailbox::new(
                 self.receiver_address.clone(),
-                Arc::new(AllowAll),
-                Arc::new(AllowAll),
-                /*
-                Arc::new(ockam_core::DenyAll),
-                Arc::new(ockam_core::AnyAccessControl::new(
-                    AllowDestinationAddress(self.internal_address.clone()),
-                    // TODO @ac incoming message onward route
-                    // Is this always going to be TcpRouter_main_addr? Nope!
-                    // AllowDestinationAddress(self.router_address.clone()),
-                    LocalOriginOnly, // TODO @ac I don't think we can get this tighter given it's defined by msg
-                )),
-                 */
+                Arc::new(DenyAll),
+                Arc::new(AllowDestinationAddresses(vec![
+                    next_hop,
+                    self.internal_address.clone(),
+                ])), // Only sends messages to `onward_route` and Sender
             );
             ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), receiver)
                 .start(ctx)

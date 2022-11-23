@@ -24,15 +24,10 @@ pub(crate) struct TcpRouterHandle {
 #[async_trait]
 impl AsyncTryClone for TcpRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
-        // TODO @ac 0#TcpRouterHandle.async_try_clone.detached
-        // in:  n/a - DenyAll?
-        // out: n/a - DenyAll?
         let mailboxes = Mailboxes::new(
-            Mailbox::new(
-                Address::random_tagged("TcpRouterHandle.async_try_clone.detached"),
-                Arc::new(ockam_core::AllowAll),
-                Arc::new(ockam_core::AllowAll),
-            ),
+            Mailbox::deny_all(Address::random_tagged(
+                "TcpRouterHandle.async_try_clone.detached",
+            )),
             vec![],
         );
         let child_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
@@ -120,31 +115,14 @@ impl TcpRouterHandle {
                 .map(|x| Address::from_string(format!("{}#{}", TCP, x))),
         );
         let self_addr = pair.tx_addr();
-        // TODO @ac 0#RegisterConnectionWorker.detached
-        // in:   0#RegisterConnectionWorker.detached_10  <=  [0#TcpRouter_main_addr_0]
-        // out:  0#RegisterConnectionWorker.detached_10  =>  [0#TcpRouter_api_addr_1]
-        // TODO use Context::send_and_receive() ?
-        let mailboxes = Mailboxes::new(
-            Mailbox::new(
-                Address::random_tagged("RegisterConnectionWorker.detached"),
-                Arc::new(ockam_core::AllowAll),
-                Arc::new(ockam_core::AllowAll),
-            ),
-            vec![],
-        );
-        let mut child_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
 
-        child_ctx
-            .send(
+        let response = self
+            .ctx
+            .send_and_receive(
                 self.api_addr.clone(),
                 TcpRouterRequest::Register { accepts, self_addr },
             )
             .await?;
-        let response = child_ctx
-            .receive::<TcpRouterResponse>()
-            .await?
-            .take()
-            .body();
 
         if let TcpRouterResponse::Register(res) = response {
             res

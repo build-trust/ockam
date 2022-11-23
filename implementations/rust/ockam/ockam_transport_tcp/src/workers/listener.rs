@@ -2,7 +2,7 @@ use crate::{TcpRouterHandle, TcpSendWorker};
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
-    AllowAll, AsyncTryClone,
+    AllowSourceAddress, AsyncTryClone, DenyAll,
 };
 use ockam_core::{Address, Mailbox, Mailboxes, Processor, Result};
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
@@ -36,17 +36,7 @@ impl TcpListenProcessor {
             router_handle,
         };
 
-        // TODO @ac 0#TcpListenProcessor
-        // in:  n/a - but it breaks if we set DenyAll - anything inheriting
-        //            context from us maybe like TcpSendWorker_tx_addr or DelayedEvent ?
-        // out: n/a
-        let mailbox = Mailbox::new(
-            Address::random_tagged("TcpListenProcessor"),
-            Arc::new(AllowAll),
-            // ockam_node::access_control::LocalOriginOnly), // DEBUG
-            Arc::new(AllowAll),
-            // Arc::new(ockam_core::DenyAll),
-        );
+        let mailbox = Mailbox::deny_all(Address::random_tagged("TcpListenProcessor"));
         ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), processor)
             .start(ctx)
             .await?;
@@ -72,7 +62,7 @@ impl Processor for TcpListenProcessor {
 
         let handle_clone = self.router_handle.async_try_clone().await?;
         // And create a connection worker for it
-        let (worker, pair) =
+        let (sender, pair) =
             TcpSendWorker::new_pair(handle_clone, Some(stream), peer, Vec::new()).await?;
 
         // Register the connection with the local TcpRouter
@@ -82,16 +72,24 @@ impl Processor for TcpListenProcessor {
         trace! {
             peer = %peer,
             tx_addr = %pair.tx_addr(),
-            int_addr = %worker.internal_addr(),
+            int_addr = %sender.internal_addr(),
             "starting tcp connection worker"
         };
 
-        // TODO: @ac
-        let mailboxes = Mailboxes::new(
-            Mailbox::allow_all(pair.tx_addr()),
-            vec![Mailbox::allow_all(worker.internal_addr().clone())],
+        let tx_mailbox = Mailbox::new(
+            pair.tx_addr(),
+            Arc::new(AllowSourceAddress(self.router_handle.main_addr().clone())),
+            Arc::new(DenyAll),
         );
-        WorkerBuilder::with_mailboxes(mailboxes, worker)
+
+        let internal_mailbox = Mailbox::new(
+            sender.internal_addr().clone(),
+            Arc::new(AllowSourceAddress(sender.rx_addr().clone())),
+            Arc::new(DenyAll),
+        );
+
+        let mailboxes = Mailboxes::new(tx_mailbox, vec![internal_mailbox]);
+        WorkerBuilder::with_mailboxes(mailboxes, sender)
             .start(ctx)
             .await?;
 
