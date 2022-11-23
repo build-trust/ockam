@@ -658,6 +658,31 @@ impl Context {
     /// [`Context::send`]: crate::Context::send
     /// [`TransportMessage`]: ockam_core::TransportMessage
     pub async fn forward(&self, local_msg: LocalMessage) -> Result<()> {
+        self.forward_from_address(local_msg, self.address()).await
+    }
+
+    /// Forward a transport message to its next routing destination
+    ///
+    /// Similar to [`Context::send`], but taking a
+    /// [`TransportMessage`], which contains the full destination
+    /// route, and calculated return route for this hop.
+    ///
+    /// **Note:** you most likely want to use
+    /// [`Context::send`] instead, unless you are writing an
+    /// external router implementation for ockam node.
+    ///
+    /// [`Context::send`]: crate::Context::send
+    /// [`TransportMessage`]: ockam_core::TransportMessage
+    pub async fn forward_from_address(
+        &self,
+        local_msg: LocalMessage,
+        sending_address: Address,
+    ) -> Result<()> {
+        // Check if the sender address exists
+        if !self.mailboxes.contains(&sending_address) {
+            return Err(Error::new_without_cause(Origin::Node, Kind::Invalid));
+        }
+
         // First resolve the next hop in the route
         let (reply_tx, mut reply_rx) = small_channel();
         let next = match local_msg.transport().onward_route.next() {
@@ -684,7 +709,7 @@ impl Context {
 
         // Pack the transport message into a RelayMessage wrapper
         let onward = local_msg.transport().onward_route.clone();
-        let relay_msg = RelayMessage::new(self.address(), addr, local_msg, onward);
+        let relay_msg = RelayMessage::new(sending_address, addr, local_msg, onward);
 
         debugger::log_outgoing_message(self, &relay_msg);
 
