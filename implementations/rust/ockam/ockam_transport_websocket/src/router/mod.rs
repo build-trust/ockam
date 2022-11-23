@@ -1,11 +1,12 @@
 use core::str::FromStr;
 use std::collections::BTreeMap;
 use std::ops::Deref;
+use std::sync::Arc;
 
 pub(crate) use handle::WebSocketRouterHandle;
 use ockam_core::{
-    async_trait, Address, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Message, Result,
-    Routed, Worker,
+    async_trait, Address, AllowAll, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Message,
+    Result, Routed, Worker,
 };
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
@@ -16,8 +17,8 @@ use serde::{Deserialize, Serialize};
 
 mod handle;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
-pub(crate) enum WebSocketRouterMessage {
+#[derive(Serialize, Deserialize, Debug, Message)]
+pub enum WebSocketRouterRequest {
     /// Register a new client to this routing scope.
     Register {
         /// Specify an accept scope for this client.
@@ -25,6 +26,11 @@ pub(crate) enum WebSocketRouterMessage {
         /// The clients own worker bus address.
         self_addr: Address,
     },
+}
+
+#[derive(Serialize, Deserialize, Debug, Message)]
+pub enum WebSocketRouterResponse {
+    Register(Result<()>),
 }
 
 /// A WebSocket address router and connection listener.
@@ -46,8 +52,8 @@ pub(crate) struct WebSocketRouter {
 impl WebSocketRouter {
     /// Create and register a new WebSocket router with the node context.
     pub(crate) async fn register(ctx: &Context) -> Result<WebSocketRouterHandle> {
-        let main_addr = Address::random_local();
-        let api_addr = Address::random_local();
+        let main_addr = Address::random_tagged("WebSocketRouter.main_addr");
+        let api_addr = Address::random_tagged("WebSocketRouter.api_addr");
         debug!(
             "Initialising new WebSocketRouter with address {}",
             &main_addr
@@ -56,7 +62,12 @@ impl WebSocketRouter {
         // Create the `WebSocketRouter` instance. Note that both the
         // router and the handle have independent contexts so that
         // they can manage their own lifecycle.
-        let child_ctx = ctx.new_detached(Address::random_local()).await?;
+        // This context is only used to start workers, doesn't need to send nor receive messages
+        let mailboxes = Mailboxes::new(
+            Mailbox::deny_all(Address::random_tagged("WebSocketRouter.detached")),
+            vec![],
+        );
+        let child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
         let router = Self {
             ctx: child_ctx,
             main_addr: main_addr.clone(),
@@ -67,10 +78,17 @@ impl WebSocketRouter {
 
         let handle = router.create_self_handle(ctx).await?;
 
-        // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::allow_all(main_addr.clone()),
-            vec![Mailbox::allow_all(api_addr)],
+            Mailbox::new(
+                main_addr.clone(),
+                Arc::new(AllowAll), // FIXME: @ac
+                Arc::new(AllowAll), // FIXME: @ac
+            ),
+            vec![Mailbox::new(
+                api_addr,
+                Arc::new(AllowAll), // FIXME: @ac
+                Arc::new(AllowAll), // FIXME: @ac
+            )],
         );
         WorkerBuilder::with_mailboxes(mailboxes, router)
             .start(ctx)
@@ -82,7 +100,11 @@ impl WebSocketRouter {
     }
 
     async fn create_self_handle(&self, ctx: &Context) -> Result<WebSocketRouterHandle> {
-        let handle_ctx = ctx.new_detached(Address::random_local()).await?;
+        let mailboxes = Mailboxes::new(
+            Mailbox::deny_all(Address::random_tagged("WebSocketRouter.handle")),
+            vec![],
+        );
+        let handle_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
         let handle = WebSocketRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }
@@ -99,16 +121,24 @@ impl Worker for WebSocketRouter {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+        let return_route = msg.return_route();
         let msg_addr = msg.msg_addr();
 
         if msg_addr == self.main_addr {
             self.handle_route(ctx, msg.into_local_message()).await?;
         } else if msg_addr == self.api_addr {
-            let msg = WebSocketRouterMessage::decode(msg.payload())?;
+            let msg = WebSocketRouterRequest::decode(msg.payload())?;
             match msg {
-                WebSocketRouterMessage::Register { accepts, self_addr } => {
+                WebSocketRouterRequest::Register { accepts, self_addr } => {
                     trace!("handle_message register: {:?} => {:?}", accepts, self_addr);
-                    self.handle_register(accepts, self_addr).await?;
+                    let res = self.handle_register(accepts, self_addr).await;
+
+                    ctx.send_from_address(
+                        return_route,
+                        WebSocketRouterResponse::Register(res),
+                        self.api_addr.clone(),
+                    )
+                    .await?;
                 }
             };
         } else {

@@ -5,7 +5,7 @@ use ockam_core::{async_trait, Address, AsyncTryClone, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
-use crate::router::WebSocketRouterMessage;
+use crate::router::{WebSocketRouterRequest, WebSocketRouterResponse};
 use crate::workers::{WebSocketListenProcessor, WorkerPair};
 use crate::{parse_socket_addr, WebSocketAddress};
 
@@ -41,12 +41,17 @@ impl WebSocketRouterHandle {
                 .map(|addr| addr.into()),
         );
         let self_addr = pair.tx_addr();
-        self.ctx
-            .send(
+        let response = self
+            .ctx
+            .send_and_receive(
                 self.api_addr.clone(),
-                WebSocketRouterMessage::Register { accepts, self_addr },
+                WebSocketRouterRequest::Register { accepts, self_addr },
             )
-            .await
+            .await?;
+
+        let WebSocketRouterResponse::Register(res) = response;
+
+        res
     }
 
     /// Bind an incoming connection listener for this router.

@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::stream::{SplitSink, SplitStream};
@@ -7,8 +8,8 @@ use tokio_tungstenite::tungstenite::protocol::Message as WebSocketMessage;
 
 use crate::error::WebSocketError;
 use ockam_core::{
-    async_trait, route, Address, Any, Decodable, Encodable, LocalMessage, Mailbox, Mailboxes,
-    Result, Routed, TransportMessage, Worker,
+    async_trait, route, Address, AllowAll, Any, Decodable, Encodable, LocalMessage, Mailbox,
+    Mailboxes, Result, Routed, TransportMessage, Worker,
 };
 use ockam_node::{Context, DelayedEvent, WorkerBuilder};
 use ockam_transport_core::TransportError;
@@ -48,19 +49,26 @@ impl WorkerPair {
     ) -> Result<WorkerPair> {
         trace!("Creating new WS worker pair");
 
-        let internal_addr = Address::random_local();
+        let internal_addr = Address::random_tagged("WebSocketSender.internal.from_client");
         let sender = WebSocketSendWorker::<TcpClientStream>::new(
             peer,
             internal_addr.clone(),
             DelayedEvent::create(ctx, internal_addr.clone(), vec![]).await?,
         );
 
-        let tx_addr = Address::random_local();
+        let tx_addr = Address::random_tagged("WebSocketSender.tx_addr.from_client");
 
-        // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::allow_all(tx_addr.clone()),
-            vec![Mailbox::allow_all(internal_addr)],
+            Mailbox::new(
+                tx_addr.clone(),
+                Arc::new(AllowAll), // FIXME: @ac
+                Arc::new(AllowAll), // FIXME: @ac
+            ),
+            vec![Mailbox::new(
+                internal_addr,
+                Arc::new(AllowAll), // FIXME: @ac
+                Arc::new(AllowAll), // FIXME: @ac
+            )],
         );
         WorkerBuilder::with_mailboxes(mailboxes, sender)
             .start(ctx)
@@ -84,7 +92,7 @@ impl WorkerPair {
     ) -> Result<WorkerPair> {
         trace!("Creating new WS worker pair");
 
-        let internal_addr = Address::random_local();
+        let internal_addr = Address::random_tagged("WebSocketSender.internal.from_server");
         let sender = WebSocketSendWorker::<TcpServerStream>::new(
             stream,
             peer,
@@ -92,11 +100,18 @@ impl WorkerPair {
             DelayedEvent::create(ctx, internal_addr.clone(), vec![]).await?,
         );
 
-        let tx_addr = Address::random_local();
-        // TODO: @ac
+        let tx_addr = Address::random_tagged("WebSocketSender.tx_addr.from_server");
         let mailboxes = Mailboxes::new(
-            Mailbox::allow_all(tx_addr.clone()),
-            vec![Mailbox::allow_all(internal_addr)],
+            Mailbox::new(
+                tx_addr.clone(),
+                Arc::new(AllowAll), // FIXME: @ac
+                Arc::new(AllowAll), // FIXME: @ac
+            ),
+            vec![Mailbox::new(
+                internal_addr,
+                Arc::new(AllowAll), // FIXME: @ac
+                Arc::new(AllowAll), // FIXME: @ac
+            )],
         );
         WorkerBuilder::with_mailboxes(mailboxes, sender)
             .start(ctx)
@@ -134,9 +149,15 @@ where
 {
     async fn handle_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         if let Some(ws_stream) = self.ws_stream.take() {
-            let rx_addr = Address::random_local();
+            let rx_addr = Address::random_tagged("WebSocketSendWorker.rx_addr");
             let receiver = WebSocketRecvProcessor::new(ws_stream, self.peer);
-            ctx.start_processor(rx_addr.clone(), receiver).await?;
+            ctx.start_processor_with_access_control(
+                rx_addr.clone(),
+                receiver,
+                Arc::new(AllowAll), // FIXME: @ac
+                Arc::new(AllowAll), // FIXME: @ac
+            )
+            .await?;
         } else {
             return Err(TransportError::GenericIo.into());
         }
