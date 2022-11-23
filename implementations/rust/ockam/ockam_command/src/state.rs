@@ -43,7 +43,7 @@ pub struct VaultsState {
 impl VaultsState {
     fn new(cli_path: &Path) -> anyhow::Result<Self> {
         let dir = cli_path.join("vaults");
-        std::fs::create_dir_all(&dir)?;
+        std::fs::create_dir_all(dir.join("data"))?;
         Ok(Self { dir })
     }
 
@@ -136,7 +136,11 @@ impl VaultConfig {
             PathBuf::from(path)
         } else {
             let state = CliState::new()?;
-            state.vaults.dir.join(format!("{name}-storage.json"))
+            state
+                .vaults
+                .dir
+                .join("data")
+                .join(format!("{name}-storage.json"))
         })
     }
 
@@ -433,6 +437,7 @@ mod tests {
     use super::*;
     use tempfile::{tempdir, Builder};
 
+    // This test way too many different things
     #[ockam_macros::test(crate = "ockam")]
     async fn integration(ctx: &mut ockam::Context) -> ockam::Result<()> {
         let rnd_dir = Builder::new().prefix("ockam-").tempdir().unwrap();
@@ -497,6 +502,7 @@ mod tests {
             "vaults/default".to_string(),
             format!("vaults/{vault_name}.json"),
             format!("vaults/{vault_name}.data"),
+            format!("vaults/data"),
             "identities".to_string(),
             "identities/default".to_string(),
             format!("identities/{identity_name}.json"),
@@ -514,7 +520,6 @@ mod tests {
                     found_entries.push(dir_name.clone());
                     entry.path().read_dir().unwrap().for_each(|entry| {
                         let entry = entry.unwrap();
-                        assert!(entry.path().is_file());
                         let file_name = entry.file_name().into_string().unwrap();
                         found_entries.push(format!("{dir_name}/{file_name}"));
                     });
