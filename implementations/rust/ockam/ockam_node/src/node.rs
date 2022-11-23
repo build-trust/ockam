@@ -1,6 +1,6 @@
 use crate::{debugger, Context, Executor};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{AccessControl, Address, DenyAll, Mailbox, Mailboxes};
+use ockam_core::{Address, DenyAll, Mailbox, Mailboxes};
 
 /// A minimal worker implementation that does nothing
 pub struct NullWorker;
@@ -16,41 +16,24 @@ impl ockam_core::Worker for NullWorker {
 /// `NodeBuilder::default()`.  Varying use-cases should use the
 /// builder API to customise the underlying node that is created.
 pub struct NodeBuilder {
-    incoming_access_control: Arc<dyn AccessControl>,
-    outgoing_access_control: Arc<dyn AccessControl>,
     logging: bool,
 }
 
-impl NodeBuilder {
-    /// Create a node with "AllowAll" access control
-    pub fn without_access_control() -> Self {
-        Self {
-            incoming_access_control: Arc::new(DenyAll),
-            outgoing_access_control: Arc::new(DenyAll),
-            logging: true,
-        }
+impl Default for NodeBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl NodeBuilder {
-    /// Create a node with custom access control
-    pub fn with_access_control(
-        incoming_access_control: Arc<dyn AccessControl>,
-        outgoing_access_control: Arc<dyn AccessControl>,
-    ) -> Self {
-        Self {
-            incoming_access_control,
-            outgoing_access_control,
-            logging: true,
-        }
+    /// Create a node
+    pub fn new() -> Self {
+        Self { logging: true }
     }
 
     /// Disable logging on this node
     pub fn no_logging(self) -> Self {
-        Self {
-            logging: false,
-            ..self
-        }
+        Self { logging: false }
     }
 
     /// Consume this builder and yield a new Ockam Node
@@ -60,10 +43,7 @@ impl NodeBuilder {
             setup_tracing();
         }
 
-        info!(
-            "Initializing ockam node with access control incoming: {:?}, outgoing: {:?}",
-            self.incoming_access_control, self.outgoing_access_control
-        );
+        info!("Initializing ockam node");
 
         let mut exe = Executor::new();
         let addr: Address = "app".into();
@@ -74,11 +54,7 @@ impl NodeBuilder {
             exe.runtime().clone(),
             exe.sender(),
             Mailboxes::new(
-                Mailbox::new(
-                    addr,
-                    self.incoming_access_control,
-                    self.outgoing_access_control,
-                ),
+                Mailbox::new(addr, Arc::new(DenyAll), Arc::new(DenyAll)),
                 vec![],
             ),
             None,

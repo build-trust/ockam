@@ -29,7 +29,7 @@ use crate::internals::{ast, ast::FnVariable, check, ctx::Context, symbol::*};
 ///     use core::time::Duration;
 ///     use ockam_core::{Error, errcode::{Origin, Kind}};
 ///     use ockam::{NodeBuilder, compat::{tokio::time::timeout, futures::FutureExt}};
-///     let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
+///     let (mut ctx, mut executor) = NodeBuilder::new().build();
 ///     executor
 ///         .execute(async move {
 ///             match AssertUnwindSafe(async {
@@ -99,7 +99,7 @@ fn output(mut cont: Container) -> TokenStream {
             use ockam_core::{Error, errcode::{Origin, Kind}};
             use #ockam_crate::{NodeBuilder, compat::{tokio::time::timeout, futures::FutureExt}};
 
-            let (mut #ctx_ident, mut executor) = NodeBuilder::without_access_control().build();
+            let (mut #ctx_ident, mut executor) = NodeBuilder::new().build();
             executor
                 .execute(async move {
                     // Wraps the test function call in a `catch_unwind` to catch possible panics.

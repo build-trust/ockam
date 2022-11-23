@@ -17,7 +17,7 @@ use tokio::time::sleep;
 #[test]
 fn start_and_shutdown_node__many_iterations__should_not_fail() {
     for _ in 0..100 {
-        let (mut ctx, mut executor) = NodeBuilder::without_access_control().build();
+        let (mut ctx, mut executor) = NodeBuilder::new().build();
         executor
             .execute(async move {
                 let res = std::panic::AssertUnwindSafe(async {

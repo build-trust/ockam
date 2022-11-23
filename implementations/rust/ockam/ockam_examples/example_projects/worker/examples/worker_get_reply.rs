@@ -18,7 +18,7 @@ impl Worker for Square {
 }
 
 fn main() {
-    let (mut app, mut exe) = ockam::NodeBuilder::without_access_control().build();
+    let (mut app, mut exe) = ockam::NodeBuilder::new().build();
 
     exe.execute(async move {
         app.start_worker("io.ockam.square", Square).await.unwrap();
