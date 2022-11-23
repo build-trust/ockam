@@ -4,10 +4,11 @@ use core::fmt;
 use minicbor::Decoder;
 use ockam_core::api::{decode_option, is_ok};
 use ockam_core::api::{Method, Request, Response};
-use ockam_core::{self, Address, Result, Route, Routed, Worker};
+use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_node::api::request;
 use ockam_node::Context;
+use std::sync::Arc;
 use tracing::trace;
 use types::Attribute;
 
@@ -92,7 +93,13 @@ impl fmt::Debug for Client {
 
 impl Client {
     pub async fn new(r: Route, ctx: &Context) -> ockam_core::Result<Self> {
-        let ctx = ctx.new_detached(Address::random_local()).await?;
+        let ctx = ctx
+            .new_detached_with_access_control(
+                Address::random_tagged("AuthClient.detached"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
+            .await?;
         Ok(Client {
             ctx,
             route: r,

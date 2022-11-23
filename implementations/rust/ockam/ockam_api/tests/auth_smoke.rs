@@ -1,13 +1,19 @@
 use ockam::authenticated_storage::{AuthenticatedStorage, InMemoryStorage};
 use ockam_api::auth;
-use ockam_core::Result;
+use ockam_core::{AllowAll, Result};
 use ockam_node::Context;
+use std::sync::Arc;
 
 #[ockam_macros::test]
 async fn auth_smoke(ctx: &mut Context) -> Result<()> {
     let s = InMemoryStorage::new();
-    ctx.start_worker("auth", auth::Server::new(s.clone()))
-        .await?;
+    ctx.start_worker_with_access_control(
+        "auth",
+        auth::Server::new(s.clone()),
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    )
+    .await?;
 
     let mut client = auth::Client::new("auth".into(), ctx).await?;
 

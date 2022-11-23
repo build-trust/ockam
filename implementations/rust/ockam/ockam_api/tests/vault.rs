@@ -6,16 +6,23 @@ use ockam_api::vault::models::{
 use ockam_api::vault::VaultService;
 use ockam_core::api::{Request, Response, Status};
 use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType};
-use ockam_core::{route, Result};
+use ockam_core::{route, AllowAll, Result};
 use ockam_node::Context;
 use ockam_vault::Vault;
+use std::sync::Arc;
 
 #[ockam_macros::test]
 async fn full_flow(ctx: &mut Context) -> Result<()> {
     // Start service
     let service = VaultService::new(Vault::create());
 
-    ctx.start_worker("vault_service", service).await?;
+    ctx.start_worker_with_access_control(
+        "vault_service",
+        service,
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    )
+    .await?;
 
     // Generate Ed25519 Key
     let body = CreateSecretRequest::new_generate(SecretAttributes::new(

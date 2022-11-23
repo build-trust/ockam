@@ -734,7 +734,7 @@ fn file_stem(path: &Path) -> Result<String> {
 mod tests {
     use super::*;
 
-    // This test way too many different things
+    // This tests way too many different things
     #[ockam_macros::test(crate = "ockam")]
     async fn integration(ctx: &mut ockam::Context) -> ockam::Result<()> {
         let sut = CliState::test()?;
