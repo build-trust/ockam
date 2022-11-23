@@ -4,7 +4,7 @@ use crate::{relay::ProcessorRelay, Context, NodeMessage};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
     errcode::{Kind, Origin},
-    AccessControl, Address, AllowAll, Error, Mailboxes, Processor, Result,
+    AccessControl, Address, DenyAll, Error, Mailboxes, Processor, Result,
 };
 
 /// Start a [`Processor`] with a custom [`AccessControl`] configuration
@@ -29,7 +29,7 @@ where
 {
     /// Create a processor with `AllowAll` access control
     pub fn without_access_control(address: impl Into<Address>, processor: P) -> Self {
-        let mailboxes = Mailboxes::main(address.into(), Arc::new(AllowAll), Arc::new(AllowAll));
+        let mailboxes = Mailboxes::main(address.into(), Arc::new(DenyAll), Arc::new(DenyAll));
         // TODO: @ac can we just default DenyAll ?
         //let mailboxes = Mailboxes::from_address_set(address.into(), Arc::new(ockam_core::DenyAll), Arc::new(ockam_core::DenyAll));
 
