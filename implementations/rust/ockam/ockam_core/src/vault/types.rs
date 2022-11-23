@@ -291,22 +291,27 @@ pub struct VaultEntry {
     secret: Secret,
 }
 
+/// A secret key or reference.
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
 #[rustfmt::skip]
 pub enum Secret {
+    /// A secret key.
     #[n(0)] Key(#[n(0)] SecretKey),
+    /// Reference to an unmanaged, external secret key.
     #[n(1)] Ref(#[n(1)] KeyId)
 }
 
 impl Secret {
+    /// Treat this secret as a secret key and pull the key out.
+    ///
+    /// # Panics
+    ///
+    /// If the secret does not hold a key.
     pub fn cast_as_key(&self) -> &SecretKey {
-        if let Secret::Key(k) = self {
-            k
-        } else {
-            panic!("`Secret` does not hold a key")
-        }
+        self.try_as_key().expect("`Secret` holds a key")
     }
 
+    /// Treat this secret as a secret key and try to pull the key out.
     pub fn try_as_key(&self) -> Result<&SecretKey, Error> {
         if let Secret::Key(k) = self {
             Ok(k)
@@ -326,12 +331,14 @@ impl VaultEntry {
         self.key_attributes
     }
 
+    /// Get the secret part of this vault entry.
     pub fn secret(&self) -> &Secret {
         &self.secret
     }
 }
 
 impl VaultEntry {
+    /// Create a new vault entry.
     pub fn new(key_attributes: SecretAttributes, secret: Secret) -> Self {
         VaultEntry {
             key_attributes,
@@ -339,6 +346,7 @@ impl VaultEntry {
         }
     }
 
+    /// Create a new vault entry with a secret key.
     pub fn new_key(key_attributes: SecretAttributes, key: SecretKey) -> Self {
         VaultEntry {
             key_attributes,
@@ -346,6 +354,7 @@ impl VaultEntry {
         }
     }
 
+    /// Create a new vault entry with an external secret key.
     pub fn new_ref(key_attributes: SecretAttributes, kid: KeyId) -> Self {
         VaultEntry {
             key_attributes,

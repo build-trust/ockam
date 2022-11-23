@@ -236,21 +236,23 @@ mod tests {
     use ockam_node::tokio;
 
     // A key ID that refers to an existing AWS KMS NIST P-256 key.
-    const PREEXISTING_KEY_ID: &str = "9a573bc4-ea26-4c41-906d-532ab6d176ca";
+    const PREEXISTING_KEY_ID: &str = "d1583be3-23f6-4ad7-9214-33a1e64e2374";
 
     #[tokio::test]
+    #[ignore]
     async fn sign_verify_with_existing_key() {
         let keyid = PREEXISTING_KEY_ID.to_string();
-        let kms = Kms::new().await.unwrap();
+        let kms = Kms::default().await.unwrap();
         let msg = b"hello world";
         let sig = kms.sign(&keyid, &msg[..]).await.unwrap();
         assert!(kms.verify(&keyid, &msg[..], &sig).await.unwrap())
     }
 
     #[tokio::test]
+    #[ignore]
     async fn sign_with_aws_verify_locally() {
         let keyid = PREEXISTING_KEY_ID.to_string();
-        let kms = Kms::new().await.unwrap();
+        let kms = Kms::default().await.unwrap();
         let msg = b"hello world";
         let sig = kms.sign(&keyid, &msg[..]).await.unwrap();
         let pky = kms.public_key(&keyid).await.unwrap();

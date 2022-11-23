@@ -11,7 +11,7 @@ use ockam_core::vault::{
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 #[cfg(any(feature = "evercrypt", feature = "rustcrypto"))]
-use crate::error::from_pkcs8;
+use crate::error::{from_ecurve, from_pkcs8};
 
 impl Vault {
     /// Compute key id from secret and attributes. Only Curve25519 and Buffer types are supported
@@ -158,7 +158,7 @@ impl SecretVault for Vault {
                         use p256::ecdsa::SigningKey;
                         use p256::pkcs8::EncodePrivateKey;
                         let sec = SigningKey::random(thread_rng());
-                        let sec = p256::SecretKey::from_be_bytes(&sec.to_bytes()).unwrap(); // TODO
+                        let sec = p256::SecretKey::from_be_bytes(&sec.to_bytes()).map_err(from_ecurve)?;
                         let doc = sec.to_pkcs8_der().map_err(from_pkcs8)?;
                         Secret::Key(SecretKey::new(doc.as_bytes().to_vec()))
                     } else {
@@ -226,11 +226,7 @@ impl SecretVault for Vault {
         self.preload_from_storage(key_id).await;
 
         let entries = self.data.entries.read().await;
-        let entry = if let Some(entry) = entries.get(key_id) {
-            entry
-        } else {
-            return Err(VaultError::EntryNotFound.into());
-        };
+        let entry = entries.get(key_id).ok_or(VaultError::EntryNotFound)?;
 
         match entry.key_attributes().stype() {
             SecretType::X25519 => {
@@ -299,11 +295,11 @@ impl SecretVault for Vault {
 
         match entries.remove(&key_id) {
             None => return Err(VaultError::EntryNotFound.into()),
-            Some(entry) =>
+            Some(_entry) =>
             {
                 #[cfg(feature = "aws")]
                 if let Some(kms) = &self.aws_kms {
-                    if let Secret::Ref(kid) = entry.secret() {
+                    if let Secret::Ref(kid) = _entry.secret() {
                         if !kms.delete_key(kid).await? {
                             return Err(VaultError::EntryNotFound.into());
                         }
@@ -320,7 +316,10 @@ impl SecretVault for Vault {
 fn public_key(secret: &[u8]) -> Result<PublicKey> {
     use p256::pkcs8::{DecodePrivateKey, EncodePublicKey};
     let sec = p256::ecdsa::SigningKey::from_pkcs8_der(secret).map_err(from_pkcs8)?;
-    let pky = sec.verifying_key().to_public_key_der().unwrap(); // TODO
+    let pky = sec
+        .verifying_key()
+        .to_public_key_der()
+        .map_err(from_pkcs8)?;
     Ok(PublicKey::new(pky.as_ref().to_vec(), SecretType::NistP256))
 }
 

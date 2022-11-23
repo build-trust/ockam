@@ -58,6 +58,7 @@ impl Verifier for Vault {
                         let s = Signature::from_der(signature.as_ref()).map_err(from_ecdsa)?;
                         Ok(k.verify(data, &s).is_ok())
                     } else if #[cfg(feature = "evercrypt")] {
+                        use crate::error::from_evercrypt;
                         use evercrypt::digest;
                         use p256::ecdsa::{VerifyingKey, Signature};
                         use p256::pkcs8::DecodePublicKey;
@@ -66,7 +67,8 @@ impl Verifier for Vault {
                         let s = Signature::from_der(signature.as_ref()).map_err(from_ecdsa)?;
                         let (r, s) = s.split_bytes();
                         let s = evercrypt::p256::Signature::new(&r.into(), &s.into());
-                        let b = evercrypt::p256::ecdsa_verify(digest::Mode::Sha256, data, k.as_ref(), &s).unwrap();
+                        let b = evercrypt::p256::ecdsa_verify(digest::Mode::Sha256, data, k.as_ref(), &s)
+                            .map_err(from_evercrypt)?;
                         Ok(b)
                     } else {
                         compile_error!("one of features {evercrypt,rustcrypto} must be given")

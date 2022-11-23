@@ -31,13 +31,13 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        create_default_identity_if_needed(ctx, cfg, None).await?;
+        create_default_identity_if_needed(ctx, cfg, false, None).await?;
     }
 
     let identity_override = if cmd.skip_defaults {
         None
     } else {
-        Some(get_identity_override(ctx, cfg).await?)
+        Some(get_identity_override(ctx, cfg, false).await?)
     };
 
     let project_id = match &cmd.project {
@@ -64,7 +64,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
             node_dir,
             cmd.skip_defaults || cmd.launch_config.is_some(),
             identity_override,
-            cfg.is_aws_kms_enabled(),
+            false,
         ),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
@@ -87,8 +87,11 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
 pub(super) async fn create_default_identity_if_needed(
     ctx: &Context,
     cfg: &OckamConfig,
+    aws: bool,
     kid: Option<&KeyId>,
 ) -> Result<()> {
+    debug_assert!(if kid.is_some() { aws } else { true });
+
     // Get default root vault (create if needed)
     let default_vault_path = cfg.get_default_vault_path().unwrap_or_else(|| {
         let default_vault_path = cli::OckamConfig::dir().join("default_vault.json");
@@ -99,7 +102,7 @@ pub(super) async fn create_default_identity_if_needed(
     let storage = FileStorage::create(default_vault_path.clone()).await?;
     let mut vault = Vault::new(Some(Arc::new(storage)));
 
-    if cfg.is_aws_kms_enabled() {
+    if aws {
         vault.enable_aws_kms().await?
     }
 
@@ -127,6 +130,7 @@ pub(super) async fn create_default_identity_if_needed(
 pub(super) async fn get_identity_override(
     ctx: &Context,
     cfg: &OckamConfig,
+    aws: bool,
 ) -> Result<IdentityOverride> {
     // Get default root vault
     let default_vault_path = cfg
@@ -136,7 +140,7 @@ pub(super) async fn get_identity_override(
     let storage = FileStorage::create(default_vault_path.clone()).await?;
     let mut vault = Vault::new(Some(Arc::new(storage)));
 
-    if cfg.is_aws_kms_enabled() {
+    if aws {
         vault.enable_aws_kms().await?
     }
 

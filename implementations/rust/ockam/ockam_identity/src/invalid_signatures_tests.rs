@@ -2,7 +2,7 @@ use crate::change::IdentitySignedChange;
 use crate::change_history::IdentityChangeHistory;
 use crate::{Identity, IdentityVault, PublicIdentity};
 use ockam_core::vault::{
-    AsymmetricVault, Buffer, Hasher, KeyId, PublicKey, SecretAttributes, SecretKey, SecretVault,
+    AsymmetricVault, Buffer, Hasher, KeyId, PublicKey, Secret, SecretAttributes, SecretVault,
     Signature, Signer, SmallBuffer, SymmetricVault, Verifier,
 };
 use ockam_core::{async_trait, compat::boxed::Box};
@@ -115,11 +115,11 @@ impl<V: IdentityVault> SecretVault for CrazyVault<V> {
         self.vault.secret_generate(attributes).await
     }
 
-    async fn secret_import(&self, secret: &[u8], attributes: SecretAttributes) -> Result<KeyId> {
+    async fn secret_import(&self, secret: Secret, attributes: SecretAttributes) -> Result<KeyId> {
         self.vault.secret_import(secret, attributes).await
     }
 
-    async fn secret_export(&self, key_id: &KeyId) -> Result<SecretKey> {
+    async fn secret_export(&self, key_id: &KeyId) -> Result<Secret> {
         self.vault.secret_export(key_id).await
     }
 

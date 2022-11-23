@@ -79,10 +79,6 @@ impl OckamConfig {
         self.inner.read().default_vault_path.clone()
     }
 
-    pub fn is_aws_kms_enabled(&self) -> bool {
-        self.inner.read().is_aws_kms_enabled()
-    }
-
     pub fn get_default_identity(&self) -> Option<Vec<u8>> {
         self.inner.read().default_identity.clone()
     }
@@ -181,10 +177,6 @@ impl OckamConfig {
 
     pub fn set_default_vault_path(&self, default_vault_path: Option<PathBuf>) {
         self.inner.write().default_vault_path = default_vault_path
-    }
-
-    pub fn enable_aws_kms(&self, val: bool) {
-        self.inner.write().enable_aws_kms(val)
     }
 
     pub fn set_default_identity(&self, default_identity: Option<Vec<u8>>) {

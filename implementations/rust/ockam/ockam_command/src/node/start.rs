@@ -22,6 +22,9 @@ pub struct StartCommand {
     /// Name of the node.
     #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
     node_name: String,
+
+    #[arg(long, default_value = "false")]
+    aws_kms: bool,
 }
 
 impl StartCommand {
@@ -89,6 +92,7 @@ async fn restart_background_node(
         &cfg_node.addr().to_string(), // The selected node api address
         None,                         // No project information available
         None,                         // No invitation code available
+        cmd.aws_kms,
     )?;
 
     Ok(())

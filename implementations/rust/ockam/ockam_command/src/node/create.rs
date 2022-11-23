@@ -82,6 +82,10 @@ pub struct CreateCommand {
     #[arg(long = "enrollment-token", value_name = "ENROLLMENT_TOKEN", value_parser = otc_parser)]
     token: Option<OneTimeCode>,
 
+    /// Enable AWS KMS integration.
+    #[arg(long, default_value = "false")]
+    aws_kms: bool,
+
     /// Use an existing AWS KMS key.
     #[arg(long)]
     key_id: Option<String>,
@@ -117,13 +121,16 @@ impl Default for CreateCommand {
             project: None,
             config: None,
             token: None,
+            aws_kms: false,
             key_id: None,
         }
     }
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(mut self, options: CommandGlobalOpts) {
+        self.aws_kms |= self.key_id.is_some();
+
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
             if let Err(e) = create_foreground_node(&options, &self) {
@@ -229,13 +236,13 @@ async fn run_foreground_node(
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        create_default_identity_if_needed(&ctx, cfg, cmd.key_id.as_ref()).await?;
+        create_default_identity_if_needed(&ctx, cfg, cmd.aws_kms, cmd.key_id.as_ref()).await?;
     }
 
     let identity_override = if cmd.skip_defaults {
         None
     } else {
-        Some(get_identity_override(&ctx, cfg).await?)
+        Some(get_identity_override(&ctx, cfg, cmd.aws_kms).await?)
     };
 
     let project_id = match &cmd.project {
@@ -266,7 +273,7 @@ async fn run_foreground_node(
             node_dir,
             cmd.skip_defaults || cmd.launch_config.is_some(),
             identity_override,
-            cfg.is_aws_kms_enabled(),
+            cmd.aws_kms,
         ),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
@@ -411,7 +418,7 @@ async fn spawn_background_node(
     cfg.create_node(&cmd.node_name, addr, verbose)?;
     cfg.persist_config_updates()?;
 
-    create_default_identity_if_needed(ctx, cfg, cmd.key_id.as_ref()).await?;
+    create_default_identity_if_needed(ctx, cfg, cmd.aws_kms, cmd.key_id.as_ref()).await?;
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node
@@ -423,6 +430,7 @@ async fn spawn_background_node(
         &cmd.tcp_listener_address,
         cmd.project.as_deref(),
         cmd.token.as_ref(),
+        cmd.aws_kms,
     )?;
 
     Ok(())

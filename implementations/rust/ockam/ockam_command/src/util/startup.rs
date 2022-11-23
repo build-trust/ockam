@@ -45,6 +45,7 @@ pub fn spawn_node(
     address: &str,
     project: Option<&Path>,
     invite: Option<&OneTimeCode>,
+    aws_kms: bool,
 ) -> crate::Result<()> {
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
@@ -94,6 +95,10 @@ pub fn spawn_node(
     if let Some(c) = invite {
         args.push("--enrollment-token".to_string());
         args.push(hex::encode(c.code()))
+    }
+
+    if aws_kms {
+        args.push("--aws-kms".to_string())
     }
 
     args.push(name.to_owned());

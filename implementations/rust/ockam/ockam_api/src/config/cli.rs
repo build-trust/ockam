@@ -43,8 +43,6 @@ pub struct OckamConfig {
     pub default_vault_path: Option<PathBuf>,
     /// Default node
     pub default: Option<String>,
-    #[serde(default)]
-    aws_kms_enabled: bool,
 }
 
 fn default_nodes() -> BTreeMap<String, NodeConfigOld> {
@@ -64,7 +62,6 @@ impl ConfigValues for OckamConfig {
             default_identity: None,
             default_vault_path: None,
             default: None,
-            aws_kms_enabled: false,
         }
     }
 }
@@ -105,14 +102,6 @@ impl OckamConfig {
     /// This may be optimised in the future!
     pub fn lookup(&self) -> &ConfigLookup {
         &self.lookup
-    }
-
-    pub fn is_aws_kms_enabled(&self) -> bool {
-        self.aws_kms_enabled
-    }
-
-    pub fn enable_aws_kms(&mut self, val: bool) {
-        self.aws_kms_enabled = val
     }
 }
 
