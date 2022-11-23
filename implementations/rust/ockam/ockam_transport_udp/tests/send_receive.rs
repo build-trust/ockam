@@ -1,6 +1,7 @@
 use ockam_core::compat::rand::{self, Rng};
-use ockam_core::{route, Address, Result, Routed, Worker};
+use ockam_core::{route, AllowAll, Result, Routed, Worker};
 use ockam_node::Context;
+use std::sync::Arc;
 
 use ockam_transport_udp::{UdpTransport, UDP};
 use tracing::debug;
@@ -15,21 +16,25 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
     {
         let transport = UdpTransport::create(ctx).await?;
         transport.listen(bind_address).await?;
-        ctx.start_worker("echoer", Echoer).await?;
+        ctx.start_worker_with_access_control(
+            "echoer",
+            Echoer,
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        )
+        .await?;
     };
 
     // Sender
     {
-        let mut ctx = ctx.new_detached(Address::random_local()).await?;
         let msg: String = rand::thread_rng()
             .sample_iter(&rand::distributions::Alphanumeric)
             .take(256)
             .map(char::from)
             .collect();
         let r = route![(UDP, bind_address), "echoer"];
-        ctx.send(r, msg.clone()).await?;
+        let reply: String = ctx.send_and_receive(r, msg.clone()).await?;
 
-        let reply = ctx.receive::<String>().await?;
         assert_eq!(reply, msg, "Should receive the same message");
     };
 

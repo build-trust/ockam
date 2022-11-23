@@ -1,7 +1,10 @@
 use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
-use ockam_core::{async_trait, Address, LocalMessage, Processor, Result};
-use ockam_node::Context;
+use ockam_core::compat::sync::Arc;
+use ockam_core::{
+    async_trait, Address, AllowAll, LocalMessage, Mailbox, Mailboxes, Processor, Result,
+};
+use ockam_node::{Context, ProcessorBuilder};
 use tokio_util::udp::UdpFramed;
 use tracing::{debug, info};
 
@@ -36,7 +39,14 @@ impl UdpListenProcessor {
             tx_addr,
             router_handle,
         };
-        ctx.start_processor(Address::random_local(), processor)
+        // FIXME: @ac
+        let mailbox = Mailbox::new(
+            Address::random_tagged("UdpListenProcessor"),
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        );
+        ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), processor)
+            .start(ctx)
             .await?;
         Ok(())
     }
