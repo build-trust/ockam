@@ -1,6 +1,6 @@
 use crate::{debugger, Context, Executor};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{AccessControl, Address, AllowAll, Mailbox, Mailboxes, ToDoAccessControl};
+use ockam_core::{AccessControl, Address, DenyAll, Mailbox, Mailboxes};
 
 /// A minimal worker implementation that does nothing
 pub struct NullWorker;
@@ -15,32 +15,32 @@ impl ockam_core::Worker for NullWorker {
 /// The `start_node()` function wraps this type and simply calls
 /// `NodeBuilder::default()`.  Varying use-cases should use the
 /// builder API to customise the underlying node that is created.
-pub struct NodeBuilder<AC>
-where
-    AC: AccessControl,
-{
-    access_control: AC,
+pub struct NodeBuilder {
+    incoming_access_control: Arc<dyn AccessControl>,
+    outgoing_access_control: Arc<dyn AccessControl>,
     logging: bool,
 }
 
-impl NodeBuilder<AllowAll> {
+impl NodeBuilder {
     /// Create a node with "AllowAll" access control
     pub fn without_access_control() -> Self {
         Self {
-            access_control: AllowAll,
+            incoming_access_control: Arc::new(DenyAll),
+            outgoing_access_control: Arc::new(DenyAll),
             logging: true,
         }
     }
 }
 
-impl<AC> NodeBuilder<AC>
-where
-    AC: AccessControl,
-{
+impl NodeBuilder {
     /// Create a node with custom access control
-    pub fn with_access_control(access_control: AC) -> Self {
+    pub fn with_access_control(
+        incoming_access_control: Arc<dyn AccessControl>,
+        outgoing_access_control: Arc<dyn AccessControl>,
+    ) -> Self {
         Self {
-            access_control,
+            incoming_access_control,
+            outgoing_access_control,
             logging: true,
         }
     }
@@ -61,8 +61,8 @@ where
         }
 
         info!(
-            "Initializing ockam node with access control: {:?}",
-            self.access_control
+            "Initializing ockam node with access control incoming: {:?}, outgoing: {:?}",
+            self.incoming_access_control, self.outgoing_access_control
         );
 
         let mut exe = Executor::new();
@@ -70,12 +70,17 @@ where
 
         // The root application worker needs a mailbox and relay to accept
         // messages from workers, and to buffer incoming transcoded data.
-        let incoming = Arc::new(self.access_control);
-        let outgoing = Arc::new(ToDoAccessControl); // TODO: @ac
         let (ctx, sender, _) = Context::new(
             exe.runtime().clone(),
             exe.sender(),
-            Mailboxes::new(Mailbox::new(addr, incoming, outgoing), vec![]),
+            Mailboxes::new(
+                Mailbox::new(
+                    addr,
+                    self.incoming_access_control,
+                    self.outgoing_access_control,
+                ),
+                vec![],
+            ),
             None,
         );
 
