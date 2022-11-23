@@ -15,6 +15,8 @@ use crate::vault::VaultService;
 use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
 use ockam_core::api::{Request, Response, ResponseBuilder};
+use ockam_core::AllowAll;
+use std::sync::Arc;
 
 use super::NodeManagerWorker;
 
@@ -31,7 +33,13 @@ impl NodeManager {
         let vault = self.vault()?.async_try_clone().await?;
         let service = VaultService::new(vault);
 
-        ctx.start_worker(addr.clone(), service).await?;
+        ctx.start_worker_with_access_control(
+            addr.clone(),
+            service,
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll),
+        )
+        .await?;
 
         self.registry
             .vault_services
@@ -50,7 +58,15 @@ impl NodeManager {
         }
 
         let vault = self.vault()?.async_try_clone().await?;
-        IdentityService::create(ctx, addr.clone(), vault).await?;
+        let service = IdentityService::new(ctx, vault).await?;
+
+        ctx.start_worker_with_access_control(
+            addr.clone(),
+            service,
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll),
+        )
+        .await?;
 
         self.registry
             .identity_services
@@ -103,7 +119,13 @@ impl NodeManager {
 
         let s = self.authenticated_storage.async_try_clone().await?;
         let server = Server::new(s);
-        ctx.start_worker(addr.clone(), server).await?;
+        ctx.start_worker_with_access_control(
+            addr.clone(),
+            server,
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll),
+        )
+        .await?;
 
         self.registry
             .authenticated_services
@@ -123,7 +145,13 @@ impl NodeManager {
             ));
         }
 
-        ctx.start_worker(addr.clone(), Uppercase).await?;
+        ctx.start_worker_with_access_control(
+            addr.clone(),
+            Uppercase,
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll),
+        )
+        .await?;
 
         self.registry
             .uppercase_services
@@ -141,7 +169,13 @@ impl NodeManager {
             return Err(ApiError::generic("Echoer service exists at this address"));
         }
 
-        ctx.start_worker(addr.clone(), Echoer).await?;
+        ctx.start_worker_with_access_control(
+            addr.clone(),
+            Echoer,
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll),
+        )
+        .await?;
 
         self.registry
             .echoer_services
@@ -165,7 +199,13 @@ impl NodeManager {
         let db = self.authenticated_storage.async_try_clone().await?;
         let id = self.identity()?.async_try_clone().await?;
         let au = crate::authenticator::direct::Server::new(proj.to_vec(), db, path, id);
-        ctx.start_worker(addr.clone(), au).await?;
+        ctx.start_worker_with_access_control(
+            addr.clone(),
+            au,
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll),
+        )
+        .await?;
         self.registry
             .authenticator_service
             .insert(addr, AuthenticatorServiceInfo::default());
@@ -194,7 +234,13 @@ impl NodeManager {
         let db = self.authenticated_storage.async_try_clone().await?;
         let au =
             crate::okta::Server::new(proj.to_vec(), db, tenant_base_url, certificate, attributes)?;
-        ctx.start_worker(addr.clone(), au).await?;
+        ctx.start_worker_with_access_control(
+            addr.clone(),
+            au,
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll),
+        )
+        .await?;
         self.registry
             .okta_identity_provider_services
             .insert(addr, OktaIdentityProviderServiceInfo::default());
@@ -331,7 +377,13 @@ impl NodeManagerWorker {
 
         let vault = node_manager.vault.async_try_clone().await?;
         let vs = crate::verifier::Verifier::new(vault);
-        ctx.start_worker(addr.clone(), vs).await?;
+        ctx.start_worker_with_access_control(
+            addr.clone(),
+            vs,
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll),
+        )
+        .await?;
 
         node_manager
             .registry

@@ -57,6 +57,7 @@ impl NodeManager {
                 env,
             )))
         } else {
+            // TODO: @ac allow passing this as a cli argument
             Ok(Arc::new(AllowAll))
         }
     }

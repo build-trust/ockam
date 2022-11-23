@@ -1,14 +1,14 @@
-use core::convert::Infallible;
-
 use crate::identity::models::*;
+use core::convert::Infallible;
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
 use ockam_core::api::{Error, Id, Method, Request, Response, Status};
 use ockam_core::vault::Signature;
-use ockam_core::{Address, Result, Routed, Worker};
+use ockam_core::{Address, DenyAll, Result, Routed, Worker};
 use ockam_identity::change_history::IdentityHistoryComparison;
 use ockam_identity::{Identity, IdentityVault, PublicIdentity};
 use ockam_node::Context;
+use std::sync::Arc;
 use tracing::trace;
 
 /// Vault Service Worker
@@ -18,12 +18,17 @@ pub struct IdentityService<V: IdentityVault> {
 }
 
 impl<V: IdentityVault> IdentityService<V> {
-    pub async fn create(ctx: &Context, address: impl Into<Address>, vault: V) -> Result<()> {
-        let s = Self {
-            ctx: ctx.new_detached(Address::random_local()).await?,
+    pub async fn new(ctx: &Context, vault: V) -> Result<Self> {
+        Ok(Self {
+            ctx: ctx
+                .new_detached_with_access_control(
+                    Address::random_tagged("IdentityService.root"),
+                    Arc::new(DenyAll),
+                    Arc::new(DenyAll),
+                )
+                .await?,
             vault,
-        };
-        ctx.start_worker(address.into(), s).await
+        })
     }
 }
 

@@ -6,7 +6,7 @@ use minicbor::{Decoder, Encode};
 use ockam_core::api::{self, assert_request_match, assert_response_match};
 use ockam_core::api::{Error, Method, Request, RequestBuilder, Response, ResponseBuilder, Status};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{self, Address, Result, Route, Routed, Worker};
+use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_identity::credential::{Credential, SchemaId};
 use ockam_identity::{Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityVault};
@@ -15,6 +15,7 @@ use serde_json as json;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tracing::{trace, warn};
 use types::AddMember;
@@ -274,7 +275,13 @@ impl fmt::Debug for Client {
 
 impl Client {
     pub async fn new(r: Route, ctx: &Context) -> Result<Self> {
-        let ctx = ctx.new_detached(Address::random_local()).await?;
+        let ctx = ctx
+            .new_detached_with_access_control(
+                Address::random_tagged("AuthClient.direct.detached"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
+            .await?;
         Ok(Client {
             ctx,
             route: r,

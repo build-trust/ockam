@@ -6,8 +6,10 @@ use ockam_core::compat::rand::random;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, AsyncTryClone, Error, Result};
 use ockam_identity::change_history::IdentityHistoryComparison;
+use ockam_node::access_control::LocalOriginOnly;
 use ockam_node::Context;
 use ockam_vault::Vault;
+use std::sync::Arc;
 
 async fn create_identity(ctx: &mut Context, service_address: &str) -> Result<(Vec<u8>, String)> {
     let req = Request::post("").to_vec()?;
@@ -157,8 +159,20 @@ async fn full_flow(ctx: &mut Context) -> Result<()> {
     let vault2 = Vault::create();
 
     // Start services
-    IdentityService::create(ctx, "1", vault1.async_try_clone().await?).await?;
-    IdentityService::create(ctx, "2", vault2.async_try_clone().await?).await?;
+    ctx.start_worker_with_access_control(
+        "1",
+        IdentityService::new(ctx, vault1.async_try_clone().await?).await?,
+        Arc::new(LocalOriginOnly),
+        Arc::new(LocalOriginOnly),
+    )
+    .await?;
+    ctx.start_worker_with_access_control(
+        "2",
+        IdentityService::new(ctx, vault2.async_try_clone().await?).await?,
+        Arc::new(LocalOriginOnly),
+        Arc::new(LocalOriginOnly),
+    )
+    .await?;
 
     let (identity1, _identity_id1) = create_identity(ctx, "1").await?;
     let (identity2, _identity_id2) = create_identity(ctx, "2").await?;
