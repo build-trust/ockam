@@ -2,7 +2,10 @@
 // Starts a tcp listener at 127.0.0.1:3000
 // It then runs forever waiting to route messages.
 
-use ockam::{Context, Result, TcpTransport};
+use hello_ockam::Hop;
+use ockam::access_control::{AllowFromTransport, AllowToTransport};
+use ockam::{Context, Mailboxes, Result, TcpTransport, WorkerBuilder, TCP};
+use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -13,6 +16,18 @@ async fn main(ctx: Context) -> Result<()> {
     // Use port 3000, unless otherwise specified by command line argument.
     let port = std::env::args().nth(1).unwrap_or_else(|| "3000".to_string());
     tcp.listen(format!("127.0.0.1:{port}")).await?;
+
+    // Create an echoer worker
+    WorkerBuilder::with_mailboxes(
+        Mailboxes::main(
+            "hop",
+            Arc::new(AllowFromTransport::single(TCP)),
+            Arc::new(AllowToTransport::single(TCP)),
+        ),
+        Hop,
+    )
+    .start(&ctx)
+    .await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())

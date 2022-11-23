@@ -1,4 +1,4 @@
-use ockam::{Any, Context, Result, Routed, Worker};
+use ockam::{Any, Context, LocalMessage, Result, Routed, Worker};
 
 pub struct Hop;
 
@@ -13,14 +13,16 @@ impl Worker for Hop {
         println!("Address: {}, Received: {}", ctx.address(), msg);
 
         // Some type conversion
-        let mut message = msg.into_local_message();
-        let transport_message = message.transport_mut();
+        let mut transport_message = msg.into_local_message().into_transport_message();
 
         // Remove my address from the onward_route
         transport_message.onward_route.step()?;
 
         // Insert my address at the beginning return_route
         transport_message.return_route.modify().prepend(ctx.address());
+
+        // Wipe all local info (e.g. transport types)
+        let message = LocalMessage::new(transport_message, vec![]);
 
         // Send the message on its onward_route
         ctx.forward(message).await

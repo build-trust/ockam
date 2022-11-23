@@ -1,14 +1,16 @@
 // examples/receiver.rs
 
 use file_transfer::FileData;
+use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::InMemoryStorage;
 use ockam::{
     errcode::{Kind, Origin},
     identity::{Identity, TrustEveryonePolicy},
     remote::RemoteForwarder,
     vault::Vault,
-    Context, Error, Result, Routed, TcpTransport, Worker, TCP,
+    Context, Error, Mailboxes, Result, Routed, TcpTransport, Worker, WorkerBuilder, TCP,
 };
+use std::sync::Arc;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
@@ -114,7 +116,12 @@ async fn main(ctx: Context) -> Result<()> {
     println!("{}", forwarder.remote_address());
 
     // Start a worker, of type FileReception, at address "receiver".
-    ctx.start_worker("receiver", FileReception::default()).await?;
+    WorkerBuilder::with_mailboxes(
+        Mailboxes::main("receiver", Arc::new(AllowAll), Arc::new(AllowAll)),
+        FileReception::default(),
+    )
+    .start(&ctx)
+    .await?;
 
     // We won't call ctx.stop() here, this program will quit when the file will be entirely received
     Ok(())

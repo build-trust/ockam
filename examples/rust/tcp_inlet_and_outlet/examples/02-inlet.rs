@@ -1,4 +1,6 @@
+use ockam::access_control::AllowAll;
 use ockam::{route, Context, Result, TcpTransport, TCP};
+use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -29,7 +31,8 @@ async fn main(ctx: Context) -> Result<()> {
     //    and send it as raw TCP data to q connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
-    tcp.create_inlet(inlet_address, route_to_outlet).await?;
+    tcp.create_inlet(inlet_address, route_to_outlet, Arc::new(AllowAll))
+        .await?;
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
