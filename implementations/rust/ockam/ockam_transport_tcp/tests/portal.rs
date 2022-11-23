@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -5,6 +6,7 @@ use tokio::net::{TcpListener, TcpStream};
 
 use ockam_core::compat::rand::random;
 use ockam_core::{route, Result};
+use ockam_node::access_control::LocalOriginOnly;
 use ockam_node::Context;
 use ockam_transport_tcp::TcpTransport;
 
@@ -16,11 +18,14 @@ async fn setup(ctx: &Context) -> Result<(String, TcpListener)> {
     let listener = {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let bind_address = listener.local_addr().unwrap().to_string();
-        tcp.create_outlet("outlet", bind_address.clone()).await?;
+        tcp.create_outlet("outlet", bind_address.clone(), Arc::new(LocalOriginOnly))
+            .await?;
         listener
     };
 
-    let (_, inlet_saddr) = tcp.create_inlet("127.0.0.1:0", route!["outlet"]).await?;
+    let (_, inlet_saddr) = tcp
+        .create_inlet("127.0.0.1:0", route!["outlet"], Arc::new(LocalOriginOnly))
+        .await?;
 
     Ok((inlet_saddr.to_string(), listener))
 }

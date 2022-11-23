@@ -13,20 +13,14 @@ use tracing::debug;
 pub(crate) struct TcpOutletListenWorker {
     peer: String,
     access_control: Arc<dyn AccessControl>,
-    // router_address: Address, // TODO @ac for AccessControl // FIXME: Why is this needed
 }
 
 impl TcpOutletListenWorker {
     /// Create a new `TcpOutletListenWorker`
-    pub(crate) fn new(
-        peer: String,
-        access_control: Arc<dyn AccessControl>,
-        // router_address: Address,
-    ) -> Self {
+    pub(crate) fn new(peer: String, access_control: Arc<dyn AccessControl>) -> Self {
         Self {
             peer,
             access_control,
-            // router_address,
         }
     }
 }

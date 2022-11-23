@@ -10,7 +10,6 @@ use crate::{multiaddr_to_route, try_multiaddr_to_addr};
 use minicbor::Decoder;
 use ockam::compat::asynchronous::RwLock;
 use ockam::compat::tokio::time::timeout;
-use ockam::tcp::{InletOptions, OutletOptions};
 use ockam::{Address, Result};
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{Action, Env, PolicyAccessControl, PolicyStorage, Resource};
@@ -186,15 +185,13 @@ impl NodeManagerWorker {
             .access_control(&resource, &actions::HANDLE_MESSAGE, project_id)
             .await?;
 
-        let options = InletOptions::new(
-            listen_addr.clone(),
-            outlet_route.clone(),
-            access_control.clone(),
-        );
-
         let res = node_manager
             .tcp_transport
-            .create_inlet_extended(options)
+            .create_inlet(
+                listen_addr.clone(),
+                outlet_route.clone(),
+                access_control.clone(),
+            )
             .await;
 
         Ok(match res {
@@ -284,11 +281,9 @@ impl NodeManagerWorker {
             .access_control(&resource, &actions::HANDLE_MESSAGE, project_id)
             .await?;
 
-        let options = OutletOptions::new(worker_addr.clone(), tcp_addr.clone(), access_control);
-
         let res = node_manager
             .tcp_transport
-            .create_outlet_extended(options)
+            .create_outlet(worker_addr.clone(), tcp_addr.clone(), access_control)
             .await;
 
         Ok(match res {
@@ -390,8 +385,7 @@ fn replacer(
                 }
 
                 // Finally attempt to create a new inlet using the new route:
-                let opts = InletOptions::new(bind, r, access);
-                let wa = this.tcp_transport.create_inlet_extended(opts).await?.0;
+                let wa = this.tcp_transport.create_inlet(bind, r, access).await?.0;
                 data.put(INLET_WORKER, wa);
 
                 Ok(without_outlet_address(rest))

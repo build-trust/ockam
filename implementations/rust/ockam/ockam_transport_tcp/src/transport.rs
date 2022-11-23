@@ -1,7 +1,7 @@
 use ockam_core::access_control::AccessControl;
 use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
-use ockam_core::{Address, AllowAll, AsyncTryClone, Result, Route};
-use ockam_node::Context;
+use ockam_core::{Address, AsyncTryClone, DenyAll, Mailboxes, Result, Route};
+use ockam_node::{Context, WorkerBuilder};
 
 use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
 
@@ -112,60 +112,7 @@ impl TcpTransport {
     }
 }
 
-/// Args to start an Inlet
-pub struct InletOptions {
-    bind_addr: String,
-    outlet_route: Route,
-    access_control: Arc<dyn AccessControl>,
-}
-
-impl InletOptions {
-    // TODO: Generics
-    /// Constructor
-    pub fn new(
-        bind_addr: String,
-        outlet_route: Route,
-        access_control: Arc<dyn AccessControl>,
-    ) -> Self {
-        Self {
-            bind_addr,
-            outlet_route,
-            access_control,
-        }
-    }
-}
-
-/// Args to start an Outlet
-pub struct OutletOptions {
-    address: Address,
-    peer: String,
-    access_control: Arc<dyn AccessControl>,
-}
-
-impl OutletOptions {
-    // TODO: Generics
-    /// Constructor
-    pub fn new(address: Address, peer: String, access_control: Arc<dyn AccessControl>) -> Self {
-        Self {
-            address,
-            peer,
-            access_control,
-        }
-    }
-}
-
 impl TcpTransport {
-    /// Create an Inlet
-    pub async fn create_inlet_extended(
-        &self,
-        options: InletOptions,
-    ) -> Result<(Address, SocketAddr)> {
-        let bind_addr = parse_socket_addr(options.bind_addr)?;
-        self.router_handle
-            .bind_inlet(options.outlet_route, bind_addr, options.access_control)
-            .await
-    }
-
     /// Create Tcp Inlet that listens on bind_addr, transforms Tcp stream into Ockam Routable
     /// Messages and forward them to Outlet using outlet_route. Inlet is bidirectional: Ockam
     /// Messages sent to Inlet from Outlet (using return route) will be streamed to Tcp connection.
@@ -174,13 +121,14 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::{TcpTransport, TCP};
     /// # use ockam_node::Context;
-    /// # use ockam_core::{Result, route};
+    /// # use ockam_core::{AllowAll, Result, route};
+    /// # use ockam_core::compat::sync::Arc;
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let hop_addr = "INTERMEDIARY_HOP:8000";
     /// let route_path = route![(TCP, hop_addr), "outlet"];
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_inlet("inlet", route_path).await?;
+    /// tcp.create_inlet("inlet", route_path, Arc::new(AllowAll)).await?;
     /// # tcp.stop_inlet("inlet").await?;
     /// # Ok(()) }
     /// ```
@@ -188,10 +136,12 @@ impl TcpTransport {
         &self,
         bind_addr: impl Into<String>,
         outlet_route: impl Into<Route>,
+        access_control: Arc<dyn AccessControl>,
     ) -> Result<(Address, SocketAddr)> {
-        let options = InletOptions::new(bind_addr.into(), outlet_route.into(), Arc::new(AllowAll));
-
-        self.create_inlet_extended(options).await
+        let bind_addr = parse_socket_addr(bind_addr.into())?;
+        self.router_handle
+            .bind_inlet(outlet_route.into(), bind_addr, access_control)
+            .await
     }
 
     /// Stop inlet at addr
@@ -199,29 +149,19 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::{TcpTransport, TCP};
     /// # use ockam_node::Context;
-    /// # use ockam_core::{Result, route};
+    /// # use ockam_core::{AllowAll, Result, route};
+    /// # use ockam_core::compat::sync::Arc;
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let hop_addr = "INTERMEDIARY_HOP:8000";
     /// let route = route![(TCP, hop_addr), "outlet"];
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_inlet("inlet", route).await?;
+    /// tcp.create_inlet("inlet", route, Arc::new(AllowAll)).await?;
     /// tcp.stop_inlet("inlet").await?;
     /// # Ok(()) }
     /// ```
     pub async fn stop_inlet(&self, addr: impl Into<Address>) -> Result<()> {
         self.router_handle.stop_inlet(addr).await?;
-
-        Ok(())
-    }
-
-    /// Create an Outlet
-    pub async fn create_outlet_extended(&self, options: OutletOptions) -> Result<()> {
-        let worker = TcpOutletListenWorker::new(options.peer, options.access_control);
-        self.router_handle
-            .ctx()
-            .start_worker(options.address, worker)
-            .await?;
 
         Ok(())
     }
@@ -235,11 +175,12 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::TcpTransport;
     /// # use ockam_node::Context;
-    /// # use ockam_core::Result;
+    /// # use ockam_core::{AllowAll, Result};
+    /// # use ockam_core::compat::sync::Arc;
     /// # async fn test(ctx: Context) -> Result<()> {
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", "localhost:9000").await?;
+    /// tcp.create_outlet("outlet", "localhost:9000", Arc::new(AllowAll)).await?;
     /// # tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
@@ -247,76 +188,30 @@ impl TcpTransport {
         &self,
         address: impl Into<Address>,
         peer: impl Into<String>,
+        access_control: Arc<dyn AccessControl>,
     ) -> Result<()> {
-        let options = OutletOptions::new(address.into(), peer.into(), Arc::new(AllowAll));
-
-        self.create_outlet_extended(options).await
-    }
-
-    // FIXME
-    /*
-        let worker =
-            TcpOutletListenWorker::new(peer.into(), self.router_handle.main_addr().clone());
-
-        // TODO @ac #outlet
-        // in:  0#outlet  <=  [0#TcpRecvProcessor_11]
-        // out: n/a
-        // TODO allow messages received over TcpTransport, but can we restrict it further?
-        // TODO we also don't want to give everything created by this worker AllowedTransport
-        let mailbox = Mailbox::new(
-            address.into(),
-            // TODO @ac need a way to specify AC for incoming from client API because we
-            //          don't know if this is coming in over Transport or SecureChannel or...
-            Arc::new(ockam_core::AnyAccessControl::new(
-                ockam_core::CredentialAccessControl,
-                // ockam_node::access_control::AllowTransport::single(crate::TCP),
-                ockam_core::ToDoAccessControl,
-            )),
-            // TODO @ac 04-routing-over-transport-two-hops
-            Arc::new(ockam_core::ToDoAccessControl),
-        );
-        WorkerBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), worker)
-            .start(self.router_handle.ctx())
-            .await?;
+        let worker = TcpOutletListenWorker::new(peer.into(), access_control.clone());
+        WorkerBuilder::with_mailboxes(
+            Mailboxes::main(address.into(), access_control, Arc::new(DenyAll)),
+            worker,
+        )
+        .start(self.router_handle.ctx())
+        .await?;
 
         Ok(())
     }
-
-    /// FIXME
-    ///
-    /// TODO @deprecated AllowTransport::single(TCP) should be the
-    ///      default behavior for create_outlet ?
-    pub async fn create_outlet_with_access_control<AC>(
-        &self,
-        address: impl Into<Address>,
-        peer: impl Into<String>,
-        access_control: AC,
-    ) -> Result<()>
-    where
-        AC: AccessControl,
-    {
-        let worker =
-            TcpOutletListenWorker::new(peer.into(), self.router_handle.main_addr().clone());
-
-        WorkerBuilder::with_access_control(access_control, address.into(), worker)
-            .start(self.router_handle.ctx())
-            .await?;
-
-        Ok(())
-    }
-
-     */
 
     /// Stop outlet at addr
     /// ```rust
     /// use ockam_transport_tcp::TcpTransport;
     /// # use ockam_node::Context;
-    /// # use ockam_core::Result;
+    /// # use ockam_core::compat::sync::Arc;
+    /// # use ockam_core::{AllowAll, Result};
     /// # async fn test(ctx: Context) -> Result<()> {
     /// const TARGET_PEER: &str = "127.0.0.1:5000";
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", TARGET_PEER).await?;
+    /// tcp.create_outlet("outlet", TARGET_PEER, Arc::new(AllowAll)).await?;
     /// tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```

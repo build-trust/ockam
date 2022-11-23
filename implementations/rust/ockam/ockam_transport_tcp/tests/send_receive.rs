@@ -1,6 +1,7 @@
 use ockam_core::compat::rand::{self, Rng};
-use ockam_core::{route, Address, Result, Routed, Worker};
-use ockam_node::Context;
+use ockam_core::compat::sync::Arc;
+use ockam_core::{route, Address, AllowAll, Mailboxes, Result, Routed, Worker};
+use ockam_node::{Context, WorkerBuilder};
 
 use ockam_transport_tcp::{TcpTransport, TCP};
 use std::time::Duration;
@@ -10,7 +11,12 @@ use tracing::info;
 async fn send_receive(ctx: &mut Context) -> Result<()> {
     let transport = TcpTransport::create(ctx).await?;
     let listener_address = transport.listen("127.0.0.1:0").await?;
-    ctx.start_worker("echoer", Echoer).await?;
+    WorkerBuilder::with_mailboxes(
+        Mailboxes::main("echoer", Arc::new(AllowAll), Arc::new(AllowAll)),
+        Echoer,
+    )
+    .start(ctx)
+    .await?;
 
     // Sender
     {
@@ -49,12 +55,23 @@ impl Worker for Echoer {
 #[allow(non_snake_case)]
 #[ockam_macros::test]
 async fn tcp_lifecycle__reconnect__should_not_error(ctx: &mut Context) -> Result<()> {
-    ctx.start_worker("echoer", Echoer).await?;
+    WorkerBuilder::with_mailboxes(
+        Mailboxes::main("echoer", Arc::new(AllowAll), Arc::new(AllowAll)),
+        Echoer,
+    )
+    .start(ctx)
+    .await?;
 
     let transport = TcpTransport::create(ctx).await?;
     let listener_address = transport.listen("127.0.0.1:0").await?.to_string();
 
-    let mut child_ctx = ctx.new_detached(Address::random_local()).await?;
+    let mut child_ctx = ctx
+        .new_detached_with_mailboxes(Mailboxes::main(
+            Address::random_local(),
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        ))
+        .await?;
     let msg: String = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
         .take(256)

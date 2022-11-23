@@ -1,9 +1,10 @@
 use crate::{TcpRouterHandle, TcpRouterRequest, TcpRouterResponse, TcpSendWorker, TCP};
 use core::ops::Deref;
-use ockam_core::{async_trait, compat::sync::Arc, AllowAll};
+use ockam_core::{async_trait, compat::sync::Arc, LocalDestinationOnly};
 use ockam_core::{
     Address, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Result, Routed, Worker,
 };
+use ockam_node::access_control::LocalOriginOnly;
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use std::collections::BTreeMap;
@@ -28,30 +29,16 @@ pub(crate) struct TcpRouter {
 impl TcpRouter {
     /// Create and register a new TCP router with the node context
     pub async fn register(ctx: &Context) -> Result<TcpRouterHandle> {
-        let main_addr = Address::random_tagged("TcpRouter_main_addr");
-        let api_addr = Address::random_tagged("TcpRouter_api_addr");
-        debug!("Initialising new TcpRouter with address {}", &main_addr);
-
-        // FIXME so, the child_ctx gets created here because a worker
-        //       does not have access to its own context but, amongst
-        //       other things, this means the sending context is now
-        //       no longer the same as the child_ctx. In general it
-        //       looks like a fair amount of complexity could be
-        //       avoided if we found a way for workers to access their
-        //       own context...
-
-        // TODO: @ac 0#TcpRouter.detached
-        // in:  n/a
-        // out: n/a
+        // This context is only used to start workers, doesn't need to send nor receive messages
         let mailboxes = Mailboxes::new(
-            Mailbox::new(
-                Address::random_tagged("TcpRouter.detached"),
-                Arc::new(AllowAll),
-                Arc::new(AllowAll),
-            ),
+            Mailbox::deny_all(Address::random_tagged("TcpRouter.detached")),
             vec![],
         );
         let child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
+
+        let main_addr = Address::random_tagged("TcpRouter.main_addr");
+        let api_addr = Address::random_tagged("TcpRouter.api_addr");
+        debug!("Initialising new TcpRouter with address {}", &main_addr);
 
         let router = Self {
             ctx: child_ctx,
@@ -63,33 +50,15 @@ impl TcpRouter {
 
         let handle = router.create_self_handle().await?;
 
-        // @ac 0#TcpRouter_main_addr
-        // in:  0#TcpRouter_main_addr  <=  [0#TcpPortalRecvProcessor_M, 0#TcpPortalWorker_remote_M]
-        // out: 0#TcpRouter_main_addr  =>  [0#TcpSendWorker_tx_addr_M]
-        // TODO can we populate these as the come in if we at least have a ref to TcpRouter's context?
         let main_mailbox = Mailbox::new(
             main_addr.clone(),
-            // TODO @ac need a way to specify AC for incoming from client API because we
-            //          don't know if this is coming in over Transport or LocalOrigin or...
-            Arc::new(AllowAll),
-            /* Arc::new(ockam_core::AnyAccessControl::new(
-                ockam_node::access_control::AllowTransport::single(TCP),
-                LocalOriginOnly, // TODO @ac AllowDynamicAddress
-            )),
-
-             */
-            Arc::new(AllowAll),
-            // Arc::new(ockam_core::ToDoAccessControl), // TODO @ac AllowDynamicAddress
+            Arc::new(LocalSourceOnly),
+            Arc::new(LocalOnwardOnly), // TODO: @ac Sending messages to SendWorkers, allow only local destination for now
         );
-        // @ac 0#TcpRouter_api_addr
-        // in:  0#TcpRouter_api_addr   <=  [0#TcpRouterHandle.detached_M]
-        // out: n/a
         let api_mailbox = Mailbox::new(
             api_addr,
-            Arc::new(AllowAll),
-            // Arc::new(LocalOriginOnly), // TODO @ac AllowDynamicAddress
-            Arc::new(AllowAll),
-            // Arc::new(DenyAll),
+            Arc::new(LocalOriginOnly), // TODO: @ac From Routers handles
+            Arc::new(LocalDestinationOnly), // TODO: @ac Only responding to handles
         );
         WorkerBuilder::with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]), router)
             .start(ctx)
@@ -103,17 +72,8 @@ impl TcpRouter {
 
     /// Create a new `TcpRouterHandle` representing this router
     async fn create_self_handle(&self) -> Result<TcpRouterHandle> {
-        // TODO: @ac 0#TcpRouterHandle.detached
-        // in:  n/a
-        // out: n/a
         let mailboxes = Mailboxes::new(
-            Mailbox::new(
-                Address::random_tagged("TcpRouterHandle.detached"),
-                Arc::new(AllowAll),
-                // Arc::new(DenyAll),
-                Arc::new(AllowAll),
-                // Arc::new(DenyAll),
-            ),
+            Mailbox::deny_all(Address::random_tagged("TcpRouterHandle.detached")),
             vec![],
         );
         let handle_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
