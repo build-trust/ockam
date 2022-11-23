@@ -13,13 +13,12 @@ async fn main(mut ctx: Context) -> Result<()> {
     let port_responder = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     let r = route![
         (TCP, &format!("localhost:{port_middle}")),
+        "hop",
         (TCP, &format!("localhost:{port_responder}")),
         "echoer"
     ];
-    ctx.send(r, "Hello Ockam!".to_string()).await?;
-
-    // Wait to receive a reply and print it.
-    let reply = ctx.receive::<String>().await?;
+    // Send a message and wait to receive a reply and print it.
+    let reply: String = ctx.send_and_receive(r, "Hello Ockam!".to_string()).await?;
     println!("App Received: {}", reply); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
