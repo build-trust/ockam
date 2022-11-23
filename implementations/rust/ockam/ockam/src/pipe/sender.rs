@@ -78,8 +78,7 @@ impl PipeSender {
         };
 
         // TODO: @ac
-        let mailboxes =
-            Mailboxes::new(Mailbox::allow_all(addr), vec![Mailbox::allow_all(int_addr)]);
+        let mailboxes = Mailboxes::new(Mailbox::deny_all(addr), vec![Mailbox::deny_all(int_addr)]);
         WorkerBuilder::with_mailboxes(mailboxes, worker)
             .start(ctx)
             .await?;
@@ -106,8 +105,7 @@ impl PipeSender {
             hooks,
         };
         // TODO: @ac
-        let mailboxes =
-            Mailboxes::new(Mailbox::allow_all(addr), vec![Mailbox::allow_all(int_addr)]);
+        let mailboxes = Mailboxes::new(Mailbox::deny_all(addr), vec![Mailbox::deny_all(int_addr)]);
         WorkerBuilder::with_mailboxes(mailboxes, worker)
             .start(ctx)
             .await?;

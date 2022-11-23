@@ -40,8 +40,8 @@ impl PipeReceiver {
     ) -> Result<()> {
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::allow_all(addr),
-            vec![Mailbox::allow_all(int_addr.clone())],
+            Mailbox::deny_all(addr),
+            vec![Mailbox::deny_all(int_addr.clone())],
         );
         WorkerBuilder::with_mailboxes(mailboxes, PipeReceiver { hooks, int_addr })
             .start(ctx)

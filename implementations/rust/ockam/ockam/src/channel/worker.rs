@@ -64,8 +64,8 @@ impl ChannelWorker {
 
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::allow_all(int_addr),
-            vec![Mailbox::allow_all(pub_addr)],
+            Mailbox::deny_all(int_addr),
+            vec![Mailbox::deny_all(pub_addr)],
         );
         WorkerBuilder::with_mailboxes(mailboxes, worker)
             .start(ctx)
@@ -103,8 +103,8 @@ impl ChannelWorker {
         };
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::allow_all(int_addr),
-            vec![Mailbox::allow_all(pub_addr)],
+            Mailbox::deny_all(int_addr),
+            vec![Mailbox::deny_all(pub_addr)],
         );
         WorkerBuilder::with_mailboxes(mailboxes, worker)
             .start(ctx)

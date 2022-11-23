@@ -291,12 +291,12 @@ impl PipeBuilder {
             let addr = Address::random_local();
             tx_addr = Some(addr.clone());
 
-            let mut additional_mailboxes = vec![Mailbox::allow_all(self.tx_fin.clone())];
+            let mut additional_mailboxes = vec![Mailbox::deny_all(self.tx_fin.clone())];
             for addr in tx_sys.addresses() {
-                additional_mailboxes.push(Mailbox::allow_all(addr));
+                additional_mailboxes.push(Mailbox::deny_all(addr));
             }
             // TODO: @ac
-            let mailboxes = Mailboxes::new(Mailbox::allow_all(addr.clone()), additional_mailboxes);
+            let mailboxes = Mailboxes::new(Mailbox::deny_all(addr.clone()), additional_mailboxes);
             WorkerBuilder::with_mailboxes(
                 mailboxes,
                 PipeSender::new(tx_sys, PeerRoute::Peer(peer), addr, self.tx_fin.clone()),
@@ -310,12 +310,12 @@ impl PipeBuilder {
             rx_addr = Some(addr.clone());
 
             // TODO: @ac
-            let mut additional_mailboxes = vec![Mailbox::allow_all(self.rx_fin.clone())];
+            let mut additional_mailboxes = vec![Mailbox::deny_all(self.rx_fin.clone())];
             for addr in rx_sys.addresses() {
-                additional_mailboxes.push(Mailbox::allow_all(addr));
+                additional_mailboxes.push(Mailbox::deny_all(addr));
             }
             // TODO: @ac
-            let mailboxes = Mailboxes::new(Mailbox::allow_all(addr.clone()), additional_mailboxes);
+            let mailboxes = Mailboxes::new(Mailbox::deny_all(addr.clone()), additional_mailboxes);
             WorkerBuilder::with_mailboxes(
                 mailboxes,
                 PipeReceiver::new(rx_sys, self.rx_fin.clone(), None),
@@ -346,14 +346,14 @@ impl PipeBuilder {
 
             // TODO: @ac
             let mut additional_mailboxes = vec![
-                Mailbox::allow_all(init_addr.clone()),
-                Mailbox::allow_all(self.tx_fin.clone()),
+                Mailbox::deny_all(init_addr.clone()),
+                Mailbox::deny_all(self.tx_fin.clone()),
             ];
             for addr in tx_sys.addresses() {
-                additional_mailboxes.push(Mailbox::allow_all(addr));
+                additional_mailboxes.push(Mailbox::deny_all(addr));
             }
             // TODO: @ac
-            let mailboxes = Mailboxes::new(Mailbox::allow_all(addr.clone()), additional_mailboxes);
+            let mailboxes = Mailboxes::new(Mailbox::deny_all(addr.clone()), additional_mailboxes);
             WorkerBuilder::with_mailboxes(
                 mailboxes,
                 PipeSender::new(

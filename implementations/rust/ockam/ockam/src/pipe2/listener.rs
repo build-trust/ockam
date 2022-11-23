@@ -45,15 +45,15 @@ impl Worker for PipeListener {
         // Finally start the worker with the full set of used addresses
         // TODO: @ac
         let mut additional_mailboxes = vec![
-            Mailbox::allow_all(init_addr.clone()),
-            Mailbox::allow_all(fin_addr),
+            Mailbox::deny_all(init_addr.clone()),
+            Mailbox::deny_all(fin_addr),
         ];
         for addr in system_addrs {
-            additional_mailboxes.push(Mailbox::allow_all(addr.clone()));
+            additional_mailboxes.push(Mailbox::deny_all(addr.clone()));
         }
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::allow_all(Address::random_local()),
+            Mailbox::deny_all(Address::random_local()),
             additional_mailboxes,
         );
         WorkerBuilder::with_mailboxes(mailboxes, worker)

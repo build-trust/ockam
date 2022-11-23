@@ -80,11 +80,8 @@ async fn send_messages(ctx: &mut Context) -> Result<()> {
     w.system.attach("worker.2", StepHandler::new("app"));
 
     let mailboxes = Mailboxes::new(
-        Mailbox::allow_all("worker"),
-        vec![
-            Mailbox::allow_all("worker.1"),
-            Mailbox::allow_all("worker.2"),
-        ],
+        Mailbox::deny_all("worker"),
+        vec![Mailbox::deny_all("worker.1"), Mailbox::deny_all("worker.2")],
     );
 
     // Start the worker with three publicly mapped addresses
@@ -155,11 +152,8 @@ async fn attach_metadata(ctx: &mut Context) -> Result<()> {
         .attach("worker.2", AddMetadata::new("bar", vec![7], "app")); // my favourite number
 
     let mailboxes = Mailboxes::new(
-        Mailbox::allow_all("worker"),
-        vec![
-            Mailbox::allow_all("worker.1"),
-            Mailbox::allow_all("worker.2"),
-        ],
+        Mailbox::deny_all("worker"),
+        vec![Mailbox::deny_all("worker.1"), Mailbox::deny_all("worker.2")],
     );
 
     // Start the worker with three publicly mapped addresses
