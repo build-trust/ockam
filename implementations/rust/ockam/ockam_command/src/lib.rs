@@ -57,6 +57,7 @@ use version::Version;
 
 use crate::admin::AdminCommand;
 use crate::node::util::run::CommandSection;
+use crate::state::CliState;
 use crate::subscription::SubscriptionCommand;
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use upgrade::check_if_an_upgrade_is_available;
@@ -253,6 +254,7 @@ impl ExportCommandArgs {
 pub struct CommandGlobalOpts {
     pub global_args: GlobalArgs,
     pub config: OckamConfig,
+    pub state: CliState,
 }
 
 impl CommandGlobalOpts {
@@ -260,6 +262,7 @@ impl CommandGlobalOpts {
         Self {
             global_args,
             config,
+            state: CliState::new().expect("Failed to load CLI state"),
         }
     }
 }
