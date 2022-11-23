@@ -152,8 +152,8 @@ impl BleRouter {
 
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::allow_all(main_addr.clone()),
-            vec![Mailbox::allow_all(api_addr)],
+            Mailbox::deny_all(main_addr.clone()),
+            vec![Mailbox::deny_all(api_addr)],
         );
         WorkerBuilder::with_mailboxes(mailboxes, router)
             .start(ctx)
