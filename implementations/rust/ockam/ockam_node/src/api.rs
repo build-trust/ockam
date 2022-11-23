@@ -2,8 +2,9 @@ use crate::Context;
 use core::fmt::Display;
 use minicbor::Encode;
 use ockam_core::api::{assert_request_match, RequestBuilder};
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Address, LocalInfo, Result, Route};
+use ockam_core::{Address, AllowAll, LocalInfo, Mailbox, Mailboxes, Result, Route};
 
 /// Encode request header and body (if any), send the package to the server and returns its response.
 pub async fn request<T, R>(
@@ -46,6 +47,7 @@ where
     T: Encode<()>,
     R: Into<Route> + Display,
 {
+    let route = route.into();
     let mut buf = Vec::new();
     req.encode(&mut buf)?;
     assert_request_match(struct_name, &buf);
@@ -60,7 +62,17 @@ where
 
     // TODO: Check IdentityId is the same we sent message to?
     // TODO: Check response id matches request id?
-    let mut child_ctx = ctx.new_detached(Address::random_local()).await?;
+    let mailboxes = Mailboxes::new(
+        Mailbox::new(
+            Address::random_tagged("api.request_with_local_info"),
+            Arc::new(AllowAll), // FIXME: @ac ockam_core::AllowSourceAddress(route.recipient())),
+            Arc::new(ockam_core::AllowDestinationAddress(
+                route.next().unwrap().clone(),
+            )),
+        ),
+        vec![],
+    );
+    let mut child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
     child_ctx.send(route, buf).await?;
     let resp = child_ctx.receive::<Vec<u8>>().await?.take();
     let local_info = resp.local_message().local_info().to_vec();
