@@ -194,6 +194,16 @@ impl Route {
     pub fn iter(&self) -> impl Iterator<Item = &Address> {
         self.inner.iter()
     }
+
+    /// Number of hops.
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// Returns true if the route is empty.
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
 }
 
 impl Display for Route {
