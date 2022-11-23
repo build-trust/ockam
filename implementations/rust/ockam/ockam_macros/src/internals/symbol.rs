@@ -7,7 +7,8 @@ use syn::{Ident, Path};
 pub(crate) struct Symbol(&'static str);
 
 // Attributes
-pub(crate) const ACCESS_CONTROL: Symbol = Symbol("access_control");
+pub(crate) const INCOMING_ACCESS_CONTROL: Symbol = Symbol("incoming");
+pub(crate) const OUTGOING_ACCESS_CONTROL: Symbol = Symbol("outgoing");
 pub(crate) const NO_MAIN: Symbol = Symbol("no_main");
 pub(crate) const OCKAM_CRATE: Symbol = Symbol("crate");
 pub(crate) const TIMEOUT_MS: Symbol = Symbol("timeout");
