@@ -122,8 +122,8 @@ impl RemoteForwarder {
 
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::allow_all(addresses.main_address),
-            vec![Mailbox::allow_all(addresses.heartbeat_address)],
+            Mailbox::deny_all(addresses.main_address),
+            vec![Mailbox::deny_all(addresses.heartbeat_address)],
         );
         WorkerBuilder::with_mailboxes(mailboxes, forwarder)
             .start(ctx)
