@@ -1,8 +1,9 @@
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use tokio::net::TcpListener;
 
-use ockam_core::{async_trait, Address, Processor, Result};
+use ockam_core::{async_trait, Address, AllowAll, Processor, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
@@ -34,8 +35,14 @@ impl WebSocketListenProcessor {
             inner,
             router_handle,
         };
-        let waddr = Address::random_local();
-        ctx.start_processor(waddr, processor).await?;
+        let waddr = Address::random_tagged("WebSocketListenProcessor");
+        ctx.start_processor_with_access_control(
+            waddr,
+            processor,
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll), // FIXME: @ac
+        )
+        .await?;
         Ok(saddr)
     }
 }
