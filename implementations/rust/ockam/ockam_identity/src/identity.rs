@@ -13,8 +13,8 @@ use ockam_core::compat::{
     vec::Vec,
 };
 use ockam_core::vault::{SecretPersistence, SecretType, Signature, CURVE25519_SECRET_LENGTH_U32};
-use ockam_core::AsyncTryClone;
 use ockam_core::{Address, Result};
+use ockam_core::{AsyncTryClone, DenyAll};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
 use ockam_vault::{KeyId, SecretAttributes};
@@ -127,7 +127,11 @@ impl<V: IdentityVault> Identity<V> {
         key_attribs: KeyAttributes,
     ) -> Result<Self> {
         let child_ctx = ctx
-            .new_detached(Address::random_tagged("Identity.create.detached"))
+            .new_detached_with_access_control(
+                Address::random_tagged("Identity.create.detached"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
             .await?;
         let initial_change_id = ChangeIdentifier::initial(vault).await;
 

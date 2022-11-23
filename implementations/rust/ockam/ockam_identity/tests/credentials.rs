@@ -1,5 +1,5 @@
 use ockam_core::compat::{boxed::Box, sync::Arc};
-use ockam_core::{async_trait, AllowAll, Any};
+use ockam_core::{async_trait, AllowAll, Any, DenyAll, Mailboxes};
 use ockam_core::{route, Result, Routed, Worker};
 use ockam_identity::authenticated_storage::mem::InMemoryStorage;
 use ockam_identity::credential::access_control::CredentialAccessControl;
@@ -203,7 +203,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
 
     WorkerBuilder::with_access_control(
         Arc::new(access_control),
-        Arc::new(AllowAll),
+        Arc::new(DenyAll),
         "counter",
         worker,
     )
@@ -212,7 +212,16 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     ctx.sleep(Duration::from_millis(100)).await;
     assert_eq!(counter.load(Ordering::Relaxed), 0);
 
-    ctx.send(route![channel.clone(), "counter"], "Hello".to_string())
+    let child_ctx = ctx
+        .new_detached_with_mailboxes(Mailboxes::main(
+            "child",
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        ))
+        .await?;
+
+    child_ctx
+        .send(route![channel.clone(), "counter"], "Hello".to_string())
         .await?;
     ctx.sleep(Duration::from_millis(100)).await;
     assert_eq!(counter.load(Ordering::Relaxed), 0);
@@ -221,7 +230,8 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         .present_credential(route![channel.clone(), "credential_exchange"])
         .await?;
 
-    ctx.send(route![channel, "counter"], "Hello".to_string())
+    child_ctx
+        .send(route![channel, "counter"], "Hello".to_string())
         .await?;
     ctx.sleep(Duration::from_millis(100)).await;
     assert_eq!(counter.load(Ordering::Relaxed), 1);
