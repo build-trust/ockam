@@ -23,8 +23,6 @@ fn output(cont: Container) -> TokenStream {
     let body = &cont.original_fn.block;
     let ret_type = cont.data.ret;
     let ockam_crate = cont.data.attrs.ockam_crate;
-    let incoming_access_control = cont.data.attrs.incoming_access_control;
-    let outgoing_access_control = cont.data.attrs.outgoing_access_control;
 
     // Get the ockam context variable identifier and mutability token extracted
     // from the function arguments, or sets them to their default values.
@@ -61,10 +59,7 @@ fn output(cont: Container) -> TokenStream {
             fn main() #ret_type {
                 use #ockam_crate::{NodeBuilder, Executor};
 
-                let (#ctx_mut #ctx_ident, mut executor) = NodeBuilder::with_access_control(
-                    #ockam_crate::compat::sync::Arc::new(#incoming_access_control),
-                    #ockam_crate::compat::sync::Arc::new(#outgoing_access_control)
-                ).build() as (#ctx_path, Executor);
+                let (#ctx_mut #ctx_ident, mut executor) = NodeBuilder::new().build() as (#ctx_path, Executor);
                 executor.execute(async move #body)#err_handling
             }
         }
@@ -74,10 +69,7 @@ fn output(cont: Container) -> TokenStream {
             fn ockam_async_main() #ret_type {
                 use #ockam_crate::{NodeBuilder, Executor};
 
-                let (#ctx_mut #ctx_ident, mut executor) = NodeBuilder::with_access_control(
-                    #ockam_crate::compat::sync::Arc::new(#incoming_access_control),
-                    #ockam_crate::compat::sync::Arc::new(#outgoing_access_control)
-                ).build() as (#ctx_path, Executor);
+                let (#ctx_mut #ctx_ident, mut executor) = NodeBuilder::with_access_control().build() as (#ctx_path, Executor);
                 executor.execute(async move #body)#err_handling
             }
             // TODO: safe way to print the error before panicking?
@@ -138,32 +130,16 @@ impl<'a> Data<'a> {
 }
 
 struct Attributes {
-    incoming_access_control: TokenStream,
-    outgoing_access_control: TokenStream,
     ockam_crate: TokenStream,
     no_main: bool,
 }
 
 impl Attributes {
     fn from_ast(ctx: &Context, attrs: &AttributeArgs) -> Self {
-        let mut incoming_access_control = Attr::none(ctx, INCOMING_ACCESS_CONTROL);
-        let mut outgoing_access_control = Attr::none(ctx, OUTGOING_ACCESS_CONTROL);
         let mut ockam_crate = Attr::none(ctx, OCKAM_CRATE);
         let mut no_main = BoolAttr::none(ctx, NO_MAIN);
         for attr in attrs {
             match attr {
-                // Parse `#[ockam::test(incoming = "LocalOriginOnly")]`
-                NestedMeta::Meta(NameValue(nv)) if nv.path == INCOMING_ACCESS_CONTROL => {
-                    if let Ok(path) = parse_lit_into_path(ctx, INCOMING_ACCESS_CONTROL, &nv.lit) {
-                        incoming_access_control.set(&nv.path, quote! { #path });
-                    }
-                }
-                // Parse `#[ockam::test(outgoing = "LocalDestinationOnly")]`
-                NestedMeta::Meta(NameValue(nv)) if nv.path == OUTGOING_ACCESS_CONTROL => {
-                    if let Ok(path) = parse_lit_into_path(ctx, OUTGOING_ACCESS_CONTROL, &nv.lit) {
-                        outgoing_access_control.set(&nv.path, quote! { #path });
-                    }
-                }
                 // Parse `#[ockam::test(crate = "ockam")]`
                 NestedMeta::Meta(NameValue(nv)) if nv.path == OCKAM_CRATE => {
                     if let Ok(path) = parse_lit_into_path(ctx, OCKAM_CRATE, &nv.lit) {
@@ -184,12 +160,6 @@ impl Attributes {
             }
         }
         Self {
-            incoming_access_control: incoming_access_control
-                .get()
-                .unwrap_or(quote! { ockam::access_control::DenyAll }),
-            outgoing_access_control: outgoing_access_control
-                .get()
-                .unwrap_or(quote! { ockam::access_control::DenyAll }),
             ockam_crate: ockam_crate.get().unwrap_or(quote! { ockam }),
             no_main: no_main.get(),
         }

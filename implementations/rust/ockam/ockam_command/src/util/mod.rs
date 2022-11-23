@@ -353,7 +353,7 @@ where
     Fut: core::future::Future<Output = crate::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
-    let (ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
+    let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
     executor.execute(async move {
         let child_ctx = ctx
             .new_detached(Address::random_local())
@@ -372,7 +372,7 @@ where
     Fut: core::future::Future<Output = crate::Result<T>> + Send + 'static,
     T: Send + 'static,
 {
-    let (ctx, mut executor) = NodeBuilder::without_access_control().no_logging().build();
+    let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
     executor.execute(async move {
         let child_ctx = ctx
             .new_detached(Address::random_local())
