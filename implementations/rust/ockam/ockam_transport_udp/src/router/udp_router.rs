@@ -1,18 +1,21 @@
 use ockam_core::compat::{collections::BTreeMap, str::FromStr};
 use std::ops::Deref;
+use std::sync::Arc;
 
 use futures_util::StreamExt;
 use ockam_core::{
-    async_trait, Address, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Result, Routed, Worker,
+    async_trait, Address, AllowAll, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Result,
+    Routed, Worker,
 };
 use ockam_node::{Context, WorkerBuilder};
 
+use crate::router::messages::{UdpRouterRequest, UdpRouterResponse};
+use crate::router::UdpRouterHandle;
 use ockam_transport_core::TransportError;
 use tokio::net::UdpSocket;
 use tokio_util::udp::UdpFramed;
-use tracing::{error, trace};
+use tracing::{debug, error, trace};
 
-use crate::router::{UdpRouterHandle, UdpRouterMessage};
 use crate::transport::UdpAddress;
 use crate::workers::{TransportMessageCodec, UdpListenProcessor, UdpSendWorker};
 
@@ -35,10 +38,16 @@ pub(crate) struct UdpRouter {
 impl UdpRouter {
     /// Create and register a new UDP router with the node context
     pub(crate) async fn register(ctx: &Context) -> Result<UdpRouterHandle> {
-        let main_addr = Address::random_local();
-        let api_addr = Address::random_local();
+        // This context is only used to start workers, doesn't need to send nor receive messages
+        let mailboxes = Mailboxes::new(
+            Mailbox::deny_all(Address::random_tagged("UdpRouter.detached")),
+            vec![],
+        );
+        let child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
 
-        let child_ctx = ctx.new_detached(Address::random_local()).await?;
+        let main_addr = Address::random_tagged("UdpRouter.main_addr");
+        let api_addr = Address::random_tagged("UdpRouter.api_addr");
+        debug!("Initialising new UdpRouter with address {}", &main_addr);
 
         let router = Self {
             ctx: child_ctx,
@@ -48,16 +57,22 @@ impl UdpRouter {
             allow_auto_connection: true,
         };
 
-        let handle = router.create_self_handle(ctx).await?;
+        let handle = router.create_self_handle().await?;
 
-        // TODO: @ac
-        let mailboxes = Mailboxes::new(
-            Mailbox::allow_all(main_addr.clone()),
-            vec![Mailbox::allow_all(api_addr)],
+        let main_mailbox = Mailbox::new(
+            main_addr.clone(),
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll), // FIXME: @ac
         );
-        WorkerBuilder::with_mailboxes(mailboxes, router)
+        let api_mailbox = Mailbox::new(
+            api_addr.clone(),
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll), // FIXME: @ac
+        );
+        WorkerBuilder::with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]), router)
             .start(ctx)
             .await?;
+
         trace!("Registering UDP router for type = {}", crate::UDP);
         ctx.register(crate::UDP, main_addr).await?;
 
@@ -65,8 +80,13 @@ impl UdpRouter {
     }
 
     /// Create a new `UdpRouterHandle` representing this router
-    async fn create_self_handle(&self, ctx: &Context) -> Result<UdpRouterHandle> {
-        let handle_ctx = ctx.new_detached(Address::random_local()).await?;
+    async fn create_self_handle(&self) -> Result<UdpRouterHandle> {
+        let mailboxes = Mailboxes::new(
+            Mailbox::deny_all(Address::random_tagged("UdpRouterHandle.handle")),
+            vec![],
+        );
+        let handle_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
+
         let handle = UdpRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }
@@ -133,14 +153,22 @@ impl UdpRouter {
             .map_err(TransportError::from)?;
         let (sink, stream) = UdpFramed::new(socket, TransportMessageCodec).split();
 
-        let tx_addr = Address::random_local();
+        let tx_addr = Address::random_tagged("Udp.Sender.connect.tx_addr");
         let sender = UdpSendWorker::new(sink);
-        self.ctx.start_worker(tx_addr.clone(), sender).await?;
+        // FIXME: @ac
+        self.ctx
+            .start_worker_with_access_control(
+                tx_addr.clone(),
+                sender,
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            )
+            .await?;
         UdpListenProcessor::start(
             &self.ctx,
             stream,
             tx_addr.clone(),
-            self.create_self_handle(&self.ctx).await?,
+            self.create_self_handle().await?,
         )
         .await?;
 
@@ -170,16 +198,24 @@ impl Worker for UdpRouter {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
+        let return_route = msg.return_route();
         let msg_addr = msg.msg_addr();
 
         if msg_addr == self.main_addr {
             self.handle_route(ctx, msg.into_local_message()).await?;
         } else if msg_addr == self.api_addr {
-            let msg = UdpRouterMessage::decode(msg.payload())?;
+            let msg = UdpRouterRequest::decode(msg.payload())?;
             match msg {
-                UdpRouterMessage::Register { accepts, self_addr } => {
+                UdpRouterRequest::Register { accepts, self_addr } => {
                     trace!("handle_message register: {:?} => {:?}", accepts, self_addr);
-                    self.handle_register(accepts, self_addr).await?;
+                    let res = self.handle_register(accepts, self_addr).await;
+
+                    ctx.send_from_address(
+                        return_route,
+                        UdpRouterResponse::Register(res),
+                        self.api_addr.clone(),
+                    )
+                    .await?;
                 }
             };
         } else {

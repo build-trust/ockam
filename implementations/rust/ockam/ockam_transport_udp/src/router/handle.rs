@@ -1,22 +1,22 @@
+use std::sync::Arc;
 use std::{
     net::{SocketAddr, ToSocketAddrs},
     str::FromStr,
 };
 
 use futures_util::stream::StreamExt;
-use ockam_core::{async_trait, Address, AsyncTryClone, Result};
+use ockam_core::{async_trait, Address, AllowAll, AsyncTryClone, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tokio::net::UdpSocket;
 use tokio_util::udp::UdpFramed;
 
+use crate::router::messages::{UdpRouterRequest, UdpRouterResponse};
 use crate::{
     parse_socket_addr,
     workers::{TransportMessageCodec, UdpListenProcessor, UdpSendWorker},
     UdpAddress,
 };
-
-use super::UdpRouterMessage;
 
 /// A handle to connect to a UdpRouter
 ///
@@ -74,9 +74,17 @@ impl UdpRouterHandle {
             .map_err(TransportError::from)?;
         let (sink, stream) = UdpFramed::new(socket, TransportMessageCodec).split();
 
-        let tx_addr = Address::random_local();
+        let tx_addr = Address::random_tagged("Udp.Sender.bind.tx_addr");
         let sender = UdpSendWorker::new(sink);
-        self.ctx.start_worker(tx_addr.clone(), sender).await?;
+        // FIXME: @ac
+        self.ctx
+            .start_worker_with_access_control(
+                tx_addr.clone(),
+                sender,
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            )
+            .await?;
         UdpListenProcessor::start(&self.ctx, stream, tx_addr, self.async_try_clone().await?)
             .await?;
 
@@ -96,14 +104,19 @@ impl UdpRouterHandle {
 
         // TODO: should we send a router request instead
         // and see if worker is already registered?
-        self.ctx
-            .send(
+        let response = self
+            .ctx
+            .send_and_receive(
                 self.api_addr.clone(),
-                UdpRouterMessage::Register {
+                UdpRouterRequest::Register {
                     accepts,
                     self_addr: tx_addr,
                 },
             )
-            .await
+            .await?;
+
+        let UdpRouterResponse::Register(res) = response;
+
+        res
     }
 }
