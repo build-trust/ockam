@@ -13,8 +13,8 @@ use core::{
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
-    Address, AsyncTryClone, Error, LocalMessage, Mailboxes, Message, Processor, RelayMessage,
-    Result, Route, TransportMessage, TransportType, Worker,
+    Address, AllowAll, AsyncTryClone, Error, LocalMessage, Mailboxes, Message, Processor,
+    RelayMessage, Result, Route, TransportMessage, TransportType, Worker,
 };
 use ockam_core::{LocalInfo, Mailbox};
 
@@ -431,10 +431,10 @@ impl Context {
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 Address::random_tagged("Context.send_and_receive.detached"),
-                //Arc::new(ockam_core::AllowSourceAddress(route.recipient())),
-                //Arc::new(ockam_core::AllowDestinationAddress(route.next().unwrap().clone())),
-                Arc::new(ockam_core::AllowAll), // FIXME @ac
-                Arc::new(ockam_core::AllowAll), // FIXME @ac
+                Arc::new(AllowAll), // FIXME: @ac there is no way to ensure that we're receiving response from the worker we sent request to
+                Arc::new(ockam_core::AllowDestinationAddress(
+                    route.next().unwrap().clone(),
+                )),
             ),
             vec![],
         );

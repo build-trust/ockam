@@ -65,7 +65,7 @@ where
     let mailboxes = Mailboxes::new(
         Mailbox::new(
             Address::random_tagged("api.request_with_local_info"),
-            Arc::new(AllowAll), // FIXME: @ac ockam_core::AllowSourceAddress(route.recipient())),
+            Arc::new(AllowAll), // // FIXME: @ac there is no way to ensure that we're receiving response from the worker we sent request to
             Arc::new(ockam_core::AllowDestinationAddress(
                 route.next().unwrap().clone(),
             )),
