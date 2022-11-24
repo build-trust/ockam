@@ -17,6 +17,7 @@ pub struct CliState {
 impl CliState {
     pub fn new() -> anyhow::Result<Self> {
         let dir = Self::dir()?;
+        std::fs::create_dir_all(dir.join("defaults"))?;
         Ok(Self {
             vaults: VaultsState::new(&dir)?,
             identities: IdentitiesState::new(&dir)?,
@@ -32,6 +33,10 @@ impl CliState {
                 .context("no $HOME directory")?
                 .join(".ockam"),
         })
+    }
+
+    fn defaults_dir() -> anyhow::Result<PathBuf> {
+        Ok(Self::dir()?.join("defaults"))
     }
 }
 
@@ -58,7 +63,7 @@ impl VaultsState {
         };
         let contents = serde_json::to_string(&config)?;
         std::fs::write(&path, contents)?;
-        if !self.default_path().exists() {
+        if !self.default_path()?.exists() {
             self.set_default(name)?;
         }
         Ok(VaultState { path, config })
@@ -78,14 +83,12 @@ impl VaultsState {
         Ok(VaultState { path, config })
     }
 
-    pub fn default_path(&self) -> PathBuf {
-        let mut path = self.dir.clone();
-        path.push("default");
-        path
+    pub fn default_path(&self) -> anyhow::Result<PathBuf> {
+        Ok(CliState::defaults_dir()?.join("vault"))
     }
 
     pub fn default(&self) -> anyhow::Result<VaultState> {
-        let path = std::fs::canonicalize(&self.default_path())?;
+        let path = std::fs::canonicalize(&self.default_path()?)?;
         let contents = std::fs::read_to_string(&path)?;
         let config = serde_json::from_str(&contents)?;
         Ok(VaultState { path, config })
@@ -95,9 +98,12 @@ impl VaultsState {
         let original = {
             let mut path = self.dir.clone();
             path.push(format!("{}.json", name));
+            if !path.exists() {
+                return Err(anyhow::anyhow!("vault `{name}` does not exist"));
+            }
             path
         };
-        let link = self.default_path();
+        let link = self.default_path()?;
         std::os::unix::fs::symlink(&original, &link)?;
         let contents = std::fs::read_to_string(&original)?;
         let config = serde_json::from_str(&contents)?;
@@ -172,7 +178,7 @@ impl IdentitiesState {
         };
         let contents = serde_json::to_string(&config)?;
         std::fs::write(&path, contents)?;
-        if !self.default_path().exists() {
+        if !self.default_path()?.exists() {
             self.set_default(name)?;
         }
         Ok(IdentityState { path, config })
@@ -192,14 +198,12 @@ impl IdentitiesState {
         Ok(IdentityState { path, config })
     }
 
-    pub fn default_path(&self) -> PathBuf {
-        let mut path = self.dir.clone();
-        path.push("default");
-        path
+    pub fn default_path(&self) -> anyhow::Result<PathBuf> {
+        Ok(CliState::defaults_dir()?.join("identity"))
     }
 
     pub fn default(&self) -> anyhow::Result<IdentityState> {
-        let path = std::fs::canonicalize(&self.default_path())?;
+        let path = std::fs::canonicalize(&self.default_path()?)?;
         let contents = std::fs::read_to_string(&path)?;
         let config = serde_json::from_str(&contents)?;
         Ok(IdentityState { path, config })
@@ -209,9 +213,12 @@ impl IdentitiesState {
         let original = {
             let mut path = self.dir.clone();
             path.push(format!("{}.json", name));
+            if !path.exists() {
+                return Err(anyhow::anyhow!("identity `{name}` does not exist"));
+            }
             path
         };
-        let link = self.default_path();
+        let link = self.default_path()?;
         std::os::unix::fs::symlink(&original, &link)?;
         let contents = std::fs::read_to_string(&original)?;
         let config = serde_json::from_str(&contents)?;
@@ -288,8 +295,14 @@ impl NodesState {
         std::fs::File::create(state.socket())?;
         std::fs::File::create(state.stdout_log())?;
         std::fs::File::create(state.stderr_log())?;
-        std::os::unix::fs::symlink(&state.config.vault, state.path.join("vault"))?;
-        std::os::unix::fs::symlink(&state.config.identity, state.path.join("identity"))?;
+        std::os::unix::fs::symlink(
+            &state.config.default_vault,
+            state.path.join("default_vault"),
+        )?;
+        std::os::unix::fs::symlink(
+            &state.config.default_identity,
+            state.path.join("default_identity"),
+        )?;
         Ok(state)
     }
 
@@ -309,7 +322,7 @@ impl NodesState {
     fn vault_name(&self, name: &str) -> anyhow::Result<String> {
         let mut path = self.dir.clone();
         path.push(name);
-        path.push("vault");
+        path.push("default_vault");
         let path = std::fs::canonicalize(&path)?;
         file_stem(&path)
     }
@@ -317,7 +330,7 @@ impl NodesState {
     fn identity_name(&self, name: &str) -> anyhow::Result<String> {
         let mut path = self.dir.clone();
         path.push(name);
-        path.push("identity");
+        path.push("default_identity");
         let path = std::fs::canonicalize(&path)?;
         file_stem(&path)
     }
@@ -359,8 +372,8 @@ impl NodeState {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NodeConfig {
-    vault: PathBuf,
-    identity: PathBuf,
+    default_vault: PathBuf,
+    default_identity: PathBuf,
     // TODO
     // pid: Option<String>,
     // authorities: AuthoritiesConfig,
@@ -371,9 +384,12 @@ impl TryFrom<&PathBuf> for NodeConfig {
     type Error = anyhow::Error;
 
     fn try_from(path: &PathBuf) -> Result<Self, Self::Error> {
-        let vault = std::fs::canonicalize(path.join("vault"))?;
-        let identity = std::fs::canonicalize(path.join("identity"))?;
-        Ok(Self { vault, identity })
+        let default_vault = std::fs::canonicalize(path.join("default_vault"))?;
+        let default_identity = std::fs::canonicalize(path.join("default_identity"))?;
+        Ok(Self {
+            default_vault,
+            default_identity,
+        })
     }
 }
 
@@ -381,8 +397,8 @@ impl NodeConfig {
     pub fn default() -> anyhow::Result<Self> {
         let cli_state = CliState::new()?;
         Ok(Self {
-            vault: cli_state.vaults.default()?.path,
-            identity: cli_state.identities.default()?.path,
+            default_vault: cli_state.vaults.default()?.path,
+            default_identity: cli_state.identities.default()?.path,
         })
     }
 }
@@ -421,7 +437,10 @@ impl NodeConfigBuilder {
             Some(path) => path,
             None => cli_state.identities.default()?.path,
         };
-        Ok(NodeConfig { vault, identity })
+        Ok(NodeConfig {
+            default_vault: vault,
+            default_identity: identity,
+        })
     }
 }
 
@@ -448,7 +467,11 @@ mod tests {
         let vault_name = {
             let name = hex::encode(rand::random::<[u8; 4]>());
 
-            let path = rnd_dir.path().join("vaults").join(&format!("{name}.data"));
+            let path = rnd_dir
+                .path()
+                .join("vaults")
+                .join("data")
+                .join(&format!("{name}.json"));
             let vault_storage = FileStorage::create(path.clone()).await?;
             let vault = Vault::new(Some(Arc::new(vault_storage)));
 
@@ -499,15 +522,16 @@ mod tests {
         // Check structure
         let mut expected_entries = vec![
             "vaults".to_string(),
-            "vaults/default".to_string(),
             format!("vaults/{vault_name}.json"),
-            format!("vaults/{vault_name}.data"),
-            format!("vaults/data"),
+            "vaults/data".to_string(),
+            format!("vaults/data/{vault_name}.json"),
             "identities".to_string(),
-            "identities/default".to_string(),
             format!("identities/{identity_name}.json"),
             "nodes".to_string(),
             format!("nodes/{node_name}"),
+            "defaults".to_string(),
+            "defaults/vault".to_string(),
+            "defaults/identity".to_string(),
         ];
         expected_entries.sort();
         let mut found_entries = vec![];
@@ -520,8 +544,19 @@ mod tests {
                     found_entries.push(dir_name.clone());
                     entry.path().read_dir().unwrap().for_each(|entry| {
                         let entry = entry.unwrap();
-                        let file_name = entry.file_name().into_string().unwrap();
-                        found_entries.push(format!("{dir_name}/{file_name}"));
+                        let entry_name = entry.file_name().into_string().unwrap();
+                        found_entries.push(format!("{dir_name}/{entry_name}"));
+                        if entry.path().is_dir() {
+                            assert_eq!(entry_name, "data");
+                            entry.path().read_dir().unwrap().for_each(|entry| {
+                                let entry = entry.unwrap();
+                                let file_name = entry.file_name().into_string().unwrap();
+                                found_entries.push(format!("{dir_name}/{entry_name}/{file_name}"));
+                                assert_eq!(file_name, format!("{vault_name}.json"));
+                            });
+                        } else {
+                            assert_eq!(entry_name, format!("{vault_name}.json"));
+                        }
                     });
                 }
                 "identities" => {
@@ -540,6 +575,15 @@ mod tests {
                     entry.path().read_dir().unwrap().for_each(|entry| {
                         let entry = entry.unwrap();
                         assert!(entry.path().is_dir());
+                        let file_name = entry.file_name().into_string().unwrap();
+                        found_entries.push(format!("{dir_name}/{file_name}"));
+                    });
+                }
+                "defaults" => {
+                    assert!(entry.path().is_dir());
+                    found_entries.push(dir_name.clone());
+                    entry.path().read_dir().unwrap().for_each(|entry| {
+                        let entry = entry.unwrap();
                         let file_name = entry.file_name().into_string().unwrap();
                         found_entries.push(format!("{dir_name}/{file_name}"));
                     });
