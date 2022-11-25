@@ -1,4 +1,5 @@
 use crate::node::NodeOpts;
+use crate::state::VaultConfig;
 use crate::util::{node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 use crate::{help, state};
@@ -43,6 +44,16 @@ async fn run_impl(
     } else {
         let vault_config = if let Some(vault_name) = cmd.vault {
             options.state.vaults.get(&vault_name)?.config
+        } else if options.state.vaults.default().is_err() {
+            let vault_name = hex::encode(random::<[u8; 4]>());
+            let config = options
+                .state
+                .vaults
+                .create(&vault_name, VaultConfig::fs_default(&vault_name)?)
+                .await?
+                .config;
+            println!("Default vault created: {}", &vault_name);
+            config
         } else {
             options.state.vaults.default()?.config
         };
@@ -52,8 +63,7 @@ async fn run_impl(
         options
             .state
             .identities
-            .create(&cmd.name, identity_config.clone())?;
-        identity_config.get(&ctx, &vault).await?;
+            .create(&cmd.name, identity_config)?;
         println!("Identity created: {}", identity.identifier());
     }
     Ok(())
