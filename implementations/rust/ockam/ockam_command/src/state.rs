@@ -52,7 +52,7 @@ impl VaultsState {
         Ok(Self { dir })
     }
 
-    pub fn create(&self, name: &str, config: VaultConfig) -> anyhow::Result<VaultState> {
+    pub async fn create(&self, name: &str, config: VaultConfig) -> anyhow::Result<VaultState> {
         let path = {
             let mut path = self.dir.clone();
             path.push(format!("{}.json", name));
@@ -66,6 +66,7 @@ impl VaultsState {
         if !self.default_path()?.exists() {
             self.set_default(name)?;
         }
+        config.get().await?;
         Ok(VaultState { path, config })
     }
 
@@ -106,10 +107,9 @@ impl VaultsState {
         let link = self.default_path()?;
         std::os::unix::fs::symlink(&original, &link)?;
         let contents = std::fs::read_to_string(&original)?;
-        let config = serde_json::from_str(&contents)?;
         Ok(VaultState {
             path: original,
-            config,
+            config: serde_json::from_str(&contents)?,
         })
     }
 }
@@ -150,8 +150,14 @@ impl VaultConfig {
         })
     }
 
-    pub async fn fs(path: PathBuf) -> anyhow::Result<Self> {
+    pub fn fs(path: PathBuf) -> anyhow::Result<Self> {
         Ok(Self::Fs { path })
+    }
+
+    pub fn fs_default(name: &str) -> anyhow::Result<Self> {
+        Ok(Self::Fs {
+            path: Self::fs_path(name, None)?,
+        })
     }
 }
 
@@ -477,7 +483,7 @@ mod tests {
 
             let config = VaultConfig::Fs { path };
 
-            let state = sut.vaults.create(&name, config).unwrap();
+            let state = sut.vaults.create(&name, config).await.unwrap();
             let got = sut.vaults.get(&name).unwrap();
             assert_eq!(got, state);
 

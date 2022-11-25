@@ -35,13 +35,16 @@ async fn run_impl(ctx: Context, (options, cmd): (CommandGlobalOpts, CreateComman
         let request = Request::post("/node/vault").body(CreateVaultRequest::new(cmd.path));
         rpc.request(request).await?;
         rpc.is_ok()?;
-        println!("Vault created for the Node {}!", node_name);
+        println!("Vault created for the Node {}", node_name);
     } else {
         let path = state::VaultConfig::fs_path(&cmd.name, cmd.path)?;
-        let config = state::VaultConfig::fs(path).await?;
-        options.state.vaults.create(&cmd.name, config.clone())?;
-        config.get().await?;
-        println!("Vault created with name: {}!", &cmd.name);
+        let config = state::VaultConfig::fs(path)?;
+        options
+            .state
+            .vaults
+            .create(&cmd.name, config.clone())
+            .await?;
+        println!("Vault created: {}", &cmd.name);
     }
     Ok(())
 }
