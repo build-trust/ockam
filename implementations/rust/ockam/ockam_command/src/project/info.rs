@@ -88,7 +88,7 @@ async fn run_impl(
     cmd: InfoCommand,
 ) -> crate::Result<()> {
     let controller_route = &cmd.cloud_opts.route();
-    let node_name = start_embedded_node(ctx, &opts.config).await?;
+    let node_name = start_embedded_node(ctx, &opts).await?;
 
     // Lookup project
     let id = match config::get_project(&opts.config, &cmd.name) {

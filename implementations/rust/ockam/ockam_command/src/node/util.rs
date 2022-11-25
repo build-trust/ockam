@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context as _, Result};
+use rand::random;
 use sysinfo::{get_current_pid, ProcessExt, System, SystemExt};
 use tracing::trace;
 
@@ -19,10 +20,11 @@ use ockam_vault::Vault;
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
-use crate::{project, OckamConfig};
+use crate::{project, state, OckamConfig};
 use crate::{util::startup, CommandGlobalOpts};
 
-pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<String> {
+pub async fn start_embedded_node(ctx: &Context, opts: &CommandGlobalOpts) -> Result<String> {
+    let cfg = &opts.config;
     let cmd = CreateCommand::default();
 
     // Create node directory if it doesn't exist
@@ -30,7 +32,7 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        create_default_identity_if_needed(ctx, cfg).await?;
+        create_default_identity_if_needed(ctx, opts).await?;
     }
 
     let identity_override = if cmd.skip_defaults {
@@ -84,8 +86,10 @@ pub async fn start_embedded_node(ctx: &Context, cfg: &OckamConfig) -> Result<Str
 
 pub(super) async fn create_default_identity_if_needed(
     ctx: &Context,
-    cfg: &OckamConfig,
+    opts: &CommandGlobalOpts,
 ) -> Result<()> {
+    let cfg = &opts.config;
+
     // Get default root vault (create if needed)
     let default_vault_path = cfg.get_default_vault_path().unwrap_or_else(|| {
         let default_vault_path = cli::OckamConfig::dir().join("default_vault.json");
@@ -104,6 +108,22 @@ pub(super) async fn create_default_identity_if_needed(
     };
 
     cfg.persist_config_updates()?;
+
+    // Store vault and identity in the new directory
+    let vault_name = hex::encode(random::<[u8; 4]>());
+    let vault_path = state::VaultConfig::fs_path(
+        &vault_name,
+        default_vault_path.to_str().map(|s| s.to_string()),
+    )?;
+    let vault_config = state::VaultConfig::fs(vault_path)?;
+    opts.state.vaults.create(&vault_name, vault_config).await?;
+
+    let identity_name = hex::encode(random::<[u8; 4]>());
+    let identity = Identity::import(ctx, &cfg.get_default_identity().unwrap(), &vault).await?;
+    let identity_config = state::IdentityConfig::new(&identity).await;
+    opts.state
+        .identities
+        .create(&identity_name, identity_config)?;
 
     Ok(())
 }
