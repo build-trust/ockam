@@ -19,7 +19,7 @@ use crate::{
     help,
     node::show::print_query_status,
     node::HELP_DETAIL,
-    project,
+    project, state,
     util::{find_available_port, startup},
     CommandGlobalOpts,
 };
@@ -224,7 +224,7 @@ async fn run_foreground_node(
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        create_default_identity_if_needed(&ctx, cfg).await?;
+        create_default_identity_if_needed(&ctx, &opts).await?;
     }
 
     let identity_override = if cmd.skip_defaults {
@@ -405,7 +405,10 @@ async fn spawn_background_node(
     cfg.create_node(&cmd.node_name, addr, verbose)?;
     cfg.persist_config_updates()?;
 
-    create_default_identity_if_needed(ctx, cfg).await?;
+    create_default_identity_if_needed(ctx, opts).await?;
+    opts.state
+        .nodes
+        .create(&cmd.node_name, state::NodeConfigBuilder::new().build()?)?;
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node

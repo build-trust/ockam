@@ -55,7 +55,7 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let space_id = space::config::try_get_space(&opts.config, &cmd.space_name)
         .context(format!("Space '{}' does not exist", cmd.space_name))?;
-    let node_name = start_embedded_node(ctx, &opts.config).await?;
+    let node_name = start_embedded_node(ctx, &opts).await?;
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::project::create(
         &cmd.project_name,

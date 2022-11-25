@@ -43,7 +43,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, AuthCommand),
 ) -> crate::Result<()> {
-    let node_name = start_embedded_node(&ctx, &opts.config).await?;
+    let node_name = start_embedded_node(&ctx, &opts).await?;
 
     // Read (okta and authority) project parameters from project.json
     let s = tokio::fs::read_to_string(cmd.project).await?;

@@ -1,9 +1,12 @@
-use anyhow::Context;
+use crate::util::startup;
+use anyhow::{anyhow, Context};
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use ockam_identity::{Identity, IdentityIdentifier};
 use ockam_vault::{storage::FileStorage, Vault};
 use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter, Write};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -297,7 +300,10 @@ impl NodesState {
             path
         };
         let state = NodeState::new(path, config);
-        // std::fs::write(state.path.join("version"), &state.config.version)?;
+        std::fs::write(state.path.join("version"), state.config.version.to_string())?;
+        if let Some(pid) = state.config.pid {
+            std::fs::write(state.path.join("pid"), pid.to_string())?;
+        }
         std::fs::File::create(state.socket())?;
         std::fs::File::create(state.stdout_log())?;
         std::fs::File::create(state.stderr_log())?;
@@ -369,30 +375,52 @@ impl NodeState {
         self.path.join("stderr.log")
     }
 
-    // TODO: retrieve PID + kill process
-    // pub fn delete(&self) -> anyhow::Result<()> {
-    //     std::fs::remove_dir_all(&self.path)?;
-    //     Ok(())
-    // }
+    pub fn authenticated_storage_path(&self) -> PathBuf {
+        self.path.join("authenticated_storage.lmdb")
+    }
+
+    pub fn policies_storage_path(&self) -> PathBuf {
+        self.path.join("policies_storage.lmdb")
+    }
+
+    pub fn delete(&self, sigkill: bool) -> anyhow::Result<()> {
+        if let Some(pid) = self.config.pid {
+            startup::stop(pid, sigkill)?;
+        }
+        std::fs::remove_dir_all(&self.path)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NodeConfig {
+    version: NodeConfigVersion,
+    pid: Option<i32>,
     default_vault: PathBuf,
     default_identity: PathBuf,
     // TODO
-    // pid: Option<String>,
     // authorities: AuthoritiesConfig,
-    // setup: NodeSetupConfig, // a mix of the current commands.json with some additional fields to define services
+    // setup: NodeSetupConfig,
 }
 
 impl TryFrom<&PathBuf> for NodeConfig {
     type Error = anyhow::Error;
 
     fn try_from(path: &PathBuf) -> Result<Self, Self::Error> {
+        let version = NodeConfigVersion::load(path)?;
+        let pid = path.join("pid").exists().then(|| {
+            std::fs::read_to_string(path.join("pid"))
+                .context("couldn't read contents from PID file")
+                .unwrap()
+                .parse()
+                .context("invalid PID file contents")
+                .unwrap()
+        });
         let default_vault = std::fs::canonicalize(path.join("default_vault"))?;
         let default_identity = std::fs::canonicalize(path.join("default_identity"))?;
         Ok(Self {
+            version,
+            pid,
             default_vault,
             default_identity,
         })
@@ -403,6 +431,8 @@ impl NodeConfig {
     pub fn default() -> anyhow::Result<Self> {
         let cli_state = CliState::new()?;
         Ok(Self {
+            version: NodeConfigVersion::latest(),
+            pid: None,
             default_vault: cli_state.vaults.default()?.path,
             default_identity: cli_state.identities.default()?.path,
         })
@@ -411,6 +441,7 @@ impl NodeConfig {
 
 #[derive(Debug, Clone)]
 pub struct NodeConfigBuilder {
+    pid: Option<i32>,
     vault: Option<PathBuf>,
     identity: Option<PathBuf>,
 }
@@ -418,9 +449,15 @@ pub struct NodeConfigBuilder {
 impl NodeConfigBuilder {
     pub fn new() -> Self {
         Self {
+            pid: None,
             vault: None,
             identity: None,
         }
+    }
+
+    pub fn pid(mut self, pid: i32) -> Self {
+        self.pid = Some(pid);
+        self
     }
 
     pub fn vault(mut self, path: PathBuf) -> Self {
@@ -444,11 +481,58 @@ impl NodeConfigBuilder {
             None => cli_state.identities.default()?.path,
         };
         Ok(NodeConfig {
+            version: NodeConfigVersion::latest(),
+            pid: self.pid,
             default_vault: vault,
             default_identity: identity,
         })
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum NodeConfigVersion {
+    V1,
+}
+
+impl NodeConfigVersion {
+    const FILE_NAME: &'static str = "version";
+
+    fn latest() -> Self {
+        Self::V1
+    }
+
+    fn load(_path: &Path) -> anyhow::Result<Self> {
+        Ok(Self::V1)
+    }
+}
+
+impl Display for NodeConfigVersion {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            NodeConfigVersion::V1 => "1",
+        })
+    }
+}
+
+impl FromStr for NodeConfigVersion {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "1" => Ok(Self::V1),
+            _ => Err(anyhow!("Unknown version: {}", s)),
+        }
+    }
+}
+
+// TODO
+// pub struct NodeSetupConfig {
+//     transports: ?,
+//     secure_channels: ?,
+//     inlets: ?,
+//     outlets: ?,
+//     services: ?,
+// }
 
 fn file_stem(path: &Path) -> anyhow::Result<String> {
     path.file_stem()
