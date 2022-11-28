@@ -152,7 +152,7 @@ impl VaultsState {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct VaultState {
-    path: PathBuf,
+    pub path: PathBuf,
     pub config: VaultConfig,
 }
 
@@ -273,7 +273,7 @@ impl IdentitiesState {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IdentityState {
-    path: PathBuf,
+    pub path: PathBuf,
     pub config: IdentityConfig,
 }
 
