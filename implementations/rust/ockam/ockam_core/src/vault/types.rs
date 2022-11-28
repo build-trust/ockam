@@ -297,8 +297,8 @@ pub struct VaultEntry {
 pub enum Secret {
     /// A secret key.
     #[n(0)] Key(#[n(0)] SecretKey),
-    /// Reference to an unmanaged, external secret key.
-    #[n(1)] Ref(#[n(1)] KeyId)
+    /// Reference to an unmanaged, external secret key of AWS KMS.
+    #[n(1)] Aws(#[n(1)] KeyId)
 }
 
 impl Secret {
@@ -354,11 +354,11 @@ impl VaultEntry {
         }
     }
 
-    /// Create a new vault entry with an external secret key.
-    pub fn new_ref(key_attributes: SecretAttributes, kid: KeyId) -> Self {
+    /// Create a new vault entry with an external secret key from AWS KMS.
+    pub fn new_aws(key_attributes: SecretAttributes, kid: KeyId) -> Self {
         VaultEntry {
             key_attributes,
-            secret: Secret::Ref(kid),
+            secret: Secret::Aws(kid),
         }
     }
 }
