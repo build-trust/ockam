@@ -775,8 +775,11 @@ mod tests {
                             entry.path().read_dir().unwrap().for_each(|entry| {
                                 let entry = entry.unwrap();
                                 let file_name = entry.file_name().into_string().unwrap();
-                                found_entries.push(format!("{dir_name}/{entry_name}/{file_name}"));
-                                assert_eq!(file_name, format!("{vault_name}-storage.json"));
+                                if !file_name.ends_with(".lock") {
+                                    found_entries
+                                        .push(format!("{dir_name}/{entry_name}/{file_name}"));
+                                    assert_eq!(file_name, format!("{vault_name}-storage.json"));
+                                }
                             });
                         } else {
                             assert_eq!(entry_name, format!("{vault_name}.json"));
