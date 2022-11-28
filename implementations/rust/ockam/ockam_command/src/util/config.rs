@@ -6,6 +6,7 @@ use anyhow::{Context, Result};
 use tracing::{error, trace};
 
 use ockam::identity::IdentityIdentifier;
+use ockam_api::cli_state;
 use ockam_api::config::cli::NodeConfigOld;
 use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::config::{cli, lookup::ConfigLookup, lookup::InternetAddress, Config};
@@ -38,8 +39,6 @@ pub enum ConfigError {
     AlreadyExists(String),
     #[error("node with name {0} does not exist")]
     NotFound(String),
-    #[error("node with name {0} is not local")]
-    NotLocal(String),
 }
 
 impl OckamConfig {
@@ -76,24 +75,32 @@ impl OckamConfig {
     }
 
     pub fn get_default_vault_path(&self) -> Option<PathBuf> {
-        self.inner.read().default_vault_path.clone()
+        Some(
+            cli_state::CliState::new()
+                .unwrap()
+                .vaults
+                .default_path()
+                .unwrap(),
+        )
     }
 
     pub fn get_default_identity(&self) -> Option<Vec<u8>> {
-        self.inner.read().default_identity.clone()
+        Some(
+            cli_state::CliState::new()
+                .unwrap()
+                .identities
+                .default()
+                .unwrap()
+                .config
+                .change_history
+                .export()
+                .unwrap(),
+        )
     }
 
     /// Get the node state directory
     pub fn get_node_dir(&self, name: &str) -> Result<PathBuf> {
-        let inner = self.inner.read();
-        let n = inner
-            .nodes
-            .get(name)
-            .ok_or_else(|| ConfigError::NotFound(name.to_string()))?;
-        let node_path = n
-            .state_dir()
-            .ok_or_else(|| ConfigError::NotLocal(name.to_string()))?;
-        Ok(PathBuf::new().join(node_path))
+        Ok(cli_state::CliState::new()?.nodes.get(name)?.path)
     }
 
     /// Get the node state directory
@@ -175,14 +182,6 @@ impl OckamConfig {
 
     ///////////////////// WRITE ACCESSORS //////////////////////////////
 
-    pub fn set_default_vault_path(&self, default_vault_path: Option<PathBuf>) {
-        self.inner.write().default_vault_path = default_vault_path
-    }
-
-    pub fn set_default_identity(&self, default_identity: Option<Vec<u8>>) {
-        self.inner.write().default_identity = default_identity;
-    }
-
     /// Add a new node to the configuration for future lookup
     pub fn create_node(&self, name: &str, bind: SocketAddr, verbose: u8) -> Result<()> {
         let mut inner = self.inner.write();
@@ -200,11 +199,6 @@ impl OckamConfig {
 
         // Add this node to the config lookup table
         inner.lookup.set_node(name, bind.into());
-
-        // Set First Created Node as Default Node
-        if inner.default.is_none() {
-            inner.default = Some(name.to_string());
-        }
 
         // Add this node to the main node table
         inner.nodes.insert(
@@ -227,11 +221,6 @@ impl OckamConfig {
     /// deletion operation, we don't return an error if the node doesn't exist.
     pub fn remove_node(&self, name: &str) {
         let mut inner = self.inner.write();
-        // If we are removing the first node also remove the default value
-        match &inner.default {
-            Some(default_node_name) if default_node_name == name => inner.default = None,
-            _ => {}
-        }
         inner.lookup.remove_node(name);
         inner.nodes.remove(name);
     }
@@ -289,16 +278,6 @@ impl OckamConfig {
     pub fn remove_projects_alias(&self) {
         let mut inner = self.inner.write();
         inner.lookup.remove_projects();
-    }
-
-    pub fn set_default_node(&self, name: &String) {
-        let mut inner = self.inner.write();
-        inner.default = Some(name.to_string());
-    }
-
-    pub fn get_default_node(&self) -> Option<String> {
-        let inner = self.inner.read();
-        inner.default.clone()
     }
 }
 

@@ -17,7 +17,6 @@ use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::tokio;
 use ockam_node::tokio::task::JoinHandle;
-use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 use std::collections::BTreeMap;
 use std::error::Error as _;
@@ -27,11 +26,11 @@ use std::time::Duration;
 use super::models::secure_channel::CredentialExchangeMode;
 use super::registry::Registry;
 use crate::authenticator::direct::types::OneTimeCode;
+use crate::cli_state::CliState;
 use crate::config::cli::AuthoritiesConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
 use crate::lmdb::LmdbStorage;
-use crate::nodes::config::NodeConfig;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::session::util::starts_with_host_tcp_secure;
@@ -48,7 +47,6 @@ mod portals;
 mod secure_channel;
 mod services;
 mod transport;
-mod vault;
 
 const TARGET: &str = "ockam_api::nodemanager::service";
 
@@ -68,10 +66,6 @@ pub(crate) fn invalid_multiaddr_error() -> ockam_core::Error {
 // TODO: Move to multiaddr implementation
 pub(crate) fn map_multiaddr_err(_err: ockam_multiaddr::Error) -> ockam_core::Error {
     invalid_multiaddr_error()
-}
-
-fn map_anyhow_err(err: anyhow::Error) -> ockam_core::Error {
-    ockam_core::Error::new(Origin::Application, Kind::Internal, err)
 }
 
 pub(crate) struct Authorities(Vec<AuthorityInfo>);
@@ -100,16 +94,14 @@ pub(crate) struct AuthorityInfo {
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeManager {
     node_name: String,
-    node_dir: PathBuf,
-    config: NodeConfig,
     api_transport_id: Alias,
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
     pub(crate) controller_identity_id: IdentityIdentifier,
     skip_defaults: bool,
     enable_credential_checks: bool,
-    vault: Option<Vault>,
-    identity: Option<Identity<Vault>>,
+    vault: Vault,
+    identity: Identity<Vault>,
     project_id: Option<String>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
     authorities: Option<Authorities>,
@@ -144,15 +136,11 @@ pub struct IdentityOverride {
 
 impl NodeManager {
     pub(crate) fn identity(&self) -> Result<&Identity<Vault>> {
-        self.identity
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Identity doesn't exist"))
+        Ok(&self.identity)
     }
 
     pub(crate) fn vault(&self) -> Result<&Vault> {
-        self.vault
-            .as_ref()
-            .ok_or_else(|| ApiError::generic("Vault doesn't exist"))
+        Ok(&self.vault)
     }
 
     pub(crate) fn authorities(&self) -> Result<&Authorities> {
@@ -171,24 +159,14 @@ impl NodeManager {
 
 pub struct NodeManagerGeneralOptions {
     node_name: String,
-    node_dir: PathBuf,
     skip_defaults: bool,
-    // Should be passed only when creating fresh node and we want it to get default root Identity
-    identity_override: Option<IdentityOverride>,
 }
 
 impl NodeManagerGeneralOptions {
-    pub fn new(
-        node_name: String,
-        node_dir: PathBuf,
-        skip_defaults: bool,
-        identity_override: Option<IdentityOverride>,
-    ) -> Self {
+    pub fn new(node_name: String, skip_defaults: bool) -> Self {
         Self {
             node_name,
-            node_dir,
             skip_defaults,
-            identity_override,
         }
     }
 }
@@ -245,61 +223,19 @@ impl NodeManager {
         let mut transports = BTreeMap::new();
         transports.insert(api_transport_id.clone(), transport_options.api_transport);
 
-        let config = NodeConfig::new(&general_options.node_dir).map_err(map_anyhow_err)?;
-        let state = config.state();
+        let state = CliState::new()?.nodes.get(&general_options.node_name)?;
 
-        // Check if we had existing AuthenticatedStorage, create with default location otherwise
-        let authenticated_storage_path = state.authenticated_storage_path();
-        let authenticated_storage = LmdbStorage::new(&authenticated_storage_path).await?;
+        let authenticated_storage = LmdbStorage::new(&state.authenticated_storage_path()).await?;
+        let policies_storage = LmdbStorage::new(&state.policies_storage_path()).await?;
 
-        let policies_storage_path = state.policies_storage_path();
-        let policies_storage = LmdbStorage::new(&policies_storage_path).await?;
-
-        // Skip override if we already had vault
-        if state.read().vault_path.is_none() {
-            if let Some(identity_override) = general_options.identity_override {
-                // Copy vault file, update config
-                let vault_path = Self::default_vault_path(&general_options.node_dir);
-                std::fs::copy(&identity_override.vault_path, &vault_path)
-                    .map_err(|_| ApiError::generic("Error while copying default node"))?;
-
-                state.write().vault_path = Some(vault_path);
-                state.write().identity = Some(identity_override.identity);
-                state.write().identity_was_overridden = true;
-
-                state.persist_config_updates().map_err(map_anyhow_err)?;
-            }
-        }
-
-        // Check if we had existing Vault
-        let vault_path = state.read().vault_path.clone();
-        let vault = match vault_path {
-            Some(vault_path) => {
-                let vault_storage = FileStorage::create(vault_path).await?;
-                let vault = Vault::new(Some(Arc::new(vault_storage)));
-
-                Some(vault)
-            }
-            None => None,
-        };
-
-        // Check if we had existing Identity
-        let identity_info = state.read().identity.clone();
-        let identity = match identity_info {
-            Some(identity) => match vault.as_ref() {
-                Some(vault) => Some(Identity::import(ctx, &identity, vault).await?),
-                None => None,
-            },
-            None => None,
-        };
+        let vault = state.config.vault().await?;
+        let identity = state.config.identity(ctx).await?;
 
         let medic = Medic::new();
         let sessions = medic.sessions();
 
         let mut s = Self {
             node_name: general_options.node_name,
-            node_dir: general_options.node_dir,
-            config,
             api_transport_id,
             transports,
             tcp_transport: transport_options.tcp_transport,
@@ -324,8 +260,6 @@ impl NodeManager {
         };
 
         if !general_options.skip_defaults {
-            s.create_defaults(ctx).await?;
-
             if let Some(ac) = projects_options.ac {
                 s.configure_authorities(ac).await?;
             }
@@ -352,14 +286,6 @@ impl NodeManager {
         }
 
         self.authorities = Some(Authorities::new(v));
-
-        Ok(())
-    }
-
-    async fn create_defaults(&mut self, ctx: &Context) -> Result<()> {
-        // Create default vault and identity, if they don't exists already
-        self.create_vault_impl(None, true).await?;
-        self.create_identity_impl(ctx, true).await?;
 
         Ok(())
     }
@@ -532,11 +458,7 @@ impl NodeManagerWorker {
                 self.delete_transport(req, dec).await?.to_vec()?
             }
 
-            // ==*== Vault ==*==
-            (Post, ["node", "vault"]) => self.create_vault(req, dec).await?.to_vec()?,
-
             // ==*== Identity ==*==
-            (Post, ["node", "identity"]) => self.create_identity(ctx, req).await?.to_vec()?,
             (Post, ["node", "identity", "actions", "show", "short"]) => {
                 self.short_identity(req).await?.to_vec()?
             }
@@ -788,51 +710,5 @@ impl Worker for NodeManagerWorker {
             "responding"
         }
         ctx.send(msg.return_route(), r).await
-    }
-}
-
-#[cfg(test)]
-pub(crate) mod tests {
-    use crate::nodes::NodeManager;
-    use ockam::{route, Route};
-
-    use super::*;
-
-    impl NodeManager {
-        pub(crate) async fn test_create(ctx: &Context) -> Result<Route> {
-            let node_dir = tempfile::tempdir().unwrap();
-            let node_manager = "manager";
-            let transport = TcpTransport::create(ctx).await?;
-            let node_address = transport.listen("127.0.0.1:0").await?;
-            let mut node_man = NodeManager::create(
-                ctx,
-                NodeManagerGeneralOptions::new(
-                    "node".to_string(),
-                    node_dir.into_path(),
-                    true,
-                    None,
-                ),
-                NodeManagerProjectsOptions::new(None, None, Default::default(), None),
-                NodeManagerTransportOptions::new(
-                    (
-                        TransportType::Tcp,
-                        TransportMode::Listen,
-                        node_address.to_string(),
-                    ),
-                    transport,
-                ),
-            )
-            .await?;
-
-            // Initialize identity
-            node_man.create_vault_impl(None, false).await?;
-            node_man.create_identity_impl(ctx, false).await?;
-
-            let node_manager_worker = NodeManagerWorker::new(node_man);
-
-            // Initialize node_man worker and return its route
-            ctx.start_worker(node_manager, node_manager_worker).await?;
-            Ok(route![node_manager])
-        }
     }
 }

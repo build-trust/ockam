@@ -55,6 +55,12 @@ impl From<ockam::Error> for Error {
     }
 }
 
+impl From<ockam_api::cli_state::CliStateError> for Error {
+    fn from(e: ockam_api::cli_state::CliStateError) -> Self {
+        Error::new(exitcode::SOFTWARE, e.into())
+    }
+}
+
 impl From<anyhow::Error> for Error {
     fn from(e: anyhow::Error) -> Self {
         Error::new(exitcode::SOFTWARE, e)

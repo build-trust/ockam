@@ -4,17 +4,13 @@ use crate::config::{
     lookup::{ConfigLookup, InternetAddress},
     ConfigValues,
 };
-use crate::HexByteVec;
-use anyhow::Context;
+use crate::{cli_state, HexByteVec};
 use ockam_core::Result;
 use ockam_identity::{IdentityIdentifier, IdentityVault, PublicIdentity};
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::{
-    env,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 /// The main ockam CLI configuration
 ///
@@ -35,14 +31,8 @@ pub struct OckamConfig {
     pub dir: Option<PathBuf>,
     #[serde(default = "default_nodes")]
     pub nodes: BTreeMap<String, NodeConfigOld>,
-
     #[serde(default = "default_lookup")]
     pub lookup: ConfigLookup,
-
-    pub default_identity: Option<Vec<u8>>,
-    pub default_vault_path: Option<PathBuf>,
-    /// Default node
-    pub default: Option<String>,
 }
 
 fn default_nodes() -> BTreeMap<String, NodeConfigOld> {
@@ -59,9 +49,6 @@ impl ConfigValues for OckamConfig {
             dir: Some(Self::dir()),
             nodes: BTreeMap::new(),
             lookup: default_lookup(),
-            default_identity: None,
-            default_vault_path: None,
-            default: None,
         }
     }
 }
@@ -69,31 +56,15 @@ impl ConfigValues for OckamConfig {
 impl OckamConfig {
     /// Determine the default storage location for the ockam config
     pub fn dir() -> PathBuf {
-        if let Ok(dir) = env::var("OCKAM_PROJECT_PATH") {
-            println!(
-                "The OCKAM_PROJECT_PATH is now deprecated, consider using the OCKAM_HOME variable"
-            );
-            env::set_var("OCKAM_HOME", dir);
-        }
-        match env::var("OCKAM_HOME") {
-            Ok(dir) => PathBuf::from(&dir),
-            Err(_) => {
-                let b = directories::BaseDirs::new()
-                    .context("Unable to determine home directory")
-                    .unwrap();
-                b.home_dir().join(".ockam")
-            }
-        }
+        cli_state::CliState::dir().unwrap()
     }
 
     pub fn nodes_dir() -> PathBuf {
-        let dir = Self::dir().join("nodes");
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
+        cli_state::CliState::new().unwrap().nodes.dir
     }
 
     pub fn node_dir(name: &str) -> PathBuf {
-        Self::nodes_dir().join(name)
+        cli_state::CliState::new().unwrap().nodes.dir.join(name)
     }
 
     /// This function could be zero-copy if we kept the lock on the

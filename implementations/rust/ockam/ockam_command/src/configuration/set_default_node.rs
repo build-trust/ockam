@@ -1,4 +1,4 @@
-use crate::{util::extract_address_value, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 use clap::Args;
 
 #[derive(Clone, Debug, Args)]
@@ -16,12 +16,7 @@ impl SetDefaultNodeCommand {
     }
 }
 
-fn run_impl(name: &str, options: &CommandGlobalOpts) -> crate::Result<()> {
-    options.config.get_node(name)?;
-    options
-        .config
-        .set_default_node(&extract_address_value(name)?);
-    options.config.persist_config_updates()?;
-
-    Ok(())
+fn run_impl(_name: &str, _options: &CommandGlobalOpts) -> crate::Result<()> {
+    // TODO: add symlink to options.state.defaults().node
+    todo!()
 }

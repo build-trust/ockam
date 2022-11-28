@@ -156,18 +156,6 @@ teardown() {
 }
 
 @test "vault create" {
-  run $OCKAM node create n1 --skip-defaults
-  assert_success
-
-  run $OCKAM vault create --node n1
-  assert_success
-
-  # Should not be able to create a vault when one exists
-  run $OCKAM vault create --node n1
-  assert_failure
-}
-
-@test "vault create without node" {
   # Random name
   run $OCKAM vault create
   assert_success
@@ -183,22 +171,6 @@ teardown() {
 }
 
 @test "identity create" {
-  run $OCKAM node create n1 --skip-defaults
-  assert_success
-
-  # Need a vault to create an identity
-  run $OCKAM vault create --node n1
-  assert_success
-
-  run $OCKAM identity create --node n1
-  assert_success
-
-  # Should not be able to create an identity when one exists
-  run $OCKAM identity create --node n1
-  assert_failure
-}
-
-@test "identity create without node" {
   vault_name=$(openssl rand -hex 4)
   run $OCKAM vault create "${vault_name}"
   assert_success

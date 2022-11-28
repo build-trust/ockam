@@ -20,8 +20,6 @@ mod reset;
 mod secure_channel;
 mod service;
 mod space;
-#[allow(unused)]
-mod state;
 mod subscription;
 mod tcp;
 mod terminal;
@@ -59,9 +57,9 @@ use version::Version;
 
 use crate::admin::AdminCommand;
 use crate::node::util::run::CommandSection;
-use crate::state::CliState;
 use crate::subscription::SubscriptionCommand;
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
+use ockam_api::cli_state::CliState;
 use upgrade::check_if_an_upgrade_is_available;
 
 const ABOUT: &str = "\

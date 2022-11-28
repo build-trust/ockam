@@ -19,13 +19,13 @@ use crate::{
     help,
     node::show::print_query_status,
     node::HELP_DETAIL,
-    project, state,
+    project,
     util::{find_available_port, startup},
     CommandGlobalOpts,
 };
 use crate::{node::util::run::CommandsRunner, util::node_rpc};
 use crate::{
-    node::util::{add_project_authority, create_default_identity_if_needed, get_identity_override},
+    node::util::{add_project_authority, create_default_identity_if_needed},
     util::RpcBuilder,
 };
 use crate::{project::ProjectInfo, util::api};
@@ -224,14 +224,8 @@ async fn run_foreground_node(
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        create_default_identity_if_needed(&ctx, &opts).await?;
+        create_default_identity_if_needed(&ctx, &opts, &cmd.node_name).await?;
     }
-
-    let identity_override = if cmd.skip_defaults {
-        None
-    } else {
-        Some(get_identity_override(&ctx, cfg).await?)
-    };
 
     let project_id = match &cmd.project {
         Some(path) => {
@@ -252,15 +246,12 @@ async fn run_foreground_node(
     let bind = cmd.tcp_listener_address;
     tcp.listen(&bind).await?;
 
-    let node_dir = cfg.get_node_dir(&cmd.node_name)?;
     let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
         &ctx,
         NodeManagerGeneralOptions::new(
             cmd.node_name.clone(),
-            node_dir,
             cmd.skip_defaults || cmd.launch_config.is_some(),
-            identity_override,
         ),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
@@ -405,10 +396,7 @@ async fn spawn_background_node(
     cfg.create_node(&cmd.node_name, addr, verbose)?;
     cfg.persist_config_updates()?;
 
-    create_default_identity_if_needed(ctx, opts).await?;
-    opts.state
-        .nodes
-        .create(&cmd.node_name, state::NodeConfigBuilder::new().build()?)?;
+    create_default_identity_if_needed(ctx, opts, &cmd.node_name).await?;
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node
