@@ -168,8 +168,6 @@ impl FromStr for NodeConfigVersion {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct NodeStateConfig {
-    /// Vault info
-    pub vault_path: Option<PathBuf>,
     /// Exported identity value
     pub identity: Option<Vec<u8>>,
     /// Identity was overridden

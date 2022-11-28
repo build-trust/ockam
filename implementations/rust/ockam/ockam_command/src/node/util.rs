@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use anyhow::{anyhow, Context as _, Result};
 use rand::random;
 use sysinfo::{get_current_pid, ProcessExt, System, SystemExt};
@@ -7,20 +5,20 @@ use tracing::trace;
 
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpTransport};
+use ockam_api::cli_state;
 use ockam_api::config::cli;
 use ockam_api::config::cli::OckamConfig as OckamConfigApi;
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
 };
-use ockam_api::nodes::{IdentityOverride, NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_multiaddr::MultiAddr;
-use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
-use crate::{project, state, OckamConfig};
+use crate::{project, OckamConfig};
 use crate::{util::startup, CommandGlobalOpts};
 
 pub async fn start_embedded_node(ctx: &Context, opts: &CommandGlobalOpts) -> Result<String> {
@@ -32,14 +30,8 @@ pub async fn start_embedded_node(ctx: &Context, opts: &CommandGlobalOpts) -> Res
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        create_default_identity_if_needed(ctx, opts).await?;
+        create_default_identity_if_needed(ctx, opts, &cmd.node_name).await?;
     }
-
-    let identity_override = if cmd.skip_defaults {
-        None
-    } else {
-        Some(get_identity_override(ctx, cfg).await?)
-    };
 
     let project_id = match &cmd.project {
         Some(path) => {
@@ -56,15 +48,12 @@ pub async fn start_embedded_node(ctx: &Context, opts: &CommandGlobalOpts) -> Res
     let tcp = TcpTransport::create(ctx).await?;
     let bind = cmd.tcp_listener_address;
     tcp.listen(&bind).await?;
-    let node_dir = cfg.get_node_dir_unchecked(&cmd.node_name);
     let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
         ctx,
         NodeManagerGeneralOptions::new(
             cmd.node_name.clone(),
-            node_dir,
             cmd.skip_defaults || cmd.launch_config.is_some(),
-            identity_override,
         ),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
@@ -87,71 +76,33 @@ pub async fn start_embedded_node(ctx: &Context, opts: &CommandGlobalOpts) -> Res
 pub(super) async fn create_default_identity_if_needed(
     ctx: &Context,
     opts: &CommandGlobalOpts,
+    node_name: &str,
 ) -> Result<()> {
-    let cfg = &opts.config;
+    let state = &opts.state;
 
-    // Get default root vault (create if needed)
-    let default_vault_path = cfg.get_default_vault_path().unwrap_or_else(|| {
-        let default_vault_path = cli::OckamConfig::dir().join("default_vault.json");
-        cfg.set_default_vault_path(Some(default_vault_path.clone()));
-        default_vault_path
-    });
-
-    let storage = FileStorage::create(default_vault_path.clone()).await?;
-    let vault = Vault::new(Some(Arc::new(storage)));
-
-    // Get default root identity (create if needed)
-    if cfg.get_default_identity().is_none() {
-        let identity = Identity::create(ctx, &vault).await?;
-        let exported_data = identity.export().await?;
-        cfg.set_default_identity(Some(exported_data));
+    // Get default vault (create if needed)
+    let vault = if state.vaults.default().is_err() {
+        let n = hex::encode(random::<[u8; 4]>());
+        let c = cli_state::VaultConfig::fs_default(&n)?;
+        state.vaults.create(&n, c).await?.config.get().await?
+    } else {
+        state.vaults.default()?.config.get().await?
     };
 
-    cfg.persist_config_updates()?;
+    // Get default identity (create if needed)
+    if state.identities.default().is_err() {
+        let identity_name = hex::encode(random::<[u8; 4]>());
+        let identity = Identity::create(ctx, &vault).await?;
+        let identity_config = cli_state::IdentityConfig::new(&identity).await;
+        state.identities.create(&identity_name, identity_config)?;
+    }
 
-    // Store vault and identity in the new directory
-    let vault_name = hex::encode(random::<[u8; 4]>());
-    let vault_path = state::VaultConfig::fs_path(
-        &vault_name,
-        default_vault_path.to_str().map(|s| s.to_string()),
-    )?;
-    let vault_config = state::VaultConfig::fs(vault_path)?;
-    opts.state.vaults.create(&vault_name, vault_config).await?;
-
-    let identity_name = hex::encode(random::<[u8; 4]>());
-    let identity = Identity::import(ctx, &cfg.get_default_identity().unwrap(), &vault).await?;
-    let identity_config = state::IdentityConfig::new(&identity).await;
+    // Setup node state
     opts.state
-        .identities
-        .create(&identity_name, identity_config)?;
+        .nodes
+        .create(node_name, cli_state::NodeConfig::default()?)?;
 
     Ok(())
-}
-
-pub(super) async fn get_identity_override(
-    ctx: &Context,
-    cfg: &OckamConfig,
-) -> Result<IdentityOverride> {
-    // Get default root vault
-    let default_vault_path = cfg
-        .get_default_vault_path()
-        .context("Default vault was not found")?;
-
-    let storage = FileStorage::create(default_vault_path.clone()).await?;
-    let vault = Vault::new(Some(Arc::new(storage)));
-
-    // Get default root identity
-    let default_identity = cfg
-        .get_default_identity()
-        .context("Default identity was not found")?;
-
-    // Just to check validity
-    Identity::import(ctx, &default_identity, &vault).await?;
-
-    Ok(IdentityOverride {
-        identity: default_identity,
-        vault_path: default_vault_path,
-    })
 }
 
 pub(super) async fn add_project_authority(

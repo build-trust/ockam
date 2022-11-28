@@ -1,5 +1,7 @@
 pub mod auth;
 pub mod authenticator;
+#[allow(unused)]
+pub mod cli_state;
 pub mod cloud;
 pub mod config;
 pub mod echoer;

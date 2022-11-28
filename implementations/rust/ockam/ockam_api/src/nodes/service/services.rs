@@ -329,12 +329,7 @@ impl NodeManagerWorker {
             return Err(ApiError::generic("Verifier service exists at this address"));
         }
 
-        let vault = if let Some(v) = &node_manager.vault {
-            v.async_try_clone().await?
-        } else {
-            return Err(ApiError::generic("Vault not found"));
-        };
-
+        let vault = node_manager.vault.async_try_clone().await?;
         let vs = crate::verifier::Verifier::new(vault);
         ctx.start_worker(addr.clone(), vs).await?;
 
