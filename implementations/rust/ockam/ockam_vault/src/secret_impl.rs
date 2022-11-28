@@ -52,7 +52,7 @@ impl Vault {
                 #[cfg(feature = "aws")]
                 if attributes.persistence() == SecretPersistence::Persistent {
                     if let Some(kms) = &self.aws_kms {
-                        if let Secret::Ref(kid) = secret {
+                        if let Secret::Aws(kid) = secret {
                             let pk = kms.public_key(kid).await?;
                             break '_block self.compute_key_id_for_public_key(&pk).await?;
                         }
@@ -150,7 +150,7 @@ impl SecretVault for Vault {
                 if attributes.persistence() == SecretPersistence::Persistent {
                     if let Some(kms) = &self.aws_kms {
                         let aws_id = kms.create_key().await?;
-                        break '_block Secret::Ref(aws_id);
+                        break '_block Secret::Aws(aws_id);
                     }
                 }
                 cfg_if! {
@@ -256,7 +256,7 @@ impl SecretVault for Vault {
             SecretType::NistP256 => {
                 #[cfg(feature = "aws")]
                 if let Some(kms) = &self.aws_kms {
-                    if let Secret::Ref(kid) = entry.secret() {
+                    if let Secret::Aws(kid) = entry.secret() {
                         return kms.public_key(kid).await;
                     }
                 }
@@ -299,7 +299,7 @@ impl SecretVault for Vault {
             {
                 #[cfg(feature = "aws")]
                 if let Some(kms) = &self.aws_kms {
-                    if let Secret::Ref(kid) = _entry.secret() {
+                    if let Secret::Aws(kid) = _entry.secret() {
                         if !kms.delete_key(kid).await? {
                             return Err(VaultError::EntryNotFound.into());
                         }

@@ -58,7 +58,7 @@ impl Signer for Vault {
             SecretType::NistP256 => {
                 #[cfg(feature = "aws")]
                 if let Some(kms) = &self.aws_kms {
-                    if let Secret::Ref(kid) = entry.secret() {
+                    if let Secret::Aws(kid) = entry.secret() {
                         return kms.sign(kid, data).await;
                     }
                 }
