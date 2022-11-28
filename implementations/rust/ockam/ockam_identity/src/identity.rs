@@ -12,7 +12,7 @@ use ockam_core::compat::{
     sync::Arc,
     vec::Vec,
 };
-use ockam_core::vault::{SecretPersistence, SecretType, Signature};
+use ockam_core::vault::{SecretPersistence, SecretType, Signature, CURVE25519_SECRET_LENGTH_U32};
 use ockam_core::AsyncTryClone;
 use ockam_core::{Address, Result};
 use ockam_node::compat::asynchronous::RwLock;
@@ -98,25 +98,38 @@ impl<V: IdentityVault> Identity<V> {
     }
 
     /// Create Identity with external key.
-    pub async fn create_with_key(ctx: &Context, vault: &V, kid: &KeyId) -> Result<Self> {
-        Self::create_impl(ctx, vault, Some(kid)).await
+    pub async fn create_ext(
+        ctx: &Context,
+        vault: &V,
+        kid: &KeyId,
+        attrs: KeyAttributes,
+    ) -> Result<Self> {
+        Self::create_impl(ctx, vault, Some(kid), attrs).await
     }
 
     /// Create Identity with a new secret key.
     pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
-        Self::create_impl(ctx, vault, None).await
+        let attrs = KeyAttributes::new(
+            IdentityStateConst::ROOT_LABEL.to_string(),
+            SecretAttributes::new(
+                SecretType::Ed25519,
+                SecretPersistence::Persistent,
+                CURVE25519_SECRET_LENGTH_U32,
+            ),
+        );
+        Self::create_impl(ctx, vault, None, attrs).await
     }
 
-    async fn create_impl(ctx: &Context, vault: &V, kid: Option<&KeyId>) -> Result<Self> {
+    async fn create_impl(
+        ctx: &Context,
+        vault: &V,
+        kid: Option<&KeyId>,
+        key_attribs: KeyAttributes,
+    ) -> Result<Self> {
         let child_ctx = ctx
             .new_detached(Address::random_tagged("Identity.create.detached"))
             .await?;
         let initial_change_id = ChangeIdentifier::initial(vault).await;
-
-        let key_attribs = KeyAttributes::new(
-            IdentityStateConst::ROOT_LABEL.to_string(),
-            SecretAttributes::new(SecretType::Ed25519, SecretPersistence::Persistent, 32),
-        );
 
         let create_key_change = Self::make_create_key_change_static(
             kid,
