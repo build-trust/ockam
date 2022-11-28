@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context as _, Result};
 use ockam::vault::{Secret, SecretPersistence, SecretType};
+use ockam_identity::{IdentityStateConst, KeyAttributes};
 use sysinfo::{get_current_pid, ProcessExt, System, SystemExt};
 use tracing::trace;
 
@@ -114,7 +115,8 @@ pub(super) async fn create_default_identity_if_needed(
             let kid = vault
                 .secret_import(Secret::Aws(kid.to_string()), attrs)
                 .await?;
-            Identity::create_with_key(ctx, &vault, &kid).await?
+            let attrs = KeyAttributes::new(IdentityStateConst::ROOT_LABEL.to_string(), attrs);
+            Identity::create_ext(ctx, &vault, &kid, attrs).await?
         } else {
             Identity::create(ctx, &vault).await?
         };
