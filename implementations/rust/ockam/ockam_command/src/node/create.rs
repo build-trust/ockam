@@ -25,7 +25,7 @@ use crate::{
 };
 use crate::{node::util::run::CommandsRunner, util::node_rpc};
 use crate::{
-    node::util::{add_project_authority, create_default_identity_if_needed},
+    node::util::{add_project_authority, init_node_state},
     util::RpcBuilder,
 };
 use crate::{project::ProjectInfo, util::api};
@@ -98,14 +98,20 @@ pub struct CreateCommand {
 
     #[arg(long, hide = true)]
     pub config: Option<PathBuf>,
+
+    #[arg(long = "vault", value_name = "VAULT")]
+    vault: Option<String>,
+
+    #[arg(long = "identity", value_name = "IDENTITY")]
+    identity: Option<String>,
 }
 
 impl Default for CreateCommand {
     fn default() -> Self {
         Self {
             node_name: hex::encode(random::<[u8; 4]>()),
-            foreground: false,
             tcp_listener_address: "127.0.0.1:0".to_string(),
+            foreground: false,
             skip_defaults: false,
             child_process: false,
             launch_config: None,
@@ -113,6 +119,8 @@ impl Default for CreateCommand {
             project: None,
             config: None,
             token: None,
+            vault: None,
+            identity: None,
         }
     }
 }
@@ -148,7 +156,7 @@ impl CreateCommand {
 }
 
 async fn run_impl(
-    ctx: ockam::Context,
+    ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
     let node_name = &cmd.node_name;
@@ -224,7 +232,14 @@ async fn run_foreground_node(
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        create_default_identity_if_needed(&ctx, &opts, &cmd.node_name).await?;
+        init_node_state(
+            &ctx,
+            &opts,
+            &cmd.node_name,
+            cmd.vault.as_ref(),
+            cmd.identity.as_ref(),
+        )
+        .await?;
     }
 
     let project_id = match &cmd.project {
@@ -396,7 +411,15 @@ async fn spawn_background_node(
     cfg.create_node(&cmd.node_name, addr, verbose)?;
     cfg.persist_config_updates()?;
 
-    create_default_identity_if_needed(ctx, opts, &cmd.node_name).await?;
+    // Create node state, including the vault and identity if don't exist
+    init_node_state(
+        ctx,
+        opts,
+        &cmd.node_name,
+        cmd.vault.as_ref(),
+        cmd.identity.as_ref(),
+    )
+    .await?;
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node

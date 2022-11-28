@@ -22,15 +22,21 @@ use crate::{project, OckamConfig};
 use crate::{util::startup, CommandGlobalOpts};
 
 pub async fn start_embedded_node(ctx: &Context, opts: &CommandGlobalOpts) -> Result<String> {
+    start_embedded_node_with_vault_and_identity(ctx, opts, None, None).await
+}
+
+pub async fn start_embedded_node_with_vault_and_identity(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    vault: Option<&String>,
+    identity: Option<&String>,
+) -> Result<String> {
     let cfg = &opts.config;
     let cmd = CreateCommand::default();
 
-    // Create node directory if it doesn't exist
-    tokio::fs::create_dir_all(&cfg.get_node_dir_unchecked(&cmd.node_name)).await?;
-
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        create_default_identity_if_needed(ctx, opts, &cmd.node_name).await?;
+        init_node_state(ctx, opts, &cmd.node_name, vault, identity).await?;
     }
 
     let project_id = match &cmd.project {
@@ -73,34 +79,49 @@ pub async fn start_embedded_node(ctx: &Context, opts: &CommandGlobalOpts) -> Res
     Ok(cmd.node_name.clone())
 }
 
-pub(super) async fn create_default_identity_if_needed(
+pub(super) async fn init_node_state(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
+    vault: Option<&String>,
+    identity: Option<&String>,
 ) -> Result<()> {
-    let state = &opts.state;
-
-    // Get default vault (create if needed)
-    let vault = if state.vaults.default().is_err() {
+    // Get vault specified in the argument, or get the default
+    let vault_state = if let Some(v) = vault {
+        opts.state.vaults.get(v)?
+    }
+    // Or get the default
+    else if let Ok(v) = opts.state.vaults.default() {
+        v
+    } else {
         let n = hex::encode(random::<[u8; 4]>());
         let c = cli_state::VaultConfig::fs_default(&n)?;
-        state.vaults.create(&n, c).await?.config.get().await?
-    } else {
-        state.vaults.default()?.config.get().await?
+        opts.state.vaults.create(&n, c).await?
     };
 
-    // Get default identity (create if needed)
-    if state.identities.default().is_err() {
+    // Get identity specified in the argument
+    let identity_state = if let Some(idt) = identity {
+        opts.state.identities.get(idt)?
+    }
+    // Or get the default
+    else if let Ok(idt) = opts.state.identities.default() {
+        idt
+    } else {
+        let vault = vault_state.config.get().await?;
         let identity_name = hex::encode(random::<[u8; 4]>());
         let identity = Identity::create(ctx, &vault).await?;
         let identity_config = cli_state::IdentityConfig::new(&identity).await;
-        state.identities.create(&identity_name, identity_config)?;
-    }
+        opts.state
+            .identities
+            .create(&identity_name, identity_config)?
+    };
 
-    // Setup node state
-    opts.state
-        .nodes
-        .create(node_name, cli_state::NodeConfig::default()?)?;
+    // Create the node with the given vault and identity
+    let node_config = cli_state::NodeConfigBuilder::default()
+        .vault(vault_state.path)
+        .identity(identity_state.path)
+        .build()?;
+    opts.state.nodes.create(node_name, node_config)?;
 
     Ok(())
 }
