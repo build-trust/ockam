@@ -1,6 +1,7 @@
 use crate::node::util::delete_all_nodes;
 use crate::CommandGlobalOpts;
 use clap::Args;
+use ockam_api::cli_state::CliState;
 use std::io::{self, BufReader, Read, Write};
 
 /// Full Ockam Reset
@@ -11,18 +12,19 @@ pub struct ResetCommand {
 }
 
 impl ResetCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        let _ = run_impl(options, self);
+    pub fn run(self, opts: CommandGlobalOpts) {
+        if self.yes || get_user_confirmation() {
+            if let Err(e) = run_impl(opts) {
+                eprintln!("{}", e);
+                std::process::exit(e.code());
+            }
+        }
     }
 }
 
-fn run_impl(opts: CommandGlobalOpts, cmd: ResetCommand) -> crate::Result<()> {
-    if cmd.yes || get_user_confirmation() {
-        if let Err(e) = delete_all_nodes(opts, true) {
-            eprintln!("{}", e);
-            std::process::exit(crate::util::exitcode::IOERR);
-        }
-    }
+fn run_impl(opts: CommandGlobalOpts) -> crate::Result<()> {
+    delete_all_nodes(opts, true)?;
+    std::fs::remove_dir_all(CliState::dir()?)?;
     Ok(())
 }
 
