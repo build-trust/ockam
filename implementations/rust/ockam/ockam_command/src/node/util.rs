@@ -184,9 +184,7 @@ pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> anyhow::Result<
 
     // If force is enabled
     if force {
-        // delete the config and nodes directories
-        opts.config.remove()?;
-        // and all dangling/orphan ockam processes
+        // Delete dangling/orphan ockam processes
         if let Ok(cpid) = get_current_pid() {
             let s = System::new_all();
             for (pid, process) in s.processes() {
