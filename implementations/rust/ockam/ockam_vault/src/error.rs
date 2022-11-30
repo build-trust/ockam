@@ -93,6 +93,9 @@ impl From<VaultError> for Error {
 
 #[cfg(any(feature = "evercrypt", feature = "rustcrypto"))]
 pub(crate) fn from_pkcs8<T: core::fmt::Display>(e: T) -> Error {
+    #[cfg(feature = "no_std")]
+    use ockam_core::compat::string::ToString;
+
     Error::new(Origin::Vault, Kind::Unknown, e.to_string())
 }
 
