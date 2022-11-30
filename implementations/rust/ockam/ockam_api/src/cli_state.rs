@@ -66,8 +66,12 @@ impl CliState {
     }
 
     pub fn test() -> Result<Self> {
-        let rnd_dir = Builder::new().prefix("ockam-").tempdir()?;
-        std::env::set_var("OCKAM_HOME", rnd_dir.path());
+        let tests_dir = dirs::home_dir()
+            .ok_or_else(|| CliStateError::NotFound("home dir".to_string()))?
+            .join(".ockam")
+            .join(".tests")
+            .join(random_name());
+        std::env::set_var("OCKAM_HOME", tests_dir);
         Self::new()
     }
 
@@ -577,8 +581,7 @@ impl NodeConfigBuilder {
         self
     }
 
-    pub fn build(self) -> Result<NodeConfig> {
-        let cli_state = CliState::new()?;
+    pub fn build(self, cli_state: &CliState) -> Result<NodeConfig> {
         let vault = match self.vault {
             Some(path) => path,
             None => cli_state.vaults.default()?.path,

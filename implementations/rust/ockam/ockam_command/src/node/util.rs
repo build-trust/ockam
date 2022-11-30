@@ -119,7 +119,7 @@ pub(super) async fn init_node_state(
     let node_config = cli_state::NodeConfigBuilder::default()
         .vault(vault_state.path)
         .identity(identity_state.path)
-        .build()?;
+        .build(&opts.state)?;
     opts.state.nodes.create(node_name, node_config)?;
 
     Ok(())
