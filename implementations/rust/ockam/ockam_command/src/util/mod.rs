@@ -552,7 +552,7 @@ mod tests {
         let cli_state = CliState::test()?;
 
         let v_name = cli_state::random_name();
-        let v_config = VaultConfig::fs_default(&v_name)?;
+        let v_config = VaultConfig::fs_default(&v_name, false)?;
         let v_storage = FileStorage::create(VaultConfig::fs_path(&v_name, None)?).await?;
         let v = Vault::new(Some(Arc::new(v_storage)));
         cli_state.vaults.create(&v_name, v_config).await?;

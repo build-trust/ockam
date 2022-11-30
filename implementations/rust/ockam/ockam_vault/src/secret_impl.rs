@@ -10,7 +10,7 @@ use ockam_core::vault::{
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
-#[cfg(any(feature = "evercrypt", feature = "rustcrypto"))]
+#[cfg(feature = "rustcrypto")]
 use crate::error::{from_ecurve, from_pkcs8};
 
 impl Vault {
@@ -59,11 +59,11 @@ impl Vault {
                     }
                 }
                 cfg_if! {
-                    if #[cfg(any(feature = "evercrypt", feature = "rustcrypto"))] {
+                    if #[cfg(feature = "rustcrypto")] {
                         let pk = public_key(secret.try_as_key()?.as_ref())?;
                         self.compute_key_id_for_public_key(&pk).await?
                     } else {
-                        return Err(VaultError::InvalidKeyType.into())
+                        compile_error!("NIST P-256 requires feature `rustcrypto`")
                     }
                 }
             }
@@ -154,7 +154,7 @@ impl SecretVault for Vault {
                     }
                 }
                 cfg_if! {
-                    if #[cfg(any(feature = "evercrypt", feature = "rustcrypto"))] {
+                    if #[cfg(feature = "rustcrypto")] {
                         use p256::ecdsa::SigningKey;
                         use p256::pkcs8::EncodePrivateKey;
                         let sec = SigningKey::random(thread_rng());
@@ -162,7 +162,7 @@ impl SecretVault for Vault {
                         let doc = sec.to_pkcs8_der().map_err(from_pkcs8)?;
                         Secret::Key(SecretKey::new(doc.as_bytes().to_vec()))
                     } else {
-                        compile_error!("one of features {evercrypt,rustcrypto} must be given")
+                        compile_error!("NIST P-256 requires feature `rustcrypto`")
                     }
                 }
             }
@@ -261,14 +261,14 @@ impl SecretVault for Vault {
                     }
                 }
                 cfg_if! {
-                    if #[cfg(any(feature = "evercrypt", feature = "rustcrypto"))] {
+                    if #[cfg(feature = "rustcrypto")] {
                         if let Secret::Key(sk) = entry.secret() {
                             public_key(sk.as_ref())
                         } else {
                             Err(VaultError::InvalidKeyType.into())
                         }
                     } else {
-                        Err(VaultError::InvalidKeyType.into())
+                        compile_error!("NIST P-256 requires feature `rustcrypto`")
                     }
                 }
             }
@@ -312,7 +312,7 @@ impl SecretVault for Vault {
     }
 }
 
-#[cfg(any(feature = "evercrypt", feature = "rustcrypto"))]
+#[cfg(feature = "rustcrypto")]
 fn public_key(secret: &[u8]) -> Result<PublicKey> {
     use p256::pkcs8::{DecodePrivateKey, EncodePublicKey};
     let sec = p256::ecdsa::SigningKey::from_pkcs8_der(secret).map_err(from_pkcs8)?;

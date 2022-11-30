@@ -6,7 +6,7 @@ use ockam_core::vault::{
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
-#[cfg(any(feature = "evercrypt", feature = "rustcrypto"))]
+#[cfg(feature = "rustcrypto")]
 use crate::error::{from_ecdsa, from_pkcs8};
 
 #[async_trait]
@@ -57,21 +57,8 @@ impl Verifier for Vault {
                         let k = VerifyingKey::from_public_key_der(public_key.data()).map_err(from_pkcs8)?;
                         let s = Signature::from_der(signature.as_ref()).map_err(from_ecdsa)?;
                         Ok(k.verify(data, &s).is_ok())
-                    } else if #[cfg(feature = "evercrypt")] {
-                        use crate::error::from_evercrypt;
-                        use evercrypt::digest;
-                        use p256::ecdsa::{VerifyingKey, Signature};
-                        use p256::pkcs8::DecodePublicKey;
-                        let k = VerifyingKey::from_public_key_der(public_key.data()).map_err(from_pkcs8)?;
-                        let k = k.to_encoded_point(false);
-                        let s = Signature::from_der(signature.as_ref()).map_err(from_ecdsa)?;
-                        let (r, s) = s.split_bytes();
-                        let s = evercrypt::p256::Signature::new(&r.into(), &s.into());
-                        let b = evercrypt::p256::ecdsa_verify(digest::Mode::Sha256, data, k.as_ref(), &s)
-                            .map_err(from_evercrypt)?;
-                        Ok(b)
                     } else {
-                        compile_error!("one of features {evercrypt,rustcrypto} must be given")
+                        compile_error!("NIST P-256 requires feature `rustcrypto`")
                     }
                 }
             }
