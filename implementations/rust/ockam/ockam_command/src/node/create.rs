@@ -105,6 +105,14 @@ pub struct CreateCommand {
 
     #[arg(long = "identity", value_name = "IDENTITY")]
     identity: Option<String>,
+
+    /// Enable AWS KMS integration.
+    #[arg(long, default_value = "false")]
+    aws_kms: bool,
+
+    /// Use an existing AWS KMS key.
+    #[arg(long)]
+    key_id: Option<String>,
 }
 
 impl Default for CreateCommand {
@@ -122,12 +130,16 @@ impl Default for CreateCommand {
             token: None,
             vault: None,
             identity: None,
+            aws_kms: false,
+            key_id: None,
         }
     }
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
+    pub fn run(mut self, options: CommandGlobalOpts) {
+        self.aws_kms |= self.key_id.is_some();
+
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
             if let Err(e) = create_foreground_node(&options, &self) {
@@ -214,6 +226,8 @@ async fn run_foreground_node(
             &cmd.node_name,
             cmd.vault.as_ref(),
             cmd.identity.as_ref(),
+            cmd.aws_kms,
+            cmd.key_id.as_ref(),
         )
         .await?;
     }
@@ -399,6 +413,8 @@ async fn spawn_background_node(
         &cmd.node_name,
         cmd.vault.as_ref(),
         cmd.identity.as_ref(),
+        cmd.aws_kms,
+        cmd.key_id.as_ref(),
     )
     .await?;
 
@@ -412,6 +428,7 @@ async fn spawn_background_node(
         &cmd.tcp_listener_address,
         cmd.project.as_deref(),
         cmd.token.as_ref(),
+        cmd.aws_kms,
     )?;
 
     Ok(())

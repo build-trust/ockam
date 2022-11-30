@@ -712,4 +712,3 @@ impl Worker for NodeManagerWorker {
         ctx.send(msg.return_route(), r).await
     }
 }
-

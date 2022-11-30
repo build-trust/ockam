@@ -1,4 +1,6 @@
 use anyhow::{anyhow, Result};
+use ockam::vault::{Secret, SecretPersistence, SecretType};
+use ockam_identity::{IdentityStateConst, KeyAttributes};
 use rand::random;
 use tracing::trace;
 
@@ -12,7 +14,7 @@ use ockam_api::nodes::service::{
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_multiaddr::MultiAddr;
-use ockam_vault::Vault;
+use ockam_vault::{KeyId, SecretAttributes, SecretVault, Vault};
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
@@ -34,7 +36,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        init_node_state(ctx, opts, &cmd.node_name, vault, identity).await?;
+        init_node_state(ctx, opts, &cmd.node_name, vault, identity, false, None).await?;
     }
 
     let project_id = match &cmd.project {
@@ -84,7 +86,11 @@ pub(super) async fn init_node_state(
     node_name: &str,
     vault: Option<&String>,
     identity: Option<&String>,
+    aws: bool,
+    kid: Option<&KeyId>,
 ) -> Result<()> {
+    debug_assert!(if kid.is_some() { aws } else { true });
+
     // Get vault specified in the argument, or get the default
     let vault_state = if let Some(v) = vault {
         opts.state.vaults.get(v)?
@@ -94,7 +100,7 @@ pub(super) async fn init_node_state(
         v
     } else {
         let n = hex::encode(random::<[u8; 4]>());
-        let c = cli_state::VaultConfig::fs_default(&n)?;
+        let c = cli_state::VaultConfig::fs_default(&n, aws)?;
         opts.state.vaults.create(&n, c).await?
     };
 
@@ -108,7 +114,17 @@ pub(super) async fn init_node_state(
     } else {
         let vault = vault_state.config.get().await?;
         let identity_name = hex::encode(random::<[u8; 4]>());
-        let identity = Identity::create(ctx, &vault).await?;
+        let identity = if let Some(kid) = kid {
+            let attrs =
+                SecretAttributes::new(SecretType::NistP256, SecretPersistence::Persistent, 32);
+            let kid = vault
+                .secret_import(Secret::Aws(kid.to_string()), attrs)
+                .await?;
+            let attrs = KeyAttributes::new(IdentityStateConst::ROOT_LABEL.to_string(), attrs);
+            Identity::create_ext(ctx, &vault, &kid, attrs).await?
+        } else {
+            Identity::create(ctx, &vault).await?
+        };
         let identity_config = cli_state::IdentityConfig::new(&identity).await;
         opts.state
             .identities
