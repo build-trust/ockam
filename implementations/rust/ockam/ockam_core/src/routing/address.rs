@@ -355,6 +355,7 @@ impl Address {
         }
     }
 
+    // TODO: Replace with macro to take less space when "debugger" feature is disabled?
     /// Generate a random address with a debug tag and transport type [`LOCAL`].
     pub fn random_tagged(_tag: &str) -> Self {
         #[cfg(feature = "debugger")]
