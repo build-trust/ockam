@@ -2,7 +2,7 @@ use crate::Context;
 use core::time::Duration;
 use futures::future::{AbortHandle, Abortable};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, DenyAll, Mailbox, Mailboxes, Message, Result};
+use ockam_core::{Address, AllowDestinationAddress, DenyAll, Mailboxes, Message, Result};
 
 /// Allow to send message to destination address periodically after some delay
 /// Only one scheduled heartbeat allowed at a time
@@ -27,16 +27,10 @@ impl<M: Message + Clone> DelayedEvent<M> {
         destination_addr: impl Into<Address>,
         msg: M,
     ) -> Result<Self> {
-        // TODO: @ac 0#DelayedEvent.create.detached
-        // in:  n/a
-        // out: n/a
-        let mailboxes = Mailboxes::new(
-            Mailbox::new(
-                Address::random_tagged("DelayedEvent.create.detached"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
-            ),
-            vec![],
+        let mailboxes = Mailboxes::main(
+            Address::random_tagged("DelayedEvent.create.detached.root"),
+            Arc::new(DenyAll),
+            Arc::new(DenyAll),
         );
         let child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
 
@@ -63,19 +57,10 @@ impl<M: Message + Clone> DelayedEvent<M> {
     pub async fn schedule(&mut self, duration: Duration) -> Result<()> {
         self.cancel();
 
-        // TODO: @ac 0#DelayedEvent.create.detached
-        // in:  n/a
-        // out: self.destination_addr
-        let mailboxes = Mailboxes::new(
-            Mailbox::new(
-                Address::random_tagged("DelayedEvent.schedule.detached"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
-                /* TODO: @ac ockam_core::AllowDestinationAddress(
-                    self.destination_addr.clone(),
-                )), */
-            ),
-            vec![],
+        let mailboxes = Mailboxes::main(
+            Address::random_tagged("DelayedEvent.schedule.detached"),
+            Arc::new(DenyAll),
+            Arc::new(AllowDestinationAddress(self.destination_addr.clone())),
         );
         let child_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
 
@@ -111,7 +96,7 @@ mod tests {
     use core::sync::atomic::Ordering;
     use core::time::Duration;
     use ockam_core::compat::{boxed::Box, string::ToString, sync::Arc};
-    use ockam_core::{async_trait, Any};
+    use ockam_core::{async_trait, AllowAll, Any};
     use ockam_core::{Result, Routed, Worker};
     use std::sync::atomic::AtomicI8;
     use tokio::time::sleep;
@@ -149,7 +134,13 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker("counting_worker", worker).await?;
+        ctx.start_worker_with_access_control(
+            "counting_worker",
+            worker,
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        )
+        .await?;
 
         heartbeat.schedule(Duration::from_millis(100)).await?;
         sleep(Duration::from_millis(150)).await;
@@ -173,7 +164,13 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker("counting_worker", worker).await?;
+        ctx.start_worker_with_access_control(
+            "counting_worker",
+            worker,
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        )
+        .await?;
 
         heartbeat.schedule(Duration::from_millis(100)).await?;
         heartbeat.schedule(Duration::from_millis(100)).await?;
@@ -195,7 +192,13 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker("counting_worker", worker).await?;
+        ctx.start_worker_with_access_control(
+            "counting_worker",
+            worker,
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        )
+        .await?;
 
         heartbeat.schedule(Duration::from_millis(100)).await?;
         sleep(Duration::from_millis(150)).await;
@@ -219,7 +222,13 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker("counting_worker", worker).await?;
+        ctx.start_worker_with_access_control(
+            "counting_worker",
+            worker,
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        )
+        .await?;
 
         heartbeat.schedule(Duration::from_millis(100)).await?;
         sleep(Duration::from_millis(150)).await;

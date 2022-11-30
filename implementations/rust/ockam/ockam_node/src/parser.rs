@@ -21,3 +21,34 @@ pub(crate) fn message<M: Message>(vec: &[u8]) -> Result<M> {
         M::decode(&new_v)
     })
 }
+
+/// Test the, unexpected, case where a payload is received that does not
+/// code its length at the start. This _may_ happen when dealing with a
+/// payload sent by a non-Rust implementation.
+/// See https://github.com/build-trust/ockam/issues/2236.
+#[test]
+fn parse_payload_without_inner_length() {
+    // A well formed String payload of 32 smiley chars.
+    let payload: [u8; 130] = [
+        128, 1, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128,
+        240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159,
+        152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128,
+        240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159,
+        152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128,
+        240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159,
+        152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128,
+        240, 159, 152, 128,
+    ];
+    let r = message::<String>(&payload).unwrap();
+    assert_eq!("😀".repeat(32), r);
+
+    // A String payload of 32 smiley chars that is missing its inner length.
+    let payload = "😀".repeat(32);
+    let r = message::<String>(payload.as_bytes()).unwrap();
+    assert_eq!("😀".repeat(32), r);
+
+    // A 100KiB String payload of smiley chars that is missing its inner length.
+    let payload = "😀".repeat(25600);
+    let r = message::<String>(payload.as_bytes()).unwrap();
+    assert_eq!("😀".repeat(25600), r);
+}

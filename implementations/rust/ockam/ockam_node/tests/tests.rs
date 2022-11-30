@@ -1,5 +1,3 @@
-use crate::compat::futures::FutureExt;
-use crate::{Context, NodeBuilder};
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::time::Duration;
 use ockam_core::compat::{
@@ -7,11 +5,14 @@ use ockam_core::compat::{
     string::{String, ToString},
     sync::Arc,
 };
-use ockam_core::{async_trait, Address, Any, Decodable, Message, LOCAL};
+use ockam_core::{async_trait, Address, AllowAll, Any, Decodable, Message, LOCAL};
 use ockam_core::{route, Processor, Result, Routed, Worker};
+use ockam_node::compat::futures::FutureExt;
+use ockam_node::{Context, NodeBuilder};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicI8, AtomicU32};
 use tokio::time::sleep;
+use tracing::info;
 
 #[allow(non_snake_case)]
 #[test]
@@ -21,10 +22,25 @@ fn start_and_shutdown_node__many_iterations__should_not_fail() {
         executor
             .execute(async move {
                 let res = std::panic::AssertUnwindSafe(async {
-                    let mut child_ctx = ctx.new_detached("child").await?;
-                    ctx.send(route!["child"], "Hello".to_string()).await?;
+                    let child_ctx1 = ctx
+                        .new_detached_with_access_control(
+                            "child1",
+                            Arc::new(AllowAll),
+                            Arc::new(AllowAll),
+                        )
+                        .await?;
+                    let mut child_ctx2 = ctx
+                        .new_detached_with_access_control(
+                            "child2",
+                            Arc::new(AllowAll),
+                            Arc::new(AllowAll),
+                        )
+                        .await?;
+                    child_ctx1
+                        .send(route!["child2"], "Hello".to_string())
+                        .await?;
 
-                    let m = child_ctx.receive::<String>().await?.take().body();
+                    let m = child_ctx2.receive::<String>().await?.take().body();
 
                     assert_eq!(m, "Hello");
                     Result::<()>::Ok(())
@@ -74,7 +90,7 @@ impl Worker for SimpleWorker {
     }
 }
 #[allow(non_snake_case)]
-#[ockam_macros::test(crate = "crate")]
+#[ockam_macros::test]
 async fn simple_worker__run_node_lifecycle__worker_lifecycle_should_be_full(
     ctx: &mut Context,
 ) -> Result<()> {
@@ -89,12 +105,17 @@ async fn simple_worker__run_node_lifecycle__worker_lifecycle_should_be_full(
         shutdown_was_called: shutdown_was_called_clone,
     };
 
-    ctx.start_worker("simple_worker", worker).await?;
+    ctx.start_worker_with_access_control(
+        "simple_worker",
+        worker,
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    )
+    .await?;
 
-    ctx.send(route!["simple_worker"], "Hello".to_string())
+    let msg: String = ctx
+        .send_and_receive(route!["simple_worker"], "Hello".to_string())
         .await?;
-
-    let msg = ctx.receive::<String>().await.unwrap().take().body();
     assert_eq!(msg, "Hello");
 
     ctx.stop().await?;
@@ -118,7 +139,7 @@ impl Processor for DummyProcessor {
     }
 }
 
-#[ockam_macros::test(crate = "crate")]
+#[ockam_macros::test]
 async fn starting_processor_with_dup_address_should_fail(ctx: &mut Context) -> Result<()> {
     ctx.start_processor("dummy_processor", DummyProcessor)
         .await?;
@@ -162,7 +183,7 @@ impl Processor for CountingProcessor {
 }
 
 #[allow(non_snake_case)]
-#[ockam_macros::test(crate = "crate")]
+#[ockam_macros::test]
 async fn counting_processor__run_node_lifecycle__processor_lifecycle_should_be_full(
     ctx: &mut Context,
 ) -> Result<()> {
@@ -222,7 +243,7 @@ impl Processor for WaitingProcessor {
 }
 
 #[allow(non_snake_case)]
-#[ockam_macros::test(crate = "crate")]
+#[ockam_macros::test]
 async fn waiting_processor__shutdown__should_be_interrupted(ctx: &mut Context) -> Result<()> {
     let initialize_was_called = Arc::new(AtomicBool::new(false));
     let shutdown_was_called = Arc::new(AtomicBool::new(false));
@@ -291,7 +312,7 @@ impl Processor for MessagingProcessor {
 }
 
 #[allow(non_snake_case)]
-#[ockam_macros::test(crate = "crate")]
+#[ockam_macros::test]
 async fn waiting_processor__messaging__should_work(ctx: &mut Context) -> Result<()> {
     let initialize_was_called = Arc::new(AtomicBool::new(false));
     let shutdown_was_called = Arc::new(AtomicBool::new(false));
@@ -304,23 +325,27 @@ async fn waiting_processor__messaging__should_work(ctx: &mut Context) -> Result<
         shutdown_was_called: shutdown_was_called_clone,
     };
 
-    ctx.start_processor("messaging_processor", processor)
-        .await?;
+    ctx.start_processor_with_access_control(
+        "messaging_processor",
+        processor,
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    )
+    .await?;
     sleep(Duration::new(1, 0)).await;
 
-    ctx.send(route!["messaging_processor"], "Keep working".to_string())
+    let msg: String = ctx
+        .send_and_receive(route!["messaging_processor"], "Keep working".to_string())
         .await?;
-    assert_eq!("OK", ctx.receive::<String>().await.unwrap().take().body());
+    assert_eq!("OK", msg);
 
     assert!(initialize_was_called.load(Ordering::Relaxed));
     assert!(!shutdown_was_called.load(Ordering::Relaxed));
 
-    ctx.send(route!["messaging_processor"], "Stop working".to_string())
+    let msg: String = ctx
+        .send_and_receive(route!["messaging_processor"], "Stop working".to_string())
         .await?;
-    assert_eq!(
-        "I go home",
-        ctx.receive::<String>().await.unwrap().take().body()
-    );
+    assert_eq!("I go home", msg);
 
     assert!(initialize_was_called.load(Ordering::Relaxed));
     assert!(shutdown_was_called.load(Ordering::Relaxed));
@@ -344,12 +369,12 @@ impl Worker for BadWorker {
 
 /// This test enforces that a shutdown that is blocked by a worker
 /// will be aborted eventually.
-#[ockam_macros::test(crate = "crate")]
+#[ockam_macros::test]
 async fn abort_blocked_shutdown(ctx: &mut Context) -> Result<()> {
     // Create an executor
     ctx.start_worker("bad", BadWorker).await?;
 
-    crate::tokio::time::timeout(Duration::from_secs(2), ctx.stop())
+    ockam_node::tokio::time::timeout(Duration::from_secs(2), ctx.stop())
         .await
         .unwrap()
 }
@@ -369,7 +394,7 @@ impl Worker for WaitForWorker {
     }
 }
 
-#[ockam_macros::test(crate = "crate")]
+#[ockam_macros::test]
 async fn wait_for_worker(ctx: &mut Context) -> Result<()> {
     let t1 = tokio::time::Instant::now();
     ctx.start_worker("slow", WaitForWorker).await.unwrap();
@@ -385,39 +410,6 @@ async fn wait_for_worker(ctx: &mut Context) -> Result<()> {
         println!("Unclean stop: {}", e)
     }
     Ok(())
-}
-
-/// Test the, unexpected, case where a payload is received that does not
-/// code its length at the start. This _may_ happen when dealing with a
-/// payload sent by a non-Rust implementation.
-/// See https://github.com/build-trust/ockam/issues/2236.
-#[test]
-fn parse_payload_without_inner_length() {
-    use crate::parser;
-
-    // A well formed String payload of 32 smiley chars.
-    let payload: [u8; 130] = [
-        128, 1, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128,
-        240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159,
-        152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128,
-        240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159,
-        152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128,
-        240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159,
-        152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128, 240, 159, 152, 128,
-        240, 159, 152, 128,
-    ];
-    let r = parser::message::<String>(&payload).unwrap();
-    assert_eq!("😀".repeat(32), r);
-
-    // A String payload of 32 smiley chars that is missing its inner length.
-    let payload = "😀".repeat(32);
-    let r = parser::message::<String>(payload.as_bytes()).unwrap();
-    assert_eq!("😀".repeat(32), r);
-
-    // A 100KiB String payload of smiley chars that is missing its inner length.
-    let payload = "😀".repeat(25600);
-    let r = parser::message::<String>(payload.as_bytes()).unwrap();
-    assert_eq!("😀".repeat(25600), r);
 }
 
 struct StopFromHandleMessageWorker {
@@ -441,12 +433,16 @@ impl Worker for StopFromHandleMessageWorker {
 /// even if it calls Context::stop_worker() from within handle_message().
 /// See https://github.com/build-trust/ockam/issues/2283
 /// See https://github.com/build-trust/ockam/issues/2280
-#[ockam_macros::test(crate = "crate")]
+#[ockam_macros::test]
 async fn worker_calls_stopworker_from_handlemessage(ctx: &mut Context) -> Result<()> {
     let counter_a = Arc::new(AtomicU32::new(0));
     let counter_b = Arc::new(AtomicU32::new(0));
     let counter_a_clone = counter_a.clone();
     let counter_b_clone = counter_b.clone();
+
+    let child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
 
     const RUNS: u32 = 1000;
     const WORKERS: u32 = 10;
@@ -458,13 +454,20 @@ async fn worker_calls_stopworker_from_handlemessage(ctx: &mut Context) -> Result
                 counter_b: counter_b_clone.clone(),
             };
             let addr = Address::random(LOCAL);
-            ctx.start_worker(addr.clone(), worker).await.unwrap();
+            ctx.start_worker_with_access_control(
+                addr.clone(),
+                worker,
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            )
+            .await
+            .unwrap();
             addrs.push(addr);
         }
 
         let mut join_handles = Vec::new();
         for addr in addrs {
-            join_handles.push(ctx.send(route![addr], String::from("Testing. 1. 2. 3.")));
+            join_handles.push(child_ctx.send(route![addr], String::from("Testing. 1. 2. 3.")));
         }
 
         for h in join_handles {
@@ -516,10 +519,15 @@ enum SendReceiveResponse {
 
 /// Test the new method Context::send_and_receive().
 /// See https://github.com/build-trust/ockam/issues/2628.
-#[ockam_macros::test(crate = "crate")]
+#[ockam_macros::test]
 async fn use_context_send_and_receive(ctx: &mut Context) -> Result<()> {
-    ctx.start_worker("SendReceiveWorker", SendReceiveWorker)
-        .await?;
+    ctx.start_worker_with_access_control(
+        "SendReceiveWorker",
+        SendReceiveWorker,
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    )
+    .await?;
 
     let msg_tx = SendReceiveRequest::Connect();
     let msg_rx = ctx.send_and_receive("SendReceiveWorker", msg_tx).await?;
@@ -554,7 +562,7 @@ impl Worker for DummyWorker {
     }
 }
 
-#[ockam_macros::test(crate = "crate")]
+#[ockam_macros::test]
 async fn starting_worker_with_dup_address_should_fail(ctx: &mut Context) -> Result<()> {
     ctx.start_worker("dummy_worker", DummyWorker).await?;
     assert!(ctx.start_worker("dummy_worker", DummyWorker).await.is_err());
