@@ -3,16 +3,17 @@
 
 use crate::{Context, Message, OckamError};
 use core::time::Duration;
-use ockam_core::compat::rand::random;
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{
     boxed::Box,
     string::{String, ToString},
     vec::Vec,
 };
-use ockam_core::{Address, Any, Decodable, Mailbox, Mailboxes, Result, Route, Routed, Worker};
+use ockam_core::{
+    Address, AllowAll, AllowSourceAddress, Any, Decodable, DenyAll, Mailbox, Mailboxes, Result,
+    Route, Routed, Worker,
+};
 use ockam_node::{DelayedEvent, WorkerBuilder};
-use rand::distributions::{Distribution, Standard};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
@@ -39,27 +40,12 @@ impl RemoteForwarderInfo {
     }
 }
 
-/// All addresses `RemoteForwarder` is registered for
-#[derive(Clone)]
-struct Addresses {
+/// This Worker is responsible for registering on Ockam Hub and forwarding messages to local Worker
+pub struct RemoteForwarder {
     /// Address used from other node
     main_address: Address,
     /// Address used for heartbeat messages
     heartbeat_address: Address,
-}
-
-impl Distribution<Addresses> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Addresses {
-        Addresses {
-            main_address: rng.gen(),
-            heartbeat_address: rng.gen(),
-        }
-    }
-}
-
-/// This Worker is responsible for registering on Ockam Hub and forwarding messages to local Worker
-pub struct RemoteForwarder {
-    addresses: Addresses,
     registration_route: Route,
     registration_payload: String,
     callback_address: Option<Address>,
@@ -70,7 +56,8 @@ pub struct RemoteForwarder {
 
 impl RemoteForwarder {
     fn new(
-        addresses: Addresses,
+        main_address: Address,
+        heartbeat_address: Address,
         registration_route: Route,
         registration_payload: String,
         callback_address: Address,
@@ -78,7 +65,8 @@ impl RemoteForwarder {
         heartbeat_interval: Duration,
     ) -> Self {
         Self {
-            addresses,
+            main_address,
+            heartbeat_address,
             registration_route,
             registration_payload,
             callback_address: Some(callback_address),
@@ -93,10 +81,17 @@ impl RemoteForwarder {
         hub_route: impl Into<Route>,
         alias: impl Into<String>,
     ) -> Result<RemoteForwarderInfo> {
-        let address: Address = random();
-        let mut child_ctx = ctx.new_detached(address).await?;
+        let main_address = Address::random_tagged("RemoteForwarder.static.main");
+        let heartbeat_address = Address::random_tagged("RemoteForwarder.static.heartbeat");
 
-        let addresses: Addresses = random();
+        let address = Address::random_tagged("RemoteForwarder.static.child");
+        let mut child_ctx = ctx
+            .new_detached_with_mailboxes(Mailboxes::main(
+                address,
+                Arc::new(AllowSourceAddress(main_address.clone())),
+                Arc::new(DenyAll),
+            ))
+            .await?;
 
         let registration_route = hub_route
             .into()
@@ -104,10 +99,10 @@ impl RemoteForwarder {
             .append("static_forwarding_service")
             .into();
 
-        let heartbeat =
-            DelayedEvent::create(ctx, addresses.heartbeat_address.clone(), vec![]).await?;
+        let heartbeat = DelayedEvent::create(ctx, heartbeat_address.clone(), vec![]).await?;
         let forwarder = Self::new(
-            addresses.clone(),
+            main_address.clone(),
+            heartbeat_address.clone(),
             registration_route,
             alias.into(),
             child_ctx.address(),
@@ -115,15 +110,16 @@ impl RemoteForwarder {
             Duration::from_secs(5),
         );
 
-        debug!(
-            "Starting static RemoteForwarder at {}",
-            &addresses.heartbeat_address
-        );
+        debug!("Starting static RemoteForwarder at {}", &heartbeat_address);
 
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::deny_all(addresses.main_address),
-            vec![Mailbox::deny_all(addresses.heartbeat_address)],
+            Mailbox::new(main_address, Arc::new(AllowAll), Arc::new(AllowAll)),
+            vec![Mailbox::new(
+                heartbeat_address,
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            )],
         );
         WorkerBuilder::with_mailboxes(mailboxes, forwarder)
             .start(ctx)
@@ -140,10 +136,17 @@ impl RemoteForwarder {
 
     /// Create and start new ephemeral RemoteForwarder at random address with given Ockam Hub route
     pub async fn create(ctx: &Context, hub_route: impl Into<Route>) -> Result<RemoteForwarderInfo> {
-        let address: Address = random();
-        let mut child_ctx = ctx.new_detached(address).await?;
+        let main_address = Address::random_tagged("RemoteForwarder.ephemeral.main");
+        let heartbeat_address = Address::random_tagged("RemoteForwarder.ephemeral.heartbeat");
+        let address = Address::random_tagged("RemoteForwarder.ephemeral.child");
 
-        let addresses: Addresses = random();
+        let mut child_ctx = ctx
+            .new_detached_with_mailboxes(Mailboxes::main(
+                address,
+                Arc::new(AllowSourceAddress(main_address.clone())),
+                Arc::new(DenyAll),
+            ))
+            .await?;
 
         let registration_route = hub_route
             .into()
@@ -152,7 +155,8 @@ impl RemoteForwarder {
             .into();
 
         let forwarder = Self::new(
-            addresses.clone(),
+            main_address.clone(),
+            heartbeat_address.clone(),
             registration_route,
             "register".to_string(),
             child_ctx.address(),
@@ -160,11 +164,12 @@ impl RemoteForwarder {
             Duration::from_secs(10),
         );
 
-        debug!(
-            "Starting ephemeral RemoteForwarder at {}",
-            &addresses.main_address
-        );
-        ctx.start_worker(addresses.main_address, forwarder).await?;
+        debug!("Starting ephemeral RemoteForwarder at {}", &main_address);
+        // FIXME: @ac
+        let mailboxes = Mailboxes::main(main_address, Arc::new(AllowAll), Arc::new(AllowAll));
+        WorkerBuilder::with_mailboxes(mailboxes, forwarder)
+            .start(ctx)
+            .await?;
 
         let resp = child_ctx
             .receive::<RemoteForwarderInfo>()
@@ -184,10 +189,17 @@ impl RemoteForwarder {
         hub_route: impl Into<Route>,
         alias: impl Into<String>,
     ) -> Result<RemoteForwarderInfo> {
-        let address: Address = random();
-        let mut child_ctx = ctx.new_detached(address).await?;
-
-        let addresses: Addresses = random();
+        let main_address = Address::random_tagged("RemoteForwarder.static_w/o_heartbeats.main");
+        let heartbeat_address =
+            Address::random_tagged("RemoteForwarder.static_w/o_heartbeats.heartbeat");
+        let address = Address::random_tagged("RemoteForwarder.static_w/o_heartbeats.child");
+        let mut child_ctx = ctx
+            .new_detached_with_mailboxes(Mailboxes::main(
+                address,
+                Arc::new(AllowSourceAddress(main_address.clone())),
+                Arc::new(DenyAll),
+            ))
+            .await?;
 
         let registration_route = hub_route
             .into()
@@ -195,9 +207,9 @@ impl RemoteForwarder {
             .append("forwarding_service")
             .into();
 
-        // let remote_address = Address::random_local().without_type().to_string();
         let forwarder = Self::new(
-            addresses.clone(),
+            main_address.clone(),
+            heartbeat_address.clone(),
             registration_route,
             alias.into(),
             child_ctx.address(),
@@ -207,9 +219,16 @@ impl RemoteForwarder {
 
         debug!(
             "Starting static RemoteForwarder without heartbeats at {}",
-            &addresses.main_address
+            &main_address
         );
-        ctx.start_worker(addresses.main_address, forwarder).await?;
+        // FIXME: @ac
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(main_address, Arc::new(AllowAll), Arc::new(AllowAll)),
+            vec![],
+        );
+        WorkerBuilder::with_mailboxes(mailboxes, forwarder)
+            .start(ctx)
+            .await?;
 
         let resp = child_ctx
             .receive::<RemoteForwarderInfo>()
@@ -232,7 +251,7 @@ impl Worker for RemoteForwarder {
         ctx.send_from_address(
             self.registration_route.clone(),
             self.registration_payload.clone(),
-            self.addresses.main_address.clone(),
+            self.main_address.clone(),
         )
         .await?;
 
@@ -245,11 +264,11 @@ impl Worker for RemoteForwarder {
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         // Heartbeat message, send registration message
-        if msg.msg_addr() == self.addresses.heartbeat_address {
+        if msg.msg_addr() == self.heartbeat_address {
             ctx.send_from_address(
                 self.registration_route.clone(),
                 self.registration_payload.clone(),
-                self.addresses.main_address.clone(),
+                self.main_address.clone(),
             )
             .await?;
 
@@ -261,7 +280,7 @@ impl Worker for RemoteForwarder {
         }
 
         // We are the final recipient of the message because it's registration response for our Worker
-        if msg.onward_route().recipient() == self.addresses.main_address {
+        if msg.onward_route().recipient() == self.main_address {
             debug!("RemoteForwarder received service message");
 
             let payload =
@@ -347,7 +366,12 @@ mod test {
             return Ok(());
         };
 
-        ctx.start_worker("echoer", Echoer).await?;
+        WorkerBuilder::with_mailboxes(
+            Mailboxes::main("echoer", Arc::new(AllowAll), Arc::new(AllowAll)),
+            Echoer,
+        )
+        .start(ctx)
+        .await?;
 
         TcpTransport::create(ctx).await?;
 
@@ -376,7 +400,12 @@ mod test {
             return Ok(());
         };
 
-        ctx.start_worker("echoer", Echoer).await?;
+        WorkerBuilder::with_mailboxes(
+            Mailboxes::main("echoer", Arc::new(AllowAll), Arc::new(AllowAll)),
+            Echoer,
+        )
+        .start(ctx)
+        .await?;
 
         TcpTransport::create(ctx).await?;
 
