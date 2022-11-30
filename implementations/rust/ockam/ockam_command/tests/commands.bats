@@ -142,19 +142,6 @@ teardown() {
   assert_output "HELLO"
 }
 
-@test "create node with a startup command, stop it and restart it" {
-  echo '{"on_node_startup": ["secure-channel create --from /node/n1 --to /node/n2/service/api"]}' > "$BATS_TMPDIR/configuration.json"
-  $OCKAM node create n2
-  $OCKAM node create n1 --config $BATS_TMPDIR/configuration.json
-  $OCKAM node stop n1
-
-  run --separate-stderr $OCKAM node start n1
-
-  assert_success
-  assert_output --partial "Running command 'secure-channel create --from /node/n1 --to /node/n2/service/api'"
-  assert_output --partial "/service/"
-}
-
 @test "vault create" {
   # Random name
   run $OCKAM vault create

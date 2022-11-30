@@ -35,6 +35,6 @@ async fn run_impl(
         .await?;
     let spaces = rpc.parse_and_print_response::<Vec<Space>>()?;
     config::set_spaces(&opts.config, &spaces)?;
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
+    delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

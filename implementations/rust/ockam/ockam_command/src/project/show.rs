@@ -55,6 +55,6 @@ async fn run_impl(
         .await?;
     let project = rpc.parse_and_print_response::<Project>()?;
     config::set_project(&opts.config, &project).await?;
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
+    delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

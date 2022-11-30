@@ -57,8 +57,7 @@ impl CreateCommand {
         api_node: &str,
         tcp: &TcpTransport,
     ) -> anyhow::Result<MultiAddr> {
-        let config = &opts.config.lookup();
-        let (to, meta) = clean_multiaddr(&self.to, config)
+        let (to, meta) = clean_multiaddr(&self.to, &opts.state)
             .context(format!("Could not convert {} into route", &self.to))?;
 
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
@@ -91,10 +90,7 @@ impl CreateCommand {
             Some(multiaddr) => {
                 // if stdout is not interactive/tty write the secure channel address to it
                 // in case some other program is trying to read it as piped input
-                if !atty::is(Stream::Stdout)
-                // or if the `--pipe` flag is set
-                || options.global_args.export.pipe()
-                {
+                if !atty::is(Stream::Stdout) {
                     println!("{}", multiaddr)
                 }
 

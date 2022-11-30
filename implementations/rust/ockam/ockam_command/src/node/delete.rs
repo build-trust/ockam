@@ -20,8 +20,8 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        if let Err(e) = run_impl(options, self) {
+    pub fn run(self, opts: CommandGlobalOpts) {
+        if let Err(e) = run_impl(opts, self) {
             eprintln!("{}", e);
             std::process::exit(e.code());
         }
@@ -33,7 +33,6 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
         delete_all_nodes(opts, cmd.force)?;
     } else {
         delete_node(&opts, &cmd.node_name, cmd.force);
-        opts.config.persist_config_updates()?;
         println!("Deleted node '{}'", &cmd.node_name);
     }
     Ok(())

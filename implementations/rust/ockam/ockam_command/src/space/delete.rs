@@ -61,6 +61,6 @@ async fn run_impl(
     // Try to remove from config again, in case it was re-added after the refresh.
     let _ = config::remove_space(&opts.config, &cmd.name);
 
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
+    delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

@@ -8,7 +8,7 @@ use ockam_api::nodes::models::identity::ShortIdentityResponse;
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
-use ockam_api::{addr_to_multiaddr, route_to_multiaddr};
+use ockam_api::{addr_to_multiaddr, cli_state, route_to_multiaddr};
 use ockam_core::Route;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
@@ -37,18 +37,16 @@ async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
-    let node_name = cmd.node_name;
-    let cfg = &opts.config;
-    let node_cfg = cfg.get_node(&node_name)?;
+    let node_name = &cmd.node_name;
     let tcp = TcpTransport::create(&ctx).await?;
-    let mut rpc = RpcBuilder::new(&ctx, &opts, &node_name).tcp(&tcp)?.build();
-    print_query_status(&mut rpc, node_cfg.port(), &node_name, false).await?;
+    let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
+    print_query_status(&mut rpc, node_name, false).await?;
     Ok(())
 }
 
 // TODO: This function should be replaced with a better system of
 // printing the node state in the future but for now we can just tell
-// clippy to stop complainaing about it.
+// clippy to stop complaining about it.
 #[allow(clippy::too_many_arguments)]
 fn print_node_info(
     node_port: u16,
@@ -142,11 +140,13 @@ fn print_node_info(
 
 pub async fn print_query_status(
     rpc: &mut Rpc<'_>,
-    node_port: u16,
     node_name: &str,
     wait_until_ready: bool,
 ) -> anyhow::Result<()> {
+    let cli_state = cli_state::CliState::new()?;
     if !is_node_up(rpc, wait_until_ready).await? {
+        let node_state = cli_state.nodes.get(node_name)?;
+        let node_port = node_state.setup()?.default_tcp_listener()?.addr.port();
         print_node_info(node_port, node_name, false, None, None, None, None, None);
     } else {
         // Get short id for the node
@@ -181,6 +181,9 @@ pub async fn print_query_status(
         rpc.request(api::list_outlets()).await?;
         let outlets = rpc.parse_response::<OutletList>()?;
 
+        let node_state = cli_state.nodes.get(node_name)?;
+        let node_port = node_state.setup()?.default_tcp_listener()?.addr.port();
+
         print_node_info(
             node_port,
             node_name,
@@ -213,8 +216,21 @@ async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> anyhow::Result
         .max_delay(IS_NODE_UP_MAX_TIMEOUT)
         .take(attempts);
 
+    let cli_state = cli_state::CliState::new()?;
     let now = std::time::Instant::now();
     for t in timeout {
+        // The node is down if it has not stored its default tcp listener in its state file.
+        if cli_state
+            .nodes
+            .get(rpc.node_name())?
+            .setup()?
+            .default_tcp_listener()
+            .is_err()
+        {
+            tokio::time::sleep(t).await;
+            continue;
+        }
+
         // Test if node is up
         // If node is down, we expect it won't reply and the timeout
         // will trigger the next loop (i.e. no need to sleep here).
@@ -228,6 +244,5 @@ async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> anyhow::Result
             return Ok(true);
         }
     }
-
     Ok(false)
 }

@@ -52,7 +52,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     let cloud_opts = cmd.cloud_opts.clone();
     let space = default_space(ctx, &opts, &cloud_opts, &node_name).await?;
     default_project(ctx, &opts, &cloud_opts, &node_name, &space).await?;
-    delete_embedded_node(&opts.config, &node_name).await;
+    delete_embedded_node(&opts, &node_name).await;
 
     Ok(())
 }

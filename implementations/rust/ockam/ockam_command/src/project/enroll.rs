@@ -112,7 +112,7 @@ impl Runner {
             println!("{}", hex::encode(res.code()))
         }
 
-        delete_embedded_node(&self.opts.config, &node_name).await;
+        delete_embedded_node(&self.opts, &node_name).await;
         Ok(())
     }
 }

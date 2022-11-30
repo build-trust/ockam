@@ -68,7 +68,7 @@ flate2 = "1.0.24"
 hex = "0.4"
 itertools = "0.10"
 minicbor = { version = "0.18.0", features = ["derive", "alloc", "half"] }
-nix = "0.24"
+nix = "0.26"
 open = "3"
 rand = "0.8"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
@@ -104,3 +104,4 @@ assert_cmd = "2"
 tempfile = "3"
 
 ockam_macros = { path = "../ockam_macros", version = "^0.25.0" }
+ockam_api = { path = "../ockam_api", version = "0.20.0", features = ["std", "authenticators"] }

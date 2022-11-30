@@ -103,6 +103,6 @@ async fn run_impl(
         eprintln!("{}", rpc.parse_err_msg(res, dec));
         Err(anyhow!("Failed to enroll").into())
     };
-    delete_embedded_node(&opts.config, &node_name).await;
+    delete_embedded_node(&opts, &node_name).await;
     res
 }

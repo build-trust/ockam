@@ -106,6 +106,6 @@ async fn run_impl(
         .await?;
     let info: ProjectInfo = rpc.parse_response::<Project>()?.into();
     rpc.print_response(&info)?;
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
+    delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

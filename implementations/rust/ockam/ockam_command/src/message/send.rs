@@ -45,8 +45,8 @@ impl SendCommand {
 async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> Result<()> {
     async fn go(ctx: &mut Context, opts: &CommandGlobalOpts, cmd: SendCommand) -> Result<()> {
         // Process `--to` Multiaddr
-        let (to, meta) = clean_multiaddr(&cmd.to, &opts.config.lookup())
-            .context("Argument '--to' is invalid")?;
+        let (to, meta) =
+            clean_multiaddr(&cmd.to, &opts.state).context("Argument '--to' is invalid")?;
 
         // Setup environment depending on whether we are sending the message from an embedded node or a background node
         let (api_node, tcp) = if let Some(node) = &cmd.from {
@@ -84,7 +84,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
 
         // only delete node in case 'from' is empty and embedded node was started before
         if cmd.from.is_none() {
-            delete_embedded_node(&opts.config, rpc.node_name()).await;
+            delete_embedded_node(opts, rpc.node_name()).await;
         }
 
         Ok(())

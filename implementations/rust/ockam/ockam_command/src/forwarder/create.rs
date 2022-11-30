@@ -51,8 +51,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     let api_node = extract_address_value(&cmd.to)?;
     let at_rust_node = is_local_node(&cmd.at).context("Argument --at is not valid")?;
 
-    let lookup = opts.config.lookup();
-    let ma = process_multi_addr(&cmd.at, &lookup)?;
+    let ma = process_multi_addr(&cmd.at, &opts.state)?;
 
     let req = {
         let alias = if at_rust_node {
