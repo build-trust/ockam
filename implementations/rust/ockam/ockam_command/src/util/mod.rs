@@ -15,10 +15,8 @@ use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 pub use addon::AddonCommand;
 pub use config::*;
 use ockam::{Address, Context, NodeBuilder, Route, TcpTransport, TCP};
+use ockam_api::cli_state::{CliState, NodeState};
 use ockam_api::nodes::NODEMANAGER_ADDR;
-use ockam_api::{
-    config::cli::NodeConfigOld, config::lookup::ConfigLookup, nodes::models::base::NodeStatus,
-};
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_multiaddr::{
     proto::{self, Node},
@@ -43,7 +41,7 @@ pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp
 pub enum RpcMode<'a> {
     Embedded,
     Background {
-        cfg: NodeConfigOld,
+        node_state: NodeState,
         tcp: Option<&'a TcpTransport>,
     },
 }
@@ -78,9 +76,8 @@ impl<'a> RpcBuilder<'a> {
     /// TcpTransport per Context.
     pub fn tcp<T: Into<Option<&'a TcpTransport>>>(mut self, tcp: T) -> Result<Self> {
         if let Some(tcp) = tcp.into() {
-            let cfg = self.opts.config.get_node(&self.node_name)?;
             self.mode = RpcMode::Background {
-                cfg,
+                node_state: self.opts.state.nodes.get(&self.node_name)?,
                 tcp: Some(tcp),
             };
         }
@@ -136,7 +133,10 @@ impl<'a> Rpc<'a> {
             opts,
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
-            mode: RpcMode::Background { cfg, tcp: None },
+            mode: RpcMode::Background {
+                node_state: cfg,
+                tcp: None,
+            },
         })
     }
 
@@ -181,8 +181,12 @@ impl<'a> Rpc<'a> {
     async fn route_impl(&mut self, ctx: &Context) -> Result<Route> {
         let route = match self.mode {
             RpcMode::Embedded => self.to.clone(),
-            RpcMode::Background { ref cfg, ref tcp } => {
-                let addr = Address::from((TCP, format!("localhost:{}", cfg.port())));
+            RpcMode::Background {
+                ref node_state,
+                ref tcp,
+            } => {
+                let port = node_state.setup()?.default_tcp_listener()?.addr.port();
+                let addr = Address::from((TCP, format!("localhost:{port}")));
                 let addr_str = addr.address();
                 match tcp {
                     None => {
@@ -475,7 +479,7 @@ pub fn extract_address_value(input: &str) -> anyhow::Result<String> {
 /// Example:
 ///     if n1 has address of 127.0.0.1:1234
 ///     `/node/n1` -> `/ip4/127.0.0.1/tcp/1234`
-pub fn process_multi_addr(addr: &MultiAddr, lookup: &ConfigLookup) -> anyhow::Result<MultiAddr> {
+pub fn process_multi_addr(addr: &MultiAddr, cli_state: &CliState) -> anyhow::Result<MultiAddr> {
     let mut processed_addr = MultiAddr::default();
     for proto in addr.iter() {
         match proto.code() {
@@ -483,9 +487,8 @@ pub fn process_multi_addr(addr: &MultiAddr, lookup: &ConfigLookup) -> anyhow::Re
                 let alias = proto
                     .cast::<Node>()
                     .ok_or_else(|| anyhow!("invalid node address protocol"))?;
-                let addr = lookup
-                    .node_address(&alias)
-                    .ok_or_else(|| anyhow!("no address for node {}", &*alias))?;
+                let node_setup = cli_state.nodes.get(&alias)?.setup()?;
+                let addr = node_setup.default_tcp_listener()?.maddr()?;
                 processed_addr.try_extend(&addr)?
             }
             _ => processed_addr.push_back_value(&proto)?,
@@ -504,57 +507,19 @@ pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {
 pub fn bind_to_port_check(address: &SocketAddr) -> bool {
     let port = address.port();
     let ip = address.ip();
-    std::net::TcpListener::bind((ip, port)).is_ok()
-}
-
-/// Update the persisted configuration data with the pids
-/// responded by nodes.
-pub async fn verify_pids(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    tcp: &TcpTransport,
-    cfg: &OckamConfig,
-    nodes: &Vec<String>,
-) -> crate::Result<()> {
-    let mut persist_needed = false;
-    for node_name in nodes {
-        if let Ok(node_cfg) = cfg.get_node(node_name) {
-            // Query node for its pid (if it does not respond, don't let it block us)
-            let mut rpc = RpcBuilder::new(ctx, opts, node_name).tcp(tcp)?.build();
-            if rpc
-                .request_with_timeout(api::query_status(), Duration::from_millis(200))
-                .await
-                .is_ok()
-            {
-                let resp = rpc.parse_response::<NodeStatus>()?;
-
-                // Update config, if needed
-                if node_cfg.pid() != Some(resp.pid) {
-                    if let Err(e) = cfg.set_node_pid(node_name, resp.pid) {
-                        return Err(crate::Error::new(
-                            exitcode::IOERR,
-                            anyhow!("Failed to update pid for node {}: {}", node_name, e),
-                        ));
-                    }
-                    persist_needed = true;
-                }
-            }
-            // Persist changes
-            if persist_needed && cfg.persist_config_updates().is_err() {
-                return Err(crate::Error::new(
-                    exitcode::IOERR,
-                    anyhow!("Failed to update PID information in config!"),
-                ));
-            }
-        }
-    }
-    Ok(())
+    TcpListener::bind((ip, port)).is_ok()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam_core::compat::net::SocketAddr;
+    use ockam_api::cli_state;
+    use ockam_api::cli_state::{IdentityConfig, NodeConfig, VaultConfig};
+    use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
+    use ockam_identity::Identity;
+    use ockam_vault::storage::FileStorage;
+    use ockam_vault::Vault;
+    use std::sync::Arc;
 
     #[test]
     fn test_extract_address_value() {
@@ -582,47 +547,59 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_process_multi_addr() {
-        let lookup = |node: &str, addr: &str| {
-            let mut l = ConfigLookup::new();
-            l.set_node(node, SocketAddr::from_str(addr).unwrap().into());
-            l
-        };
+    #[ockam_macros::test(crate = "ockam")]
+    async fn test_process_multi_addr(ctx: &mut Context) -> ockam::Result<()> {
+        let cli_state = CliState::test()?;
+
+        let v_name = cli_state::random_name();
+        let v_config = VaultConfig::fs_default(&v_name)?;
+        let v_storage = FileStorage::create(VaultConfig::fs_path(&v_name, None)?).await?;
+        let v = Vault::new(Some(Arc::new(v_storage)));
+        cli_state.vaults.create(&v_name, v_config).await?;
+
+        let idt = Identity::create(ctx, &v).await?;
+        let idt_config = IdentityConfig::new(&idt).await;
+        cli_state
+            .identities
+            .create(&cli_state::random_name(), idt_config)?;
+
+        let n_state = cli_state.nodes.create("n1", NodeConfig::default()?)?;
+        let n_setup = n_state.setup()?;
+        n_state.set_setup(&n_setup.add_transport(CreateTransportJson::new(
+            TransportType::Tcp,
+            TransportMode::Listen,
+            "127.0.0.0:4000",
+        )?))?;
+
         let test_cases = vec![
             (
                 MultiAddr::from_str("/node/n1").unwrap(),
-                lookup("n1", "127.0.0.0:4000"),
                 Ok("/ip4/127.0.0.0/tcp/4000"),
             ),
             (
                 MultiAddr::from_str("/project/p1").unwrap(),
-                ConfigLookup::new(),
                 Ok("/project/p1"),
             ),
             (
                 MultiAddr::from_str("/service/s1").unwrap(),
-                lookup("n1", "127.0.0.0:4000"),
                 Ok("/service/s1"),
             ),
             (
                 MultiAddr::from_str("/project/p1/node/n1/service/echo").unwrap(),
-                lookup("n1", "127.0.0.0:4000"),
                 Ok("/project/p1/ip4/127.0.0.0/tcp/4000/service/echo"),
             ),
-            (
-                MultiAddr::from_str("/node/n1").unwrap(),
-                lookup("n2", "127.0.0.0:4000"),
-                Err(()),
-            ),
+            (MultiAddr::from_str("/node/n2").unwrap(), Err(())),
         ];
-        for (ma, lookup, expected) in test_cases {
+        for (ma, expected) in test_cases {
             if let Ok(addr) = expected {
-                let result = process_multi_addr(&ma, &lookup).unwrap().to_string();
+                let result = process_multi_addr(&ma, &cli_state).unwrap().to_string();
                 assert_eq!(result, addr);
             } else {
-                assert!(process_multi_addr(&ma, &lookup).is_err());
+                assert!(process_multi_addr(&ma, &cli_state).is_err());
             }
         }
+
+        ctx.stop().await?;
+        Ok(())
     }
 }

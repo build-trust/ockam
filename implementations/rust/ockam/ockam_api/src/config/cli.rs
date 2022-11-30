@@ -1,16 +1,13 @@
 //! Configuration files used by the ockam CLI
 
-use crate::config::{
-    lookup::{ConfigLookup, InternetAddress},
-    ConfigValues,
-};
+use crate::config::{lookup::ConfigLookup, ConfigValues};
 use crate::{cli_state, HexByteVec};
 use ockam_core::Result;
 use ockam_identity::{IdentityIdentifier, IdentityVault, PublicIdentity};
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// The main ockam CLI configuration
 ///
@@ -29,14 +26,8 @@ pub struct OckamConfig {
     /// persist this data to the configuration
     #[serde(skip)]
     pub dir: Option<PathBuf>,
-    #[serde(default = "default_nodes")]
-    pub nodes: BTreeMap<String, NodeConfigOld>,
     #[serde(default = "default_lookup")]
     pub lookup: ConfigLookup,
-}
-
-fn default_nodes() -> BTreeMap<String, NodeConfigOld> {
-    BTreeMap::new()
 }
 
 fn default_lookup() -> ConfigLookup {
@@ -47,7 +38,6 @@ impl ConfigValues for OckamConfig {
     fn default_values() -> Self {
         Self {
             dir: Some(Self::dir()),
-            nodes: BTreeMap::new(),
             lookup: default_lookup(),
         }
     }
@@ -73,84 +63,6 @@ impl OckamConfig {
     /// This may be optimised in the future!
     pub fn lookup(&self) -> &ConfigLookup {
         &self.lookup
-    }
-}
-
-/// Per-node runtime configuration
-///
-/// ## Updates
-///
-/// This configuration is used to keep track of individual nodes by
-/// the CLI.  The config is updated periodically but writes to it
-/// don't have to be synced to consumers.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct NodeConfigOld {
-    #[serde(default = "default_name")]
-    name: String,
-    #[serde(default = "default_addr")]
-    addr: InternetAddress,
-    #[serde(default = "default_port")]
-    port: u16,
-    #[serde(default = "default_verbose")]
-    verbose: u8,
-    pub pid: Option<i32>,
-    state_dir: Option<PathBuf>,
-}
-
-fn default_name() -> String {
-    String::new()
-}
-fn default_addr() -> InternetAddress {
-    InternetAddress::default()
-}
-fn default_port() -> u16 {
-    InternetAddress::default().port()
-}
-fn default_verbose() -> u8 {
-    0
-}
-
-impl NodeConfigOld {
-    pub fn new(
-        name: String,
-        addr: InternetAddress,
-        port: u16,
-        verbose: u8,
-        pid: Option<i32>,
-        state_dir: Option<PathBuf>,
-    ) -> Self {
-        Self {
-            name,
-            addr,
-            port,
-            verbose,
-            pid,
-            state_dir,
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn addr(&self) -> &InternetAddress {
-        &self.addr
-    }
-
-    pub fn port(&self) -> u16 {
-        self.port
-    }
-
-    pub fn verbose(&self) -> u8 {
-        self.verbose
-    }
-
-    pub fn pid(&self) -> Option<i32> {
-        self.pid
-    }
-
-    pub fn state_dir(&self) -> Option<&Path> {
-        self.state_dir.as_deref()
     }
 }
 

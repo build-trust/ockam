@@ -2,8 +2,8 @@
 
 #![allow(unused)]
 
-use crate::exitcode;
 use crate::util::OckamConfig;
+use crate::{exitcode, CommandGlobalOpts};
 use anyhow::Context;
 use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
@@ -38,7 +38,7 @@ pub fn stop(pid: i32, sigkill: bool) -> anyhow::Result<()> {
 /// node start`, which attempts to re-use an existing node config
 #[allow(clippy::too_many_arguments)]
 pub fn spawn_node(
-    cfg: &OckamConfig,
+    opts: &CommandGlobalOpts,
     verbose: u8,
     skip_defaults: bool,
     name: &str,
@@ -50,8 +50,9 @@ pub fn spawn_node(
     // development) re-executing the current binary is a more
     // deterministic way of starting a node.
     let ockam_exe = current_exe().unwrap_or_else(|_| "ockam".into());
+    let node_state = opts.state.nodes.get(name)?;
 
-    let (mlog, elog) = cfg.node_log_paths(name).unwrap();
+    let (mlog, elog) = { (node_state.stdout_log(), node_state.stderr_log()) };
 
     let main_log_file = OpenOptions::new()
         .create(true)
@@ -103,10 +104,7 @@ pub fn spawn_node(
         .stdout(main_log_file)
         .stderr(stderr_log_file)
         .spawn()?;
-
-    // Update the pid in the config (should we remove this?)
-    cfg.set_node_pid(name, child.id() as i32)?;
-    cfg.persist_config_updates()?;
+    node_state.set_pid(child.id() as i32)?;
 
     Ok(())
 }

@@ -1,8 +1,9 @@
-use crate::config::lookup::{ConfigLookup, InternetAddress, LookupMeta};
+use crate::cli_state::CliState;
+use crate::config::lookup::{InternetAddress, LookupMeta};
 use crate::error::ApiError;
 use anyhow::anyhow;
 use core::str::FromStr;
-use ockam::{Address, Error, TCP};
+use ockam::{Address, Error, Result, TCP};
 use ockam_core::{Route, LOCAL};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp};
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -11,10 +12,7 @@ use std::net::{SocketAddrV4, SocketAddrV6};
 /// Go through a multiaddr and remove all instances of
 /// `/node/<whatever>` out of it and replaces it with a fully
 /// qualified address to the target
-pub fn clean_multiaddr(
-    input: &MultiAddr,
-    lookup: &ConfigLookup,
-) -> Option<(MultiAddr, LookupMeta)> {
+pub fn clean_multiaddr(input: &MultiAddr, cli_state: &CliState) -> Result<(MultiAddr, LookupMeta)> {
     let mut new_ma = MultiAddr::default();
     let mut lookup_meta = LookupMeta::default();
 
@@ -22,34 +20,31 @@ pub fn clean_multiaddr(
     for p in it {
         match p.code() {
             Node::CODE => {
-                let alias = p.cast::<Node>()?;
-                let addr = lookup
-                    .get_node(&alias)
-                    .expect("provided invalid substitution route");
-
+                let alias = p.cast::<Node>().expect("Failed to parse node name");
+                let node_setup = cli_state.nodes.get(&alias)?.setup()?;
+                let addr = &node_setup.default_tcp_listener()?.addr;
                 match addr {
-                    InternetAddress::Dns(dns, _) => new_ma.push_back(DnsAddr::new(dns)).ok()?,
-                    InternetAddress::V4(v4) => new_ma.push_back(Ip4(*v4.ip())).ok()?,
-                    InternetAddress::V6(v6) => new_ma.push_back(Ip6(*v6.ip())).ok()?,
+                    InternetAddress::Dns(dns, _) => new_ma.push_back(DnsAddr::new(dns))?,
+                    InternetAddress::V4(v4) => new_ma.push_back(Ip4(*v4.ip()))?,
+                    InternetAddress::V6(v6) => new_ma.push_back(Ip6(*v6.ip()))?,
                 }
-
-                new_ma.push_back(Tcp(addr.port())).ok()?;
+                new_ma.push_back(Tcp(addr.port()))?;
             }
             Project::CODE => {
                 // Parse project name from the MultiAddr.
-                let alias = p.cast::<Project>()?;
+                let alias = p.cast::<Project>().expect("Failed to parse project name");
                 // Store it in the lookup meta, so we can later
                 // retrieve it from either the config or the cloud.
                 lookup_meta.project.push_back(alias.to_string());
                 // No substitution done here. It will be done later by `clean_projects_multiaddr`.
-                new_ma.push_back_value(&p).ok()?
+                new_ma.push_back_value(&p)?
             }
             Space::CODE => panic!("/space/ substitutions are not supported yet!"),
-            _ => new_ma.push_back_value(&p).ok()?,
+            _ => new_ma.push_back_value(&p)?,
         }
     }
 
-    Some((new_ma, lookup_meta))
+    Ok((new_ma, lookup_meta))
 }
 
 /// Try to convert a multi-address to an Ockam route.
@@ -232,22 +227,7 @@ pub fn is_local_node(ma: &MultiAddr) -> anyhow::Result<bool> {
 
 #[test]
 fn clean_multiaddr_simple() {
-    use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-
-    let addr: MultiAddr = "/node/hub/service/echoer".parse().unwrap();
-
-    let lookup = {
-        let mut map = ConfigLookup::new();
-        map.set_node(
-            "hub",
-            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 666)).into(),
-        );
-        map
-    };
-
-    let (new_addr, _) = clean_multiaddr(&addr, &lookup).unwrap();
-    assert_ne!(addr, new_addr); // Make sure the address changed
-
-    let new_route = multiaddr_to_route(&new_addr).unwrap();
-    println!("{:#?}", new_route);
+    let addr: MultiAddr = "/project/hub/service/echoer".parse().unwrap();
+    let (_new_addr, lookup_meta) = clean_multiaddr(&addr, &CliState::new().unwrap()).unwrap();
+    assert!(lookup_meta.project.contains(&"hub".to_string()));
 }

@@ -44,6 +44,6 @@ async fn run_impl(
     let mut rpc = Rpc::embedded(ctx, &opts).await?;
     rpc.request(api::project::delete_enroller(&cmd)).await?;
     rpc.is_ok()?;
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
+    delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

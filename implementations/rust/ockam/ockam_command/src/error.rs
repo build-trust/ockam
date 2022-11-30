@@ -1,7 +1,6 @@
 use std::convert::Infallible;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::util::ConfigError;
 use crate::version::Version;
 use crate::{exitcode, ExitCode};
 
@@ -40,12 +39,6 @@ impl Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(self.inner.as_ref())
-    }
-}
-
-impl From<ConfigError> for Error {
-    fn from(e: ConfigError) -> Self {
-        Error::new(exitcode::CONFIG, e.into())
     }
 }
 

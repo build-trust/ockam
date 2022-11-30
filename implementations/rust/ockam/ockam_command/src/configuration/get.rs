@@ -1,5 +1,4 @@
-use crate::{util::exitcode, CommandGlobalOpts};
-use anyhow::anyhow;
+use crate::CommandGlobalOpts;
 use clap::Args;
 
 #[derive(Clone, Debug, Args)]
@@ -17,19 +16,9 @@ impl GetCommand {
     }
 }
 
-fn run_impl(options: CommandGlobalOpts, cmd: GetCommand) -> crate::Result<()> {
-    let lookup = options.config.lookup();
-    match lookup.get_node(&cmd.alias) {
-        Some(addr) => {
-            println!("Node: {}\nAddress: {}", cmd.alias, addr);
-            Ok(())
-        }
-        None => Err(crate::error::Error::new(
-            exitcode::DATAERR,
-            anyhow!(
-                "Alias {} not known.  Add it first with `ockam alias set`!",
-                cmd.alias
-            ),
-        )),
-    }
+fn run_impl(opts: CommandGlobalOpts, cmd: GetCommand) -> crate::Result<()> {
+    let node_setup = opts.state.nodes.get(&cmd.alias)?.setup()?;
+    let addr = &node_setup.default_tcp_listener()?.addr;
+    println!("Address: {addr}");
+    Ok(())
 }

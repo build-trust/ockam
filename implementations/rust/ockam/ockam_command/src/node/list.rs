@@ -1,8 +1,10 @@
-use crate::util::{exitcode, node_rpc, verify_pids, RpcBuilder};
+use crate::util::{api, exitcode, node_rpc, RpcBuilder};
 use crate::{help, node::show::print_query_status, node::HELP_DETAIL, CommandGlobalOpts};
-use anyhow::anyhow;
+use anyhow::{anyhow, Context as _};
 use clap::Args;
-use ockam::TcpTransport;
+use ockam::{Context, TcpTransport};
+use ockam_api::nodes::models::base::NodeStatus;
+use std::time::Duration;
 
 /// List Nodes
 #[derive(Clone, Debug, Args)]
@@ -16,11 +18,9 @@ impl ListCommand {
 }
 
 async fn run_impl(
-    ctx: ockam::Context,
+    ctx: Context,
     (opts, _cmd): (CommandGlobalOpts, ListCommand),
 ) -> crate::Result<()> {
-    let cfg = &opts.config;
-
     // Before printing node states we verify them.
     // We send a QueryStatus request to every node on
     // record. If the response yields a different pid to the
@@ -28,24 +28,51 @@ async fn run_impl(
     // This should only happen if the node has failed in the past,
     // and has been restarted by something that is not this CLI.
     let node_names: Vec<_> = {
-        let inner = cfg.inner();
-        if inner.nodes.is_empty() {
+        let nodes_states = opts.state.nodes.list()?;
+        if nodes_states.is_empty() {
             return Err(crate::Error::new(
                 exitcode::IOERR,
                 anyhow!("No nodes registered on this system!"),
             ));
         }
-        inner.nodes.iter().map(|(name, _)| name.clone()).collect()
+        nodes_states.iter().map(|s| s.config.name.clone()).collect()
     };
     let tcp = TcpTransport::create(&ctx).await?;
-    verify_pids(&ctx, &opts, &tcp, cfg, &node_names).await?;
+    verify_pids(&ctx, &opts, &tcp, &node_names).await?;
 
     // Print node states
     for node_name in &node_names {
         let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
-        let port = cfg.get_node_port(node_name)?;
-        print_query_status(&mut rpc, port, node_name, false).await?;
+        print_query_status(&mut rpc, node_name, false).await?;
     }
 
+    Ok(())
+}
+
+/// Update the persisted configuration data with the pids
+/// responded by nodes.
+async fn verify_pids(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    tcp: &TcpTransport,
+    nodes: &Vec<String>,
+) -> crate::Result<()> {
+    for node_name in nodes {
+        if let Ok(node_state) = opts.state.nodes.get(node_name) {
+            let mut rpc = RpcBuilder::new(ctx, opts, node_name).tcp(tcp)?.build();
+            if rpc
+                .request_with_timeout(api::query_status(), Duration::from_millis(200))
+                .await
+                .is_ok()
+            {
+                let resp = rpc.parse_response::<NodeStatus>()?;
+                if node_state.pid()? != Some(resp.pid) {
+                    node_state
+                        .set_pid(resp.pid)
+                        .context("Failed to update pid for node {node_name}")?;
+                }
+            }
+        }
+    }
     Ok(())
 }

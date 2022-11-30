@@ -89,8 +89,7 @@ impl CreateCommand {
 }
 
 async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
-    let lookup = opts.config.lookup();
-    cmd.to = process_multi_addr(&cmd.to, &lookup)?;
+    cmd.to = process_multi_addr(&cmd.to, &opts.state)?;
 
     // Check if the port is used by some other services or process
     if !bind_to_port_check(&cmd.from) {

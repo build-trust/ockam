@@ -28,7 +28,6 @@ mod util;
 mod vault;
 mod version;
 
-use anyhow::Context;
 use authenticated::AuthenticatedCommand;
 use completion::CompletionCommand;
 use configuration::ConfigurationCommand;
@@ -46,7 +45,6 @@ use reset::ResetCommand;
 use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
 use service::ServiceCommand;
 use space::SpaceCommand;
-use std::path::PathBuf;
 use tcp::{
     connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
     outlet::TcpOutletCommand,
@@ -56,7 +54,6 @@ use vault::VaultCommand;
 use version::Version;
 
 use crate::admin::AdminCommand;
-use crate::node::util::run::CommandSection;
 use crate::subscription::SubscriptionCommand;
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use ockam_api::cli_state::CliState;
@@ -211,43 +208,12 @@ pub struct GlobalArgs {
     // but the command is not executed.
     #[arg(global = true, long, hide = true)]
     test_argument_parser: bool,
-
-    #[command(flatten)]
-    export: ExportCommandArgs,
 }
 
 #[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
 pub enum OutputFormat {
     Plain,
     Json,
-}
-
-#[derive(Debug, Clone, Args)]
-pub struct ExportCommandArgs {
-    /// Export the command input to a file.
-    /// Used to run a set of commands after creating a node with `ockam node create --run commands.json`
-    #[arg(global = true, long = "export", hide_short_help = true, hide = true)]
-    export_path: Option<PathBuf>,
-
-    /// Section of the config file to export the command to.
-    #[arg(
-        global = true,
-        long = "export-section",
-        hide_short_help = true,
-        hide = true,
-        value_enum
-    )]
-    section: Option<CommandSection>,
-
-    /// Flag to indicate that the exported command should pipe its output.
-    #[arg(global = true, long, hide_short_help = true, hide = true, action = ArgAction::SetTrue)]
-    pipe: Option<bool>,
-}
-
-impl ExportCommandArgs {
-    pub fn pipe(&self) -> bool {
-        self.pipe.unwrap_or(false)
-    }
 }
 
 #[derive(Clone)]
@@ -318,7 +284,6 @@ pub fn run() {
     let input = std::env::args()
         .map(replace_hyphen_with_stdin)
         .collect::<Vec<_>>();
-    let args = input.clone();
     let command: OckamCommand = OckamCommand::parse_from(input);
 
     if !command.global_args.test_argument_parser {
@@ -329,15 +294,6 @@ pub fn run() {
         setup_logging(command.global_args.verbose, command.global_args.no_color);
         tracing::debug!("{}", Version::short());
         tracing::debug!("Parsed {:?}", &command);
-    }
-
-    if let Some(path) = command.global_args.export.export_path {
-        let section = command.global_args.export.section.unwrap_or_default();
-        let pipe = command.global_args.export.pipe;
-        node::util::run::CommandsRunner::export(path, section, args, pipe)
-            .context("Failed to export command")
-            .unwrap();
-        return;
     }
 
     command.run();

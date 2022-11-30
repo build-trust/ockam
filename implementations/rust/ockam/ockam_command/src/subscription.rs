@@ -81,7 +81,7 @@ async fn run_impl(
             rpc.parse_and_print_response::<Subscription>()?;
         }
     };
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
+    delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }
 

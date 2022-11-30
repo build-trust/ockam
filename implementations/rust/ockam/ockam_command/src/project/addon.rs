@@ -220,7 +220,7 @@ async fn run_impl(
             }
         },
     };
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
+    delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }
 

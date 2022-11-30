@@ -4,10 +4,7 @@ use bytes::Bytes;
 use ockam_core::compat::collections::VecDeque;
 use ockam_core::{CowStr, Result};
 use ockam_identity::{IdentityIdentifier, PublicIdentity};
-use ockam_multiaddr::{
-    proto::{self, DnsAddr, Ip4, Ip6, Tcp},
-    MultiAddr,
-};
+use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -43,25 +40,6 @@ impl ConfigLookup {
         Self {
             map: Default::default(),
         }
-    }
-
-    /// Store a node identifier and address lookup
-    pub fn set_node(&mut self, node: &str, address: InternetAddress) {
-        self.map
-            .insert(format!("/node/{}", node), LookupValue::Address(address));
-    }
-
-    pub fn get_node(&self, node: &str) -> Option<&InternetAddress> {
-        self.map
-            .get(&format!("/node/{}", node))
-            .and_then(|value| match value {
-                LookupValue::Address(addr) => Some(addr),
-                _ => None,
-            })
-    }
-
-    pub fn remove_node(&mut self, name: &str) -> Option<LookupValue> {
-        self.map.remove(&format!("/node/{}", name))
     }
 
     pub fn set_space(&mut self, id: &str, name: &str) {
@@ -117,18 +95,6 @@ impl ConfigLookup {
             .any(|name| self.get_project(name).is_none())
     }
 
-    pub fn node_address(&self, node: &proto::Node) -> Option<MultiAddr> {
-        let addr = self.get_node(node)?;
-        let mut m = MultiAddr::default();
-        match addr {
-            InternetAddress::Dns(dns, _) => m.push_back(DnsAddr::new(dns)).ok()?,
-            InternetAddress::V4(v4) => m.push_back(Ip4(*v4.ip())).ok()?,
-            InternetAddress::V6(v6) => m.push_back(Ip6(*v6.ip())).ok()?,
-        }
-        m.push_back(Tcp(addr.port())).ok()?;
-        Some(m)
-    }
-
     pub fn projects(&self) -> impl Iterator<Item = (String, ProjectLookup)> + '_ {
         self.map.iter().filter_map(|(k, v)| {
             if let LookupValue::Project(p) = v {
@@ -150,7 +116,7 @@ pub enum LookupValue {
 }
 
 /// An internet address abstraction (v6/v4/dns)
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum InternetAddress {
     /// DNSaddr and port
     Dns(String, u16),

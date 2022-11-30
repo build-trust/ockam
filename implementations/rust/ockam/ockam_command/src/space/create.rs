@@ -55,7 +55,7 @@ async fn run_impl(
     rpc.request(api::space::create(&cmd)).await?;
     let space = rpc.parse_and_print_response::<Space>()?;
     config::set_space(&opts.config, &space)?;
-    delete_embedded_node(&opts.config, rpc.node_name()).await;
+    delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }
 
