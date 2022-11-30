@@ -16,6 +16,7 @@ impl ForwardingService {
     /// Start a forwarding service. The address of the forwarding service will be
     /// `"forwarding_service"`.
     pub async fn create(ctx: &Context) -> Result<()> {
+        // FIXME: @ac
         ctx.start_worker("forwarding_service", Self).await?;
         Ok(())
     }
@@ -53,7 +54,7 @@ impl Forwarder {
         forward_route: Route,
         registration_payload: Vec<u8>,
     ) -> Result<()> {
-        let random_address = Address::random_local();
+        let random_address = Address::random_tagged("Forwarder.service");
 
         // TODO: assume that the first byte is length, ignore it.
         // We have to improve this actually parse the payload.
@@ -70,6 +71,7 @@ impl Forwarder {
             forward_route,
             payload: Some(registration_payload.clone()),
         };
+        // FIXME: @ac
         ctx.start_worker(address, forwarder).await?;
 
         Ok(())
