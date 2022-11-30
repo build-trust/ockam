@@ -13,6 +13,9 @@ pub struct StartCommand {
     /// Name of the node.
     #[arg(default_value = "default")]
     node_name: String,
+
+    #[arg(long, default_value = "false")]
+    aws_kms: bool,
 }
 
 impl StartCommand {
@@ -39,6 +42,7 @@ async fn run_impl(
         &node_setup.default_tcp_listener()?.addr.to_string(), // The selected node api address
         None,               // No project information available
         None,               // No invitation code available
+        cmd.aws_kms,
     )?;
 
     // Print node status

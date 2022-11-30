@@ -15,6 +15,9 @@ pub struct CreateCommand {
     /// Path to the Vault storage file
     #[arg(short, long)]
     path: Option<String>,
+
+    #[arg(long, default_value = "false")]
+    aws_kms: bool,
 }
 
 impl CreateCommand {
@@ -25,7 +28,7 @@ impl CreateCommand {
 
 async fn run_impl(_ctx: Context, (options, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
     let path = cli_state::VaultConfig::fs_path(&cmd.name, cmd.path)?;
-    let config = cli_state::VaultConfig::fs(path)?;
+    let config = cli_state::VaultConfig::fs(path, cmd.aws_kms)?;
     options
         .state
         .vaults

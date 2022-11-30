@@ -1,6 +1,7 @@
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use ockam_identity::{Identity, IdentityIdentifier};
+use ockam_vault::KeyId;
 use ockam_vault::{storage::FileStorage, Vault};
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -180,15 +181,29 @@ pub struct VaultState {
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum VaultConfig {
-    Fs { path: PathBuf },
+    Fs { path: PathBuf, aws_kms: bool },
 }
 
 impl VaultConfig {
+    pub fn fs(path: PathBuf, aws_kms: bool) -> Result<Self> {
+        Ok(Self::Fs { path, aws_kms })
+    }
+
+    pub fn fs_default(name: &str, aws_kms: bool) -> Result<Self> {
+        Ok(Self::Fs {
+            path: Self::fs_path(name, None)?,
+            aws_kms,
+        })
+    }
+
     pub async fn get(&self) -> Result<Vault> {
         match &self {
-            VaultConfig::Fs { path } => {
+            VaultConfig::Fs { path, aws_kms } => {
                 let vault_storage = FileStorage::create(path.clone()).await?;
-                let vault = Vault::new(Some(Arc::new(vault_storage)));
+                let mut vault = Vault::new(Some(Arc::new(vault_storage)));
+                if *aws_kms {
+                    vault.enable_aws_kms().await?
+                }
                 Ok(vault)
             }
         }
@@ -204,16 +219,6 @@ impl VaultConfig {
                 .dir
                 .join("data")
                 .join(format!("{name}-storage.json"))
-        })
-    }
-
-    pub fn fs(path: PathBuf) -> Result<Self> {
-        Ok(Self::Fs { path })
-    }
-
-    pub fn fs_default(name: &str) -> Result<Self> {
-        Ok(Self::Fs {
-            path: Self::fs_path(name, None)?,
         })
     }
 }

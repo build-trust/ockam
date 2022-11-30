@@ -2,9 +2,13 @@ use crate::help;
 use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
 use clap::Args;
-use ockam::Context;
+use ockam::{
+    vault::{Secret, SecretPersistence, SecretType},
+    Context,
+};
 use ockam_api::cli_state::{self, VaultConfig};
-use ockam_identity::Identity;
+use ockam_identity::{Identity, IdentityStateConst, KeyAttributes};
+use ockam_vault::{SecretAttributes, SecretVault};
 use rand::prelude::random;
 
 #[derive(Clone, Debug, Args)]
@@ -16,6 +20,10 @@ pub struct CreateCommand {
     /// Vault name to store the identity key
     #[arg(long)]
     vault: Option<String>,
+
+    /// Use an existing AWS KMS key.
+    #[arg(long)]
+    key_id: Option<String>,
 }
 
 impl CreateCommand {
@@ -35,7 +43,10 @@ async fn run_impl(
         let config = options
             .state
             .vaults
-            .create(&vault_name, VaultConfig::fs_default(&vault_name)?)
+            .create(
+                &vault_name,
+                VaultConfig::fs_default(&vault_name, cmd.key_id.is_some())?,
+            )
             .await?
             .config;
         println!("Default vault created: {}", &vault_name);
@@ -44,7 +55,16 @@ async fn run_impl(
         options.state.vaults.default()?.config
     };
     let vault = vault_config.get().await?;
-    let identity = Identity::create(&ctx, &vault).await?;
+    let identity = if let Some(kid) = cmd.key_id {
+        let attrs = SecretAttributes::new(SecretType::NistP256, SecretPersistence::Persistent, 32);
+        let kid = vault
+            .secret_import(Secret::Aws(kid.to_string()), attrs)
+            .await?;
+        let attrs = KeyAttributes::new(IdentityStateConst::ROOT_LABEL.to_string(), attrs);
+        Identity::create_ext(&ctx, &vault, &kid, attrs).await?
+    } else {
+        Identity::create(&ctx, &vault).await?
+    };
     let identity_config = cli_state::IdentityConfig::new(&identity).await;
     options
         .state
