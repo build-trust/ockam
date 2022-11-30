@@ -47,7 +47,7 @@ jobs:
           os: ubuntu-20.04
           rust: stable
           target: x86_64-unknown-linux-gnu
-          container: "ghcr.io/build-trust/ockam-builder@sha256:35ca467816e36a5bd16fcaa31141d0fd9507df94b8672fb02bc86b939746c889"
+          container: "ghcr.io/build-trust/ockam-builder@sha256:60e2c1e45d54e31b50f3e56fe202276ecc4812ccac88c84c9af8910cf787a81d"
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:

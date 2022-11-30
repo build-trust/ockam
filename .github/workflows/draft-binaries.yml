@@ -19,7 +19,7 @@ jobs:
         include:
         - os: ubuntu-22.04
           target: x86_64-unknown-linux-musl
-          container: ghcr.io/build-trust/ockam-builder@sha256:55b60f7efe2c48c098bd52db2e9dbf0a1b6f6c7e583ff278987d2d11adea04e2
+          container: ghcr.io/build-trust/ockam-builder@sha256:60e2c1e45d54e31b50f3e56fe202276ecc4812ccac88c84c9af8910cf787a81d
         - os: macos-12
           target: x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
