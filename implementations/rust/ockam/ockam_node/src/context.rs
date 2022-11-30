@@ -13,8 +13,8 @@ use core::{
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
-    Address, AllowAll, AsyncTryClone, Error, LocalMessage, Mailboxes, Message, Processor,
-    RelayMessage, Result, Route, TransportMessage, TransportType, Worker,
+    AccessControl, Address, AllowAll, AsyncTryClone, Error, LocalMessage, Mailboxes, Message,
+    Processor, RelayMessage, Result, Route, TransportMessage, TransportType, Worker,
 };
 use ockam_core::{LocalInfo, Mailbox};
 
@@ -223,6 +223,26 @@ impl Context {
             .outgoing_access_control()
             .clone();
 
+        self.new_detached_with_access_control(
+            address.into(),
+            incoming_access_control,
+            outgoing_access_control,
+        )
+        .await
+    }
+
+    /// Create a new detached `Context` without spawning a full worker
+    ///
+    /// Note: this function is very low-level.  For most users
+    /// [`start_worker()`](Self::start_worker) is the recommended way
+    /// to create a new worker context.
+    ///
+    pub async fn new_detached_with_access_control(
+        &self,
+        address: impl Into<Address>,
+        incoming_access_control: Arc<dyn AccessControl>,
+        outgoing_access_control: Arc<dyn AccessControl>,
+    ) -> Result<DetachedContext> {
         let mailboxes = Mailboxes::main(
             address.into(),
             incoming_access_control,
@@ -270,7 +290,7 @@ impl Context {
         Ok(ctx)
     }
 
-    /// Start a new worker instance at the given address set
+    /// Start a new worker instance at the given address
     ///
     /// A worker is an asynchronous piece of code that can send and
     /// receive messages of a specific type.  This type is encoded via
@@ -316,7 +336,46 @@ impl Context {
         Ok(())
     }
 
-    /// Start a new processor instance at the given address set
+    // TODO: @ac replace .start_worker with this
+    /// Start a new worker instance at the given address using given Access Control
+    pub async fn start_worker_with_access_control<NM, NW>(
+        &self,
+        address: impl Into<Address>,
+        worker: NW,
+        incoming: Arc<dyn AccessControl>,
+        outgoing: Arc<dyn AccessControl>,
+    ) -> Result<()>
+    where
+        NM: Message + Send + 'static,
+        NW: Worker<Context = Context, Message = NM>,
+    {
+        WorkerBuilder::with_mailboxes(Mailboxes::main(address, incoming, outgoing), worker)
+            .start(self)
+            .await?;
+        Ok(())
+    }
+
+    /// Start a new processor instance at the given address using given Access Control
+    pub async fn start_processor_with_access_control<P>(
+        &self,
+        address: impl Into<Address>,
+        processor: P,
+        incoming: Arc<dyn AccessControl>,
+        outgoing: Arc<dyn AccessControl>,
+    ) -> Result<()>
+    where
+        P: Processor<Context = Context>,
+    {
+        ProcessorBuilder::with_mailboxes(
+            Mailboxes::main(address.into(), incoming, outgoing),
+            processor,
+        )
+        .start(self)
+        .await?;
+        Ok(())
+    }
+
+    /// Start a new processor instance at the given address
     ///
     /// A processor is an asynchronous piece of code that runs a
     /// custom run loop, with access to a worker context to send and
