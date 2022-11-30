@@ -181,7 +181,12 @@ pub struct VaultState {
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum VaultConfig {
-    Fs { path: PathBuf, aws_kms: bool },
+    Fs {
+        path: PathBuf,
+
+        #[serde(default)]
+        aws_kms: bool,
+    },
 }
 
 impl VaultConfig {
@@ -707,7 +712,7 @@ mod tests {
             let vault_storage = FileStorage::create(path.clone()).await?;
             let vault = Vault::new(Some(Arc::new(vault_storage)));
 
-            let config = VaultConfig::fs_default(&name)?;
+            let config = VaultConfig::fs_default(&name, false)?;
 
             let state = sut.vaults.create(&name, config).await.unwrap();
             let got = sut.vaults.get(&name).unwrap();

@@ -91,7 +91,7 @@ impl From<VaultError> for Error {
     }
 }
 
-#[cfg(any(feature = "evercrypt", feature = "rustcrypto"))]
+#[cfg(feature = "rustcrypto")]
 pub(crate) fn from_pkcs8<T: core::fmt::Display>(e: T) -> Error {
     #[cfg(feature = "no_std")]
     use ockam_core::compat::string::ToString;
@@ -99,17 +99,12 @@ pub(crate) fn from_pkcs8<T: core::fmt::Display>(e: T) -> Error {
     Error::new(Origin::Vault, Kind::Unknown, e.to_string())
 }
 
-#[cfg(any(feature = "evercrypt", feature = "rustcrypto"))]
+#[cfg(feature = "rustcrypto")]
 pub(crate) fn from_ecdsa(e: p256::ecdsa::Error) -> Error {
     Error::new(Origin::Vault, Kind::Unknown, e)
 }
 
-#[cfg(any(feature = "evercrypt", feature = "rustcrypto"))]
+#[cfg(feature = "rustcrypto")]
 pub(crate) fn from_ecurve(e: p256::elliptic_curve::Error) -> Error {
     Error::new(Origin::Vault, Kind::Unknown, e)
-}
-
-#[cfg(feature = "evercrypt")]
-pub(crate) fn from_evercrypt(e: evercrypt::p256::Error) -> Error {
-    Error::new(Origin::Vault, Kind::Unknown, format!("{:?}", e))
 }

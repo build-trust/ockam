@@ -7,7 +7,7 @@ use ockam_core::{async_trait, compat::boxed::Box, Result};
 #[cfg(feature = "aws")]
 use ockam_core::vault::Secret;
 
-#[cfg(any(feature = "evercrypt", feature = "rustcrypto"))]
+#[cfg(feature = "rustcrypto")]
 use crate::error::from_pkcs8;
 
 #[async_trait]
@@ -70,25 +70,8 @@ impl Signer for Vault {
                         let sec = ecdsa::SigningKey::from_pkcs8_der(key).map_err(from_pkcs8)?;
                         let sig = sec.sign(data);
                         Ok(Signature::new(sig.to_der().as_bytes().to_vec()))
-                    } else if #[cfg(feature = "evercrypt")] {
-                        use crate::error::{from_ecdsa, from_evercrypt};
-                        use evercrypt::digest;
-                        use p256::ecdsa;
-                        use p256::pkcs8::DecodePrivateKey;
-                        let sec: [u8; 32] = ecdsa::SigningKey::from_pkcs8_der(key)
-                            .map_err(from_pkcs8)?
-                            .to_bytes()
-                            .into();
-                        let nonce = evercrypt::p256::random_nonce().map_err(from_evercrypt)?;
-                        let sig = evercrypt::p256::ecdsa_sign(digest::Mode::Sha256, data, &sec, &nonce)
-                            .map_err(from_evercrypt)?;
-                        let rs = sig.raw();
-                        let r: [u8; 32] = rs[.. 32].try_into().expect("32 = 32");
-                        let s: [u8; 32] = rs[32 ..].try_into().expect("32 = 32");
-                        let sig = ecdsa::Signature::from_scalars(r, s).map_err(from_ecdsa)?.to_der();
-                        Ok(Signature::new(sig.as_bytes().to_vec()))
                     } else {
-                        compile_error!("one of features {evercrypt,rustcrypto} must be given")
+                        compile_error!("NIST P-256 requires feature `rustcrypto`")
                     }
                 }
             }
