@@ -9,34 +9,34 @@ Authorization:
 - Identity needs to be enrolled to the Orchestrator Controller via [Auth0](./auth0.md)
 
 #### List enrollers
-Method: GET
-Path: "/v0/:project_id/enrollers"
-Request: ""
+Method: GET \
+Path: "/v0/:project_id/enrollers" \
+Request: "" \
 Response: `[+ enroller]`
 
 Errors:
-404 - project not found
-401 - current identity does not have permission to get enrollers from the project
+- 404 - project not found
+- 401 - current identity does not have permission to get enrollers from the project
 
 #### Create enroller
-Method: POST
-Path: "/v0/:project_id/enrollers"
-Request: CreateRequest
+Method: POST \
+Path: "/v0/:project_id/enrollers" \
+Request: CreateRequest \
 Response: enroller
 
 Errors:
-404 - project not found
-401 - current identity does not have permission to create enrollers in the project
+- 404 - project not found
+- 401 - current identity does not have permission to create enrollers in the project
 
 #### Delete enroller
-Method: DELETE
-Path: /v0/:project_id/enrollers/:enroller
-Request: ""
+Method: DELETE \
+Path: /v0/:project_id/enrollers/:enroller \
+Request: "" \
 Response: ""
 
 Errors:
-404 - project not found
-401 - current identity does not have permission to delete enrollers in the project
+- 404 - project not found
+- 401 - current identity does not have permission to delete enrollers in the project
 
 Where:
 ```
