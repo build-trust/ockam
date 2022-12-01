@@ -51,12 +51,12 @@ impl Eq for Mailbox {}
 impl Mailbox {
     /// Create a new `Mailbox` with the given [`Address`] and [`AccessControl`]
     pub fn new(
-        address: Address,
+        address: impl Into<Address>,
         incoming: Arc<dyn AccessControl>,
         outgoing: Arc<dyn AccessControl>,
     ) -> Self {
         Self {
-            address,
+            address: address.into(),
             incoming,
             outgoing,
         }
