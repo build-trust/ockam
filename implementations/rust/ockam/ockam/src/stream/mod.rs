@@ -15,7 +15,8 @@ use crate::{
 use core::{ops::Deref, time::Duration};
 use ockam_core::compat::rand::{self, Rng};
 use ockam_core::compat::string::String;
-use ockam_core::{Decodable, RouteBuilder, TransportType};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{AllowAll, Decodable, RouteBuilder, TransportType};
 
 /// Stream controller transport type.
 pub const STREAM: TransportType = TransportType::new(16);
@@ -189,7 +190,7 @@ impl Stream {
 
         // Create and start a new stream consumer
         self.ctx
-            .start_worker(
+            .start_worker_with_access_control(
                 receiver_address.clone(),
                 StreamConsumer::new(
                     client_id,
@@ -202,14 +203,18 @@ impl Stream {
                     self.stream_service.clone(),
                     self.index_service.clone(),
                 ),
+                Arc::new(AllowAll), // FIXME: @ac
+                Arc::new(AllowAll), // FIXME: @ac
             )
             .await?;
 
         // Create and start a new stream producer
         self.ctx
-            .start_worker(
+            .start_worker_with_access_control(
                 sender_address.clone(),
                 StreamProducer::new(sender_name.clone(), route, self.stream_service.clone()),
+                Arc::new(AllowAll), // FIXME: @ac
+                Arc::new(AllowAll), // FIXME: @ac
             )
             .await?;
 

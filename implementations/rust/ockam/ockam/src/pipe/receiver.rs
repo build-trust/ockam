@@ -4,7 +4,8 @@ use crate::{
     Context,
 };
 use ockam_core::compat::boxed::Box;
-use ockam_core::{Address, Any, Decodable, Mailbox, Mailboxes, Result, Routed, Worker};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{Address, AllowAll, Any, Decodable, Mailbox, Mailboxes, Result, Routed, Worker};
 use ockam_node::WorkerBuilder;
 
 pub struct PipeReceiver {
@@ -40,8 +41,12 @@ impl PipeReceiver {
     ) -> Result<()> {
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::deny_all(addr),
-            vec![Mailbox::deny_all(int_addr.clone())],
+            Mailbox::new(addr, Arc::new(AllowAll), Arc::new(AllowAll)),
+            vec![Mailbox::new(
+                int_addr.clone(),
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            )],
         );
         WorkerBuilder::with_mailboxes(mailboxes, PipeReceiver { hooks, int_addr })
             .start(ctx)

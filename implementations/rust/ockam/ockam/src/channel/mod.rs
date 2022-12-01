@@ -13,9 +13,6 @@ use ockam_core::{Address, Result, Route, RouteBuilder};
 #[doc(inline)]
 pub use ockam_channel::SecureChannel;
 
-#[cfg(test)]
-mod tests;
-
 const CLUSTER_NAME: &str = "ockam.channel";
 
 /// Generalised ockam channel API

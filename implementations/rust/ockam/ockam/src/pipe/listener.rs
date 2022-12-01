@@ -4,7 +4,8 @@ use crate::{
     Context,
 };
 use ockam_core::compat::boxed::Box;
-use ockam_core::{Address, Result, Routed, Worker};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{Address, AllowAll, Result, Routed, Worker};
 
 /// Listen for pipe handshakes and creates PipeReceive workers
 pub struct PipeListener {
@@ -53,7 +54,13 @@ impl PipeListener {
         addr: Address,
         hooks: PipeBehavior,
     ) -> Result<()> {
-        ctx.start_worker(addr, PipeListener { hooks }).await?;
+        ctx.start_worker_with_access_control(
+            addr,
+            PipeListener { hooks },
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll), // FIXME: @ac
+        )
+        .await?;
         Ok(())
     }
 

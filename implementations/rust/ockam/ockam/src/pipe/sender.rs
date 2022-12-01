@@ -4,8 +4,9 @@ use crate::{
     protocols::pipe::{internal::InternalCmd, PipeMessage},
     Context,
 };
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, collections::VecDeque};
-use ockam_core::{Address, Any, Mailbox, Mailboxes, Result, Route, Routed, Worker};
+use ockam_core::{Address, AllowAll, Any, Mailbox, Mailboxes, Result, Route, Routed, Worker};
 use ockam_node::WorkerBuilder;
 
 enum PeerRoute {
@@ -78,7 +79,14 @@ impl PipeSender {
         };
 
         // TODO: @ac
-        let mailboxes = Mailboxes::new(Mailbox::deny_all(addr), vec![Mailbox::deny_all(int_addr)]);
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(addr, Arc::new(AllowAll), Arc::new(AllowAll)),
+            vec![Mailbox::new(
+                int_addr,
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            )],
+        );
         WorkerBuilder::with_mailboxes(mailboxes, worker)
             .start(ctx)
             .await?;
@@ -105,7 +113,14 @@ impl PipeSender {
             hooks,
         };
         // TODO: @ac
-        let mailboxes = Mailboxes::new(Mailbox::deny_all(addr), vec![Mailbox::deny_all(int_addr)]);
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(addr, Arc::new(AllowAll), Arc::new(AllowAll)),
+            vec![Mailbox::new(
+                int_addr,
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            )],
+        );
         WorkerBuilder::with_mailboxes(mailboxes, worker)
             .start(ctx)
             .await?;

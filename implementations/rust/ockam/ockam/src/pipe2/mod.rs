@@ -11,9 +11,6 @@ mod listener;
 mod receiver;
 mod sender;
 
-#[cfg(test)]
-mod tests;
-
 use crate::{
     pipe2::{
         listener::PipeListener,
@@ -23,7 +20,10 @@ use crate::{
     system::hooks::pipe::{ReceiverConfirm, ReceiverOrdering, SenderConfirm, SenderOrdering},
     Context, OckamMessage, SystemBuilder, WorkerSystem,
 };
-use ockam_core::{compat::collections::BTreeSet, Address, Mailbox, Mailboxes, Result, Route};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{
+    compat::collections::BTreeSet, Address, AllowAll, Mailbox, Mailboxes, Result, Route,
+};
 use ockam_node::WorkerBuilder;
 
 const CLUSTER_NAME: &str = "_internal.pipe2";
@@ -291,12 +291,23 @@ impl PipeBuilder {
             let addr = Address::random_local();
             tx_addr = Some(addr.clone());
 
-            let mut additional_mailboxes = vec![Mailbox::deny_all(self.tx_fin.clone())];
+            let mut additional_mailboxes = vec![Mailbox::new(
+                self.tx_fin.clone(),
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            )];
             for addr in tx_sys.addresses() {
-                additional_mailboxes.push(Mailbox::deny_all(addr));
+                additional_mailboxes.push(Mailbox::new(
+                    addr,
+                    Arc::new(AllowAll),
+                    Arc::new(AllowAll),
+                ));
             }
             // TODO: @ac
-            let mailboxes = Mailboxes::new(Mailbox::deny_all(addr.clone()), additional_mailboxes);
+            let mailboxes = Mailboxes::new(
+                Mailbox::new(addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll)),
+                additional_mailboxes,
+            );
             WorkerBuilder::with_mailboxes(
                 mailboxes,
                 PipeSender::new(tx_sys, PeerRoute::Peer(peer), addr, self.tx_fin.clone()),
@@ -310,12 +321,23 @@ impl PipeBuilder {
             rx_addr = Some(addr.clone());
 
             // TODO: @ac
-            let mut additional_mailboxes = vec![Mailbox::deny_all(self.rx_fin.clone())];
+            let mut additional_mailboxes = vec![Mailbox::new(
+                self.rx_fin.clone(),
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            )];
             for addr in rx_sys.addresses() {
-                additional_mailboxes.push(Mailbox::deny_all(addr));
+                additional_mailboxes.push(Mailbox::new(
+                    addr,
+                    Arc::new(AllowAll),
+                    Arc::new(AllowAll),
+                ));
             }
             // TODO: @ac
-            let mailboxes = Mailboxes::new(Mailbox::deny_all(addr.clone()), additional_mailboxes);
+            let mailboxes = Mailboxes::new(
+                Mailbox::new(addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll)),
+                additional_mailboxes,
+            );
             WorkerBuilder::with_mailboxes(
                 mailboxes,
                 PipeReceiver::new(rx_sys, self.rx_fin.clone(), None),
@@ -346,14 +368,21 @@ impl PipeBuilder {
 
             // TODO: @ac
             let mut additional_mailboxes = vec![
-                Mailbox::deny_all(init_addr.clone()),
-                Mailbox::deny_all(self.tx_fin.clone()),
+                Mailbox::new(init_addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll)),
+                Mailbox::new(self.tx_fin.clone(), Arc::new(AllowAll), Arc::new(AllowAll)),
             ];
             for addr in tx_sys.addresses() {
-                additional_mailboxes.push(Mailbox::deny_all(addr));
+                additional_mailboxes.push(Mailbox::new(
+                    addr,
+                    Arc::new(AllowAll),
+                    Arc::new(AllowAll),
+                ));
             }
             // TODO: @ac
-            let mailboxes = Mailboxes::new(Mailbox::deny_all(addr.clone()), additional_mailboxes);
+            let mailboxes = Mailboxes::new(
+                Mailbox::new(addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll)),
+                additional_mailboxes,
+            );
             WorkerBuilder::with_mailboxes(
                 mailboxes,
                 PipeSender::new(
@@ -369,7 +398,13 @@ impl PipeBuilder {
 
         if let Some(addr) = self.recv {
             let listener = PipeListener::new(rx_sys);
-            ctx.start_worker(addr.clone(), listener).await?;
+            ctx.start_worker_with_access_control(
+                addr.clone(),
+                listener,
+                Arc::new(AllowAll), // FIXME: @ac,
+                Arc::new(AllowAll), // FIXME: @ac
+            )
+            .await?;
             rx_addr = Some(addr);
         }
 

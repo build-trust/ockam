@@ -1,6 +1,8 @@
 use crate::{pipe2::PipeReceiver, Context, OckamMessage, SystemBuilder};
+use ockam_core::compat::sync::Arc;
 use ockam_core::{
-    compat::boxed::Box, Address, Any, Encodable, Mailbox, Mailboxes, Result, Routed, Worker,
+    compat::boxed::Box, Address, AllowAll, Any, Encodable, Mailbox, Mailboxes, Result, Routed,
+    Worker,
 };
 use ockam_node::WorkerBuilder;
 
@@ -45,15 +47,23 @@ impl Worker for PipeListener {
         // Finally start the worker with the full set of used addresses
         // TODO: @ac
         let mut additional_mailboxes = vec![
-            Mailbox::deny_all(init_addr.clone()),
-            Mailbox::deny_all(fin_addr),
+            Mailbox::new(init_addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll)),
+            Mailbox::new(fin_addr, Arc::new(AllowAll), Arc::new(AllowAll)),
         ];
         for addr in system_addrs {
-            additional_mailboxes.push(Mailbox::deny_all(addr.clone()));
+            additional_mailboxes.push(Mailbox::new(
+                addr.clone(),
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            ));
         }
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::deny_all(Address::random_local()),
+            Mailbox::new(
+                Address::random_local(),
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            ),
             additional_mailboxes,
         );
         WorkerBuilder::with_mailboxes(mailboxes, worker)

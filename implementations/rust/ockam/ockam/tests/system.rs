@@ -1,9 +1,12 @@
-use crate::{Context, OckamMessage, SystemHandler, WorkerSystem};
+use ockam::{Context, OckamMessage, SystemHandler, WorkerSystem};
 use ockam_core::compat::{collections::BTreeMap, string::String};
 use ockam_core::{
-    Address, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Message, Result, Routed, Worker,
+    Address, AllowAll, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Message, Result, Routed,
+    Worker,
 };
 use ockam_node::WorkerBuilder;
+use std::sync::Arc;
+use tracing::info;
 
 #[derive(Default)]
 struct TestWorker {
@@ -52,7 +55,7 @@ impl<M: Message> SystemHandler<Context, M> for StepHandler {
     }
 }
 
-#[crate::worker]
+#[ockam::worker]
 impl Worker for TestWorker {
     type Context = Context;
     type Message = Any;
@@ -66,7 +69,7 @@ impl Worker for TestWorker {
     }
 }
 
-#[crate::test]
+#[ockam::test]
 async fn send_messages(ctx: &mut Context) -> Result<()> {
     // Initialise the TestWorker system
     let mut w = TestWorker::default();
@@ -77,11 +80,15 @@ async fn send_messages(ctx: &mut Context) -> Result<()> {
     // MetadataMessage, meaning that for some System Handlers it is
     // possible to get the "next" address from the metadata section.
     w.system.attach("worker.1", StepHandler::new("worker.2"));
-    w.system.attach("worker.2", StepHandler::new("app"));
+    w.system.attach("worker.2", StepHandler::new("child"));
 
+    // FIXME: @ac
     let mailboxes = Mailboxes::new(
-        Mailbox::deny_all("worker"),
-        vec![Mailbox::deny_all("worker.1"), Mailbox::deny_all("worker.2")],
+        Mailbox::new("worker", Arc::new(AllowAll), Arc::new(AllowAll)),
+        vec![
+            Mailbox::new("worker.1", Arc::new(AllowAll), Arc::new(AllowAll)),
+            Mailbox::new("worker.2", Arc::new(AllowAll), Arc::new(AllowAll)),
+        ],
     );
 
     // Start the worker with three publicly mapped addresses
@@ -90,8 +97,13 @@ async fn send_messages(ctx: &mut Context) -> Result<()> {
         .await?;
 
     // Send a message and wait for a reply
-    ctx.send("worker.1", String::from("Hello Ockam!")).await?;
-    let msg = ctx.receive::<String>().await?;
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
+    child_ctx
+        .send("worker.1", String::from("Hello Ockam!"))
+        .await?;
+    let msg = child_ctx.receive::<String>().await?;
     info!("Received message '{}'", msg);
 
     // Shut down the test
@@ -143,17 +155,21 @@ impl<M: Message> SystemHandler<Context, M> for AddMetadata {
     }
 }
 
-#[crate::test]
+#[ockam::test]
 async fn attach_metadata(ctx: &mut Context) -> Result<()> {
     let mut w = TestWorker::default();
     w.system
         .attach("worker.1", AddMetadata::new("foo", vec![42], "worker.2"));
     w.system
-        .attach("worker.2", AddMetadata::new("bar", vec![7], "app")); // my favourite number
+        .attach("worker.2", AddMetadata::new("bar", vec![7], "child")); // my favourite number
 
+    // FIXME: @ac
     let mailboxes = Mailboxes::new(
-        Mailbox::deny_all("worker"),
-        vec![Mailbox::deny_all("worker.1"), Mailbox::deny_all("worker.2")],
+        Mailbox::new("worker", Arc::new(AllowAll), Arc::new(AllowAll)),
+        vec![
+            Mailbox::new("worker.1", Arc::new(AllowAll), Arc::new(AllowAll)),
+            Mailbox::new("worker.2", Arc::new(AllowAll), Arc::new(AllowAll)),
+        ],
     );
 
     // Start the worker with three publicly mapped addresses
@@ -164,11 +180,15 @@ async fn attach_metadata(ctx: &mut Context) -> Result<()> {
     // Send an OckamMessage wrapping a simple String payload.  In
     // reality this step should be performed by some utility in the
     // pipe worker (as an example)
-    ctx.send("worker.1", OckamMessage::new(String::from("Hello Ockam!"))?)
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
+    child_ctx
+        .send("worker.1", OckamMessage::new(String::from("Hello Ockam!"))?)
         .await?;
 
     // Then wait for a reply and extract relevant metadata
-    let msg = ctx.receive::<OckamMessage>().await?;
+    let msg = child_ctx.receive::<OckamMessage>().await?;
     info!("Received message metadata: '{:?}'", msg.generic);
     info!("Received message data: {}", String::decode(&msg.data)?);
 
