@@ -28,7 +28,7 @@ features         = ["no_std", "alloc"]
 
 [dev-dependencies]
 bincode         = "1.1.3"
-multiaddr       = "0.14"
+multiaddr       = "0.16"
 ockam_multiaddr = { path = ".", features = ["cbor", "std", "serde"] }
 quickcheck      = "1.0.3"
 rand            = "0.8.5"
