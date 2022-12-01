@@ -1,12 +1,14 @@
 //! Ockam channel tests
-use crate::{
+use ockam::{
     channel::*,
     pipe::{ReceiverConfirm, ReceiverOrdering, SenderConfirm},
     Context,
 };
-use ockam_core::{route, Result};
+use ockam_core::{route, AllowAll, Result};
+use std::sync::Arc;
+use tracing::info;
 
-#[crate::test]
+#[ockam::test]
 async fn simple_channel(ctx: &mut Context) -> Result<()> {
     let builder = ChannelBuilder::new(ctx).await?;
 
@@ -21,17 +23,20 @@ async fn simple_channel(ctx: &mut Context) -> Result<()> {
 
     // Send a message through the channel
     let msg = "Hello through the channel!".to_string();
-    ctx.send(ch.tx().append("app"), msg.clone()).await?;
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
+    child_ctx.send(ch.tx().append("child"), msg.clone()).await?;
 
     // Then wait for the message through the channel
-    let recv = ctx.receive().await?;
+    let recv = child_ctx.receive().await?;
     info!("Received message '{}' through channel", recv);
     assert_eq!(recv, msg);
 
     ctx.stop().await
 }
 
-#[crate::test]
+#[ockam::test]
 async fn reliable_channel(ctx: &mut Context) -> Result<()> {
     let builder = ChannelBuilder::new(ctx)
         .await?
@@ -50,10 +55,13 @@ async fn reliable_channel(ctx: &mut Context) -> Result<()> {
 
     // Send a message through the channel
     let msg = "Hello through the channel!".to_string();
-    ctx.send(ch.tx().append("app"), msg.clone()).await?;
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
+    child_ctx.send(ch.tx().append("child"), msg.clone()).await?;
 
     // Then wait for the message through the channel
-    let recv = ctx.receive().await?;
+    let recv = child_ctx.receive().await?;
     info!("Received message '{}' through channel", recv);
     assert_eq!(recv, msg);
 

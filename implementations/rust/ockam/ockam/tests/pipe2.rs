@@ -1,7 +1,9 @@
-use crate::{pipe2::PipeBuilder, Context};
-use ockam_core::{compat::string::String, route, Address, Result};
+use ockam::{pipe2::PipeBuilder, Context};
+use ockam_core::{compat::string::String, route, Address, AllowAll, Result};
+use std::sync::Arc;
+use tracing::info;
 
-#[crate::test]
+#[ockam::test]
 async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
     info!("Starting the test...");
     let rx_addr = Address::random_local();
@@ -17,15 +19,20 @@ async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
     let sender = PipeBuilder::fixed().connect(rx_addr).build(ctx).await?;
     info!("Created sender pipe: {}", sender.addr());
 
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
     let msg = String::from("Hello through the pipe");
-    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
+    child_ctx
+        .send(route![sender.addr(), "child"], msg.clone())
+        .await?;
 
-    let msg2 = ctx.receive::<String>().await?;
+    let msg2 = child_ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
     ctx.stop().await
 }
 
-#[crate::test]
+#[ockam::test]
 async fn handshake_pipe(ctx: &mut Context) -> Result<()> {
     let listener = PipeBuilder::dynamic()
         .receive("my-pipe-listener")
@@ -38,16 +45,21 @@ async fn handshake_pipe(ctx: &mut Context) -> Result<()> {
         .build(ctx)
         .await?;
 
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
     let msg = String::from("Hello through the pipe");
-    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
+    child_ctx
+        .send(route![sender.addr(), "child"], msg.clone())
+        .await?;
 
-    let msg2 = ctx.receive::<String>().await?;
+    let msg2 = child_ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
 
     ctx.stop().await
 }
 
-#[crate::test]
+#[ockam::test]
 async fn fixed_delivery_pipe(ctx: &mut Context) -> Result<()> {
     let rx_addr = Address::random_local();
 
@@ -68,15 +80,20 @@ async fn fixed_delivery_pipe(ctx: &mut Context) -> Result<()> {
 
     info!("Created sender pipe: {}", sender.addr());
 
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
     let msg = String::from("Hello through the pipe");
-    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
+    child_ctx
+        .send(route![sender.addr(), "child"], msg.clone())
+        .await?;
 
-    let msg2 = ctx.receive::<String>().await?;
+    let msg2 = child_ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
     ctx.stop().await
 }
 
-#[crate::test]
+#[ockam::test]
 async fn dynamic_delivery_pipe(ctx: &mut Context) -> Result<()> {
     let listener = PipeBuilder::dynamic()
         .receive("my-pipe-listener")
@@ -91,16 +108,21 @@ async fn dynamic_delivery_pipe(ctx: &mut Context) -> Result<()> {
         .build(ctx)
         .await?;
 
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
     let msg = String::from("Hello through the pipe");
-    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
+    child_ctx
+        .send(route![sender.addr(), "child"], msg.clone())
+        .await?;
 
-    let msg2 = ctx.receive::<String>().await?;
+    let msg2 = child_ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
 
     ctx.stop().await
 }
 
-#[crate::test]
+#[ockam::test]
 async fn fixed_ordering_pipe(ctx: &mut Context) -> Result<()> {
     let rx_addr = Address::random_local();
 
@@ -121,15 +143,20 @@ async fn fixed_ordering_pipe(ctx: &mut Context) -> Result<()> {
 
     info!("Created sender pipe: {}", sender.addr());
 
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
     let msg = String::from("Hello through the pipe");
-    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
+    child_ctx
+        .send(route![sender.addr(), "child"], msg.clone())
+        .await?;
 
-    let msg2 = ctx.receive::<String>().await?;
+    let msg2 = child_ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
     ctx.stop().await
 }
 
-#[crate::test]
+#[ockam::test]
 async fn fixed_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
     let rx_addr = Address::random_local();
 
@@ -152,15 +179,20 @@ async fn fixed_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
 
     info!("Created sender pipe: {}", sender.addr());
 
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
     let msg = String::from("Hello through the pipe");
-    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
+    child_ctx
+        .send(route![sender.addr(), "child"], msg.clone())
+        .await?;
 
-    let msg2 = ctx.receive::<String>().await?;
+    let msg2 = child_ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
     ctx.stop().await
 }
 
-#[crate::test]
+#[ockam::test]
 async fn dynamic_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
     let listener = PipeBuilder::dynamic()
         .receive("my-pipe-listener")
@@ -177,10 +209,15 @@ async fn dynamic_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
         .build(ctx)
         .await?;
 
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
     let msg = String::from("Hello through the pipe");
-    ctx.send(route![sender.addr(), "app"], msg.clone()).await?;
+    child_ctx
+        .send(route![sender.addr(), "child"], msg.clone())
+        .await?;
 
-    let msg2 = ctx.receive::<String>().await?;
+    let msg2 = child_ctx.receive::<String>().await?;
     assert_eq!(msg, *msg2);
 
     ctx.stop().await

@@ -16,9 +16,6 @@ pub use receiver::PipeReceiver;
 mod sender;
 pub use sender::PipeSender;
 
-#[cfg(test)]
-mod tests;
-
 use crate::{protocols::pipe::PipeMessage, Context};
 use ockam_core::{Address, LocalMessage, Result, Route};
 

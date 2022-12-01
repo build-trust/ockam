@@ -9,9 +9,6 @@ pub use builder::SystemBuilder;
 
 pub mod hooks;
 
-#[cfg(test)]
-mod tests;
-
 use crate::OckamError;
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, vec::Vec};
 use ockam_core::{Address, Message, Result, Routed};

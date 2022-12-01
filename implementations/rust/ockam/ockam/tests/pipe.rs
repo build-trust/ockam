@@ -1,30 +1,34 @@
-use crate::{
+use ockam::{
     pipe::*,
     protocols::pipe::{internal::InternalCmd, PipeMessage},
     Context,
 };
-use ockam_core::{async_trait, route, Address, Result, Route};
+use ockam_core::{async_trait, route, Address, AllowAll, Result, Route};
+use std::sync::Arc;
+use tracing::{info, warn};
 
-use super::behavior::ReceiverOrdering;
-
-#[crate::test]
+#[ockam::test]
 async fn static_simple_pipe(ctx: &mut Context) -> Result<()> {
     receiver(ctx, "pipe-receiver").await?;
     let tx = connect_static(ctx, "pipe-receiver").await?;
 
     let sent_msg = String::from("Hello Ockam!");
     info!("Sending message '{}' through pipe sender {}", sent_msg, tx);
-    ctx.send(route![tx.clone(), "app"], sent_msg.clone())
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
+    child_ctx
+        .send(route![tx.clone(), "child"], sent_msg.clone())
         .await?;
 
-    let msg = ctx.receive().await?;
+    let msg = child_ctx.receive().await?;
     info!("App received msg: '{}'", msg);
     assert_eq!(msg, sent_msg);
 
     ctx.stop().await
 }
 
-#[crate::test]
+#[ockam::test]
 async fn static_confirm_pipe(ctx: &mut Context) -> Result<()> {
     receiver_with_behavior(ctx, "pipe-receiver", PipeBehavior::with(ReceiverConfirm)).await?;
     let tx = connect_static_with_behavior(
@@ -36,10 +40,14 @@ async fn static_confirm_pipe(ctx: &mut Context) -> Result<()> {
 
     let sent_msg = String::from("Hello Ockam!");
     info!("Sending message '{}' through pipe sender {}", sent_msg, tx);
-    ctx.send(route![tx.clone(), "app"], sent_msg.clone())
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
+    child_ctx
+        .send(route![tx.clone(), "child"], sent_msg.clone())
         .await?;
 
-    let msg = ctx.receive().await?;
+    let msg = child_ctx.receive().await?;
     info!("App received msg: '{}'", msg);
     assert_eq!(msg, sent_msg);
 
@@ -62,7 +70,7 @@ impl BehaviorHook for ConfirmTimeout {
         match msg {
             InternalCmd::Resend(_) => {
                 info!("Sender received timeout for sent message!");
-                ctx.send("app", "Shut it down...".to_string()).await
+                ctx.send("child", "Shut it down...".to_string()).await
             }
             _ => unreachable!(),
         }
@@ -106,7 +114,7 @@ impl BehaviorHook for DropDelivery {
     }
 }
 
-#[crate::test]
+#[ockam::test]
 async fn fails_static_confirm_pipe(ctx: &mut Context) -> Result<()> {
     receiver_with_behavior(ctx, "pipe-receiver", DropDelivery).await?;
     let tx = connect_static_with_behavior(
@@ -118,10 +126,14 @@ async fn fails_static_confirm_pipe(ctx: &mut Context) -> Result<()> {
 
     let sent_msg = String::from("Hello Ockam!");
     info!("Sending message '{}' through pipe sender {}", sent_msg, tx);
-    ctx.send(route![tx.clone(), "app"], sent_msg.clone())
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
+    child_ctx
+        .send(route![tx.clone(), "child"], sent_msg.clone())
         .await?;
 
-    let invalid = ctx.receive::<String>().await?;
+    let invalid = child_ctx.receive::<String>().await?;
     warn!("App received msg: '{}'", invalid);
     assert_eq!(invalid, "Shut it down...".to_string());
 
@@ -129,26 +141,31 @@ async fn fails_static_confirm_pipe(ctx: &mut Context) -> Result<()> {
 }
 
 /// A simple test to ensure static ordering pipes can deliver messages
-#[crate::test]
+#[ockam::test]
 async fn static_ordering_pipe(ctx: &mut Context) -> Result<()> {
     receiver_with_behavior(ctx, "pipe-receiver", ReceiverOrdering::new()).await?;
     let tx = connect_static(ctx, "pipe-receiver").await?;
 
     let sent_msg1 = String::from("Message number one");
     info!("Sending message '{}' through pipe sender {}", sent_msg1, tx);
-    ctx.send(route![tx.clone(), "app"], sent_msg1.clone())
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
+    child_ctx
+        .send(route![tx.clone(), "child"], sent_msg1.clone())
         .await?;
 
     let sent_msg2 = String::from("Message number two");
     info!("Sending message '{}' through pipe sender {}", sent_msg2, tx);
-    ctx.send(route![tx.clone(), "app"], sent_msg2.clone())
+    child_ctx
+        .send(route![tx.clone(), "child"], sent_msg2.clone())
         .await?;
 
-    let msg1 = ctx.receive().await?;
+    let msg1 = child_ctx.receive().await?;
     info!("App received msg: '{}'", msg1);
     assert_eq!(msg1, sent_msg1);
 
-    let msg2 = ctx.receive().await?;
+    let msg2 = child_ctx.receive().await?;
     info!("App received msg: '{}'", msg2);
     assert_eq!(msg2, sent_msg2);
 
@@ -156,7 +173,7 @@ async fn static_ordering_pipe(ctx: &mut Context) -> Result<()> {
 }
 
 /// A test for a pipe that enforces ordering _and_ sends confirm messages
-#[crate::test]
+#[ockam::test]
 async fn static_confirm_ordering_pipe(ctx: &mut Context) -> Result<()> {
     receiver_with_behavior(
         ctx,
@@ -174,19 +191,24 @@ async fn static_confirm_ordering_pipe(ctx: &mut Context) -> Result<()> {
 
     let sent_msg1 = String::from("Message number one");
     info!("Sending message '{}' through pipe sender {}", sent_msg1, tx);
-    ctx.send(route![tx.clone(), "app"], sent_msg1.clone())
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
+    child_ctx
+        .send(route![tx.clone(), "child"], sent_msg1.clone())
         .await?;
 
     let sent_msg2 = String::from("Message number two");
     info!("Sending message '{}' through pipe sender {}", sent_msg2, tx);
-    ctx.send(route![tx.clone(), "app"], sent_msg2.clone())
+    child_ctx
+        .send(route![tx.clone(), "child"], sent_msg2.clone())
         .await?;
 
-    let msg1 = ctx.receive().await?;
+    let msg1 = child_ctx.receive().await?;
     info!("App received msg: '{}'", msg1);
     assert_eq!(msg1, sent_msg1);
 
-    let msg2 = ctx.receive().await?;
+    let msg2 = child_ctx.receive().await?;
     info!("App received msg: '{}'", msg2);
     assert_eq!(msg2, sent_msg2);
 
@@ -195,7 +217,7 @@ async fn static_confirm_ordering_pipe(ctx: &mut Context) -> Result<()> {
 
 /// A test for a pipe that enforces ordering _and_ sends confirm
 /// messages but with a flipped behaviour order on the receiver end
-#[crate::test]
+#[ockam::test]
 async fn static_confirm_ordering_pipe_reversed(ctx: &mut Context) -> Result<()> {
     receiver_with_behavior(
         ctx,
@@ -213,26 +235,31 @@ async fn static_confirm_ordering_pipe_reversed(ctx: &mut Context) -> Result<()> 
 
     let sent_msg1 = String::from("Message number one");
     info!("Sending message '{}' through pipe sender {}", sent_msg1, tx);
-    ctx.send(route![tx.clone(), "app"], sent_msg1.clone())
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
+    child_ctx
+        .send(route![tx.clone(), "child"], sent_msg1.clone())
         .await?;
 
     let sent_msg2 = String::from("Message number two");
     info!("Sending message '{}' through pipe sender {}", sent_msg2, tx);
-    ctx.send(route![tx.clone(), "app"], sent_msg2.clone())
+    child_ctx
+        .send(route![tx.clone(), "child"], sent_msg2.clone())
         .await?;
 
-    let msg1 = ctx.receive().await?;
+    let msg1 = child_ctx.receive().await?;
     info!("App received msg: '{}'", msg1);
     assert_eq!(msg1, sent_msg1);
 
-    let msg2 = ctx.receive().await?;
+    let msg2 = child_ctx.receive().await?;
     info!("App received msg: '{}'", msg2);
     assert_eq!(msg2, sent_msg2);
 
     ctx.stop().await
 }
 
-#[crate::test]
+#[ockam::test]
 async fn simple_pipe_handshake(ctx: &mut Context) -> Result<()> {
     // Create a pipe spawn listener and connect to it via a dynamic sender
     let listener = listen(ctx).await.unwrap();
@@ -240,16 +267,21 @@ async fn simple_pipe_handshake(ctx: &mut Context) -> Result<()> {
 
     let msg_sent = String::from("Message for my best friend");
     info!("Sending message '{}' through pipe sender {}", msg_sent, tx);
-    ctx.send(route![tx, "app"], msg_sent.clone()).await?;
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
+    child_ctx
+        .send(route![tx, "child"], msg_sent.clone())
+        .await?;
 
-    let msg = ctx.receive().await?;
+    let msg = child_ctx.receive().await?;
     info!("App received msg: '{}'", msg);
     assert_eq!(msg, msg_sent);
 
     ctx.stop().await
 }
 
-#[crate::test]
+#[ockam::test]
 async fn layered_pipe(ctx: &mut Context) -> Result<()> {
     // This test creates a pipe with multiple behaviours via layered
     // workers.
@@ -270,10 +302,15 @@ async fn layered_pipe(ctx: &mut Context) -> Result<()> {
 
     // Then we can send a message through this concoction
     let msg = "Hello through nested pipes!".to_string();
-    ctx.send(route![confirm_tx, "app"], msg.clone()).await?;
+    let mut child_ctx = ctx
+        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
+    child_ctx
+        .send(route![confirm_tx, "child"], msg.clone())
+        .await?;
 
     // Wait for the message to arrive
-    let msg_recv = ctx.receive().await?;
+    let msg_recv = child_ctx.receive().await?;
     info!("App received message: {}", msg_recv);
     assert_eq!(msg_recv, msg);
 

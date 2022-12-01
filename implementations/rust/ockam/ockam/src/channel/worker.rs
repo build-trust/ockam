@@ -8,7 +8,10 @@ use crate::{
     Context,
 };
 use ockam_core::compat::boxed::Box;
-use ockam_core::{Address, Any, LocalMessage, Mailbox, Mailboxes, Result, Route, Routed, Worker};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{
+    Address, AllowAll, Any, LocalMessage, Mailbox, Mailboxes, Result, Route, Routed, Worker,
+};
 use ockam_node::WorkerBuilder;
 
 /// Encode the channel creation handshake stage a worker is in
@@ -64,8 +67,12 @@ impl ChannelWorker {
 
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::deny_all(int_addr),
-            vec![Mailbox::deny_all(pub_addr)],
+            Mailbox::new(int_addr, Arc::new(AllowAll), Arc::new(AllowAll)),
+            vec![Mailbox::new(
+                pub_addr,
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            )],
         );
         WorkerBuilder::with_mailboxes(mailboxes, worker)
             .start(ctx)
@@ -103,8 +110,12 @@ impl ChannelWorker {
         };
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::deny_all(int_addr),
-            vec![Mailbox::deny_all(pub_addr)],
+            Mailbox::new(int_addr, Arc::new(AllowAll), Arc::new(AllowAll)),
+            vec![Mailbox::new(
+                pub_addr,
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            )],
         );
         WorkerBuilder::with_mailboxes(mailboxes, worker)
             .start(ctx)
