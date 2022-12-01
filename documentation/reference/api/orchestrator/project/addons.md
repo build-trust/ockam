@@ -10,37 +10,37 @@ Authorization:
 
 
 #### List addons
-Method: GET
-Path: "/v0/:project_id/addons"
-Request: ""
+Method: GET \
+Path: "/v0/:project_id/addons" \
+Request: "" \
 Response: AddonItem
 
 Errors:
-404 - project not found
-401 - current identity does not have permission to list addons from the project
+- 404 - project not found
+- 401 - current identity does not have permission to list addons from the project
 
 #### Enable addon
-Method: PUT
-Path: "/v0/:project_id/addons/:addon_id"
-Request: SpecificAddonConfig
+Method: PUT \
+Path: "/v0/:project_id/addons/:addon_id" \
+Request: SpecificAddonConfig \
 Response: ""
 
 Errors:
-404 - project not found
-401 - current identity does not have permission to enable addons from the project
-400 - addon config is invalid
-400 - addon_id is invalid/unknown
+- 404 - project not found
+- 401 - current identity does not have permission to enable addons from the project
+- 400 - addon config is invalid
+- 400 - addon_id is invalid/unknown
 
 #### Disable addon
-Method: DELETE
-Path: "/v0/:project_id/addons/:addon_id"
-Request: ""
+Method: DELETE \
+Path: "/v0/:project_id/addons/:addon_id" \
+Request: "" \
 Response: ""
 
 Errors:
-404 - project not found
-401 - current identity does not have permission to disable addons from the project
-400 - addon_id is invalid/unknown
+- 404 - project not found
+- 401 - current identity does not have permission to disable addons from the project
+- 400 - addon_id is invalid/unknown
 
 
 Where:

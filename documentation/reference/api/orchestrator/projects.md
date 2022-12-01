@@ -9,55 +9,55 @@ Authorization:
 - Identity needs to be enrolled to the Orchestrator Controller via [Auth0](./auth0.md)
 
 #### List projects
-Method: GET
-Path: "/v0"
-Request: ""
+Method: GET \
+Path: "/v0" \
+Request: "" \
 Response: `[+ project]`
 
 #### Create project for space
-Method: POST
-Path: "/v0/:space_id"
-Request: create_request
+Method: POST \
+Path: "/v0/:space_id" \
+Request: create_request \
 Response: project
 
 Errors:
-401 - current identity does not have permission to create a project for that space
-409 - name should be unique
-400 - invalid name, it should match the regexp: `^([[:alnum:]])+([-_\.]?[[:alnum:]])*`
-400 - invalid request format
+- 401 - current identity does not have permission to create a project for that space
+- 409 - name should be unique
+- 400 - invalid name, it should match the regexp: `^([[:alnum:]])+([-_\.]?[[:alnum:]])*`
+- 400 - invalid request format
 
 #### Show project
-Method: GET
-Path: /v0/:project_id
-Request: ""
+Method: GET \
+Path: /v0/:project_id \
+Request: "" \
 Response: project
 
 Errors:
-404 - not found
-401 - current identity does not have permission to show the project
+- 404 - not found
+- 401 - current identity does not have permission to show the project
 
 #### Update project
-Mathod: PUT
-Path: /v0/:project_id
-Request: update_request
+Method: PUT \
+Path: /v0/:project_id \
+Request: update_request \
 Response: project
 
 Errors:
-404 - not found
-401 - current identity does not have permission to update the project
-409 - name should be unique
-400 - invalid name, it should match the regexp: `^([[:alnum:]])+([-_\.]?[[:alnum:]])*$`
-400 - invalid request format
+- 404 - not found
+- 401 - current identity does not have permission to update the project
+- 409 - name should be unique
+- 400 - invalid name, it should match the regexp: `^([[:alnum:]])+([-_\.]?[[:alnum:]])*$`
+- 400 - invalid request format
 
 #### Delete project
-Method: DELETE
-Path: /v0/:space_id/:project_id
-Request: ""
+Method: DELETE \
+Path: /v0/:space_id/:project_id \
+Request: "" \
 Response: ""
 
 Errors:
-404 - not found
-401 - current identity does not have permission to delete the project
+- 404 - not found
+- 401 - current identity does not have permission to delete the project
 
 Where:
 ```

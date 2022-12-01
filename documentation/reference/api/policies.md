@@ -7,30 +7,30 @@ Worker address: "abac_policies"
 Implemented in `Ockam.Services.API.ABAC.PoliciesApi`
 
 #### List policies
-Method: GET
-Path: ""
-Request: ""
+Method: GET \
+Path: "" \
+Request: "" \
 Response: `{* action_id => policy_rule}`
 
 #### Show policy
-Method: GET
-Path: action_id
-Request: ""
+Method: GET \
+Path: action_id \
+Request: "" \
 Response: policy_rule
 
 #### Set policy
-Method: PUT
-Path: action_id
-Request: policy_rule
+Method: PUT \
+Path: action_id \
+Request: policy_rule \
 Response: ""
 
 Errors:
-400 - cannot decode policy
+- 400 - cannot decode policy
 
 #### Delete policy
-Method: DELETE
-Path: action_id
-Request: ""
+Method: DELETE \
+Path: action_id \
+Request: "" \
 Response: ""
 
 Where:

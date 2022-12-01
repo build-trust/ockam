@@ -83,9 +83,9 @@ To describe an API, we can use the following format:
 Worker address: "cats"
 
 #### See the cats face
-Method: GET
-Path: ":cat_name/face"
-Request: ""
+Method: GET \
+Path: ":cat_name/face" \
+Request: "" \
 Response: cats_face_response
 
 Errors:
@@ -102,9 +102,9 @@ whiskers_count = uint
 ```
 
 #### Pet the cat
-Method: PUT
-Path: ":cat_name/pet"
-Request: pet_cat_request
+Method: PUT \
+Path: ":cat_name/pet" \
+Request: pet_cat_request \
 Response: purr_response
 
 Errors:
@@ -130,6 +130,8 @@ volume_db = uint
 
 `Request` and `Response` describe the body format in CDDL,
 it's recommended to use CBOR for request and response bodies.
+
+Note: `\ ` at the line ends are there to format markdown line breaks properly
 
 More examples of API docs can be found in the [API reference folder](./api)
 

@@ -8,14 +8,14 @@ Authorization:
 **Requires connection via secure channel**
 
 #### Enroll with auth0
-Method: POST
-Path: "v0/enroll"
-Request: enroll_request
+Method: POST \
+Path: "v0/enroll" \
+Request: enroll_request \
 Response: ""
 
 Errors:
-400 - invalid request format
-400 - invalid token type
+- 400 - invalid request format
+- 400 - invalid token type
 
 Where:
 ```

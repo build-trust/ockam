@@ -9,26 +9,26 @@ Implemented in `Ockam.Services.API.Discovery`
 **NOTE: this API is a work in progress**
 
 #### List services
-Method: GET
-Path: ""
-Request: ""
+Method: GET \
+Path: "" \
+Request: "" \
 Response: [+ service_info]
 
 #### Show service
-Method: GET
-Path: ":service_id"
-Request: ""
+Method: GET \
+Path: ":service_id" \
+Request: "" \
 Response: service_info
 
 #### Register service
-Method: PUT
-Path: ":service_id"
-Request: service_info
+Method: PUT \
+Path: ":service_id" \
+Request: service_info \
 Response: ""
 
 Errors:
-400 - cannot decode service_info
-405 - method not allowed
+- 400 - cannot decode service_info
+- 405 - method not allowed
 
 Some backends do not support service registration and will always return status 405
 
