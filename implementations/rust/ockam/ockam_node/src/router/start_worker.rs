@@ -47,6 +47,7 @@ async fn start(
 
     // Create an address record and insert it into the internal map
 
+    // FIXME: Check for duplicates
     let address_record = AddressRecord::new(
         addrs.clone(),
         msgs,
