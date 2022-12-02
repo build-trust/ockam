@@ -49,14 +49,6 @@ impl OckamConfig {
         cli_state::CliState::dir().unwrap()
     }
 
-    pub fn nodes_dir() -> PathBuf {
-        cli_state::CliState::new().unwrap().nodes.dir
-    }
-
-    pub fn node_dir(name: &str) -> PathBuf {
-        cli_state::CliState::new().unwrap().nodes.dir.join(name)
-    }
-
     /// This function could be zero-copy if we kept the lock on the
     /// backing store for as long as we needed it.  Because this may
     /// have unwanted side-effects, instead we eagerly copy data here.

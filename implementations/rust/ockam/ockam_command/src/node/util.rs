@@ -1,11 +1,14 @@
-use anyhow::{anyhow, Result};
-use ockam::vault::{Secret, SecretPersistence, SecretType};
-use ockam_identity::{IdentityStateConst, KeyAttributes};
+use anyhow::{anyhow, Context as _};
 use rand::random;
+use std::env::current_exe;
+use std::fs::OpenOptions;
+use std::path::Path;
+use std::process::Command;
 use tracing::trace;
 
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpTransport};
+use ockam_api::authenticator::direct::types::OneTimeCode;
 use ockam_api::cli_state;
 use ockam_api::config::cli;
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
@@ -14,14 +17,17 @@ use ockam_api::nodes::service::{
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_multiaddr::MultiAddr;
-use ockam_vault::{KeyId, SecretAttributes, SecretVault, Vault};
+use ockam_vault::Vault;
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
 use crate::CommandGlobalOpts;
 use crate::{project, OckamConfig};
 
-pub async fn start_embedded_node(ctx: &Context, opts: &CommandGlobalOpts) -> Result<String> {
+pub async fn start_embedded_node(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+) -> anyhow::Result<String> {
     start_embedded_node_with_vault_and_identity(ctx, opts, None, None).await
 }
 
@@ -30,13 +36,13 @@ pub async fn start_embedded_node_with_vault_and_identity(
     opts: &CommandGlobalOpts,
     vault: Option<&String>,
     identity: Option<&String>,
-) -> Result<String> {
+) -> anyhow::Result<String> {
     let cfg = &opts.config;
     let cmd = CreateCommand::default();
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        init_node_state(ctx, opts, &cmd.node_name, vault, identity, false, None).await?;
+        init_node_state(ctx, opts, &cmd.node_name, vault, identity).await?;
     }
 
     let project_id = match &cmd.project {
@@ -58,10 +64,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
         ctx,
-        NodeManagerGeneralOptions::new(
-            cmd.node_name.clone(),
-            cmd.skip_defaults || cmd.launch_config.is_some(),
-        ),
+        NodeManagerGeneralOptions::new(cmd.node_name.clone(), cmd.launch_config.is_some()),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
             project_id,
@@ -86,11 +89,7 @@ pub(super) async fn init_node_state(
     node_name: &str,
     vault: Option<&String>,
     identity: Option<&String>,
-    aws: bool,
-    kid: Option<&KeyId>,
-) -> Result<()> {
-    debug_assert!(if kid.is_some() { aws } else { true });
-
+) -> anyhow::Result<()> {
     // Get vault specified in the argument, or get the default
     let vault_state = if let Some(v) = vault {
         opts.state.vaults.get(v)?
@@ -100,7 +99,7 @@ pub(super) async fn init_node_state(
         v
     } else {
         let n = hex::encode(random::<[u8; 4]>());
-        let c = cli_state::VaultConfig::fs_default(&n, aws)?;
+        let c = cli_state::VaultConfig::fs_default(&n, false)?;
         opts.state.vaults.create(&n, c).await?
     };
 
@@ -114,17 +113,7 @@ pub(super) async fn init_node_state(
     } else {
         let vault = vault_state.config.get().await?;
         let identity_name = hex::encode(random::<[u8; 4]>());
-        let identity = if let Some(kid) = kid {
-            let attrs =
-                SecretAttributes::new(SecretType::NistP256, SecretPersistence::Persistent, 32);
-            let kid = vault
-                .secret_import(Secret::Aws(kid.to_string()), attrs)
-                .await?;
-            let attrs = KeyAttributes::new(IdentityStateConst::ROOT_LABEL.to_string(), attrs);
-            Identity::create_ext(ctx, &vault, &kid, attrs).await?
-        } else {
-            Identity::create(ctx, &vault).await?
-        };
+        let identity = Identity::create(ctx, &vault).await?;
         let identity_config = cli_state::IdentityConfig::new(&identity).await;
         opts.state
             .identities
@@ -145,7 +134,7 @@ pub(super) async fn add_project_authority(
     p: ProjectInfo<'_>,
     node: &str,
     cfg: &OckamConfig,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let m = p
         .authority_access_route
         .map(|a| MultiAddr::try_from(&*a))
@@ -181,5 +170,74 @@ pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> anyhow::Result<
     for s in nodes_states {
         let _ = s.delete(force);
     }
+    Ok(())
+}
+
+/// A utility function to spawn a new node into foreground mode
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_node(
+    opts: &CommandGlobalOpts,
+    verbose: u8,
+    name: &str,
+    address: &str,
+    project: Option<&Path>,
+    invite: Option<&OneTimeCode>,
+) -> crate::Result<()> {
+    // On systems with non-obvious path setups (or during
+    // development) re-executing the current binary is a more
+    // deterministic way of starting a node.
+    let ockam_exe = current_exe().unwrap_or_else(|_| "ockam".into());
+    let node_state = opts.state.nodes.get(name)?;
+
+    let (mlog, elog) = { (node_state.stdout_log(), node_state.stderr_log()) };
+
+    let main_log_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(mlog)
+        .context("failed to open log path")?;
+
+    let stderr_log_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(elog)
+        .context("failed to open stderr log path")?;
+
+    let mut args = vec![
+        match verbose {
+            0 => "-vv".to_string(),
+            v => format!("-{}", "v".repeat(v as usize)),
+        },
+        "--no-color".to_string(),
+        "node".to_string(),
+        "create".to_string(),
+        "--tcp-listener-address".to_string(),
+        address.to_string(),
+        "--foreground".to_string(),
+        "--child-process".to_string(),
+    ];
+
+    if let Some(path) = project {
+        args.push("--project".to_string());
+        let p = path
+            .to_str()
+            .unwrap_or_else(|| panic!("unsupported path {path:?}"));
+        args.push(p.to_string())
+    }
+
+    if let Some(c) = invite {
+        args.push("--enrollment-token".to_string());
+        args.push(hex::encode(c.code()))
+    }
+
+    args.push(name.to_owned());
+
+    let child = Command::new(ockam_exe)
+        .args(args)
+        .stdout(main_log_file)
+        .stderr(stderr_log_file)
+        .spawn()?;
+    node_state.set_pid(child.id() as i32)?;
+
     Ok(())
 }

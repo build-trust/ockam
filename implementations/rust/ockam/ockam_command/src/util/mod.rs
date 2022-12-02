@@ -12,7 +12,6 @@ use tracing::{debug, error, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
-pub use addon::AddonCommand;
 pub use config::*;
 use ockam::{Address, Context, NodeBuilder, Route, TcpTransport, TCP};
 use ockam_api::cli_state::{CliState, NodeState};
@@ -29,9 +28,7 @@ use crate::{CommandGlobalOpts, OutputFormat};
 
 pub mod api;
 pub mod exitcode;
-pub mod startup;
 
-mod addon;
 mod config;
 pub(crate) mod output;
 
@@ -126,7 +123,7 @@ impl<'a> Rpc<'a> {
         opts: &'a CommandGlobalOpts,
         node_name: &str,
     ) -> Result<Rpc<'a>> {
-        let cfg = opts.config.get_node(node_name)?;
+        let cfg = opts.state.nodes.get(node_name)?;
         Ok(Rpc {
             ctx,
             buf: Vec::new(),

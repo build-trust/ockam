@@ -7,7 +7,6 @@ use tracing::trace;
 
 use ockam::identity::IdentityIdentifier;
 use ockam_api::cli_state;
-use ockam_api::cli_state::NodeState;
 use ockam_api::config::lookup::ProjectLookup;
 use ockam_api::config::{cli, lookup::ConfigLookup, Config};
 
@@ -34,41 +33,6 @@ impl OckamConfig {
         Ok(Self { inner })
     }
 
-    /// Get the node state directory
-    pub fn get_node_dir(&self, name: &str) -> Result<PathBuf> {
-        Ok(cli_state::CliState::new()?.nodes.get(name)?.path)
-    }
-
-    /// Get the node state directory
-    pub fn get_node_dir_unchecked(&self, name: &str) -> PathBuf {
-        cli::OckamConfig::node_dir(name)
-    }
-
-    /// Get the API port used by a node
-    pub fn get_node_port(&self, name: &str) -> Result<u16> {
-        let cli_state = cli_state::CliState::new()?;
-        Ok(cli_state
-            .nodes
-            .get(name)?
-            .setup()?
-            .default_tcp_listener()?
-            .addr
-            .port())
-    }
-
-    /// In the future this will actually refer to the watchdog pid or
-    /// no pid at all but we'll see
-    pub fn get_node_pid(&self, name: &str) -> Result<Option<i32>> {
-        let cli_state = cli_state::CliState::new()?;
-        Ok(cli_state.nodes.get(name)?.pid()?)
-    }
-
-    /// Get only a single node configuration
-    pub fn get_node(&self, name: &str) -> Result<NodeState> {
-        let cli_state = cli_state::CliState::new()?;
-        Ok(cli_state.nodes.get(name)?)
-    }
-
     /// Get read access to the inner raw configuration
     pub fn inner(&self) -> RwLockReadGuard<'_, cli::OckamConfig> {
         self.inner.read()
@@ -80,7 +44,7 @@ impl OckamConfig {
     }
 
     pub fn authorities(&self, node: &str) -> Result<AuthoritiesConfig> {
-        let path = self.get_node_dir_unchecked(node);
+        let path = cli_state::CliState::new()?.nodes.dir.join(node);
         AuthoritiesConfig::load(path)
     }
 

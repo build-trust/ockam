@@ -35,22 +35,22 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(run_impl, (options, self))
+    pub fn run(self, opts: CommandGlobalOpts) {
+        node_rpc(run_impl, (opts, self))
     }
 
     fn print_output(
         &self,
         node_name: &str,
-        options: &CommandGlobalOpts,
+        opts: &CommandGlobalOpts,
         response: &models::transport::TransportStatus,
     ) -> crate::Result<()> {
         // if output format is json, write json to stdout.
-        match options.global_args.output_format {
+        match opts.global_args.output_format {
             OutputFormat::Plain => {
                 let from = &self.node_opts.from;
                 let to = response.payload.parse::<SocketAddrV4>()?;
-                if options.global_args.no_color {
+                if opts.global_args.no_color {
                     println!("\n  Created TCP Connection:");
                     println!("  • From: /node/{}", from);
                     println!("  •   To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port());
@@ -65,7 +65,14 @@ impl CreateCommand {
                 }
             }
             OutputFormat::Json => {
-                let port = options.config.get_node_port(node_name)?;
+                let port = opts
+                    .state
+                    .nodes
+                    .get(node_name)?
+                    .setup()?
+                    .default_tcp_listener()?
+                    .addr
+                    .port();
                 let route: Route = route![(TCP, format!("localhost:{}", port))]
                     .modify()
                     .append_t(TCP, response.payload.to_string())
