@@ -3,8 +3,9 @@ use clap::Args;
 use ockam::TcpTransport;
 
 use crate::node::show::print_query_status;
+use crate::node::util::spawn_node;
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{help, node::HELP_DETAIL, util::startup::spawn_node, CommandGlobalOpts};
+use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
 
 /// Start Nodes
 #[derive(Clone, Debug, Args)]
@@ -37,12 +38,10 @@ async fn run_impl(
     spawn_node(
         &opts,
         node_setup.verbose, // Previously user-chosen verbosity level
-        true,               // skip-defaults because the node already exists
         node_name,          // The selected node name
         &node_setup.default_tcp_listener()?.addr.to_string(), // The selected node api address
         None,               // No project information available
         None,               // No invitation code available
-        cmd.aws_kms,
     )?;
 
     // Print node status

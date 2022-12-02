@@ -83,6 +83,19 @@ teardown() {
   assert_success
 }
 
+@test "node is restarted with default services" {
+  # Create node, check that it has one of the default services running
+  run $OCKAM node create n1
+  assert_success
+  assert_output --partial "/service/vault_service"
+
+  # Stop node, restart it, and check that the service is up again
+  $OCKAM node stop n1
+  run $OCKAM node start n1
+  assert_success
+  assert_output --partial "/service/vault_service"
+}
+
 @test "create a node and show its identity" {
   run $OCKAM node create n1
   assert_success

@@ -38,7 +38,14 @@ async fn run_impl(
     rpc.request(Request::post("/node/tcp/listener")).await?;
     let response = rpc.parse_response::<models::transport::TransportStatus>()?;
 
-    let port = opts.config.get_node_port(&node_name)?;
+    let port = opts
+        .state
+        .nodes
+        .get(&node_name)?
+        .setup()?
+        .default_tcp_listener()?
+        .addr
+        .port();
     let mut base_route = route![(TCP, format!("localhost:{}", port))];
     let r: Route = base_route
         .modify()

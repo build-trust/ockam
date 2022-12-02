@@ -3,7 +3,7 @@ use minicbor::Decoder;
 use ockam_identity::credential::Credential;
 use rand::prelude::random;
 
-use anyhow::{anyhow, Context as _, Result};
+use anyhow::{anyhow, Context as _};
 use std::{
     net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
@@ -11,17 +11,14 @@ use std::{
 };
 use tracing::error;
 
+use crate::node::util::spawn_node;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start;
 use crate::util::node_rpc;
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
-    help,
-    node::show::print_query_status,
-    node::HELP_DETAIL,
-    project,
-    util::{find_available_port, startup},
+    help, node::show::print_query_status, node::HELP_DETAIL, project, util::find_available_port,
     CommandGlobalOpts,
 };
 use crate::{
@@ -71,10 +68,6 @@ pub struct CreateCommand {
     )]
     pub tcp_listener_address: String,
 
-    /// Skip creation of default Vault and Identity
-    #[arg(long, short, hide = true)]
-    pub skip_defaults: bool,
-
     /// ockam_command started a child process to run this node in foreground.
     #[arg(display_order = 900, long, hide = true)]
     pub child_process: bool,
@@ -92,27 +85,13 @@ pub struct CreateCommand {
     pub launch_config: Option<PathBuf>,
 
     #[arg(long, hide = true)]
-    pub no_watchdog: bool,
-
-    #[arg(long, hide = true)]
     pub project: Option<PathBuf>,
-
-    #[arg(long, hide = true)]
-    pub config: Option<PathBuf>,
 
     #[arg(long = "vault", value_name = "VAULT")]
     vault: Option<String>,
 
     #[arg(long = "identity", value_name = "IDENTITY")]
     identity: Option<String>,
-
-    /// Enable AWS KMS integration.
-    #[arg(long, default_value = "false")]
-    aws_kms: bool,
-
-    /// Use an existing AWS KMS key.
-    #[arg(long)]
-    key_id: Option<String>,
 }
 
 impl Default for CreateCommand {
@@ -121,25 +100,18 @@ impl Default for CreateCommand {
             node_name: hex::encode(random::<[u8; 4]>()),
             tcp_listener_address: "127.0.0.1:0".to_string(),
             foreground: false,
-            skip_defaults: false,
             child_process: false,
             launch_config: None,
-            no_watchdog: false,
             project: None,
-            config: None,
             token: None,
             vault: None,
             identity: None,
-            aws_kms: false,
-            key_id: None,
         }
     }
 }
 
 impl CreateCommand {
-    pub fn run(mut self, options: CommandGlobalOpts) {
-        self.aws_kms |= self.key_id.is_some();
-
+    pub fn run(self, options: CommandGlobalOpts) {
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
             if let Err(e) = create_foreground_node(&options, &self) {
@@ -153,7 +125,7 @@ impl CreateCommand {
         }
     }
 
-    fn overwrite_addr(&self) -> Result<Self> {
+    fn overwrite_addr(&self) -> anyhow::Result<Self> {
         let cmd = self.clone();
         let addr: SocketAddr = if &cmd.tcp_listener_address == "127.0.0.1:0" {
             let port = find_available_port().context("failed to acquire available port")?;
@@ -180,9 +152,6 @@ async fn run_impl(
         ));
     }
 
-    // Do we need to eagerly fetch a project membership credential?
-    let get_credential = cmd.project.is_some() && cmd.token.is_some();
-
     // Spawn node in another, new process
     let cmd = cmd.overwrite_addr()?;
     let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
@@ -193,12 +162,13 @@ async fn run_impl(
     let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
     print_query_status(&mut rpc, node_name, true).await?;
 
+    // Do we need to eagerly fetch a project membership credential?
+    let get_credential = cmd.project.is_some() && cmd.token.is_some();
     if get_credential {
         rpc.request(api::credentials::get_credential(false)).await?;
         if rpc.parse_and_print_response::<Credential>().is_err() {
             eprintln!("failed to fetch membership credential");
             delete_node(&opts, node_name, true);
-            opts.config.persist_config_updates()?
         }
     }
 
@@ -226,8 +196,6 @@ async fn run_foreground_node(
             &cmd.node_name,
             cmd.vault.as_ref(),
             cmd.identity.as_ref(),
-            cmd.aws_kms,
-            cmd.key_id.as_ref(),
         )
         .await?;
     }
@@ -266,10 +234,7 @@ async fn run_foreground_node(
     let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
         &ctx,
-        NodeManagerGeneralOptions::new(
-            cmd.node_name.clone(),
-            cmd.skip_defaults || cmd.launch_config.is_some(),
-        ),
+        NodeManagerGeneralOptions::new(cmd.node_name.clone(), cmd.launch_config.is_some()),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
             project_id,
@@ -306,7 +271,6 @@ async fn run_foreground_node(
             Ok(_) | Err(_) => {
                 eprintln!("failed to fetch membership credential");
                 delete_node(&opts, &cmd.node_name, true);
-                opts.config.persist_config_updates()?
             }
         }
     }
@@ -321,7 +285,7 @@ async fn start_services(
     addr: SocketAddr,
     node_opts: super::NodeOpts,
     opts: &CommandGlobalOpts,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let config = {
         let c = Config::read(cfg)?;
         if let Some(sc) = c.startup_services {
@@ -396,8 +360,6 @@ async fn spawn_background_node(
     cmd: &CreateCommand,
     addr: SocketAddr,
 ) -> crate::Result<()> {
-    let verbose = opts.global_args.verbose;
-
     // Check if the port is used by some other services or process
     if !bind_to_port_check(&addr) {
         return Err(crate::Error::new(
@@ -413,22 +375,18 @@ async fn spawn_background_node(
         &cmd.node_name,
         cmd.vault.as_ref(),
         cmd.identity.as_ref(),
-        cmd.aws_kms,
-        cmd.key_id.as_ref(),
     )
     .await?;
 
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node
-    startup::spawn_node(
+    spawn_node(
         opts,
-        verbose,
-        cmd.skip_defaults,
+        opts.global_args.verbose,
         &cmd.node_name,
         &cmd.tcp_listener_address,
         cmd.project.as_deref(),
         cmd.token.as_ref(),
-        cmd.aws_kms,
     )?;
 
     Ok(())
