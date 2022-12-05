@@ -163,15 +163,12 @@ impl<'a> Rpc<'a> {
     where
         T: Encode<()>,
     {
-        let mut ctx = self.ctx.new_detached(Address::random_local()).await?;
-        let route = self.route_impl(&ctx).await?;
-        ctx.send(route.clone(), req.to_vec()?).await?;
-        self.buf = ctx
-            .receive_duration_timeout::<Vec<u8>>(timeout)
+        let route = self.route_impl(self.ctx).await?;
+        self.buf = self
+            .ctx
+            .send_and_receive_with_timeout(route.clone(), req.to_vec()?, timeout)
             .await
-            .context("Failed to receive response from node")?
-            .take()
-            .body();
+            .context("Failed to receive response from node")?;
         Ok(())
     }
 
