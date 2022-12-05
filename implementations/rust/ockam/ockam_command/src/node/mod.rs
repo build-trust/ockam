@@ -158,6 +158,13 @@ impl NodeCommand {
 #[derive(Clone, Debug, Args)]
 pub struct NodeOpts {
     /// Override the default API node
-    #[arg(global = true, id = "node", short, long, default_value = "default")]
+    #[arg(
+        global = true,
+        id = "node",
+        value_name = "NODE",
+        short,
+        long,
+        default_value = "default"
+    )]
     pub api_node: String,
 }
