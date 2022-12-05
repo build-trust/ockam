@@ -5,6 +5,7 @@ use rand::prelude::random;
 use tokio::io::AsyncBufReadExt;
 
 use anyhow::{anyhow, Context as _};
+use std::sync::Arc;
 use std::{
     net::{IpAddr, SocketAddr},
     path::PathBuf,
@@ -42,7 +43,7 @@ use ockam_api::{
 };
 use ockam_core::{
     api::{Response, Status},
-    LOCAL,
+    AllowAll, LOCAL,
 };
 
 use super::util::delete_node;
@@ -265,8 +266,13 @@ async fn run_foreground_node(
     .await?;
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
-    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
-        .await?;
+    ctx.start_worker_with_access_control(
+        NODEMANAGER_ADDR,
+        node_manager_worker,
+        Arc::new(AllowAll), // FIXME: @ac
+        Arc::new(AllowAll), // FIXME: @ac
+    )
+    .await?;
 
     if let Some(path) = &cmd.launch_config {
         let node_opts = super::NodeOpts {

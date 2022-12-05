@@ -4,6 +4,7 @@ use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::Path;
 use std::process::Command;
+use std::sync::Arc;
 
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpTransport};
@@ -15,6 +16,7 @@ use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_core::AllowAll;
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
 
@@ -76,8 +78,13 @@ pub async fn start_embedded_node_with_vault_and_identity(
 
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
-    ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
-        .await?;
+    ctx.start_worker_with_access_control(
+        NODEMANAGER_ADDR,
+        node_manager_worker,
+        Arc::new(AllowAll), // FIXME: @ac
+        Arc::new(AllowAll), // FIXME: @ac
+    )
+    .await?;
 
     Ok(cmd.node_name.clone())
 }
