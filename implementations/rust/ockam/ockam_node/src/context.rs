@@ -485,22 +485,8 @@ impl Context {
         M: Message + Send + 'static,
         N: Message,
     {
-        let route: Route = route.into();
-
-        let mailboxes = Mailboxes::new(
-            Mailbox::new(
-                Address::random_tagged("Context.send_and_receive.detached"),
-                Arc::new(AllowAll), // FIXME: @ac there is no way to ensure that we're receiving response from the worker we sent request to
-                Arc::new(ockam_core::AllowDestinationAddress(
-                    route.next().unwrap().clone(),
-                )),
-            ),
-            vec![],
-        );
-        let mut child_ctx = self.new_detached_with_mailboxes(mailboxes).await?;
-
-        child_ctx.send(route, msg).await?;
-        Ok(child_ctx.receive::<N>().await?.take().body())
+        self.send_and_receive_with_timeout(route, msg, Duration::from_secs(DEFAULT_TIMEOUT))
+            .await
     }
 
     /// Using a temporary new context, send a message and then receive a message with custom timeout
@@ -516,18 +502,30 @@ impl Context {
         &self,
         route: R,
         msg: M,
-        timeout: u64,
+        timeout: Duration,
     ) -> Result<N>
     where
         R: Into<Route>,
         M: Message + Send + 'static,
         N: Message,
     {
-        let mut child_ctx = self.new_detached(Address::random_local()).await?;
+        let route: Route = route.into();
+
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(
+                Address::random_tagged("Context.send_and_receive.detached"),
+                Arc::new(AllowAll), // FIXME: @ac there is no way to ensure that we're receiving response from the worker we sent request to
+                Arc::new(ockam_core::AllowDestinationAddress(
+                    route.next().unwrap().clone(),
+                )),
+            ),
+            vec![],
+        );
+        let mut child_ctx = self.new_detached_with_mailboxes(mailboxes).await?;
+
         child_ctx.send(route, msg).await?;
-        let duration = core::time::Duration::from_secs(timeout);
         Ok(child_ctx
-            .receive_duration_timeout::<N>(duration)
+            .receive_duration_timeout::<N>(timeout)
             .await?
             .take()
             .body())
