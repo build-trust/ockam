@@ -178,9 +178,10 @@ impl<'a> Rpc<'a> {
         Ok(())
     }
 
-    async fn route_impl(&mut self, ctx: &Context) -> Result<Route> {
+    async fn route_impl(&self, ctx: &Context) -> Result<Route> {
+        let mut to = self.to.clone();
         let route = match self.mode {
-            RpcMode::Embedded => self.to.clone(),
+            RpcMode::Embedded => to,
             RpcMode::Background {
                 ref node_state,
                 ref tcp,
@@ -198,7 +199,8 @@ impl<'a> Rpc<'a> {
                         let _ = tcp.connect(addr_str).await;
                     }
                 }
-                self.to.modify().prepend_route(addr.into()).into()
+                to.modify().prepend_route(addr.into());
+                to
             }
         };
         debug!(%route, "Sending request");
