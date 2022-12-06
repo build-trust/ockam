@@ -20,7 +20,7 @@ async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
     info!("Created sender pipe: {}", sender.addr());
 
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     let msg = String::from("Hello through the pipe");
     child_ctx
@@ -46,7 +46,7 @@ async fn handshake_pipe(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     let msg = String::from("Hello through the pipe");
     child_ctx
@@ -81,7 +81,7 @@ async fn fixed_delivery_pipe(ctx: &mut Context) -> Result<()> {
     info!("Created sender pipe: {}", sender.addr());
 
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     let msg = String::from("Hello through the pipe");
     child_ctx
@@ -109,7 +109,7 @@ async fn dynamic_delivery_pipe(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     let msg = String::from("Hello through the pipe");
     child_ctx
@@ -144,7 +144,7 @@ async fn fixed_ordering_pipe(ctx: &mut Context) -> Result<()> {
     info!("Created sender pipe: {}", sender.addr());
 
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     let msg = String::from("Hello through the pipe");
     child_ctx
@@ -180,7 +180,7 @@ async fn fixed_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
     info!("Created sender pipe: {}", sender.addr());
 
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     let msg = String::from("Hello through the pipe");
     child_ctx
@@ -210,7 +210,7 @@ async fn dynamic_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     let msg = String::from("Hello through the pipe");
     child_ctx

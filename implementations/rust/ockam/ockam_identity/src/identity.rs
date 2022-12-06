@@ -73,7 +73,11 @@ impl<V: IdentityVault> Identity<V> {
             return Err(IdentityError::IdentityVerificationFailed.into());
         }
         let child_ctx = ctx
-            .new_detached(Address::random_tagged("Identity.import.detached"))
+            .new_detached(
+                Address::random_tagged("Identity.import.detached"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
             .await?;
 
         let id = change_history.compute_identity_id(vault).await?;
@@ -127,7 +131,7 @@ impl<V: IdentityVault> Identity<V> {
         key_attribs: KeyAttributes,
     ) -> Result<Self> {
         let child_ctx = ctx
-            .new_detached_with_access_control(
+            .new_detached(
                 Address::random_tagged("Identity.create.detached"),
                 Arc::new(DenyAll),
                 Arc::new(DenyAll),

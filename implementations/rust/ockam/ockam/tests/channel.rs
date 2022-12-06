@@ -24,7 +24,7 @@ async fn simple_channel(ctx: &mut Context) -> Result<()> {
     // Send a message through the channel
     let msg = "Hello through the channel!".to_string();
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     child_ctx.send(ch.tx().append("child"), msg.clone()).await?;
 
@@ -56,7 +56,7 @@ async fn reliable_channel(ctx: &mut Context) -> Result<()> {
     // Send a message through the channel
     let msg = "Hello through the channel!".to_string();
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     child_ctx.send(ch.tx().append("child"), msg.clone()).await?;
 

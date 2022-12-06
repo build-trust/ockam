@@ -23,18 +23,10 @@ fn start_and_shutdown_node__many_iterations__should_not_fail() {
             .execute(async move {
                 let res = std::panic::AssertUnwindSafe(async {
                     let child_ctx1 = ctx
-                        .new_detached_with_access_control(
-                            "child1",
-                            Arc::new(AllowAll),
-                            Arc::new(AllowAll),
-                        )
+                        .new_detached("child1", Arc::new(AllowAll), Arc::new(AllowAll))
                         .await?;
                     let mut child_ctx2 = ctx
-                        .new_detached_with_access_control(
-                            "child2",
-                            Arc::new(AllowAll),
-                            Arc::new(AllowAll),
-                        )
+                        .new_detached("child2", Arc::new(AllowAll), Arc::new(AllowAll))
                         .await?;
                     child_ctx1
                         .send(route!["child2"], "Hello".to_string())
@@ -441,7 +433,7 @@ async fn worker_calls_stopworker_from_handlemessage(ctx: &mut Context) -> Result
     let counter_b_clone = counter_b.clone();
 
     let child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
 
     const RUNS: u32 = 1000;

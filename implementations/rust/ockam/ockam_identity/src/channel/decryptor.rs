@@ -114,9 +114,11 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
         // Create regular secure channel and set self address as first responder
         let custom_payload = self_address.encode()?;
         let temp_ctx = ctx
-            .new_detached(Address::random_tagged(
-                "IdentitySecureChannel.initiator.decryptor.temp",
-            ))
+            .new_detached(
+                Address::random_tagged("IdentitySecureChannel.initiator.decryptor.temp"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
             .await?;
         let self_address_clone = self_address.clone();
         let regular_decryptor_address_internal =

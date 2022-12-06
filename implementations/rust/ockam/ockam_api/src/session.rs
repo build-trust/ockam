@@ -5,9 +5,7 @@ use crate::{multiaddr_to_route, DefaultAddress};
 use minicbor::{Decode, Encode};
 use ockam::{LocalMessage, Route, TransportMessage, Worker};
 use ockam_core::compat::sync::{Arc, Mutex};
-use ockam_core::{
-    Address, AllowAll, AllowSourceAddress, Decodable, DenyAll, Encodable, Error, Routed, LOCAL,
-};
+use ockam_core::{Address, AllowAll, Decodable, DenyAll, Encodable, Error, Routed, LOCAL};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
 use ockam_node::tokio::sync::mpsc;
@@ -53,7 +51,7 @@ impl Medic {
 
     pub async fn start(self, ctx: Context) -> Result<(), Error> {
         let ctx = ctx
-            .new_detached_with_access_control(
+            .new_detached(
                 Address::random_tagged("Medic.ctx"),
                 Arc::new(DenyAll),
                 Arc::new(AllowAll), // FIXME: @ac

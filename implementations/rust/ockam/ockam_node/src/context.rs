@@ -13,8 +13,8 @@ use core::{
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
-    AccessControl, Address, AllowAll, AsyncTryClone, Error, LocalMessage, Mailboxes, Message,
-    Processor, RelayMessage, Result, Route, TransportMessage, TransportType, Worker,
+    AccessControl, Address, AllowAll, AsyncTryClone, DenyAll, Error, LocalMessage, Mailboxes,
+    Message, Processor, RelayMessage, Result, Route, TransportMessage, TransportType, Worker,
 };
 use ockam_core::{LocalInfo, Mailbox};
 
@@ -70,22 +70,13 @@ impl Drop for Context {
 #[ockam_core::async_trait]
 impl AsyncTryClone for Context {
     async fn async_try_clone(&self) -> Result<Self> {
-        // TODO @ac Context.async_try_clone.detached
-        // in:  ?
-        // out: ?
-        /*let mailboxes = Mailboxes::new(
-            Mailbox::new(
-                Address::random_tagged("Context.async_try_clone.detached"),
-                Arc::new(crate::access_control::LocalOriginOnly),
-                Arc::new(crate::access_control::LocalOriginOnly),
-            ),
-            vec![],
-        );
-        self.new_detached_with_mailboxes(mailboxes).await*/
-
-        // TODO @ac for now we'll just inherit from the parent context
-        self.new_detached(Address::random_tagged("Context.async_try_clone.detached"))
-            .await
+        // TODO: @ac ignores parent Access Control. Should be documented somewhere
+        self.new_detached(
+            Address::random_tagged("Context.async_try_clone.detached"),
+            Arc::new(DenyAll),
+            Arc::new(DenyAll),
+        )
+        .await
     }
 }
 
@@ -210,34 +201,7 @@ impl Context {
     /// [`start_worker()`](Self::start_worker) is the recommended way
     /// to create a new worker context.
     ///
-    pub async fn new_detached(&self, address: impl Into<Address>) -> Result<DetachedContext> {
-        // TODO: Avoid inheriting access control, as they may lead to unwanted behaviour
-        let incoming_access_control = self
-            .mailboxes
-            .main_mailbox()
-            .incoming_access_control()
-            .clone();
-        let outgoing_access_control = self
-            .mailboxes
-            .main_mailbox()
-            .outgoing_access_control()
-            .clone();
-
-        self.new_detached_with_access_control(
-            address.into(),
-            incoming_access_control,
-            outgoing_access_control,
-        )
-        .await
-    }
-
-    /// Create a new detached `Context` without spawning a full worker
-    ///
-    /// Note: this function is very low-level.  For most users
-    /// [`start_worker()`](Self::start_worker) is the recommended way
-    /// to create a new worker context.
-    ///
-    pub async fn new_detached_with_access_control(
+    pub async fn new_detached(
         &self,
         address: impl Into<Address>,
         incoming_access_control: Arc<dyn AccessControl>,

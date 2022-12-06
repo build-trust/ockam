@@ -276,7 +276,7 @@ impl fmt::Debug for Client {
 impl Client {
     pub async fn new(r: Route, ctx: &Context) -> Result<Self> {
         let ctx = ctx
-            .new_detached_with_access_control(
+            .new_detached(
                 Address::random_tagged("AuthClient.direct.detached"),
                 Arc::new(DenyAll),
                 Arc::new(DenyAll),

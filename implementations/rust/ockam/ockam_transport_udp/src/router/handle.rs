@@ -5,7 +5,7 @@ use std::{
 };
 
 use futures_util::stream::StreamExt;
-use ockam_core::{async_trait, Address, AllowAll, AsyncTryClone, Result};
+use ockam_core::{async_trait, Address, AllowAll, AsyncTryClone, DenyAll, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tokio::net::UdpSocket;
@@ -29,7 +29,14 @@ pub(crate) struct UdpRouterHandle {
 #[async_trait]
 impl AsyncTryClone for UdpRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
-        let child_ctx = self.ctx.new_detached(Address::random_local()).await?;
+        let child_ctx = self
+            .ctx
+            .new_detached(
+                Address::random_tagged("UdpRouterHandle.async_try_clone.detached"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
+            .await?;
         Ok(Self::new(child_ctx, self.api_addr.clone()))
     }
 }

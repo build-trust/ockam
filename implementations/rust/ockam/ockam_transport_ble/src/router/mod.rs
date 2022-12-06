@@ -3,12 +3,13 @@ mod handle;
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, collections::BTreeMap, vec::Vec},
-    Any, Mailbox, Mailboxes,
+    Any, DenyAll, Mailbox, Mailboxes,
 };
 use ockam_core::{Address, Decodable, LocalMessage, Message, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 pub(crate) use handle::BleRouterHandle;
 
@@ -40,7 +41,13 @@ pub struct BleRouter {
 
 impl BleRouter {
     async fn create_self_handle(&self, ctx: &Context) -> Result<BleRouterHandle> {
-        let handle_ctx = ctx.new_detached(Address::random_local()).await?;
+        let handle_ctx = ctx
+            .new_detached(
+                Address::random_tagged("BleRouterHandle.async_try_clone.detached"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
+            .await?;
         let handle = BleRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }
@@ -134,11 +141,17 @@ impl BleRouter {
     /// To also handle incoming connections, use
     /// [`BleRouter::bind`](BleRouter::bind)
     pub(crate) async fn register(ctx: &Context) -> Result<BleRouterHandle> {
-        let main_addr = Address::random_local();
-        let api_addr = Address::random_local();
+        let main_addr = Address::random_tagged("BleRouter.main_addr");
+        let api_addr = Address::random_tagged("BleRouter.api_addr");
         debug!("Registering new BleRouter with address {}", &main_addr);
 
-        let child_ctx = ctx.new_detached(Address::random_local()).await?;
+        let child_ctx = ctx
+            .new_detached(
+                Address::random_tagged("BleRouter.detached_child"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
+            .await?;
         let router = Self {
             _ctx: child_ctx,
             main_addr: main_addr.clone(),

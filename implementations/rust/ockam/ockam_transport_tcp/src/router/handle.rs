@@ -6,8 +6,9 @@ use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, sync::Arc},
+    DenyAll,
 };
-use ockam_core::{AccessControl, Address, AsyncTryClone, Mailbox, Mailboxes, Result, Route};
+use ockam_core::{AccessControl, Address, AsyncTryClone, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tracing::debug;
@@ -24,13 +25,14 @@ pub(crate) struct TcpRouterHandle {
 #[async_trait]
 impl AsyncTryClone for TcpRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
-        let mailboxes = Mailboxes::new(
-            Mailbox::deny_all(Address::random_tagged(
-                "TcpRouterHandle.async_try_clone.detached",
-            )),
-            vec![],
-        );
-        let child_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
+        let child_ctx = self
+            .ctx
+            .new_detached(
+                Address::random_tagged("TcpRouterHandle.async_try_clone.detached"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
+            .await?;
 
         Ok(Self::new(
             child_ctx,

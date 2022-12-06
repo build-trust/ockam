@@ -8,7 +8,8 @@ use crate::{
     pipe::{BehaviorHook, PipeBehavior},
     Context,
 };
-use ockam_core::{Address, Result, Route, RouteBuilder};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{Address, DenyAll, Result, Route, RouteBuilder};
 
 #[doc(inline)]
 pub use ockam_channel::SecureChannel;
@@ -46,13 +47,17 @@ impl ChannelBuilder {
     /// ```
     pub async fn new(ctx: &Context) -> Result<Self> {
         debug!("Creating new ChannelBuilder context...");
-        ctx.new_detached(Address::random_local())
-            .await
-            .map(|ctx| Self {
-                ctx,
-                tx_hooks: PipeBehavior::empty(),
-                rx_hooks: PipeBehavior::empty(),
-            })
+        ctx.new_detached(
+            Address::random_local(),
+            Arc::new(DenyAll),
+            Arc::new(DenyAll),
+        )
+        .await
+        .map(|ctx| Self {
+            ctx,
+            tx_hooks: PipeBehavior::empty(),
+            rx_hooks: PipeBehavior::empty(),
+        })
     }
 
     /// Attach a new behavior to be used by the underlying pipe sender

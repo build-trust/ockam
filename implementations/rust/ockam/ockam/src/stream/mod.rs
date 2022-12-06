@@ -16,7 +16,7 @@ use core::{ops::Deref, time::Duration};
 use ockam_core::compat::rand::{self, Rng};
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{AllowAll, Decodable, RouteBuilder, TransportType};
+use ockam_core::{AllowAll, Decodable, DenyAll, RouteBuilder, TransportType};
 
 /// Stream controller transport type.
 pub const STREAM: TransportType = TransportType::new(16);
@@ -87,16 +87,20 @@ impl Stream {
     /// By default, the created stream will poll for new messages
     /// every 250 milliseconds.
     pub async fn new(ctx: &Context) -> Result<Self> {
-        ctx.new_detached(Address::random(STREAM))
-            .await
-            .map(|ctx| Self {
-                ctx,
-                interval: Duration::from_millis(250),
-                forwarding_address: None,
-                stream_service: "stream".into(),
-                index_service: "stream_index".into(),
-                client_id: None,
-            })
+        ctx.new_detached(
+            Address::random(STREAM),
+            Arc::new(DenyAll),
+            Arc::new(DenyAll),
+        )
+        .await
+        .map(|ctx| Self {
+            ctx,
+            interval: Duration::from_millis(250),
+            forwarding_address: None,
+            stream_service: "stream".into(),
+            index_service: "stream_index".into(),
+            client_id: None,
+        })
     }
 
     /// Customize the polling interval for the stream consumer
@@ -225,7 +229,14 @@ impl Stream {
             },
             ReceiverAddress {
                 _inner: receiver_address,
-                ctx: self.ctx.new_detached(receiver_rx).await?,
+                ctx: self
+                    .ctx
+                    .new_detached(
+                        receiver_rx,
+                        Arc::new(AllowAll), // FIXME: @ac
+                        Arc::new(DenyAll),
+                    )
+                    .await?,
             },
         ))
     }
