@@ -92,14 +92,8 @@ impl<V: IdentityVault> Identity<V> {
             )
         })?;
 
-        let mut child_ctx = self
-            .ctx
-            .new_detached(Address::random_tagged(
-                "Identity.present_credential.detached",
-            ))
-            .await?;
         let buf = request(
-            &mut child_ctx,
+            &self.ctx,
             "credential",
             None,
             route.into(),
@@ -135,15 +129,9 @@ impl<V: IdentityVault> Identity<V> {
             )
         })?;
 
-        let mut child_ctx = self
-            .ctx
-            .new_detached(Address::random_tagged(
-                "Identity.present_credential_mutual.detached",
-            ))
-            .await?;
         let path = "actions/present_mutual";
         let (buf, local_info) = request_with_local_info(
-            &mut child_ctx,
+            &self.ctx,
             "credential",
             None,
             route.into(),
