@@ -1,4 +1,5 @@
 use core::time::Duration;
+use std::sync::Arc;
 use std::{
     env,
     net::{SocketAddr, TcpListener},
@@ -17,6 +18,7 @@ use ockam::{Address, Context, NodeBuilder, Route, TcpTransport, TCP};
 use ockam_api::cli_state::{CliState, NodeState};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
+use ockam_core::DenyAll;
 use ockam_multiaddr::{
     proto::{self, Node},
     MultiAddr, Protocol,
@@ -353,7 +355,11 @@ where
     let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
     executor.execute(async move {
         let child_ctx = ctx
-            .new_detached(Address::random_local())
+            .new_detached(
+                Address::random_tagged("Detached.embedded_node"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
             .await
             .expect("Embedded node child ctx can't be created");
         let r = f(child_ctx, a).await;
@@ -372,7 +378,11 @@ where
     let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
     executor.execute(async move {
         let child_ctx = ctx
-            .new_detached(Address::random_local())
+            .new_detached(
+                Address::random_tagged("Detached.embedded_node.not_stopped"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
             .await
             .expect("Embedded node child ctx can't be created");
         f(child_ctx, a).await

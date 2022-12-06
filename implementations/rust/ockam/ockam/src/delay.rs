@@ -1,5 +1,7 @@
 use crate::{Address, Context, Message, Result, Route};
 use core::time::Duration;
+use ockam_core::compat::sync::Arc;
+use ockam_core::{AllowDestinationAddress, DenyAll};
 
 /// Send a delayed event to a worker
 pub(crate) struct DelayedEvent<M: Message> {
@@ -12,8 +14,13 @@ pub(crate) struct DelayedEvent<M: Message> {
 impl<M: Message> DelayedEvent<M> {
     /// Create a new 100ms delayed message event
     pub(crate) async fn new(ctx: &Context, route: Route, msg: M) -> Result<Self> {
+        let next = route.next()?.clone();
         let child_ctx = ctx
-            .new_detached(Address::random_tagged("DelayedEvent.child"))
+            .new_detached(
+                Address::random_tagged("DelayedEvent.child"),
+                Arc::new(DenyAll),
+                Arc::new(AllowDestinationAddress(next)),
+            )
             .await?;
 
         debug!(

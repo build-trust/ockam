@@ -15,7 +15,7 @@ async fn static_simple_pipe(ctx: &mut Context) -> Result<()> {
     let sent_msg = String::from("Hello Ockam!");
     info!("Sending message '{}' through pipe sender {}", sent_msg, tx);
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     child_ctx
         .send(route![tx.clone(), "child"], sent_msg.clone())
@@ -41,7 +41,7 @@ async fn static_confirm_pipe(ctx: &mut Context) -> Result<()> {
     let sent_msg = String::from("Hello Ockam!");
     info!("Sending message '{}' through pipe sender {}", sent_msg, tx);
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     child_ctx
         .send(route![tx.clone(), "child"], sent_msg.clone())
@@ -127,7 +127,7 @@ async fn fails_static_confirm_pipe(ctx: &mut Context) -> Result<()> {
     let sent_msg = String::from("Hello Ockam!");
     info!("Sending message '{}' through pipe sender {}", sent_msg, tx);
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     child_ctx
         .send(route![tx.clone(), "child"], sent_msg.clone())
@@ -149,7 +149,7 @@ async fn static_ordering_pipe(ctx: &mut Context) -> Result<()> {
     let sent_msg1 = String::from("Message number one");
     info!("Sending message '{}' through pipe sender {}", sent_msg1, tx);
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     child_ctx
         .send(route![tx.clone(), "child"], sent_msg1.clone())
@@ -192,7 +192,7 @@ async fn static_confirm_ordering_pipe(ctx: &mut Context) -> Result<()> {
     let sent_msg1 = String::from("Message number one");
     info!("Sending message '{}' through pipe sender {}", sent_msg1, tx);
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     child_ctx
         .send(route![tx.clone(), "child"], sent_msg1.clone())
@@ -236,7 +236,7 @@ async fn static_confirm_ordering_pipe_reversed(ctx: &mut Context) -> Result<()> 
     let sent_msg1 = String::from("Message number one");
     info!("Sending message '{}' through pipe sender {}", sent_msg1, tx);
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     child_ctx
         .send(route![tx.clone(), "child"], sent_msg1.clone())
@@ -268,7 +268,7 @@ async fn simple_pipe_handshake(ctx: &mut Context) -> Result<()> {
     let msg_sent = String::from("Message for my best friend");
     info!("Sending message '{}' through pipe sender {}", msg_sent, tx);
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     child_ctx
         .send(route![tx, "child"], msg_sent.clone())
@@ -303,7 +303,7 @@ async fn layered_pipe(ctx: &mut Context) -> Result<()> {
     // Then we can send a message through this concoction
     let msg = "Hello through nested pipes!".to_string();
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     child_ctx
         .send(route![confirm_tx, "child"], msg.clone())

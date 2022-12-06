@@ -3,11 +3,13 @@ use crate::{
     workers::{BleListenProcessor, BleSendWorker, WorkerPair},
     BleAddr, BleClient, BleServer,
 };
+use std::sync::Arc;
 
 use crate::router::BleRouterMessage;
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, string::String, vec::Vec},
+    DenyAll,
 };
 use ockam_core::{Address, AsyncTryClone, Result};
 use ockam_node::Context;
@@ -24,7 +26,14 @@ pub(crate) struct BleRouterHandle {
 #[async_trait]
 impl AsyncTryClone for BleRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
-        let child_ctx = self.ctx.new_detached(Address::random_local()).await?;
+        let child_ctx = self
+            .ctx
+            .new_detached(
+                Address::random_tagged("BleRouterHandle.async_try_clone.detached"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
+            .await?;
         Ok(Self::new(child_ctx, self.api_addr.clone()))
     }
 }

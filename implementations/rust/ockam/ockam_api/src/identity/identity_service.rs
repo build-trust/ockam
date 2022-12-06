@@ -21,7 +21,7 @@ impl<V: IdentityVault> IdentityService<V> {
     pub async fn new(ctx: &Context, vault: V) -> Result<Self> {
         Ok(Self {
             ctx: ctx
-                .new_detached_with_access_control(
+                .new_detached(
                     Address::random_tagged("IdentityService.root"),
                     Arc::new(DenyAll),
                     Arc::new(DenyAll),

@@ -98,7 +98,7 @@ async fn send_messages(ctx: &mut Context) -> Result<()> {
 
     // Send a message and wait for a reply
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     child_ctx
         .send("worker.1", String::from("Hello Ockam!"))
@@ -181,7 +181,7 @@ async fn attach_metadata(ctx: &mut Context) -> Result<()> {
     // reality this step should be performed by some utility in the
     // pipe worker (as an example)
     let mut child_ctx = ctx
-        .new_detached_with_access_control("child", Arc::new(AllowAll), Arc::new(AllowAll))
+        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
     child_ctx
         .send("worker.1", OckamMessage::new(String::from("Hello Ockam!"))?)

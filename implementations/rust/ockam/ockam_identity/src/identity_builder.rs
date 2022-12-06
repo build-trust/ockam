@@ -1,5 +1,6 @@
 use crate::{Identity, IdentityVault};
-use ockam_core::{Address, Result};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{Address, DenyAll, Result};
 use ockam_node::Context;
 
 /// Builder for `Identity`
@@ -11,7 +12,11 @@ pub struct IdentityBuilder<V: IdentityVault> {
 impl<V: IdentityVault> IdentityBuilder<V> {
     pub async fn new(ctx: &Context, vault: &V) -> Result<Self> {
         let child_ctx = ctx
-            .new_detached(Address::random_tagged("IdentityBuilder.detached"))
+            .new_detached(
+                Address::random_tagged("IdentityBuilder.detached"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
             .await?;
 
         Ok(Self {

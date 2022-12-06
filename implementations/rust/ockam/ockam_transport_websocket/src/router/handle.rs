@@ -1,7 +1,8 @@
 use core::str::FromStr;
 use std::net::{SocketAddr, ToSocketAddrs};
+use std::sync::Arc;
 
-use ockam_core::{async_trait, Address, AsyncTryClone, Result};
+use ockam_core::{async_trait, Address, AsyncTryClone, DenyAll, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
@@ -20,7 +21,14 @@ pub(crate) struct WebSocketRouterHandle {
 #[async_trait]
 impl AsyncTryClone for WebSocketRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
-        let child_ctx = self.ctx.new_detached(Address::random_local()).await?;
+        let child_ctx = self
+            .ctx
+            .new_detached(
+                Address::random_tagged("WebSocketRouterHandle.async_try_clone.detached"),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
+            )
+            .await?;
         Ok(Self::new(child_ctx, self.api_addr.clone()))
     }
 }
