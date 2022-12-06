@@ -8,7 +8,7 @@ use ockam_core::{Address, AllowAll, LocalInfo, Mailbox, Mailboxes, Result, Route
 
 /// Encode request header and body (if any), send the package to the server and returns its response.
 pub async fn request<T, R>(
-    ctx: &mut Context,
+    ctx: &Context,
     label: &str,
     struct_name: impl Into<Option<&str>>,
     route: R,
@@ -37,7 +37,7 @@ where
 
 /// Encode request header and body (if any), send the package to the server and returns its response.
 pub async fn request_with_local_info<T, R>(
-    ctx: &mut Context,
+    ctx: &Context,
     label: &str,
     struct_name: impl Into<Option<&str>>,
     route: R,

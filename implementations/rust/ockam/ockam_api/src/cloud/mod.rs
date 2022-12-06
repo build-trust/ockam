@@ -138,7 +138,7 @@ mod node {
         #[allow(clippy::too_many_arguments)]
         pub(super) async fn request_controller<T>(
             &mut self,
-            ctx: &mut Context,
+            ctx: &Context,
             label: &str,
             schema: impl Into<Option<&str>>,
             cloud_route: impl Into<Route>,

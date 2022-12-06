@@ -110,7 +110,7 @@ impl Client {
     pub async fn get(&mut self, id: &str, attr: &str) -> ockam_core::Result<Option<&[u8]>> {
         let label = "get attribute";
         let req = Request::get(format!("/authenticated/{id}/attribute/{attr}"));
-        self.buf = request(&mut self.ctx, label, None, self.route.clone(), req).await?;
+        self.buf = request(&self.ctx, label, None, self.route.clone(), req).await?;
         let a: Option<Attribute> = decode_option(label, "attribute", &self.buf)?;
         Ok(a.map(|a| a.value()))
     }
@@ -118,7 +118,7 @@ impl Client {
     pub async fn del(&mut self, id: &str, attr: &str) -> ockam_core::Result<()> {
         let label = "del attribute";
         let req = Request::delete(format!("/authenticated/{id}/attribute/{attr}"));
-        self.buf = request(&mut self.ctx, label, None, self.route.clone(), req).await?;
+        self.buf = request(&self.ctx, label, None, self.route.clone(), req).await?;
         is_ok(label, &self.buf)
     }
 }
