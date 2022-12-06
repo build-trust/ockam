@@ -1,6 +1,7 @@
 use ockam_core::compat::boxed::Box;
-use ockam_core::{async_trait, Address, Processor, Result};
+use ockam_core::{async_trait, Address, DenyAll, Processor, Result};
 use ockam_node::Context;
+use std::sync::Arc;
 
 use crate::driver::AsyncStream;
 use crate::driver::{BleEvent, BleServer};
@@ -38,7 +39,13 @@ where
             "BleListenProcessor::start Starting processor with address: {:?}",
             waddr
         );
-        ctx.start_processor(waddr, processor).await?;
+        ctx.start_processor(
+            waddr,
+            processor,
+            Arc::new(DenyAll), // FIXME: @ac
+            Arc::new(DenyAll), // FIXME: @ac
+        )
+        .await?;
 
         Ok(())
     }

@@ -54,7 +54,7 @@ impl PipeListener {
         addr: Address,
         hooks: PipeBehavior,
     ) -> Result<()> {
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             addr,
             PipeListener { hooks },
             Arc::new(AllowAll), // FIXME: @ac

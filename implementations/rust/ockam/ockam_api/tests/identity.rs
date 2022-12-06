@@ -159,14 +159,14 @@ async fn full_flow(ctx: &mut Context) -> Result<()> {
     let vault2 = Vault::create();
 
     // Start services
-    ctx.start_worker_with_access_control(
+    ctx.start_worker(
         "1",
         IdentityService::new(ctx, vault1.async_try_clone().await?).await?,
         Arc::new(LocalOriginOnly),
         Arc::new(LocalOriginOnly),
     )
     .await?;
-    ctx.start_worker_with_access_control(
+    ctx.start_worker(
         "2",
         IdentityService::new(ctx, vault2.async_try_clone().await?).await?,
         Arc::new(LocalOriginOnly),

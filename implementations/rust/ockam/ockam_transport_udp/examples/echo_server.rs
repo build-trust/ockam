@@ -1,13 +1,15 @@
-use ockam_core::{Result, Routed, Worker};
+use ockam_core::{DenyAll, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_udp::UdpTransport;
+use std::sync::Arc;
 use tracing::debug;
 
 #[ockam_macros::node]
 async fn main(ctx: Context) -> Result<()> {
     let udp = UdpTransport::create(&ctx).await?;
     udp.listen("127.0.0.1:8000").await?;
-    ctx.start_worker("echoer", Echoer).await?;
+    ctx.start_worker("echoer", Echoer, Arc::new(DenyAll), Arc::new(DenyAll))
+        .await?;
     Ok(())
 }
 pub struct Echoer;

@@ -274,7 +274,8 @@ impl Context {
     /// access control.
     ///
     /// ```rust
-    /// use ockam_core::{Result, Worker, worker};
+    /// use ockam_core::{AllowAll, Result, Worker, worker};
+    /// use ockam_core::compat::sync::Arc;
     /// use ockam_node::Context;
     ///
     /// struct MyWorker;
@@ -286,23 +287,10 @@ impl Context {
     /// }
     ///
     /// async fn start_my_worker(ctx: &mut Context) -> Result<()> {
-    ///     ctx.start_worker("my-worker-address", MyWorker).await
+    ///     ctx.start_worker("my-worker-address", MyWorker, Arc::new(AllowAll), Arc::new(AllowAll)).await
     /// }
     /// ```
-    pub async fn start_worker<NM, NW>(&self, address: impl Into<Address>, worker: NW) -> Result<()>
-    where
-        NM: Message + Send + 'static,
-        NW: Worker<Context = Context, Message = NM>,
-    {
-        WorkerBuilder::with_inherited_access_control(self, address, worker)
-            .start(self)
-            .await?;
-        Ok(())
-    }
-
-    // TODO: @ac replace .start_worker with this
-    /// Start a new worker instance at the given address using given Access Control
-    pub async fn start_worker_with_access_control<NM, NW>(
+    pub async fn start_worker<NM, NW>(
         &self,
         address: impl Into<Address>,
         worker: NW,
@@ -316,11 +304,22 @@ impl Context {
         WorkerBuilder::with_mailboxes(Mailboxes::main(address, incoming, outgoing), worker)
             .start(self)
             .await?;
+
         Ok(())
     }
 
-    /// Start a new processor instance at the given address using given Access Control
-    pub async fn start_processor_with_access_control<P>(
+    /// Start a new processor instance at the given address
+    ///
+    /// A processor is an asynchronous piece of code that runs a
+    /// custom run loop, with access to a worker context to send and
+    /// receive messages.  If your code is built around responding to
+    /// message events, consider using
+    /// [`start_worker()`](Self::start_worker) instead!
+    ///
+    /// The processor will inherit its [`AccessControl`] from this
+    /// context. Use [`ProcessorBuilder`] to start a worker with custom
+    /// access control.
+    pub async fn start_processor<P>(
         &self,
         address: impl Into<Address>,
         processor: P,
@@ -336,27 +335,7 @@ impl Context {
         )
         .start(self)
         .await?;
-        Ok(())
-    }
 
-    /// Start a new processor instance at the given address
-    ///
-    /// A processor is an asynchronous piece of code that runs a
-    /// custom run loop, with access to a worker context to send and
-    /// receive messages.  If your code is built around responding to
-    /// message events, consider using
-    /// [`start_worker()`](Self::start_worker) instead!
-    ///
-    /// The processor will inherit its [`AccessControl`] from this
-    /// context. Use [`ProcessorBuilder`] to start a worker with custom
-    /// access control.
-    pub async fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
-    where
-        P: Processor<Context = Context>,
-    {
-        ProcessorBuilder::with_inherited_access_control(self, address.into(), processor)
-            .start(self)
-            .await?;
         Ok(())
     }
 

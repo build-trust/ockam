@@ -20,7 +20,7 @@ impl ChannelListener {
         tx_hooks: PipeBehavior,
         rx_hooks: PipeBehavior,
     ) -> Result<()> {
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             addr,
             Self { tx_hooks, rx_hooks },
             Arc::new(AllowAll), // FIXME: @ac

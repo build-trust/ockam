@@ -134,7 +134,7 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             "counting_worker",
             worker,
             Arc::new(AllowAll),
@@ -164,7 +164,7 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             "counting_worker",
             worker,
             Arc::new(AllowAll),
@@ -192,7 +192,7 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             "counting_worker",
             worker,
             Arc::new(AllowAll),
@@ -222,7 +222,7 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             "counting_worker",
             worker,
             Arc::new(AllowAll),

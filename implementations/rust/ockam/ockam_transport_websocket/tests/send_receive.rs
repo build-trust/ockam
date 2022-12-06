@@ -8,7 +8,7 @@ use std::sync::Arc;
 async fn send_receive(ctx: &mut Context) -> Result<()> {
     let transport = WebSocketTransport::create(ctx).await?;
     let listener_address = transport.listen("127.0.0.1:0").await?;
-    ctx.start_worker_with_access_control("echoer", Echoer, Arc::new(AllowAll), Arc::new(AllowAll))
+    ctx.start_worker("echoer", Echoer, Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
 
     // Sender

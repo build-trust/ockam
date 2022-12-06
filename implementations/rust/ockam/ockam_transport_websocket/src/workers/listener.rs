@@ -36,7 +36,7 @@ impl WebSocketListenProcessor {
             router_handle,
         };
         let waddr = Address::random_tagged("WebSocketListenProcessor");
-        ctx.start_processor_with_access_control(
+        ctx.start_processor(
             waddr,
             processor,
             Arc::new(AllowAll), // FIXME: @ac

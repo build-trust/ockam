@@ -26,7 +26,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         let exported = a.export().await?;
         let store = InMemoryStorage::new();
         let auth = direct::Server::new(b"project42".to_vec(), store, tmpf.path(), a);
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             "auth",
             auth,
             Arc::new(AllowAll), // Auth checks happen inside the worker
@@ -109,7 +109,7 @@ async fn update_member_format(ctx: &mut Context) -> Result<()> {
             .await?;
         let exported = a.export().await?;
         let auth = direct::Server::new(b"project42".to_vec(), store, tmpf.path(), a);
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             "auth",
             auth,
             Arc::new(AllowAll), // Auth checks happen inside the worker
