@@ -66,8 +66,8 @@ After the binary downloads, please move it to a location in your shell's `$PATH`
 
 # End-to-End Trustful communication using Relays.
 
-Let's build a solution for a very common topology. A application service and an application client running
-in two private networks wish to communicate with each other without exposing ports on the Internet.
+Let's build a solution for a very common topology. An application service and an application client running
+in two private networks that wish to communicate with each other without exposing ports on the Internet.
 
 ```bash
 # Create a relay node that will relay end-to-end encrypted messages
