@@ -11,7 +11,7 @@ use ockam_core::compat::{
     sync::{Arc, Mutex},
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::AsyncTryClone;
+use ockam_core::{AllowAll, AsyncTryClone};
 use ockam_identity::{Identity, IdentityIdentifier, PublicIdentity};
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -300,7 +300,12 @@ impl NodeManager {
         self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
 
-        ForwardingService::create(ctx).await?;
+        ForwardingService::create(
+            ctx,
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll), // FIXME: @ac
+        )
+        .await?;
 
         self.create_secure_channel_listener_impl(
             DefaultAddress::SECURE_CHANNEL_LISTENER.into(),

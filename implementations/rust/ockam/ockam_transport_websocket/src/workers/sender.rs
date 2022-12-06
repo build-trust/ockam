@@ -151,7 +151,7 @@ where
         if let Some(ws_stream) = self.ws_stream.take() {
             let rx_addr = Address::random_tagged("WebSocketSendWorker.rx_addr");
             let receiver = WebSocketRecvProcessor::new(ws_stream, self.peer);
-            ctx.start_processor_with_access_control(
+            ctx.start_processor(
                 rx_addr.clone(),
                 receiver,
                 Arc::new(AllowAll), // FIXME: @ac

@@ -16,13 +16,8 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
     {
         let transport = UdpTransport::create(ctx).await?;
         transport.listen(bind_address).await?;
-        ctx.start_worker_with_access_control(
-            "echoer",
-            Echoer,
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        )
-        .await?;
+        ctx.start_worker("echoer", Echoer, Arc::new(AllowAll), Arc::new(AllowAll))
+            .await?;
     };
 
     // Sender

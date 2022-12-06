@@ -33,7 +33,7 @@ impl NodeManager {
         let vault = self.vault()?.async_try_clone().await?;
         let service = VaultService::new(vault);
 
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             addr.clone(),
             service,
             Arc::new(AllowAll), // FIXME: @ac
@@ -60,7 +60,7 @@ impl NodeManager {
         let vault = self.vault()?.async_try_clone().await?;
         let service = IdentityService::new(ctx, vault).await?;
 
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             addr.clone(),
             service,
             Arc::new(AllowAll), // FIXME: @ac
@@ -119,7 +119,7 @@ impl NodeManager {
 
         let s = self.authenticated_storage.async_try_clone().await?;
         let server = Server::new(s);
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             addr.clone(),
             server,
             Arc::new(AllowAll), // FIXME: @ac
@@ -145,7 +145,7 @@ impl NodeManager {
             ));
         }
 
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             addr.clone(),
             Uppercase,
             Arc::new(AllowAll), // FIXME: @ac
@@ -169,7 +169,7 @@ impl NodeManager {
             return Err(ApiError::generic("Echoer service exists at this address"));
         }
 
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             addr.clone(),
             Echoer,
             Arc::new(AllowAll), // FIXME: @ac
@@ -199,7 +199,7 @@ impl NodeManager {
         let db = self.authenticated_storage.async_try_clone().await?;
         let id = self.identity()?.async_try_clone().await?;
         let au = crate::authenticator::direct::Server::new(proj.to_vec(), db, path, id);
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             addr.clone(),
             au,
             Arc::new(AllowAll), // FIXME: @ac
@@ -234,7 +234,7 @@ impl NodeManager {
         let db = self.authenticated_storage.async_try_clone().await?;
         let au =
             crate::okta::Server::new(proj.to_vec(), db, tenant_base_url, certificate, attributes)?;
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             addr.clone(),
             au,
             Arc::new(AllowAll), // FIXME: @ac
@@ -377,7 +377,7 @@ impl NodeManagerWorker {
 
         let vault = node_manager.vault.async_try_clone().await?;
         let vs = crate::verifier::Verifier::new(vault);
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             addr.clone(),
             vs,
             Arc::new(AllowAll), // FIXME: @ac

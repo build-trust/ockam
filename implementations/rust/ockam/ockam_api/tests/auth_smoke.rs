@@ -7,7 +7,7 @@ use std::sync::Arc;
 #[ockam_macros::test]
 async fn auth_smoke(ctx: &mut Context) -> Result<()> {
     let s = InMemoryStorage::new();
-    ctx.start_worker_with_access_control(
+    ctx.start_worker(
         "auth",
         auth::Server::new(s.clone()),
         Arc::new(AllowAll),

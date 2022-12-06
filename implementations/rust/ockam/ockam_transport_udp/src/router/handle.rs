@@ -85,7 +85,7 @@ impl UdpRouterHandle {
         let sender = UdpSendWorker::new(sink);
         // FIXME: @ac
         self.ctx
-            .start_worker_with_access_control(
+            .start_worker(
                 tx_addr.clone(),
                 sender,
                 Arc::new(AllowAll),

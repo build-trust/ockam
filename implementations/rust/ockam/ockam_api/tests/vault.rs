@@ -16,7 +16,7 @@ async fn full_flow(ctx: &mut Context) -> Result<()> {
     // Start service
     let service = VaultService::new(Vault::create());
 
-    ctx.start_worker_with_access_control(
+    ctx.start_worker(
         "vault_service",
         service,
         Arc::new(AllowAll),

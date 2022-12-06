@@ -1,7 +1,11 @@
 use crate::Context;
 use core::str::from_utf8;
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
-use ockam_core::{Address, Any, LocalMessage, Result, Route, Routed, TransportMessage, Worker};
+use ockam_core::{
+    AccessControl, Address, AllowAll, Any, LocalMessage, Result, Route, Routed, TransportMessage,
+    Worker,
+};
 use tracing::info;
 
 /// Alias worker to register remote workers under local names.
@@ -15,9 +19,18 @@ pub struct ForwardingService;
 impl ForwardingService {
     /// Start a forwarding service. The address of the forwarding service will be
     /// `"forwarding_service"`.
-    pub async fn create(ctx: &Context) -> Result<()> {
-        // FIXME: @ac
-        ctx.start_worker("forwarding_service", Self).await?;
+    pub async fn create(
+        ctx: &Context,
+        incoming_access_control: Arc<dyn AccessControl>,
+        outgoing_access_control: Arc<dyn AccessControl>,
+    ) -> Result<()> {
+        ctx.start_worker(
+            "forwarding_service",
+            Self,
+            incoming_access_control,
+            outgoing_access_control,
+        )
+        .await?;
         Ok(())
     }
 }
@@ -71,8 +84,14 @@ impl Forwarder {
             forward_route,
             payload: Some(registration_payload.clone()),
         };
-        // FIXME: @ac
-        ctx.start_worker(address, forwarder).await?;
+
+        ctx.start_worker(
+            address,
+            forwarder,
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll), // FIXME: @ac
+        )
+        .await?;
 
         Ok(())
     }

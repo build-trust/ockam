@@ -1,7 +1,10 @@
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
-use ockam_core::{async_trait, Address, Encodable, Result, Routed, TransportMessage, Worker};
+use ockam_core::{
+    async_trait, Address, DenyAll, Encodable, Result, Routed, TransportMessage, Worker,
+};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
+use std::sync::Arc;
 
 use crate::driver::{AsyncStream, BleStreamDriver, PacketBuffer, Sink, Source};
 use crate::workers::BleRecvProcessor;
@@ -62,7 +65,13 @@ where
         let sender = BleSendWorker::new(stream, peer.clone());
 
         debug!("start send worker({:?})", tx_addr.clone());
-        ctx.start_worker(tx_addr.clone(), sender).await?;
+        ctx.start_worker(
+            tx_addr.clone(),
+            sender,
+            Arc::new(DenyAll), // FIXME: @ac
+            Arc::new(DenyAll), // FIXME: @ac
+        )
+        .await?;
 
         Ok(WorkerPair {
             servicenames,
@@ -89,7 +98,13 @@ where
             let rx_addr = Address::random_local();
             let receiver =
                 BleRecvProcessor::new(rx_stream, format!("{}#{}", crate::BLE, self.peer).into());
-            ctx.start_processor(rx_addr.clone(), receiver).await?;
+            ctx.start_processor(
+                rx_addr.clone(),
+                receiver,
+                Arc::new(DenyAll), // FIXME: @ac
+                Arc::new(DenyAll), // FIXME: @ac
+            )
+            .await?;
             debug!("started receiver");
         } else {
             error!("TransportError::GenericIo");

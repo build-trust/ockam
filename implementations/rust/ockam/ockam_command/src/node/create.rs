@@ -266,7 +266,7 @@ async fn run_foreground_node(
     .await?;
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
-    ctx.start_worker_with_access_control(
+    ctx.start_worker(
         NODEMANAGER_ADDR,
         node_manager_worker,
         Arc::new(AllowAll), // FIXME: @ac

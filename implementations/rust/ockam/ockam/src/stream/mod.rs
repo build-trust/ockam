@@ -194,7 +194,7 @@ impl Stream {
 
         // Create and start a new stream consumer
         self.ctx
-            .start_worker_with_access_control(
+            .start_worker(
                 receiver_address.clone(),
                 StreamConsumer::new(
                     client_id,
@@ -214,7 +214,7 @@ impl Stream {
 
         // Create and start a new stream producer
         self.ctx
-            .start_worker_with_access_control(
+            .start_worker(
                 sender_address.clone(),
                 StreamProducer::new(sender_name.clone(), route, self.stream_service.clone()),
                 Arc::new(AllowAll), // FIXME: @ac

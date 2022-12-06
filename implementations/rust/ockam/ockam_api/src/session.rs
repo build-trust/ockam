@@ -58,7 +58,7 @@ impl Medic {
             )
             .await?;
         let (tx, rx) = mpsc::channel(32);
-        ctx.start_worker_with_access_control(
+        ctx.start_worker(
             Collector::address(),
             Collector(tx),
             Arc::new(AllowAll), // FIXME: @ac

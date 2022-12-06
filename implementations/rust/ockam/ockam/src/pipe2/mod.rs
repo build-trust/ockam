@@ -398,7 +398,7 @@ impl PipeBuilder {
 
         if let Some(addr) = self.recv {
             let listener = PipeListener::new(rx_sys);
-            ctx.start_worker_with_access_control(
+            ctx.start_worker(
                 addr.clone(),
                 listener,
                 Arc::new(AllowAll), // FIXME: @ac,
