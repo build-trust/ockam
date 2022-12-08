@@ -752,6 +752,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "cast"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
+
+[[package]]
 name = "cc"
 version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4212,12 +4218,12 @@ dependencies = [
 
 [[package]]
 name = "stm32f4xx-hal"
-version = "0.9.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89b4cb13b1bb36e7381eaf8941062b1eba172542b9d4f72dc50c35c4ac6260f2"
+checksum = "3a06fde2dd27c0ba934c9e69b62af66eb1c20dbb6d741b187a763912e9892d13"
 dependencies = [
  "bare-metal 1.0.0",
- "cast",
+ "cast 0.3.0",
  "cortex-m 0.7.6",
  "cortex-m-rt",
  "embedded-dma",
@@ -4248,7 +4254,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67034b80041bc33a48df1c1c435b6ae3bb18c35e42aa7e702ce8363b96793398"
 dependencies = [
  "bare-metal 1.0.0",
- "cast",
+ "cast 0.2.7",
  "cortex-m 0.7.6",
  "cortex-m-rt",
  "embedded-dma",
