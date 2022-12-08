@@ -106,6 +106,26 @@ impl<'a> StartEchoerServiceRequest<'a> {
     }
 }
 
+/// Request body when instructing a node to start a Hop service
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartHopServiceRequest<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<7361428>,
+    #[b(1)] pub addr: CowStr<'a>,
+}
+
+impl<'a> StartHopServiceRequest<'a> {
+    pub fn new(addr: impl Into<CowStr<'a>>) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr: addr.into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]

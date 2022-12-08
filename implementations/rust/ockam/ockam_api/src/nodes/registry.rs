@@ -93,6 +93,9 @@ pub(crate) struct UppercaseServiceInfo {}
 pub(crate) struct EchoerServiceInfo {}
 
 #[derive(Default)]
+pub(crate) struct HopServiceInfo {}
+
+#[derive(Default)]
 pub(crate) struct VerifierServiceInfo {}
 
 #[derive(Default)]
@@ -153,6 +156,7 @@ pub(crate) struct Registry {
     pub(crate) okta_identity_provider_services: BTreeMap<Address, OktaIdentityProviderServiceInfo>,
     pub(crate) uppercase_services: BTreeMap<Address, UppercaseServiceInfo>,
     pub(crate) echoer_services: BTreeMap<Address, EchoerServiceInfo>,
+    pub(crate) hop_services: BTreeMap<Address, HopServiceInfo>,
     pub(crate) verifier_services: BTreeMap<Address, VerifierServiceInfo>,
     pub(crate) credentials_services: BTreeMap<Address, CredentialsServiceInfo>,
     #[cfg(feature = "direct-authenticator")]

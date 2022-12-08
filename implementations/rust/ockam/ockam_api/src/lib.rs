@@ -6,6 +6,7 @@ pub mod cloud;
 pub mod config;
 pub mod echoer;
 pub mod error;
+pub mod hop;
 pub mod identity;
 pub mod nodes;
 pub mod okta;
@@ -31,6 +32,7 @@ impl DefaultAddress {
     pub const AUTHENTICATED_SERVICE: &'static str = "authenticated";
     pub const UPPERCASE_SERVICE: &'static str = "uppercase";
     pub const ECHO_SERVICE: &'static str = "echo";
+    pub const HOP_SERVICE: &'static str = "hop";
     pub const CREDENTIAL_SERVICE: &'static str = "credentials";
     pub const SECURE_CHANNEL_LISTENER: &'static str = "api";
     pub const AUTHENTICATOR: &'static str = "authenticator";

@@ -1,12 +1,13 @@
 use crate::auth::Server;
 use crate::echoer::Echoer;
 use crate::error::ApiError;
+use crate::hop::Hop;
 use crate::identity::IdentityService;
 use crate::nodes::models::services::{
     ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
-    StartCredentialsService, StartEchoerServiceRequest, StartIdentityServiceRequest,
-    StartOktaIdentityProviderRequest, StartUppercaseServiceRequest, StartVaultServiceRequest,
-    StartVerifierService,
+    StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
+    StartIdentityServiceRequest, StartOktaIdentityProviderRequest, StartUppercaseServiceRequest,
+    StartVaultServiceRequest, StartVerifierService,
 };
 use crate::nodes::registry::{CredentialsServiceInfo, Registry, VerifierServiceInfo};
 use crate::nodes::NodeManager;
@@ -184,6 +185,28 @@ impl NodeManager {
         Ok(())
     }
 
+    pub(super) async fn start_hop_service_impl(
+        &mut self,
+        ctx: &Context,
+        addr: Address,
+    ) -> Result<()> {
+        if self.registry.hop_services.contains_key(&addr) {
+            return Err(ApiError::generic("Hop service exists at this address"));
+        }
+
+        ctx.start_worker(
+            addr.clone(),
+            Hop,
+            Arc::new(AllowAll), // FIXME: @ac
+            Arc::new(AllowAll),
+        )
+        .await?;
+
+        self.registry.hop_services.insert(addr, Default::default());
+
+        Ok(())
+    }
+
     #[cfg(feature = "direct-authenticator")]
     pub(super) async fn start_direct_authenticator_service_impl(
         &mut self,
@@ -316,6 +339,19 @@ impl NodeManagerWorker {
         Ok(Response::ok(req.id()))
     }
 
+    pub(super) async fn start_hop_service(
+        &mut self,
+        ctx: &Context,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder> {
+        let mut node_manager = self.node_manager.write().await;
+        let req_body: StartHopServiceRequest = dec.decode()?;
+        let addr = req_body.addr.to_string().into();
+        node_manager.start_hop_service_impl(ctx, addr).await?;
+        Ok(Response::ok(req.id()))
+    }
+
     pub(super) async fn start_authenticator_service<'a>(
         &mut self,
         ctx: &Context,
@@ -437,6 +473,10 @@ impl NodeManagerWorker {
             .echoer_services
             .keys()
             .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "echoer")));
+        registry
+            .hop_services
+            .keys()
+            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "hop")));
         registry
             .verifier_services
             .keys()
