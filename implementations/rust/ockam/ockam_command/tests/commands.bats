@@ -222,7 +222,7 @@ teardown() {
 @test "create a secure channel between three nodes and send message through it - in a pipeline" {
   for i in {1..3}; do $OCKAM node create "n$i"; done
 
-  output=$($OCKAM secure-channel create --from n1 --to /node/n2/node/n3/service/api | \
+  output=$($OCKAM secure-channel create --from n1 --to /node/n2/serice/hop/node/n3/service/api | \
     $OCKAM message send "hello ockam" --from /node/n1 --to -/service/uppercase)
 
   assert [ "$output" == "HELLO OCKAM" ]
