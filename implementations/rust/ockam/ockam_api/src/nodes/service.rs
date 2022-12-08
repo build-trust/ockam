@@ -299,6 +299,8 @@ impl NodeManager {
             .await?;
         self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
+        self.start_hop_service_impl(ctx, DefaultAddress::HOP_SERVICE.into())
+            .await?;
 
         ForwardingService::create(
             ctx,
@@ -514,6 +516,9 @@ impl NodeManagerWorker {
                 .to_vec()?,
             (Post, ["node", "services", "echo"]) => {
                 self.start_echoer_service(ctx, req, dec).await?.to_vec()?
+            }
+            (Post, ["node", "services", "hop"]) => {
+                self.start_hop_service(ctx, req, dec).await?.to_vec()?
             }
             (Post, ["node", "services", "authenticator"]) => self
                 .start_authenticator_service(ctx, req, dec)
