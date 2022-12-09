@@ -2469,29 +2469,28 @@ dependencies = [
 
 [[package]]
 name = "mips-mcu"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38a48259532f7fa880d505a4a0ad9f57b77d1f4b2f88331625442b7c87a0cd64"
+checksum = "0cb9dfcb19ab4530dec67e8f47b696a1480346382983a42db41248b8dc81e945"
 dependencies = [
- "bare-metal 0.2.5",
+ "bare-metal 1.0.0",
 ]
 
 [[package]]
 name = "mips-rt"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04ef9b6faac46760cc54840023bcf28290b64aeaf7164f5fe39dcbc07b4faba7"
+checksum = "e37979f5efb0e8ba8fa5f926d402264d0925ce2bee8e793d5975ef7b417d1858"
 dependencies = [
- "bare-metal 0.2.5",
+ "bare-metal 1.0.0",
  "mips-rt-macros",
- "r0",
 ]
 
 [[package]]
 name = "mips-rt-macros"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2c223fbc6420c51757552c6e738a7b58385ed2de415adb51e4f5bae324e29d1"
+checksum = "42ff6b0bb34b0abbc0eef02f9a6dde26c3a3367b9efd5a87c75b2df1e3b6e083"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3325,25 +3324,26 @@ checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
 
 [[package]]
 name = "pic32-hal"
-version = "0.4.1"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4186fbd24c1b26a182991a955b429d90cb7009d1d9b583805ce78d4d26833a9a"
+checksum = "b3583d5c443f8820abaa0b3f5a07160baeb959eb75326078a2a4383ec197ae68"
 dependencies = [
  "embedded-hal",
  "enumflags2",
  "mips-mcu",
  "mips-rt",
- "nb 0.1.3",
+ "nb 1.0.0",
  "pic32mx2xx",
 ]
 
 [[package]]
 name = "pic32mx2xx"
-version = "0.3.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9c86f6c9cdae70b425c52a269bbb4b6aa3758a7c566eaf5b2c9a9aca9c29584"
+checksum = "1dc71544e56fa5b7396065b610726d6729ec1b991ed0de140f2a41869ed7534c"
 dependencies = [
  "mips-mcu",
+ "mips-rt",
  "vcell",
 ]
 
