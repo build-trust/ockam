@@ -12,27 +12,7 @@ use ockam_core::api::{Request, RequestBuilder};
 use ockam_core::route;
 use std::net::SocketAddr;
 
-const HELP_DETAIL: &str = "\
-Examples:
-
-```sh
-    # Create a target service, we'll use a simple http server for this example
-    $ python3 -m http.server --bind 127.0.0.1 5000
-
-    # Create two nodes
-    $ ockam node create n1
-    $ ockam node create n2
-
-    # Create a TCP outlet from n1 to the target server
-    $ ockam tcp-outlet create --at /node/n1 --from /service/outlet --to 127.0.0.1:5000
-
-    # Create a TCP inlet from n2 to the outlet on n1
-    $ ockam tcp-inlet create --at /node/n2 --from 127.0.0.1:6000 --to /node/n1/service/outlet
-
-    # Access the service via the inlet/outlet pair
-    $ curl 127.0.0.1:6000
-```
-";
+const HELP_DETAIL: &str = include_str!("../../constants/tcp/outlet/help_detail.txt");
 
 /// Create TCP Outlets
 #[derive(Clone, Debug, Args)]
