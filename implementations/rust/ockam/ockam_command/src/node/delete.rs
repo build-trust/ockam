@@ -2,7 +2,7 @@ use crate::node::util::{delete_all_nodes, delete_node};
 use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
 use clap::Args;
 
-/// Delete Nodes
+/// Delete a node
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
 pub struct DeleteCommand {
