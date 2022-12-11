@@ -59,7 +59,7 @@ tokio = { version = "1.8", default-features = false, optional = true, features =
     "io-std",
 ] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-tokio-tungstenite = { version = "0.17", default-features = false, optional = true , features = ["connect"] }
+tokio-tungstenite = { version = "0.18", default-features = false, optional = true , features = ["connect"] }
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
