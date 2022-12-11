@@ -6,7 +6,7 @@ use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::base::NodeStatus;
 use std::time::Duration;
 
-/// List Nodes
+/// List nodes
 #[derive(Clone, Debug, Args)]
 #[command(after_long_help = help::template(HELP_DETAIL))]
 pub struct ListCommand {}

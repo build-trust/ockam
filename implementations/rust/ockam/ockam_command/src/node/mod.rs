@@ -114,7 +114,7 @@ Examples:
 ```
 ";
 
-/// Manage Nodes
+/// Manage nodes
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = true,

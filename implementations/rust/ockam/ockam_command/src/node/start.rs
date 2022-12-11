@@ -7,7 +7,7 @@ use crate::node::util::spawn_node;
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
 
-/// Start Nodes
+/// Start a node
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
 pub struct StartCommand {

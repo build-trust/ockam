@@ -18,7 +18,7 @@ use tracing::debug;
 const IS_NODE_UP_MAX_ATTEMPTS: usize = 50;
 const IS_NODE_UP_MAX_TIMEOUT: Duration = Duration::from_secs(1);
 
-/// Show Nodes
+/// Show node details
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
 pub struct ShowCommand {
