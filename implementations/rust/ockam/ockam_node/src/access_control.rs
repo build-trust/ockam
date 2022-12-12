@@ -16,7 +16,15 @@ pub struct LocalOriginOnly;
 #[async_trait]
 impl AccessControl for LocalOriginOnly {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
-        Ok(ExternalLocalInfo::find_info(&relay_msg.local_msg).is_err())
+        // FIXME: @ac check only previous hop?
+        // Ok(ExternalLocalInfo::find_info(&relay_msg.local_msg).is_err())
+
+        // Check if next hop is equal to expected value. Further hops are not checked
+        if relay_msg.source.transport_type() != LOCAL {
+            return deny();
+        }
+
+        allow()
     }
 }
 
