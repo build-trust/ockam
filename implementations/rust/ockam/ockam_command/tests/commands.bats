@@ -244,7 +244,7 @@ teardown() {
   $OCKAM node create n2
 
   $OCKAM forwarder create n1 --at /node/n1 --to /node/n2
-  run --separate-stderr $OCKAM message send hello --to /node/n1/service/forward_to_n1/service/uppercase
+  run --separate-stderr $OCKAM message send hello --to /node/n1/service/hop/service/forward_to_n1/service/uppercase
 
   assert_success
   assert_output "HELLO"
@@ -255,7 +255,7 @@ teardown() {
   $OCKAM node create n2
 
   output=$($OCKAM forwarder create --at /node/n1 --to /node/n2  | \
-    $OCKAM message send hello --to /node/n1/-/service/uppercase)
+    $OCKAM message send hello --to /node/n1/service/hop/-/service/uppercase)
 
   assert [ "$output" == "HELLO" ]
 }
@@ -279,7 +279,7 @@ teardown() {
   $OCKAM forwarder create blue --at /node/relay --to /node/blue
 
   $OCKAM node create green
-  $OCKAM secure-channel create --from /node/green --to /node/relay/service/forward_to_blue/service/api \
+  $OCKAM secure-channel create --from /node/green --to /node/relay/service/hop/service/forward_to_blue/service/api \
     | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
 
   run curl --fail --head 127.0.0.1:7000
