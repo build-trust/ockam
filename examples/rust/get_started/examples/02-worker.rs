@@ -2,18 +2,14 @@
 
 use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
-use ockam::{Context, Mailboxes, Result, WorkerBuilder};
+use ockam::{Context, Result};
 use std::sync::Arc;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Start a worker, of type Echoer, at address "echoer"
-    WorkerBuilder::with_mailboxes(
-        Mailboxes::main("echoer", Arc::new(AllowAll), Arc::new(AllowAll)),
-        Echoer,
-    )
-    .start(&ctx)
-    .await?;
+    ctx.start_worker("echoer", Echoer, Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
 
     // Send a message to the worker at address "echoer". Wait to receive a reply and print it.
     let reply: String = ctx.send_and_receive("echoer", "Hello Ockam!".to_string()).await?;
