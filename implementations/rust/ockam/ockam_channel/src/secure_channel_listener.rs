@@ -1,7 +1,7 @@
 use crate::{SecureChannelDecryptor, SecureChannelNewKeyExchanger, SecureChannelVault};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
-use ockam_core::{async_trait, AllowAll, DenyAll, LocalDestinationOnly, Mailbox, Mailboxes};
+use ockam_core::{async_trait, AllowAll, DenyAll, LocalOnwardOnly, Mailbox, Mailboxes};
 use ockam_core::{Address, Message, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
 use serde::{Deserialize, Serialize};
@@ -103,7 +103,7 @@ impl<V: SecureChannelVault, N: SecureChannelNewKeyExchanger> Worker
             address_internal,
             Arc::new(DenyAll),
             // Prevent exploit of using our node as an authorized proxy
-            Arc::new(LocalDestinationOnly),
+            Arc::new(LocalOnwardOnly),
         );
         WorkerBuilder::with_mailboxes(
             Mailboxes::new(remote_mailbox, vec![internal_mailbox]),

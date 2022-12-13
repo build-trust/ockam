@@ -3,7 +3,7 @@ use core::time::Duration;
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
-    AllowSourceAddress, DenyAll, LocalDestinationOnly,
+    AllowSourceAddress, DenyAll, LocalOnwardOnly,
 };
 use ockam_core::{
     Address, Any, Decodable, Encodable, LocalMessage, Mailbox, Mailboxes, Message, Result, Routed,

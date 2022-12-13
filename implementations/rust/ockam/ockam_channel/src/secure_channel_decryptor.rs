@@ -5,12 +5,12 @@ use crate::{
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::{
-    async_trait, route, AccessControl, AllowDestinationAddress, AllowSourceAddresses, Mailboxes,
+    async_trait, route, AccessControl, AllowOnwardAddress, AllowSourceAddresses, LocalOriginOnly,
+    Mailboxes,
 };
 use ockam_core::{
     Address, Any, Decodable, LocalMessage, Result, Route, Routed, TransportMessage, Worker,
 };
-use ockam_node::access_control::LocalOriginOnly;
 use ockam_node::{Context, WorkerBuilder};
 use tracing::{debug, info};
 
@@ -248,7 +248,7 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelDecryptor
             Mailboxes::main(
                 address_local.clone(),
                 incoming_access_control,
-                Arc::new(AllowDestinationAddress(next_hop)),
+                Arc::new(AllowOnwardAddress(next_hop)),
             ),
             encryptor,
         )

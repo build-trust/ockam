@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
-use ockam::access_control::{AllowDestinationAddress, DenyAll};
+use ockam::access_control::{AllowOnwardAddress, DenyAll};
 use ockam::authenticated_storage::InMemoryStorage;
 use structopt::StructOpt;
 use tokio::fs::File;
@@ -89,7 +89,7 @@ async fn main(ctx: Context) -> Result<()> {
         .new_detached_with_mailboxes(Mailboxes::main(
             "file_sender",
             Arc::new(DenyAll),
-            Arc::new(AllowDestinationAddress(channel.clone())),
+            Arc::new(AllowOnwardAddress(channel.clone())),
         ))
         .await?;
     child_ctx.send(route![channel.clone(), "receiver"], descr).await?;

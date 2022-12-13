@@ -1,7 +1,7 @@
 use crate::{Address, Context, Message, Result, Route};
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{AllowDestinationAddress, DenyAll};
+use ockam_core::{AllowOnwardAddress, DenyAll};
 
 /// Send a delayed event to a worker
 pub(crate) struct DelayedEvent<M: Message> {
@@ -19,7 +19,7 @@ impl<M: Message> DelayedEvent<M> {
             .new_detached(
                 Address::random_tagged("DelayedEvent.child"),
                 Arc::new(DenyAll),
-                Arc::new(AllowDestinationAddress(next)),
+                Arc::new(AllowOnwardAddress(next)),
             )
             .await?;
 

@@ -458,7 +458,7 @@ impl Context {
             Mailbox::new(
                 Address::random_tagged("Context.send_and_receive.detached"),
                 Arc::new(AllowAll), // FIXME: @ac there is no way to ensure that we're receiving response from the worker we sent request to
-                Arc::new(ockam_core::AllowDestinationAddress(
+                Arc::new(ockam_core::AllowOnwardAddress(
                     route.next().unwrap().clone(),
                 )),
             ),

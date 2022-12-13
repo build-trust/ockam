@@ -14,8 +14,8 @@ use ockam_channel::{
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::vault::Signature;
 use ockam_core::{
-    async_trait, AllowAll, AllowDestinationAddress, AllowDestinationAddresses, AllowSourceAddress,
-    DenyAll, LocalDestinationOnly, Mailbox, Mailboxes,
+    async_trait, AllowAll, AllowOnwardAddress, AllowOnwardAddresses, AllowSourceAddress, DenyAll,
+    LocalOnwardOnly, LocalOriginOnly, Mailbox, Mailboxes,
 };
 use ockam_core::{
     route, Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
@@ -23,7 +23,6 @@ use ockam_core::{
 };
 use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::XXNewKeyExchanger;
-use ockam_node::access_control::LocalOriginOnly;
 use ockam_node::{Context, WorkerBuilder};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
@@ -157,7 +156,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             self_address.clone(),
             Arc::new(AllowSourceAddress(regular_decryptor_address_internal)),
             // Prevent exploit of using our node as an authorized proxy
-            Arc::new(LocalDestinationOnly), // FIXME: @ac Also deny to other secure channels
+            Arc::new(LocalOnwardOnly), // FIXME: @ac Also deny to other secure channels
         );
         WorkerBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), worker)
             .start(ctx)
@@ -227,7 +226,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
                     regular_responder_internal_address.clone(),
                 )),
                 // Prevent exploit of using our node as an authorized proxy
-                Arc::new(LocalDestinationOnly),
+                Arc::new(LocalOnwardOnly),
             ),
             vec![Mailbox::new(
                 kex_callback_address.clone(),
@@ -276,7 +275,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             regular_responder_internal_address,
             Arc::new(DenyAll),
             // Only to IdentitySecureChannel decryptor and callback address
-            Arc::new(AllowDestinationAddresses(vec![
+            Arc::new(AllowOnwardAddresses(vec![
                 self_address,
                 kex_callback_address,
             ])),
@@ -420,7 +419,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
                 Mailboxes::main(
                     self.encryptor_address.clone(),
                     Arc::new(LocalOriginOnly),
-                    Arc::new(AllowDestinationAddress(local_regular_encryptor)),
+                    Arc::new(AllowOnwardAddress(local_regular_encryptor)),
                 ),
                 encryptor,
             )
@@ -525,7 +524,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
                 Mailboxes::main(
                     self.encryptor_address.clone(),
                     Arc::new(LocalOriginOnly),
-                    Arc::new(AllowDestinationAddress(local_regular_encryptor)),
+                    Arc::new(AllowOnwardAddress(local_regular_encryptor)),
                 ),
                 encryptor,
             )
