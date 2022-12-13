@@ -3155,7 +3155,7 @@ dependencies = [
  "stm32f4xx-hal",
  "stm32h7xx-hal",
  "tracing",
- "uuid 0.8.2",
+ "uuid 1.2.1",
 ]
 
 [[package]]
