@@ -18,7 +18,7 @@ use crate::{Identity, IdentityVault};
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
-    Address, AllowAll, AsyncTryClone, LocalDestinationOnly, Mailbox, Mailboxes, Result, Route,
+    Address, AllowAll, AsyncTryClone, LocalOnwardOnly, Mailbox, Mailboxes, Result, Route,
 };
 
 impl<V: IdentityVault> Identity<V> {
@@ -35,7 +35,7 @@ impl<V: IdentityVault> Identity<V> {
         let mailbox = Mailbox::new(
             address.into(),
             Arc::new(AllowAll),
-            Arc::new(LocalDestinationOnly), // Only talks to decryptors it creates
+            Arc::new(LocalOnwardOnly), // Only talks to decryptors it creates
         );
         WorkerBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), listener)
             .start(&self.ctx)

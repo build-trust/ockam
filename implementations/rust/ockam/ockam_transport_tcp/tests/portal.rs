@@ -5,8 +5,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
 use ockam_core::compat::rand::random;
-use ockam_core::{route, Result};
-use ockam_node::access_control::LocalOriginOnly;
+use ockam_core::{route, LocalOriginOnly, Result};
 use ockam_node::Context;
 use ockam_transport_tcp::TcpTransport;
 

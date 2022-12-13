@@ -1,10 +1,9 @@
 use crate::{TcpRouterHandle, TcpRouterRequest, TcpRouterResponse, TcpSendWorker, TCP};
 use core::ops::Deref;
-use ockam_core::{async_trait, compat::sync::Arc, LocalDestinationOnly};
+use ockam_core::{async_trait, compat::sync::Arc, LocalOnwardOnly, LocalOriginOnly};
 use ockam_core::{
     Address, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Result, Routed, Worker,
 };
-use ockam_node::access_control::LocalOriginOnly;
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use std::collections::BTreeMap;
@@ -58,7 +57,7 @@ impl TcpRouter {
         let api_mailbox = Mailbox::new(
             api_addr,
             Arc::new(LocalOriginOnly), // TODO: @ac From Routers handles
-            Arc::new(LocalDestinationOnly), // TODO: @ac Only responding to handles
+            Arc::new(LocalOnwardOnly), // TODO: @ac Only responding to handles
         );
         WorkerBuilder::with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]), router)
             .start(ctx)

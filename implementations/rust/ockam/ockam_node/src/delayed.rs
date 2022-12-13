@@ -2,7 +2,7 @@ use crate::Context;
 use core::time::Duration;
 use futures::future::{AbortHandle, Abortable};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, AllowDestinationAddress, DenyAll, Mailboxes, Message, Result};
+use ockam_core::{Address, AllowOnwardAddress, DenyAll, Mailboxes, Message, Result};
 
 /// Allow to send message to destination address periodically after some delay
 /// Only one scheduled heartbeat allowed at a time
@@ -60,7 +60,7 @@ impl<M: Message + Clone> DelayedEvent<M> {
         let mailboxes = Mailboxes::main(
             Address::random_tagged("DelayedEvent.schedule.detached"),
             Arc::new(DenyAll),
-            Arc::new(AllowDestinationAddress(self.destination_addr.clone())),
+            Arc::new(AllowOnwardAddress(self.destination_addr.clone())),
         );
         let child_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
 

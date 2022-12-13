@@ -2,7 +2,7 @@ use crate::{PortalInternalMessage, PortalMessage, TcpPortalRecvProcessor};
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
 use ockam_core::{
-    async_trait, AccessControl, AllowAll, AllowDestinationAddresses, AllowSourceAddress, Decodable,
+    async_trait, AccessControl, AllowAll, AllowOnwardAddresses, AllowSourceAddress, Decodable,
     DenyAll, Mailbox, Mailboxes,
 };
 use ockam_core::{Address, Any, Result, Route, Routed, Worker};
@@ -175,7 +175,7 @@ impl TcpPortalWorker {
             let mailbox = Mailbox::new(
                 self.receiver_address.clone(),
                 Arc::new(DenyAll),
-                Arc::new(AllowDestinationAddresses(vec![
+                Arc::new(AllowOnwardAddresses(vec![
                     next_hop,
                     self.internal_address.clone(),
                 ])), // Only sends messages to `onward_route` and Sender
