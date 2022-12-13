@@ -4,29 +4,55 @@ use crate::{Address, LocalMessage, Route};
 /// wrapped [`LocalMessage`]
 #[derive(Clone, Debug)]
 pub struct RelayMessage {
-    /// The sender address of the wrapped `LocalMessage`
-    pub source: Address,
-    /// The recipient address for the wrapped `LocalMessage`
-    pub destination: Address,
-    /// The wrapped `LocalMessage`
-    pub local_msg: LocalMessage,
-    /// The onward route of the wrapped `LocalMessage`
-    pub onward: Route,
+    source: Address,
+    destination: Address,
+    local_msg: LocalMessage,
 }
 
 impl RelayMessage {
     /// Construct a new message addressed to a user worker
-    pub fn new(
-        origin: Address,
-        destination: Address,
-        local_msg: LocalMessage,
-        onward: Route,
-    ) -> Self {
+    pub fn new(source: Address, destination: Address, local_msg: LocalMessage) -> Self {
         Self {
-            source: origin,
+            source,
             destination,
             local_msg,
-            onward,
         }
+    }
+
+    /// The sender address of the wrapped `LocalMessage`
+    /// Note that this may be different from the first hop in the return_route
+    /// This address is always equal to the address of the `Context` instance used to
+    /// send or forward the message
+    pub fn source(&self) -> &Address {
+        &self.source
+    }
+
+    /// The recipient address for the wrapped `LocalMessage`
+    /// Note that this may be different from the first hop in the onward_route, for example while
+    /// sending a message to an External address (e.g. TCP) first message will be delivered to the
+    /// the TCP Router (and destination address will be the address of the TCP Router), and only
+    /// then to the individual connection worker
+    pub fn destination(&self) -> &Address {
+        &self.destination
+    }
+
+    /// Onward route
+    pub fn onward_route(&self) -> &Route {
+        &self.local_msg.transport().onward_route
+    }
+
+    /// Return route
+    pub fn return_route(&self) -> &Route {
+        &self.local_msg.transport().return_route
+    }
+
+    /// Local message
+    pub fn local_message(&self) -> &LocalMessage {
+        &self.local_msg
+    }
+
+    /// Take local message
+    pub fn into_local_message(self) -> LocalMessage {
+        self.local_msg
     }
 }

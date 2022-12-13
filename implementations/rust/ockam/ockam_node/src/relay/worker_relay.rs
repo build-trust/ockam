@@ -49,16 +49,16 @@ where
     /// 2. Introduce a Clone bound on the Message trait that allows us
     ///    to perform a cheaper clone on the message.
     ///
-    fn wrap_direct_message(relay_msg: &RelayMessage) -> Result<Routed<M>> {
-        let payload = relay_msg.local_msg.transport().payload.as_slice();
+    fn wrap_direct_message(relay_msg: RelayMessage) -> Result<Routed<M>> {
+        let payload = relay_msg.local_message().transport().payload.as_slice();
         let msg = parser::message::<M>(payload).map_err(|e| {
             error!("Failed to decode message payload for worker" /* FIXME */);
             e
         })?;
         let routed = Routed::new(
             msg,
-            relay_msg.destination.clone(),
-            relay_msg.local_msg.clone(),
+            relay_msg.destination().clone(),
+            relay_msg.into_local_message(),
         );
         Ok(routed)
     }
@@ -76,18 +76,8 @@ where
             }
         };
 
-        // Call the worker authorization function - pass errors up
-        let routed = Self::wrap_direct_message(&relay_msg)?;
-        if !self.worker.is_authorized(&mut self.ctx, routed).await? {
-            warn!(
-                "Message for {} did not pass worker relay access control",
-                relay_msg.destination
-            );
-            return Ok(true);
-        }
-
         // Call the worker handle function - pass errors up
-        let routed = Self::wrap_direct_message(&relay_msg)?;
+        let routed = Self::wrap_direct_message(relay_msg)?;
         self.worker.handle_message(&mut self.ctx, routed).await?;
 
         // Signal to the outer loop that we would like to run again

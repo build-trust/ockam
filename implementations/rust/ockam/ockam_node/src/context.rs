@@ -118,8 +118,8 @@ impl Context {
             if !self.mailboxes.is_incoming_authorized(&relay_msg).await? {
                 warn!(
                     "Message received from {} for {} did not pass incoming access control",
-                    relay_msg.local_msg.transport().return_route,
-                    relay_msg.destination
+                    relay_msg.return_route(),
+                    relay_msg.destination()
                 );
                 continue;
             }
@@ -612,7 +612,7 @@ impl Context {
 
         // Pack the payload into a TransportMessage
         let payload = msg.encode().unwrap();
-        let mut transport_msg = TransportMessage::v1(route.clone(), Route::new(), payload);
+        let mut transport_msg = TransportMessage::v1(route, Route::new(), payload);
         transport_msg
             .return_route
             .modify()
@@ -622,16 +622,15 @@ impl Context {
         let local_msg = LocalMessage::new(transport_msg, local_info);
 
         // Pack local message into a RelayMessage wrapper
-        let relay_msg = RelayMessage::new(sending_address.clone(), addr, local_msg, route);
+        let relay_msg = RelayMessage::new(sending_address.clone(), addr, local_msg);
 
         debugger::log_outgoing_message(self, &relay_msg);
 
-        // TODO: @ac check if the sender_address is allowed to send the message
-        //      to the next hop in the route
         if !self.mailboxes.is_outgoing_authorized(&relay_msg).await? {
             warn!(
                 "Message sent from {} to {} did not pass outgoing access control",
-                relay_msg.source, relay_msg.destination
+                relay_msg.source(),
+                relay_msg.destination()
             );
             return Ok(());
         }
@@ -708,8 +707,7 @@ impl Context {
             .take_sender()?;
 
         // Pack the transport message into a RelayMessage wrapper
-        let onward = local_msg.transport().onward_route.clone();
-        let relay_msg = RelayMessage::new(sending_address, addr, local_msg, onward);
+        let relay_msg = RelayMessage::new(sending_address, addr, local_msg);
 
         debugger::log_outgoing_message(self, &relay_msg);
 
@@ -718,7 +716,8 @@ impl Context {
         if !self.mailboxes.is_outgoing_authorized(&relay_msg).await? {
             warn!(
                 "Message forwarded from {} to {} did not pass outgoing access control",
-                relay_msg.source, relay_msg.destination,
+                relay_msg.source(),
+                relay_msg.destination(),
             );
             return Ok(());
         }
@@ -901,8 +900,8 @@ impl Context {
                 .receiver_next()
                 .await?
                 .ok_or_else(|| NodeError::Data.not_found())?;
-            let addr = msg.destination;
-            let local_msg = msg.local_msg;
+            let addr = msg.destination().clone();
+            let local_msg = msg.into_local_message();
 
             // FIXME: make message parsing idempotent to avoid cloning
             match parser::message(&local_msg.transport().payload).ok() {
