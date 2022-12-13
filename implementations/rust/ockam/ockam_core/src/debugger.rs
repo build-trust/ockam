@@ -13,8 +13,8 @@ pub fn log_incoming_access_control(_mailbox: &Mailbox, _relay_msg: &RelayMessage
             "log_incoming_access_control #{:03}: {:?} for {} -> {}",
             COUNTER.fetch_add(1, Ordering::Relaxed),
             _mailbox.incoming_access_control(),
-            &_relay_msg.source,
-            &_relay_msg.destination
+            _relay_msg.source(),
+            _relay_msg.destination()
         );
     }
 }
@@ -29,8 +29,8 @@ pub fn log_outgoing_access_control(_mailbox: &Mailbox, _relay_msg: &RelayMessage
             "log_outgoing_access_control #{:03}: {:?} for {} -> {}",
             COUNTER.fetch_add(1, Ordering::Relaxed),
             _mailbox.outgoing_access_control(),
-            &_relay_msg.source,
-            &_relay_msg.destination
+            _relay_msg.source(),
+            _relay_msg.destination()
         );
     }
 }

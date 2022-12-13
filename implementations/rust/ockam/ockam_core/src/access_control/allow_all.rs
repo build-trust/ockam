@@ -30,7 +30,6 @@ mod tests {
                 Address::random_local(),
                 Address::random_local(),
                 local_message,
-                route![],
             );
             AllowAll.is_authorized(&relay_message).await
         });

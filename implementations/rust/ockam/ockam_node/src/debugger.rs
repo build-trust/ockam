@@ -88,15 +88,15 @@ pub fn log_incoming_message(_receiving_ctx: &Context, _relay_msg: &RelayMessage)
         tracing::debug!(
             "log_incoming_message #{:03}: {} -> {} ({})",
             COUNTER.fetch_add(1, Ordering::Relaxed),
-            _relay_msg.source,        // sending address
-            _relay_msg.destination,   // receiving address
+            _relay_msg.source(),      // sending address
+            _relay_msg.destination(), // receiving address
             _receiving_ctx.address(), // actual receiving context address
         );
 
         match instance().incoming.write() {
             Ok(mut incoming) => {
-                let source = _relay_msg.source.clone();
-                let destination = _relay_msg.destination.clone();
+                let source = _relay_msg.source().clone();
+                let destination = _relay_msg.destination().clone();
                 incoming
                     .entry(destination)
                     .or_insert_with(Vec::new)
@@ -110,8 +110,8 @@ pub fn log_incoming_message(_receiving_ctx: &Context, _relay_msg: &RelayMessage)
 
         match instance().incoming_mb.write() {
             Ok(mut incoming_mb) => {
-                let source = _relay_msg.source.clone();
-                let destination = _relay_msg.destination.clone();
+                let source = _relay_msg.source().clone();
+                let destination = _relay_msg.destination().clone();
                 if let Some(destination_mb) = _receiving_ctx.mailboxes().find_mailbox(&destination)
                 {
                     incoming_mb
@@ -137,15 +137,15 @@ pub fn log_outgoing_message(_sending_ctx: &Context, _relay_msg: &RelayMessage) {
         tracing::debug!(
             "log_outgoing_message #{:03}: {} ({}) -> {}",
             COUNTER.fetch_add(1, Ordering::Relaxed),
-            _relay_msg.source,      // sending address
-            _sending_ctx.address(), // actual sending context address
-            _relay_msg.destination, // receiving address
+            _relay_msg.source(),      // sending address
+            _sending_ctx.address(),   // actual sending context address
+            _relay_msg.destination(), // receiving address
         );
 
         match instance().outgoing.write() {
             Ok(mut outgoing) => {
-                let source = _relay_msg.source.clone();
-                let destination = _relay_msg.destination.clone();
+                let source = _relay_msg.source().clone();
+                let destination = _relay_msg.destination().clone();
                 outgoing
                     .entry(source)
                     .or_insert_with(Vec::new)

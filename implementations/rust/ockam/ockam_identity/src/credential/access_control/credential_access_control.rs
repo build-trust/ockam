@@ -36,7 +36,7 @@ impl<S: AuthenticatedStorage> Debug for CredentialAccessControl<S> {
 impl<S: AuthenticatedStorage> AccessControl for CredentialAccessControl<S> {
     async fn is_authorized(&self, relay_message: &RelayMessage) -> Result<bool> {
         if let Ok(msg_identity_id) =
-            IdentitySecureChannelLocalInfo::find_info(&relay_message.local_msg)
+            IdentitySecureChannelLocalInfo::find_info(relay_message.local_message())
         {
             let attributes = match AttributesStorageUtils::get_attributes(
                 msg_identity_id.their_identity_id(),

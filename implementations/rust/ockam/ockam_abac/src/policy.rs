@@ -81,7 +81,7 @@ where
         };
 
         // Get identity identifier from message metadata:
-        let id = if let Ok(info) = IdentitySecureChannelLocalInfo::find_info(&msg.local_msg) {
+        let id = if let Ok(info) = IdentitySecureChannelLocalInfo::find_info(msg.local_message()) {
             info.their_identity_id().clone()
         } else {
             log::debug! {

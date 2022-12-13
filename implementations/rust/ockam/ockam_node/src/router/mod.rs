@@ -50,13 +50,13 @@ pub struct Router {
 }
 
 enum RouteType {
-    Internal(Address),
+    Internal,
     External(TransportType),
 }
 
 fn determine_type(next: &Address) -> RouteType {
     if next.transport_type().is_local() {
-        RouteType::Internal(next.clone())
+        RouteType::Internal
     } else {
         RouteType::External(next.transport_type())
     }
@@ -282,7 +282,7 @@ impl Router {
 
             // Handle route/ sender requests
             SenderReq(ref addr, ref reply) => match determine_type(addr) {
-                RouteType::Internal(ref addr) => utils::resolve(self, addr, reply).await?,
+                RouteType::Internal => utils::resolve(self, addr, reply).await?,
                 RouteType::External(tt) => {
                     let addr = utils::router_addr(self, tt)?;
                     utils::resolve(self, &addr, reply).await?

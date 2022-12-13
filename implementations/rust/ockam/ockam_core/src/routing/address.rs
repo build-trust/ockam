@@ -165,14 +165,15 @@ impl Mailboxes {
     /// the given [`RelayMessage`] to these `Mailboxes`
     /// TODO docs are confusing
     pub async fn is_incoming_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
-        if let Some(mailbox) = self.find_mailbox(&relay_msg.destination) {
+        if let Some(mailbox) = self.find_mailbox(relay_msg.destination()) {
             debugger::log_incoming_access_control(mailbox, relay_msg);
 
             mailbox.incoming.is_authorized(relay_msg).await
         } else {
             warn!(
                 "Message from {} for {} does not match any addresses for this destination",
-                &relay_msg.source, &relay_msg.destination
+                relay_msg.source(),
+                relay_msg.destination()
             );
             crate::deny()
         }
@@ -182,14 +183,15 @@ impl Mailboxes {
     /// given [`RelayMessage`] to the given [`Address`]
     /// TODO docs are confusing
     pub async fn is_outgoing_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
-        if let Some(mailbox) = self.find_mailbox(&relay_msg.source) {
+        if let Some(mailbox) = self.find_mailbox(relay_msg.source()) {
             debugger::log_outgoing_access_control(mailbox, relay_msg);
 
             mailbox.outgoing.is_authorized(relay_msg).await
         } else {
             warn!(
                 "Message from {} for {} does not match any addresses for this origin",
-                &relay_msg.source, &relay_msg.destination
+                relay_msg.source(),
+                relay_msg.destination()
             );
             crate::deny()
         }
