@@ -2,7 +2,7 @@
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
-use ockam::access_control::DenyAll;
+use ockam::access_control::AllowAll;
 use ockam::{Context, Result};
 use ockam_transport_udp::UdpTransport;
 use std::sync::Arc;
@@ -13,10 +13,12 @@ async fn main(ctx: Context) -> Result<()> {
     let udp = UdpTransport::create(&ctx).await?;
 
     // Create a UDP listener and wait for incoming datagrams.
-    udp.listen("127.0.0.1:4000").await?;
+    // Use port 4000, unless otherwise specified by command line argument.
+    let port = std::env::args().nth(1).unwrap_or_else(|| "4000".to_string());
+    udp.listen(format!("127.0.0.1:{port}")).await?;
 
     // Create an echoer worker
-    ctx.start_worker("echoer", Echoer, Arc::new(DenyAll), Arc::new(DenyAll))
+    ctx.start_worker("echoer", Echoer, Arc::new(AllowAll), Arc::new(AllowAll))
         .await?;
 
     // Don't call ctx.stop() here so this node runs forever.

@@ -8,7 +8,7 @@ use ockam::{
     identity::{Identity, TrustEveryonePolicy},
     remote::RemoteForwarder,
     vault::Vault,
-    Context, Error, Mailboxes, Result, Routed, TcpTransport, Worker, WorkerBuilder, TCP,
+    Context, Error, Result, Routed, TcpTransport, Worker, TCP,
 };
 use std::sync::Arc;
 use tokio::fs::OpenOptions;
@@ -116,11 +116,12 @@ async fn main(ctx: Context) -> Result<()> {
     println!("{}", forwarder.remote_address());
 
     // Start a worker, of type FileReception, at address "receiver".
-    WorkerBuilder::with_mailboxes(
-        Mailboxes::main("receiver", Arc::new(AllowAll), Arc::new(AllowAll)),
+    ctx.start_worker(
+        "receiver",
         FileReception::default(),
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
     )
-    .start(&ctx)
     .await?;
 
     // We won't call ctx.stop() here, this program will quit when the file will be entirely received

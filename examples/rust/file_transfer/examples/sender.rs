@@ -5,7 +5,7 @@ use ockam::{
     identity::{Identity, TrustEveryonePolicy},
     route,
     vault::Vault,
-    Context, Mailboxes,
+    Context,
 };
 use ockam::{TcpTransport, TCP};
 
@@ -86,11 +86,11 @@ async fn main(ctx: Context) -> Result<()> {
     });
 
     let child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
+        .new_detached(
             "file_sender",
             Arc::new(DenyAll),
             Arc::new(AllowOnwardAddress(channel.clone())),
-        ))
+        )
         .await?;
     child_ctx.send(route![channel.clone(), "receiver"], descr).await?;
 
