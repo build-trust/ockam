@@ -32,7 +32,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
     if cmd.all {
         delete_all_nodes(opts, cmd.force)?;
     } else {
-        delete_node(&opts, &cmd.node_name, cmd.force);
+        delete_node(&opts, &cmd.node_name, cmd.force)?;
         println!("Deleted node '{}'", &cmd.node_name);
     }
     Ok(())
