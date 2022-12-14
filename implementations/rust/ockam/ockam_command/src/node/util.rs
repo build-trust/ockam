@@ -4,7 +4,6 @@ use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::Path;
 use std::process::Command;
-use tracing::trace;
 
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpTransport};
@@ -155,20 +154,18 @@ pub(super) async fn add_project_authority(
 }
 
 pub async fn delete_embedded_node(opts: &CommandGlobalOpts, name: &str) {
-    delete_node(opts, name, false)
+    let _ = delete_node(opts, name, false);
 }
 
-pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) {
-    if let Ok(s) = opts.state.nodes.get(name) {
-        trace!(%name, "Deleting node");
-        let _ = s.delete(force);
-    }
+pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> anyhow::Result<()> {
+    opts.state.nodes.delete(name, force)?;
+    Ok(())
 }
 
 pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> anyhow::Result<()> {
     let nodes_states = opts.state.nodes.list()?;
     for s in nodes_states {
-        let _ = s.delete(force);
+        opts.state.nodes.delete(&s.config.name, force)?;
     }
     Ok(())
 }

@@ -168,7 +168,7 @@ async fn run_impl(
         rpc.request(api::credentials::get_credential(false)).await?;
         if rpc.parse_and_print_response::<Credential>().is_err() {
             eprintln!("failed to fetch membership credential");
-            delete_node(&opts, node_name, true);
+            delete_node(&opts, node_name, true)?;
         }
     }
 
@@ -270,7 +270,7 @@ async fn run_foreground_node(
             }
             Ok(_) | Err(_) => {
                 eprintln!("failed to fetch membership credential");
-                delete_node(&opts, &cmd.node_name, true);
+                delete_node(&opts, &cmd.node_name, true)?;
             }
         }
     }

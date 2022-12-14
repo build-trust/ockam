@@ -1,7 +1,6 @@
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use ockam_identity::{Identity, IdentityIdentifier};
-use ockam_vault::KeyId;
 use ockam_vault::{storage::FileStorage, Vault};
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -9,9 +8,7 @@ use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
-use tempfile::{tempdir, Builder};
 use thiserror::Error;
-use tracing::field::debug;
 
 type Result<T> = std::result::Result<T, CliStateError>;
 
@@ -46,7 +43,7 @@ impl From<CliStateError> for ockam_core::Error {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CliState {
     pub vaults: VaultsState,
     pub identities: IdentitiesState,
@@ -98,7 +95,7 @@ impl CliState {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct VaultsState {
     dir: PathBuf,
 }
@@ -164,11 +161,7 @@ impl VaultsState {
         };
         let link = self.default_path()?;
         std::os::unix::fs::symlink(&original, &link)?;
-        let contents = std::fs::read_to_string(&original)?;
-        Ok(VaultState {
-            path: original,
-            config: serde_json::from_str(&contents)?,
-        })
+        self.get(name)
     }
 }
 
@@ -228,7 +221,7 @@ impl VaultConfig {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IdentitiesState {
     dir: PathBuf,
 }
@@ -293,12 +286,7 @@ impl IdentitiesState {
         };
         let link = self.default_path()?;
         std::os::unix::fs::symlink(&original, &link)?;
-        let contents = std::fs::read_to_string(&original)?;
-        let config = serde_json::from_str(&contents)?;
-        Ok(IdentityState {
-            path: original,
-            config,
-        })
+        self.get(name)
     }
 }
 
@@ -340,7 +328,7 @@ impl PartialEq for IdentityConfig {
 
 impl Eq for IdentityConfig {}
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NodesState {
     pub dir: PathBuf,
 }
@@ -350,6 +338,30 @@ impl NodesState {
         let dir = cli_path.join("nodes");
         std::fs::create_dir_all(&dir)?;
         Ok(Self { dir })
+    }
+
+    pub fn default_path(&self) -> Result<PathBuf> {
+        Ok(CliState::defaults_dir()?.join("node"))
+    }
+
+    pub fn default(&self) -> Result<NodeState> {
+        let path = std::fs::canonicalize(&self.default_path()?)?;
+        let name = file_stem(&path)?;
+        self.get(&name)
+    }
+
+    pub fn set_default(&self, name: &str) -> Result<NodeState> {
+        let original = {
+            let mut path = self.dir.clone();
+            path.push(name);
+            if !path.exists() {
+                return Err(CliStateError::NotFound(format!("node `{name}`")));
+            }
+            path
+        };
+        let link = self.default_path()?;
+        std::os::unix::fs::symlink(&original, &link)?;
+        self.get(name)
     }
 
     pub fn create(&self, name: &str, mut config: NodeConfig) -> Result<NodeState> {
@@ -374,6 +386,9 @@ impl NodesState {
             &state.config.default_identity,
             state.path.join("default_identity"),
         )?;
+        if !self.default_path()?.exists() {
+            self.set_default(name)?;
+        }
         Ok(state)
     }
 
@@ -405,6 +420,32 @@ impl NodesState {
         };
         let config = NodeConfig::try_from(&path)?;
         Ok(NodeState::new(path, config))
+    }
+
+    pub fn delete(&self, name: &str, sigkill: bool) -> Result<()> {
+        // Retrieve node. If doesn't exist do nothing.
+        let node = match self.get(name) {
+            Ok(node) => node,
+            Err(CliStateError::NotFound(_)) => return Ok(()),
+            Err(e) => return Err(e),
+        };
+
+        // Set default to another node if it's the default
+        if let Ok(default) = self.default() {
+            if default.path == node.path {
+                let _ = std::fs::remove_file(&self.default_path()?);
+                let mut nodes = self.list()?;
+                nodes.retain(|n| n.path != node.path);
+                if let Some(node) = nodes.first() {
+                    self.set_default(&node.config.name)?;
+                }
+            }
+        }
+
+        // Remove node directory
+        node.delete(sigkill)?;
+
+        Ok(())
     }
 
     fn vault_name(&self, name: &str) -> Result<String> {
@@ -503,7 +544,7 @@ impl NodeState {
         Ok(())
     }
 
-    pub fn delete(&self, sigkill: bool) -> Result<()> {
+    fn delete(&self, sigkill: bool) -> Result<()> {
         self.kill_process(sigkill)?;
         std::fs::remove_dir_all(&self.path)?;
         Ok(())
@@ -710,7 +751,7 @@ mod tests {
 
             let path = VaultConfig::fs_path(&name, None)?;
             let vault_storage = FileStorage::create(path.clone()).await?;
-            let vault = Vault::new(Some(Arc::new(vault_storage)));
+            Vault::new(Some(Arc::new(vault_storage)));
 
             let config = VaultConfig::fs_default(&name, false)?;
 
@@ -730,8 +771,6 @@ mod tests {
             let vault_config = sut.vaults.get(&vault_name).unwrap().config;
             let vault = vault_config.get().await.unwrap();
             let identity = Identity::create(ctx, &vault).await.unwrap();
-            let identifier =
-                IdentityIdentifier::from_key_id(&hex::encode(rand::random::<[u8; 32]>()));
             let config = IdentityConfig::new(&identity).await;
 
             let state = sut.identities.create(&name, config).unwrap();
@@ -753,6 +792,9 @@ mod tests {
             let got = sut.nodes.get(&name).unwrap();
             assert_eq!(got, state);
 
+            let got = sut.nodes.default().unwrap();
+            assert_eq!(got, state);
+
             name
         };
 
@@ -769,6 +811,7 @@ mod tests {
             "defaults".to_string(),
             "defaults/vault".to_string(),
             "defaults/identity".to_string(),
+            "defaults/node".to_string(),
         ];
         expected_entries.sort();
         let mut found_entries = vec![];
@@ -824,8 +867,8 @@ mod tests {
                     found_entries.push(dir_name.clone());
                     entry.path().read_dir().unwrap().for_each(|entry| {
                         let entry = entry.unwrap();
-                        let file_name = entry.file_name().into_string().unwrap();
-                        found_entries.push(format!("{dir_name}/{file_name}"));
+                        let entry_name = entry.file_name().into_string().unwrap();
+                        found_entries.push(format!("{dir_name}/{entry_name}"));
                     });
                 }
                 _ => panic!("unexpected file"),
