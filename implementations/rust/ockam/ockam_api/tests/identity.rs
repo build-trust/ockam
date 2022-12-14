@@ -4,7 +4,7 @@ use ockam_api::identity::IdentityService;
 use ockam_core::api::{Request, Response, Status};
 use ockam_core::compat::rand::random;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{route, AsyncTryClone, Error, LocalOriginOnly, Result};
+use ockam_core::{route, AsyncTryClone, Error, LocalSourceOnly, Result};
 use ockam_identity::change_history::IdentityHistoryComparison;
 use ockam_node::Context;
 use ockam_vault::Vault;
@@ -161,15 +161,15 @@ async fn full_flow(ctx: &mut Context) -> Result<()> {
     ctx.start_worker(
         "1",
         IdentityService::new(ctx, vault1.async_try_clone().await?).await?,
-        Arc::new(LocalOriginOnly),
-        Arc::new(LocalOriginOnly),
+        Arc::new(LocalSourceOnly),
+        Arc::new(LocalSourceOnly),
     )
     .await?;
     ctx.start_worker(
         "2",
         IdentityService::new(ctx, vault2.async_try_clone().await?).await?,
-        Arc::new(LocalOriginOnly),
-        Arc::new(LocalOriginOnly),
+        Arc::new(LocalSourceOnly),
+        Arc::new(LocalSourceOnly),
     )
     .await?;
 

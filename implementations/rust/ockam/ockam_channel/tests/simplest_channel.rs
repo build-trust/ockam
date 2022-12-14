@@ -2,7 +2,7 @@ use ockam_channel::SecureChannel;
 use ockam_core::compat::string::{String, ToString};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
-    route, AsyncTryClone, LocalOnwardOnly, LocalOriginOnly, Mailboxes, Result, Routed, Worker,
+    route, AsyncTryClone, LocalOnwardOnly, LocalSourceOnly, Mailboxes, Result, Routed, Worker,
 };
 use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::XXNewKeyExchanger;
@@ -26,7 +26,7 @@ async fn simplest_channel(ctx: &mut Context) -> Result<()> {
     WorkerBuilder::with_mailboxes(
         Mailboxes::main(
             "echoer",
-            Arc::new(LocalOriginOnly),
+            Arc::new(LocalSourceOnly),
             Arc::new(LocalOnwardOnly),
         ),
         Echoer,
