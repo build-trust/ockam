@@ -21,13 +21,11 @@ impl AccessControl for LocalOnwardOnly {
 
 /// Allows only messages that originate from this node
 #[derive(Debug)]
-pub struct LocalOriginOnly;
+pub struct LocalSourceOnly;
 
 #[async_trait]
-impl AccessControl for LocalOriginOnly {
+impl AccessControl for LocalSourceOnly {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
-        // Check if next hop is equal to expected value. Further hops are not checked
-        // FIXME: @ac
         if relay_msg.source().transport_type() != LOCAL {
             return crate::deny();
         }

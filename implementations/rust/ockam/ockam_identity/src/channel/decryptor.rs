@@ -15,7 +15,7 @@ use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::vault::Signature;
 use ockam_core::{
     async_trait, AllowAll, AllowOnwardAddress, AllowOnwardAddresses, AllowSourceAddress, DenyAll,
-    LocalOnwardOnly, LocalOriginOnly, Mailbox, Mailboxes,
+    LocalOnwardOnly, LocalSourceOnly, Mailbox, Mailboxes,
 };
 use ockam_core::{
     route, Address, Any, Decodable, Encodable, LocalMessage, Message, Result, Route, Routed,
@@ -418,7 +418,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             WorkerBuilder::with_mailboxes(
                 Mailboxes::main(
                     self.encryptor_address.clone(),
-                    Arc::new(LocalOriginOnly),
+                    Arc::new(LocalSourceOnly),
                     Arc::new(AllowOnwardAddress(local_regular_encryptor)),
                 ),
                 encryptor,
@@ -523,7 +523,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             WorkerBuilder::with_mailboxes(
                 Mailboxes::main(
                     self.encryptor_address.clone(),
-                    Arc::new(LocalOriginOnly),
+                    Arc::new(LocalSourceOnly),
                     Arc::new(AllowOnwardAddress(local_regular_encryptor)),
                 ),
                 encryptor,
