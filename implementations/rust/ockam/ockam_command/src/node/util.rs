@@ -98,7 +98,7 @@ pub(super) async fn init_node_state(
         v
     } else {
         let n = hex::encode(random::<[u8; 4]>());
-        let c = cli_state::VaultConfig::fs_default(&n, false)?;
+        let c = cli_state::VaultConfig::from_name(&n)?;
         opts.state.vaults.create(&n, c).await?
     };
 

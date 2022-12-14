@@ -172,52 +172,46 @@ pub struct VaultState {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
-#[serde(untagged)]
-pub enum VaultConfig {
-    Fs {
-        path: PathBuf,
+pub struct VaultConfig {
+    path: PathBuf,
 
-        #[serde(default)]
-        aws_kms: bool,
-    },
+    #[serde(default)]
+    aws_kms: bool,
 }
 
 impl VaultConfig {
-    pub fn fs(path: PathBuf, aws_kms: bool) -> Result<Self> {
-        Ok(Self::Fs { path, aws_kms })
+    pub fn new(path: PathBuf, aws_kms: bool) -> Result<Self> {
+        Ok(Self { path, aws_kms })
     }
 
-    pub fn fs_default(name: &str, aws_kms: bool) -> Result<Self> {
-        Ok(Self::Fs {
-            path: Self::fs_path(name, None)?,
-            aws_kms,
+    pub fn from_name(name: &str) -> Result<Self> {
+        Ok(Self {
+            path: Self::path(name)?,
+            aws_kms: false,
         })
     }
 
     pub async fn get(&self) -> Result<Vault> {
-        match &self {
-            VaultConfig::Fs { path, aws_kms } => {
-                let vault_storage = FileStorage::create(path.clone()).await?;
-                let mut vault = Vault::new(Some(Arc::new(vault_storage)));
-                if *aws_kms {
-                    vault.enable_aws_kms().await?
-                }
-                Ok(vault)
-            }
+        let vault_storage = FileStorage::create(self.path.clone()).await?;
+        let mut vault = Vault::new(Some(Arc::new(vault_storage)));
+        if self.aws_kms {
+            vault.enable_aws_kms().await?
         }
+        Ok(vault)
     }
 
-    pub fn fs_path(name: &str, path: impl Into<Option<String>>) -> Result<PathBuf> {
-        Ok(if let Some(path) = path.into() {
-            PathBuf::from(path)
-        } else {
-            let state = CliState::new()?;
-            state
-                .vaults
-                .dir
-                .join("data")
-                .join(format!("{name}-storage.json"))
-        })
+    pub fn path(name: &str) -> Result<PathBuf> {
+        let state = CliState::new()?;
+        let path = state
+            .vaults
+            .dir
+            .join("data")
+            .join(format!("{name}-storage.json"));
+        Ok(path)
+    }
+
+    pub fn is_aws(&self) -> bool {
+        self.aws_kms
     }
 }
 
@@ -749,11 +743,11 @@ mod tests {
         let vault_name = {
             let name = hex::encode(rand::random::<[u8; 4]>());
 
-            let path = VaultConfig::fs_path(&name, None)?;
+            let path = VaultConfig::path(&name)?;
             let vault_storage = FileStorage::create(path.clone()).await?;
             Vault::new(Some(Arc::new(vault_storage)));
 
-            let config = VaultConfig::fs_default(&name, false)?;
+            let config = VaultConfig::from_name(&name)?;
 
             let state = sut.vaults.create(&name, config).await.unwrap();
             let got = sut.vaults.get(&name).unwrap();
