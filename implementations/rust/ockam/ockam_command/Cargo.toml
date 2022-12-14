@@ -58,7 +58,7 @@ clap = { version = "4.0.11", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.0.6"
 clap_mangen = "0.2.4"
 cli-table = "0.4"
-const-str = "0.4.3"
+const-str = "0.5.3"
 crossbeam-channel = "0.5"
 dialoguer = "0.10"
 directories = "4"
