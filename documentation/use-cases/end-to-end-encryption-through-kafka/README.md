@@ -177,6 +177,7 @@ Create a file at `examples/ockam_kafka_bob.rs` and copy the below code snippet t
 
 ```rust
 // examples/ockam_kafka_bob.rs
+use ockam::access_control::AllowAll;
 use ockam::{
     authenticated_storage::InMemoryStorage,
     identity::{Identity, TrustEveryonePolicy},
@@ -185,6 +186,7 @@ use ockam::{
     vault::Vault,
     Context, Result, Routed, TcpTransport, Worker, TCP,
 };
+use std::sync::Arc;
 
 struct Echoer;
 
@@ -252,7 +254,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Start a worker, of type Echoer, at address "echoer".
     // This worker will echo back every message it receives, along its return route.
-    ctx.start_worker("echoer", Echoer).await?;
+    ctx.start_worker("echoer", Echoer, Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
 
     // We won't call ctx.stop() here, this program will run until you stop it with Ctrl-C
     Ok(())
@@ -278,7 +281,7 @@ use ockam::{
 use std::io;
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     TcpTransport::create(&ctx).await?;
 
@@ -338,11 +341,12 @@ async fn main(mut ctx: Context) -> Result<()> {
         io::stdin().read_line(&mut message).expect("Error reading from stdin.");
         let message = message.trim();
 
-        // Send the provided message, through the channel, to Bob's echoer.
-        ctx.send(route![channel.clone(), "echoer"], message.to_string()).await?;
-
+        // Send the provided message, through the channel, to Bob's echoer
         // Wait to receive an echo and print it.
-        let reply = ctx.receive::<String>().await?;
+        let reply: String = ctx
+            .send_and_receive(route![channel.clone(), "echoer"], message.to_string())
+            .await?;
+
         println!("Alice received an echo: {}\n", reply); // should print "Hello Ockam!"
     }
 

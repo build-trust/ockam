@@ -43,7 +43,9 @@ Add the following code to this file:
 ```rust
 // examples/10-secure-channel-via-streams-responder.rs
 use hello_ockam::Echoer;
+use ockam::access_control::AllowAll;
 use ockam::{channel::SecureChannel, route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
+use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -72,7 +74,8 @@ async fn main(ctx: Context) -> Result<()> {
         .await?;
 
     // Start an echoer worker
-    ctx.start_worker("echoer", Echoer).await?;
+    ctx.start_worker("echoer", Echoer, Arc::new(AllowAll), Arc::new(AllowAll))
+        .await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())
