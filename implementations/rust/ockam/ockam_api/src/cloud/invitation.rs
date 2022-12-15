@@ -288,7 +288,7 @@ mod tests {
 
         quickcheck! {
             fn invitation(o: In) -> TestResult {
-                let cbor = minicbor::to_vec(&o.0).unwrap();
+                let cbor = minicbor::to_vec(o.0).unwrap();
                 if let Err(e) = validate_cbor_bytes("invitation", SCHEMA, &cbor) {
                     return TestResult::error(e.to_string())
                 }
@@ -312,7 +312,7 @@ mod tests {
             }
 
             fn create_invitation(o: CIn) -> TestResult {
-                let cbor = minicbor::to_vec(&o.0).unwrap();
+                let cbor = minicbor::to_vec(o.0).unwrap();
                 if let Err(e) = validate_cbor_bytes("create_invitation", SCHEMA, &cbor) {
                     return TestResult::error(e.to_string())
                 }

@@ -207,8 +207,8 @@ impl NodeManagerWorker {
         Response::ok(req.id()).body(
             registry
                 .secure_channel_listeners
-                .iter()
-                .map(|(addr, _)| addr.to_string())
+                .keys()
+                .map(|addr| addr.to_string())
                 .collect(),
         )
     }

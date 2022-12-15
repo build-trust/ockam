@@ -110,7 +110,7 @@ impl<V: ConfigValues> Config<V> {
 }
 
 pub fn build_config_path(config_dir: &Path, config_name: &str) -> PathBuf {
-    config_dir.join(&build_config_file_name(config_name))
+    config_dir.join(build_config_file_name(config_name))
 }
 
 fn build_config_file_name(config_name: &str) -> String {

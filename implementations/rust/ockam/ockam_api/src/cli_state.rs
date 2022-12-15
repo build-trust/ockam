@@ -144,7 +144,7 @@ impl VaultsState {
     }
 
     pub fn default(&self) -> Result<VaultState> {
-        let path = std::fs::canonicalize(&self.default_path()?)?;
+        let path = std::fs::canonicalize(self.default_path()?)?;
         let contents = std::fs::read_to_string(&path)?;
         let config = serde_json::from_str(&contents)?;
         Ok(VaultState { path, config })
@@ -160,7 +160,7 @@ impl VaultsState {
             path
         };
         let link = self.default_path()?;
-        std::os::unix::fs::symlink(&original, &link)?;
+        std::os::unix::fs::symlink(original, link)?;
         self.get(name)
     }
 }
@@ -269,7 +269,7 @@ impl IdentitiesState {
     }
 
     pub fn default(&self) -> Result<IdentityState> {
-        let path = std::fs::canonicalize(&self.default_path()?)?;
+        let path = std::fs::canonicalize(self.default_path()?)?;
         let contents = std::fs::read_to_string(&path)?;
         let config = serde_json::from_str(&contents)?;
         Ok(IdentityState { path, config })
@@ -285,7 +285,7 @@ impl IdentitiesState {
             path
         };
         let link = self.default_path()?;
-        std::os::unix::fs::symlink(&original, &link)?;
+        std::os::unix::fs::symlink(original, link)?;
         self.get(name)
     }
 }
@@ -345,7 +345,7 @@ impl NodesState {
     }
 
     pub fn default(&self) -> Result<NodeState> {
-        let path = std::fs::canonicalize(&self.default_path()?)?;
+        let path = std::fs::canonicalize(self.default_path()?)?;
         let name = file_stem(&path)?;
         self.get(&name)
     }
@@ -360,7 +360,7 @@ impl NodesState {
             path
         };
         let link = self.default_path()?;
-        std::os::unix::fs::symlink(&original, &link)?;
+        std::os::unix::fs::symlink(original, link)?;
         self.get(name)
     }
 
@@ -433,7 +433,7 @@ impl NodesState {
         // Set default to another node if it's the default
         if let Ok(default) = self.default() {
             if default.path == node.path {
-                let _ = std::fs::remove_file(&self.default_path()?);
+                let _ = std::fs::remove_file(self.default_path()?);
                 let mut nodes = self.list()?;
                 nodes.retain(|n| n.path != node.path);
                 if let Some(node) = nodes.first() {
@@ -486,7 +486,7 @@ impl NodeState {
 
     pub fn set_setup(&self, setup: &NodeSetupConfig) -> Result<()> {
         let contents = serde_json::to_string(setup)?;
-        std::fs::write(&self.path.join("setup.json"), contents)?;
+        std::fs::write(self.path.join("setup.json"), contents)?;
         Ok(())
     }
 
@@ -563,7 +563,7 @@ pub struct NodeConfig {
 }
 
 impl NodeConfig {
-    pub fn default() -> Result<Self> {
+    pub fn try_default() -> Result<Self> {
         let cli_state = CliState::new()?;
         Ok(Self {
             name: random_name(),
@@ -644,7 +644,7 @@ impl NodeConfigBuilder {
         Ok(NodeConfig {
             default_vault: vault,
             default_identity: identity,
-            ..NodeConfig::default()?
+            ..NodeConfig::try_default()?
         })
     }
 }
@@ -786,7 +786,7 @@ mod tests {
         // Nodes
         let node_name = {
             let name = hex::encode(rand::random::<[u8; 4]>());
-            let config = NodeConfig::default().unwrap();
+            let config = NodeConfig::try_default().unwrap();
 
             let state = sut.nodes.create(&name, config).unwrap();
             let got = sut.nodes.get(&name).unwrap();

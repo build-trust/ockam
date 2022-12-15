@@ -241,7 +241,7 @@ impl IdentityChangeHistory {
             CreateKey(_) => {
                 // Should have self signature and root signature
                 // There is no Root signature for the very first change
-                let root_sign = if existing_changes.is_empty() { 0 } else { 1 };
+                let root_sign = u8::from(!existing_changes.is_empty());
 
                 SignaturesCheck {
                     self_sign: 1,
