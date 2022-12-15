@@ -2078,6 +2078,7 @@ dependencies = [
  "hex",
  "ockam",
  "ockam_transport_udp",
+ "ockam_transport_uds",
  "ockam_transport_websocket",
  "rand 0.8.5",
  "serde",
@@ -3209,6 +3210,20 @@ dependencies = [
  "serde",
  "tokio",
  "tokio-util",
+ "tracing",
+]
+
+[[package]]
+name = "ockam_transport_uds"
+version = "0.1.0"
+dependencies = [
+ "ockam_core",
+ "ockam_macros",
+ "ockam_node",
+ "ockam_transport_core",
+ "serde",
+ "socket2",
+ "tokio",
  "tracing",
 ]
 
