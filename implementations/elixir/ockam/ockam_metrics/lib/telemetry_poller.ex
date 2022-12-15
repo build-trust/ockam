@@ -131,25 +131,6 @@ defmodule Ockam.Metrics.TelemetryPoller do
     end
   end
 
-  def dispatch_tcp_connections() do
-    if application_started?(:ranch) do
-      Enum.map(:ranch.info(), fn {_ref, info} ->
-        connections = Map.get(info, :all_connections, [])
-        port = Map.get(info, :port, 0)
-
-        Telemetry.emit_event([:tcp, :connections],
-          measurements: %{count: connections},
-          metadata: %{port: port}
-        )
-      end)
-    else
-      Logger.error("Cannot report number of TCP connections. :ranch application is not started")
-    end
-  catch
-    type, error ->
-      {type, error}
-  end
-
   defp application_started?(app) do
     case List.keyfind(Application.started_applications(), app, 0) do
       {^app, _description, _version} -> true

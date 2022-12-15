@@ -40,6 +40,17 @@ defmodule Ockam.Services.API do
               | {:error, reason :: any()}
 
   @doc """
+  Function to simplify path value for metrics reporting.
+  Due to dynamic nature of path, reporting it in metrics may cause
+  high cardinality issues.
+  Because path format is defined by the API worker implementation, only id can
+  simplofy the path.
+
+  Defaults to "all"
+  """
+  @callback path_group(String.t()) :: String.t()
+
+  @doc """
   Send Ockam.API.Response to the from_route of the reply using address as a return_route
   """
   def reply(%Request{} = request, status, body, address) do
@@ -62,11 +73,11 @@ defmodule Ockam.Services.API do
   def handle_message(module, message, state) do
     case Request.from_message(message) do
       {:ok, request} ->
-        start_time = emit_request_start(request, state)
+        start_time = emit_request_start(module, request, state)
 
         {reply, state} = handle_request(module, request, state)
 
-        emit_request_stop(start_time, request, reply, state)
+        emit_request_stop(module, start_time, request, reply, state)
 
         {:ok, state}
 
@@ -193,7 +204,9 @@ defmodule Ockam.Services.API do
 
       def setup_handler(_options, state), do: {:ok, state}
 
-      defoverridable setup_handler: 2
+      def path_group(_path), do: "all"
+
+      defoverridable setup_handler: 2, path_group: 1
     end
   end
 
@@ -201,15 +214,15 @@ defmodule Ockam.Services.API do
 
   @handle_request_event [:api, :handle_request]
 
-  defp emit_request_start(request, state) do
-    request_metadata = request_metadata(request)
+  defp emit_request_start(module, request, state) do
+    request_metadata = request_metadata(module, request)
     state_metadata = state_metadata(state)
     metadata = Map.merge(request_metadata, state_metadata)
     Telemetry.emit_start_event(@handle_request_event, metadata: metadata)
   end
 
-  defp emit_request_stop(start_time, request, reply, state) do
-    request_metadata = request_metadata(request)
+  defp emit_request_stop(module, start_time, request, reply, state) do
+    request_metadata = request_metadata(module, request)
     reply_metadata = reply_metadata(reply)
     state_metadata = state_metadata(state)
     metadata = request_metadata |> Map.merge(reply_metadata) |> Map.merge(state_metadata)
@@ -228,8 +241,9 @@ defmodule Ockam.Services.API do
     %{address: state.address}
   end
 
-  defp request_metadata(%Request{} = request) do
-    %{path: request.path, method: request.method, from_route: request.from_route}
+  defp request_metadata(module, %Request{} = request) do
+    path_group = module.path_group(request.path)
+    %{path_group: path_group, method: request.method, from_route: request.from_route}
   end
 
   defp reply_metadata(:noreply) do

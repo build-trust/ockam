@@ -6,11 +6,15 @@ defmodule Ockam.Services.Metrics.TelemetryPoller do
 
   alias Ockam.Telemetry
 
+  require Logger
+
   def measurements() do
     [
       {__MODULE__, :dispatch_services, []},
       {__MODULE__, :dispatch_credential_attributes, []},
-      {__MODULE__, :dispatch_channels_with_credentials, []}
+      {__MODULE__, :dispatch_channels_with_credentials, []},
+      {__MODULE__, :dispatch_tcp_listeners, []},
+      {__MODULE__, :dispatch_tcp_connections, []}
     ]
   end
 
@@ -62,6 +66,65 @@ defmodule Ockam.Services.Metrics.TelemetryPoller do
     Telemetry.emit_event([:workers, :secure_channels, :with_credentials],
       measurements: %{count: Enum.count(channels_with_credentials)}
     )
+  catch
+    type, error ->
+      {type, error}
+  end
+
+  def dispatch_tcp_listeners() do
+    ranch_listeners =
+      Enum.map(:ranch.info(), fn {_ref, info} ->
+        port = Map.get(info, :port, 0)
+        status = Map.get(info, :status, :unknown)
+        {port, status}
+      end)
+      |> Map.new()
+
+    configured_port =
+      Application.get_env(:ockam_services, :tcp_transport, [])
+      |> Keyword.get(:listen, [])
+      |> Keyword.get(:port, :none)
+
+    ranch_listeners =
+      case Map.get(ranch_listeners, configured_port) do
+        nil ->
+          Map.put(ranch_listeners, configured_port, :missing)
+
+        _port ->
+          ranch_listeners
+      end
+
+    Enum.each(ranch_listeners, fn {port, status} ->
+      live_status =
+        case status do
+          :running ->
+            1
+
+          _other ->
+            Logger.warn(
+              "Configured TCP port listener is not running: #{inspect(port)} - #{inspect(status)}"
+            )
+
+            0
+        end
+
+      Telemetry.emit_event([:tcp, :listeners],
+        measurements: %{status: live_status},
+        metadata: %{port: port}
+      )
+    end)
+  end
+
+  def dispatch_tcp_connections() do
+    Enum.map(:ranch.info(), fn {_ref, info} ->
+      connections = Map.get(info, :all_connections, [])
+      port = Map.get(info, :port, 0)
+
+      Telemetry.emit_event([:tcp, :connections],
+        measurements: %{count: connections},
+        metadata: %{port: port}
+      )
+    end)
   catch
     type, error ->
       {type, error}
