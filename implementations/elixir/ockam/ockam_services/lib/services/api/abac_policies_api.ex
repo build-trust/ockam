@@ -30,6 +30,14 @@ defmodule Ockam.Services.API.ABAC.PoliciesApi do
     TypedCBOR.encode!({:map, :string, :string}, formatted_policies)
   end
 
+  @doc """
+  Policies are defined for specific action ids.
+  Cardinality should be low even if we use the full path.
+  """
+  @impl true
+  def path_group(""), do: "all"
+  def path_group(path), do: path
+
   @impl true
   def handle_request(%Request{method: :get, path: ""}, state) do
     ## TODO: different access permissions for policies

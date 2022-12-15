@@ -21,6 +21,14 @@ defmodule Ockam.Services.API.Discovery do
     {:ok, Map.put(state, :storage, {storage, storage.init(storage_options)})}
   end
 
+  @doc """
+  Path points to a specific service in a small set.
+  Cardinality should be low even if we use the full path.
+  """
+  @impl true
+  def path_group(""), do: "all"
+  def path_group(path), do: path
+
   @impl true
   def handle_request(%Request{method: :get, path: ""}, state) do
     case list(state) do

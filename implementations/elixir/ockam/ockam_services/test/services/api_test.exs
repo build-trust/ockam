@@ -6,6 +6,9 @@ defmodule Ockam.Services.API.Tests.EchoAPI do
   def handle_request(request, state) do
     {:reply, 200, request.body, state}
   end
+
+  @impl true
+  def path_group(_path), do: "path_group"
 end
 
 defmodule Ockam.Services.API.Test do
@@ -47,11 +50,11 @@ defmodule Ockam.Services.API.Test do
 
     assert [
              {[:ockam, :api, :handle_request, :start],
-              %{metadata: %{method: :get, path: "path"}}},
+              %{metadata: %{method: :get, path_group: "path_group"}}},
              {[:ockam, :api, :handle_request, :stop],
               %{
                 measurements: %{duration: _duration},
-                metadata: %{method: :get, path: "path", reply: true, status: 200}
+                metadata: %{method: :get, path_group: "path_group", reply: true, status: 200}
               }}
            ] = Enum.sort(metrics)
   end

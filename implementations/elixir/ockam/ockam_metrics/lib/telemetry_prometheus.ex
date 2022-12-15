@@ -153,20 +153,28 @@ defmodule Ockam.Metrics.Prometheus do
         measurement: :port_count
       ),
       last_value("ockam.workers.secure_channels.count", tags: [:type, :stage]),
-      counter("ockam.node.message.sent",
+      ## TODO: these metrics report relatively high cardinality
+      ## these metrics need to be replaced with tracing
+      counter("ockam.node.message.sent.from.count",
         event_name: [:ockam, Ockam.Node, :message, :sent],
         measurement: :count,
-        tags: [:from, :to]
+        tags: [:from]
+      ),
+      counter("ockam.node.message.sent.to.count",
+        event_name: [:ockam, Ockam.Node, :message, :sent],
+        measurement: :count,
+        tags: [:to]
       ),
       counter("ockam.node.message.unsent",
         event_name: [:ockam, Ockam.Node, :message, :unsent],
         measurement: :count,
         tags: [:from, :to]
       ),
+      ##
       counter("ockam.worker.handle_message",
         event_name: [:ockam, Ockam.Worker, :handle_message, :start],
         measurement: :system_time,
-        tags: [:address, :module]
+        tags: [:module]
       ),
       counter("ockam.worker.handle_message.errors",
         event_name: [:ockam, Ockam.Worker, :handle_message, :stop],
@@ -174,7 +182,7 @@ defmodule Ockam.Metrics.Prometheus do
           match?(%{result: :error}, meta) or match?(%{result: :stop}, meta)
         end,
         measurement: :duration,
-        tags: [:address, :module, :reason],
+        tags: [:module, :reason],
         tag_values: fn meta ->
           case Map.fetch(meta, :return_value) do
             {:ok, {:error, reason}} ->
@@ -191,9 +199,9 @@ defmodule Ockam.Metrics.Prometheus do
       distribution("ockam.worker.handle_message.duration",
         event_name: [:ockam, Ockam.Worker, :handle_message, :stop],
         measurement: :duration,
-        tags: [:address, :module, :result],
+        tags: [:module, :result],
         unit: {:native, :millisecond},
-        reporter_options: [buckets: [0.01, 0.1, 0.5, 1]]
+        reporter_options: [buckets: [1, 10, 50, 100, 250, 500, 1000]]
       ),
       counter("ockam.worker.handle_message.unauthorized",
         event_name: [:ockam, Ockam.Worker, :handle_message, :stop],
@@ -201,7 +209,7 @@ defmodule Ockam.Metrics.Prometheus do
         keep: fn meta ->
           match?(%{result: :unauthorized}, meta)
         end,
-        tags: [:address, :module, :reason],
+        tags: [:module, :reason],
         tag_values: fn meta ->
           case Map.fetch(meta, :return_value) do
             {:ok, {:error, {:unauthorized, reason}}} ->
@@ -210,20 +218,19 @@ defmodule Ockam.Metrics.Prometheus do
             _other ->
               meta
           end
-        end,
-        unit: {:native, :millisecond}
+        end
       ),
       counter("ockan.worker.init",
         event_name: [:ockam, Ockam.Worker, :init, :start],
         measurement: :system_time,
-        tags: [:address, :module]
+        tags: [:module]
       ),
       distribution("ockam.worker.init.duration",
         event_name: [:ockam, Ockam.Worker, :init, :stop],
         measurement: :duration,
-        tags: [:address, :module, :result],
+        tags: [:module, :result],
         unit: {:native, :millisecond},
-        reporter_options: [buckets: [0.01, 0.1, 0.5, 1]]
+        reporter_options: [buckets: [1, 10, 50, 100, 250, 500, 1000]]
       )
       | vm_memory_metrics
     ]
