@@ -1,0 +1,44 @@
+[package]
+name = "ockam_transport_uds"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2021"
+license = "Apache-2.0"
+homepage = "https://github.com/build-trust/ockam"
+repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/ockam_transport_uds"
+readme = "README.md"
+keywords = ["ockam", "crypto", "network", "networking", "uds", "unix", "domain", "sockets"]
+categories = [
+    "cryptography",
+    "asynchronous",
+    "authentication",
+    "network-programming",
+    "embedded",
+]
+description = """
+Unix Domain Socket (UDS) Transport for the Ockam Routing Protocol
+"""
+publish = true
+rust-version = "1.64.0"
+
+[features]
+default = ["std"]
+std = ["ockam_macros/std"]
+alloc = []
+
+[dependencies]
+ockam_core = { path = "../ockam_core", version = "^0.71.0" }
+ockam_node = { path = "../ockam_node", version = "^0.74.0" }
+ockam_macros = { path = "../ockam_macros", version = "^0.25.0" }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.44.0" }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+tokio = { version = "1.8", features = [
+    "rt-multi-thread",
+    "sync",
+    "net",
+    "macros",
+    "time",
+    "io-util",
+] }
+tracing = "0.1.37"
+socket2 = "0.4.7"
