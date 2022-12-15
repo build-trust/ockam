@@ -35,7 +35,7 @@ mod test {
     #[ockam_macros::test]
     async fn test_builder(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
-        let builder = IdentityBuilder::new(&ctx, &vault).await.unwrap();
+        let builder = IdentityBuilder::new(ctx, &vault).await.unwrap();
         let _ = builder.build().await.unwrap();
 
         ctx.stop().await
