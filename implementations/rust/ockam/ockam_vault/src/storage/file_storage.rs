@@ -268,7 +268,7 @@ mod tests {
         let mut rand_id = [0u8; 32];
 
         rng.fill_bytes(&mut rand_id);
-        let rand_id1 = hex::encode(&rand_id);
+        let rand_id1 = hex::encode(rand_id);
 
         rng.fill_bytes(&mut rand_id);
 
@@ -305,7 +305,7 @@ mod tests {
         let mut rand_id = [0u8; 32];
 
         rng.fill_bytes(&mut rand_id);
-        let rand_id1 = hex::encode(&rand_id);
+        let rand_id1 = hex::encode(rand_id);
 
         rng.fill_bytes(&mut rand_id);
 

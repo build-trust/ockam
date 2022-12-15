@@ -67,7 +67,7 @@ impl<V: IdentityVault> Identity<V> {
         match action {
             Action::CreateKey => {
                 let label: [u8; 16] = thread_rng().gen();
-                let label = hex::encode(&label);
+                let label = hex::encode(label);
                 self.create_key(label).await?;
             }
             Action::RotateKey => {
