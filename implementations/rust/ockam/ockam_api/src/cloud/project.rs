@@ -476,7 +476,7 @@ mod tests {
 
         quickcheck! {
             fn project(o: Pr) -> TestResult {
-                let cbor = minicbor::to_vec(&o.0).unwrap();
+                let cbor = minicbor::to_vec(o.0).unwrap();
                 if let Err(e) = validate_cbor_bytes("project", SCHEMA, &cbor) {
                     return TestResult::error(e.to_string())
                 }
@@ -485,14 +485,14 @@ mod tests {
 
             fn projects(o: Vec<Pr>) -> TestResult {
                 let empty: Vec<Project> = vec![];
-                let cbor = minicbor::to_vec(&empty).unwrap();
+                let cbor = minicbor::to_vec(empty).unwrap();
                 if let Err(e) = validate_cbor_bytes("projects", SCHEMA, &cbor) {
                     return TestResult::error(e.to_string())
                 }
                 TestResult::passed();
 
                 let o: Vec<Project> = o.into_iter().map(|p| p.0).collect();
-                let cbor = minicbor::to_vec(&o).unwrap();
+                let cbor = minicbor::to_vec(o).unwrap();
                 if let Err(e) = validate_cbor_bytes("projects", SCHEMA, &cbor) {
                     return TestResult::error(e.to_string())
                 }
@@ -500,7 +500,7 @@ mod tests {
             }
 
             fn create_project(o: CPr) -> TestResult {
-                let cbor = minicbor::to_vec(&o.0).unwrap();
+                let cbor = minicbor::to_vec(o.0).unwrap();
                 if let Err(e) = validate_cbor_bytes("create_project", SCHEMA, &cbor) {
                     return TestResult::error(e.to_string())
                 }

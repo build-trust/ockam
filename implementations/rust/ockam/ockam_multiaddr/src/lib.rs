@@ -32,7 +32,7 @@ pub use registry::{Registry, RegistryBuilder};
 /// Global default registry of known protocols.
 fn default_registry() -> &'static Registry {
     static INSTANCE: OnceBox<Registry> = OnceBox::new();
-    INSTANCE.get_or_init(|| alloc::boxed::Box::new(Registry::default()))
+    INSTANCE.get_or_init(Box::<Registry>::default)
 }
 
 /// Component of a [`MultiAddr`].

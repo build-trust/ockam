@@ -567,7 +567,7 @@ mod tests {
             .identities
             .create(&cli_state::random_name(), idt_config)?;
 
-        let n_state = cli_state.nodes.create("n1", NodeConfig::default()?)?;
+        let n_state = cli_state.nodes.create("n1", NodeConfig::try_default()?)?;
         let n_setup = n_state.setup()?;
         n_state.set_setup(&n_setup.add_transport(CreateTransportJson::new(
             TransportType::Tcp,

@@ -64,7 +64,7 @@ impl Arbitrary for Er {
 
 quickcheck! {
     fn request_schema(a: Req) -> TestResult {
-        let cbor = minicbor::to_vec(&a.0).unwrap();
+        let cbor = minicbor::to_vec(a.0).unwrap();
         if let Err(e) = validate_cbor_bytes("request", SCHEMA, &cbor) {
             return TestResult::error(e.to_string())
         }
@@ -72,7 +72,7 @@ quickcheck! {
     }
 
     fn response_schema(a: Res) -> TestResult {
-        let cbor = minicbor::to_vec(&a.0).unwrap();
+        let cbor = minicbor::to_vec(a.0).unwrap();
         if let Err(e) = validate_cbor_bytes("response", SCHEMA, &cbor) {
             return TestResult::error(e.to_string())
         }
@@ -80,7 +80,7 @@ quickcheck! {
     }
 
     fn error_schema(a: Er) -> TestResult {
-        let cbor = minicbor::to_vec(&a.0).unwrap();
+        let cbor = minicbor::to_vec(a.0).unwrap();
         if let Err(e) = validate_cbor_bytes("error", SCHEMA, &cbor) {
             return TestResult::error(e.to_string())
         }
@@ -88,9 +88,9 @@ quickcheck! {
     }
 
     fn type_check(a: Req, b: Res, c: Er) -> TestResult {
-        let cbor_a = minicbor::to_vec(&a.0).unwrap();
-        let cbor_b = minicbor::to_vec(&b.0).unwrap();
-        let cbor_c = minicbor::to_vec(&c.0).unwrap();
+        let cbor_a = minicbor::to_vec(a.0).unwrap();
+        let cbor_b = minicbor::to_vec(b.0).unwrap();
+        let cbor_c = minicbor::to_vec(c.0).unwrap();
         assert!(minicbor::decode::<Response>(&cbor_a).is_err());
         assert!(minicbor::decode::<Error>(&cbor_a).is_err());
         assert!(minicbor::decode::<Request>(&cbor_b).is_err());

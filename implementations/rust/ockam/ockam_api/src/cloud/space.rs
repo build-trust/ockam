@@ -195,7 +195,7 @@ pub mod tests {
 
         quickcheck! {
             fn space(o: Sp) -> TestResult {
-                let cbor = minicbor::to_vec(&o.0).unwrap();
+                let cbor = minicbor::to_vec(o.0).unwrap();
                 if let Err(e) = validate_cbor_bytes("space", SCHEMA, &cbor) {
                     return TestResult::error(e.to_string())
                 }
@@ -204,14 +204,14 @@ pub mod tests {
 
             fn spaces(o: Vec<Sp>) -> TestResult {
                 let empty: Vec<Space> = vec![];
-                let cbor = minicbor::to_vec(&empty).unwrap();
+                let cbor = minicbor::to_vec(empty).unwrap();
                 if let Err(e) = validate_cbor_bytes("spaces", SCHEMA, &cbor) {
                     return TestResult::error(e.to_string())
                 }
                 TestResult::passed();
 
                 let o: Vec<Space> = o.into_iter().map(|p| p.0).collect();
-                let cbor = minicbor::to_vec(&o).unwrap();
+                let cbor = minicbor::to_vec(o).unwrap();
                 if let Err(e) = validate_cbor_bytes("spaces", SCHEMA, &cbor) {
                     return TestResult::error(e.to_string())
                 }
@@ -219,7 +219,7 @@ pub mod tests {
             }
 
             fn create_space(o: CSp) -> TestResult {
-                let cbor = minicbor::to_vec(&o.0).unwrap();
+                let cbor = minicbor::to_vec(o.0).unwrap();
                 if let Err(e) = validate_cbor_bytes("create_space", SCHEMA, &cbor) {
                     return TestResult::error(e.to_string())
                 }

@@ -161,8 +161,8 @@ where
         // the old addresses
         let addrs: BTreeMap<_, _> = self
             .inner
-            .iter()
-            .map(|(_, data)| (data.addr.clone(), Address::random_local()))
+            .values()
+            .map(|data| (data.addr.clone(), Address::random_local()))
             .collect();
 
         // Small utility function that will either return the the new
