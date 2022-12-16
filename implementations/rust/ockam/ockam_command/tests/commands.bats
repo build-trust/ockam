@@ -96,20 +96,22 @@ teardown() {
   assert_output --partial "/service/vault_service"
 }
 
-@test "create a node and show its identity" {
-  run $OCKAM node create n1
+@test "create a identity and do show on it" {
+  idt_name=$(openssl rand -hex 4)
+  run $OCKAM identity create "${idt_name}"
   assert_success
 
-  run $OCKAM identity show --node n1
+  run $OCKAM identity show "${idt_name}"
   assert_success
   assert_output --regexp '^P'
 }
 
-@test "create a node and show identity change history" {
-  run $OCKAM node create n1
+@test "create a identity and do show change history on it" {
+  idt_name=$(openssl rand -hex 4)
+  run $OCKAM identity create "${idt_name}"
   assert_success
 
-  run $OCKAM identity show --full --node n1
+  run $OCKAM identity show "${idt_name}" --full
   assert_success
   assert_output --partial "Change History"
   assert_output --partial "identifier"
@@ -445,12 +447,12 @@ teardown() {
   export OCKAM_HOME=/tmp/ockam/green
   run $OCKAM node create green --project /tmp/project.json
   assert_success
-  green_identifier=$($OCKAM identity show -n green)
+  green_identifier=$($OCKAM node show green | grep -oP 'Identity: \KP[0-9a-f]{64}')
 
   export OCKAM_HOME=/tmp/ockam/blue
   run $OCKAM node create blue --project /tmp/project.json
   assert_success
-  blue_identifier=$($OCKAM identity show -n blue)
+  blue_identifier=$($OCKAM node show blue | grep -oP 'Identity: \KP[0-9a-f]{64}')
 
   # Green isn't enrolled as project member
   unset OCKAM_HOME
@@ -489,7 +491,7 @@ teardown() {
   export OCKAM_HOME=/tmp/ockam/blue
   run $OCKAM node create blue --project /tmp/project.json
   assert_success
-  blue_identifier=$($OCKAM identity show -n blue)
+  blue_identifier=$($OCKAM node show blue | grep -oP 'Identity: \KP[0-9a-f]{64}')
 
   # Green isn't enrolled as project member
   unset OCKAM_HOME
@@ -518,12 +520,12 @@ teardown() {
   OCKAM_HOME=/tmp/ockam/green
   run $OCKAM node create green --project /tmp/project.json
   assert_success
-  green_identifier=$($OCKAM identity show -n green)
+  green_identifier=$($OCKAM node show green | grep -oP 'Identity: \KP[0-9a-f]{64}')
 
   OCKAM_HOME=/tmp/ockam/blue
   run $OCKAM node create blue --project /tmp/project.json
   assert_success
-  blue_identifier=$($OCKAM identity show -n blue)
+  blue_identifier=$($OCKAM node show blue | grep -oP 'Identity: \KP[0-9a-f]{64}')
 
   unset OCKAM_HOME
   run $OCKAM project enroll --member $blue_identifier --attribute role=member
@@ -601,7 +603,7 @@ teardown() {
   export OCKAM_HOME=/tmp/ockam/green
   run $OCKAM node create green --project "/tmp/${project_name}_project.json"
   assert_success
-  green_identifier=$($OCKAM identity show -n green)
+  green_identifier=$($OCKAM node show green | grep -oP 'Identity: \KP[0-9a-f]{64}')
 
   export OCKAM_HOME=/tmp/ockam/blue
   run $OCKAM node create blue --project "/tmp/${project_name}_project.json"

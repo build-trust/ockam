@@ -41,7 +41,6 @@ pub mod message;
 
 mod credentials;
 mod forwarder;
-mod identity;
 mod policy;
 mod portals;
 mod secure_channel;
@@ -456,14 +455,6 @@ impl NodeManagerWorker {
             (Post, ["node", "tcp", "listener"]) => self.add_transport(req, dec).await?.to_vec()?,
             (Delete, ["node", "tcp", "listener"]) => {
                 self.delete_transport(req, dec).await?.to_vec()?
-            }
-
-            // ==*== Identity ==*==
-            (Post, ["node", "identity", "actions", "show", "short"]) => {
-                self.short_identity(req).await?.to_vec()?
-            }
-            (Post, ["node", "identity", "actions", "show", "long"]) => {
-                self.long_identity(req).await?.to_vec()?
             }
 
             // ==*== Credentials ==*==

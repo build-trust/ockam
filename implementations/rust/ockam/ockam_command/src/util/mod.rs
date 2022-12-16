@@ -292,15 +292,22 @@ impl<'a> Rpc<'a> {
     where
         T: Output + serde::Serialize,
     {
-        let o = match self.opts.global_args.output_format {
-            OutputFormat::Plain => b.output().context("Failed to serialize response body")?,
-            OutputFormat::Json => {
-                serde_json::to_string_pretty(&b).context("Failed to serialize response body")?
-            }
-        };
-        println!("{}", o);
-        Ok(b)
+        print_command_response(b, &self.opts.global_args.output_format)
     }
+}
+
+pub fn print_command_response<T>(b: T, output_format: &OutputFormat) -> Result<T>
+where
+    T: Output + serde::Serialize,
+{
+    let o = match output_format {
+        OutputFormat::Plain => b.output().context("Failed to serialize response body")?,
+        OutputFormat::Json => {
+            serde_json::to_string_pretty(&b).context("Failed to serialize response body")?
+        }
+    };
+    println!("{}", o);
+    Ok(b)
 }
 
 /// A simple wrapper for shutting down the local embedded node (for
