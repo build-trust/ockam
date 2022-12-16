@@ -33,3 +33,114 @@ impl AccessControl for LocalSourceOnly {
         crate::allow()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::compat::future::poll_once;
+    use crate::{
+        route, AccessControl, Address, LocalMessage, LocalOnwardOnly, LocalSourceOnly,
+        RelayMessage, Result, TransportMessage, TransportType,
+    };
+
+    #[test]
+    fn test_onward() -> Result<()> {
+        let local_onward_address = Address::random_local();
+        let external_onward_address = Address::random(TransportType::new(1));
+        let source_address = Address::random_local();
+
+        let ac = LocalOnwardOnly;
+
+        let msg = LocalMessage::new(
+            TransportMessage::v1(local_onward_address.clone(), route![], vec![]),
+            vec![],
+        );
+        let msg = RelayMessage::new(source_address.clone(), local_onward_address.clone(), msg);
+
+        assert!(poll_once(async { ac.is_authorized(&msg).await })?);
+
+        let msg = LocalMessage::new(
+            TransportMessage::v1(external_onward_address.clone(), route![], vec![]),
+            vec![],
+        );
+        let msg = RelayMessage::new(source_address.clone(), external_onward_address.clone(), msg);
+
+        assert!(!poll_once(async { ac.is_authorized(&msg).await })?);
+
+        let msg = LocalMessage::new(
+            TransportMessage::v1(local_onward_address.clone(), route![], vec![]),
+            vec![],
+        );
+        let msg = RelayMessage::new(source_address.clone(), external_onward_address.clone(), msg);
+
+        assert!(poll_once(async { ac.is_authorized(&msg).await })?);
+
+        let msg = LocalMessage::new(
+            TransportMessage::v1(external_onward_address.clone(), route![], vec![]),
+            vec![],
+        );
+        let msg = RelayMessage::new(source_address.clone(), local_onward_address.clone(), msg);
+
+        assert!(!poll_once(async { ac.is_authorized(&msg).await })?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_source() -> Result<()> {
+        let local_source_address = Address::random_local();
+        let external_source_address = Address::random(TransportType::new(1));
+        let onward_address = Address::random_local();
+
+        let ac = LocalSourceOnly;
+
+        let msg = LocalMessage::new(
+            TransportMessage::v1(
+                onward_address.clone(),
+                route![local_source_address.clone()],
+                vec![],
+            ),
+            vec![],
+        );
+        let msg = RelayMessage::new(local_source_address.clone(), onward_address.clone(), msg);
+
+        assert!(poll_once(async { ac.is_authorized(&msg).await })?);
+
+        let msg = LocalMessage::new(
+            TransportMessage::v1(
+                onward_address.clone(),
+                route![external_source_address.clone()],
+                vec![],
+            ),
+            vec![],
+        );
+        let msg = RelayMessage::new(external_source_address.clone(), onward_address.clone(), msg);
+
+        assert!(!poll_once(async { ac.is_authorized(&msg).await })?);
+
+        let msg = LocalMessage::new(
+            TransportMessage::v1(
+                onward_address.clone(),
+                route![local_source_address.clone()],
+                vec![],
+            ),
+            vec![],
+        );
+        let msg = RelayMessage::new(external_source_address.clone(), onward_address.clone(), msg);
+
+        assert!(!poll_once(async { ac.is_authorized(&msg).await })?);
+
+        let msg = LocalMessage::new(
+            TransportMessage::v1(
+                onward_address.clone(),
+                route![external_source_address],
+                vec![],
+            ),
+            vec![],
+        );
+        let msg = RelayMessage::new(local_source_address.clone(), onward_address.clone(), msg);
+
+        assert!(poll_once(async { ac.is_authorized(&msg).await })?);
+
+        Ok(())
+    }
+}
