@@ -90,8 +90,8 @@ pub(super) async fn init_node_state(
     identity: Option<&String>,
 ) -> anyhow::Result<()> {
     // Get vault specified in the argument, or get the default
-    let vault_state = if let Some(v) = vault {
-        opts.state.vaults.get(v)?
+    let vault_state = if let Some(name) = vault {
+        opts.state.vaults.get(name)?
     }
     // Or get the default
     else if let Ok(v) = opts.state.vaults.default() {
@@ -113,7 +113,8 @@ pub(super) async fn init_node_state(
         let vault = vault_state.config.get().await?;
         let identity_name = hex::encode(random::<[u8; 4]>());
         let identity = Identity::create(ctx, &vault).await?;
-        let identity_config = cli_state::IdentityConfig::new(&identity).await;
+        let identity_config =
+            cli_state::IdentityConfig::new(&identity, &vault_state.name()?).await?;
         opts.state
             .identities
             .create(&identity_name, identity_config)?

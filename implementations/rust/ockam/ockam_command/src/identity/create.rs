@@ -36,25 +36,24 @@ async fn run_impl(
     ctx: Context,
     (options, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let vault_config = if let Some(vault_name) = cmd.vault {
-        options.state.vaults.get(&vault_name)?.config
+    let vault_state = if let Some(vault_name) = cmd.vault {
+        options.state.vaults.get(&vault_name)?
     } else if options.state.vaults.default().is_err() {
         let vault_name = hex::encode(random::<[u8; 4]>());
-        let config = options
+        let state = options
             .state
             .vaults
             .create(
                 &vault_name,
                 VaultConfig::fs_default(&vault_name, cmd.key_id.is_some())?,
             )
-            .await?
-            .config;
+            .await?;
         println!("Default vault created: {}", &vault_name);
-        config
+        state
     } else {
-        options.state.vaults.default()?.config
+        options.state.vaults.default()?
     };
-    let vault = vault_config.get().await?;
+    let vault = vault_state.config.get().await?;
     let identity = if let Some(kid) = cmd.key_id {
         let attrs = SecretAttributes::new(SecretType::NistP256, SecretPersistence::Persistent, 32);
         let kid = vault
@@ -65,7 +64,7 @@ async fn run_impl(
     } else {
         Identity::create(&ctx, &vault).await?
     };
-    let identity_config = cli_state::IdentityConfig::new(&identity).await;
+    let identity_config = cli_state::IdentityConfig::new(&identity, &vault_state.name()?).await?;
     options
         .state
         .identities

@@ -562,7 +562,7 @@ mod tests {
         cli_state.vaults.create(&v_name, v_config).await?;
 
         let idt = Identity::create(ctx, &v).await?;
-        let idt_config = IdentityConfig::new(&idt).await;
+        let idt_config = IdentityConfig::new(&idt, &v_name).await?;
         cli_state
             .identities
             .create(&cli_state::random_name(), idt_config)?;

@@ -1,3 +1,4 @@
+use crate::config::cli::AuthoritiesConfig;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use ockam_identity::{Identity, IdentityIdentifier};
@@ -171,6 +172,12 @@ pub struct VaultState {
     pub config: VaultConfig,
 }
 
+impl VaultState {
+    pub fn name(&self) -> Result<String> {
+        file_stem(&std::fs::canonicalize(&self.path)?)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum VaultConfig {
@@ -298,31 +305,30 @@ pub struct IdentityState {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct IdentityConfig {
+    pub vault_names: Vec<String>,
     pub identifier: IdentityIdentifier,
-    pub change_history: IdentityChangeHistory,
+    pub change_history: Vec<u8>,
 }
 
 impl IdentityConfig {
-    pub async fn new(identity: &Identity<Vault>) -> Self {
+    pub async fn new(identity: &Identity<Vault>, vault_name: &str) -> Result<Self> {
         let identifier = identity.identifier().clone();
-        let change_history = identity.change_history().await;
-        Self {
+        let change_history = identity.change_history().await.export()?;
+        Ok(Self {
+            vault_names: vec![vault_name.to_string()],
             identifier,
             change_history,
-        }
+        })
     }
 
     pub async fn get(&self, ctx: &ockam::Context, vault: &Vault) -> Result<Identity<Vault>> {
-        let data = self.change_history.export()?;
-        Ok(Identity::import(ctx, &data, vault).await?)
+        Ok(Identity::import(ctx, &self.change_history, vault).await?)
     }
 }
 
 impl PartialEq for IdentityConfig {
     fn eq(&self, other: &Self) -> bool {
-        self.identifier == other.identifier
-            && self.change_history.compare(&other.change_history)
-                == IdentityHistoryComparison::Equal
+        self.identifier == other.identifier && self.change_history == other.change_history
     }
 }
 
@@ -447,22 +453,6 @@ impl NodesState {
 
         Ok(())
     }
-
-    fn vault_name(&self, name: &str) -> Result<String> {
-        let mut path = self.dir.clone();
-        path.push(name);
-        path.push("default_vault");
-        let path = std::fs::canonicalize(&path)?;
-        file_stem(&path)
-    }
-
-    fn identity_name(&self, name: &str) -> Result<String> {
-        let mut path = self.dir.clone();
-        path.push(name);
-        path.push("default_identity");
-        let path = std::fs::canonicalize(&path)?;
-        file_stem(&path)
-    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -523,6 +513,13 @@ impl NodeState {
         self.path.join("policies_storage.lmdb")
     }
 
+    pub fn authorities(&self) -> Result<AuthoritiesConfig> {
+        let path = self.path.join("authorities.json");
+        let contents = std::fs::read_to_string(path)?;
+        let c = serde_json::from_str(&contents)?;
+        Ok(c)
+    }
+
     pub fn kill_process(&self, sigkill: bool) -> Result<()> {
         if let Some(pid) = self.pid()? {
             nix::sys::signal::kill(
@@ -558,8 +555,6 @@ pub struct NodeConfig {
     default_vault: PathBuf,
     default_identity: PathBuf,
     setup: NodeSetupConfig,
-    // TODO
-    // authorities: AuthoritiesConfig,
 }
 
 impl NodeConfig {
@@ -592,21 +587,8 @@ impl TryFrom<&PathBuf> for NodeConfig {
     type Error = CliStateError;
 
     fn try_from(path: &PathBuf) -> std::result::Result<Self, Self::Error> {
-        let name = {
-            let err = || {
-                CliStateError::Io(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "node's directory has an invalid name",
-                ))
-            };
-            path.file_name()
-                .ok_or_else(err)?
-                .to_str()
-                .ok_or_else(err)?
-                .to_string()
-        };
         Ok(Self {
-            name,
+            name: file_stem(path)?,
             version: NodeConfigVersion::load(path)?,
             default_vault: std::fs::canonicalize(path.join("default_vault"))?,
             default_identity: std::fs::canonicalize(path.join("default_identity"))?,
@@ -771,7 +753,7 @@ mod tests {
             let vault_config = sut.vaults.get(&vault_name).unwrap().config;
             let vault = vault_config.get().await.unwrap();
             let identity = Identity::create(ctx, &vault).await.unwrap();
-            let config = IdentityConfig::new(&identity).await;
+            let config = IdentityConfig::new(&identity, &vault_name).await?;
 
             let state = sut.identities.create(&name, config).unwrap();
             let got = sut.identities.get(&name).unwrap();
