@@ -293,6 +293,23 @@ impl IdentitiesState {
         Ok(identities)
     }
 
+    pub fn delete(&self, name: &str) -> Result<()> {
+        let path = {
+            let mut path = self.dir.clone();
+            path.push(format!("{}.json", name));
+            if !path.exists() {
+                return Err(CliStateError::NotFound(format!("identity `{name}`")));
+            }
+            path
+        };
+        std::fs::remove_file(path)?;
+        let default = self.default()?;
+        if default.config.identifier.to_string() == identifier {
+            let _ = std::fs::remove_file(self.default_path()?);
+        }
+        Ok(())
+    }
+
     pub fn default_path(&self) -> Result<PathBuf> {
         Ok(CliState::defaults_dir()?.join("identity"))
     }

@@ -216,6 +216,15 @@ teardown() {
   assert_output --partial "Identity created"
 }
 
+@test "identity delete" {
+  run $OCKAM identity create foo
+  assert_success
+  assert_output --partial "Identity created"
+  run $OCKAM identity delete foo
+  assert_success
+  assert_output --partial "Identity deleted"
+}
+
 @test "create a secure channel between two nodes and send message through it" {
   $OCKAM node create n1
   $OCKAM node create n2
