@@ -6,6 +6,8 @@ use core::fmt::Write;
 use ockam::Context;
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 use ockam_identity::change_history::IdentityChangeHistory;
+use ockam_identity::Identity;
+use ockam_vault::Vault;
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -49,4 +51,26 @@ impl Output for ShortIdentityResponse<'_> {
         write!(w, "{}", self.identity_id)?;
         Ok(w)
     }
+}
+
+pub async fn print_identity(
+    identity: &Identity<Vault>,
+    full: bool,
+    output_format: &OutputFormat,
+) -> crate::Result<()> {
+    let response = if full {
+        let identity = identity.export().await?;
+        LongIdentityResponse::new(identity).output()?
+    } else {
+        let identity = identity.identifier();
+        ShortIdentityResponse::new(identity.to_string()).output()?
+    };
+    let o = match output_format {
+        OutputFormat::Plain => response,
+        OutputFormat::Json => {
+            serde_json::to_string_pretty(&response)?
+        }
+    };
+    println!("{}", o);
+    Ok(())
 }
