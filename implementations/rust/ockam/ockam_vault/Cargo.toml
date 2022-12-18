@@ -40,6 +40,8 @@ std = [
     "x25519-dalek/std",
     "x25519-dalek/u64_backend",
     "alloc",
+    "p256/std",
+    "fs2"
 ]
 
 # Feature: "no_std" enables functionality required for platforms
@@ -56,7 +58,7 @@ no_std = [
 ]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
-alloc = ["ockam_core/alloc", "ockam_node/alloc", "aes-gcm/alloc"]
+alloc = ["ockam_core/alloc", "ockam_node/alloc", "aes-gcm/alloc", "p256/ecdsa", "p256/pem"]
 
 storage = ["std", "serde", "serde_json"]
 
@@ -81,13 +83,13 @@ hex = { version = "0.4", default-features = false }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
-fs2 = "0.4.3"
+fs2 = { version = "0.4.3", optional = true }
 # AWS KMS specific:
 aws-config  = { version = "0.51.0", optional = true }
 aws-sdk-kms = { version = "0.21.0", optional = true }
 thiserror   = { version = "1.0.37", optional = true }
 # ECDSA providers:
-p256      = { version = "0.11.1", features = ["pem"] }
+p256 = { version = "0.11.1", default_features = false }
 
 [dev-dependencies]
 tokio = { version = "1.8", features = ["full"] }
