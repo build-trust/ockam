@@ -129,7 +129,7 @@ pub struct NodeCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum NodeSubcommand {
     #[command(display_order = 800)]
-    Create(CreateCommand),
+    Create(Box<CreateCommand>),
     #[command(display_order = 800)]
     Delete(DeleteCommand),
     #[command(display_order = 800)]
