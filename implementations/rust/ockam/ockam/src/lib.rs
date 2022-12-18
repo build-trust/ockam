@@ -51,6 +51,7 @@ pub mod remote;
 pub mod stream;
 pub mod workers;
 
+#[cfg(feature="std")]
 pub use ockam_abac as abac;
 pub use ockam_identity as identity;
 
