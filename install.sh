@@ -44,7 +44,7 @@ info() {
   local _no_color='\033[0m'
 
   if $_ansi_escapes_are_valid; then
-    echo "  ${_green} INFO${_no_color} $1"
+    printf "  ${_green} INFO${_no_color} $1\n"
   else
     echo "   INFO $1"
   fi
@@ -60,7 +60,7 @@ error() {
   echo
 
   if $_ansi_escapes_are_valid; then
-    echo "   ${_red}ERROR${_no_color} $1"
+    printf "   ${_red}ERROR${_no_color} $1\n"
   else
     echo "   ERROR $1"
   fi
@@ -81,7 +81,7 @@ heading() {
   local _no_color='\033[0m'
 
   if $_ansi_escapes_are_valid; then
-    echo "${_orange}        $1${_no_color}"
+    printf "${_orange}        $1${_no_color}\n"
   else
     echo "${_orange}        $1${_no_color}"
   fi
@@ -189,7 +189,7 @@ main() {
   echo "          ockam"
   echo
   heading "LEARN MORE:"
-  echo "        Learn more at https://docs.ockam.io/get-started#command"
+  echo "        Learn more at https://docs.ockam.io"
   echo
   heading "FEEDBACK:"
   echo "        If you have any questions or feedback, please start a discussion"
