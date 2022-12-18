@@ -170,8 +170,9 @@ jobs:
       - uses: ./.github/actions/cargo_target_dir_cache
       - run: |
           rustc --version
+          rustup target add thumbv7em-none-eabihf
           cd implementations/rust/ockam/ockam
-          RUSTFLAGS='-Dwarnings' cargo check --no-default-features --features 'no_std alloc software_vault'
+          RUSTFLAGS='-Dwarnings' cargo check --target thumbv7em-none-eabihf --no-default-features --features 'no_std alloc software_vault'
       - uses: ./.github/actions/cargo_target_dir_pre_cache
 
   check_cargo_update:
