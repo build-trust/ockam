@@ -75,8 +75,8 @@ impl<V: IdentityVault> Identity<V> {
         let child_ctx = ctx
             .new_detached(
                 Address::random_tagged("Identity.import.detached"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
+                DenyAll,
+                DenyAll,
             )
             .await?;
 
@@ -133,8 +133,8 @@ impl<V: IdentityVault> Identity<V> {
         let child_ctx = ctx
             .new_detached(
                 Address::random_tagged("Identity.create.detached"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
+                DenyAll,
+                DenyAll,
             )
             .await?;
         let initial_change_id = ChangeIdentifier::initial(vault).await;

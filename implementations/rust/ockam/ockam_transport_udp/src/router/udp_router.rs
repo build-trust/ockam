@@ -157,12 +157,7 @@ impl UdpRouter {
         let sender = UdpSendWorker::new(sink);
         // FIXME: @ac
         self.ctx
-            .start_worker(
-                tx_addr.clone(),
-                sender,
-                Arc::new(AllowAll),
-                Arc::new(AllowAll),
-            )
+            .start_worker(tx_addr.clone(), sender, AllowAll, AllowAll)
             .await?;
         UdpListenProcessor::start(
             &self.ctx,

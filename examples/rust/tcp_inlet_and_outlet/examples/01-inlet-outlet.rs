@@ -1,6 +1,5 @@
 use ockam::access_control::AllowAll;
 use ockam::{route, Context, Result, TcpTransport};
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -24,7 +23,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(2).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, Arc::new(AllowAll)).await?;
+    tcp.create_outlet("outlet", outlet_target, AllowAll).await?;
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
     // For example: 127.0.0.1:4001
@@ -41,8 +40,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    and send it as raw TCP data to a connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
-    tcp.create_inlet(inlet_address, route!["outlet"], Arc::new(AllowAll))
-        .await?;
+    tcp.create_inlet(inlet_address, route!["outlet"], AllowAll).await?;
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.

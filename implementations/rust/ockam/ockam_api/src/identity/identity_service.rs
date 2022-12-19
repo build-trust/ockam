@@ -8,7 +8,6 @@ use ockam_core::{Address, DenyAll, Result, Routed, Worker};
 use ockam_identity::change_history::IdentityHistoryComparison;
 use ockam_identity::{Identity, IdentityVault, PublicIdentity};
 use ockam_node::Context;
-use std::sync::Arc;
 use tracing::trace;
 
 /// Vault Service Worker
@@ -23,8 +22,8 @@ impl<V: IdentityVault> IdentityService<V> {
             ctx: ctx
                 .new_detached(
                     Address::random_tagged("IdentityService.root"),
-                    Arc::new(DenyAll),
-                    Arc::new(DenyAll),
+                    DenyAll,
+                    DenyAll,
                 )
                 .await?,
             vault,

@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::{
     net::{SocketAddr, ToSocketAddrs},
     str::FromStr,
@@ -33,8 +32,8 @@ impl AsyncTryClone for UdpRouterHandle {
             .ctx
             .new_detached(
                 Address::random_tagged("UdpRouterHandle.async_try_clone.detached"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
+                DenyAll,
+                DenyAll,
             )
             .await?;
         Ok(Self::new(child_ctx, self.api_addr.clone()))
@@ -85,12 +84,7 @@ impl UdpRouterHandle {
         let sender = UdpSendWorker::new(sink);
         // FIXME: @ac
         self.ctx
-            .start_worker(
-                tx_addr.clone(),
-                sender,
-                Arc::new(AllowAll),
-                Arc::new(AllowAll),
-            )
+            .start_worker(tx_addr.clone(), sender, AllowAll, AllowAll)
             .await?;
         UdpListenProcessor::start(&self.ctx, stream, tx_addr, self.async_try_clone().await?)
             .await?;

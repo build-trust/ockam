@@ -115,8 +115,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
         let temp_ctx = ctx
             .new_detached(
                 Address::random_tagged("IdentitySecureChannel.initiator.decryptor.temp"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
+                DenyAll,
+                DenyAll,
             )
             .await?;
         let self_address_clone = self_address.clone();

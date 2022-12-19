@@ -5,7 +5,6 @@ use rand::prelude::random;
 use tokio::io::AsyncBufReadExt;
 
 use anyhow::{anyhow, Context as _};
-use std::sync::Arc;
 use std::{
     net::{IpAddr, SocketAddr},
     path::PathBuf,
@@ -269,8 +268,8 @@ async fn run_foreground_node(
     ctx.start_worker(
         NODEMANAGER_ADDR,
         node_manager_worker,
-        Arc::new(AllowAll), // FIXME: @ac
-        Arc::new(AllowAll), // FIXME: @ac
+        AllowAll, // FIXME: @ac
+        AllowAll, // FIXME: @ac
     )
     .await?;
 

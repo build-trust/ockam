@@ -4,7 +4,6 @@ use std::env::current_exe;
 use std::fs::OpenOptions;
 use std::path::Path;
 use std::process::Command;
-use std::sync::Arc;
 
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpTransport};
@@ -81,8 +80,8 @@ pub async fn start_embedded_node_with_vault_and_identity(
     ctx.start_worker(
         NODEMANAGER_ADDR,
         node_manager_worker,
-        Arc::new(AllowAll), // FIXME: @ac
-        Arc::new(AllowAll), // FIXME: @ac
+        AllowAll, // FIXME: @ac
+        AllowAll, // FIXME: @ac
     )
     .await?;
 

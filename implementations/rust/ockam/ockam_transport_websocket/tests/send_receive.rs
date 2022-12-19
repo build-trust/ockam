@@ -2,13 +2,12 @@ use ockam_core::compat::rand::{self, Rng};
 use ockam_core::{route, AllowAll, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_websocket::{WebSocketTransport, WS};
-use std::sync::Arc;
 
 #[ockam_macros::test]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
     let transport = WebSocketTransport::create(ctx).await?;
     let listener_address = transport.listen("127.0.0.1:0").await?;
-    ctx.start_worker("echoer", Echoer, Arc::new(AllowAll), Arc::new(AllowAll))
+    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
         .await?;
 
     // Sender

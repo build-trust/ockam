@@ -303,9 +303,8 @@ impl NodeManager {
             .await?;
 
         ForwardingService::create(
-            ctx,
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(AllowAll), // FIXME: @ac
+            ctx, AllowAll, // FIXME: @ac
+            AllowAll, // FIXME: @ac
         )
         .await?;
 

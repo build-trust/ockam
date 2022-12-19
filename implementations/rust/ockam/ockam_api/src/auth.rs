@@ -8,7 +8,6 @@ use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_node::api::request;
 use ockam_node::Context;
-use std::sync::Arc;
 use tracing::trace;
 use types::Attribute;
 
@@ -96,8 +95,8 @@ impl Client {
         let ctx = ctx
             .new_detached(
                 Address::random_tagged("AuthClient.detached"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
+                DenyAll,
+                DenyAll,
             )
             .await?;
         Ok(Client {

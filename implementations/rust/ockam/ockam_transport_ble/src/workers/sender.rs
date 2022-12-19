@@ -4,7 +4,6 @@ use ockam_core::{
 };
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
-use std::sync::Arc;
 
 use crate::driver::{AsyncStream, BleStreamDriver, PacketBuffer, Sink, Source};
 use crate::workers::BleRecvProcessor;
@@ -68,8 +67,8 @@ where
         ctx.start_worker(
             tx_addr.clone(),
             sender,
-            Arc::new(DenyAll), // FIXME: @ac
-            Arc::new(DenyAll), // FIXME: @ac
+            DenyAll, // FIXME: @ac
+            DenyAll, // FIXME: @ac
         )
         .await?;
 
@@ -101,8 +100,8 @@ where
             ctx.start_processor(
                 rx_addr.clone(),
                 receiver,
-                Arc::new(DenyAll), // FIXME: @ac
-                Arc::new(DenyAll), // FIXME: @ac
+                DenyAll, // FIXME: @ac
+                DenyAll, // FIXME: @ac
             )
             .await?;
             debug!("started receiver");

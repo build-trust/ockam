@@ -53,16 +53,16 @@ impl Medic {
         let ctx = ctx
             .new_detached(
                 Address::random_tagged("Medic.ctx"),
-                Arc::new(DenyAll),
-                Arc::new(AllowAll), // FIXME: @ac
+                DenyAll,
+                AllowAll, // FIXME: @ac
             )
             .await?;
         let (tx, rx) = mpsc::channel(32);
         ctx.start_worker(
             Collector::address(),
             Collector(tx),
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(DenyAll),
+            AllowAll, // FIXME: @ac
+            DenyAll,
         )
         .await?;
         self.go(ctx, rx).await

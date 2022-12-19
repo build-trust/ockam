@@ -1,6 +1,5 @@
 use core::str::FromStr;
 use std::net::{SocketAddr, ToSocketAddrs};
-use std::sync::Arc;
 
 use ockam_core::{async_trait, Address, AsyncTryClone, DenyAll, Result};
 use ockam_node::Context;
@@ -25,8 +24,8 @@ impl AsyncTryClone for WebSocketRouterHandle {
             .ctx
             .new_detached(
                 Address::random_tagged("WebSocketRouterHandle.async_try_clone.detached"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
+                DenyAll,
+                DenyAll,
             )
             .await?;
         Ok(Self::new(child_ctx, self.api_addr.clone()))

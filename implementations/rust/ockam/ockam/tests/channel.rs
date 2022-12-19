@@ -5,7 +5,6 @@ use ockam::{
     Context,
 };
 use ockam_core::{route, AllowAll, Result};
-use std::sync::Arc;
 use tracing::info;
 
 #[ockam::test]
@@ -23,9 +22,7 @@ async fn simple_channel(ctx: &mut Context) -> Result<()> {
 
     // Send a message through the channel
     let msg = "Hello through the channel!".to_string();
-    let mut child_ctx = ctx
-        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    let mut child_ctx = ctx.new_detached("child", AllowAll, AllowAll).await?;
     child_ctx.send(ch.tx().append("child"), msg.clone()).await?;
 
     // Then wait for the message through the channel
@@ -55,9 +52,7 @@ async fn reliable_channel(ctx: &mut Context) -> Result<()> {
 
     // Send a message through the channel
     let msg = "Hello through the channel!".to_string();
-    let mut child_ctx = ctx
-        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    let mut child_ctx = ctx.new_detached("child", AllowAll, AllowAll).await?;
     child_ctx.send(ch.tx().append("child"), msg.clone()).await?;
 
     // Then wait for the message through the channel

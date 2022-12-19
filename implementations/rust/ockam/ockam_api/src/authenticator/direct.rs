@@ -15,7 +15,6 @@ use serde_json as json;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tracing::{trace, warn};
 use types::AddMember;
@@ -278,8 +277,8 @@ impl Client {
         let ctx = ctx
             .new_detached(
                 Address::random_tagged("AuthClient.direct.detached"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
+                DenyAll,
+                DenyAll,
             )
             .await?;
         Ok(Client {

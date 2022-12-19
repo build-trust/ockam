@@ -29,8 +29,8 @@ impl AsyncTryClone for TcpRouterHandle {
             .ctx
             .new_detached(
                 Address::random_tagged("TcpRouterHandle.async_try_clone.detached"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
+                DenyAll,
+                DenyAll,
             )
             .await?;
 

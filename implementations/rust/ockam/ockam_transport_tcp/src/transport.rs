@@ -122,13 +122,12 @@ impl TcpTransport {
     /// use ockam_transport_tcp::{TcpTransport, TCP};
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result, route};
-    /// # use ockam_core::compat::sync::Arc;
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let hop_addr = "INTERMEDIARY_HOP:8000";
     /// let route_path = route![(TCP, hop_addr), "outlet"];
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_inlet("inlet", route_path, Arc::new(AllowAll)).await?;
+    /// tcp.create_inlet("inlet", route_path, AllowAll).await?;
     /// # tcp.stop_inlet("inlet").await?;
     /// # Ok(()) }
     /// ```
@@ -136,11 +135,29 @@ impl TcpTransport {
         &self,
         bind_addr: impl Into<String>,
         outlet_route: impl Into<Route>,
+        access_control: impl AccessControl,
+    ) -> Result<(Address, SocketAddr)> {
+        self.create_inlet_impl(
+            bind_addr.into(),
+            outlet_route.into(),
+            Arc::new(access_control),
+        )
+        .await
+    }
+
+    /// Create Tcp Inlet that listens on bind_addr, transforms Tcp stream into Ockam Routable
+    /// Messages and forward them to Outlet using outlet_route. Inlet is bidirectional: Ockam
+    /// Messages sent to Inlet from Outlet (using return route) will be streamed to Tcp connection.
+    /// Pair of corresponding Inlet and Outlet is called Portal.
+    pub async fn create_inlet_impl(
+        &self,
+        bind_addr: String,
+        outlet_route: Route,
         access_control: Arc<dyn AccessControl>,
     ) -> Result<(Address, SocketAddr)> {
-        let bind_addr = parse_socket_addr(bind_addr.into())?;
+        let bind_addr = parse_socket_addr(bind_addr)?;
         self.router_handle
-            .bind_inlet(outlet_route.into(), bind_addr, access_control)
+            .bind_inlet(outlet_route, bind_addr, access_control)
             .await
     }
 
@@ -150,13 +167,12 @@ impl TcpTransport {
     /// use ockam_transport_tcp::{TcpTransport, TCP};
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result, route};
-    /// # use ockam_core::compat::sync::Arc;
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let hop_addr = "INTERMEDIARY_HOP:8000";
     /// let route = route![(TCP, hop_addr), "outlet"];
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_inlet("inlet", route, Arc::new(AllowAll)).await?;
+    /// tcp.create_inlet("inlet", route, AllowAll).await?;
     /// tcp.stop_inlet("inlet").await?;
     /// # Ok(()) }
     /// ```
@@ -176,11 +192,10 @@ impl TcpTransport {
     /// use ockam_transport_tcp::TcpTransport;
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result};
-    /// # use ockam_core::compat::sync::Arc;
     /// # async fn test(ctx: Context) -> Result<()> {
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", "localhost:9000", Arc::new(AllowAll)).await?;
+    /// tcp.create_outlet("outlet", "localhost:9000", AllowAll).await?;
     /// # tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
@@ -188,11 +203,26 @@ impl TcpTransport {
         &self,
         address: impl Into<Address>,
         peer: impl Into<String>,
+        access_control: impl AccessControl,
+    ) -> Result<()> {
+        self.create_outlet_impl(address.into(), peer.into(), Arc::new(access_control))
+            .await
+    }
+
+    /// Create Tcp Outlet Listener at address, that connects to peer using Tcp, transforms Ockam Messages
+    /// received from Inlet into stream and sends it to peer Tcp stream. Outlet is bidirectional:
+    /// Tcp stream received from peer is transformed into Ockam Routable Messages and sent
+    /// to Inlet using return route.
+    /// Pair of corresponding Inlet and Outlet is called Portal.
+    pub async fn create_outlet_impl(
+        &self,
+        address: Address,
+        peer: String,
         access_control: Arc<dyn AccessControl>,
     ) -> Result<()> {
-        let worker = TcpOutletListenWorker::new(peer.into(), access_control.clone());
+        let worker = TcpOutletListenWorker::new(peer, access_control.clone());
         WorkerBuilder::with_mailboxes(
-            Mailboxes::main(address.into(), access_control, Arc::new(DenyAll)),
+            Mailboxes::main(address, access_control, Arc::new(DenyAll)),
             worker,
         )
         .start(self.router_handle.ctx())
@@ -205,13 +235,12 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::TcpTransport;
     /// # use ockam_node::Context;
-    /// # use ockam_core::compat::sync::Arc;
     /// # use ockam_core::{AllowAll, Result};
     /// # async fn test(ctx: Context) -> Result<()> {
     /// const TARGET_PEER: &str = "127.0.0.1:5000";
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", TARGET_PEER, Arc::new(AllowAll)).await?;
+    /// tcp.create_outlet("outlet", TARGET_PEER, AllowAll).await?;
     /// tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```

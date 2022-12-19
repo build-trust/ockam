@@ -31,7 +31,6 @@ Add the following code to this file:
 use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
 use ockam::{Context, Result, TcpTransport};
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -44,8 +43,7 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.listen(format!("127.0.0.1:{port}")).await?;
 
     // Create an echoer worker
-    ctx.start_worker("echoer", Echoer, Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())
@@ -69,14 +67,13 @@ Add the following code to this file:
 
 use ockam::access_control::AllowAll;
 use ockam::{route, Context, Result, TcpTransport, TCP};
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let _tcp = TcpTransport::create(&ctx).await?;
 
-    let mut child_ctx = ctx.new_detached("main", Arc::new(AllowAll), Arc::new(AllowAll)).await?;
+    let mut child_ctx = ctx.new_detached("main", AllowAll, AllowAll).await?;
 
     // Send a message to the "echoer" worker, on a different node, over a tcp transport.
     // Use port 4000, unless otherwise specified by command line argument.
@@ -133,7 +130,6 @@ Add the following code to this file:
 use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
 use ockam::{Context, Result, TcpTransport};
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -146,8 +142,7 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.listen(format!("127.0.0.1:{port}")).await?;
 
     // Create an echoer worker
-    ctx.start_worker("echoer", Echoer, Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())
@@ -174,7 +169,6 @@ Add the following code to this file:
 use hello_ockam::Hop;
 use ockam::access_control::AllowAll;
 use ockam::{Context, Result, TcpTransport};
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -187,8 +181,7 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.listen(format!("127.0.0.1:{port}")).await?;
 
     // Create a Hop worker
-    ctx.start_worker("hop", Hop, Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    ctx.start_worker("hop", Hop, AllowAll, AllowAll).await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())

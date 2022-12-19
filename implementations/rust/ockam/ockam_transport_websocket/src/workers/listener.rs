@@ -1,5 +1,4 @@
 use std::net::SocketAddr;
-use std::sync::Arc;
 
 use tokio::net::TcpListener;
 
@@ -37,10 +36,8 @@ impl WebSocketListenProcessor {
         };
         let waddr = Address::random_tagged("WebSocketListenProcessor");
         ctx.start_processor(
-            waddr,
-            processor,
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(AllowAll), // FIXME: @ac
+            waddr, processor, AllowAll, // FIXME: @ac
+            AllowAll, // FIXME: @ac
         )
         .await?;
         Ok(saddr)

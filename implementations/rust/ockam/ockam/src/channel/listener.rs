@@ -5,7 +5,6 @@ use crate::{
     Context,
 };
 use ockam_core::compat::boxed::Box;
-use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, AllowAll, Result, Route, Routed, Worker};
 
 pub struct ChannelListener {
@@ -23,8 +22,8 @@ impl ChannelListener {
         ctx.start_worker(
             addr,
             Self { tx_hooks, rx_hooks },
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(AllowAll), // FIXME: @ac
+            AllowAll, // FIXME: @ac
+            AllowAll, // FIXME: @ac
         )
         .await
     }

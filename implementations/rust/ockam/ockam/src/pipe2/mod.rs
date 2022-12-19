@@ -401,8 +401,8 @@ impl PipeBuilder {
             ctx.start_worker(
                 addr.clone(),
                 listener,
-                Arc::new(AllowAll), // FIXME: @ac,
-                Arc::new(AllowAll), // FIXME: @ac
+                AllowAll, // FIXME: @ac,
+                AllowAll, // FIXME: @ac
             )
             .await?;
             rx_addr = Some(addr);

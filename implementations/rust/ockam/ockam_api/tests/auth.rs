@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use ockam::authenticated_storage::AuthenticatedStorage;
 use ockam::identity::authenticated_storage::mem::InMemoryStorage;
@@ -27,10 +26,8 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         let store = InMemoryStorage::new();
         let auth = direct::Server::new(b"project42".to_vec(), store, tmpf.path(), a);
         ctx.start_worker(
-            "auth",
-            auth,
-            Arc::new(AllowAll), // Auth checks happen inside the worker
-            Arc::new(AllowAll),
+            "auth", auth, AllowAll, // Auth checks happen inside the worker
+            AllowAll,
         )
         .await?;
         exported
@@ -110,10 +107,8 @@ async fn update_member_format(ctx: &mut Context) -> Result<()> {
         let exported = a.export().await?;
         let auth = direct::Server::new(b"project42".to_vec(), store, tmpf.path(), a);
         ctx.start_worker(
-            "auth",
-            auth,
-            Arc::new(AllowAll), // Auth checks happen inside the worker
-            Arc::new(AllowAll),
+            "auth", auth, AllowAll, // Auth checks happen inside the worker
+            AllowAll,
         )
         .await?;
         exported
