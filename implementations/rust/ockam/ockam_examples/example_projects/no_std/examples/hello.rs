@@ -5,7 +5,9 @@
 #![cfg_attr(all(not(feature = "std"), feature = "cortexm"), no_std)]
 #![cfg_attr(all(not(feature = "std"), feature = "cortexm"), no_main)]
 
-use tracing::{error, info};
+#[cfg(feature = "cortexm")]
+use tracing::error;
+use tracing::info;
 
 // - bare metal entrypoint ----------------------------------------------------
 

@@ -14,9 +14,9 @@ macro_rules! tracing_println {
         // dummy logger
         #[cfg(not(any(feature="log-itm", feature="log-semihosting", feature="log-uart")))]
         {
-            use ockam_core::compat::io::Write;
+            use ockam::compat::io::{Write, Cursor};
             let mut buffer = [0 as u8; 1];
-            let mut cursor = ockam_core::compat::io::Cursor::new(&mut buffer[..]);
+            let mut cursor = Cursor::new(&mut buffer[..]);
 
             match write!(&mut cursor, $($arg)*) {
                 Ok(()) => (),
