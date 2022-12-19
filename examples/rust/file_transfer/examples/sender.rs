@@ -10,7 +10,6 @@ use ockam::{
 use ockam::{TcpTransport, TCP};
 
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use anyhow::Result;
 use ockam::access_control::{AllowOnwardAddress, DenyAll};
@@ -86,11 +85,7 @@ async fn main(ctx: Context) -> Result<()> {
     });
 
     let child_ctx = ctx
-        .new_detached(
-            "file_sender",
-            Arc::new(DenyAll),
-            Arc::new(AllowOnwardAddress(channel.clone())),
-        )
+        .new_detached("file_sender", DenyAll, AllowOnwardAddress(channel.clone()))
         .await?;
     child_ctx.send(route![channel.clone(), "receiver"], descr).await?;
 

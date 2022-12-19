@@ -22,12 +22,8 @@ fn start_and_shutdown_node__many_iterations__should_not_fail() {
         executor
             .execute(async move {
                 let res = std::panic::AssertUnwindSafe(async {
-                    let child_ctx1 = ctx
-                        .new_detached("child1", Arc::new(AllowAll), Arc::new(AllowAll))
-                        .await?;
-                    let mut child_ctx2 = ctx
-                        .new_detached("child2", Arc::new(AllowAll), Arc::new(AllowAll))
-                        .await?;
+                    let child_ctx1 = ctx.new_detached("child1", AllowAll, AllowAll).await?;
+                    let mut child_ctx2 = ctx.new_detached("child2", AllowAll, AllowAll).await?;
                     child_ctx1
                         .send(route!["child2"], "Hello".to_string())
                         .await?;
@@ -97,13 +93,8 @@ async fn simple_worker__run_node_lifecycle__worker_lifecycle_should_be_full(
         shutdown_was_called: shutdown_was_called_clone,
     };
 
-    ctx.start_worker(
-        "simple_worker",
-        worker,
-        Arc::new(AllowAll),
-        Arc::new(AllowAll),
-    )
-    .await?;
+    ctx.start_worker("simple_worker", worker, AllowAll, AllowAll)
+        .await?;
 
     let msg: String = ctx
         .send_and_receive(route!["simple_worker"], "Hello".to_string())
@@ -133,20 +124,10 @@ impl Processor for DummyProcessor {
 
 #[ockam_macros::test]
 async fn starting_processor_with_dup_address_should_fail(ctx: &mut Context) -> Result<()> {
-    ctx.start_processor(
-        "dummy_processor",
-        DummyProcessor,
-        Arc::new(DenyAll),
-        Arc::new(DenyAll),
-    )
-    .await?;
+    ctx.start_processor("dummy_processor", DummyProcessor, DenyAll, DenyAll)
+        .await?;
     assert!(ctx
-        .start_processor(
-            "dummy_processor",
-            DummyProcessor,
-            Arc::new(DenyAll),
-            Arc::new(DenyAll)
-        )
+        .start_processor("dummy_processor", DummyProcessor, DenyAll, DenyAll)
         .await
         .is_err());
     ctx.stop().await
@@ -203,13 +184,8 @@ async fn counting_processor__run_node_lifecycle__processor_lifecycle_should_be_f
         run_called_count: run_called_count_clone,
     };
 
-    ctx.start_processor(
-        "counting_processor",
-        processor,
-        Arc::new(DenyAll),
-        Arc::new(DenyAll),
-    )
-    .await?;
+    ctx.start_processor("counting_processor", processor, DenyAll, DenyAll)
+        .await?;
     sleep(Duration::new(1, 0)).await;
 
     assert!(initialize_was_called.load(Ordering::Relaxed));
@@ -264,13 +240,8 @@ async fn waiting_processor__shutdown__should_be_interrupted(ctx: &mut Context) -
         shutdown_was_called: shutdown_was_called_clone,
     };
 
-    ctx.start_processor(
-        "waiting_processor",
-        processor,
-        Arc::new(DenyAll),
-        Arc::new(DenyAll),
-    )
-    .await?;
+    ctx.start_processor("waiting_processor", processor, DenyAll, DenyAll)
+        .await?;
     sleep(Duration::new(1, 0)).await;
 
     ctx.stop_processor("waiting_processor").await?;
@@ -339,13 +310,8 @@ async fn waiting_processor__messaging__should_work(ctx: &mut Context) -> Result<
         shutdown_was_called: shutdown_was_called_clone,
     };
 
-    ctx.start_processor(
-        "messaging_processor",
-        processor,
-        Arc::new(AllowAll),
-        Arc::new(AllowAll),
-    )
-    .await?;
+    ctx.start_processor("messaging_processor", processor, AllowAll, AllowAll)
+        .await?;
     sleep(Duration::new(1, 0)).await;
 
     let msg: String = ctx
@@ -386,8 +352,7 @@ impl Worker for BadWorker {
 #[ockam_macros::test]
 async fn abort_blocked_shutdown(ctx: &mut Context) -> Result<()> {
     // Create an executor
-    ctx.start_worker("bad", BadWorker, Arc::new(DenyAll), Arc::new(DenyAll))
-        .await?;
+    ctx.start_worker("bad", BadWorker, DenyAll, DenyAll).await?;
 
     ockam_node::tokio::time::timeout(Duration::from_secs(2), ctx.stop())
         .await
@@ -412,7 +377,7 @@ impl Worker for WaitForWorker {
 #[ockam_macros::test]
 async fn wait_for_worker(ctx: &mut Context) -> Result<()> {
     let t1 = tokio::time::Instant::now();
-    ctx.start_worker("slow", WaitForWorker, Arc::new(DenyAll), Arc::new(DenyAll))
+    ctx.start_worker("slow", WaitForWorker, DenyAll, DenyAll)
         .await
         .unwrap();
 
@@ -457,9 +422,7 @@ async fn worker_calls_stopworker_from_handlemessage(ctx: &mut Context) -> Result
     let counter_a_clone = counter_a.clone();
     let counter_b_clone = counter_b.clone();
 
-    let child_ctx = ctx
-        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    let child_ctx = ctx.new_detached("child", AllowAll, AllowAll).await?;
 
     const RUNS: u32 = 1000;
     const WORKERS: u32 = 10;
@@ -471,7 +434,7 @@ async fn worker_calls_stopworker_from_handlemessage(ctx: &mut Context) -> Result
                 counter_b: counter_b_clone.clone(),
             };
             let addr = Address::random(LOCAL);
-            ctx.start_worker(addr.clone(), worker, Arc::new(AllowAll), Arc::new(AllowAll))
+            ctx.start_worker(addr.clone(), worker, AllowAll, AllowAll)
                 .await
                 .unwrap();
             addrs.push(addr);
@@ -533,13 +496,8 @@ enum SendReceiveResponse {
 /// See https://github.com/build-trust/ockam/issues/2628.
 #[ockam_macros::test]
 async fn use_context_send_and_receive(ctx: &mut Context) -> Result<()> {
-    ctx.start_worker(
-        "SendReceiveWorker",
-        SendReceiveWorker,
-        Arc::new(AllowAll),
-        Arc::new(AllowAll),
-    )
-    .await?;
+    ctx.start_worker("SendReceiveWorker", SendReceiveWorker, AllowAll, AllowAll)
+        .await?;
 
     let msg_tx = SendReceiveRequest::Connect();
     let msg_rx = ctx.send_and_receive("SendReceiveWorker", msg_tx).await?;
@@ -576,20 +534,10 @@ impl Worker for DummyWorker {
 
 #[ockam_macros::test]
 async fn starting_worker_with_dup_address_should_fail(ctx: &mut Context) -> Result<()> {
-    ctx.start_worker(
-        "dummy_worker",
-        DummyWorker,
-        Arc::new(DenyAll),
-        Arc::new(DenyAll),
-    )
-    .await?;
+    ctx.start_worker("dummy_worker", DummyWorker, DenyAll, DenyAll)
+        .await?;
     assert!(ctx
-        .start_worker(
-            "dummy_worker",
-            DummyWorker,
-            Arc::new(DenyAll),
-            Arc::new(DenyAll)
-        )
+        .start_worker("dummy_worker", DummyWorker, DenyAll, DenyAll)
         .await
         .is_err());
     ctx.stop().await

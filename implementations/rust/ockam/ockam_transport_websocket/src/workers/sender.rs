@@ -154,8 +154,8 @@ where
             ctx.start_processor(
                 rx_addr.clone(),
                 receiver,
-                Arc::new(AllowAll), // FIXME: @ac
-                Arc::new(AllowAll), // FIXME: @ac
+                AllowAll, // FIXME: @ac
+                AllowAll, // FIXME: @ac
             )
             .await?;
         } else {

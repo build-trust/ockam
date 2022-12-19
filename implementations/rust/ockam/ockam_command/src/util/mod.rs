@@ -1,5 +1,4 @@
 use core::time::Duration;
-use std::sync::Arc;
 use std::{
     env,
     net::{SocketAddr, TcpListener},
@@ -357,8 +356,8 @@ where
         let child_ctx = ctx
             .new_detached(
                 Address::random_tagged("Detached.embedded_node"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
+                DenyAll,
+                DenyAll,
             )
             .await
             .expect("Embedded node child ctx can't be created");
@@ -380,8 +379,8 @@ where
         let child_ctx = ctx
             .new_detached(
                 Address::random_tagged("Detached.embedded_node.not_stopped"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
+                DenyAll,
+                DenyAll,
             )
             .await
             .expect("Embedded node child ctx can't be created");

@@ -188,7 +188,7 @@ impl NodeManagerWorker {
 
         let res = node_manager
             .tcp_transport
-            .create_inlet(
+            .create_inlet_impl(
                 listen_addr.clone(),
                 outlet_route.clone(),
                 access_control.clone(),
@@ -284,7 +284,7 @@ impl NodeManagerWorker {
 
         let res = node_manager
             .tcp_transport
-            .create_outlet(worker_addr.clone(), tcp_addr.clone(), access_control)
+            .create_outlet_impl(worker_addr.clone(), tcp_addr.clone(), access_control)
             .await;
 
         Ok(match res {
@@ -386,7 +386,11 @@ fn replacer(
                 }
 
                 // Finally attempt to create a new inlet using the new route:
-                let wa = this.tcp_transport.create_inlet(bind, r, access).await?.0;
+                let wa = this
+                    .tcp_transport
+                    .create_inlet_impl(bind, r, access)
+                    .await?
+                    .0;
                 data.put(INLET_WORKER, wa);
 
                 Ok(without_outlet_address(rest))

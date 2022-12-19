@@ -6,7 +6,6 @@ use ockam::{
     vault::Vault,
     Context, Result, TcpTransport, TCP,
 };
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -36,7 +35,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, Arc::new(AllowAll)).await?;
+    tcp.create_outlet("outlet", outlet_target, AllowAll).await?;
 
     // To allow Inlet Node and others to initiate an end-to-end secure channel with this program
     // we connect with 1.node.ockam.network:4000 as a TCP client and ask the forwarding

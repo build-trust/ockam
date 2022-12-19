@@ -3,7 +3,6 @@ use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{remote::RemoteForwarder, Routed, TcpTransport, Worker, TCP};
 use ockam::{vault::Vault, Context, Result};
-use std::sync::Arc;
 
 struct Echoer;
 
@@ -58,8 +57,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Start a worker, of type Echoer, at address "echoer".
     // This worker will echo back every message it receives, along its return route.
-    ctx.start_worker("echoer", Echoer, Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
     // We won't call ctx.stop() here, this program will run until you stop it with Ctrl-C
     Ok(())

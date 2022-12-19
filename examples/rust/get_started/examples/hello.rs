@@ -6,7 +6,6 @@ use ockam::{
     vault::Vault,
     Context, Result,
 };
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -35,9 +34,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let channel = alice
         .create_secure_channel("bob", TrustEveryonePolicy, &alice_storage)
         .await?;
-    let mut child_ctx = ctx
-        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    let mut child_ctx = ctx.new_detached("child", AllowAll, AllowAll).await?;
 
     // Send a message, ** THROUGH ** the secure channel,
     // to the "app" worker on the other side.

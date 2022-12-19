@@ -134,13 +134,8 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker(
-            "counting_worker",
-            worker,
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        )
-        .await?;
+        ctx.start_worker("counting_worker", worker, AllowAll, AllowAll)
+            .await?;
 
         heartbeat.schedule(Duration::from_millis(100)).await?;
         sleep(Duration::from_millis(150)).await;
@@ -164,13 +159,8 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker(
-            "counting_worker",
-            worker,
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        )
-        .await?;
+        ctx.start_worker("counting_worker", worker, AllowAll, AllowAll)
+            .await?;
 
         heartbeat.schedule(Duration::from_millis(100)).await?;
         heartbeat.schedule(Duration::from_millis(100)).await?;
@@ -192,13 +182,8 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker(
-            "counting_worker",
-            worker,
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        )
-        .await?;
+        ctx.start_worker("counting_worker", worker, AllowAll, AllowAll)
+            .await?;
 
         heartbeat.schedule(Duration::from_millis(100)).await?;
         sleep(Duration::from_millis(150)).await;
@@ -222,13 +207,8 @@ mod tests {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker(
-            "counting_worker",
-            worker,
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        )
-        .await?;
+        ctx.start_worker("counting_worker", worker, AllowAll, AllowAll)
+            .await?;
 
         heartbeat.schedule(Duration::from_millis(100)).await?;
         sleep(Duration::from_millis(150)).await;

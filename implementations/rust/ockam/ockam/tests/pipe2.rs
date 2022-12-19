@@ -1,6 +1,5 @@
 use ockam::{pipe2::PipeBuilder, Context};
 use ockam_core::{compat::string::String, route, Address, AllowAll, Result};
-use std::sync::Arc;
 use tracing::info;
 
 #[ockam::test]
@@ -19,9 +18,7 @@ async fn very_simple_pipe2(ctx: &mut Context) -> Result<()> {
     let sender = PipeBuilder::fixed().connect(rx_addr).build(ctx).await?;
     info!("Created sender pipe: {}", sender.addr());
 
-    let mut child_ctx = ctx
-        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    let mut child_ctx = ctx.new_detached("child", AllowAll, AllowAll).await?;
     let msg = String::from("Hello through the pipe");
     child_ctx
         .send(route![sender.addr(), "child"], msg.clone())
@@ -45,9 +42,7 @@ async fn handshake_pipe(ctx: &mut Context) -> Result<()> {
         .build(ctx)
         .await?;
 
-    let mut child_ctx = ctx
-        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    let mut child_ctx = ctx.new_detached("child", AllowAll, AllowAll).await?;
     let msg = String::from("Hello through the pipe");
     child_ctx
         .send(route![sender.addr(), "child"], msg.clone())
@@ -80,9 +75,7 @@ async fn fixed_delivery_pipe(ctx: &mut Context) -> Result<()> {
 
     info!("Created sender pipe: {}", sender.addr());
 
-    let mut child_ctx = ctx
-        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    let mut child_ctx = ctx.new_detached("child", AllowAll, AllowAll).await?;
     let msg = String::from("Hello through the pipe");
     child_ctx
         .send(route![sender.addr(), "child"], msg.clone())
@@ -108,9 +101,7 @@ async fn dynamic_delivery_pipe(ctx: &mut Context) -> Result<()> {
         .build(ctx)
         .await?;
 
-    let mut child_ctx = ctx
-        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    let mut child_ctx = ctx.new_detached("child", AllowAll, AllowAll).await?;
     let msg = String::from("Hello through the pipe");
     child_ctx
         .send(route![sender.addr(), "child"], msg.clone())
@@ -143,9 +134,7 @@ async fn fixed_ordering_pipe(ctx: &mut Context) -> Result<()> {
 
     info!("Created sender pipe: {}", sender.addr());
 
-    let mut child_ctx = ctx
-        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    let mut child_ctx = ctx.new_detached("child", AllowAll, AllowAll).await?;
     let msg = String::from("Hello through the pipe");
     child_ctx
         .send(route![sender.addr(), "child"], msg.clone())
@@ -179,9 +168,7 @@ async fn fixed_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
 
     info!("Created sender pipe: {}", sender.addr());
 
-    let mut child_ctx = ctx
-        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    let mut child_ctx = ctx.new_detached("child", AllowAll, AllowAll).await?;
     let msg = String::from("Hello through the pipe");
     child_ctx
         .send(route![sender.addr(), "child"], msg.clone())
@@ -209,9 +196,7 @@ async fn dynamic_delivery_and_ordering_pipe(ctx: &mut Context) -> Result<()> {
         .build(ctx)
         .await?;
 
-    let mut child_ctx = ctx
-        .new_detached("child", Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    let mut child_ctx = ctx.new_detached("child", AllowAll, AllowAll).await?;
     let msg = String::from("Hello through the pipe");
     child_ctx
         .send(route![sender.addr(), "child"], msg.clone())

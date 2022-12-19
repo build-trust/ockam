@@ -9,7 +9,6 @@ use ockam_core::{Address, Decodable, LocalMessage, Message, Result, Routed, Work
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 pub(crate) use handle::BleRouterHandle;
 
@@ -44,8 +43,8 @@ impl BleRouter {
         let handle_ctx = ctx
             .new_detached(
                 Address::random_tagged("BleRouterHandle.async_try_clone.detached"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
+                DenyAll,
+                DenyAll,
             )
             .await?;
         let handle = BleRouterHandle::new(handle_ctx, self.api_addr.clone());
@@ -148,8 +147,8 @@ impl BleRouter {
         let child_ctx = ctx
             .new_detached(
                 Address::random_tagged("BleRouter.detached_child"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
+                DenyAll,
+                DenyAll,
             )
             .await?;
         let router = Self {

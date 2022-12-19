@@ -1,6 +1,5 @@
 use crate::Context;
 use core::str::from_utf8;
-use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
     AccessControl, Address, AllowAll, Any, LocalMessage, Result, Route, Routed, TransportMessage,
@@ -21,8 +20,8 @@ impl ForwardingService {
     /// `"forwarding_service"`.
     pub async fn create(
         ctx: &Context,
-        incoming_access_control: Arc<dyn AccessControl>,
-        outgoing_access_control: Arc<dyn AccessControl>,
+        incoming_access_control: impl AccessControl,
+        outgoing_access_control: impl AccessControl,
     ) -> Result<()> {
         ctx.start_worker(
             "forwarding_service",
@@ -86,10 +85,8 @@ impl Forwarder {
         };
 
         ctx.start_worker(
-            address,
-            forwarder,
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(AllowAll), // FIXME: @ac
+            address, forwarder, AllowAll, // FIXME: @ac
+            AllowAll, // FIXME: @ac
         )
         .await?;
 

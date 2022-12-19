@@ -1,7 +1,6 @@
 use ockam_core::compat::rand::{self, Rng};
 use ockam_core::{route, AllowAll, Result, Routed, Worker};
 use ockam_node::Context;
-use std::sync::Arc;
 
 use ockam_transport_udp::{UdpTransport, UDP};
 use tracing::debug;
@@ -16,7 +15,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
     {
         let transport = UdpTransport::create(ctx).await?;
         transport.listen(bind_address).await?;
-        ctx.start_worker("echoer", Echoer, Arc::new(AllowAll), Arc::new(AllowAll))
+        ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
             .await?;
     };
 

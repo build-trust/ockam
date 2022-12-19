@@ -42,12 +42,10 @@ use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{vault::Vault, Context, Result, TcpTransport};
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    ctx.start_worker("echoer", Echoer, Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
@@ -96,12 +94,10 @@ Add the following code to this file:
 use hello_ockam::Hop;
 use ockam::access_control::AllowAll;
 use ockam::{Context, Result, TcpTransport};
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    ctx.start_worker("hop", Hop, Arc::new(AllowAll), Arc::new(AllowAll))
-        .await?;
+    ctx.start_worker("hop", Hop, AllowAll, AllowAll).await?;
 
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;

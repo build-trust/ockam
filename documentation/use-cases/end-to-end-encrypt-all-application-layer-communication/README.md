@@ -157,7 +157,6 @@ Create a file at `examples/01-inlet-outlet.rs` and copy the below code snippet t
 // examples/01-inlet-outlet.rs
 use ockam::access_control::AllowAll;
 use ockam::{route, Context, Result, TcpTransport};
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -181,7 +180,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(2).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, Arc::new(AllowAll)).await?;
+    tcp.create_outlet("outlet", outlet_target, AllowAll).await?;
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
     // For example: 127.0.0.1:4001
@@ -198,8 +197,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    and send it as raw TCP data to a connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
-    tcp.create_inlet(inlet_address, route!["outlet"], Arc::new(AllowAll))
-        .await?;
+    tcp.create_inlet(inlet_address, route!["outlet"], AllowAll).await?;
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
@@ -250,7 +248,6 @@ Create a file at `examples/02-outlet.rs` and copy the below code snippet to it.
 // examples/02-outlet.rs
 use ockam::access_control::AllowAll;
 use ockam::{Context, Result, TcpTransport};
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -274,7 +271,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, Arc::new(AllowAll)).await?;
+    tcp.create_outlet("outlet", outlet_target, AllowAll).await?;
 
     // Create a TCP listener to receive Ockam Routing Messages from other ockam nodes.
     //
@@ -296,7 +293,6 @@ Create a file at `examples/02-inlet.rs` and copy the below code snippet to it.
 // examples/02-inlet.rs
 use ockam::access_control::AllowAll;
 use ockam::{route, Context, Result, TcpTransport, TCP};
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -327,8 +323,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    and send it as raw TCP data to q connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
-    tcp.create_inlet(inlet_address, route_to_outlet, Arc::new(AllowAll))
-        .await?;
+    tcp.create_inlet(inlet_address, route_to_outlet, AllowAll).await?;
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
@@ -389,7 +384,6 @@ use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{vault::Vault, Context, Result, TcpTransport};
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -425,7 +419,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, Arc::new(AllowAll)).await?;
+    tcp.create_outlet("outlet", outlet_target, AllowAll).await?;
 
     // Create a TCP listener to receive Ockam Routing Messages from other ockam nodes.
     //
@@ -449,7 +443,6 @@ use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -493,8 +486,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    and send it as raw TCP data to q connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
-    tcp.create_inlet(inlet_address, route_to_outlet, Arc::new(AllowAll))
-        .await?;
+    tcp.create_inlet(inlet_address, route_to_outlet, AllowAll).await?;
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
@@ -575,7 +567,6 @@ use ockam::{
     vault::Vault,
     Context, Result, TcpTransport, TCP,
 };
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -605,7 +596,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, Arc::new(AllowAll)).await?;
+    tcp.create_outlet("outlet", outlet_target, AllowAll).await?;
 
     // To allow Inlet Node and others to initiate an end-to-end secure channel with this program
     // we connect with 1.node.ockam.network:4000 as a TCP client and ask the forwarding
@@ -634,7 +625,6 @@ use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{route, vault::Vault, Context, Result, Route, TcpTransport, TCP};
-use std::sync::Arc;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -680,8 +670,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    and send it as raw TCP data to q connected TCP client.
 
     let inlet_address = std::env::args().nth(1).expect("no inlet address given");
-    tcp.create_inlet(inlet_address, route_to_outlet, Arc::new(AllowAll))
-        .await?;
+    tcp.create_inlet(inlet_address, route_to_outlet, AllowAll).await?;
 
     // We won't call ctx.stop() here,
     // so this program will keep running until you interrupt it with Ctrl-C.

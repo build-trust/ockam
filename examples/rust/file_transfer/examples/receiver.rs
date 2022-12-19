@@ -10,7 +10,6 @@ use ockam::{
     vault::Vault,
     Context, Error, Result, Routed, TcpTransport, Worker, TCP,
 };
-use std::sync::Arc;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
@@ -116,13 +115,8 @@ async fn main(ctx: Context) -> Result<()> {
     println!("{}", forwarder.remote_address());
 
     // Start a worker, of type FileReception, at address "receiver".
-    ctx.start_worker(
-        "receiver",
-        FileReception::default(),
-        Arc::new(AllowAll),
-        Arc::new(AllowAll),
-    )
-    .await?;
+    ctx.start_worker("receiver", FileReception::default(), AllowAll, AllowAll)
+        .await?;
 
     // We won't call ctx.stop() here, this program will quit when the file will be entirely received
     Ok(())

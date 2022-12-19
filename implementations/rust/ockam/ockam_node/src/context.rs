@@ -73,8 +73,8 @@ impl AsyncTryClone for Context {
         // TODO: @ac ignores parent Access Control. Should be documented somewhere
         self.new_detached(
             Address::random_tagged("Context.async_try_clone.detached"),
-            Arc::new(DenyAll),
-            Arc::new(DenyAll),
+            DenyAll,
+            DenyAll,
         )
         .await
     }
@@ -204,14 +204,10 @@ impl Context {
     pub async fn new_detached(
         &self,
         address: impl Into<Address>,
-        incoming_access_control: Arc<dyn AccessControl>,
-        outgoing_access_control: Arc<dyn AccessControl>,
+        incoming: impl AccessControl,
+        outgoing: impl AccessControl,
     ) -> Result<DetachedContext> {
-        let mailboxes = Mailboxes::main(
-            address.into(),
-            incoming_access_control,
-            outgoing_access_control,
-        );
+        let mailboxes = Mailboxes::main(address.into(), Arc::new(incoming), Arc::new(outgoing));
         let ctx = self.new_detached_impl(mailboxes).await?;
 
         debugger::log_inherit_context("DETACHED", self, &ctx);
@@ -287,23 +283,26 @@ impl Context {
     /// }
     ///
     /// async fn start_my_worker(ctx: &mut Context) -> Result<()> {
-    ///     ctx.start_worker("my-worker-address", MyWorker, Arc::new(AllowAll), Arc::new(AllowAll)).await
+    ///     ctx.start_worker("my-worker-address", MyWorker, AllowAll, AllowAll).await
     /// }
     /// ```
     pub async fn start_worker<NM, NW>(
         &self,
         address: impl Into<Address>,
         worker: NW,
-        incoming: Arc<dyn AccessControl>,
-        outgoing: Arc<dyn AccessControl>,
+        incoming: impl AccessControl,
+        outgoing: impl AccessControl,
     ) -> Result<()>
     where
         NM: Message + Send + 'static,
         NW: Worker<Context = Context, Message = NM>,
     {
-        WorkerBuilder::with_mailboxes(Mailboxes::main(address, incoming, outgoing), worker)
-            .start(self)
-            .await?;
+        WorkerBuilder::with_mailboxes(
+            Mailboxes::main(address, Arc::new(incoming), Arc::new(outgoing)),
+            worker,
+        )
+        .start(self)
+        .await?;
 
         Ok(())
     }
@@ -323,14 +322,14 @@ impl Context {
         &self,
         address: impl Into<Address>,
         processor: P,
-        incoming: Arc<dyn AccessControl>,
-        outgoing: Arc<dyn AccessControl>,
+        incoming: impl AccessControl,
+        outgoing: impl AccessControl,
     ) -> Result<()>
     where
         P: Processor<Context = Context>,
     {
         ProcessorBuilder::with_mailboxes(
-            Mailboxes::main(address.into(), incoming, outgoing),
+            Mailboxes::main(address.into(), Arc::new(incoming), Arc::new(outgoing)),
             processor,
         )
         .start(self)

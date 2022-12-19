@@ -17,7 +17,6 @@ use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::AllowAll;
-use std::sync::Arc;
 
 use super::NodeManagerWorker;
 
@@ -37,8 +36,8 @@ impl NodeManager {
         ctx.start_worker(
             addr.clone(),
             service,
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(AllowAll),
+            AllowAll, // FIXME: @ac
+            AllowAll,
         )
         .await?;
 
@@ -64,8 +63,8 @@ impl NodeManager {
         ctx.start_worker(
             addr.clone(),
             service,
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(AllowAll),
+            AllowAll, // FIXME: @ac
+            AllowAll,
         )
         .await?;
 
@@ -123,8 +122,8 @@ impl NodeManager {
         ctx.start_worker(
             addr.clone(),
             server,
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(AllowAll),
+            AllowAll, // FIXME: @ac
+            AllowAll,
         )
         .await?;
 
@@ -149,8 +148,8 @@ impl NodeManager {
         ctx.start_worker(
             addr.clone(),
             Uppercase,
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(AllowAll),
+            AllowAll, // FIXME: @ac
+            AllowAll,
         )
         .await?;
 
@@ -173,8 +172,8 @@ impl NodeManager {
         ctx.start_worker(
             addr.clone(),
             Echoer,
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(AllowAll),
+            AllowAll, // FIXME: @ac
+            AllowAll,
         )
         .await?;
 
@@ -197,8 +196,8 @@ impl NodeManager {
         ctx.start_worker(
             addr.clone(),
             Hop,
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(AllowAll),
+            AllowAll, // FIXME: @ac
+            AllowAll,
         )
         .await?;
 
@@ -225,8 +224,8 @@ impl NodeManager {
         ctx.start_worker(
             addr.clone(),
             au,
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(AllowAll),
+            AllowAll, // FIXME: @ac
+            AllowAll,
         )
         .await?;
         self.registry
@@ -260,8 +259,8 @@ impl NodeManager {
         ctx.start_worker(
             addr.clone(),
             au,
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(AllowAll),
+            AllowAll, // FIXME: @ac
+            AllowAll,
         )
         .await?;
         self.registry
@@ -416,8 +415,8 @@ impl NodeManagerWorker {
         ctx.start_worker(
             addr.clone(),
             vs,
-            Arc::new(AllowAll), // FIXME: @ac
-            Arc::new(AllowAll),
+            AllowAll, // FIXME: @ac
+            AllowAll,
         )
         .await?;
 
