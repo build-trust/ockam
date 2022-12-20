@@ -271,7 +271,6 @@ impl Context {
     ///
     /// ```rust
     /// use ockam_core::{AllowAll, Result, Worker, worker};
-    /// use ockam_core::compat::sync::Arc;
     /// use ockam_node::Context;
     ///
     /// struct MyWorker;
