@@ -8,7 +8,7 @@ use crate::router::BleRouterMessage;
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, string::String, vec::Vec},
-    DenyAll,
+    AllowAll,
 };
 use ockam_core::{Address, AsyncTryClone, Result};
 use ockam_node::Context;
@@ -29,8 +29,8 @@ impl AsyncTryClone for BleRouterHandle {
             .ctx
             .new_detached(
                 Address::random_tagged("BleRouterHandle.async_try_clone.detached"),
-                DenyAll,
-                DenyAll,
+                AllowAll,
+                AllowAll,
             )
             .await?;
         Ok(Self::new(child_ctx, self.api_addr.clone()))
