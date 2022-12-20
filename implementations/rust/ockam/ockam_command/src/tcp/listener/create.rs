@@ -1,3 +1,4 @@
+use crate::node::util::default_node_name;
 use crate::util::extract_address_value;
 use crate::util::node_rpc;
 use crate::util::Rpc;
@@ -19,8 +20,8 @@ pub struct CreateCommand {
 #[derive(Clone, Debug, Args)]
 pub struct TCPListenerNodeOpts {
     /// Node at which to create the listener
-    #[arg(global = true, long, value_name = "NODE", default_value = "default")]
-    pub at: String,
+    #[arg(global = true, long, value_name = "NODE")]
+    pub at: Option<String>,
 }
 
 impl CreateCommand {
@@ -33,7 +34,11 @@ async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let node_name = extract_address_value(&cmd.node_opts.at)?;
+    let at_node_name = &match cmd.node_opts.at {
+        Some(name) => name,
+        None => default_node_name(&opts),
+    };
+    let node_name = extract_address_value(at_node_name)?;
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     rpc.request(Request::post("/node/tcp/listener")).await?;
     let response = rpc.parse_response::<models::transport::TransportStatus>()?;
