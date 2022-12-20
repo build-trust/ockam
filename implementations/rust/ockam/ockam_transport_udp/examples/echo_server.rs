@@ -1,4 +1,4 @@
-use ockam_core::{DenyAll, Result, Routed, Worker};
+use ockam_core::{AllowAll, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_udp::UdpTransport;
 use tracing::debug;
@@ -7,7 +7,8 @@ use tracing::debug;
 async fn main(ctx: Context) -> Result<()> {
     let udp = UdpTransport::create(&ctx).await?;
     udp.listen("127.0.0.1:8000").await?;
-    ctx.start_worker("echoer", Echoer, DenyAll, DenyAll).await?;
+    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
+        .await?;
     Ok(())
 }
 pub struct Echoer;
