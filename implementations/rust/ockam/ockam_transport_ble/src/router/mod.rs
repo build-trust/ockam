@@ -3,12 +3,13 @@ mod handle;
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, collections::BTreeMap, vec::Vec},
-    Any, DenyAll, Mailbox, Mailboxes,
+    AllowAll, Any, Mailbox, Mailboxes,
 };
 use ockam_core::{Address, Decodable, LocalMessage, Message, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 pub(crate) use handle::BleRouterHandle;
 
@@ -43,8 +44,8 @@ impl BleRouter {
         let handle_ctx = ctx
             .new_detached(
                 Address::random_tagged("BleRouterHandle.async_try_clone.detached"),
-                DenyAll,
-                DenyAll,
+                AllowAll,
+                AllowAll,
             )
             .await?;
         let handle = BleRouterHandle::new(handle_ctx, self.api_addr.clone());
@@ -147,8 +148,8 @@ impl BleRouter {
         let child_ctx = ctx
             .new_detached(
                 Address::random_tagged("BleRouter.detached_child"),
-                DenyAll,
-                DenyAll,
+                AllowAll,
+                AllowAll,
             )
             .await?;
         let router = Self {
@@ -164,8 +165,12 @@ impl BleRouter {
 
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::deny_all(main_addr.clone()),
-            vec![Mailbox::deny_all(api_addr)],
+            Mailbox::new(main_addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll)),
+            vec![Mailbox::new(
+                api_addr,
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            )],
         );
         WorkerBuilder::with_mailboxes(mailboxes, router)
             .start(ctx)

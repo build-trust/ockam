@@ -1,6 +1,6 @@
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::{
-    async_trait, Address, DenyAll, Encodable, Result, Routed, TransportMessage, Worker,
+    async_trait, Address, AllowAll, Encodable, Result, Routed, TransportMessage, Worker,
 };
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
@@ -67,8 +67,8 @@ where
         ctx.start_worker(
             tx_addr.clone(),
             sender,
-            DenyAll, // FIXME: @ac
-            DenyAll, // FIXME: @ac
+            AllowAll, // FIXME: @ac
+            AllowAll, // FIXME: @ac
         )
         .await?;
 
@@ -100,8 +100,8 @@ where
             ctx.start_processor(
                 rx_addr.clone(),
                 receiver,
-                DenyAll, // FIXME: @ac
-                DenyAll, // FIXME: @ac
+                AllowAll, // FIXME: @ac
+                AllowAll, // FIXME: @ac
             )
             .await?;
             debug!("started receiver");

@@ -1,5 +1,5 @@
 use ockam_core::compat::boxed::Box;
-use ockam_core::{async_trait, Address, DenyAll, Processor, Result};
+use ockam_core::{async_trait, Address, AllowAll, Processor, Result};
 use ockam_node::Context;
 
 use crate::driver::AsyncStream;
@@ -39,8 +39,8 @@ where
             waddr
         );
         ctx.start_processor(
-            waddr, processor, DenyAll, // FIXME: @ac
-            DenyAll, // FIXME: @ac
+            waddr, processor, AllowAll, // FIXME: @ac
+            AllowAll, // FIXME: @ac
         )
         .await?;
 
