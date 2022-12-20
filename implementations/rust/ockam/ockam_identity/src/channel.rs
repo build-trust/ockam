@@ -7,7 +7,6 @@ pub(crate) use listener::*;
 mod messages;
 pub(crate) use messages::*;
 mod trust_policy;
-use ockam_node::WorkerBuilder;
 pub use trust_policy::*;
 pub mod access_control;
 mod local_info;
@@ -17,9 +16,7 @@ use crate::authenticated_storage::AuthenticatedStorage;
 use crate::{Identity, IdentityVault};
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{
-    Address, AllowAll, AsyncTryClone, LocalOnwardOnly, Mailbox, Mailboxes, Result, Route,
-};
+use ockam_core::{Address, AllowAll, AsyncTryClone, DenyAll, Result, Route};
 
 impl<V: IdentityVault> Identity<V> {
     pub async fn create_secure_channel_listener(
@@ -32,13 +29,13 @@ impl<V: IdentityVault> Identity<V> {
         let storage_clone = storage.async_try_clone().await?;
         let listener = IdentityChannelListener::new(trust_policy, identity_clone, storage_clone);
 
-        let mailbox = Mailbox::new(
-            address.into(),
-            Arc::new(AllowAll),
-            Arc::new(LocalOnwardOnly), // Only talks to decryptors it creates
-        );
-        WorkerBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), listener)
-            .start(&self.ctx)
+        self.ctx
+            .start_worker(
+                address.into(),
+                listener,
+                AllowAll, // TODO: @ac allow to customize
+                DenyAll,
+            )
             .await?;
 
         Ok(())
