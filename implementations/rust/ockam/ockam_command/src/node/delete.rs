@@ -1,4 +1,4 @@
-use crate::node::util::{delete_all_nodes, delete_node};
+use crate::node::util::{default_node_name, delete_all_nodes, delete_node};
 use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
 use clap::Args;
 
@@ -7,8 +7,8 @@ use clap::Args;
 #[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
 pub struct DeleteCommand {
     /// Name of the node.
-    #[arg(default_value = "default", group = "nodes")]
-    node_name: String,
+    #[arg(group = "nodes")]
+    node_name: Option<String>,
 
     /// Terminate all nodes
     #[arg(long, short, group = "nodes")]
@@ -32,8 +32,12 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
     if cmd.all {
         delete_all_nodes(opts, cmd.force)?;
     } else {
-        delete_node(&opts, &cmd.node_name, cmd.force)?;
-        println!("Deleted node '{}'", &cmd.node_name);
+        let node_name = &match cmd.node_name {
+            Some(name) => name,
+            None => default_node_name(&opts),
+        };
+        delete_node(&opts, node_name, cmd.force)?;
+        println!("Deleted node '{}'", node_name);
     }
     Ok(())
 }

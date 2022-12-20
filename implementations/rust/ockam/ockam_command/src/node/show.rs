@@ -1,3 +1,4 @@
+use crate::node::util::default_node_name;
 use crate::util::{api, node_rpc, Rpc, RpcBuilder};
 use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
 use clap::Args;
@@ -23,8 +24,7 @@ const IS_NODE_UP_MAX_TIMEOUT: Duration = Duration::from_secs(1);
 #[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
 pub struct ShowCommand {
     /// Name of the node.
-    #[arg(default_value = "default")]
-    node_name: String,
+    node_name: Option<String>,
 }
 
 impl ShowCommand {
@@ -37,7 +37,11 @@ async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
-    let node_name = &cmd.node_name;
+    let node_name = &match cmd.node_name {
+        Some(name) => name,
+        None => default_node_name(&opts),
+    };
+
     let tcp = TcpTransport::create(&ctx).await?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
     print_query_status(&mut rpc, node_name, false).await?;
