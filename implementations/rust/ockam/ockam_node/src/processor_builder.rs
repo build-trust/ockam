@@ -4,7 +4,7 @@ use crate::{relay::ProcessorRelay, Context, NodeMessage};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
     errcode::{Kind, Origin},
-    AccessControl, Address, DenyAll, Error, Mailboxes, Processor, Result,
+    AccessControl, Address, Error, Mailboxes, Processor, Result,
 };
 
 /// Start a [`Processor`] with a custom [`AccessControl`] configuration
@@ -27,56 +27,6 @@ impl<P> ProcessorBuilder<P>
 where
     P: Processor<Context = Context>,
 {
-    /// Create a processor with `AllowAll` access control
-    pub fn without_access_control(address: impl Into<Address>, processor: P) -> Self {
-        let mailboxes = Mailboxes::main(address.into(), Arc::new(DenyAll), Arc::new(DenyAll));
-        // TODO: @ac can we just default DenyAll ?
-        //let mailboxes = Mailboxes::from_address_set(address.into(), Arc::new(ockam_core::DenyAll), Arc::new(ockam_core::DenyAll));
-
-        Self {
-            mailboxes,
-            processor,
-        }
-    }
-
-    /// Create a processor which inherits access control from the given context
-    pub fn with_inherited_access_control(
-        context: &Context,
-        address: impl Into<Address>,
-        processor: P,
-    ) -> Self {
-        let address = address.into();
-
-        // Inherit access control from the given context's main mailbox
-        let incoming_access_control = context
-            .mailboxes()
-            .main_mailbox()
-            .incoming_access_control()
-            .clone();
-        let outgoing_access_control = context
-            .mailboxes()
-            .main_mailbox()
-            .outgoing_access_control()
-            .clone();
-        // TODO: @ac can we just default DenyAll ?
-        // let access_control = Arc::new(ockam_core::DenyAll);
-
-        debug!(
-            "Processor '{}' inherits access control incoming: '{:?}' outgoing: '{:?}' from: '{}'",
-            address,
-            incoming_access_control,
-            outgoing_access_control,
-            context.address(),
-        );
-
-        let mailboxes = Mailboxes::main(address, incoming_access_control, outgoing_access_control);
-
-        Self {
-            mailboxes,
-            processor,
-        }
-    }
-
     /// Create a processor which uses the given access control
     pub fn with_access_control<AC>(
         incoming_access_control: Arc<dyn AccessControl>,
@@ -84,8 +34,6 @@ where
         address: impl Into<Address>,
         processor: P,
     ) -> Self {
-        // TODO: @ac can we just default DenyAll ?
-        //let access_control = ockam_core::DenyAll;
         let mailboxes = Mailboxes::main(
             address.into(),
             incoming_access_control,
