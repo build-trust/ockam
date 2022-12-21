@@ -74,7 +74,7 @@ ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.6
 serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
 minicbor = { version = "0.18.0", features = ["alloc", "derive"] }
 cfg-if = "1.0.0"
-group = { version = "0.12.0", default-features = false }
+group = { version = "0.13.0", default-features = false }
 heapless = "0.7"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0", optional = true }
