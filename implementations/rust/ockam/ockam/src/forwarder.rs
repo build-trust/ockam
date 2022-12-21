@@ -3,8 +3,8 @@ use core::str::from_utf8;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
-    AccessControl, Address, AllowOnwardAddress, Any, DenyAll, LocalMessage, Result, Route, Routed,
-    TransportMessage, Worker,
+    Address, AllowOnwardAddress, Any, DenyAll, IncomingAccessControl, LocalMessage, Result, Route,
+    Routed, TransportMessage, Worker,
 };
 use ockam_node::WorkerBuilder;
 use tracing::info;
@@ -16,7 +16,7 @@ use tracing::info;
 /// compatible client for this server.
 #[non_exhaustive]
 pub struct ForwardingService {
-    forwarders_incoming_access_control: Arc<dyn AccessControl>,
+    forwarders_incoming_access_control: Arc<dyn IncomingAccessControl>,
 }
 
 impl ForwardingService {
@@ -24,8 +24,8 @@ impl ForwardingService {
     pub async fn create(
         ctx: &Context,
         address: impl Into<Address>,
-        service_incoming_access_control: impl AccessControl,
-        forwarders_incoming_access_control: impl AccessControl,
+        service_incoming_access_control: impl IncomingAccessControl,
+        forwarders_incoming_access_control: impl IncomingAccessControl,
     ) -> Result<()> {
         let s = Self {
             forwarders_incoming_access_control: Arc::new(forwarders_incoming_access_control),
@@ -73,7 +73,7 @@ impl Forwarder {
         ctx: &Context,
         forward_route: Route,
         registration_payload: Vec<u8>,
-        incoming_access_control: Arc<dyn AccessControl>,
+        incoming_access_control: Arc<dyn IncomingAccessControl>,
     ) -> Result<()> {
         let random_address = Address::random_tagged("Forwarder.service");
 

@@ -1,6 +1,6 @@
 use crate::compat::boxed::Box;
 use crate::compat::vec::Vec;
-use crate::{AccessControl, Address, RelayMessage, Result};
+use crate::{Address, IncomingAccessControl, RelayMessage, Result};
 
 /// An Access Control type that allows messages from the given source address to go through
 /// Note that it's based on source address, not a first hop of return_route, which may be different
@@ -9,7 +9,7 @@ use crate::{AccessControl, Address, RelayMessage, Result};
 pub struct AllowSourceAddress(pub Address);
 
 #[async_trait]
-impl AccessControl for AllowSourceAddress {
+impl IncomingAccessControl for AllowSourceAddress {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
         if &self.0 == relay_msg.source() {
             crate::allow()
@@ -26,7 +26,7 @@ impl AccessControl for AllowSourceAddress {
 pub struct AllowSourceAddresses(pub Vec<Address>);
 
 #[async_trait]
-impl AccessControl for AllowSourceAddresses {
+impl IncomingAccessControl for AllowSourceAddresses {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
         if self.0.contains(relay_msg.source()) {
             crate::allow()
@@ -40,8 +40,8 @@ impl AccessControl for AllowSourceAddresses {
 mod tests {
     use crate::compat::future::poll_once;
     use crate::{
-        route, AccessControl, Address, AllowSourceAddress, AllowSourceAddresses, LocalMessage,
-        RelayMessage, Result, TransportMessage,
+        route, Address, AllowSourceAddress, AllowSourceAddresses, IncomingAccessControl,
+        LocalMessage, RelayMessage, Result, TransportMessage,
     };
 
     #[test]

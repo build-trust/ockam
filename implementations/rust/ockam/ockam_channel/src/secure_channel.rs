@@ -4,8 +4,8 @@ use crate::{
 };
 use ockam_core::compat::{sync::Arc, vec::Vec};
 use ockam_core::{
-    AccessControl, Address, AllowAll, AllowOnwardAddresses, AllowSourceAddress, DenyAll,
-    LocalOnwardOnly, Mailbox, Mailboxes, Result, Route,
+    Address, AllowAll, AllowOnwardAddresses, AllowSourceAddress, DenyAll, LocalOnwardOnly, Mailbox,
+    Mailboxes, OutgoingAccessControl, Result, Route,
 };
 use ockam_node::{Context, WorkerBuilder};
 use serde::{Deserialize, Serialize};
@@ -163,7 +163,8 @@ impl SecureChannel {
             // Communicate to the other side of the channel
             Arc::new(AllowAll),
         );
-        let outgoing_access_control: Arc<dyn AccessControl> = match wrapped_outgoing_address {
+        let outgoing_access_control: Arc<dyn OutgoingAccessControl> = match wrapped_outgoing_address
+        {
             // FIXME: @ac Also deny to other secure channels
             None => Arc::new(LocalOnwardOnly), // Prevent exploit of using our node as an authorized proxy
             Some(outgoing_address) => Arc::new(AllowOnwardAddresses(vec![

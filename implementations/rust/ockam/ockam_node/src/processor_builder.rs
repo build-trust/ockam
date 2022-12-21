@@ -4,10 +4,10 @@ use crate::{relay::ProcessorRelay, Context, NodeMessage};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
     errcode::{Kind, Origin},
-    AccessControl, Address, Error, Mailboxes, Processor, Result,
+    Address, Error, IncomingAccessControl, Mailboxes, OutgoingAccessControl, Processor, Result,
 };
 
-/// Start a [`Processor`] with a custom [`AccessControl`] configuration
+/// Start a [`Processor`] with a custom [`IncomingAccessControl`] and [`OutgoingAccessControl`] configuration
 ///
 /// Any incoming messages for the processor will first be subject to the
 /// configured `AccessControl` before it is passed on to
@@ -29,8 +29,8 @@ where
 {
     /// Create a processor which uses the given access control
     pub fn with_access_control<AC>(
-        incoming_access_control: Arc<dyn AccessControl>,
-        outgoing_access_control: Arc<dyn AccessControl>,
+        incoming_access_control: Arc<dyn IncomingAccessControl>,
+        outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         address: impl Into<Address>,
         processor: P,
     ) -> Self {

@@ -8,7 +8,7 @@ use ockam_core::{
     compat::{boxed::Box, sync::Arc},
     DenyAll,
 };
-use ockam_core::{AccessControl, Address, AsyncTryClone, Result, Route};
+use ockam_core::{Address, AsyncTryClone, IncomingAccessControl, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tracing::debug;
@@ -187,7 +187,7 @@ impl TcpRouterHandle {
         &self,
         outlet_listener_route: impl Into<Route>,
         addr: impl Into<SocketAddr>,
-        access_control: Arc<dyn AccessControl>,
+        access_control: Arc<dyn IncomingAccessControl>,
     ) -> Result<(Address, SocketAddr)> {
         let socket_addr = addr.into();
         TcpInletListenProcessor::start(

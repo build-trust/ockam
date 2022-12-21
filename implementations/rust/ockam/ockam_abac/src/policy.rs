@@ -3,7 +3,7 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
 use ockam_core::{async_trait, RelayMessage};
-use ockam_core::{AccessControl, Result};
+use ockam_core::{IncomingAccessControl, Result};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_identity::{credential::AttributesStorageUtils, IdentitySecureChannelLocalInfo};
 use tracing as log;
@@ -51,7 +51,7 @@ impl<P, S> PolicyAccessControl<P, S> {
 }
 
 #[async_trait]
-impl<P, S> AccessControl for PolicyAccessControl<P, S>
+impl<P, S> IncomingAccessControl for PolicyAccessControl<P, S>
 where
     S: AuthenticatedStorage + fmt::Debug,
     P: PolicyStorage + fmt::Debug,

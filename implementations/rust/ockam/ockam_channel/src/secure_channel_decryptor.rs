@@ -5,8 +5,8 @@ use crate::{
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
 use ockam_core::{
-    async_trait, route, AccessControl, AllowOnwardAddress, AllowSourceAddresses, LocalSourceOnly,
-    Mailboxes,
+    async_trait, route, AllowOnwardAddress, AllowSourceAddresses, IncomingAccessControl,
+    LocalSourceOnly, Mailboxes,
 };
 use ockam_core::{
     Address, Any, Decodable, LocalMessage, Result, Route, Routed, TransportMessage, Worker,
@@ -237,7 +237,7 @@ impl<V: SecureChannelVault, K: SecureChannelKeyExchanger> SecureChannelDecryptor
             self.remote_route.clone(),
             self.vault.async_try_clone().await?,
         );
-        let incoming_access_control: Arc<dyn AccessControl> =
+        let incoming_access_control: Arc<dyn IncomingAccessControl> =
             if !self.allowed_encryptor_sources.is_empty() {
                 Arc::new(AllowSourceAddresses(self.allowed_encryptor_sources.clone()))
             } else {

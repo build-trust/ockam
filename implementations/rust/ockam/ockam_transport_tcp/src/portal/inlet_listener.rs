@@ -5,7 +5,7 @@ use ockam_core::{
     compat::{boxed::Box, sync::Arc},
     DenyAll,
 };
-use ockam_core::{AccessControl, Address, Mailboxes, Processor, Result, Route};
+use ockam_core::{Address, IncomingAccessControl, Mailboxes, Processor, Result, Route};
 use ockam_node::{Context, ProcessorBuilder};
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
@@ -19,7 +19,7 @@ use tracing::{debug, error};
 pub(crate) struct TcpInletListenProcessor {
     inner: TcpListener,
     outlet_listener_route: Route,
-    access_control: Arc<dyn AccessControl>,
+    access_control: Arc<dyn IncomingAccessControl>,
 }
 
 impl TcpInletListenProcessor {
@@ -28,7 +28,7 @@ impl TcpInletListenProcessor {
         ctx: &Context,
         outlet_listener_route: Route,
         addr: SocketAddr,
-        access_control: Arc<dyn AccessControl>,
+        access_control: Arc<dyn IncomingAccessControl>,
     ) -> Result<(Address, SocketAddr)> {
         let waddr = Address::random_tagged("TcpInletListenProcessor");
 

@@ -1,6 +1,6 @@
 use crate::compat::boxed::Box;
 use crate::compat::vec::Vec;
-use crate::{AccessControl, Address, RelayMessage, Result};
+use crate::{Address, OutgoingAccessControl, RelayMessage, Result};
 
 /// An Access Control type that allows messages to the given onward address to go through
 /// Note that onward and destination addresses are different in some cases
@@ -8,7 +8,7 @@ use crate::{AccessControl, Address, RelayMessage, Result};
 pub struct AllowOnwardAddress(pub Address);
 
 #[async_trait]
-impl AccessControl for AllowOnwardAddress {
+impl OutgoingAccessControl for AllowOnwardAddress {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
         let onward_route = relay_msg.onward_route();
 
@@ -27,7 +27,7 @@ impl AccessControl for AllowOnwardAddress {
 pub struct AllowOnwardAddresses(pub Vec<Address>);
 
 #[async_trait]
-impl AccessControl for AllowOnwardAddresses {
+impl OutgoingAccessControl for AllowOnwardAddresses {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
         let onward_route = relay_msg.onward_route();
 
@@ -44,8 +44,8 @@ impl AccessControl for AllowOnwardAddresses {
 mod tests {
     use crate::compat::future::poll_once;
     use crate::{
-        route, AccessControl, Address, AllowOnwardAddress, AllowOnwardAddresses, LocalMessage,
-        RelayMessage, Result, TransportMessage,
+        route, Address, AllowOnwardAddress, AllowOnwardAddresses, LocalMessage,
+        OutgoingAccessControl, RelayMessage, Result, TransportMessage,
     };
 
     #[test]

@@ -14,7 +14,7 @@ use ockam::{Address, Result};
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{Action, Env, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::{AccessControl, AllowAll};
+use ockam_core::{AllowAll, IncomingAccessControl};
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::{Project, Secure, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -31,7 +31,7 @@ impl NodeManager {
         r: &Resource,
         a: &Action,
         project_id: Option<String>,
-    ) -> Result<Arc<dyn AccessControl>> {
+    ) -> Result<Arc<dyn IncomingAccessControl>> {
         if let Some(pid) = project_id {
             // Populate environment with known attributes:
             let mut env = Env::new();
@@ -331,7 +331,7 @@ fn replacer(
     bind: String,
     addr: MultiAddr,
     auth: Option<IdentityIdentifier>,
-    access: Arc<dyn AccessControl>,
+    access: Arc<dyn IncomingAccessControl>,
 ) -> Replacer {
     Box::new(move |prev| {
         let addr = addr.clone();

@@ -1,5 +1,5 @@
 use crate::{PortalMessage, TcpPortalWorker, TcpRouterHandle};
-use ockam_core::{async_trait, AccessControl, Result, Routed, Worker};
+use ockam_core::{async_trait, IncomingAccessControl, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use std::sync::Arc;
@@ -12,12 +12,12 @@ use tracing::debug;
 /// [`TcpTransport::create_outlet`](crate::TcpTransport::create_outlet).
 pub(crate) struct TcpOutletListenWorker {
     peer: String,
-    access_control: Arc<dyn AccessControl>,
+    access_control: Arc<dyn IncomingAccessControl>,
 }
 
 impl TcpOutletListenWorker {
     /// Create a new `TcpOutletListenWorker`
-    pub(crate) fn new(peer: String, access_control: Arc<dyn AccessControl>) -> Self {
+    pub(crate) fn new(peer: String, access_control: Arc<dyn IncomingAccessControl>) -> Self {
         Self {
             peer,
             access_control,

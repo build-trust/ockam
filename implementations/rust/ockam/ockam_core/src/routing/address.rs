@@ -1,11 +1,11 @@
-use crate::access_control::AccessControl;
+use crate::access_control::IncomingAccessControl;
 use crate::compat::rand::{distributions::Standard, prelude::Distribution, random, Rng};
 use crate::compat::{
     string::{String, ToString},
     sync::Arc,
     vec::Vec,
 };
-use crate::{debugger, DenyAll, RelayMessage, Result};
+use crate::{debugger, DenyAll, OutgoingAccessControl, RelayMessage, Result};
 use core::cmp::Ordering;
 use core::fmt::{self, Debug, Display};
 use core::ops::Deref;
@@ -17,8 +17,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone)]
 pub struct Mailbox {
     address: Address,
-    incoming: Arc<dyn AccessControl>,
-    outgoing: Arc<dyn AccessControl>,
+    incoming: Arc<dyn IncomingAccessControl>,
+    outgoing: Arc<dyn OutgoingAccessControl>,
 }
 
 impl Debug for Mailbox {
@@ -49,11 +49,11 @@ impl PartialEq for Mailbox {
 impl Eq for Mailbox {}
 
 impl Mailbox {
-    /// Create a new `Mailbox` with the given [`Address`] and [`AccessControl`]
+    /// Create a new `Mailbox` with the given [`Address`], [`IncomingAccessControl`] and [`OutgoingAccessControl`]
     pub fn new(
         address: impl Into<Address>,
-        incoming: Arc<dyn AccessControl>,
-        outgoing: Arc<dyn AccessControl>,
+        incoming: Arc<dyn IncomingAccessControl>,
+        outgoing: Arc<dyn OutgoingAccessControl>,
     ) -> Self {
         Self {
             address: address.into(),
@@ -73,12 +73,12 @@ impl Mailbox {
     pub fn address(&self) -> &Address {
         &self.address
     }
-    /// Return a reference to the incoming [`AccessControl`] for this mailbox
-    pub fn incoming_access_control(&self) -> &Arc<dyn AccessControl> {
+    /// Return a reference to the [`IncomingAccessControl`] for this mailbox
+    pub fn incoming_access_control(&self) -> &Arc<dyn IncomingAccessControl> {
         &self.incoming
     }
-    /// Return a reference to the outgoing [`AccessControl`] for this mailbox
-    pub fn outgoing_access_control(&self) -> &Arc<dyn AccessControl> {
+    /// Return a reference to the [`OutgoingAccessControl`] for this mailbox
+    pub fn outgoing_access_control(&self) -> &Arc<dyn OutgoingAccessControl> {
         &self.outgoing
     }
 }
@@ -110,11 +110,11 @@ impl Mailboxes {
     }
 
     /// Create a new collection of `Mailboxes` for the given
-    /// [`Address`] with the given [`AccessControl`]
+    /// [`Address`] with [`IncomingAccessControl`] and [`OutgoingAccessControl`]
     pub fn main(
         address: impl Into<Address>,
-        incoming_access_control: Arc<dyn AccessControl>,
-        outgoing_access_control: Arc<dyn AccessControl>,
+        incoming_access_control: Arc<dyn IncomingAccessControl>,
+        outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> Self {
         Self {
             main_mailbox: Mailbox::new(
