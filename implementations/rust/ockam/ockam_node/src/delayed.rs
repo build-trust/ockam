@@ -8,7 +8,7 @@ use ockam_core::{Address, AllowOnwardAddress, DenyAll, Mailboxes, Message, Resul
 /// Only one scheduled heartbeat allowed at a time
 /// Dropping this handle cancels scheduled heartbeat
 pub struct DelayedEvent<M: Message + Clone> {
-    ctx: Context,
+    ctx: Arc<Context>,
     destination_addr: Address,
     msg: M,
     abort_handle: Option<AbortHandle>,
@@ -27,21 +27,27 @@ impl<M: Message + Clone> DelayedEvent<M> {
         destination_addr: impl Into<Address>,
         msg: M,
     ) -> Result<Self> {
+        let destination_addr = destination_addr.into();
         let mailboxes = Mailboxes::main(
-            Address::random_tagged("DelayedEvent.create.detached.root"),
+            Address::random_tagged("DelayedEvent.create"),
             Arc::new(DenyAll),
-            Arc::new(DenyAll),
+            Arc::new(AllowOnwardAddress(destination_addr.clone())),
         );
         let child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
 
         let heartbeat = Self {
-            ctx: child_ctx,
-            destination_addr: destination_addr.into(),
+            ctx: Arc::new(child_ctx),
+            destination_addr,
             abort_handle: None,
             msg,
         };
 
         Ok(heartbeat)
+    }
+
+    /// Address used to send messages to destination address
+    pub fn address(&self) -> Address {
+        self.ctx.address()
     }
 }
 
@@ -57,22 +63,16 @@ impl<M: Message + Clone> DelayedEvent<M> {
     pub async fn schedule(&mut self, duration: Duration) -> Result<()> {
         self.cancel();
 
-        let mailboxes = Mailboxes::main(
-            Address::random_tagged("DelayedEvent.schedule.detached"),
-            Arc::new(DenyAll),
-            Arc::new(AllowOnwardAddress(self.destination_addr.clone())),
-        );
-        let child_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
-
         let destination_addr = self.destination_addr.clone();
         let msg = self.msg.clone();
 
+        let ctx_clone = self.ctx.clone();
         let (handle, reg) = AbortHandle::new_pair();
         let future = Abortable::new(
             async move {
-                child_ctx.sleep(duration).await;
+                ctx_clone.sleep(duration).await;
 
-                let res = child_ctx.send(destination_addr.clone(), msg).await;
+                let res = ctx_clone.send(destination_addr.clone(), msg).await;
 
                 if res.is_err() {
                     warn!("Error sending heartbeat message to {}", destination_addr);
