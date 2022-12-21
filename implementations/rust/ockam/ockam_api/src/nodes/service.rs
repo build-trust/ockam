@@ -303,7 +303,9 @@ impl NodeManager {
             .await?;
 
         ForwardingService::create(
-            ctx, AllowAll, // FIXME: @ac
+            ctx,
+            DefaultAddress::FORWARDING_SERVICE,
+            AllowAll, // FIXME: @ac
             AllowAll, // FIXME: @ac
         )
         .await?;

@@ -1,10 +1,12 @@
 use crate::Context;
 use core::str::from_utf8;
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
-    AccessControl, Address, AllowAll, Any, LocalMessage, Result, Route, Routed, TransportMessage,
-    Worker,
+    AccessControl, Address, AllowOnwardAddress, Any, DenyAll, LocalMessage, Result, Route, Routed,
+    TransportMessage, Worker,
 };
+use ockam_node::WorkerBuilder;
 use tracing::info;
 
 /// Alias worker to register remote workers under local names.
@@ -13,23 +15,23 @@ use tracing::info;
 /// [`RemoteForwarder`](crate::remote::RemoteForwarder) which is a
 /// compatible client for this server.
 #[non_exhaustive]
-pub struct ForwardingService;
+pub struct ForwardingService {
+    forwarders_incoming_access_control: Arc<dyn AccessControl>,
+}
 
 impl ForwardingService {
-    /// Start a forwarding service. The address of the forwarding service will be
-    /// `"forwarding_service"`.
+    /// Start a forwarding service
     pub async fn create(
         ctx: &Context,
-        incoming_access_control: impl AccessControl,
-        outgoing_access_control: impl AccessControl,
+        address: impl Into<Address>,
+        service_incoming_access_control: impl AccessControl,
+        forwarders_incoming_access_control: impl AccessControl,
     ) -> Result<()> {
-        ctx.start_worker(
-            "forwarding_service",
-            Self,
-            incoming_access_control,
-            outgoing_access_control,
-        )
-        .await?;
+        let s = Self {
+            forwarders_incoming_access_control: Arc::new(forwarders_incoming_access_control),
+        };
+        ctx.start_worker(address.into(), s, service_incoming_access_control, DenyAll)
+            .await?;
         Ok(())
     }
 }
@@ -46,7 +48,13 @@ impl Worker for ForwardingService {
     ) -> Result<()> {
         let forward_route = msg.return_route();
         let payload = msg.into_transport_message().payload;
-        Forwarder::create(ctx, forward_route, payload).await?;
+        Forwarder::create(
+            ctx,
+            forward_route,
+            payload,
+            self.forwarders_incoming_access_control.clone(),
+        )
+        .await?;
 
         Ok(())
     }
@@ -65,6 +73,7 @@ impl Forwarder {
         ctx: &Context,
         forward_route: Route,
         registration_payload: Vec<u8>,
+        incoming_access_control: Arc<dyn AccessControl>,
     ) -> Result<()> {
         let random_address = Address::random_tagged("Forwarder.service");
 
@@ -79,15 +88,19 @@ impl Forwarder {
         };
         info!("Created new alias for {}", forward_route);
 
+        let next_hop = forward_route.next()?.clone();
         let forwarder = Self {
             forward_route,
             payload: Some(registration_payload.clone()),
         };
 
-        ctx.start_worker(
-            address, forwarder, AllowAll, // FIXME: @ac
-            AllowAll, // FIXME: @ac
+        WorkerBuilder::with_access_control(
+            incoming_access_control,
+            Arc::new(AllowOnwardAddress(next_hop)), // TODO: @ac we can actually check not only the next hop, but that the whole forward_route is the beginning of a onward_route
+            address,
+            forwarder,
         )
+        .start(ctx)
         .await?;
 
         Ok(())

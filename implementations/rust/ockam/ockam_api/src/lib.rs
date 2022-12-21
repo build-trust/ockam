@@ -30,6 +30,7 @@ impl DefaultAddress {
     pub const VAULT_SERVICE: &'static str = "vault_service";
     pub const IDENTITY_SERVICE: &'static str = "identity_service";
     pub const AUTHENTICATED_SERVICE: &'static str = "authenticated";
+    pub const FORWARDING_SERVICE: &'static str = "forwarding_service";
     pub const UPPERCASE_SERVICE: &'static str = "uppercase";
     pub const ECHO_SERVICE: &'static str = "echo";
     pub const HOP_SERVICE: &'static str = "hop";
