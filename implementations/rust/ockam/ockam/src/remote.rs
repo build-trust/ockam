@@ -10,8 +10,8 @@ use ockam_core::compat::{
     vec::Vec,
 };
 use ockam_core::{
-    Address, AllowAll, AllowSourceAddress, Any, Decodable, DenyAll, Mailbox, Mailboxes, Result,
-    Route, Routed, Worker,
+    AccessControl, Address, AllowAll, AllowSourceAddress, Any, Decodable, DenyAll, Mailbox,
+    Mailboxes, Result, Route, Routed, Worker,
 };
 use ockam_node::{DelayedEvent, WorkerBuilder};
 use serde::{Deserialize, Serialize};
@@ -80,6 +80,7 @@ impl RemoteForwarder {
         ctx: &Context,
         hub_route: impl Into<Route>,
         alias: impl Into<String>,
+        outgoing_access_control: impl AccessControl,
     ) -> Result<RemoteForwarderInfo> {
         let main_address = Address::random_tagged("RemoteForwarder.static.main");
         let heartbeat_address = Address::random_tagged("RemoteForwarder.static.heartbeat");
@@ -100,6 +101,7 @@ impl RemoteForwarder {
             .into();
 
         let heartbeat = DelayedEvent::create(ctx, heartbeat_address.clone(), vec![]).await?;
+        let heartbeat_source_address = heartbeat.address();
         let forwarder = Self::new(
             main_address.clone(),
             heartbeat_address.clone(),
@@ -112,13 +114,16 @@ impl RemoteForwarder {
 
         debug!("Starting static RemoteForwarder at {}", &heartbeat_address);
 
-        // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::new(main_address, Arc::new(AllowAll), Arc::new(AllowAll)),
+            Mailbox::new(
+                main_address,
+                Arc::new(AllowAll), // Messages should have the same return_route, we check for that in `handle_message`
+                Arc::new(outgoing_access_control),
+            ),
             vec![Mailbox::new(
                 heartbeat_address,
-                Arc::new(AllowAll),
-                Arc::new(AllowAll),
+                Arc::new(AllowSourceAddress(heartbeat_source_address)),
+                Arc::new(DenyAll),
             )],
         );
         WorkerBuilder::with_mailboxes(mailboxes, forwarder)
@@ -135,7 +140,11 @@ impl RemoteForwarder {
     }
 
     /// Create and start new ephemeral RemoteForwarder at random address with given Ockam Hub route
-    pub async fn create(ctx: &Context, hub_route: impl Into<Route>) -> Result<RemoteForwarderInfo> {
+    pub async fn create(
+        ctx: &Context,
+        hub_route: impl Into<Route>,
+        outgoing_access_control: impl AccessControl,
+    ) -> Result<RemoteForwarderInfo> {
         let main_address = Address::random_tagged("RemoteForwarder.ephemeral.main");
         let heartbeat_address = Address::random_tagged("RemoteForwarder.ephemeral.heartbeat");
         let address = Address::random_tagged("RemoteForwarder.ephemeral.child");
@@ -166,7 +175,11 @@ impl RemoteForwarder {
 
         debug!("Starting ephemeral RemoteForwarder at {}", &main_address);
         // FIXME: @ac
-        let mailboxes = Mailboxes::main(main_address, Arc::new(AllowAll), Arc::new(AllowAll));
+        let mailboxes = Mailboxes::main(
+            main_address,
+            Arc::new(AllowAll), // Messages should have the same return_route, we check for that in `handle_message`
+            Arc::new(outgoing_access_control),
+        );
         WorkerBuilder::with_mailboxes(mailboxes, forwarder)
             .start(ctx)
             .await?;
@@ -188,6 +201,7 @@ impl RemoteForwarder {
         ctx: &Context,
         hub_route: impl Into<Route>,
         alias: impl Into<String>,
+        outgoing_access_control: impl AccessControl,
     ) -> Result<RemoteForwarderInfo> {
         let main_address = Address::random_tagged("RemoteForwarder.static_w/o_heartbeats.main");
         let heartbeat_address =
@@ -223,7 +237,11 @@ impl RemoteForwarder {
         );
         // FIXME: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::new(main_address, Arc::new(AllowAll), Arc::new(AllowAll)),
+            Mailbox::new(
+                main_address,
+                Arc::new(AllowAll), // Messages should have the same return_route, we check for that in `handle_message`
+                Arc::new(outgoing_access_control),
+            ),
             vec![],
         );
         WorkerBuilder::with_mailboxes(mailboxes, forwarder)
@@ -279,6 +297,7 @@ impl Worker for RemoteForwarder {
             return Ok(());
         }
 
+        // FIXME: @ac check that return address is the same
         // We are the final recipient of the message because it's registration response for our Worker
         if msg.onward_route().recipient() == self.main_address {
             debug!("RemoteForwarder received service message");
@@ -299,13 +318,14 @@ impl Worker for RemoteForwarder {
                     None => return Err(OckamError::InvalidHubResponse.into()),
                 };
 
-                ctx.send(
+                ctx.send_from_address(
                     callback_address,
                     RemoteForwarderInfo {
                         forwarding_route: route,
                         remote_address: address,
                         worker_address: ctx.address(),
                     },
+                    self.main_address.clone(),
                 )
                 .await?;
             }
@@ -323,7 +343,8 @@ impl Worker for RemoteForwarder {
             transport_message.onward_route.step()?;
 
             // Send the message on its onward_route
-            ctx.forward(message).await?;
+            ctx.forward_from_address(message, self.main_address.clone())
+                .await?;
 
             // We received message from the other node, our registration is still alive, let's reset
             // heartbeat timer
@@ -376,7 +397,7 @@ mod test {
         TcpTransport::create(ctx).await?;
 
         let node_in_hub = (TCP, cloud_address);
-        let remote_info = RemoteForwarder::create(ctx, node_in_hub.clone()).await?;
+        let remote_info = RemoteForwarder::create(ctx, node_in_hub.clone(), AllowAll).await?;
 
         let resp = ctx
             .send_and_receive::<_, _, String>(
@@ -410,7 +431,7 @@ mod test {
         TcpTransport::create(ctx).await?;
 
         let node_in_hub = (TCP, cloud_address);
-        let _ = RemoteForwarder::create_static(ctx, node_in_hub.clone(), "alias").await?;
+        let _ = RemoteForwarder::create_static(ctx, node_in_hub.clone(), "alias", AllowAll).await?;
 
         let resp = ctx
             .send_and_receive::<_, _, String>(

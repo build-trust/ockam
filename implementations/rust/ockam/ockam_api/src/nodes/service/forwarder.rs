@@ -6,7 +6,7 @@ use ockam::compat::asynchronous::RwLock;
 use ockam::remote::RemoteForwarder;
 use ockam::Result;
 use ockam_core::api::{Id, Response, Status};
-use ockam_core::AsyncTryClone;
+use ockam_core::{AllowAll, AsyncTryClone};
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio::time::timeout;
@@ -43,15 +43,18 @@ impl NodeManagerWorker {
 
         let forwarder = if req.at_rust_node() {
             if let Some(alias) = req.alias() {
-                RemoteForwarder::create_static_without_heartbeats(ctx, route, alias).await
+                RemoteForwarder::create_static_without_heartbeats(
+                    ctx, route, alias, AllowAll, /* FIXME: @ac */
+                )
+                .await
             } else {
-                RemoteForwarder::create(ctx, route).await
+                RemoteForwarder::create(ctx, route, AllowAll /* FIXME: @ac */).await
             }
         } else {
             let f = if let Some(alias) = req.alias() {
-                RemoteForwarder::create_static(ctx, route, alias).await
+                RemoteForwarder::create_static(ctx, route, alias, AllowAll /* FIXME: @ac */).await
             } else {
-                RemoteForwarder::create(ctx, route).await
+                RemoteForwarder::create(ctx, route, AllowAll /* FIXME: @ac */).await
             };
             if f.is_ok() && !sec_chan.is_empty() {
                 let ctx = Arc::new(ctx.async_try_clone().await?);
@@ -119,9 +122,10 @@ fn replacer(
                 let r = multiaddr_to_route(&a)
                     .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {a}")))?;
                 if let Some(alias) = &alias {
-                    RemoteForwarder::create_static(&ctx, r, alias).await?;
+                    RemoteForwarder::create_static(&ctx, r, alias, AllowAll /* FIXME: @ac */)
+                        .await?;
                 } else {
-                    RemoteForwarder::create(&ctx, r).await?;
+                    RemoteForwarder::create(&ctx, r, AllowAll /* FIXME: @ac */).await?;
                 }
                 Ok(sec)
             };
