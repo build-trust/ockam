@@ -4,10 +4,11 @@ use crate::{relay::WorkerRelay, Context, NodeMessage};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
     errcode::{Kind, Origin},
-    AccessControl, Address, Error, Mailboxes, Message, Result, Worker,
+    Address, Error, IncomingAccessControl, Mailboxes, Message, OutgoingAccessControl, Result,
+    Worker,
 };
 
-/// Start a [`Worker`] with a custom [`AccessControl`] configuration
+/// Start a [`Worker`] with a custom [`IncomingAccessControl`] and [`OutgoingAccessControl`] configuration
 ///
 /// Any incoming messages for the worker will first be subject to the
 /// configured `AccessControl` before it is passed on to
@@ -30,8 +31,8 @@ where
 {
     /// Create a worker which uses the given access control
     pub fn with_access_control(
-        incoming_access_control: Arc<dyn AccessControl>,
-        outgoing_access_control: Arc<dyn AccessControl>,
+        incoming_access_control: Arc<dyn IncomingAccessControl>,
+        outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         address: impl Into<Address>,
         worker: W,
     ) -> Self {

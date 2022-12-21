@@ -1,4 +1,4 @@
-use ockam_core::access_control::AccessControl;
+use ockam_core::access_control::IncomingAccessControl;
 use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
 use ockam_core::{Address, AsyncTryClone, DenyAll, Mailboxes, Result, Route};
 use ockam_node::{Context, WorkerBuilder};
@@ -135,7 +135,7 @@ impl TcpTransport {
         &self,
         bind_addr: impl Into<String>,
         outlet_route: impl Into<Route>,
-        access_control: impl AccessControl,
+        access_control: impl IncomingAccessControl,
     ) -> Result<(Address, SocketAddr)> {
         self.create_inlet_impl(
             bind_addr.into(),
@@ -153,7 +153,7 @@ impl TcpTransport {
         &self,
         bind_addr: String,
         outlet_route: Route,
-        access_control: Arc<dyn AccessControl>,
+        access_control: Arc<dyn IncomingAccessControl>,
     ) -> Result<(Address, SocketAddr)> {
         let bind_addr = parse_socket_addr(bind_addr)?;
         self.router_handle
@@ -203,7 +203,7 @@ impl TcpTransport {
         &self,
         address: impl Into<Address>,
         peer: impl Into<String>,
-        access_control: impl AccessControl,
+        access_control: impl IncomingAccessControl,
     ) -> Result<()> {
         self.create_outlet_impl(address.into(), peer.into(), Arc::new(access_control))
             .await
@@ -218,7 +218,7 @@ impl TcpTransport {
         &self,
         address: Address,
         peer: String,
-        access_control: Arc<dyn AccessControl>,
+        access_control: Arc<dyn IncomingAccessControl>,
     ) -> Result<()> {
         let worker = TcpOutletListenWorker::new(peer, access_control.clone());
         WorkerBuilder::with_mailboxes(

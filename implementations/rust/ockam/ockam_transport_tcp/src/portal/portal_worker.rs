@@ -2,8 +2,8 @@ use crate::{PortalInternalMessage, PortalMessage, TcpPortalRecvProcessor};
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
 use ockam_core::{
-    async_trait, AccessControl, AllowAll, AllowOnwardAddresses, AllowSourceAddress, Decodable,
-    DenyAll, Mailbox, Mailboxes,
+    async_trait, AllowAll, AllowOnwardAddresses, AllowSourceAddress, Decodable, DenyAll,
+    IncomingAccessControl, Mailbox, Mailboxes,
 };
 use ockam_core::{Address, Any, Result, Route, Routed, Worker};
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
@@ -60,7 +60,7 @@ impl TcpPortalWorker {
         stream: TcpStream,
         peer: SocketAddr,
         ping_route: Route,
-        access_control: Arc<dyn AccessControl>,
+        access_control: Arc<dyn IncomingAccessControl>,
     ) -> Result<Address> {
         Self::start(
             ctx,
@@ -78,7 +78,7 @@ impl TcpPortalWorker {
         ctx: &Context,
         peer: SocketAddr,
         pong_route: Route,
-        access_control: Arc<dyn AccessControl>,
+        access_control: Arc<dyn IncomingAccessControl>,
     ) -> Result<Address> {
         Self::start(
             ctx,
@@ -98,7 +98,7 @@ impl TcpPortalWorker {
         state: State,
         stream: Option<TcpStream>,
         type_name: TypeName,
-        access_control: Arc<dyn AccessControl>,
+        access_control: Arc<dyn IncomingAccessControl>,
     ) -> Result<Address> {
         let internal_address = Address::random_tagged("TcpPortalWorker_internal");
         let remote_address = Address::random_tagged("TcpPortalWorker_remote");

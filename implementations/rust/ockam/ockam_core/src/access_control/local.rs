@@ -1,12 +1,12 @@
 use crate::compat::boxed::Box;
-use crate::{AccessControl, RelayMessage, Result, LOCAL};
+use crate::{IncomingAccessControl, OutgoingAccessControl, RelayMessage, Result, LOCAL};
 
 /// Allows only messages to local workers
 #[derive(Debug)]
 pub struct LocalOnwardOnly;
 
 #[async_trait]
-impl AccessControl for LocalOnwardOnly {
+impl OutgoingAccessControl for LocalOnwardOnly {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
         let next_hop = relay_msg.onward_route().next()?;
 
@@ -24,7 +24,7 @@ impl AccessControl for LocalOnwardOnly {
 pub struct LocalSourceOnly;
 
 #[async_trait]
-impl AccessControl for LocalSourceOnly {
+impl IncomingAccessControl for LocalSourceOnly {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
         if relay_msg.source().transport_type() != LOCAL {
             return crate::deny();
@@ -38,8 +38,8 @@ impl AccessControl for LocalSourceOnly {
 mod tests {
     use crate::compat::future::poll_once;
     use crate::{
-        route, AccessControl, Address, LocalMessage, LocalOnwardOnly, LocalSourceOnly,
-        RelayMessage, Result, TransportMessage, TransportType,
+        route, Address, IncomingAccessControl, LocalMessage, LocalOnwardOnly, LocalSourceOnly,
+        OutgoingAccessControl, RelayMessage, Result, TransportMessage, TransportType,
     };
 
     #[test]

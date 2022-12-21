@@ -10,8 +10,8 @@ use ockam_core::compat::{
     vec::Vec,
 };
 use ockam_core::{
-    AccessControl, Address, AllowAll, AllowSourceAddress, Any, Decodable, DenyAll, Mailbox,
-    Mailboxes, Result, Route, Routed, Worker,
+    Address, AllowAll, AllowSourceAddress, Any, Decodable, DenyAll, Mailbox, Mailboxes,
+    OutgoingAccessControl, Result, Route, Routed, Worker,
 };
 use ockam_node::{DelayedEvent, WorkerBuilder};
 use serde::{Deserialize, Serialize};
@@ -80,7 +80,7 @@ impl RemoteForwarder {
         ctx: &Context,
         hub_route: impl Into<Route>,
         alias: impl Into<String>,
-        outgoing_access_control: impl AccessControl,
+        outgoing_access_control: impl OutgoingAccessControl,
     ) -> Result<RemoteForwarderInfo> {
         let main_address = Address::random_tagged("RemoteForwarder.static.main");
         let heartbeat_address = Address::random_tagged("RemoteForwarder.static.heartbeat");
@@ -143,7 +143,7 @@ impl RemoteForwarder {
     pub async fn create(
         ctx: &Context,
         hub_route: impl Into<Route>,
-        outgoing_access_control: impl AccessControl,
+        outgoing_access_control: impl OutgoingAccessControl,
     ) -> Result<RemoteForwarderInfo> {
         let main_address = Address::random_tagged("RemoteForwarder.ephemeral.main");
         let heartbeat_address = Address::random_tagged("RemoteForwarder.ephemeral.heartbeat");
@@ -201,7 +201,7 @@ impl RemoteForwarder {
         ctx: &Context,
         hub_route: impl Into<Route>,
         alias: impl Into<String>,
-        outgoing_access_control: impl AccessControl,
+        outgoing_access_control: impl OutgoingAccessControl,
     ) -> Result<RemoteForwarderInfo> {
         let main_address = Address::random_tagged("RemoteForwarder.static_w/o_heartbeats.main");
         let heartbeat_address =

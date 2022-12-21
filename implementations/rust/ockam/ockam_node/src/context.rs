@@ -13,9 +13,9 @@ use core::{
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
-    AccessControl, Address, AllowAll, AllowOnwardAddress, AsyncTryClone, DenyAll, Error,
-    LocalMessage, Mailboxes, Message, Processor, RelayMessage, Result, Route, TransportMessage,
-    TransportType, Worker,
+    Address, AllowAll, AllowOnwardAddress, AsyncTryClone, DenyAll, Error, IncomingAccessControl,
+    LocalMessage, Mailboxes, Message, OutgoingAccessControl, Processor, RelayMessage, Result,
+    Route, TransportMessage, TransportType, Worker,
 };
 use ockam_core::{LocalInfo, Mailbox};
 
@@ -205,8 +205,8 @@ impl Context {
     pub async fn new_detached(
         &self,
         address: impl Into<Address>,
-        incoming: impl AccessControl,
-        outgoing: impl AccessControl,
+        incoming: impl IncomingAccessControl,
+        outgoing: impl OutgoingAccessControl,
     ) -> Result<DetachedContext> {
         let mailboxes = Mailboxes::main(address.into(), Arc::new(incoming), Arc::new(outgoing));
         let ctx = self.new_detached_impl(mailboxes).await?;
@@ -266,10 +266,6 @@ impl Context {
     /// of your worker to complete you can use
     /// [`wait_for()`](Self::wait_for).
     ///
-    /// The worker will inherit its [`AccessControl`] from this
-    /// context. Use [`WorkerBuilder`] to start a worker with custom
-    /// access control.
-    ///
     /// ```rust
     /// use ockam_core::{AllowAll, Result, Worker, worker};
     /// use ockam_node::Context;
@@ -290,8 +286,8 @@ impl Context {
         &self,
         address: impl Into<Address>,
         worker: NW,
-        incoming: impl AccessControl,
-        outgoing: impl AccessControl,
+        incoming: impl IncomingAccessControl,
+        outgoing: impl OutgoingAccessControl,
     ) -> Result<()>
     where
         NM: Message + Send + 'static,
@@ -315,15 +311,12 @@ impl Context {
     /// message events, consider using
     /// [`start_worker()`](Self::start_worker) instead!
     ///
-    /// The processor will inherit its [`AccessControl`] from this
-    /// context. Use [`ProcessorBuilder`] to start a worker with custom
-    /// access control.
     pub async fn start_processor<P>(
         &self,
         address: impl Into<Address>,
         processor: P,
-        incoming: impl AccessControl,
-        outgoing: impl AccessControl,
+        incoming: impl IncomingAccessControl,
+        outgoing: impl OutgoingAccessControl,
     ) -> Result<()>
     where
         P: Processor<Context = Context>,
