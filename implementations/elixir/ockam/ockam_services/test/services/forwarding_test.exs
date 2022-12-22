@@ -7,23 +7,46 @@ defmodule Test.Services.ForwardingTest do
   alias Ockam.Router
   alias Ockam.Workers.RemoteForwarder
 
-  alias Test.Utils
-
   test "forwarding" do
-    {:ok, _worker, worker_address} =
-      Test.Services.ForwardingTestWorker.start_link(address: "forwarding_test_address")
-
-    {:ok, _forwarding, _forwarding_address} =
+    {:ok, _service_pid, service_address} =
       ForwardingService.start_link(address: "forwarding_address")
 
     on_exit(fn ->
-      Node.stop("forwarding_address")
+      ## TODO: implement Worker.stop
+      case Node.whereis(service_address) do
+        nil -> :ok
+        pid -> GenServer.stop(pid)
+      end
     end)
 
-    msg = %{onward_route: [worker_address], return_route: [], payload: Utils.pid_to_string()}
+    {:ok, me} = Node.register_random_address()
+
+    register_message = %Ockam.Message{
+      onward_route: [service_address],
+      return_route: [me],
+      payload: ""
+    }
+
+    Ockam.Router.route(register_message)
+
+    assert_receive(%{onward_route: [^me], return_route: forwarder_route}, 5_000)
+
+    forwarder_address = List.last(forwarder_route)
+
+    on_exit(fn ->
+      case Node.whereis(forwarder_address) do
+        nil -> :ok
+        pid -> GenServer.stop(pid)
+      end
+    end)
+
+    msg = %{onward_route: [forwarder_address], return_route: [me], payload: "HI!"}
+
     Router.route(msg)
 
-    assert_receive(:ok, 5_000)
+    assert_receive(%{onward_route: [^me], return_route: reply_route, payload: "HI!"}, 5_000)
+
+    assert me == List.last(reply_route)
   end
 
   test "forwarding with onward route" do
@@ -37,7 +60,11 @@ defmodule Test.Services.ForwardingTest do
     forwarder_address = RemoteForwarder.forwarder_address(forwarder)
 
     on_exit(fn ->
-      Node.stop(service_address)
+      case Node.whereis(service_address) do
+        nil -> :ok
+        pid -> GenServer.stop(pid)
+      end
+
       Node.stop(forwarder)
       Node.unregister_address(me)
     end)
@@ -47,66 +74,5 @@ defmodule Test.Services.ForwardingTest do
     Router.route(msg)
 
     assert_receive(%{onward_route: [^me, "foo"]}, 5_000)
-  end
-end
-
-defmodule Test.Services.ForwardingTestWorker do
-  @moduledoc false
-
-  use Ockam.Worker
-
-  alias Ockam.Message
-  alias Ockam.Router
-  alias Test.Utils
-
-  @forwarding_address "forwarding_address"
-
-  @impl true
-  def handle_message(message, state) do
-    case Message.return_route(message) do
-      [] -> registration(message, state)
-      _other -> process(message, state)
-    end
-  end
-
-  defp registration(message, state) do
-    msg = %{
-      onward_route: [@forwarding_address],
-      return_route: [state.address],
-      payload: ""
-    }
-
-    Router.route(msg)
-
-    new_state =
-      state
-      |> Map.put(:test_process, Message.payload(message))
-      |> Map.put(:status, :registered)
-
-    {:ok, new_state}
-  end
-
-  defp process(message, state) when state.status == :registered do
-    msg = Message.reply(message, state.address, "hello")
-
-    Router.route(msg)
-
-    new_state = Map.put(state, :status, :messaging)
-    {:ok, new_state}
-  end
-
-  defp process(message, state) when state.status == :messaging do
-    result =
-      case Message.payload(message) do
-        "hello" -> :ok
-        _other -> :error
-      end
-
-    state
-    |> Map.get(:test_process)
-    |> Utils.string_to_pid()
-    |> send(result)
-
-    {:stop, :normal, state}
   end
 end
