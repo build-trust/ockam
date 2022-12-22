@@ -168,7 +168,7 @@ impl TcpPortalWorker {
     /// Start a `TcpPortalRecvProcessor`
     async fn start_receiver(&mut self, ctx: &Context, onward_route: Route) -> Result<()> {
         if let Some(rx) = self.rx.take() {
-            let next_hop = onward_route.next().cloned().unwrap(); // FIXME
+            let next_hop = onward_route.next()?.clone();
             let receiver =
                 TcpPortalRecvProcessor::new(rx, self.internal_address.clone(), onward_route);
 
