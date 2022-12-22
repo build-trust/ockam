@@ -4,7 +4,9 @@ use minicbor::Encode;
 use ockam_core::api::{assert_request_match, RequestBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Address, AllowAll, LocalInfo, Mailbox, Mailboxes, Result, Route};
+use ockam_core::{
+    Address, AllowAll, AllowOnwardAddress, LocalInfo, Mailbox, Mailboxes, Result, Route,
+};
 
 /// Encode request header and body (if any), send the package to the server and returns its response.
 pub async fn request<T, R>(
@@ -62,13 +64,12 @@ where
 
     // TODO: Check IdentityId is the same we sent message to?
     // TODO: Check response id matches request id?
+    let next = route.next()?.clone();
     let mailboxes = Mailboxes::new(
         Mailbox::new(
             Address::random_tagged("api.request_with_local_info"),
-            Arc::new(AllowAll), // // FIXME: @ac there is no way to ensure that we're receiving response from the worker we sent request to
-            Arc::new(ockam_core::AllowOnwardAddress(
-                route.next().unwrap().clone(),
-            )),
+            Arc::new(AllowAll), // FIXME: @ac there is no way to ensure that we're receiving response from the worker we sent request to
+            Arc::new(AllowOnwardAddress(next)),
         ),
         vec![],
     );
