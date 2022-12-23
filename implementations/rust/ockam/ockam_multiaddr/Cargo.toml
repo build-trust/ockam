@@ -14,7 +14,7 @@ std  = ["ockam_core/std", "unsigned-varint/std", "serde?/std"]
 cbor = ["minicbor"]
 
 [dependencies]
-minicbor        = { version = "0.18.0", default-features = false, features = ["alloc"], optional = true }
+minicbor        = { version = "0.19.0", default-features = false, features = ["alloc"], optional = true }
 once_cell       = { version = "1.10.0", default-features = false, features = ["alloc"] }
 serde           = { version = "1.0.151", default-features = false, optional = true }
 tinyvec         = { version = "1.5.1", features = ["alloc"] }
