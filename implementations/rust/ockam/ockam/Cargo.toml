@@ -101,7 +101,7 @@ ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.67.0"
 ockam_identity = { path = "../ockam_identity", version = "^0.65.0", default_features = false }
 ockam_abac = { path = "../ockam_abac", version = "^0.11.0", default_features = false, optional = true }
 arrayref = "0.3"
-minicbor = { version = "0.18.0", features = ["alloc", "derive"] }
+minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 sha2 = { version = "0.10", default-features = false }
 tracing = { version = "0.1", default-features = false }
