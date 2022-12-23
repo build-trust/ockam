@@ -68,11 +68,12 @@ mod node {
     use std::str::FromStr;
 
     use minicbor::Encode;
+    use ockam_vault::Vault;
     use rust_embed::EmbeddedFile;
 
     use ockam_core::api::RequestBuilder;
     use ockam_core::{self, route, Address, Result, Route};
-    use ockam_identity::{IdentityIdentifier, TrustIdentifierPolicy};
+    use ockam_identity::{Identity, IdentityIdentifier, TrustIdentifierPolicy};
     use ockam_node::api::request;
     use ockam_node::Context;
 
@@ -134,6 +135,7 @@ mod node {
     }
 
     impl NodeManagerWorker {
+        #[allow(clippy::too_many_arguments)]
         pub(super) async fn request_controller<T>(
             &mut self,
             ctx: &mut Context,
@@ -142,10 +144,15 @@ mod node {
             cloud_route: impl Into<Route>,
             api_service: &str,
             req: RequestBuilder<'_, T>,
+            ident: Option<Identity<Vault>>,
         ) -> Result<Vec<u8>>
         where
             T: Encode<()>,
         {
+            match ident {
+                Some(_ident) => None::<T>,
+                None => None,
+            };
             let mut node_manger = self.get().write().await;
             let cloud_route = cloud_route.into();
             let sc = node_manger.controller_secure_channel(cloud_route).await?;
