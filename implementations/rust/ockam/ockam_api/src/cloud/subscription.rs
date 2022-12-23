@@ -115,8 +115,16 @@ mod node {
             trace!(target: TARGET, subscription = %id, "unsubscribing");
 
             let req_builder = Request::put(format!("/v0/{}/unsubscribe", id));
-            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
-                .await
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                API_SERVICE,
+                req_builder,
+                None,
+            )
+            .await
         }
 
         pub(crate) async fn update_subscription_space(
@@ -133,8 +141,16 @@ mod node {
             trace!(target: TARGET, subscription = %id, "updating subscription space");
 
             let req_builder = Request::put(format!("/v0/{}/space_id", id)).body(req_body);
-            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
-                .await
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                API_SERVICE,
+                req_builder,
+                None,
+            )
+            .await
         }
         pub(crate) async fn update_subscription_contact_info(
             &mut self,
@@ -150,8 +166,16 @@ mod node {
             trace!(target: TARGET, subscription = %id, "updating subscription contact info");
 
             let req_builder = Request::put(format!("/v0/{}/contact_info", id)).body(req_body);
-            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
-                .await
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                API_SERVICE,
+                req_builder,
+                None,
+            )
+            .await
         }
         pub(crate) async fn list_subscriptions(
             &mut self,
@@ -165,8 +189,16 @@ mod node {
             trace!(target: TARGET, "listing subscriptions");
 
             let req_builder = Request::get("/v0/");
-            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
-                .await
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                API_SERVICE,
+                req_builder,
+                None,
+            )
+            .await
         }
         pub(crate) async fn get_subscription(
             &mut self,
@@ -181,8 +213,16 @@ mod node {
             trace!(target: TARGET, subscription = %id, "getting subscription");
 
             let req_builder = Request::get(format!("/v0/{}", id));
-            self.request_controller(ctx, label, None, cloud_route, API_SERVICE, req_builder)
-                .await
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                API_SERVICE,
+                req_builder,
+                None,
+            )
+            .await
         }
         pub(crate) async fn activate_subscription(
             &mut self,
@@ -204,6 +244,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
+                None,
             )
             .await
         }
