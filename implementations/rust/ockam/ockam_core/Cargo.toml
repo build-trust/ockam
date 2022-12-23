@@ -64,7 +64,7 @@ tag = ["cddl-cat"]
 
 [dependencies]
 ockam_macros = { path = "../ockam_macros", version = "^0.25.0", default_features = false }
-async-trait = "0.1.59"
+async-trait = "0.1.60"
 hashbrown = { version = "0.13", default-features = false, features = [
     "ahash",
     "serde",
