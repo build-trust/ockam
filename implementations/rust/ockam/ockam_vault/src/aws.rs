@@ -79,8 +79,11 @@ impl Kms {
             .key_id(kid)
             .pending_window_in_days(DAYS);
         match client.send().await {
-            Err(SdkError::ServiceError { err, .. })
-                if matches!(err.kind, ScheduleKeyDeletionErrorKind::NotFoundException(_)) =>
+            Err(SdkError::ServiceError(err))
+                if matches!(
+                    err.err().kind,
+                    ScheduleKeyDeletionErrorKind::NotFoundException(_)
+                ) =>
             {
                 log::debug!(%kid, "key does not exist");
                 Ok(false)
