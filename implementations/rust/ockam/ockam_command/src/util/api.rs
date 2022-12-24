@@ -321,7 +321,10 @@ pub(crate) fn parse_create_secure_channel_listener_response(resp: &[u8]) -> Resu
 pub(crate) const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 
 #[derive(Clone, Debug, Args)]
-pub struct CloudOpts;
+pub struct CloudOpts {
+    #[arg(long = "identity", value_name = "IDENTITY")]
+    identity: Option<String>,
+}
 
 impl CloudOpts {
     pub fn route(&self) -> MultiAddr {
