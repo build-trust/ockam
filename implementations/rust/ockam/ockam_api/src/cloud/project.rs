@@ -268,7 +268,8 @@ pub struct CreateProject<'a> {
     #[b(1)] pub name: CowStr<'a>,
     #[b(2)] pub services: Vec<CowStr<'a>>,
     #[b(3)] pub users: Vec<CowStr<'a>>,
-    #[b(4)] pub enforce_credentials: Option<bool>
+    #[b(4)] pub enforce_credentials: Option<bool>,
+    #[b(5)] pub identity_name: Option<String>
 }
 
 impl<'a> CreateProject<'a> {
@@ -277,12 +278,14 @@ impl<'a> CreateProject<'a> {
         enforce_credentials: Option<bool>,
         users: &'a [T],
         services: &'a [T],
+        identity_name: Option<String>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             name: name.into(),
             enforce_credentials,
+            identity_name,
             services: services.iter().map(|x| CowStr::from(x.as_ref())).collect(),
             users: users.iter().map(|x| CowStr::from(x.as_ref())).collect(),
         }
@@ -336,6 +339,7 @@ mod node {
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
+    use crate::cli_state;
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeManagerWorker;
 
@@ -358,6 +362,18 @@ mod node {
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
 
             let req_builder = Request::post(format!("/v0/{space_id}")).body(req_body);
+            let cli_state = cli_state::CliState::new()?;
+
+            let default_vault = cli_state.vaults.default()?.config.get().await?;
+            let ident = Some(
+                cli_state
+                    .identities
+                    .default()?
+                    .config
+                    .get(ctx, &default_vault)
+                    .await?,
+            );
+
             self.request_controller(
                 ctx,
                 label,
@@ -365,7 +381,7 @@ mod node {
                 cloud_route,
                 "projects",
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -520,6 +536,7 @@ mod tests {
                 services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
                 users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
                 enforce_credentials: None,
+                identity_name: None,
             })
         }
     }
