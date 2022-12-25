@@ -11,6 +11,7 @@ use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{debug, info};
 
 use ockam::Context;
+use ockam_api::cli_state::EnrollmentStatus;
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::cloud::space::Space;
@@ -52,6 +53,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     let cloud_opts = cmd.cloud_opts.clone();
     let space = default_space(ctx, &opts, &cloud_opts, &node_name).await?;
     default_project(ctx, &opts, &cloud_opts, &node_name, &space).await?;
+    update_enrolled_identity(ctx, &opts, &node_name).await?;
     delete_embedded_node(&opts, &node_name).await;
 
     Ok(())
@@ -356,4 +358,24 @@ impl Auth0Service {
         }
         Ok(())
     }
+}
+
+async fn update_enrolled_identity(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+) -> Result<()> {
+    let identities = opts.state.identities.list()?;
+
+    let node_state = opts.state.nodes.get(node_name)?;
+    let node_identity = node_state.config.identity(ctx).await?;
+
+    for mut identity in identities {
+        if node_identity.identifier() == &identity.config.identifier {
+            identity.config.enrollment_status = Some(EnrollmentStatus::enrolled());
+            identity.save()?;
+        }
+    }
+
+    Ok(())
 }
