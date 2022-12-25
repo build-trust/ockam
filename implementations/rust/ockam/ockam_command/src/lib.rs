@@ -20,6 +20,7 @@ mod reset;
 mod secure_channel;
 mod service;
 mod space;
+mod status;
 mod subscription;
 mod tcp;
 mod terminal;
@@ -45,6 +46,7 @@ use reset::ResetCommand;
 use secure_channel::{listener::SecureChannelListenerCommand, SecureChannelCommand};
 use service::ServiceCommand;
 use space::SpaceCommand;
+use status::StatusCommand;
 use tcp::{
     connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
     outlet::TcpOutletCommand,
@@ -242,6 +244,8 @@ pub enum OckamSubcommand {
     #[command(display_order = 802)]
     Project(ProjectCommand),
     #[command(display_order = 803)]
+    Status(StatusCommand),
+    #[command(display_order = 804)]
     Reset(ResetCommand),
 
     #[command(display_order = 811)]
@@ -321,6 +325,7 @@ impl OckamCommand {
             OckamSubcommand::Node(c) => c.run(options),
             OckamSubcommand::Policy(c) => c.run(options),
             OckamSubcommand::Project(c) => c.run(options),
+            OckamSubcommand::Status(c) => c.run(options),
             OckamSubcommand::Space(c) => c.run(options),
             OckamSubcommand::TcpConnection(c) => c.run(options),
             OckamSubcommand::TcpInlet(c) => c.run(options),

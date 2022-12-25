@@ -4,10 +4,16 @@ use ockam_identity::{Identity, IdentityIdentifier};
 use ockam_vault::{storage::FileStorage, Vault};
 use rand::random;
 use serde::{Deserialize, Serialize};
+use std::alloc::System;
+use std::ffi::OsStr;
+use std::fmt;
 use std::fmt::{Display, Formatter};
+use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use thiserror::Error;
 
 type Result<T> = std::result::Result<T, CliStateError>;
@@ -258,6 +264,19 @@ impl IdentitiesState {
         Ok(IdentityState { path, config })
     }
 
+    pub fn list(&self) -> Result<Vec<IdentityState>> {
+        let mut identities: Vec<IdentityState> = vec![];
+        for entry in std::fs::read_dir(&self.dir)? {
+            let entry = entry?;
+            if entry.path().extension() == Some(OsStr::from_bytes(b"json")) {
+                let file_name = entry.path();
+                let identity_name = file_name.file_stem().unwrap().to_str().unwrap();
+                identities.push(self.get(identity_name)?);
+            }
+        }
+        Ok(identities)
+    }
+
     pub fn default_path(&self) -> Result<PathBuf> {
         Ok(CliState::defaults_dir()?.join("identity"))
     }
@@ -290,10 +309,41 @@ pub struct IdentityState {
     pub config: IdentityConfig,
 }
 
+impl IdentityState {
+    pub fn save(&self) -> Result<()> {
+        let contents = serde_json::to_string(&self.config)?;
+        std::fs::write(&self.path, contents)?;
+        Ok(())
+    }
+}
+
+impl Display for IdentityState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "Name: {}",
+            self.path.as_path().file_stem().unwrap().to_str().unwrap()
+        )?;
+        writeln!(f, "State Path: {}", self.path.clone().to_str().unwrap())?;
+        writeln!(f, "Config Identifier: {}", self.config.identifier)?;
+        match &self.config.enrollment_status {
+            Some(enrollment) => {
+                writeln!(f, "Enrollment Status:")?;
+                for line in enrollment.to_string().lines() {
+                    writeln!(f, "{:2}{}", "", line)?;
+                }
+            }
+            None => (),
+        }
+        Ok(())
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct IdentityConfig {
     pub identifier: IdentityIdentifier,
     pub change_history: IdentityChangeHistory,
+    pub enrollment_status: Option<EnrollmentStatus>,
 }
 
 impl IdentityConfig {
@@ -303,6 +353,7 @@ impl IdentityConfig {
         Self {
             identifier,
             change_history,
+            enrollment_status: None,
         }
     }
 
@@ -321,6 +372,38 @@ impl PartialEq for IdentityConfig {
 }
 
 impl Eq for IdentityConfig {}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct EnrollmentStatus {
+    pub is_enrolled: bool,
+    pub created_at: SystemTime,
+}
+
+impl EnrollmentStatus {
+    pub fn enrolled() -> EnrollmentStatus {
+        EnrollmentStatus {
+            is_enrolled: true,
+            created_at: SystemTime::now(),
+        }
+    }
+}
+
+impl Display for EnrollmentStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        if self.is_enrolled {
+            writeln!(f, "Enrolled: yes")?;
+        } else {
+            writeln!(f, "Enrolled: no")?;
+        }
+
+        match self.created_at.duration_since(UNIX_EPOCH) {
+            Ok(time) => writeln!(f, "Timestamp: {}", time.as_secs())?,
+            Err(err) => writeln!(f, "Error converting SystemTime to POSIX timestamp. {}", err)?,
+        }
+
+        Ok(())
+    }
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NodesState {
