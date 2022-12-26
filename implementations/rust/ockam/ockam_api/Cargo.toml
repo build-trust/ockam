@@ -41,7 +41,7 @@ nix             = "0.26"
 minicbor        = { version = "0.19.0", features = ["alloc", "derive"] }
 rust-embed      = "6"
 rand            = "0.8"
-serde           = { version = "1.0.151", features = ["derive"] }
+serde           = { version = "1.0.152", features = ["derive"] }
 serde_json      = "1.0.91"
 tempfile        = "3.3.0"
 tinyvec         = { version = "1.6.0", features = ["rustc_1_57"] }
