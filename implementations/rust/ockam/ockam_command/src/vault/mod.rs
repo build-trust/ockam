@@ -37,6 +37,10 @@ pub enum VaultSubcommand {
         #[arg(short, long)]
         key_id: String,
     },
+    Show {
+        /// Name of the vault
+        name: Option<String>,
+    },
 }
 
 impl VaultCommand {
@@ -79,6 +83,20 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
             let idt_config = cli_state::IdentityConfig::new(&idt).await;
             opts.state.identities.create(&idt_name, idt_config)?;
             println!("Identity attached to vault: {}", idt_name);
+        }
+        VaultSubcommand::Show { name } => {
+            let name = name.unwrap_or(opts.state.vaults.default()?.name()?);
+            let state = opts.state.vaults.get(&name)?;
+            println!();
+            println!("Vault:");
+            println!("  Name: {}", name);
+            println!(
+                "  Type: {}",
+                match state.config.is_aws() {
+                    true => "AWS KMS",
+                    false => "OCKAM",
+                }
+            );
         }
     }
     Ok(())

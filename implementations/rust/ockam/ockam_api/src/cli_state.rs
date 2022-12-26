@@ -179,6 +179,20 @@ pub struct VaultState {
     pub config: VaultConfig,
 }
 
+impl VaultState {
+    pub fn name(&self) -> Result<String> {
+        self.path
+            .file_stem()
+            .and_then(|s| s.to_os_string().into_string().ok())
+            .ok_or_else(|| {
+                CliStateError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "failed to parse the vault name",
+                ))
+            })
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct VaultConfig {
     path: PathBuf,
