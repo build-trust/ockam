@@ -1,4 +1,3 @@
-use ockam::access_control::AllowAll;
 use ockam::{
     authenticated_storage::InMemoryStorage,
     identity::{Identity, TrustEveryonePolicy},
@@ -34,19 +33,16 @@ async fn main(mut ctx: Context) -> Result<()> {
     let channel = alice
         .create_secure_channel("bob", TrustEveryonePolicy, &alice_storage)
         .await?;
-    let mut child_ctx = ctx.new_detached("child", AllowAll, AllowAll).await?;
 
     // Send a message, ** THROUGH ** the secure channel,
     // to the "app" worker on the other side.
     //
     // This message will automatically get encrypted when it enters the channel
     // and decrypted just before it exits the channel.
-    child_ctx
-        .send(route![channel, "child"], "Hello Ockam!".to_string())
-        .await?;
+    ctx.send(route![channel, "app"], "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a message for the "app" worker and print it.
-    let message = child_ctx.receive::<String>().await?;
+    let message = ctx.receive::<String>().await?;
     println!("App Received: {}", message); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.

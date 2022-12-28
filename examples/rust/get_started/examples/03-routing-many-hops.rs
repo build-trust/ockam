@@ -15,9 +15,11 @@ async fn main(mut ctx: Context) -> Result<()> {
     ctx.start_worker("h3", Hop, AllowAll, AllowAll).await?;
 
     // Send a message to the echoer worker via the "h1", "h2", and "h3" workers
-    // Wait to receive a reply and print it.
     let r = route!["h1", "h2", "h3", "echoer"];
-    let reply: String = ctx.send_and_receive(r, "Hello Ockam!".to_string()).await?;
+    ctx.send(r, "Hello Ockam!".to_string()).await?;
+
+    // Wait to receive a reply and print it.
+    let reply = ctx.receive::<String>().await?;
     println!("App Received: {}", reply); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.

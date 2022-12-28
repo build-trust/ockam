@@ -4,7 +4,7 @@ use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
 use std::io;
 
 #[ockam::node]
-async fn main(ctx: Context) -> Result<()> {
+async fn main(mut ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     TcpTransport::create(&ctx).await?;
 
@@ -46,11 +46,10 @@ async fn main(ctx: Context) -> Result<()> {
         let message = message.trim();
 
         // Send the provided message, through the channel, to Bob's echoer.
-        // Wait to receive an echo and print it.
-        let reply: String = ctx
-            .send_and_receive(route![channel.clone(), "echoer"], message.to_string())
-            .await?;
+        ctx.send(route![channel.clone(), "echoer"], message.to_string()).await?;
 
+        // Wait to receive an echo and print it.
+        let reply = ctx.receive::<String>().await?;
         println!("Alice received an echo: {}\n", reply); // should print "Hello Ockam!"
     }
 
