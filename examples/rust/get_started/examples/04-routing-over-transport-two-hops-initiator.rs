@@ -17,8 +17,10 @@ async fn main(mut ctx: Context) -> Result<()> {
         (TCP, &format!("localhost:{port_responder}")),
         "echoer"
     ];
-    // Send a message and wait to receive a reply and print it.
-    let reply: String = ctx.send_and_receive(r, "Hello Ockam!".to_string()).await?;
+    ctx.send(r, "Hello Ockam!".to_string()).await?;
+
+    // Wait to receive a reply and print it.
+    let reply = ctx.receive::<String>().await?;
     println!("App Received: {}", reply); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
