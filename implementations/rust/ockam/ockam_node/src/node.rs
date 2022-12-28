@@ -1,6 +1,6 @@
 use crate::{debugger, Context, Executor};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, DenyAll, Mailbox, Mailboxes};
+use ockam_core::{Address, AllowAll, Mailbox, Mailboxes};
 
 /// A minimal worker implementation that does nothing
 pub struct NullWorker;
@@ -54,7 +54,7 @@ impl NodeBuilder {
             exe.runtime().clone(),
             exe.sender(),
             Mailboxes::new(
-                Mailbox::new(addr, Arc::new(DenyAll), Arc::new(DenyAll)),
+                Mailbox::new(addr, Arc::new(AllowAll), Arc::new(AllowAll)),
                 vec![],
             ),
             None,
