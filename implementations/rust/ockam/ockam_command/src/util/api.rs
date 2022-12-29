@@ -1,7 +1,6 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 
 use regex::Regex;
-use std::path::Path;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
@@ -167,7 +166,7 @@ pub(crate) fn start_credentials_service(
 /// Construct a request to start an Authenticator Service
 pub(crate) fn start_authenticator_service<'a>(
     addr: &'a str,
-    enrollers: &'a Path,
+    enrollers: &'a str,
     project: &'a str,
 ) -> RequestBuilder<'static, StartAuthenticatorRequest<'a>> {
     let payload = StartAuthenticatorRequest::new(addr, enrollers, project.as_bytes());

@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context, Result};
 use ockam::identity::IdentityIdentifier;
 use ockam_api::DefaultAddress;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VaultConfig {
@@ -48,7 +48,7 @@ pub struct AuthenticatorConfig {
     #[serde(default = "authenticator_default_addr")]
     pub(crate) address: String,
 
-    pub(crate) enrollers: PathBuf,
+    pub(crate) enrollers: String,
 
     pub(crate) project: String,
 

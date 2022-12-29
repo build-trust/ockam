@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use minicbor::{Decode, Encode};
 use ockam_core::{CowBytes, CowStr};
 
@@ -133,17 +131,21 @@ pub struct StartAuthenticatorRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<2749734>,
     #[b(1)] addr: CowStr<'a>,
-    #[b(2)] path: &'a Path,
+    #[b(2)] enrollers: CowStr<'a>,
     #[b(3)] proj: CowBytes<'a>
 }
 
 impl<'a> StartAuthenticatorRequest<'a> {
-    pub fn new(addr: impl Into<CowStr<'a>>, path: &'a Path, proj: impl Into<CowBytes<'a>>) -> Self {
+    pub fn new(
+        addr: impl Into<CowStr<'a>>,
+        enrollers: impl Into<CowStr<'a>>,
+        proj: impl Into<CowBytes<'a>>,
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             addr: addr.into(),
-            path,
+            enrollers: enrollers.into(),
             proj: proj.into(),
         }
     }
@@ -152,8 +154,8 @@ impl<'a> StartAuthenticatorRequest<'a> {
         &self.addr
     }
 
-    pub fn path(&self) -> &'a Path {
-        self.path
+    pub fn enrollers(&'a self) -> &'a str {
+        &self.enrollers
     }
 
     pub fn project(&'a self) -> &'a [u8] {

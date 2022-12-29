@@ -9,7 +9,6 @@ use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::services::StartOktaIdentityProviderRequest;
 use ockam_api::DefaultAddress;
 use ockam_core::api::{Request, RequestBuilder, Status};
-use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Args)]
 pub struct StartCommand {
@@ -50,7 +49,7 @@ pub enum StartSubCommand {
         addr: String,
 
         #[arg(long)]
-        enrollers: PathBuf,
+        enrollers: String,
 
         #[arg(long)]
         project: String,
@@ -221,7 +220,7 @@ pub async fn start_authenticator_service(
     opts: &CommandGlobalOpts,
     node_name: &str,
     serv_addr: &str,
-    enrollers: &Path,
+    enrollers: &str,
     project: &str,
     tcp: Option<&'_ TcpTransport>,
 ) -> Result<()> {
