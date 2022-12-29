@@ -14,7 +14,6 @@ use ockam_node::Context;
 use serde_json as json;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
-use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use tracing::{trace, warn};
 use types::AddMember;
@@ -40,7 +39,6 @@ pub struct Server<S, V: IdentityVault> {
     project: Vec<u8>,
     store: S,
     ident: Identity<V>,
-    epath: PathBuf,
     enrollers: HashMap<IdentityIdentifier, Enroller>,
     tokens: LruCache<[u8; 32], Token>,
 }
@@ -77,17 +75,26 @@ where
     S: AuthenticatedStorage,
     V: IdentityVault,
 {
-    pub fn new<P>(project: Vec<u8>, store: S, enrollers: P, identity: Identity<V>) -> Self
-    where
-        P: AsRef<Path>,
-    {
-        Server {
+    pub fn new(project: Vec<u8>, store: S, enrollers: &str, identity: Identity<V>) -> Result<Self> {
+        Ok(Server {
             project,
             store,
             ident: identity,
-            epath: enrollers.as_ref().to_path_buf(),
-            enrollers: HashMap::new(),
+            enrollers: Self::parse_enrollers(enrollers)?,
             tokens: LruCache::new(NonZeroUsize::new(128).expect("0 < 128")),
+        })
+    }
+
+    fn parse_enrollers(json_or_path: &str) -> Result<HashMap<IdentityIdentifier, Enroller>> {
+        match json::from_str::<HashMap<IdentityIdentifier, Enroller>>(json_or_path) {
+            Ok(enrollers) => Ok(enrollers),
+            Err(_) => {
+                let contents = std::fs::read_to_string(json_or_path)
+                    .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Io, e))?;
+
+                json::from_str(&contents)
+                    .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Invalid, e))
+            }
         }
     }
 
@@ -192,14 +199,6 @@ where
         req: &'a Request<'_>,
         enroller: &IdentityIdentifier,
     ) -> Result<Option<ResponseBuilder<Error<'a>>>> {
-        let contents = std::fs::read_to_string(&self.epath)
-            .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Io, e))?;
-
-        let enrollers: HashMap<IdentityIdentifier, Enroller> = json::from_str(&contents)
-            .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Invalid, e))?;
-
-        self.enrollers = enrollers;
-
         if self.enrollers.contains_key(enroller) {
             return Ok(None);
         }
