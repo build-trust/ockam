@@ -24,6 +24,10 @@ permissions:
   # Contents permission allows us read this repository.
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   publish_crates:
     runs-on: ubuntu-20.04
@@ -38,7 +42,6 @@ jobs:
           fetch-depth: 0
 
       - name: Publish Ockam Crates
-        shell: bash
         env:
           GIT_TAG: '${{ github.event.inputs.git_tag }}'
           OCKAM_PUBLISH_TOKEN: '${{ secrets.CRATES_IO_PUBLISH_TOKEN }}'
