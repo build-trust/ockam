@@ -12,9 +12,7 @@ async fn main(ctx: Context) -> Result<()> {
     let udp = UdpTransport::create(&ctx).await?;
 
     // Create a UDP listener and wait for incoming datagrams.
-    // Use port 4000, unless otherwise specified by command line argument.
-    let port = std::env::args().nth(1).unwrap_or_else(|| "4000".to_string());
-    udp.listen(format!("127.0.0.1:{port}")).await?;
+    udp.listen("127.0.0.1:4000").await?;
 
     // Create an echoer worker
     ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
