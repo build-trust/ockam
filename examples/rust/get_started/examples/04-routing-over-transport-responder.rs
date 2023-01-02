@@ -11,9 +11,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a TCP listener and wait for incoming connections.
-    // Use port 4000, unless otherwise specified by command line argument.
-    let port = std::env::args().nth(1).unwrap_or_else(|| "4000".to_string());
-    tcp.listen(format!("127.0.0.1:{port}")).await?;
+    tcp.listen("127.0.0.1:4000").await?;
 
     // Create an echoer worker
     ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
