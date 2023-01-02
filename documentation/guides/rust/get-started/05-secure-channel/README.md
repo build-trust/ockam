@@ -51,9 +51,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a TCP listener and wait for incoming connections.
-    // Use port 4000, unless otherwise specified by command line argument.
-    let port = std::env::args().nth(1).unwrap_or_else(|| "4000".to_string());
-    tcp.listen(format!("127.0.0.1:{port}")).await?;
+    tcp.listen("127.0.0.1:4000").await?;
 
     // Create a Vault to safely store secret keys for Bob.
     let vault = Vault::create();
@@ -103,9 +101,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a TCP listener and wait for incoming connections.
-    // Use port 3000, unless otherwise specified by command line argument.
-    let port = std::env::args().nth(1).unwrap_or_else(|| "3000".to_string());
-    tcp.listen(format!("127.0.0.1:{port}")).await?;
+    tcp.listen("127.0.0.1:3000").await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())
@@ -148,15 +144,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let storage = InMemoryStorage::new();
 
     // Connect to a secure channel listener and perform a handshake.
-    // Use ports 3000 & 4000, unless otherwise specified by command line arguments.
-    let port_middle = std::env::args().nth(1).unwrap_or_else(|| "3000".to_string());
-    let port_responder = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
-    let r = route![
-        (TCP, format!("localhost:{port_middle}")),
-        "hop",
-        (TCP, format!("localhost:{port_responder}")),
-        "bob_listener"
-    ];
+    let r = route![(TCP, "localhost:3000"), "hop", (TCP, "localhost:4000"), "bob_listener"];
     let channel = alice.create_secure_channel(r, TrustEveryonePolicy, &storage).await?;
 
     // Send a message to the echoer worker via the channel.

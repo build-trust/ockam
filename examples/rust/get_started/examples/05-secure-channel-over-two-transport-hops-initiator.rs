@@ -20,15 +20,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let storage = InMemoryStorage::new();
 
     // Connect to a secure channel listener and perform a handshake.
-    // Use ports 3000 & 4000, unless otherwise specified by command line arguments.
-    let port_middle = std::env::args().nth(1).unwrap_or_else(|| "3000".to_string());
-    let port_responder = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
-    let r = route![
-        (TCP, format!("localhost:{port_middle}")),
-        "hop",
-        (TCP, format!("localhost:{port_responder}")),
-        "bob_listener"
-    ];
+    let r = route![(TCP, "localhost:3000"), "hop", (TCP, "localhost:4000"), "bob_listener"];
     let channel = alice.create_secure_channel(r, TrustEveryonePolicy, &storage).await?;
 
     // Send a message to the echoer worker via the channel.
