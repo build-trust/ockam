@@ -1549,18 +1549,18 @@ checksum = "c34f04666d835ff5d62e058c3995147c06f42fe86ff053337632bca83e42702d"
 
 [[package]]
 name = "enumflags2"
-version = "0.6.4"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83c8d82922337cd23a15f88b70d8e4ef5f11da38dd7cdb55e84dd5de99695da0"
+checksum = "e75d4cd21b95383444831539909fbb14b9dc3fdceb2a6f5d36577329a1f55ccb"
 dependencies = [
  "enumflags2_derive",
 ]
 
 [[package]]
 name = "enumflags2_derive"
-version = "0.6.4"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "946ee94e3dbf58fdd324f9ce245c7b238d46a66f00e86a020b71996349e46cce"
+checksum = "f58dc3c5e468259f19f2d46304a6b28f1c3d034442e14b322d2b850e36f6d5ae"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3391,9 +3391,9 @@ checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
 
 [[package]]
 name = "pic32-hal"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3583d5c443f8820abaa0b3f5a07160baeb959eb75326078a2a4383ec197ae68"
+checksum = "b30a419e8d1bbd91312470645b1bc313366c236aa6099140fb412af4cf6494f2"
 dependencies = [
  "embedded-hal 0.2.7",
  "enumflags2",
@@ -3405,9 +3405,9 @@ dependencies = [
 
 [[package]]
 name = "pic32mx2xx"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dc71544e56fa5b7396065b610726d6729ec1b991ed0de140f2a41869ed7534c"
+checksum = "033c29676aa7003e3a99ff6b129de3ee2fc5a1d8d206bf054d45628dc24a2cb3"
 dependencies = [
  "mips-mcu",
  "mips-rt",
