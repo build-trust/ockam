@@ -10,7 +10,7 @@ use crate::{multiaddr_to_route, try_multiaddr_to_addr};
 use minicbor::Decoder;
 use ockam::compat::asynchronous::RwLock;
 use ockam::compat::tokio::time::timeout;
-use ockam::{Address, Result};
+use ockam::{Address, AsyncTryClone, Result};
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{Action, Env, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Request, Response, ResponseBuilder};
@@ -18,6 +18,7 @@ use ockam_core::{AllowAll, IncomingAccessControl};
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::{Project, Secure, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};
+use ockam_node::Context;
 use std::sync::Arc;
 
 use super::{NodeManager, NodeManagerWorker};
@@ -106,6 +107,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
+        ctx: &Context,
     ) -> Result<ResponseBuilder<InletStatus<'a>>> {
         let manager = self.node_manager.clone();
         let mut node_manager = self.node_manager.write().await;
@@ -134,11 +136,11 @@ impl NodeManagerWorker {
         // to another node.
         let (outer, rest) = {
             let (sec1, rest) = node_manager
-                .connect(req.outlet_addr(), req.authorized(), None)
+                .connect(req.outlet_addr(), req.authorized(), None, ctx)
                 .await?;
             if !sec1.is_empty() && rest.matches(0, &[Service::CODE.into(), Secure::CODE.into()]) {
                 let addr = sec1.clone().try_with(rest.iter().take(2))?;
-                let (sec2, _) = node_manager.connect(&addr, None, None).await?;
+                let (sec2, _) = node_manager.connect(&addr, None, None, ctx).await?;
                 (sec1, sec2.try_with(rest.iter().skip(2))?)
             } else {
                 (MultiAddr::default(), sec1.try_with(&rest)?)
@@ -206,6 +208,7 @@ impl NodeManagerWorker {
                     let mut s = Session::new(without_outlet_address(rest));
                     s.data().put(INLET_WORKER, worker_addr.clone());
                     s.data().put(OUTER_CHAN, outer);
+                    let ctx = Arc::new(ctx.async_try_clone().await?);
                     let repl = replacer(
                         manager,
                         s.data(),
@@ -213,6 +216,7 @@ impl NodeManagerWorker {
                         req.outlet_addr().clone(),
                         req.authorized(),
                         access_control.clone(),
+                        ctx,
                     );
                     s.set_replacer(repl);
                     node_manager.sessions.lock().unwrap().add(s);
@@ -332,6 +336,7 @@ fn replacer(
     addr: MultiAddr,
     auth: Option<IdentityIdentifier>,
     access: Arc<dyn IncomingAccessControl>,
+    ctx: Arc<Context>,
 ) -> Replacer {
     Box::new(move |prev| {
         let addr = addr.clone();
@@ -340,6 +345,7 @@ fn replacer(
         let manager = manager.clone();
         let access = access.clone();
         let data = data.clone();
+        let ctx = ctx.clone();
         Box::pin(async move {
             debug!(%prev, %addr, "creating new tcp inlet");
             // The future that recreates the inlet:
@@ -360,7 +366,7 @@ fn replacer(
                 // Now a connection attempt is made:
 
                 let rest = {
-                    let (sec1, rest) = this.connect(&addr, auth, timeout).await?;
+                    let (sec1, rest) = this.connect(&addr, auth, timeout, ctx.as_ref()).await?;
                     if !sec1.is_empty()
                         && rest.matches(0, &[Service::CODE.into(), Secure::CODE.into()])
                     {
@@ -370,7 +376,7 @@ fn replacer(
                         data.put(OUTER_CHAN, sec1.clone());
 
                         let addr = sec1.clone().try_with(rest.iter().take(2))?;
-                        let (sec2, _) = this.connect(&addr, None, timeout).await?;
+                        let (sec2, _) = this.connect(&addr, None, timeout, ctx.as_ref()).await?;
                         sec2.try_with(rest.iter().skip(2))?
                     } else {
                         sec1.try_with(&rest)?

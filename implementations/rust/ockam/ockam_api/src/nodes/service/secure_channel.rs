@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use super::{map_multiaddr_err, NodeManagerWorker};
+use crate::cli_state::CliState;
 use crate::error::ApiError;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
@@ -14,9 +15,10 @@ use minicbor::Decoder;
 use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::{route, AsyncTryClone};
+use ockam_core::{route, AsyncTryClone, CowStr};
 use ockam_identity::{Identity, IdentityIdentifier, TrustMultiIdentifiersPolicy};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::Context;
 use ockam_vault::Vault;
 
 impl NodeManager {
@@ -90,8 +92,22 @@ impl NodeManager {
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         credential_exchange_mode: CredentialExchangeMode,
         timeout: Option<Duration>,
+        identity_name: Option<CowStr<'_>>,
+        ctx: &Context,
     ) -> Result<Address> {
-        let identity = self.identity()?.async_try_clone().await?;
+        let identity = if let Some(identity) = identity_name {
+            let state = CliState::new()?;
+            let idt_config = state.identities.get(&identity)?.config;
+            match idt_config.get(ctx, self.vault()?).await {
+                Ok(idt) => idt,
+                Err(_) => {
+                    let default_vault = &state.vaults.default()?.config.get().await?;
+                    idt_config.get(ctx, default_vault).await?
+                }
+            }
+        } else {
+            self.identity()?.async_try_clone().await?
+        };
 
         let sc_addr = self
             .create_secure_channel_internal(&identity, sc_route, authorized_identifiers, timeout)
@@ -217,6 +233,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
+        ctx: &Context,
     ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'a>>> {
         let mut node_manager = self.node_manager.write().await;
         let CreateSecureChannelRequest {
@@ -224,6 +241,7 @@ impl NodeManagerWorker {
             authorized_identifiers,
             credential_exchange_mode,
             timeout,
+            identity,
             ..
         } = dec.decode()?;
 
@@ -252,6 +270,8 @@ impl NodeManagerWorker {
                 authorized_identifiers,
                 credential_exchange_mode,
                 timeout,
+                identity,
+                ctx,
             )
             .await?;
 

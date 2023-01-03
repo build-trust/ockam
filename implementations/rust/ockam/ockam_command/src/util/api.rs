@@ -16,7 +16,6 @@ use tracing::trace;
 use ockam::identity::IdentityIdentifier;
 use ockam::Result;
 use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
-use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::nodes::*;
 use ockam_core::api::RequestBuilder;
 use ockam_core::api::{Request, Response};
@@ -74,20 +73,6 @@ pub(crate) fn list_outlets() -> RequestBuilder<'static, ()> {
 /// Construct a request builder to list all secure channels on the given node
 pub(crate) fn list_secure_channels() -> RequestBuilder<'static, ()> {
     Request::get("/node/secure_channel")
-}
-
-/// Construct a request to create Secure Channels
-pub(crate) fn create_secure_channel(
-    addr: &MultiAddr,
-    authorized_identifiers: Option<Vec<IdentityIdentifier>>,
-    credential_exchange_mode: CredentialExchangeMode,
-) -> RequestBuilder<'static, models::secure_channel::CreateSecureChannelRequest<'static>> {
-    let payload = models::secure_channel::CreateSecureChannelRequest::new(
-        addr,
-        authorized_identifiers,
-        credential_exchange_mode,
-    );
-    Request::post("/node/secure_channel").body(payload)
 }
 
 pub(crate) fn delete_secure_channel(

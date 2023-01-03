@@ -1,23 +1,24 @@
 use crate::{
     help,
-    util::{api, exitcode, extract_address_value, node_rpc},
+    util::{exitcode, extract_address_value, node_rpc},
     CommandGlobalOpts, OutputFormat, Result,
 };
 
 use anyhow::Context as _;
 use clap::Args;
 use colorful::Colorful;
+use ockam_core::api::Request;
 use serde_json::json;
 
 use crate::secure_channel::HELP_DETAIL;
 use crate::util::api::CloudOpts;
 use crate::util::{is_tty, RpcBuilder};
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
-use ockam_api::config::lookup::ConfigLookup;
 use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::{
     clean_multiaddr, nodes::models::secure_channel::CreateSecureChannelResponse, route_to_multiaddr,
 };
+use ockam_api::{config::lookup::ConfigLookup, nodes::models};
 use ockam_multiaddr::MultiAddr;
 
 /// Create Secure Channels
@@ -39,6 +40,9 @@ pub struct CreateCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]
     cloud_opts: CloudOpts,
+
+    #[arg(value_name = "IDENTITY", long, display_order = 802)]
+    identity: Option<String>,
 }
 
 impl CreateCommand {
@@ -162,8 +166,14 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
 
     // Delegate the request to create a secure channel to the from node.
     let mut rpc = RpcBuilder::new(&ctx, &opts, from).tcp(&tcp)?.build();
-    let request =
-        api::create_secure_channel(to, authorized_identifiers, CredentialExchangeMode::Mutual);
+
+    let payload = models::secure_channel::CreateSecureChannelRequest::new(
+        to,
+        authorized_identifiers,
+        CredentialExchangeMode::Mutual,
+        cmd.identity.clone(),
+    );
+    let request = Request::post("/node/secure_channel").body(payload);
 
     rpc.request(request).await?;
     let response = rpc.parse_response::<CreateSecureChannelResponse>()?;
