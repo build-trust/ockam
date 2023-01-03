@@ -13,6 +13,8 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
+use time::format_description::well_known::Iso8601;
+use time::OffsetDateTime;
 
 use thiserror::Error;
 
@@ -396,9 +398,13 @@ impl Display for EnrollmentStatus {
             writeln!(f, "Enrolled: no")?;
         }
 
-        match self.created_at.duration_since(UNIX_EPOCH) {
-            Ok(time) => writeln!(f, "Timestamp: {}", time.as_secs())?,
-            Err(err) => writeln!(f, "Error converting SystemTime to POSIX timestamp. {}", err)?,
+        match OffsetDateTime::from(self.created_at).format(&Iso8601::DEFAULT) {
+            Ok(time_str) => writeln!(f, "Timestamp: {}", time_str)?,
+            Err(err) => writeln!(
+                f,
+                "Error formatting OffsetDateTime as Iso8601 String: {}",
+                err
+            )?,
         }
 
         Ok(())
