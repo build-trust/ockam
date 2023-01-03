@@ -334,6 +334,7 @@ impl NodeManager {
         addr: &MultiAddr,
         auth: Option<IdentityIdentifier>,
         timeout: Option<Duration>,
+        ctx: &Context,
     ) -> Result<(MultiAddr, MultiAddr)> {
         if let Some(p) = addr.first() {
             if p.code() == Project::CODE {
@@ -346,7 +347,9 @@ impl NodeManager {
                     multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                 let i = Some(vec![i]);
                 let m = CredentialExchangeMode::Oneway;
-                let w = self.create_secure_channel_impl(r, i, m, timeout).await?;
+                let w = self
+                    .create_secure_channel_impl(r, i, m, timeout, None, ctx)
+                    .await?;
                 let a = MultiAddr::default().try_with(addr.iter().skip(1))?;
                 return Ok((try_address_to_multiaddr(&w)?, a));
             }
@@ -358,7 +361,9 @@ impl NodeManager {
             let r = multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
             let i = auth.clone().map(|i| vec![i]);
             let m = CredentialExchangeMode::Mutual;
-            let w = self.create_secure_channel_impl(r, i, m, timeout).await?;
+            let w = self
+                .create_secure_channel_impl(r, i, m, timeout, None, ctx)
+                .await?;
             return Ok((try_address_to_multiaddr(&w)?, b));
         }
 
@@ -368,7 +373,9 @@ impl NodeManager {
                 multiaddr_to_route(addr).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
             let i = auth.clone().map(|i| vec![i]);
             let m = CredentialExchangeMode::Mutual;
-            let w = self.create_secure_channel_impl(r, i, m, timeout).await?;
+            let w = self
+                .create_secure_channel_impl(r, i, m, timeout, None, ctx)
+                .await?;
             return Ok((try_address_to_multiaddr(&w)?, MultiAddr::default()));
         }
 
@@ -487,7 +494,7 @@ impl NodeManagerWorker {
                     .to_vec()?
             }
             (Post, ["node", "secure_channel"]) => {
-                self.create_secure_channel(req, dec).await?.to_vec()?
+                self.create_secure_channel(req, dec, ctx).await?.to_vec()?
             }
             (Delete, ["node", "secure_channel"]) => {
                 self.delete_secure_channel(req, dec).await?.to_vec()?
@@ -553,7 +560,7 @@ impl NodeManagerWorker {
                 let node_manager = self.node_manager.read().await;
                 self.get_outlets(req, &node_manager.registry).to_vec()?
             }
-            (Post, ["node", "inlet"]) => self.create_inlet(req, dec).await?.to_vec()?,
+            (Post, ["node", "inlet"]) => self.create_inlet(req, dec, ctx).await?.to_vec()?,
             (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "portal"]) => todo!(),
 

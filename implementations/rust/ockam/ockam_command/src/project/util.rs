@@ -2,6 +2,7 @@ use std::io::Write;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context as _, Result};
+use ockam_core::api::Request;
 use tracing::debug;
 
 use ockam::identity::IdentityIdentifier;
@@ -9,7 +10,7 @@ use ockam::TcpTransport;
 use ockam_api::cloud::project::Project;
 use ockam_api::config::lookup::{LookupMeta, ProjectAuthority, ProjectLookup};
 use ockam_api::multiaddr_to_addr;
-use ockam_api::nodes::models::secure_channel::*;
+use ockam_api::nodes::models::{self, secure_channel::*};
 use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::util::api::CloudOpts;
@@ -108,12 +109,16 @@ async fn create_secure_channel_to_project(
 ) -> crate::Result<MultiAddr> {
     let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
-    rpc.request(api::create_secure_channel(
+
+    let payload = models::secure_channel::CreateSecureChannelRequest::new(
         project_access_route,
         Some(authorized_identifier),
         credential_exchange_mode,
-    ))
-    .await?;
+        None,
+    );
+    let req = Request::post("/node/secure_channel").body(payload);
+    rpc.request(req).await?;
+
     let sc = rpc.parse_response::<CreateSecureChannelResponse>()?;
     Ok(sc.addr()?)
 }
@@ -128,12 +133,14 @@ pub async fn create_secure_channel_to_authority(
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     debug!(%addr, "establishing secure channel to project authority");
     let allowed = vec![authority.identity_id().clone()];
-    rpc.request(api::create_secure_channel(
+    let payload = models::secure_channel::CreateSecureChannelRequest::new(
         addr,
         Some(allowed),
         CredentialExchangeMode::None,
-    ))
-    .await?;
+        None,
+    );
+    let req = Request::post("/node/secure_channel").body(payload);
+    rpc.request(req).await?;
     let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
     let addr = res.addr()?;
     Ok(addr)

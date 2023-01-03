@@ -34,7 +34,7 @@ impl NodeManagerWorker {
         debug!(addr = %req.address(), alias = ?req.alias(), "Handling CreateForwarder request");
 
         let (sec_chan, suffix) = node_manager
-            .connect(req.address(), req.authorized(), None)
+            .connect(req.address(), req.authorized(), None, ctx)
             .await?;
 
         let full = sec_chan.clone().try_with(&suffix)?;
@@ -117,7 +117,7 @@ fn replacer(
                 let mut this = manager.write().await;
                 let _ = this.delete_secure_channel(&prev).await;
                 let timeout = Some(util::MAX_CONNECT_TIME);
-                let (sec, rest) = this.connect(&addr, auth, timeout).await?;
+                let (sec, rest) = this.connect(&addr, auth, timeout, ctx.as_ref()).await?;
                 let a = sec.clone().try_with(&rest)?;
                 let r = multiaddr_to_route(&a)
                     .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {a}")))?;
