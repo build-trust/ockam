@@ -19,7 +19,7 @@ defaults:
   
 defaults:
   run:
-    shell: bash  
+   shell: bash  
 
 jobs:
   lint:
