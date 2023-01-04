@@ -205,7 +205,8 @@ async fn run_foreground_node(
     let cfg = &opts.config;
 
     // This node was initially created as a foreground node
-    if !cmd.child_process {
+    // and there is no existing state for it yet.
+    if !cmd.child_process && opts.state.nodes.get(&cmd.node_name).is_err() {
         init_node_state(
             &ctx,
             &opts,
