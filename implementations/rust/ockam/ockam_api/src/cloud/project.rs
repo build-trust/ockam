@@ -201,6 +201,69 @@ impl From<OktaConfig<'_>> for OktaAuth0 {
     }
 }
 
+#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct InfluxDBTokenLeaseManagerConfig<'a> {
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[cbor(n(0))] pub tag: TypeTag<4166488>,
+
+    #[serde(borrow)]
+    #[cbor(b(1))] pub endpoint: CowStr<'a>,
+
+    #[serde(borrow)]
+    #[cbor(b(2))] pub token: CowStr<'a>,
+
+    #[serde(borrow)]
+    #[cbor(b(3))] pub org_id: CowStr<'a>,
+
+    #[serde(borrow)]
+    #[cbor(b(4))] pub permissions: CowStr<'a>,
+
+    #[cbor(b(5))] pub max_ttl_secs: i32,
+
+    #[serde(borrow)]
+    #[cbor(b(6))] pub user_access_rule: Option<CowStr<'a>>,
+
+    #[serde(borrow)]
+    #[cbor(b(7))] pub admin_access_rule: Option<CowStr<'a>>,
+}
+
+impl<'a> InfluxDBTokenLeaseManagerConfig<'a> {
+    pub fn new<S: Into<CowStr<'a>>>(
+        endpoint: S,
+        token: S,
+        org_id: S,
+        permissions: S,
+        max_ttl_secs: i32,
+        user_access_rule: Option<S>,
+        admin_access_rule: Option<S>,
+    ) -> Self {
+        let uar: Option<CowStr<'a>> = match user_access_rule {
+            Some(s) => Some(s.into()),
+            None => None,
+        };
+
+        let aar: Option<CowStr<'a>> = match admin_access_rule {
+            Some(s) => Some(s.into()),
+            None => None,
+        };
+
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            endpoint: endpoint.into(),
+            token: token.into(),
+            org_id: org_id.into(),
+            permissions: permissions.into(),
+            max_ttl_secs,
+            user_access_rule: uar,
+            admin_access_rule: aar,
+        }
+    }
+}
+
 #[derive(Encode, Decode, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
