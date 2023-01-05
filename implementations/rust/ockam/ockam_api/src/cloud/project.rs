@@ -240,15 +240,9 @@ impl<'a> InfluxDBTokenLeaseManagerConfig<'a> {
         user_access_rule: Option<S>,
         admin_access_rule: Option<S>,
     ) -> Self {
-        let uar: Option<CowStr<'a>> = match user_access_rule {
-            Some(s) => Some(s.into()),
-            None => None,
-        };
+        let uar: Option<CowStr<'a>> = user_access_rule.map(|s| s.into());
 
-        let aar: Option<CowStr<'a>> = match admin_access_rule {
-            Some(s) => Some(s.into()),
-            None => None,
-        };
+        let aar: Option<CowStr<'a>> = admin_access_rule.map(|s| s.into());
 
         Self {
             #[cfg(feature = "tag")]
