@@ -51,7 +51,7 @@ debugger = ["ockam_core/debugger"]
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.71.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.25.0" }
-tokio = { version = "1.18", default-features = false, optional = true, features = [
+tokio = { version = "1.23", default-features = false, optional = true, features = [
     "sync",
     "time",
     "rt",

@@ -92,5 +92,5 @@ thiserror   = { version = "1.0.38", optional = true }
 p256 = { version = "0.11.1", default_features = false }
 
 [dev-dependencies]
-tokio = { version = "1.8", features = ["full"] }
+tokio = { version = "1.23", features = ["full"] }
 trybuild = { version = "1.0", features = ["diff"] }

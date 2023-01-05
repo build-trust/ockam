@@ -30,5 +30,5 @@ default = []
 ockam_core = { path = "../ockam_core", version = "^0.71.0" }
 ockam_vault = { path = "../ockam_vault", version = "^0.67.0" }
 lazy_static = "1.4"
-tokio = { version = "1.8", features = ["full"] }
+tokio = { version = "1.23", features = ["full"] }
 futures = { version = "0.3.25" }
