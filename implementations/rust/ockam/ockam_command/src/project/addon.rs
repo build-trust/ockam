@@ -163,8 +163,8 @@ pub enum ConfigureAddonCommand {
         /// InfluxDB Permissions as a JSON String
         /// https://docs.influxdata.com/influxdb/v2.0/api/#operation/PostAuthorizations
         #[arg(
-            long,
-            group = "permissions",
+            long = "permissions",
+            group = "permissions_group",  //looks like it can't be named the same than an existing field
             value_name = "PERMISSIONS_JSON",
             value_parser(NonEmptyStringValueParser::new())
         )]
@@ -173,8 +173,8 @@ pub enum ConfigureAddonCommand {
         /// InfluxDB Permissions JSON PATH. Use either this or --permissions
         #[arg(
             long = "permissions-path",
-            group = "permissions",
-            value_name = "PERMISSIONS_JSON"
+            group = "permissions_group",
+            value_name = "PERMISSIONS_JSON_PATH"
         )]
         permissions_path: Option<PathBuf>,
 
@@ -333,7 +333,7 @@ async fn run_impl(
                     admin_access_role,
                 );
 
-                let add_on_id = "influxdb";
+                let add_on_id = "influxdb_token_lease_manager";
                 let endpoint = format!("{}/{}", base_endpoint(&project_name)?, add_on_id);
                 let req =
                     Request::put(endpoint).body(CloudRequestWrapper::new(body, controller_route));

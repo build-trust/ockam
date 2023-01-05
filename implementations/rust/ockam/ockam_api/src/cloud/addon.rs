@@ -31,7 +31,7 @@ mod node {
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
-    use crate::cloud::project::OktaConfig;
+    use crate::cloud::project::{OktaConfig, InfluxDBTokenLeaseManagerConfig};
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::error::ApiError;
     use crate::nodes::NodeManagerWorker;
@@ -74,6 +74,7 @@ mod node {
         ) -> Result<Vec<u8>> {
             match addon_id {
                 "okta" => self.configure_okta_addon(ctx, dec, project_id).await,
+                "influxdb_token_lease_manager" => self.configure_influxdb_token_lease_manager_addon(ctx, dec, project_id).await,
                 _ => Err(ApiError::generic(&format!("Unknown addon: {addon_id}"))),
             }
         }
@@ -92,6 +93,32 @@ mod node {
             trace!(target: TARGET, project_id, "configuring okta addon");
 
             let req_builder = Request::put(format!("/v0/{project_id}/addons/okta")).body(req_body);
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                API_SERVICE,
+                req_builder,
+                None,
+            )
+            .await
+        }
+
+        async fn configure_influxdb_token_lease_manager_addon(
+            &mut self,
+            ctx: &mut Context,
+            dec: &mut Decoder<'_>,
+            project_id: &str,
+        ) -> Result<Vec<u8>> {
+            let req_wrapper: CloudRequestWrapper<InfluxDBTokenLeaseManagerConfig> = dec.decode()?;
+            let cloud_route = req_wrapper.route()?;
+            let req_body = req_wrapper.req;
+
+            let label = "configure_influxdb_token_lease_manager_addon";
+            trace!(target: TARGET, project_id, "configuring influxdb addon");
+
+            let req_builder = Request::put(format!("/v0/{project_id}/addons/influxdb_token_lease_manager")).body(req_body);
             self.request_controller(
                 ctx,
                 label,
