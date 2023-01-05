@@ -170,7 +170,7 @@ dependencies = [
  "atsame54p",
  "bitfield",
  "bitflags",
- "cortex-m 0.7.6",
+ "cortex-m 0.7.7",
  "embedded-hal 0.2.7",
  "modular-bitfield",
  "nb 0.1.3",
@@ -201,7 +201,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f390ca0900fad2de2d318ac2d7720f47f91badbbc4a08cd80f3b60eff68ce7a"
 dependencies = [
  "bare-metal 0.2.5",
- "cortex-m 0.7.6",
+ "cortex-m 0.7.7",
  "cortex-m-rt",
  "vcell",
 ]
@@ -1034,15 +1034,15 @@ dependencies = [
  "aligned",
  "bare-metal 0.2.5",
  "bitfield",
- "cortex-m 0.7.6",
+ "cortex-m 0.7.7",
  "volatile-register",
 ]
 
 [[package]]
 name = "cortex-m"
-version = "0.7.6"
+version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70858629a458fdfd39f9675c4dc309411f2a3f83bede76988d81bf1a0ecee9e0"
+checksum = "8ec610d8f49840a5b376c69663b6369e71f4b34484b9b2eb29fb918d92516cb9"
 dependencies = [
  "bare-metal 0.2.5",
  "bitfield",
@@ -3146,7 +3146,7 @@ dependencies = [
  "bluenrg",
  "bluetooth-hci",
  "btleplug",
- "cortex-m 0.7.6",
+ "cortex-m 0.7.7",
  "embedded-hal 0.2.7",
  "futures 0.3.25",
  "futures-util",
@@ -4335,7 +4335,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fb94729242cd1aebe6dab42a2ca0131985ae93bc3ab2751b680df724bb35528d"
 dependencies = [
  "bare-metal 1.0.0",
- "cortex-m 0.7.6",
+ "cortex-m 0.7.7",
  "cortex-m-rt",
  "vcell",
 ]
@@ -4348,7 +4348,7 @@ checksum = "dbb045e607d0946eca27523141d192d7ee91aea0dff9736be100b8fc0c186abf"
 dependencies = [
  "bare-metal 1.0.0",
  "bitflags",
- "cortex-m 0.7.6",
+ "cortex-m 0.7.7",
  "cortex-m-rt",
  "embedded-dma",
  "embedded-hal 0.2.7",
@@ -4370,7 +4370,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "362f288cd8341e9209587b889c385f323e82fc237b60c272868965bb879bb9b1"
 dependencies = [
  "bare-metal 1.0.0",
- "cortex-m 0.7.6",
+ "cortex-m 0.7.7",
  "cortex-m-rt",
  "vcell",
 ]
@@ -4384,7 +4384,7 @@ dependencies = [
  "bare-metal 1.0.0",
  "bitflags",
  "cast",
- "cortex-m 0.7.6",
+ "cortex-m 0.7.7",
  "embedded-dma",
  "embedded-hal 0.2.7",
  "fugit",
