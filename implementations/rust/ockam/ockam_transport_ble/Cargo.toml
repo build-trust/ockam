@@ -117,7 +117,7 @@ pic32-hal = { version = "0.8.0", optional = true }
 
 # Architecture ARM: TODO move this into its own "Ockam Addon" crate
 [target.'cfg(target_arch = "arm")'.dependencies]
-cortex-m = "0.7.3"
+cortex-m = "0.7.7"
 
 # Architecture RISCV: TODO move this into its own "Ockam Addon" crate
 [target.'cfg(any(target_arch = "riscv32", target_arch = "riscv64"))'.dependencies]
