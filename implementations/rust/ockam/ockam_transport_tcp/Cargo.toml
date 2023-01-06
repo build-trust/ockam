@@ -33,7 +33,7 @@ ockam_node = { path = "../ockam_node", version = "^0.74.0" }
 ockam_macros = { path = "../ockam_macros", version = "^0.25.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.44.0" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-tokio = { version = "1.8", features = [
+tokio = { version = "1.24", features = [
     "rt-multi-thread",
     "sync",
     "net",
