@@ -2,12 +2,11 @@ use std::str::FromStr;
 
 use minicbor::{Decode, Encode};
 
+use crate::error::ApiError;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{CowStr, Result, Route};
 use ockam_multiaddr::MultiAddr;
-
-use crate::error::ApiError;
 
 pub mod addon;
 pub mod enroll;
@@ -117,8 +116,11 @@ mod node {
         }
 
         /// Returns a secure channel between the node and the controller.
-        async fn controller_secure_channel(&mut self, route: impl Into<Route>) -> Result<Address> {
-            let identity = self.identity()?;
+        async fn controller_secure_channel(
+            &mut self,
+            route: impl Into<Route>,
+            identity: Identity<Vault>,
+        ) -> Result<Address> {
             let route = route.into();
             // Create secure channel for the given route using the orchestrator identity.
             trace!(target: TARGET, %route, "Creating orchestrator secure channel");
@@ -144,18 +146,16 @@ mod node {
             cloud_route: impl Into<Route>,
             api_service: &str,
             req: RequestBuilder<'_, T>,
-            ident: Option<Identity<Vault>>,
+            ident: Identity<Vault>,
         ) -> Result<Vec<u8>>
         where
             T: Encode<()>,
         {
-            match ident {
-                Some(_ident) => None::<T>,
-                None => None,
-            };
             let mut node_manger = self.get().write().await;
             let cloud_route = cloud_route.into();
-            let sc = node_manger.controller_secure_channel(cloud_route).await?;
+            let sc = node_manger
+                .controller_secure_channel(cloud_route, ident)
+                .await?;
             let route = route![&sc.to_string(), api_service];
             let res = request(ctx, label, schema, route, req).await;
             ctx.stop_worker(sc).await?;

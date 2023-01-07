@@ -25,6 +25,7 @@ pub struct Addon<'a> {
 
 mod node {
     use minicbor::Decoder;
+    use ockam::AsyncTryClone;
     use tracing::trace;
 
     use ockam_core::api::Request;
@@ -53,6 +54,11 @@ mod node {
             trace!(target: TARGET, project_id, "listing addons");
 
             let req_builder = Request::get(format!("/v0/{project_id}/addons"));
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
             self.request_controller(
                 ctx,
                 label,
@@ -60,7 +66,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -96,6 +102,11 @@ mod node {
             trace!(target: TARGET, project_id, "configuring okta addon");
 
             let req_builder = Request::put(format!("/v0/{project_id}/addons/okta")).body(req_body);
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
             self.request_controller(
                 ctx,
                 label,
@@ -103,7 +114,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -151,6 +162,11 @@ mod node {
             trace!(target: TARGET, project_id, addon_id, "disabling addon");
 
             let req_builder = Request::delete(format!("/v0/{project_id}/addons/{addon_id}"));
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
             self.request_controller(
                 ctx,
                 label,
@@ -158,7 +174,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }

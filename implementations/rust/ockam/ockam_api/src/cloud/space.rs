@@ -62,6 +62,7 @@ mod node {
     use tracing::trace;
 
     use ockam_core::api::Request;
+    use ockam_core::AsyncTryClone;
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
@@ -85,6 +86,11 @@ mod node {
             trace!(target: TARGET, space = %req_body.name, "creating space");
 
             let req_builder = Request::post("/v0/").body(req_body);
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
             self.request_controller(
                 ctx,
                 label,
@@ -92,7 +98,7 @@ mod node {
                 cloud_route,
                 "spaces",
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -109,7 +115,12 @@ mod node {
             trace!(target: TARGET, "listing spaces");
 
             let req_builder = Request::get("/v0/");
-            self.request_controller(ctx, label, None, cloud_route, "spaces", req_builder, None)
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
+            self.request_controller(ctx, label, None, cloud_route, "spaces", req_builder, ident)
                 .await
         }
 
@@ -126,7 +137,12 @@ mod node {
             trace!(target: TARGET, space = %id, space = %id, "getting space");
 
             let req_builder = Request::get(format!("/v0/{id}"));
-            self.request_controller(ctx, label, None, cloud_route, "spaces", req_builder, None)
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
+            self.request_controller(ctx, label, None, cloud_route, "spaces", req_builder, ident)
                 .await
         }
 
@@ -143,7 +159,12 @@ mod node {
             trace!(target: TARGET, space = %id, "deleting space");
 
             let req_builder = Request::delete(format!("/v0/{id}"));
-            self.request_controller(ctx, label, None, cloud_route, "spaces", req_builder, None)
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
+            self.request_controller(ctx, label, None, cloud_route, "spaces", req_builder, ident)
                 .await
         }
     }
