@@ -136,6 +136,11 @@ mod node {
                 "/v0/{project_id}/addons/influxdb_token_lease_manager"
             ))
             .body(req_body);
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
             self.request_controller(
                 ctx,
                 label,
@@ -143,7 +148,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
