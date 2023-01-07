@@ -3,6 +3,7 @@ use std::str::FromStr;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
+use ockam_core::AsyncTryClone;
 use ockam_core::CowStr;
 use ockam_core::Result;
 #[cfg(feature = "tag")]
@@ -269,7 +270,7 @@ pub struct CreateProject<'a> {
     #[b(2)] pub services: Vec<CowStr<'a>>,
     #[b(3)] pub users: Vec<CowStr<'a>>,
     #[b(4)] pub enforce_credentials: Option<bool>,
-    #[b(5)] pub identity_name: Option<String>
+    #[b(5)] pub identity_name: Option<CowStr<'a>>
 }
 
 impl<'a> CreateProject<'a> {
@@ -278,14 +279,14 @@ impl<'a> CreateProject<'a> {
         enforce_credentials: Option<bool>,
         users: &'a [T],
         services: &'a [T],
-        identity_name: Option<String>,
+        identity_name: Option<S>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             name: name.into(),
             enforce_credentials,
-            identity_name,
+            identity_name: identity_name.map(|x| x.into()),
             services: services.iter().map(|x| CowStr::from(x.as_ref())).collect(),
             users: users.iter().map(|x| CowStr::from(x.as_ref())).collect(),
         }
@@ -361,18 +362,27 @@ mod node {
             let label = "create_project";
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
 
-            let req_builder = Request::post(format!("/v0/{space_id}")).body(req_body);
+            let req_builder = Request::post(format!("/v0/{space_id}")).body(&req_body);
             let cli_state = cli_state::CliState::new()?;
+            let inner = self.get().read().await;
+            let ident = match &req_body.identity_name {
+                Some(existing_identity_name) => {
+                    let identity_cfg = cli_state
+                        .identities
+                        .get(existing_identity_name.as_ref())?
+                        .config;
+                    match identity_cfg.get(ctx, inner.vault()?).await {
+                        Ok(idt) => idt,
+                        Err(_) => {
+                            let vault_cfg = cli_state.vaults.default()?.config;
+                            identity_cfg.get(ctx, &vault_cfg.get().await?).await?
+                        }
+                    }
+                }
+                None => inner.identity()?.async_try_clone().await?,
+            };
 
-            let default_vault = cli_state.vaults.default()?.config.get().await?;
-            let ident = Some(
-                cli_state
-                    .identities
-                    .default()?
-                    .config
-                    .get(ctx, &default_vault)
-                    .await?,
-            );
+            drop(inner);
 
             self.request_controller(
                 ctx,
@@ -398,8 +408,21 @@ mod node {
             trace!(target: TARGET, "listing projects");
 
             let req_builder = Request::get("/v0");
-            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder, None)
-                .await
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                "projects",
+                req_builder,
+                ident,
+            )
+            .await
         }
 
         pub(crate) async fn get_project(
@@ -415,8 +438,21 @@ mod node {
             trace!(target: TARGET, %project_id, "getting project");
 
             let req_builder = Request::get(format!("/v0/{project_id}"));
-            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder, None)
-                .await
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                "projects",
+                req_builder,
+                ident,
+            )
+            .await
         }
 
         pub(crate) async fn delete_project(
@@ -433,8 +469,21 @@ mod node {
             trace!(target: TARGET, %space_id, %project_id, "deleting project");
 
             let req_builder = Request::delete(format!("/v0/{space_id}/{project_id}"));
-            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder, None)
-                .await
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                "projects",
+                req_builder,
+                ident,
+            )
+            .await
         }
 
         pub(crate) async fn add_project_enroller(
@@ -451,8 +500,21 @@ mod node {
             trace!(target: TARGET, %project_id, "adding enroller");
 
             let req_builder = Request::post(format!("/v0/{project_id}/enrollers")).body(req_body);
-            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder, None)
-                .await
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                "projects",
+                req_builder,
+                ident,
+            )
+            .await
         }
 
         pub(crate) async fn list_project_enrollers(
@@ -468,8 +530,21 @@ mod node {
             trace!(target: TARGET, %project_id, "listing enrollers");
 
             let req_builder = Request::get(format!("/v0/{project_id}/enrollers"));
-            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder, None)
-                .await
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                "projects",
+                req_builder,
+                ident,
+            )
+            .await
         }
 
         pub(crate) async fn delete_project_enroller(
@@ -487,8 +562,21 @@ mod node {
 
             let req_builder =
                 Request::delete(format!("/v0/{project_id}/enrollers/{enroller_identity_id}"));
-            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder, None)
-                .await
+
+            let inner = self.get().read().await;
+            let ident = inner.identity()?.async_try_clone().await?;
+            drop(inner);
+
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                "projects",
+                req_builder,
+                ident,
+            )
+            .await
         }
     }
 }

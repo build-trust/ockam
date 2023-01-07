@@ -256,7 +256,7 @@ pub(crate) mod project {
         space_id: &'a str,
         enforce_credentials: Option<bool>,
         cloud_route: &'a MultiAddr,
-        identity_name: Option<String>,
+        identity_name: Option<&'a str>,
     ) -> RequestBuilder<'a, CloudRequestWrapper<'a, CreateProject<'a>>> {
         let b = CreateProject::new::<&str, &str>(
             project_name,
