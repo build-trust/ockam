@@ -16,5 +16,5 @@ jobs:
     container: # gitlab.com/greut/eclint
       image: greut/eclint:v0.3.3@sha256:95e9a3dcbd236bae6569625cd403175cbde3705303774e7baca418b6442b8d77
     steps:
-      - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
       - run: eclint -color=always
