@@ -87,7 +87,7 @@ tracing-error = "0.2"
 tracing-subscriber = "0.3.9"
 validator = "0.16"
 colorful = "0.2"
-regex = "1.7.0"
+regex = "1.7.1"
 rustls = "0.20.7"
 rustls-native-certs = "0.6.2"
 pem-rfc7468 = { version = "0.6.0", features = ["std"]}
