@@ -55,9 +55,10 @@ mod node {
 
             let req_builder = Request::get(format!("/v0/{project_id}/addons"));
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(
                 ctx,
@@ -103,9 +104,10 @@ mod node {
 
             let req_builder = Request::put(format!("/v0/{project_id}/addons/okta")).body(req_body);
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(
                 ctx,
@@ -137,9 +139,10 @@ mod node {
             ))
             .body(req_body);
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(
                 ctx,
@@ -168,9 +171,10 @@ mod node {
 
             let req_builder = Request::delete(format!("/v0/{project_id}/addons/{addon_id}"));
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(
                 ctx,
