@@ -1,8 +1,8 @@
 use std::os::unix::net::SocketAddr;
 
 use ockam_core::{
-    async_trait, compat::sync::Arc, Address, AllowAll, Any, Decodable, Encodable, LocalMessage,
-    Mailbox, Mailboxes, Message, Result, Routed, TransportMessage, Worker,
+    async_trait, compat::sync::Arc, Address, Any, Decodable, DenyAll, Encodable, LocalMessage,
+    LocalOnwardOnly, Mailbox, Mailboxes, Message, Result, Routed, TransportMessage, Worker,
 };
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::TransportError;
@@ -57,7 +57,8 @@ pub(crate) struct UdsSendWorker {
     tx: Option<OwnedWriteHalf>,
     peer: SocketAddr,
     internal_addr: Address,
-    rx_addr: Option<Address>,
+    rx_addr: Address,
+    rx_should_be_stopped: bool,
 }
 
 impl UdsSendWorker {
@@ -67,6 +68,7 @@ impl UdsSendWorker {
         stream: Option<UnixStream>,
         peer: SocketAddr,
         internal_addr: Address,
+        rx_addr: Address,
     ) -> Self {
         let (rx, tx) = match stream {
             Some(s) => {
@@ -82,12 +84,18 @@ impl UdsSendWorker {
             tx,
             peer,
             internal_addr,
-            rx_addr: None,
+            rx_addr,
+            rx_should_be_stopped: true,
         }
     }
 
     pub(crate) fn internal_addr(&self) -> &Address {
         &self.internal_addr
+    }
+
+    /// Returns a reference to the [`Receiver Process Address`](ockam_core::Address)
+    pub(crate) fn rx_addr(&self) -> &Address {
+        &self.rx_addr
     }
 
     /// Create a ([`UdsSendWorker`],[`WorkerPair`]) without spawning the worker.
@@ -97,9 +105,16 @@ impl UdsSendWorker {
         peer: SocketAddr,
         pathnames: Vec<String>,
     ) -> Result<(Self, WorkerPair)> {
-        let tx_addr = Address::random_tagged("UdsSendWorker_tx_addr");
-        let int_addr = Address::random_tagged("UdsSendWorker_int_addr");
-        let sender = UdsSendWorker::new(router_handle, stream, peer.clone(), int_addr);
+        let role_str = if stream.is_none() {
+            "initiator"
+        } else {
+            "responder"
+        };
+
+        let tx_addr = Address::random_tagged(&format!("UdsSendWorker_tx_addr_{}", role_str));
+        let int_addr = Address::random_tagged(&format!("UdsSendWorker_int_addr_{}", role_str));
+        let rx_addr = Address::random_tagged(&format!("UdsRecvProcessor_{}", role_str));
+        let sender = UdsSendWorker::new(router_handle, stream, peer.clone(), int_addr, rx_addr);
         Ok((
             sender,
             WorkerPair {
@@ -118,34 +133,21 @@ impl UdsSendWorker {
         peer: SocketAddr,
         hostnames: Vec<String>,
     ) -> Result<WorkerPair> {
+        let udsrouter_main_addr = router_handle.main_addr().clone();
+
         trace!("Creating new UDS worker pair");
-        let (mut worker, pair) = Self::new_pair(router_handle, stream, peer, hostnames).await?;
+        let (worker, pair) = Self::new_pair(router_handle, stream, peer, hostnames).await?;
 
-        // TODO: @uds (Oakley) determine why his is considered bad in equivalent usage found here:
-        // https://github.com/build-trust/ockam/blob/5e5a9ddc557daa2e5183d83fb95a821062c2efcf/implementations/rust/ockam/ockam_transport_tcp/src/workers/sender.rs#L134
-        let rx_addr = Address::random_tagged("UdsRecvProcessor");
-        worker.rx_addr = Some(rx_addr.clone());
-
-        // TODO: @ac 0#UdsSendWorker_tx_addr
-        // in:  0#UdsSendWorker_tx_addr_9  <=  [0#UdsRouter_main_addr_0]
-        // out: n/a
         let tx_mailbox = Mailbox::new(
             pair.tx_addr(),
-            Arc::new(AllowAll),
-            // Arc::new(ockam_core::AllowSourceAddress(udsrouter_main_addr)),
-            Arc::new(AllowAll),
-            // Arc::new(ockam_core::DenyAll),
+            Arc::new(ockam_core::AllowSourceAddress(udsrouter_main_addr)),
+            Arc::new(ockam_core::DenyAll),
         );
 
-        // @ac 0#UdsSendWorker_int_addr
-        // in:  0#UdsSendWorker_int_addr_10  <=  [0#UdsRecvProcessor_12]
-        // out: n/a
         let internal_mailbox = Mailbox::new(
             worker.internal_addr().clone(),
-            Arc::new(AllowAll),
-            // Arc::new(ockam_core::AllowSourceAddress(rx_addr)),
-            Arc::new(AllowAll),
-            // Arc::new(ockam_core::DenyAll),
+            Arc::new(ockam_core::AllowSourceAddress(worker.rx_addr().clone())),
+            Arc::new(ockam_core::DenyAll),
         );
 
         WorkerBuilder::with_mailboxes(Mailboxes::new(tx_mailbox, vec![internal_mailbox]), worker)
@@ -204,10 +206,10 @@ impl Worker for UdsSendWorker {
 
             let sock = SockRef::from(&connection);
 
-            // TODO: @uds enable an automatic keep alive system
             // This only enabled the socket to allow keep alive packets
-            // It does not seem yet like socket2 supports an automatic interval
-            // keep alive
+            // socket2 at this time (01/2023) does not support an automatic interval
+            // keep alive; However as this a Unix Domain Socket, this is less
+            // likely to cause issues
             if let Err(e) = sock.set_keepalive(true) {
                 error!("Failed to set so_keepalive to true: {}", e);
             }
@@ -219,24 +221,18 @@ impl Worker for UdsSendWorker {
 
         let rx = self.rx.take().ok_or(TransportError::GenericIo)?;
 
-        let rx_addr = if let Some(rx_addr) = &self.rx_addr {
-            rx_addr.clone()
-        } else {
-            // TODO: @uds (Oakley) determine why his is considered bad in equivalent usage found here:
-            // https://github.com/build-trust/ockam/blob/5e5a9ddc557daa2e5183d83fb95a821062c2efcf/implementations/rust/ockam/ockam_transport_tcp/src/workers/sender.rs#L134
-            Address::random_tagged("UdsRecvProcessor")
-        };
-
         let receiver = UdsRecvProcessor::new(
             rx,
             format!("{}#{}", crate::UDS, path.display()).into(),
             self.internal_addr.clone(),
         );
 
-        // TODO @ac 0#UdsRecvProcessor
-        // in:  n/a
-        // out: 0#UdsRecvProcessor_12  =>  [0#UdsPortalWorker_remote_6, 0#UdsSendWorker_int_addr_10, 0#outlet]
-        let mailbox = Mailbox::new(rx_addr, Arc::new(AllowAll), Arc::new(AllowAll));
+        let mailbox = Mailbox::new(
+            self.rx_addr().clone(),
+            Arc::new(DenyAll),
+            Arc::new(LocalOnwardOnly),
+        );
+
         ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), receiver)
             .start(ctx)
             .await?;
@@ -245,8 +241,8 @@ impl Worker for UdsSendWorker {
     }
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        if let Some(rx_addr) = self.rx_addr.take() {
-            let _ = ctx.stop_processor(rx_addr).await;
+        if self.rx_should_be_stopped {
+            let _ = ctx.stop_processor(self.rx_addr().clone()).await;
         }
 
         Ok(())
@@ -271,7 +267,7 @@ impl Worker for UdsSendWorker {
                     warn!("Stopping sender due to closed connection");
                     // No need to stop Receiver as it notified us about connection drop and will
                     // stop itself
-                    self.rx_addr = None;
+                    self.rx_should_be_stopped = false;
                     self.stop_and_unregister(ctx).await?;
 
                     return Ok(());

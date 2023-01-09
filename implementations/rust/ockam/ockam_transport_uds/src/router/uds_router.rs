@@ -1,12 +1,12 @@
 use core::ops::Deref;
 use ockam_core::{
-    async_trait, compat::sync::Arc, Address, AllowAll, Any, Decodable, LocalMessage, Mailbox,
-    Mailboxes, Result, Routed, Worker,
+    async_trait, compat::sync::Arc, Address, Any, Decodable, LocalMessage, LocalOnwardOnly,
+    LocalSourceOnly, Mailbox, Mailboxes, Result, Routed, Worker,
 };
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use std::collections::BTreeMap;
-use tracing::{error, trace};
+use tracing::{debug, error, trace};
 
 use super::{UdsRouterHandle, UdsRouterRequest, UdsRouterResponse};
 use crate::{address_from_socket_addr, workers::UdsSendWorker, UDS};
@@ -30,21 +30,17 @@ pub(crate) struct UdsRouter {
 impl UdsRouter {
     /// Create and register a new UDS router with the given node context
     pub async fn register(ctx: &Context) -> Result<UdsRouterHandle> {
-        // TODO: Perhaps should not use random_ragged, it uses `LOCAL` as the address
-        let main_addr = Address::random_tagged("UdsRouter_main_addr");
-        let api_addr = Address::random_tagged("UdsRouter_api_addr"); // Purpose of API
-
-        // TODO: @ac and recent
+        // This context is only used to start workers, doesn't need to send nor receive messages
         let mailboxes = Mailboxes::new(
-            Mailbox::new(
-                Address::random_tagged("UdsRouter.detached"),
-                Arc::new(AllowAll),
-                Arc::new(AllowAll),
-            ),
+            Mailbox::deny_all(Address::random_tagged("UdsRouter.detached")),
             vec![],
         );
 
         let child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
+
+        let main_addr = Address::random_tagged("UdsRouter_main_addr");
+        let api_addr = Address::random_tagged("UdsRouter_api_addr");
+        debug!("Initializing new UdsRouter with address {}", &main_addr);
 
         let router = Self {
             ctx: child_ctx,
@@ -55,8 +51,16 @@ impl UdsRouter {
         };
 
         let handle = router.create_self_handle().await?;
-        let main_mailbox = Mailbox::new(main_addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll));
-        let api_mailbox = Mailbox::new(api_addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll));
+        let main_mailbox = Mailbox::new(
+            main_addr.clone(),
+            Arc::new(LocalSourceOnly),
+            Arc::new(LocalOnwardOnly),
+        );
+        let api_mailbox = Mailbox::new(
+            api_addr.clone(),
+            Arc::new(LocalSourceOnly),
+            Arc::new(LocalOnwardOnly),
+        );
 
         WorkerBuilder::with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]), router)
             .start(ctx)
@@ -70,13 +74,8 @@ impl UdsRouter {
 
     /// Create a new [`UdsRouterHandle`] representing this router
     pub async fn create_self_handle(&self) -> Result<UdsRouterHandle> {
-        // TODO: @ac 0#UdsRouterHandle.detached
         let mailboxes = Mailboxes::new(
-            Mailbox::new(
-                Address::random_tagged("UdsRouterHandle.detached"),
-                Arc::new(AllowAll),
-                Arc::new(AllowAll),
-            ),
+            Mailbox::deny_all(Address::random_tagged("UdsRouterHandle.detached")),
             vec![],
         );
 

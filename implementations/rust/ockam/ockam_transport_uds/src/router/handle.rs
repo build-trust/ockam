@@ -1,7 +1,7 @@
 use std::os::unix::net::SocketAddr;
 
 use ockam_core::{
-    async_trait, compat::sync::Arc, Address, AsyncTryClone, Mailbox, Mailboxes, Result,
+    async_trait, compat::sync::Arc, Address, AsyncTryClone, DenyAll, Mailbox, Mailboxes, Result,
 };
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
@@ -26,14 +26,11 @@ pub(crate) struct UdsRouterHandle {
 #[async_trait]
 impl AsyncTryClone for UdsRouterHandle {
     async fn async_try_clone(&self) -> Result<Self> {
-        // TODO @ac 0#UdsRouterHandle.async_try_clone.detached
-        // in:  n/a - DenyAll?
-        // out: n/a - DenyAll?
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 Address::random_tagged("UdsRouterHandle.async_try_clone.detached"),
-                Arc::new(ockam_core::AllowAll),
-                Arc::new(ockam_core::AllowAll),
+                Arc::new(DenyAll),
+                Arc::new(DenyAll),
             ),
             vec![],
         );
@@ -55,6 +52,16 @@ impl UdsRouterHandle {
             main_addr,
             api_addr,
         }
+    }
+
+    /// Return a reference to the router handle's [`Context`]
+    pub fn ctx(&self) -> &Context {
+        &self.ctx
+    }
+
+    /// Return a reference to the router handle's [`Main Address`](ockam_core::Address)
+    pub(crate) fn main_addr(&self) -> &Address {
+        &self.main_addr
     }
 }
 
@@ -114,20 +121,9 @@ impl UdsRouterHandle {
                 .map(|x| Address::from_string(format!("{}#{}", UDS, x))),
         );
         let self_addr = pair.tx_addr();
-        // TODO @ac 0#RegisterConnectionWorker.detached
-        // in:   0#RegisterConnectionWorker.detached_10  <=  [0#UdsRouter_main_addr_0]
-        // out:  0#RegisterConnectionWorker.detached_10  =>  [0#UdsRouter_api_addr_1]
-        let mailboxes = Mailboxes::new(
-            Mailbox::new(
-                Address::random_tagged("RegisterConnectionWorker.detached"),
-                Arc::new(ockam_core::AllowAll),
-                Arc::new(ockam_core::AllowAll),
-            ),
-            vec![],
-        );
-        let child_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
 
-        let response: UdsRouterResponse = child_ctx
+        let response: UdsRouterResponse = self
+            .ctx()
             .send_and_receive(
                 self.api_addr.clone(),
                 UdsRouterRequest::Register { accepts, self_addr },

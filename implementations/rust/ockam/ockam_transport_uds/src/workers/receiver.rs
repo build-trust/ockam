@@ -1,9 +1,9 @@
 use crate::workers::UdsSendWorkerMsg;
-use crate::UDS;
+
 use ockam_core::{
     async_trait, Address, Decodable, LocalMessage, Processor, Result, TransportMessage,
 };
-use ockam_node::{Context, ExternalLocalInfo};
+use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::unix::OwnedReadHalf};
 use tracing::{error, info, trace};
@@ -94,12 +94,8 @@ impl Processor for UdsRecvProcessor {
         trace!("Message onward route: {}", msg.onward_route);
         trace!("Message return route: {}", msg.return_route);
 
-        // Mark that message originates from some other node
-        let local_info = ExternalLocalInfo::new(UDS).to_local_info()?;
-
         // Forward the message to the next hop in the route
-        ctx.forward(LocalMessage::new(msg, vec![local_info]))
-            .await?;
+        ctx.forward(LocalMessage::new(msg, vec![])).await?;
 
         Ok(true)
     }
