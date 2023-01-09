@@ -117,9 +117,10 @@ mod node {
 
             let req_builder = Request::put(format!("/v0/{}/unsubscribe", id));
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(
                 ctx,
@@ -148,9 +149,10 @@ mod node {
 
             let req_builder = Request::put(format!("/v0/{}/space_id", id)).body(req_body);
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(
                 ctx,
@@ -178,9 +180,10 @@ mod node {
 
             let req_builder = Request::put(format!("/v0/{}/contact_info", id)).body(req_body);
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(
                 ctx,
@@ -206,9 +209,10 @@ mod node {
 
             let req_builder = Request::get("/v0/");
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(
                 ctx,
@@ -235,9 +239,10 @@ mod node {
 
             let req_builder = Request::get(format!("/v0/{}", id));
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(
                 ctx,
@@ -264,9 +269,10 @@ mod node {
 
             let req_builder = Request::post("/v0/activate").body(req_body);
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(
                 ctx,

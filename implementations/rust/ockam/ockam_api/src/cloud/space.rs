@@ -87,9 +87,10 @@ mod node {
 
             let req_builder = Request::post("/v0/").body(req_body);
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(
                 ctx,
@@ -116,9 +117,10 @@ mod node {
 
             let req_builder = Request::get("/v0/");
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(ctx, label, None, cloud_route, "spaces", req_builder, ident)
                 .await
@@ -138,9 +140,10 @@ mod node {
 
             let req_builder = Request::get(format!("/v0/{id}"));
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(ctx, label, None, cloud_route, "spaces", req_builder, ident)
                 .await
@@ -160,9 +163,10 @@ mod node {
 
             let req_builder = Request::delete(format!("/v0/{id}"));
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(ctx, label, None, cloud_route, "spaces", req_builder, ident)
                 .await

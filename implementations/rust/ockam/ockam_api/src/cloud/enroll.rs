@@ -50,9 +50,10 @@ mod node {
 
             trace!(target: TARGET, "executing auth0 flow");
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(
                 ctx,
@@ -82,9 +83,10 @@ mod node {
 
             let req_builder = Request::post("v0/").body(req_body);
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             self.request_controller(
                 ctx,
@@ -110,9 +112,10 @@ mod node {
             let req_builder = Request::post("v0/enroll").body(req_body);
             let api_service = "enrollment_token_authenticator";
 
-            let inner = self.get().read().await;
-            let ident = inner.identity()?.async_try_clone().await?;
-            drop(inner);
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
 
             trace!(target: TARGET, "authenticating token");
             self.request_controller(
