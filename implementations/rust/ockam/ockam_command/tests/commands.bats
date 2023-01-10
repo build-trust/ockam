@@ -673,13 +673,42 @@ teardown() {
   assert_success
 }
 
-@test "project addons - list addons" {
+@test "project addons - list" {
   skip_if_orchestrator_tests_not_enabled
 
   run --separate-stderr $OCKAM project addon list --project default
 
   assert_success
   assert_output --partial "Id: okta"
+}
+
+@test "project addons - enable and disable" {
+  skip # TODO: wait until cloud has the influx-db and confluent addons enabled
+  skip_if_orchestrator_tests_not_enabled
+
+  run --separate-stderr $OCKAM project addon list --project default
+  assert_success
+  assert_output --partial --regex "Id: okta\n +Enabled: false"
+  assert_output --partial --regex "Id: confluent\n +Enabled: false"
+
+  run --separate-stderr $OCKAM project addon enable okta --project default --tenant tenant --client-id client_id --cert cert
+  assert_success
+  run --separate-stderr $OCKAM project addon enable confluent --project default --bootstrap-server bootstrap-server.confluent:9092 --api-key ApIkEy --api-secret ApIsEcrEt
+  assert_success
+
+  run --separate-stderr $OCKAM project addon list --project default
+  assert_success
+  assert_output --partial --regex "Id: okta\n +Enabled: true"
+  assert_output --partial --regex "Id: confluent\n +Enabled: true"
+
+  run --separate-stderr $OCKAM project addon disable --addon okta --project default
+  run --separate-stderr $OCKAM project addon disable --addon  --project default
+  run --separate-stderr $OCKAM project addon disable --addon confluent --project default
+
+  run --separate-stderr $OCKAM project addon list --project default
+  assert_success
+  assert_output --partial --regex "Id: okta\n +Enabled: false"
+  assert_output --partial --regex "Id: confluent\n +Enabled: false"
 }
 
 function skip_if_orchestrator_tests_not_enabled() {

@@ -1,4 +1,3 @@
-use crate::help;
 use crate::util::node_rpc;
 use crate::CommandGlobalOpts;
 use clap::Args;
@@ -8,7 +7,6 @@ use ockam_identity::Identity;
 use rand::prelude::random;
 
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide())]
 pub struct CreateCommand {
     #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
     name: String,
