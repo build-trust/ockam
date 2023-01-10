@@ -3,6 +3,7 @@ use std::str::FromStr;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
+use crate::cloud::addon::ConfluentConfigResponse;
 use ockam_core::AsyncTryClone;
 use ockam_core::CowStr;
 use ockam_core::Result;
@@ -66,6 +67,11 @@ pub struct Project<'a> {
     #[serde(borrow)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub okta_config: Option<OktaConfig<'a>>,
+
+    #[cbor(b(12))]
+    #[serde(borrow)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confluent_config: Option<ConfluentConfigResponse<'a>>,
 }
 
 impl Clone for Project<'_> {
@@ -90,6 +96,7 @@ impl Project<'_> {
             authority_access_route: self.authority_access_route.as_ref().map(|x| x.to_owned()),
             authority_identity: self.authority_identity.as_ref().map(|x| x.to_owned()),
             okta_config: self.okta_config.as_ref().map(|x| x.to_owned()),
+            confluent_config: self.confluent_config.as_ref().map(|x| x.to_owned()),
         }
     }
 
@@ -614,6 +621,7 @@ mod tests {
                 authority_identity: bool::arbitrary(g)
                     .then(|| hex::encode(<Vec<u8>>::arbitrary(g)).into()),
                 okta_config: None,
+                confluent_config: None,
             })
         }
     }
