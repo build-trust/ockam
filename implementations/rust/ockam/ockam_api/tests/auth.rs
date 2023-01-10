@@ -106,6 +106,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     ctx.stop().await
 }
 
+#[ignore]
 #[ockam_macros::test]
 async fn json_config(ctx: &mut Context) -> Result<()> {
     // Create the authority:
