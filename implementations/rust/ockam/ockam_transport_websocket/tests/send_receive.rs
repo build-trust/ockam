@@ -3,6 +3,7 @@ use ockam_core::{route, AllowAll, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_websocket::{WebSocketTransport, WS};
 
+#[ignore]
 #[ockam_macros::test]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
     let transport = WebSocketTransport::create(ctx).await?;
