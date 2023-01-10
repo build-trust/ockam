@@ -66,6 +66,11 @@ pub struct Project<'a> {
     #[serde(borrow)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub okta_config: Option<OktaConfig<'a>>,
+
+    #[cbor(b(12))]
+    #[serde(borrow)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confluent_config: Option<ConfluentConfigResponse<'a>>,
 }
 
 impl Clone for Project<'_> {
@@ -90,6 +95,7 @@ impl Project<'_> {
             authority_access_route: self.authority_access_route.as_ref().map(|x| x.to_owned()),
             authority_identity: self.authority_identity.as_ref().map(|x| x.to_owned()),
             okta_config: self.okta_config.as_ref().map(|x| x.to_owned()),
+            confluent_config: self.confluent_config.as_ref().map(|x| x.to_owned()),
         }
     }
 
@@ -255,6 +261,94 @@ impl<'a> InfluxDBTokenLeaseManagerConfig<'a> {
             max_ttl_secs,
             user_access_rule: uar,
             admin_access_rule: aar,
+        }
+    }
+}
+
+#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct ConfluentConfig<'a> {
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[cbor(n(0))] pub tag: TypeTag<6434815>,
+
+    #[serde(borrow)]
+    #[cbor(b(1))] pub bootstrap_server: CowStr<'a>,
+
+    #[serde(borrow)]
+    #[cbor(b(2))] pub api_key: CowStr<'a>,
+
+    #[serde(borrow)]
+    #[cbor(b(3))] pub api_secret: CowStr<'a>,
+}
+
+impl<'a> ConfluentConfig<'a> {
+    pub fn new<S: Into<CowStr<'a>>>(bootstrap_server: S, api_key: S, api_secret: S) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            bootstrap_server: bootstrap_server.into(),
+            api_key: api_key.into(),
+            api_secret: api_secret.into(),
+        }
+    }
+}
+
+impl Clone for ConfluentConfig<'_> {
+    fn clone(&self) -> Self {
+        self.to_owned()
+    }
+}
+impl ConfluentConfig<'_> {
+    pub fn to_owned<'r>(&self) -> ConfluentConfig<'r> {
+        ConfluentConfig {
+            #[cfg(feature = "tag")]
+            tag: self.tag.to_owned(),
+            bootstrap_server: self.bootstrap_server.to_owned(),
+            api_key: self.api_key.to_owned(),
+            api_secret: self.api_secret.to_owned(),
+        }
+    }
+}
+#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct ConfluentConfigResponse<'a> {
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[cbor(n(0))] pub tag: TypeTag<6434816>,
+
+    #[serde(borrow)]
+    #[cbor(b(1))] pub bootstrap_server: CowStr<'a>,
+
+    #[serde(borrow)]
+    #[cbor(b(2))] pub api_key: CowStr<'a>,
+}
+
+impl<'a> ConfluentConfigResponse<'a> {
+    pub fn new<S: Into<CowStr<'a>>>(bootstrap_server: S, api_key: S) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            bootstrap_server: bootstrap_server.into(),
+            api_key: api_key.into(),
+        }
+    }
+}
+
+impl Clone for ConfluentConfigResponse<'_> {
+    fn clone(&self) -> Self {
+        self.to_owned()
+    }
+}
+impl ConfluentConfigResponse<'_> {
+    pub fn to_owned<'r>(&self) -> ConfluentConfigResponse<'r> {
+        ConfluentConfigResponse {
+            #[cfg(feature = "tag")]
+            tag: self.tag.to_owned(),
+            bootstrap_server: self.bootstrap_server.to_owned(),
+            api_key: self.api_key.to_owned()
         }
     }
 }

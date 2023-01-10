@@ -11,7 +11,7 @@ use rustls::{Certificate, ClientConfig, ClientConnection, Connection, RootCertSt
 
 use ockam::Context;
 use ockam_api::cloud::addon::Addon;
-use ockam_api::cloud::project::{InfluxDBTokenLeaseManagerConfig, OktaConfig, Project};
+use ockam_api::cloud::project::{ConfluentConfig, InfluxDBTokenLeaseManagerConfig, OktaConfig, Project};
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
 
@@ -205,6 +205,44 @@ pub enum ConfigureAddonCommand {
         )]
         admin_access_role: Option<String>,
     },
+    Confluent {
+        /// Ockam Project name
+        #[arg(
+            long = "project",
+            id = "project",
+            value_name = "PROJECT_NAME",
+            default_value = "default",
+            value_parser(NonEmptyStringValueParser::new())
+        )]
+        project_name: String,
+
+        /// Plugin bootstrap server URL
+        #[arg(
+            long,
+            id = "bootstrap_server",
+            value_name = "BOOTSTRAP_SERVER",
+            value_parser(NonEmptyStringValueParser::new())
+        )]
+        bootstrap_server: String,
+
+        /// API Key
+        #[arg(
+            long,
+            id = "api_key",
+            value_name = "api_key",
+            value_parser(NonEmptyStringValueParser::new())
+        )]
+        api_key: String,
+
+        /// API Secret
+        #[arg(
+            long,
+            id = "api_secret",
+            value_name = "API_SECRET",
+            value_parser(NonEmptyStringValueParser::new())
+        )]
+        api_secret: String,
+    },
 }
 
 impl AddonCommand {
@@ -374,6 +412,44 @@ async fn run_impl(
                         .await?;
                     }
                     println!("InfluxDB addon configured successfully");
+                }
+                ConfigureAddonCommand::Confluent {
+                    project_name,
+                    bootstrap_server,
+                    api_key,
+                    api_secret,
+                } => {
+                    let confluent_config = ConfluentConfig::new(bootstrap_server, api_key, api_secret);
+                    let body = confluent_config.clone();
+                
+                    // Do request
+                    let addon_id = "confluent";
+                    let endpoint = format!("{}/{}", base_endpoint(&project_name)?, addon_id);
+                    let req =
+                        Request::put(endpoint).body(CloudRequestWrapper::new(body, controller_route));
+                    rpc.request(req).await?;
+                    rpc.is_ok()?;
+                    println!("Confluent addon enabled");
+                
+                    // Wait until project is ready again
+                    println!("Getting things ready for project...");
+                    tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+                    let project_id = config::get_project(&opts.config, &project_name)
+                        .context("project not found in lookup")?;
+                    rpc.request(api::project::show(&project_id, controller_route))
+                        .await?;
+                    let project: Project = rpc.parse_response()?;
+                    check_project_readiness(
+                        &ctx,
+                        &opts,
+                        &cmd.cloud_opts,
+                        rpc.node_name(),
+                        None,
+                        project,
+                    )
+                    .await?;
+                
+                    println!("Confluent addon configured successfully");
                 }
             }
         }

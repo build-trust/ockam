@@ -32,7 +32,7 @@ mod node {
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
-    use crate::cloud::project::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
+    use crate::cloud::project::{ConfluentConfig, InfluxDBTokenLeaseManagerConfig, OktaConfig};
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::error::ApiError;
     use crate::nodes::NodeManagerWorker;
@@ -85,6 +85,7 @@ mod node {
                     self.configure_influxdb_token_lease_manager_addon(ctx, dec, project_id)
                         .await
                 }
+                "confluent" => self.configure_confluent_addon(ctx, dec, project_id).await,
                 _ => Err(ApiError::generic(&format!("Unknown addon: {addon_id}"))),
             }
         }
@@ -144,6 +145,39 @@ mod node {
                 inner.identity()?.async_try_clone().await?
             };
 
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                API_SERVICE,
+                req_builder,
+                ident,
+            )
+            .await
+        }
+
+        async fn configure_confluent_addon(
+            &mut self,
+            ctx: &mut Context,
+            dec: &mut Decoder<'_>,
+            project_id: &str,
+        ) -> Result<Vec<u8>> {
+            let req_wrapper: CloudRequestWrapper<ConfluentConfig> = dec.decode()?;
+            let cloud_route = req_wrapper.route()?;
+            let req_body = req_wrapper.req;
+
+            let label = "configure_confluent_addon";
+            trace!(target: TARGET, project_id, "configuring confluent addon");
+
+            let req_builder =
+                Request::put(format!("/v0/{project_id}/addons/confluent")).body(req_body);
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+            
             self.request_controller(
                 ctx,
                 label,
