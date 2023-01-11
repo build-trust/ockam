@@ -6,6 +6,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
 
   Options:
   - identity - own identity of the channel
+  - vault_name - vault to use for signing using own identity
   - trust_policies - trust policies to check remote contact identity, see `Ockam.Identity.TrustPolicy`
   - encryption_options - options for encryption channel, see `Ockam.SecureChannel.Channel`
   """
@@ -21,13 +22,13 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
   alias Ockam.SecureChannel.Channel, as: SecureChannel
   alias Ockam.SecureChannel.InitHandshake
 
-  require Logger
-
   @key_exchange_timeout 20_000
 
   @impl true
   def init(handshake_options, handshake_state) do
     identity = Keyword.fetch!(handshake_options, :identity)
+    vault_name = Keyword.get(handshake_options, :vault_name)
+
     trust_policies = Keyword.get(handshake_options, :trust_policies, [])
 
     init_route = Map.fetch!(handshake_state, :init_route)
@@ -57,6 +58,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
           encryption_channel: enc_channel,
           auth_hash: auth_hash,
           identity: identity,
+          vault_name: vault_name,
           trust_policies: trust_policies,
           authorization: [:from_secure_channel, {:from_addresses, [:message, [enc_channel]]}]
         })
@@ -67,7 +69,12 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
 
   @impl true
   def handle_initiator(handshake_options, message, state) do
-    %{identity: identity, auth_hash: auth_hash, encryption_channel: enc_channel} = state
+    %{
+      identity: identity,
+      auth_hash: auth_hash,
+      encryption_channel: enc_channel,
+      vault_name: vault_name
+    } = state
 
     payload = Message.payload(message)
 
@@ -87,7 +94,8 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
       state =
         Map.merge(state, %{
           peer_address: peer_address,
-          identity: identity
+          identity: identity,
+          vault_name: vault_name
         })
 
       additional_metadata = Keyword.get(handshake_options, :additional_metadata, %{})
@@ -124,6 +132,8 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
 
   def handle_responder_init(handshake_options, message, handshake_state) do
     identity = Keyword.fetch!(handshake_options, :identity)
+    vault_name = Keyword.get(handshake_options, :vault_name)
+
     trust_policies = Keyword.get(handshake_options, :trust_policies, [])
 
     init_handshake_payload = Message.payload(message)
@@ -157,6 +167,7 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
             auth_hash: auth_hash,
             expected_message: :handshake,
             identity: identity,
+            vault_name: vault_name,
             trust_policies: trust_policies,
             authorization: [:from_secure_channel, {:from_addresses, [:message, [enc_channel]]}]
           })
@@ -211,12 +222,14 @@ defmodule Ockam.Identity.SecureChannel.Handshake do
       peer_address: peer_address,
       encryption_channel: encryption_channel,
       identity: identity,
+      # can be nil
+      vault_name: vault_name,
       auth_hash: auth_hash,
       handshake_address: handshake_address
     } = state
 
     contact_data = Identity.get_data(identity)
-    {:ok, proof} = Identity.create_signature(identity, auth_hash)
+    {:ok, proof} = Identity.create_signature(identity, auth_hash, vault_name)
 
     payload =
       HandshakeMessage.encode(

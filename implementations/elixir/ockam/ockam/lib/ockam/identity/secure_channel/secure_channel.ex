@@ -17,6 +17,7 @@ defmodule Ockam.Identity.SecureChannel do
 
   Options:
   - identity :: binary() | :dynamic - identity to use in spawned channels, :dynamic will generate a new identity
+  - vault_name :: String.t() | nil - vault to use in the channel, nil to use the default one
   - identity_module (optional) :: module() - module to generate dynamic identity
   - encryption_options (optional) :: Keyword.t() - options for Ockam.SecureChannel.Channel
   - address (optional) :: Ockam.Address.t() - listener address
@@ -82,6 +83,7 @@ defmodule Ockam.Identity.SecureChannel do
 
     with {:ok, identity} <- get_identity(handshake_options) do
       new_handshake_options = Keyword.put(handshake_options, :identity, identity)
+
       new_worker_options = Keyword.put(worker_options, :handshake_options, new_handshake_options)
       {:ok, Keyword.put(options, :worker_options, new_worker_options), state}
     end
