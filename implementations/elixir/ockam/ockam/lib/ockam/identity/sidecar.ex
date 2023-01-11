@@ -24,6 +24,13 @@ defmodule Ockam.Identity.Sidecar do
     end
   end
 
+  def get(identity_name) do
+    with {:ok, body} <- api_request(:get, api_path({:get, identity_name}), nil),
+         {:ok, identity_response} <- IdentityResponse.create(body) do
+      {:ok, Map.fetch!(identity_response, :identity), Map.fetch!(identity_response, :identity_id)}
+    end
+  end
+
   @spec validate_identity_change_history(contact :: t()) ::
           {:ok, contact_id :: binary()} | {:error, reason :: any()}
   def validate_identity_change_history(contact) do
@@ -39,14 +46,14 @@ defmodule Ockam.Identity.Sidecar do
     end
   end
 
-  @spec create_signature(identity :: t(), auth_hash :: binary()) ::
+  @spec create_signature(vault_name :: String.t() | nil, identity :: t(), auth_hash :: binary()) ::
           {:ok, proof :: proof()} | {:error, reason :: any()}
-  def create_signature(identity, auth_hash) do
+  def create_signature(vault_name, identity, auth_hash) do
     with {:ok, body} <-
            api_request(
              :post,
              api_path(:create_signature),
-             IdentityRequest.create_signature(identity, auth_hash)
+             IdentityRequest.create_signature(vault_name, identity, auth_hash)
            ),
          {:ok, create_signature_response} <- IdentityResponse.create_signature(body) do
       {:ok, Map.fetch!(create_signature_response, :proof)}
@@ -88,6 +95,10 @@ defmodule Ockam.Identity.Sidecar do
 
   def api_route() do
     @api_route
+  end
+
+  defp api_path({:get, identity_id}) do
+    identity_id
   end
 
   defp api_path(:create) do

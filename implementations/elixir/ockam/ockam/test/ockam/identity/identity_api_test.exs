@@ -17,7 +17,7 @@ defmodule Ockam.Identity.API.Tests do
     test "create_signature" do
       identity = "my identity"
       hash = "my hash"
-      data = Request.create_signature(identity, hash)
+      data = Request.create_signature(nil, identity, hash)
       Logger.info("#{inspect(data)}")
       {:ok, %{identity: ^identity, state: ^hash}} = Request.decode_create_signature(data)
     end

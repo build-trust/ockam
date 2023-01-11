@@ -11,7 +11,7 @@ defmodule Ockam.TypedCBOR do
       2
 
       iex> to_cbor_term(:integer, "2")
-      ** (Ockam.TypedCBOR.Exception) type mismatch, expected schema :integer
+      ** (Ockam.TypedCBOR.Exception) type mismatch, expected schema :integer, value: "2"
 
       iex> to_cbor_term(:string, "2")
       "2"

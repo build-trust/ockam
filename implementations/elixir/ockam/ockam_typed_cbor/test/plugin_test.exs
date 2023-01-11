@@ -65,7 +65,7 @@ defmodule Ockam.TypedCBOR.Plugin.Test do
 
     # Incorrect type
     p = %Test.Person{name: ["Test"], age: 23, gender: :male, addresses: [], like_shoes: false}
-    {:error, "type mismatch, expected schema :string"} = Test.Person.encode(p)
+    {:error, "type mismatch, expected schema :string, value: [\"Test\"]"} = Test.Person.encode(p)
   end
 
   test "decode errors" do

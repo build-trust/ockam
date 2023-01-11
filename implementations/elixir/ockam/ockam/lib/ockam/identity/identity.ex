@@ -29,6 +29,16 @@ defmodule Ockam.Identity do
     end
   end
 
+  def get(identity_name) do
+    get(default_implementation(), identity_name)
+  end
+
+  def get(module, identity_name) do
+    with {:ok, data, id} <- module.get(identity_name) do
+      {:ok, {module, data}, id}
+    end
+  end
+
   def make_identity(identity) do
     make_identity(default_implementation(), identity)
   end
@@ -72,8 +82,10 @@ defmodule Ockam.Identity do
 
   @spec create_signature(identity :: t(), auth_hash :: binary()) ::
           {:ok, proof :: proof()} | {:error, reason :: any()}
-  def create_signature({module, data}, auth_hash) do
-    module.create_signature(data, auth_hash)
+  @spec create_signature(identity :: t(), auth_hash :: binary(), vault_name :: String.t() | nil) ::
+          {:ok, proof :: proof()} | {:error, reason :: any()}
+  def create_signature({module, data}, auth_hash, vault_name \\ nil) do
+    module.create_signature(vault_name, data, auth_hash)
   end
 
   @spec verify_signature(
