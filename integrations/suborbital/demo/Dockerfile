@@ -1,4 +1,4 @@
-FROM ghcr.io/build-trust/ockam-builder@sha256:60e2c1e45d54e31b50f3e56fe202276ecc4812ccac88c84c9af8910cf787a81d as builder
+FROM ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348 as builder
 COPY . .
 RUN set -xe; cd integrations/suborbital/demo; cargo build --release --bin ockam_tcp_outlet
 
