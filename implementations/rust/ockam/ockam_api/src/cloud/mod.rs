@@ -129,6 +129,7 @@ mod node {
                     route,
                     TrustIdentifierPolicy::new(self.controller_identity_id()),
                     &self.authenticated_storage,
+                    &self.secure_channel_registry,
                 )
                 .await?;
             debug!(target: TARGET, %addr, "Orchestrator secure channel created");

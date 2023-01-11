@@ -11,6 +11,8 @@ pub use trust_policy::*;
 pub mod access_control;
 mod local_info;
 pub use local_info::*;
+mod registry;
+pub use registry::*;
 
 use crate::authenticated_storage::AuthenticatedStorage;
 use crate::{Identity, IdentityVault};
@@ -24,10 +26,16 @@ impl<V: IdentityVault> Identity<V> {
         address: impl Into<Address>,
         trust_policy: impl TrustPolicy,
         storage: &impl AuthenticatedStorage,
+        registry: &SecureChannelRegistry,
     ) -> Result<()> {
         let identity_clone = self.async_try_clone().await?;
         let storage_clone = storage.async_try_clone().await?;
-        let listener = IdentityChannelListener::new(trust_policy, identity_clone, storage_clone);
+        let listener = IdentityChannelListener::new(
+            trust_policy,
+            identity_clone,
+            storage_clone,
+            registry.clone(),
+        );
 
         self.ctx
             .start_worker(
@@ -46,6 +54,7 @@ impl<V: IdentityVault> Identity<V> {
         route: impl Into<Route>,
         trust_policy: impl TrustPolicy,
         storage: &impl AuthenticatedStorage,
+        registry: &SecureChannelRegistry,
     ) -> Result<Address> {
         let identity_clone = self.async_try_clone().await?;
         let storage_clone = storage.async_try_clone().await?;
@@ -57,6 +66,7 @@ impl<V: IdentityVault> Identity<V> {
             storage_clone,
             Arc::new(trust_policy),
             Duration::from_secs(120),
+            registry.clone(),
         )
         .await
     }
@@ -67,6 +77,7 @@ impl<V: IdentityVault> Identity<V> {
         trust_policy: impl TrustPolicy,
         storage: &impl AuthenticatedStorage,
         timeout: Duration,
+        registry: &SecureChannelRegistry,
     ) -> Result<Address> {
         let identity_clone = self.async_try_clone().await?;
         let storage_clone = storage.async_try_clone().await?;
@@ -78,6 +89,7 @@ impl<V: IdentityVault> Identity<V> {
             storage_clone,
             Arc::new(trust_policy),
             timeout,
+            registry.clone(),
         )
         .await
     }

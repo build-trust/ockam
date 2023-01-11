@@ -12,7 +12,7 @@ use ockam_core::compat::{
 };
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{AllowAll, AsyncTryClone};
-use ockam_identity::{Identity, IdentityIdentifier, PublicIdentity};
+use ockam_identity::{Identity, IdentityIdentifier, PublicIdentity, SecureChannelRegistry};
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::tokio;
@@ -106,6 +106,7 @@ pub struct NodeManager {
     authorities: Option<Authorities>,
     pub(crate) authenticated_storage: LmdbStorage,
     pub(crate) registry: Registry,
+    pub(crate) secure_channel_registry: SecureChannelRegistry,
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
     policies: LmdbStorage,
@@ -256,6 +257,7 @@ impl NodeManager {
             sessions,
             policies: policies_storage,
             token: projects_options.token,
+            secure_channel_registry: SecureChannelRegistry::new(),
         };
 
         if !general_options.skip_defaults {
