@@ -1,4 +1,6 @@
-use ockam::{channel::SecureChannel, route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
+use ockam::authenticated_storage::InMemoryStorage;
+use ockam::identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy};
+use ockam::{route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -9,6 +11,9 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a vault
     let vault = Vault::create();
+
+    // Create an Identity
+    let alice = Identity::create(&ctx, &vault).await?;
 
     // Create a stream client
     let (sender, _receiver) = Stream::new(&ctx)
@@ -24,15 +29,17 @@ async fn main(mut ctx: Context) -> Result<()> {
         .await?;
 
     // Create a secure channel
-    let secure_channel = SecureChannel::create(
-        &ctx,
-        route![
-            sender.clone(),            // via the "sc-initiator-to-responder" stream
-            "secure_channel_listener"  // to the "secure_channel_listener" listener
-        ],
-        &vault,
-    )
-    .await?;
+    let secure_channel = alice
+        .create_secure_channel(
+            route![
+                sender.clone(),            // via the "sc-initiator-to-responder" stream
+                "secure_channel_listener"  // to the "secure_channel_listener" listener
+            ],
+            TrustEveryonePolicy,
+            &InMemoryStorage::new(),
+            &SecureChannelRegistry::new(),
+        )
+        .await?;
 
     // Send a message
     ctx.send(

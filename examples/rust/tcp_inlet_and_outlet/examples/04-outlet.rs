@@ -1,7 +1,7 @@
 use ockam::access_control::AllowAll;
 use ockam::{
     authenticated_storage::InMemoryStorage,
-    identity::{Identity, TrustEveryonePolicy},
+    identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy},
     remote::RemoteForwarder,
     vault::Vault,
     Context, Result, TcpTransport, TCP,
@@ -13,9 +13,10 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     let vault = Vault::create();
+    let registry = SecureChannelRegistry::new();
     let e = Identity::create(&ctx, &vault).await?;
     let storage = InMemoryStorage::new();
-    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &storage)
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &storage, &registry)
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.

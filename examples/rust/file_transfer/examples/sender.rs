@@ -2,7 +2,7 @@
 
 use file_transfer::{FileData, FileDescription};
 use ockam::{
-    identity::{Identity, TrustEveryonePolicy},
+    identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy},
     route,
     vault::Vault,
     Context,
@@ -43,6 +43,9 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Sender.
     let vault = Vault::create();
 
+    // Create a SecureChannel registry.
+    let registry = SecureChannelRegistry::new();
+
     // Create an Identity to represent Sender.
     let sender = Identity::create(&ctx, &vault).await?;
 
@@ -62,7 +65,7 @@ async fn main(ctx: Context) -> Result<()> {
     // As Sender, connect to the Receiver's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Receiver.
     let channel = sender
-        .create_secure_channel(route_to_receiver_listener, TrustEveryonePolicy, &storage)
+        .create_secure_channel(route_to_receiver_listener, TrustEveryonePolicy, &storage, &registry)
         .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");

@@ -5,7 +5,7 @@ use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::InMemoryStorage;
 use ockam::{
     errcode::{Kind, Origin},
-    identity::{Identity, TrustEveryonePolicy},
+    identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy},
     remote::RemoteForwarder,
     vault::Vault,
     Context, Error, Result, Routed, TcpTransport, Worker, TCP,
@@ -87,6 +87,9 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Receiver.
     let vault = Vault::create();
 
+    // Create a SecureChannel registry.
+    let registry = SecureChannelRegistry::new();
+
     // Create an Identity to represent Receiver.
     let receiver = Identity::create(&ctx, &vault).await?;
 
@@ -96,7 +99,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a secure channel listener for Receiver that will wait for requests to
     // initiate an Authenticated Key Exchange.
     receiver
-        .create_secure_channel_listener("listener", TrustEveryonePolicy, &storage)
+        .create_secure_channel_listener("listener", TrustEveryonePolicy, &storage, &registry)
         .await?;
 
     // The computer that is running this program is likely within a private network and
