@@ -1,5 +1,5 @@
 use crate::authenticated_storage::AuthenticatedStorage;
-use crate::{DecryptorWorker, Identity, IdentityVault, TrustPolicy};
+use crate::{DecryptorWorker, Identity, IdentityVault, SecureChannelRegistry, TrustPolicy};
 use ockam_channel::CreateResponderChannelMessage;
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{AsyncTryClone, Result, Routed, Worker};
@@ -9,14 +9,21 @@ pub(crate) struct IdentityChannelListener<V: IdentityVault, S: AuthenticatedStor
     trust_policy: Arc<dyn TrustPolicy>,
     identity: Identity<V>,
     storage: S,
+    registry: SecureChannelRegistry,
 }
 
 impl<V: IdentityVault, S: AuthenticatedStorage> IdentityChannelListener<V, S> {
-    pub fn new(trust_policy: impl TrustPolicy, identity: Identity<V>, storage: S) -> Self {
+    pub fn new(
+        trust_policy: impl TrustPolicy,
+        identity: Identity<V>,
+        storage: S,
+        registry: SecureChannelRegistry,
+    ) -> Self {
         IdentityChannelListener {
             trust_policy: Arc::new(trust_policy),
             identity,
             storage,
+            registry,
         }
     }
 }
@@ -39,6 +46,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Worker for IdentityChannelListen
             self.storage.async_try_clone().await?,
             trust_policy,
             msg,
+            self.registry.clone(),
         )
         .await
     }

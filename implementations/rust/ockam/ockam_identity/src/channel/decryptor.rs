@@ -1,8 +1,8 @@
 use crate::authenticated_storage::AuthenticatedStorage;
 use crate::{
     EncryptorWorker, Identity, IdentityChannelMessage, IdentityError, IdentityIdentifier,
-    IdentitySecureChannelLocalInfo, IdentityVault, PublicIdentity, SecureChannelTrustInfo,
-    TrustPolicy,
+    IdentitySecureChannelLocalInfo, IdentityVault, PublicIdentity, SecureChannelRegistry,
+    SecureChannelRegistryEntry, SecureChannelTrustInfo, TrustPolicy,
 };
 use core::future::Future;
 use core::pin::Pin;
@@ -79,6 +79,7 @@ pub(crate) struct DecryptorWorker<V: IdentityVault, S: AuthenticatedStorage> {
     trust_policy: Arc<dyn TrustPolicy>,
     state: Option<State>,
     encryptor_address: Address,
+    registry: SecureChannelRegistry,
 }
 
 impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
@@ -89,6 +90,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
         storage: S,
         trust_policy: Arc<dyn TrustPolicy>,
         timeout: Duration,
+        registry: SecureChannelRegistry,
     ) -> Result<Address> {
         let child_address = Address::random_tagged(
             "IdentitySecureChannel.initiator.decryptor.kex_callback_address",
@@ -150,6 +152,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             storage,
             state: Some(state),
             encryptor_address,
+            registry,
         };
 
         let mailbox = Mailbox::new(
@@ -183,6 +186,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
         storage: S,
         trust_policy: Arc<dyn TrustPolicy>,
         msg: Routed<CreateResponderChannelMessage>,
+        registry: SecureChannelRegistry,
     ) -> Result<()> {
         let return_route = msg.return_route();
         let body = msg.body();
@@ -217,6 +221,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
             kex_callback_address: Some(kex_callback_address.clone()),
             state: Some(state),
             encryptor_address: encryptor_address.clone(),
+            registry,
         };
 
         let mailboxes = Mailboxes::new(
@@ -431,6 +436,18 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
                 &self.encryptor_address, &self.self_address
             );
 
+            // FIXME: provide actual values
+            let info = SecureChannelRegistryEntry::new(
+                Address::random_local(),
+                Address::random_local(),
+                Address::random_local(),
+                Address::random_local(),
+                self.is_initiator,
+                self.identity.identifier().clone(),
+                their_identity_id.clone(),
+            );
+            self.registry.register_channel(info)?;
+
             ctx.send_from_address(
                 state.callback_address,
                 AuthenticationConfirmation(self.encryptor_address.clone()),
@@ -535,6 +552,18 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, S> {
                 "Initialized IdentitySecureChannel Responder at local: {}, remote: {}",
                 &self.encryptor_address, &self.self_address
             );
+
+            // FIXME: provide actual values
+            let info = SecureChannelRegistryEntry::new(
+                Address::random_local(),
+                Address::random_local(),
+                Address::random_local(),
+                Address::random_local(),
+                self.is_initiator,
+                self.identity.identifier().clone(),
+                their_identity_id.clone(),
+            );
+            self.registry.register_channel(info)?;
 
             Ok(())
         } else {

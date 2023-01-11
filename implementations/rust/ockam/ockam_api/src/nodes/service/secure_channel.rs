@@ -62,6 +62,7 @@ impl NodeManager {
                         TrustMultiIdentifiersPolicy::new(ids),
                         &self.authenticated_storage,
                         timeout,
+                        &self.secure_channel_registry,
                     )
                     .await
             }
@@ -72,6 +73,7 @@ impl NodeManager {
                         TrustEveryonePolicy,
                         &self.authenticated_storage,
                         timeout,
+                        &self.secure_channel_registry,
                     )
                     .await
             }
@@ -169,6 +171,7 @@ impl NodeManager {
                         addr.clone(),
                         TrustMultiIdentifiersPolicy::new(ids),
                         &self.authenticated_storage,
+                        &self.secure_channel_registry,
                     )
                     .await
             }
@@ -178,6 +181,7 @@ impl NodeManager {
                         addr.clone(),
                         TrustEveryonePolicy,
                         &self.authenticated_storage,
+                        &self.secure_channel_registry,
                     )
                     .await
             }

@@ -4,7 +4,7 @@ use ockam_core::{route, Result, Routed, Worker};
 use ockam_identity::authenticated_storage::mem::InMemoryStorage;
 use ockam_identity::credential::access_control::CredentialAccessControl;
 use ockam_identity::credential::{AttributesStorageUtils, Credential};
-use ockam_identity::{Identity, TrustEveryonePolicy, TrustIdentifierPolicy};
+use ockam_identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy, TrustIdentifierPolicy};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_vault::Vault;
 use std::sync::atomic::{AtomicI8, Ordering};
@@ -18,9 +18,10 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
 
     let server = Identity::create(ctx, &vault).await?;
     let server_storage = InMemoryStorage::new();
+    let registry = SecureChannelRegistry::new();
 
     server
-        .create_secure_channel_listener("listener", TrustEveryonePolicy, &server_storage)
+        .create_secure_channel_listener("listener", TrustEveryonePolicy, &server_storage, &registry)
         .await?;
 
     let authorities = vec![authority.to_public().await?];
@@ -41,6 +42,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
             route!["listener"],
             TrustIdentifierPolicy::new(server.identifier().clone()),
             &client_storage,
+            &registry,
         )
         .await?;
 
@@ -70,6 +72,8 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
 async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
 
+    let registry = SecureChannelRegistry::new();
+
     let authority = Identity::create(ctx, &vault).await?;
 
     let client2 = Identity::create(ctx, &vault).await?;
@@ -82,7 +86,12 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     client2.set_credential(Some(credential2)).await;
 
     client2
-        .create_secure_channel_listener("listener", TrustEveryonePolicy, &client2_storage)
+        .create_secure_channel_listener(
+            "listener",
+            TrustEveryonePolicy,
+            &client2_storage,
+            &registry,
+        )
         .await?;
 
     let authorities = vec![authority.to_public().await?];
@@ -105,7 +114,12 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     client1.set_credential(Some(credential1)).await;
 
     let channel = client1
-        .create_secure_channel(route!["listener"], TrustEveryonePolicy, &client1_storage)
+        .create_secure_channel(
+            route!["listener"],
+            TrustEveryonePolicy,
+            &client1_storage,
+            &registry,
+        )
         .await?;
 
     client1
@@ -155,13 +169,15 @@ impl Worker for CountingWorker {
 async fn access_control(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
 
+    let registry = SecureChannelRegistry::new();
+
     let authority = Identity::create(ctx, &vault).await?;
 
     let server = Identity::create(ctx, &vault).await?;
     let server_storage = InMemoryStorage::new();
 
     server
-        .create_secure_channel_listener("listener", TrustEveryonePolicy, &server_storage)
+        .create_secure_channel_listener("listener", TrustEveryonePolicy, &server_storage, &registry)
         .await?;
 
     let authorities = vec![authority.to_public().await?];
@@ -182,6 +198,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
             route!["listener"],
             TrustIdentifierPolicy::new(server.identifier().clone()),
             &client_storage,
+            &registry,
         )
         .await?;
 
