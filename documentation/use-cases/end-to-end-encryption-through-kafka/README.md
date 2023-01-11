@@ -180,7 +180,7 @@ Create a file at `examples/ockam_kafka_bob.rs` and copy the below code snippet t
 use ockam::access_control::AllowAll;
 use ockam::{
     authenticated_storage::InMemoryStorage,
-    identity::{Identity, TrustEveryonePolicy},
+    identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy},
     route,
     stream::Stream,
     vault::Vault,
@@ -212,6 +212,9 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Bob.
     let vault = Vault::create();
 
+    // Create a SecureChannel registry.
+    let registry = SecureChannelRegistry::new();
+
     // Create an Identity to represent Bob.
     let bob = Identity::create(&ctx, &vault).await?;
 
@@ -220,7 +223,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", TrustEveryonePolicy, &storage)
+    bob.create_secure_channel_listener("listener", TrustEveryonePolicy, &storage, &registry)
         .await?;
 
     // Connect, over TCP, to the cloud node at `1.node.ockam.network:4000` and
@@ -269,7 +272,7 @@ Create a file at `examples/ockam_kafka_alice.rs` and copy the below code snippet
 // examples/ockam_kafka_alice.rs
 use ockam::{
     authenticated_storage::InMemoryStorage,
-    identity::{Identity, TrustEveryonePolicy},
+    identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy},
     route,
     stream::Stream,
     unique_with_prefix,
@@ -285,6 +288,9 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a Vault to safely store secret keys for Alice.
     let vault = Vault::create();
+
+    // Create a SecureChannel registry.
+    let registry = SecureChannelRegistry::new();
 
     // Create an Identity to represent Alice.
     let alice = Identity::create(&ctx, &vault).await?;
@@ -328,7 +334,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     // perform an Authenticated Key Exchange to establish an encrypted secure
     // channel with Bob.
     let r = route![sender.clone(), "listener"];
-    let channel = alice.create_secure_channel(r, TrustEveryonePolicy, &storage).await?;
+    let channel = alice
+        .create_secure_channel(r, TrustEveryonePolicy, &storage, &registry)
+        .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
 

@@ -116,7 +116,7 @@ Create a file at `examples/bob.rs` and copy the below code snippet to it.
 // examples/bob.rs
 use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::InMemoryStorage;
-use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy};
 use ockam::{remote::RemoteForwarder, Routed, TcpTransport, Worker, TCP};
 use ockam::{vault::Vault, Context, Result};
 
@@ -145,6 +145,9 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Bob.
     let vault = Vault::create();
 
+    // Create a registry to store info about Secure Channels.
+    let registry = SecureChannelRegistry::new();
+
     // Create an Identity to represent Bob.
     let bob = Identity::create(&ctx, &vault).await?;
 
@@ -153,7 +156,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", TrustEveryonePolicy, &storage)
+    bob.create_secure_channel_listener("listener", TrustEveryonePolicy, &storage, &registry)
         .await?;
 
     // The computer that is running this program is likely within a private network and
@@ -188,7 +191,7 @@ Create a file at `examples/alice.rs` and copy the below code snippet to it.
 ```rust
 // examples/alice.rs
 use ockam::authenticated_storage::InMemoryStorage;
-use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy};
 use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
 use std::io;
 
@@ -199,6 +202,9 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a Vault to safely store secret keys for Alice.
     let vault = Vault::create();
+
+    // Create a registry to store info about Secure Channels.
+    let registry = SecureChannelRegistry::new();
 
     // Create an Identity to represent Alice.
     let alice = Identity::create(&ctx, &vault).await?;
@@ -222,7 +228,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // As Alice, connect to Bob's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
     let channel = alice
-        .create_secure_channel(route_to_bob_listener, TrustEveryonePolicy, &storage)
+        .create_secure_channel(route_to_bob_listener, TrustEveryonePolicy, &storage, &registry)
         .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");

@@ -44,7 +44,9 @@ Add the following code to this file:
 // examples/10-secure-channel-via-streams-responder.rs
 use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
-use ockam::{channel::SecureChannel, route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
+use ockam::authenticated_storage::InMemoryStorage;
+use ockam::identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy};
+use ockam::{route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -56,8 +58,17 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a vault
     let vault = Vault::create();
 
+    // Create an Identity
+    let bob = Identity::create(&ctx, &vault).await?;
+
     // Create a secure channel listener at address "secure_channel_listener"
-    SecureChannel::create_listener(&ctx, "secure_channel_listener", &vault).await?;
+    bob.create_secure_channel_listener(
+        "secure_channel_listener",
+        TrustEveryonePolicy,
+        &InMemoryStorage::new(),
+        &SecureChannelRegistry::new(),
+    )
+    .await?;
 
     // Create a stream client
     Stream::new(&ctx)
@@ -93,7 +104,9 @@ Add the following code to this file:
 
 ```rust
 // examples/10-secure-channel-via-streams-initiator.rs
-use ockam::{channel::SecureChannel, route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
+use ockam::authenticated_storage::InMemoryStorage;
+use ockam::identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy};
+use ockam::{route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -104,6 +117,9 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a vault
     let vault = Vault::create();
+
+    // Create an Identity
+    let alice = Identity::create(&ctx, &vault).await?;
 
     // Create a stream client
     let (sender, _receiver) = Stream::new(&ctx)
@@ -119,15 +135,17 @@ async fn main(mut ctx: Context) -> Result<()> {
         .await?;
 
     // Create a secure channel
-    let secure_channel = SecureChannel::create(
-        &ctx,
-        route![
-            sender.clone(),            // via the "sc-initiator-to-responder" stream
-            "secure_channel_listener"  // to the "secure_channel_listener" listener
-        ],
-        &vault,
-    )
-    .await?;
+    let secure_channel = alice
+        .create_secure_channel(
+            route![
+                sender.clone(),            // via the "sc-initiator-to-responder" stream
+                "secure_channel_listener"  // to the "secure_channel_listener" listener
+            ],
+            TrustEveryonePolicy,
+            &InMemoryStorage::new(),
+            &SecureChannelRegistry::new(),
+        )
+        .await?;
 
     // Send a message
     ctx.send(
