@@ -1,6 +1,6 @@
 use ockam::{
     authenticated_storage::InMemoryStorage,
-    identity::{Identity, TrustEveryonePolicy},
+    identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy},
     route,
     vault::Vault,
     Context, Result,
@@ -11,6 +11,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Alice and Bob.
     let vault = Vault::create();
 
+    // Create a SecureChannel registry.
+    let registry = SecureChannelRegistry::new();
+
     // Create an Identity to represent Bob.
     let bob = Identity::create(&ctx, &vault).await?;
 
@@ -19,7 +22,7 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("bob", TrustEveryonePolicy, &bob_storage)
+    bob.create_secure_channel_listener("bob", TrustEveryonePolicy, &bob_storage, &registry)
         .await?;
 
     // Create an entity to represent Alice.
@@ -31,7 +34,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     // As Alice, connect to Bob's secure channel listener and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
     let channel = alice
-        .create_secure_channel("bob", TrustEveryonePolicy, &alice_storage)
+        .create_secure_channel("bob", TrustEveryonePolicy, &alice_storage, &registry)
         .await?;
 
     // Send a message, ** THROUGH ** the secure channel,

@@ -1,6 +1,6 @@
 use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::InMemoryStorage;
-use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy};
 use ockam::{vault::Vault, Context, Result, TcpTransport};
 
 #[ockam::node]
@@ -10,14 +10,16 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create:
     //   1. A Vault to store our cryptographic keys
-    //   2. An Identity to represent this Node
-    //   3. A Secure Channel Listener at Worker address - secure_channel_listener
+    //   2. A registry to store information about Secure Channels
+    //   3. An Identity to represent this Node
+    //   4. A Secure Channel Listener at Worker address - secure_channel_listener
     //      that will wait for requests to start an Authenticated Key Exchange.
 
     let vault = Vault::create();
+    let registry = SecureChannelRegistry::new();
     let e = Identity::create(&ctx, &vault).await?;
     let storage = InMemoryStorage::new();
-    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &storage)
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &storage, &registry)
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.

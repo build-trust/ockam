@@ -1,7 +1,7 @@
 use ockam::access_control::AllowAll;
 use ockam::{
     authenticated_storage::InMemoryStorage,
-    identity::{Identity, TrustEveryonePolicy},
+    identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy},
     route,
     stream::Stream,
     vault::Vault,
@@ -33,6 +33,9 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Bob.
     let vault = Vault::create();
 
+    // Create a SecureChannel registry.
+    let registry = SecureChannelRegistry::new();
+
     // Create an Identity to represent Bob.
     let bob = Identity::create(&ctx, &vault).await?;
 
@@ -41,7 +44,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", TrustEveryonePolicy, &storage)
+    bob.create_secure_channel_listener("listener", TrustEveryonePolicy, &storage, &registry)
         .await?;
 
     // Connect, over TCP, to the cloud node at `1.node.ockam.network:4000` and

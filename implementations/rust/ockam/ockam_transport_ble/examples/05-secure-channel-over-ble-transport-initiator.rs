@@ -2,7 +2,7 @@
 
 use ockam_core::{route, Result};
 use ockam_identity::authenticated_storage::mem::InMemoryStorage;
-use ockam_identity::{Identity, TrustEveryonePolicy};
+use ockam_identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy};
 use ockam_node::Context;
 use ockam_vault::Vault;
 
@@ -30,6 +30,8 @@ async fn async_main(mut ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Alice.
     let vault = Vault::create();
 
+    let registry = SecureChannelRegistry::new();
+
     // Create an Entity to represent Alice.
     let alice = Identity::create(&ctx, &vault).await?;
 
@@ -42,7 +44,7 @@ async fn async_main(mut ctx: Context) -> Result<()> {
     // Connect to a secure channel listener and perform a handshake.
     let r = route![(BLE, "ockam_ble_1"), "bob_listener"];
     let channel = alice
-        .create_secure_channel(r, TrustEveryonePolicy, &storage)
+        .create_secure_channel(r, TrustEveryonePolicy, &storage, &registry)
         .await?;
 
     // Send a message to the "echoer" worker, on a different node, via secure channel.
