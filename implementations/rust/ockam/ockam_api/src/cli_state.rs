@@ -263,7 +263,11 @@ impl IdentitiesState {
         if !self.default_path()?.exists() {
             self.set_default(name)?;
         }
-        Ok(IdentityState { path, config })
+        Ok(IdentityState {
+            name: name.to_string(),
+            path,
+            config,
+        })
     }
 
     pub fn get(&self, name: &str) -> Result<IdentityState> {
@@ -277,36 +281,47 @@ impl IdentitiesState {
         };
         let contents = std::fs::read_to_string(&path)?;
         let config = serde_json::from_str(&contents)?;
-        Ok(IdentityState { path, config })
+        Ok(IdentityState {
+            name: name.to_string(),
+            path,
+            config,
+        })
     }
 
     pub fn list(&self) -> Result<Vec<IdentityState>> {
         let mut identities: Vec<IdentityState> = vec![];
         for entry in std::fs::read_dir(&self.dir)? {
-            let entry = entry?;
-            if entry.path().extension() == Some(OsStr::from_bytes(b"json")) {
-                let file_name = entry.path();
-                let identity_name = file_name.file_stem().unwrap().to_str().unwrap();
-                identities.push(self.get(identity_name)?);
+            if let Ok(identity) = self.get(&file_stem(&entry?.path())?) {
+                identities.push(identity);
             }
         }
         Ok(identities)
     }
 
     pub fn delete(&self, name: &str) -> Result<()> {
-        let path = {
-            let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
-            if !path.exists() {
-                return Err(CliStateError::NotFound(format!("identity `{name}`")));
-            }
-            path
+        // Retrieve identity. If doesn't exist do nothing.
+        let identity = match self.get(name) {
+            Ok(node) => node,
+            Err(CliStateError::NotFound(_)) => return Ok(()),
+            Err(e) => return Err(e),
         };
-        std::fs::remove_file(path)?;
-        let default = self.default()?;
-        if default.config.identifier.to_string() == identifier {
-            let _ = std::fs::remove_file(self.default_path()?);
+
+        // Set default to another identity if it's the default
+        if let Ok(default) = self.default() {
+            if default.path == identity.path {
+                let _ = std::fs::remove_file(self.default_path()?);
+                let mut idts = self.list()?;
+                idts.retain(|i| i.path != identity.path);
+                if let Some(idt) = idts.first() {
+                    println!("Setting default identity to `{}`", idt.name);
+                    self.set_default(&idt.name)?;
+                }
+            }
         }
+
+        // Remove identity file
+        std::fs::remove_file(identity.path)?;
+
         Ok(())
     }
 
@@ -316,9 +331,10 @@ impl IdentitiesState {
 
     pub fn default(&self) -> Result<IdentityState> {
         let path = std::fs::canonicalize(self.default_path()?)?;
+        let name = file_stem(&path)?;
         let contents = std::fs::read_to_string(&path)?;
         let config = serde_json::from_str(&contents)?;
-        Ok(IdentityState { path, config })
+        Ok(IdentityState { name, path, config })
     }
 
     pub fn set_default(&self, name: &str) -> Result<IdentityState> {
@@ -338,6 +354,7 @@ impl IdentitiesState {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IdentityState {
+    pub name: String,
     pub path: PathBuf,
     pub config: IdentityConfig,
 }
@@ -692,6 +709,11 @@ impl NodeConfig {
         let path = std::fs::canonicalize(&self.default_vault)?;
         let config: VaultConfig = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
         config.get().await
+    }
+
+    pub fn identity_config(&self) -> Result<IdentityConfig> {
+        let path = std::fs::canonicalize(&self.default_identity)?;
+        Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
     }
 
     pub async fn identity(&self, ctx: &ockam::Context) -> Result<Identity<Vault>> {

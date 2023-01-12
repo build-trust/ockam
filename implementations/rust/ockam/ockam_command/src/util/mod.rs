@@ -290,18 +290,18 @@ impl<'a> Rpc<'a> {
     where
         T: Output + serde::Serialize,
     {
-        print_command_response(b, &self.opts.global_args.output_format)
+        print_output(b, &self.opts.global_args.output_format)
     }
 }
 
-pub fn print_command_response<T>(b: T, output_format: &OutputFormat) -> Result<T>
+pub fn print_output<T>(b: T, output_format: &OutputFormat) -> Result<T>
 where
     T: Output + serde::Serialize,
 {
     let o = match output_format {
-        OutputFormat::Plain => b.output().context("Failed to serialize response body")?,
+        OutputFormat::Plain => b.output().context("Failed to serialize output")?,
         OutputFormat::Json => {
-            serde_json::to_string_pretty(&b).context("Failed to serialize response body")?
+            serde_json::to_string_pretty(&b).context("Failed to serialize output")?
         }
     };
     println!("{}", o);

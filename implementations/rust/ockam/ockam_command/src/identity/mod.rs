@@ -1,12 +1,12 @@
 mod create;
-mod show;
-mod list;
 mod delete;
+mod list;
+mod show;
 
 pub(crate) use create::CreateCommand;
-pub(crate) use show::ShowCommand;
-pub(crate) use list::ListCommand;
 pub(crate) use delete::DeleteCommand;
+pub(crate) use list::ListCommand;
+pub(crate) use show::ShowCommand;
 
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};

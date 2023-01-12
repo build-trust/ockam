@@ -222,7 +222,7 @@ teardown() {
   assert_output --partial "Identity created"
   run $OCKAM identity delete foo
   assert_success
-  assert_output --partial "Identity deleted"
+  assert_output --partial "Identity 'foo' deleted"
 }
 
 @test "create a secure channel between two nodes and send message through it" {

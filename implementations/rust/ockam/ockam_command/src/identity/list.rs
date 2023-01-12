@@ -1,9 +1,9 @@
-use crate::util::{exitcode, node_rpc};
+use crate::util::exitcode;
+use crate::util::output::Output;
 use crate::CommandGlobalOpts;
 use anyhow::anyhow;
 use clap::Args;
-use ockam::Context;
-use crate::identity::show::print_identity;
+use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 
 /// List nodes
 #[derive(Clone, Debug, Args)]
@@ -14,30 +14,41 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(run_impl, (options, self))
+        if let Err(e) = run_impl(options, self) {
+            eprintln!("{e:?}");
+            std::process::exit(e.code());
+        }
     }
 }
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, ListCommand),
-) -> crate::Result<()> {
-    let identity_states = opts.state.identities.list()?;
-    if identity_states.is_empty() {
+fn run_impl(opts: CommandGlobalOpts, cmd: ListCommand) -> crate::Result<()> {
+    let idts = opts.state.identities.list()?;
+    if idts.is_empty() {
         return Err(crate::Error::new(
             exitcode::IOERR,
             anyhow!("No identities registered on this system!"),
         ));
     }
-    let vault = opts.state.vaults.default()?.config.get().await?;
-    for state in identity_states {
-        let identity = state.config.get(&ctx, &vault).await?;
-        print_identity(&identity, cmd.full, &opts.global_args.output_format).await
-            .map_err(|_| crate::Error::new(
-            exitcode::IOERR,
-            anyhow!("The identity {} cannot be loaded using the default vault.",
-                identity.identifier(),
-            )))?;
+    for (idx, identity) in idts.iter().enumerate() {
+        let state = opts.state.identities.get(&identity.name)?;
+        let default = if opts.state.identities.default()?.name == identity.name {
+            " (default)"
+        } else {
+            ""
+        };
+        println!("Identity[{idx}]:");
+        println!("{:2}Name: {}{}", "", &identity.name, default);
+        if cmd.full {
+            let identity = state.config.change_history.export()?;
+            let output = LongIdentityResponse::new(identity);
+            println!("{:2}{}", "", &output.output()?);
+        } else {
+            let output = ShortIdentityResponse::new(state.config.identifier.to_string());
+            println!("{:2}Identifier: {}", "", &output.output()?);
+        };
+        if idx < idts.len() - 1 {
+            println!();
+        }
     }
     Ok(())
 }

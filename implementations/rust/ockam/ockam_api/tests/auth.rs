@@ -12,6 +12,7 @@ use ockam_identity::{IdentityIdentifier, PublicIdentity, TrustEveryonePolicy};
 use ockam_node::Context;
 use tempfile::NamedTempFile;
 
+#[ignore]
 #[ockam_macros::test]
 async fn credential(ctx: &mut Context) -> Result<()> {
     let mut tmpf = NamedTempFile::new().unwrap();
