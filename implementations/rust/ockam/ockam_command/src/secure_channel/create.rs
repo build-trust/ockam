@@ -40,9 +40,6 @@ pub struct CreateCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]
     cloud_opts: CloudOpts,
-
-    #[arg(value_name = "IDENTITY", long, display_order = 802)]
-    identity: Option<String>,
 }
 
 impl CreateCommand {
@@ -171,7 +168,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
         to,
         authorized_identifiers,
         CredentialExchangeMode::Mutual,
-        cmd.identity.clone(),
+        cmd.cloud_opts.identity.clone(),
     );
     let request = Request::post("/node/secure_channel").body(payload);
 

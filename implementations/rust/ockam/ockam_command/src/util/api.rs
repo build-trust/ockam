@@ -313,8 +313,8 @@ pub(crate) const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 
 #[derive(Clone, Debug, Args)]
 pub struct CloudOpts {
-    #[arg(long = "identity", value_name = "IDENTITY")]
-    identity: Option<String>,
+    #[arg(value_name = "IDENTITY", long)]
+    pub identity: Option<String>,
 }
 
 impl CloudOpts {
