@@ -85,6 +85,7 @@ impl FileStorage {
     fn open_lock_file(lock_path: &PathBuf) -> Result<File> {
         std::fs::OpenOptions::new()
             .write(true)
+            .read(true)
             .create(true)
             .open(lock_path)
             .map_err(map_io_err)
