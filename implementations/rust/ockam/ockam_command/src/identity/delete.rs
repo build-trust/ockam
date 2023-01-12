@@ -1,8 +1,6 @@
-use crate::util::{exitcode, node_rpc};
 use crate::CommandGlobalOpts;
-use clap::Args;
 use anyhow::anyhow;
-use ockam::Context;
+use clap::Args;
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
@@ -11,25 +9,26 @@ pub struct DeleteCommand {
 
 impl DeleteCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        node_rpc(run_impl, (options, self))
+        if let Err(e) = run_impl(options, self) {
+            eprintln!("{e:?}");
+            std::process::exit(e.code());
+        }
     }
 }
 
-async fn run_impl(
-    ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, DeleteCommand),
-) -> crate::Result<()> {
+fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
     let identity_state = opts.state.identities.get(&cmd.name)?;
     for node in opts.state.nodes.list()? {
-        let node_identity = node.config.identity(&ctx).await?;
-        if node_identity.identifier() == &identity_state.config.identifier {
-            return Err(crate::Error::new(
-                exitcode::USAGE,
-                anyhow!("Cannot delete identity that is being used"),
-            ));
+        if node.config.identity_config()?.identifier == identity_state.config.identifier {
+            return Err(anyhow!(
+                "Can't delete identity '{}' because is currently in use by node '{}'",
+                &cmd.name,
+                &node.config.name
+            )
+            .into());
         }
     }
     opts.state.identities.delete(&cmd.name)?;
-    println!("Identity deleted: {}", identity_state.config.identifier);
+    println!("Identity '{}' deleted", cmd.name);
     Ok(())
 }
