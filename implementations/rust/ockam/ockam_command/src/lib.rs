@@ -11,6 +11,7 @@ mod error;
 mod forwarder;
 mod help;
 mod identity;
+mod lease;
 mod manpages;
 mod message;
 mod node;
@@ -37,6 +38,7 @@ use enroll::EnrollCommand;
 use error::{Error, Result};
 use forwarder::ForwarderCommand;
 use identity::IdentityCommand;
+use lease::LeaseCommand;
 use manpages::ManpagesCommand;
 use message::MessageCommand;
 use node::NodeCommand;
@@ -282,6 +284,7 @@ pub enum OckamSubcommand {
     Subscription(SubscriptionCommand),
     Admin(AdminCommand),
     Manpages(ManpagesCommand),
+    Lease(LeaseCommand),
 }
 
 pub fn run() {
@@ -320,6 +323,7 @@ impl OckamCommand {
             OckamSubcommand::Configuration(c) => c.run(options),
             OckamSubcommand::Enroll(c) => c.run(options),
             OckamSubcommand::Forwarder(c) => c.run(options),
+            OckamSubcommand::Lease(c) => c.run(options),
             OckamSubcommand::Manpages(c) => c.run(),
             OckamSubcommand::Message(c) => c.run(options),
             OckamSubcommand::Node(c) => c.run(options),
