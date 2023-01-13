@@ -28,7 +28,7 @@ use ockam_api::DefaultAddress;
 pub struct AuthCommand {
     /// Project config file
     #[arg(long = "project", value_name = "PROJECT_JSON_PATH")]
-    project: PathBuf,
+    project: Option<PathBuf>,
 
     #[arg(long = "okta", group = "authentication_method")]
     okta: bool,
@@ -52,14 +52,26 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let node_name = start_embedded_node(&ctx, &opts).await?;
 
+    let path = match cmd.project {
+        Some(p) => p,
+        None => {
+            let default_project = opts
+                .state
+                .projects
+                .default()
+                .context("A default project or project parameter is required.")?;
+            default_project.path
+        }
+    };
+
     // Read (okta and authority) project parameters from project.json
-    let s = tokio::fs::read_to_string(cmd.project).await?;
-    let p: ProjectInfo = serde_json::from_str(&s)?;
+    let s = tokio::fs::read_to_string(path).await?;
+    let proj: ProjectInfo = serde_json::from_str(&s)?;
 
     // Create secure channel to the project's authority node
     let secure_channel_addr = {
         let authority =
-            ProjectAuthority::from_raw(&p.authority_access_route, &p.authority_identity)
+            ProjectAuthority::from_raw(&proj.authority_access_route, &proj.authority_identity)
                 .await?
                 .ok_or_else(|| anyhow!("Authority details not configured"))?;
         create_secure_channel_to_authority(
@@ -74,7 +86,8 @@ async fn run_impl(
     };
 
     if cmd.okta {
-        authenticate_through_okta(&ctx, &opts, &node_name, p, secure_channel_addr.clone()).await?
+        authenticate_through_okta(&ctx, &opts, &node_name, proj, secure_channel_addr.clone())
+            .await?
     }
     // If we are given a token to enroll, it's passed on the api call that retrieves the
     // credential the first time,  there is no separate step like in the okta case.

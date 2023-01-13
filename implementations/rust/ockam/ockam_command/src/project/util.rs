@@ -87,6 +87,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 project_access_route,
                 &project_identity_id,
                 credential_exchange_mode,
+                None,
             )
             .await?,
         );
@@ -98,7 +99,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
     Ok(sc)
 }
 
-async fn create_secure_channel_to_project(
+pub async fn create_secure_channel_to_project(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
     api_node: &str,
@@ -106,6 +107,7 @@ async fn create_secure_channel_to_project(
     project_access_route: &MultiAddr,
     project_identity: &str,
     credential_exchange_mode: CredentialExchangeMode,
+    identity: Option<String>,
 ) -> crate::Result<MultiAddr> {
     let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
@@ -114,7 +116,7 @@ async fn create_secure_channel_to_project(
         project_access_route,
         Some(authorized_identifier),
         credential_exchange_mode,
-        None,
+        identity,
     );
     let req = Request::post("/node/secure_channel").body(payload);
     rpc.request(req).await?;
@@ -219,6 +221,7 @@ pub async fn check_project_readiness<'a>(
             &project_route,
             &project_identity,
             CredentialExchangeMode::None,
+            None,
         )
         .await
         {
@@ -239,6 +242,7 @@ pub async fn check_project_readiness<'a>(
                         &project_route,
                         &project_identity,
                         CredentialExchangeMode::None,
+                        None,
                     )
                     .await
                     {
@@ -260,8 +264,7 @@ pub async fn check_project_readiness<'a>(
 pub mod config {
     use crate::util::output::Output;
     use ockam::Context;
-    use ockam_api::cloud::project::OktaAuth0;
-    use ockam_api::config::lookup::ProjectAuthority;
+
     use tracing::trace;
 
     use super::*;
@@ -273,34 +276,10 @@ pub mod config {
                 "Project is not ready yet, wait a few seconds and try again"
             ));
         }
-        let node_route: MultiAddr = project
-            .access_route
-            .as_ref()
-            .try_into()
-            .context("Invalid project node route")?;
-        let pid = project
-            .identity
-            .as_ref()
-            .context("Project should have identity set")?;
-        let authority = ProjectAuthority::from_raw(
-            &project.authority_access_route,
-            &project.authority_identity,
-        )
-        .await?;
-        let okta = project.okta_config.as_ref().map(|o| OktaAuth0 {
-            tenant_base_url: o.tenant_base_url.to_string(),
-            client_id: o.client_id.to_string(),
-            certificate: o.certificate.to_string(),
-        });
+
         config.set_project_alias(
             project.name.to_string(),
-            ProjectLookup {
-                node_route: Some(node_route),
-                id: project.id.to_string(),
-                identity_id: Some(pid.clone()),
-                authority,
-                okta,
-            },
+            ProjectLookup::from_project(project).await?,
         )?;
         Ok(())
     }
