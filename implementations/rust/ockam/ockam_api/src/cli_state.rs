@@ -1,3 +1,4 @@
+use crate::cloud::project::Project;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use ockam_identity::{Identity, IdentityIdentifier, SecureChannelRegistry};
@@ -54,6 +55,7 @@ pub struct CliState {
     pub vaults: VaultsState,
     pub identities: IdentitiesState,
     pub nodes: NodesState,
+    pub projects: ProjectsState,
     dir: PathBuf,
 }
 
@@ -65,6 +67,7 @@ impl CliState {
             vaults: VaultsState::new(&dir)?,
             identities: IdentitiesState::new(&dir)?,
             nodes: NodesState::new(&dir)?,
+            projects: ProjectsState::new(&dir)?,
             dir,
         })
     }
@@ -929,6 +932,91 @@ impl TryFrom<&PathBuf> for NodeSetupConfig {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ProjectsState {
+    dir: PathBuf,
+}
+
+impl ProjectsState {
+    fn new(cli_path: &Path) -> Result<Self> {
+        let dir = cli_path.join("projects");
+        std::fs::create_dir_all(dir.join("data"))?;
+        Ok(Self { dir })
+    }
+
+    pub async fn create(&self, name: &str, config: Project<'_>) -> Result<ProjectState> {
+        let path = {
+            let mut path = self.dir.clone();
+            path.push(format!("{}.json", name));
+            if path.exists() {
+                return Err(CliStateError::AlreadyExists(format!("project `{name}`")));
+            }
+            path
+        };
+        let contents = serde_json::to_string(&config)?;
+        std::fs::write(&path, contents)?;
+        if !self.default_path()?.exists() {
+            self.set_default(name)?;
+        }
+
+        Ok(ProjectState { path })
+    }
+
+    pub fn get(&self, name: &str) -> Result<ProjectState> {
+        let path = {
+            let mut path = self.dir.clone();
+            path.push(format!("{}.json", name));
+            if !path.exists() {
+                return Err(CliStateError::NotFound(format!("project `{name}`")));
+            }
+            path
+        };
+        Ok(ProjectState { path })
+    }
+
+    pub fn default_path(&self) -> Result<PathBuf> {
+        Ok(CliState::defaults_dir()?.join("project"))
+    }
+
+    pub fn default(&self) -> Result<ProjectState> {
+        let path = std::fs::canonicalize(self.default_path()?)?;
+        Ok(ProjectState { path })
+    }
+
+    pub fn set_default(&self, name: &str) -> Result<ProjectState> {
+        let original = {
+            let mut path = self.dir.clone();
+            path.push(format!("{}.json", name));
+            if !path.exists() {
+                return Err(CliStateError::NotFound(format!("project `{name}`")));
+            }
+            path
+        };
+        let link = self.default_path()?;
+        std::os::unix::fs::symlink(original, link)?;
+        self.get(name)
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ProjectState {
+    pub path: PathBuf,
+}
+
+impl ProjectState {
+    pub fn name(&self) -> Result<String> {
+        self.path
+            .file_stem()
+            .and_then(|s| s.to_os_string().into_string().ok())
+            .ok_or_else(|| {
+                CliStateError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "failed to parse the project name",
+                ))
+            })
+    }
+}
+
 pub fn random_name() -> String {
     hex::encode(random::<[u8; 4]>())
 }
@@ -1018,6 +1106,8 @@ mod tests {
             format!("identities/authenticated_storage.lmdb-lock"),
             "nodes".to_string(),
             format!("nodes/{node_name}"),
+            "projects".to_string(),
+            "projects/data".to_string(),
             "defaults".to_string(),
             "defaults/vault".to_string(),
             "defaults/identity".to_string(),
@@ -1079,6 +1169,16 @@ mod tests {
                         let entry = entry.unwrap();
                         let entry_name = entry.file_name().into_string().unwrap();
                         found_entries.push(format!("{dir_name}/{entry_name}"));
+                    });
+                }
+                "projects" => {
+                    assert!(entry.path().is_dir());
+                    found_entries.push(dir_name.clone());
+                    entry.path().read_dir().unwrap().for_each(|entry| {
+                        let entry = entry.unwrap();
+                        assert!(entry.path().is_dir());
+                        let file_name = entry.file_name().into_string().unwrap();
+                        found_entries.push(format!("{dir_name}/{file_name}"));
                     });
                 }
                 _ => panic!("unexpected file"),

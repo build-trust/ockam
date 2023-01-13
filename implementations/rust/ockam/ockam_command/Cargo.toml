@@ -91,7 +91,7 @@ regex = "1.7.1"
 rustls = "0.20.8"
 rustls-native-certs = "0.6.2"
 pem-rfc7468 = { version = "0.6.0", features = ["std"]}
-
+termimad = "0.14"
 ockam = { path = "../ockam", version = "^0.78.0", features = ["software_vault"] }
 ockam_abac = { path = "../ockam_abac", version = "0.12.0", features = ["std"] }
 ockam_api = { path = "../ockam_api", version = "0.21.0", features = ["std", "authenticators"] }

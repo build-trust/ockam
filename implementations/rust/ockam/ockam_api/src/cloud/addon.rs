@@ -142,6 +142,7 @@ mod node {
             project_id: &str,
             addon_id: &str,
         ) -> Result<Vec<u8>> {
+            // TODO: Add on ids should not be magic strings
             match addon_id {
                 "okta" => {
                     self.configure_addon_impl::<OktaConfig>(ctx, dec, project_id, addon_id)
