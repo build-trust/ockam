@@ -1,6 +1,7 @@
 use crate::authenticated_storage::AuthenticatedStorage;
-use crate::{DecryptorWorker, Identity, IdentityVault, SecureChannelRegistry, TrustPolicy};
-use ockam_channel::CreateResponderChannelMessage;
+use crate::channel::common::CreateResponderChannelMessage;
+use crate::channel::decryptor_worker::DecryptorWorker;
+use crate::{Identity, IdentityVault, SecureChannelRegistry, TrustPolicy};
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{AsyncTryClone, Result, Routed, Worker};
 use ockam_node::Context;
