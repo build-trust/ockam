@@ -95,22 +95,29 @@ teardown() {
 }
 
 @test "create a vault and do show on it" {
-  vault_name=$(openssl rand -hex 4)
-  run $OCKAM vault create "${vault_name}"
+  vault_name1=$(openssl rand -hex 4)
+  run $OCKAM vault create "${vault_name1}"
   assert_success
 
-  run $OCKAM vault show "${vault_name}"
+  run $OCKAM vault show "${vault_name1}"
   assert_success
-  assert_output --partial "Name: ${vault_name}"
+  assert_output --partial "Name: ${vault_name1}"
   assert_output --partial "Type: OCKAM"
 
-  vault_name=$(openssl rand -hex 4)
-  run $OCKAM vault create "${vault_name}" --aws-kms
+  vault_name2=$(openssl rand -hex 4)
+  run $OCKAM vault create "${vault_name2}" --aws-kms
   assert_success
 
-  run $OCKAM vault show "${vault_name}"
+  run $OCKAM vault show "${vault_name2}"
   assert_success
-  assert_output --partial "Name: ${vault_name}"
+  assert_output --partial "Name: ${vault_name2}"
+  assert_output --partial "Type: AWS KMS"
+
+  run $OCKAM vault list
+  assert_success
+  assert_output --partial "Name: ${vault_name1}"
+  assert_output --partial "Type: OCKAM"
+  assert_output --partial "Name: ${vault_name2}"
   assert_output --partial "Type: AWS KMS"
 }
 
