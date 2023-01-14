@@ -57,6 +57,8 @@ pub enum VaultSubcommand {
         /// Name of the vault
         name: String,
     },
+    /// List vaults
+    List {},
 }
 
 impl VaultCommand {
@@ -110,16 +112,22 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
         VaultSubcommand::Show { name } => {
             let name = name.unwrap_or(opts.state.vaults.default()?.name()?);
             let state = opts.state.vaults.get(&name)?;
-            println!();
             println!("Vault:");
-            println!("  Name: {}", name);
-            println!(
-                "  Type: {}",
-                match state.config.is_aws() {
-                    true => "AWS KMS",
-                    false => "OCKAM",
+            for line in state.to_string().lines() {
+                println!("{:2}{}", "", line)
+            }
+        }
+        VaultSubcommand::List {} => {
+            let states = opts.state.vaults.list()?;
+            if states.is_empty() {
+                return Err(anyhow!("No vaults registered on this system!").into());
+            }
+            for (idx, vault) in states.iter().enumerate() {
+                println!("Vault[{}]:", idx);
+                for line in vault.to_string().lines() {
+                    println!("{:2}{}", "", line)
                 }
-            );
+            }
         }
         VaultSubcommand::Delete { name } => {
             opts.state.vaults.delete(&name).await?;

@@ -229,6 +229,25 @@ impl VaultState {
     }
 }
 
+impl Display for VaultState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "Name: {}",
+            self.path.as_path().file_stem().unwrap().to_str().unwrap()
+        )?;
+        writeln!(
+            f,
+            "Type: {}",
+            match self.config.is_aws() {
+                true => "AWS KMS",
+                false => "OCKAM",
+            }
+        )?;
+        Ok(())
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct VaultConfig {
     path: PathBuf,
