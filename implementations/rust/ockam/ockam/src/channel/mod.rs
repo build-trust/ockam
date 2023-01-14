@@ -10,9 +10,6 @@ use crate::{
 };
 use ockam_core::{Address, DenyAll, Result, Route, RouteBuilder};
 
-#[doc(inline)]
-pub use ockam_channel::SecureChannel;
-
 const CLUSTER_NAME: &str = "ockam.channel";
 
 /// Generalised ockam channel API

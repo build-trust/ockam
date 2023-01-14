@@ -2815,7 +2815,6 @@ dependencies = [
  "hex",
  "minicbor",
  "ockam_abac",
- "ockam_channel",
  "ockam_core",
  "ockam_identity",
  "ockam_key_exchange_core",
@@ -2901,25 +2900,6 @@ dependencies = [
  "time",
  "tinyvec",
  "tracing",
-]
-
-[[package]]
-name = "ockam_channel"
-version = "0.72.0"
-dependencies = [
- "ockam_core",
- "ockam_key_exchange_core",
- "ockam_key_exchange_x3dh",
- "ockam_key_exchange_xx",
- "ockam_macros",
- "ockam_node",
- "ockam_vault",
- "rand 0.8.5",
- "rand_pcg",
- "serde",
- "tokio",
- "tracing",
- "trybuild",
 ]
 
 [[package]]
@@ -3031,7 +3011,6 @@ dependencies = [
  "heapless",
  "hex",
  "minicbor",
- "ockam_channel",
  "ockam_core",
  "ockam_key_exchange_core",
  "ockam_key_exchange_xx",

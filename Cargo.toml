@@ -8,7 +8,6 @@ members = [
     "implementations/rust/ockam/ockam",
     "implementations/rust/ockam/ockam_abac",
     "implementations/rust/ockam/ockam_api",
-    "implementations/rust/ockam/ockam_channel",
     "implementations/rust/ockam/ockam_command",
     "implementations/rust/ockam/ockam_core",
     "implementations/rust/ockam/ockam_examples",
