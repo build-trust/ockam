@@ -1,72 +1,50 @@
-use ockam_core::async_trait;
-use ockam_core::compat::{boxed::Box, vec::Vec};
-use ockam_core::{Address, Any, LocalMessage, Result, Routed, TransportMessage, Worker};
-use ockam_node::Context;
-use tracing::debug;
+use crate::error::IdentityError;
+use ockam_core::compat::vec::Vec;
+use ockam_core::vault::{KeyId, SymmetricVault};
+use ockam_core::Result;
 
-pub(crate) struct EncryptorWorker {
-    is_initiator: bool,
-    remote_identity_secure_channel_address: Address,
-    local_secure_channel_address: Address,
+pub(crate) struct Encryptor<V: SymmetricVault> {
+    key: KeyId,
+    nonce: u64,
+    vault: V,
 }
 
-impl EncryptorWorker {
-    pub fn new(
-        is_initiator: bool,
-        remote_identity_secure_channel_address: Address,
-        local_secure_channel_address: Address,
-    ) -> Self {
-        Self {
-            is_initiator,
-            remote_identity_secure_channel_address,
-            local_secure_channel_address,
-        }
+impl<V: SymmetricVault> Encryptor<V> {
+    /// We use u64 nonce since it's convenient to work with it (e.g. increment)
+    /// But we use 8-byte be format to send it over to the other side (according to noise spec)
+    /// And we use 12-byte be format for encryption, since AES-GCM wants 12 bytes
+    pub(crate) fn convert_nonce_from_u64(nonce: u64) -> ([u8; 8], [u8; 12]) {
+        let mut n: [u8; 12] = [0; 12];
+        let b: [u8; 8] = nonce.to_be_bytes();
+
+        n[4..].copy_from_slice(&b);
+
+        (b, n)
     }
 
-    async fn handle_encrypt(
-        &mut self,
-        ctx: &mut <Self as Worker>::Context,
-        msg: Routed<<Self as Worker>::Message>,
-    ) -> Result<()> {
-        debug!(
-            "IdentitySecureChannel {} received Encrypt",
-            if self.is_initiator {
-                "Initiator"
-            } else {
-                "Responder"
-            }
-        );
+    pub async fn encrypt(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
+        let old_nonce = self.nonce;
+        if old_nonce == u64::MAX {
+            return Err(IdentityError::InvalidNonce.into());
+        }
 
-        let mut onward_route = msg.onward_route();
-        let return_route = msg.return_route();
-        let payload = msg.payload().to_vec();
+        self.nonce += 1;
 
-        // Send to the other party using local regular SecureChannel
-        let _ = onward_route.step()?;
-        let onward_route = onward_route
-            .modify()
-            .prepend(self.remote_identity_secure_channel_address.clone())
-            .prepend(self.local_secure_channel_address.clone());
+        let (small_nonce, nonce) = Self::convert_nonce_from_u64(old_nonce);
 
-        let transport_msg = TransportMessage::v1(onward_route, return_route, payload);
-
-        ctx.forward(LocalMessage::new(transport_msg, Vec::new()))
+        let mut cipher_text = self
+            .vault
+            .aead_aes_gcm_encrypt(&self.key, payload, &nonce, &[])
             .await?;
 
-        Ok(())
+        let mut res = Vec::new();
+        res.extend_from_slice(&small_nonce);
+        res.append(&mut cipher_text);
+
+        Ok(res)
     }
-}
 
-#[async_trait]
-impl Worker for EncryptorWorker {
-    type Message = Any;
-    type Context = Context;
-
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Self::Context,
-        msg: Routed<Self::Message>,
-    ) -> Result<()> {
-        self.handle_encrypt(ctx, msg).await
+    pub fn new(key: KeyId, nonce: u64, vault: V) -> Self {
+        Self { key, nonce, vault }
     }
 }

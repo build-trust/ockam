@@ -21,6 +21,7 @@ pub enum IdentityError {
     UnknownAuthority,
     CredentialVerificationFailed,
     DuplicateSecureChannel,
+    InvalidNonce,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}

@@ -18,7 +18,6 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
-use ockam_channel::SecureChannelVault;
 use ockam_core::AsyncTryClone;
 use ockam_vault::{Hasher, SecretVault, Signer, Verifier};
 
