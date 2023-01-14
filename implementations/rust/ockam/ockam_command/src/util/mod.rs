@@ -403,7 +403,6 @@ pub fn setup_logging(verbose: u8, no_color: bool) {
         "ockam_core",
         "ockam_command",
         "ockam_identity",
-        "ockam_channel",
         "ockam_transport_tcp",
         "ockam_vault",
         "ockam_vault_sync_core",

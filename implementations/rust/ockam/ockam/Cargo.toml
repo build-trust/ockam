@@ -31,13 +31,12 @@ all-features = false
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["std", "ockam_transport_tcp", "software_vault", "software_vault_storage", "noise_xx"]
+default = ["std", "ockam_transport_tcp", "software_vault", "software_vault_storage"]
 software_vault = [
     "ockam_vault/rustcrypto",
-    "ockam_channel/software_vault",
+    "ockam_identity/software_vault",
 ]
 software_vault_storage = ["software_vault", "ockam_vault/storage"]
-noise_xx = ["ockam_key_exchange_xx", "ockam_channel/noise_xx"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -47,7 +46,6 @@ std = [
     "ockam_node/std",
     "ockam_macros/std",
     "ockam_vault/std",
-    "ockam_channel/std",
     "ockam_key_exchange_core/std",
     "ockam_key_exchange_xx/std",
     "ockam_identity/std",
@@ -63,7 +61,6 @@ no_std = [
     "ockam_node/no_std",
     "ockam_macros/no_std",
     "ockam_vault/no_std",
-    "ockam_channel/no_std",
     "ockam_key_exchange_core/no_std",
     "ockam_key_exchange_xx/no_std",
     "ockam_identity/no_std",
@@ -74,7 +71,6 @@ alloc = [
     "ockam_core/alloc",
     "ockam_node/alloc",
     "ockam_vault/alloc",
-    "ockam_channel/alloc",
     "ockam_key_exchange_core/alloc",
     "ockam_key_exchange_xx/alloc",
     "ockam_identity/alloc",
@@ -94,7 +90,6 @@ ockam_core = { path = "../ockam_core", version = "^0.72.0", default-features = f
 ockam_macros = { path = "../ockam_macros", version = "^0.26.0", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.75.0", default-features = false }
 ockam_vault = { path = "../ockam_vault", version = "^0.68.0", default_features = false, optional = true }
-ockam_channel = { path = "../ockam_channel", version = "^0.72.0", default_features = false }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.73.0", optional = true }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.63.0", default_features = false }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.68.0", default_features = false, optional = true }

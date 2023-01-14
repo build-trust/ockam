@@ -28,7 +28,6 @@ lease_proto_json = ["serde_json"]
 std = [
     "ockam_core/std",
     "ockam_macros/std",
-    "ockam_channel/std",
     "ockam_key_exchange_core/std",
     "ockam_key_exchange_xx/std",
     "ockam_node/std",
@@ -43,7 +42,6 @@ std = [
 no_std = [
     "ockam_core/no_std",
     "ockam_macros/no_std",
-    "ockam_channel/no_std",
     "ockam_key_exchange_core/no_std",
     "ockam_key_exchange_xx/no_std",
     "ockam_node/no_std",
@@ -54,7 +52,6 @@ no_std = [
 # platforms, requires nightly.
 alloc = [
     "ockam_core/alloc",
-    "ockam_channel/alloc",
     "ockam_key_exchange_core/alloc",
     "ockam_key_exchange_xx/alloc",
     "ockam_node/alloc",
@@ -68,7 +65,6 @@ ockam_core = { path = "../ockam_core", version = "^0.72.0", default-features = f
 ockam_macros = { path = "../ockam_macros", version = "^0.26.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.75.0", default-features = false }
 ockam_vault = { path = "../ockam_vault", version = "^0.68.0", default-features = false, optional = true }
-ockam_channel = { path = "../ockam_channel", version = "^0.72.0", default-features = false }
 ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.68.0", default-features = false, optional = true }
 ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.63.0", default-features = false }
 serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
