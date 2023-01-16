@@ -5,7 +5,7 @@ use anyhow::{anyhow, Context as _};
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::types::{AddMember, CreateToken, OneTimeCode};
-use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority};
+use ockam_api::config::lookup::{LookupConfigHandle, ProjectAuthority};
 use ockam_core::api::Request;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use tracing::debug;
@@ -73,13 +73,13 @@ impl Runner {
     async fn run(self) -> Result<()> {
         let node_name = start_embedded_node(&self.ctx, &self.opts).await?;
 
-        let map = self.opts.config.lookup();
-        let to = if let Some(a) = project_authority(&self.cmd.to, &map)? {
+        let lookup = self.opts.state.nodes.get(&node_name)?.config.lookup;
+        let to = if let Some(a) = project_authority(&self.cmd.to, &lookup)? {
             let mut addr = create_secure_channel_to_authority(
                 &self.ctx,
                 &self.opts,
                 &node_name,
-                a,
+                &a,
                 &replace_project(&self.cmd.to, a.address())?,
                 None, //for now always the default identity
             )
@@ -121,15 +121,15 @@ impl Runner {
 /// Get the project authority from the first address protocol.
 ///
 /// If the first protocol is a `/project`, look up the project's config.
-fn project_authority<'a>(
+fn project_authority(
     input: &MultiAddr,
-    map: &'a ConfigLookup,
-) -> anyhow::Result<Option<&'a ProjectAuthority>> {
+    lookup: &LookupConfigHandle,
+) -> anyhow::Result<Option<ProjectAuthority>> {
     if let Some(proto) = input.first() {
         if proto.code() == proto::Project::CODE {
             let proj = proto.cast::<proto::Project>().expect("project protocol");
-            if let Some(p) = map.get_project(&proj) {
-                if let Some(a) = &p.authority {
+            if let Some(p) = lookup.get_project(&proj) {
+                if let Some(a) = p.authority {
                     return Ok(Some(a));
                 } else {
                     return Err(anyhow!("missing authority in project {:?}", &*proj));

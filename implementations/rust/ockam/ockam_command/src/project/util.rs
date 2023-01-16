@@ -15,7 +15,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::util::api::CloudOpts;
 use crate::util::{api, RpcBuilder};
-use crate::{CommandGlobalOpts, OckamConfig};
+use crate::CommandGlobalOpts;
 
 pub fn clean_projects_multiaddr(
     input: MultiAddr,
@@ -52,13 +52,9 @@ pub async fn get_projects_secure_channels_from_config_lookup(
     tcp: Option<&TcpTransport>,
     credential_exchange_mode: CredentialExchangeMode,
 ) -> Result<Vec<MultiAddr>> {
-    let cfg_lookup = opts.config.lookup();
+    config::refresh_projects(ctx, opts, api_node, cloud_addr, tcp).await?;
+    let cfg_lookup = opts.state.nodes.get(api_node)?.config.lookup;
     let mut sc = Vec::with_capacity(meta.project.len());
-
-    // In case a project is missing from the config file, we fetch them all from the cloud.
-    if cfg_lookup.has_unresolved_projects(meta) {
-        config::refresh_projects(ctx, opts, api_node, cloud_addr, tcp).await?;
-    }
 
     // Create a secure channel for each project.
     for name in meta.project.iter() {
@@ -72,10 +68,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 .identity_id
                 .as_ref()
                 .context("Project should have identity set")?;
-            let node_route = p
-                .node_route
-                .as_ref()
-                .context("Invalid project node route")?;
+            let node_route = p.node_route.clone().context("Invalid project node route")?;
             (node_route, id.to_string())
         };
         sc.push(
@@ -84,7 +77,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 opts,
                 api_node,
                 tcp,
-                project_access_route,
+                &project_access_route,
                 &project_identity_id,
                 credential_exchange_mode,
             )
@@ -169,8 +162,9 @@ pub async fn check_project_readiness<'a>(
     tcp: Option<&TcpTransport>,
     mut project: Project<'a>,
 ) -> Result<Project<'a>> {
+    let node_state = opts.state.nodes.get(api_node)?;
     // Persist project config prior to checking readiness which might take a while
-    config::set_project_id(&opts.config, &project).await?;
+    config::set_project_id(&node_state, &project).await?;
 
     if !project.is_ready() {
         print!("Project created. Waiting for it be ready...");
@@ -253,20 +247,21 @@ pub async fn check_project_readiness<'a>(
     }
     std::io::stdout().flush()?;
     // Persist project config with all its fields
-    config::set_project(&opts.config, &project).await?;
+    config::set_project(&node_state, &project).await?;
     Ok(project)
 }
 
 pub mod config {
     use crate::util::output::Output;
     use ockam::Context;
+    use ockam_api::cli_state::NodeState;
     use ockam_api::cloud::project::OktaAuth0;
     use ockam_api::config::lookup::ProjectAuthority;
     use tracing::trace;
 
     use super::*;
 
-    async fn set(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
+    async fn set(state: &NodeState, project: &Project<'_>) -> Result<()> {
         if !project.is_ready() {
             trace!("Project is not ready yet {}", project.output()?);
             return Err(anyhow!(
@@ -292,7 +287,7 @@ pub mod config {
             client_id: o.client_id.to_string(),
             certificate: o.certificate.to_string(),
         });
-        config.set_project_alias(
+        state.config.lookup.set_project(
             project.name.to_string(),
             ProjectLookup {
                 node_route: Some(node_route),
@@ -305,8 +300,8 @@ pub mod config {
         Ok(())
     }
 
-    pub(super) async fn set_project_id(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
-        config.set_project_alias(
+    pub(super) async fn set_project_id(state: &NodeState, project: &Project<'_>) -> Result<()> {
+        state.config.lookup.set_project(
             project.name.to_string(),
             ProjectLookup {
                 node_route: None,
@@ -316,34 +311,51 @@ pub mod config {
                 okta: None,
             },
         )?;
-        config.persist_config_updates()?;
         Ok(())
     }
 
-    pub async fn set_project(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
-        set(config, project).await?;
-        config.persist_config_updates()?;
+    pub async fn set_project(state: &NodeState, project: &Project<'_>) -> Result<()> {
+        set(state, project).await?;
         Ok(())
     }
 
-    pub async fn set_projects(config: &OckamConfig, projects: &[Project<'_>]) -> Result<()> {
-        config.remove_projects_alias();
+    pub async fn set_projects(state: &NodeState, projects: &[Project<'_>]) -> Result<()> {
         for project in projects.iter() {
-            set(config, project).await?;
+            set(state, project).await?;
         }
-        config.persist_config_updates()?;
         Ok(())
     }
 
-    pub fn remove_project(config: &OckamConfig, name: &str) -> Result<()> {
-        config.remove_project_alias(name);
-        config.persist_config_updates()?;
+    pub fn remove_project(state: &NodeState, name: &str) -> Result<()> {
+        state.config.lookup.remove_project(name)?;
         Ok(())
     }
 
-    pub fn get_project(config: &OckamConfig, name: &str) -> Option<String> {
-        let inner = config.write();
-        inner.lookup.get_project(name).map(|s| s.id.clone())
+    pub fn try_get_project(state: &NodeState, name: &str) -> Option<String> {
+        state.config.lookup.get_project(name).map(|s| s.id)
+    }
+
+    pub async fn get_project(
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+        project_name: &str,
+        api_node: &str,
+        controller_route: &MultiAddr,
+        tcp: Option<&TcpTransport>,
+    ) -> Result<String> {
+        let state = opts.state.nodes.get(api_node)?;
+        match try_get_project(&state, project_name) {
+            Some(id) => Ok(id),
+            None => {
+                // The project is not in the config file.
+                // Fetch all available projects from the cloud.
+                refresh_projects(ctx, opts, api_node, controller_route, tcp).await?;
+                // If the project is not found in the lookup, then it must not exist in the cloud, so we exit the command.
+                let state = opts.state.nodes.get(api_node)?;
+                try_get_project(&state, project_name)
+                    .context(format!("Project '{}' does not exist", project_name))
+            }
+        }
     }
 
     pub async fn refresh_projects(
@@ -353,10 +365,15 @@ pub mod config {
         controller_route: &MultiAddr,
         tcp: Option<&TcpTransport>,
     ) -> Result<()> {
+        if !opts.state.nodes.is_enrolled(api_node)? {
+            return Ok(());
+        }
+
         let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
         rpc.request(api::project::list(controller_route)).await?;
         let projects = rpc.parse_response::<Vec<Project>>()?;
-        set_projects(&opts.config, &projects).await?;
+        let state = opts.state.nodes.get(api_node)?;
+        set_projects(&state, &projects).await?;
         Ok(())
     }
 }

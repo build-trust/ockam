@@ -27,8 +27,7 @@ use super::models::secure_channel::CredentialExchangeMode;
 use super::registry::Registry;
 use crate::authenticator::direct::types::OneTimeCode;
 use crate::cli_state::CliState;
-use crate::config::cli::AuthoritiesConfig;
-use crate::config::lookup::ProjectLookup;
+use crate::config::authorities::AuthoritiesConfig;
 use crate::error::ApiError;
 use crate::lmdb::LmdbStorage;
 use crate::nodes::models::base::NodeStatus;
@@ -92,7 +91,7 @@ pub(crate) struct AuthorityInfo {
 
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeManager {
-    node_name: String,
+    pub(crate) node_name: String,
     api_transport_id: Alias,
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
@@ -102,7 +101,6 @@ pub struct NodeManager {
     vault: Vault,
     identity: Identity<Vault, LmdbStorage>,
     project_id: Option<String>,
-    projects: Arc<BTreeMap<String, ProjectLookup>>,
     authorities: Option<Authorities>,
     pub(crate) authenticated_storage: LmdbStorage,
     pub(crate) registry: Registry,
@@ -173,7 +171,6 @@ impl NodeManagerGeneralOptions {
 pub struct NodeManagerProjectsOptions<'a> {
     ac: Option<&'a AuthoritiesConfig>,
     project_id: Option<String>,
-    projects: BTreeMap<String, ProjectLookup>,
     token: Option<OneTimeCode>,
 }
 
@@ -181,13 +178,11 @@ impl<'a> NodeManagerProjectsOptions<'a> {
     pub fn new(
         ac: Option<&'a AuthoritiesConfig>,
         project_id: Option<String>,
-        projects: BTreeMap<String, ProjectLookup>,
         token: Option<OneTimeCode>,
     ) -> Self {
         Self {
             ac,
             project_id,
-            projects,
             token,
         }
     }
@@ -245,7 +240,6 @@ impl NodeManager {
                 && projects_options.project_id.is_some(),
             vault,
             identity,
-            projects: Arc::new(projects_options.projects),
             project_id: projects_options.project_id,
             authorities: None,
             authenticated_storage,
@@ -277,8 +271,7 @@ impl NodeManager {
         let vault = self.vault()?;
 
         let mut v = Vec::new();
-
-        for a in ac.authorities() {
+        for a in ac.authorities.iter() {
             v.push(AuthorityInfo {
                 identity: PublicIdentity::import(a.1.identity(), vault).await?,
                 addr: a.1.access_route().clone(),
@@ -386,7 +379,7 @@ impl NodeManager {
     }
 
     fn resolve_project(&self, name: &str) -> Result<(MultiAddr, IdentityIdentifier)> {
-        if let Some(info) = self.projects.get(name) {
+        if let Some(info) = self.projects()?.get(name) {
             let node_route = info
                 .node_route
                 .as_ref()

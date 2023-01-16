@@ -1,4 +1,3 @@
-use anyhow::Context as _;
 use clap::Args;
 
 use ockam::Context;
@@ -38,23 +37,16 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let controller_route = &cmd.cloud_opts.route();
     let node_name = start_embedded_node(ctx, &opts).await?;
+    let node_state = opts.state.nodes.get(&node_name)?;
 
-    // Lookup project
-    let id = match config::get_project(&opts.config, &cmd.name) {
-        Some(id) => id,
-        None => {
-            config::refresh_projects(ctx, &opts, &node_name, &cmd.cloud_opts.route(), None).await?;
-            config::get_project(&opts.config, &cmd.name)
-                .context(format!("Project '{}' does not exist", cmd.name))?
-        }
-    };
+    let id = config::get_project(ctx, &opts, &cmd.name, &node_name, controller_route, None).await?;
 
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::project::show(&id, controller_route))
         .await?;
     let project = rpc.parse_and_print_response::<Project>()?;
-    config::set_project(&opts.config, &project).await?;
+    config::set_project(&node_state, &project).await?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

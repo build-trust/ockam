@@ -13,9 +13,12 @@ use std::{
 use tracing::error;
 
 use crate::node::util::spawn_node;
+use crate::project::config::refresh_projects;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start;
+use crate::space::config::refresh_spaces;
+use crate::util::api::CloudOpts;
 use crate::util::node_rpc;
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
@@ -79,7 +82,7 @@ pub struct CreateCommand {
 
     /// An enrollment token to allow this node to enroll into a project.
     #[arg(long = "enrollment-token", value_name = "ENROLLMENT_TOKEN", value_parser = otc_parser)]
-    token: Option<OneTimeCode>,
+    pub token: Option<OneTimeCode>,
 
     /// JSON config to setup a foreground node
     ///
@@ -202,8 +205,6 @@ async fn run_foreground_node(
     mut ctx: Context,
     (opts, cmd, addr): (CommandGlobalOpts, CreateCommand, SocketAddr),
 ) -> crate::Result<()> {
-    let cfg = &opts.config;
-
     // This node was initially created as a foreground node
     // and there is no existing state for it yet.
     if !cmd.child_process && opts.state.nodes.get(&cmd.node_name).is_err() {
@@ -219,11 +220,12 @@ async fn run_foreground_node(
 
     let project_id = match &cmd.project {
         Some(path) => {
+            let node_state = opts.state.nodes.get(&cmd.node_name)?;
             let s = tokio::fs::read_to_string(path).await?;
             let p: ProjectInfo = serde_json::from_str(&s)?;
             let project_id = p.id.to_string();
-            project::config::set_project(cfg, &(&p).into()).await?;
-            add_project_authority(p, &cmd.node_name, cfg).await?;
+            project::config::set_project(&node_state, &(&p).into()).await?;
+            add_project_authority(p, &node_state).await?;
             Some(project_id)
         }
         None => None,
@@ -232,14 +234,15 @@ async fn run_foreground_node(
     // Do we need to eagerly fetch a project membership credential?
     let get_credential = !cmd.child_process && cmd.project.is_some() && cmd.token.is_some();
 
+    // Create TCP listener
     let tcp = TcpTransport::create(&ctx).await?;
-    let bind = cmd.tcp_listener_address;
-    tcp.listen(&bind).await?;
+    let bind = tcp.listen(&cmd.tcp_listener_address).await?.to_string();
 
+    // Store TCP listener address in node state
     let node_state = opts.state.nodes.get(&cmd.node_name)?;
-    let setup_config = node_state.setup()?;
     node_state.set_setup(
-        &setup_config
+        &node_state
+            .setup()?
             .set_verbose(opts.global_args.verbose)
             .add_transport(CreateTransportJson::new(
                 TransportType::Tcp,
@@ -248,14 +251,13 @@ async fn run_foreground_node(
             )?),
     )?;
 
-    let projects = cfg.inner().lookup().projects().collect();
+    let node_state = opts.state.nodes.get(&cmd.node_name)?;
     let node_man = NodeManager::create(
         &ctx,
         NodeManagerGeneralOptions::new(cmd.node_name.clone(), cmd.launch_config.is_some()),
         NodeManagerProjectsOptions::new(
-            Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
+            Some(&node_state.config.authorities.inner()),
             project_id,
-            projects,
             cmd.token,
         ),
         NodeManagerTransportOptions::new(
@@ -264,6 +266,7 @@ async fn run_foreground_node(
         ),
     )
     .await?;
+
     let node_manager_worker = NodeManagerWorker::new(node_man);
 
     ctx.start_worker(
@@ -271,6 +274,24 @@ async fn run_foreground_node(
         node_manager_worker,
         AllowAll, // FIXME: @ac
         AllowAll, // FIXME: @ac
+    )
+    .await?;
+
+    // Refresh projects and spaces lookups if its identity was enrolled
+    refresh_projects(
+        &ctx,
+        &opts,
+        &cmd.node_name,
+        &CloudOpts::route_s(),
+        Some(&tcp),
+    )
+    .await?;
+    refresh_spaces(
+        &ctx,
+        &opts,
+        &cmd.node_name,
+        &CloudOpts::route_s(),
+        Some(&tcp),
     )
     .await?;
 

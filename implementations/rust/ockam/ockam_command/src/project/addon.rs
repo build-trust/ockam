@@ -260,10 +260,13 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let controller_route = &cmd.cloud_opts.route();
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;
+    config::refresh_projects(&ctx, &opts, rpc.node_name(), controller_route, None).await?;
+    let node_state = opts.state.nodes.get(rpc.node_name())?;
 
     let base_endpoint = |project_name: &str| -> crate::Result<String> {
-        let lookup = opts.config.lookup();
-        let project_id = &lookup
+        let project_id = &node_state
+            .config
+            .lookup
             .get_project(project_name)
             .context(format!(
                 "Failed to get project {} from config lookup",
@@ -333,8 +336,15 @@ async fn run_impl(
                     // Wait until project is ready again
                     println!("Getting things ready for project...");
                     tokio::time::sleep(std::time::Duration::from_secs(15)).await;
-                    let project_id = config::get_project(&opts.config, &project_name)
-                        .context("project not found in lookup")?;
+                    let project_id = config::get_project(
+                        &ctx,
+                        &opts,
+                        &project_name,
+                        rpc.node_name(),
+                        controller_route,
+                        None,
+                    )
+                    .await?;
                     rpc.request(api::project::show(&project_id, controller_route))
                         .await?;
                     let project: Project = rpc.parse_response()?;
@@ -394,8 +404,15 @@ async fn run_impl(
                     // Wait until project is ready again
                     println!("Getting things ready for project...");
 
-                    let project_id = config::get_project(&opts.config, &project_name)
-                        .context("project not found in lookup")?;
+                    let project_id = config::get_project(
+                        &ctx,
+                        &opts,
+                        &project_name,
+                        rpc.node_name(),
+                        controller_route,
+                        None,
+                    )
+                    .await?;
 
                     // Give the sever ~20 seconds
                     // in intervals of 5s for the project to be available.
@@ -442,8 +459,15 @@ async fn run_impl(
 
                     // Wait until project is ready again
                     println!("Getting things ready for project...");
-                    let project_id = config::get_project(&opts.config, &project_name)
-                        .context("project not found in lookup")?;
+                    let project_id = config::get_project(
+                        &ctx,
+                        &opts,
+                        &project_name,
+                        rpc.node_name(),
+                        controller_route,
+                        None,
+                    )
+                    .await?;
                     let retry_strategy = FixedInterval::from_millis(5000).take(4);
                     Retry::spawn(retry_strategy, || async {
                         let mut rpc = rpc.clone();

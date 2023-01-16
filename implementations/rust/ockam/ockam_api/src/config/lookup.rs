@@ -1,12 +1,16 @@
+use crate::cli_state::{CliStateError, Result};
 use crate::cloud::project::OktaAuth0;
+use crate::config::atomic::AtomicUpdater;
 use crate::error::ApiError;
 use bytes::Bytes;
 use ockam_core::compat::collections::VecDeque;
-use ockam_core::{CowStr, Result};
+use ockam_core::CowStr;
 use ockam_identity::{IdentityIdentifier, PublicIdentity};
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
 use std::{
     collections::BTreeMap,
     fmt,
@@ -14,96 +18,191 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Debug, Default)]
-pub struct LookupMeta {
-    /// Append any project name that is encountered during look-up
-    pub project: VecDeque<Name>,
+#[derive(Clone, Debug)]
+pub struct LookupConfigHandle {
+    path: PathBuf,
+    inner: Arc<RwLock<LookupConfig>>,
 }
 
-pub type Name = String;
+impl TryFrom<&PathBuf> for LookupConfigHandle {
+    type Error = CliStateError;
 
-/// A generic lookup mechanism for configuration values
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ConfigLookup {
-    #[serde(flatten)]
-    pub map: BTreeMap<String, LookupValue>,
-}
-
-impl Default for ConfigLookup {
-    fn default() -> Self {
-        Self::new()
+    fn try_from(path: &PathBuf) -> std::result::Result<Self, Self::Error> {
+        Ok(Self {
+            path: path.clone(),
+            inner: Arc::new(RwLock::new(LookupConfig::try_from(path)?)),
+        })
     }
 }
 
-impl ConfigLookup {
-    pub fn new() -> Self {
+impl Default for LookupConfigHandle {
+    fn default() -> Self {
         Self {
-            map: Default::default(),
+            path: PathBuf::from(""),
+            inner: Arc::new(RwLock::new(LookupConfig::default())),
         }
     }
+}
 
-    pub fn set_space(&mut self, id: &str, name: &str) {
-        self.map.insert(
-            format!("/space/{}", name),
-            LookupValue::Space(SpaceLookup { id: id.to_string() }),
-        );
+impl LookupConfigHandle {
+    pub fn new(dir: PathBuf) -> Result<Self> {
+        let path = dir.join("lookup.json");
+        let inner = if !path.exists() {
+            let inner = LookupConfig::default();
+            let contents = serde_json::to_string(&inner)?;
+            std::fs::write(&path, contents)?;
+            inner
+        } else {
+            LookupConfig::try_from(&path)?
+        };
+        Ok(Self {
+            path,
+            inner: Arc::new(RwLock::new(inner)),
+        })
     }
 
-    pub fn get_space(&self, name: &str) -> Option<&SpaceLookup> {
-        self.map
+    fn persist(&self) -> Result<()> {
+        AtomicUpdater::new(self.path.clone(), self.inner.clone()).run()
+    }
+
+    pub fn inner(&self) -> LookupConfig {
+        self.inner.read().unwrap().clone()
+    }
+
+    pub fn set_space(&self, id: &str, name: &str) -> Result<()> {
+        {
+            let mut lock = self.inner.write().unwrap();
+            lock.map.insert(
+                format!("/space/{}", name),
+                LookupValue::Space(SpaceLookup { id: id.to_string() }),
+            );
+        }
+        self.persist()
+    }
+
+    pub fn get_space(&self, name: &str) -> Option<SpaceLookup> {
+        let lock = self.inner.read().unwrap();
+        let space = lock
+            .map
             .get(&format!("/space/{}", name))
             .and_then(|value| match value {
-                LookupValue::Space(space) => Some(space),
+                LookupValue::Space(space) => Some(space.clone()),
                 _ => None,
-            })
+            });
+        space
     }
 
-    pub fn remove_space(&mut self, name: &str) -> Option<LookupValue> {
-        self.map.remove(&format!("/space/{}", name))
+    pub fn remove_space(&self, name: &str) -> Result<Option<SpaceLookup>> {
+        let space = {
+            let mut lock = self.inner.write().unwrap();
+            lock.map
+                .remove(&format!("/space/{}", name))
+                .and_then(|value| match value {
+                    LookupValue::Space(v) => Some(v),
+                    _ => None,
+                })
+        };
+        self.persist()?;
+        Ok(space)
     }
 
-    pub fn remove_spaces(&mut self) {
-        self.map.retain(|k, _| !k.starts_with("/space/"));
+    pub fn remove_spaces(&self) -> Result<()> {
+        {
+            let mut lock = self.inner.write().unwrap();
+            lock.map.retain(|k, _| !k.starts_with("/space/"));
+        }
+        self.persist()
     }
 
     /// Store a project route and identifier as lookup
-    pub fn set_project(&mut self, name: String, proj: ProjectLookup) {
-        self.map
-            .insert(format!("/project/{}", name), LookupValue::Project(proj));
+    pub fn set_project(&self, name: String, proj: ProjectLookup) -> Result<()> {
+        {
+            let mut lock = self.inner.write().unwrap();
+            lock.map
+                .insert(format!("/project/{}", name), LookupValue::Project(proj));
+        }
+        self.persist()
     }
 
-    pub fn get_project(&self, name: &str) -> Option<&ProjectLookup> {
-        self.map
+    pub fn get_project(&self, name: &str) -> Option<ProjectLookup> {
+        let lock = self.inner.read().unwrap();
+        let project = lock
+            .map
             .get(&format!("/project/{}", name))
             .and_then(|value| match value {
-                LookupValue::Project(project) => Some(project),
+                LookupValue::Project(project) => Some(project.clone()),
                 _ => None,
-            })
+            });
+        project
     }
 
-    pub fn remove_project(&mut self, name: &str) -> Option<LookupValue> {
-        self.map.remove(&format!("/project/{}", name))
+    pub fn remove_project(&self, name: &str) -> Result<Option<ProjectLookup>> {
+        let project = {
+            let mut lock = self.inner.write().unwrap();
+            lock.map
+                .remove(&format!("/project/{}", name))
+                .and_then(|value| match value {
+                    LookupValue::Project(v) => Some(v),
+                    _ => None,
+                })
+        };
+        self.persist()?;
+        Ok(project)
     }
 
-    pub fn remove_projects(&mut self) {
-        self.map.retain(|k, _| !k.starts_with("/project/"));
+    pub fn remove_projects(&self) -> Result<()> {
+        {
+            let mut lock = self.inner.write().unwrap();
+            lock.map.retain(|k, _| !k.starts_with("/project/"));
+        }
+        self.persist()
     }
 
     pub fn has_unresolved_projects(&self, meta: &LookupMeta) -> bool {
-        meta.project
-            .iter()
-            .any(|name| self.get_project(name).is_none())
+        for name in &meta.project {
+            if self.get_project(name).is_none() {
+                return true;
+            }
+        }
+        false
     }
 
-    pub fn projects(&self) -> impl Iterator<Item = (String, ProjectLookup)> + '_ {
-        self.map.iter().filter_map(|(k, v)| {
-            if let LookupValue::Project(p) = v {
-                let name = k.strip_prefix("/project/").unwrap_or(k).to_string();
-                Some((name, p.clone()))
-            } else {
-                None
+    pub fn projects(&self) -> BTreeMap<String, ProjectLookup> {
+        let lock = self.inner.read().unwrap();
+        lock.map
+            .iter()
+            .filter_map(|(k, v)| {
+                if let LookupValue::Project(p) = v {
+                    let name = k.strip_prefix("/project/").unwrap_or(k).to_string();
+                    Some((name, p.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+}
+
+/// A generic lookup mechanism for configuration values
+#[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq, Eq)]
+pub struct LookupConfig {
+    #[serde(flatten)]
+    map: BTreeMap<String, LookupValue>,
+}
+
+impl TryFrom<&PathBuf> for LookupConfig {
+    type Error = CliStateError;
+
+    fn try_from(path: &PathBuf) -> std::result::Result<Self, Self::Error> {
+        match std::fs::read_to_string(path) {
+            Ok(contents) => Ok(serde_json::from_str(&contents)?),
+            Err(_) => {
+                let d = Self::default();
+                let contents = serde_json::to_string(&d)?;
+                std::fs::write(path, contents)?;
+                Ok(d)
             }
-        })
+        }
     }
 }
 
@@ -114,6 +213,15 @@ pub enum LookupValue {
     Space(SpaceLookup),
     Project(ProjectLookup),
 }
+
+impl PartialEq for LookupValue {
+    fn eq(&self, other: &Self) -> bool {
+        serde_json::to_string(self).expect("Failed to serialize LookupValue")
+            == serde_json::to_string(other).expect("Failed to serialize LookupValue")
+    }
+}
+
+impl Eq for LookupValue {}
 
 /// An internet address abstraction (v6/v4/dns)
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -192,14 +300,14 @@ impl From<SocketAddr> for InternetAddress {
 }
 
 /// Represents a remote Ockam space lookup
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SpaceLookup {
     /// Identifier of this space
     pub id: String,
 }
 
 /// Represents a remote Ockam project lookup
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct ProjectLookup {
     /// How to reach the node hosting this project
     pub node_route: Option<MultiAddr>,
@@ -211,6 +319,15 @@ pub struct ProjectLookup {
     pub authority: Option<ProjectAuthority>,
     /// OktaAuth0 information.
     pub okta: Option<OktaAuth0>,
+}
+
+#[cfg(test)]
+impl PartialEq for ProjectLookup {
+    fn eq(&self, other: &Self) -> bool {
+        serde_json::to_string(&self)
+            .unwrap()
+            .eq(&serde_json::to_string(&other).unwrap())
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -258,5 +375,152 @@ impl ProjectAuthority {
 
     pub fn address(&self) -> &MultiAddr {
         &self.address
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct LookupMeta {
+    /// Append any project name that is encountered during look-up
+    pub project: VecDeque<Name>,
+}
+
+pub type Name = String;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn handle_spaces_lookups_in_memory() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = LookupConfigHandle::new(dir.path().to_path_buf()).unwrap();
+        let expected = SpaceLookup {
+            id: "id1".to_string(),
+        };
+
+        l.set_space("id1", "space1").unwrap();
+        assert_eq!(&l.get_space("space1").unwrap(), &expected);
+        assert!(l.get_space("space2").is_none());
+        assert_eq!(&l.remove_space("space1").unwrap().unwrap(), &expected);
+        assert!(l.remove_space("space2").unwrap().is_none());
+    }
+
+    #[test]
+    fn handle_spaces_lookups_from_disk() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let add_some_entries = |dir: &TempDir| {
+            let l = LookupConfigHandle::new(dir.path().to_path_buf()).unwrap();
+            l.remove_spaces().unwrap();
+            l.set_space("id1", "space1").unwrap();
+            l.set_space("id2", "space2").unwrap();
+            l.set_space("id3", "space3").unwrap();
+        };
+
+        let check_from_disk = |dir: &TempDir| {
+            let l = LookupConfigHandle::new(dir.path().to_path_buf()).unwrap();
+            let expected = [
+                (
+                    "space1",
+                    SpaceLookup {
+                        id: "id1".to_string(),
+                    },
+                ),
+                (
+                    "space2",
+                    SpaceLookup {
+                        id: "id2".to_string(),
+                    },
+                ),
+                (
+                    "space3",
+                    SpaceLookup {
+                        id: "id3".to_string(),
+                    },
+                ),
+            ];
+            for (name, space) in expected.iter() {
+                assert_eq!(&l.get_space(name).unwrap(), space);
+            }
+            l.remove_spaces().unwrap();
+            for (name, _) in expected.iter() {
+                assert!(l.get_space(name).is_none());
+            }
+        };
+
+        // Add some entries and check that they can be loaded from disk
+        add_some_entries(&dir);
+        check_from_disk(&dir);
+    }
+
+    #[test]
+    fn handle_projects_lookups_in_memory() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = LookupConfigHandle::new(dir.path().to_path_buf()).unwrap();
+        let expected = ProjectLookup {
+            id: "id1".to_string(),
+            ..Default::default()
+        };
+
+        l.set_project("project1".to_string(), expected.clone())
+            .unwrap();
+        assert!(&l.get_project("project1").unwrap().eq(&expected));
+        assert!(l.get_project("project2").is_none());
+        assert!(&l.remove_project("project1").unwrap().unwrap().eq(&expected));
+        assert!(l.remove_project("project2").unwrap().is_none());
+    }
+
+    #[test]
+    fn handle_projects_lookups_from_disk() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let expected = [
+            (
+                "project1",
+                ProjectLookup {
+                    id: "id1".to_string(),
+                    ..Default::default()
+                },
+            ),
+            (
+                "project2",
+                ProjectLookup {
+                    id: "id2".to_string(),
+                    ..Default::default()
+                },
+            ),
+            (
+                "project3",
+                ProjectLookup {
+                    id: "id3".to_string(),
+                    ..Default::default()
+                },
+            ),
+        ];
+
+        let add_some_entries = |dir: &TempDir| {
+            let l = LookupConfigHandle::new(dir.path().to_path_buf()).unwrap();
+            l.remove_projects().unwrap();
+            for (name, project) in expected.iter() {
+                l.set_project(name.to_string(), project.clone()).unwrap();
+            }
+        };
+
+        let check_from_disk = |dir: &TempDir| {
+            let l = LookupConfigHandle::new(dir.path().to_path_buf()).unwrap();
+
+            for (name, project) in expected.iter() {
+                assert!(&l.get_project(name).unwrap().eq(project));
+            }
+            l.remove_projects().unwrap();
+            for (name, _) in expected.iter() {
+                assert!(l.get_project(name).is_none());
+            }
+        };
+
+        // Add some entries and check that they can be loaded from disk
+        add_some_entries(&dir);
+        check_from_disk(&dir);
     }
 }

@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context as _};
+use minicbor::Decoder;
 use rand::random;
 use std::env::current_exe;
 use std::fs::OpenOptions;
@@ -9,20 +10,26 @@ use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpTransport};
 use ockam_api::authenticator::direct::types::OneTimeCode;
 use ockam_api::cli_state;
-use ockam_api::config::cli;
-use ockam_api::nodes::models::transport::{TransportMode, TransportType};
+use ockam_api::cli_state::NodeState;
+use ockam_api::config::authorities;
+use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
-use ockam_core::AllowAll;
+use ockam_core::api::{Response, Status};
+use ockam_core::{AllowAll, AsyncTryClone};
+use ockam_identity::credential::Credential;
 use ockam_multiaddr::MultiAddr;
-use ockam_vault::Vault;
 
 use crate::node::CreateCommand;
+use crate::project;
+use crate::project::config::refresh_projects;
 use crate::project::ProjectInfo;
+use crate::space::config::refresh_spaces;
+use crate::util::api;
+use crate::util::api::CloudOpts;
 use crate::CommandGlobalOpts;
-use crate::{project, OckamConfig};
 
 pub async fn start_embedded_node(
     ctx: &Context,
@@ -37,7 +44,6 @@ pub async fn start_embedded_node_with_vault_and_identity(
     vault: Option<&String>,
     identity: Option<&String>,
 ) -> anyhow::Result<String> {
-    let cfg = &opts.config;
     let cmd = CreateCommand::default();
 
     // This node was initially created as a foreground node
@@ -45,38 +51,58 @@ pub async fn start_embedded_node_with_vault_and_identity(
         init_node_state(ctx, opts, &cmd.node_name, vault, identity).await?;
     }
 
+    let node_state = opts.state.nodes.get(&cmd.node_name)?;
+
+    // Parse `--project` argument
     let project_id = match &cmd.project {
         Some(path) => {
             let s = tokio::fs::read_to_string(path).await?;
             let p: ProjectInfo = serde_json::from_str(&s)?;
             let project_id = p.id.to_string();
-            project::config::set_project(cfg, &(&p).into()).await?;
-            add_project_authority(p, &cmd.node_name, cfg).await?;
+            project::config::set_project(&node_state, &(&p).into()).await?;
+            add_project_authority(p, &node_state).await?;
             Some(project_id)
         }
         None => None,
     };
 
+    // Create TCP listener
     let tcp = TcpTransport::create(ctx).await?;
-    let bind = cmd.tcp_listener_address;
-    tcp.listen(&bind).await?;
+    let bind = tcp.listen(&cmd.tcp_listener_address).await?.to_string();
 
-    let projects = cfg.inner().lookup().projects().collect();
+    // Do we need to eagerly fetch a project membership credential?
+    let get_credential = cmd.project.is_some() && cmd.token.is_some();
+
+    // Store TCP listener address in node state
+    let node_state = opts.state.nodes.get(&cmd.node_name)?;
+    node_state.set_setup(
+        &node_state
+            .setup()?
+            .set_verbose(opts.global_args.verbose)
+            .add_transport(CreateTransportJson::new(
+                TransportType::Tcp,
+                TransportMode::Listen,
+                &bind,
+            )?),
+    )?;
+
+    let node_state = opts.state.nodes.get(&cmd.node_name)?;
     let node_man = NodeManager::create(
         ctx,
         NodeManagerGeneralOptions::new(cmd.node_name.clone(), cmd.launch_config.is_some()),
         NodeManagerProjectsOptions::new(
-            Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
+            Some(&node_state.config.authorities.inner()),
             project_id,
-            projects,
             None,
         ),
-        NodeManagerTransportOptions::new((TransportType::Tcp, TransportMode::Listen, bind), tcp),
+        NodeManagerTransportOptions::new(
+            (TransportType::Tcp, TransportMode::Listen, bind),
+            tcp.async_try_clone().await?,
+        ),
     )
     .await?;
 
     let node_manager_worker = NodeManagerWorker::new(node_man);
-
     ctx.start_worker(
         NODEMANAGER_ADDR,
         node_manager_worker,
@@ -85,7 +111,27 @@ pub async fn start_embedded_node_with_vault_and_identity(
     )
     .await?;
 
-    Ok(cmd.node_name.clone())
+    // Refresh projects and spaces lookups if its identity was enrolled
+    refresh_projects(ctx, opts, &cmd.node_name, &CloudOpts::route_s(), Some(&tcp)).await?;
+    refresh_spaces(ctx, opts, &cmd.node_name, &CloudOpts::route_s(), Some(&tcp)).await?;
+
+    if get_credential {
+        let req = api::credentials::get_credential(false).to_vec()?;
+        let res: Vec<u8> = ctx.send_and_receive(NODEMANAGER_ADDR, req).await?;
+        let mut d = Decoder::new(&res);
+        match d.decode::<Response>() {
+            Ok(hdr) if hdr.status() == Some(Status::Ok) && hdr.has_body() => {
+                let c: Credential = d.decode()?;
+                println!("{c}")
+            }
+            Ok(_) | Err(_) => {
+                eprintln!("failed to fetch membership credential");
+                delete_node(opts, &cmd.node_name, true)?;
+            }
+        }
+    }
+
+    Ok(cmd.node_name)
 }
 
 pub(super) async fn init_node_state(
@@ -142,8 +188,7 @@ pub(super) async fn init_node_state(
 
 pub(super) async fn add_project_authority(
     p: ProjectInfo<'_>,
-    node: &str,
-    cfg: &OckamConfig,
+    node_state: &NodeState,
 ) -> anyhow::Result<()> {
     let m = p
         .authority_access_route
@@ -154,11 +199,14 @@ pub(super) async fn add_project_authority(
         .map(|a| hex::decode(a.as_bytes()))
         .transpose()?;
     if let Some((a, m)) = a.zip(m) {
-        let v = Vault::default();
+        let v = node_state.config.vault().await?;
         let i = PublicIdentity::import(&a, &v).await?;
-        let a = cli::Authority::new(a, m);
-        cfg.authorities(node)?
-            .add_authority(i.identifier().clone(), a)
+        let a = authorities::Authority::new(a, m);
+        node_state
+            .config
+            .authorities
+            .add_authority(i.identifier().clone(), a)?;
+        Ok(())
     } else {
         Err(anyhow!("missing authority in project info"))
     }

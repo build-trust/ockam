@@ -192,7 +192,7 @@ impl OktaConfig<'_> {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OktaAuth0 {
     pub tenant_base_url: String,
     pub client_id: String,
@@ -338,6 +338,7 @@ impl<'a> AddEnroller<'a> {
 
 mod node {
     use minicbor::Decoder;
+    use std::collections::BTreeMap;
     use tracing::trace;
 
     use ockam_core::api::Request;
@@ -345,12 +346,26 @@ mod node {
     use ockam_node::Context;
 
     use crate::cli_state;
+    use crate::cli_state::CliState;
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
-    use crate::nodes::NodeManagerWorker;
+    use crate::config::lookup::ProjectLookup;
+    use crate::nodes::{NodeManager, NodeManagerWorker};
 
     use super::*;
 
     const TARGET: &str = "ockam_api::cloud::project";
+
+    impl NodeManager {
+        pub(crate) fn projects(&self) -> Result<BTreeMap<String, ProjectLookup>> {
+            let cli_state = CliState::new()?;
+            Ok(cli_state
+                .nodes
+                .get(&self.node_name)?
+                .config
+                .lookup
+                .projects())
+        }
+    }
 
     impl NodeManagerWorker {
         pub(crate) async fn create_project(

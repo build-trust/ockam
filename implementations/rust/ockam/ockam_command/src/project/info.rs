@@ -1,4 +1,3 @@
-use anyhow::Context as _;
 use clap::Args;
 
 use ockam::identity::IdentityIdentifier;
@@ -90,15 +89,7 @@ async fn run_impl(
     let controller_route = &cmd.cloud_opts.route();
     let node_name = start_embedded_node(ctx, &opts).await?;
 
-    // Lookup project
-    let id = match config::get_project(&opts.config, &cmd.name) {
-        Some(id) => id,
-        None => {
-            config::refresh_projects(ctx, &opts, &node_name, &cmd.cloud_opts.route(), None).await?;
-            config::get_project(&opts.config, &cmd.name)
-                .context(format!("Project '{}' does not exist", cmd.name))?
-        }
-    };
+    let id = config::get_project(ctx, &opts, &cmd.name, &node_name, controller_route, None).await?;
 
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();

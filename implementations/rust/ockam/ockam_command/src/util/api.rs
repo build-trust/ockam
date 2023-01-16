@@ -50,11 +50,6 @@ pub(crate) fn create_tcp_connection(
     Request::post("/node/tcp/connection").body(payload)
 }
 
-/// Construct a request to print Identity Id
-pub(crate) fn short_identity() -> RequestBuilder<'static, ()> {
-    Request::post("/node/identity/actions/show/short")
-}
-
 /// Construct a request to print a list of services for the given node
 pub(crate) fn list_services() -> RequestBuilder<'static, ()> {
     Request::get("/node/services")
@@ -326,7 +321,12 @@ pub struct CloudOpts {
 }
 
 impl CloudOpts {
+    // TODO: remove this in favor of the static version
     pub fn route(&self) -> MultiAddr {
+        Self::route_s()
+    }
+
+    pub fn route_s() -> MultiAddr {
         let route = if let Ok(s) = std::env::var(OCKAM_CONTROLLER_ADDR) {
             s
         } else {
