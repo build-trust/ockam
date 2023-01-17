@@ -327,13 +327,13 @@ jobs:
           release_path: implementations/elixir/ockam/ockam_vault_software/_build/dev/lib/ockam_vault_software/priv/native
           release_asset_name: ockam.linux_x86_64_gnu_elixir_ffi.so
           target: x86_64-unknown-linux-musl
-          container: ghcr.io/build-trust/ockam-builder@sha256:dac128554a96b302b6907bda7b677b1832d7952b35e0b35c4f6402cf15fe03e3
+          container: ghcr.io/build-trust/ockam-builder@sha256:3b2f698e164cd8a543e3b1fc121d219f039889850c13e51e91778185dbfd9719
         - build: linux_arm
           os: ubuntu-20.04
           release_path: implementations/elixir/ockam/ockam_vault_software/_build/dev/lib/ockam_vault_software/priv/native
           release_asset_name: ockam.linux_aarch64_gnu_elixir_ffi.so
           target: aarch64-unknown-linux-musl
-          container: ghcr.io/build-trust/ockam-builder:latest@sha256:ff8ec352d0ceca974f04f262a5706b881b9a0b8b2d77f65a470b28e1191a2947
+          container: ghcr.io/build-trust/ockam-builder@sha256:97e76d108d946b34fac2d23e0866167b092ef8e1c5af50123a6e222f83577a8c
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
@@ -356,7 +356,7 @@ jobs:
 
       - name: Build Rust Asset
         if: matrix.build != 'macos'
-        uses: docker://ghcr.io/build-trust/ockam-builder@sha256:dac128554a96b302b6907bda7b677b1832d7952b35e0b35c4f6402cf15fe03e3
+        uses: docker://ghcr.io/build-trust/ockam-builder@sha256:3b2f698e164cd8a543e3b1fc121d219f039889850c13e51e91778185dbfd9719
         with:
           args: |
             bash -c "export PRIVATE_KEY='${{ secrets.COSIGN_PRIVATE_KEY }}' && export COSIGN_PASSWORD='${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}';
