@@ -368,7 +368,7 @@ jobs:
         if: matrix.build != 'macos'
         run: |
           docker run --rm --user "$(id -u):$(id -g)" --volume $(pwd):/work ${{ matrix.container }} bash -c \
-            "cd implementations/elixir/ockam/ockam_vault_software; mix recompile.native; cd _build/dev/lib/ockam_vault_software/priv/native; PRIVATE_KEY='${{ secrets.COSIGN_PRIVATE_KEY }}' COSIGN_PASSWORD='${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}' cosign sign-blob --key env://PRIVATE_KEY libockam_elixir_ffi.so > libockam_elixir_ffi.so.sig;";
+            "cd implementations/elixir/ockam/ockam_vault_software; mix recompile.native; ";
 
       - name: Build NIF For MacOS
         if: matrix.build == 'macos'
@@ -384,11 +384,9 @@ jobs:
           ./build-elixir-universal-lib.sh
 
       - name: Install Cosign
-        if: matrix.build == 'macos'
         uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b
 
       - name: Sign NIFs
-        if: matrix.build == 'macos'
         shell: bash
         working-directory: ${{ matrix.release_path }}
         env:
