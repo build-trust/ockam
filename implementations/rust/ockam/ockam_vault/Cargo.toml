@@ -24,7 +24,7 @@ rust-version = "1.56.0"
 crate-type = ["rlib"]
 
 [features]
-default = ["std", "storage"]
+default = ["std", "storage", "rustcrypto"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -63,6 +63,7 @@ alloc = ["ockam_core/alloc", "ockam_node/alloc", "aes-gcm/alloc", "p256/ecdsa", 
 storage = ["std", "serde", "serde_json"]
 
 aws        = ["std", "aws-config", "aws-sdk-kms", "thiserror"]
+# FIXME: Either remove that feature, or avoid unneccessary dependencies when it's disabled
 rustcrypto = []
 
 [dependencies]
