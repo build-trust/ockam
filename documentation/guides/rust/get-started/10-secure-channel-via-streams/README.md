@@ -44,8 +44,7 @@ Add the following code to this file:
 // examples/10-secure-channel-via-streams-responder.rs
 use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
-use ockam::authenticated_storage::InMemoryStorage;
-use ockam::identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy};
+use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
@@ -62,13 +61,8 @@ async fn main(ctx: Context) -> Result<()> {
     let bob = Identity::create(&ctx, &vault).await?;
 
     // Create a secure channel listener at address "secure_channel_listener"
-    bob.create_secure_channel_listener(
-        "secure_channel_listener",
-        TrustEveryonePolicy,
-        &InMemoryStorage::new(),
-        &SecureChannelRegistry::new(),
-    )
-    .await?;
+    bob.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
+        .await?;
 
     // Create a stream client
     Stream::new(&ctx)
@@ -104,8 +98,7 @@ Add the following code to this file:
 
 ```rust
 // examples/10-secure-channel-via-streams-initiator.rs
-use ockam::authenticated_storage::InMemoryStorage;
-use ockam::identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy};
+use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
@@ -142,8 +135,6 @@ async fn main(mut ctx: Context) -> Result<()> {
                 "secure_channel_listener"  // to the "secure_channel_listener" listener
             ],
             TrustEveryonePolicy,
-            &InMemoryStorage::new(),
-            &SecureChannelRegistry::new(),
         )
         .await?;
 
