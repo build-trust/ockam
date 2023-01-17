@@ -1,5 +1,4 @@
-use ockam::authenticated_storage::InMemoryStorage;
-use ockam::identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy};
+use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
@@ -36,8 +35,6 @@ async fn main(mut ctx: Context) -> Result<()> {
                 "secure_channel_listener"  // to the "secure_channel_listener" listener
             ],
             TrustEveryonePolicy,
-            &InMemoryStorage::new(),
-            &SecureChannelRegistry::new(),
         )
         .await?;
 
