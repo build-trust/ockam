@@ -17,21 +17,18 @@ const TARGET: &str = "ockam::credential_exchange_worker::service";
 pub struct CredentialExchangeWorker<S: AuthenticatedStorage, V: IdentityVault> {
     authorities: Vec<PublicIdentity>,
     present_back: bool,
-    authenticated_storage: S,
-    identity: Identity<V>,
+    identity: Identity<V, S>,
 }
 
 impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
     pub fn new(
         authorities: Vec<PublicIdentity>,
         present_back: bool,
-        authenticated_storage: S,
-        identity: Identity<V>,
+        identity: Identity<V, S>,
     ) -> Self {
         Self {
             authorities,
             present_back,
-            authenticated_storage,
             identity,
         }
     }
@@ -86,7 +83,6 @@ impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
                         sender.clone(),
                         credential,
                         self.authorities.iter(),
-                        &self.authenticated_storage,
                     )
                     .await;
 
@@ -117,7 +113,6 @@ impl<S: AuthenticatedStorage, V: IdentityVault> CredentialExchangeWorker<S, V> {
                         sender.clone(),
                         credential,
                         self.authorities.iter(),
-                        &self.authenticated_storage,
                     )
                     .await;
 

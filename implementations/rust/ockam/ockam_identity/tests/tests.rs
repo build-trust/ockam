@@ -1,7 +1,6 @@
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
 use ockam_core::{Error, Result};
-use ockam_identity::authenticated_storage::mem::InMemoryStorage;
 use ockam_identity::Identity;
 use ockam_node::Context;
 use ockam_vault::Vault;
@@ -16,18 +15,15 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
     let alice_vault = Vault::create();
     let bob_vault = Vault::create();
 
-    let alice_storage = InMemoryStorage::new();
-    let bob_storage = InMemoryStorage::new();
-
     // Alice and Bob are distinct Entities.
     let alice = Identity::create(ctx, &alice_vault).await?;
     let bob = Identity::create(ctx, &bob_vault).await?;
 
     alice
-        .update_known_identity(bob.identifier(), &bob.to_public().await?, &alice_storage)
+        .update_known_identity(bob.identifier(), &bob.to_public().await?)
         .await?;
 
-    bob.update_known_identity(alice.identifier(), &alice.to_public().await?, &bob_storage)
+    bob.update_known_identity(alice.identifier(), &alice.to_public().await?)
         .await?;
 
     // Some state known to both parties. In Noise this would be a computed hash, for example.
@@ -41,10 +37,7 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
     let alice_proof = alice.create_signature(&state, None).await?;
     let bob_proof = bob.create_signature(&state, None).await?;
 
-    let known_bob = alice
-        .get_known_identity(bob.identifier(), &alice_storage)
-        .await?
-        .unwrap();
+    let known_bob = alice.get_known_identity(bob.identifier()).await?.unwrap();
     if !known_bob
         .verify_signature(&bob_proof, &state, None, &alice_vault)
         .await?
@@ -52,10 +45,7 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
         return test_error("bob's proof was invalid");
     }
 
-    let known_alice = bob
-        .get_known_identity(alice.identifier(), &bob_storage)
-        .await?
-        .unwrap();
+    let known_alice = bob.get_known_identity(alice.identifier()).await?.unwrap();
     if !known_alice
         .verify_signature(&alice_proof, &state, None, &bob_vault)
         .await?
@@ -73,9 +63,6 @@ async fn test_key_rotation(ctx: &mut Context) -> Result<()> {
     let alice_vault = Vault::create();
     let bob_vault = Vault::create();
 
-    let alice_storage = InMemoryStorage::new();
-    let bob_storage = InMemoryStorage::new();
-
     // Alice and Bob are distinct Entities.
     let alice = Identity::create(ctx, &alice_vault).await?;
     let bob = Identity::create(ctx, &bob_vault).await?;
@@ -85,10 +72,10 @@ async fn test_key_rotation(ctx: &mut Context) -> Result<()> {
     bob.rotate_root_key().await?;
 
     alice
-        .update_known_identity(bob.identifier(), &bob.to_public().await?, &alice_storage)
+        .update_known_identity(bob.identifier(), &bob.to_public().await?)
         .await?;
 
-    bob.update_known_identity(alice.identifier(), &alice.to_public().await?, &bob_storage)
+    bob.update_known_identity(alice.identifier(), &alice.to_public().await?)
         .await?;
 
     ctx.stop().await?;
@@ -101,28 +88,25 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
     let alice_vault = Vault::create();
     let bob_vault = Vault::create();
 
-    let alice_storage = InMemoryStorage::new();
-    let bob_storage = InMemoryStorage::new();
-
     // Alice and Bob are distinct Entities.
     let alice = Identity::create(ctx, &alice_vault).await?;
     let bob = Identity::create(ctx, &bob_vault).await?;
 
     alice
-        .update_known_identity(bob.identifier(), &bob.to_public().await?, &alice_storage)
+        .update_known_identity(bob.identifier(), &bob.to_public().await?)
         .await?;
 
-    bob.update_known_identity(alice.identifier(), &alice.to_public().await?, &bob_storage)
+    bob.update_known_identity(alice.identifier(), &alice.to_public().await?)
         .await?;
 
     alice.rotate_root_key().await?;
     bob.rotate_root_key().await?;
 
     alice
-        .update_known_identity(bob.identifier(), &bob.to_public().await?, &alice_storage)
+        .update_known_identity(bob.identifier(), &bob.to_public().await?)
         .await?;
 
-    bob.update_known_identity(alice.identifier(), &alice.to_public().await?, &bob_storage)
+    bob.update_known_identity(alice.identifier(), &alice.to_public().await?)
         .await?;
 
     // Re-Prove
@@ -136,10 +120,7 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
     let alice_proof = alice.create_signature(&state, None).await?;
     let bob_proof = bob.create_signature(&state, None).await?;
 
-    let known_bob = alice
-        .get_known_identity(bob.identifier(), &alice_storage)
-        .await?
-        .unwrap();
+    let known_bob = alice.get_known_identity(bob.identifier()).await?.unwrap();
     if !known_bob
         .verify_signature(&bob_proof, &state, None, &alice_vault)
         .await?
@@ -147,10 +128,7 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
         return test_error("bob's proof was invalid");
     }
 
-    let known_alice = bob
-        .get_known_identity(alice.identifier(), &bob_storage)
-        .await?
-        .unwrap();
+    let known_alice = bob.get_known_identity(alice.identifier()).await?.unwrap();
     if !known_alice
         .verify_signature(&alice_proof, &state, None, &bob_vault)
         .await?

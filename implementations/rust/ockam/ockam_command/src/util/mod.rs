@@ -531,6 +531,7 @@ mod tests {
     use super::*;
     use ockam_api::cli_state;
     use ockam_api::cli_state::{IdentityConfig, NodeConfig, VaultConfig};
+    use ockam_api::lmdb::LmdbStorage;
     use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
     use ockam_identity::Identity;
     use ockam_vault::storage::FileStorage;
@@ -573,7 +574,12 @@ mod tests {
         let v = Vault::new(Some(Arc::new(v_storage)));
         cli_state.vaults.create(&v_name, v_config).await?;
 
-        let idt = Identity::create(ctx, &v).await?;
+        let idt = Identity::create_ext(
+            ctx,
+            /* FIXME: @adrian */ &LmdbStorage::new("wrong/path").await?,
+            &v,
+        )
+        .await?;
         let idt_config = IdentityConfig::new(&idt).await;
         cli_state
             .identities

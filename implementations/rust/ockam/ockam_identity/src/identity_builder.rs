@@ -1,3 +1,4 @@
+use crate::authenticated_storage::mem::InMemoryStorage;
 use crate::{Identity, IdentityVault};
 use ockam_core::{Address, DenyAll, Result};
 use ockam_node::Context;
@@ -24,7 +25,7 @@ impl<V: IdentityVault> IdentityBuilder<V> {
         })
     }
 
-    pub async fn build(self) -> Result<Identity<V>> {
+    pub async fn build(self) -> Result<Identity<V, InMemoryStorage>> {
         Identity::create(&self.ctx, &self.vault).await
     }
 }

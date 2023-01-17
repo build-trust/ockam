@@ -19,7 +19,7 @@ use ockam_core::{Address, AllowAll, AsyncTryClone, CowStr, Error, Mailboxes, Res
 use ockam_node::api::{request, request_with_local_info};
 use ockam_node::WorkerBuilder;
 
-impl<V: IdentityVault> Identity<V> {
+impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     pub async fn set_credential(&self, credential: Option<Credential<'static>>) {
         // TODO: May also verify received credential calling self.verify_self_credential
         *self.credential.write().await = credential;
@@ -61,11 +61,9 @@ impl<V: IdentityVault> Identity<V> {
         authorities: Vec<PublicIdentity>,
         address: impl Into<Address>,
         present_back: bool,
-        authenticated_storage: impl AuthenticatedStorage,
     ) -> Result<()> {
         let s = self.async_try_clone().await?;
-        let worker =
-            CredentialExchangeWorker::new(authorities, present_back, authenticated_storage, s);
+        let worker = CredentialExchangeWorker::new(authorities, present_back, s);
 
         WorkerBuilder::with_mailboxes(
             Mailboxes::main(
@@ -118,7 +116,6 @@ impl<V: IdentityVault> Identity<V> {
         &self,
         route: impl Into<Route>,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
-        authenticated_storage: &impl AuthenticatedStorage,
     ) -> Result<()> {
         let credentials = self.credential.read().await;
         let credential = credentials.as_ref().ok_or_else(|| {
@@ -158,14 +155,14 @@ impl<V: IdentityVault> Identity<V> {
 
         let credential: Credential = dec.decode()?;
 
-        self.receive_presented_credential(their_id, credential, authorities, authenticated_storage)
+        self.receive_presented_credential(their_id, credential, authorities)
             .await?;
 
         Ok(())
     }
 }
 
-impl<V: IdentityVault> Identity<V> {
+impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     async fn verify_credential<'a>(
         sender: &IdentityIdentifier,
         credential: &'a Credential<'a>,
@@ -208,7 +205,6 @@ impl<V: IdentityVault> Identity<V> {
         sender: IdentityIdentifier,
         credential: Credential<'_>,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
-        authenticated_storage: &impl AuthenticatedStorage,
     ) -> Result<()> {
         let credential_data =
             Self::verify_credential(&sender, &credential, authorities, &self.vault).await?;
@@ -216,7 +212,7 @@ impl<V: IdentityVault> Identity<V> {
         AttributesStorageUtils::put_attributes(
             &sender,
             AttributesEntry::new(credential_data.attributes, credential_data.expires),
-            authenticated_storage,
+            &self.authenticated_storage,
         )
         .await?;
 
