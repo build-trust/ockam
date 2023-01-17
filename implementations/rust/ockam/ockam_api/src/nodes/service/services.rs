@@ -95,7 +95,6 @@ impl NodeManager {
                 authorities.public_identities(),
                 addr.clone(),
                 !oneway,
-                self.authenticated_storage.async_try_clone().await?,
             )
             .await?;
 

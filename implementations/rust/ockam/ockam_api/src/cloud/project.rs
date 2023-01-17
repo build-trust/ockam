@@ -379,11 +379,16 @@ mod node {
                             .identities
                             .get(existing_identity_name.as_ref())?
                             .config;
-                        match identity_cfg.get(ctx, inner.vault()?).await {
+                        match identity_cfg
+                            .get(ctx, &inner.authenticated_storage, inner.vault()?)
+                            .await
+                        {
                             Ok(idt) => idt,
                             Err(_) => {
                                 let vault_cfg = cli_state.vaults.default()?.config;
-                                identity_cfg.get(ctx, &vault_cfg.get().await?).await?
+                                identity_cfg
+                                    .get(ctx, &inner.authenticated_storage, &vault_cfg.get().await?)
+                                    .await?
                             }
                         }
                     }

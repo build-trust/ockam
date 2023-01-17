@@ -35,10 +35,10 @@ pub const PROJECT_MEMBER_SCHEMA: SchemaId = SchemaId(1);
 pub const PROJECT_ID: &str = "project_id";
 pub const ROLE: &str = "role";
 
-pub struct Server<S, V: IdentityVault> {
+pub struct Server<S, IS: AuthenticatedStorage, V: IdentityVault> {
     project: Vec<u8>,
     store: S,
-    ident: Identity<V>,
+    ident: Identity<V, IS>,
     enrollers: HashMap<IdentityIdentifier, Enroller>,
     tokens: LruCache<[u8; 32], Token>,
 }
@@ -49,9 +49,10 @@ struct Token {
 }
 
 #[ockam_core::worker]
-impl<S, V> Worker for Server<S, V>
+impl<S, IS, V> Worker for Server<S, IS, V>
 where
     S: AuthenticatedStorage,
+    IS: AuthenticatedStorage,
     V: IdentityVault,
 {
     type Context = Context;
@@ -70,12 +71,18 @@ where
     }
 }
 
-impl<S, V> Server<S, V>
+impl<S, IS, V> Server<S, IS, V>
 where
     S: AuthenticatedStorage,
+    IS: AuthenticatedStorage,
     V: IdentityVault,
 {
-    pub fn new(project: Vec<u8>, store: S, enrollers: &str, identity: Identity<V>) -> Result<Self> {
+    pub fn new(
+        project: Vec<u8>,
+        store: S,
+        enrollers: &str,
+        identity: Identity<V, IS>,
+    ) -> Result<Self> {
         Ok(Server {
             project,
             store,

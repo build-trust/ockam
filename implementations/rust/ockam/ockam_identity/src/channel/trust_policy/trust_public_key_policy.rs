@@ -10,22 +10,19 @@ use ockam_core::{AsyncTryClone, Result};
 pub struct TrustPublicKeyPolicy<V: IdentityVault, S: AuthenticatedStorage> {
     public_key: PublicKey,
     public_key_label: String,
-    identity: Identity<V>,
-    storage: S,
+    identity: Identity<V, S>,
 }
 
 impl<V: IdentityVault, S: AuthenticatedStorage> TrustPublicKeyPolicy<V, S> {
     pub fn new(
         public_key: PublicKey,
         public_key_label: impl Into<String>,
-        identity: Identity<V>,
-        storage: S,
+        identity: Identity<V, S>,
     ) -> Self {
         Self {
             public_key,
             public_key_label: public_key_label.into(),
             identity,
-            storage,
         }
     }
 }
@@ -35,7 +32,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> TrustPolicy for TrustPublicKeyPo
     async fn check(&self, trust_info: &SecureChannelTrustInfo) -> Result<bool> {
         let their_identity = match self
             .identity
-            .get_known_identity(trust_info.their_identity_id(), &self.storage)
+            .get_known_identity(trust_info.their_identity_id())
             .await?
         {
             Some(their_identity) => their_identity,

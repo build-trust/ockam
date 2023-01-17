@@ -78,6 +78,7 @@ mod node {
 
     use crate::cloud::OCKAM_CONTROLLER_IDENTITY_ID;
     use crate::error::ApiError;
+    use crate::lmdb::LmdbStorage;
     use crate::nodes::{NodeManager, NodeManagerWorker};
     use crate::StaticFiles;
 
@@ -119,7 +120,7 @@ mod node {
         async fn controller_secure_channel(
             &mut self,
             route: impl Into<Route>,
-            identity: Identity<Vault>,
+            identity: Identity<Vault, LmdbStorage>,
         ) -> Result<Address> {
             let route = route.into();
             // Create secure channel for the given route using the orchestrator identity.
@@ -128,8 +129,6 @@ mod node {
                 .create_secure_channel(
                     route,
                     TrustIdentifierPolicy::new(self.controller_identity_id()),
-                    &self.authenticated_storage,
-                    &self.secure_channel_registry,
                 )
                 .await?;
             debug!(target: TARGET, %addr, "Orchestrator secure channel created");
@@ -147,7 +146,7 @@ mod node {
             cloud_route: impl Into<Route>,
             api_service: &str,
             req: RequestBuilder<'_, T>,
-            ident: Identity<Vault>,
+            ident: Identity<Vault, LmdbStorage>,
         ) -> Result<Vec<u8>>
         where
             T: Encode<()>,

@@ -9,9 +9,7 @@ use ockam_api::authenticator::direct;
 use ockam_api::authenticator::direct::types::Enroller;
 use ockam_core::compat::rand::random_string;
 use ockam_core::{AllowAll, AsyncTryClone, Result};
-use ockam_identity::{
-    IdentityIdentifier, PublicIdentity, SecureChannelRegistry, TrustEveryonePolicy,
-};
+use ockam_identity::{IdentityIdentifier, PublicIdentity, TrustEveryonePolicy};
 use ockam_node::Context;
 use tempfile::NamedTempFile;
 
@@ -23,18 +21,11 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let api_worker_addr = random_string();
     let auth_worker_addr = random_string();
 
-    let registry = SecureChannelRegistry::new();
-
     // Create the authority:
     let authority = {
         let a = Identity::create(ctx, &Vault::create()).await?;
-        a.create_secure_channel_listener(
-            &api_worker_addr,
-            TrustEveryonePolicy,
-            &InMemoryStorage::new(),
-            &registry,
-        )
-        .await?;
+        a.create_secure_channel_listener(&api_worker_addr, TrustEveryonePolicy)
+            .await?;
         let store = InMemoryStorage::new();
         let enrollers = tmpf.path().to_str().expect("path should be a string");
         let auth = direct::Server::new(
@@ -61,12 +52,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
 
     // Connect to the API channel from the enroller:
     let e2a = enroller
-        .create_secure_channel(
-            &api_worker_addr,
-            TrustEveryonePolicy,
-            &InMemoryStorage::new(),
-            &registry,
-        )
+        .create_secure_channel(&api_worker_addr, TrustEveryonePolicy)
         .await?;
 
     // Add the member via the enroller's connection:
@@ -108,12 +94,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
 
     // Open a secure channel from member to authenticator:
     let m2a = member
-        .create_secure_channel(
-            &api_worker_addr,
-            TrustEveryonePolicy,
-            &InMemoryStorage::new(),
-            &registry,
-        )
+        .create_secure_channel(&api_worker_addr, TrustEveryonePolicy)
         .await?;
 
     let mut c = direct::Client::new(route![m2a, &auth_worker_addr], ctx).await?;
@@ -141,18 +122,11 @@ async fn json_config(ctx: &mut Context) -> Result<()> {
     let api_worker_addr = random_string();
     let auth_worker_addr = random_string();
 
-    let registry = SecureChannelRegistry::new();
-
     // Create the authority:
     let authority = {
         let a = Identity::create(ctx, &Vault::create()).await?;
-        a.create_secure_channel_listener(
-            &api_worker_addr,
-            TrustEveryonePolicy,
-            &InMemoryStorage::new(),
-            &registry,
-        )
-        .await?;
+        a.create_secure_channel_listener(&api_worker_addr, TrustEveryonePolicy)
+            .await?;
         let store = InMemoryStorage::new();
         let auth = direct::Server::new(
             b"project42".to_vec(),
@@ -173,12 +147,7 @@ async fn json_config(ctx: &mut Context) -> Result<()> {
 
     // Connect to the API channel from the enroller:
     let e2a = enroller
-        .create_secure_channel(
-            &api_worker_addr,
-            TrustEveryonePolicy,
-            &InMemoryStorage::new(),
-            &registry,
-        )
+        .create_secure_channel(&api_worker_addr, TrustEveryonePolicy)
         .await?;
 
     // Add the member via the enroller's connection:
@@ -219,12 +188,7 @@ async fn json_config(ctx: &mut Context) -> Result<()> {
 
     // Open a secure channel from member to authenticator:
     let m2a = member
-        .create_secure_channel(
-            &api_worker_addr,
-            TrustEveryonePolicy,
-            &InMemoryStorage::new(),
-            &registry,
-        )
+        .create_secure_channel(&api_worker_addr, TrustEveryonePolicy)
         .await?;
 
     let mut c = direct::Client::new(route![m2a, &auth_worker_addr], ctx).await?;
@@ -249,8 +213,6 @@ async fn json_config(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn update_member_format(ctx: &mut Context) -> Result<()> {
-    let registry = SecureChannelRegistry::new();
-
     let mut tmpf = NamedTempFile::new().unwrap();
     serde_json::to_writer(&mut tmpf, &HashMap::<IdentityIdentifier, Enroller>::new()).unwrap();
     // Create the authority:
@@ -266,13 +228,8 @@ async fn update_member_format(ctx: &mut Context) -> Result<()> {
         .await?;
     let authority = {
         let a = Identity::create(ctx, &Vault::create()).await?;
-        a.create_secure_channel_listener(
-            "api",
-            TrustEveryonePolicy,
-            &InMemoryStorage::new(),
-            &registry,
-        )
-        .await?;
+        a.create_secure_channel_listener("api", TrustEveryonePolicy)
+            .await?;
         let exported = a.export().await?;
         let enrollers = tmpf.path().to_str().expect("path should be a string");
         let auth = direct::Server::new(b"project42".to_vec(), store, enrollers, a)?;
@@ -286,12 +243,7 @@ async fn update_member_format(ctx: &mut Context) -> Result<()> {
 
     // Open a secure channel from member to authenticator:
     let m2a = member
-        .create_secure_channel(
-            "api",
-            TrustEveryonePolicy,
-            &InMemoryStorage::new(),
-            &registry,
-        )
+        .create_secure_channel("api", TrustEveryonePolicy)
         .await?;
 
     let mut c = direct::Client::new(route![m2a, "auth"], ctx).await?;

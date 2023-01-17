@@ -5,6 +5,7 @@ use anyhow::anyhow;
 use clap::Args;
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::{IdentityState, NodeState};
+use ockam_api::lmdb::LmdbStorage;
 use ockam_api::nodes::models::base::NodeStatus;
 use ockam_identity::Identity;
 use ockam_vault::Vault;
@@ -19,7 +20,7 @@ pub struct StatusCommand {
 }
 
 struct NodeDetails {
-    identity: Identity<Vault>,
+    identity: Identity<Vault, LmdbStorage>,
     state: NodeState,
     status: String,
 }
@@ -48,7 +49,13 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StatusCommand) ->
     let mut node_details: Vec<NodeDetails> = vec![];
     for node_state in &node_states {
         let node_infos = NodeDetails {
-            identity: node_state.config.identity(ctx).await?,
+            identity: node_state
+                .config
+                .identity(
+                    ctx,
+                    /* FIXME: @adrian */ &LmdbStorage::new("wrong/path").await?,
+                )
+                .await?,
             state: node_state.clone(),
             status: get_node_status(ctx, &opts, node_state).await?,
         };

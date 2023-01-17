@@ -15,6 +15,7 @@ use ockam_api::cli_state::EnrollmentStatus;
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::cloud::space::Space;
+use ockam_api::lmdb::LmdbStorage;
 use ockam_core::api::Status;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
@@ -369,7 +370,13 @@ async fn update_enrolled_identity(
     let identities = opts.state.identities.list()?;
 
     let node_state = opts.state.nodes.get(node_name)?;
-    let node_identity = node_state.config.identity(ctx).await?;
+    let node_identity = node_state
+        .config
+        .identity(
+            ctx,
+            /* FIXME: @adrian */ &LmdbStorage::new("wrong/path").await?,
+        )
+        .await?;
 
     for mut identity in identities {
         if node_identity.identifier() == &identity.config.identifier {

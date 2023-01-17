@@ -3,6 +3,7 @@ use std::time::Duration;
 use super::{map_multiaddr_err, NodeManagerWorker};
 use crate::cli_state::CliState;
 use crate::error::ApiError;
+use crate::lmdb::LmdbStorage;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
     CredentialExchangeMode, DeleteSecureChannelRequest, DeleteSecureChannelResponse,
@@ -39,7 +40,7 @@ impl NodeManager {
 
     pub(crate) async fn create_secure_channel_internal(
         &mut self,
-        identity: &Identity<Vault>,
+        identity: &Identity<Vault, LmdbStorage>,
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         timeout: Option<Duration>,
@@ -60,21 +61,13 @@ impl NodeManager {
                     .create_secure_channel_extended(
                         sc_route.clone(),
                         TrustMultiIdentifiersPolicy::new(ids),
-                        &self.authenticated_storage,
                         timeout,
-                        &self.secure_channel_registry,
                     )
                     .await
             }
             None => {
                 identity
-                    .create_secure_channel_extended(
-                        sc_route.clone(),
-                        TrustEveryonePolicy,
-                        &self.authenticated_storage,
-                        timeout,
-                        &self.secure_channel_registry,
-                    )
+                    .create_secure_channel_extended(sc_route.clone(), TrustEveryonePolicy, timeout)
                     .await
             }
         }?;
@@ -100,11 +93,16 @@ impl NodeManager {
         let identity = if let Some(identity) = identity_name {
             let state = CliState::new()?;
             let idt_config = state.identities.get(&identity)?.config;
-            match idt_config.get(ctx, self.vault()?).await {
+            match idt_config
+                .get(ctx, &self.authenticated_storage, self.vault()?)
+                .await
+            {
                 Ok(idt) => idt,
                 Err(_) => {
                     let default_vault = &state.vaults.default()?.config.get().await?;
-                    idt_config.get(ctx, default_vault).await?
+                    idt_config
+                        .get(ctx, &self.authenticated_storage, default_vault)
+                        .await?
                 }
             }
         } else {
@@ -141,7 +139,6 @@ impl NodeManager {
                     .present_credential_mutual(
                         route![sc_addr.clone(), DefaultAddress::CREDENTIAL_SERVICE],
                         &authorities.public_identities(),
-                        &self.authenticated_storage,
                     )
                     .await?;
                 debug!(%sc_addr, "Mutual credential presentation success");
@@ -170,19 +167,12 @@ impl NodeManager {
                     .create_secure_channel_listener(
                         addr.clone(),
                         TrustMultiIdentifiersPolicy::new(ids),
-                        &self.authenticated_storage,
-                        &self.secure_channel_registry,
                     )
                     .await
             }
             None => {
                 identity
-                    .create_secure_channel_listener(
-                        addr.clone(),
-                        TrustEveryonePolicy,
-                        &self.authenticated_storage,
-                        &self.secure_channel_registry,
-                    )
+                    .create_secure_channel_listener(addr.clone(), TrustEveryonePolicy)
                     .await
             }
         }?;

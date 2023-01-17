@@ -1,10 +1,11 @@
+use crate::authenticated_storage::mem::InMemoryStorage;
 use crate::authenticated_storage::AuthenticatedStorage;
 use crate::change::IdentitySignedChange;
 use crate::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use crate::credential::Credential;
 use crate::{
     ChangeIdentifier, IdentityError, IdentityIdentifier, IdentityVault, KeyAttributes,
-    PublicIdentity,
+    PublicIdentity, SecureChannelRegistry,
 };
 use ockam_core::compat::{
     boxed::Box,
@@ -22,11 +23,13 @@ use ockam_vault::{KeyId, SecretAttributes};
 /// Identity implementation
 #[derive(AsyncTryClone)]
 #[async_try_clone(crate = "ockam_core")]
-pub struct Identity<V: IdentityVault> {
+pub struct Identity<V: IdentityVault, S: AuthenticatedStorage> {
     id: IdentityIdentifier,
     pub(crate) credential: Arc<RwLock<Option<Credential<'static>>>>,
     pub(crate) change_history: Arc<RwLock<IdentityChangeHistory>>,
     pub(crate) ctx: Context,
+    pub(crate) authenticated_storage: S,
+    pub(crate) registry: SecureChannelRegistry,
     pub(crate) vault: V,
 }
 
@@ -46,12 +49,14 @@ impl IdentityStateConst {
     pub const ATTRIBUTES_KEY: &'static str = "ATTRIBUTES";
 }
 
-impl<V: IdentityVault> Identity<V> {
+impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     /// Identity constructor
     pub(crate) fn new(
         id: IdentityIdentifier,
         change_history: IdentityChangeHistory,
         ctx: Context,
+        authenticated_storage: S,
+        registry: SecureChannelRegistry,
         vault: V,
     ) -> Self {
         Self {
@@ -59,15 +64,19 @@ impl<V: IdentityVault> Identity<V> {
             credential: Arc::new(RwLock::new(None)),
             change_history: Arc::new(RwLock::new(change_history)),
             ctx,
+            authenticated_storage,
+            registry,
             vault,
         }
     }
 
-    pub async fn export(&self) -> Result<Vec<u8>> {
-        self.change_history.read().await.export()
-    }
-
-    pub async fn import(ctx: &Context, data: &[u8], vault: &V) -> Result<Self> {
+    pub async fn import_ext(
+        ctx: &Context,
+        data: &[u8],
+        authenticated_storage: &S,
+        registry: &SecureChannelRegistry,
+        vault: &V,
+    ) -> Result<Self> {
         let change_history = IdentityChangeHistory::import(data)?;
         if !change_history.verify_all_existing_changes(vault).await? {
             return Err(IdentityError::IdentityVerificationFailed.into());
@@ -84,48 +93,22 @@ impl<V: IdentityVault> Identity<V> {
 
         let vault = vault.async_try_clone().await?;
 
-        let identity = Self::new(id, change_history, child_ctx, vault);
+        let identity = Self::new(
+            id,
+            change_history,
+            child_ctx,
+            authenticated_storage.async_try_clone().await?,
+            registry.clone(),
+            vault,
+        );
 
         Ok(identity)
     }
 
-    pub fn vault(&self) -> &V {
-        &self.vault
-    }
-
-    pub async fn change_history(&self) -> IdentityChangeHistory {
-        self.change_history.read().await.clone()
-    }
-
-    pub fn ctx(&self) -> &Context {
-        &self.ctx
-    }
-
-    /// Create Identity with external key.
-    pub async fn create_ext(
-        ctx: &Context,
-        vault: &V,
-        kid: &KeyId,
-        attrs: KeyAttributes,
-    ) -> Result<Self> {
-        Self::create_impl(ctx, vault, Some(kid), attrs).await
-    }
-
-    /// Create Identity with a new secret key.
-    pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
-        let attrs = KeyAttributes::new(
-            IdentityStateConst::ROOT_LABEL.to_string(),
-            SecretAttributes::new(
-                SecretType::Ed25519,
-                SecretPersistence::Persistent,
-                CURVE25519_SECRET_LENGTH_U32,
-            ),
-        );
-        Self::create_impl(ctx, vault, None, attrs).await
-    }
-
     async fn create_impl(
         ctx: &Context,
+        authenticated_storage: S,
+        registry: SecureChannelRegistry,
         vault: &V,
         kid: Option<&KeyId>,
         key_attribs: KeyAttributes,
@@ -164,13 +147,135 @@ impl<V: IdentityVault> Identity<V> {
 
         let vault = vault.async_try_clone().await?;
 
-        let identity = Self::new(id, change_history, child_ctx, vault);
+        let identity = Self::new(
+            id,
+            change_history,
+            child_ctx,
+            authenticated_storage,
+            registry,
+            vault,
+        );
 
         Ok(identity)
     }
+    /// Create Identity with a new secret key.
+    pub async fn create_ext(ctx: &Context, authenticated_storage: &S, vault: &V) -> Result<Self> {
+        let attrs = KeyAttributes::new(
+            IdentityStateConst::ROOT_LABEL.to_string(),
+            SecretAttributes::new(
+                SecretType::Ed25519,
+                SecretPersistence::Persistent,
+                CURVE25519_SECRET_LENGTH_U32,
+            ),
+        );
+        Self::create_impl(
+            ctx,
+            authenticated_storage.async_try_clone().await?,
+            SecureChannelRegistry::new(),
+            vault,
+            None,
+            attrs,
+        )
+        .await
+    }
+    /// Create Identity with external key.
+    pub async fn create_with_external_key_ext(
+        ctx: &Context,
+        authenticated_storage: &S,
+        vault: &V,
+        kid: &KeyId,
+        attrs: KeyAttributes,
+    ) -> Result<Self> {
+        Self::create_impl(
+            ctx,
+            authenticated_storage.async_try_clone().await?,
+            SecureChannelRegistry::new(),
+            vault,
+            Some(kid),
+            attrs,
+        )
+        .await
+    }
 }
 
-impl<V: IdentityVault> Identity<V> {
+impl<V: IdentityVault> Identity<V, InMemoryStorage> {
+    /// Create Identity with a new secret key.
+    pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
+        let attrs = KeyAttributes::new(
+            IdentityStateConst::ROOT_LABEL.to_string(),
+            SecretAttributes::new(
+                SecretType::Ed25519,
+                SecretPersistence::Persistent,
+                CURVE25519_SECRET_LENGTH_U32,
+            ),
+        );
+        Self::create_impl(
+            ctx,
+            InMemoryStorage::new(),
+            SecureChannelRegistry::new(),
+            vault,
+            None,
+            attrs,
+        )
+        .await
+    }
+    /// Create Identity with external key.
+    pub async fn create_with_external_key(
+        ctx: &Context,
+        vault: &V,
+        kid: &KeyId,
+        attrs: KeyAttributes,
+    ) -> Result<Self> {
+        Self::create_impl(
+            ctx,
+            InMemoryStorage::new(),
+            SecureChannelRegistry::new(),
+            vault,
+            Some(kid),
+            attrs,
+        )
+        .await
+    }
+
+    pub async fn import(ctx: &Context, data: &[u8], vault: &V) -> Result<Self> {
+        Self::import_ext(
+            ctx,
+            data,
+            &InMemoryStorage::new(),
+            &SecureChannelRegistry::new(),
+            vault,
+        )
+        .await
+    }
+}
+
+impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+    pub async fn export(&self) -> Result<Vec<u8>> {
+        self.change_history.read().await.export()
+    }
+
+    pub fn vault(&self) -> &V {
+        &self.vault
+    }
+
+    pub fn authenticated_storage(&self) -> &S {
+        &self.authenticated_storage
+    }
+
+    pub fn registry(&self) -> &SecureChannelRegistry {
+        &self.registry
+    }
+
+    pub async fn change_history(&self) -> IdentityChangeHistory {
+        self.change_history.read().await.clone()
+    }
+
+    pub fn ctx(&self) -> &Context {
+        &self.ctx
+    }
+}
+
+impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     pub(crate) async fn get_secret_key_from_change(
         change: &IdentitySignedChange,
         vault: &V,
@@ -188,7 +293,7 @@ impl<V: IdentityVault> Identity<V> {
     }
 }
 
-impl<V: IdentityVault> Identity<V> {
+impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     pub fn identifier(&self) -> &IdentityIdentifier {
         &self.id
     }
@@ -263,9 +368,9 @@ impl<V: IdentityVault> Identity<V> {
     pub async fn get_known_identity(
         &self,
         their_identity_id: &IdentityIdentifier,
-        storage: &impl AuthenticatedStorage,
     ) -> Result<Option<PublicIdentity>> {
-        if let Some(known) = storage
+        if let Some(known) = self
+            .authenticated_storage
             .get(
                 &their_identity_id.to_string(),
                 IdentityStateConst::CHANGE_HISTORY_KEY,
@@ -284,26 +389,24 @@ impl<V: IdentityVault> Identity<V> {
         &self,
         their_identity_id: &IdentityIdentifier,
         current_history: &PublicIdentity,
-        storage: &impl AuthenticatedStorage,
     ) -> Result<()> {
-        let should_set =
-            if let Some(known) = self.get_known_identity(their_identity_id, storage).await? {
-                match current_history.changes().compare(known.changes()) {
-                    IdentityHistoryComparison::Equal => false, /* Do nothing */
-                    IdentityHistoryComparison::Conflict => {
-                        return Err(IdentityError::ConsistencyError.into())
-                    }
-                    IdentityHistoryComparison::Newer => true, /* Update */
-                    IdentityHistoryComparison::Older => {
-                        return Err(IdentityError::ConsistencyError.into())
-                    }
+        let should_set = if let Some(known) = self.get_known_identity(their_identity_id).await? {
+            match current_history.changes().compare(known.changes()) {
+                IdentityHistoryComparison::Equal => false, /* Do nothing */
+                IdentityHistoryComparison::Conflict => {
+                    return Err(IdentityError::ConsistencyError.into())
                 }
-            } else {
-                true
-            };
+                IdentityHistoryComparison::Newer => true, /* Update */
+                IdentityHistoryComparison::Older => {
+                    return Err(IdentityError::ConsistencyError.into())
+                }
+            }
+        } else {
+            true
+        };
 
         if should_set {
-            storage
+            self.authenticated_storage
                 .set(
                     &their_identity_id.to_string(),
                     IdentityStateConst::CHANGE_HISTORY_KEY.to_string(),
@@ -335,7 +438,7 @@ mod test {
         Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))
     }
 
-    impl<V: IdentityVault> Identity<V> {
+    impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         pub async fn get_root_public_key(&self) -> Result<PublicKey> {
             self.change_history.read().await.get_root_public_key()
         }

@@ -1,6 +1,6 @@
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
-use ockam_identity::{Identity, IdentityIdentifier};
+use ockam_identity::{Identity, IdentityIdentifier, SecureChannelRegistry};
 use ockam_vault::{storage::FileStorage, Vault};
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use time::format_description::well_known::Iso8601;
 use time::OffsetDateTime;
 
+use crate::lmdb::LmdbStorage;
 use thiserror::Error;
 
 type Result<T> = std::result::Result<T, CliStateError>;
@@ -397,7 +398,7 @@ pub struct IdentityConfig {
 }
 
 impl IdentityConfig {
-    pub async fn new(identity: &Identity<Vault>) -> Self {
+    pub async fn new(identity: &Identity<Vault, LmdbStorage>) -> Self {
         let identifier = identity.identifier().clone();
         let change_history = identity.change_history().await;
         Self {
@@ -407,9 +408,14 @@ impl IdentityConfig {
         }
     }
 
-    pub async fn get(&self, ctx: &ockam::Context, vault: &Vault) -> Result<Identity<Vault>> {
+    pub async fn get(
+        &self,
+        ctx: &ockam::Context,
+        storage: &LmdbStorage,
+        vault: &Vault,
+    ) -> Result<Identity<Vault, LmdbStorage>> {
         let data = self.change_history.export()?;
-        Ok(Identity::import(ctx, &data, vault).await?)
+        Ok(Identity::import_ext(ctx, &data, storage, &SecureChannelRegistry::new(), vault).await?)
     }
 }
 
@@ -716,11 +722,15 @@ impl NodeConfig {
         Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
     }
 
-    pub async fn identity(&self, ctx: &ockam::Context) -> Result<Identity<Vault>> {
+    pub async fn identity(
+        &self,
+        ctx: &ockam::Context,
+        storage: &LmdbStorage,
+    ) -> Result<Identity<Vault, LmdbStorage>> {
         let vault = self.vault().await?;
         let path = std::fs::canonicalize(&self.default_identity)?;
         let config: IdentityConfig = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
-        config.get(ctx, &vault).await
+        config.get(ctx, storage, &vault).await
     }
 }
 
@@ -906,7 +916,13 @@ mod tests {
             let name = hex::encode(rand::random::<[u8; 4]>());
             let vault_config = sut.vaults.get(&vault_name).unwrap().config;
             let vault = vault_config.get().await.unwrap();
-            let identity = Identity::create(ctx, &vault).await.unwrap();
+            let identity = Identity::create_ext(
+                ctx,
+                /* FIXME: @adrian */ &LmdbStorage::new("wrong/path").await?,
+                &vault,
+            )
+            .await
+            .unwrap();
             let config = IdentityConfig::new(&identity).await;
 
             let state = sut.identities.create(&name, config).unwrap();

@@ -10,7 +10,7 @@ use crate::channel::encryptor_worker::EncryptorWorker;
 use crate::channel::messages::IdentityChannelMessage;
 use crate::{
     Identity, IdentityError, IdentitySecureChannelLocalInfo, IdentityVault, PublicIdentity,
-    SecureChannelRegistry, SecureChannelRegistryEntry, SecureChannelTrustInfo, TrustPolicy,
+    SecureChannelRegistryEntry, SecureChannelTrustInfo, TrustPolicy,
 };
 use core::time::Duration;
 use ockam_core::compat::vec::Vec;
@@ -42,10 +42,8 @@ pub(crate) struct DecryptorWorker<
     remote_route: Route,
     remote_backwards_compatibility_address: Option<Address>,
     init_payload: Option<Vec<u8>>,
-    identity: Identity<V>,
-    storage: S,
+    identity: Identity<V, S>,
     trust_policy: Arc<dyn TrustPolicy>,
-    registry: SecureChannelRegistry,
     state_key_exchange: Option<KeyExchange<K>>,
     state_exchange_identity: Option<ExchangeIdentity<V>>,
     state_initialized: Option<Initialized<V>>,
@@ -55,11 +53,9 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXInitiator<V
     pub async fn create_initiator(
         ctx: &Context,
         remote_route: Route,
-        identity: Identity<V>,
-        storage: S,
+        identity: Identity<V, S>,
         trust_policy: Arc<dyn TrustPolicy>,
         timeout: Duration,
-        registry: SecureChannelRegistry,
     ) -> Result<Address> {
         let addresses = Addresses::generate(Role::Initiator);
 
@@ -86,8 +82,6 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXInitiator<V
             init_payload: None,
             identity,
             trust_policy,
-            storage,
-            registry,
             state_key_exchange: Some(KeyExchange { key_exchanger }),
             state_exchange_identity: None,
             state_initialized: None,
@@ -113,11 +107,9 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXInitiator<V
 impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXResponder<V>, S> {
     pub(crate) async fn create_responder(
         ctx: &Context,
-        identity: Identity<V>,
-        storage: S,
+        identity: Identity<V, S>,
         trust_policy: Arc<dyn TrustPolicy>,
         msg: Routed<CreateResponderChannelMessage>,
-        registry: SecureChannelRegistry,
     ) -> Result<()> {
         // Route to the decryptor on the other side
         let remote_route = msg.return_route();
@@ -146,8 +138,6 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXResponder<V
             init_payload: Some(body.payload().to_vec()),
             identity,
             trust_policy,
-            storage,
-            registry,
             state_key_exchange: Some(KeyExchange { key_exchanger }),
             state_exchange_identity: None,
             state_initialized: None,
@@ -390,7 +380,7 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
             }
 
             self.identity
-                .update_known_identity(their_identity_id, &their_identity, &self.storage)
+                .update_known_identity(their_identity_id, &their_identity)
                 .await?;
 
             info!(
@@ -515,7 +505,7 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
                 self.identity.identifier().clone(),
                 their_identity_id.clone(),
             );
-            self.registry.register_channel(info)?;
+            self.identity.registry.register_channel(info)?;
 
             if self.role.is_initiator() {
                 // Notify interested worker about finished init

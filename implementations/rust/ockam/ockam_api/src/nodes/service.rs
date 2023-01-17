@@ -12,7 +12,7 @@ use ockam_core::compat::{
 };
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{AllowAll, AsyncTryClone};
-use ockam_identity::{Identity, IdentityIdentifier, PublicIdentity, SecureChannelRegistry};
+use ockam_identity::{Identity, IdentityIdentifier, PublicIdentity};
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::tokio;
@@ -100,13 +100,12 @@ pub struct NodeManager {
     skip_defaults: bool,
     enable_credential_checks: bool,
     vault: Vault,
-    identity: Identity<Vault>,
+    identity: Identity<Vault, LmdbStorage>,
     project_id: Option<String>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
     authorities: Option<Authorities>,
     pub(crate) authenticated_storage: LmdbStorage,
     pub(crate) registry: Registry,
-    pub(crate) secure_channel_registry: SecureChannelRegistry,
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
     policies: LmdbStorage,
@@ -135,7 +134,7 @@ pub struct IdentityOverride {
 }
 
 impl NodeManager {
-    pub(crate) fn identity(&self) -> Result<&Identity<Vault>> {
+    pub(crate) fn identity(&self) -> Result<&Identity<Vault, LmdbStorage>> {
         Ok(&self.identity)
     }
 
@@ -229,7 +228,7 @@ impl NodeManager {
         let policies_storage = LmdbStorage::new(&state.policies_storage_path()).await?;
 
         let vault = state.config.vault().await?;
-        let identity = state.config.identity(ctx).await?;
+        let identity = state.config.identity(ctx, &authenticated_storage).await?;
 
         let medic = Medic::new();
         let sessions = medic.sessions();
@@ -257,7 +256,6 @@ impl NodeManager {
             sessions,
             policies: policies_storage,
             token: projects_options.token,
-            secure_channel_registry: SecureChannelRegistry::new(),
         };
 
         if !general_options.skip_defaults {
