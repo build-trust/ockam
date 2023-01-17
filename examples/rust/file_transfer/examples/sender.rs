@@ -2,7 +2,7 @@
 
 use file_transfer::{FileData, FileDescription};
 use ockam::{
-    identity::{Identity, SecureChannelRegistry, TrustEveryonePolicy},
+    identity::{Identity, TrustEveryonePolicy},
     route,
     vault::Vault,
     Context,
@@ -12,7 +12,6 @@ use ockam::{TcpTransport, TCP};
 use std::path::PathBuf;
 
 use anyhow::Result;
-use ockam::authenticated_storage::InMemoryStorage;
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -43,9 +42,6 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a Vault to safely store secret keys for Sender.
     let vault = Vault::create();
 
-    // Create a SecureChannel registry.
-    let registry = SecureChannelRegistry::new();
-
     // Create an Identity to represent Sender.
     let sender = Identity::create(&ctx, &vault).await?;
 
@@ -59,13 +55,10 @@ async fn main(ctx: Context) -> Result<()> {
     // to Receiver's secure channel listener.
     let route_to_receiver_listener = route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "listener"];
 
-    // Create an AuthenticatedStorage to store info about Sender's known Identities.
-    let storage = InMemoryStorage::new();
-
     // As Sender, connect to the Receiver's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Receiver.
     let channel = sender
-        .create_secure_channel(route_to_receiver_listener, TrustEveryonePolicy, &storage, &registry)
+        .create_secure_channel(route_to_receiver_listener, TrustEveryonePolicy)
         .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
