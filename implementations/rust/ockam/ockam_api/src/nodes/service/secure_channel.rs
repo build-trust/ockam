@@ -93,16 +93,11 @@ impl NodeManager {
         let identity = if let Some(identity) = identity_name {
             let state = CliState::new()?;
             let idt_config = state.identities.get(&identity)?.config;
-            match idt_config
-                .get(ctx, &self.authenticated_storage, self.vault()?)
-                .await
-            {
+            match idt_config.get(ctx, self.vault()?).await {
                 Ok(idt) => idt,
                 Err(_) => {
                     let default_vault = &state.vaults.default()?.config.get().await?;
-                    idt_config
-                        .get(ctx, &self.authenticated_storage, default_vault)
-                        .await?
+                    idt_config.get(ctx, default_vault).await?
                 }
             }
         } else {

@@ -3,7 +3,6 @@ use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
 use ockam_api::cli_state::{self, VaultConfig};
-use ockam_api::lmdb::LmdbStorage;
 use ockam_identity::Identity;
 use rand::prelude::random;
 
@@ -45,7 +44,7 @@ async fn run_impl(
     let vault = vault_config.get().await?;
     let identity = Identity::create_ext(
         &ctx,
-        /* FIXME: @adrian */ &LmdbStorage::new("wrong/path").await?,
+        &options.state.identities.authenticated_storage().await?,
         &vault,
     )
     .await?;

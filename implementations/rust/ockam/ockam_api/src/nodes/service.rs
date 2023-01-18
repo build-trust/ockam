@@ -222,13 +222,14 @@ impl NodeManager {
         let mut transports = BTreeMap::new();
         transports.insert(api_transport_id.clone(), transport_options.api_transport);
 
-        let state = CliState::new()?.nodes.get(&general_options.node_name)?;
+        let cli_state = CliState::new()?;
+        let node_state = cli_state.nodes.get(&general_options.node_name)?;
 
-        let authenticated_storage = LmdbStorage::new(&state.authenticated_storage_path()).await?;
-        let policies_storage = LmdbStorage::new(&state.policies_storage_path()).await?;
+        let authenticated_storage = cli_state.identities.authenticated_storage().await?;
+        let policies_storage = LmdbStorage::new(&node_state.policies_storage_path()).await?;
 
-        let vault = state.config.vault().await?;
-        let identity = state.config.identity(ctx, &authenticated_storage).await?;
+        let vault = node_state.config.vault().await?;
+        let identity = node_state.config.identity(ctx).await?;
 
         let medic = Medic::new();
         let sessions = medic.sessions();
