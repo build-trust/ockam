@@ -1,6 +1,7 @@
 mod create;
 mod influxdb;
 mod list;
+mod revoke;
 mod show;
 pub use create::CreateCommand;
 pub use list::ListCommand;

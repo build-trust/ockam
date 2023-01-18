@@ -125,7 +125,30 @@ pub struct ShowTokenResponse<'a> {
 
     #[serde(borrow)]
     #[cbor(b(1))]
-    pub tokens: Token<'a>,
+    pub token: Token<'a>,
+}
+
+// ======== REVOKE TOKEN STRUCT =========
+#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+pub struct RevokeTokenRequest<'a> {
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[cbor(n(0))]
+    pub tag: TypeTag<000000>, // TODO: Determine correct value for this type
+
+    #[serde(borrow)]
+    #[cbor(b(1))]
+    pub token_id: CowStr<'a>,
+}
+
+impl<'a> RevokeTokenRequest<'a> {
+    pub fn new<S: Into<CowStr<'a>>>(token_id: S) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            token_id: token_id.into(),
+        }
+    }
 }
 
 // ======= TOKEN STRUCT =======

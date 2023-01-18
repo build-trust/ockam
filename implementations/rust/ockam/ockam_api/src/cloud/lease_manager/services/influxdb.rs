@@ -4,7 +4,7 @@ use ockam_core::api::{Method, Request, Response};
 use ockam_core::{self, Result};
 
 use crate::cloud::lease_manager::models::influxdb::{
-    CreateTokenRequest, ListTokensRequest, ShowTokenRequest,
+    CreateTokenRequest, ListTokensRequest, RevokeTokenRequest, ShowTokenRequest,
 };
 use crate::cloud::CloudRequestWrapper;
 use crate::nodes::NodeManagerWorker;
@@ -36,6 +36,9 @@ impl NodeManagerWorker {
             (Method::Get, [.., "tokens"]) => self.list_tokens(ctx, dec, project_id).await,
             (Method::Get, [.., "tokens", token_id]) => {
                 self.show_token(ctx, dec, project_id, token_id).await
+            }
+            (Method::Delete, [.., "tokens", token_id]) => {
+                self.delete_token(ctx, dec, project_id, token_id).await
             }
             _ => {
                 warn!(%method, %path, "Called invalid endpoint");
@@ -83,7 +86,7 @@ impl NodeManagerWorker {
     }
 
     // GET /tokens
-    pub(crate) async fn list_tokens(
+    async fn list_tokens(
         &mut self,
         ctx: &mut Context,
         dec: &mut Decoder<'_>,
@@ -118,7 +121,7 @@ impl NodeManagerWorker {
     }
 
     // GET /tokens/{id}
-    pub(crate) async fn show_token(
+    async fn show_token(
         &mut self,
         ctx: &mut Context,
         dec: &mut Decoder<'_>,
@@ -129,10 +132,55 @@ impl NodeManagerWorker {
         let cloud_route = req_wrapper.route()?;
         let req_body = req_wrapper.req;
 
-        trace!(target: TARGET, project_id, "listing influxdb tokens");
+        trace!(
+            target: TARGET,
+            project_id,
+            "retrieving details for influxdb token {token_id}"
+        );
 
-        let label = "influxdb_lease_manager_list_tokens";
+        let label = "influxdb_lease_manager_show_tokens";
         let req_builder = Request::get(format!(
+            "/v0/{project_id}/lease_manager/influxdb/tokens/{token_id}"
+        ))
+        .body(req_body);
+
+        let ident = {
+            let inner = self.get().read().await;
+            inner.identity()?.async_try_clone().await?
+        };
+
+        self.request_controller(
+            ctx,
+            label,
+            None,
+            cloud_route,
+            API_SERVICE,
+            req_builder,
+            ident,
+        )
+        .await
+    }
+
+    // DELETE /tokens/{id}
+    async fn delete_token(
+        &mut self,
+        ctx: &mut Context,
+        dec: &mut Decoder<'_>,
+        project_id: &str,
+        token_id: &str,
+    ) -> Result<Vec<u8>> {
+        let req_wrapper: CloudRequestWrapper<RevokeTokenRequest> = dec.decode()?;
+        let cloud_route = req_wrapper.route()?;
+        let req_body = req_wrapper.req;
+
+        trace!(
+            target: TARGET,
+            project_id,
+            "revoking influxdb token {token_id}"
+        );
+
+        let label = "influxdb_lease_manager_revoke_token";
+        let req_builder = Request::delete(format!(
             "/v0/{project_id}/lease_manager/influxdb/tokens/{token_id}"
         ))
         .body(req_body);

@@ -1,6 +1,9 @@
 use clap::Args;
 use ockam::Context;
-use ockam_api::cloud::{lease_manager::models::influxdb::CreateTokenRequest, CloudRequestWrapper};
+use ockam_api::cloud::{
+    lease_manager::models::influxdb::{CreateTokenRequest, CreateTokenResponse},
+    CloudRequestWrapper,
+};
 use ockam_core::api::Request;
 
 use crate::{
@@ -75,9 +78,10 @@ async fn run_impl(
     rpc.request(req).await?;
     rpc.is_ok()?;
 
-    println!("Created token within InfluxDB");
+    let res: CreateTokenResponse = rpc.parse_response()?;
+    // TODO : Create View for showing created token info
 
-    // TODO: decode response and show token info
+    println!("Created token within InfluxDB");
 
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())

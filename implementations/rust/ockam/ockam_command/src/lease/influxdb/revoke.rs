@@ -1,10 +1,6 @@
-use anyhow::Context as _;
 use clap::Args;
 use ockam::Context;
-use ockam_api::cloud::{
-    lease_manager::models::influxdb::{ShowTokenRequest, ShowTokenResponse},
-    CloudRequestWrapper,
-};
+use ockam_api::cloud::{lease_manager::models::influxdb::RevokeTokenRequest, CloudRequestWrapper};
 use ockam_core::api::Request;
 
 use crate::{
@@ -13,16 +9,17 @@ use crate::{
     util::{node_rpc, Rpc},
     CommandGlobalOpts,
 };
+use anyhow::Context as _;
 
 /// InfluxDB Token Manager Add On
 #[derive(Clone, Debug, Args)]
-pub struct InfluxDbShowCommand {
-    /// ID of the token to retrieve
-    #[arg(short, long, value_name = "INFLUX_DB_TOKEN_ID")]
+pub struct InfluxDbRevokeCommand {
+    /// ID of the token to revoke
+    #[arg(long, short, id = "token_id", value_name = "INFLUX_DB_TOKEN_ID")]
     pub token_id: String,
 }
 
-impl InfluxDbShowCommand {
+impl InfluxDbRevokeCommand {
     pub fn run(self, opts: CommandGlobalOpts, lease_args: LeaseArgs) {
         node_rpc(run_impl, (opts, lease_args, self));
     }
@@ -30,7 +27,7 @@ impl InfluxDbShowCommand {
 
 async fn run_impl(
     ctx: Context,
-    (opts, lease_args, cmd): (CommandGlobalOpts, LeaseArgs, InfluxDbShowCommand),
+    (opts, lease_args, cmd): (CommandGlobalOpts, LeaseArgs, InfluxDbRevokeCommand),
 ) -> crate::Result<()> {
     let controller_route = &lease_args.cloud_opts.route();
     let mut rpc = Rpc::embedded(&ctx, &opts).await?;
@@ -47,10 +44,8 @@ async fn run_impl(
         Ok(format!("{project_id}/lease_manager"))
     };
 
-    let body = ShowTokenRequest::new(cmd.token_id.clone());
+    let body = RevokeTokenRequest::new(cmd.token_id.clone());
 
-    // e.g. API Path: GET "<proj_id>/lease_manager/influxdb/tokens"
-    // TODO: @oakley ADD ON TYPE shouldn't be a magic string
     let add_on_id = "influxdb";
     let node_api_path = format!(
         "{}/{}/{}/{}",
@@ -60,13 +55,11 @@ async fn run_impl(
         cmd.token_id
     );
 
-    let req = Request::get(node_api_path).body(CloudRequestWrapper::new(body, controller_route));
+    let req = Request::delete(node_api_path).body(CloudRequestWrapper::new(body, controller_route));
     rpc.request(req).await?;
     rpc.is_ok()?;
 
-    let res: ShowTokenResponse = rpc.parse_response()?;
-    // TODO : Create View for showing token
-    println!("Retrieving Token Info");
+    println!("Revoked influxdb token {}.", cmd.token_id);
 
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())

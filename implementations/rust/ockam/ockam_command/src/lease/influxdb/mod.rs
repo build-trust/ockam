@@ -1,5 +1,6 @@
 mod create;
 mod list;
+mod revoke;
 mod show;
 
 use std::fmt::{self, Display, Formatter};
@@ -7,6 +8,7 @@ use std::fmt::{self, Display, Formatter};
 use clap::ValueEnum;
 pub use create::InfluxDbCreateCommand;
 pub use list::InfluxDbListCommand;
+pub use revoke::InfluxDbRevokeCommand;
 pub use show::InfluxDbShowCommand;
 
 #[derive(Clone, Debug, Copy, ValueEnum)]
