@@ -46,6 +46,9 @@ defmodule Ockam.Services.API.Test do
 
     assert %{status: 200, body: ^body} = resp
 
+    # NOTE: the reason for sleep is to limit the chance of a race condition occuring
+    #       where metrics are fetched before they get inserted into ets table
+    :timer.sleep(50)
     metrics = TelemetryListener.get_metrics(@telemetry_table)
 
     assert [
