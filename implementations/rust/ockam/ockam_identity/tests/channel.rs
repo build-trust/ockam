@@ -3,6 +3,7 @@ use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{route, AllowAll, Any, DenyAll, Mailboxes, Result, Routed, Worker};
 use ockam_identity::access_control::IdentityAccessControlBuilder;
+use ockam_identity::api::{DecryptionResponse, EncryptionRequest, EncryptionResponse};
 use ockam_identity::{
     Identity, IdentitySecureChannelLocalInfo, TrustEveryonePolicy, TrustIdentifierPolicy,
 };
@@ -168,30 +169,49 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
         .get_channel_by_encryptor_address(&bob_channel)
         .unwrap();
 
-    let encrypted_alice: Vec<u8> = ctx
+    let encrypted_alice: EncryptionResponse = ctx
         .send_and_receive(
             route![alice_channel_data.encryptor_api_address().clone()],
-            b"Ping".to_vec(),
+            EncryptionRequest(b"Ping".to_vec()),
         )
         .await?;
-    let encrypted_bob: Vec<u8> = ctx
+    let encrypted_alice = match encrypted_alice {
+        EncryptionResponse::Ok(p) => p,
+        EncryptionResponse::Err(err) => return Err(err),
+    };
+
+    let encrypted_bob: EncryptionResponse = ctx
         .send_and_receive(
             route![bob_channel_data.encryptor_api_address().clone()],
-            b"Pong".to_vec(),
+            EncryptionRequest(b"Pong".to_vec()),
         )
         .await?;
-    let decrypted_alice: Vec<u8> = ctx
+    let encrypted_bob = match encrypted_bob {
+        EncryptionResponse::Ok(p) => p,
+        EncryptionResponse::Err(err) => return Err(err),
+    };
+
+    let decrypted_alice: DecryptionResponse = ctx
         .send_and_receive(
             route![alice_channel_data.decryptor_api_address().clone()],
             encrypted_bob,
         )
         .await?;
-    let decrypted_bob: Vec<u8> = ctx
+    let decrypted_alice = match decrypted_alice {
+        DecryptionResponse::Ok(p) => p,
+        DecryptionResponse::Err(err) => return Err(err),
+    };
+
+    let decrypted_bob: DecryptionResponse = ctx
         .send_and_receive(
             route![bob_channel_data.decryptor_api_address().clone()],
             encrypted_alice,
         )
         .await?;
+    let decrypted_bob = match decrypted_bob {
+        DecryptionResponse::Ok(p) => p,
+        DecryptionResponse::Err(err) => return Err(err),
+    };
 
     assert_eq!(decrypted_alice, b"Pong");
     assert_eq!(decrypted_bob, b"Ping");

@@ -1,3 +1,4 @@
+use crate::api::{DecryptionRequest, DecryptionResponse};
 use crate::authenticated_storage::AuthenticatedStorage;
 use crate::channel::addresses::Addresses;
 use crate::channel::common::{
@@ -554,15 +555,20 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
         let return_route = msg.return_route();
 
         // Decode raw payload binary
-        let payload = Vec::<u8>::decode(&msg.into_transport_message().payload)?;
+        let request = DecryptionRequest::decode(&msg.into_transport_message().payload)?;
 
         // Decrypt the binary
-        let decrypted_payload = state.decryptor.decrypt(&payload).await?;
+        let decrypted_payload = state.decryptor.decrypt(&request.0).await;
+
+        let response = match decrypted_payload {
+            Ok(payload) => DecryptionResponse::Ok(payload),
+            Err(err) => DecryptionResponse::Err(err),
+        };
 
         // Send reply to the caller
         ctx.send_from_address(
             return_route,
-            decrypted_payload,
+            response,
             self.addresses.decryptor_internal.clone(),
         )
         .await?;

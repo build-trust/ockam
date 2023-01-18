@@ -17,6 +17,7 @@ pub use registry::*;
 pub use trust_policy::*;
 
 pub mod access_control;
+pub mod api;
 
 use crate::authenticated_storage::AuthenticatedStorage;
 use crate::channel::decryptor_worker::DecryptorWorker;
