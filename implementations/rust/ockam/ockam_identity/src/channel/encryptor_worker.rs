@@ -4,7 +4,7 @@ use crate::channel::encryptor::Encryptor;
 use crate::channel::Role;
 use crate::error::IdentityError;
 use ockam_core::compat::boxed::Box;
-use ockam_core::{async_trait, Address, Encodable, Route};
+use ockam_core::{async_trait, Address, Decodable, Encodable, Route};
 use ockam_core::{Any, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use tracing::debug;
@@ -32,6 +32,36 @@ impl<V: SecureChannelVault> EncryptorWorker<V> {
             remote_backwards_compatibility_address,
             encryptor,
         }
+    }
+
+    async fn handle_encrypt_api(
+        &mut self,
+        ctx: &mut <Self as Worker>::Context,
+        msg: Routed<<Self as Worker>::Message>,
+    ) -> Result<()> {
+        debug!(
+            "SecureChannel {} received Encrypt API {}",
+            self.role.str(),
+            &self.addresses.encryptor
+        );
+
+        let return_route = msg.return_route();
+
+        // Decode raw payload binary
+        let payload = Vec::<u8>::decode(&msg.into_transport_message().payload)?;
+
+        // Encrypt the message
+        let encrypted_payload = self.encryptor.encrypt(&payload).await?;
+
+        // Send the reply to the caller
+        ctx.send_from_address(
+            return_route,
+            encrypted_payload,
+            self.addresses.encryptor_api.clone(),
+        )
+        .await?;
+
+        Ok(())
     }
 
     async fn handle_encrypt(
@@ -67,8 +97,12 @@ impl<V: SecureChannelVault> EncryptorWorker<V> {
         let encrypted_payload = self.encryptor.encrypt(&msg.encode()?).await?;
 
         // Send the message to the decryptor on the other side
-        ctx.send(self.remote_route.clone(), encrypted_payload)
-            .await?;
+        ctx.send_from_address(
+            self.remote_route.clone(),
+            encrypted_payload,
+            self.addresses.encryptor.clone(),
+        )
+        .await?;
 
         Ok(())
     }
@@ -89,7 +123,7 @@ impl<V: SecureChannelVault> Worker for EncryptorWorker<V> {
         if msg_addr == self.addresses.encryptor {
             self.handle_encrypt(ctx, msg).await?;
         } else if msg_addr == self.addresses.encryptor_api {
-            // TODO: Implement Encryption API
+            self.handle_encrypt_api(ctx, msg).await?;
         } else {
             return Err(IdentityError::UnknownChannelMsgDestination.into());
         }

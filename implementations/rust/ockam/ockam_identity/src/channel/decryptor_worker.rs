@@ -175,8 +175,13 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
             // FIXME: @ac Also deny to other secure channels
             Arc::new(LocalOnwardOnly), // Prevent exploit of using our node as an authorized proxy
         );
+        let api_mailbox = Mailbox::new(
+            addresses.decryptor_api.clone(),
+            Arc::new(LocalSourceOnly),
+            Arc::new(LocalOnwardOnly),
+        );
 
-        Mailboxes::new(remote_mailbox, vec![internal_mailbox])
+        Mailboxes::new(remote_mailbox, vec![internal_mailbox, api_mailbox])
     }
 }
 
@@ -528,6 +533,43 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
 impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
     DecryptorWorker<V, K, S>
 {
+    async fn handle_decrypt_api(
+        &mut self,
+        ctx: &mut <Self as Worker>::Context,
+        msg: Routed<<Self as Worker>::Message>,
+    ) -> Result<()> {
+        debug!(
+            "SecureChannel {} received Decrypt API {}",
+            self.role.str(),
+            &self.addresses.decryptor_remote
+        );
+
+        let state;
+        if let Some(s) = self.state_initialized.as_mut() {
+            state = s;
+        } else {
+            return Err(IdentityError::InvalidSecureChannelInternalState.into());
+        }
+
+        let return_route = msg.return_route();
+
+        // Decode raw payload binary
+        let payload = Vec::<u8>::decode(&msg.into_transport_message().payload)?;
+
+        // Decrypt the binary
+        let decrypted_payload = state.decryptor.decrypt(&payload).await?;
+
+        // Send reply to the caller
+        ctx.send_from_address(
+            return_route,
+            decrypted_payload,
+            self.addresses.decryptor_internal.clone(),
+        )
+        .await?;
+
+        Ok(())
+    }
+
     async fn handle_decrypt(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
@@ -634,7 +676,7 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage> Wo
                 if msg_addr == self.addresses.decryptor_remote {
                     self.handle_decrypt(ctx, msg).await?;
                 } else if msg_addr == self.addresses.decryptor_api {
-                    // TODO: Implement Decryption API
+                    self.handle_decrypt_api(ctx, msg).await?;
                 } else {
                     return Err(IdentityError::UnknownChannelMsgDestination.into());
                 }
