@@ -66,6 +66,140 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
 }
 
 #[ockam_macros::test]
+async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
+    let alice_vault = Vault::create();
+    let bob_vault = Vault::create();
+
+    let alice = Identity::create(ctx, &alice_vault).await?;
+    let bob = Identity::create(ctx, &bob_vault).await?;
+
+    bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy)
+        .await?;
+
+    let alice_channel = alice
+        .create_secure_channel(route!["bob_listener"], TrustEveryonePolicy)
+        .await?;
+
+    let alice_channel_data = alice
+        .secure_channel_registry()
+        .get_channel_by_encryptor_address(&alice_channel)
+        .unwrap();
+
+    assert!(alice_channel_data.is_initiator());
+    assert_eq!(alice_channel_data.my_id(), alice.identifier());
+    assert_eq!(alice_channel_data.their_id(), bob.identifier());
+
+    let mut bob_ctx = ctx
+        .new_detached_with_mailboxes(Mailboxes::main(
+            "bob",
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        ))
+        .await?;
+
+    ctx.send(
+        route![alice_channel.clone(), "bob"],
+        "Hello, Alice!".to_string(),
+    )
+    .await?;
+
+    let msg = bob_ctx.receive::<String>().await?.take();
+    let return_route = msg.return_route();
+
+    assert_eq!("Hello, Alice!", msg.body());
+
+    let bob_channel = return_route.next().unwrap().clone();
+
+    let bob_channel_data = bob
+        .secure_channel_registry()
+        .get_channel_by_encryptor_address(&bob_channel)
+        .unwrap();
+
+    assert!(!bob_channel_data.is_initiator());
+    assert_eq!(bob_channel_data.my_id(), bob.identifier());
+    assert_eq!(bob_channel_data.their_id(), alice.identifier());
+
+    ctx.stop().await
+}
+
+#[ockam_macros::test]
+async fn test_channel_api(ctx: &mut Context) -> Result<()> {
+    let alice_vault = Vault::create();
+    let bob_vault = Vault::create();
+
+    let alice = Identity::create(ctx, &alice_vault).await?;
+    let bob = Identity::create(ctx, &bob_vault).await?;
+
+    bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy)
+        .await?;
+
+    let alice_channel = alice
+        .create_secure_channel(route!["bob_listener"], TrustEveryonePolicy)
+        .await?;
+
+    let mut bob_ctx = ctx
+        .new_detached_with_mailboxes(Mailboxes::main(
+            "bob",
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        ))
+        .await?;
+
+    ctx.send(
+        route![alice_channel.clone(), "bob"],
+        "Hello, Alice!".to_string(),
+    )
+    .await?;
+
+    let msg = bob_ctx.receive::<String>().await?.take();
+    let return_route = msg.return_route();
+
+    assert_eq!("Hello, Alice!", msg.body());
+
+    let bob_channel = return_route.next().unwrap().clone();
+
+    let alice_channel_data = alice
+        .secure_channel_registry()
+        .get_channel_by_encryptor_address(&alice_channel)
+        .unwrap();
+
+    let bob_channel_data = bob
+        .secure_channel_registry()
+        .get_channel_by_encryptor_address(&bob_channel)
+        .unwrap();
+
+    let encrypted_alice: Vec<u8> = ctx
+        .send_and_receive(
+            route![alice_channel_data.encryptor_api_address().clone()],
+            b"Ping".to_vec(),
+        )
+        .await?;
+    let encrypted_bob: Vec<u8> = ctx
+        .send_and_receive(
+            route![bob_channel_data.encryptor_api_address().clone()],
+            b"Pong".to_vec(),
+        )
+        .await?;
+    let decrypted_alice: Vec<u8> = ctx
+        .send_and_receive(
+            route![alice_channel_data.decryptor_api_address().clone()],
+            encrypted_bob,
+        )
+        .await?;
+    let decrypted_bob: Vec<u8> = ctx
+        .send_and_receive(
+            route![bob_channel_data.decryptor_api_address().clone()],
+            encrypted_alice,
+        )
+        .await?;
+
+    assert_eq!(decrypted_alice, b"Pong");
+    assert_eq!(decrypted_bob, b"Ping");
+
+    ctx.stop().await
+}
+
+#[ockam_macros::test]
 async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
 
