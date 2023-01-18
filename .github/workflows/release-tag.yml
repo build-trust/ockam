@@ -35,6 +35,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Import GPG key
+        uses: build-trust/.github/actions/import_gpg@a6377d3c2dac878b92a0da26cdf3da2856c64840
+        with:
+          gpg_private_key: '${{ secrets.GPG_PRIVATE_KEY }}'
+          gpg_password: '${{ secrets.GPG_PASSPHRASE }}'
+          gpg_name: '${{ secrets.GPG_USER_NAME }}'
+          gpg_email: '${{ secrets.GPG_EMAIL }}'
+
       - name: Update Tag Commit To That Merged by Mergify On Develop
         shell: bash
         run: |
