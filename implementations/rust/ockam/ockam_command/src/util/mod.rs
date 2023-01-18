@@ -531,7 +531,6 @@ mod tests {
     use super::*;
     use ockam_api::cli_state;
     use ockam_api::cli_state::{IdentityConfig, NodeConfig, VaultConfig};
-    use ockam_api::lmdb::LmdbStorage;
     use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
     use ockam_identity::Identity;
     use ockam_vault::storage::FileStorage;
@@ -576,7 +575,7 @@ mod tests {
 
         let idt = Identity::create_ext(
             ctx,
-            /* FIXME: @adrian */ &LmdbStorage::new("wrong/path").await?,
+            &cli_state.identities.authenticated_storage().await?,
             &v,
         )
         .await?;

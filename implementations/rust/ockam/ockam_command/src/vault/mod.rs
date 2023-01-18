@@ -4,7 +4,6 @@ use anyhow::anyhow;
 use clap::{Args, Subcommand};
 use ockam::Context;
 use ockam_api::cli_state;
-use ockam_api::lmdb::LmdbStorage;
 use ockam_core::vault::{Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault};
 use ockam_identity::{Identity, IdentityStateConst, KeyAttributes};
 use rand::prelude::random;
@@ -80,7 +79,7 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
                 let attrs = KeyAttributes::new(IdentityStateConst::ROOT_LABEL.to_string(), attrs);
                 Identity::create_with_external_key_ext(
                     &ctx,
-                    /* FIXME: @adrian */ &LmdbStorage::new("wrong/path").await?,
+                    &opts.state.identities.authenticated_storage().await?,
                     &v,
                     &kid,
                     attrs,

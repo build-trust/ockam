@@ -10,7 +10,6 @@ use ockam::{Context, TcpTransport};
 use ockam_api::authenticator::direct::types::OneTimeCode;
 use ockam_api::cli_state;
 use ockam_api::config::cli;
-use ockam_api::lmdb::LmdbStorage;
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
@@ -121,7 +120,7 @@ pub(super) async fn init_node_state(
         let identity_name = hex::encode(random::<[u8; 4]>());
         let identity = Identity::create_ext(
             ctx,
-            /* FIXME: @adrian */ &LmdbStorage::new("wrong/path").await?,
+            &opts.state.identities.authenticated_storage().await?,
             &vault,
         )
         .await?;
