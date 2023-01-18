@@ -1,3 +1,4 @@
+use crate::api::{EncryptionRequest, EncryptionResponse};
 use crate::channel::addresses::Addresses;
 use crate::channel::common::SecureChannelVault;
 use crate::channel::encryptor::Encryptor;
@@ -48,18 +49,19 @@ impl<V: SecureChannelVault> EncryptorWorker<V> {
         let return_route = msg.return_route();
 
         // Decode raw payload binary
-        let payload = Vec::<u8>::decode(&msg.into_transport_message().payload)?;
+        let request = EncryptionRequest::decode(&msg.into_transport_message().payload)?;
 
         // Encrypt the message
-        let encrypted_payload = self.encryptor.encrypt(&payload).await?;
+        let encrypted_payload = self.encryptor.encrypt(&request.0).await;
+
+        let response = match encrypted_payload {
+            Ok(payload) => EncryptionResponse::Ok(payload),
+            Err(err) => EncryptionResponse::Err(err),
+        };
 
         // Send the reply to the caller
-        ctx.send_from_address(
-            return_route,
-            encrypted_payload,
-            self.addresses.encryptor_api.clone(),
-        )
-        .await?;
+        ctx.send_from_address(return_route, response, self.addresses.encryptor_api.clone())
+            .await?;
 
         Ok(())
     }
