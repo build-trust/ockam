@@ -30,6 +30,11 @@ jobs:
           develop_sha=$(git ls-remote https://github.com/build-trust/ockam.git refs/heads/develop | head -1 | cut -f 1)
           echo "sha=$develop_sha" >> $GITHUB_OUTPUT
 
+      - name: Checkout To Ockam Repository
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+        with:
+          fetch-depth: 0
+
       - name: Update Tag Commit To That Merged by Mergify On Develop
         shell: bash
         run: |
