@@ -1,6 +1,7 @@
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use ockam_identity::{Identity, IdentityIdentifier, SecureChannelRegistry};
+use ockam_node::tokio::fs::File;
 use ockam_vault::{storage::FileStorage, Vault};
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -146,6 +147,36 @@ impl VaultsState {
         let contents = std::fs::read_to_string(&path)?;
         let config = serde_json::from_str(&contents)?;
         Ok(VaultState { path, config })
+    }
+
+    pub fn list(&self) -> Result<Vec<VaultState>> {
+        let mut vaults = Vec::default();
+        for entry in std::fs::read_dir(&self.dir)? {
+            if let Ok(vault) = self.get(&file_stem(&entry?.path())?) {
+                vaults.push(vault);
+            }
+        }
+        Ok(vaults)
+    }
+
+    pub fn delete_by_state(&self, vault: &VaultState) -> Result<()> {
+        if let Ok(default) = self.default() {
+            if default.path == vault.path {
+                let _ = std::fs::remove_file(self.default_path()?);
+                let mut vaults = self.list()?;
+                vaults.retain(|v| v.path != vault.path);
+                if let Some(vault) = vaults.first() {
+                    let name = vault.name()?;
+                    println!("Setting default vault to '{}'", &name);
+                    self.set_default(&name)?;
+                }
+            }
+        }
+
+        // Remove vault file
+        std::fs::remove_file(vault.path.clone())?;
+
+        Ok(())
     }
 
     pub fn default_path(&self) -> Result<PathBuf> {
@@ -299,14 +330,17 @@ impl IdentitiesState {
         Ok(identities)
     }
 
-    pub fn delete(&self, name: &str) -> Result<()> {
+    pub fn delete_by_name(&self, name: &str) -> Result<()> {
         // Retrieve identity. If doesn't exist do nothing.
         let identity = match self.get(name) {
             Ok(node) => node,
             Err(CliStateError::NotFound(_)) => return Ok(()),
             Err(e) => return Err(e),
         };
+        self.delete_by_state(&identity)
+    }
 
+    pub fn delete_by_state(&self, identity: &IdentityState) -> Result<()> {
         // Set default to another identity if it's the default
         if let Ok(default) = self.default() {
             if default.path == identity.path {
@@ -321,7 +355,7 @@ impl IdentitiesState {
         }
 
         // Remove identity file
-        std::fs::remove_file(identity.path)?;
+        std::fs::remove_file(identity.path.clone())?;
 
         Ok(())
     }
