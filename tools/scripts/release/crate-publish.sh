@@ -19,7 +19,7 @@ for crate in "${updated_crates[@]}"; do
   bumped_crates[$name]=true
 done
 
-crates_specified_to_be_excluded=("$OCKAM_PUBLISH_EXCLUDE_CRATES")
+IFS=" " read -r -a crates_specified_to_be_excluded <<<"$OCKAM_PUBLISH_EXCLUDE_CRATES"
 exclude_string=""
 
 # Get crates that are indicated to be excluded.
