@@ -44,7 +44,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             new_history,
             self.ctx,
             self.authenticated_storage,
-            self.registry,
+            self.secure_channel_registry,
             self.vault,
         ))
     }

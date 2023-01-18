@@ -29,7 +29,7 @@ pub struct Identity<V: IdentityVault, S: AuthenticatedStorage> {
     pub(crate) change_history: Arc<RwLock<IdentityChangeHistory>>,
     pub(crate) ctx: Context,
     pub(crate) authenticated_storage: S,
-    pub(crate) registry: SecureChannelRegistry,
+    pub(crate) secure_channel_registry: SecureChannelRegistry,
     pub(crate) vault: V,
 }
 
@@ -56,7 +56,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         change_history: IdentityChangeHistory,
         ctx: Context,
         authenticated_storage: S,
-        registry: SecureChannelRegistry,
+        secure_channel_registry: SecureChannelRegistry,
         vault: V,
     ) -> Self {
         Self {
@@ -65,7 +65,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             change_history: Arc::new(RwLock::new(change_history)),
             ctx,
             authenticated_storage,
-            registry,
+            secure_channel_registry,
             vault,
         }
     }
@@ -74,7 +74,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         ctx: &Context,
         data: &[u8],
         authenticated_storage: &S,
-        registry: &SecureChannelRegistry,
+        secure_channel_registry: &SecureChannelRegistry,
         vault: &V,
     ) -> Result<Self> {
         let change_history = IdentityChangeHistory::import(data)?;
@@ -98,7 +98,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             change_history,
             child_ctx,
             authenticated_storage.async_try_clone().await?,
-            registry.clone(),
+            secure_channel_registry.clone(),
             vault,
         );
 
@@ -108,7 +108,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     async fn create_impl(
         ctx: &Context,
         authenticated_storage: S,
-        registry: SecureChannelRegistry,
+        secure_channel_registry: SecureChannelRegistry,
         vault: &V,
         kid: Option<&KeyId>,
         key_attribs: KeyAttributes,
@@ -152,7 +152,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             change_history,
             child_ctx,
             authenticated_storage,
-            registry,
+            secure_channel_registry,
             vault,
         );
 
@@ -262,8 +262,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         &self.authenticated_storage
     }
 
-    pub fn registry(&self) -> &SecureChannelRegistry {
-        &self.registry
+    pub fn secure_channel_registry(&self) -> &SecureChannelRegistry {
+        &self.secure_channel_registry
     }
 
     pub async fn change_history(&self) -> IdentityChangeHistory {
