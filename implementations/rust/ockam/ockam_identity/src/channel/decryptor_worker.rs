@@ -505,7 +505,9 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
                 self.identity.identifier().clone(),
                 their_identity_id.clone(),
             );
-            self.identity.registry.register_channel(info)?;
+            self.identity
+                .secure_channel_registry
+                .register_channel(info)?;
 
             if self.role.is_initiator() {
                 // Notify interested worker about finished init
