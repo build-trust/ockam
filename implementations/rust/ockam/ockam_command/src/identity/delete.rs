@@ -28,7 +28,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> crate::Result<()> {
             .into());
         }
     }
-    opts.state.identities.delete(&cmd.name)?;
+    opts.state.identities.delete_by_name(&cmd.name)?;
     println!("Identity '{}' deleted", cmd.name);
     Ok(())
 }

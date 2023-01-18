@@ -190,6 +190,47 @@ teardown() {
   assert_failure
 }
 
+@test "vault delete" {
+  vault_name=$(openssl rand -hex 4)
+
+  run $OCKAM vault create "${vault_name}"
+  assert_success
+  run $OCKAM vault delete "${vault_name}"
+  assert_success
+  run $OCKAM vault show "${vault_name}"
+  assert_failure
+
+  # Delete vault and identity if it's loadable from the vault
+  vault_name=$(openssl rand -hex 4)
+  idt_name=$(openssl rand -hex 4)
+
+  run $OCKAM vault create "${vault_name}"
+  assert_success
+  run $OCKAM identity create "${idt_name}" --vault "${vault_name}"
+  assert_success
+  run $OCKAM vault delete "${vault_name}"
+  assert_success
+  run $OCKAM vault show "${vault_name}"
+  assert_failure
+  run $OCKAM identity show "${idt_name}"
+  assert_failure
+
+  # Fail to delete vault when it's in use by a node
+  vault_name=$(openssl rand -hex 4)
+  node_name=$(openssl rand -hex 4)
+
+  run $OCKAM vault create "${vault_name}"
+  assert_success
+  run $OCKAM node create "${node_name}" --vault "${vault_name}"
+  assert_success
+  run $OCKAM vault delete "${vault_name}"
+  assert_failure
+  run $OCKAM node delete "${node_name}"
+  assert_success
+  run $OCKAM vault delete "${vault_name}"
+  assert_success
+}
+
 @test "identity create" {
   vault_name=$(openssl rand -hex 4)
   run $OCKAM vault create "${vault_name}"
