@@ -544,6 +544,12 @@ impl NodeManagerWorker {
                 .start_okta_identity_provider_service(ctx, req, dec)
                 .await?
                 .to_vec()?,
+            (Post, ["node", "services", "kafka_consumer"]) => {
+                self.start_kafka_consumer_service(ctx, req, dec).await?
+            }
+            (Post, ["node", "services", "kafka_producer"]) => {
+                self.start_kafka_producer_service(ctx, req, dec).await?
+            }
             (Get, ["node", "services"]) => {
                 let node_manager = self.node_manager.read().await;
                 self.list_services(req, &node_manager.registry).to_vec()?

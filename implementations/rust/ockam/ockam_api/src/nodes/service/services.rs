@@ -6,7 +6,8 @@ use crate::identity::IdentityService;
 use crate::nodes::models::services::{
     ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
     StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
-    StartIdentityServiceRequest, StartOktaIdentityProviderRequest, StartUppercaseServiceRequest,
+    StartIdentityServiceRequest, StartKafkaConsumerRequest, StartKafkaProducerRequest,
+    StartOktaIdentityProviderRequest, StartServiceRequest, StartUppercaseServiceRequest,
     StartVaultServiceRequest, StartVerifierService,
 };
 use crate::nodes::registry::{CredentialsServiceInfo, Registry, VerifierServiceInfo};
@@ -448,6 +449,32 @@ impl NodeManagerWorker {
             .await?;
 
         Ok(Response::ok(req.id()))
+    }
+
+    pub(super) async fn start_kafka_consumer_service<'a>(
+        &mut self,
+        _ctx: &Context,
+        req: &'a Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<Vec<u8>> {
+        let body: StartServiceRequest<StartKafkaConsumerRequest> = dec.decode()?;
+        let _addr: Address = body.address().into();
+        let _body_req = body.request();
+        // TODO: @confluent - start kafka consumer service
+        Ok(Response::ok(req.id()).to_vec()?)
+    }
+
+    pub(super) async fn start_kafka_producer_service<'a>(
+        &mut self,
+        _ctx: &Context,
+        req: &'a Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<Vec<u8>> {
+        let body: StartServiceRequest<StartKafkaProducerRequest> = dec.decode()?;
+        let _addr: Address = body.address().into();
+        let _body_req = body.request();
+        // TODO: @confluent - start kafka producer service
+        Ok(Response::ok(req.id()).to_vec()?)
     }
 
     pub(super) fn list_services<'a>(
