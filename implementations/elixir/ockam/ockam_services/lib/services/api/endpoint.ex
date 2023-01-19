@@ -6,7 +6,7 @@ defmodule Ockam.Services.API.Endpoint do
       case Enum.all?(rules, fn
              {_auth_type, method, <<"/", _rest::binary>> = _path, handler}
              when method in [:get, :post, :put, :delete] and
-                    is_function(handler, 3) ->
+                    is_function(handler, 2) ->
                true
 
              _bad_rule ->
@@ -56,12 +56,15 @@ defmodule Ockam.Services.API.Endpoint do
     end
   end
 
-  @callback routes() :: [
-              {auth_type :: any(), method :: atom(), path :: String.t(), handler :: atom()}
-            ]
+  @type routes() :: [
+          {auth_type :: any(), method :: atom(), path :: String.t(), handler :: atom()}
+        ]
 
   @callback authorize(auth_type :: any(), req :: %Ockam.API.Request{}, bindings :: map()) ::
               true | false | {true, values :: map()}
+
+  @callback init_endpoint(options :: Keyword.t()) ::
+              {:ok, endpoint_state :: any(), routes :: routes()}
 
   defmacro __using__(_options) do
     quote do
@@ -101,30 +104,37 @@ defmodule Ockam.Services.API.Endpoint do
       end
 
       @impl true
-      def setup(_options, state) do
-        routes = routes()
+      def setup(options, state) do
+        {:ok, endpoint_state, routes} = init_endpoint(options)
 
         case DispatchTable.compile_dispatch_table(routes) do
           {:ok, dispatch_table} ->
-            {:ok, Map.put(state, :dispatch_table, dispatch_table)}
+            {:ok,
+             Map.merge(state, %{dispatch_table: dispatch_table, endpoint_state: endpoint_state})}
 
           error ->
             error
         end
       end
 
-      defp dispatch(handler, req, bindings, extra_data, state) do
-        case handler.(req, bindings, extra_data) do
+      defp dispatch(handler, req, bindings, auth_data, %{endpoint_state: endpoint_state} = state) do
+        case handler.(req, %{bindings: bindings, auth_data: auth_data, state: endpoint_state}) do
           {:ok, body} ->
             {:reply, :ok, body, state}
+
+          {:ok, body, new_endpoint_state} ->
+            {:reply, :ok, body, %{state | endpoint_state: new_endpoint_state}}
 
           {:error, reason} ->
             {:error, reason}
         end
       end
 
+      def endpoint_state_from_worker_state(%{endpoint_state: endpoint_state}),
+        do: {:ok, endpoint_state}
+
       @impl true
-      defp authorize(_auth_type, _req, _bindings), do: true
+      def authorize(_auth_type, _req, _bindings), do: true
 
       defoverridable authorize: 3
     end

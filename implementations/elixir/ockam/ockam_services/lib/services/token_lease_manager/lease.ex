@@ -1,11 +1,14 @@
 defmodule Ockam.Services.TokenLeaseManager.Lease do
   @moduledoc false
-  defstruct id: "",
-            issued: nil,
-            renewable: false,
-            tags: [],
-            ttl: 0,
-            value: ""
+  use TypedStruct
 
-  @type t() :: %__MODULE__{}
+  typedstruct do
+    plugin(Ockam.TypedCBOR.Plugin)
+    field(:id, String.t(), minicbor: [key: 1])
+    field(:issued_for, String.t(), minicbor: [key: 2])
+    field(:issued, String.t(), minicbor: [key: 3])
+    field(:expires, String.t(), minicbor: [key: 4])
+    field(:value, String.t(), minicbor: [key: 5])
+    field(:status, String.t(), minicbor: [key: 6])
+  end
 end
