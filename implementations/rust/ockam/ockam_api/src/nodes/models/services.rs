@@ -1,8 +1,91 @@
 use minicbor::{Decode, Encode};
 use ockam_core::{CowBytes, CowStr};
+use std::net::Ipv4Addr;
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use ockam_multiaddr::MultiAddr;
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartServiceRequest<'a, T> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<3470984>,
+    #[b(1)] addr: CowStr<'a>,
+    #[n(2)] req: T,
+}
+
+impl<'a, T> StartServiceRequest<'a, T> {
+    pub fn new<S: Into<CowStr<'a>>>(req: T, addr: S) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr: addr.into(),
+            req,
+        }
+    }
+
+    pub fn address(&'a self) -> &'a str {
+        &self.addr
+    }
+
+    pub fn request(&'a self) -> &'a T {
+        &self.req
+    }
+}
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartKafkaConsumerRequest<'a> {
+    #[b(1)] ip: CowStr<'a>,
+    #[n(2)] ports: Vec<u16>,
+    #[b(3)] forwarding_addr: CowStr<'a>,
+    #[b(4)] route_to_client: Option<CowStr<'a>>,
+}
+
+impl<'a> StartKafkaConsumerRequest<'a> {
+    pub fn new(
+        ip: Ipv4Addr,
+        ports: Vec<u16>,
+        forwarding_addr: MultiAddr,
+        route_to_client: Option<MultiAddr>,
+    ) -> Self {
+        Self {
+            ip: ip.to_string().into(),
+            ports,
+            forwarding_addr: forwarding_addr.to_string().into(),
+            route_to_client: route_to_client.map(|s| s.to_string().into()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartKafkaProducerRequest<'a> {
+    #[b(1)] ip: CowStr<'a>,
+    #[n(2)] ports: Vec<u16>,
+    #[b(3)] forwarding_addr: CowStr<'a>,
+    #[b(4)] route_to_client: Option<CowStr<'a>>,
+}
+
+impl<'a> StartKafkaProducerRequest<'a> {
+    pub fn new(
+        ip: Ipv4Addr,
+        ports: Vec<u16>,
+        forwarding_addr: MultiAddr,
+        route_to_client: Option<MultiAddr>,
+    ) -> Self {
+        Self {
+            ip: ip.to_string().into(),
+            ports,
+            forwarding_addr: forwarding_addr.to_string().into(),
+            route_to_client: route_to_client.map(|s| s.to_string().into()),
+        }
+    }
+}
 
 /// Request body when instructing a node to start a Vault service
 #[derive(Debug, Clone, Decode, Encode)]

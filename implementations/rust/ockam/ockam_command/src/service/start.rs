@@ -1,3 +1,4 @@
+use crate::help;
 use crate::node::NodeOpts;
 use crate::service::config::OktaIdentityProviderConfig;
 use crate::util::{api, node_rpc, RpcBuilder};
@@ -6,9 +7,14 @@ use anyhow::{anyhow, Result};
 use clap::{Args, Subcommand};
 use minicbor::Encode;
 use ockam::{Context, TcpTransport};
-use ockam_api::nodes::models::services::StartOktaIdentityProviderRequest;
+use ockam_api::nodes::models::services::{
+    StartKafkaConsumerRequest, StartKafkaProducerRequest, StartOktaIdentityProviderRequest,
+    StartServiceRequest,
+};
 use ockam_api::DefaultAddress;
 use ockam_core::api::{Request, RequestBuilder, Status};
+use ockam_multiaddr::MultiAddr;
+use std::net::Ipv4Addr;
 
 #[derive(Clone, Debug, Args)]
 pub struct StartCommand {
@@ -54,6 +60,32 @@ pub enum StartSubCommand {
         #[arg(long)]
         project: String,
     },
+    #[command(hide = help::hide())]
+    KafkaConsumer {
+        #[arg(long, default_value_t = kafka_consumer_default_addr())]
+        addr: String,
+        #[arg(long)]
+        ip: Ipv4Addr,
+        #[arg(long)]
+        ports: Vec<u16>,
+        #[arg(long)]
+        forwarding_addr: MultiAddr,
+        #[arg(long)]
+        route_to_client: Option<MultiAddr>,
+    },
+    #[command(hide = help::hide())]
+    KafkaProducer {
+        #[arg(long, default_value_t = kafka_producer_default_addr())]
+        addr: String,
+        #[arg(long)]
+        ip: Ipv4Addr,
+        #[arg(long)]
+        ports: Vec<u16>,
+        #[arg(long)]
+        forwarding_addr: MultiAddr,
+        #[arg(long)]
+        route_to_client: Option<MultiAddr>,
+    },
 }
 
 fn vault_default_addr() -> String {
@@ -78,6 +110,14 @@ fn credentials_default_addr() -> String {
 
 fn authenticator_default_addr() -> String {
     DefaultAddress::AUTHENTICATOR.to_string()
+}
+
+fn kafka_consumer_default_addr() -> String {
+    DefaultAddress::KAFKA_CONSUMER.to_string()
+}
+
+fn kafka_producer_default_addr() -> String {
+    DefaultAddress::KAFKA_PRODUCER.to_string()
 }
 
 impl StartCommand {
@@ -140,6 +180,50 @@ async fn run_impl(
                 &addr,
                 &enrollers,
                 &project,
+                Some(&tcp),
+            )
+            .await?
+        }
+        StartSubCommand::KafkaConsumer {
+            addr,
+            ip,
+            ports,
+            forwarding_addr,
+            route_to_client,
+        } => {
+            let payload =
+                StartKafkaConsumerRequest::new(ip, ports, forwarding_addr, route_to_client);
+            let payload = StartServiceRequest::new(payload, &addr);
+            let req = Request::post("/node/services/kafka-consumer").body(payload);
+            start_service_impl(
+                ctx,
+                &opts,
+                node_name,
+                &addr,
+                "KafkaConsumer",
+                req,
+                Some(&tcp),
+            )
+            .await?
+        }
+        StartSubCommand::KafkaProducer {
+            addr,
+            ip,
+            ports,
+            forwarding_addr,
+            route_to_client,
+        } => {
+            let payload =
+                StartKafkaProducerRequest::new(ip, ports, forwarding_addr, route_to_client);
+            let payload = StartServiceRequest::new(payload, &addr);
+            let req = Request::post("/node/services/kafka-producer").body(payload);
+            start_service_impl(
+                ctx,
+                &opts,
+                node_name,
+                &addr,
+                "KafkaProducer",
+                req,
                 Some(&tcp),
             )
             .await?

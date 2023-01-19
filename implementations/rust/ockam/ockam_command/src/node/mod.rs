@@ -3,6 +3,7 @@ use clap::{Args, Subcommand};
 pub(crate) use create::CreateCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
+use ockam_api::cli_state::CliState;
 use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
@@ -69,7 +70,16 @@ pub struct NodeOpts {
         value_name = "NODE",
         short,
         long,
-        default_value = "default"
+        default_value_t = default_node_name()
     )]
     pub api_node: String,
+}
+
+fn default_node_name() -> String {
+    CliState::new()
+        .unwrap()
+        .nodes
+        .default()
+        .map(|n| n.config.name)
+        .unwrap_or_else(|_| "default".to_string())
 }
