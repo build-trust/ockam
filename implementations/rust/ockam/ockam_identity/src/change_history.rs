@@ -12,9 +12,12 @@ use ockam_core::{allow, deny, Encodable, Result};
 use ockam_vault::PublicKey;
 use serde::{Deserialize, Serialize};
 
+/// Result of comparison of current `IdentityChangeHistory` to the `IdentityChangeHistory`
+/// of the same Identity, that was known to us earlier
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
 #[cbor(index_only)]
 pub enum IdentityHistoryComparison {
+    /// No difference
     #[n(1)]
     Equal,
     /// Some changes don't match between current identity and known identity
@@ -57,10 +60,12 @@ impl fmt::Display for IdentityChangeHistory {
 }
 
 impl IdentityChangeHistory {
+    /// Export `IdentityChangeHistory` to the binary format
     pub fn export(&self) -> Result<Vec<u8>> {
         serde_bare::to_vec(self).map_err(|_| IdentityError::ConsistencyError.into())
     }
 
+    /// Import `IdentityChangeHistory` from the binary format
     pub fn import(data: &[u8]) -> Result<Self> {
         let s: Self = serde_bare::from_slice(data).map_err(|_| IdentityError::ConsistencyError)?;
 
@@ -99,6 +104,8 @@ impl AsRef<[IdentitySignedChange]> for IdentityChangeHistory {
 }
 
 impl IdentityChangeHistory {
+    /// Compare current `IdentityChangeHistory` to the `IdentityChangeHistory` of the same Identity,
+    /// that was known to us earlier
     pub fn compare(&self, known: &Self) -> IdentityHistoryComparison {
         for change_pair in self.0.iter().zip(known.0.iter()) {
             if change_pair.0.identifier() != change_pair.1.identifier() {
@@ -113,6 +120,7 @@ impl IdentityChangeHistory {
         }
     }
 
+    /// Cryptographically compute `IdentityIdentifier`
     pub async fn compute_identity_id(
         &self,
         vault: &impl IdentityVault,
@@ -126,10 +134,12 @@ impl IdentityChangeHistory {
         Ok(IdentityIdentifier::from_key_id(&key_id))
     }
 
+    /// Get public key with the given label (name)
     pub fn get_public_key(&self, label: &str) -> Result<PublicKey> {
         Self::get_public_key_static(self.as_ref(), label)
     }
 
+    /// Get first root public key
     pub fn get_first_root_public_key(&self) -> Result<PublicKey> {
         // TODO: Support root key rotation
         let root_change = match self.as_ref().first() {
@@ -147,10 +157,12 @@ impl IdentityChangeHistory {
         Ok(root_create_key_change.public_key().clone())
     }
 
+    /// Get latest root public key
     pub fn get_root_public_key(&self) -> Result<PublicKey> {
         self.get_public_key(IdentityStateConst::ROOT_LABEL)
     }
 
+    /// Verify all changes present in current `IdentityChangeHistory`
     pub async fn verify_all_existing_changes(&self, vault: &impl IdentityVault) -> Result<bool> {
         for i in 0..self.0.len() {
             let existing_changes = &self.as_ref()[..i];
@@ -162,7 +174,7 @@ impl IdentityChangeHistory {
         allow()
     }
 
-    /// Check consistency of changes that are been added
+    /// Check consistency of changes that are being added
     pub fn check_entire_consistency(&self) -> bool {
         Self::check_consistency(&[], &self.0)
     }

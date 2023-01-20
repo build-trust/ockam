@@ -124,6 +124,7 @@ impl AsRef<[u8]> for ChangeIdentifier {
 }
 
 impl ChangeIdentifier {
+    /// Initial `ChangeIdentifier` that is used as a previous_identifier of the first change
     pub async fn initial(hasher: &(impl Hasher + Sync)) -> Self {
         let h = match hasher.sha256(IdentityStateConst::INITIAL_CHANGE).await {
             Ok(hash) => hash,

@@ -33,6 +33,7 @@ pub struct Identity<V: IdentityVault, S: AuthenticatedStorage> {
     pub(crate) vault: V,
 }
 
+/// `Identity`-related constants
 pub struct IdentityStateConst;
 
 impl IdentityStateConst {
@@ -70,6 +71,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         }
     }
 
+    /// Import and verify an `Identity` from the binary format. Extended version
     pub async fn import_ext(
         ctx: &Context,
         data: &[u8],
@@ -158,7 +160,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 
         Ok(identity)
     }
-    /// Create Identity with a new secret key.
+
+    /// Create an `Identity`. Extended version
     pub async fn create_ext(ctx: &Context, authenticated_storage: &S, vault: &V) -> Result<Self> {
         let attrs = KeyAttributes::new(
             IdentityStateConst::ROOT_LABEL.to_string(),
@@ -178,7 +181,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         )
         .await
     }
-    /// Create Identity with external key.
+
+    /// Create an `Identity` with an external key. Extended version
     pub async fn create_with_external_key_ext(
         ctx: &Context,
         authenticated_storage: &S,
@@ -199,7 +203,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 }
 
 impl<V: IdentityVault> Identity<V, InMemoryStorage> {
-    /// Create Identity with a new secret key.
+    /// Create an `Identity` with a new secret key and `InMemoryStorage`
     pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
         let attrs = KeyAttributes::new(
             IdentityStateConst::ROOT_LABEL.to_string(),
@@ -219,7 +223,8 @@ impl<V: IdentityVault> Identity<V, InMemoryStorage> {
         )
         .await
     }
-    /// Create Identity with external key.
+
+    /// Create an `Identity` with an external key.
     pub async fn create_with_external_key(
         ctx: &Context,
         vault: &V,
@@ -237,6 +242,7 @@ impl<V: IdentityVault> Identity<V, InMemoryStorage> {
         .await
     }
 
+    /// Import and verify `Identity` from the binary format. Uses `InMemoryStorage`
     pub async fn import(ctx: &Context, data: &[u8], vault: &V) -> Result<Self> {
         Self::import_ext(
             ctx,
@@ -250,26 +256,32 @@ impl<V: IdentityVault> Identity<V, InMemoryStorage> {
 }
 
 impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+    /// Export an `Identity` to the binary format
     pub async fn export(&self) -> Result<Vec<u8>> {
         self.change_history.read().await.export()
     }
 
+    /// Vault
     pub fn vault(&self) -> &V {
         &self.vault
     }
 
+    /// `AuthenticatedStorage`
     pub fn authenticated_storage(&self) -> &S {
         &self.authenticated_storage
     }
 
+    /// `SecureChannelRegistry` with all known SecureChannels this `Identity` has created
     pub fn secure_channel_registry(&self) -> &SecureChannelRegistry {
         &self.secure_channel_registry
     }
 
+    /// `Identity` change history
     pub async fn change_history(&self) -> IdentityChangeHistory {
         self.change_history.read().await.clone()
     }
 
+    /// `Context`
     pub fn ctx(&self) -> &Context {
         &self.ctx
     }
@@ -294,10 +306,12 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 }
 
 impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+    /// `IdentityIdentifier` of this `Identity`
     pub fn identifier(&self) -> &IdentityIdentifier {
         &self.id
     }
 
+    /// Generate and add a new key to this `Identity` with a given `label`
     pub async fn create_key(&self, label: String) -> Result<()> {
         let key_attribs = KeyAttributes::default_with_label(label);
 
@@ -306,6 +320,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         self.add_change(change).await
     }
 
+    /// Add a new key to this `Identity` with a given `label`
     pub async fn add_key(&self, label: String, secret: &KeyId) -> Result<()> {
         let secret_attributes = self.vault.secret_attributes_get(secret).await?;
         let key_attribs = KeyAttributes::new(label, secret_attributes);
@@ -317,6 +332,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         self.add_change(change).await
     }
 
+    /// Rotate an existing key with a given label
     pub async fn rotate_key(&self, label: &str) -> Result<()> {
         let change = self
             .make_rotate_key_change(KeyAttributes::default_with_label(label.to_string()))
@@ -325,6 +341,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         self.add_change(change).await
     }
 
+    /// Rotate this `Identity` root key
     pub async fn rotate_root_key(&self) -> Result<()> {
         let change = self
             .make_rotate_key_change(KeyAttributes::default_with_label(
@@ -365,6 +382,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         self.vault.sign(&secret, data).await
     }
 
+    /// Get a `PublicIdentity` with given `IdentityIdentifier`,
+    /// that we already should know (e.g. after creating a SecureChannel with it)
     pub async fn get_known_identity(
         &self,
         their_identity_id: &IdentityIdentifier,
@@ -385,6 +404,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         }
     }
 
+    /// Update previously known `Identity` given newly obtained changes in `PublicIdentity`
     pub async fn update_known_identity(
         &self,
         their_identity_id: &IdentityIdentifier,
@@ -418,6 +438,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         Ok(())
     }
 
+    /// Export to `PublicIdentity`
     pub async fn to_public(&self) -> Result<PublicIdentity> {
         Ok(PublicIdentity::new(
             self.id.clone(),
