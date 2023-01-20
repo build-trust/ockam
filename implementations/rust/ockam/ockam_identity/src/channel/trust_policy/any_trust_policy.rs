@@ -2,6 +2,7 @@ use crate::{SecureChannelTrustInfo, TrustPolicy};
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{AsyncTryClone, Result};
 
+/// Succeeds if any or both `TrustPolicy` checks succeeded
 #[derive(AsyncTryClone)]
 #[async_try_clone(crate = "ockam_core")]
 pub struct AnyTrustPolicy<F: TrustPolicy, S: TrustPolicy> {
@@ -11,6 +12,7 @@ pub struct AnyTrustPolicy<F: TrustPolicy, S: TrustPolicy> {
 }
 
 impl<F: TrustPolicy, S: TrustPolicy> AnyTrustPolicy<F, S> {
+    /// Constructor
     pub fn new(first: F, second: S) -> Self {
         AnyTrustPolicy { first, second }
     }

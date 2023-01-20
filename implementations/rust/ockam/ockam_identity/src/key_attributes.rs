@@ -4,7 +4,7 @@ use ockam_core::vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_
 use ockam_vault::SecretAttributes;
 use serde::{Deserialize, Serialize};
 
-/// Attributes that are used to identify key
+/// Attributes that are used to identify a key
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct KeyAttributes {
     label: String,
@@ -16,12 +16,14 @@ impl KeyAttributes {
     pub fn label(&self) -> &str {
         &self.label
     }
+    /// `SecretAttributes` of the key
     pub fn secret_attributes(&self) -> SecretAttributes {
         self.secret_attributes
     }
 }
 
 impl KeyAttributes {
+    /// Default key with given label. (Ed25519, Persistent)
     pub fn default_with_label(label: impl Into<String>) -> Self {
         Self::new(
             label.into(),
@@ -33,6 +35,7 @@ impl KeyAttributes {
         )
     }
 
+    /// Constructor
     pub fn new(label: String, secret_attributes: SecretAttributes) -> Self {
         Self {
             label,

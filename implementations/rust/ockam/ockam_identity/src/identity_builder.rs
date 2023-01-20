@@ -10,6 +10,7 @@ pub struct IdentityBuilder<V: IdentityVault> {
 }
 
 impl<V: IdentityVault> IdentityBuilder<V> {
+    /// Constructor
     pub async fn new(ctx: &Context, vault: &V) -> Result<Self> {
         let child_ctx = ctx
             .new_detached(
@@ -25,6 +26,7 @@ impl<V: IdentityVault> IdentityBuilder<V> {
         })
     }
 
+    /// Build an `Identity`
     pub async fn build(self) -> Result<Identity<V, InMemoryStorage>> {
         Identity::create(&self.ctx, &self.vault).await
     }

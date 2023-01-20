@@ -5,6 +5,7 @@ use ockam_core::vault::PublicKey;
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{AsyncTryClone, Result};
 
+/// `TrustPolicy` based on pre-known `PublicKey` of the other participant
 #[derive(AsyncTryClone)]
 #[async_try_clone(crate = "ockam_core")]
 pub struct TrustPublicKeyPolicy<V: IdentityVault, S: AuthenticatedStorage> {
@@ -14,6 +15,7 @@ pub struct TrustPublicKeyPolicy<V: IdentityVault, S: AuthenticatedStorage> {
 }
 
 impl<V: IdentityVault, S: AuthenticatedStorage> TrustPublicKeyPolicy<V, S> {
+    /// Constructor
     pub fn new(
         public_key: PublicKey,
         public_key_label: impl Into<String>,

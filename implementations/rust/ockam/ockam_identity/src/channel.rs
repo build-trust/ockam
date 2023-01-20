@@ -16,18 +16,22 @@ pub use local_info::*;
 pub use registry::*;
 pub use trust_policy::*;
 
+/// `AccessControl` implementation based on SecureChannel authentication guarantees
 pub mod access_control;
+/// SecureChannel API
 pub mod api;
 
 use crate::authenticated_storage::AuthenticatedStorage;
 use crate::channel::decryptor_worker::DecryptorWorker;
 use crate::channel::listener::IdentityChannelListener;
+use crate::error::IdentityError;
 use crate::{Identity, IdentityVault};
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, AllowAll, AsyncTryClone, DenyAll, Result, Route};
 
 impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+    /// Spawns a SecureChannel listener at given `Address`
     pub async fn create_secure_channel_listener(
         &self,
         address: impl Into<Address>,
@@ -49,6 +53,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         Ok(())
     }
 
+    /// Initiate a SecureChannel using `Route` to the SecureChannel listener
     pub async fn create_secure_channel(
         &self,
         route: impl Into<Route>,
@@ -66,6 +71,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         .await
     }
 
+    /// Extended function to create a SecureChannel
     pub async fn create_secure_channel_extended(
         &self,
         route: impl Into<Route>,

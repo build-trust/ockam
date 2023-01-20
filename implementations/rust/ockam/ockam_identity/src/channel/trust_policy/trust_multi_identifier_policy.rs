@@ -5,12 +5,14 @@ use ockam_core::{
     Result,
 };
 
+/// `TrustPolicy` based on list of pre-known `IdentityIdentifier`s of the possible participants
 #[derive(Clone)]
 pub struct TrustMultiIdentifiersPolicy {
     identity_ids: Vec<IdentityIdentifier>,
 }
 
 impl TrustMultiIdentifiersPolicy {
+    /// Constructor
     pub fn new(identity_ids: Vec<IdentityIdentifier>) -> Self {
         Self { identity_ids }
     }
