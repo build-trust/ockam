@@ -129,6 +129,7 @@ pub async fn create_secure_channel_to_authority(
     node_name: &str,
     authority: &ProjectAuthority,
     addr: &MultiAddr,
+    identity: Option<String>,
 ) -> crate::Result<MultiAddr> {
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     debug!(%addr, "establishing secure channel to project authority");
@@ -137,7 +138,7 @@ pub async fn create_secure_channel_to_authority(
         addr,
         Some(allowed),
         CredentialExchangeMode::None,
-        None,
+        identity,
     );
     let req = Request::post("/node/secure_channel").body(payload);
     rpc.request(req).await?;
