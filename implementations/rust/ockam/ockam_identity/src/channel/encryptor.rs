@@ -25,7 +25,7 @@ impl<V: SymmetricVault> Encryptor<V> {
     pub async fn encrypt(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
         let old_nonce = self.nonce;
         if old_nonce == u64::MAX {
-            return Err(IdentityError::InvalidNonce.into());
+            return Err(IdentityError::NonceOverflow.into());
         }
 
         self.nonce += 1;

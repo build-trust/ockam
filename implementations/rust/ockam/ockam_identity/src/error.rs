@@ -11,7 +11,8 @@ pub enum IdentityError {
     ConsistencyError,
     SecureChannelVerificationFailed,
     SecureChannelTrustCheckFailed,
-    SecureChannelCannotBeAuthenticated,
+    /// Custom payload wasn't provided where required
+    NoCustomPayload,
     UnknownChannelMsgDestination,
     InvalidLocalInfoType,
     InvalidSecureChannelInternalState,
@@ -22,6 +23,10 @@ pub enum IdentityError {
     CredentialVerificationFailed,
     DuplicateSecureChannel,
     InvalidNonce,
+    /// Nonce overflow
+    NonceOverflow,
+    /// SecureChannel was not found in the Registry
+    SecureChannelNotFound,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}
