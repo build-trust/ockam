@@ -81,7 +81,7 @@ spaces = [* space]
 
 
 create_space = {
-   ?0: 3888657,
+   ?0: 2321503,
     1: space_name
     2: [+ user]
 }

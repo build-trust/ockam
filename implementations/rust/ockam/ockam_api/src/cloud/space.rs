@@ -41,7 +41,7 @@ impl Space<'_> {
 #[cbor(map)]
 pub struct CreateSpace<'a> {
     #[cfg(feature = "tag")]
-    #[n(0)] pub tag: TypeTag<3888657>,
+    #[n(0)] pub tag: TypeTag<2321503>,
     #[b(1)] pub name: CowStr<'a>,
     #[b(2)] pub users: Vec<CowStr<'a>>,
 }
