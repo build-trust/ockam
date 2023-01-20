@@ -120,7 +120,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXResponder<V
         let remote_backwards_compatibility_address = body
             .custom_payload()
             .as_ref()
-            .ok_or(IdentityError::SecureChannelCannotBeAuthenticated)?;
+            .ok_or(IdentityError::NoCustomPayload)?;
         let remote_backwards_compatibility_address =
             Address::decode(remote_backwards_compatibility_address)?;
 
