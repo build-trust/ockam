@@ -2,7 +2,7 @@ use clap::{Args, Subcommand};
 
 use crate::CommandGlobalOpts;
 
-use super::LeaseArgs;
+use super::{influxdb::InfluxDbRevokeCommand, LeaseArgs};
 
 /// Revoke a token within the lease token manager
 #[derive(Clone, Debug, Args)]
@@ -14,7 +14,7 @@ pub struct RevokeCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum RevokeSubcommand {
-    InfluxDb,
+    InfluxDb(InfluxDbRevokeCommand),
 }
 
 impl RevokeCommand {

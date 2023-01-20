@@ -29,6 +29,7 @@ use crate::{CommandGlobalOpts, OutputFormat};
 
 pub mod api;
 pub mod exitcode;
+pub mod orchestrator_api;
 
 mod config;
 pub(crate) mod output;
