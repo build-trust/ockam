@@ -42,8 +42,6 @@ impl IdentityStateConst {
     pub const INITIAL_CHANGE: &'static [u8] = "OCKAM_INITIAL_CHANGE".as_bytes();
     /// Label for [`crate::Identity`] update key
     pub const ROOT_LABEL: &'static str = "OCKAM_RK";
-    /// Current version of change structure
-    pub const CURRENT_CHANGE_VERSION: u8 = 1;
     /// Change history key for AuthenticatedStorage
     pub const CHANGE_HISTORY_KEY: &'static str = "CHANGE_HISTORY";
     /// Attributes key for AuthenticatedStorage
