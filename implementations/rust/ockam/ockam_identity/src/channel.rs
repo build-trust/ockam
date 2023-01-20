@@ -84,7 +84,30 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         .await
     }
 
+    /// Stop a SecureChannel given an encryptor address
     pub async fn stop_secure_channel(&self, channel: &Address) -> Result<()> {
-        self.ctx.stop_worker(channel.clone()).await
+        if let Some(entry) = self.secure_channel_registry.unregister_channel(channel) {
+            let err1 = self
+                .ctx
+                .stop_worker(entry.encryptor_messaging_address().clone())
+                .await
+                .err();
+            let err2 = self
+                .ctx
+                .stop_worker(entry.decryptor_messaging_address().clone())
+                .await
+                .err();
+
+            if let Some(err1) = err1 {
+                return Err(err1);
+            }
+            if let Some(err2) = err2 {
+                return Err(err2);
+            }
+        } else {
+            return Err(IdentityError::SecureChannelNotFound.into());
+        }
+
+        Ok(())
     }
 }

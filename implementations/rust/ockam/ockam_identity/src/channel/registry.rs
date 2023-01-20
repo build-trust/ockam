@@ -88,6 +88,12 @@ impl SecureChannelRegistry {
         Ok(())
     }
 
+    /// Unregister a SecureChannel and return removed `SecureChannelRegistryEntry`
+    pub fn unregister_channel(
+        &self,
+        encryptor_address: &Address,
+    ) -> Option<SecureChannelRegistryEntry> {
+        self.registry.write().unwrap().remove(encryptor_address)
     pub fn get_channel_list(&self) -> Vec<SecureChannelRegistryEntry> {
         self.registry.read().unwrap().values().cloned().collect()
     }
