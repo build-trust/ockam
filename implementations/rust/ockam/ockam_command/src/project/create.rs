@@ -62,7 +62,6 @@ async fn run_impl(
         &space_id,
         cmd.enforce_credentials,
         &cmd.cloud_opts.route(),
-        None,
     ))
     .await?;
     let project = rpc.parse_response::<Project>()?;

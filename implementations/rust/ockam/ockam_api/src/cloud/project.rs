@@ -277,7 +277,6 @@ pub struct CreateProject<'a> {
     #[b(2)] pub services: Vec<CowStr<'a>>,
     #[b(3)] pub users: Vec<CowStr<'a>>,
     #[b(4)] pub enforce_credentials: Option<bool>,
-    #[b(5)] pub identity_name: Option<CowStr<'a>>
 }
 
 impl<'a> CreateProject<'a> {
@@ -286,14 +285,12 @@ impl<'a> CreateProject<'a> {
         enforce_credentials: Option<bool>,
         users: &'a [T],
         services: &'a [T],
-        identity_name: Option<S>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             name: name.into(),
             enforce_credentials,
-            identity_name: identity_name.map(|x| x.into()),
             services: services.iter().map(|x| CowStr::from(x.as_ref())).collect(),
             users: users.iter().map(|x| CowStr::from(x.as_ref())).collect(),
         }
@@ -371,9 +368,10 @@ mod node {
 
             let req_builder = Request::post(format!("/v0/{space_id}")).body(&req_body);
             let cli_state = cli_state::CliState::new()?;
+
             let ident = {
                 let inner = self.get().read().await;
-                match &req_body.identity_name {
+                match &req_wrapper.identity_name {
                     Some(existing_identity_name) => {
                         let identity_cfg = cli_state
                             .identities
