@@ -636,7 +636,6 @@ mod tests {
                 services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
                 users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
                 enforce_credentials: None,
-                identity_name: None,
             })
         }
     }
