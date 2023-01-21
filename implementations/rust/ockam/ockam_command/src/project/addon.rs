@@ -16,6 +16,7 @@ use ockam_api::cloud::addon::{Addon, ConfluentConfig};
 use ockam_api::cloud::project::{InfluxDBTokenLeaseManagerConfig, OktaConfig, Project};
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
+use ockam_core::CowStr;
 
 use crate::enroll::{Auth0Provider, Auth0Service};
 use crate::node::util::delete_embedded_node;
@@ -320,8 +321,11 @@ async fn run_impl(
                     // Do request
                     let addon_id = "okta";
                     let endpoint = format!("{}/{}", base_endpoint(&project_name)?, addon_id);
-                    let req = Request::put(endpoint)
-                        .body(CloudRequestWrapper::new(body, controller_route));
+                    let req = Request::put(endpoint).body(CloudRequestWrapper::new(
+                        body,
+                        controller_route,
+                        None::<CowStr>,
+                    ));
                     rpc.request(req).await?;
                     rpc.is_ok()?;
                     println!("Okta addon enabled");
@@ -377,8 +381,11 @@ async fn run_impl(
 
                     let add_on_id = "influxdb_token_lease_manager";
                     let endpoint = format!("{}/{}", base_endpoint(&project_name)?, add_on_id);
-                    let req = Request::put(endpoint)
-                        .body(CloudRequestWrapper::new(body, controller_route));
+                    let req = Request::put(endpoint).body(CloudRequestWrapper::new(
+                        body,
+                        controller_route,
+                        None::<CowStr>,
+                    ));
 
                     rpc.request(req).await?;
                     rpc.is_ok()?;
@@ -424,8 +431,11 @@ async fn run_impl(
                     let body = ConfluentConfig::new(bootstrap_server, api_key, api_secret);
                     let addon_id = "confluent";
                     let endpoint = format!("{}/{}", base_endpoint(&project_name)?, addon_id);
-                    let req = Request::put(endpoint)
-                        .body(CloudRequestWrapper::new(body, controller_route));
+                    let req = Request::put(endpoint).body(CloudRequestWrapper::new(
+                        body,
+                        controller_route,
+                        None::<CowStr>,
+                    ));
                     rpc.request(req).await?;
                     rpc.is_ok()?;
                     println!("Confluent addon enabled");

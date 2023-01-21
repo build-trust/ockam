@@ -33,15 +33,17 @@ pub struct CloudRequestWrapper<'a, T> {
     #[n(0)] pub tag: TypeTag<8956240>,
     #[b(1)] pub req: T,
     #[b(2)] route: CowStr<'a>,
+    #[b(3)] pub identity_name: Option<CowStr<'a>>,
 }
 
 impl<'a, T> CloudRequestWrapper<'a, T> {
-    pub fn new(req: T, route: &MultiAddr) -> Self {
+    pub fn new<S: Into<CowStr<'a>>>(req: T, route: &MultiAddr, identity_name: Option<S>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             req,
             route: route.to_string().into(),
+            identity_name: identity_name.map(|x| x.into()),
         }
     }
 
@@ -58,7 +60,11 @@ pub type BareCloudRequestWrapper<'a> = CloudRequestWrapper<'a, ()>;
 
 impl<'a> BareCloudRequestWrapper<'a> {
     pub fn bare(route: &MultiAddr) -> Self {
-        Self::new((), route)
+        Self {
+            req: (),
+            route: route.to_string().into(),
+            identity_name: None,
+        }
     }
 }
 
