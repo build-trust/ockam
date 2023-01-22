@@ -99,19 +99,26 @@ pub struct CreateSecureChannelListenerRequest<'a> {
     #[n(0)] tag: TypeTag<8112242>,
     #[b(1)] pub addr: Cow<'a, str>,
     #[b(2)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
+    #[b(3)] pub identity: Option<CowStr<'a>>,
 }
 
 impl<'a> CreateSecureChannelListenerRequest<'a> {
-    pub fn new(addr: &Address, authorized_identifiers: Option<Vec<IdentityIdentifier>>) -> Self {
+    pub fn new(
+        addr: &Address,
+        authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        identity: Option<String>,
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             addr: addr.to_string().into(),
             authorized_identifiers: authorized_identifiers
                 .map(|x| x.into_iter().map(|y| y.to_string().into()).collect()),
+            identity: identity.map(|x| x.into()),
         }
     }
 }
+
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
@@ -130,6 +137,7 @@ impl<'a> DeleteSecureChannelRequest<'a> {
         }
     }
 }
+
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]

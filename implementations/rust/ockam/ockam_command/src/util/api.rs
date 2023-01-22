@@ -93,10 +93,12 @@ pub(crate) fn show_secure_channel(
 pub(crate) fn create_secure_channel_listener(
     addr: &Address,
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+    identity: Option<String>,
 ) -> Result<Vec<u8>> {
     let payload = models::secure_channel::CreateSecureChannelListenerRequest::new(
         addr,
         authorized_identifiers,
+        identity,
     );
 
     let mut buf = vec![];
@@ -349,7 +351,6 @@ pub(crate) fn validate_cloud_resource_name(s: &str) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod test {
-
     use crate::util::api::validate_cloud_resource_name;
 
     #[test]

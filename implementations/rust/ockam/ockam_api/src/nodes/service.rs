@@ -314,6 +314,8 @@ impl NodeManager {
         self.create_secure_channel_listener_impl(
             DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
             None, // Not checking identifiers here in favor of credentials check
+            None,
+            ctx,
         )
         .await?;
 
@@ -504,7 +506,7 @@ impl NodeManagerWorker {
                 self.show_secure_channel(req, dec).await?.to_vec()?
             }
             (Post, ["node", "secure_channel_listener"]) => self
-                .create_secure_channel_listener(req, dec)
+                .create_secure_channel_listener(req, dec, ctx)
                 .await?
                 .to_vec()?,
 
