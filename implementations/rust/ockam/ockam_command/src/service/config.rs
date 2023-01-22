@@ -32,6 +32,9 @@ pub struct SecureChannelListenerConfig {
 
     #[serde(default)]
     pub(crate) disabled: bool,
+
+    #[serde(default)]
+    pub(crate) identity: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

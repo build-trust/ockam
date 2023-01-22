@@ -148,13 +148,27 @@ impl NodeManager {
         &mut self,
         addr: Address,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        identity_name: Option<CowStr<'_>>,
+        ctx: &Context,
     ) -> Result<()> {
         info!(
             "Handling request to create a new secure channel listener: {}",
             addr
         );
 
-        let identity = self.identity()?;
+        let identity = if let Some(identity) = identity_name {
+            let state = CliState::new()?;
+            let idt_config = state.identities.get(&identity)?.config;
+            match idt_config.get(ctx, self.vault()?).await {
+                Ok(idt) => idt,
+                Err(_) => {
+                    let default_vault = &state.vaults.default()?.config.get().await?;
+                    idt_config.get(ctx, default_vault).await?
+                }
+            }
+        } else {
+            self.identity()?.async_try_clone().await?
+        };
 
         match authorized_identifiers {
             Some(ids) => {
@@ -315,11 +329,13 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
+        ctx: &Context,
     ) -> Result<ResponseBuilder<()>> {
         let mut node_manager = self.node_manager.write().await;
         let CreateSecureChannelListenerRequest {
             addr,
             authorized_identifiers,
+            identity,
             ..
         } = dec.decode()?;
 
@@ -341,7 +357,7 @@ impl NodeManagerWorker {
         }
 
         node_manager
-            .create_secure_channel_listener_impl(addr, authorized_identifiers)
+            .create_secure_channel_listener_impl(addr, authorized_identifiers, identity, ctx)
             .await?;
 
         let response = Response::ok(req.id());
