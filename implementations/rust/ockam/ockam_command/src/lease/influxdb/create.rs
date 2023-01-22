@@ -47,14 +47,13 @@ async fn run_impl(
     ctx: Context,
     (opts, lease_args, cmd): (CommandGlobalOpts, LeaseArgs, InfluxDbCreateCommand),
 ) -> crate::Result<()> {
-    let path = format!("/project/{}", lease_args.project_name);
-    let to = MultiAddr::from_str(&path)?;
     let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts)
+        .as_identity(lease_args.cloud_opts.identity)
         .with_new_embbeded_node()
         .await?
-        .to_project(&to)
+        .with_project_from_file(&lease_args.project)
         .await?
-        .build()
+        .build(&MultiAddr::from_str("/service")?)
         .await?;
 
     let body = CreateTokenRequest::new(

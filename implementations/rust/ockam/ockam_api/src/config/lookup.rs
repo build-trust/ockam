@@ -1,5 +1,6 @@
-use crate::cloud::project::OktaAuth0;
+use crate::cloud::project::{OktaAuth0, Project};
 use crate::error::ApiError;
+use anyhow::Context as _;
 use bytes::Bytes;
 use ockam_core::compat::collections::VecDeque;
 use ockam_core::{CowStr, Result};
@@ -211,6 +212,38 @@ pub struct ProjectLookup {
     pub authority: Option<ProjectAuthority>,
     /// OktaAuth0 information.
     pub okta: Option<OktaAuth0>,
+}
+
+impl ProjectLookup {
+    pub async fn from_project(project: &Project<'_>) -> anyhow::Result<Self> {
+        let node_route: MultiAddr = project
+            .access_route
+            .as_ref()
+            .try_into()
+            .context("Invalid project node route")?;
+        let pid = project
+            .identity
+            .as_ref()
+            .context("Project should have identity set")?;
+        let authority = ProjectAuthority::from_raw(
+            &project.authority_access_route,
+            &project.authority_identity,
+        )
+        .await?;
+        let okta = project.okta_config.as_ref().map(|o| OktaAuth0 {
+            tenant_base_url: o.tenant_base_url.to_string(),
+            client_id: o.client_id.to_string(),
+            certificate: o.certificate.to_string(),
+        });
+
+        Ok(ProjectLookup {
+            node_route: Some(node_route),
+            id: project.id.to_string(),
+            identity_id: Some(pid.clone()),
+            authority,
+            okta,
+        })
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

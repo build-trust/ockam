@@ -557,6 +557,22 @@ impl MultiAddr {
         let b = MultiAddr::default().try_with(iter).expect("valid address");
         (a, b)
     }
+
+    pub fn concat_mut(&mut self, other: &MultiAddr) -> Result<(), Error> {
+        for proto in other.iter() {
+            self.push_back_value(&proto)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn concat(self, other: &MultiAddr) -> Result<MultiAddr, Error> {
+        let mut addr = self.clone();
+
+        addr.concat_mut(other)?;
+
+        Ok(addr)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

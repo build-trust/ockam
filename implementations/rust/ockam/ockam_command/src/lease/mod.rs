@@ -3,6 +3,8 @@ mod influxdb;
 mod list;
 mod revoke;
 mod show;
+use std::path::PathBuf;
+
 pub use create::CreateCommand;
 pub use list::ListCommand;
 pub use show::ShowCommand;
@@ -23,8 +25,9 @@ pub struct LeaseCommand {
 
 #[derive(Clone, Debug, Args)]
 pub struct LeaseArgs {
-    #[arg(long, short)]
-    project_name: String,
+    /// Project config file
+    #[arg(long = "project", value_name = "PROJECT_JSON_PATH")]
+    project: PathBuf,
 
     #[command(flatten)]
     cloud_opts: CloudOpts,

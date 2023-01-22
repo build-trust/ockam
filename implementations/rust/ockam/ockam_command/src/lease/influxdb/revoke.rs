@@ -1,12 +1,15 @@
+use std::str::FromStr;
+
 use clap::Args;
 use ockam::Context;
 use ockam_api::cloud::{lease_manager::models::influxdb::RevokeTokenRequest, CloudRequestWrapper};
 use ockam_core::api::Request;
+use ockam_multiaddr::MultiAddr;
 
 use crate::{
     lease::LeaseArgs,
     node::util::delete_embedded_node,
-    util::{node_rpc, Rpc},
+    util::{node_rpc, orchestrator_api::OrchestratorApiBuilder, Rpc},
     CommandGlobalOpts,
 };
 use anyhow::Context as _;
@@ -29,38 +32,23 @@ async fn run_impl(
     ctx: Context,
     (opts, lease_args, cmd): (CommandGlobalOpts, LeaseArgs, InfluxDbRevokeCommand),
 ) -> crate::Result<()> {
-    let controller_route = &lease_args.cloud_opts.route();
-    let mut rpc = Rpc::embedded(&ctx, &opts).await?;
-
-    let base_endpoint = |project_name: &str| -> crate::Result<String> {
-        let lookup = opts.config.lookup();
-        let project_id = &lookup
-            .get_project(project_name)
-            .context(format!(
-                "Failed to get project {} from config lookup",
-                project_name
-            ))?
-            .id;
-        Ok(format!("{project_id}/lease_manager"))
-    };
-
+    let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts)
+        .as_identity(lease_args.cloud_opts.identity)
+        .with_new_embbeded_node()
+        .await?
+        .with_project_from_file(&lease_args.project)
+        .await?
+        .build(&MultiAddr::from_str("/service")?)
+        .await?;
     let body = RevokeTokenRequest::new(cmd.token_id.clone());
 
-    let add_on_id = "influxdb";
-    let node_api_path = format!(
-        "{}/{}/{}/{}",
-        base_endpoint(&lease_args.project_name)?,
-        add_on_id,
-        "tokens",
-        cmd.token_id
-    );
+    let req =
+        Request::delete(format!("/lease_manager/influxdb/tokens/{}", cmd.token_id)).body(body);
 
-    let req = Request::delete(node_api_path).body(CloudRequestWrapper::new(body, controller_route));
-    rpc.request(req).await?;
-    rpc.is_ok()?;
+    // TOOD: add or change structure of client to allow for requests w/o responses.
+    orchestrator_client.request(req).await?;
 
     println!("Revoked influxdb token {}.", cmd.token_id);
 
-    delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }
