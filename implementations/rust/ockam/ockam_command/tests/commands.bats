@@ -175,22 +175,12 @@ teardown() {
   assert_output "HELLO"
 }
 
-@test "vault create" {
-  # Random name
+@test "vault CRUD" {
+  # Create with random name
   run $OCKAM vault create
   assert_success
 
-  # Named
-  vault_name=$(openssl rand -hex 4)
-  run $OCKAM vault create "${vault_name}"
-  assert_success
-
-  # Fails if already exists
-  run $OCKAM vault create "${vault_name}"
-  assert_failure
-}
-
-@test "vault delete" {
+  # Create with specific name
   vault_name=$(openssl rand -hex 4)
 
   run $OCKAM vault create "${vault_name}"
@@ -200,7 +190,7 @@ teardown() {
   run $OCKAM vault show "${vault_name}"
   assert_failure
 
-  # Delete vault and identity if it's loadable from the vault
+  # Delete vault and leave identities untouched
   vault_name=$(openssl rand -hex 4)
   idt_name=$(openssl rand -hex 4)
 
@@ -213,57 +203,40 @@ teardown() {
   run $OCKAM vault show "${vault_name}"
   assert_failure
   run $OCKAM identity show "${idt_name}"
-  assert_failure
-
-  # Fail to delete vault when it's in use by a node
-  vault_name=$(openssl rand -hex 4)
-  node_name=$(openssl rand -hex 4)
-
-  run $OCKAM vault create "${vault_name}"
-  assert_success
-  run $OCKAM node create "${node_name}" --vault "${vault_name}"
-  assert_success
-  run $OCKAM vault delete "${vault_name}"
-  assert_failure
-  run $OCKAM node delete "${node_name}"
-  assert_success
-  run $OCKAM vault delete "${vault_name}"
   assert_success
 }
 
-@test "identity create" {
-  vault_name=$(openssl rand -hex 4)
-  run $OCKAM vault create "${vault_name}"
-  assert_success
-
-  # With random name
+@test "identity CRUD" {
+  # Create with random name
   run $OCKAM identity create
   assert_success
   assert_output --partial "Identity created"
 
-  # Named
+  # Create a named identity and delete it
   idt_name=$(openssl rand -hex 4)
   run $OCKAM identity create "${idt_name}"
   assert_success
   assert_output --partial "Identity created"
+  run $OCKAM identity delete "${idt_name}"
+  assert_success
+  assert_output --partial "Identity '${idt_name}' deleted"
 
-  # Fails if already exists
+  # Fail to delete identity when it's in use by a node
+  idt_name=$(openssl rand -hex 4)
+  node_name=$(openssl rand -hex 4)
+
   run $OCKAM identity create "${idt_name}"
+  assert_success
+  run $OCKAM node create "${node_name}" --identity "${idt_name}"
+  assert_success
+  run $OCKAM identity delete "${idt_name}"
   assert_failure
 
-  # Specifying vault
-  run $OCKAM identity create --vault "${vault_name}"
+  # Delete identity after deleting the node
+  run $OCKAM node delete "${node_name}"
   assert_success
-  assert_output --partial "Identity created"
-}
-
-@test "identity delete" {
-  run $OCKAM identity create foo
+  run $OCKAM identity delete "${idt_name}"
   assert_success
-  assert_output --partial "Identity created"
-  run $OCKAM identity delete foo
-  assert_success
-  assert_output --partial "Identity 'foo' deleted"
 }
 
 @test "create a secure channel between two nodes and send message through it" {
@@ -412,7 +385,6 @@ teardown() {
   run $OCKAM tcp-connection list --node n1
   assert_success
   refute_output --partial "127.0.0.1:5000"
-
 }
 
 # the below tests will only succeed if already enrolled with `ockam enroll`
