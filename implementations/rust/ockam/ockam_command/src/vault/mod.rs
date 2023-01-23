@@ -110,38 +110,7 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
             );
         }
         VaultSubcommand::Delete { name } => {
-            let vault = opts.state.vaults.get(&name)?;
-            let identity_states = opts.state.identities.list()?;
-            let nodes = opts.state.nodes.list()?;
-
-            let mut removable_identities = Vec::default();
-            for identity_state in identity_states {
-                if identity_state
-                    .config
-                    .get(&ctx, &vault.config.get().await?)
-                    .await
-                    .is_ok()
-                {
-                    for node in &nodes {
-                        if node.config.identity_config()?.identifier
-                            == identity_state.config.identifier
-                        {
-                            return Err(anyhow!(
-                                "Can't delete vault '{}' because it is currently in use by node '{}'",
-                                &name,
-                                &node.config.name
-                            ).into());
-                        }
-                    }
-                    removable_identities.push(identity_state);
-                }
-            }
-            for identity_state in &removable_identities {
-                opts.state.identities.delete_by_state(identity_state)?;
-                println!("Identity '{}' deleted", identity_state.name);
-            }
-
-            opts.state.vaults.delete_by_state(&vault)?;
+            opts.state.vaults.delete(&name).await?;
             println!("Vault '{}' deleted", name);
         }
     }

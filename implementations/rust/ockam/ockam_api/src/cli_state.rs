@@ -1,21 +1,15 @@
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use ockam_identity::{Identity, IdentityIdentifier, SecureChannelRegistry};
-use ockam_node::tokio::fs::File;
 use ockam_vault::{storage::FileStorage, Vault};
 use rand::random;
 use serde::{Deserialize, Serialize};
-use std::alloc::System;
-use std::ffi::OsStr;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
-use time::format_description::well_known::Iso8601;
-use time::OffsetDateTime;
+use std::time::SystemTime;
 
 use crate::lmdb::LmdbStorage;
 use thiserror::Error;
@@ -34,6 +28,8 @@ pub enum CliStateError {
     AlreadyExists(String),
     #[error("`{0}` not found")]
     NotFound(String),
+    #[error("{0}")]
+    Invalid(String),
     #[error("invalid state version {0}")]
     InvalidVersion(String),
     #[error("unknown error")]
@@ -159,14 +155,22 @@ impl VaultsState {
         Ok(vaults)
     }
 
-    pub fn delete_by_state(&self, vault: &VaultState) -> Result<()> {
+    pub async fn delete(&self, name: &str) -> Result<()> {
+        // Retrieve vault. If doesn't exist do nothing.
+        let vault_state = match self.get(name) {
+            Ok(v) => v,
+            Err(CliStateError::NotFound(_)) => return Ok(()),
+            Err(e) => return Err(e),
+        };
+
+        // Set default to another vault if it's the default
         if let Ok(default) = self.default() {
-            if default.path == vault.path {
+            if default.path == vault_state.path {
                 let _ = std::fs::remove_file(self.default_path()?);
                 let mut vaults = self.list()?;
-                vaults.retain(|v| v.path != vault.path);
-                if let Some(vault) = vaults.first() {
-                    let name = vault.name()?;
+                vaults.retain(|v| v.path != vault_state.path);
+                if let Some(v) = vaults.first() {
+                    let name = v.name()?;
                     println!("Setting default vault to '{}'", &name);
                     self.set_default(&name)?;
                 }
@@ -174,7 +178,7 @@ impl VaultsState {
         }
 
         // Remove vault file
-        std::fs::remove_file(vault.path.clone())?;
+        std::fs::remove_file(vault_state.path)?;
 
         Ok(())
     }
@@ -330,17 +334,17 @@ impl IdentitiesState {
         Ok(identities)
     }
 
-    pub fn delete_by_name(&self, name: &str) -> Result<()> {
+    pub fn delete(&self, name: &str) -> Result<()> {
         // Retrieve identity. If doesn't exist do nothing.
         let identity = match self.get(name) {
-            Ok(node) => node,
+            Ok(i) => i,
             Err(CliStateError::NotFound(_)) => return Ok(()),
             Err(e) => return Err(e),
         };
-        self.delete_by_state(&identity)
-    }
 
-    pub fn delete_by_state(&self, identity: &IdentityState) -> Result<()> {
+        // Abort if identity is being used by some running node.
+        identity.in_use()?;
+
         // Set default to another identity if it's the default
         if let Ok(default) = self.default() {
             if default.path == identity.path {
@@ -355,7 +359,7 @@ impl IdentitiesState {
         }
 
         // Remove identity file
-        std::fs::remove_file(identity.path.clone())?;
+        std::fs::remove_file(identity.path)?;
 
         Ok(())
     }
@@ -402,6 +406,22 @@ impl IdentityState {
     pub fn save(&self) -> Result<()> {
         let contents = serde_json::to_string(&self.config)?;
         std::fs::write(&self.path, contents)?;
+        Ok(())
+    }
+
+    fn in_use(&self) -> Result<()> {
+        self.in_use_by(&CliState::new()?.nodes.list()?)
+    }
+
+    fn in_use_by(&self, nodes: &[NodeState]) -> Result<()> {
+        for node in nodes {
+            if node.config.identity_config()?.identifier == self.config.identifier {
+                return Err(CliStateError::Invalid(format!(
+                    "Can't delete identity '{}' because is currently in use by node '{}'",
+                    &self.name, &node.config.name
+                )));
+            }
+        }
         Ok(())
     }
 }
@@ -625,22 +645,6 @@ impl NodesState {
 
         Ok(())
     }
-
-    fn vault_name(&self, name: &str) -> Result<String> {
-        let mut path = self.dir.clone();
-        path.push(name);
-        path.push("default_vault");
-        let path = std::fs::canonicalize(&path)?;
-        file_stem(&path)
-    }
-
-    fn identity_name(&self, name: &str) -> Result<String> {
-        let mut path = self.dir.clone();
-        path.push(name);
-        path.push("default_identity");
-        let path = std::fs::canonicalize(&path)?;
-        file_stem(&path)
-    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -834,8 +838,6 @@ enum NodeConfigVersion {
 }
 
 impl NodeConfigVersion {
-    const FILE_NAME: &'static str = "version";
-
     fn latest() -> Self {
         Self::V1
     }
