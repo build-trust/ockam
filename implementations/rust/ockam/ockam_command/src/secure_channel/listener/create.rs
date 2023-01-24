@@ -8,7 +8,7 @@ use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{Request, Status};
 use ockam_core::{Address, Route};
 
-use crate::node::util::default_node_name;
+use crate::node::default_node_name;
 use crate::secure_channel::HELP_DETAIL;
 use crate::util::{api, exitcode, extract_address_value, node_rpc, Rpc};
 use crate::{help, CommandGlobalOpts};
@@ -34,8 +34,8 @@ pub struct CreateCommand {
 #[derive(Clone, Debug, Args)]
 pub struct SecureChannelListenerNodeOpts {
     /// Node at which to create the listener
-    #[arg(global = true, long, value_name = "NODE")]
-    pub at: Option<String>,
+    #[arg(global = true, long, value_name = "NODE", default_value_t = default_node_name())]
+    pub at: String,
 }
 
 impl CreateCommand {
@@ -52,10 +52,8 @@ async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let at = &match cmd.node_opts.at {
-        Some(at) => at,
-        None => default_node_name(&opts),
-    };
+    let at = &cmd.node_opts.at;
+
     let node = extract_address_value(at)?;
     let mut rpc = Rpc::background(ctx, &opts, &node)?;
     let req = Request::post("/node/secure_channel_listener").body(

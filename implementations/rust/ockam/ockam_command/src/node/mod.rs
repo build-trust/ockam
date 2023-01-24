@@ -75,7 +75,7 @@ pub struct NodeOpts {
     pub api_node: String,
 }
 
-fn default_node_name() -> String {
+pub fn default_node_name() -> String {
     CliState::new()
         .unwrap()
         .nodes
