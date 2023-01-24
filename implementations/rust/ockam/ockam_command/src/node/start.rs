@@ -2,8 +2,9 @@ use clap::Args;
 
 use ockam::TcpTransport;
 
+use crate::node::default_node_name;
 use crate::node::show::print_query_status;
-use crate::node::util::{default_node_name, spawn_node};
+use crate::node::util::spawn_node;
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
 
@@ -12,7 +13,8 @@ use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
 #[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
 pub struct StartCommand {
     /// Name of the node.
-    node_name: Option<String>,
+    #[arg(default_value_t = default_node_name())]
+    node_name: String,
 
     #[arg(long, default_value = "false")]
     aws_kms: bool,
@@ -28,10 +30,7 @@ async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, StartCommand),
 ) -> crate::Result<()> {
-    let node_name = &match cmd.node_name {
-        Some(name) => name,
-        None => default_node_name(&opts),
-    };
+    let node_name = &cmd.node_name;
 
     let node_state = opts.state.nodes.get(node_name)?;
     node_state.kill_process(false)?;

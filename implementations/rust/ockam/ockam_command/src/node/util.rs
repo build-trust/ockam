@@ -249,13 +249,3 @@ pub fn spawn_node(
 
     Ok(())
 }
-
-/// Retreive the default node name from the global options
-pub fn default_node_name(opts: &CommandGlobalOpts) -> String {
-    opts.state
-        .nodes
-        .default()
-        .unwrap_or_else(|_| panic!("No default Node found"))
-        .config
-        .name
-}
