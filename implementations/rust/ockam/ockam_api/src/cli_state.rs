@@ -303,7 +303,7 @@ pub struct IdentitiesState {
 impl IdentitiesState {
     fn new(cli_path: &Path) -> Result<Self> {
         let dir = cli_path.join("identities");
-        std::fs::create_dir_all(&dir)?;
+        std::fs::create_dir_all(dir.join("data"))?;
         Ok(Self { dir })
     }
 
@@ -413,7 +413,7 @@ impl IdentitiesState {
     }
 
     pub async fn authenticated_storage(&self) -> Result<LmdbStorage> {
-        Ok(LmdbStorage::new(&self.dir.join("authenticated_storage.lmdb")).await?)
+        Ok(LmdbStorage::new(self.dir.join("data").join("authenticated_storage.lmdb")).await?)
     }
 }
 
@@ -1102,8 +1102,7 @@ mod tests {
             format!("vaults/data/{vault_name}-storage.json"),
             "identities".to_string(),
             format!("identities/{identity_name}.json"),
-            format!("identities/authenticated_storage.lmdb"),
-            format!("identities/authenticated_storage.lmdb-lock"),
+            "identities/data/authenticated_storage.lmdb".to_string(),
             "nodes".to_string(),
             format!("nodes/{node_name}"),
             "projects".to_string(),
@@ -1147,9 +1146,23 @@ mod tests {
                     found_entries.push(dir_name.clone());
                     entry.path().read_dir().unwrap().for_each(|entry| {
                         let entry = entry.unwrap();
-                        assert!(entry.path().is_file());
-                        let file_name = entry.file_name().into_string().unwrap();
-                        found_entries.push(format!("{dir_name}/{file_name}"));
+                        let entry_name = entry.file_name().into_string().unwrap();
+                        if entry.path().is_dir() {
+                            assert_eq!(entry_name, "data");
+                            entry.path().read_dir().unwrap().for_each(|entry| {
+                                let entry = entry.unwrap();
+                                let file_name = entry.file_name().into_string().unwrap();
+                                if !file_name.ends_with("-lock") {
+                                    found_entries
+                                        .push(format!("{dir_name}/{entry_name}/{file_name}"));
+                                    assert_eq!(file_name, format!("authenticated_storage.lmdb"));
+                                }
+                            })
+                        } else {
+                            assert!(entry.path().is_file());
+                            let file_name = entry.file_name().into_string().unwrap();
+                            found_entries.push(format!("{dir_name}/{file_name}"));
+                        }
                     });
                 }
                 "nodes" => {
