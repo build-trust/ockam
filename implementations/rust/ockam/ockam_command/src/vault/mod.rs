@@ -9,8 +9,15 @@ use ockam_identity::{Identity, IdentityStateConst, KeyAttributes};
 use rand::prelude::random;
 use std::path::PathBuf;
 
+const HELP_DETAIL: &str = "";
+
+/// Manage vaults
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide())]
+#[command(
+    arg_required_else_help = true,
+    subcommand_required = true,
+    after_long_help = help::template(HELP_DETAIL)
+)]
 pub struct VaultCommand {
     #[command(subcommand)]
     subcommand: VaultSubcommand,
@@ -18,6 +25,7 @@ pub struct VaultCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum VaultSubcommand {
+    /// Create a vault
     Create {
         #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
         name: String,
@@ -29,6 +37,8 @@ pub enum VaultSubcommand {
         #[arg(long, default_value = "false")]
         aws_kms: bool,
     },
+    /// Attach a key to a vault
+    #[command(arg_required_else_help = true)]
     AttachKey {
         /// Name of the vault to attach the key to
         vault: String,
@@ -37,10 +47,12 @@ pub enum VaultSubcommand {
         #[arg(short, long)]
         key_id: String,
     },
+    /// Show vault details
     Show {
         /// Name of the vault
         name: Option<String>,
     },
+    /// Delete a vault
     Delete {
         /// Name of the vault
         name: String,

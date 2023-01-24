@@ -47,7 +47,7 @@ use ockam_core::{
 
 use super::util::delete_node;
 
-/// Create node
+/// Create a node
 #[derive(Clone, Debug, Args)]
 #[command(after_long_help = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
