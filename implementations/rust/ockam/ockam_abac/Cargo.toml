@@ -34,7 +34,7 @@ ockam_identity   = { version = "0.66.0", path = "../ockam_identity", default-fea
 once_cell        = { version = "1.17.0", default-features = false, features = ["alloc"] }
 regex            = "1.7.1"
 str-buf          = "3.0.1"
-wast             = { version = "50.0.0", default-features = false }
+wast             = { version = "52.0.1", default-features = false }
 tracing          = { version = "0.1.34", default-features = false }
 # optional:
 rustyline        = { version = "10.1.1", optional = true }
