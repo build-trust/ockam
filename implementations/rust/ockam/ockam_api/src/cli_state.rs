@@ -422,7 +422,7 @@ pub struct IdentityState {
 }
 
 impl IdentityState {
-    pub fn save(&self) -> Result<()> {
+    fn persist(&self) -> Result<()> {
         let contents = serde_json::to_string(&self.config)?;
         std::fs::write(&self.path, contents)?;
         Ok(())
@@ -442,6 +442,11 @@ impl IdentityState {
             }
         }
         Ok(())
+    }
+
+    pub fn set_enrollment_status(&mut self) -> Result<()> {
+        self.config.enrollment_status = Some(EnrollmentStatus::enrolled());
+        self.persist()
     }
 }
 
