@@ -205,8 +205,8 @@ impl<'a> OrchestratorApiBuilder<'a> {
 
         let to = sc_addr.concat(service_address)?;
         info!(
-            "creating an rpc client to service: {} over secure channel {}",
-            service_address, to
+            "creating an rpc client to service: {} over secure channel {} {:?}",
+            service_address, to, service_address
         );
 
         let rpc = RpcBuilder::new(self.ctx, self.opts, node_name)

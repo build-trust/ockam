@@ -8,6 +8,7 @@ use std::path::PathBuf;
 pub use create::CreateCommand;
 pub use list::ListCommand;
 pub use show::ShowCommand;
+pub use revoke::RevokeCommand;
 
 use clap::{Args, Subcommand};
 
@@ -38,6 +39,7 @@ pub enum LeaseSubcommand {
     Create(CreateCommand),
     List(ListCommand),
     Show(ShowCommand),
+    Revoke(RevokeCommand),
 }
 
 impl LeaseCommand {
@@ -46,6 +48,7 @@ impl LeaseCommand {
             LeaseSubcommand::Create(c) => c.run(options, self.lease_args),
             LeaseSubcommand::List(c) => c.run(options, self.lease_args),
             LeaseSubcommand::Show(c) => c.run(options, self.lease_args),
+            LeaseSubcommand::Revoke(c) => c.run(options, self.lease_args),
         }
     }
 }

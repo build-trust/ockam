@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use clap::Args;
 use ockam::Context;
-use ockam_api::cloud::{lease_manager::models::influxdb::RevokeTokenRequest, CloudRequestWrapper};
+use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
@@ -38,12 +38,11 @@ async fn run_impl(
         .await?
         .with_project_from_file(&lease_args.project)
         .await?
-        .build(&MultiAddr::from_str("/service")?)
+        .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)
         .await?;
-    let body = RevokeTokenRequest::new(cmd.token_id.clone());
 
     let req =
-        Request::delete(format!("/lease_manager/influxdb/tokens/{}", cmd.token_id)).body(body);
+        Request::delete(format!("/{}", cmd.token_id));
 
     // TOOD: add or change structure of client to allow for requests w/o responses.
     orchestrator_client.request(req).await?;

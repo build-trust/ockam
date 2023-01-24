@@ -2,7 +2,8 @@ use clap::{Args, Subcommand};
 
 use crate::{help, CommandGlobalOpts};
 
-use super::{influxdb::InfluxDbShowCommand, LeaseArgs};
+use crate::lease::influxdb::InfluxDbShowCommand;
+use super::LeaseArgs;
 
 const HELP_DETAIL: &str = "";
 

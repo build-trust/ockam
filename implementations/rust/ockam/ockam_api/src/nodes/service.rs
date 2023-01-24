@@ -651,13 +651,6 @@ impl NodeManagerWorker {
             // ==*== Messages ==*==
             (Post, ["v0", "message"]) => self.send_message(ctx, req, dec).await?,
 
-            // ==*== Lease Manager Addon ==*==
-            // TODO: see if we can just match on lease_manager/add_on_id
-            // TODO: Also this is not the addon_id, it's the add_on type
-            (_method, [project_id, "lease_manager", add_on_id, ..]) => {
-                self.handle_lease_request(ctx, dec, req, project_id, add_on_id)
-                    .await?
-            }
 
             // ==*== Catch-all for Unimplemented APIs ==*==
             _ => {

@@ -1,13 +1,14 @@
 use std::str::FromStr;
 
-use anyhow::Context as _;
+use anyhow::{anyhow, Context as _};
 use clap::Args;
 use ockam::Context;
+use minicbor::Decoder;
 use ockam_api::cloud::{
-    lease_manager::models::influxdb::{ListTokensRequest, ListTokensResponse},
+    lease_manager::models::influxdb::Token,
     CloudRequestWrapper,
 };
-use ockam_core::api::Request;
+use ockam_core::api::{Request, Response, Status};
 use ockam_multiaddr::MultiAddr;
 
 use crate::{
@@ -35,6 +36,17 @@ impl InfluxDbListCommand {
     }
 }
 
+fn hex_to_bytes(s: &str) -> Option<Vec<u8>> {
+    if s.len() % 2 == 0 {
+        (0..s.len())
+            .step_by(2)
+            .map(|i| s.get(i..i + 2)
+                      .and_then(|sub| u8::from_str_radix(sub, 16).ok()))
+            .collect()
+    } else {
+        None
+    }
+}
 async fn run_impl(
     ctx: Context,
     (opts, lease_args, cmd): (CommandGlobalOpts, LeaseArgs, InfluxDbListCommand),
@@ -45,15 +57,12 @@ async fn run_impl(
         .await?
         .with_project_from_file(&lease_args.project)
         .await?
-        .build(&MultiAddr::from_str("/service")?)
+        .build(&MultiAddr::from_str("service/influxdb_token_lease")?)
         .await?;
-    let body = ListTokensRequest::new(cmd.user, cmd.user_id);
 
-    let req = Request::post("/lease_manager/influxdb/tokens").body(body);
+    let req = Request::get("/");
 
-    let resp: ListTokensResponse = orchestrator_client.request(req).await?;
-
-    // TODO: Create view for listing tokens
-    println!("List tokens.");
+    let leases: Vec<Token> = orchestrator_client.request(req).await?;
+    println!("{:?}", leases);
     Ok(())
 }

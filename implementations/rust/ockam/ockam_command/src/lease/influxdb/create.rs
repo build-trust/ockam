@@ -3,7 +3,7 @@ use std::str::FromStr;
 use clap::Args;
 use ockam::Context;
 use ockam_api::cloud::{
-    lease_manager::models::influxdb::{CreateTokenRequest, CreateTokenResponse},
+    lease_manager::models::influxdb::Token,
     CloudRequestWrapper,
 };
 use ockam_core::api::Request;
@@ -53,22 +53,16 @@ async fn run_impl(
         .await?
         .with_project_from_file(&lease_args.project)
         .await?
-        .build(&MultiAddr::from_str("/service")?)
+        .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)
         .await?;
 
-    let body = CreateTokenRequest::new(
-        cmd.description,
-        cmd.status.map(|s| s.to_string()),
-        cmd.user_id,
-    );
+    let req = Request::post("/");
 
-    let req = Request::post("/lease_manager/influxdb/tokens").body(body);
-
-    let resp: CreateTokenResponse = orchestrator_client.request(req).await?;
+    let lease: Token = orchestrator_client.request(req).await?;
 
     // TODO : Create View for showing created token info
 
-    println!("Created token within InfluxDB");
+    println!("Created token within InfluxDB : {:?}", lease);
 
     Ok(())
 }

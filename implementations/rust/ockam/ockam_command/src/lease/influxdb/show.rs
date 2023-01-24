@@ -1,10 +1,6 @@
 use anyhow::Context as _;
 use clap::Args;
 use ockam::Context;
-use ockam_api::cloud::{
-    lease_manager::models::influxdb::{ShowTokenRequest, ShowTokenResponse},
-    CloudRequestWrapper,
-};
 use ockam_core::api::Request;
 
 use crate::{

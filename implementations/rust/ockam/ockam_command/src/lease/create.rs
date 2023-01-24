@@ -1,8 +1,9 @@
 use clap::{Args, Subcommand};
 
 use crate::{help, CommandGlobalOpts};
+use crate::lease::influxdb::InfluxDbCreateCommand;
 
-use super::{influxdb::InfluxDbCreateCommand, LeaseArgs};
+use super::LeaseArgs;
 
 /// Create a token within the lease token manager
 #[derive(Clone, Debug, Args)]
