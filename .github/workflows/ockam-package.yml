@@ -91,7 +91,7 @@ jobs:
       - uses: docker/setup-qemu-action@e81a89b1732b9c48d79cd809d8d81d79c4647a18
 
       - id: buildx
-        uses: docker/setup-buildx-action@165fe681b849eec43aaa64d786b9ec53e690475f
+        uses: docker/setup-buildx-action@7932f6210d7d60bffb2f9bcfa60e9e2c4800d96d
         # TODO: change after new buildkit version gets fixed
         # https://github.com/moby/buildkit/issues/3347
         # https://github.com/docker/build-push-action/issues/761
