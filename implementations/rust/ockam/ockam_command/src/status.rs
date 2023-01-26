@@ -11,7 +11,7 @@ use ockam_identity::Identity;
 use ockam_vault::Vault;
 use std::time::Duration;
 
-/// Display Ockam status
+/// Display Ockam Status
 #[derive(Clone, Debug, Args)]
 pub struct StatusCommand {
     /// Show status for all identities, default: enrolled only
