@@ -385,6 +385,7 @@ async fn start_services(
                 &node_opts.api_node,
                 &cfg.address,
                 &cfg.enrollers,
+                cfg.reload_enrollers,
                 &cfg.project,
                 Some(tcp),
             )

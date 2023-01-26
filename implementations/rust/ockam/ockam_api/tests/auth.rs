@@ -32,6 +32,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
             b"project42".to_vec(),
             store,
             enrollers,
+            true,
             a.async_try_clone().await?,
         )?;
         ctx.start_worker(
@@ -63,27 +64,11 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         .add_member(member.identifier().clone(), HashMap::new())
         .await
         .is_err());
-    ctx.stop_worker(&auth_worker_addr).await?;
 
     // Configure enroller
     let enrollers = [(enroller.identifier().clone(), Enroller::default())];
     let mut tmpfile = tmpf.reopen().unwrap();
     serde_json::to_writer(&mut tmpfile, &HashMap::from(enrollers)).unwrap();
-
-    // Re-create the authority with enroller configured
-    let auth_worker_addr = random_string();
-    {
-        let store = InMemoryStorage::new();
-        let enrollers = tmpf.path().to_str().expect("path should be a string");
-        let auth = direct::Server::new(
-            b"project42".to_vec(),
-            store,
-            enrollers,
-            authority.async_try_clone().await?,
-        )?;
-        ctx.start_worker(&auth_worker_addr, auth, AllowAll, AllowAll)
-            .await?;
-    };
 
     // Re-create client with new auth worker address
     let mut c = direct::Client::new(route![e2a.address(), &auth_worker_addr], ctx).await?;
@@ -132,6 +117,7 @@ async fn json_config(ctx: &mut Context) -> Result<()> {
             b"project42".to_vec(),
             store,
             "{}",
+            false,
             a.async_try_clone().await?,
         )?;
         ctx.start_worker(&auth_worker_addr, auth, AllowAll, AllowAll)
@@ -172,6 +158,7 @@ async fn json_config(ctx: &mut Context) -> Result<()> {
             b"project42".to_vec(),
             store,
             &enrollers_config,
+            false,
             authority.async_try_clone().await?,
         )?;
         ctx.start_worker(&auth_worker_addr, auth, AllowAll, AllowAll)
@@ -232,7 +219,7 @@ async fn update_member_format(ctx: &mut Context) -> Result<()> {
             .await?;
         let exported = a.export().await?;
         let enrollers = tmpf.path().to_str().expect("path should be a string");
-        let auth = direct::Server::new(b"project42".to_vec(), store, enrollers, a)?;
+        let auth = direct::Server::new(b"project42".to_vec(), store, enrollers, false, a)?;
         ctx.start_worker(
             "auth", auth, AllowAll, // Auth checks happen inside the worker
             AllowAll,

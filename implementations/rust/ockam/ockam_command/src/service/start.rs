@@ -59,6 +59,9 @@ pub enum StartSubCommand {
 
         #[arg(long)]
         project: String,
+
+        #[arg(long)]
+        reload_enrollers: bool,
     },
     #[command(hide = help::hide())]
     KafkaConsumer {
@@ -170,6 +173,7 @@ async fn run_impl(
         StartSubCommand::Authenticator {
             addr,
             enrollers,
+            reload_enrollers,
             project,
             ..
         } => {
@@ -179,6 +183,7 @@ async fn run_impl(
                 node_name,
                 &addr,
                 &enrollers,
+                reload_enrollers,
                 &project,
                 Some(&tcp),
             )
@@ -299,16 +304,18 @@ pub async fn start_verifier_service(
 }
 
 /// Public so `ockam_command::node::create` can use it.
+#[allow(clippy::too_many_arguments)]
 pub async fn start_authenticator_service(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
     serv_addr: &str,
     enrollers: &str,
+    reload_enrollers: bool,
     project: &str,
     tcp: Option<&'_ TcpTransport>,
 ) -> Result<()> {
-    let req = api::start_authenticator_service(serv_addr, enrollers, project);
+    let req = api::start_authenticator_service(serv_addr, enrollers, reload_enrollers, project);
     start_service_impl(ctx, opts, node_name, serv_addr, "Authenticator", req, tcp).await
 }
 
