@@ -154,9 +154,11 @@ pub(crate) fn start_credentials_service(
 pub(crate) fn start_authenticator_service<'a>(
     addr: &'a str,
     enrollers: &'a str,
+    reload_enrollers: bool,
     project: &'a str,
 ) -> RequestBuilder<'static, StartAuthenticatorRequest<'a>> {
-    let payload = StartAuthenticatorRequest::new(addr, enrollers, project.as_bytes());
+    let payload =
+        StartAuthenticatorRequest::new(addr, enrollers, reload_enrollers, project.as_bytes());
     Request::post("/node/services/authenticator").body(payload)
 }
 

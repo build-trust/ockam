@@ -215,13 +215,16 @@ pub struct StartAuthenticatorRequest<'a> {
     #[n(0)] tag: TypeTag<2749734>,
     #[b(1)] addr: CowStr<'a>,
     #[b(2)] enrollers: CowStr<'a>,
-    #[b(3)] proj: CowBytes<'a>
+    #[b(3)] proj: CowBytes<'a>,
+    // FIXME: test id old format still matches with this
+    #[n(4)] reload_enrollers: bool
 }
 
 impl<'a> StartAuthenticatorRequest<'a> {
     pub fn new(
         addr: impl Into<CowStr<'a>>,
         enrollers: impl Into<CowStr<'a>>,
+        reload_enrollers: bool,
         proj: impl Into<CowBytes<'a>>,
     ) -> Self {
         Self {
@@ -229,6 +232,7 @@ impl<'a> StartAuthenticatorRequest<'a> {
             tag: TypeTag,
             addr: addr.into(),
             enrollers: enrollers.into(),
+            reload_enrollers,
             proj: proj.into(),
         }
     }
@@ -239,6 +243,10 @@ impl<'a> StartAuthenticatorRequest<'a> {
 
     pub fn enrollers(&'a self) -> &'a str {
         &self.enrollers
+    }
+
+    pub fn reload_enrollers(&self) -> bool {
+        self.reload_enrollers
     }
 
     pub fn project(&'a self) -> &'a [u8] {

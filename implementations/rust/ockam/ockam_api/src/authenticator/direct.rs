@@ -14,6 +14,7 @@ use ockam_node::Context;
 use serde_json as json;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
+use std::path::Path;
 use std::time::{Duration, Instant};
 use tracing::{trace, warn};
 use types::AddMember;
@@ -39,7 +40,9 @@ pub struct Server<S, IS: AuthenticatedStorage, V: IdentityVault> {
     project: Vec<u8>,
     store: S,
     ident: Identity<V, IS>,
+    filename: Option<String>,
     enrollers: HashMap<IdentityIdentifier, Enroller>,
+    reload_enrollers: bool,
     tokens: LruCache<[u8; 32], Token>,
 }
 
@@ -81,26 +84,35 @@ where
         project: Vec<u8>,
         store: S,
         enrollers: &str,
+        reload_enrollers: bool,
         identity: Identity<V, IS>,
     ) -> Result<Self> {
+        let (filename, enrollers_data) = Self::parse_enrollers(enrollers)?;
+
         Ok(Server {
             project,
             store,
             ident: identity,
-            enrollers: Self::parse_enrollers(enrollers)?,
+            filename,
+            enrollers: enrollers_data,
+            reload_enrollers,
             tokens: LruCache::new(NonZeroUsize::new(128).expect("0 < 128")),
         })
     }
 
-    fn parse_enrollers(json_or_path: &str) -> Result<HashMap<IdentityIdentifier, Enroller>> {
+    fn parse_enrollers(
+        json_or_path: &str,
+    ) -> Result<(Option<String>, HashMap<IdentityIdentifier, Enroller>)> {
         match json::from_str::<HashMap<IdentityIdentifier, Enroller>>(json_or_path) {
-            Ok(enrollers) => Ok(enrollers),
+            Ok(enrollers) => Ok((None, enrollers)),
             Err(_) => {
                 let contents = std::fs::read_to_string(json_or_path)
                     .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Io, e))?;
 
-                json::from_str(&contents)
-                    .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Invalid, e))
+                let enrollers = json::from_str(&contents)
+                    .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Invalid, e))?;
+
+                Ok((Some(json_or_path.to_string()), enrollers))
             }
         }
     }
@@ -206,6 +218,18 @@ where
         req: &'a Request<'_>,
         enroller: &IdentityIdentifier,
     ) -> Result<Option<ResponseBuilder<Error<'a>>>> {
+        if self.reload_enrollers && self.filename.is_some() {
+            let filename = self.filename.as_ref().unwrap();
+            let path = Path::new(&filename);
+            let contents = std::fs::read_to_string(path)
+                .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Io, e))?;
+
+            let enrollers: HashMap<IdentityIdentifier, Enroller> = json::from_str(&contents)
+                .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Invalid, e))?;
+
+            self.enrollers = enrollers;
+        }
+
         if self.enrollers.contains_key(enroller) {
             return Ok(None);
         }

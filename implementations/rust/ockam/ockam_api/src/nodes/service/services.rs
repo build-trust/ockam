@@ -212,6 +212,7 @@ impl NodeManager {
         ctx: &Context,
         addr: Address,
         enrollers: &str,
+        reload_enrollers: bool,
         proj: &[u8],
     ) -> Result<()> {
         use crate::nodes::registry::AuthenticatorServiceInfo;
@@ -220,7 +221,13 @@ impl NodeManager {
         }
         let db = self.authenticated_storage.async_try_clone().await?;
         let id = self.identity()?.async_try_clone().await?;
-        let au = crate::authenticator::direct::Server::new(proj.to_vec(), db, enrollers, id)?;
+        let au = crate::authenticator::direct::Server::new(
+            proj.to_vec(),
+            db,
+            enrollers,
+            reload_enrollers,
+            id,
+        )?;
         ctx.start_worker(
             addr.clone(),
             au,
@@ -371,6 +378,7 @@ impl NodeManagerWorker {
                     ctx,
                     addr,
                     body.enrollers(),
+                    body.reload_enrollers(),
                     body.project(),
                 )
                 .await?;

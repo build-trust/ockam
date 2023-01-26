@@ -53,6 +53,9 @@ pub struct AuthenticatorConfig {
 
     pub(crate) enrollers: String,
 
+    #[serde(default = "reload_enrollers_default")]
+    pub(crate) reload_enrollers: bool,
+
     pub(crate) project: String,
 
     #[serde(default)]
@@ -117,6 +120,9 @@ fn verifier_default_addr() -> String {
 
 fn authenticator_default_addr() -> String {
     DefaultAddress::AUTHENTICATOR.to_string()
+}
+fn reload_enrollers_default() -> bool {
+    true
 }
 
 fn okta_identity_provider_default_addr() -> String {
