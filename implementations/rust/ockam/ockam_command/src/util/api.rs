@@ -75,6 +75,11 @@ pub(crate) fn list_secure_channels() -> RequestBuilder<'static, ()> {
     Request::get("/node/secure_channel")
 }
 
+/// Construct a request builder to list all workers on the given node
+pub(crate) fn list_workers() -> RequestBuilder<'static, ()> {
+    Request::get("/node/workers")
+}
+
 pub(crate) fn delete_secure_channel(
     addr: &Address,
 ) -> RequestBuilder<'static, models::secure_channel::DeleteSecureChannelRequest<'static>> {

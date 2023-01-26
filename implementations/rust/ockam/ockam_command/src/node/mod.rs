@@ -20,7 +20,7 @@ pub mod util;
 
 const HELP_DETAIL: &str = include_str!("../constants/node/help_detail.txt");
 
-/// Manage nodes
+/// Manage Nodes
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = true,

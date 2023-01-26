@@ -33,6 +33,7 @@ use crate::error::ApiError;
 use crate::lmdb::LmdbStorage;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
+use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::session::util::starts_with_host_tcp_secure;
 use crate::session::{Medic, Sessions};
 use crate::{multiaddr_to_route, try_address_to_multiaddr, DefaultAddress};
@@ -572,6 +573,20 @@ impl NodeManagerWorker {
             (Post, ["node", "inlet"]) => self.create_inlet(req, dec, ctx).await?.to_vec()?,
             (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "portal"]) => todo!(),
+
+            // ==*== Workers ==*==
+            (Get, ["node", "workers"]) => {
+                let workers = ctx.list_workers().await?;
+
+                let mut list = Vec::new();
+                workers
+                    .iter()
+                    .for_each(|addr| list.push(WorkerStatus::new(addr.address())));
+
+                Response::ok(req.id())
+                    .body(WorkerList::new(list))
+                    .to_vec()?
+            }
 
             (Post, ["policy", resource, action]) => self
                 .node_manager

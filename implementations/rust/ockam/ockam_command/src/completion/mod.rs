@@ -5,7 +5,7 @@ use std::io;
 
 const HELP_DETAIL: &str = include_str!("../constants/completion/help_detail.txt");
 
-/// Generate shell completion scripts
+/// Generate Shell Completion Scripts
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
 pub struct CompletionCommand {

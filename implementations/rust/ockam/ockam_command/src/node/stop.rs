@@ -4,7 +4,9 @@ use clap::Args;
 
 /// Stop a node
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
+#[command(
+    after_long_help = help::template(HELP_DETAIL)
+)]
 pub struct StopCommand {
     /// Name of the node.
     #[arg(default_value_t = default_node_name())]

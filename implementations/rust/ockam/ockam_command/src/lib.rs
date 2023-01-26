@@ -29,6 +29,7 @@ mod upgrade;
 mod util;
 mod vault;
 mod version;
+mod worker;
 
 use authenticated::AuthenticatedCommand;
 use completion::CompletionCommand;
@@ -56,6 +57,7 @@ use tcp::{
 use util::{exitcode, exitcode::ExitCode, setup_logging, OckamConfig};
 use vault::VaultCommand;
 use version::Version;
+use worker::WorkerCommand;
 
 use crate::admin::AdminCommand;
 use crate::subscription::SubscriptionCommand;
@@ -191,6 +193,8 @@ pub enum OckamSubcommand {
     Message(MessageCommand),
     #[command(display_order = 821)]
     Policy(PolicyCommand),
+    #[command(display_order = 821)]
+    Worker(WorkerCommand),
 
     #[command(display_order = 900)]
     Completion(CompletionCommand),
@@ -255,6 +259,7 @@ impl OckamCommand {
             OckamSubcommand::Forwarder(c) => c.run(options),
             OckamSubcommand::Message(c) => c.run(options),
             OckamSubcommand::Policy(c) => c.run(options),
+            OckamSubcommand::Worker(c) => c.run(options),
 
             OckamSubcommand::Completion(c) => c.run(),
 
