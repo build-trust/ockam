@@ -70,7 +70,7 @@ defmodule Ockam.Services.Provider do
         try do
           case provider_mod.child_spec(service_name, service_args) do
             multiple_specs when is_list(multiple_specs) ->
-              {:ok, multiple_specs}
+              {:ok, fix_child_ids(multiple_specs)}
 
             %{id: _id} = single_spec_map ->
               {:ok, [single_spec_map]}
@@ -91,6 +91,31 @@ defmodule Ockam.Services.Provider do
             {:error, err}
         end
     end
+  end
+
+  ## Temporary measure to allow multiple children of the same type.
+  ## TODO: redo the way address, service name and id are related
+  defp fix_child_ids(specs) do
+    Enum.map(
+      specs,
+      fn
+        %{id: _id} = spec ->
+          spec
+
+        {mod, args} = spec ->
+          case Keyword.fetch(args, :address) do
+            {:ok, address} ->
+              id = String.to_atom(address)
+              Supervisor.child_spec(spec, id: id)
+
+            :error ->
+              {mod, args}
+          end
+
+        other ->
+          other
+      end
+    )
   end
 
   @spec get_service_providers_map(nil | list()) :: map()

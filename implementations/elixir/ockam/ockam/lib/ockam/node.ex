@@ -188,7 +188,11 @@ defmodule Ockam.Node do
   end
 
   def stop(pid) when is_pid(pid) do
-    DynamicSupervisor.terminate_child(@processes_supervisor, pid)
+    GenServer.stop(pid)
+  catch
+    ## It's OK if the worker is already stopped
+    :exit, {:noproc, _} ->
+      :ok
   end
 
   def stop(address) do
