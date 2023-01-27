@@ -39,7 +39,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ListEnrollersCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::embedded(ctx, &opts).await?;
+    let mut rpc = Rpc::embedded(ctx, &opts, &cmd.cloud_opts).await?;
     rpc.request(api::project::list_enrollers(&cmd)).await?;
     rpc.parse_and_print_response::<Vec<Enroller>>()?;
     delete_embedded_node(&opts, rpc.node_name()).await;

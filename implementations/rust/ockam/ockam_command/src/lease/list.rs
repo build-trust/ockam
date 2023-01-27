@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::str::FromStr;
 
 use clap::Args;
 
@@ -10,7 +10,7 @@ use termimad::{minimad::TextTemplate, MadSkin};
 
 use crate::{
     help,
-    util::{node_rpc, orchestrator_api::OrchestratorApiBuilder},
+    util::{api::CloudOpts, node_rpc, orchestrator_api::OrchestratorApiBuilder},
     CommandGlobalOpts,
 };
 
@@ -37,20 +37,18 @@ ${token
 pub struct ListCommand;
 
 impl ListCommand {
-    pub fn run(self, options: CommandGlobalOpts, identity: Option<String>, project_path: PathBuf) {
-        node_rpc(run_impl, (options, identity, project_path));
+    pub fn run(self, options: CommandGlobalOpts, cloud_opts: CloudOpts) {
+        node_rpc(run_impl, (options, cloud_opts));
     }
 }
 
 async fn run_impl(
     ctx: Context,
-    (opts, identity, project_path): (CommandGlobalOpts, Option<String>, PathBuf),
+    (opts, cloud_opts): (CommandGlobalOpts, CloudOpts),
 ) -> crate::Result<()> {
-    let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts)
-        .as_identity(identity)
+    let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &cloud_opts)
+        .as_identity(cloud_opts.identity.clone())
         .with_new_embbeded_node()
-        .await?
-        .with_project_from_file(&project_path)
         .await?
         .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)
         .await?;

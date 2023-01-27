@@ -45,7 +45,7 @@ async fn run_impl(
     let space_id = space::config::try_get_space(&opts.config, &cmd.space_name)
         .context(format!("Space '{}' does not exist", cmd.space_name))?;
 
-    let node_name = start_embedded_node(ctx, &opts).await?;
+    let node_name = start_embedded_node(ctx, &opts, &cmd.cloud_opts).await?;
     let controller_route = &cmd.cloud_opts.route();
 
     // Try to remove from config, in case the project was removed from the cloud but not from the config file.
