@@ -23,7 +23,7 @@ use crate::{
     CommandGlobalOpts,
 };
 use crate::{
-    node::util::{add_project_authority, init_node_state},
+    node::util::{add_project_authority_from_project_info, init_node_state},
     util::RpcBuilder,
 };
 use crate::{project::ProjectInfo, util::api};
@@ -223,7 +223,7 @@ async fn run_foreground_node(
             let p: ProjectInfo = serde_json::from_str(&s)?;
             let project_id = p.id.to_string();
             project::config::set_project(cfg, &(&p).into()).await?;
-            add_project_authority(p, &cmd.node_name, cfg).await?;
+            add_project_authority_from_project_info(p, &cmd.node_name, cfg).await?;
             Some(project_id)
         }
         None => None,

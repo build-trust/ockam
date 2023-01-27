@@ -66,7 +66,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
             &cmd.cloud_opts.route(),
             &api_node,
             tcp.as_ref(),
-            CredentialExchangeMode::None,
+            CredentialExchangeMode::Oneway,
         )
         .await?;
         let to = crate::project::util::clean_projects_multiaddr(to, projects_sc)?;
