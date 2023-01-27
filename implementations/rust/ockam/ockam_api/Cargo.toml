@@ -33,7 +33,7 @@ default              = ["lmdb"]
 [dependencies]
 bytes           = { version = "1.2.1", default-features = false, features = ["serde"] }
 ockam           = { path = "../ockam", version = "^0.78.0", features = ["software_vault"] }
-either          = { version = "1.7.0", default-features = false }
+either          = { version = "1.8.1", default-features = false }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.12.0", features = ["cbor", "serde"] }
 cddl-cat        = { version = "0.6.1", optional = true }
 hex             = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
