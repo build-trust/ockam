@@ -363,6 +363,7 @@ impl<'a> StartOktaIdentityProviderRequest<'a> {
 #[cbor(map)]
 pub struct ServiceStatus<'a> {
     #[cfg(feature = "tag")]
+    #[serde(skip_serializing)]
     #[n(0)] tag: TypeTag<8542064>,
     #[b(2)] pub addr: CowStr<'a>,
     #[b(3)] pub service_type: CowStr<'a>,
@@ -385,6 +386,7 @@ impl<'a> ServiceStatus<'a> {
 #[cbor(map)]
 pub struct ServiceList<'a> {
     #[cfg(feature = "tag")]
+    #[serde(skip_serializing)]
     #[n(0)] tag: TypeTag<9587601>,
     #[b(1)] pub list: Vec<ServiceStatus<'a>>
 }

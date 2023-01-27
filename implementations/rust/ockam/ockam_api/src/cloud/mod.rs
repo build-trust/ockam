@@ -62,6 +62,8 @@ pub type BareCloudRequestWrapper<'a> = CloudRequestWrapper<'a, ()>;
 impl<'a> BareCloudRequestWrapper<'a> {
     pub fn bare(route: &MultiAddr) -> Self {
         Self {
+            #[cfg(feature = "tag")]
+            tag: Default::default(),
             req: (),
             route: route.to_string().into(),
             identity_name: None,
