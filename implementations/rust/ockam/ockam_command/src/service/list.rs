@@ -3,15 +3,15 @@ use ockam::{Context, TcpTransport};
 
 use ockam_api::nodes::models::services::ServiceList;
 
-use crate::util::{api, node_rpc, RpcBuilder};
+use crate::node::NodeOpts;
+use crate::util::{api, extract_address_value, node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 
 /// List service(s) of a given node
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
-    /// Name of the node.
-    #[arg(display_order = 900)]
-    pub node_name: String,
+    #[command(flatten)]
+    pub node_opts: NodeOpts,
 }
 
 impl ListCommand {
@@ -29,8 +29,8 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ListCommand,
 ) -> crate::Result<()> {
-    let node_name = cmd.node_name;
-    let tcp = TcpTransport::create(&ctx).await?;
+    let node_name = extract_address_value(&cmd.node_opts.api_node)?;
+    let tcp = TcpTransport::create(ctx).await?;
 
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).tcp(&tcp)?.build();
     rpc.request(api::list_services()).await?;
