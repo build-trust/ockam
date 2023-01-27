@@ -18,7 +18,11 @@ pub struct DeleteCommand {
 
     /// Name of the project.
     #[arg(display_order = 1002)]
-    pub project_name: String,
+    pub project_name: Option<String>,
+
+    /// Id of the project.
+    #[arg(display_order = 1003, long, conflicts_with = "project_name")]
+    pub project_id: Option<String>,
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
@@ -48,25 +52,32 @@ async fn run_impl(
     let node_name = start_embedded_node(ctx, &opts).await?;
     let controller_route = &cmd.cloud_opts.route();
 
-    // Try to remove from config, in case the project was removed from the cloud but not from the config file.
-    let _ = config::remove_project(&opts.config, &cmd.project_name);
-
-    // Lookup project
-    let project_id = match config::get_project(&opts.config, &cmd.project_name) {
-        Some(id) => id,
-        None => {
-            // The project is not in the config file.
-            // Fetch all available projects from the cloud.
-            config::refresh_projects(ctx, &opts, &node_name, controller_route, None).await?;
-
-            // If the project is not found in the lookup, then it must not exist in the cloud, so we exit the command.
-            match config::get_project(&opts.config, &cmd.project_name) {
+    let project_id = match (cmd.project_name, cmd.project_id) {
+        (Some(project_name), _) => {
+            // Lookup project
+            let project_id = match config::get_project(&opts.config, &project_name) {
                 Some(id) => id,
                 None => {
-                    return Ok(());
+                    // The project is not in the config file.
+                    // Fetch all available projects from the cloud.
+                    config::refresh_projects(ctx, &opts, &node_name, controller_route, None)
+                        .await?;
+
+                    // If the project is not found in the lookup, then it must not exist in the cloud, so we exit the command.
+                    match config::get_project(&opts.config, &project_name) {
+                        Some(id) => id,
+                        None => {
+                            return Ok(());
+                        }
+                    }
                 }
-            }
+            };
+            // Try to remove from config again, in case it was re-added after the refresh.
+            let _ = config::remove_project(&opts.config, &project_name);
+            project_id
         }
+        (_, Some(project_id)) => project_id,
+        _ => unreachable!("clap should prevent this"),
     };
 
     // Send request
@@ -78,9 +89,6 @@ async fn run_impl(
     ))
     .await?;
     rpc.is_ok()?;
-
-    // Try to remove from config again, in case it was re-added after the refresh.
-    let _ = config::remove_project(&opts.config, &cmd.project_name);
 
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
