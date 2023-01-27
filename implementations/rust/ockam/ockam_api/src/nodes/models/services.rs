@@ -2,6 +2,8 @@ use minicbor::{Decode, Encode};
 use ockam_core::{CowBytes, CowStr};
 use std::net::Ipv4Addr;
 
+use serde::Serialize;
+
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_multiaddr::MultiAddr;
@@ -356,7 +358,7 @@ impl<'a> StartOktaIdentityProviderRequest<'a> {
     }
 }
 
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Serialize, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ServiceStatus<'a> {
@@ -378,7 +380,7 @@ impl<'a> ServiceStatus<'a> {
 }
 
 /// Response body for listing services
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Serialize, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ServiceList<'a> {

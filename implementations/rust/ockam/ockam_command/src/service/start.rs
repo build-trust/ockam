@@ -16,6 +16,7 @@ use ockam_core::api::{Request, RequestBuilder, Status};
 use ockam_multiaddr::MultiAddr;
 use std::net::Ipv4Addr;
 
+/// Start a specified service
 #[derive(Clone, Debug, Args)]
 pub struct StartCommand {
     #[command(flatten)]
