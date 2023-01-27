@@ -99,6 +99,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
     Ok(sc)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_secure_channel_to_project(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
