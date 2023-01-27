@@ -30,22 +30,35 @@ defmodule Ockam.Transport.Portal.InletListener do
     {:ok, lsocket} =
       :gen_tcp.listen(port, [:binary, {:active, false}, {:ip, ip}, {:reuseaddr, true}])
 
-    spawn_link(fn -> accept(lsocket, peer_route) end)
+    spawn_link(fn -> loop(lsocket, peer_route) end)
     {:ok, %{listen_socket: lsocket, peer_route: peer_route}}
   end
 
-  defp accept(lsocket, peer_route) do
-    {:ok, socket} = :gen_tcp.accept(lsocket)
-    {:ok, worker} = Ockam.Transport.Portal.InletWorker.create(peer_route: peer_route)
+  defp loop(lsocket, peer_route) do
+    case :gen_tcp.accept(lsocket) do
+      {:ok, socket} ->
+        ## TODO: pass authorization
+        {:ok, worker} =
+          Ockam.Transport.Portal.InletWorker.create(
+            peer_route: peer_route,
+            ## TODO: setting a controller process could be moved to start_link function
+            ## of the inlet worker. Until then it doesn't make sense
+            ## to restart the inlet worker
+            restart_type: :temporary
+          )
 
-    case Ockam.Node.whereis(worker) do
-      nil ->
-        raise "Worker #{inspect(worker)} not found"
+        case Ockam.Node.whereis(worker) do
+          nil ->
+            raise "Worker #{inspect(worker)} not found"
 
-      pid ->
-        :ok = :gen_tcp.controlling_process(socket, pid)
-        GenServer.cast(pid, {:takeover, socket})
-        accept(lsocket, peer_route)
+          pid ->
+            :ok = :gen_tcp.controlling_process(socket, pid)
+            GenServer.cast(pid, {:takeover, socket})
+            loop(lsocket, peer_route)
+        end
+
+      {:error, :closed} ->
+        :ok
     end
   end
 

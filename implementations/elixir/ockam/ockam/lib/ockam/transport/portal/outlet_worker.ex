@@ -13,17 +13,53 @@ defmodule Ockam.Transport.Portal.OutletWorker do
   @impl true
   def setup(options, state) do
     msg = options[:init_message]
-    target_host = options[:target_host]
+    target_host = options[:target_host] |> to_charlist()
     target_port = options[:target_port]
+
+    ssl = Keyword.get(options, :ssl, false)
+    ssl_options = Keyword.get(options, :ssl_options, [])
 
     Logger.info(
       "Starting outlet worker to #{target_host}:#{target_port}.  peer: #{inspect(msg.return_route)}"
     )
 
+    ## TODO: support connect timeout
+    timeout = :infinity
+
     with {:ok, :ping} <- TunnelProtocol.decode(msg.payload),
-         {:ok, socket} <- :gen_tcp.connect(target_host, target_port, [{:active, :once}, :binary]) do
+         {:ok, socket} <-
+           :gen_tcp.connect(target_host, target_port, [{:active, :once}, :binary], timeout),
+         {:ok, socket} <- maybe_upgrade_to_ssl(socket, ssl, ssl_options, timeout) do
+      Process.flag(:trap_exit, true)
       :ok = Router.route(Message.reply(msg, state.address, TunnelProtocol.encode(:pong)))
-      {:ok, state |> Map.put(:socket, socket) |> Map.put(:peer, msg.return_route)}
+
+      protocol =
+        case ssl do
+          true ->
+            %{
+              inet_mod: :ssl,
+              send_mod: :ssl,
+              data_tag: :ssl,
+              error_tag: :ssl_error,
+              closed_tag: :ssl_closed
+            }
+
+          false ->
+            %{
+              inet_mod: :inet,
+              send_mod: :gen_tcp,
+              data_tag: :tcp,
+              error_tag: :tcp_error,
+              closed_tag: :tcp_closed
+            }
+        end
+
+      {:ok,
+       state
+       |> Map.put(:socket, socket)
+       |> Map.put(:protocol, protocol)
+       |> Map.put(:peer, msg.return_route)
+       |> Map.put(:connected, true)}
     else
       error ->
         Logger.error("Error starting outlet: #{inspect(options)} : #{inspect(error)}")
@@ -40,30 +76,69 @@ defmodule Ockam.Transport.Portal.OutletWorker do
   end
 
   @impl true
-  def handle_info({:tcp, socket, data}, %{peer: peer} = state) do
+  def handle_info(
+        {data_tag, socket, data},
+        %{peer: peer, protocol: %{data_tag: data_tag, inet_mod: inet_mod}} = state
+      ) do
     :ok =
       Router.route(%Message{payload: TunnelProtocol.encode({:payload, data}), onward_route: peer})
 
-    :inet.setopts(socket, active: :once)
+    inet_mod.setopts(socket, active: :once)
     {:noreply, state}
   end
 
-  def handle_info({:tcp_closed, _socket}, %{peer: peer} = state) do
+  def handle_info({closed_tag, _socket}, %{protocol: %{closed_tag: closed_tag}} = state) do
     Logger.info("Socket closed")
-    :ok = Router.route(%Message{payload: TunnelProtocol.encode(:disconnect), onward_route: peer})
     {:stop, :normal, state}
   end
 
-  def handle_info({:tcp_error, _socket, reason}, %{peer: peer} = state) do
+  def handle_info({error_tag, _socket, reason}, %{protocol: %{error_tag: error_tag}} = state) do
     Logger.info("Socket error: #{inspect(reason)}")
-    :ok = Router.route(%Message{payload: TunnelProtocol.encode(:disconnect), onward_route: peer})
     {:stop, {:error, reason}, state}
   end
 
-  def handle_protocol_msg(state, :disconnect), do: {:stop, :normal, state}
+  ## We need to trap exits to cleanup tcp connection.
+  ## If the connection port terminates with :normal - we still need to stop the outlet
+  def handle_info({:EXIT, socket, :normal}, %{socket: socket} = state) do
+    {:stop, :socket_terminated, state}
+  end
 
-  def handle_protocol_msg(state, {:payload, data}) do
-    :ok = :gen_tcp.send(state.socket, data)
+  ## Linked processes terminating normally should not stop the outlet.
+  ## Technically this should not happen
+  def handle_info({:EXIT, from, :normal}, state) do
+    Logger.warn("Received exit :normal signal from #{inspect(from)}")
+    {:noreply, state}
+  end
+
+  def handle_info({:EXIT, _from, reason}, state) do
+    {:stop, reason, state}
+  end
+
+  @impl true
+  def terminate(reason, %{peer: peer, connected: true} = _state) do
+    Logger.info("Outlet terminated with reason: #{inspect(reason)}, disconnecting")
+    :ok = Router.route(%Message{payload: TunnelProtocol.encode(:disconnect), onward_route: peer})
+  end
+
+  def terminate(reason, _state) do
+    Logger.info("Outlet terminated with reason: #{inspect(reason)}, already disconnected")
+    :ok
+  end
+
+  defp handle_protocol_msg(state, :disconnect),
+    do: {:stop, :normal, Map.put(state, :connected, false)}
+
+  defp handle_protocol_msg(%{protocol: %{send_mod: send_mod}} = state, {:payload, data}) do
+    :ok = send_mod.send(state.socket, data)
     {:ok, state}
+  end
+
+  defp maybe_upgrade_to_ssl(socket, false, _ssl_options, _timeout) do
+    {:ok, socket}
+  end
+
+  defp maybe_upgrade_to_ssl(socket, true, ssl_options, timeout) do
+    ## TODO: insert_server_name_indication??
+    :ssl.connect(socket, ssl_options, timeout)
   end
 end

@@ -81,7 +81,7 @@ defmodule Ockam.Message do
     %{message | return_route: return_route}
   end
 
-  def set_payload(%Message{} = message, payload) when is_list(payload) do
+  def set_payload(%Message{} = message, payload) when is_binary(payload) do
     %{message | payload: payload}
   end
 
