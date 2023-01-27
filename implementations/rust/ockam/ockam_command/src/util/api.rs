@@ -1,6 +1,7 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 
 use regex::Regex;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
@@ -328,6 +329,10 @@ pub(crate) const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 pub struct CloudOpts {
     #[arg(global = true, value_name = "IDENTITY", long)]
     pub identity: Option<String>,
+
+    /// Project config file
+    #[arg(global = true, long = "project", value_name = "PROJECT_JSON_PATH")]
+    pub project: Option<PathBuf>,
 }
 
 impl CloudOpts {

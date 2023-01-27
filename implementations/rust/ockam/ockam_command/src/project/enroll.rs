@@ -71,7 +71,7 @@ impl Runner {
     }
 
     async fn run(self) -> Result<()> {
-        let node_name = start_embedded_node(&self.ctx, &self.opts).await?;
+        let node_name = start_embedded_node(&self.ctx, &self.opts, &self.cmd.cloud_opts).await?;
 
         let map = self.opts.config.lookup();
         let to = if let Some(a) = project_authority(&self.cmd.to, &map)? {
