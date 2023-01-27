@@ -145,7 +145,7 @@ fn project_authority<'a>(
 /// Replaces the first `/project` with the given address.
 ///
 /// Assumes (and asserts!) that the first protocol is a `/project`.
-fn replace_project(input: &MultiAddr, with: &MultiAddr) -> anyhow::Result<MultiAddr> {
+pub fn replace_project(input: &MultiAddr, with: &MultiAddr) -> anyhow::Result<MultiAddr> {
     let mut iter = input.iter();
     let first = iter.next().map(|p| p.code());
     assert_eq!(first, Some(proto::Project::CODE));

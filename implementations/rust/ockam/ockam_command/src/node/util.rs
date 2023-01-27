@@ -52,10 +52,25 @@ pub async fn start_embedded_node_with_vault_and_identity(
             let p: ProjectInfo = serde_json::from_str(&s)?;
             let project_id = p.id.to_string();
             project::config::set_project(cfg, &(&p).into()).await?;
-            add_project_authority(p, &cmd.node_name, cfg).await?;
+            add_project_authority_from_project_info(p, &cmd.node_name, cfg).await?;
             Some(project_id)
         }
-        None => None,
+        None => {
+            if let Some((_name, p)) = opts.config.lookup().projects().next() {
+                if let Some(a) = p.authority {
+                    add_project_authority(
+                        a.identity().to_vec(),
+                        a.address().clone(),
+                        &cmd.node_name,
+                        cfg,
+                    )
+                    .await?;
+                }
+                Some(p.id)
+            } else {
+                None
+            }
+        }
     };
 
     let tcp = TcpTransport::create(ctx).await?;
@@ -142,6 +157,19 @@ pub(super) async fn init_node_state(
 }
 
 pub(super) async fn add_project_authority(
+    authority_identity: Vec<u8>,
+    authority_access_route: MultiAddr,
+    node: &str,
+    cfg: &OckamConfig,
+) -> anyhow::Result<()> {
+    let v = Vault::default();
+    let i = PublicIdentity::import(&authority_identity, &v).await?;
+    let a = cli::Authority::new(authority_identity, authority_access_route);
+    cfg.authorities(node)?
+        .add_authority(i.identifier().clone(), a)
+}
+
+pub(super) async fn add_project_authority_from_project_info(
     p: ProjectInfo<'_>,
     node: &str,
     cfg: &OckamConfig,
@@ -155,11 +183,7 @@ pub(super) async fn add_project_authority(
         .map(|a| hex::decode(a.as_bytes()))
         .transpose()?;
     if let Some((a, m)) = a.zip(m) {
-        let v = Vault::default();
-        let i = PublicIdentity::import(&a, &v).await?;
-        let a = cli::Authority::new(a, m);
-        cfg.authorities(node)?
-            .add_authority(i.identifier().clone(), a)
+        add_project_authority(a, m, node, cfg).await
     } else {
         Err(anyhow!("missing authority in project info"))
     }
