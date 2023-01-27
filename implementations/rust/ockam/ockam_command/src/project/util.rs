@@ -7,12 +7,14 @@ use tracing::debug;
 
 use ockam::identity::IdentityIdentifier;
 use ockam::TcpTransport;
+use ockam_api::authenticator::direct::types::AddMember;
 use ockam_api::cloud::project::Project;
 use ockam_api::config::lookup::{LookupMeta, ProjectAuthority, ProjectLookup};
 use ockam_api::multiaddr_to_addr;
 use ockam_api::nodes::models::{self, secure_channel::*};
 use ockam_multiaddr::{MultiAddr, Protocol};
 
+use crate::project::enroll::replace_project;
 use crate::util::api::CloudOpts;
 use crate::util::{api, RpcBuilder};
 use crate::{CommandGlobalOpts, OckamConfig};
@@ -176,7 +178,7 @@ pub async fn check_project_readiness<'a>(
     config::set_project_id(&opts.config, &project).await?;
 
     if !project.is_ready() {
-        print!("Project created. Waiting for it be ready...");
+        print!("Project created. Waiting for it to be ready...");
         let cloud_route = &cloud_opts.route();
         loop {
             print!(".");
@@ -260,6 +262,44 @@ pub async fn check_project_readiness<'a>(
     // Persist project config with all its fields
     config::set_project(&opts.config, &project).await?;
     Ok(project)
+}
+
+pub async fn project_enroll_admin(
+    ctx: &ockam::Context,
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+    project: &Project<'_>,
+) -> Result<()> {
+    println!("Enrolling as a member of the project...");
+    let node_state = opts.state.nodes.get(node_name)?;
+    let identifier = node_state.config.identity_config()?.identifier;
+    let authority =
+        ProjectAuthority::from_raw(&project.authority_access_route, &project.authority_identity)
+            .await?
+            .ok_or_else(|| anyhow!("Authority details not configured"))?;
+    let worker_addr =
+        MultiAddr::from_str(&format!("/project/{}/service/authenticator", &project.name))?;
+    let authenticator_address = replace_project(&worker_addr, authority.address())?;
+    let to = {
+        let mut addr = create_secure_channel_to_authority(
+            ctx,
+            opts,
+            node_name,
+            &authority,
+            &authenticator_address,
+            None,
+        )
+        .await?;
+        for proto in worker_addr.iter().skip(1) {
+            addr.push_back_value(&proto).map_err(anyhow::Error::from)?
+        }
+        addr
+    };
+
+    let req = Request::post("/members").body(AddMember::new(identifier));
+    let mut rpc = RpcBuilder::new(ctx, opts, node_name).to(&to)?.build();
+    rpc.request(req).await?;
+    rpc.is_ok()
 }
 
 pub mod config {

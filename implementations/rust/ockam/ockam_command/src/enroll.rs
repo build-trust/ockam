@@ -17,7 +17,7 @@ use ockam_api::cloud::space::Space;
 use ockam_core::api::Status;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::project::util::check_project_readiness;
+use crate::project::util::{check_project_readiness, project_enroll_admin};
 use crate::space::util::config;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
@@ -51,8 +51,9 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
 
     let cloud_opts = cmd.cloud_opts.clone();
     let space = default_space(ctx, &opts, &cloud_opts, &node_name).await?;
-    default_project(ctx, &opts, &cloud_opts, &node_name, &space).await?;
+    let project = default_project(ctx, &opts, &cloud_opts, &node_name, &space).await?;
     update_enrolled_identity(ctx, &opts, &node_name).await?;
+    project_enroll_admin(ctx, &opts, &node_name, &project).await?;
     delete_embedded_node(&opts, &node_name).await;
 
     Ok(())
