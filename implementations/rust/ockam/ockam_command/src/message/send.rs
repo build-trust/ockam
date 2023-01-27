@@ -54,7 +54,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
             let tcp = TcpTransport::create(ctx).await?;
             (api_node, Some(tcp))
         } else {
-            let api_node = start_embedded_node(ctx, opts).await?;
+            let api_node = start_embedded_node(ctx, opts, &cmd.cloud_opts).await?;
             (api_node, None)
         };
 

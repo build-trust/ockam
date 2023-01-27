@@ -30,7 +30,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: ListCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::embedded(ctx, &opts).await?;
+    let mut rpc = Rpc::embedded(ctx, &opts, &cmd.cloud_opts).await?;
     rpc.request(api::space::list(&cmd.cloud_opts.route()))
         .await?;
     let spaces = rpc.parse_and_print_response::<Vec<Space>>()?;

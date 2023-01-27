@@ -259,7 +259,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, AddonCommand),
 ) -> crate::Result<()> {
     let controller_route = &cmd.cloud_opts.route();
-    let mut rpc = Rpc::embedded(&ctx, &opts).await?;
+    let mut rpc = Rpc::embedded(&ctx, &opts, &cmd.cloud_opts).await?;
 
     let base_endpoint = |project_name: &str| -> crate::Result<String> {
         let lookup = opts.config.lookup();

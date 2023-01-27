@@ -1,5 +1,7 @@
 use anyhow::{anyhow, Context as _};
 
+use ockam_api::cloud::project::Project;
+use ockam_api::config::lookup::ProjectLookup;
 use rand::random;
 use std::env::current_exe;
 use std::fs::OpenOptions;
@@ -22,28 +24,37 @@ use ockam_vault::Vault;
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
+use crate::util::api::CloudOpts;
 use crate::CommandGlobalOpts;
 use crate::{project, OckamConfig};
 
 pub async fn start_embedded_node(
     ctx: &Context,
     opts: &CommandGlobalOpts,
+    cloud_opts: &CloudOpts,
 ) -> anyhow::Result<String> {
-    start_embedded_node_with_vault_and_identity(ctx, opts, None, None).await
+    start_embedded_node_with_vault_and_identity(ctx, opts, None, cloud_opts).await
 }
 
 pub async fn start_embedded_node_with_vault_and_identity(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     vault: Option<&String>,
-    identity: Option<&String>,
+    cloud_opts: &CloudOpts,
 ) -> anyhow::Result<String> {
     let cfg = &opts.config;
     let cmd = CreateCommand::default();
 
     // This node was initially created as a foreground node
     if !cmd.child_process {
-        init_node_state(ctx, opts, &cmd.node_name, vault, identity).await?;
+        init_node_state(
+            ctx,
+            opts,
+            &cmd.node_name,
+            vault,
+            cloud_opts.identity.as_ref(),
+        )
+        .await?;
     }
 
     let project_id = match &cmd.project {
@@ -56,19 +67,33 @@ pub async fn start_embedded_node_with_vault_and_identity(
             Some(project_id)
         }
         None => {
-            if let Some((_name, p)) = opts.config.lookup().projects().next() {
-                if let Some(a) = p.authority {
-                    add_project_authority(
-                        a.identity().to_vec(),
-                        a.address().clone(),
-                        &cmd.node_name,
-                        cfg,
-                    )
-                    .await?;
-                }
-                Some(p.id)
+            let proj_path = if let Some(path) = cloud_opts.project.clone() {
+                Some(path)
+            } else if let Ok(proj) = opts.state.projects.default() {
+                Some(proj.path)
             } else {
                 None
+            };
+
+            match &proj_path {
+                Some(path) => {
+                    let s = tokio::fs::read_to_string(path).await?;
+                    let proj: Project = serde_json::from_str(&s)?;
+
+                    let proj_lookup = ProjectLookup::from_project(&proj).await?;
+
+                    if let Some(a) = proj_lookup.authority {
+                        add_project_authority(
+                            a.identity().to_vec(),
+                            a.address().clone(),
+                            &cmd.node_name,
+                            cfg,
+                        )
+                        .await?;
+                    }
+                    Some(proj_lookup.id)
+                }
+                None => None,
             }
         }
     };

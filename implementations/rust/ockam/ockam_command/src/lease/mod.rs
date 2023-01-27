@@ -2,7 +2,6 @@ mod create;
 mod list;
 mod revoke;
 mod show;
-use std::path::PathBuf;
 
 pub use create::CreateCommand;
 pub use list::ListCommand;
@@ -26,10 +25,6 @@ pub struct LeaseCommand {
 
 #[derive(Clone, Debug, Args)]
 pub struct LeaseArgs {
-    /// Project config file
-    #[arg(global = true, long = "project", value_name = "PROJECT_JSON_PATH")]
-    project: Option<PathBuf>,
-
     #[command(flatten)]
     cloud_opts: CloudOpts,
 }
@@ -54,25 +49,11 @@ const TOKEN_VIEW: &str = r#"
 
 impl LeaseCommand {
     pub fn run(self, options: CommandGlobalOpts) {
-        let project_path = match self.lease_args.project {
-            Some(p) => p,
-            None => {
-                let default_project = options
-                    .state
-                    .projects
-                    .default()
-                    .expect("A default project or project parameter is required.");
-
-                default_project.path
-            }
-        };
-
-        let identity = self.lease_args.cloud_opts.identity;
         match self.subcommand {
-            LeaseSubcommand::Create(c) => c.run(options, identity, project_path),
-            LeaseSubcommand::List(c) => c.run(options, identity, project_path),
-            LeaseSubcommand::Show(c) => c.run(options, identity, project_path),
-            LeaseSubcommand::Revoke(c) => c.run(options, identity, project_path),
+            LeaseSubcommand::Create(c) => c.run(options, self.lease_args.cloud_opts),
+            LeaseSubcommand::List(c) => c.run(options, self.lease_args.cloud_opts),
+            LeaseSubcommand::Show(c) => c.run(options, self.lease_args.cloud_opts),
+            LeaseSubcommand::Revoke(c) => c.run(options, self.lease_args.cloud_opts),
         }
     }
 }

@@ -50,7 +50,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, AuthCommand),
 ) -> crate::Result<()> {
-    let node_name = start_embedded_node(&ctx, &opts).await?;
+    let node_name = start_embedded_node(&ctx, &opts, &cmd.cloud_opts).await?;
 
     let path = match cmd.project {
         Some(p) => p,
