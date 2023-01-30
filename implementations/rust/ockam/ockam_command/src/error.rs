@@ -32,7 +32,13 @@ impl Debug for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}", Version::short())?;
-        writeln!(f, "{{code: {}, err: {}}}", self.code, self.inner)
+        writeln!(
+            f,
+            "{{code: {}, err: {}, cause: {}}}",
+            self.code,
+            self.inner,
+            self.inner.root_cause()
+        )
     }
 }
 
