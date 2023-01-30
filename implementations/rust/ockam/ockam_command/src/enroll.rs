@@ -51,11 +51,25 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
 
     let cloud_opts = cmd.cloud_opts.clone();
     let space = default_space(ctx, &opts, &cloud_opts, &node_name).await?;
-    let project = default_project(ctx, &opts, &cloud_opts, &node_name, &space).await?;
+    default_project(ctx, &opts, &cloud_opts, &node_name, &space).await?;
     update_enrolled_identity(ctx, &opts, &node_name).await?;
-    project_enroll_admin(ctx, &opts, &node_name, &project).await?;
+    enroll_admin_to_all_their_projects(ctx, &opts, &cloud_opts, &node_name).await?;
     delete_embedded_node(&opts, &node_name).await;
 
+    Ok(())
+}
+
+async fn enroll_admin_to_all_their_projects(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    cloud_opts: &CloudOpts,
+    node_name: &str,
+) -> Result<()> {
+    let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
+    rpc.request(api::project::list(&cloud_opts.route())).await?;
+    for project in rpc.parse_response::<Vec<Project>>()? {
+        project_enroll_admin(ctx, opts, node_name, &project).await?;
+    }
     Ok(())
 }
 
