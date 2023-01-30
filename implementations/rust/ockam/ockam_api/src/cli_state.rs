@@ -1,5 +1,6 @@
 use crate::cloud::project::Project;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
+use nix::errno::Errno;
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use ockam_identity::{Identity, IdentityIdentifier, SecureChannelRegistry};
 use ockam_vault::{storage::FileStorage, Vault};
@@ -738,6 +739,14 @@ impl NodeState {
                     nix::sys::signal::Signal::SIGTERM
                 },
             )
+            .or_else(|e| {
+                if e == Errno::ESRCH {
+                    tracing::warn!(node = %self.config.name, %pid, "No such process");
+                    Ok(())
+                } else {
+                    Err(e)
+                }
+            })
             .map_err(|e| {
                 CliStateError::Io(std::io::Error::new(
                     std::io::ErrorKind::Other,
