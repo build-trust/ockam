@@ -7,7 +7,11 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::{
     help,
-    util::{api::CloudOpts, node_rpc, orchestrator_api::OrchestratorApiBuilder},
+    util::{
+        api::{CloudOpts, ProjectOpts},
+        node_rpc,
+        orchestrator_api::OrchestratorApiBuilder,
+    },
     CommandGlobalOpts,
 };
 
@@ -23,16 +27,21 @@ pub struct RevokeCommand {
 }
 
 impl RevokeCommand {
-    pub fn run(self, options: CommandGlobalOpts, cloud_opts: CloudOpts) {
-        node_rpc(run_impl, (options, cloud_opts, self));
+    pub fn run(self, options: CommandGlobalOpts, cloud_opts: CloudOpts, project_opts: ProjectOpts) {
+        node_rpc(run_impl, (options, cloud_opts, self, project_opts));
     }
 }
 
 async fn run_impl(
     ctx: Context,
-    (opts, cloud_opts, cmd): (CommandGlobalOpts, CloudOpts, RevokeCommand),
+    (opts, cloud_opts, cmd, prjoect_opts): (
+        CommandGlobalOpts,
+        CloudOpts,
+        RevokeCommand,
+        ProjectOpts,
+    ),
 ) -> crate::Result<()> {
-    let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &cloud_opts)
+    let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &prjoect_opts)
         .as_identity(cloud_opts.identity.clone())
         .with_new_embbeded_node()
         .await?

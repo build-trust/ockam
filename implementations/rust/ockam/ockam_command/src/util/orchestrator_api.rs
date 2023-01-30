@@ -21,7 +21,7 @@ use ockam_identity::credential::Credential;
 use ockam_multiaddr::MultiAddr;
 use tracing::info;
 
-use super::{api::CloudOpts, RpcBuilder};
+use super::{api::ProjectOpts, RpcBuilder};
 
 pub enum OrchestratorEndpoint {
     Authenticator,
@@ -31,7 +31,7 @@ pub enum OrchestratorEndpoint {
 pub struct OrchestratorApiBuilder<'a> {
     ctx: &'a Context,
     opts: &'a CommandGlobalOpts,
-    cloud_opts: &'a CloudOpts,
+    project_opts: &'a ProjectOpts,
     node_name: Option<String>,
     destination: OrchestratorEndpoint,
     identity: Option<String>,
@@ -49,11 +49,15 @@ impl<'a> Drop for OrchestratorApiBuilder<'a> {
 }
 
 impl<'a> OrchestratorApiBuilder<'a> {
-    pub fn new(ctx: &'a Context, opts: &'a CommandGlobalOpts, cloud_opts: &'a CloudOpts) -> Self {
+    pub fn new(
+        ctx: &'a Context,
+        opts: &'a CommandGlobalOpts,
+        project_opts: &'a ProjectOpts,
+    ) -> Self {
         OrchestratorApiBuilder {
             ctx,
             opts,
-            cloud_opts,
+            project_opts,
             node_name: None,
             destination: OrchestratorEndpoint::Project,
             identity: None,
@@ -65,7 +69,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
 
     /// Creates a new embedded node to communicate with the cloud
     pub async fn with_new_embbeded_node(&mut self) -> Result<&mut OrchestratorApiBuilder<'a>> {
-        let node_name = start_embedded_node(self.ctx, self.opts, self.cloud_opts).await?;
+        let node_name = start_embedded_node(self.ctx, self.opts, Some(self.project_opts)).await?;
         self.node_name = Some(node_name);
         Ok(self)
     }
@@ -153,7 +157,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
 
     /// Sends the request and returns  the response
     pub async fn build(&mut self, service_address: &MultiAddr) -> Result<OrchestratorApi<'a>> {
-        let _ = self.retrieve_project_info().await?;
+        self.retrieve_project_info().await?;
         // Authenticate with the project authority node
         let _ = self.authenticate().await?;
 
@@ -179,7 +183,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
             return Ok(());
         }
 
-        let project_path = match &self.cloud_opts.project {
+        let project_path = match &self.project_opts.project_path {
             Some(p) => p.clone(),
             None => {
                 let default_project = self
