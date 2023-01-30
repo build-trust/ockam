@@ -9,7 +9,10 @@ pub use show::ShowCommand;
 
 use clap::{Args, Subcommand};
 
-use crate::{util::api::CloudOpts, CommandGlobalOpts};
+use crate::{
+    util::api::{CloudOpts, ProjectOpts},
+    CommandGlobalOpts,
+};
 
 use self::revoke::RevokeCommand;
 
@@ -20,13 +23,10 @@ pub struct LeaseCommand {
     subcommand: LeaseSubcommand,
 
     #[command(flatten)]
-    lease_args: LeaseArgs,
-}
-
-#[derive(Clone, Debug, Args)]
-pub struct LeaseArgs {
-    #[command(flatten)]
     cloud_opts: CloudOpts,
+
+    #[command(flatten)]
+    project_opts: ProjectOpts,
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -50,10 +50,10 @@ const TOKEN_VIEW: &str = r#"
 impl LeaseCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         match self.subcommand {
-            LeaseSubcommand::Create(c) => c.run(options, self.lease_args.cloud_opts),
-            LeaseSubcommand::List(c) => c.run(options, self.lease_args.cloud_opts),
-            LeaseSubcommand::Show(c) => c.run(options, self.lease_args.cloud_opts),
-            LeaseSubcommand::Revoke(c) => c.run(options, self.lease_args.cloud_opts),
+            LeaseSubcommand::Create(c) => c.run(options, self.cloud_opts, self.project_opts),
+            LeaseSubcommand::List(c) => c.run(options, self.cloud_opts, self.project_opts),
+            LeaseSubcommand::Show(c) => c.run(options, self.cloud_opts, self.project_opts),
+            LeaseSubcommand::Revoke(c) => c.run(options, self.cloud_opts, self.project_opts),
         }
     }
 }

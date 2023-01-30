@@ -27,7 +27,7 @@ use crate::node::util::start_embedded_node;
 use crate::util::output::Output;
 use crate::{CommandGlobalOpts, OutputFormat};
 
-use self::api::CloudOpts;
+use self::api::ProjectOpts;
 
 pub mod api;
 pub mod exitcode;
@@ -109,12 +109,27 @@ pub struct Rpc<'a> {
 
 impl<'a> Rpc<'a> {
     /// Creates a new RPC to send a request to an embedded node.
-    pub async fn embedded(
+    pub async fn embedded(ctx: &'a Context, opts: &'a CommandGlobalOpts) -> Result<Rpc<'a>> {
+        let node_name = start_embedded_node(ctx, opts, None).await?;
+        Ok(Rpc {
+            ctx,
+            buf: Vec::new(),
+            opts,
+            node_name,
+            to: NODEMANAGER_ADDR.into(),
+            mode: RpcMode::Embedded,
+        })
+    }
+
+    /// Creates a new RPC to send a request to an embedded node.
+    /// with project and project authoritity info supplied ]
+    /// if provided within project options
+    pub async fn embedded_with_project_info(
         ctx: &'a Context,
         opts: &'a CommandGlobalOpts,
-        cloud_opts: &'a CloudOpts,
+        project_opts: &'a ProjectOpts,
     ) -> Result<Rpc<'a>> {
-        let node_name = start_embedded_node(ctx, opts, cloud_opts).await?;
+        let node_name = start_embedded_node(ctx, opts, Some(project_opts)).await?;
         Ok(Rpc {
             ctx,
             buf: Vec::new(),

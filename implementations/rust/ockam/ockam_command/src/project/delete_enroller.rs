@@ -41,7 +41,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: DeleteEnrollerCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::embedded(ctx, &opts, &cmd.cloud_opts).await?;
+    let mut rpc = Rpc::embedded(ctx, &opts).await?;
     rpc.request(api::project::delete_enroller(&cmd)).await?;
     rpc.is_ok()?;
     delete_embedded_node(&opts, rpc.node_name()).await;
