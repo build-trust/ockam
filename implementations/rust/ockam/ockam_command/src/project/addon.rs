@@ -35,9 +35,6 @@ pub struct AddonCommand {
 
     #[command(flatten)]
     cloud_opts: CloudOpts,
-
-    #[command(flatten)]
-    project_opts: ProjectOpts,
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -262,7 +259,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, AddonCommand),
 ) -> crate::Result<()> {
     let controller_route = &cmd.cloud_opts.route();
-    let mut rpc = Rpc::embedded_with_project_info(&ctx, &opts, &cmd.project_opts).await?;
+    let mut rpc = Rpc::embedded(&ctx, &opts).await?;
 
     let base_endpoint = |project_name: &str| -> crate::Result<String> {
         let lookup = opts.config.lookup();
