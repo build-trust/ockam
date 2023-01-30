@@ -185,8 +185,7 @@ impl Route {
         self.inner
             .back()
             .cloned()
-            .map(Ok)
-            .unwrap_or(Err(RouteError::IncompleteRoute.into()))
+            .ok_or_else(|| RouteError::IncompleteRoute.into())
     }
 
     /// Iterate over all addresses of this route.
