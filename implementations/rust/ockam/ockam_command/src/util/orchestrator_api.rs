@@ -2,7 +2,10 @@ use std::path::PathBuf;
 
 use crate::{
     node::util::{delete_node, start_embedded_node},
-    project::util::{create_secure_channel_to_authority, create_secure_channel_to_project},
+    project::{
+        util::{create_secure_channel_to_authority, create_secure_channel_to_project},
+        ProjectInfo,
+    },
     util::Rpc,
     CommandGlobalOpts,
 };
@@ -11,7 +14,6 @@ use minicbor::{Decode, Encode};
 use ockam::Context;
 use ockam_api::{
     authenticator::direct::{types::OneTimeCode, Client},
-    cloud::project::Project,
     config::lookup::ProjectLookup,
     nodes::models::secure_channel::CredentialExchangeMode,
     DefaultAddress,
@@ -81,9 +83,8 @@ impl<'a> OrchestratorApiBuilder<'a> {
     ) -> Result<&mut OrchestratorApiBuilder<'a>> {
         // Read (okta and authority) project parameters from project.json
         let s = tokio::fs::read_to_string(file_path).await?;
-        let p: Project = serde_json::from_str(&s)?;
-
-        let project_lookup = ProjectLookup::from_project(&p).await?;
+        let proj_info: ProjectInfo = serde_json::from_str(&s)?;
+        let project_lookup = ProjectLookup::from_project(&(&proj_info).into()).await?;
 
         self.project_lookup = Some(project_lookup);
         Ok(self)
