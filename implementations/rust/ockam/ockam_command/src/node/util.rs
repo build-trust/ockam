@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Context as _};
 
-use ockam_api::cloud::project::Project;
 use ockam_api::config::lookup::ProjectLookup;
 use rand::random;
 use std::env::current_exe;
@@ -115,9 +114,8 @@ pub async fn add_project_info_to_node_state(
     match &proj_path {
         Some(path) => {
             let s = tokio::fs::read_to_string(path).await?;
-            let proj: Project = serde_json::from_str(&s)?;
-
-            let proj_lookup = ProjectLookup::from_project(&proj).await?;
+            let proj_info: ProjectInfo = serde_json::from_str(&s)?;
+            let proj_lookup = ProjectLookup::from_project(&(&proj_info).into()).await?;
 
             if let Some(a) = proj_lookup.authority {
                 add_project_authority(a.identity().to_vec(), a.address().clone(), node_name, cfg)

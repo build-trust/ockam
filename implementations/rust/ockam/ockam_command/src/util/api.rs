@@ -329,7 +329,7 @@ pub struct CloudOpts {
 #[derive(Clone, Debug, Args)]
 pub struct ProjectOpts {
     /// Project config file
-    #[arg(global = true, long = "project", value_name = "PROJECT_JSON_PATH")]
+    #[arg(global = true, long = "project-path", value_name = "PROJECT_JSON_PATH")]
     pub project_path: Option<PathBuf>,
 }
 
