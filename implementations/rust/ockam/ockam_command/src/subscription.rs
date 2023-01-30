@@ -60,7 +60,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, SubscriptionCommand),
 ) -> crate::Result<()> {
     let controller_route = &cmd.cloud_opts.route();
-    let mut rpc = Rpc::embedded(&ctx, &opts, &cmd.cloud_opts).await?;
+    let mut rpc = Rpc::embedded(&ctx, &opts).await?;
     match cmd.subcommand {
         SubscriptionSubcommand::Show {
             subscription_id,

@@ -13,7 +13,7 @@ use tracing::debug;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::node::NodeOpts;
 use crate::project::util::create_secure_channel_to_authority;
-use crate::util::api::CloudOpts;
+use crate::util::api::{CloudOpts, ProjectOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{help, CommandGlobalOpts, Result};
 
@@ -24,6 +24,9 @@ pub struct EnrollCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]
     cloud_opts: CloudOpts,
+
+    #[command(flatten)]
+    project_opts: ProjectOpts,
 
     #[command(flatten)]
     node_opts: NodeOpts,
@@ -71,7 +74,8 @@ impl Runner {
     }
 
     async fn run(self) -> Result<()> {
-        let node_name = start_embedded_node(&self.ctx, &self.opts, &self.cmd.cloud_opts).await?;
+        let node_name =
+            start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.project_opts)).await?;
 
         let map = self.opts.config.lookup();
         let to = if let Some(a) = project_authority(&self.cmd.to, &map)? {

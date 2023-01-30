@@ -12,10 +12,9 @@ use tracing::debug;
 use crate::enroll::{Auth0Provider, Auth0Service};
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::ProjectInfo;
-use crate::util::api::CloudOpts;
+use crate::util::api::{CloudOpts, ProjectOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{help, CommandGlobalOpts};
-use std::path::PathBuf;
 
 use crate::project::util::create_secure_channel_to_authority;
 use ockam_api::authenticator::direct::Client;
@@ -26,10 +25,6 @@ use ockam_api::DefaultAddress;
 #[derive(Clone, Debug, Args)]
 #[command(hide = help::hide())]
 pub struct AuthCommand {
-    /// Project config file
-    #[arg(long = "project", value_name = "PROJECT_JSON_PATH")]
-    project: Option<PathBuf>,
-
     #[arg(long = "okta", group = "authentication_method")]
     okta: bool,
 
@@ -38,6 +33,9 @@ pub struct AuthCommand {
 
     #[command(flatten)]
     cloud_opts: CloudOpts,
+
+    #[command(flatten)]
+    project_opts: ProjectOpts,
 }
 
 impl AuthCommand {
@@ -50,9 +48,9 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, AuthCommand),
 ) -> crate::Result<()> {
-    let node_name = start_embedded_node(&ctx, &opts, &cmd.cloud_opts).await?;
+    let node_name = start_embedded_node(&ctx, &opts, Some(&cmd.project_opts)).await?;
 
-    let path = match cmd.project {
+    let path = match cmd.project_opts.project_path {
         Some(p) => p,
         None => {
             let default_project = opts

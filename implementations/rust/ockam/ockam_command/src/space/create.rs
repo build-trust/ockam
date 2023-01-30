@@ -51,7 +51,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: CreateCommand,
 ) -> crate::Result<()> {
-    let mut rpc = Rpc::embedded(ctx, &opts, &cmd.cloud_opts).await?;
+    let mut rpc = Rpc::embedded(ctx, &opts).await?;
     rpc.request(api::space::create(&cmd)).await?;
     let space = rpc.parse_and_print_response::<Space>()?;
     config::set_space(&opts.config, &space)?;

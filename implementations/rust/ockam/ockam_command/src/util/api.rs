@@ -329,10 +329,13 @@ pub(crate) const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 pub struct CloudOpts {
     #[arg(global = true, value_name = "IDENTITY", long)]
     pub identity: Option<String>,
+}
 
+#[derive(Clone, Debug, Args)]
+pub struct ProjectOpts {
     /// Project config file
     #[arg(global = true, long = "project", value_name = "PROJECT_JSON_PATH")]
-    pub project: Option<PathBuf>,
+    pub project_path: Option<PathBuf>,
 }
 
 impl CloudOpts {
