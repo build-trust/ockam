@@ -121,25 +121,6 @@ impl<'a> Rpc<'a> {
         })
     }
 
-    /// Creates a new RPC to send a request to an embedded node.
-    /// with project and project authoritity info supplied ]
-    /// if provided within project options
-    pub async fn embedded_with_project_info(
-        ctx: &'a Context,
-        opts: &'a CommandGlobalOpts,
-        project_opts: &'a ProjectOpts,
-    ) -> Result<Rpc<'a>> {
-        let node_name = start_embedded_node(ctx, opts, Some(project_opts)).await?;
-        Ok(Rpc {
-            ctx,
-            buf: Vec::new(),
-            opts,
-            node_name,
-            to: NODEMANAGER_ADDR.into(),
-            mode: RpcMode::Embedded,
-        })
-    }
-
     /// Creates a new RPC to send a request to a running background node.
     pub fn background(
         ctx: &'a Context,
