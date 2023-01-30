@@ -10,7 +10,7 @@ impl Worker for Echoer {
     type Message = Any;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        log::debug!(to = %msg.sender(), "echoing back");
+        log::debug!(to = %msg.sender()?, "echoing back");
         ctx.send(msg.return_route(), NeutralMessage::from(msg.take_payload()))
             .await
     }

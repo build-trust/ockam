@@ -172,7 +172,7 @@ impl Route {
     /// let route: Route = route!["1#alice", "bob"];
     ///
     /// // "0#bob"
-    /// let final_hop: Address = route.recipient();
+    /// let final_hop: Address = route.recipient()?;
     ///
     /// // ["1#alice", "0#bob"]
     /// route
@@ -181,13 +181,12 @@ impl Route {
     /// # }
     /// ```
     ///
-    /// `TODO` For consistency we should not panic and return a
-    /// Result<&Address> instead of an Address.clone().
-    pub fn recipient(&self) -> Address {
+    pub fn recipient(&self) -> Result<Address> {
         self.inner
             .back()
             .cloned()
-            .expect("Route::recipient failed on invalid Route!")
+            .map(Ok)
+            .unwrap_or(Err(RouteError::IncompleteRoute.into()))
     }
 
     /// Iterate over all addresses of this route.
@@ -429,7 +428,7 @@ mod tests {
         let mut route = route![address, "b"];
         assert_eq!(route.next().unwrap(), &Address::from_string("0#a"));
         assert_eq!(route.next().unwrap(), &Address::from_string("0#a"));
-        assert_eq!(route.recipient(), Address::from_string("0#b"));
+        assert_eq!(route.recipient().unwrap(), Address::from_string("0#b"));
         assert_eq!(route.step().unwrap(), Address::from_string("0#a"));
         assert_eq!(route.step().unwrap(), Address::from_string("0#b"));
     }
@@ -438,7 +437,7 @@ mod tests {
     fn test_route_create() {
         let addresses = vec!["node-1", "node-2"];
         let route = Route::create(addresses);
-        assert_eq!(route.recipient(), Address::from_string("0#node-2"));
+        assert_eq!(route.recipient().unwrap(), Address::from_string("0#node-2"));
     }
 
     #[test]
@@ -451,7 +450,7 @@ mod tests {
         let s = " node-1 =>node-2=> node-3 ";
         let mut route = Route::parse(s).unwrap();
         assert_eq!(route.next().unwrap(), &Address::from_string("0#node-1"));
-        assert_eq!(route.recipient(), Address::from_string("0#node-3"));
+        assert_eq!(route.recipient().unwrap(), Address::from_string("0#node-3"));
         let _ = route.step();
         assert_eq!(route.next().unwrap(), &Address::from_string("0#node-2"));
     }
@@ -466,12 +465,14 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Route::recipient failed on invalid Route!")]
-    fn test_route_no_recipient() {
+    fn test_route_no_recipient() -> Result<(), ()> {
         let mut route = Route::parse("node-1=>node-2").unwrap();
         let _ = route.step();
         let _ = route.step();
-        route.recipient();
+        match route.recipient() {
+            Ok(_) => Err(()),
+            Err(_) => Ok(()),
+        }
     }
 
     #[test]

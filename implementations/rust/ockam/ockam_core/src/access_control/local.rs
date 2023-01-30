@@ -75,10 +75,10 @@ mod tests {
         assert!(poll_once(async { ac.is_authorized(&msg).await })?);
 
         let msg = LocalMessage::new(
-            TransportMessage::v1(external_onward_address.clone(), route![], vec![]),
+            TransportMessage::v1(external_onward_address, route![], vec![]),
             vec![],
         );
-        let msg = RelayMessage::new(source_address.clone(), local_onward_address.clone(), msg);
+        let msg = RelayMessage::new(source_address, local_onward_address, msg);
 
         assert!(!poll_once(async { ac.is_authorized(&msg).await })?);
 
@@ -137,7 +137,7 @@ mod tests {
             ),
             vec![],
         );
-        let msg = RelayMessage::new(local_source_address.clone(), onward_address.clone(), msg);
+        let msg = RelayMessage::new(local_source_address, onward_address, msg);
 
         assert!(poll_once(async { ac.is_authorized(&msg).await })?);
 
