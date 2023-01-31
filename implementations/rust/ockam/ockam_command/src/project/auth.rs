@@ -14,7 +14,7 @@ use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::ProjectInfo;
 use crate::util::api::{CloudOpts, ProjectOpts};
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{help, CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 
 use crate::project::util::create_secure_channel_to_authority;
 use ockam_api::authenticator::direct::Client;
@@ -23,7 +23,6 @@ use ockam_api::DefaultAddress;
 
 /// Authenticate with a project node
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide())]
 pub struct AuthCommand {
     #[arg(long = "okta", group = "authentication_method")]
     okta: bool,

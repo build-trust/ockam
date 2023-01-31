@@ -276,13 +276,11 @@ pub struct CreateProject<'a> {
     #[b(1)] pub name: CowStr<'a>,
     #[b(2)] pub services: Vec<CowStr<'a>>,
     #[b(3)] pub users: Vec<CowStr<'a>>,
-    #[b(4)] pub enforce_credentials: Option<bool>,
 }
 
 impl<'a> CreateProject<'a> {
     pub fn new<S: Into<CowStr<'a>>, T: AsRef<str>>(
         name: S,
-        enforce_credentials: Option<bool>,
         users: &'a [T],
         services: &'a [T],
     ) -> Self {
@@ -290,7 +288,6 @@ impl<'a> CreateProject<'a> {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             name: name.into(),
-            enforce_credentials,
             services: services.iter().map(|x| CowStr::from(x.as_ref())).collect(),
             users: users.iter().map(|x| CowStr::from(x.as_ref())).collect(),
         }
@@ -635,7 +632,6 @@ mod tests {
                 name: String::arbitrary(g).into(),
                 services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
                 users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
-                enforce_credentials: None,
             })
         }
     }
