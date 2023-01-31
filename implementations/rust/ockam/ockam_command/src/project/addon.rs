@@ -22,7 +22,7 @@ use crate::enroll::{Auth0Provider, Auth0Service};
 use crate::node::util::delete_embedded_node;
 use crate::project::config;
 use crate::project::util::check_project_readiness;
-use crate::util::api::{CloudOpts, ProjectOpts};
+use crate::util::api::CloudOpts;
 use crate::util::output::Output;
 use crate::util::{api, exitcode, node_rpc, Rpc};
 use crate::{help, CommandGlobalOpts};
