@@ -192,6 +192,7 @@ pub enum ConfigureAddonCommand {
         #[arg(
             long = "user-access-role",
             id = "user-access-role",
+            hide = true,
             value_name = "USER_ACCESS_ROLE",
             value_parser(NonEmptyStringValueParser::new())
         )]
@@ -201,6 +202,7 @@ pub enum ConfigureAddonCommand {
         #[arg(
             long = "adamin-access-role",
             id = "admin-access-role",
+            hide = true,
             value_name = "ADMIN_ACCESS_ROLE",
             value_parser(NonEmptyStringValueParser::new())
         )]
