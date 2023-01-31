@@ -148,7 +148,7 @@ impl CreateCommand {
     fn parse_node_name(&self) -> crate::Result<Self> {
         let cmd = self.clone();
 
-        if self.node_name.starts_with('/') {
+        if self.node_name.contains('/') {
             if self.node_name.starts_with("/node/") {
                 let node_name = extract_address_value(&self.node_name)?;
                 return Ok(Self { node_name, ..cmd });
