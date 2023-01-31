@@ -42,7 +42,6 @@ if [[ -z $IS_DRAFT_RELEASE ]]; then
   exit 1
 fi
 
-
 function ockam_bump() {
   set -e
   gh workflow run create-release-pull-request.yml --ref develop -F branch_name="$release_name" -F git_tag="$GIT_TAG" -F ockam_bump_modified_release="$OCKAM_BUMP_MODIFIED_RELEASE" \

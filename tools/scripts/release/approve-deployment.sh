@@ -1,6 +1,9 @@
+#!/usr/bin/env bash
+set -e
+
 if [[ -z $OWNER ]]; then
-    echo "Please specify organization OWNER, e.g. build-trust"
-    exit 1
+  echo "Please specify organization OWNER, e.g. build-trust"
+  exit 1
 fi
 
 function approve_deployment() {
