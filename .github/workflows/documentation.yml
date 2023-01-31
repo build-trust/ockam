@@ -3,6 +3,10 @@ name: Documentation
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 on:
   workflow_dispatch:
   pull_request:
