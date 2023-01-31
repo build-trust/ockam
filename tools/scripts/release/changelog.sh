@@ -5,8 +5,7 @@ set -e
 # are to be published.
 
 source tools/scripts/release/crates-to-publish.sh
-
-for crate in $(echo "$updated_crates"); do
+for crate in "${updated_crates[@]}"; do
   # There are crates whose versions are only bumped due to updates
   # in their dependencies, so as not to have empty changelogs we indicate
   # the below message.
