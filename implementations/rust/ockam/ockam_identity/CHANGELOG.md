@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.67.0 - 2023-01-31
+
+### Added
+
+- Add tests for new encryption decryption secure channel api
+
+### Changed
+
+- Create `SecureChannelRegistry`
+- Merge `ockam_channel` into `ockam_identity`
+- Move `storage` and `registry` to `Identity`
+- Rename `registry` -> `secure_channel_registry`
+- Improve typing for new encrypt decrypt secure channel api
+- Improve inline doc for `ockam_identity` crate
+- Updated dependencies
+
+### Fixed
+
+- Fix `stop_secure_channel` implementation
+
 ## 0.65.0 - 2022-11-08
 
 ### Added

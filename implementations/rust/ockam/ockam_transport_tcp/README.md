@@ -29,7 +29,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_transport_tcp = "0.73.0"
+ockam_transport_tcp = "0.74.0"
 ```
 
 This crate requires the rust standard library `"std"`.
