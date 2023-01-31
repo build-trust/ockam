@@ -12,8 +12,10 @@ set -x
 
 GITHUB_USERNAME=$(gh api user | jq -r '.login')
 
-owner="build-trust"
+OWNER="build-trust"
 release_name="release_$(date +'%d-%m-%Y')_$(date +'%s')"
+
+source tools/scripts/release/approve-deployment.sh
 
 # Ensure all executables are installed
 executables_installed=true
@@ -40,82 +42,50 @@ if [[ -z $IS_DRAFT_RELEASE ]]; then
   exit 1
 fi
 
-function approve_deployment() {
-  set -e
-  local repository="$1"
-  local run_id="$2"
-
-  # completed waiting queued in_progress
-  while true; do
-    status=$(gh api -H "Accept: application/vnd.github+json" "/repos/$owner/$repository/actions/runs/$run_id" | jq -r '.status')
-    if [[ $status == "completed" ]]; then
-      echo "Run ID $run_id completed"
-      return
-    elif [[ $status == "waiting" ]]; then
-      # Get actions that need to be approved
-      pending_deployments=$(gh api -H "Accept: application/vnd.github+json" "/repos/$owner/$repository/actions/runs/$run_id/pending_deployments")
-      pending_length=$(echo "$pending_deployments" | jq '. | length')
-
-      environments=""
-      for ((c = 0; c < pending_length; c++)); do
-        environment=$(echo "$pending_deployments" | jq -r ".[$c].environment.id")
-        environments="$environments $environment"
-      done
-
-      if [[ -n $environments ]]; then
-        jq -n "{environment_ids: [$environments], state: \"approved\", comment: \"Ship It\"}" | gh api \
-          --method POST \
-          -H "Accept: application/vnd.github+json" \
-          "/repos/$owner/$repository/actions/runs/$run_id/pending_deployments" --input -
-      fi
-    fi
-    sleep 120
-  done
-}
 
 function ockam_bump() {
   set -e
   gh workflow run create-release-pull-request.yml --ref develop -F branch_name="$release_name" -F git_tag="$GIT_TAG" -F ockam_bump_modified_release="$OCKAM_BUMP_MODIFIED_RELEASE" \
     -F ockam_bump_release_version="$OCKAM_BUMP_RELEASE_VERSION" -F ockam_bump_bumped_dep_crates_version="$OCKAM_BUMP_BUMPED_DEP_CRATES_VERSION" \
-    -R $owner/ockam
+    -R $OWNER/ockam
 
   workflow_file_name="create-release-pull-request.yml"
   # Sleep for 10 seconds to ensure we are not affected by Github API downtime.
   sleep 10
   # Wait for workflow run
-  run_id=$(gh run list --workflow="$workflow_file_name" -b develop -u "$GITHUB_USERNAME" -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow="$workflow_file_name" -b develop -u "$GITHUB_USERNAME" -L 1 -R $OWNER/ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "ockam" "$run_id" &
-  gh run watch "$run_id" --exit-status -R $owner/ockam
+  gh run watch "$run_id" --exit-status -R $OWNER/ockam
 
   # Merge PR to a new branch to kickstart workflow
   gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
-    --base develop -H "${release_name}" -r mrinalwadhwa -R $owner/ockam
+    --base develop -H "${release_name}" -r mrinalwadhwa -R $OWNER/ockam
 }
 
 function ockam_crate_release() {
   set -e
   gh workflow run publish-crates.yml --ref develop \
     -F release_branch="$release_name" -F git_tag="$GIT_TAG" -F ockam_publish_exclude_crates="$OCKAM_PUBLISH_EXCLUDE_CRATES" \
-    -F ockam_publish_recent_failure="$OCKAM_PUBLISH_RECENT_FAILURE" -R $owner/ockam
+    -F ockam_publish_recent_failure="$OCKAM_PUBLISH_RECENT_FAILURE" -R $OWNER/ockam
   # Sleep for 10 seconds to ensure we are not affected by Github API downtime.
   sleep 10
   # Wait for workflow run
-  run_id=$(gh run list --workflow=publish-crates.yml -b develop -u "$GITHUB_USERNAME" -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=publish-crates.yml -b develop -u "$GITHUB_USERNAME" -L 1 -R $OWNER/ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "ockam" "$run_id" &
-  gh run watch "$run_id" --exit-status -R $owner/ockam
+  gh run watch "$run_id" --exit-status -R $OWNER/ockam
 }
 
 function release_ockam_binaries() {
   set -e
-  gh workflow run release-binaries.yml --ref develop -F git_tag="$GIT_TAG" -F release_branch="$release_name" -R $owner/ockam
+  gh workflow run release-binaries.yml --ref develop -F git_tag="$GIT_TAG" -F release_branch="$release_name" -R $OWNER/ockam
   # Wait for workflow run
   sleep 10
-  run_id=$(gh run list --workflow=release-binaries.yml -b develop -u "$GITHUB_USERNAME" -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=release-binaries.yml -b develop -u "$GITHUB_USERNAME" -L 1 -R $OWNER/ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "ockam" "$run_id" &
-  gh run watch "$run_id" --exit-status -R $owner/ockam
+  gh run watch "$run_id" --exit-status -R $OWNER/ockam
 }
 
 function release_ockam_binaries_as_production() {
@@ -123,13 +93,13 @@ function release_ockam_binaries_as_production() {
   release_git_tag=$1
   workflow_name="release-tag.yml"
 
-  gh workflow run $workflow_name --ref develop -F git_tag="$release_git_tag" -R $owner/ockam
+  gh workflow run $workflow_name --ref develop -F git_tag="$release_git_tag" -R $OWNER/ockam
 
   sleep 10
-  run_id=$(gh run list --workflow="$workflow_name" -b develop -u "$GITHUB_USERNAME" -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow="$workflow_name" -b develop -u "$GITHUB_USERNAME" -L 1 -R $OWNER/ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "ockam" "$run_id" &
-  gh run watch "$run_id" --exit-status -R $owner/ockam
+  gh run watch "$run_id" --exit-status -R $OWNER/ockam
 }
 
 function release_ockam_package() {
@@ -138,13 +108,13 @@ function release_ockam_package() {
   file_and_sha="$2"
   is_release="$3"
 
-  gh workflow run ockam-package.yml --ref develop -F tag="$tag" -F binaries_sha="$file_and_sha" -F is_release="$is_release" -R $owner/ockam
+  gh workflow run ockam-package.yml --ref develop -F tag="$tag" -F binaries_sha="$file_and_sha" -F is_release="$is_release" -R $OWNER/ockam
   # Wait for workflow run
   sleep 10
-  run_id=$(gh run list --workflow=ockam-package.yml -b develop -u "$GITHUB_USERNAME" -L 1 -R $owner/ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=ockam-package.yml -b develop -u "$GITHUB_USERNAME" -L 1 -R $OWNER/ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "ockam" "$run_id" &
-  gh run watch "$run_id" --exit-status -R $owner/ockam
+  gh run watch "$run_id" --exit-status -R $OWNER/ockam
 }
 
 function homebrew_repo_bump() {
@@ -152,43 +122,43 @@ function homebrew_repo_bump() {
   tag=$1
   file_and_sha=$2
 
-  gh workflow run create-release-pull-request.yml --ref main -F binaries="$file_and_sha" -F branch_name="$release_name" -F tag="$tag" -R $owner/homebrew-ockam
+  gh workflow run create-release-pull-request.yml --ref main -F binaries="$file_and_sha" -F branch_name="$release_name" -F tag="$tag" -R $OWNER/homebrew-ockam
   # Wait for workflow run
   sleep 10
-  run_id=$(gh run list --workflow=create-release-pull-request.yml -b main -u "$GITHUB_USERNAME" -L 1 -R $owner/homebrew-ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=create-release-pull-request.yml -b main -u "$GITHUB_USERNAME" -L 1 -R $OWNER/homebrew-ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "homebrew-ockam" "$run_id" &
-  gh run watch "$run_id" --exit-status -R $owner/homebrew-ockam
+  gh run watch "$run_id" --exit-status -R $OWNER/homebrew-ockam
 
   # Create PR to kickstart workflow
   gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
-    --base main -H "${release_name}" -r mrinalwadhwa -R $owner/homebrew-ockam
+    --base main -H "${release_name}" -r mrinalwadhwa -R $OWNER/homebrew-ockam
 }
 
 function terraform_repo_bump() {
   set -e
-  gh workflow run create-release-pull-request.yml --ref main -R $owner/terraform-provider-ockam -F tag="$1" -F branch_name="$release_name"
+  gh workflow run create-release-pull-request.yml --ref main -R $OWNER/terraform-provider-ockam -F tag="$1" -F branch_name="$release_name"
   # Wait for workflow run
   sleep 10
-  run_id=$(gh run list --workflow=create-release-pull-request.yml -b main -u "$GITHUB_USERNAME" -L 1 -R $owner/terraform-provider-ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=create-release-pull-request.yml -b main -u "$GITHUB_USERNAME" -L 1 -R $OWNER/terraform-provider-ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "terraform-provider-ockam" "$run_id" &
-  gh run watch "$run_id" --exit-status -R $owner/terraform-provider-ockam
+  gh run watch "$run_id" --exit-status -R $OWNER/terraform-provider-ockam
 
   # Create PR to kickstart workflow
   gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
-    --base main -H "${release_name}" -r mrinalwadhwa -R $owner/terraform-provider-ockam
+    --base main -H "${release_name}" -r mrinalwadhwa -R $OWNER/terraform-provider-ockam
 }
 
 function terraform_binaries_release() {
   set -e
-  gh workflow run release.yml --ref main -R $owner/terraform-provider-ockam -F tag="$1"
+  gh workflow run release.yml --ref main -R $OWNER/terraform-provider-ockam -F tag="$1"
   # Wait for workflow run
   sleep 10
-  run_id=$(gh run list --workflow=release.yml -b main -u "$GITHUB_USERNAME" -L 1 -R $owner/terraform-provider-ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=release.yml -b main -u "$GITHUB_USERNAME" -L 1 -R $OWNER/terraform-provider-ockam --json databaseId | jq -r .[0].databaseId)
 
   approve_deployment "terraform-provider-ockam" "$run_id" &
-  gh run watch "$run_id" --exit-status -R $owner/terraform-provider-ockam
+  gh run watch "$run_id" --exit-status -R $OWNER/terraform-provider-ockam
 }
 
 function delete_ockam_draft_package() {
@@ -209,7 +179,7 @@ function delete_ockam_draft_package() {
         echo -n | gh api \
           --method DELETE \
           -H "Accept: application/vnd.github+json" \
-          "/orgs/$owner/packages/container/ockam/versions/$id" --input -
+          "/orgs/$OWNER/packages/container/ockam/versions/$id" --input -
         break
       fi
     done
@@ -228,6 +198,9 @@ function success_info() {
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 # Perform Ockam bump and binary draft release if specified
 if [[ $IS_DRAFT_RELEASE == true ]]; then
+  # Run code freeze script before any draft action is made
+  source tools/scripts/release/code-freeze.sh
+
   if [[ -z $SKIP_OCKAM_BUMP || $SKIP_OCKAM_BUMP == false ]]; then
     echo "Starting Ockam crate bump"
     ockam_bump
@@ -243,7 +216,7 @@ fi
 
 # Get latest tag
 if [[ -z $LATEST_TAG_NAME ]]; then
-  latest_tag_name=$(gh api -H "Accept: application/vnd.github+json" /repos/$owner/ockam/releases | jq -r .[0].tag_name)
+  latest_tag_name=$(gh api -H "Accept: application/vnd.github+json" /repos/$OWNER/ockam/releases | jq -r .[0].tag_name)
   if [[ $latest_tag_name != *"ockam_v"* ]]; then
     echo "Invalid Git Tag retrieved"
     exit 1
@@ -261,7 +234,7 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
 
   temp_dir=$(mktemp -d)
   pushd "$temp_dir"
-  gh release download "$latest_tag_name" -R $owner/ockam
+  gh release download "$latest_tag_name" -R $OWNER/ockam
 
   # TODO Ensure that SHA are cosign verified
   while read -r line; do
@@ -315,7 +288,7 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
   if [[ -z $SKIP_TERRAFORM_DRAFT_RELEASE || $SKIP_TERRAFORM_DRAFT_RELEASE == false ]]; then
     echo "Releasing Terraform release"
     terraform_tag=${latest_tag_name:6}
-    gh release edit "$terraform_tag" --draft=false -R $owner/terraform-provider-ockam
+    gh release edit "$terraform_tag" --draft=false -R $OWNER/terraform-provider-ockam
   fi
 
   # Release Ockam package
@@ -332,7 +305,11 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
     success_info "Crates.io publish successful."
   fi
 
-  success_info "Release Done 🚀🚀🚀."
+  success_info "Release Done.... Unfreezing the Ockam repository"
+
+  # Run code unfreeze script before after production is done
+  source tools/scripts/release/code-freeze.sh
+  success_info "Code unfreeze successful 🚀🚀🚀"
 fi
 
 exit 0

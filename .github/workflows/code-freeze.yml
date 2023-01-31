@@ -9,7 +9,7 @@ on:
       branch_name:
         description: Branch Name To Create Pull Request
         required: true
-      set_pr_state:
+      set_mergify_pr_state:
         type: choice
         description: Set Mergify PR Freeze State
         default: freeze
@@ -53,7 +53,7 @@ jobs:
             current_state='freeze'
           fi
 
-          if [[ ${{ github.event.inputs.set_pr_state }} == $current_state ]]; then
+          if [[ ${{ github.event.inputs.set_mergify_pr_state }} == $current_state ]]; then
             echo "PR state already set to $current_state"
             exit 1
           fi
