@@ -1,6 +1,6 @@
 [package]
 name = "ockam_key_exchange_x3dh"
-version = "0.67.0"
+version = "0.68.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
@@ -35,13 +35,13 @@ no_std = ["ockam_core/no_std", "ockam_macros/no_std", "ockam_key_exchange_core/n
 alloc = ["ockam_core/alloc", "ockam_macros/alloc", "ockam_key_exchange_core/alloc", "hex/alloc"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.72.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.73.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.26.0", default_features = false }
-ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.63.0", default_features = false }
+ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.64.0", default_features = false }
 arrayref = "0.3"
 zeroize = { version = "1.4.2", features = ["zeroize_derive"] }
 hex = { version = "0.4", default-features = false }
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", version = "^0.68.0" }
-ockam_node = { path = "../ockam_node", version = "^0.75.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.69.0" }
+ockam_node = { path = "../ockam_node", version = "^0.76.0" }

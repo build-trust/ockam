@@ -1,6 +1,6 @@
 [package]
 name        = "ockam_api"
-version     = "0.21.0"
+version     = "0.22.0"
 edition     = "2021"
 authors     = ["Ockam Developers"]
 license     = "Apache-2.0"
@@ -32,9 +32,9 @@ default              = ["lmdb"]
 
 [dependencies]
 bytes           = { version = "1.2.1", default-features = false, features = ["serde"] }
-ockam           = { path = "../ockam", version = "^0.78.0", features = ["software_vault"] }
+ockam           = { path = "../ockam", version = "^0.79.0", features = ["software_vault"] }
 either          = { version = "1.8.1", default-features = false }
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.12.0", features = ["cbor", "serde"] }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.13.0", features = ["cbor", "serde"] }
 cddl-cat        = { version = "0.6.1", optional = true }
 hex             = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 nix             = "0.26"
@@ -56,19 +56,19 @@ thiserror       = "1.0"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
 
 [dependencies.ockam_core]
-version          = "0.72.0"
+version          = "0.73.0"
 path             = "../ockam_core"
 default-features = false
 features         = ["no_std", "alloc"]
 
 [dependencies.ockam_node]
-version          = "0.75.0"
+version          = "0.76.0"
 path             = "../ockam_node"
 default-features = false
 features         = ["no_std", "alloc"]
 
 [dependencies.ockam_vault]
-version          = "0.68.0"
+version          = "0.69.0"
 path             = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
@@ -76,13 +76,13 @@ default-features = false
 features         = ["std", "aws", "rustcrypto"]
 
 [dependencies.ockam_identity]
-version          = "0.66.0"
+version          = "0.67.0"
 path             = "../ockam_identity"
 default-features = false
 features         = ["std"]
 
 [dependencies.ockam_abac]
-version          = "0.12.0"
+version          = "0.13.0"
 path             = "../ockam_abac"
 default-features = false
 
@@ -94,5 +94,5 @@ mockall             = "0.11"
 # TODO enable "tag" feature once implemented on elixir side
 ockam_api           = { path = ".", features = ["std", "authenticators"] }
 ockam_macros        = { version = "0.26.0", path = "../ockam_macros", features = ["std"] }
-ockam_transport_tcp = { version = "0.73.0", path = "../ockam_transport_tcp" }
+ockam_transport_tcp = { version = "0.74.0", path = "../ockam_transport_tcp" }
 quickcheck          = "1.0.1"
