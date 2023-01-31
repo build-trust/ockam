@@ -71,7 +71,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
 
     /// Creates a new embedded node to communicate with the cloud
     pub async fn with_new_embbeded_node(&mut self) -> Result<&mut OrchestratorApiBuilder<'a>> {
-        let node_name = start_embedded_node(self.ctx, self.opts, Some(self.project_opts)).await?;
+        let node_name = start_embedded_node(self.ctx, self.opts, None).await?;
         self.node_name = Some(node_name);
         Ok(self)
     }
