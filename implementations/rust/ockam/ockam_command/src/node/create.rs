@@ -12,7 +12,6 @@ use std::{
 };
 use tracing::error;
 
-use crate::node::util::spawn_node;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start;
@@ -22,6 +21,7 @@ use crate::{
     help, node::show::print_query_status, node::HELP_DETAIL, project, util::find_available_port,
     CommandGlobalOpts,
 };
+use crate::{node::util::spawn_node, util::extract_address_value};
 use crate::{
     node::util::{add_project_authority_from_project_info, init_node_state},
     util::RpcBuilder,
@@ -144,6 +144,23 @@ impl CreateCommand {
             ..cmd
         })
     }
+
+    fn parse_node_name(&self) -> crate::Result<Self> {
+        let cmd = self.clone();
+
+        if self.node_name.starts_with('/') {
+            if self.node_name.starts_with("/node/") {
+                let node_name = extract_address_value(&self.node_name)?;
+                return Ok(Self { node_name, ..cmd });
+            } else {
+                return Err(crate::Error::new(
+                    exitcode::IOERR,
+                    anyhow!("Error: A MultiAddr node must follow the format /node/{{name}}"),
+                ));
+            }
+        }
+        Ok(Self { ..cmd })
+    }
 }
 
 fn parse_launch_config(config_or_path: &str) -> anyhow::Result<Config> {
@@ -160,7 +177,9 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
+    let cmd = cmd.parse_node_name()?;
     let node_name = &cmd.node_name;
+
     if cmd.child_process {
         return Err(crate::Error::new(
             exitcode::CONFIG,
@@ -171,6 +190,7 @@ async fn run_impl(
     // Spawn node in another, new process
     let cmd = cmd.overwrite_addr()?;
     let addr = SocketAddr::from_str(&cmd.tcp_listener_address)?;
+
     spawn_background_node(&ctx, &opts, &cmd, addr).await?;
 
     // Print node status
