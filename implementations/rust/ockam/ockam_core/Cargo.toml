@@ -82,7 +82,7 @@ spin = { version = "0.9.1", default-features = false, features = [
     "rwlock",
     "spin_mutex",
 ], optional = true }
-futures-util = { version = "0.3.17", default-features = false, features = [
+futures-util = { version = "0.3.26", default-features = false, features = [
     "alloc",
     "async-await-macro",
     "sink",

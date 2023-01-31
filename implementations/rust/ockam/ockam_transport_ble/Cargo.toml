@@ -89,7 +89,7 @@ ockam_node = { path = "../ockam_node", version = "^0.76.0", default_features = f
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.46.0", default_features = false }
 
 futures = { version = "0.3.25", default-features = false }
-futures-util = { version = "0.3.19", default-features = false, features = ["alloc", "async-await-macro", "sink"] }
+futures-util = { version = "0.3.26", default-features = false, features = ["alloc", "async-await-macro", "sink"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 tracing = { version = "0.1", default_features = false }
 
