@@ -27,8 +27,6 @@ use crate::node::util::start_embedded_node;
 use crate::util::output::Output;
 use crate::{CommandGlobalOpts, OutputFormat};
 
-use self::api::ProjectOpts;
-
 pub mod api;
 pub mod exitcode;
 pub mod orchestrator_api;
