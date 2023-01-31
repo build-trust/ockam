@@ -120,7 +120,6 @@ pub enum ConfigureAddonCommand {
         #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
         attributes: Vec<String>,
     },
-    #[command(hide = help::hide())]
     InfluxDb {
         /// Ockam Project Name
         #[arg(

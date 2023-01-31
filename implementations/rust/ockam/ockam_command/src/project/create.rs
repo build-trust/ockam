@@ -22,10 +22,6 @@ pub struct CreateCommand {
     #[arg(display_order = 1002, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true, value_parser = validate_project_name)]
     pub project_name: String,
 
-    // Enforce credentials for member access to the project node
-    #[arg(long, display_order = 1003)]
-    pub enforce_credentials: Option<bool>,
-
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
 
@@ -60,7 +56,6 @@ async fn run_impl(
     rpc.request(api::project::create(
         &cmd.project_name,
         &space_id,
-        cmd.enforce_credentials,
         &cmd.cloud_opts.route(),
     ))
     .await?;

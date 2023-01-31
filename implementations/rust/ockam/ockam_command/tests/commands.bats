@@ -435,7 +435,7 @@ teardown() {
   run $OCKAM space create "${space_name}"
   assert_success
 
-  run $OCKAM project create "${space_name}" "${project_name}" --enforce-credentials false
+  run $OCKAM project create "${space_name}" "${project_name}"
   assert_success
 
   run --separate-stderr $OCKAM message send hello --to "/project/${project_name}/service/echo"
@@ -687,7 +687,7 @@ teardown() {
   run $OCKAM space create "${space_name}"
   assert_success
 
-  run $OCKAM project create "${space_name}" "${project_name}" --enforce-credentials true
+  run $OCKAM project create "${space_name}" "${project_name}"
   assert_success
 
   $OCKAM project information "${project_name}" --output json  > "/tmp/${project_name}_project.json"

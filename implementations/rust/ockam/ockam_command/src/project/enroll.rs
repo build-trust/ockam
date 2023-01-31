@@ -15,11 +15,11 @@ use crate::node::NodeOpts;
 use crate::project::util::create_secure_channel_to_authority;
 use crate::util::api::{CloudOpts, ProjectOpts};
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{help, CommandGlobalOpts, Result};
+use crate::{CommandGlobalOpts, Result};
 
 /// An authorised enroller can add members to a project.
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide(), arg_required_else_help = true)]
+#[command(arg_required_else_help = true)]
 pub struct EnrollCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]
