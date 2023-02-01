@@ -8,6 +8,13 @@ use crate::{Address, IncomingAccessControl, RelayMessage, Result};
 #[derive(Debug)]
 pub struct AllowSourceAddress(pub Address);
 
+impl AllowSourceAddress {
+    /// Convenience constructor
+    pub fn new(address: impl Into<Address>) -> Self {
+        Self(address.into())
+    }
+}
+
 #[async_trait]
 impl IncomingAccessControl for AllowSourceAddress {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {

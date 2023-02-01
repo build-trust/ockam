@@ -1,35 +1,53 @@
-use crate::access_control::IncomingAccessControl;
+use crate::access_control::{IncomingAccessControl, OutgoingAccessControl};
+use crate::compat::sync::Arc;
+use crate::compat::vec::Vec;
 use crate::{async_trait, compat::boxed::Box, RelayMessage, Result};
 
-use core::fmt::{self, Debug};
+/// Allows message that are allowed by any of [`IncomingAccessControl`]s
+#[derive(Debug)]
+pub struct AnyIncomingAccessControl(Vec<Arc<dyn IncomingAccessControl>>);
 
-/// Allows message that are allowed buy either AccessControls
-pub struct AnyAccessControl<F: IncomingAccessControl, S: IncomingAccessControl> {
-    // TODO: Extend for more than 2 policies
-    first: F,
-    second: S,
-}
-
-impl<F: IncomingAccessControl, S: IncomingAccessControl> AnyAccessControl<F, S> {
+impl AnyIncomingAccessControl {
     /// Constructor
-    pub fn new(first: F, second: S) -> Self {
-        AnyAccessControl { first, second }
+    pub fn new(access_controls: Vec<Arc<dyn IncomingAccessControl>>) -> Self {
+        Self(access_controls)
     }
 }
 
 #[async_trait]
-impl<F: IncomingAccessControl, S: IncomingAccessControl> IncomingAccessControl
-    for AnyAccessControl<F, S>
-{
+impl IncomingAccessControl for AnyIncomingAccessControl {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
-        Ok(self.first.is_authorized(relay_msg).await?
-            || self.second.is_authorized(relay_msg).await?)
+        for ac in &self.0 {
+            if ac.is_authorized(relay_msg).await? {
+                return crate::allow();
+            }
+        }
+
+        crate::deny()
     }
 }
 
-impl<F: IncomingAccessControl, S: IncomingAccessControl> Debug for AnyAccessControl<F, S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "AllowAny({:?} OR {:?})", self.first, self.second)
+/// Allows message that are allowed by any of [`OutgoingAccessControl`]s
+#[derive(Debug)]
+pub struct AnyOutgoingAccessControl(Vec<Arc<dyn OutgoingAccessControl>>);
+
+impl AnyOutgoingAccessControl {
+    /// Constructor
+    pub fn new(access_controls: Vec<Arc<dyn OutgoingAccessControl>>) -> Self {
+        Self(access_controls)
+    }
+}
+
+#[async_trait]
+impl OutgoingAccessControl for AnyOutgoingAccessControl {
+    async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
+        for ac in &self.0 {
+            if ac.is_authorized(relay_msg).await? {
+                return crate::allow();
+            }
+        }
+
+        crate::deny()
     }
 }
 
