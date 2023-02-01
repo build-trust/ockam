@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    node::util::{delete_node, start_embedded_node},
+    node::util::{delete_node, start_embedded_node_with_vault_and_identity},
     project::{
         util::{create_secure_channel_to_authority, create_secure_channel_to_project},
         ProjectInfo,
@@ -70,8 +70,19 @@ impl<'a> OrchestratorApiBuilder<'a> {
     }
 
     /// Creates a new embedded node to communicate with the cloud
+    /// FIXME: There is an ordering issue, is as_identity/1 is used,
+    ///        it *must* be called before with_new_embbeded_node/1,
+    ///        as the identity must be know at the time of this call.
     pub async fn with_new_embbeded_node(&mut self) -> Result<&mut OrchestratorApiBuilder<'a>> {
-        let node_name = start_embedded_node(self.ctx, self.opts, Some(self.project_opts)).await?;
+        // TODO: always use the default vault
+        let node_name = start_embedded_node_with_vault_and_identity(
+            self.ctx,
+            self.opts,
+            None,
+            self.identity.as_ref(),
+            Some(self.project_opts),
+        )
+        .await?;
         self.node_name = Some(node_name);
         Ok(self)
     }
@@ -245,7 +256,12 @@ impl<'a> OrchestratorApiBuilder<'a> {
                     project_route,
                     &project_identity.to_string(),
                     self.credential_exchange_mode,
-                    self.identity.clone(),
+                    None, //self.identity.clone(),
+                          //FIXME:  passing an identity here is broken.  Credential is retrieved and
+                          //associated with the identity,  but that identity object is _not_ the one that
+                          //is used latter to establish the security channel (due to clonning, etc).
+                          //Not passing identity here works as the embedded node was started with this
+                          //identity as the default one anyway.
                 )
                 .await?
             }

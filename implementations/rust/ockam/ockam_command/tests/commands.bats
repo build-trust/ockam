@@ -76,6 +76,7 @@ teardown() {
   rm -rf /tmp/ockam
 }
 
+
 @test "create a node without a name" {
   run $OCKAM node create
   assert_success
@@ -415,37 +416,66 @@ teardown() {
   assert_output "hello"
 }
 
+@test "send a message to a project node from command embedded node, passing identity" {
+  skip_if_orchestrator_tests_not_enabled
+
+  $OCKAM project information --output json  > /tmp/project.json
+
+  run $OCKAM identity create m1
+  run $OCKAM identity create m2
+  m1_identifier=$($OCKAM identity show m1)
+
+  $OCKAM project enroll --member $m1_identifier --attribute role=member
+
+  # m1' identity was added by enroller
+  run $OCKAM project authenticate --identity m1 --project-path /tmp/project.json
+
+  # m1 is a member,  must be able to contact the project' service
+  run --separate-stderr $OCKAM message send --identity m1 --project-path /tmp/project.json --to /project/default/service/echo hello
+  assert_success
+  assert_output "hello"
+
+  # m2 is not a member,  must not be able to contact the project' service
+  run --separate-stderr $OCKAM message send --identity m2 --project-path /tmp/project.json --to /project/default/service/echo hello
+  assert_failure
+}
+
+@test "send a message to a project node from command embedded node, enrolled member on different install" {
+  skip  # FIXME  how to send a message to a project m1 is enrolled to?  (with m1 being on a different install
+        #       than the admin?.  If we pass project' address directly (instead of /project/ thing), would
+        #       it present credentials? would read authority info from project.json?
+  skip_if_orchestrator_tests_not_enabled
+
+  $OCKAM project information --output json  > /tmp/project.json
+
+  export OCKAM_HOME=/tmp/ockam
+  $OCKAM identity create m1
+  $OCKAM identity create m2
+  m1_identifier=$($OCKAM identity show m1)
+
+  unset OCKAM_HOME
+  $OCKAM project enroll --member $m1_identifier --attribute role=member
+
+  export OCKAM_HOME=/tmp/ockam
+  # m1' identity was added by enroller
+  run $OCKAM project authenticate --identity m1 --project-path /tmp/project.json
+
+  # m1 is a member,  must be able to contact the project' service
+  run --separate-stderr $OCKAM message send --identity m1 --project-path /tmp/project.json --to /project/default/service/echo hello
+  assert_success
+  assert_output "hello"
+
+  # m2 is not a member,  must not be able to contact the project' service
+  run --separate-stderr $OCKAM message send --identity m2 --project-path /tmp/project.json --to /project/default/service/echo hello
+  assert_failure
+}
+
 
 @test "list projects" {
   skip_if_orchestrator_tests_not_enabled
 
   run $OCKAM project list
 
-  assert_success
-}
-
-@test "create space, create project, send message, delete project, delete space" {
-  skip # TODO: review message send / echo permissions
-  skip_if_orchestrator_tests_not_enabled
-  skip_if_long_tests_not_enabled
-
-  space_name=$(openssl rand -hex 4)
-  project_name=$(openssl rand -hex 4)
-
-  run $OCKAM space create "${space_name}"
-  assert_success
-
-  run $OCKAM project create "${space_name}" "${project_name}"
-  assert_success
-
-  run --separate-stderr $OCKAM message send hello --to "/project/${project_name}/service/echo"
-  assert_success
-  assert_output "hello"
-
-  run $OCKAM project delete "${space_name}" "${project_name}"
-  assert_success
-
-  run $OCKAM space delete "${space_name}"
   assert_success
 }
 
@@ -640,7 +670,6 @@ teardown() {
 }
 
 @test "inlet (with implicit secure channel creation) / outlet example with enrollment token" {
-  skip
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM project information  default --output json  > /tmp/project.json
@@ -764,6 +793,79 @@ teardown() {
   assert_success
   assert_output --partial --regex "Id: okta\n +Enabled: false"
   assert_output --partial --regex "Id: confluent\n +Enabled: false"
+}
+
+@test "influxdb lease manager" {
+  # TODO add more tests cases testing the leases/expiration themselves. This basically just test that the service is there,
+  #      responsible, and that a member enrolled on a different ockam install can access it.
+  skip_if_orchestrator_tests_not_enabled
+  skip_if_influxdb_test_not_enabled
+
+
+  run $OCKAM project addon configure influx-db  --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}"
+  assert_success
+
+  sleep 30 #FIXME  workaround, project not yet ready after configuring addon
+
+  $OCKAM project information default --output json  > /tmp/project.json
+
+  export OCKAM_HOME=/tmp/ockam
+  run $OCKAM identity create m1
+  run $OCKAM identity create m2
+  run $OCKAM identity create m3
+
+  m1_identifier=$($OCKAM identity show m1)
+  m2_identifier=$($OCKAM identity show m2)
+
+  unset OCKAM_HOME
+  $OCKAM project enroll --member $m1_identifier --attribute service=sensor
+  $OCKAM project enroll --member $m2_identifier --attribute service=web
+
+
+  export OCKAM_HOME=/tmp/ockam
+
+  # m1 and m2 identity was added by enroller
+  run $OCKAM project authenticate --identity m1 --project-path /tmp/project.json
+  assert_success
+  assert_output --partial $green_identifier
+
+  run $OCKAM project authenticate --identity m2 --project-path /tmp/project.json
+  assert_success
+  assert_output --partial $green_identifier
+
+
+  # m1 and m2 can use the lease manager
+  run $OCKAM lease --identity m1 --project-path /tmp/project.json create
+  assert_success
+  run $OCKAM lease --identity m2 --project-path /tmp/project.json create
+  assert_success
+
+  # m3 can't
+  run $OCKAM lease --identity m3 --project-path /tmp/project.json create
+  assert_failure
+
+  unset OCKAM_HOME
+  run $OCKAM project addon configure influx-db  --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}" --user-access-role '(= subject.service "sensor")'
+  assert_success
+
+  sleep 30 #FIXME  workaround, project not yet ready after configuring addon
+
+  export OCKAM_HOME=/tmp/ockam
+  # m1 can use the lease manager (it has a service=sensor attribute attested by authority)
+  run $OCKAM lease --identity m1 --project-path /tmp/project.json create
+  assert_success
+
+  # m2 can't use the  lease manager now (it doesn't have a service=sensor attribute attested by authority)
+  run $OCKAM lease --identity m2 --project-path /tmp/project.json create
+  assert_failure
+}
+
+
+function skip_if_influxdb_test_not_enabled() {
+  # shellcheck disable=SC2031
+  if [ -z "${INFLUXDB_TESTS}" ]; then
+    skip "INFLUXDB_TESTS are not enabled"
+  fi
 }
 
 function skip_if_orchestrator_tests_not_enabled() {
