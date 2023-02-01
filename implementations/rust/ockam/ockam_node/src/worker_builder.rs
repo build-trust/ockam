@@ -24,6 +24,13 @@ pub struct WorkerBuilder<W> {
     worker: W,
 }
 
+impl<W> WorkerBuilder<W> {
+    /// Getter
+    pub fn worker(&self) -> &W {
+        &self.worker
+    }
+}
+
 impl<M, W> WorkerBuilder<W>
 where
     M: Message + Send + 'static,
