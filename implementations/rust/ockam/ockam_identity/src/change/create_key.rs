@@ -1,5 +1,5 @@
 use crate::authenticated_storage::AuthenticatedStorage;
-use crate::change::{IdentityChange, IdentitySignedChange, Signature, SignatureType};
+use crate::change::{IdentityChange, IdentityChangeSignature, IdentitySignedChange, SignatureType};
 use crate::change_history::IdentityChangeHistory;
 use crate::IdentityError::InvalidInternalState;
 use crate::{ChangeIdentifier, Identity, IdentityError, IdentityVault, KeyAttributes};
@@ -96,7 +96,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         let change_id = ChangeIdentifier::from_hash(change_id);
 
         let self_signature = vault.sign(&secret_key, change_id.as_ref()).await?;
-        let self_signature = Signature::new(SignatureType::SelfSign, self_signature);
+        let self_signature = IdentityChangeSignature::new(SignatureType::SelfSign, self_signature);
 
         let mut signatures = vec![self_signature];
 
@@ -104,7 +104,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         // If there is no root_key - we're creating new identity, so we just generated root_key
         if let Some(root_key) = root_key {
             let root_signature = vault.sign(root_key, change_id.as_ref()).await?;
-            let root_signature = Signature::new(SignatureType::RootSign, root_signature);
+            let root_signature =
+                IdentityChangeSignature::new(SignatureType::RootSign, root_signature);
 
             signatures.push(root_signature);
         }

@@ -1,5 +1,5 @@
 use crate::authenticated_storage::AuthenticatedStorage;
-use crate::change::{IdentityChange, IdentitySignedChange, Signature, SignatureType};
+use crate::change::{IdentityChange, IdentityChangeSignature, IdentitySignedChange, SignatureType};
 use crate::change_history::IdentityChangeHistory;
 use crate::{ChangeIdentifier, Identity, IdentityError, IdentityVault, KeyAttributes};
 use core::fmt;
@@ -91,18 +91,18 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         let change_id = ChangeIdentifier::from_hash(change_id);
 
         let self_signature = self.vault.sign(&secret_key, change_id.as_ref()).await?;
-        let self_signature = Signature::new(SignatureType::SelfSign, self_signature);
+        let self_signature = IdentityChangeSignature::new(SignatureType::SelfSign, self_signature);
 
         let root_key = self.get_root_secret_key().await?;
 
         let root_signature = self.vault.sign(&root_key, change_id.as_ref()).await?;
-        let root_signature = Signature::new(SignatureType::RootSign, root_signature);
+        let root_signature = IdentityChangeSignature::new(SignatureType::RootSign, root_signature);
 
         let prev_signature = self
             .vault
             .sign(&last_key_in_chain, change_id.as_ref())
             .await?;
-        let prev_signature = Signature::new(SignatureType::PrevSign, prev_signature);
+        let prev_signature = IdentityChangeSignature::new(SignatureType::PrevSign, prev_signature);
 
         let signed_change = IdentitySignedChange::new(
             change_id,

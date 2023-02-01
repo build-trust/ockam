@@ -65,7 +65,7 @@ impl IdentityChange {
 pub struct IdentitySignedChange {
     identifier: ChangeIdentifier,
     change: IdentityChange,
-    signatures: Vec<Signature>,
+    signatures: Vec<IdentityChangeSignature>,
 }
 
 impl IdentitySignedChange {
@@ -78,7 +78,7 @@ impl IdentitySignedChange {
         &self.change
     }
     /// Signatures are used to check change validity.
-    pub fn signatures(&self) -> &[Signature] {
+    pub fn signatures(&self) -> &[IdentityChangeSignature] {
         &self.signatures
     }
 }
@@ -88,7 +88,7 @@ impl IdentitySignedChange {
     pub fn new(
         identifier: ChangeIdentifier,
         change: IdentityChange,
-        signatures: Vec<Signature>,
+        signatures: Vec<IdentityChangeSignature>,
     ) -> Self {
         Self {
             identifier,
