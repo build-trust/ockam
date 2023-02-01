@@ -182,8 +182,8 @@ impl Context {
     }
 
     /// Return all addresses of the current worker
-    pub fn aliases(&self) -> Vec<Address> {
-        self.mailboxes.aliases()
+    pub fn addresses(&self) -> Vec<Address> {
+        self.mailboxes.addresses()
     }
 
     /// Return a reference to the mailboxes of this context
