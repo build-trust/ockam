@@ -44,14 +44,12 @@ mod channel;
 mod identifiers;
 mod identity;
 mod identity_builder;
-mod key_attributes;
 mod public_identity;
 
 pub use channel::*;
 pub use identifiers::*;
 pub use identity::*;
 pub use identity_builder::*;
-pub use key_attributes::*;
 pub use public_identity::*;
 
 mod signature;

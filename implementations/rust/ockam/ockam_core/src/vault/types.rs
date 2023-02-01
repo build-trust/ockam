@@ -244,6 +244,15 @@ impl KeyAttributes {
             length,
         }
     }
+
+    /// Create default key attributes
+    pub fn default_attributes() -> Self {
+        KeyAttributes::new(
+            KeyType::Ed25519,
+            KeyPersistence::Persistent,
+            CURVE25519_SECRET_LENGTH_U32,
+        )
+    }
 }
 
 impl fmt::Display for KeyAttributes {

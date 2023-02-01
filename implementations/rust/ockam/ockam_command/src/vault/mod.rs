@@ -5,7 +5,7 @@ use clap::{Args, Subcommand};
 use ockam::Context;
 use ockam_api::cli_state;
 use ockam_core::vault::{Key, KeyAttributes, KeyPersistence, KeyType, KeyVault};
-use ockam_identity::{Identity, IdentityStateConst, PrivateKeyAttributes};
+use ockam_identity::{Identity, IdentityStateConst};
 use rand::prelude::random;
 use std::path::PathBuf;
 
@@ -93,13 +93,12 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
             let idt = {
                 let attrs = KeyAttributes::new(KeyType::NistP256, KeyPersistence::Persistent, 32);
                 let kid = v.import_key(Key::Aws(key_id), attrs).await?;
-                let attrs =
-                    PrivateKeyAttributes::new(IdentityStateConst::ROOT_LABEL.to_string(), attrs);
                 Identity::create_with_external_key_ext(
                     &ctx,
                     &opts.state.identities.authenticated_storage().await?,
                     &v,
                     &kid,
+                    IdentityStateConst::ROOT_LABEL.to_string(),
                     attrs,
                 )
                 .await?

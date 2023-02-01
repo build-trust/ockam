@@ -4,8 +4,8 @@ use crate::change::IdentitySignedChange;
 use crate::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use crate::credential::Credential;
 use crate::{
-    ChangeIdentifier, IdentityError, IdentityIdentifier, IdentityVault, PrivateKeyAttributes,
-    PublicIdentity, SecureChannelRegistry,
+    ChangeIdentifier, IdentityError, IdentityIdentifier, IdentityVault, PublicIdentity,
+    SecureChannelRegistry,
 };
 use ockam_core::compat::{
     boxed::Box,
@@ -111,7 +111,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         secure_channel_registry: SecureChannelRegistry,
         vault: &V,
         kid: Option<&KeyId>,
-        key_attribs: PrivateKeyAttributes,
+        key_label: String,
+        key_attributes: KeyAttributes,
     ) -> Result<Self> {
         let child_ctx = ctx
             .new_detached(
@@ -125,7 +126,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         let create_key_change = Self::make_create_key_change_static(
             kid,
             initial_change_id,
-            key_attribs.clone(),
+            key_label,
+            key_attributes,
             None,
             vault,
         )
@@ -161,13 +163,10 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 
     /// Create an `Identity`. Extended version
     pub async fn create_ext(ctx: &Context, authenticated_storage: &S, vault: &V) -> Result<Self> {
-        let attrs = PrivateKeyAttributes::new(
-            IdentityStateConst::ROOT_LABEL.to_string(),
-            KeyAttributes::new(
-                KeyType::Ed25519,
-                KeyPersistence::Persistent,
-                CURVE25519_SECRET_LENGTH_U32,
-            ),
+        let attrs = KeyAttributes::new(
+            KeyType::Ed25519,
+            KeyPersistence::Persistent,
+            CURVE25519_SECRET_LENGTH_U32,
         );
         Self::create_impl(
             ctx,
@@ -175,6 +174,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             SecureChannelRegistry::new(),
             vault,
             None,
+            IdentityStateConst::ROOT_LABEL.to_string(),
             attrs,
         )
         .await
@@ -186,7 +186,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         authenticated_storage: &S,
         vault: &V,
         kid: &KeyId,
-        attrs: PrivateKeyAttributes,
+        label: String,
+        attrs: KeyAttributes,
     ) -> Result<Self> {
         Self::create_impl(
             ctx,
@@ -194,6 +195,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             SecureChannelRegistry::new(),
             vault,
             Some(kid),
+            label,
             attrs,
         )
         .await
@@ -203,13 +205,10 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 impl<V: IdentityVault> Identity<V, InMemoryStorage> {
     /// Create an `Identity` with a new secret key and `InMemoryStorage`
     pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
-        let attrs = PrivateKeyAttributes::new(
-            IdentityStateConst::ROOT_LABEL.to_string(),
-            KeyAttributes::new(
-                KeyType::Ed25519,
-                KeyPersistence::Persistent,
-                CURVE25519_SECRET_LENGTH_U32,
-            ),
+        let attrs = KeyAttributes::new(
+            KeyType::Ed25519,
+            KeyPersistence::Persistent,
+            CURVE25519_SECRET_LENGTH_U32,
         );
         Self::create_impl(
             ctx,
@@ -217,6 +216,7 @@ impl<V: IdentityVault> Identity<V, InMemoryStorage> {
             SecureChannelRegistry::new(),
             vault,
             None,
+            IdentityStateConst::ROOT_LABEL.to_string(),
             attrs,
         )
         .await
@@ -227,7 +227,8 @@ impl<V: IdentityVault> Identity<V, InMemoryStorage> {
         ctx: &Context,
         vault: &V,
         kid: &KeyId,
-        attrs: PrivateKeyAttributes,
+        label: String,
+        attrs: KeyAttributes,
     ) -> Result<Self> {
         Self::create_impl(
             ctx,
@@ -235,6 +236,7 @@ impl<V: IdentityVault> Identity<V, InMemoryStorage> {
             SecureChannelRegistry::new(),
             vault,
             Some(kid),
+            label,
             attrs,
         )
         .await
@@ -311,9 +313,9 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 
     /// Generate and add a new key to this `Identity` with a given `label`
     pub async fn create_key(&self, label: String) -> Result<()> {
-        let key_attribs = PrivateKeyAttributes::default_with_label(label);
-
-        let change = self.make_create_key_change(None, key_attribs).await?;
+        let change = self
+            .make_create_key_change(None, label, KeyAttributes::default_attributes())
+            .await?;
 
         self.add_change(change).await
     }
@@ -321,10 +323,9 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     /// Add a new key to this `Identity` with a given `label`
     pub async fn add_key(&self, label: String, key_id: &KeyId) -> Result<()> {
         let key_attributes = self.vault.get_key_attributes(key_id).await?;
-        let key_attribs = PrivateKeyAttributes::new(label, key_attributes);
 
         let change = self
-            .make_create_key_change(Some(key_id), key_attribs)
+            .make_create_key_change(Some(key_id), label, key_attributes)
             .await?;
 
         self.add_change(change).await
@@ -333,7 +334,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     /// Rotate an existing key with a given label
     pub async fn rotate_key(&self, label: &str) -> Result<()> {
         let change = self
-            .make_rotate_key_change(PrivateKeyAttributes::default_with_label(label.to_string()))
+            .make_rotate_key_change(label.to_string(), KeyAttributes::default_attributes())
             .await?;
 
         self.add_change(change).await
@@ -342,9 +343,10 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     /// Rotate this `Identity` root key
     pub async fn rotate_root_key(&self) -> Result<()> {
         let change = self
-            .make_rotate_key_change(PrivateKeyAttributes::default_with_label(
+            .make_rotate_key_change(
                 IdentityStateConst::ROOT_LABEL.to_string(),
-            ))
+                KeyAttributes::default_attributes(),
+            )
             .await?;
 
         self.add_change(change).await

@@ -2,9 +2,10 @@ use crate::authenticated_storage::AuthenticatedStorage;
 use crate::change::{IdentityChange, IdentityChangeSignature, IdentitySignedChange, SignatureType};
 use crate::change_history::IdentityChangeHistory;
 use crate::IdentityError::InvalidInternalState;
-use crate::{ChangeIdentifier, Identity, IdentityError, IdentityVault, PrivateKeyAttributes};
+use crate::{ChangeIdentifier, Identity, IdentityError, IdentityVault};
 use core::fmt;
-use ockam_core::vault::{KeyId, PublicKey};
+use ockam_core::compat::string::String;
+use ockam_core::vault::{KeyAttributes, KeyId, PublicKey};
 use ockam_core::{Encodable, Result};
 use serde::{Deserialize, Serialize};
 
@@ -12,13 +13,18 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateKeyChangeData {
     prev_change_id: ChangeIdentifier,
-    key_attributes: PrivateKeyAttributes,
+    key_label: String,
+    key_attributes: KeyAttributes,
     public_key: PublicKey,
 }
 
 impl CreateKeyChangeData {
     /// Return key attributes
-    pub fn key_attributes(&self) -> &PrivateKeyAttributes {
+    pub fn key_label(&self) -> &String {
+        &self.key_label
+    }
+    /// Return key attributes
+    pub fn key_attributes(&self) -> &KeyAttributes {
         &self.key_attributes
     }
     /// Return public key
@@ -35,11 +41,13 @@ impl CreateKeyChangeData {
     /// Create new CreateKeyChangeData
     pub fn new(
         prev_change_id: ChangeIdentifier,
-        key_attributes: PrivateKeyAttributes,
+        key_label: String,
+        key_attributes: KeyAttributes,
         public_key: PublicKey,
     ) -> Self {
         Self {
             prev_change_id,
+            key_label,
             key_attributes,
             public_key,
         }
@@ -50,8 +58,9 @@ impl fmt::Display for CreateKeyChangeData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "prev_change_id:{} key attributes:{} public key:{}",
+            "prev_change_id:{} key label:{} key attributes:{} public key:{}",
             self.prev_change_id(),
+            self.key_label(),
             self.key_attributes(),
             self.public_key()
         )
@@ -61,13 +70,13 @@ impl fmt::Display for CreateKeyChangeData {
 impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     async fn generate_key_if_needed(
         secret: Option<&KeyId>,
-        key_attributes: &PrivateKeyAttributes,
+        key_attributes: &KeyAttributes,
         vault: &V,
     ) -> Result<KeyId> {
         if let Some(s) = secret {
             Ok(s.clone())
         } else {
-            vault.generate_key(key_attributes.key_attributes()).await
+            vault.generate_key(*key_attributes).await
         }
     }
 
@@ -75,7 +84,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     pub(crate) async fn make_create_key_change_static(
         secret: Option<&KeyId>,
         prev_id: ChangeIdentifier,
-        key_attributes: PrivateKeyAttributes,
+        key_label: String,
+        key_attributes: KeyAttributes,
         root_key: Option<&KeyId>,
         vault: &V,
     ) -> Result<IdentitySignedChange> {
@@ -83,7 +93,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 
         let public_key = vault.get_public_key(&secret_key).await?;
 
-        let data = CreateKeyChangeData::new(prev_id, key_attributes, public_key);
+        let data = CreateKeyChangeData::new(prev_id, key_label, key_attributes, public_key);
 
         let change_block = IdentityChange::CreateKey(data);
         let change_block_binary = change_block
@@ -117,15 +127,13 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     pub(crate) async fn make_create_key_change(
         &self,
         secret: Option<&KeyId>,
-        key_attributes: PrivateKeyAttributes,
+        key_label: String,
+        key_attributes: KeyAttributes,
     ) -> Result<IdentitySignedChange> {
         let change_history = self.change_history.read().await;
         // Creating key after it was revoked is forbidden
-        if IdentityChangeHistory::find_last_key_change(
-            change_history.as_ref(),
-            key_attributes.label(),
-        )
-        .is_ok()
+        if IdentityChangeHistory::find_last_key_change(change_history.as_ref(), key_label.as_str())
+            .is_ok()
         {
             return Err(InvalidInternalState.into());
         }
@@ -138,7 +146,14 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         let root_secret = self.get_root_secret_key().await?;
         let root_key = Some(&root_secret);
 
-        Self::make_create_key_change_static(secret, prev_id, key_attributes, root_key, &self.vault)
-            .await
+        Self::make_create_key_change_static(
+            secret,
+            prev_id,
+            key_label,
+            key_attributes,
+            root_key,
+            &self.vault,
+        )
+        .await
     }
 }

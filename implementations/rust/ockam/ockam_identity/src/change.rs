@@ -38,8 +38,8 @@ impl IdentityChange {
 
     pub(crate) fn label(&self) -> &str {
         match self {
-            IdentityChange::CreateKey(data) => data.key_attributes().label(),
-            IdentityChange::RotateKey(data) => data.key_attributes().label(),
+            IdentityChange::CreateKey(data) => data.key_label(),
+            IdentityChange::RotateKey(data) => data.key_label(),
         }
     }
 
