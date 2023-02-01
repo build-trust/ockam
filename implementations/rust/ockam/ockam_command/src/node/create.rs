@@ -21,7 +21,7 @@ use crate::{
     help, node::show::print_query_status, node::HELP_DETAIL, project, util::find_available_port,
     CommandGlobalOpts,
 };
-use crate::{node::util::spawn_node, util::extract_address_value};
+use crate::{node::util::spawn_node, util::parse_node_name};
 use crate::{
     node::util::{add_project_authority_from_project_info, init_node_state},
     util::RpcBuilder,
@@ -144,23 +144,6 @@ impl CreateCommand {
             ..cmd
         })
     }
-
-    fn parse_node_name(&self) -> crate::Result<Self> {
-        let cmd = self.clone();
-
-        if self.node_name.contains('/') {
-            if self.node_name.starts_with("/node/") {
-                let node_name = extract_address_value(&self.node_name)?;
-                return Ok(Self { node_name, ..cmd });
-            } else {
-                return Err(crate::Error::new(
-                    exitcode::IOERR,
-                    anyhow!("Error: A MultiAddr node must follow the format /node/{{name}}"),
-                ));
-            }
-        }
-        Ok(Self { ..cmd })
-    }
 }
 
 fn parse_launch_config(config_or_path: &str) -> anyhow::Result<Config> {
@@ -177,8 +160,7 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let cmd = cmd.parse_node_name()?;
-    let node_name = &cmd.node_name;
+    let node_name = &parse_node_name(&cmd.node_name)?;
 
     if cmd.child_process {
         return Err(crate::Error::new(
@@ -223,14 +205,15 @@ async fn run_foreground_node(
     (opts, cmd, addr): (CommandGlobalOpts, CreateCommand, SocketAddr),
 ) -> crate::Result<()> {
     let cfg = &opts.config;
+    let node_name = parse_node_name(&cmd.node_name)?;
 
     // This node was initially created as a foreground node
     // and there is no existing state for it yet.
-    if !cmd.child_process && opts.state.nodes.get(&cmd.node_name).is_err() {
+    if !cmd.child_process && opts.state.nodes.get(&node_name).is_err() {
         init_node_state(
             &ctx,
             &opts,
-            &cmd.node_name,
+            &node_name,
             cmd.vault.as_ref(),
             cmd.identity.as_ref(),
         )
@@ -243,7 +226,7 @@ async fn run_foreground_node(
             let p: ProjectInfo = serde_json::from_str(&s)?;
             let project_id = p.id.to_string();
             project::config::set_project(cfg, &(&p).into()).await?;
-            add_project_authority_from_project_info(p, &cmd.node_name, cfg).await?;
+            add_project_authority_from_project_info(p, &node_name, cfg).await?;
             Some(project_id)
         }
         None => None,
@@ -256,7 +239,7 @@ async fn run_foreground_node(
     let bind = cmd.tcp_listener_address;
     tcp.listen(&bind).await?;
 
-    let node_state = opts.state.nodes.get(&cmd.node_name)?;
+    let node_state = opts.state.nodes.get(&node_name)?;
     let setup_config = node_state.setup()?;
     node_state.set_setup(
         &setup_config
@@ -273,7 +256,7 @@ async fn run_foreground_node(
         &ctx,
         NodeManagerGeneralOptions::new(cmd.node_name.clone(), cmd.launch_config.is_some()),
         NodeManagerProjectsOptions::new(
-            Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
+            Some(&cfg.authorities(&node_name)?.snapshot()),
             project_id,
             projects,
             cmd.token,
@@ -296,7 +279,7 @@ async fn run_foreground_node(
 
     if let Some(path) = &cmd.launch_config {
         let node_opts = super::NodeOpts {
-            api_node: cmd.node_name.clone(),
+            api_node: node_name.clone(),
         };
         start_services(&ctx, &tcp, path, addr, node_opts, &opts).await?
     }
@@ -312,13 +295,13 @@ async fn run_foreground_node(
             }
             Ok(_) | Err(_) => {
                 eprintln!("failed to fetch membership credential");
-                delete_node(&opts, &cmd.node_name, true)?;
+                delete_node(&opts, &node_name, true)?;
             }
         }
     }
 
     if cmd.exit_on_eof {
-        stop_node_on_eof(&mut ctx, &opts, &cmd.node_name).await?;
+        stop_node_on_eof(&mut ctx, &opts, &node_name).await?;
     }
 
     Ok(())
@@ -437,11 +420,13 @@ async fn spawn_background_node(
         ));
     }
 
+    let node_name = parse_node_name(&cmd.node_name)?;
+
     // Create node state, including the vault and identity if don't exist
     init_node_state(
         ctx,
         opts,
-        &cmd.node_name,
+        &node_name,
         cmd.vault.as_ref(),
         cmd.identity.as_ref(),
     )
@@ -452,7 +437,7 @@ async fn spawn_background_node(
     spawn_node(
         opts,
         opts.global_args.verbose,
-        &cmd.node_name,
+        &node_name,
         &cmd.tcp_listener_address,
         cmd.project.as_deref(),
         cmd.token.as_ref(),

@@ -486,6 +486,40 @@ pub fn extract_address_value(input: &str) -> anyhow::Result<String> {
     Ok(addr)
 }
 
+/// Parses a node's input string for its name in case it's a `MultiAddr` string. Wraps around `extract_address_value`
+///
+/// Ensures that the node's name will be returned if the input string is a `MultiAddr` of the `node` type
+/// Examples:
+///     `node create n1` returns n1, `node create /node/n1` returns n1, `node create /tcp/n2` returns an error message.
+pub fn parse_node_name(input: &str) -> anyhow::Result<String> {
+    let addr = input.to_string();
+    // if input has "/", we process it as a MultiAddr like in `extract_address_value`
+    if input.contains('/') {
+        let mut err_message =
+            String::from("A MultiAddr node must follow the format /node/{{name}}");
+        let maddr = match MultiAddr::from_str(input) {
+            Ok(maddr) => maddr,
+            Err(e) => {
+                // Tested with input strings with large tcp numbers. e.g: `node create /node/n1/tcp/28273829`
+                err_message.push_str(&format!("\n{}", e));
+                return Err(anyhow!(err_message));
+            }
+        };
+        if let Some(p) = maddr.iter().next() {
+            if p.code() == proto::Node::CODE {
+                let node_name = extract_address_value(&addr)?;
+                return Ok(node_name);
+            }
+        } else {
+            return Err(anyhow!(err_message));
+        }
+    }
+    if addr.is_empty() {
+        return Err(anyhow!("Empty address in node name input: {input}"));
+    }
+    Ok(addr)
+}
+
 /// Replace the node's name with its address or leave it if it's another type of address.
 ///
 /// Example:
