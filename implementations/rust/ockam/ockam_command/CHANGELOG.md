@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.79.0 - 2023-01-31
+
+### Added
+
+- Add influxdb lease commands, orchestrator client, and default project
+- Add worker list command
+- Support cloud opts project on all orchestrator commands
+- Add support for starting an embedded node with project info optionally
+
+### Changed
+
+- Move `storage` and `registry` to `Identity`
+- Refactor `CliState` so the `authenticated_storage` is stored in the identities dir
+- Moved optional `identity_name` to higher level `cloudrequestwrapper` struct
+- Extract large strings into constants directory
+- Reorder subcommands to match enum
+- On `ockam enroll`, enroll the admin as a member of all their projects
+- Always enforce-credentials on cli
+- Updated dependencies
+
+### Fixed
+
+- Fix errors in ockam status command
+- Self enroll admin as a project member when creating a project
+
 ## 0.77.0 - 2022-11-08
 
 ### Added

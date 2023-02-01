@@ -115,7 +115,6 @@ Create a file at `examples/bob.rs` and copy the below code snippet to it.
 ```rust
 // examples/bob.rs
 use ockam::access_control::AllowAll;
-use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{remote::RemoteForwarder, Routed, TcpTransport, Worker, TCP};
 use ockam::{vault::Vault, Context, Result};
@@ -148,12 +147,9 @@ async fn main(ctx: Context) -> Result<()> {
     // Create an Identity to represent Bob.
     let bob = Identity::create(&ctx, &vault).await?;
 
-    // Create an AuthenticatedStorage to store info about Bob's known Identities.
-    let storage = InMemoryStorage::new();
-
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", TrustEveryonePolicy, &storage)
+    bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
         .await?;
 
     // The computer that is running this program is likely within a private network and
@@ -187,7 +183,6 @@ Create a file at `examples/alice.rs` and copy the below code snippet to it.
 
 ```rust
 // examples/alice.rs
-use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
 use std::io;
@@ -216,13 +211,10 @@ async fn main(mut ctx: Context) -> Result<()> {
     // to Bob's secure channel listener.
     let route_to_bob_listener = route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "listener"];
 
-    // Create an AuthenticatedStorage to store info about Alice's known Identities.
-    let storage = InMemoryStorage::new();
-
     // As Alice, connect to Bob's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.
     let channel = alice
-        .create_secure_channel(route_to_bob_listener, TrustEveryonePolicy, &storage)
+        .create_secure_channel(route_to_bob_listener, TrustEveryonePolicy)
         .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");

@@ -23,6 +23,7 @@ mod node {
     use tracing::trace;
 
     use ockam_core::api::Request;
+    use ockam_core::AsyncTryClone;
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
@@ -48,6 +49,12 @@ mod node {
             let api_service = "auth0_authenticator";
 
             trace!(target: TARGET, "executing auth0 flow");
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
             self.request_controller(
                 ctx,
                 api_service,
@@ -55,7 +62,7 @@ mod node {
                 cloud_route,
                 api_service,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -75,6 +82,12 @@ mod node {
             trace!(target: TARGET, "generating tokens");
 
             let req_builder = Request::post("v0/").body(req_body);
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
             self.request_controller(
                 ctx,
                 label,
@@ -82,7 +95,7 @@ mod node {
                 cloud_route,
                 "projects",
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -99,6 +112,11 @@ mod node {
             let req_builder = Request::post("v0/enroll").body(req_body);
             let api_service = "enrollment_token_authenticator";
 
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
             trace!(target: TARGET, "authenticating token");
             self.request_controller(
                 ctx,
@@ -107,7 +125,7 @@ mod node {
                 cloud_route,
                 api_service,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }

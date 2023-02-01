@@ -23,7 +23,7 @@ use crate::{
     CommandGlobalOpts,
 };
 use crate::{
-    node::util::{add_project_authority, init_node_state},
+    node::util::{add_project_authority_from_project_info, init_node_state},
     util::RpcBuilder,
 };
 use crate::{project::ProjectInfo, util::api};
@@ -47,7 +47,7 @@ use ockam_core::{
 
 use super::util::delete_node;
 
-/// Create node
+/// Create a node
 #[derive(Clone, Debug, Args)]
 #[command(after_long_help = help::template(HELP_DETAIL))]
 pub struct CreateCommand {
@@ -223,7 +223,7 @@ async fn run_foreground_node(
             let p: ProjectInfo = serde_json::from_str(&s)?;
             let project_id = p.id.to_string();
             project::config::set_project(cfg, &(&p).into()).await?;
-            add_project_authority(p, &cmd.node_name, cfg).await?;
+            add_project_authority_from_project_info(p, &cmd.node_name, cfg).await?;
             Some(project_id)
         }
         None => None,
@@ -363,9 +363,10 @@ async fn start_services(
         if !cfg.disabled {
             let adr = Address::from((LOCAL, cfg.address));
             let ids = cfg.authorized_identifiers;
+            let identity = cfg.identity;
             let rte = addr.clone().into();
             println!("starting secure-channel listener ...");
-            secure_channel_listener::create_listener(ctx, adr, ids, rte).await?;
+            secure_channel_listener::create_listener(ctx, adr, ids, identity, rte).await?;
         }
     }
     if let Some(cfg) = config.verifier {
@@ -384,6 +385,7 @@ async fn start_services(
                 &node_opts.api_node,
                 &cfg.address,
                 &cfg.enrollers,
+                cfg.reload_enrollers,
                 &cfg.project,
                 Some(tcp),
             )

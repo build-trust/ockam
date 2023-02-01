@@ -195,11 +195,11 @@ impl Worker for TcpSendWorker {
                     return Err(TransportError::from(e).into());
                 }
             };
-
             let keepalive = TcpKeepalive::new()
                 .with_time(Duration::from_secs(300))
-                .with_retries(2)
                 .with_interval(Duration::from_secs(75));
+            #[cfg(unix)]
+            keepalive.with_retries(2);
             let socket = SockRef::from(&connection);
             socket.set_tcp_keepalive(&keepalive).unwrap();
 

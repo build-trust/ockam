@@ -1,5 +1,5 @@
+use crate::node::default_node_name;
 use crate::{
-    node::util::default_node_name,
     util::{api, extract_address_value, node_rpc, Rpc},
     CommandGlobalOpts, OutputFormat,
 };
@@ -14,8 +14,8 @@ use std::net::SocketAddrV4;
 #[derive(Clone, Debug, Args)]
 pub struct TcpConnectionNodeOpts {
     /// Node that will initiate the connection
-    #[arg(global = true, short, long, value_name = "NODE")]
-    pub from: Option<String>,
+    #[arg(global = true, short, long, value_name = "NODE", default_value_t = default_node_name())]
+    pub from: String,
 }
 
 #[derive(Args, Clone, Debug)]
@@ -43,10 +43,8 @@ impl CreateCommand {
         // if output format is json, write json to stdout.
         match opts.global_args.output_format {
             OutputFormat::Plain => {
-                let from = match &self.node_opts.from {
-                    Some(name) => name.clone(),
-                    None => default_node_name(opts),
-                };
+                let from = &self.node_opts.from;
+
                 let to = response.payload.parse::<SocketAddrV4>()?;
                 if opts.global_args.no_color {
                     println!("\n  Created TCP Connection:");
@@ -89,10 +87,7 @@ async fn run_impl(
     ctx: ockam::Context,
     (options, command): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let from = match &command.node_opts.from {
-        Some(name) => name.clone(),
-        None => default_node_name(&options),
-    };
+    let from = &command.node_opts.from;
     let node_name = extract_address_value(from.as_str())?;
     let mut rpc = Rpc::background(&ctx, &options, &node_name)?;
     let request = api::create_tcp_connection(&command);

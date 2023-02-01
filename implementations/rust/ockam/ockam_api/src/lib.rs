@@ -1,6 +1,5 @@
 pub mod auth;
 pub mod authenticator;
-#[allow(unused)]
 pub mod cli_state;
 pub mod cloud;
 pub mod config;
@@ -39,6 +38,8 @@ impl DefaultAddress {
     pub const AUTHENTICATOR: &'static str = "authenticator";
     pub const VERIFIER: &'static str = "verifier";
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
+    pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";
+    pub const KAFKA_PRODUCER: &'static str = "kafka_producer";
 }
 
 pub mod actions {

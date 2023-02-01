@@ -11,21 +11,37 @@ on:
 
 permissions:
   # Contents permission allows us read this repository.
-  contents: write
+  contents: read
 
 jobs:
   release_ockam:
     runs-on: ubuntu-20.04
     environment: release
     name: "Release Ockam Assets"
+    permissions:
+      # Contents permission allows us write to this repository.
+      contents: write
 
     steps:
       - name: Get Commit Of Develop
         id: develop_sha
         shell: bash
         run: |
-          develop_sha=$(git ls-remote https://github.com/build-trust/ockam.git refs/heads/develop | head -1 | cut -f 1)
+          develop_sha=$(git ls-remote https://github.com/${{ github.repository_owner }}/ockam.git refs/heads/develop | head -1 | cut -f 1)
           echo "sha=$develop_sha" >> $GITHUB_OUTPUT
+
+      - name: Checkout To Ockam Repository
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+        with:
+          fetch-depth: 0
+
+      - name: Import GPG key
+        uses: build-trust/.github/actions/import_gpg@a6377d3c2dac878b92a0da26cdf3da2856c64840
+        with:
+          gpg_private_key: '${{ secrets.GPG_PRIVATE_KEY }}'
+          gpg_password: '${{ secrets.GPG_PASSPHRASE }}'
+          gpg_name: '${{ secrets.GPG_USER_NAME }}'
+          gpg_email: '${{ secrets.GPG_EMAIL }}'
 
       - name: Update Tag Commit To That Merged by Mergify On Develop
         shell: bash
@@ -36,4 +52,5 @@ jobs:
       - name: Release GitHub Asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ github.event.inputs.git_tag }}" --draft=false -R $owner/ockam
+        run: |
+          gh release edit "${{ github.event.inputs.git_tag }}" --draft=false -R ${{ github.repository_owner }}/ockam

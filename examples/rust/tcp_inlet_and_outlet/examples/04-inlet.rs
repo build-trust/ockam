@@ -1,5 +1,4 @@
 use ockam::access_control::AllowAll;
-use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{route, vault::Vault, Context, Result, Route, TcpTransport, TCP};
 
@@ -25,8 +24,7 @@ async fn main(ctx: Context) -> Result<()> {
         forwarding_address,
         "secure_channel_listener"
     ];
-    let storage = InMemoryStorage::new();
-    let channel = e.create_secure_channel(r, TrustEveryonePolicy, &storage).await?;
+    let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.

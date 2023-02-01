@@ -9,8 +9,15 @@ use ockam_identity::{Identity, IdentityStateConst, KeyAttributes};
 use rand::prelude::random;
 use std::path::PathBuf;
 
+const HELP_DETAIL: &str = "";
+
+/// Manage vaults
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide())]
+#[command(
+    arg_required_else_help = true,
+    subcommand_required = true,
+    after_long_help = help::template(HELP_DETAIL)
+)]
 pub struct VaultCommand {
     #[command(subcommand)]
     subcommand: VaultSubcommand,
@@ -18,6 +25,7 @@ pub struct VaultCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum VaultSubcommand {
+    /// Create a vault
     Create {
         #[arg(hide_default_value = true, default_value_t = hex::encode(&random::<[u8;4]>()))]
         name: String,
@@ -29,6 +37,8 @@ pub enum VaultSubcommand {
         #[arg(long, default_value = "false")]
         aws_kms: bool,
     },
+    /// Attach a key to a vault
+    #[command(arg_required_else_help = true)]
     AttachKey {
         /// Name of the vault to attach the key to
         vault: String,
@@ -37,6 +47,18 @@ pub enum VaultSubcommand {
         #[arg(short, long)]
         key_id: String,
     },
+    /// Show vault details
+    Show {
+        /// Name of the vault
+        name: Option<String>,
+    },
+    /// Delete a vault
+    Delete {
+        /// Name of the vault
+        name: String,
+    },
+    /// List vaults
+    List {},
 }
 
 impl VaultCommand {
@@ -73,12 +95,43 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
                     SecretAttributes::new(SecretType::NistP256, SecretPersistence::Persistent, 32);
                 let kid = v.secret_import(Secret::Aws(key_id), attrs).await?;
                 let attrs = KeyAttributes::new(IdentityStateConst::ROOT_LABEL.to_string(), attrs);
-                Identity::create_ext(&ctx, &v, &kid, attrs).await?
+                Identity::create_with_external_key_ext(
+                    &ctx,
+                    &opts.state.identities.authenticated_storage().await?,
+                    &v,
+                    &kid,
+                    attrs,
+                )
+                .await?
             };
             let idt_name = cli_state::random_name();
             let idt_config = cli_state::IdentityConfig::new(&idt).await;
             opts.state.identities.create(&idt_name, idt_config)?;
             println!("Identity attached to vault: {}", idt_name);
+        }
+        VaultSubcommand::Show { name } => {
+            let name = name.unwrap_or(opts.state.vaults.default()?.name()?);
+            let state = opts.state.vaults.get(&name)?;
+            println!("Vault:");
+            for line in state.to_string().lines() {
+                println!("{:2}{}", "", line)
+            }
+        }
+        VaultSubcommand::List {} => {
+            let states = opts.state.vaults.list()?;
+            if states.is_empty() {
+                return Err(anyhow!("No vaults registered on this system!").into());
+            }
+            for (idx, vault) in states.iter().enumerate() {
+                println!("Vault[{}]:", idx);
+                for line in vault.to_string().lines() {
+                    println!("{:2}{}", "", line)
+                }
+            }
+        }
+        VaultSubcommand::Delete { name } => {
+            opts.state.vaults.delete(&name).await?;
+            println!("Vault '{}' deleted", name);
         }
     }
     Ok(())

@@ -116,6 +116,7 @@ pub struct CreateSignatureRequest<'a> {
     #[n(0)] tag: TypeTag<1019956>,
     #[b(1)] identity: CowBytes<'a>,
     #[b(2)] data: CowBytes<'a>,
+    #[b(3)] vault_name: Option<CowStr<'a>>,
 }
 
 impl<'a> CreateSignatureRequest<'a> {
@@ -125,6 +126,7 @@ impl<'a> CreateSignatureRequest<'a> {
             tag: TypeTag,
             identity: identity.into(),
             data: data.into(),
+            vault_name: None,
         }
     }
     pub fn identity(&self) -> &[u8] {
@@ -132,6 +134,9 @@ impl<'a> CreateSignatureRequest<'a> {
     }
     pub fn data(&self) -> &[u8] {
         &self.data
+    }
+    pub fn vault_name(&self) -> Option<String> {
+        self.vault_name.as_ref().map(|x| x.to_string())
     }
 }
 

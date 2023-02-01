@@ -1,3 +1,4 @@
+use crate::authenticated_storage::AuthenticatedStorage;
 use crate::change::IdentitySignedChange;
 use crate::change_history::IdentityChangeHistory;
 use crate::{Identity, IdentityVault, PublicIdentity};
@@ -16,8 +17,8 @@ use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-impl<V: IdentityVault> Identity<V> {
-    pub async fn eject_random_signature(self) -> Result<Identity<V>> {
+impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+    pub async fn eject_random_signature(self) -> Result<Identity<V, S>> {
         let mut history = self.change_history.read().await.as_ref().to_vec();
 
         let i = thread_rng().gen_range(0..history.len());
@@ -42,6 +43,8 @@ impl<V: IdentityVault> Identity<V> {
             self.identifier().clone(),
             new_history,
             self.ctx,
+            self.authenticated_storage,
+            self.secure_channel_registry,
             self.vault,
         ))
     }

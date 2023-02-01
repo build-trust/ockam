@@ -179,7 +179,6 @@ Create a file at `examples/ockam_kafka_bob.rs` and copy the below code snippet t
 // examples/ockam_kafka_bob.rs
 use ockam::access_control::AllowAll;
 use ockam::{
-    authenticated_storage::InMemoryStorage,
     identity::{Identity, TrustEveryonePolicy},
     route,
     stream::Stream,
@@ -215,12 +214,9 @@ async fn main(ctx: Context) -> Result<()> {
     // Create an Identity to represent Bob.
     let bob = Identity::create(&ctx, &vault).await?;
 
-    // Create an AuthenticatedStorage to store info about Bob's known Identities.
-    let storage = InMemoryStorage::new();
-
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", TrustEveryonePolicy, &storage)
+    bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
         .await?;
 
     // Connect, over TCP, to the cloud node at `1.node.ockam.network:4000` and
@@ -268,7 +264,6 @@ Create a file at `examples/ockam_kafka_alice.rs` and copy the below code snippet
 ```rust
 // examples/ockam_kafka_alice.rs
 use ockam::{
-    authenticated_storage::InMemoryStorage,
     identity::{Identity, TrustEveryonePolicy},
     route,
     stream::Stream,
@@ -321,14 +316,11 @@ async fn main(mut ctx: Context) -> Result<()> {
         .connect(route![node_in_hub], a_to_b_stream_address, b_to_a_stream_address)
         .await?;
 
-    // Create an AuthenticatedStorage to store info about Alice's known Identities.
-    let storage = InMemoryStorage::new();
-
     // As Alice, connect to Bob's secure channel listener using the sender, and
     // perform an Authenticated Key Exchange to establish an encrypted secure
     // channel with Bob.
     let r = route![sender.clone(), "listener"];
-    let channel = alice.create_secure_channel(r, TrustEveryonePolicy, &storage).await?;
+    let channel = alice.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
 

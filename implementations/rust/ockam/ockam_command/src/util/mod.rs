@@ -29,6 +29,7 @@ use crate::{CommandGlobalOpts, OutputFormat};
 
 pub mod api;
 pub mod exitcode;
+pub mod orchestrator_api;
 
 mod config;
 pub(crate) mod output;
@@ -107,7 +108,7 @@ pub struct Rpc<'a> {
 impl<'a> Rpc<'a> {
     /// Creates a new RPC to send a request to an embedded node.
     pub async fn embedded(ctx: &'a Context, opts: &'a CommandGlobalOpts) -> Result<Rpc<'a>> {
-        let node_name = start_embedded_node(ctx, opts).await?;
+        let node_name = start_embedded_node(ctx, opts, None).await?;
         Ok(Rpc {
             ctx,
             buf: Vec::new(),
@@ -290,18 +291,18 @@ impl<'a> Rpc<'a> {
     where
         T: Output + serde::Serialize,
     {
-        print_command_response(b, &self.opts.global_args.output_format)
+        print_output(b, &self.opts.global_args.output_format)
     }
 }
 
-pub fn print_command_response<T>(b: T, output_format: &OutputFormat) -> Result<T>
+pub fn print_output<T>(b: T, output_format: &OutputFormat) -> Result<T>
 where
     T: Output + serde::Serialize,
 {
     let o = match output_format {
-        OutputFormat::Plain => b.output().context("Failed to serialize response body")?,
+        OutputFormat::Plain => b.output().context("Failed to serialize output")?,
         OutputFormat::Json => {
-            serde_json::to_string_pretty(&b).context("Failed to serialize response body")?
+            serde_json::to_string_pretty(&b).context("Failed to serialize output")?
         }
     };
     println!("{}", o);
@@ -403,7 +404,6 @@ pub fn setup_logging(verbose: u8, no_color: bool) {
         "ockam_core",
         "ockam_command",
         "ockam_identity",
-        "ockam_channel",
         "ockam_transport_tcp",
         "ockam_vault",
         "ockam_vault_sync_core",
@@ -574,7 +574,12 @@ mod tests {
         let v = Vault::new(Some(Arc::new(v_storage)));
         cli_state.vaults.create(&v_name, v_config).await?;
 
-        let idt = Identity::create(ctx, &v).await?;
+        let idt = Identity::create_ext(
+            ctx,
+            &cli_state.identities.authenticated_storage().await?,
+            &v,
+        )
+        .await?;
         let idt_config = IdentityConfig::new(&idt).await;
         cli_state
             .identities

@@ -29,8 +29,6 @@ pub enum OckamError {
     AttestationNonceDoesNotMatch, // 15
     InvalidHubResponse,
     InvalidParameter,
-    SecureChannelVerificationFailed,
-    SecureChannelCannotBeAuthenticated,
     NoSuchProtocol,
     SystemAddressNotBound,
     SystemInvalidConfiguration,

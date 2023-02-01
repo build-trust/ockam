@@ -7,7 +7,8 @@ use ockam::route;
 use ockam::vault::Vault;
 use ockam_api::authenticator::direct;
 use ockam_api::authenticator::direct::types::Enroller;
-use ockam_core::{AllowAll, Result};
+use ockam_core::compat::rand::random_string;
+use ockam_core::{AllowAll, AsyncTryClone, Result};
 use ockam_identity::{IdentityIdentifier, PublicIdentity, TrustEveryonePolicy};
 use ockam_node::Context;
 use tempfile::NamedTempFile;
@@ -17,20 +18,31 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let mut tmpf = NamedTempFile::new().unwrap();
     serde_json::to_writer(&mut tmpf, &HashMap::<IdentityIdentifier, Enroller>::new()).unwrap();
 
+    let api_worker_addr = random_string();
+    let auth_worker_addr = random_string();
+
     // Create the authority:
     let authority = {
         let a = Identity::create(ctx, &Vault::create()).await?;
-        a.create_secure_channel_listener("api", TrustEveryonePolicy, &InMemoryStorage::new())
+        a.create_secure_channel_listener(&api_worker_addr, TrustEveryonePolicy)
             .await?;
-        let exported = a.export().await?;
         let store = InMemoryStorage::new();
-        let auth = direct::Server::new(b"project42".to_vec(), store, tmpf.path(), a);
+        let enrollers = tmpf.path().to_str().expect("path should be a string");
+        let auth = direct::Server::new(
+            b"project42".to_vec(),
+            store,
+            enrollers,
+            true,
+            a.async_try_clone().await?,
+        )?;
         ctx.start_worker(
-            "auth", auth, AllowAll, // Auth checks happen inside the worker
+            &auth_worker_addr,
+            auth,
+            AllowAll, // Auth checks happen inside the worker
             AllowAll,
         )
         .await?;
-        exported
+        a
     };
 
     // Create an enroller identity:
@@ -41,11 +53,11 @@ async fn credential(ctx: &mut Context) -> Result<()> {
 
     // Connect to the API channel from the enroller:
     let e2a = enroller
-        .create_secure_channel("api", TrustEveryonePolicy, &InMemoryStorage::new())
+        .create_secure_channel(&api_worker_addr, TrustEveryonePolicy)
         .await?;
 
     // Add the member via the enroller's connection:
-    let mut c = direct::Client::new(route![e2a, "auth"], ctx).await?;
+    let mut c = direct::Client::new(route![e2a.address(), &auth_worker_addr], ctx).await?;
 
     // Enroller is not configured -> fail
     assert!(c
@@ -55,22 +67,123 @@ async fn credential(ctx: &mut Context) -> Result<()> {
 
     // Configure enroller
     let enrollers = [(enroller.identifier().clone(), Enroller::default())];
-    let mut tmpf = tmpf.reopen().unwrap();
-    serde_json::to_writer(&mut tmpf, &HashMap::from(enrollers)).unwrap();
+    let mut tmpfile = tmpf.reopen().unwrap();
+    serde_json::to_writer(&mut tmpfile, &HashMap::from(enrollers)).unwrap();
+
+    // Re-create client with new auth worker address
+    let mut c = direct::Client::new(route![e2a.address(), &auth_worker_addr], ctx).await?;
+
     let member_attrs = HashMap::from([("role", "member")]);
     c.add_member(member.identifier().clone(), member_attrs)
         .await?;
 
     // Open a secure channel from member to authenticator:
     let m2a = member
-        .create_secure_channel("api", TrustEveryonePolicy, &InMemoryStorage::new())
+        .create_secure_channel(&api_worker_addr, TrustEveryonePolicy)
         .await?;
 
-    let mut c = direct::Client::new(route![m2a, "auth"], ctx).await?;
+    let mut c = direct::Client::new(route![m2a, &auth_worker_addr], ctx).await?;
 
     // Get a fresh member credential and verify its validity:
     let cred = c.credential().await?;
-    let pkey = PublicIdentity::import(&authority, &Vault::create())
+    let exported = authority.export().await?;
+    let pkey = PublicIdentity::import(&exported, &Vault::create())
+        .await
+        .unwrap();
+    let data = pkey
+        .verify_credential(&cred, member.identifier(), &Vault::create())
+        .await?;
+    assert_eq!(
+        Some(b"project42".as_slice()),
+        data.attributes().get("project_id")
+    );
+    assert_eq!(Some(b"member".as_slice()), data.attributes().get("role"));
+
+    ctx.stop().await
+}
+
+#[ockam_macros::test]
+async fn json_config(ctx: &mut Context) -> Result<()> {
+    let api_worker_addr = random_string();
+    let auth_worker_addr = random_string();
+
+    // Create the authority:
+    let authority = {
+        let a = Identity::create(ctx, &Vault::create()).await?;
+        a.create_secure_channel_listener(&api_worker_addr, TrustEveryonePolicy)
+            .await?;
+        let store = InMemoryStorage::new();
+        let auth = direct::Server::new(
+            b"project42".to_vec(),
+            store,
+            "{}",
+            false,
+            a.async_try_clone().await?,
+        )?;
+        ctx.start_worker(&auth_worker_addr, auth, AllowAll, AllowAll)
+            .await?;
+        a
+    };
+
+    // Create an enroller identity:
+    let enroller = Identity::create(ctx, &Vault::create()).await?;
+
+    // Create a member identity:
+    let member = Identity::create(ctx, &Vault::create()).await?;
+
+    // Connect to the API channel from the enroller:
+    let e2a = enroller
+        .create_secure_channel(&api_worker_addr, TrustEveryonePolicy)
+        .await?;
+
+    // Add the member via the enroller's connection:
+    let mut c = direct::Client::new(route![e2a.address(), &auth_worker_addr], ctx).await?;
+
+    // Enroller is not configured -> fail
+    assert!(c
+        .add_member(member.identifier().clone(), HashMap::new())
+        .await
+        .is_err());
+    ctx.stop_worker(&auth_worker_addr).await?;
+
+    // Configure enroller
+    let enrollers = [(enroller.identifier().clone(), Enroller::default())];
+    let enrollers_config = serde_json::to_string(&HashMap::from(enrollers)).unwrap();
+
+    // Re-create the authority with enroller configured
+    let auth_worker_addr = random_string();
+    {
+        let store = InMemoryStorage::new();
+        let auth = direct::Server::new(
+            b"project42".to_vec(),
+            store,
+            &enrollers_config,
+            false,
+            authority.async_try_clone().await?,
+        )?;
+        ctx.start_worker(&auth_worker_addr, auth, AllowAll, AllowAll)
+            .await?;
+    };
+
+    // Re-create client with new auth worker address
+    let mut c = direct::Client::new(route![e2a.address(), &auth_worker_addr], ctx).await?;
+
+    // Add member successfully
+    let member_attrs = HashMap::from([("role", "member")]);
+    c.add_member(member.identifier().clone(), member_attrs)
+        .await?;
+
+    // Open a secure channel from member to authenticator:
+    let m2a = member
+        .create_secure_channel(&api_worker_addr, TrustEveryonePolicy)
+        .await?;
+
+    let mut c = direct::Client::new(route![m2a, &auth_worker_addr], ctx).await?;
+
+    // Get a fresh member credential and verify its validity:
+    let cred = c.credential().await?;
+    let exported = authority.export().await?;
+    let pkey = PublicIdentity::import(&exported, &Vault::create())
         .await
         .unwrap();
     let data = pkey
@@ -102,10 +215,11 @@ async fn update_member_format(ctx: &mut Context) -> Result<()> {
         .await?;
     let authority = {
         let a = Identity::create(ctx, &Vault::create()).await?;
-        a.create_secure_channel_listener("api", TrustEveryonePolicy, &InMemoryStorage::new())
+        a.create_secure_channel_listener("api", TrustEveryonePolicy)
             .await?;
         let exported = a.export().await?;
-        let auth = direct::Server::new(b"project42".to_vec(), store, tmpf.path(), a);
+        let enrollers = tmpf.path().to_str().expect("path should be a string");
+        let auth = direct::Server::new(b"project42".to_vec(), store, enrollers, false, a)?;
         ctx.start_worker(
             "auth", auth, AllowAll, // Auth checks happen inside the worker
             AllowAll,
@@ -116,7 +230,7 @@ async fn update_member_format(ctx: &mut Context) -> Result<()> {
 
     // Open a secure channel from member to authenticator:
     let m2a = member
-        .create_secure_channel("api", TrustEveryonePolicy, &InMemoryStorage::new())
+        .create_secure_channel("api", TrustEveryonePolicy)
         .await?;
 
     let mut c = direct::Client::new(route![m2a, "auth"], ctx).await?;

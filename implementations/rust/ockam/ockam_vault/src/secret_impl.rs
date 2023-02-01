@@ -157,7 +157,7 @@ impl SecretVault for Vault {
                     if #[cfg(feature = "rustcrypto")] {
                         use p256::ecdsa::SigningKey;
                         use p256::pkcs8::EncodePrivateKey;
-                        let sec = SigningKey::random(thread_rng());
+                        let sec = SigningKey::random(& mut thread_rng());
                         let sec = p256::SecretKey::from_be_bytes(&sec.to_bytes()).map_err(from_ecurve)?;
                         let doc = sec.to_pkcs8_der().map_err(from_pkcs8)?;
                         Secret::Key(SecretKey::new(doc.as_bytes().to_vec()))

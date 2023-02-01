@@ -1,4 +1,6 @@
 use anyhow::{anyhow, Context as _};
+
+use ockam_api::config::lookup::ProjectLookup;
 use rand::random;
 use std::env::current_exe;
 use std::fs::OpenOptions;
@@ -21,14 +23,16 @@ use ockam_vault::Vault;
 
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
+use crate::util::api::ProjectOpts;
 use crate::CommandGlobalOpts;
 use crate::{project, OckamConfig};
 
 pub async fn start_embedded_node(
     ctx: &Context,
     opts: &CommandGlobalOpts,
+    project_opts: Option<&ProjectOpts>,
 ) -> anyhow::Result<String> {
-    start_embedded_node_with_vault_and_identity(ctx, opts, None, None).await
+    start_embedded_node_with_vault_and_identity(ctx, opts, None, None, project_opts).await
 }
 
 pub async fn start_embedded_node_with_vault_and_identity(
@@ -36,6 +40,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     opts: &CommandGlobalOpts,
     vault: Option<&String>,
     identity: Option<&String>,
+    project_opts: Option<&ProjectOpts>,
 ) -> anyhow::Result<String> {
     let cfg = &opts.config;
     let cmd = CreateCommand::default();
@@ -45,16 +50,20 @@ pub async fn start_embedded_node_with_vault_and_identity(
         init_node_state(ctx, opts, &cmd.node_name, vault, identity).await?;
     }
 
-    let project_id = match &cmd.project {
-        Some(path) => {
-            let s = tokio::fs::read_to_string(path).await?;
-            let p: ProjectInfo = serde_json::from_str(&s)?;
-            let project_id = p.id.to_string();
-            project::config::set_project(cfg, &(&p).into()).await?;
-            add_project_authority(p, &cmd.node_name, cfg).await?;
-            Some(project_id)
+    let project_id = if let Some(p) = project_opts {
+        add_project_info_to_node_state(opts, &cmd.node_name, cfg, p).await?
+    } else {
+        match &cmd.project {
+            Some(path) => {
+                let s = tokio::fs::read_to_string(path).await?;
+                let p: ProjectInfo = serde_json::from_str(&s)?;
+                let project_id = p.id.to_string();
+                project::config::set_project(cfg, &(&p).into()).await?;
+                add_project_authority_from_project_info(p, &cmd.node_name, cfg).await?;
+                Some(project_id)
+            }
+            None => None,
         }
-        None => None,
     };
 
     let tcp = TcpTransport::create(ctx).await?;
@@ -88,6 +97,35 @@ pub async fn start_embedded_node_with_vault_and_identity(
     Ok(cmd.node_name.clone())
 }
 
+pub async fn add_project_info_to_node_state(
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+    cfg: &OckamConfig,
+    project_opts: &ProjectOpts,
+) -> anyhow::Result<Option<String>> {
+    let proj_path = if let Some(path) = project_opts.project_path.clone() {
+        Some(path)
+    } else if let Ok(proj) = opts.state.projects.default() {
+        Some(proj.path)
+    } else {
+        None
+    };
+
+    match &proj_path {
+        Some(path) => {
+            let s = tokio::fs::read_to_string(path).await?;
+            let proj_info: ProjectInfo = serde_json::from_str(&s)?;
+            let proj_lookup = ProjectLookup::from_project(&(&proj_info).into()).await?;
+
+            if let Some(a) = proj_lookup.authority {
+                add_project_authority(a.identity().to_vec(), a.address().clone(), node_name, cfg)
+                    .await?;
+            }
+            Ok(Some(proj_lookup.id))
+        }
+        None => Ok(None),
+    }
+}
 pub(super) async fn init_node_state(
     ctx: &Context,
     opts: &CommandGlobalOpts,
@@ -118,7 +156,12 @@ pub(super) async fn init_node_state(
     } else {
         let vault = vault_state.config.get().await?;
         let identity_name = hex::encode(random::<[u8; 4]>());
-        let identity = Identity::create(ctx, &vault).await?;
+        let identity = Identity::create_ext(
+            ctx,
+            &opts.state.identities.authenticated_storage().await?,
+            &vault,
+        )
+        .await?;
         let identity_config = cli_state::IdentityConfig::new(&identity).await;
         opts.state
             .identities
@@ -136,6 +179,19 @@ pub(super) async fn init_node_state(
 }
 
 pub(super) async fn add_project_authority(
+    authority_identity: Vec<u8>,
+    authority_access_route: MultiAddr,
+    node: &str,
+    cfg: &OckamConfig,
+) -> anyhow::Result<()> {
+    let v = Vault::default();
+    let i = PublicIdentity::import(&authority_identity, &v).await?;
+    let a = cli::Authority::new(authority_identity, authority_access_route);
+    cfg.authorities(node)?
+        .add_authority(i.identifier().clone(), a)
+}
+
+pub(super) async fn add_project_authority_from_project_info(
     p: ProjectInfo<'_>,
     node: &str,
     cfg: &OckamConfig,
@@ -149,11 +205,7 @@ pub(super) async fn add_project_authority(
         .map(|a| hex::decode(a.as_bytes()))
         .transpose()?;
     if let Some((a, m)) = a.zip(m) {
-        let v = Vault::default();
-        let i = PublicIdentity::import(&a, &v).await?;
-        let a = cli::Authority::new(a, m);
-        cfg.authorities(node)?
-            .add_authority(i.identifier().clone(), a)
+        add_project_authority(a, m, node, cfg).await
     } else {
         Err(anyhow!("missing authority in project info"))
     }
@@ -243,14 +295,4 @@ pub fn spawn_node(
     node_state.set_pid(child.id() as i32)?;
 
     Ok(())
-}
-
-/// Retreive the default node name from the global options
-pub fn default_node_name(opts: &CommandGlobalOpts) -> String {
-    opts.state
-        .nodes
-        .default()
-        .unwrap_or_else(|_| panic!("No default Node found"))
-        .config
-        .name
 }

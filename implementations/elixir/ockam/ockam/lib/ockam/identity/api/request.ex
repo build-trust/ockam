@@ -7,7 +7,11 @@ defmodule Ockam.Identity.API.Request do
   @validate_identity_change_history {:struct, %{identity: %{key: 1, schema: :binary}}}
 
   @create_signature {:struct,
-                     %{identity: %{key: 1, schema: :binary}, state: %{key: 2, schema: :binary}}}
+                     %{
+                       identity: %{key: 1, schema: :binary},
+                       state: %{key: 2, schema: :binary},
+                       vault_name: %{key: 3, schema: :string}
+                     }}
 
   @verify_signature {:struct,
                      %{
@@ -30,8 +34,12 @@ defmodule Ockam.Identity.API.Request do
     TypedCBOR.encode!(@validate_identity_change_history, %{identity: identity})
   end
 
-  def create_signature(identity, auth_hash) do
-    TypedCBOR.encode!(@create_signature, %{identity: identity, state: auth_hash})
+  def create_signature(vault_name, identity, auth_hash) do
+    TypedCBOR.encode!(@create_signature, %{
+      identity: identity,
+      state: auth_hash,
+      vault_name: vault_name
+    })
   end
 
   def verify_signature(identity, proof, auth_hash) do

@@ -1,3 +1,4 @@
+use crate::cli_state;
 use crate::identity::models::*;
 use core::convert::Infallible;
 use minicbor::encode::Write;
@@ -6,18 +7,19 @@ use ockam_core::api::{Error, Id, Method, Request, Response, Status};
 use ockam_core::vault::Signature;
 use ockam_core::{Address, DenyAll, Result, Routed, Worker};
 use ockam_identity::change_history::IdentityHistoryComparison;
-use ockam_identity::{Identity, IdentityVault, PublicIdentity};
+use ockam_identity::{Identity, PublicIdentity};
 use ockam_node::Context;
+use ockam_vault::Vault;
 use tracing::trace;
 
 /// Vault Service Worker
-pub struct IdentityService<V: IdentityVault> {
+pub struct IdentityService {
     ctx: Context,
-    vault: V,
+    vault: Vault,
 }
 
-impl<V: IdentityVault> IdentityService<V> {
-    pub async fn new(ctx: &Context, vault: V) -> Result<Self> {
+impl IdentityService {
+    pub async fn new(ctx: &Context, vault: Vault) -> Result<Self> {
         Ok(Self {
             ctx: ctx
                 .new_detached(
@@ -31,7 +33,7 @@ impl<V: IdentityVault> IdentityService<V> {
     }
 }
 
-impl<V: IdentityVault> IdentityService<V> {
+impl IdentityService {
     fn response_for_bad_request<W>(req: &Request, msg: &str, enc: W) -> Result<()>
     where
         W: Write<Error = Infallible>,
@@ -106,6 +108,18 @@ impl<V: IdentityVault> IdentityService<V> {
         use Method::*;
 
         match method {
+            Get => match req.path_segments::<2>().as_slice() {
+                [identity_name] => {
+                    let cli_state = cli_state::CliState::new()?;
+                    let identity = cli_state.identities.get(identity_name)?;
+                    let body = CreateResponse::new(
+                        identity.config.change_history.export()?,
+                        String::from(identity.config.identifier),
+                    );
+                    Self::ok_response(req, Some(body), enc)
+                }
+                _ => Self::response_for_bad_request(req, "unknown path", enc),
+            },
             Post => match req.path_segments::<2>().as_slice() {
                 [""] => {
                     let identity = Identity::create(&self.ctx, &self.vault).await?;
@@ -137,8 +151,15 @@ impl<V: IdentityVault> IdentityService<V> {
                     }
 
                     let args = dec.decode::<CreateSignatureRequest>()?;
-                    let identity =
-                        Identity::import(&self.ctx, args.identity(), &self.vault).await?;
+                    let identity = match args.vault_name() {
+                        None => Identity::import(&self.ctx, args.identity(), &self.vault).await?,
+
+                        Some(vault_name) => {
+                            let cli_state = cli_state::CliState::new()?;
+                            let v = cli_state.vaults.get(&vault_name)?.config.get().await?;
+                            Identity::import(&self.ctx, args.identity(), &v).await?
+                        }
+                    };
 
                     let signature = identity.create_signature(args.data(), None).await?;
 
@@ -191,9 +212,7 @@ impl<V: IdentityVault> IdentityService<V> {
                 }
                 _ => Self::response_for_bad_request(req, "unknown path", enc),
             },
-            Get | Put | Patch | Delete => {
-                Self::response_for_bad_request(req, "unknown method", enc)
-            }
+            Put | Patch | Delete => Self::response_for_bad_request(req, "unknown method", enc),
         }
     }
 
@@ -230,7 +249,7 @@ impl<V: IdentityVault> IdentityService<V> {
 }
 
 #[ockam_core::worker]
-impl<V: IdentityVault> Worker for IdentityService<V> {
+impl Worker for IdentityService {
     type Message = Vec<u8>;
     type Context = Context;
 

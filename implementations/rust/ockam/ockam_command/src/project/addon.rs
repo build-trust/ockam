@@ -8,12 +8,15 @@ use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 use reqwest::Url;
 use rustls::{Certificate, ClientConfig, ClientConnection, Connection, RootCertStore, Stream};
+use tokio_retry::strategy::FixedInterval;
+use tokio_retry::Retry;
 
 use ockam::Context;
-use ockam_api::cloud::addon::Addon;
+use ockam_api::cloud::addon::{Addon, ConfluentConfig};
 use ockam_api::cloud::project::{InfluxDBTokenLeaseManagerConfig, OktaConfig, Project};
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
+use ockam_core::CowStr;
 
 use crate::enroll::{Auth0Provider, Auth0Service};
 use crate::node::util::delete_embedded_node;
@@ -24,10 +27,8 @@ use crate::util::output::Output;
 use crate::util::{api, exitcode, node_rpc, Rpc};
 use crate::{help, CommandGlobalOpts};
 
-const HELP_DETAIL: &str = "";
-
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide(), help_template = help::template(HELP_DETAIL))]
+#[command(arg_required_else_help = true, subcommand_required = true)]
 pub struct AddonCommand {
     #[command(subcommand)]
     subcommand: AddonSubcommand,
@@ -163,8 +164,8 @@ pub enum ConfigureAddonCommand {
         /// InfluxDB Permissions as a JSON String
         /// https://docs.influxdata.com/influxdb/v2.0/api/#operation/PostAuthorizations
         #[arg(
-            long,
-            group = "permissions",
+            long = "permissions",
+            group = "permissions_group",  //looks like it can't be named the same than an existing field
             value_name = "PERMISSIONS_JSON",
             value_parser(NonEmptyStringValueParser::new())
         )]
@@ -173,8 +174,8 @@ pub enum ConfigureAddonCommand {
         /// InfluxDB Permissions JSON PATH. Use either this or --permissions
         #[arg(
             long = "permissions-path",
-            group = "permissions",
-            value_name = "PERMISSIONS_JSON"
+            group = "permissions_group",
+            value_name = "PERMISSIONS_JSON_PATH"
         )]
         permissions_path: Option<PathBuf>,
 
@@ -191,6 +192,7 @@ pub enum ConfigureAddonCommand {
         #[arg(
             long = "user-access-role",
             id = "user-access-role",
+            hide = true,
             value_name = "USER_ACCESS_ROLE",
             value_parser(NonEmptyStringValueParser::new())
         )]
@@ -200,10 +202,50 @@ pub enum ConfigureAddonCommand {
         #[arg(
             long = "adamin-access-role",
             id = "admin-access-role",
+            hide = true,
             value_name = "ADMIN_ACCESS_ROLE",
             value_parser(NonEmptyStringValueParser::new())
         )]
         admin_access_role: Option<String>,
+    },
+    #[command(hide = help::hide())]
+    Confluent {
+        /// Ockam project name
+        #[arg(
+            long = "project",
+            id = "project",
+            value_name = "PROJECT_NAME",
+            default_value = "default",
+            value_parser(NonEmptyStringValueParser::new())
+        )]
+        project_name: String,
+
+        /// Confluent Cloud bootstrap server address
+        #[arg(
+            long,
+            id = "bootstrap_server",
+            value_name = "BOOTSTRAP_SERVER",
+            value_parser(NonEmptyStringValueParser::new())
+        )]
+        bootstrap_server: String,
+
+        /// Confluent Cloud API key
+        #[arg(
+            long,
+            id = "api_key",
+            value_name = "API_KEY",
+            value_parser(NonEmptyStringValueParser::new())
+        )]
+        api_key: String,
+
+        /// Confluent Cloud API secret
+        #[arg(
+            long,
+            id = "api_secret",
+            value_name = "API_SECRET",
+            value_parser(NonEmptyStringValueParser::new())
+        )]
+        api_secret: String,
     },
 }
 
@@ -248,123 +290,184 @@ async fn run_impl(
             rpc.request(req).await?;
             rpc.is_ok()?;
         }
-        AddonSubcommand::Configure(scmd) => match scmd {
-            ConfigureAddonCommand::Okta {
-                project_name,
-                tenant,
-                certificate,
-                certificate_path,
-                client_id,
-                attributes,
-            } => {
-                let base_url = Url::parse(tenant.as_str()).context("could not parse tenant url")?;
-                let domain = base_url
-                    .host_str()
-                    .context("could not read domain from tenant url")?;
+        AddonSubcommand::Configure(scmd) => {
+            match scmd {
+                ConfigureAddonCommand::Okta {
+                    project_name,
+                    tenant,
+                    certificate,
+                    certificate_path,
+                    client_id,
+                    attributes,
+                } => {
+                    let base_url =
+                        Url::parse(tenant.as_str()).context("could not parse tenant url")?;
+                    let domain = base_url
+                        .host_str()
+                        .context("could not read domain from tenant url")?;
 
-                let certificate = match (certificate, certificate_path) {
-                    (Some(c), _) => c,
-                    (_, Some(p)) => std::fs::read_to_string(p)?,
-                    _ => query_certificate_chain(domain)?,
-                };
+                    let certificate = match (certificate, certificate_path) {
+                        (Some(c), _) => c,
+                        (_, Some(p)) => std::fs::read_to_string(p)?,
+                        _ => query_certificate_chain(domain)?,
+                    };
 
-                let okta_config = OktaConfig::new(tenant, certificate, client_id, &attributes);
-                let body = okta_config.clone();
+                    let okta_config = OktaConfig::new(tenant, certificate, client_id, &attributes);
+                    let body = okta_config.clone();
 
-                // Validate okta configuration
-                let auth0 = Auth0Service::new(Auth0Provider::Okta(okta_config.into()));
-                auth0.validate_provider_config().await?;
+                    // Validate okta configuration
+                    let auth0 = Auth0Service::new(Auth0Provider::Okta(okta_config.into()));
+                    auth0.validate_provider_config().await?;
 
-                // Do request
-                let addon_id = "okta";
-                let endpoint = format!("{}/{}", base_endpoint(&project_name)?, addon_id);
-                let req =
-                    Request::put(endpoint).body(CloudRequestWrapper::new(body, controller_route));
-                rpc.request(req).await?;
-                rpc.is_ok()?;
-                println!("Okta addon enabled");
+                    // Do request
+                    let addon_id = "okta";
+                    let endpoint = format!("{}/{}", base_endpoint(&project_name)?, addon_id);
+                    let req = Request::put(endpoint).body(CloudRequestWrapper::new(
+                        body,
+                        controller_route,
+                        None::<CowStr>,
+                    ));
+                    rpc.request(req).await?;
+                    rpc.is_ok()?;
+                    println!("Okta addon enabled");
 
-                // Wait until project is ready again
-                println!("Getting things ready for project...");
-                tokio::time::sleep(std::time::Duration::from_secs(15)).await;
-                let project_id = config::get_project(&opts.config, &project_name)
-                    .context("project not found in lookup")?;
-                rpc.request(api::project::show(&project_id, controller_route))
+                    // Wait until project is ready again
+                    println!("Getting things ready for project...");
+                    tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+                    let project_id = config::get_project(&opts.config, &project_name)
+                        .context("project not found in lookup")?;
+                    rpc.request(api::project::show(&project_id, controller_route))
+                        .await?;
+                    let project: Project = rpc.parse_response()?;
+                    check_project_readiness(
+                        &ctx,
+                        &opts,
+                        &cmd.cloud_opts,
+                        rpc.node_name(),
+                        None,
+                        project,
+                    )
                     .await?;
-                let project: Project = rpc.parse_response()?;
-                check_project_readiness(
-                    &ctx,
-                    &opts,
-                    &cmd.cloud_opts,
-                    rpc.node_name(),
-                    None,
-                    project,
-                )
-                .await?;
 
-                println!("Okta addon configured successfully");
-            }
-            ConfigureAddonCommand::InfluxDb {
-                project_name,
-                endpoint_url,
-                token,
-                org_id,
-                permissions,
-                permissions_path,
-                max_ttl_secs,
-                user_access_role,
-                admin_access_role,
-            } => {
-                let perms = match (permissions, permissions_path) {
-                    (_, Some(p)) => std::fs::read_to_string(p)?,
-                    (Some(perms), _) => perms,
-                    _ => {
-                        return Err(crate::error::Error::new(exitcode::IOERR, anyhow!("Permissions JSON is required, supply --permissions or --permissions-path.")));
-                    }
-                };
-
-                let body = InfluxDBTokenLeaseManagerConfig::new(
+                    println!("Okta addon configured successfully");
+                }
+                ConfigureAddonCommand::InfluxDb {
+                    project_name,
                     endpoint_url,
                     token,
                     org_id,
-                    perms,
+                    permissions,
+                    permissions_path,
                     max_ttl_secs,
                     user_access_role,
                     admin_access_role,
-                );
+                } => {
+                    let perms = match (permissions, permissions_path) {
+                        (_, Some(p)) => std::fs::read_to_string(p)?,
+                        (Some(perms), _) => perms,
+                        _ => {
+                            return Err(crate::error::Error::new(exitcode::IOERR, anyhow!("Permissions JSON is required, supply --permissions or --permissions-path.")));
+                        }
+                    };
 
-                let add_on_id = "influxdb";
-                let endpoint = format!("{}/{}", base_endpoint(&project_name)?, add_on_id);
-                let req =
-                    Request::put(endpoint).body(CloudRequestWrapper::new(body, controller_route));
+                    let body = InfluxDBTokenLeaseManagerConfig::new(
+                        endpoint_url,
+                        token,
+                        org_id,
+                        perms,
+                        max_ttl_secs,
+                        user_access_role,
+                        admin_access_role,
+                    );
 
-                rpc.request(req).await?;
-                rpc.is_ok()?;
-                println!("InfluxDB addon enabled");
+                    let add_on_id = "influxdb_token_lease_manager";
+                    let endpoint = format!("{}/{}", base_endpoint(&project_name)?, add_on_id);
+                    let req = Request::put(endpoint).body(CloudRequestWrapper::new(
+                        body,
+                        controller_route,
+                        None::<CowStr>,
+                    ));
 
-                // Wait until project is ready again
-                println!("Getting things ready for project...");
+                    rpc.request(req).await?;
+                    rpc.is_ok()?;
+                    println!("InfluxDB addon enabled");
 
-                // TODO: Oakley - Should not sleep for 15seconds to determine readiness
-                tokio::time::sleep(std::time::Duration::from_secs(15)).await;
-                let project_id = config::get_project(&opts.config, &project_name)
-                    .context("project not found in lookup")?;
-                rpc.request(api::project::show(&project_id, controller_route))
-                    .await?;
-                let project: Project = rpc.parse_response()?;
-                check_project_readiness(
-                    &ctx,
-                    &opts,
-                    &cmd.cloud_opts,
-                    rpc.node_name(),
-                    None,
-                    project,
-                )
-                .await?;
+                    // Wait until project is ready again
+                    println!("Getting things ready for project...");
 
-                println!("InfluxDB addon configured successfully");
+                    let project_id = config::get_project(&opts.config, &project_name)
+                        .context("project not found in lookup")?;
+
+                    // Give the sever ~20 seconds
+                    // in intervals of 5s for the project to be available.
+                    for _ in 0..4 {
+                        rpc.request(api::project::show(&project_id, controller_route))
+                            .await?;
+                        let project: Project = match rpc.parse_response() {
+                            Ok(p) => p,
+                            Err(_) => {
+                                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                                continue;
+                            }
+                        };
+
+                        check_project_readiness(
+                            &ctx,
+                            &opts,
+                            &cmd.cloud_opts,
+                            rpc.node_name(),
+                            None,
+                            project,
+                        )
+                        .await?;
+                    }
+                    println!("InfluxDB addon configured successfully");
+                }
+                ConfigureAddonCommand::Confluent {
+                    project_name,
+                    bootstrap_server,
+                    api_key,
+                    api_secret,
+                } => {
+                    let body = ConfluentConfig::new(bootstrap_server, api_key, api_secret);
+                    let addon_id = "confluent";
+                    let endpoint = format!("{}/{}", base_endpoint(&project_name)?, addon_id);
+                    let req = Request::put(endpoint).body(CloudRequestWrapper::new(
+                        body,
+                        controller_route,
+                        None::<CowStr>,
+                    ));
+                    rpc.request(req).await?;
+                    rpc.is_ok()?;
+                    println!("Confluent addon enabled");
+
+                    // Wait until project is ready again
+                    println!("Getting things ready for project...");
+                    let project_id = config::get_project(&opts.config, &project_name)
+                        .context("project not found in lookup")?;
+                    let retry_strategy = FixedInterval::from_millis(5000).take(4);
+                    Retry::spawn(retry_strategy, || async {
+                        let mut rpc = rpc.clone();
+                        rpc.request(api::project::show(&project_id, controller_route))
+                            .await?;
+                        let project: Project = rpc.parse_response()?;
+                        check_project_readiness(
+                            &ctx,
+                            &opts,
+                            &cmd.cloud_opts,
+                            rpc.node_name(),
+                            None,
+                            project,
+                        )
+                        .await?;
+                        Ok(())
+                    })
+                    .await
+                    .map_err(|e: crate::error::Error| anyhow!(e.to_string()))?;
+                    println!("Confluent addon configured successfully");
+                }
             }
-        },
+        }
     };
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())

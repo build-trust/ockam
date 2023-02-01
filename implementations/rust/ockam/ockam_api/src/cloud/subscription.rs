@@ -1,6 +1,7 @@
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
+use ockam_core::AsyncTryClone;
 use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
@@ -115,6 +116,12 @@ mod node {
             trace!(target: TARGET, subscription = %id, "unsubscribing");
 
             let req_builder = Request::put(format!("/v0/{}/unsubscribe", id));
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
             self.request_controller(
                 ctx,
                 label,
@@ -122,7 +129,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -141,6 +148,12 @@ mod node {
             trace!(target: TARGET, subscription = %id, "updating subscription space");
 
             let req_builder = Request::put(format!("/v0/{}/space_id", id)).body(req_body);
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
             self.request_controller(
                 ctx,
                 label,
@@ -148,7 +161,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -166,6 +179,12 @@ mod node {
             trace!(target: TARGET, subscription = %id, "updating subscription contact info");
 
             let req_builder = Request::put(format!("/v0/{}/contact_info", id)).body(req_body);
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
             self.request_controller(
                 ctx,
                 label,
@@ -173,7 +192,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -189,6 +208,12 @@ mod node {
             trace!(target: TARGET, "listing subscriptions");
 
             let req_builder = Request::get("/v0/");
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
             self.request_controller(
                 ctx,
                 label,
@@ -196,7 +221,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -213,6 +238,12 @@ mod node {
             trace!(target: TARGET, subscription = %id, "getting subscription");
 
             let req_builder = Request::get(format!("/v0/{}", id));
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
             self.request_controller(
                 ctx,
                 label,
@@ -220,7 +251,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -237,6 +268,12 @@ mod node {
             trace!(target: TARGET, space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
 
             let req_builder = Request::post("/v0/activate").body(req_body);
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
             self.request_controller(
                 ctx,
                 label,
@@ -244,7 +281,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }

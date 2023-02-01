@@ -13,17 +13,20 @@ use tracing::debug;
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::node::NodeOpts;
 use crate::project::util::create_secure_channel_to_authority;
-use crate::util::api::CloudOpts;
+use crate::util::api::{CloudOpts, ProjectOpts};
 use crate::util::{node_rpc, RpcBuilder};
-use crate::{help, CommandGlobalOpts, Result};
+use crate::{CommandGlobalOpts, Result};
 
 /// An authorised enroller can add members to a project.
 #[derive(Clone, Debug, Args)]
-#[command(hide = help::hide(), arg_required_else_help = true)]
+#[command(arg_required_else_help = true)]
 pub struct EnrollCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]
     cloud_opts: CloudOpts,
+
+    #[command(flatten)]
+    project_opts: ProjectOpts,
 
     #[command(flatten)]
     node_opts: NodeOpts,
@@ -71,7 +74,8 @@ impl Runner {
     }
 
     async fn run(self) -> Result<()> {
-        let node_name = start_embedded_node(&self.ctx, &self.opts).await?;
+        let node_name =
+            start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.project_opts)).await?;
 
         let map = self.opts.config.lookup();
         let to = if let Some(a) = project_authority(&self.cmd.to, &map)? {
@@ -81,6 +85,7 @@ impl Runner {
                 &node_name,
                 a,
                 &replace_project(&self.cmd.to, a.address())?,
+                None, //for now always the default identity
             )
             .await?;
             for proto in self.cmd.to.iter().skip(1) {
@@ -144,7 +149,7 @@ fn project_authority<'a>(
 /// Replaces the first `/project` with the given address.
 ///
 /// Assumes (and asserts!) that the first protocol is a `/project`.
-fn replace_project(input: &MultiAddr, with: &MultiAddr) -> anyhow::Result<MultiAddr> {
+pub fn replace_project(input: &MultiAddr, with: &MultiAddr) -> anyhow::Result<MultiAddr> {
     let mut iter = input.iter();
     let first = iter.next().map(|p| p.code());
     assert_eq!(first, Some(proto::Project::CODE));

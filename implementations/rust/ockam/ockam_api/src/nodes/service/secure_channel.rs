@@ -1,7 +1,9 @@
 use std::time::Duration;
 
 use super::{map_multiaddr_err, NodeManagerWorker};
+use crate::cli_state::CliState;
 use crate::error::ApiError;
+use crate::lmdb::LmdbStorage;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
     CredentialExchangeMode, DeleteSecureChannelRequest, DeleteSecureChannelResponse,
@@ -14,9 +16,10 @@ use minicbor::Decoder;
 use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::{route, AsyncTryClone};
+use ockam_core::{route, AsyncTryClone, CowStr};
 use ockam_identity::{Identity, IdentityIdentifier, TrustMultiIdentifiersPolicy};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::Context;
 use ockam_vault::Vault;
 
 impl NodeManager {
@@ -37,7 +40,7 @@ impl NodeManager {
 
     pub(crate) async fn create_secure_channel_internal(
         &mut self,
-        identity: &Identity<Vault>,
+        identity: &Identity<Vault, LmdbStorage>,
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         timeout: Option<Duration>,
@@ -58,19 +61,13 @@ impl NodeManager {
                     .create_secure_channel_extended(
                         sc_route.clone(),
                         TrustMultiIdentifiersPolicy::new(ids),
-                        &self.authenticated_storage,
                         timeout,
                     )
                     .await
             }
             None => {
                 identity
-                    .create_secure_channel_extended(
-                        sc_route.clone(),
-                        TrustEveryonePolicy,
-                        &self.authenticated_storage,
-                        timeout,
-                    )
+                    .create_secure_channel_extended(sc_route.clone(), TrustEveryonePolicy, timeout)
                     .await
             }
         }?;
@@ -90,8 +87,22 @@ impl NodeManager {
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         credential_exchange_mode: CredentialExchangeMode,
         timeout: Option<Duration>,
+        identity_name: Option<CowStr<'_>>,
+        ctx: &Context,
     ) -> Result<Address> {
-        let identity = self.identity()?.async_try_clone().await?;
+        let identity = if let Some(identity) = identity_name {
+            let state = CliState::new()?;
+            let idt_config = state.identities.get(&identity)?.config;
+            match idt_config.get(ctx, self.vault()?).await {
+                Ok(idt) => idt,
+                Err(_) => {
+                    let default_vault = &state.vaults.default()?.config.get().await?;
+                    idt_config.get(ctx, default_vault).await?
+                }
+            }
+        } else {
+            self.identity()?.async_try_clone().await?
+        };
 
         let sc_addr = self
             .create_secure_channel_internal(&identity, sc_route, authorized_identifiers, timeout)
@@ -123,7 +134,6 @@ impl NodeManager {
                     .present_credential_mutual(
                         route![sc_addr.clone(), DefaultAddress::CREDENTIAL_SERVICE],
                         &authorities.public_identities(),
-                        &self.authenticated_storage,
                     )
                     .await?;
                 debug!(%sc_addr, "Mutual credential presentation success");
@@ -138,13 +148,27 @@ impl NodeManager {
         &mut self,
         addr: Address,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        identity_name: Option<CowStr<'_>>,
+        ctx: &Context,
     ) -> Result<()> {
         info!(
             "Handling request to create a new secure channel listener: {}",
             addr
         );
 
-        let identity = self.identity()?;
+        let identity = if let Some(identity) = identity_name {
+            let state = CliState::new()?;
+            let idt_config = state.identities.get(&identity)?.config;
+            match idt_config.get(ctx, self.vault()?).await {
+                Ok(idt) => idt,
+                Err(_) => {
+                    let default_vault = &state.vaults.default()?.config.get().await?;
+                    idt_config.get(ctx, default_vault).await?
+                }
+            }
+        } else {
+            self.identity()?.async_try_clone().await?
+        };
 
         match authorized_identifiers {
             Some(ids) => {
@@ -152,17 +176,12 @@ impl NodeManager {
                     .create_secure_channel_listener(
                         addr.clone(),
                         TrustMultiIdentifiersPolicy::new(ids),
-                        &self.authenticated_storage,
                     )
                     .await
             }
             None => {
                 identity
-                    .create_secure_channel_listener(
-                        addr.clone(),
-                        TrustEveryonePolicy,
-                        &self.authenticated_storage,
-                    )
+                    .create_secure_channel_listener(addr.clone(), TrustEveryonePolicy)
                     .await
             }
         }?;
@@ -217,6 +236,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
+        ctx: &Context,
     ) -> Result<ResponseBuilder<CreateSecureChannelResponse<'a>>> {
         let mut node_manager = self.node_manager.write().await;
         let CreateSecureChannelRequest {
@@ -224,6 +244,7 @@ impl NodeManagerWorker {
             authorized_identifiers,
             credential_exchange_mode,
             timeout,
+            identity,
             ..
         } = dec.decode()?;
 
@@ -252,6 +273,8 @@ impl NodeManagerWorker {
                 authorized_identifiers,
                 credential_exchange_mode,
                 timeout,
+                identity,
+                ctx,
             )
             .await?;
 
@@ -306,11 +329,13 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
+        ctx: &Context,
     ) -> Result<ResponseBuilder<()>> {
         let mut node_manager = self.node_manager.write().await;
         let CreateSecureChannelListenerRequest {
             addr,
             authorized_identifiers,
+            identity,
             ..
         } = dec.decode()?;
 
@@ -332,7 +357,7 @@ impl NodeManagerWorker {
         }
 
         node_manager
-            .create_secure_channel_listener_impl(addr, authorized_identifiers)
+            .create_secure_channel_listener_impl(addr, authorized_identifiers, identity, ctx)
             .await?;
 
         let response = Response::ok(req.id());

@@ -6,7 +6,7 @@ use ockam::Context;
 use ockam_api::cloud::project::Project;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::project::util::check_project_readiness;
+use crate::project::util::{check_project_readiness, project_enroll_admin};
 use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{space, CommandGlobalOpts};
@@ -21,10 +21,6 @@ pub struct CreateCommand {
     /// Name of the project.
     #[arg(display_order = 1002, default_value_t = hex::encode(&random::<[u8;4]>()), hide_default_value = true, value_parser = validate_project_name)]
     pub project_name: String,
-
-    // Enforce credentials for member access to the project node
-    #[arg(long, display_order = 1003)]
-    pub enforce_credentials: Option<bool>,
 
     #[command(flatten)]
     pub cloud_opts: CloudOpts,
@@ -55,18 +51,18 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let space_id = space::config::try_get_space(&opts.config, &cmd.space_name)
         .context(format!("Space '{}' does not exist", cmd.space_name))?;
-    let node_name = start_embedded_node(ctx, &opts).await?;
+    let node_name = start_embedded_node(ctx, &opts, None).await?;
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::project::create(
         &cmd.project_name,
         &space_id,
-        cmd.enforce_credentials,
         &cmd.cloud_opts.route(),
     ))
     .await?;
     let project = rpc.parse_response::<Project>()?;
     let project =
         check_project_readiness(ctx, &opts, &cmd.cloud_opts, &node_name, None, project).await?;
+    project_enroll_admin(ctx, &opts, &node_name, &project).await?;
     rpc.print_response(project)?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())

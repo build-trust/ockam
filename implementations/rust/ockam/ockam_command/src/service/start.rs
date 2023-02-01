@@ -1,3 +1,4 @@
+use crate::help;
 use crate::node::NodeOpts;
 use crate::service::config::OktaIdentityProviderConfig;
 use crate::util::{api, node_rpc, RpcBuilder};
@@ -6,11 +7,16 @@ use anyhow::{anyhow, Result};
 use clap::{Args, Subcommand};
 use minicbor::Encode;
 use ockam::{Context, TcpTransport};
-use ockam_api::nodes::models::services::StartOktaIdentityProviderRequest;
+use ockam_api::nodes::models::services::{
+    StartKafkaConsumerRequest, StartKafkaProducerRequest, StartOktaIdentityProviderRequest,
+    StartServiceRequest,
+};
 use ockam_api::DefaultAddress;
 use ockam_core::api::{Request, RequestBuilder, Status};
-use std::path::{Path, PathBuf};
+use ockam_multiaddr::MultiAddr;
+use std::net::Ipv4Addr;
 
+/// Start a specified service
 #[derive(Clone, Debug, Args)]
 pub struct StartCommand {
     #[command(flatten)]
@@ -50,10 +56,39 @@ pub enum StartSubCommand {
         addr: String,
 
         #[arg(long)]
-        enrollers: PathBuf,
+        enrollers: String,
 
         #[arg(long)]
         project: String,
+
+        #[arg(long)]
+        reload_enrollers: bool,
+    },
+    #[command(hide = help::hide())]
+    KafkaConsumer {
+        #[arg(long, default_value_t = kafka_consumer_default_addr())]
+        addr: String,
+        #[arg(long)]
+        ip: Ipv4Addr,
+        #[arg(long)]
+        ports: Vec<u16>,
+        #[arg(long)]
+        forwarding_addr: MultiAddr,
+        #[arg(long)]
+        route_to_client: Option<MultiAddr>,
+    },
+    #[command(hide = help::hide())]
+    KafkaProducer {
+        #[arg(long, default_value_t = kafka_producer_default_addr())]
+        addr: String,
+        #[arg(long)]
+        ip: Ipv4Addr,
+        #[arg(long)]
+        ports: Vec<u16>,
+        #[arg(long)]
+        forwarding_addr: MultiAddr,
+        #[arg(long)]
+        route_to_client: Option<MultiAddr>,
     },
 }
 
@@ -79,6 +114,14 @@ fn credentials_default_addr() -> String {
 
 fn authenticator_default_addr() -> String {
     DefaultAddress::AUTHENTICATOR.to_string()
+}
+
+fn kafka_consumer_default_addr() -> String {
+    DefaultAddress::KAFKA_CONSUMER.to_string()
+}
+
+fn kafka_producer_default_addr() -> String {
+    DefaultAddress::KAFKA_PRODUCER.to_string()
 }
 
 impl StartCommand {
@@ -131,6 +174,7 @@ async fn run_impl(
         StartSubCommand::Authenticator {
             addr,
             enrollers,
+            reload_enrollers,
             project,
             ..
         } => {
@@ -140,7 +184,52 @@ async fn run_impl(
                 node_name,
                 &addr,
                 &enrollers,
+                reload_enrollers,
                 &project,
+                Some(&tcp),
+            )
+            .await?
+        }
+        StartSubCommand::KafkaConsumer {
+            addr,
+            ip,
+            ports,
+            forwarding_addr,
+            route_to_client,
+        } => {
+            let payload =
+                StartKafkaConsumerRequest::new(ip, ports, forwarding_addr, route_to_client);
+            let payload = StartServiceRequest::new(payload, &addr);
+            let req = Request::post("/node/services/kafka-consumer").body(payload);
+            start_service_impl(
+                ctx,
+                &opts,
+                node_name,
+                &addr,
+                "KafkaConsumer",
+                req,
+                Some(&tcp),
+            )
+            .await?
+        }
+        StartSubCommand::KafkaProducer {
+            addr,
+            ip,
+            ports,
+            forwarding_addr,
+            route_to_client,
+        } => {
+            let payload =
+                StartKafkaProducerRequest::new(ip, ports, forwarding_addr, route_to_client);
+            let payload = StartServiceRequest::new(payload, &addr);
+            let req = Request::post("/node/services/kafka-producer").body(payload);
+            start_service_impl(
+                ctx,
+                &opts,
+                node_name,
+                &addr,
+                "KafkaProducer",
+                req,
                 Some(&tcp),
             )
             .await?
@@ -216,16 +305,18 @@ pub async fn start_verifier_service(
 }
 
 /// Public so `ockam_command::node::create` can use it.
+#[allow(clippy::too_many_arguments)]
 pub async fn start_authenticator_service(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     node_name: &str,
     serv_addr: &str,
-    enrollers: &Path,
+    enrollers: &str,
+    reload_enrollers: bool,
     project: &str,
     tcp: Option<&'_ TcpTransport>,
 ) -> Result<()> {
-    let req = api::start_authenticator_service(serv_addr, enrollers, project);
+    let req = api::start_authenticator_service(serv_addr, enrollers, reload_enrollers, project);
     start_service_impl(ctx, opts, node_name, serv_addr, "Authenticator", req, tcp).await
 }
 

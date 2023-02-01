@@ -1,10 +1,93 @@
-use std::path::Path;
-
 use minicbor::{Decode, Encode};
 use ockam_core::{CowBytes, CowStr};
+use std::net::Ipv4Addr;
+
+use serde::Serialize;
 
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
+use ockam_multiaddr::MultiAddr;
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartServiceRequest<'a, T> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<3470984>,
+    #[b(1)] addr: CowStr<'a>,
+    #[n(2)] req: T,
+}
+
+impl<'a, T> StartServiceRequest<'a, T> {
+    pub fn new<S: Into<CowStr<'a>>>(req: T, addr: S) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            addr: addr.into(),
+            req,
+        }
+    }
+
+    pub fn address(&'a self) -> &'a str {
+        &self.addr
+    }
+
+    pub fn request(&'a self) -> &'a T {
+        &self.req
+    }
+}
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartKafkaConsumerRequest<'a> {
+    #[b(1)] ip: CowStr<'a>,
+    #[n(2)] ports: Vec<u16>,
+    #[b(3)] forwarding_addr: CowStr<'a>,
+    #[b(4)] route_to_client: Option<CowStr<'a>>,
+}
+
+impl<'a> StartKafkaConsumerRequest<'a> {
+    pub fn new(
+        ip: Ipv4Addr,
+        ports: Vec<u16>,
+        forwarding_addr: MultiAddr,
+        route_to_client: Option<MultiAddr>,
+    ) -> Self {
+        Self {
+            ip: ip.to_string().into(),
+            ports,
+            forwarding_addr: forwarding_addr.to_string().into(),
+            route_to_client: route_to_client.map(|s| s.to_string().into()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartKafkaProducerRequest<'a> {
+    #[b(1)] ip: CowStr<'a>,
+    #[n(2)] ports: Vec<u16>,
+    #[b(3)] forwarding_addr: CowStr<'a>,
+    #[b(4)] route_to_client: Option<CowStr<'a>>,
+}
+
+impl<'a> StartKafkaProducerRequest<'a> {
+    pub fn new(
+        ip: Ipv4Addr,
+        ports: Vec<u16>,
+        forwarding_addr: MultiAddr,
+        route_to_client: Option<MultiAddr>,
+    ) -> Self {
+        Self {
+            ip: ip.to_string().into(),
+            ports,
+            forwarding_addr: forwarding_addr.to_string().into(),
+            route_to_client: route_to_client.map(|s| s.to_string().into()),
+        }
+    }
+}
 
 /// Request body when instructing a node to start a Vault service
 #[derive(Debug, Clone, Decode, Encode)]
@@ -133,17 +216,25 @@ pub struct StartAuthenticatorRequest<'a> {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<2749734>,
     #[b(1)] addr: CowStr<'a>,
-    #[b(2)] path: &'a Path,
-    #[b(3)] proj: CowBytes<'a>
+    #[b(2)] enrollers: CowStr<'a>,
+    #[b(3)] proj: CowBytes<'a>,
+    // FIXME: test id old format still matches with this
+    #[n(4)] reload_enrollers: bool
 }
 
 impl<'a> StartAuthenticatorRequest<'a> {
-    pub fn new(addr: impl Into<CowStr<'a>>, path: &'a Path, proj: impl Into<CowBytes<'a>>) -> Self {
+    pub fn new(
+        addr: impl Into<CowStr<'a>>,
+        enrollers: impl Into<CowStr<'a>>,
+        reload_enrollers: bool,
+        proj: impl Into<CowBytes<'a>>,
+    ) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             addr: addr.into(),
-            path,
+            enrollers: enrollers.into(),
+            reload_enrollers,
             proj: proj.into(),
         }
     }
@@ -152,8 +243,12 @@ impl<'a> StartAuthenticatorRequest<'a> {
         &self.addr
     }
 
-    pub fn path(&self) -> &'a Path {
-        self.path
+    pub fn enrollers(&'a self) -> &'a str {
+        &self.enrollers
+    }
+
+    pub fn reload_enrollers(&self) -> bool {
+        self.reload_enrollers
     }
 
     pub fn project(&'a self) -> &'a [u8] {
@@ -263,11 +358,12 @@ impl<'a> StartOktaIdentityProviderRequest<'a> {
     }
 }
 
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Serialize, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ServiceStatus<'a> {
     #[cfg(feature = "tag")]
+    #[serde(skip_serializing)]
     #[n(0)] tag: TypeTag<8542064>,
     #[b(2)] pub addr: CowStr<'a>,
     #[b(3)] pub service_type: CowStr<'a>,
@@ -285,11 +381,12 @@ impl<'a> ServiceStatus<'a> {
 }
 
 /// Response body for listing services
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Serialize, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ServiceList<'a> {
     #[cfg(feature = "tag")]
+    #[serde(skip_serializing)]
     #[n(0)] tag: TypeTag<9587601>,
     #[b(1)] pub list: Vec<ServiceStatus<'a>>
 }

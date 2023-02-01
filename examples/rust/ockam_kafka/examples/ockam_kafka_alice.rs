@@ -1,5 +1,4 @@
 use ockam::{
-    authenticated_storage::InMemoryStorage,
     identity::{Identity, TrustEveryonePolicy},
     route,
     stream::Stream,
@@ -52,14 +51,11 @@ async fn main(mut ctx: Context) -> Result<()> {
         .connect(route![node_in_hub], a_to_b_stream_address, b_to_a_stream_address)
         .await?;
 
-    // Create an AuthenticatedStorage to store info about Alice's known Identities.
-    let storage = InMemoryStorage::new();
-
     // As Alice, connect to Bob's secure channel listener using the sender, and
     // perform an Authenticated Key Exchange to establish an encrypted secure
     // channel with Bob.
     let r = route![sender.clone(), "listener"];
-    let channel = alice.create_secure_channel(r, TrustEveryonePolicy, &storage).await?;
+    let channel = alice.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
 

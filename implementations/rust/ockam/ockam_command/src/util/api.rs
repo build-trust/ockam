@@ -1,7 +1,7 @@
 //! API shim to make it nicer to interact with the ockam messaging API
 
 use regex::Regex;
-use std::path::Path;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
@@ -17,11 +17,10 @@ use tracing::trace;
 use ockam::identity::IdentityIdentifier;
 use ockam::Result;
 use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
-use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::nodes::*;
 use ockam_core::api::RequestBuilder;
 use ockam_core::api::{Request, Response};
-use ockam_core::Address;
+use ockam_core::{Address, CowStr};
 use ockam_multiaddr::MultiAddr;
 
 use crate::util::DEFAULT_CONTROLLER_ADDRESS;
@@ -77,18 +76,9 @@ pub(crate) fn list_secure_channels() -> RequestBuilder<'static, ()> {
     Request::get("/node/secure_channel")
 }
 
-/// Construct a request to create Secure Channels
-pub(crate) fn create_secure_channel(
-    addr: &MultiAddr,
-    authorized_identifiers: Option<Vec<IdentityIdentifier>>,
-    credential_exchange_mode: CredentialExchangeMode,
-) -> RequestBuilder<'static, models::secure_channel::CreateSecureChannelRequest<'static>> {
-    let payload = models::secure_channel::CreateSecureChannelRequest::new(
-        addr,
-        authorized_identifiers,
-        credential_exchange_mode,
-    );
-    Request::post("/node/secure_channel").body(payload)
+/// Construct a request builder to list all workers on the given node
+pub(crate) fn list_workers() -> RequestBuilder<'static, ()> {
+    Request::get("/node/workers")
 }
 
 pub(crate) fn delete_secure_channel(
@@ -109,10 +99,12 @@ pub(crate) fn show_secure_channel(
 pub(crate) fn create_secure_channel_listener(
     addr: &Address,
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+    identity: Option<String>,
 ) -> Result<Vec<u8>> {
     let payload = models::secure_channel::CreateSecureChannelListenerRequest::new(
         addr,
         authorized_identifiers,
+        identity,
     );
 
     let mut buf = vec![];
@@ -167,10 +159,12 @@ pub(crate) fn start_credentials_service(
 /// Construct a request to start an Authenticator Service
 pub(crate) fn start_authenticator_service<'a>(
     addr: &'a str,
-    enrollers: &'a Path,
+    enrollers: &'a str,
+    reload_enrollers: bool,
     project: &'a str,
 ) -> RequestBuilder<'static, StartAuthenticatorRequest<'a>> {
-    let payload = StartAuthenticatorRequest::new(addr, enrollers, project.as_bytes());
+    let payload =
+        StartAuthenticatorRequest::new(addr, enrollers, reload_enrollers, project.as_bytes());
     Request::post("/node/services/authenticator").body(payload)
 }
 
@@ -206,8 +200,11 @@ pub(crate) mod enroll {
         token: Auth0Token,
     ) -> RequestBuilder<CloudRequestWrapper<AuthenticateAuth0Token>> {
         let token = AuthenticateAuth0Token::new(token);
-        Request::post("v0/enroll/auth0")
-            .body(CloudRequestWrapper::new(token, &cmd.cloud_opts.route()))
+        Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(
+            token,
+            &cmd.cloud_opts.route(),
+            None::<CowStr>,
+        ))
     }
 }
 
@@ -221,7 +218,11 @@ pub(crate) mod space {
 
     pub(crate) fn create(cmd: &CreateCommand) -> RequestBuilder<CloudRequestWrapper<CreateSpace>> {
         let b = CreateSpace::new(&cmd.name, &cmd.admins);
-        Request::post("v0/spaces").body(CloudRequestWrapper::new(b, &cmd.cloud_opts.route()))
+        Request::post("v0/spaces").body(CloudRequestWrapper::new(
+            b,
+            &cmd.cloud_opts.route(),
+            None::<CowStr>,
+        ))
     }
 
     pub(crate) fn list(cloud_route: &MultiAddr) -> RequestBuilder<BareCloudRequestWrapper> {
@@ -254,12 +255,14 @@ pub(crate) mod project {
     pub(crate) fn create<'a>(
         project_name: &'a str,
         space_id: &'a str,
-        enforce_credentials: Option<bool>,
         cloud_route: &'a MultiAddr,
     ) -> RequestBuilder<'a, CloudRequestWrapper<'a, CreateProject<'a>>> {
-        let b = CreateProject::new::<&str, &str>(project_name, enforce_credentials, &[], &[]);
-        Request::post(format!("v0/projects/{}", space_id))
-            .body(CloudRequestWrapper::new(b, cloud_route))
+        let b = CreateProject::new::<&str, &str>(project_name, &[], &[]);
+        Request::post(format!("v0/projects/{}", space_id)).body(CloudRequestWrapper::new(
+            b,
+            cloud_route,
+            None::<CowStr>,
+        ))
     }
 
     pub(crate) fn list(cloud_route: &MultiAddr) -> RequestBuilder<BareCloudRequestWrapper> {
@@ -286,8 +289,9 @@ pub(crate) mod project {
         cmd: &AddEnrollerCommand,
     ) -> RequestBuilder<CloudRequestWrapper<AddEnroller>> {
         let b = AddEnroller::new(&cmd.enroller_identity_id, cmd.description.as_deref());
-        Request::post(format!("v0/project-enrollers/{}", cmd.project_id))
-            .body(CloudRequestWrapper::new(b, &cmd.cloud_opts.route()))
+        Request::post(format!("v0/project-enrollers/{}", cmd.project_id)).body(
+            CloudRequestWrapper::new(b, &cmd.cloud_opts.route(), None::<CowStr>),
+        )
     }
 
     pub(crate) fn list_enrollers(
@@ -322,8 +326,15 @@ pub(crate) const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 
 #[derive(Clone, Debug, Args)]
 pub struct CloudOpts {
-    #[arg(long = "identity", value_name = "IDENTITY")]
-    identity: Option<String>,
+    #[arg(global = true, value_name = "IDENTITY", long)]
+    pub identity: Option<String>,
+}
+
+#[derive(Clone, Debug, Args)]
+pub struct ProjectOpts {
+    /// Project config file
+    #[arg(global = true, long = "project-path", value_name = "PROJECT_JSON_PATH")]
+    pub project_path: Option<PathBuf>,
 }
 
 impl CloudOpts {
@@ -354,7 +365,6 @@ pub(crate) fn validate_cloud_resource_name(s: &str) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod test {
-
     use crate::util::api::validate_cloud_resource_name;
 
     #[test]

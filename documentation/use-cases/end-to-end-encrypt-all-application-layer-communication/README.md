@@ -381,7 +381,6 @@ Create a file at `examples/03-outlet.rs` and copy the below code snippet to it.
 ```rust
 // examples/03-outlet.rs
 use ockam::access_control::AllowAll;
-use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{vault::Vault, Context, Result, TcpTransport};
 
@@ -398,8 +397,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let vault = Vault::create();
     let e = Identity::create(&ctx, &vault).await?;
-    let storage = InMemoryStorage::new();
-    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &storage)
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
@@ -440,7 +438,6 @@ Create a file at `examples/03-inlet.rs` and copy the below code snippet to it.
 ```rust
 // examples/03-inlet.rs
 use ockam::access_control::AllowAll;
-use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
 
@@ -463,8 +460,7 @@ async fn main(ctx: Context) -> Result<()> {
     let e = Identity::create(&ctx, &vault).await?;
     let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     let r = route![(TCP, &format!("127.0.0.1:{outlet_port}")), "secure_channel_listener"];
-    let storage = InMemoryStorage::new();
-    let channel = e.create_secure_channel(r, TrustEveryonePolicy, &storage).await?;
+    let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.
@@ -561,7 +557,6 @@ Create a file at `examples/04-outlet.rs` and copy the below code snippet to it.
 // examples/04-outlet.rs
 use ockam::access_control::AllowAll;
 use ockam::{
-    authenticated_storage::InMemoryStorage,
     identity::{Identity, TrustEveryonePolicy},
     remote::RemoteForwarder,
     vault::Vault,
@@ -575,8 +570,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let vault = Vault::create();
     let e = Identity::create(&ctx, &vault).await?;
-    let storage = InMemoryStorage::new();
-    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &storage)
+    e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
@@ -622,7 +616,6 @@ Create a file at `examples/04-inlet.rs` and copy the below code snippet to it.
 ```rust
 // examples/04-inlet.rs
 use ockam::access_control::AllowAll;
-use ockam::authenticated_storage::InMemoryStorage;
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{route, vault::Vault, Context, Result, Route, TcpTransport, TCP};
 
@@ -648,8 +641,7 @@ async fn main(ctx: Context) -> Result<()> {
         forwarding_address,
         "secure_channel_listener"
     ];
-    let storage = InMemoryStorage::new();
-    let channel = e.create_secure_channel(r, TrustEveryonePolicy, &storage).await?;
+    let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.

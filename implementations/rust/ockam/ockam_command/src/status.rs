@@ -1,16 +1,17 @@
 use crate::util::{api, node_rpc, RpcBuilder};
+use crate::CommandGlobalOpts;
 use crate::Result;
-use crate::{exitcode, CommandGlobalOpts};
 use anyhow::anyhow;
 use clap::Args;
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::{IdentityState, NodeState};
+use ockam_api::lmdb::LmdbStorage;
 use ockam_api::nodes::models::base::NodeStatus;
 use ockam_identity::Identity;
 use ockam_vault::Vault;
 use std::time::Duration;
 
-/// Display Ockam status
+/// Display Ockam Status
 #[derive(Clone, Debug, Args)]
 pub struct StatusCommand {
     /// Show status for all identities, default: enrolled only
@@ -19,7 +20,7 @@ pub struct StatusCommand {
 }
 
 struct NodeDetails {
-    identity: Identity<Vault>,
+    identity: Identity<Vault, LmdbStorage>,
     state: NodeState,
     status: String,
 }
@@ -35,22 +36,18 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, StatusCommand)) -> R
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StatusCommand) -> Result<()> {
-    let node_states = match opts.state.nodes.list() {
-        Ok(nodes) => nodes,
-        Err(_err) => {
-            return Err(crate::Error::new(
-                exitcode::IOERR,
-                anyhow!("No nodes registered on this system!"),
-            ));
-        }
-    };
+    let node_states = opts.state.nodes.list()?;
+    if node_states.is_empty() {
+        return Err(anyhow!("No nodes registered on this system!").into());
+    }
 
     let mut node_details: Vec<NodeDetails> = vec![];
+    let tcp = TcpTransport::create(ctx).await?;
     for node_state in &node_states {
         let node_infos = NodeDetails {
             identity: node_state.config.identity(ctx).await?,
             state: node_state.clone(),
-            status: get_node_status(ctx, &opts, node_state).await?,
+            status: get_node_status(ctx, &opts, node_state, &tcp).await?,
         };
         node_details.push(node_infos);
     }
@@ -76,12 +73,11 @@ async fn get_node_status(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     node_state: &NodeState,
+    tcp: &TcpTransport,
 ) -> Result<String> {
     let mut node_status: String = "Stopped".to_string();
-
-    let tcp = TcpTransport::create(ctx).await?;
     let mut rpc = RpcBuilder::new(ctx, opts, &node_state.config.name)
-        .tcp(&tcp)?
+        .tcp(tcp)?
         .build();
     if rpc
         .request_with_timeout(api::query_status(), Duration::from_millis(200))
@@ -100,6 +96,12 @@ async fn print_status(
     identities: Vec<IdentityState>,
     mut node_details: Vec<NodeDetails>,
 ) -> Result<()> {
+    if identities.is_empty() {
+        return Err(anyhow!(
+            "No enrolled identities found! Try passing the `--all` argument to see all identities."
+        )
+        .into());
+    }
     let default_identity = opts.state.identities.default()?;
 
     for (i_idx, identity) in identities.iter().enumerate() {

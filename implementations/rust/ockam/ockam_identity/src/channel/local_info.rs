@@ -13,6 +13,7 @@ pub struct IdentitySecureChannelLocalInfo {
 }
 
 impl IdentitySecureChannelLocalInfo {
+    /// Try to decode `IdentitySecureChannelLocalInfo` from general `LocalInfo`
     pub fn from_local_info(value: &LocalInfo) -> Result<Self> {
         if value.type_identifier() != IDENTITY_SECURE_CHANNEL_IDENTIFIER {
             return Err(IdentityError::InvalidLocalInfoType.into());
@@ -25,6 +26,7 @@ impl IdentitySecureChannelLocalInfo {
         Err(IdentityError::InvalidLocalInfoType.into())
     }
 
+    /// Encode `IdentitySecureChannelLocalInfo` to general `LocalInfo`
     pub fn to_local_info(&self) -> Result<LocalInfo> {
         Ok(LocalInfo::new(
             IDENTITY_SECURE_CHANNEL_IDENTIFIER.into(),
@@ -32,10 +34,12 @@ impl IdentitySecureChannelLocalInfo {
         ))
     }
 
+    /// Find `IdentitySecureChannelLocalInfo` in a list of general `LocalInfo` of that `LocalMessage`
     pub fn find_info(local_msg: &LocalMessage) -> Result<Self> {
         Self::find_info_from_list(local_msg.local_info())
     }
 
+    /// Find `IdentitySecureChannelLocalInfo` in a list of general `LocalInfo`
     pub fn find_info_from_list(local_info: &[LocalInfo]) -> Result<Self> {
         if let Some(local_info) = local_info
             .iter()
@@ -56,13 +60,13 @@ impl IdentitySecureChannelLocalInfo {
 }
 
 impl IdentitySecureChannelLocalInfo {
-    /// Mark a `LocalInfo` vector with `IdentitySecureChannLocalInfo`
+    /// Mark a `LocalInfo` vector with `IdentitySecureChannelLocalInfo`
     /// replacing any pre-existing entries
     pub fn mark(
         mut local_info: Vec<LocalInfo>,
         their_identity_id: IdentityIdentifier,
     ) -> Result<Vec<LocalInfo>> {
-        // strip out any pre-existing IdentitySecureChannLocalInfo
+        // strip out any pre-existing IdentitySecureChannelLocalInfo
         local_info.retain(|x| x.type_identifier() != IDENTITY_SECURE_CHANNEL_IDENTIFIER);
 
         // mark the vector

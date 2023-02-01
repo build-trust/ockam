@@ -9,7 +9,7 @@ use ockam_core::api::{Request, RequestBuilder};
 use ockam_multiaddr::MultiAddr;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::util::api::CloudOpts;
+use crate::util::api::{CloudOpts, ProjectOpts};
 use crate::util::{extract_address_value, node_rpc, RpcBuilder};
 use crate::Result;
 use crate::{help, message::HELP_DETAIL, CommandGlobalOpts};
@@ -34,6 +34,9 @@ pub struct SendCommand {
 
     #[command(flatten)]
     cloud_opts: CloudOpts,
+
+    #[command(flatten)]
+    project_opts: ProjectOpts,
 }
 
 impl SendCommand {
@@ -54,7 +57,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
             let tcp = TcpTransport::create(ctx).await?;
             (api_node, Some(tcp))
         } else {
-            let api_node = start_embedded_node(ctx, opts).await?;
+            let api_node = start_embedded_node(ctx, opts, Some(&cmd.project_opts)).await?;
             (api_node, None)
         };
 
@@ -66,7 +69,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
             &cmd.cloud_opts.route(),
             &api_node,
             tcp.as_ref(),
-            CredentialExchangeMode::None,
+            CredentialExchangeMode::Oneway,
         )
         .await?;
         let to = crate::project::util::clean_projects_multiaddr(to, projects_sc)?;

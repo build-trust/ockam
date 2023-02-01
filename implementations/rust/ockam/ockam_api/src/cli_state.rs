@@ -1,19 +1,18 @@
+use crate::cloud::project::Project;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
-use ockam_identity::{Identity, IdentityIdentifier};
+use ockam_identity::{Identity, IdentityIdentifier, SecureChannelRegistry};
 use ockam_vault::{storage::FileStorage, Vault};
 use rand::random;
 use serde::{Deserialize, Serialize};
-use std::alloc::System;
-use std::ffi::OsStr;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
 
+use crate::lmdb::LmdbStorage;
 use thiserror::Error;
 
 type Result<T> = std::result::Result<T, CliStateError>;
@@ -30,6 +29,8 @@ pub enum CliStateError {
     AlreadyExists(String),
     #[error("`{0}` not found")]
     NotFound(String),
+    #[error("{0}")]
+    Invalid(String),
     #[error("invalid state version {0}")]
     InvalidVersion(String),
     #[error("unknown error")]
@@ -54,6 +55,7 @@ pub struct CliState {
     pub vaults: VaultsState,
     pub identities: IdentitiesState,
     pub nodes: NodesState,
+    pub projects: ProjectsState,
     dir: PathBuf,
 }
 
@@ -65,6 +67,7 @@ impl CliState {
             vaults: VaultsState::new(&dir)?,
             identities: IdentitiesState::new(&dir)?,
             nodes: NodesState::new(&dir)?,
+            projects: ProjectsState::new(&dir)?,
             dir,
         })
     }
@@ -145,6 +148,44 @@ impl VaultsState {
         Ok(VaultState { path, config })
     }
 
+    pub fn list(&self) -> Result<Vec<VaultState>> {
+        let mut vaults = Vec::default();
+        for entry in std::fs::read_dir(&self.dir)? {
+            if let Ok(vault) = self.get(&file_stem(&entry?.path())?) {
+                vaults.push(vault);
+            }
+        }
+        Ok(vaults)
+    }
+
+    pub async fn delete(&self, name: &str) -> Result<()> {
+        // Retrieve vault. If doesn't exist do nothing.
+        let vault_state = match self.get(name) {
+            Ok(v) => v,
+            Err(CliStateError::NotFound(_)) => return Ok(()),
+            Err(e) => return Err(e),
+        };
+
+        // Set default to another vault if it's the default
+        if let Ok(default) = self.default() {
+            if default.path == vault_state.path {
+                let _ = std::fs::remove_file(self.default_path()?);
+                let mut vaults = self.list()?;
+                vaults.retain(|v| v.path != vault_state.path);
+                if let Some(v) = vaults.first() {
+                    let name = v.name()?;
+                    println!("Setting default vault to '{}'", &name);
+                    self.set_default(&name)?;
+                }
+            }
+        }
+
+        // Remove vault file
+        std::fs::remove_file(vault_state.path)?;
+
+        Ok(())
+    }
+
     pub fn default_path(&self) -> Result<PathBuf> {
         Ok(CliState::defaults_dir()?.join("vault"))
     }
@@ -175,6 +216,39 @@ impl VaultsState {
 pub struct VaultState {
     pub path: PathBuf,
     pub config: VaultConfig,
+}
+
+impl VaultState {
+    pub fn name(&self) -> Result<String> {
+        self.path
+            .file_stem()
+            .and_then(|s| s.to_os_string().into_string().ok())
+            .ok_or_else(|| {
+                CliStateError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "failed to parse the vault name",
+                ))
+            })
+    }
+}
+
+impl Display for VaultState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "Name: {}",
+            self.path.as_path().file_stem().unwrap().to_str().unwrap()
+        )?;
+        writeln!(
+            f,
+            "Type: {}",
+            match self.config.is_aws() {
+                true => "AWS KMS",
+                false => "OCKAM",
+            }
+        )?;
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -229,7 +303,7 @@ pub struct IdentitiesState {
 impl IdentitiesState {
     fn new(cli_path: &Path) -> Result<Self> {
         let dir = cli_path.join("identities");
-        std::fs::create_dir_all(&dir)?;
+        std::fs::create_dir_all(dir.join("data"))?;
         Ok(Self { dir })
     }
 
@@ -247,7 +321,11 @@ impl IdentitiesState {
         if !self.default_path()?.exists() {
             self.set_default(name)?;
         }
-        Ok(IdentityState { path, config })
+        Ok(IdentityState {
+            name: name.to_string(),
+            path,
+            config,
+        })
     }
 
     pub fn get(&self, name: &str) -> Result<IdentityState> {
@@ -261,20 +339,51 @@ impl IdentitiesState {
         };
         let contents = std::fs::read_to_string(&path)?;
         let config = serde_json::from_str(&contents)?;
-        Ok(IdentityState { path, config })
+        Ok(IdentityState {
+            name: name.to_string(),
+            path,
+            config,
+        })
     }
 
     pub fn list(&self) -> Result<Vec<IdentityState>> {
         let mut identities: Vec<IdentityState> = vec![];
         for entry in std::fs::read_dir(&self.dir)? {
-            let entry = entry?;
-            if entry.path().extension() == Some(OsStr::from_bytes(b"json")) {
-                let file_name = entry.path();
-                let identity_name = file_name.file_stem().unwrap().to_str().unwrap();
-                identities.push(self.get(identity_name)?);
+            if let Ok(identity) = self.get(&file_stem(&entry?.path())?) {
+                identities.push(identity);
             }
         }
         Ok(identities)
+    }
+
+    pub fn delete(&self, name: &str) -> Result<()> {
+        // Retrieve identity. If doesn't exist do nothing.
+        let identity = match self.get(name) {
+            Ok(i) => i,
+            Err(CliStateError::NotFound(_)) => return Ok(()),
+            Err(e) => return Err(e),
+        };
+
+        // Abort if identity is being used by some running node.
+        identity.in_use()?;
+
+        // Set default to another identity if it's the default
+        if let Ok(default) = self.default() {
+            if default.path == identity.path {
+                let _ = std::fs::remove_file(self.default_path()?);
+                let mut idts = self.list()?;
+                idts.retain(|i| i.path != identity.path);
+                if let Some(idt) = idts.first() {
+                    println!("Setting default identity to `{}`", idt.name);
+                    self.set_default(&idt.name)?;
+                }
+            }
+        }
+
+        // Remove identity file
+        std::fs::remove_file(identity.path)?;
+
+        Ok(())
     }
 
     pub fn default_path(&self) -> Result<PathBuf> {
@@ -283,9 +392,10 @@ impl IdentitiesState {
 
     pub fn default(&self) -> Result<IdentityState> {
         let path = std::fs::canonicalize(self.default_path()?)?;
+        let name = file_stem(&path)?;
         let contents = std::fs::read_to_string(&path)?;
         let config = serde_json::from_str(&contents)?;
-        Ok(IdentityState { path, config })
+        Ok(IdentityState { name, path, config })
     }
 
     pub fn set_default(&self, name: &str) -> Result<IdentityState> {
@@ -301,19 +411,45 @@ impl IdentitiesState {
         std::os::unix::fs::symlink(original, link)?;
         self.get(name)
     }
+
+    pub async fn authenticated_storage(&self) -> Result<LmdbStorage> {
+        Ok(LmdbStorage::new(self.dir.join("data").join("authenticated_storage.lmdb")).await?)
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IdentityState {
+    pub name: String,
     pub path: PathBuf,
     pub config: IdentityConfig,
 }
 
 impl IdentityState {
-    pub fn save(&self) -> Result<()> {
+    fn persist(&self) -> Result<()> {
         let contents = serde_json::to_string(&self.config)?;
         std::fs::write(&self.path, contents)?;
         Ok(())
+    }
+
+    fn in_use(&self) -> Result<()> {
+        self.in_use_by(&CliState::new()?.nodes.list()?)
+    }
+
+    fn in_use_by(&self, nodes: &[NodeState]) -> Result<()> {
+        for node in nodes {
+            if node.config.identity_config()?.identifier == self.config.identifier {
+                return Err(CliStateError::Invalid(format!(
+                    "Can't delete identity '{}' because is currently in use by node '{}'",
+                    &self.name, &node.config.name
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn set_enrollment_status(&mut self) -> Result<()> {
+        self.config.enrollment_status = Some(EnrollmentStatus::enrolled());
+        self.persist()
     }
 }
 
@@ -347,7 +483,7 @@ pub struct IdentityConfig {
 }
 
 impl IdentityConfig {
-    pub async fn new(identity: &Identity<Vault>) -> Self {
+    pub async fn new(identity: &Identity<Vault, LmdbStorage>) -> Self {
         let identifier = identity.identifier().clone();
         let change_history = identity.change_history().await;
         Self {
@@ -357,9 +493,17 @@ impl IdentityConfig {
         }
     }
 
-    pub async fn get(&self, ctx: &ockam::Context, vault: &Vault) -> Result<Identity<Vault>> {
+    pub async fn get(
+        &self,
+        ctx: &ockam::Context,
+        vault: &Vault,
+    ) -> Result<Identity<Vault, LmdbStorage>> {
         let data = self.change_history.export()?;
-        Ok(Identity::import(ctx, &data, vault).await?)
+        let storage = CliState::new()?.identities.authenticated_storage().await?;
+        Ok(
+            Identity::import_ext(ctx, &data, &storage, &SecureChannelRegistry::new(), vault)
+                .await?,
+        )
     }
 }
 
@@ -396,10 +540,14 @@ impl Display for EnrollmentStatus {
             writeln!(f, "Enrolled: no")?;
         }
 
-        match self.created_at.duration_since(UNIX_EPOCH) {
-            Ok(time) => writeln!(f, "Timestamp: {}", time.as_secs())?,
-            Err(err) => writeln!(f, "Error converting SystemTime to POSIX timestamp. {}", err)?,
-        }
+        // match OffsetDateTime::from(self.created_at).format(&Iso8601::DEFAULT) {
+        //     Ok(time_str) => writeln!(f, "Timestamp: {}", time_str)?,
+        //     Err(err) => writeln!(
+        //         f,
+        //         "Error formatting OffsetDateTime as Iso8601 String: {}",
+        //         err
+        //     )?,
+        // }
 
         Ok(())
     }
@@ -524,22 +672,6 @@ impl NodesState {
 
         Ok(())
     }
-
-    fn vault_name(&self, name: &str) -> Result<String> {
-        let mut path = self.dir.clone();
-        path.push(name);
-        path.push("default_vault");
-        let path = std::fs::canonicalize(&path)?;
-        file_stem(&path)
-    }
-
-    fn identity_name(&self, name: &str) -> Result<String> {
-        let mut path = self.dir.clone();
-        path.push(name);
-        path.push("default_identity");
-        let path = std::fs::canonicalize(&path)?;
-        file_stem(&path)
-    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -590,10 +722,6 @@ impl NodeState {
 
     pub fn stderr_log(&self) -> PathBuf {
         self.path.join("stderr.log")
-    }
-
-    pub fn authenticated_storage_path(&self) -> PathBuf {
-        self.path.join("authenticated_storage.lmdb")
     }
 
     pub fn policies_storage_path(&self) -> PathBuf {
@@ -657,7 +785,12 @@ impl NodeConfig {
         config.get().await
     }
 
-    pub async fn identity(&self, ctx: &ockam::Context) -> Result<Identity<Vault>> {
+    pub fn identity_config(&self) -> Result<IdentityConfig> {
+        let path = std::fs::canonicalize(&self.default_identity)?;
+        Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
+    }
+
+    pub async fn identity(&self, ctx: &ockam::Context) -> Result<Identity<Vault, LmdbStorage>> {
         let vault = self.vault().await?;
         let path = std::fs::canonicalize(&self.default_identity)?;
         let config: IdentityConfig = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
@@ -732,8 +865,6 @@ enum NodeConfigVersion {
 }
 
 impl NodeConfigVersion {
-    const FILE_NAME: &'static str = "version";
-
     fn latest() -> Self {
         Self::V1
     }
@@ -801,6 +932,91 @@ impl TryFrom<&PathBuf> for NodeSetupConfig {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ProjectsState {
+    dir: PathBuf,
+}
+
+impl ProjectsState {
+    fn new(cli_path: &Path) -> Result<Self> {
+        let dir = cli_path.join("projects");
+        std::fs::create_dir_all(dir.join("data"))?;
+        Ok(Self { dir })
+    }
+
+    pub async fn create(&self, name: &str, config: Project<'_>) -> Result<ProjectState> {
+        let path = {
+            let mut path = self.dir.clone();
+            path.push(format!("{}.json", name));
+            if path.exists() {
+                return Err(CliStateError::AlreadyExists(format!("project `{name}`")));
+            }
+            path
+        };
+        let contents = serde_json::to_string(&config)?;
+        std::fs::write(&path, contents)?;
+        if !self.default_path()?.exists() {
+            self.set_default(name)?;
+        }
+
+        Ok(ProjectState { path })
+    }
+
+    pub fn get(&self, name: &str) -> Result<ProjectState> {
+        let path = {
+            let mut path = self.dir.clone();
+            path.push(format!("{}.json", name));
+            if !path.exists() {
+                return Err(CliStateError::NotFound(format!("project `{name}`")));
+            }
+            path
+        };
+        Ok(ProjectState { path })
+    }
+
+    pub fn default_path(&self) -> Result<PathBuf> {
+        Ok(CliState::defaults_dir()?.join("project"))
+    }
+
+    pub fn default(&self) -> Result<ProjectState> {
+        let path = std::fs::canonicalize(self.default_path()?)?;
+        Ok(ProjectState { path })
+    }
+
+    pub fn set_default(&self, name: &str) -> Result<ProjectState> {
+        let original = {
+            let mut path = self.dir.clone();
+            path.push(format!("{}.json", name));
+            if !path.exists() {
+                return Err(CliStateError::NotFound(format!("project `{name}`")));
+            }
+            path
+        };
+        let link = self.default_path()?;
+        std::os::unix::fs::symlink(original, link)?;
+        self.get(name)
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ProjectState {
+    pub path: PathBuf,
+}
+
+impl ProjectState {
+    pub fn name(&self) -> Result<String> {
+        self.path
+            .file_stem()
+            .and_then(|s| s.to_os_string().into_string().ok())
+            .ok_or_else(|| {
+                CliStateError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "failed to parse the project name",
+                ))
+            })
+    }
+}
+
 pub fn random_name() -> String {
     hex::encode(random::<[u8; 4]>())
 }
@@ -847,7 +1063,10 @@ mod tests {
             let name = hex::encode(rand::random::<[u8; 4]>());
             let vault_config = sut.vaults.get(&vault_name).unwrap().config;
             let vault = vault_config.get().await.unwrap();
-            let identity = Identity::create(ctx, &vault).await.unwrap();
+            let identity =
+                Identity::create_ext(ctx, &sut.identities.authenticated_storage().await?, &vault)
+                    .await
+                    .unwrap();
             let config = IdentityConfig::new(&identity).await;
 
             let state = sut.identities.create(&name, config).unwrap();
@@ -883,8 +1102,11 @@ mod tests {
             format!("vaults/data/{vault_name}-storage.json"),
             "identities".to_string(),
             format!("identities/{identity_name}.json"),
+            "identities/data/authenticated_storage.lmdb".to_string(),
             "nodes".to_string(),
             format!("nodes/{node_name}"),
+            "projects".to_string(),
+            "projects/data".to_string(),
             "defaults".to_string(),
             "defaults/vault".to_string(),
             "defaults/identity".to_string(),
@@ -924,9 +1146,23 @@ mod tests {
                     found_entries.push(dir_name.clone());
                     entry.path().read_dir().unwrap().for_each(|entry| {
                         let entry = entry.unwrap();
-                        assert!(entry.path().is_file());
-                        let file_name = entry.file_name().into_string().unwrap();
-                        found_entries.push(format!("{dir_name}/{file_name}"));
+                        let entry_name = entry.file_name().into_string().unwrap();
+                        if entry.path().is_dir() {
+                            assert_eq!(entry_name, "data");
+                            entry.path().read_dir().unwrap().for_each(|entry| {
+                                let entry = entry.unwrap();
+                                let file_name = entry.file_name().into_string().unwrap();
+                                if !file_name.ends_with("-lock") {
+                                    found_entries
+                                        .push(format!("{dir_name}/{entry_name}/{file_name}"));
+                                    assert_eq!(file_name, format!("authenticated_storage.lmdb"));
+                                }
+                            })
+                        } else {
+                            assert!(entry.path().is_file());
+                            let file_name = entry.file_name().into_string().unwrap();
+                            found_entries.push(format!("{dir_name}/{file_name}"));
+                        }
                     });
                 }
                 "nodes" => {
@@ -946,6 +1182,16 @@ mod tests {
                         let entry = entry.unwrap();
                         let entry_name = entry.file_name().into_string().unwrap();
                         found_entries.push(format!("{dir_name}/{entry_name}"));
+                    });
+                }
+                "projects" => {
+                    assert!(entry.path().is_dir());
+                    found_entries.push(dir_name.clone());
+                    entry.path().read_dir().unwrap().for_each(|entry| {
+                        let entry = entry.unwrap();
+                        assert!(entry.path().is_dir());
+                        let file_name = entry.file_name().into_string().unwrap();
+                        found_entries.push(format!("{dir_name}/{file_name}"));
                     });
                 }
                 _ => panic!("unexpected file"),

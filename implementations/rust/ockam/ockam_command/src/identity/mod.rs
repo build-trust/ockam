@@ -1,7 +1,11 @@
 mod create;
+mod delete;
+mod list;
 mod show;
 
 pub(crate) use create::CreateCommand;
+pub(crate) use delete::DeleteCommand;
+pub(crate) use list::ListCommand;
 pub(crate) use show::ShowCommand;
 
 use crate::CommandGlobalOpts;
@@ -20,6 +24,9 @@ pub enum IdentitySubcommand {
     Create(CreateCommand),
     /// Print short existing identity, `--full` for long identity
     Show(ShowCommand),
+    /// Print all existing identities, `--full` for long identities
+    List(ListCommand),
+    Delete(DeleteCommand),
 }
 
 impl IdentityCommand {
@@ -27,6 +34,8 @@ impl IdentityCommand {
         match self.subcommand {
             IdentitySubcommand::Create(c) => c.run(options),
             IdentitySubcommand::Show(c) => c.run(options),
+            IdentitySubcommand::List(c) => c.run(options),
+            IdentitySubcommand::Delete(c) => c.run(options),
         }
     }
 }

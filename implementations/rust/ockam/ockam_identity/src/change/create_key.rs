@@ -1,3 +1,4 @@
+use crate::authenticated_storage::AuthenticatedStorage;
 use crate::change::{IdentityChange, IdentitySignedChange, Signature, SignatureType};
 use crate::change_history::IdentityChangeHistory;
 use crate::IdentityError::InvalidInternalState;
@@ -57,7 +58,7 @@ impl fmt::Display for CreateKeyChangeData {
     }
 }
 
-impl<V: IdentityVault> Identity<V> {
+impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     async fn generate_key_if_needed(
         secret: Option<&KeyId>,
         key_attributes: &KeyAttributes,

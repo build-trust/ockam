@@ -1,6 +1,5 @@
 use ockam::access_control::AllowAll;
 use ockam::{
-    authenticated_storage::InMemoryStorage,
     identity::{Identity, TrustEveryonePolicy},
     route,
     stream::Stream,
@@ -36,12 +35,9 @@ async fn main(ctx: Context) -> Result<()> {
     // Create an Identity to represent Bob.
     let bob = Identity::create(&ctx, &vault).await?;
 
-    // Create an AuthenticatedStorage to store info about Bob's known Identities.
-    let storage = InMemoryStorage::new();
-
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", TrustEveryonePolicy, &storage)
+    bob.create_secure_channel_listener("listener", TrustEveryonePolicy)
         .await?;
 
     // Connect, over TCP, to the cloud node at `1.node.ockam.network:4000` and

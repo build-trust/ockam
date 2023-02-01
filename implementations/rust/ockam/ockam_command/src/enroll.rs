@@ -11,14 +11,13 @@ use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{debug, info};
 
 use ockam::Context;
-use ockam_api::cli_state::EnrollmentStatus;
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::{OktaAuth0, Project};
 use ockam_api::cloud::space::Space;
 use ockam_core::api::Status;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::project::util::check_project_readiness;
+use crate::project::util::{check_project_readiness, project_enroll_admin};
 use crate::space::util::config;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
@@ -46,7 +45,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, EnrollCommand)) -> R
 }
 
 async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) -> Result<()> {
-    let node_name = start_embedded_node(ctx, &opts).await?;
+    let node_name = start_embedded_node(ctx, &opts, None).await?;
 
     enroll(ctx, &opts, &cmd, &node_name).await?;
 
@@ -54,8 +53,23 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     let space = default_space(ctx, &opts, &cloud_opts, &node_name).await?;
     default_project(ctx, &opts, &cloud_opts, &node_name, &space).await?;
     update_enrolled_identity(ctx, &opts, &node_name).await?;
+    enroll_admin_to_all_their_projects(ctx, &opts, &cloud_opts, &node_name).await?;
     delete_embedded_node(&opts, &node_name).await;
 
+    Ok(())
+}
+
+async fn enroll_admin_to_all_their_projects(
+    ctx: &Context,
+    opts: &CommandGlobalOpts,
+    cloud_opts: &CloudOpts,
+    node_name: &str,
+) -> Result<()> {
+    let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
+    rpc.request(api::project::list(&cloud_opts.route())).await?;
+    for project in rpc.parse_response::<Vec<Project>>()? {
+        project_enroll_admin(ctx, opts, node_name, &project).await?;
+    }
     Ok(())
 }
 
@@ -147,7 +161,6 @@ async fn default_project<'a>(
         rpc.request(api::project::create(
             "default",
             &space.id,
-            None,
             &cloud_opts.route(),
         ))
         .await?;
@@ -167,6 +180,11 @@ async fn default_project<'a>(
     let project =
         check_project_readiness(ctx, opts, cloud_opts, node_name, None, default_project).await?;
     println!("{}", project.output()?);
+
+    opts.state
+        .projects
+        .create(&project.name, project.clone())
+        .await?;
     Ok(project)
 }
 
@@ -372,8 +390,7 @@ async fn update_enrolled_identity(
 
     for mut identity in identities {
         if node_identity.identifier() == &identity.config.identifier {
-            identity.config.enrollment_status = Some(EnrollmentStatus::enrolled());
-            identity.save()?;
+            identity.set_enrollment_status()?;
         }
     }
 

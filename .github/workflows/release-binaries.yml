@@ -26,7 +26,7 @@ jobs:
       tag_name: ${{ steps.release_version.outputs.tag_name }}
     steps:
       - name: Checkout Ockam
-        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.release_branch }}
@@ -221,7 +221,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout repository
-      uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
       with:
         ref: ${{ github.event.inputs.release_branch }}
 
@@ -327,17 +327,17 @@ jobs:
           release_path: implementations/elixir/ockam/ockam_vault_software/_build/dev/lib/ockam_vault_software/priv/native
           release_asset_name: ockam.linux_x86_64_gnu_elixir_ffi.so
           target: x86_64-unknown-linux-musl
-          container: ghcr.io/build-trust/ockam-builder@sha256:dac128554a96b302b6907bda7b677b1832d7952b35e0b35c4f6402cf15fe03e3
+          container: ghcr.io/build-trust/ockam-builder@sha256:3b2f698e164cd8a543e3b1fc121d219f039889850c13e51e91778185dbfd9719
         - build: linux_arm
           os: ubuntu-20.04
           release_path: implementations/elixir/ockam/ockam_vault_software/_build/dev/lib/ockam_vault_software/priv/native
           release_asset_name: ockam.linux_aarch64_gnu_elixir_ffi.so
           target: aarch64-unknown-linux-musl
-          container: ghcr.io/build-trust/ockam-builder:latest@sha256:ff8ec352d0ceca974f04f262a5706b881b9a0b8b2d77f65a470b28e1191a2947
+          container: ghcr.io/build-trust/ockam-builder@sha256:97e76d108d946b34fac2d23e0866167b092ef8e1c5af50123a6e222f83577a8c
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
           ref: ${{ github.event.inputs.release_branch }}
 
@@ -356,7 +356,7 @@ jobs:
 
       - name: Build Rust Asset
         if: matrix.build != 'macos'
-        uses: docker://ghcr.io/build-trust/ockam-builder@sha256:dac128554a96b302b6907bda7b677b1832d7952b35e0b35c4f6402cf15fe03e3
+        uses: docker://ghcr.io/build-trust/ockam-builder@sha256:3b2f698e164cd8a543e3b1fc121d219f039889850c13e51e91778185dbfd9719
         with:
           args: |
             bash -c "export PRIVATE_KEY='${{ secrets.COSIGN_PRIVATE_KEY }}' && export COSIGN_PASSWORD='${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}';
@@ -368,7 +368,7 @@ jobs:
         if: matrix.build != 'macos'
         run: |
           docker run --rm --user "$(id -u):$(id -g)" --volume $(pwd):/work ${{ matrix.container }} bash -c \
-            "cd implementations/elixir/ockam/ockam_vault_software; mix recompile.native; cd _build/dev/lib/ockam_vault_software/priv/native; PRIVATE_KEY='${{ secrets.COSIGN_PRIVATE_KEY }}' COSIGN_PASSWORD='${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}' cosign sign-blob --key env://PRIVATE_KEY libockam_elixir_ffi.so > libockam_elixir_ffi.so.sig;";
+            "cd implementations/elixir/ockam/ockam_vault_software; mix recompile.native; ";
 
       - name: Build NIF For MacOS
         if: matrix.build == 'macos'
@@ -384,11 +384,9 @@ jobs:
           ./build-elixir-universal-lib.sh
 
       - name: Install Cosign
-        if: matrix.build == 'macos'
         uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b
 
       - name: Sign NIFs
-        if: matrix.build == 'macos'
         shell: bash
         working-directory: ${{ matrix.release_path }}
         env:

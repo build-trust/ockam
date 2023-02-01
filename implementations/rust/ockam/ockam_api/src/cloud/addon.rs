@@ -23,15 +23,79 @@ pub struct Addon<'a> {
     pub enabled: bool,
 }
 
+#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct ConfluentConfig<'a> {
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[cbor(n(0))] pub tag: TypeTag<1697996>,
+
+    #[serde(borrow)]
+    #[cbor(b(1))] pub bootstrap_server: CowStr<'a>,
+
+    #[serde(borrow)]
+    #[cbor(b(2))] pub api_key: CowStr<'a>,
+
+    #[serde(borrow)]
+    #[cbor(b(3))] pub api_secret: CowStr<'a>,
+}
+
+impl<'a> ConfluentConfig<'a> {
+    pub fn new<S: Into<CowStr<'a>>>(bootstrap_server: S, api_key: S, api_secret: S) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            bootstrap_server: bootstrap_server.into(),
+            api_key: api_key.into(),
+            api_secret: api_secret.into(),
+        }
+    }
+}
+
+#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct ConfluentConfigResponse<'a> {
+    #[cfg(feature = "tag")]
+    #[serde(skip)]
+    #[cbor(n(0))] pub tag: TypeTag<6434816>,
+
+    #[serde(borrow)]
+    #[cbor(b(1))] pub bootstrap_server: CowStr<'a>,
+}
+
+impl<'a> ConfluentConfigResponse<'a> {
+    pub fn new<S: Into<CowStr<'a>>>(bootstrap_server: S) -> Self {
+        Self {
+            #[cfg(feature = "tag")]
+            tag: TypeTag,
+            bootstrap_server: bootstrap_server.into(),
+        }
+    }
+}
+
+impl ConfluentConfigResponse<'_> {
+    pub fn to_owned<'r>(&self) -> ConfluentConfigResponse<'r> {
+        ConfluentConfigResponse {
+            #[cfg(feature = "tag")]
+            tag: self.tag.to_owned(),
+            bootstrap_server: self.bootstrap_server.to_owned(),
+        }
+    }
+}
+
 mod node {
-    use minicbor::Decoder;
+    use minicbor::{Decode, Decoder, Encode};
+    use ockam::AsyncTryClone;
     use tracing::trace;
 
     use ockam_core::api::Request;
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
-    use crate::cloud::project::OktaConfig;
+    use crate::cloud::addon::ConfluentConfig;
+    use crate::cloud::project::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::error::ApiError;
     use crate::nodes::NodeManagerWorker;
@@ -53,6 +117,12 @@ mod node {
             trace!(target: TARGET, project_id, "listing addons");
 
             let req_builder = Request::get(format!("/v0/{project_id}/addons"));
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
             self.request_controller(
                 ctx,
                 label,
@@ -60,7 +130,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -72,26 +142,51 @@ mod node {
             project_id: &str,
             addon_id: &str,
         ) -> Result<Vec<u8>> {
+            // TODO: Add on ids should not be magic strings
             match addon_id {
-                "okta" => self.configure_okta_addon(ctx, dec, project_id).await,
+                "okta" => {
+                    self.configure_addon_impl::<OktaConfig>(ctx, dec, project_id, addon_id)
+                        .await
+                }
+                "influxdb_token_lease_manager" => {
+                    self.configure_addon_impl::<InfluxDBTokenLeaseManagerConfig>(
+                        ctx, dec, project_id, addon_id,
+                    )
+                    .await
+                }
+                "confluent" => {
+                    self.configure_addon_impl::<ConfluentConfig>(ctx, dec, project_id, addon_id)
+                        .await
+                }
                 _ => Err(ApiError::generic(&format!("Unknown addon: {addon_id}"))),
             }
         }
 
-        async fn configure_okta_addon(
+        async fn configure_addon_impl<'a, T: Encode<()> + Decode<'a, ()>>(
             &mut self,
             ctx: &mut Context,
-            dec: &mut Decoder<'_>,
+            dec: &mut Decoder<'a>,
             project_id: &str,
+            addon_id: &str,
         ) -> Result<Vec<u8>> {
-            let req_wrapper: CloudRequestWrapper<OktaConfig> = dec.decode()?;
+            let ident = self
+                .get()
+                .read()
+                .await
+                .identity()?
+                .async_try_clone()
+                .await?;
+
+            let label = "configure_addon";
+            trace!(target: TARGET, project_id, addon_id, "configuring addon");
+
+            let req_wrapper: CloudRequestWrapper<T> = dec.decode()?;
             let cloud_route = req_wrapper.route()?;
             let req_body = req_wrapper.req;
 
-            let label = "configure_okta_addon";
-            trace!(target: TARGET, project_id, "configuring okta addon");
+            let req_builder =
+                Request::put(format!("/v0/{project_id}/addons/{addon_id}")).body(req_body);
 
-            let req_builder = Request::put(format!("/v0/{project_id}/addons/okta")).body(req_body);
             self.request_controller(
                 ctx,
                 label,
@@ -99,7 +194,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -118,6 +213,12 @@ mod node {
             trace!(target: TARGET, project_id, addon_id, "disabling addon");
 
             let req_builder = Request::delete(format!("/v0/{project_id}/addons/{addon_id}"));
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
             self.request_controller(
                 ctx,
                 label,
@@ -125,7 +226,7 @@ mod node {
                 cloud_route,
                 API_SERVICE,
                 req_builder,
-                None,
+                ident,
             )
             .await
         }

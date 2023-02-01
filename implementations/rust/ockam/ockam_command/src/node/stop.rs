@@ -1,13 +1,16 @@
-use crate::node::util::default_node_name;
+use crate::node::default_node_name;
 use crate::{help, node::HELP_DETAIL, CommandGlobalOpts};
 use clap::Args;
 
 /// Stop a node
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, after_long_help = help::template(HELP_DETAIL))]
+#[command(
+    after_long_help = help::template(HELP_DETAIL)
+)]
 pub struct StopCommand {
     /// Name of the node.
-    node_name: Option<String>,
+    #[arg(default_value_t = default_node_name())]
+    node_name: String,
     /// Whether to use the SIGTERM or SIGKILL signal to stop the node
     #[arg(long)]
     force: bool,
@@ -23,11 +26,7 @@ impl StopCommand {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: StopCommand) -> crate::Result<()> {
-    let node_name = &match cmd.node_name {
-        Some(name) => name,
-        None => default_node_name(&opts),
-    };
-    let node_state = opts.state.nodes.get(node_name)?;
+    let node_state = opts.state.nodes.get(&cmd.node_name)?;
     node_state.kill_process(cmd.force)?;
     Ok(())
 }

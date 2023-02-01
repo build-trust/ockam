@@ -9,6 +9,9 @@ if [[ -z $OCKAM_PUBLISH_TOKEN ]]; then
   exit 1
 fi
 
+# Get the tag before release
+GIT_TAG=$(git describe --abbrev=0 --tags $(git rev-list --tags --skip=1 --max-count=1))
+
 source tools/scripts/release/crates-to-publish.sh
 
 declare -A bumped_crates
@@ -19,7 +22,7 @@ for crate in "${updated_crates[@]}"; do
   bumped_crates[$name]=true
 done
 
-crates_specified_to_be_excluded=("$OCKAM_PUBLISH_EXCLUDE_CRATES")
+IFS=" " read -r -a crates_specified_to_be_excluded <<<"$OCKAM_PUBLISH_EXCLUDE_CRATES"
 exclude_string=""
 
 # Get crates that are indicated to be excluded.
@@ -70,4 +73,4 @@ if [[ $OCKAM_PUBLISH_RECENT_FAILURE == true ]]; then
   done
 fi
 
-echo y | cargo release release --config tools/scripts/release/release.toml --no-tag --no-verify --no-dev-version "$exclude_string" --token "$OCKAM_PUBLISH_TOKEN" --execute
+echo y | cargo release release --config tools/scripts/release/release.toml --no-tag --no-verify --no-dev-version $exclude_string --token "$OCKAM_PUBLISH_TOKEN" --execute

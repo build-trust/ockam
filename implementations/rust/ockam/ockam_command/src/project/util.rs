@@ -2,16 +2,19 @@ use std::io::Write;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context as _, Result};
+use ockam_core::api::Request;
 use tracing::debug;
 
 use ockam::identity::IdentityIdentifier;
 use ockam::TcpTransport;
+use ockam_api::authenticator::direct::types::AddMember;
 use ockam_api::cloud::project::Project;
 use ockam_api::config::lookup::{LookupMeta, ProjectAuthority, ProjectLookup};
 use ockam_api::multiaddr_to_addr;
-use ockam_api::nodes::models::secure_channel::*;
+use ockam_api::nodes::models::{self, secure_channel::*};
 use ockam_multiaddr::{MultiAddr, Protocol};
 
+use crate::project::enroll::replace_project;
 use crate::util::api::CloudOpts;
 use crate::util::{api, RpcBuilder};
 use crate::{CommandGlobalOpts, OckamConfig};
@@ -86,6 +89,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 project_access_route,
                 &project_identity_id,
                 credential_exchange_mode,
+                None,
             )
             .await?,
         );
@@ -97,7 +101,8 @@ pub async fn get_projects_secure_channels_from_config_lookup(
     Ok(sc)
 }
 
-async fn create_secure_channel_to_project(
+#[allow(clippy::too_many_arguments)]
+pub async fn create_secure_channel_to_project(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
     api_node: &str,
@@ -105,15 +110,20 @@ async fn create_secure_channel_to_project(
     project_access_route: &MultiAddr,
     project_identity: &str,
     credential_exchange_mode: CredentialExchangeMode,
+    identity: Option<String>,
 ) -> crate::Result<MultiAddr> {
     let authorized_identifier = vec![IdentityIdentifier::from_str(project_identity)?];
     let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
-    rpc.request(api::create_secure_channel(
+
+    let payload = models::secure_channel::CreateSecureChannelRequest::new(
         project_access_route,
         Some(authorized_identifier),
         credential_exchange_mode,
-    ))
-    .await?;
+        identity,
+    );
+    let req = Request::post("/node/secure_channel").body(payload);
+    rpc.request(req).await?;
+
     let sc = rpc.parse_response::<CreateSecureChannelResponse>()?;
     Ok(sc.addr()?)
 }
@@ -124,16 +134,19 @@ pub async fn create_secure_channel_to_authority(
     node_name: &str,
     authority: &ProjectAuthority,
     addr: &MultiAddr,
+    identity: Option<String>,
 ) -> crate::Result<MultiAddr> {
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
     debug!(%addr, "establishing secure channel to project authority");
     let allowed = vec![authority.identity_id().clone()];
-    rpc.request(api::create_secure_channel(
+    let payload = models::secure_channel::CreateSecureChannelRequest::new(
         addr,
         Some(allowed),
         CredentialExchangeMode::None,
-    ))
-    .await?;
+        identity,
+    );
+    let req = Request::post("/node/secure_channel").body(payload);
+    rpc.request(req).await?;
     let res = rpc.parse_response::<CreateSecureChannelResponse>()?;
     let addr = res.addr()?;
     Ok(addr)
@@ -165,7 +178,7 @@ pub async fn check_project_readiness<'a>(
     config::set_project_id(&opts.config, &project).await?;
 
     if !project.is_ready() {
-        print!("Project created. Waiting for it be ready...");
+        print!("Project created. Waiting for it to be ready...");
         let cloud_route = &cloud_opts.route();
         loop {
             print!(".");
@@ -211,6 +224,7 @@ pub async fn check_project_readiness<'a>(
             &project_route,
             &project_identity,
             CredentialExchangeMode::None,
+            None,
         )
         .await
         {
@@ -231,6 +245,7 @@ pub async fn check_project_readiness<'a>(
                         &project_route,
                         &project_identity,
                         CredentialExchangeMode::None,
+                        None,
                     )
                     .await
                     {
@@ -249,11 +264,48 @@ pub async fn check_project_readiness<'a>(
     Ok(project)
 }
 
+pub async fn project_enroll_admin(
+    ctx: &ockam::Context,
+    opts: &CommandGlobalOpts,
+    node_name: &str,
+    project: &Project<'_>,
+) -> Result<()> {
+    println!("Enrolling as a member of the project...");
+    let node_state = opts.state.nodes.get(node_name)?;
+    let identifier = node_state.config.identity_config()?.identifier;
+    let authority =
+        ProjectAuthority::from_raw(&project.authority_access_route, &project.authority_identity)
+            .await?
+            .ok_or_else(|| anyhow!("Authority details not configured"))?;
+    let worker_addr =
+        MultiAddr::from_str(&format!("/project/{}/service/authenticator", &project.name))?;
+    let authenticator_address = replace_project(&worker_addr, authority.address())?;
+    let to = {
+        let mut addr = create_secure_channel_to_authority(
+            ctx,
+            opts,
+            node_name,
+            &authority,
+            &authenticator_address,
+            None,
+        )
+        .await?;
+        for proto in worker_addr.iter().skip(1) {
+            addr.push_back_value(&proto).map_err(anyhow::Error::from)?
+        }
+        addr
+    };
+
+    let req = Request::post("/members").body(AddMember::new(identifier));
+    let mut rpc = RpcBuilder::new(ctx, opts, node_name).to(&to)?.build();
+    rpc.request(req).await?;
+    rpc.is_ok()
+}
+
 pub mod config {
     use crate::util::output::Output;
     use ockam::Context;
-    use ockam_api::cloud::project::OktaAuth0;
-    use ockam_api::config::lookup::ProjectAuthority;
+
     use tracing::trace;
 
     use super::*;
@@ -265,34 +317,10 @@ pub mod config {
                 "Project is not ready yet, wait a few seconds and try again"
             ));
         }
-        let node_route: MultiAddr = project
-            .access_route
-            .as_ref()
-            .try_into()
-            .context("Invalid project node route")?;
-        let pid = project
-            .identity
-            .as_ref()
-            .context("Project should have identity set")?;
-        let authority = ProjectAuthority::from_raw(
-            &project.authority_access_route,
-            &project.authority_identity,
-        )
-        .await?;
-        let okta = project.okta_config.as_ref().map(|o| OktaAuth0 {
-            tenant_base_url: o.tenant_base_url.to_string(),
-            client_id: o.client_id.to_string(),
-            certificate: o.certificate.to_string(),
-        });
+
         config.set_project_alias(
             project.name.to_string(),
-            ProjectLookup {
-                node_route: Some(node_route),
-                id: project.id.to_string(),
-                identity_id: Some(pid.clone()),
-                authority,
-                okta,
-            },
+            ProjectLookup::from_project(project).await?,
         )?;
         Ok(())
     }

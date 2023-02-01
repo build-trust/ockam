@@ -33,9 +33,9 @@ jobs:
     name: All - Build
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:60e2c1e45d54e31b50f3e56fe202276ecc4812ccac88c84c9af8910cf787a81d
+      image: ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348
     steps:
-      - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
       - uses: ./.github/actions/gradle_cache
       - uses: ./.github/actions/cargo_home_cache
       - uses: ./.github/actions/cargo_target_dir_cache
@@ -51,7 +51,7 @@ jobs:
         java: [8, 11, 16, 17]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
       - uses: actions/setup-java@1df8dbefe2a8cbc99770194893dd902763bee34b
         with:
           distribution: 'temurin'

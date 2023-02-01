@@ -1,6 +1,6 @@
 [package]
 name = "ockam_identity"
-version = "0.65.0"
+version = "0.67.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
@@ -28,7 +28,6 @@ lease_proto_json = ["serde_json"]
 std = [
     "ockam_core/std",
     "ockam_macros/std",
-    "ockam_channel/std",
     "ockam_key_exchange_core/std",
     "ockam_key_exchange_xx/std",
     "ockam_node/std",
@@ -43,7 +42,6 @@ std = [
 no_std = [
     "ockam_core/no_std",
     "ockam_macros/no_std",
-    "ockam_channel/no_std",
     "ockam_key_exchange_core/no_std",
     "ockam_key_exchange_xx/no_std",
     "ockam_node/no_std",
@@ -54,7 +52,6 @@ no_std = [
 # platforms, requires nightly.
 alloc = [
     "ockam_core/alloc",
-    "ockam_channel/alloc",
     "ockam_key_exchange_core/alloc",
     "ockam_key_exchange_xx/alloc",
     "ockam_node/alloc",
@@ -64,13 +61,12 @@ alloc = [
 ]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.71.0", default-features = false }
-ockam_macros = { path = "../ockam_macros", version = "^0.25.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.74.0", default-features = false }
-ockam_vault = { path = "../ockam_vault", version = "^0.67.0", default-features = false, optional = true }
-ockam_channel = { path = "../ockam_channel", version = "^0.71.0", default-features = false }
-ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.67.0", default-features = false, optional = true }
-ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.62.0", default-features = false }
+ockam_core = { path = "../ockam_core", version = "^0.73.0", default-features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.26.0", default-features = false }
+ockam_node = { path = "../ockam_node", version = "^0.76.0", default-features = false }
+ockam_vault = { path = "../ockam_vault", version = "^0.69.0", default-features = false, optional = true }
+ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.69.0", default-features = false, optional = true }
+ockam_key_exchange_core = { path = "../ockam_key_exchange_core", version = "^0.64.0", default-features = false }
 serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
 minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
 cfg-if = "1.0.0"
@@ -87,8 +83,8 @@ hex = { version = "0.4", default-features = false }
 
 [dev-dependencies]
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
-ockam_vault = { path = "../ockam_vault", version = "^0.67.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.69.0" }
 zeroize = { version = "1.4.2" }
 quickcheck = "1.0.3"
 rand_xorshift = "0"
-tokio = { version = "1.8", features = ["full"] }
+tokio = { version = "1.25", features = ["full"] }

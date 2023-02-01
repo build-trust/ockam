@@ -1,4 +1,5 @@
 use crate::VaultError;
+use cfg_if::cfg_if;
 use fs2::FileExt; //locking
 use ockam_core::compat::boxed::Box;
 use ockam_core::errcode::{Kind, Origin};
@@ -85,6 +86,7 @@ impl FileStorage {
     fn open_lock_file(lock_path: &PathBuf) -> Result<File> {
         std::fs::OpenOptions::new()
             .write(true)
+            .read(true)
             .create(true)
             .open(lock_path)
             .map_err(map_io_err)
@@ -118,17 +120,24 @@ impl FileStorage {
     ) -> Result<()> {
         let data = serde_json::to_vec(vault).map_err(|_| VaultError::StorageError)?;
         use std::io::prelude::*;
-        use std::os::unix::prelude::*;
-        let _ = std::fs::remove_file(temp_path);
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            // `create_new` means we error if it exists. This ensures the mode we
-            // provide is respect (the `mode(0o600)` is only used if creating the
-            // file)
-            .create_new(true)
-            .mode(0o600) // TODO: not portable, what about windows?
-            .open(temp_path)
-            .map_err(|_| VaultError::StorageError)?;
+
+        cfg_if! {
+            if #[cfg(windows)] {
+                let mut file = std::fs::OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .open(temp_path)
+                    .map_err(|_| VaultError::StorageError)?;
+            } else {
+                use std::os::unix::fs::OpenOptionsExt;
+                let mut file = std::fs::OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .mode(0o600)
+                    .open(temp_path)
+                    .map_err(|_| VaultError::StorageError)?;
+            }
+        }
         file.write_all(&data)
             .map_err(|_| VaultError::StorageError)?;
         file.flush().map_err(|_| VaultError::StorageError)?;

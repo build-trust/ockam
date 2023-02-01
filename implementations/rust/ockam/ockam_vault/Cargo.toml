@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault"
-version = "0.67.0"
+version = "0.69.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
@@ -24,7 +24,7 @@ rust-version = "1.56.0"
 crate-type = ["rlib"]
 
 [features]
-default = ["std", "storage"]
+default = ["std", "storage", "rustcrypto"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
@@ -63,12 +63,13 @@ alloc = ["ockam_core/alloc", "ockam_node/alloc", "aes-gcm/alloc", "p256/ecdsa", 
 storage = ["std", "serde", "serde_json"]
 
 aws        = ["std", "aws-config", "aws-sdk-kms", "thiserror"]
+# FIXME: Either remove that feature, or avoid unneccessary dependencies when it's disabled
 rustcrypto = []
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.71.0", default_features = false }
-ockam_macros = { path = "../ockam_macros", version = "^0.25.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.74.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.73.0", default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.26.0", default-features = false }
+ockam_node = { path = "../ockam_node", version = "^0.76.0", default_features = false }
 arrayref = "0.3"
 aes-gcm = { version = "0.9", default-features = false, features = ["aes"] }
 cfg-if  = "1.0.0"
@@ -89,8 +90,8 @@ aws-config  = { version = "0.51.0", optional = true }
 aws-sdk-kms = { version = "0.21.0", optional = true }
 thiserror   = { version = "1.0.38", optional = true }
 # ECDSA providers:
-p256 = { version = "0.11.1", default_features = false }
+p256 = { version = "0.12.0", default_features = false }
 
 [dev-dependencies]
-tokio = { version = "1.8", features = ["full"] }
+tokio = { version = "1.25", features = ["full"] }
 trybuild = { version = "1.0", features = ["diff"] }

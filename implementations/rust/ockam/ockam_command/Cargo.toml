@@ -24,7 +24,7 @@ readme = "README.md"
 repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/ockam_command"
 rust-version = "1.58.1"
 publish = true
-version = "0.77.0"
+version = "0.79.0"
 
 [package.metadata.cross.target.aarch64-unknown-linux-musl]
 dockerfile = "../../../../tools/cross/Cross.Dockerfile.aarch64"
@@ -54,9 +54,9 @@ test = false
 anyhow = "1"
 async-recursion = { version = "1.0.0" }
 async-trait = "0.1"
-clap = { version = "4.0.32", features = ["derive", "cargo", "wrap_help"] }
+clap = { version = "4.1.4", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.0.7"
-clap_mangen = "0.2.6"
+clap_mangen = "0.2.7"
 cli-table = "0.4"
 const-str = "0.5.3"
 crossbeam-channel = "0.5"
@@ -87,22 +87,22 @@ tracing-error = "0.2"
 tracing-subscriber = "0.3.9"
 validator = "0.16"
 colorful = "0.2"
-regex = "1.7.0"
-rustls = "0.20.7"
+regex = "1.7.1"
+rustls = "0.20.8"
 rustls-native-certs = "0.6.2"
 pem-rfc7468 = { version = "0.6.0", features = ["std"]}
-
-ockam = { path = "../ockam", version = "^0.77.0", features = ["software_vault"] }
-ockam_abac = { path = "../ockam_abac", version = "0.11.0", features = ["std"] }
-ockam_api = { path = "../ockam_api", version = "0.20.0", features = ["std", "authenticators"] }
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.11.0", features = ["std"] }
-ockam_vault = { path = "../ockam_vault", version = "^0.67.0", features = ["storage", "aws", "rustcrypto"] }
-ockam_core = { path = "../ockam_core", version = "^0.71.0" }
-ockam_identity = { path = "../ockam_identity", version = "^0.65.0" }
+termimad = "0.20"
+ockam = { path = "../ockam", version = "^0.79.0", features = ["software_vault"] }
+ockam_abac = { path = "../ockam_abac", version = "0.13.0", features = ["std"] }
+ockam_api = { path = "../ockam_api", version = "0.22.0", features = ["std", "authenticators"] }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.13.0", features = ["std"] }
+ockam_vault = { path = "../ockam_vault", version = "^0.69.0", features = ["storage", "aws", "rustcrypto"] }
+ockam_core = { path = "../ockam_core", version = "^0.73.0" }
+ockam_identity = { path = "../ockam_identity", version = "^0.67.0" }
 
 [dev-dependencies]
 assert_cmd = "2"
 tempfile = "3"
 
-ockam_macros = { path = "../ockam_macros", version = "^0.25.0" }
-ockam_api = { path = "../ockam_api", version = "0.20.0", features = ["std", "authenticators"] }
+ockam_macros = { path = "../ockam_macros", version = "^0.26.0" }
+ockam_api = { path = "../ockam_api", version = "0.22.0", features = ["std", "authenticators"] }

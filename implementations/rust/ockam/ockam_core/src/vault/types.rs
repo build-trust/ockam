@@ -194,7 +194,7 @@ pub enum SecretType {
     #[n(2)] Aes,
     /// Curve 22519 key
     #[n(3)] X25519,
-    /// Curve 22519 key
+    /// Ed 22519 key
     #[n(4)] Ed25519,
     /// NIST P-256 key
     #[n(5)] NistP256

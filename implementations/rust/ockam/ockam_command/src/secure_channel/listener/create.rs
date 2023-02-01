@@ -8,7 +8,7 @@ use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{Request, Status};
 use ockam_core::{Address, Route};
 
-use crate::node::util::default_node_name;
+use crate::node::default_node_name;
 use crate::secure_channel::HELP_DETAIL;
 use crate::util::{api, exitcode, extract_address_value, node_rpc, Rpc};
 use crate::{help, CommandGlobalOpts};
@@ -26,13 +26,16 @@ pub struct CreateCommand {
     /// Authorized Identifiers of secure channel initiators
     #[arg(short, long, value_name = "IDENTIFIERS")]
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+
+    #[arg(value_name = "IDENTITY", long)]
+    identity: Option<String>,
 }
 
 #[derive(Clone, Debug, Args)]
 pub struct SecureChannelListenerNodeOpts {
     /// Node at which to create the listener
-    #[arg(global = true, long, value_name = "NODE")]
-    pub at: Option<String>,
+    #[arg(global = true, long, value_name = "NODE", default_value_t = default_node_name())]
+    pub at: String,
 }
 
 impl CreateCommand {
@@ -49,14 +52,16 @@ async fn run_impl(
     ctx: &Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let at = &match cmd.node_opts.at {
-        Some(at) => at,
-        None => default_node_name(&opts),
-    };
+    let at = &cmd.node_opts.at;
+
     let node = extract_address_value(at)?;
     let mut rpc = Rpc::background(ctx, &opts, &node)?;
     let req = Request::post("/node/secure_channel_listener").body(
-        CreateSecureChannelListenerRequest::new(&cmd.address, cmd.authorized_identifiers),
+        CreateSecureChannelListenerRequest::new(
+            &cmd.address,
+            cmd.authorized_identifiers,
+            cmd.identity,
+        ),
     );
     rpc.request(req).await?;
     match rpc.is_ok() {
@@ -75,12 +80,13 @@ pub async fn create_listener(
     ctx: &Context,
     addr: Address,
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+    identity: Option<String>,
     mut base_route: Route,
 ) -> anyhow::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append(NODEMANAGER_ADDR),
-            api::create_secure_channel_listener(&addr, authorized_identifiers)?,
+            api::create_secure_channel_listener(&addr, authorized_identifiers, identity)?,
         )
         .await?;
 

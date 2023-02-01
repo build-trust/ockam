@@ -18,8 +18,8 @@ defmodule Ockam.Services.TokenLeaseManager.Provider do
   end
 
   def service_mod(_service) do
-    Ockam.TokenLeaseManager
+    Ockam.Services.TokenLeaseManager
   end
 
-  def service_options(_service, _args), do: [address: @address]
+  def service_options(_service, args), do: [address: @address] ++ args
 end

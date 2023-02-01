@@ -3,6 +3,8 @@ use std::str::FromStr;
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
+use crate::cloud::addon::ConfluentConfigResponse;
+use ockam_core::AsyncTryClone;
 use ockam_core::CowStr;
 use ockam_core::Result;
 #[cfg(feature = "tag")]
@@ -65,6 +67,11 @@ pub struct Project<'a> {
     #[serde(borrow)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub okta_config: Option<OktaConfig<'a>>,
+
+    #[cbor(b(12))]
+    #[serde(borrow)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confluent_config: Option<ConfluentConfigResponse<'a>>,
 }
 
 impl Clone for Project<'_> {
@@ -89,6 +96,7 @@ impl Project<'_> {
             authority_access_route: self.authority_access_route.as_ref().map(|x| x.to_owned()),
             authority_identity: self.authority_identity.as_ref().map(|x| x.to_owned()),
             okta_config: self.okta_config.as_ref().map(|x| x.to_owned()),
+            confluent_config: self.confluent_config.as_ref().map(|x| x.to_owned()),
         }
     }
 
@@ -268,13 +276,11 @@ pub struct CreateProject<'a> {
     #[b(1)] pub name: CowStr<'a>,
     #[b(2)] pub services: Vec<CowStr<'a>>,
     #[b(3)] pub users: Vec<CowStr<'a>>,
-    #[b(4)] pub enforce_credentials: Option<bool>
 }
 
 impl<'a> CreateProject<'a> {
     pub fn new<S: Into<CowStr<'a>>, T: AsRef<str>>(
         name: S,
-        enforce_credentials: Option<bool>,
         users: &'a [T],
         services: &'a [T],
     ) -> Self {
@@ -282,7 +288,6 @@ impl<'a> CreateProject<'a> {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             name: name.into(),
-            enforce_credentials,
             services: services.iter().map(|x| CowStr::from(x.as_ref())).collect(),
             users: users.iter().map(|x| CowStr::from(x.as_ref())).collect(),
         }
@@ -336,6 +341,7 @@ mod node {
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
+    use crate::cli_state;
     use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
     use crate::nodes::NodeManagerWorker;
 
@@ -357,7 +363,29 @@ mod node {
             let label = "create_project";
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
 
-            let req_builder = Request::post(format!("/v0/{space_id}")).body(req_body);
+            let req_builder = Request::post(format!("/v0/{space_id}")).body(&req_body);
+            let cli_state = cli_state::CliState::new()?;
+
+            let ident = {
+                let inner = self.get().read().await;
+                match &req_wrapper.identity_name {
+                    Some(existing_identity_name) => {
+                        let identity_cfg = cli_state
+                            .identities
+                            .get(existing_identity_name.as_ref())?
+                            .config;
+                        match identity_cfg.get(ctx, inner.vault()?).await {
+                            Ok(idt) => idt,
+                            Err(_) => {
+                                let vault_cfg = cli_state.vaults.default()?.config;
+                                identity_cfg.get(ctx, &vault_cfg.get().await?).await?
+                            }
+                        }
+                    }
+                    None => inner.identity()?.async_try_clone().await?,
+                }
+            };
+
             self.request_controller(
                 ctx,
                 label,
@@ -365,7 +393,7 @@ mod node {
                 cloud_route,
                 "projects",
                 req_builder,
-                None,
+                ident,
             )
             .await
         }
@@ -382,8 +410,22 @@ mod node {
             trace!(target: TARGET, "listing projects");
 
             let req_builder = Request::get("/v0");
-            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder, None)
-                .await
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                "projects",
+                req_builder,
+                ident,
+            )
+            .await
         }
 
         pub(crate) async fn get_project(
@@ -399,8 +441,22 @@ mod node {
             trace!(target: TARGET, %project_id, "getting project");
 
             let req_builder = Request::get(format!("/v0/{project_id}"));
-            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder, None)
-                .await
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                "projects",
+                req_builder,
+                ident,
+            )
+            .await
         }
 
         pub(crate) async fn delete_project(
@@ -417,8 +473,22 @@ mod node {
             trace!(target: TARGET, %space_id, %project_id, "deleting project");
 
             let req_builder = Request::delete(format!("/v0/{space_id}/{project_id}"));
-            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder, None)
-                .await
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                "projects",
+                req_builder,
+                ident,
+            )
+            .await
         }
 
         pub(crate) async fn add_project_enroller(
@@ -435,8 +505,22 @@ mod node {
             trace!(target: TARGET, %project_id, "adding enroller");
 
             let req_builder = Request::post(format!("/v0/{project_id}/enrollers")).body(req_body);
-            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder, None)
-                .await
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                "projects",
+                req_builder,
+                ident,
+            )
+            .await
         }
 
         pub(crate) async fn list_project_enrollers(
@@ -452,8 +536,22 @@ mod node {
             trace!(target: TARGET, %project_id, "listing enrollers");
 
             let req_builder = Request::get(format!("/v0/{project_id}/enrollers"));
-            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder, None)
-                .await
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                "projects",
+                req_builder,
+                ident,
+            )
+            .await
         }
 
         pub(crate) async fn delete_project_enroller(
@@ -471,8 +569,22 @@ mod node {
 
             let req_builder =
                 Request::delete(format!("/v0/{project_id}/enrollers/{enroller_identity_id}"));
-            self.request_controller(ctx, label, None, cloud_route, "projects", req_builder, None)
-                .await
+
+            let ident = {
+                let inner = self.get().read().await;
+                inner.identity()?.async_try_clone().await?
+            };
+
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                cloud_route,
+                "projects",
+                req_builder,
+                ident,
+            )
+            .await
         }
     }
 }
@@ -504,6 +616,7 @@ mod tests {
                 authority_identity: bool::arbitrary(g)
                     .then(|| hex::encode(<Vec<u8>>::arbitrary(g)).into()),
                 okta_config: None,
+                confluent_config: None,
             })
         }
     }
@@ -519,7 +632,6 @@ mod tests {
                 name: String::arbitrary(g).into(),
                 services: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
                 users: vec![String::arbitrary(g).into(), String::arbitrary(g).into()],
-                enforce_credentials: None,
             })
         }
     }

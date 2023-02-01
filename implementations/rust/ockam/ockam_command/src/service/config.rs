@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context, Result};
 use ockam::identity::IdentityIdentifier;
 use ockam_api::DefaultAddress;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VaultConfig {
@@ -32,6 +32,9 @@ pub struct SecureChannelListenerConfig {
 
     #[serde(default)]
     pub(crate) disabled: bool,
+
+    #[serde(default)]
+    pub(crate) identity: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,7 +51,10 @@ pub struct AuthenticatorConfig {
     #[serde(default = "authenticator_default_addr")]
     pub(crate) address: String,
 
-    pub(crate) enrollers: PathBuf,
+    pub(crate) enrollers: String,
+
+    #[serde(default = "reload_enrollers_default")]
+    pub(crate) reload_enrollers: bool,
 
     pub(crate) project: String,
 
@@ -114,6 +120,9 @@ fn verifier_default_addr() -> String {
 
 fn authenticator_default_addr() -> String {
     DefaultAddress::AUTHENTICATOR.to_string()
+}
+fn reload_enrollers_default() -> bool {
+    true
 }
 
 fn okta_identity_provider_default_addr() -> String {

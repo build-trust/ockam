@@ -11,6 +11,7 @@ mod error;
 mod forwarder;
 mod help;
 mod identity;
+mod lease;
 mod manpages;
 mod message;
 mod node;
@@ -28,6 +29,7 @@ mod upgrade;
 mod util;
 mod vault;
 mod version;
+mod worker;
 
 use authenticated::AuthenticatedCommand;
 use completion::CompletionCommand;
@@ -37,6 +39,7 @@ use enroll::EnrollCommand;
 use error::{Error, Result};
 use forwarder::ForwarderCommand;
 use identity::IdentityCommand;
+use lease::LeaseCommand;
 use manpages::ManpagesCommand;
 use message::MessageCommand;
 use node::NodeCommand;
@@ -54,6 +57,7 @@ use tcp::{
 use util::{exitcode, exitcode::ExitCode, setup_logging, OckamConfig};
 use vault::VaultCommand;
 use version::Version;
+use worker::WorkerCommand;
 
 use crate::admin::AdminCommand;
 use crate::subscription::SubscriptionCommand;
@@ -61,89 +65,8 @@ use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use ockam_api::cli_state::CliState;
 use upgrade::check_if_an_upgrade_is_available;
 
-const ABOUT: &str = "\
-Orchestrate end-to-end encryption, mutual authentication, key management,
-credential management, and authorization policy enforcement — at scale.
-";
-
-const HELP_DETAIL: &str = "\
-About:
-    Orchestrate end-to-end encryption, mutual authentication, key management,
-    credential management, and authorization policy enforcement — at scale.
-
-    Modern applications are distributed and have an unwieldy number of
-    interconnections that must trustfully exchange data. Ockam makes it simple
-    to build secure by-design applications that have granular control over every
-    trust and access decision.
-
-Examples:
-
-    Let's walk through a simple example to create an end-to-end encrypted,
-    mutually authenticated, secure and private cloud relay – for any application.
-
-    First let's enroll with Ockam Orchestrator where we'll create a managed cloud
-    based relay that will move end-to-end encrypted  data between distributed parts
-    of our application.
-
-```sh
-    # Create a cryptographic identity and enroll with Ockam Orchestrator.
-    # This will sign you up for an account with Ockam Orchestrator and setup a
-    # hobby space and project for you.
-    $ ockam enroll
-```
-
-    You can also create encrypted relays outside the orchestrator.
-    See `ockam forwarder --help`.
-
-    Application Service
-    ------
-
-    Next let's prepare the service side of our application.
-
-```sh
-    # Start our application service, listening on a local ip and port, that clients
-    # would access through the cloud relay. We'll use a simple http server for our
-    # first example but this could be some other application service.
-    $ python3 -m http.server --bind 127.0.0.1 5000
-
-    # Setup an ockam node, called blue, as a sidecar next to our application service.
-    $ ockam node create blue
-
-    # Create a tcp outlet on the blue node to send raw tcp traffic to the application service.
-    $ ockam tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
-
-    # Then create a forwarding relay at your default orchestrator project to blue.
-    $ ockam forwarder create blue --at /project/default --to /node/blue
-```
-
-    Application Client
-    ------
-
-    Now on the client side:
-
-```sh
-    # Setup an ockam node, called green, as a sidecar next to our application service.
-    $ ockam node create green
-
-    # Then create an end-to-end encrypted secure channel with blue, through the cloud relay.
-    # Then tunnel traffic from a local tcp inlet through this end-to-end secure channel.
-    $ ockam secure-channel create --from /node/green \\
-        --to /project/default/service/forward_to_blue/service/api \\
-            | ockam tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
-
-    # Access the application service though the end-to-end encrypted, secure relay.
-    $ curl 127.0.0.1:7000
-```
-
-    We just created end-to-end encrypted, mutually authenticated, and authorized
-    secure communication between a tcp client and server. This client and server
-    can be running in separate private networks / NATs. We didn't have to expose
-    our server by opening a port on the Internet or punching a hole in our firewall.
-
-    The two sides authenticated and authorized each other's known, cryptographically
-    provable identifiers. In later examples we'll see how we can build granular,
-    attribute-based access control with authorization policies.
-";
+const ABOUT: &str = include_str!("constants/lib/about.txt");
+const HELP_DETAIL: &str = include_str!("constants/lib/help_detail.txt");
 
 #[derive(Debug, Parser)]
 #[command(
@@ -270,6 +193,8 @@ pub enum OckamSubcommand {
     Message(MessageCommand),
     #[command(display_order = 821)]
     Policy(PolicyCommand),
+    #[command(display_order = 821)]
+    Worker(WorkerCommand),
 
     #[command(display_order = 900)]
     Completion(CompletionCommand),
@@ -282,6 +207,7 @@ pub enum OckamSubcommand {
     Subscription(SubscriptionCommand),
     Admin(AdminCommand),
     Manpages(ManpagesCommand),
+    Lease(LeaseCommand),
 }
 
 pub fn run() {
@@ -316,40 +242,45 @@ impl OckamCommand {
         }
 
         match self.subcommand {
-            OckamSubcommand::Authenticated(c) => c.run(),
-            OckamSubcommand::Configuration(c) => c.run(options),
             OckamSubcommand::Enroll(c) => c.run(options),
-            OckamSubcommand::Forwarder(c) => c.run(options),
-            OckamSubcommand::Manpages(c) => c.run(),
-            OckamSubcommand::Message(c) => c.run(options),
-            OckamSubcommand::Node(c) => c.run(options),
-            OckamSubcommand::Policy(c) => c.run(options),
+            OckamSubcommand::Space(c) => c.run(options),
             OckamSubcommand::Project(c) => c.run(options),
             OckamSubcommand::Status(c) => c.run(options),
-            OckamSubcommand::Space(c) => c.run(options),
-            OckamSubcommand::TcpConnection(c) => c.run(options),
-            OckamSubcommand::TcpInlet(c) => c.run(options),
-            OckamSubcommand::TcpListener(c) => c.run(options),
-            OckamSubcommand::TcpOutlet(c) => c.run(options),
-            OckamSubcommand::Vault(c) => c.run(options),
-            OckamSubcommand::Identity(c) => c.run(options),
-            OckamSubcommand::SecureChannel(c) => c.run(options),
-            OckamSubcommand::SecureChannelListener(c) => c.run(options),
-            OckamSubcommand::Service(c) => c.run(options),
-            OckamSubcommand::Completion(c) => c.run(),
-            OckamSubcommand::Credential(c) => c.run(options),
-            OckamSubcommand::Subscription(c) => c.run(options),
             OckamSubcommand::Reset(c) => c.run(options),
+
+            OckamSubcommand::Node(c) => c.run(options),
+            OckamSubcommand::Identity(c) => c.run(options),
+            OckamSubcommand::TcpListener(c) => c.run(options),
+            OckamSubcommand::TcpConnection(c) => c.run(options),
+            OckamSubcommand::TcpOutlet(c) => c.run(options),
+            OckamSubcommand::TcpInlet(c) => c.run(options),
+            OckamSubcommand::SecureChannelListener(c) => c.run(options),
+            OckamSubcommand::SecureChannel(c) => c.run(options),
+            OckamSubcommand::Forwarder(c) => c.run(options),
+            OckamSubcommand::Message(c) => c.run(options),
+            OckamSubcommand::Policy(c) => c.run(options),
+            OckamSubcommand::Worker(c) => c.run(options),
+
+            OckamSubcommand::Completion(c) => c.run(),
+
+            OckamSubcommand::Authenticated(c) => c.run(),
+            OckamSubcommand::Configuration(c) => c.run(options),
+            OckamSubcommand::Credential(c) => c.run(options),
+            OckamSubcommand::Service(c) => c.run(options),
+            OckamSubcommand::Vault(c) => c.run(options),
+            OckamSubcommand::Subscription(c) => c.run(options),
             OckamSubcommand::Admin(c) => c.run(options),
+            OckamSubcommand::Manpages(c) => c.run(),
+            OckamSubcommand::Lease(c) => c.run(options),
         }
     }
 }
 
 fn replace_hyphen_with_stdin(s: String) -> String {
-    use std::io;
+    let input_stream = std::io::stdin();
     if s.contains("/-") {
         let mut buffer = String::new();
-        io::stdin()
+        input_stream
             .read_line(&mut buffer)
             .expect("could not read from standard input");
         let args_from_stdin = buffer
@@ -361,7 +292,7 @@ fn replace_hyphen_with_stdin(s: String) -> String {
         s.replace("/-", &args_from_stdin)
     } else if s.contains("-/") {
         let mut buffer = String::new();
-        io::stdin()
+        input_stream
             .read_line(&mut buffer)
             .expect("could not read from standard input");
 

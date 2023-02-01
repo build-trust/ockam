@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.22.0 - 2023-01-31
+
+### Added
+
+- Add kafka commands to request starting the producer/consumer services
+- Add flag to reload enrollers from a file
+- Add influxdb lease commands, orchestrator client, and default project
+
+### Changed
+
+- Create `SecureChannelRegistry`
+- Move `storage` and `registry` to `Identity`
+- Refactor `CliState` so the `authenticated_storage` is stored in the identities dir
+- Implement vaults delete command
+- Updated dependencies
+
+### Fixed
+
+- Vault deletion logic from `CliState`
+
 ## 0.20.0 - 2022-11-08
 
 ### Added

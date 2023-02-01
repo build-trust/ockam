@@ -103,6 +103,13 @@ pub mod rand {
         pub use super::not_random::OsRng;
     }
 
+    /// Generates a random String of length 16.
+    #[cfg(feature = "std")]
+    pub fn random_string() -> String {
+        use rand::distributions::{Alphanumeric, DistString};
+        Alphanumeric.sample_string(&mut thread_rng(), 16)
+    }
+
     /// Placeholders for various features from 'rand' that are not
     /// supported on no_std targets.
     ///

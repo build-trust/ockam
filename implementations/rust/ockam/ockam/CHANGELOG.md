@@ -4,6 +4,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.79.0 - 2023-01-31
+
+### Changed
+
+- Updated dependencies
+
+### Removed
+
+- Remove unused errors from `ockam` crate
+
+## 0.78.0 - 2023-01-18
+
+### Added
+
+- Support `Route` instead of `Address` for `RemoteForwarder` initialization
+- Add `credential` module to `ockam` crate
+- Add static forwarding service
+- Add support for access control for inlets&outlets
+
+### Changed
+
+- Implement attribute-based access control for message flow authorization
+- Cleanup ockam test macro
+- Move credentials to `ockam_identity`
+- Recover remote forwarder
+- Rework access control
+- Deny all for `ockam` crate
+- Setup access controls for `ockam_transport_tcp`
+- Setup access controls for forwarder
+- Setup access controls for channels and pipes
+- Make access controls a mandatory argument while creating a detached context
+- Make access controls a mandatory argument while starting a worker or processor
+- Improve access controls implementations
+- Avoid using `Arc` on access controls in public api
+- Improve `Forwarder` service access controls
+- Improve `Forwarder` client access control
+- Split `AccessControl` trait into `IncomingAccessControl` and `OutgoingAccessControl`
+- Updated dependencies
+
+### Fixed
+
+- Fix forwarding service did not include onward route after forwarding
+- Creation of static forwarder without heartbeats
+- Creation of static forwarder at local nodes
+- Cleanup
+- Disable ockam_abac in `no_std` env
+- Fix `tracing` usage on no_std example project
+
+### Removed
+
+- Remove old credentials and signatures code
+
 ## 0.77.0 - 2022-11-08
 
 ### Added

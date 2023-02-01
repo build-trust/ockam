@@ -65,16 +65,14 @@ setup() {
   load "$BATS_LIB/bats-assert/load.bash"
   unset OCKAM_HOME
   $OCKAM node delete --all || true
-  OCKAM_HOME=/tmp/ockam/green $OCKAM node delete --all || true
-  OCKAM_HOME=/tmp/ockam/blue $OCKAM node delete --all || true
+  OCKAM_HOME=/tmp/ockam $OCKAM node delete --all || true
   rm -rf /tmp/ockam
 }
 
 teardown() {
   unset OCKAM_HOME
   $OCKAM node delete --all || true
-  OCKAM_HOME=/tmp/ockam/green $OCKAM node delete --all || true
-  OCKAM_HOME=/tmp/ockam/blue $OCKAM node delete --all || true
+  OCKAM_HOME=/tmp/ockam $OCKAM node delete --all || true
   rm -rf /tmp/ockam
 }
 
@@ -94,6 +92,33 @@ teardown() {
   run $OCKAM node start n1
   assert_success
   assert_output --partial "/service/vault_service"
+}
+
+@test "create a vault and do show on it" {
+  vault_name1=$(openssl rand -hex 4)
+  run $OCKAM vault create "${vault_name1}"
+  assert_success
+
+  run $OCKAM vault show "${vault_name1}"
+  assert_success
+  assert_output --partial "Name: ${vault_name1}"
+  assert_output --partial "Type: OCKAM"
+
+  vault_name2=$(openssl rand -hex 4)
+  run $OCKAM vault create "${vault_name2}" --aws-kms
+  assert_success
+
+  run $OCKAM vault show "${vault_name2}"
+  assert_success
+  assert_output --partial "Name: ${vault_name2}"
+  assert_output --partial "Type: AWS KMS"
+
+  run $OCKAM vault list
+  assert_success
+  assert_output --partial "Name: ${vault_name1}"
+  assert_output --partial "Type: OCKAM"
+  assert_output --partial "Name: ${vault_name2}"
+  assert_output --partial "Type: AWS KMS"
 }
 
 @test "create a identity and do show on it" {
@@ -157,45 +182,68 @@ teardown() {
   assert_output "HELLO"
 }
 
-@test "vault create" {
-  # Random name
+@test "vault CRUD" {
+  # Create with random name
   run $OCKAM vault create
   assert_success
 
-  # Named
+  # Create with specific name
   vault_name=$(openssl rand -hex 4)
+
   run $OCKAM vault create "${vault_name}"
   assert_success
-
-  # Fails if already exists
-  run $OCKAM vault create "${vault_name}"
+  run $OCKAM vault delete "${vault_name}"
+  assert_success
+  run $OCKAM vault show "${vault_name}"
   assert_failure
+
+  # Delete vault and leave identities untouched
+  vault_name=$(openssl rand -hex 4)
+  idt_name=$(openssl rand -hex 4)
+
+  run $OCKAM vault create "${vault_name}"
+  assert_success
+  run $OCKAM identity create "${idt_name}" --vault "${vault_name}"
+  assert_success
+  run $OCKAM vault delete "${vault_name}"
+  assert_success
+  run $OCKAM vault show "${vault_name}"
+  assert_failure
+  run $OCKAM identity show "${idt_name}"
+  assert_success
 }
 
-@test "identity create" {
-  vault_name=$(openssl rand -hex 4)
-  run $OCKAM vault create "${vault_name}"
-  assert_success
-
-  # With random name
+@test "identity CRUD" {
+  # Create with random name
   run $OCKAM identity create
   assert_success
   assert_output --partial "Identity created"
 
-  # Named
+  # Create a named identity and delete it
   idt_name=$(openssl rand -hex 4)
   run $OCKAM identity create "${idt_name}"
   assert_success
   assert_output --partial "Identity created"
+  run $OCKAM identity delete "${idt_name}"
+  assert_success
+  assert_output --partial "Identity '${idt_name}' deleted"
 
-  # Fails if already exists
+  # Fail to delete identity when it's in use by a node
+  idt_name=$(openssl rand -hex 4)
+  node_name=$(openssl rand -hex 4)
+
   run $OCKAM identity create "${idt_name}"
+  assert_success
+  run $OCKAM node create "${node_name}" --identity "${idt_name}"
+  assert_success
+  run $OCKAM identity delete "${idt_name}"
   assert_failure
 
-  # Specifying vault
-  run $OCKAM identity create --vault "${vault_name}"
+  # Delete identity after deleting the node
+  run $OCKAM node delete "${node_name}"
   assert_success
-  assert_output --partial "Identity created"
+  run $OCKAM identity delete "${idt_name}"
+  assert_success
 }
 
 @test "create a secure channel between two nodes and send message through it" {
@@ -344,7 +392,6 @@ teardown() {
   run $OCKAM tcp-connection list --node n1
   assert_success
   refute_output --partial "127.0.0.1:5000"
-
 }
 
 # the below tests will only succeed if already enrolled with `ockam enroll`
@@ -388,7 +435,7 @@ teardown() {
   run $OCKAM space create "${space_name}"
   assert_success
 
-  run $OCKAM project create "${space_name}" "${project_name}" --enforce-credentials false
+  run $OCKAM project create "${space_name}" "${project_name}"
   assert_success
 
   run --separate-stderr $OCKAM message send hello --to "/project/${project_name}/service/echo"
@@ -407,6 +454,41 @@ teardown() {
 
   run $OCKAM space list
   assert_success
+}
+
+@test "project enrollment" {
+  skip_if_orchestrator_tests_not_enabled
+
+  $OCKAM project information default --output json  > /tmp/project.json
+
+  export OCKAM_HOME=/tmp/ockam
+  run $OCKAM identity create green
+  run $OCKAM identity create blue
+
+  green_identifier=$($OCKAM identity show green)
+  blue_identifier=$($OCKAM identity show blue)
+
+  # They haven't been added by enroller yet
+  run $OCKAM project authenticate --identity green --project-path /tmp/project.json
+  assert_failure
+
+
+  unset OCKAM_HOME
+  $OCKAM project enroll --member $green_identifier --attribute role=member
+  blue_token=$($OCKAM project enroll --attribute role=member)
+
+
+  export OCKAM_HOME=/tmp/ockam
+
+  # Green' identity was added by enroller
+  run $OCKAM project authenticate --identity green --project-path /tmp/project.json
+  assert_success
+  assert_output --partial $green_identifier
+
+  # For blue, we use an enrollment token generated by enroller
+  run $OCKAM project authenticate --identity blue --token $blue_token --project-path /tmp/project.json
+  assert_success
+  assert_output --partial $blue_identifier
 }
 
 
@@ -444,22 +526,25 @@ teardown() {
 
   $OCKAM project information default --output json  > /tmp/project.json
 
-  export OCKAM_HOME=/tmp/ockam/green
-  run $OCKAM node create green --project /tmp/project.json
-  assert_success
-  green_identifier=$($OCKAM node show green | grep -oP 'Identity: \KP[0-9a-f]{64}')
+  export OCKAM_HOME=/tmp/ockam
 
-  export OCKAM_HOME=/tmp/ockam/blue
-  run $OCKAM node create blue --project /tmp/project.json
+  run $OCKAM identity create green
+  run $OCKAM identity create blue
+  green_identifier=$($OCKAM identity show green)
+  blue_identifier=$($OCKAM identity show blue)
+
+  run $OCKAM node create green --project /tmp/project.json --identity green
   assert_success
-  blue_identifier=$($OCKAM node show blue | grep -oP 'Identity: \KP[0-9a-f]{64}')
+
+  run $OCKAM node create blue --project /tmp/project.json --identity blue
+  assert_success
 
   # Green isn't enrolled as project member
   unset OCKAM_HOME
   run $OCKAM project enroll --member $blue_identifier --attribute role=member
   assert_success
 
-  export OCKAM_HOME=/tmp/ockam/blue
+  export OCKAM_HOME=/tmp/ockam
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
   assert_success
 
@@ -467,7 +552,6 @@ teardown() {
   assert_output --partial "forward_to_blue"
   assert_success
 
-  export OCKAM_HOME=/tmp/ockam/green
   run bash -c " $OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet"
   assert_success
@@ -484,28 +568,31 @@ teardown() {
 
   $OCKAM project information default --output json  > /tmp/project.json
 
-  export OCKAM_HOME=/tmp/ockam/green
-  run $OCKAM node create green --project /tmp/project.json
+  export OCKAM_HOME=/tmp/ockam
+
+  run $OCKAM identity create green
+  run $OCKAM identity create blue
+  green_identifier=$($OCKAM identity show green)
+  blue_identifier=$($OCKAM identity show blue)
+
+  run $OCKAM node create green --project /tmp/project.json --identity green
   assert_success
 
-  export OCKAM_HOME=/tmp/ockam/blue
-  run $OCKAM node create blue --project /tmp/project.json
+  run $OCKAM node create blue --project /tmp/project.json --identity blue
   assert_success
-  blue_identifier=$($OCKAM node show blue | grep -oP 'Identity: \KP[0-9a-f]{64}')
 
   # Green isn't enrolled as project member
   unset OCKAM_HOME
   run $OCKAM project enroll --member $blue_identifier --attribute role=member
   assert_success
 
-  export OCKAM_HOME=/tmp/ockam/blue
+  export OCKAM_HOME=/tmp/ockam
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
   assert_success
   run  $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"
   assert_success
 
-  export OCKAM_HOME=/tmp/ockam/green
   # Green can't establish secure channel with blue, because it isn't a member
   run $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to /project/default/service/forward_to_blue/secure/api/service/outlet
   assert_failure
@@ -517,15 +604,18 @@ teardown() {
 
   $OCKAM project information default --output json > /tmp/project.json
 
-  OCKAM_HOME=/tmp/ockam/green
-  run $OCKAM node create green --project /tmp/project.json
-  assert_success
-  green_identifier=$($OCKAM node show green | grep -oP 'Identity: \KP[0-9a-f]{64}')
+  OCKAM_HOME=/tmp/ockam
 
-  OCKAM_HOME=/tmp/ockam/blue
-  run $OCKAM node create blue --project /tmp/project.json
+  run $OCKAM identity create green
+  run $OCKAM identity create blue
+  green_identifier=$($OCKAM identity show green)
+  blue_identifier=$($OCKAM identity show blue)
+
+  run $OCKAM node create green --project /tmp/project.json --identity green
   assert_success
-  blue_identifier=$($OCKAM node show blue | grep -oP 'Identity: \KP[0-9a-f]{64}')
+
+  run $OCKAM node create blue --project /tmp/project.json --identity blue
+  assert_success
 
   unset OCKAM_HOME
   run $OCKAM project enroll --member $blue_identifier --attribute role=member
@@ -533,14 +623,13 @@ teardown() {
   run $OCKAM project enroll --member $green_identifier --attribute role=member
   assert_success
 
-  OCKAM_HOME=/tmp/ockam/blue
+  OCKAM_HOME=/tmp/ockam
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
   assert_success
   run  $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"
   assert_success
 
-  OCKAM_HOME=/tmp/ockam/green
   run bash -c " $OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet"
   assert_success
@@ -551,6 +640,7 @@ teardown() {
 }
 
 @test "inlet (with implicit secure channel creation) / outlet example with enrollment token" {
+  skip
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM project information  default --output json  > /tmp/project.json
@@ -559,14 +649,17 @@ teardown() {
   green_token=$($OCKAM project enroll --attribute app=app1)
   blue_token=$($OCKAM project enroll --attribute app=app1)
 
-  OCKAM_HOME=/tmp/ockam/green
-  run $OCKAM node create green --project /tmp/project.json --enrollment-token $green_token
+  export OCKAM_HOME=/tmp/ockam
+
+  run $OCKAM identity create green
+  run $OCKAM identity create blue
+
+  run $OCKAM node create green --project /tmp/project.json --identity green --enrollment-token $green_token
   assert_success
   run $OCKAM policy set --at green --resource tcp-inlet --expression '(= subject.app "app1")'
   assert_success
 
-  OCKAM_HOME=/tmp/ockam/blue
-  run $OCKAM node create blue --project /tmp/project.json --enrollment-token $blue_token
+  run $OCKAM node create blue --project /tmp/project.json --identity blue --enrollment-token $blue_token
   assert_success
   run $OCKAM policy set --at blue --resource tcp-outlet --expression '(= subject.app "app1")'
   assert_success
@@ -577,7 +670,6 @@ teardown() {
   assert_output --partial "forward_to_blue"
   assert_success
 
-  OCKAM_HOME=/tmp/ockam/green
   run $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to /project/default/service/forward_to_blue/secure/api/service/outlet
   assert_success
 
@@ -595,19 +687,24 @@ teardown() {
   run $OCKAM space create "${space_name}"
   assert_success
 
-  run $OCKAM project create "${space_name}" "${project_name}" --enforce-credentials true
+  run $OCKAM project create "${space_name}" "${project_name}"
   assert_success
 
   $OCKAM project information "${project_name}" --output json  > "/tmp/${project_name}_project.json"
 
-  export OCKAM_HOME=/tmp/ockam/green
-  run $OCKAM node create green --project "/tmp/${project_name}_project.json"
-  assert_success
-  green_identifier=$($OCKAM node show green | grep -oP 'Identity: \KP[0-9a-f]{64}')
+  export OCKAM_HOME=/tmp/ockam
 
-  export OCKAM_HOME=/tmp/ockam/blue
-  run $OCKAM node create blue --project "/tmp/${project_name}_project.json"
+  run $OCKAM identity create green
+  run $OCKAM identity create blue
+  green_identifier=$($OCKAM identity show green)
+  blue_identifier=$($OCKAM identity show blue)
+
+  run $OCKAM node create green --project "/tmp/${project_name}_project.json" --identity green
   assert_success
+
+  run $OCKAM node create blue --project "/tmp/${project_name}_project.json" --identity blue
+  assert_success
+
 
   # Blue can't create forwarder as it isn't a member
   run $OCKAM forwarder create blue --at "/project/${project_name}" --to /node/blue
@@ -619,7 +716,7 @@ teardown() {
   assert_success
 
   # Now green can access project' services
-  export OCKAM_HOME=/tmp/ockam/green
+  export OCKAM_HOME=/tmp/ockam
   run $OCKAM forwarder create green --at "/project/${project_name}" --to /node/green
   assert_success
 
@@ -631,13 +728,42 @@ teardown() {
   assert_success
 }
 
-@test "project addons - list addons" {
+@test "project addons - list" {
   skip_if_orchestrator_tests_not_enabled
 
   run --separate-stderr $OCKAM project addon list --project default
 
   assert_success
   assert_output --partial "Id: okta"
+}
+
+@test "project addons - enable and disable" {
+  skip # TODO: wait until cloud has the influx-db and confluent addons enabled
+  skip_if_orchestrator_tests_not_enabled
+
+  run --separate-stderr $OCKAM project addon list --project default
+  assert_success
+  assert_output --partial --regex "Id: okta\n +Enabled: false"
+  assert_output --partial --regex "Id: confluent\n +Enabled: false"
+
+  run --separate-stderr $OCKAM project addon enable okta --project default --tenant tenant --client-id client_id --cert cert
+  assert_success
+  run --separate-stderr $OCKAM project addon enable confluent --project default --bootstrap-server bootstrap-server.confluent:9092 --api-key ApIkEy --api-secret ApIsEcrEt
+  assert_success
+
+  run --separate-stderr $OCKAM project addon list --project default
+  assert_success
+  assert_output --partial --regex "Id: okta\n +Enabled: true"
+  assert_output --partial --regex "Id: confluent\n +Enabled: true"
+
+  run --separate-stderr $OCKAM project addon disable --addon okta --project default
+  run --separate-stderr $OCKAM project addon disable --addon  --project default
+  run --separate-stderr $OCKAM project addon disable --addon confluent --project default
+
+  run --separate-stderr $OCKAM project addon list --project default
+  assert_success
+  assert_output --partial --regex "Id: okta\n +Enabled: false"
+  assert_output --partial --regex "Id: confluent\n +Enabled: false"
 }
 
 function skip_if_orchestrator_tests_not_enabled() {

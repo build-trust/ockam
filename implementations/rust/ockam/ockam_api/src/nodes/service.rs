@@ -33,6 +33,7 @@ use crate::error::ApiError;
 use crate::lmdb::LmdbStorage;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
+use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::session::util::starts_with_host_tcp_secure;
 use crate::session::{Medic, Sessions};
 use crate::{multiaddr_to_route, try_address_to_multiaddr, DefaultAddress};
@@ -100,7 +101,7 @@ pub struct NodeManager {
     skip_defaults: bool,
     enable_credential_checks: bool,
     vault: Vault,
-    identity: Identity<Vault>,
+    identity: Identity<Vault, LmdbStorage>,
     project_id: Option<String>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
     authorities: Option<Authorities>,
@@ -134,7 +135,7 @@ pub struct IdentityOverride {
 }
 
 impl NodeManager {
-    pub(crate) fn identity(&self) -> Result<&Identity<Vault>> {
+    pub(crate) fn identity(&self) -> Result<&Identity<Vault, LmdbStorage>> {
         Ok(&self.identity)
     }
 
@@ -222,13 +223,14 @@ impl NodeManager {
         let mut transports = BTreeMap::new();
         transports.insert(api_transport_id.clone(), transport_options.api_transport);
 
-        let state = CliState::new()?.nodes.get(&general_options.node_name)?;
+        let cli_state = CliState::new()?;
+        let node_state = cli_state.nodes.get(&general_options.node_name)?;
 
-        let authenticated_storage = LmdbStorage::new(&state.authenticated_storage_path()).await?;
-        let policies_storage = LmdbStorage::new(&state.policies_storage_path()).await?;
+        let authenticated_storage = cli_state.identities.authenticated_storage().await?;
+        let policies_storage = LmdbStorage::new(&node_state.policies_storage_path()).await?;
 
-        let vault = state.config.vault().await?;
-        let identity = state.config.identity(ctx).await?;
+        let vault = node_state.config.vault().await?;
+        let identity = node_state.config.identity(ctx).await?;
 
         let medic = Medic::new();
         let sessions = medic.sessions();
@@ -313,6 +315,8 @@ impl NodeManager {
         self.create_secure_channel_listener_impl(
             DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
             None, // Not checking identifiers here in favor of credentials check
+            None,
+            ctx,
         )
         .await?;
 
@@ -334,6 +338,7 @@ impl NodeManager {
         addr: &MultiAddr,
         auth: Option<IdentityIdentifier>,
         timeout: Option<Duration>,
+        ctx: &Context,
     ) -> Result<(MultiAddr, MultiAddr)> {
         if let Some(p) = addr.first() {
             if p.code() == Project::CODE {
@@ -346,7 +351,9 @@ impl NodeManager {
                     multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                 let i = Some(vec![i]);
                 let m = CredentialExchangeMode::Oneway;
-                let w = self.create_secure_channel_impl(r, i, m, timeout).await?;
+                let w = self
+                    .create_secure_channel_impl(r, i, m, timeout, None, ctx)
+                    .await?;
                 let a = MultiAddr::default().try_with(addr.iter().skip(1))?;
                 return Ok((try_address_to_multiaddr(&w)?, a));
             }
@@ -358,7 +365,9 @@ impl NodeManager {
             let r = multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
             let i = auth.clone().map(|i| vec![i]);
             let m = CredentialExchangeMode::Mutual;
-            let w = self.create_secure_channel_impl(r, i, m, timeout).await?;
+            let w = self
+                .create_secure_channel_impl(r, i, m, timeout, None, ctx)
+                .await?;
             return Ok((try_address_to_multiaddr(&w)?, b));
         }
 
@@ -368,7 +377,9 @@ impl NodeManager {
                 multiaddr_to_route(addr).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
             let i = auth.clone().map(|i| vec![i]);
             let m = CredentialExchangeMode::Mutual;
-            let w = self.create_secure_channel_impl(r, i, m, timeout).await?;
+            let w = self
+                .create_secure_channel_impl(r, i, m, timeout, None, ctx)
+                .await?;
             return Ok((try_address_to_multiaddr(&w)?, MultiAddr::default()));
         }
 
@@ -487,7 +498,7 @@ impl NodeManagerWorker {
                     .to_vec()?
             }
             (Post, ["node", "secure_channel"]) => {
-                self.create_secure_channel(req, dec).await?.to_vec()?
+                self.create_secure_channel(req, dec, ctx).await?.to_vec()?
             }
             (Delete, ["node", "secure_channel"]) => {
                 self.delete_secure_channel(req, dec).await?.to_vec()?
@@ -496,7 +507,7 @@ impl NodeManagerWorker {
                 self.show_secure_channel(req, dec).await?.to_vec()?
             }
             (Post, ["node", "secure_channel_listener"]) => self
-                .create_secure_channel_listener(req, dec)
+                .create_secure_channel_listener(req, dec, ctx)
                 .await?
                 .to_vec()?,
 
@@ -536,6 +547,12 @@ impl NodeManagerWorker {
                 .start_okta_identity_provider_service(ctx, req, dec)
                 .await?
                 .to_vec()?,
+            (Post, ["node", "services", "kafka_consumer"]) => {
+                self.start_kafka_consumer_service(ctx, req, dec).await?
+            }
+            (Post, ["node", "services", "kafka_producer"]) => {
+                self.start_kafka_producer_service(ctx, req, dec).await?
+            }
             (Get, ["node", "services"]) => {
                 let node_manager = self.node_manager.read().await;
                 self.list_services(req, &node_manager.registry).to_vec()?
@@ -553,9 +570,23 @@ impl NodeManagerWorker {
                 let node_manager = self.node_manager.read().await;
                 self.get_outlets(req, &node_manager.registry).to_vec()?
             }
-            (Post, ["node", "inlet"]) => self.create_inlet(req, dec).await?.to_vec()?,
+            (Post, ["node", "inlet"]) => self.create_inlet(req, dec, ctx).await?.to_vec()?,
             (Post, ["node", "outlet"]) => self.create_outlet(req, dec).await?.to_vec()?,
             (Delete, ["node", "portal"]) => todo!(),
+
+            // ==*== Workers ==*==
+            (Get, ["node", "workers"]) => {
+                let workers = ctx.list_workers().await?;
+
+                let mut list = Vec::new();
+                workers
+                    .iter()
+                    .for_each(|addr| list.push(WorkerStatus::new(addr.address())));
+
+                Response::ok(req.id())
+                    .body(WorkerList::new(list))
+                    .to_vec()?
+            }
 
             (Post, ["policy", resource, action]) => self
                 .node_manager

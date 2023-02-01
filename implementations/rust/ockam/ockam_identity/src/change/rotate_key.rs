@@ -1,3 +1,4 @@
+use crate::authenticated_storage::AuthenticatedStorage;
 use crate::change::{IdentityChange, IdentitySignedChange, Signature, SignatureType};
 use crate::change_history::IdentityChangeHistory;
 use crate::{ChangeIdentifier, Identity, IdentityError, IdentityVault, KeyAttributes};
@@ -56,7 +57,7 @@ impl fmt::Display for RotateKeyChangeData {
     }
 }
 
-impl<V: IdentityVault> Identity<V> {
+impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     /// Rotate key change
     pub(crate) async fn make_rotate_key_change(
         &self,

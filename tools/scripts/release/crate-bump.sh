@@ -61,7 +61,7 @@ bumping_transitive_deps=false
 # on the second iteration, (crateC and crateB) version is then bumped, on the third iteration
 # we do not bump crateC version even though its dep has been modified as it's version has already
 # been bumped for a release.
-while [[ "$updated_crates" != "$recently_updated_crates" ]]; do
+while [[ "${updated_crates[*]}" != "${recently_updated_crates[*]}" ]]; do
   for crate in "${updated_crates[@]}"; do
     if [[ -n "${bumped_crates[$crate]}" ]]; then
       echo "===> $crate has been bumped recently ignoring"
@@ -88,11 +88,14 @@ while [[ "$updated_crates" != "$recently_updated_crates" ]]; do
     echo y | cargo release "$version" --config tools/scripts/release/release.toml --no-push --no-publish --no-tag --no-dev-version --package "$name" --execute
   done
 
-  recently_updated_crates=$updated_crates
+  recently_updated_crates="${updated_crates[@]}"
   bumping_transitive_deps=true
 
+  unset updated_crates
   source tools/scripts/release/crates-to-publish.sh
-  printf "Recently bumped crates are %s \n updated crates are %s" "$recently_updated_crates" "$updated_crates"
+  echo "Recently bumped crates are ${recently_updated_crates[*]}"
+  echo "========="
+  echo "updated crates are ${updated_crates[*]}"
 done
 
-echo "Bumped crates $recently_updated_crates"
+echo "Bumped crates ${recently_updated_crates[*]}"

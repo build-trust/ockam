@@ -3,7 +3,7 @@
 #![deny(unsafe_code)]
 #![warn(
     // prevented by big_array
-    //  missing_docs,
+    missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unused_import_braces,
@@ -18,17 +18,24 @@ extern crate core;
 #[macro_use]
 extern crate alloc;
 
-use ockam_channel::SecureChannelVault;
 use ockam_core::AsyncTryClone;
 use ockam_vault::{Hasher, SecretVault, Signer, Verifier};
 
 use crate::IdentityError;
 
+/// Storage used for previously authenticated info about others: attributes, public identities, etc.
 pub mod authenticated_storage;
+
+/// Possible change of an `Identity`
 pub mod change;
+
+/// Change history of an `Identity`
 pub mod change_history;
+
+/// Credentials support
 pub mod credential;
 
+/// Errors
 pub mod error;
 
 pub use error::*;
