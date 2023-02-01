@@ -7,6 +7,13 @@ use crate::{Address, OutgoingAccessControl, RelayMessage, Result};
 #[derive(Debug)]
 pub struct AllowOnwardAddress(pub Address);
 
+impl AllowOnwardAddress {
+    /// Convenience constructor
+    pub fn new(address: impl Into<Address>) -> Self {
+        Self(address.into())
+    }
+}
+
 #[async_trait]
 impl OutgoingAccessControl for AllowOnwardAddress {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {

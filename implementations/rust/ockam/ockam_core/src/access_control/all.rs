@@ -1,28 +1,53 @@
-use crate::access_control::IncomingAccessControl;
+use crate::access_control::{IncomingAccessControl, OutgoingAccessControl};
+use crate::compat::sync::Arc;
+use crate::compat::vec::Vec;
 use crate::{async_trait, compat::boxed::Box, RelayMessage, Result};
 
-/// Allows message that are allowed buy both AccessControls
+/// Allows message that are allowed by all [`IncomingAccessControl`]s
 #[derive(Debug)]
-pub struct AllAccessControl<F: IncomingAccessControl, S: IncomingAccessControl> {
-    // TODO: Extend for more than 2 policies
-    first: F,
-    second: S,
-}
+pub struct AllIncomingAccessControl(Vec<Arc<dyn IncomingAccessControl>>);
 
-impl<F: IncomingAccessControl, S: IncomingAccessControl> AllAccessControl<F, S> {
+impl AllIncomingAccessControl {
     /// Constructor
-    pub fn new(first: F, second: S) -> Self {
-        AllAccessControl { first, second }
+    pub fn new(access_controls: Vec<Arc<dyn IncomingAccessControl>>) -> Self {
+        Self(access_controls)
     }
 }
 
 #[async_trait]
-impl<F: IncomingAccessControl, S: IncomingAccessControl> IncomingAccessControl
-    for AllAccessControl<F, S>
-{
+impl IncomingAccessControl for AllIncomingAccessControl {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
-        Ok(self.first.is_authorized(relay_msg).await?
-            && self.second.is_authorized(relay_msg).await?)
+        for ac in &self.0 {
+            if !ac.is_authorized(relay_msg).await? {
+                return crate::deny();
+            }
+        }
+
+        crate::allow()
+    }
+}
+
+/// Allows message that are allowed by all [`OutgoingAccessControl`]s
+#[derive(Debug)]
+pub struct AllOutgoingAccessControl(Vec<Arc<dyn OutgoingAccessControl>>);
+
+impl AllOutgoingAccessControl {
+    /// Constructor
+    pub fn new(access_controls: Vec<Arc<dyn OutgoingAccessControl>>) -> Self {
+        Self(access_controls)
+    }
+}
+
+#[async_trait]
+impl OutgoingAccessControl for AllOutgoingAccessControl {
+    async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
+        for ac in &self.0 {
+            if !ac.is_authorized(relay_msg).await? {
+                return crate::deny();
+            }
+        }
+
+        crate::allow()
     }
 }
 
