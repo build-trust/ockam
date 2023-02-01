@@ -39,8 +39,6 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let mut orchestrator_client = OrchestratorApiBuilder::new(&ctx, &opts, &project_opts)
         .as_identity(cloud_opts.identity.clone())
-        .with_new_embbeded_node()
-        .await?
         .build(&MultiAddr::from_str("/service/influxdb_token_lease")?)
         .await?;
 

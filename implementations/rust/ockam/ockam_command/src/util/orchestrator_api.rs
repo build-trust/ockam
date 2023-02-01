@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    node::util::{delete_node, start_embedded_node},
+    node::util::{delete_node, start_embedded_node_with_vault_and_identity},
     project::{
         util::{create_secure_channel_to_authority, create_secure_channel_to_project},
         ProjectInfo,
@@ -69,13 +69,6 @@ impl<'a> OrchestratorApiBuilder<'a> {
         }
     }
 
-    /// Creates a new embedded node to communicate with the cloud
-    pub async fn with_new_embbeded_node(&mut self) -> Result<&mut OrchestratorApiBuilder<'a>> {
-        let node_name = start_embedded_node(self.ctx, self.opts, None).await?;
-        self.node_name = Some(node_name);
-        Ok(self)
-    }
-
     /// Creates and sets a project lookup from a Project Info file
     pub async fn with_project_from_file(
         &mut self,
@@ -133,7 +126,32 @@ impl<'a> OrchestratorApiBuilder<'a> {
         self
     }
 
-    pub async fn authenticate(&self) -> Result<Credential<'a>> {
+    /// Sends the request and returns  the response
+    pub async fn build(&mut self, service_address: &MultiAddr) -> Result<OrchestratorApi<'a>> {
+        self.start_embedded_node().await?;
+
+        self.retrieve_project_info().await?;
+        // Authenticate with the project authority node
+        let _ = self.authenticate().await?;
+
+        //  Establish a secure channel
+        let sc_addr = self.secure_channel_to(&self.destination).await?;
+
+        let to = sc_addr.concat(service_address)?;
+        info!(
+            "creating an rpc client to service: {} over secure channel {}",
+            service_address, to
+        );
+
+        let node_name = self.node_name.as_ref().context("Node is required")?;
+        let rpc = RpcBuilder::new(self.ctx, self.opts, node_name)
+            .to(&to)?
+            .build();
+
+        Ok(OrchestratorApi { rpc })
+    }
+
+    async fn authenticate(&self) -> Result<Credential<'a>> {
         let sc_addr = self
             .secure_channel_to(&OrchestratorEndpoint::Authenticator)
             .await?;
@@ -156,27 +174,18 @@ impl<'a> OrchestratorApiBuilder<'a> {
         Ok(credential.to_owned())
     }
 
-    /// Sends the request and returns  the response
-    pub async fn build(&mut self, service_address: &MultiAddr) -> Result<OrchestratorApi<'a>> {
-        self.retrieve_project_info().await?;
-        // Authenticate with the project authority node
-        let _ = self.authenticate().await?;
+    async fn start_embedded_node(&mut self) -> Result<()> {
+        let node_name = start_embedded_node_with_vault_and_identity(
+            self.ctx,
+            self.opts,
+            None,
+            self.identity.as_ref(),
+            None,
+        )
+        .await?;
+        self.node_name = Some(node_name);
 
-        //  Establish a secure channel
-        let sc_addr = self.secure_channel_to(&self.destination).await?;
-
-        let to = sc_addr.concat(service_address)?;
-        info!(
-            "creating an rpc client to service: {} over secure channel {}",
-            service_address, to
-        );
-
-        let node_name = self.node_name.as_ref().context("Node is required")?;
-        let rpc = RpcBuilder::new(self.ctx, self.opts, node_name)
-            .to(&to)?
-            .build();
-
-        Ok(OrchestratorApi { rpc })
+        Ok(())
     }
 
     async fn retrieve_project_info(&mut self) -> Result<()> {

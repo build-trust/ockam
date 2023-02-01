@@ -5,7 +5,7 @@ use anyhow::{anyhow, Context as _};
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::types::{AddMember, CreateToken, OneTimeCode};
-use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority};
+use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority, ProjectLookup};
 use ockam_core::api::Request;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use tracing::debug;
@@ -16,6 +16,8 @@ use crate::project::util::create_secure_channel_to_authority;
 use crate::util::api::{CloudOpts, ProjectOpts};
 use crate::util::{node_rpc, RpcBuilder};
 use crate::{CommandGlobalOpts, Result};
+
+use super::ProjectInfo;
 
 /// An authorised enroller can add members to a project.
 #[derive(Clone, Debug, Args)]
@@ -78,7 +80,28 @@ impl Runner {
             start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.project_opts)).await?;
 
         let map = self.opts.config.lookup();
-        let to = if let Some(a) = project_authority(&self.cmd.to, &map)? {
+        let to = if let Some(proj_path) = &self.cmd.project_opts.project_path {
+            let s = tokio::fs::read_to_string(proj_path).await?;
+            let proj_info: ProjectInfo = serde_json::from_str(&s)?;
+            let project_lookup = ProjectLookup::from_project(&(&proj_info).into()).await?;
+            if let Some(a) = &project_lookup.authority {
+                let mut addr = create_secure_channel_to_authority(
+                    &self.ctx,
+                    &self.opts,
+                    &node_name,
+                    a,
+                    &replace_project(&self.cmd.to, a.address())?,
+                    None, //for now always the default identity
+                )
+                .await?;
+                for proto in self.cmd.to.iter().skip(1) {
+                    addr.push_back_value(&proto).map_err(anyhow::Error::from)?
+                }
+                addr
+            } else {
+                return Err(anyhow!("Provided project is missing the authority details").into());
+            }
+        } else if let Some(a) = project_authority(&self.cmd.to, &map)? {
             let mut addr = create_secure_channel_to_authority(
                 &self.ctx,
                 &self.opts,
