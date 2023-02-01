@@ -23,6 +23,13 @@ pub struct ProcessorBuilder<P> {
     processor: P,
 }
 
+impl<P> ProcessorBuilder<P> {
+    /// Getter
+    pub fn processor(&self) -> &P {
+        &self.processor
+    }
+}
+
 impl<P> ProcessorBuilder<P>
 where
     P: Processor<Context = Context>,
