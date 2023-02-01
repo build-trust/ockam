@@ -1,7 +1,7 @@
 use minicbor::{Decode, Encode};
 use ockam_core::{CowBytes, CowStr};
 
-use ockam_core::vault::SecretAttributes;
+use ockam_core::vault::KeyAttributes;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 
@@ -37,7 +37,7 @@ pub struct HkdfSha256Request<'a> {
     #[b(2)] info: CowBytes<'a>,
     #[b(3)] ikm: Option<CowStr<'a>>,
     // TODO: Can be tinyvec
-    #[n(4)] output_attributes: Vec<SecretAttributes>,
+    #[n(4)] output_attributes: Vec<KeyAttributes>,
 }
 
 impl<'a> HkdfSha256Request<'a> {
@@ -45,7 +45,7 @@ impl<'a> HkdfSha256Request<'a> {
         salt: impl Into<CowStr<'a>>,
         info: impl Into<CowBytes<'a>>,
         ikm: Option<impl Into<CowStr<'a>>>,
-        output_attributes: impl Into<Vec<SecretAttributes>>,
+        output_attributes: impl Into<Vec<KeyAttributes>>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -65,7 +65,7 @@ impl<'a> HkdfSha256Request<'a> {
     pub fn ikm(&self) -> Option<&str> {
         self.ikm.as_deref()
     }
-    pub fn output_attributes(&self) -> &[SecretAttributes] {
+    pub fn output_attributes(&self) -> &[KeyAttributes] {
         &self.output_attributes
     }
 }

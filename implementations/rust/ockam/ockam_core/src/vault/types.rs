@@ -33,8 +33,8 @@ pub const AES128_SECRET_LENGTH_USIZE: usize = 16;
 
 cfg_if! {
     if #[cfg(not(feature = "alloc"))] {
-        /// Secret Key Vector. The maximum size is 32 bytes.
-        pub type SecretKeyVec = heapless::Vec<u8, 32>;
+        /// Private Key Vector. The maximum size is 32 bytes.
+        pub type PrivateKeyVec = heapless::Vec<u8, 32>;
         /// Public Key Vector. The maximum size is 65 bytes.
         pub type PublicKeyVec = heapless::Vec<u8, 65>;
         /// Buffer for small vectors (e.g. an array of attributes). The maximum length is 4 elements.
@@ -55,8 +55,8 @@ cfg_if! {
     else {
         use alloc::vec::Vec;
         use alloc::string::String;
-        /// Secret Key Vector.
-        pub type SecretKeyVec = Vec<u8>;
+        /// Private Key Vector.
+        pub type PrivateKeyVec = Vec<u8>;
         /// Public Key Vector.
         pub type PublicKeyVec = Vec<u8>;
         /// Buffer for small vectors. (e.g. an array of attributes)
@@ -70,33 +70,33 @@ cfg_if! {
     }
 }
 
-/// Binary representation of a Secret.
+/// Binary representation of a Private key.
 #[derive(Serialize, Deserialize, Clone, Zeroize, Encode, Decode)]
 #[zeroize(drop)]
 #[cbor(transparent)]
-pub struct SecretKey(#[n(0)] SecretKeyVec);
+pub struct PrivateKey(#[n(0)] PrivateKeyVec);
 
-impl SecretKey {
-    /// Create a new secret key.
-    pub fn new(data: SecretKeyVec) -> Self {
+impl PrivateKey {
+    /// Create a new private key.
+    pub fn new(data: PrivateKeyVec) -> Self {
         Self(data)
     }
 }
 
-impl core::fmt::Debug for SecretKey {
+impl core::fmt::Debug for PrivateKey {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.pad("<secret key omitted>")
+        f.pad("<private key omitted>")
     }
 }
 
-impl Eq for SecretKey {}
-impl PartialEq for SecretKey {
+impl Eq for PrivateKey {}
+impl PartialEq for PrivateKey {
     fn eq(&self, o: &Self) -> bool {
         subtle::ConstantTimeEq::ct_eq(&self.0[..], &o.0[..]).into()
     }
 }
 
-impl AsRef<[u8]> for SecretKey {
+impl AsRef<[u8]> for PrivateKey {
     fn as_ref(&self) -> &[u8] {
         &self.0
     }
@@ -112,7 +112,7 @@ pub struct PublicKey {
     #[serde(skip)]
     #[n(0)] tag: TypeTag<8922437>,
     #[b(1)] data: PublicKeyVec,
-    #[n(2)] stype: SecretType,
+    #[n(2)] stype: KeyType,
 }
 
 impl Eq for PublicKey {}
@@ -128,15 +128,15 @@ impl PublicKey {
     pub fn data(&self) -> &[u8] {
         &self.data
     }
-    /// Corresponding secret key type.
-    pub fn stype(&self) -> SecretType {
+    /// Corresponding private key type.
+    pub fn stype(&self) -> KeyType {
         self.stype
     }
 }
 
 impl PublicKey {
     /// Create a new public key.
-    pub fn new(data: PublicKeyVec, stype: SecretType) -> Self {
+    pub fn new(data: PublicKeyVec, stype: KeyType) -> Self {
         PublicKey {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -183,11 +183,11 @@ impl From<Signature> for SignatureVec {
     }
 }
 
-/// All possible [`SecretType`]s
+/// All possible [`KeyType`]s
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Encode, Decode, Eq, PartialEq, Zeroize)]
 #[rustfmt::skip]
 #[cbor(index_only)]
-pub enum SecretType {
+pub enum KeyType {
     /// Secret buffer
     #[n(1)] Buffer,
     /// AES key
@@ -200,45 +200,45 @@ pub enum SecretType {
     #[n(5)] NistP256
 }
 
-/// All possible [`SecretKey`] persistence types
+/// All possible [`PrivateKey`] persistence types
 #[derive(Serialize, Deserialize, Copy, Clone, Encode, Decode, Debug, Eq, PartialEq)]
 #[rustfmt::skip]
 #[cbor(index_only)]
-pub enum SecretPersistence {
-    /// An ephemeral/temporary secret
+pub enum KeyPersistence {
+    /// An ephemeral/temporary key
     #[n(1)] Ephemeral,
-    /// A persistent secret
+    /// A persistent key
     #[n(2)] Persistent,
 }
 
 /// Attributes for a specific vault.
 #[derive(Serialize, Deserialize, Copy, Encode, Decode, Clone, Debug, Eq, PartialEq)]
 #[rustfmt::skip]
-pub struct SecretAttributes {
-    #[n(1)] stype: SecretType,
-    #[n(2)] persistence: SecretPersistence,
+pub struct KeyAttributes {
+    #[n(1)] stype: KeyType,
+    #[n(2)] persistence: KeyPersistence,
     #[n(3)] length: u32,
 }
 
-impl SecretAttributes {
-    /// Return the type of the secret.
-    pub fn stype(&self) -> SecretType {
+impl KeyAttributes {
+    /// Return the type of the key.
+    pub fn stype(&self) -> KeyType {
         self.stype
     }
-    /// Return the persistence of the secret.
-    pub fn persistence(&self) -> SecretPersistence {
+    /// Return the persistence of the key.
+    pub fn persistence(&self) -> KeyPersistence {
         self.persistence
     }
-    /// Return the length of the secret.
+    /// Return the length of the key.
     pub fn length(&self) -> u32 {
         self.length
     }
 }
 
-impl SecretAttributes {
-    /// Create a new secret attribute.
-    pub fn new(stype: SecretType, persistence: SecretPersistence, length: u32) -> Self {
-        SecretAttributes {
+impl KeyAttributes {
+    /// Create a new key attribute.
+    pub fn new(stype: KeyType, persistence: KeyPersistence, length: u32) -> Self {
+        KeyAttributes {
             stype,
             persistence,
             length,
@@ -246,7 +246,7 @@ impl SecretAttributes {
     }
 }
 
-impl fmt::Display for SecretAttributes {
+impl fmt::Display for KeyAttributes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -258,18 +258,18 @@ impl fmt::Display for SecretAttributes {
     }
 }
 
-/// A public key
+/// A public key + the key id of its private key
 #[derive(Clone, Debug, Zeroize)]
 #[zeroize(drop)]
 pub struct KeyPair {
-    secret: KeyId,
+    key_id: KeyId,
     public: PublicKey,
 }
 
 impl KeyPair {
-    /// Secret key
-    pub fn secret(&self) -> &KeyId {
-        &self.secret
+    /// KeyId of the private key
+    pub fn key_id(&self) -> &KeyId {
+        &self.key_id
     }
     /// Public Key
     pub fn public(&self) -> &PublicKey {
@@ -279,86 +279,89 @@ impl KeyPair {
 
 impl KeyPair {
     /// Create a new key pair
-    pub fn new(secret: KeyId, public: PublicKey) -> Self {
-        Self { secret, public }
+    pub fn new(key_id: KeyId, public_key: PublicKey) -> Self {
+        Self {
+            key_id,
+            public: public_key,
+        }
     }
 }
 
-/// Secret stored in a Vault Storage
+/// Private key stored in a Vault Storage
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct VaultEntry {
-    key_attributes: SecretAttributes,
-    secret: Secret,
+    key_attributes: KeyAttributes,
+    key: Key,
 }
 
-/// A secret key or reference.
+/// A private key or reference.
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
 #[rustfmt::skip]
-pub enum Secret {
-    /// A secret key.
-    #[n(0)] Key(#[n(0)] SecretKey),
-    /// Reference to an unmanaged, external secret key of AWS KMS.
+pub enum Key {
+    /// A private key.
+    #[n(0)] Key(#[n(0)] PrivateKey),
+    /// Reference to an unmanaged, external private key of AWS KMS.
     #[n(1)] Aws(#[n(1)] KeyId)
 }
 
-impl Secret {
-    /// Treat this secret as a secret key and pull the key out.
-    ///
+impl Key {
+    /// Treat this private key as a key (not a KeyId) and pull it out.
+    /// TODO: this code will be removed with the extraction of a proper AWS KMS vault implementation
     /// # Panics
     ///
-    /// If the secret does not hold a key.
-    pub fn cast_as_key(&self) -> &SecretKey {
-        self.try_as_key().expect("`Secret` holds a key")
+    /// If the key entry does not hold a private key.
+    pub fn cast_as_key(&self) -> &PrivateKey {
+        self.try_as_key().expect("`Key` holds a key")
     }
 
-    /// Treat this secret as a secret key and try to pull the key out.
-    pub fn try_as_key(&self) -> Result<&SecretKey, Error> {
-        if let Secret::Key(k) = self {
+    /// Treat this key as a private key and try to pull the key out.
+    pub fn try_as_key(&self) -> Result<&PrivateKey, Error> {
+        if let Key::Key(k) = self {
             Ok(k)
         } else {
             Err(Error::new(
                 Origin::Other,
                 Kind::Misuse,
-                "`Secret` does not hold a key",
+                "`Key` does not hold a key",
             ))
         }
     }
 }
 
 impl VaultEntry {
-    /// Secret's Attributes
-    pub fn key_attributes(&self) -> SecretAttributes {
+    /// Private key Attributes
+    pub fn key_attributes(&self) -> KeyAttributes {
         self.key_attributes
     }
 
-    /// Get the secret part of this vault entry.
-    pub fn secret(&self) -> &Secret {
-        &self.secret
+    /// Get the key part of this vault entry.
+    pub fn key(&self) -> &Key {
+        &self.key
     }
 }
 
 impl VaultEntry {
     /// Create a new vault entry.
-    pub fn new(key_attributes: SecretAttributes, secret: Secret) -> Self {
+    pub fn new(key_attributes: KeyAttributes, key: Key) -> Self {
         VaultEntry {
             key_attributes,
-            secret,
+            key,
         }
     }
 
-    /// Create a new vault entry with a secret key.
-    pub fn new_key(key_attributes: SecretAttributes, key: SecretKey) -> Self {
+    /// Create a new vault entry with a private key.
+    pub fn new_key(key_attributes: KeyAttributes, key: PrivateKey) -> Self {
         VaultEntry {
             key_attributes,
-            secret: Secret::Key(key),
+            key: Key::Key(key),
         }
     }
 
-    /// Create a new vault entry with an external secret key from AWS KMS.
-    pub fn new_aws(key_attributes: SecretAttributes, kid: KeyId) -> Self {
+    /// Create a new vault entry with an external private key from AWS KMS.
+    pub fn new_aws(key_attributes: KeyAttributes, kid: KeyId) -> Self {
         VaultEntry {
             key_attributes,
-            secret: Secret::Aws(kid),
+            key: Key::Aws(kid),
         }
     }
 }

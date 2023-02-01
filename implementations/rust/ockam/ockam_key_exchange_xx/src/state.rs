@@ -1,6 +1,6 @@
 use crate::{XXError, XXVault, AES_GCM_TAGSIZE_USIZE, SHA256_SIZE_USIZE};
 use ockam_core::vault::{
-    KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH_U32,
+    KeyAttributes, KeyId, KeyPersistence, KeyType, PublicKey, AES256_SECRET_LENGTH_U32,
     CURVE25519_PUBLIC_LENGTH_USIZE, CURVE25519_SECRET_LENGTH_U32,
 };
 use ockam_core::{compat::vec::Vec, Result};
@@ -56,8 +56,8 @@ impl<V: XXVault> State<V> {
 }
 
 impl<V: XXVault> State<V> {
-    fn get_symmetric_key_type_and_length(&self) -> (SecretType, u32) {
-        (SecretType::Aes, AES256_SECRET_LENGTH_U32)
+    fn get_symmetric_key_type_and_length(&self) -> (KeyType, u32) {
+        (KeyType::Aes, AES256_SECRET_LENGTH_U32)
     }
 
     fn get_protocol_name(&self) -> &'static [u8] {
@@ -66,31 +66,24 @@ impl<V: XXVault> State<V> {
 
     /// Create a new `HandshakeState` starting with the prologue
     async fn prologue(&mut self) -> Result<()> {
-        let attributes = SecretAttributes::new(
-            SecretType::X25519,
-            SecretPersistence::Ephemeral,
+        let attributes = KeyAttributes::new(
+            KeyType::X25519,
+            KeyPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH_U32,
         );
         // 1. Generate a static key pair for this handshake and set it to `s`
         if let Some(ik) = &self.identity_key {
-            self.identity_public_key = Some(self.vault.secret_public_key_get(ik).await?);
+            self.identity_public_key = Some(self.vault.get_public_key(ik).await?);
         } else {
-            let static_secret_handle = self.vault.secret_generate(attributes).await?;
-            self.identity_public_key = Some(
-                self.vault
-                    .secret_public_key_get(&static_secret_handle)
-                    .await?,
-            );
+            let static_secret_handle = self.vault.generate_key(attributes).await?;
+            self.identity_public_key =
+                Some(self.vault.get_public_key(&static_secret_handle).await?);
             self.identity_key = Some(static_secret_handle)
         };
 
         // 2. Generate an ephemeral key pair for this handshake and set it to e
-        let ephemeral_secret_handle = self.vault.secret_generate(attributes).await?;
-        self.ephemeral_public = Some(
-            self.vault
-                .secret_public_key_get(&ephemeral_secret_handle)
-                .await?,
-        );
+        let ephemeral_secret_handle = self.vault.generate_key(attributes).await?;
+        self.ephemeral_public = Some(self.vault.get_public_key(&ephemeral_secret_handle).await?);
         self.ephemeral_secret = Some(ephemeral_secret_handle);
 
         // 3. Set k to empty, Set n to 0
@@ -164,9 +157,9 @@ impl<V: XXVault> State<V> {
         let ck = self.dh_state.ck().ok_or(XXError::InvalidState)?;
 
         let symmetric_key_info = self.get_symmetric_key_type_and_length();
-        let attributes = SecretAttributes::new(
+        let attributes = KeyAttributes::new(
             symmetric_key_info.0,
-            SecretPersistence::Ephemeral,
+            KeyPersistence::Ephemeral,
             symmetric_key_info.1,
         );
         let mut hkdf_output = self
@@ -233,7 +226,7 @@ impl<V: XXVault> State<V> {
         let mut index_l = 0;
         let mut index_r = public_key_size;
         let re = &message[..index_r];
-        let re = PublicKey::new(re.to_vec(), SecretType::X25519);
+        let re = PublicKey::new(re.to_vec(), KeyType::X25519);
         index_l += public_key_size;
         index_r += public_key_size + AES_GCM_TAGSIZE_USIZE;
         let encrypted_rs_and_tag = &message[index_l..index_r];
@@ -244,7 +237,7 @@ impl<V: XXVault> State<V> {
         self.remote_ephemeral_public_key = Some(re);
         let (rs, h) = self.decrypt_and_mix_hash(encrypted_rs_and_tag).await?;
         self.h = Some(h);
-        let rs = PublicKey::new(rs, SecretType::X25519);
+        let rs = PublicKey::new(rs, KeyType::X25519);
         self.dh_state.dh(&ephemeral_secret_handle, &rs).await?;
         self._remote_static_public_key = Some(rs);
         self.nonce = 0;
@@ -302,7 +295,7 @@ impl<V: XXVault> State<V> {
         }
 
         let re = &message_1[..public_key_size];
-        let re = PublicKey::new(re.to_vec(), SecretType::X25519);
+        let re = PublicKey::new(re.to_vec(), KeyType::X25519);
         self.h = Some(self.mix_hash(re.data()).await?);
         self.h = Some(self.mix_hash(&message_1[public_key_size..]).await?);
         self.remote_ephemeral_public_key = Some(re);
@@ -361,7 +354,7 @@ impl<V: XXVault> State<V> {
             .decrypt_and_mix_hash(&message_3[..public_key_size + AES_GCM_TAGSIZE_USIZE])
             .await?;
         self.h = Some(h);
-        let rs = PublicKey::new(rs, SecretType::X25519);
+        let rs = PublicKey::new(rs, KeyType::X25519);
         self.dh_state.dh(ephemeral_secret, &rs).await?;
         self.nonce = 0;
         let (payload, h) = self
@@ -386,8 +379,8 @@ mod tests {
     use crate::{Initiator, Responder, XXVault};
     use hex::{decode, encode};
     use ockam_core::vault::{
-        Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType, SecretVault,
-        SymmetricVault, CURVE25519_SECRET_LENGTH_U32,
+        Key, KeyAttributes, KeyPersistence, KeyType, KeyVault, PrivateKey, SymmetricVault,
+        CURVE25519_SECRET_LENGTH_U32,
     };
     use ockam_core::Result;
     use ockam_key_exchange_core::KeyExchanger;
@@ -408,10 +401,7 @@ mod tests {
         assert!(res.is_ok());
         assert_eq!(state.h.unwrap(), exp_h);
 
-        let ck = vault
-            .secret_export(&state.dh_state.ck.unwrap())
-            .await
-            .unwrap();
+        let ck = vault.export_key(&state.dh_state.ck.unwrap()).await.unwrap();
 
         assert_eq!(
             ck.cast_as_key().as_ref(),
@@ -639,34 +629,31 @@ mod tests {
         static_private: &str,
         ephemeral_private: &str,
     ) -> State<V> {
-        let attributes = SecretAttributes::new(
-            SecretType::X25519,
-            SecretPersistence::Ephemeral,
+        let attributes = KeyAttributes::new(
+            KeyType::X25519,
+            KeyPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH_U32,
         );
         // Static x25519 for this handshake, `s`
         let static_secret_handle = vault
-            .secret_import(
-                Secret::Key(SecretKey::new(decode(static_private).unwrap())),
+            .import_key(
+                Key::Key(PrivateKey::new(decode(static_private).unwrap())),
                 attributes,
             )
             .await
             .unwrap();
-        let static_public_key = vault
-            .secret_public_key_get(&static_secret_handle)
-            .await
-            .unwrap();
+        let static_public_key = vault.get_public_key(&static_secret_handle).await.unwrap();
 
         // Ephemeral x25519 for this handshake, `e`
         let ephemeral_secret_handle = vault
-            .secret_import(
-                Secret::Key(SecretKey::new(decode(ephemeral_private).unwrap())),
+            .import_key(
+                Key::Key(PrivateKey::new(decode(ephemeral_private).unwrap())),
                 attributes,
             )
             .await
             .unwrap();
         let ephemeral_public_key = vault
-            .secret_public_key_get(&ephemeral_secret_handle)
+            .get_public_key(&ephemeral_secret_handle)
             .await
             .unwrap();
 
@@ -676,13 +663,10 @@ mod tests {
             .unwrap();
         let ck = *b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0";
 
-        let attributes = SecretAttributes::new(
-            SecretType::Buffer,
-            SecretPersistence::Ephemeral,
-            ck.len() as u32,
-        );
+        let attributes =
+            KeyAttributes::new(KeyType::Buffer, KeyPersistence::Ephemeral, ck.len() as u32);
         let ck = vault
-            .secret_import(Secret::Key(SecretKey::new(ck[..].to_vec())), attributes)
+            .import_key(Key::Key(PrivateKey::new(ck[..].to_vec())), attributes)
             .await
             .unwrap();
 

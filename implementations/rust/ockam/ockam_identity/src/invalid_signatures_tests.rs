@@ -3,8 +3,8 @@ use crate::change::IdentitySignedChange;
 use crate::change_history::IdentityChangeHistory;
 use crate::{Identity, IdentityVault, PublicIdentity};
 use ockam_core::vault::{
-    AsymmetricVault, Buffer, Hasher, KeyId, PublicKey, Secret, SecretAttributes, SecretVault,
-    Signature, Signer, SmallBuffer, SymmetricVault, Verifier,
+    AsymmetricVault, Buffer, Hasher, Key, KeyAttributes, KeyId, KeyVault, PublicKey, Signature,
+    Signer, SmallBuffer, SymmetricVault, Verifier,
 };
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{AsyncTryClone, Result};
@@ -113,29 +113,29 @@ impl<V: IdentityVault> CrazyVault<V> {
 }
 
 #[async_trait]
-impl<V: IdentityVault> SecretVault for CrazyVault<V> {
-    async fn secret_generate(&self, attributes: SecretAttributes) -> Result<KeyId> {
-        self.vault.secret_generate(attributes).await
+impl<V: IdentityVault> KeyVault for CrazyVault<V> {
+    async fn generate_key(&self, attributes: KeyAttributes) -> Result<KeyId> {
+        self.vault.generate_key(attributes).await
     }
 
-    async fn secret_import(&self, secret: Secret, attributes: SecretAttributes) -> Result<KeyId> {
-        self.vault.secret_import(secret, attributes).await
+    async fn import_key(&self, secret: Key, attributes: KeyAttributes) -> Result<KeyId> {
+        self.vault.import_key(secret, attributes).await
     }
 
-    async fn secret_export(&self, key_id: &KeyId) -> Result<Secret> {
-        self.vault.secret_export(key_id).await
+    async fn export_key(&self, key_id: &KeyId) -> Result<Key> {
+        self.vault.export_key(key_id).await
     }
 
-    async fn secret_attributes_get(&self, key_id: &KeyId) -> Result<SecretAttributes> {
-        self.vault.secret_attributes_get(key_id).await
+    async fn get_key_attributes(&self, key_id: &KeyId) -> Result<KeyAttributes> {
+        self.vault.get_key_attributes(key_id).await
     }
 
-    async fn secret_public_key_get(&self, key_id: &KeyId) -> Result<PublicKey> {
-        self.vault.secret_public_key_get(key_id).await
+    async fn get_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
+        self.vault.get_public_key(key_id).await
     }
 
-    async fn secret_destroy(&self, key_id: KeyId) -> Result<()> {
-        self.vault.secret_destroy(key_id).await
+    async fn destroy_key(&self, key_id: KeyId) -> Result<()> {
+        self.vault.destroy_key(key_id).await
     }
 }
 
@@ -177,7 +177,7 @@ impl<V: IdentityVault> Hasher for CrazyVault<V> {
         salt: &KeyId,
         info: &[u8],
         ikm: Option<&KeyId>,
-        output_attributes: SmallBuffer<SecretAttributes>,
+        output_attributes: SmallBuffer<KeyAttributes>,
     ) -> Result<SmallBuffer<KeyId>> {
         self.vault
             .hkdf_sha256(salt, info, ikm, output_attributes)

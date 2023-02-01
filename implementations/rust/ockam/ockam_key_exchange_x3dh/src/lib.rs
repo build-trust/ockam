@@ -8,7 +8,7 @@ extern crate alloc;
 
 use arrayref::array_ref;
 use ockam_core::vault::{
-    AsymmetricVault, Hasher, PublicKey, SecretType, SecretVault, Signer, SymmetricVault, Verifier,
+    AsymmetricVault, Hasher, KeyType, KeyVault, PublicKey, Signer, SymmetricVault, Verifier,
 };
 use ockam_core::{compat::vec::Vec, AsyncTryClone};
 use zeroize::Zeroize;
@@ -83,11 +83,10 @@ impl TryFrom<&[u8]> for PreKeyBundle {
         if data.len() != Self::SIZE {
             return Err(X3DHError::MessageLenMismatch.into());
         }
-        let identity_key = PublicKey::new(array_ref![data, 0, 32].to_vec(), SecretType::X25519);
-        let signed_prekey = PublicKey::new(array_ref![data, 32, 32].to_vec(), SecretType::X25519);
+        let identity_key = PublicKey::new(array_ref![data, 0, 32].to_vec(), KeyType::X25519);
+        let signed_prekey = PublicKey::new(array_ref![data, 32, 32].to_vec(), KeyType::X25519);
         let signature_prekey = Signature(*array_ref![data, 64, 64]);
-        let one_time_prekey =
-            PublicKey::new(array_ref![data, 128, 32].to_vec(), SecretType::X25519);
+        let one_time_prekey = PublicKey::new(array_ref![data, 128, 32].to_vec(), KeyType::X25519);
         Ok(Self {
             identity_key,
             signed_prekey,
@@ -101,7 +100,7 @@ const CSUITE: &[u8] = b"X3DH_25519_AESGCM_SHA256\0\0\0\0\0\0\0\0";
 
 /// Vault with X3DH required functionality
 pub trait X3dhVault:
-    SecretVault
+    KeyVault
     + Signer
     + Verifier
     + AsymmetricVault
@@ -115,7 +114,7 @@ pub trait X3dhVault:
 }
 
 impl<D> X3dhVault for D where
-    D: SecretVault
+    D: KeyVault
         + Signer
         + Verifier
         + AsymmetricVault
@@ -167,13 +166,13 @@ mod tests {
 
         assert_eq!(initiator.h(), responder.h());
 
-        let s1 = vault.secret_export(initiator.encrypt_key()).await?;
-        let s2 = vault.secret_export(responder.decrypt_key()).await?;
+        let s1 = vault.export_key(initiator.encrypt_key()).await?;
+        let s2 = vault.export_key(responder.decrypt_key()).await?;
 
         assert_eq!(s1, s2);
 
-        let s1 = vault.secret_export(initiator.decrypt_key()).await?;
-        let s2 = vault.secret_export(responder.encrypt_key()).await?;
+        let s1 = vault.export_key(initiator.decrypt_key()).await?;
+        let s2 = vault.export_key(responder.encrypt_key()).await?;
 
         assert_eq!(s1, s2);
         ctx.stop().await

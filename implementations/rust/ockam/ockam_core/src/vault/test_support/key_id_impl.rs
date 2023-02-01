@@ -1,5 +1,5 @@
 use crate::vault::{
-    AsymmetricVault, PublicKey, SecretAttributes, SecretPersistence, SecretType, SecretVault,
+    AsymmetricVault, KeyAttributes, KeyPersistence, KeyType, KeyVault, PublicKey,
     CURVE25519_SECRET_LENGTH_U32,
 };
 use hex::decode;
@@ -7,7 +7,7 @@ use hex::decode;
 pub async fn compute_key_id_for_public_key(vault: &mut impl AsymmetricVault) {
     let public =
         decode("68858ea1ea4e1ade755df7fb6904056b291d9781eb5489932f46e32f12dd192a").unwrap();
-    let public = PublicKey::new(public.to_vec(), SecretType::X25519);
+    let public = PublicKey::new(public.to_vec(), KeyType::X25519);
 
     let key_id = vault.compute_key_id_for_public_key(&public).await.unwrap();
 
@@ -17,23 +17,23 @@ pub async fn compute_key_id_for_public_key(vault: &mut impl AsymmetricVault) {
     );
 }
 
-pub async fn secret_by_key_id(vault: &mut (impl AsymmetricVault + SecretVault)) {
+pub async fn secret_by_key_id(vault: &mut (impl AsymmetricVault + KeyVault)) {
     let attributes_set = [
-        SecretAttributes::new(
-            SecretType::X25519,
-            SecretPersistence::Ephemeral,
+        KeyAttributes::new(
+            KeyType::X25519,
+            KeyPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH_U32,
         ),
-        SecretAttributes::new(
-            SecretType::Ed25519,
-            SecretPersistence::Ephemeral,
+        KeyAttributes::new(
+            KeyType::Ed25519,
+            KeyPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH_U32,
         ),
     ];
 
     for attributes in attributes_set {
-        let secret = vault.secret_generate(attributes).await.unwrap();
-        let public = vault.secret_public_key_get(&secret).await.unwrap();
+        let secret = vault.generate_key(attributes).await.unwrap();
+        let public = vault.get_public_key(&secret).await.unwrap();
 
         let key_id = vault.compute_key_id_for_public_key(&public).await.unwrap();
 

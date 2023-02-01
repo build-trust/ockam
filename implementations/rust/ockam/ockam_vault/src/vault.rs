@@ -9,19 +9,19 @@ use ockam_node::compat::asynchronous::RwLock;
 /// ```
 /// use ockam_vault::Vault;
 /// use ockam_core::Result;
-/// use ockam_core::vault::{SecretAttributes, SecretType, SecretPersistence, CURVE25519_SECRET_LENGTH_U32, SecretVault, Signer, Verifier};
+/// use ockam_core::vault::{KeyAttributes, KeyType, KeyPersistence, CURVE25519_SECRET_LENGTH_U32, KeyVault, Signer, Verifier};
 ///
 /// async fn example() -> Result<()> {
 ///     let mut vault = Vault::default();
 ///
-///     let mut attributes = SecretAttributes::new(
-///         SecretType::X25519,
-///         SecretPersistence::Ephemeral,
+///     let mut attributes = KeyAttributes::new(
+///         KeyType::X25519,
+///         KeyPersistence::Ephemeral,
 ///         CURVE25519_SECRET_LENGTH_U32,
 ///     );
 ///
-///     let secret = vault.secret_generate(attributes).await?;
-///     let public = vault.secret_public_key_get(&secret).await?;
+///     let secret = vault.generate_key(attributes).await?;
+///     let public = vault.get_public_key(&secret).await?;
 ///
 ///     let data = "Very important stuff".as_bytes();
 ///

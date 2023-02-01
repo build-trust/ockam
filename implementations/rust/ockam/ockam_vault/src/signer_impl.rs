@@ -1,11 +1,11 @@
 use crate::vault::Vault;
 use crate::VaultError;
 use cfg_if::cfg_if;
-use ockam_core::vault::{KeyId, SecretType, Signature, Signer};
+use ockam_core::vault::{KeyId, KeyType, Signature, Signer};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 #[cfg(feature = "aws")]
-use ockam_core::vault::Secret;
+use ockam_core::vault::Key;
 
 #[cfg(feature = "rustcrypto")]
 use crate::error::from_pkcs8;
@@ -20,12 +20,12 @@ impl Signer for Vault {
         let entry = entries.get(secret_key).ok_or(VaultError::EntryNotFound)?;
 
         match entry.key_attributes().stype() {
-            SecretType::X25519 => {
+            KeyType::X25519 => {
                 use crate::xeddsa::XEddsaSigner;
                 use arrayref::array_ref;
                 use ockam_core::compat::rand::{thread_rng, RngCore};
                 use ockam_core::vault::CURVE25519_SECRET_LENGTH_USIZE;
-                let key = entry.secret().try_as_key()?.as_ref();
+                let key = entry.key().try_as_key()?.as_ref();
                 if key.len() != CURVE25519_SECRET_LENGTH_USIZE {
                     return Err(VaultError::InvalidX25519SecretLength.into());
                 }
@@ -41,9 +41,9 @@ impl Signer for Vault {
                 .xeddsa_sign(data.as_ref(), &nonce);
                 Ok(Signature::new(sig.to_vec()))
             }
-            SecretType::Ed25519 => {
+            KeyType::Ed25519 => {
                 use ed25519_dalek::Signer;
-                let key = entry.secret().try_as_key()?.as_ref();
+                let key = entry.key().try_as_key()?.as_ref();
                 let sk = ed25519_dalek::SecretKey::from_bytes(key).unwrap();
                 let pk = ed25519_dalek::PublicKey::from(&sk);
 
@@ -55,14 +55,14 @@ impl Signer for Vault {
                 let sig = kp.sign(data.as_ref());
                 Ok(Signature::new(sig.to_bytes().to_vec()))
             }
-            SecretType::NistP256 => {
+            KeyType::NistP256 => {
                 #[cfg(feature = "aws")]
                 if let Some(kms) = &self.aws_kms {
-                    if let Secret::Aws(kid) = entry.secret() {
+                    if let Key::Aws(kid) = entry.key() {
                         return kms.sign(kid, data).await;
                     }
                 }
-                let key = entry.secret().try_as_key()?.as_ref();
+                let key = entry.key().try_as_key()?.as_ref();
                 cfg_if! {
                     if #[cfg(feature = "rustcrypto")] {
                         use p256::ecdsa::{self, signature::Signer as _};
@@ -76,7 +76,7 @@ impl Signer for Vault {
                     }
                 }
             }
-            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
+            KeyType::Buffer | KeyType::Aes => Err(VaultError::InvalidKeyType.into()),
         }
     }
 }

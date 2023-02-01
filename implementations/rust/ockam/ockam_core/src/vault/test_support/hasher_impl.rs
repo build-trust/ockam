@@ -1,6 +1,4 @@
-use crate::vault::{
-    Hasher, Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType, SecretVault,
-};
+use crate::vault::{Hasher, Key, KeyAttributes, KeyPersistence, KeyType, KeyVault, PrivateKey};
 use hex::encode;
 
 pub async fn sha256(vault: &mut impl Hasher) {
@@ -13,30 +11,30 @@ pub async fn sha256(vault: &mut impl Hasher) {
     );
 }
 
-pub async fn hkdf(vault: &mut (impl Hasher + SecretVault)) {
+pub async fn hkdf(vault: &mut (impl Hasher + KeyVault)) {
     let salt_value = b"hkdf_test";
-    let attributes = SecretAttributes::new(
-        SecretType::Buffer,
-        crate::vault::SecretPersistence::Ephemeral,
+    let attributes = KeyAttributes::new(
+        KeyType::Buffer,
+        crate::vault::KeyPersistence::Ephemeral,
         salt_value.len() as u32,
     );
     let salt = vault
-        .secret_import(Secret::Key(SecretKey::new(salt_value.to_vec())), attributes)
+        .import_key(Key::Key(PrivateKey::new(salt_value.to_vec())), attributes)
         .await
         .unwrap();
 
     let ikm_value = b"a";
-    let attributes = SecretAttributes::new(
-        SecretType::Buffer,
-        SecretPersistence::Ephemeral,
+    let attributes = KeyAttributes::new(
+        KeyType::Buffer,
+        KeyPersistence::Ephemeral,
         ikm_value.len() as u32,
     );
     let ikm = vault
-        .secret_import(Secret::Key(SecretKey::new(ikm_value.to_vec())), attributes)
+        .import_key(Key::Key(PrivateKey::new(ikm_value.to_vec())), attributes)
         .await
         .unwrap();
 
-    let attributes = SecretAttributes::new(SecretType::Buffer, SecretPersistence::Ephemeral, 24u32);
+    let attributes = KeyAttributes::new(KeyType::Buffer, KeyPersistence::Ephemeral, 24u32);
 
     let res = vault
         .hkdf_sha256(&salt, b"", Some(&ikm), vec![attributes])
@@ -44,7 +42,7 @@ pub async fn hkdf(vault: &mut (impl Hasher + SecretVault)) {
     assert!(res.is_ok());
     let digest = res.unwrap();
     assert_eq!(digest.len(), 1);
-    let digest = vault.secret_export(&digest[0]).await.unwrap();
+    let digest = vault.export_key(&digest[0]).await.unwrap();
     assert_eq!(
         encode(digest.cast_as_key().as_ref()),
         "921ab9f260544b71941dbac2ca2d42c417aa07b53e055a8f"

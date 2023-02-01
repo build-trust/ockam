@@ -1,19 +1,18 @@
 use crate::vault::{
-    SecretAttributes, SecretPersistence, SecretType, SecretVault, SymmetricVault,
-    AES128_SECRET_LENGTH_U32,
+    KeyAttributes, KeyPersistence, KeyType, KeyVault, SymmetricVault, AES128_SECRET_LENGTH_U32,
 };
 
-pub async fn encryption(vault: &mut (impl SymmetricVault + SecretVault)) {
+pub async fn encryption(vault: &mut (impl SymmetricVault + KeyVault)) {
     let message = b"Ockam Test Message";
     let nonce = b"TestingNonce";
     let aad = b"Extra payload data";
-    let attributes = SecretAttributes::new(
-        SecretType::Aes,
-        SecretPersistence::Ephemeral,
+    let attributes = KeyAttributes::new(
+        KeyType::Aes,
+        KeyPersistence::Ephemeral,
         AES128_SECRET_LENGTH_U32,
     );
 
-    let ctx = &vault.secret_generate(attributes).await.unwrap();
+    let ctx = &vault.generate_key(attributes).await.unwrap();
     let res = vault
         .aead_aes_gcm_encrypt(ctx, message.as_ref(), nonce.as_ref(), aad.as_ref())
         .await;

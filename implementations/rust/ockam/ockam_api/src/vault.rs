@@ -7,7 +7,7 @@ use minicbor::{Decoder, Encode};
 use models::*;
 use ockam_core::api::{Error, Id, Method, Request, Response, Status};
 use ockam_core::vault::{
-    AsymmetricVault, Hasher, KeyId, SecretVault, Signature, Signer, SymmetricVault, Verifier,
+    AsymmetricVault, Hasher, KeyId, KeyVault, Signature, Signer, SymmetricVault, Verifier,
 };
 use ockam_core::CowStr;
 use ockam_core::{Result, Routed, Worker};
@@ -114,13 +114,13 @@ impl VaultService {
 
                     match args.operation() {
                         GetSecretRequestOperation::GetAttributes => {
-                            let resp = self.vault.secret_attributes_get(&key_id).await?;
+                            let resp = self.vault.get_key_attributes(&key_id).await?;
                             let body = GetSecretAttributesResponse::new(resp);
 
                             Self::ok_response(req, Some(body), enc)
                         }
                         GetSecretRequestOperation::GetSecretBytes => {
-                            let resp = self.vault.secret_export(&key_id).await?;
+                            let resp = self.vault.export_key(&key_id).await?;
                             let body = ExportSecretResponse::new(resp);
 
                             Self::ok_response(req, Some(body), enc)
@@ -130,7 +130,7 @@ impl VaultService {
                 ["secrets", key_id, "public_key"] => {
                     let key_id: KeyId = key_id.to_string();
 
-                    let public_key = self.vault.secret_public_key_get(&key_id).await?;
+                    let public_key = self.vault.get_public_key(&key_id).await?;
                     let body = PublicKeyResponse::new(public_key);
 
                     Self::ok_response(req, Some(body), enc)
@@ -148,8 +148,8 @@ impl VaultService {
                     let attributes = *args.attributes();
 
                     let key_id = match args.into_secret() {
-                        Some(secret) => self.vault.secret_import(secret, attributes).await?,
-                        None => self.vault.secret_generate(attributes).await?,
+                        Some(secret) => self.vault.import_key(secret, attributes).await?,
+                        None => self.vault.generate_key(attributes).await?,
                     };
 
                     let body = CreateSecretResponse::new(key_id);
@@ -294,7 +294,7 @@ impl VaultService {
                 ["secrets", key_id] => {
                     let key_id: KeyId = key_id.to_string();
 
-                    self.vault.secret_destroy(key_id).await?;
+                    self.vault.destroy_key(key_id).await?;
 
                     #[allow(unused_qualifications)]
                     Self::ok_response(req, Option::<()>::None, enc)

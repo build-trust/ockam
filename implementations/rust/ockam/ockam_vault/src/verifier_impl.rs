@@ -1,9 +1,7 @@
 use crate::vault::Vault;
 use crate::VaultError;
 use cfg_if::cfg_if;
-use ockam_core::vault::{
-    PublicKey, SecretType, Signature, Verifier, CURVE25519_PUBLIC_LENGTH_USIZE,
-};
+use ockam_core::vault::{KeyType, PublicKey, Signature, Verifier, CURVE25519_PUBLIC_LENGTH_USIZE};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 #[cfg(feature = "rustcrypto")]
@@ -19,7 +17,7 @@ impl Verifier for Vault {
         data: &[u8],
     ) -> Result<bool> {
         match public_key.stype() {
-            SecretType::X25519 => {
+            KeyType::X25519 => {
                 if public_key.data().len() != CURVE25519_PUBLIC_LENGTH_USIZE
                     || signature.as_ref().len() != 64
                 {
@@ -37,7 +35,7 @@ impl Verifier for Vault {
                 ));
                 Ok(public_key.xeddsa_verify(data.as_ref(), signature_array))
             }
-            SecretType::Ed25519 => {
+            KeyType::Ed25519 => {
                 if public_key.data().len() != CURVE25519_PUBLIC_LENGTH_USIZE
                     || signature.as_ref().len() != 64
                 {
@@ -49,7 +47,7 @@ impl Verifier for Vault {
                 let public_key = ed25519_dalek::PublicKey::from_bytes(public_key.data()).unwrap();
                 Ok(public_key.verify(data.as_ref(), &signature).is_ok())
             }
-            SecretType::NistP256 => {
+            KeyType::NistP256 => {
                 cfg_if! {
                     if #[cfg(feature = "rustcrypto")] {
                         use p256::ecdsa::{VerifyingKey, Signature, signature::Verifier as _};
@@ -62,7 +60,7 @@ impl Verifier for Vault {
                     }
                 }
             }
-            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidPublicKey.into()),
+            KeyType::Buffer | KeyType::Aes => Err(VaultError::InvalidPublicKey.into()),
         }
     }
 }

@@ -1,7 +1,7 @@
 #![allow(conflicting_repr_hints)]
 
 use crate::FfiError;
-use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType};
+use ockam_core::vault::{KeyAttributes, KeyPersistence, KeyType};
 
 /// Represents a handle id for the secret key
 pub type SecretKeyHandle = u64;
@@ -64,40 +64,40 @@ impl FfiSecretAttributes {
     }
 }
 
-impl From<SecretAttributes> for FfiSecretAttributes {
-    fn from(attrs: SecretAttributes) -> Self {
+impl From<KeyAttributes> for FfiSecretAttributes {
+    fn from(attrs: KeyAttributes) -> Self {
         let stype = match attrs.stype() {
-            SecretType::Buffer => 0,
-            SecretType::Aes => 1,
-            SecretType::X25519 => 2,
-            SecretType::Ed25519 => 3,
-            SecretType::NistP256 => 4,
+            KeyType::Buffer => 0,
+            KeyType::Aes => 1,
+            KeyType::X25519 => 2,
+            KeyType::Ed25519 => 3,
+            KeyType::NistP256 => 4,
         };
 
         let persistence = match attrs.persistence() {
-            SecretPersistence::Ephemeral => 0,
-            SecretPersistence::Persistent => 1,
+            KeyPersistence::Ephemeral => 0,
+            KeyPersistence::Persistent => 1,
         };
 
         Self::new(stype, persistence, attrs.length())
     }
 }
 
-impl TryFrom<FfiSecretAttributes> for SecretAttributes {
+impl TryFrom<FfiSecretAttributes> for KeyAttributes {
     type Error = FfiError;
 
     fn try_from(attrs: FfiSecretAttributes) -> Result<Self, Self::Error> {
         let stype = match attrs.stype() {
-            0 => Ok(SecretType::Buffer),
-            1 => Ok(SecretType::Aes),
-            2 => Ok(SecretType::X25519),
-            3 => Ok(SecretType::Ed25519),
+            0 => Ok(KeyType::Buffer),
+            1 => Ok(KeyType::Aes),
+            2 => Ok(KeyType::X25519),
+            3 => Ok(KeyType::Ed25519),
             _ => Err(FfiError::InvalidParam),
         }?;
 
         let persistence = match attrs.persistence() {
-            0 => Ok(SecretPersistence::Ephemeral),
-            1 => Ok(SecretPersistence::Persistent),
+            0 => Ok(KeyPersistence::Ephemeral),
+            1 => Ok(KeyPersistence::Persistent),
             _ => Err(FfiError::InvalidParam),
         }?;
 

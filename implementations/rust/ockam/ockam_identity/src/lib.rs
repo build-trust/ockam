@@ -19,7 +19,7 @@ extern crate core;
 extern crate alloc;
 
 use ockam_core::AsyncTryClone;
-use ockam_vault::{Hasher, SecretVault, Signer, Verifier};
+use ockam_vault::{Hasher, KeyVault, Signer, Verifier};
 
 use crate::IdentityError;
 
@@ -61,18 +61,11 @@ mod invalid_signatures_tests;
 
 /// Traits required for a Vault implementation suitable for use in an Identity
 pub trait IdentityVault:
-    SecretVault + SecureChannelVault + Hasher + Signer + Verifier + AsyncTryClone + Send + 'static
+    KeyVault + SecureChannelVault + Hasher + Signer + Verifier + AsyncTryClone + Send + 'static
 {
 }
 
 impl<D> IdentityVault for D where
-    D: SecretVault
-        + SecureChannelVault
-        + Hasher
-        + Signer
-        + Verifier
-        + AsyncTryClone
-        + Send
-        + 'static
+    D: KeyVault + SecureChannelVault + Hasher + Signer + Verifier + AsyncTryClone + Send + 'static
 {
 }

@@ -1,6 +1,6 @@
 use crate::{XXError, XXVault, SHA256_SIZE_U32};
 use ockam_core::vault::{
-    KeyId, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType,
+    Key, KeyAttributes, KeyId, KeyPersistence, KeyType, PrivateKey, PublicKey,
     AES256_SECRET_LENGTH_U32,
 };
 use ockam_core::Result;
@@ -21,14 +21,11 @@ impl<V: XXVault> DhState<V> {
     }
 
     pub(crate) async fn new(protocol_name: &[u8; 32], vault: V) -> Result<Self> {
-        let attributes = SecretAttributes::new(
-            SecretType::Buffer,
-            SecretPersistence::Ephemeral,
-            SHA256_SIZE_U32,
-        );
+        let attributes =
+            KeyAttributes::new(KeyType::Buffer, KeyPersistence::Ephemeral, SHA256_SIZE_U32);
 
-        let sk = Secret::Key(SecretKey::new(protocol_name.to_vec()));
-        let ck = vault.secret_import(sk, attributes).await?;
+        let sk = Key::Key(PrivateKey::new(protocol_name.to_vec()));
+        let ck = vault.import_key(sk, attributes).await?;
 
         Ok(Self {
             key: None,
@@ -48,24 +45,21 @@ impl<V: XXVault> DhState<V> {
 }
 
 impl<V: XXVault> DhState<V> {
-    pub(crate) fn get_symmetric_key_type_and_length(&self) -> (SecretType, u32) {
-        (SecretType::Aes, AES256_SECRET_LENGTH_U32)
+    pub(crate) fn get_symmetric_key_type_and_length(&self) -> (KeyType, u32) {
+        (KeyType::Aes, AES256_SECRET_LENGTH_U32)
     }
     /// Perform the diffie-hellman computation
     pub(crate) async fn dh(&mut self, secret_handle: &KeyId, public_key: &PublicKey) -> Result<()> {
         let ck = self.ck.as_ref().ok_or(XXError::InvalidState)?;
 
-        let attributes_ck = SecretAttributes::new(
-            SecretType::Buffer,
-            SecretPersistence::Ephemeral,
-            SHA256_SIZE_U32,
-        );
+        let attributes_ck =
+            KeyAttributes::new(KeyType::Buffer, KeyPersistence::Ephemeral, SHA256_SIZE_U32);
 
         let symmetric_secret_info = self.get_symmetric_key_type_and_length();
 
-        let attributes_k = SecretAttributes::new(
+        let attributes_k = KeyAttributes::new(
             symmetric_secret_info.0,
-            SecretPersistence::Ephemeral,
+            KeyPersistence::Ephemeral,
             symmetric_secret_info.1,
         );
 
@@ -85,14 +79,14 @@ impl<V: XXVault> DhState<V> {
 
         let key = self.key.take();
         if key.is_some() {
-            self.vault.secret_destroy(key.unwrap()).await?;
+            self.vault.destroy_key(key.unwrap()).await?;
         }
 
         self.key = Some(hkdf_output.pop().unwrap());
 
         let ck = self.ck.take();
 
-        self.vault.secret_destroy(ck.unwrap()).await?;
+        self.vault.destroy_key(ck.unwrap()).await?;
         self.ck = Some(hkdf_output.pop().unwrap());
 
         Ok(())

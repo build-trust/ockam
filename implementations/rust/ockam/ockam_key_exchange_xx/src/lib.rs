@@ -39,19 +39,12 @@ pub const AES_GCM_TAGSIZE_USIZE: usize = 16;
 
 /// Vault with XX required functionality
 pub trait XXVault:
-    SecretVault + Hasher + AsymmetricVault + SymmetricVault + AsyncTryClone + Send + Sync + 'static
+    KeyVault + Hasher + AsymmetricVault + SymmetricVault + AsyncTryClone + Send + Sync + 'static
 {
 }
 
 impl<D> XXVault for D where
-    D: SecretVault
-        + Hasher
-        + AsymmetricVault
-        + SymmetricVault
-        + AsyncTryClone
-        + Send
-        + Sync
-        + 'static
+    D: KeyVault + Hasher + AsymmetricVault + SymmetricVault + AsyncTryClone + Send + Sync + 'static
 {
 }
 
@@ -62,7 +55,7 @@ mod responder;
 pub use responder::*;
 mod new_key_exchanger;
 pub use new_key_exchanger::*;
-use ockam_core::vault::{AsymmetricVault, Hasher, SecretVault, SymmetricVault};
+use ockam_core::vault::{AsymmetricVault, Hasher, KeyVault, SymmetricVault};
 
 #[cfg(test)]
 mod tests {
@@ -103,13 +96,13 @@ mod tests {
 
         assert_eq!(initiator.h(), responder.h());
 
-        let s1 = vault.secret_export(initiator.encrypt_key()).await.unwrap();
-        let s2 = vault.secret_export(responder.decrypt_key()).await.unwrap();
+        let s1 = vault.export_key(initiator.encrypt_key()).await.unwrap();
+        let s2 = vault.export_key(responder.decrypt_key()).await.unwrap();
 
         assert_eq!(s1, s2);
 
-        let s1 = vault.secret_export(initiator.decrypt_key()).await.unwrap();
-        let s2 = vault.secret_export(responder.encrypt_key()).await.unwrap();
+        let s1 = vault.export_key(initiator.decrypt_key()).await.unwrap();
+        let s2 = vault.export_key(responder.encrypt_key()).await.unwrap();
 
         assert_eq!(s1, s2);
 

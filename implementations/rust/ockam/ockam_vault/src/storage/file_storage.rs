@@ -3,7 +3,7 @@ use fs2::FileExt; //locking
 use ockam_core::compat::boxed::Box;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::storage::Storage;
-use ockam_core::vault::{KeyId, Secret, SecretAttributes, SecretPersistence, VaultEntry};
+use ockam_core::vault::{Key, KeyAttributes, KeyId, KeyPersistence, VaultEntry};
 use ockam_core::{async_trait, Error, Result};
 use ockam_node::tokio::task::{self, JoinError};
 use serde::{Deserialize, Serialize};
@@ -14,8 +14,8 @@ use std::path::{Path, PathBuf};
 #[derive(Serialize, Deserialize, Debug)]
 struct LegacyVaultEntry {
     key_id: Option<String>,
-    key_attributes: SecretAttributes,
-    key: Secret,
+    key_attributes: KeyAttributes,
+    key: Key,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -184,7 +184,7 @@ impl Storage for FileStorage {
     async fn store(&self, key_id: &KeyId, key: &VaultEntry) -> Result<()> {
         let key_id = key_id.clone();
         let attributes = key.key_attributes();
-        let key = key.secret().clone();
+        let key = key.key().clone();
         let t = move |v: LegacySerializedVault| {
             let new_entry = (
                 0,
@@ -216,7 +216,7 @@ impl Storage for FileStorage {
                 .find(|x| {
                     if let Some(id) = &x.1.key_id {
                         id.eq(&key_id)
-                            && x.1.key_attributes.persistence() == SecretPersistence::Persistent
+                            && x.1.key_attributes.persistence() == KeyPersistence::Persistent
                     } else {
                         false
                     }
@@ -258,7 +258,7 @@ mod tests {
     use crate::Vault;
     use ockam_core::compat::join;
     use ockam_core::compat::rand::RngCore;
-    use ockam_core::vault::{SecretType, SecretVault};
+    use ockam_core::vault::{KeyType, KeyVault};
     use rand::thread_rng;
     use std::sync::Arc;
 
@@ -278,24 +278,21 @@ mod tests {
         let storage = Arc::new(storage);
         let vault = Vault::new(Some(storage.clone()));
 
-        let attributes10 =
-            SecretAttributes::new(SecretType::Ed25519, SecretPersistence::Persistent, 0);
-        let attributes20 =
-            SecretAttributes::new(SecretType::X25519, SecretPersistence::Persistent, 0);
-        let attributes3 =
-            SecretAttributes::new(SecretType::X25519, SecretPersistence::Ephemeral, 0);
+        let attributes10 = KeyAttributes::new(KeyType::Ed25519, KeyPersistence::Persistent, 0);
+        let attributes20 = KeyAttributes::new(KeyType::X25519, KeyPersistence::Persistent, 0);
+        let attributes3 = KeyAttributes::new(KeyType::X25519, KeyPersistence::Ephemeral, 0);
 
-        let key_id1 = vault.secret_generate(attributes10).await.unwrap();
-        let key_id2 = vault.secret_generate(attributes20).await.unwrap();
-        let key_id3 = vault.secret_generate(attributes3).await.unwrap();
+        let key_id1 = vault.generate_key(attributes10).await.unwrap();
+        let key_id2 = vault.generate_key(attributes20).await.unwrap();
+        let key_id3 = vault.generate_key(attributes3).await.unwrap();
 
         let vault = Vault::new(Some(storage.clone()));
 
-        let attributes11 = vault.secret_attributes_get(&key_id1).await.unwrap();
+        let attributes11 = vault.get_key_attributes(&key_id1).await.unwrap();
         assert_eq!(attributes10, attributes11);
-        let attributes21 = vault.secret_attributes_get(&key_id2).await.unwrap();
+        let attributes21 = vault.get_key_attributes(&key_id2).await.unwrap();
         assert_eq!(attributes20, attributes21);
-        let attributes31 = vault.secret_attributes_get(&key_id3).await;
+        let attributes31 = vault.get_key_attributes(&key_id3).await;
         assert!(attributes31.is_err());
     }
 
@@ -316,17 +313,14 @@ mod tests {
         let storage = Arc::new(storage);
         let vault = Vault::new(Some(storage.clone()));
 
-        let attributes1 =
-            SecretAttributes::new(SecretType::Ed25519, SecretPersistence::Persistent, 0);
-        let attributes2 =
-            SecretAttributes::new(SecretType::Ed25519, SecretPersistence::Persistent, 0);
-        let attributes3 =
-            SecretAttributes::new(SecretType::Ed25519, SecretPersistence::Persistent, 0);
+        let attributes1 = KeyAttributes::new(KeyType::Ed25519, KeyPersistence::Persistent, 0);
+        let attributes2 = KeyAttributes::new(KeyType::Ed25519, KeyPersistence::Persistent, 0);
+        let attributes3 = KeyAttributes::new(KeyType::Ed25519, KeyPersistence::Persistent, 0);
 
         let (key_id1, key_id2, key_id3) = join!(
-            vault.secret_generate(attributes1),
-            vault.secret_generate(attributes2),
-            vault.secret_generate(attributes3)
+            vault.generate_key(attributes1),
+            vault.generate_key(attributes2),
+            vault.generate_key(attributes3)
         );
 
         let key_id1 = key_id1.unwrap();
@@ -334,9 +328,9 @@ mod tests {
         let key_id3 = key_id3.unwrap();
 
         let (attributes12, attributes22, attributes32) = join!(
-            vault.secret_attributes_get(&key_id1),
-            vault.secret_attributes_get(&key_id2),
-            vault.secret_attributes_get(&key_id3)
+            vault.get_key_attributes(&key_id1),
+            vault.get_key_attributes(&key_id2),
+            vault.get_key_attributes(&key_id3)
         );
 
         assert_eq!(attributes1, attributes12.unwrap());

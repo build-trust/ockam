@@ -41,9 +41,7 @@ mod verifier_impl;
 mod xeddsa;
 
 // Re-export types commonly used by higher level APIs
-pub use ockam_core::vault::{
-    Hasher, KeyId, PublicKey, SecretAttributes, SecretVault, Signer, Verifier,
-};
+pub use ockam_core::vault::{Hasher, KeyAttributes, KeyId, KeyVault, PublicKey, Signer, Verifier};
 
 pub use asymmetric_impl::*;
 pub use error::*;

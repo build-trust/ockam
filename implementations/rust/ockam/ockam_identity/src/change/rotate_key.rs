@@ -1,7 +1,7 @@
 use crate::authenticated_storage::AuthenticatedStorage;
 use crate::change::{IdentityChange, IdentityChangeSignature, IdentitySignedChange, SignatureType};
 use crate::change_history::IdentityChangeHistory;
-use crate::{ChangeIdentifier, Identity, IdentityError, IdentityVault, KeyAttributes};
+use crate::{ChangeIdentifier, Identity, IdentityError, IdentityVault, PrivateKeyAttributes};
 use core::fmt;
 use ockam_core::vault::PublicKey;
 use ockam_core::{Encodable, Result};
@@ -11,13 +11,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RotateKeyChangeData {
     prev_change_id: ChangeIdentifier,
-    key_attributes: KeyAttributes,
+    key_attributes: PrivateKeyAttributes,
     public_key: PublicKey,
 }
 
 impl RotateKeyChangeData {
     /// Return key attributes
-    pub fn key_attributes(&self) -> &KeyAttributes {
+    pub fn key_attributes(&self) -> &PrivateKeyAttributes {
         &self.key_attributes
     }
     /// Return public key
@@ -34,7 +34,7 @@ impl RotateKeyChangeData {
     /// Create RotateKeyChangeData
     pub fn new(
         prev_change_id: ChangeIdentifier,
-        key_attributes: KeyAttributes,
+        key_attributes: PrivateKeyAttributes,
         public_key: PublicKey,
     ) -> Self {
         Self {
@@ -49,7 +49,7 @@ impl fmt::Display for RotateKeyChangeData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "prev_change_id:{} key attibutes:{} public key:{}",
+            "prev_change_id:{} key attributes:{} public key:{}",
             self.prev_change_id(),
             self.key_attributes(),
             self.public_key()
@@ -61,7 +61,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     /// Rotate key change
     pub(crate) async fn make_rotate_key_change(
         &self,
-        key_attributes: KeyAttributes,
+        key_attributes: PrivateKeyAttributes,
     ) -> Result<IdentitySignedChange> {
         let change_history = self.change_history.read().await;
         let prev_change_id = change_history.get_last_change_id()?;
@@ -75,10 +75,10 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         let last_key_in_chain =
             Self::get_secret_key_from_change(&last_change_in_chain, &self.vault).await?;
 
-        let secret_attributes = key_attributes.secret_attributes();
+        let secret_attributes = key_attributes.key_attributes();
 
-        let secret_key = self.vault.secret_generate(secret_attributes).await?;
-        let public_key = self.vault.secret_public_key_get(&secret_key).await?;
+        let secret_key = self.vault.generate_key(secret_attributes).await?;
+        let public_key = self.vault.get_public_key(&secret_key).await?;
 
         let data = RotateKeyChangeData::new(prev_change_id, key_attributes, public_key);
 

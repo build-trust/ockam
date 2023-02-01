@@ -1,5 +1,5 @@
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
+use ockam_core::vault::{KeyAttributes, KeyPersistence, KeyType, KeyVault};
 use ockam_core::{Error, Result};
 use ockam_identity::Identity;
 use ockam_node::Context;
@@ -147,9 +147,9 @@ async fn add_key(ctx: &mut Context) -> Result<()> {
     let e = Identity::create(ctx, &vault).await?;
 
     let key = vault
-        .secret_generate(SecretAttributes::new(
-            SecretType::Ed25519,
-            SecretPersistence::Ephemeral,
+        .generate_key(KeyAttributes::new(
+            KeyType::Ed25519,
+            KeyPersistence::Ephemeral,
             32,
         ))
         .await?;

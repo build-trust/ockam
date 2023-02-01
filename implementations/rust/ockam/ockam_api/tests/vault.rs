@@ -5,7 +5,7 @@ use ockam_api::vault::models::{
 };
 use ockam_api::vault::VaultService;
 use ockam_core::api::{Request, Response, Status};
-use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType};
+use ockam_core::vault::{KeyAttributes, KeyPersistence, KeyType};
 use ockam_core::{route, AllowAll, Result};
 use ockam_node::Context;
 use ockam_vault::Vault;
@@ -19,9 +19,9 @@ async fn full_flow(ctx: &mut Context) -> Result<()> {
         .await?;
 
     // Generate Ed25519 Key
-    let body = CreateSecretRequest::new_generate(SecretAttributes::new(
-        SecretType::Ed25519,
-        SecretPersistence::Ephemeral,
+    let body = CreateSecretRequest::new_generate(KeyAttributes::new(
+        KeyType::Ed25519,
+        KeyPersistence::Ephemeral,
         0,
     ));
 

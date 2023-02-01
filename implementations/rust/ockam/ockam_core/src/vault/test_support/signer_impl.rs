@@ -1,25 +1,25 @@
 use crate::vault::{
-    SecretAttributes, SecretPersistence, SecretType, SecretVault, Signer, Verifier,
+    KeyAttributes, KeyPersistence, KeyType, KeyVault, Signer, Verifier,
     CURVE25519_SECRET_LENGTH_U32,
 };
 
-pub async fn sign(vault: &mut (impl Signer + Verifier + SecretVault)) {
+pub async fn sign(vault: &mut (impl Signer + Verifier + KeyVault)) {
     for attributes in [
-        SecretAttributes::new(
-            SecretType::X25519,
-            SecretPersistence::Ephemeral,
+        KeyAttributes::new(
+            KeyType::X25519,
+            KeyPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH_U32,
         ),
-        SecretAttributes::new(
-            SecretType::Ed25519,
-            SecretPersistence::Ephemeral,
+        KeyAttributes::new(
+            KeyType::Ed25519,
+            KeyPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH_U32,
         ),
     ] {
-        let secret = vault.secret_generate(attributes).await.unwrap();
+        let secret = vault.generate_key(attributes).await.unwrap();
         let res = vault.sign(&secret, b"hello world!").await;
         assert!(res.is_ok());
-        let pubkey = vault.secret_public_key_get(&secret).await.unwrap();
+        let pubkey = vault.get_public_key(&secret).await.unwrap();
         let signature = res.unwrap();
         let res = vault
             .verify(&signature, &pubkey, b"hello world!")

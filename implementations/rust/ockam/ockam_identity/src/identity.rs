@@ -4,7 +4,7 @@ use crate::change::IdentitySignedChange;
 use crate::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use crate::credential::Credential;
 use crate::{
-    ChangeIdentifier, IdentityError, IdentityIdentifier, IdentityVault, KeyAttributes,
+    ChangeIdentifier, IdentityError, IdentityIdentifier, IdentityVault, PrivateKeyAttributes,
     PublicIdentity, SecureChannelRegistry,
 };
 use ockam_core::compat::{
@@ -13,12 +13,12 @@ use ockam_core::compat::{
     sync::Arc,
     vec::Vec,
 };
-use ockam_core::vault::{SecretPersistence, SecretType, Signature, CURVE25519_SECRET_LENGTH_U32};
+use ockam_core::vault::{KeyPersistence, KeyType, Signature, CURVE25519_SECRET_LENGTH_U32};
 use ockam_core::{Address, Result};
 use ockam_core::{AsyncTryClone, DenyAll};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
-use ockam_vault::{KeyId, SecretAttributes};
+use ockam_vault::{KeyAttributes, KeyId};
 
 /// Identity implementation
 #[derive(AsyncTryClone)]
@@ -111,7 +111,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         secure_channel_registry: SecureChannelRegistry,
         vault: &V,
         kid: Option<&KeyId>,
-        key_attribs: KeyAttributes,
+        key_attribs: PrivateKeyAttributes,
     ) -> Result<Self> {
         let child_ctx = ctx
             .new_detached(
@@ -161,11 +161,11 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 
     /// Create an `Identity`. Extended version
     pub async fn create_ext(ctx: &Context, authenticated_storage: &S, vault: &V) -> Result<Self> {
-        let attrs = KeyAttributes::new(
+        let attrs = PrivateKeyAttributes::new(
             IdentityStateConst::ROOT_LABEL.to_string(),
-            SecretAttributes::new(
-                SecretType::Ed25519,
-                SecretPersistence::Persistent,
+            KeyAttributes::new(
+                KeyType::Ed25519,
+                KeyPersistence::Persistent,
                 CURVE25519_SECRET_LENGTH_U32,
             ),
         );
@@ -186,7 +186,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         authenticated_storage: &S,
         vault: &V,
         kid: &KeyId,
-        attrs: KeyAttributes,
+        attrs: PrivateKeyAttributes,
     ) -> Result<Self> {
         Self::create_impl(
             ctx,
@@ -203,11 +203,11 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 impl<V: IdentityVault> Identity<V, InMemoryStorage> {
     /// Create an `Identity` with a new secret key and `InMemoryStorage`
     pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
-        let attrs = KeyAttributes::new(
+        let attrs = PrivateKeyAttributes::new(
             IdentityStateConst::ROOT_LABEL.to_string(),
-            SecretAttributes::new(
-                SecretType::Ed25519,
-                SecretPersistence::Persistent,
+            KeyAttributes::new(
+                KeyType::Ed25519,
+                KeyPersistence::Persistent,
                 CURVE25519_SECRET_LENGTH_U32,
             ),
         );
@@ -227,7 +227,7 @@ impl<V: IdentityVault> Identity<V, InMemoryStorage> {
         ctx: &Context,
         vault: &V,
         kid: &KeyId,
-        attrs: KeyAttributes,
+        attrs: PrivateKeyAttributes,
     ) -> Result<Self> {
         Self::create_impl(
             ctx,
@@ -311,7 +311,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 
     /// Generate and add a new key to this `Identity` with a given `label`
     pub async fn create_key(&self, label: String) -> Result<()> {
-        let key_attribs = KeyAttributes::default_with_label(label);
+        let key_attribs = PrivateKeyAttributes::default_with_label(label);
 
         let change = self.make_create_key_change(None, key_attribs).await?;
 
@@ -319,12 +319,12 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     }
 
     /// Add a new key to this `Identity` with a given `label`
-    pub async fn add_key(&self, label: String, secret: &KeyId) -> Result<()> {
-        let secret_attributes = self.vault.secret_attributes_get(secret).await?;
-        let key_attribs = KeyAttributes::new(label, secret_attributes);
+    pub async fn add_key(&self, label: String, key_id: &KeyId) -> Result<()> {
+        let key_attributes = self.vault.get_key_attributes(key_id).await?;
+        let key_attribs = PrivateKeyAttributes::new(label, key_attributes);
 
         let change = self
-            .make_create_key_change(Some(secret), key_attribs)
+            .make_create_key_change(Some(key_id), key_attribs)
             .await?;
 
         self.add_change(change).await
@@ -333,7 +333,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     /// Rotate an existing key with a given label
     pub async fn rotate_key(&self, label: &str) -> Result<()> {
         let change = self
-            .make_rotate_key_change(KeyAttributes::default_with_label(label.to_string()))
+            .make_rotate_key_change(PrivateKeyAttributes::default_with_label(label.to_string()))
             .await?;
 
         self.add_change(change).await
@@ -342,7 +342,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     /// Rotate this `Identity` root key
     pub async fn rotate_root_key(&self) -> Result<()> {
         let change = self
-            .make_rotate_key_change(KeyAttributes::default_with_label(
+            .make_rotate_key_change(PrivateKeyAttributes::default_with_label(
                 IdentityStateConst::ROOT_LABEL.to_string(),
             ))
             .await?;

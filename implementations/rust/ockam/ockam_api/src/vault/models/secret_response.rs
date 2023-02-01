@@ -1,6 +1,6 @@
 use minicbor::{Decode, Encode};
-use ockam::vault::Secret;
-use ockam_core::vault::{PublicKey, SecretAttributes};
+use ockam::vault::Key;
+use ockam_core::vault::{KeyAttributes, PublicKey};
 use ockam_core::CowStr;
 
 #[cfg(feature = "tag")]
@@ -35,15 +35,15 @@ impl<'a> CreateSecretResponse<'a> {
 pub struct ExportSecretResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<9094765>,
-    #[n(1)] secret: Secret
+    #[n(1)] secret: Key
 }
 
 impl ExportSecretResponse {
-    pub fn secret(&self) -> &Secret {
+    pub fn secret(&self) -> &Key {
         &self.secret
     }
 
-    pub fn new(secret: Secret) -> Self {
+    pub fn new(secret: Key) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -58,14 +58,14 @@ impl ExportSecretResponse {
 pub struct GetSecretAttributesResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<9257276>,
-    #[b(1)] attributes: SecretAttributes,
+    #[b(1)] attributes: KeyAttributes,
 }
 
 impl GetSecretAttributesResponse {
-    pub fn attributes(&self) -> &SecretAttributes {
+    pub fn attributes(&self) -> &KeyAttributes {
         &self.attributes
     }
-    pub fn new(attributes: SecretAttributes) -> Self {
+    pub fn new(attributes: KeyAttributes) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,

@@ -1,4 +1,4 @@
-use crate::vault::{KeyId, SecretAttributes, SmallBuffer};
+use crate::vault::{KeyAttributes, KeyId, SmallBuffer};
 use crate::Result;
 use crate::{async_trait, compat::boxed::Box};
 
@@ -15,6 +15,6 @@ pub trait Hasher {
         salt: &KeyId,
         info: &[u8],
         ikm: Option<&KeyId>,
-        output_attributes: SmallBuffer<SecretAttributes>,
+        output_attributes: SmallBuffer<KeyAttributes>,
     ) -> Result<SmallBuffer<KeyId>>;
 }

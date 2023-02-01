@@ -3,7 +3,7 @@ use aws_sdk_kms::error::{ScheduleKeyDeletionError, ScheduleKeyDeletionErrorKind}
 use aws_sdk_kms::model::{KeySpec, KeyUsageType, MessageType, SigningAlgorithmSpec};
 use aws_sdk_kms::types::{Blob, SdkError};
 use aws_sdk_kms::Client;
-use ockam_core::vault::SecretType;
+use ockam_core::vault::KeyType;
 use ockam_core::vault::{KeyId, PublicKey, Signature};
 use ockam_core::Result;
 use sha2::{Digest, Sha256};
@@ -126,7 +126,7 @@ impl Kms {
         }
         if let Some(k) = output.public_key() {
             log::debug!(%kid, "received public key");
-            return Ok(PublicKey::new(k.as_ref().to_vec(), SecretType::NistP256));
+            return Ok(PublicKey::new(k.as_ref().to_vec(), KeyType::NistP256));
         }
         log::error!(%kid, "key type not supported to get a public key");
         Err(Error::UnsupportedKeyType.into())
@@ -258,10 +258,10 @@ mod tests {
         let pky = kms.public_key(&keyid).await.unwrap();
         let vlt = Vault::create();
         {
-            use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault};
-            let att = SecretAttributes::new(SecretType::NistP256, SecretPersistence::Ephemeral, 32);
-            let kid = vlt.secret_generate(att).await.unwrap();
-            let pky = vlt.secret_public_key_get(&kid).await.unwrap();
+            use ockam_core::vault::{KeyAttributes, KeyPersistence, KeyType, KeyVault};
+            let att = KeyAttributes::new(KeyType::NistP256, KeyPersistence::Ephemeral, 32);
+            let kid = vlt.generate_key(att).await.unwrap();
+            let pky = vlt.get_public_key(&kid).await.unwrap();
             let sig = vlt.sign(&kid, &msg[..]).await.unwrap();
             assert!(vlt.verify(&sig, &pky, msg).await.unwrap())
         }

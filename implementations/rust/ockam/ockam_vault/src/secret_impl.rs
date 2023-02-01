@@ -4,8 +4,8 @@ use arrayref::array_ref;
 use cfg_if::cfg_if;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::vault::{
-    AsymmetricVault, KeyId, PublicKey, Secret, SecretAttributes, SecretKey, SecretPersistence,
-    SecretType, SecretVault, VaultEntry, AES128_SECRET_LENGTH_U32, AES256_SECRET_LENGTH_U32,
+    AsymmetricVault, Key, KeyAttributes, KeyId, KeyPersistence, KeyType, KeyVault, PrivateKey,
+    PublicKey, VaultEntry, AES128_SECRET_LENGTH_U32, AES256_SECRET_LENGTH_U32,
     CURVE25519_SECRET_LENGTH_USIZE,
 };
 use ockam_core::{async_trait, compat::boxed::Box, Result};
@@ -15,13 +15,9 @@ use crate::error::{from_ecurve, from_pkcs8};
 
 impl Vault {
     /// Compute key id from secret and attributes. Only Curve25519 and Buffer types are supported
-    async fn compute_key_id(
-        &self,
-        secret: &Secret,
-        attributes: &SecretAttributes,
-    ) -> Result<KeyId> {
+    async fn compute_key_id(&self, secret: &Key, attributes: &KeyAttributes) -> Result<KeyId> {
         Ok(match attributes.stype() {
-            SecretType::X25519 => {
+            KeyType::X25519 => {
                 // FIXME: Check secret length
                 let secret = secret.try_as_key()?.as_ref();
                 let sk = x25519_dalek::StaticSecret::from(*array_ref![
@@ -33,26 +29,26 @@ impl Vault {
 
                 self.compute_key_id_for_public_key(&PublicKey::new(
                     public.as_bytes().to_vec(),
-                    SecretType::X25519,
+                    KeyType::X25519,
                 ))
                 .await?
             }
-            SecretType::Ed25519 => {
+            KeyType::Ed25519 => {
                 let sk = ed25519_dalek::SecretKey::from_bytes(secret.try_as_key()?.as_ref())
                     .map_err(|_| VaultError::InvalidEd25519Secret)?;
                 let public = ed25519_dalek::PublicKey::from(&sk);
 
                 self.compute_key_id_for_public_key(&PublicKey::new(
                     public.as_bytes().to_vec(),
-                    SecretType::Ed25519,
+                    KeyType::Ed25519,
                 ))
                 .await?
             }
-            SecretType::NistP256 => '_block: {
+            KeyType::NistP256 => '_block: {
                 #[cfg(feature = "aws")]
-                if attributes.persistence() == SecretPersistence::Persistent {
+                if attributes.persistence() == KeyPersistence::Persistent {
                     if let Some(kms) = &self.aws_kms {
-                        if let Secret::Aws(kid) = secret {
+                        if let Key::Aws(kid) = secret {
                             let pk = kms.public_key(kid).await?;
                             break '_block self.compute_key_id_for_public_key(&pk).await?;
                         }
@@ -67,7 +63,7 @@ impl Vault {
                     }
                 }
             }
-            SecretType::Buffer | SecretType::Aes => {
+            KeyType::Buffer | KeyType::Aes => {
                 // NOTE: Buffer and Aes secrets in the system are ephemeral and it should be fine,
                 // that every time we import the same secret - it gets different KeyId value.
                 // However, if we decide to have persistent Buffer or Aes secrets, that should be
@@ -81,7 +77,7 @@ impl Vault {
     }
 
     /// Validate secret key.
-    pub fn check_secret(&self, secret: &[u8], attributes: &SecretAttributes) -> Result<()> {
+    pub fn check_secret(&self, secret: &[u8], attributes: &KeyAttributes) -> Result<()> {
         if secret.len() != attributes.length() as usize {
             return Err(VaultError::InvalidSecretLength.into());
         }
@@ -89,7 +85,7 @@ impl Vault {
     }
 
     async fn store_secret(&self, key_id: &KeyId, vault_entry: &VaultEntry) -> Result<()> {
-        if vault_entry.key_attributes().persistence() == SecretPersistence::Persistent {
+        if vault_entry.key_attributes().persistence() == KeyPersistence::Persistent {
             if let Some(storage) = &self.storage {
                 storage.store(key_id, vault_entry).await?;
             }
@@ -100,11 +96,11 @@ impl Vault {
 }
 
 #[async_trait]
-impl SecretVault for Vault {
+impl KeyVault for Vault {
     /// Generate fresh secret. Only Curve25519 and Buffer types are supported
-    async fn secret_generate(&self, attributes: SecretAttributes) -> Result<KeyId> {
+    async fn generate_key(&self, attributes: KeyAttributes) -> Result<KeyId> {
         let secret = match attributes.stype() {
-            SecretType::X25519 | SecretType::Ed25519 => {
+            KeyType::X25519 | KeyType::Ed25519 => {
                 let bytes = {
                     let mut rng = thread_rng();
                     let mut bytes = vec![0u8; CURVE25519_SECRET_LENGTH_USIZE];
@@ -112,10 +108,10 @@ impl SecretVault for Vault {
                     bytes
                 };
 
-                Secret::Key(SecretKey::new(bytes))
+                Key::Key(PrivateKey::new(bytes))
             }
-            SecretType::Buffer => {
-                if attributes.persistence() != SecretPersistence::Ephemeral {
+            KeyType::Buffer => {
+                if attributes.persistence() != KeyPersistence::Ephemeral {
                     return Err(VaultError::InvalidKeyType.into());
                 };
                 let key = {
@@ -125,15 +121,15 @@ impl SecretVault for Vault {
                     key
                 };
 
-                Secret::Key(SecretKey::new(key))
+                Key::Key(PrivateKey::new(key))
             }
-            SecretType::Aes => {
+            KeyType::Aes => {
                 if attributes.length() != AES256_SECRET_LENGTH_U32
                     && attributes.length() != AES128_SECRET_LENGTH_U32
                 {
                     return Err(VaultError::InvalidAesKeyLength.into());
                 };
-                if attributes.persistence() != SecretPersistence::Ephemeral {
+                if attributes.persistence() != KeyPersistence::Ephemeral {
                     return Err(VaultError::InvalidKeyType.into());
                 };
                 let key = {
@@ -143,14 +139,14 @@ impl SecretVault for Vault {
                     key
                 };
 
-                Secret::Key(SecretKey::new(key))
+                Key::Key(PrivateKey::new(key))
             }
-            SecretType::NistP256 => '_block: {
+            KeyType::NistP256 => '_block: {
                 #[cfg(feature = "aws")]
-                if attributes.persistence() == SecretPersistence::Persistent {
+                if attributes.persistence() == KeyPersistence::Persistent {
                     if let Some(kms) = &self.aws_kms {
                         let aws_id = kms.create_key().await?;
-                        break '_block Secret::Aws(aws_id);
+                        break '_block Key::Aws(aws_id);
                     }
                 }
                 cfg_if! {
@@ -160,7 +156,7 @@ impl SecretVault for Vault {
                         let sec = SigningKey::random(& mut thread_rng());
                         let sec = p256::SecretKey::from_be_bytes(&sec.to_bytes()).map_err(from_ecurve)?;
                         let doc = sec.to_pkcs8_der().map_err(from_pkcs8)?;
-                        Secret::Key(SecretKey::new(doc.as_bytes().to_vec()))
+                        Key::Key(PrivateKey::new(doc.as_bytes().to_vec()))
                     } else {
                         compile_error!("NIST P-256 requires feature `rustcrypto`")
                     }
@@ -182,8 +178,8 @@ impl SecretVault for Vault {
     }
 
     #[tracing::instrument(skip_all, err)]
-    async fn secret_import(&self, secret: Secret, attributes: SecretAttributes) -> Result<KeyId> {
-        if let Secret::Key(sk) = &secret {
+    async fn import_key(&self, secret: Key, attributes: KeyAttributes) -> Result<KeyId> {
+        if let Key::Key(sk) = &secret {
             self.check_secret(sk.as_ref(), &attributes)?
         }
         let key_id = self.compute_key_id(&secret, &attributes).await?;
@@ -199,18 +195,18 @@ impl SecretVault for Vault {
         Ok(key_id)
     }
 
-    async fn secret_export(&self, key_id: &KeyId) -> Result<Secret> {
+    async fn export_key(&self, key_id: &KeyId) -> Result<Key> {
         self.preload_from_storage(key_id).await;
         let entries = self.data.entries.read().await;
 
         if let Some(entry) = entries.get(key_id) {
-            return Ok(entry.secret().clone());
+            return Ok(entry.key().clone());
         }
 
         Err(VaultError::EntryNotFound.into())
     }
 
-    async fn secret_attributes_get(&self, key_id: &KeyId) -> Result<SecretAttributes> {
+    async fn get_key_attributes(&self, key_id: &KeyId) -> Result<KeyAttributes> {
         self.preload_from_storage(key_id).await;
         let entries = self.data.entries.read().await;
 
@@ -222,47 +218,46 @@ impl SecretVault for Vault {
     }
 
     /// Extract public key from secret. Only Curve25519 type is supported
-    async fn secret_public_key_get(&self, key_id: &KeyId) -> Result<PublicKey> {
+    async fn get_public_key(&self, key_id: &KeyId) -> Result<PublicKey> {
         self.preload_from_storage(key_id).await;
 
         let entries = self.data.entries.read().await;
         let entry = entries.get(key_id).ok_or(VaultError::EntryNotFound)?;
 
         match entry.key_attributes().stype() {
-            SecretType::X25519 => {
-                if entry.secret().try_as_key()?.as_ref().len() != CURVE25519_SECRET_LENGTH_USIZE {
+            KeyType::X25519 => {
+                if entry.key().try_as_key()?.as_ref().len() != CURVE25519_SECRET_LENGTH_USIZE {
                     return Err(VaultError::InvalidPrivateKeyLen.into());
                 }
 
                 let sk = x25519_dalek::StaticSecret::from(*array_ref![
-                    entry.secret().try_as_key()?.as_ref(),
+                    entry.key().try_as_key()?.as_ref(),
                     0,
                     CURVE25519_SECRET_LENGTH_USIZE
                 ]);
                 let pk = x25519_dalek::PublicKey::from(&sk);
-                Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::X25519))
+                Ok(PublicKey::new(pk.to_bytes().to_vec(), KeyType::X25519))
             }
-            SecretType::Ed25519 => {
-                if entry.secret().try_as_key()?.as_ref().len() != CURVE25519_SECRET_LENGTH_USIZE {
+            KeyType::Ed25519 => {
+                if entry.key().try_as_key()?.as_ref().len() != CURVE25519_SECRET_LENGTH_USIZE {
                     return Err(VaultError::InvalidPrivateKeyLen.into());
                 }
 
-                let sk =
-                    ed25519_dalek::SecretKey::from_bytes(entry.secret().try_as_key()?.as_ref())
-                        .map_err(|_| VaultError::InvalidEd25519Secret)?;
+                let sk = ed25519_dalek::SecretKey::from_bytes(entry.key().try_as_key()?.as_ref())
+                    .map_err(|_| VaultError::InvalidEd25519Secret)?;
                 let pk = ed25519_dalek::PublicKey::from(&sk);
-                Ok(PublicKey::new(pk.to_bytes().to_vec(), SecretType::Ed25519))
+                Ok(PublicKey::new(pk.to_bytes().to_vec(), KeyType::Ed25519))
             }
-            SecretType::NistP256 => {
+            KeyType::NistP256 => {
                 #[cfg(feature = "aws")]
                 if let Some(kms) = &self.aws_kms {
-                    if let Secret::Aws(kid) = entry.secret() {
+                    if let Key::Aws(kid) = entry.key() {
                         return kms.public_key(kid).await;
                     }
                 }
                 cfg_if! {
                     if #[cfg(feature = "rustcrypto")] {
-                        if let Secret::Key(sk) = entry.secret() {
+                        if let Key::Key(sk) = entry.key() {
                             public_key(sk.as_ref())
                         } else {
                             Err(VaultError::InvalidKeyType.into())
@@ -272,18 +267,18 @@ impl SecretVault for Vault {
                     }
                 }
             }
-            SecretType::Buffer | SecretType::Aes => Err(VaultError::InvalidKeyType.into()),
+            KeyType::Buffer | KeyType::Aes => Err(VaultError::InvalidKeyType.into()),
         }
     }
 
     /// Remove secret from memory
-    async fn secret_destroy(&self, key_id: KeyId) -> Result<()> {
-        let attrs = self.secret_attributes_get(&key_id).await?;
+    async fn destroy_key(&self, key_id: KeyId) -> Result<()> {
+        let attrs = self.get_key_attributes(&key_id).await?;
 
         // Acquire lock to avoid race conditions
         let mut entries = self.data.entries.write().await;
 
-        let res = if attrs.persistence() == SecretPersistence::Persistent {
+        let res = if attrs.persistence() == KeyPersistence::Persistent {
             if let Some(storage) = &self.storage {
                 storage.delete(&key_id).await.map(|_| ())
             } else {
@@ -299,7 +294,7 @@ impl SecretVault for Vault {
             {
                 #[cfg(feature = "aws")]
                 if let Some(kms) = &self.aws_kms {
-                    if let Secret::Aws(kid) = _entry.secret() {
+                    if let Key::Aws(kid) = _entry.key() {
                         if !kms.delete_key(kid).await? {
                             return Err(VaultError::EntryNotFound.into());
                         }
@@ -320,16 +315,16 @@ fn public_key(secret: &[u8]) -> Result<PublicKey> {
         .verifying_key()
         .to_public_key_der()
         .map_err(from_pkcs8)?;
-    Ok(PublicKey::new(pky.as_ref().to_vec(), SecretType::NistP256))
+    Ok(PublicKey::new(pky.as_ref().to_vec(), KeyType::NistP256))
 }
 
 #[cfg(test)]
 mod tests {
-    use ockam_core::vault::{Secret, SecretKey};
+    use ockam_core::vault::{Key, PrivateKey};
 
     use crate::{
-        ockam_core::vault::{SecretPersistence, SecretType, CURVE25519_SECRET_LENGTH_U32},
-        SecretAttributes, SecretVault, Vault,
+        ockam_core::vault::{KeyPersistence, KeyType, CURVE25519_SECRET_LENGTH_U32},
+        KeyAttributes, KeyVault, Vault,
     };
 
     fn new_vault() -> Vault {
@@ -348,10 +343,10 @@ mod tests {
     #[ockam_macros::vault_test]
     fn secret_attributes_get() {}
 
-    fn new_x255519_attrs() -> Option<SecretAttributes> {
-        Some(SecretAttributes::new(
-            SecretType::X25519,
-            SecretPersistence::Ephemeral,
+    fn new_x255519_attrs() -> Option<KeyAttributes> {
+        Some(KeyAttributes::new(
+            KeyType::X25519,
+            KeyPersistence::Ephemeral,
             CURVE25519_SECRET_LENGTH_U32,
         ))
     }
@@ -366,7 +361,7 @@ mod tests {
         let attrs = new_x255519_attrs().unwrap();
         let vault = new_vault();
         let key_id = vault
-            .secret_import(Secret::Key(SecretKey::new(bytes_c25519)), attrs)
+            .import_key(Key::Key(PrivateKey::new(bytes_c25519)), attrs)
             .await
             .unwrap();
         assert_eq!(

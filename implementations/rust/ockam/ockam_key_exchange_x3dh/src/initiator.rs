@@ -2,7 +2,7 @@ use crate::{PreKeyBundle, X3DHError, X3dhVault, CSUITE};
 use alloc::vec;
 use ockam_core::vault::Signature as GenericSignature;
 use ockam_core::vault::{
-    KeyId, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH_U32,
+    KeyAttributes, KeyId, KeyPersistence, KeyType, AES256_SECRET_LENGTH_U32,
     CURVE25519_SECRET_LENGTH_U32,
 };
 use ockam_core::Result;
@@ -12,7 +12,7 @@ use ockam_core::{
         string::{String, ToString},
         vec::Vec,
     },
-    vault::{Secret, SecretKey},
+    vault::{Key, PrivateKey},
 };
 use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
 
@@ -48,13 +48,13 @@ impl<V: X3dhVault> Initiator<V> {
 
     async fn prologue(&mut self) -> Result<()> {
         if self.identity_key.is_none() {
-            let p_atts = SecretAttributes::new(
-                SecretType::X25519,
-                SecretPersistence::Persistent,
+            let p_atts = KeyAttributes::new(
+                KeyType::X25519,
+                KeyPersistence::Persistent,
                 CURVE25519_SECRET_LENGTH_U32,
             );
 
-            self.identity_key = Some(self.vault.secret_generate(p_atts).await?);
+            self.identity_key = Some(self.vault.generate_key(p_atts).await?);
         }
         Ok(())
     }
@@ -85,20 +85,17 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
             InitiatorState::GenerateEphemeralIdentityKey => {
                 self.prologue().await?;
                 let identity_key = self.identity_key.as_ref().ok_or(X3DHError::InvalidState)?;
-                let pubkey = self.vault.secret_public_key_get(identity_key).await?;
+                let pubkey = self.vault.get_public_key(identity_key).await?;
 
                 let ephemeral_identity_key = self
                     .vault
-                    .secret_generate(SecretAttributes::new(
-                        SecretType::X25519,
-                        SecretPersistence::Ephemeral,
+                    .generate_key(KeyAttributes::new(
+                        KeyType::X25519,
+                        KeyPersistence::Ephemeral,
                         CURVE25519_SECRET_LENGTH_U32,
                     ))
                     .await?;
-                let ephemeral_pubkey = self
-                    .vault
-                    .secret_public_key_get(&ephemeral_identity_key)
-                    .await?;
+                let ephemeral_pubkey = self.vault.get_public_key(&ephemeral_identity_key).await?;
                 self.ephemeral_identity_key = Some(ephemeral_identity_key);
                 self.state = InitiatorState::ProcessPreKeyBundle;
 
@@ -151,45 +148,37 @@ impl<V: X3dhVault> KeyExchanger for Initiator<V> {
                     .ec_diffie_hellman(ephemeral_identity_key, &prekey_bundle.one_time_prekey)
                     .await?;
                 let mut ikm_bytes = vec![0xFFu8; 32]; // FIXME: Why is it here?
-                ikm_bytes.extend_from_slice(
-                    self.vault.secret_export(&dh1).await?.try_as_key()?.as_ref(),
-                );
-                ikm_bytes.extend_from_slice(
-                    self.vault.secret_export(&dh2).await?.try_as_key()?.as_ref(),
-                );
-                ikm_bytes.extend_from_slice(
-                    self.vault.secret_export(&dh3).await?.try_as_key()?.as_ref(),
-                );
-                ikm_bytes.extend_from_slice(
-                    self.vault.secret_export(&dh4).await?.try_as_key()?.as_ref(),
-                );
+                ikm_bytes
+                    .extend_from_slice(self.vault.export_key(&dh1).await?.try_as_key()?.as_ref());
+                ikm_bytes
+                    .extend_from_slice(self.vault.export_key(&dh2).await?.try_as_key()?.as_ref());
+                ikm_bytes
+                    .extend_from_slice(self.vault.export_key(&dh3).await?.try_as_key()?.as_ref());
+                ikm_bytes
+                    .extend_from_slice(self.vault.export_key(&dh4).await?.try_as_key()?.as_ref());
 
                 let ikm = self
                     .vault
-                    .secret_import(
-                        Secret::Key(SecretKey::new(ikm_bytes.clone())),
-                        SecretAttributes::new(
-                            SecretType::Buffer,
-                            SecretPersistence::Ephemeral,
+                    .import_key(
+                        Key::Key(PrivateKey::new(ikm_bytes.clone())),
+                        KeyAttributes::new(
+                            KeyType::Buffer,
+                            KeyPersistence::Ephemeral,
                             ikm_bytes.len() as u32,
                         ),
                     )
                     .await?;
                 let salt = self
                     .vault
-                    .secret_import(
-                        Secret::Key(SecretKey::new(vec![0u8; 32])),
-                        SecretAttributes::new(
-                            SecretType::Buffer,
-                            SecretPersistence::Ephemeral,
-                            32u32,
-                        ),
+                    .import_key(
+                        Key::Key(PrivateKey::new(vec![0u8; 32])),
+                        KeyAttributes::new(KeyType::Buffer, KeyPersistence::Ephemeral, 32u32),
                     )
                     .await?;
 
-                let atts = SecretAttributes::new(
-                    SecretType::Aes,
-                    SecretPersistence::Persistent,
+                let atts = KeyAttributes::new(
+                    KeyType::Aes,
+                    KeyPersistence::Persistent,
                     AES256_SECRET_LENGTH_U32,
                 );
 
