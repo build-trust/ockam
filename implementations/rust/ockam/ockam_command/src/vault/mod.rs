@@ -7,6 +7,7 @@ use anyhow::anyhow;
 use clap::{Args, Subcommand};
 use ockam::Context;
 use ockam_api::cli_state;
+use ockam_api::cli_state::CliStateError;
 use ockam_core::vault::{Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault};
 use ockam_identity::{Identity, IdentityStateConst, KeyAttributes};
 use rand::prelude::random;
@@ -135,8 +136,21 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
             }
         }
         VaultSubcommand::Delete { name } => {
-            opts.state.vaults.delete(&name).await?;
-            println!("Vault '{name}' deleted");
+            let state = opts.state.vaults;
+            // Check if exists
+            return match state.get(&name) {
+                // If it exists, proceed
+                Ok(_) => {
+                    state.delete(&name).await?;
+                    println!("Vault '{name}' deleted");
+                    Ok(())
+                }
+                // Return the appropriate error
+                Err(err) => match err {
+                    CliStateError::NotFound(_) => Err(anyhow!("Vault '{name}' not found").into()),
+                    _ => Err(err.into()),
+                },
+            };
         }
         VaultSubcommand::Default(cmd) => cmd.run(opts),
     }

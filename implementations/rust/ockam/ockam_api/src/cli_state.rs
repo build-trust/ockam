@@ -174,21 +174,9 @@ impl VaultsState {
             Err(e) => return Err(e),
         };
 
-        // Set default to another vault if it's the default
-        if let Ok(default) = self.default() {
-            if default.path == vault_state.path {
-                let _ = std::fs::remove_file(self.default_path()?);
-                let mut vaults = self.list()?;
-                vaults.retain(|v| v.path != vault_state.path);
-                if let Some(v) = vaults.first() {
-                    println!("Setting default vault to '{}'", &v.name);
-                    self.set_default(&v.name)?;
-                }
-            }
-        }
-
-        // Remove vault file
-        std::fs::remove_file(vault_state.path)?;
+        // Remove vault files
+        tokio::fs::remove_file(vault_state.path).await?;
+        vault_state.config.delete().await?;
 
         Ok(())
     }
@@ -313,6 +301,12 @@ impl VaultConfig {
 
     pub fn is_aws(&self) -> bool {
         self.aws_kms
+    }
+
+    pub async fn delete(&self) -> Result<()> {
+        tokio::fs::remove_file(&self.path).await?;
+        tokio::fs::remove_file(&self.path.with_extension("json.lock")).await?;
+        Ok(())
     }
 }
 
