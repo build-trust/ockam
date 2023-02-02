@@ -165,15 +165,9 @@ impl NodeManagerWorker {
             let pid = req
                 .outlet_addr()
                 .first()
-                .and_then(|p| {
-                    if let Some(p) = p.cast::<Project>() {
-                        node_manager
-                            .projects
-                            .get(&*p)
-                            .map(|info| info.id.to_string())
-                    } else {
-                        None
-                    }
+                .and_then(|p| match (p.cast::<Project>(), node_manager.projects()) {
+                    (Some(p), Ok(projects)) => projects.get(&*p).map(|info| info.id.to_string()),
+                    _ => None,
                 })
                 .or_else(|| node_manager.project_id.clone());
             if pid.is_none() {

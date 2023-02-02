@@ -4,7 +4,6 @@
 mod admin;
 mod authenticated;
 mod completion;
-mod configuration;
 mod credential;
 mod enroll;
 mod error;
@@ -33,7 +32,6 @@ mod worker;
 
 use authenticated::AuthenticatedCommand;
 use completion::CompletionCommand;
-use configuration::ConfigurationCommand;
 use credential::CredentialCommand;
 use enroll::EnrollCommand;
 use error::{Error, Result};
@@ -54,7 +52,7 @@ use tcp::{
     connection::TcpConnectionCommand, inlet::TcpInletCommand, listener::TcpListenerCommand,
     outlet::TcpOutletCommand,
 };
-use util::{exitcode, exitcode::ExitCode, setup_logging, OckamConfig};
+use util::{exitcode, exitcode::ExitCode, setup_logging};
 use vault::VaultCommand;
 use version::Version;
 use worker::WorkerCommand;
@@ -144,15 +142,13 @@ pub enum OutputFormat {
 #[derive(Clone)]
 pub struct CommandGlobalOpts {
     pub global_args: GlobalArgs,
-    pub config: OckamConfig,
     pub state: CliState,
 }
 
 impl CommandGlobalOpts {
-    fn new(global_args: GlobalArgs, config: OckamConfig) -> Self {
+    fn new(global_args: GlobalArgs) -> Self {
         Self {
             global_args,
-            config,
             state: CliState::new().expect("Failed to load CLI state"),
         }
     }
@@ -200,7 +196,6 @@ pub enum OckamSubcommand {
     Completion(CompletionCommand),
 
     Authenticated(AuthenticatedCommand),
-    Configuration(ConfigurationCommand),
     Credential(CredentialCommand),
     Service(ServiceCommand),
     Vault(VaultCommand),
@@ -231,8 +226,7 @@ pub fn run() {
 
 impl OckamCommand {
     pub fn run(self) {
-        let config = OckamConfig::load().expect("Failed to load config");
-        let options = CommandGlobalOpts::new(self.global_args, config);
+        let options = CommandGlobalOpts::new(self.global_args);
 
         // If test_argument_parser is true, command arguments are checked
         // but the command is not executed. This is useful to test arguments
@@ -264,7 +258,6 @@ impl OckamCommand {
             OckamSubcommand::Completion(c) => c.run(),
 
             OckamSubcommand::Authenticated(c) => c.run(),
-            OckamSubcommand::Configuration(c) => c.run(options),
             OckamSubcommand::Credential(c) => c.run(options),
             OckamSubcommand::Service(c) => c.run(options),
             OckamSubcommand::Vault(c) => c.run(options),

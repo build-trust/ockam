@@ -8,8 +8,8 @@
 //! To update the configuration call `Config::atomic_update`, which
 //! generates an AtomicUpdater.
 
-use crate::config::ConfigValues;
-use anyhow::anyhow;
+use crate::cli_state::Result;
+use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::{
     fs::{self, File},
@@ -20,7 +20,7 @@ use std::{
 
 /// Takes a version of the Config and persists it to disk
 #[must_use]
-pub struct AtomicUpdater<V: ConfigValues> {
+pub struct AtomicUpdater<V: Serialize> {
     config_path: PathBuf,
     inner: Arc<RwLock<V>>,
 }
@@ -38,20 +38,15 @@ fn make_tmp_path(p: &Path) -> PathBuf {
     p2
 }
 
-impl<V: ConfigValues> AtomicUpdater<V> {
+impl<V: Serialize> AtomicUpdater<V> {
     /// Create a new atomic updater
     pub fn new(config_path: PathBuf, inner: Arc<RwLock<V>>) -> Self {
         Self { config_path, inner }
     }
 
     /// Do the thing that we said it was gonna do
-    pub fn run(self) -> anyhow::Result<()> {
-        let inner = match self.inner.read() {
-            Ok(i) => i,
-            Err(_) => {
-                return Err(anyhow!("Failed to get config file lock"));
-            }
-        };
+    pub fn run(self) -> Result<()> {
+        let inner = self.inner.read()?;
         let tmp_path = make_tmp_path(&self.config_path);
 
         // Repeatedly try to create this file, in case another

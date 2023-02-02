@@ -108,13 +108,14 @@ impl<'a> OrchestratorApiBuilder<'a> {
         &mut self,
         proj_name: &str,
     ) -> Result<&mut OrchestratorApiBuilder<'a>> {
-        let config_lookup = self.opts.config.lookup();
+        let node_name = self.node_name.as_ref().context("No node name")?;
+        let config_lookup = self.opts.state.nodes.get(node_name)?.config.lookup;
 
         let proj = config_lookup
             .get_project(proj_name)
             .context(format!("Unknown project {}", proj_name))?;
 
-        self.project_lookup = Some(proj.clone());
+        self.project_lookup = Some(proj);
         Ok(self)
     }
 

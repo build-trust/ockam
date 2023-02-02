@@ -12,7 +12,6 @@ use tracing::{debug, error, trace};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
-pub use config::*;
 use ockam::{Address, Context, NodeBuilder, Route, TcpTransport, TCP};
 use ockam_api::cli_state::{CliState, NodeState};
 use ockam_api::nodes::NODEMANAGER_ADDR;
@@ -31,7 +30,6 @@ pub mod api;
 pub mod exitcode;
 pub mod orchestrator_api;
 
-mod config;
 pub(crate) mod output;
 
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
@@ -621,11 +619,14 @@ mod tests {
 
         let n_state = cli_state.nodes.create("n1", NodeConfig::try_default()?)?;
         let n_setup = n_state.setup()?;
-        n_state.set_setup(&n_setup.add_transport(CreateTransportJson::new(
-            TransportType::Tcp,
-            TransportMode::Listen,
-            "127.0.0.0:4000",
-        )?))?;
+        n_state.write_config(
+            "setup.json",
+            &n_setup.add_transport(CreateTransportJson::new(
+                TransportType::Tcp,
+                TransportMode::Listen,
+                "127.0.0.0:4000",
+            )?),
+        )?;
 
         let test_cases = vec![
             (

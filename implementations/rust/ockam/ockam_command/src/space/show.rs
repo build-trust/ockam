@@ -38,13 +38,21 @@ async fn run_impl(
     let controller_route = &cmd.cloud_opts.route();
 
     // Lookup space
-    let id = config::get_space(ctx, &opts, &cmd.name, &node_name, &cmd.cloud_opts.route()).await?;
+    let id = config::get_space(
+        ctx,
+        &opts,
+        &cmd.name,
+        &node_name,
+        &cmd.cloud_opts.route(),
+        None,
+    )
+    .await?;
 
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
     rpc.request(api::space::show(&id, controller_route)).await?;
     let space = rpc.parse_and_print_response::<Space>()?;
-    config::set_space(&opts.config, &space)?;
+    config::set_space(&opts.state.nodes.get(&node_name)?, &space)?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

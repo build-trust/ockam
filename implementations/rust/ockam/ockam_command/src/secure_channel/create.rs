@@ -14,11 +14,11 @@ use crate::secure_channel::HELP_DETAIL;
 use crate::util::api::CloudOpts;
 use crate::util::{is_tty, RpcBuilder};
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
+use ockam_api::nodes::models;
 use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::{
     clean_multiaddr, nodes::models::secure_channel::CreateSecureChannelResponse, route_to_multiaddr,
 };
-use ockam_api::{config::lookup::ConfigLookup, nodes::models};
 use ockam_multiaddr::MultiAddr;
 
 /// Create Secure Channels
@@ -74,7 +74,7 @@ impl CreateCommand {
     }
 
     // Read the `from` argument and return node name
-    fn parse_from_node(&self, _config: &ConfigLookup) -> String {
+    fn parse_from_node(&self) -> String {
         extract_address_value(&self.from).unwrap_or_else(|_| "".to_string())
     }
 
@@ -153,8 +153,7 @@ impl CreateCommand {
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
-    let config = &opts.config.lookup();
-    let from = &cmd.parse_from_node(config);
+    let from = &cmd.parse_from_node();
     let to = &cmd
         .parse_to_route(&ctx, &opts, &cmd.cloud_opts.route(), from, &tcp)
         .await?;

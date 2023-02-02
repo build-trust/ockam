@@ -137,7 +137,7 @@ async fn default_space<'a>(
             .expect("already checked that is not empty")
             .to_owned()
     };
-    config::set_space(&opts.config, &default_space)?;
+    config::set_space(&opts.state.nodes.get(node_name)?, &default_space)?;
     println!("\n{}\n", default_space.output()?);
     Ok(default_space)
 }

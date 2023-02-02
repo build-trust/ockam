@@ -35,7 +35,7 @@ async fn run_impl(
     rpc.request(api::project::list(&cmd.cloud_opts.route()))
         .await?;
     let projects = rpc.parse_and_print_response::<Vec<Project>>()?;
-    config::set_projects(&opts.config, &projects).await?;
+    config::set_projects(&opts.state.nodes.get(rpc.node_name())?, &projects).await?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

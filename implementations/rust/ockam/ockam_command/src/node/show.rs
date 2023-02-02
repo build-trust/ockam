@@ -5,12 +5,12 @@ use clap::Args;
 use colorful::Colorful;
 use core::time::Duration;
 use ockam::TcpTransport;
-use ockam_api::nodes::models::identity::ShortIdentityResponse;
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
 use ockam_api::{addr_to_multiaddr, cli_state, route_to_multiaddr};
 use ockam_core::Route;
+use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
 use tokio_retry::strategy::FibonacciBackoff;
@@ -54,7 +54,7 @@ fn print_node_info(
     node_port: u16,
     node_name: &str,
     status_is_up: bool,
-    default_id: Option<&str>,
+    identifier: &IdentityIdentifier,
     services: Option<&ServiceList>,
     tcp_listeners: Option<&TransportList>,
     secure_channel_listeners: Option<&Vec<String>>,
@@ -82,9 +82,7 @@ fn print_node_info(
         println!("    Verbose: {}", m);
     }
 
-    if let Some(id) = default_id {
-        println!("  Identity: {}", id);
-    }
+    println!("  Identity: {}", identifier);
 
     if let Some(list) = tcp_listeners {
         println!("  Transports:");
@@ -146,18 +144,21 @@ pub async fn print_query_status(
     wait_until_ready: bool,
 ) -> anyhow::Result<()> {
     let cli_state = cli_state::CliState::new()?;
+    let node_state = cli_state.nodes.get(node_name)?;
+    let node_identifier = node_state.config.identity_config()?.identifier;
     if !is_node_up(rpc, wait_until_ready).await? {
-        let node_state = cli_state.nodes.get(node_name)?;
         let node_port = node_state.setup()?.default_tcp_listener()?.addr.port();
-        print_node_info(node_port, node_name, false, None, None, None, None, None);
+        print_node_info(
+            node_port,
+            node_name,
+            false,
+            &node_identifier,
+            None,
+            None,
+            None,
+            None,
+        );
     } else {
-        // Get short id for the node
-        rpc.request(api::short_identity()).await?;
-        let default_id = match rpc.parse_response::<ShortIdentityResponse>() {
-            Ok(resp) => String::from(resp.identity_id),
-            Err(_) => String::from("None"),
-        };
-
         // Get list of services for the node
         let mut rpc = rpc.clone();
         rpc.request(api::list_services()).await?;
@@ -190,7 +191,7 @@ pub async fn print_query_status(
             node_port,
             node_name,
             true,
-            Some(&default_id),
+            &node_identifier,
             Some(&services),
             Some(&tcp_listeners),
             Some(&secure_channel_listeners),

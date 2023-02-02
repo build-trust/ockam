@@ -5,29 +5,27 @@ use ockam_api::cloud::space::Space;
 
 pub mod config {
     use crate::util::{api, RpcBuilder};
-    use crate::{CommandGlobalOpts, OckamConfig};
+    use crate::CommandGlobalOpts;
+    use ockam::TcpTransport;
+    use ockam_api::cli_state::NodeState;
     use ockam_multiaddr::MultiAddr;
 
     use super::*;
 
-    pub fn set_space(config: &OckamConfig, space: &Space) -> Result<()> {
-        config.set_space_alias(&space.id, &space.name);
-        config.persist_config_updates()?;
+    pub fn set_space(state: &NodeState, space: &Space) -> Result<()> {
+        state.config.lookup.set_space(&space.id, &space.name)?;
         Ok(())
     }
 
-    pub fn set_spaces(config: &OckamConfig, spaces: &[Space]) -> Result<()> {
-        config.remove_spaces_alias();
+    pub fn set_spaces(state: &NodeState, spaces: &[Space]) -> Result<()> {
         for space in spaces.iter() {
-            config.set_space_alias(&space.id, &space.name);
+            state.config.lookup.set_space(&space.id, &space.name)?;
         }
-        config.persist_config_updates()?;
         Ok(())
     }
 
-    pub fn remove_space(config: &OckamConfig, name: &str) -> Result<()> {
-        config.remove_space_alias(name);
-        config.persist_config_updates()?;
+    pub fn remove_space(state: &NodeState, name: &str) -> Result<()> {
+        state.config.lookup.remove_space(name)?;
         Ok(())
     }
 
@@ -37,32 +35,40 @@ pub mod config {
         space_name: &str,
         api_node: &str,
         controller_route: &MultiAddr,
+        tcp: Option<&TcpTransport>,
     ) -> Result<String> {
-        match try_get_space(&opts.config, space_name) {
+        let state = opts.state.nodes.get(api_node)?;
+        match try_get_space(&state, space_name) {
             Some(id) => Ok(id),
             None => {
-                refresh_spaces(ctx, opts, api_node, controller_route).await?;
-                Ok(try_get_space(&opts.config, space_name)
-                    .context(format!("Space '{}' does not exist", space_name))?)
+                refresh_spaces(ctx, opts, api_node, controller_route, tcp).await?;
+                let state = opts.state.nodes.get(api_node)?;
+                try_get_space(&state, space_name)
+                    .context(format!("Space '{}' does not exist", space_name))
             }
         }
     }
 
-    pub fn try_get_space(config: &OckamConfig, name: &str) -> Option<String> {
-        let inner = config.write();
-        inner.lookup.get_space(name).map(|s| s.id.clone())
+    pub fn try_get_space(state: &NodeState, name: &str) -> Option<String> {
+        state.config.lookup.get_space(name).map(|s| s.id)
     }
 
-    async fn refresh_spaces(
+    pub async fn refresh_spaces(
         ctx: &Context,
         opts: &CommandGlobalOpts,
         api_node: &str,
         controller_route: &MultiAddr,
+        tcp: Option<&TcpTransport>,
     ) -> Result<()> {
-        let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
+        if !opts.state.nodes.is_enrolled(api_node)? {
+            return Ok(());
+        }
+
+        let mut rpc = RpcBuilder::new(ctx, opts, api_node).tcp(tcp)?.build();
         rpc.request(api::space::list(controller_route)).await?;
         let spaces = rpc.parse_response::<Vec<Space>>()?;
-        set_spaces(&opts.config, &spaces)?;
+        let state = opts.state.nodes.get(api_node)?;
+        set_spaces(&state, &spaces)?;
         Ok(())
     }
 }

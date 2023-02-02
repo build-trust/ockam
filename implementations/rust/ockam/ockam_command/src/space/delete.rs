@@ -38,19 +38,28 @@ async fn run_impl(
 ) -> crate::Result<()> {
     let node_name = start_embedded_node(ctx, &opts, None).await?;
     let controller_route = &cmd.cloud_opts.route();
+    let node_state = opts.state.nodes.get(&node_name)?;
 
     // Try to remove from config, in case the space was removed from the cloud but not from the config file.
-    let _ = config::remove_space(&opts.config, &cmd.name);
+    let _ = config::remove_space(&node_state, &cmd.name);
 
     // Lookup space
-    let id =
-        match config::get_space(ctx, &opts, &cmd.name, &node_name, &cmd.cloud_opts.route()).await {
-            Ok(id) => id,
-            // If the space is not found in the lookup, then it must not exist in the cloud, so we exit the command.
-            Err(_) => {
-                return Ok(());
-            }
-        };
+    let id = match config::get_space(
+        ctx,
+        &opts,
+        &cmd.name,
+        &node_name,
+        &cmd.cloud_opts.route(),
+        None,
+    )
+    .await
+    {
+        Ok(id) => id,
+        // If the space is not found in the lookup, then it must not exist in the cloud, so we exit the command.
+        Err(_) => {
+            return Ok(());
+        }
+    };
 
     // Send request
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
@@ -59,7 +68,7 @@ async fn run_impl(
     rpc.is_ok()?;
 
     // Try to remove from config again, in case it was re-added after the refresh.
-    let _ = config::remove_space(&opts.config, &cmd.name);
+    let _ = config::remove_space(&node_state, &cmd.name);
 
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())

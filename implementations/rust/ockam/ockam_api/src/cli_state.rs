@@ -12,11 +12,15 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::SystemTime;
+use time::format_description::well_known::Iso8601;
+use time::OffsetDateTime;
 
+use crate::config::authorities::AuthoritiesConfigHandle;
+use crate::config::lookup::LookupConfigHandle;
 use crate::lmdb::LmdbStorage;
 use thiserror::Error;
 
-type Result<T> = std::result::Result<T, CliStateError>;
+pub type Result<T> = std::result::Result<T, CliStateError>;
 
 #[derive(Debug, Error)]
 pub enum CliStateError {
@@ -26,6 +30,8 @@ pub enum CliStateError {
     Serde(#[from] serde_json::Error),
     #[error("ockam error")]
     Ockam(#[from] ockam_core::Error),
+    #[error("multiaddr error")]
+    MultiAddr(#[from] ockam_multiaddr::Error),
     #[error("`{0}` already exists")]
     AlreadyExists(String),
     #[error("`{0}` not found")]
@@ -34,6 +40,8 @@ pub enum CliStateError {
     Invalid(String),
     #[error("invalid state version {0}")]
     InvalidVersion(String),
+    #[error("{0}")]
+    Lock(String),
     #[error("unknown error")]
     Unknown,
 }
@@ -48,6 +56,12 @@ impl From<CliStateError> for ockam_core::Error {
                 e,
             ),
         }
+    }
+}
+
+impl<T> From<std::sync::PoisonError<T>> for CliStateError {
+    fn from(err: std::sync::PoisonError<T>) -> Self {
+        CliStateError::Lock(err.to_string())
     }
 }
 
@@ -531,6 +545,10 @@ impl EnrollmentStatus {
             created_at: SystemTime::now(),
         }
     }
+
+    pub fn is_enrolled(&self) -> bool {
+        self.is_enrolled
+    }
 }
 
 impl Display for EnrollmentStatus {
@@ -541,14 +559,14 @@ impl Display for EnrollmentStatus {
             writeln!(f, "Enrolled: no")?;
         }
 
-        // match OffsetDateTime::from(self.created_at).format(&Iso8601::DEFAULT) {
-        //     Ok(time_str) => writeln!(f, "Timestamp: {}", time_str)?,
-        //     Err(err) => writeln!(
-        //         f,
-        //         "Error formatting OffsetDateTime as Iso8601 String: {}",
-        //         err
-        //     )?,
-        // }
+        match OffsetDateTime::from(self.created_at).format(&Iso8601::DEFAULT) {
+            Ok(time_str) => writeln!(f, "Timestamp: {}", time_str)?,
+            Err(err) => writeln!(
+                f,
+                "Error formatting OffsetDateTime as Iso8601 String: {}",
+                err
+            )?,
+        }
 
         Ok(())
     }
@@ -600,7 +618,9 @@ impl NodesState {
         };
         let state = NodeState::new(path, config);
         std::fs::write(state.path.join("version"), state.config.version.to_string())?;
-        state.set_setup(&state.config.setup)?;
+        state.write_config("setup.json", &state.config.setup)?;
+        state.write_config("lookup.json", &state.config.lookup.inner())?;
+        state.write_config("authorities.json", &state.config.authorities.inner())?;
         std::fs::File::create(state.socket())?;
         std::fs::File::create(state.stdout_log())?;
         std::fs::File::create(state.stderr_log())?;
@@ -673,6 +693,18 @@ impl NodesState {
 
         Ok(())
     }
+
+    pub fn is_enrolled(&self, node_name: &str) -> Result<bool> {
+        if let Some(s) = self
+            .get(node_name)?
+            .config
+            .identity_config()?
+            .enrollment_status
+        {
+            return Ok(s.is_enrolled);
+        }
+        Ok(false)
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -695,8 +727,12 @@ impl NodeState {
     }
 
     pub fn set_setup(&self, setup: &NodeSetupConfig) -> Result<()> {
-        let contents = serde_json::to_string(setup)?;
-        std::fs::write(self.path.join("setup.json"), contents)?;
+        self.write_config("setup.json", setup)
+    }
+
+    pub fn write_config<T: Serialize>(&self, file_name: &str, contents: &T) -> Result<()> {
+        let contents = serde_json::to_string(contents)?;
+        std::fs::write(self.path.join(file_name), contents)?;
         Ok(())
     }
 
@@ -765,16 +801,29 @@ impl NodeState {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct NodeConfig {
     pub name: String,
     version: NodeConfigVersion,
     default_vault: PathBuf,
     default_identity: PathBuf,
     setup: NodeSetupConfig,
-    // TODO
-    // authorities: AuthoritiesConfig,
+    pub lookup: LookupConfigHandle,
+    pub authorities: AuthoritiesConfigHandle,
 }
+
+impl PartialEq for NodeConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.version == other.version
+            && self.default_vault == other.default_vault
+            && self.default_identity == other.default_identity
+            && self.setup == other.setup
+            && self.lookup.inner() == other.lookup.inner()
+    }
+}
+
+impl Eq for NodeConfig {}
 
 impl NodeConfig {
     pub fn try_default() -> Result<Self> {
@@ -785,6 +834,8 @@ impl NodeConfig {
             default_vault: cli_state.vaults.default()?.path,
             default_identity: cli_state.identities.default()?.path,
             setup: NodeSetupConfig::default(),
+            lookup: LookupConfigHandle::default(),
+            authorities: AuthoritiesConfigHandle::default(),
         })
     }
 
@@ -811,25 +862,14 @@ impl TryFrom<&PathBuf> for NodeConfig {
     type Error = CliStateError;
 
     fn try_from(path: &PathBuf) -> std::result::Result<Self, Self::Error> {
-        let name = {
-            let err = || {
-                CliStateError::Io(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "node's directory has an invalid name",
-                ))
-            };
-            path.file_name()
-                .ok_or_else(err)?
-                .to_str()
-                .ok_or_else(err)?
-                .to_string()
-        };
         Ok(Self {
-            name,
+            name: file_stem(path)?,
             version: NodeConfigVersion::load(path)?,
             default_vault: std::fs::canonicalize(path.join("default_vault"))?,
             default_identity: std::fs::canonicalize(path.join("default_identity"))?,
             setup: NodeSetupConfig::try_from(&path.join("setup.json"))?,
+            lookup: LookupConfigHandle::try_from(&path.join("lookup.json"))?,
+            authorities: AuthoritiesConfigHandle::try_from(&path.join("authorities.json"))?,
         })
     }
 }
@@ -1030,7 +1070,7 @@ pub fn random_name() -> String {
     hex::encode(random::<[u8; 4]>())
 }
 
-fn file_stem(path: &Path) -> Result<String> {
+pub fn file_stem(path: &Path) -> Result<String> {
     path.file_stem()
         .ok_or_else(|| CliStateError::NotFound(format!("name for {path:?}")))?
         .to_str()
@@ -1049,7 +1089,7 @@ mod tests {
 
         // Vaults
         let vault_name = {
-            let name = hex::encode(rand::random::<[u8; 4]>());
+            let name = hex::encode(random::<[u8; 4]>());
 
             let path = VaultConfig::path(&name)?;
             let vault_storage = FileStorage::create(path.clone()).await?;
@@ -1069,7 +1109,7 @@ mod tests {
 
         // Identities
         let identity_name = {
-            let name = hex::encode(rand::random::<[u8; 4]>());
+            let name = hex::encode(random::<[u8; 4]>());
             let vault_config = sut.vaults.get(&vault_name).unwrap().config;
             let vault = vault_config.get().await.unwrap();
             let identity =
@@ -1090,7 +1130,7 @@ mod tests {
 
         // Nodes
         let node_name = {
-            let name = hex::encode(rand::random::<[u8; 4]>());
+            let name = hex::encode(random::<[u8; 4]>());
             let config = NodeConfig::try_default().unwrap();
 
             let state = sut.nodes.create(&name, config).unwrap();
