@@ -5,8 +5,10 @@ use clap::Args;
 use ockam::Context;
 use ockam_api::cli_state::CliStateError;
 
+/// Delete an identity
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
+    /// Name of the identity to be deleted
     name: String,
 }
 

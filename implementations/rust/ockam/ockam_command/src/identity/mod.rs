@@ -1,4 +1,5 @@
 mod create;
+mod default;
 mod delete;
 mod list;
 mod show;
@@ -8,6 +9,7 @@ pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 pub(crate) use show::ShowCommand;
 
+use crate::identity::default::DefaultCommand;
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 
@@ -26,6 +28,9 @@ pub enum IdentitySubcommand {
     Show(ShowCommand),
     /// Print all existing identities, `--full` for long identities
     List(ListCommand),
+    /// Set the default identity
+    Default(DefaultCommand),
+    /// Delete an identity
     Delete(DeleteCommand),
 }
 
@@ -36,6 +41,7 @@ impl IdentityCommand {
             IdentitySubcommand::Show(c) => c.run(options),
             IdentitySubcommand::List(c) => c.run(options),
             IdentitySubcommand::Delete(c) => c.run(options),
+            IdentitySubcommand::Default(c) => c.run(options),
         }
     }
 }

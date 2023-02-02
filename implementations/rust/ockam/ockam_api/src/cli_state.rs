@@ -405,6 +405,15 @@ impl IdentitiesState {
         Ok(IdentityState { name, path, config })
     }
 
+    pub fn is_default(&self, name: &str) -> Result<bool> {
+        let _exists = self.get(name)?;
+        let default_name = {
+            let path = std::fs::canonicalize(self.default_path()?)?;
+            file_stem(&path)?
+        };
+        Ok(default_name.eq(name))
+    }
+
     pub fn set_default(&self, name: &str) -> Result<IdentityState> {
         let original = {
             let mut path = self.dir.clone();
@@ -415,7 +424,10 @@ impl IdentitiesState {
             path
         };
         let link = self.default_path()?;
-        std::os::unix::fs::symlink(original, link)?;
+        // Remove link if it exists
+        let _ = std::fs::remove_file(&link);
+        // Create link to the identity
+        std::os::unix::fs::symlink(original, &link)?;
         self.get(name)
     }
 
