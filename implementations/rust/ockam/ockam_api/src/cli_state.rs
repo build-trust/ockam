@@ -14,6 +14,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use crate::lmdb::LmdbStorage;
+use ockam::compat::tokio;
 use thiserror::Error;
 
 type Result<T> = std::result::Result<T, CliStateError>;
@@ -357,7 +358,7 @@ impl IdentitiesState {
         Ok(identities)
     }
 
-    pub fn delete(&self, name: &str) -> Result<()> {
+    pub async fn delete(&self, name: &str) -> Result<()> {
         // Retrieve identity. If doesn't exist do nothing.
         let identity = match self.get(name) {
             Ok(i) => i,
@@ -368,21 +369,8 @@ impl IdentitiesState {
         // Abort if identity is being used by some running node.
         identity.in_use()?;
 
-        // Set default to another identity if it's the default
-        if let Ok(default) = self.default() {
-            if default.path == identity.path {
-                let _ = std::fs::remove_file(self.default_path()?);
-                let mut idts = self.list()?;
-                idts.retain(|i| i.path != identity.path);
-                if let Some(idt) = idts.first() {
-                    println!("Setting default identity to `{}`", idt.name);
-                    self.set_default(&idt.name)?;
-                }
-            }
-        }
-
         // Remove identity file
-        std::fs::remove_file(identity.path)?;
+        tokio::fs::remove_file(identity.path).await?;
 
         Ok(())
     }
