@@ -133,7 +133,11 @@ impl VaultsState {
             self.set_default(name)?;
         }
         config.get().await?;
-        Ok(VaultState { path, config })
+        Ok(VaultState {
+            name: name.to_string(),
+            path,
+            config,
+        })
     }
 
     pub fn get(&self, name: &str) -> Result<VaultState> {
@@ -145,9 +149,10 @@ impl VaultsState {
             }
             path
         };
+        let name = file_stem(&path)?;
         let contents = std::fs::read_to_string(&path)?;
         let config = serde_json::from_str(&contents)?;
-        Ok(VaultState { path, config })
+        Ok(VaultState { name, path, config })
     }
 
     pub fn list(&self) -> Result<Vec<VaultState>> {
@@ -175,9 +180,8 @@ impl VaultsState {
                 let mut vaults = self.list()?;
                 vaults.retain(|v| v.path != vault_state.path);
                 if let Some(v) = vaults.first() {
-                    let name = v.name()?;
-                    println!("Setting default vault to '{}'", &name);
-                    self.set_default(&name)?;
+                    println!("Setting default vault to '{}'", &v.name);
+                    self.set_default(&v.name)?;
                 }
             }
         }
@@ -194,9 +198,10 @@ impl VaultsState {
 
     pub fn default(&self) -> Result<VaultState> {
         let path = std::fs::canonicalize(self.default_path()?)?;
+        let name = file_stem(&path)?;
         let contents = std::fs::read_to_string(&path)?;
         let config = serde_json::from_str(&contents)?;
-        Ok(VaultState { path, config })
+        Ok(VaultState { name, path, config })
     }
 
     pub fn set_default(&self, name: &str) -> Result<VaultState> {
@@ -209,13 +214,26 @@ impl VaultsState {
             path
         };
         let link = self.default_path()?;
+        // Remove link if it exists
+        let _ = std::fs::remove_file(&link);
+        // Create link to the identity
         std::os::unix::fs::symlink(original, link)?;
         self.get(name)
+    }
+
+    pub fn is_default(&self, name: &str) -> Result<bool> {
+        let _exists = self.get(name)?;
+        let default_name = {
+            let path = std::fs::canonicalize(self.default_path()?)?;
+            file_stem(&path)?
+        };
+        Ok(default_name.eq(name))
     }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct VaultState {
+    pub name: String,
     pub path: PathBuf,
     pub config: VaultConfig,
 }
