@@ -358,7 +358,7 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
                 return Err(IdentityError::UnknownChannelMsgDestination.into());
             }
             if self.remote_backwards_compatibility_address.is_none() {
-                self.remote_backwards_compatibility_address = Some(body.return_route.recipient());
+                self.remote_backwards_compatibility_address = Some(body.return_route.recipient()?);
             }
             let body = IdentityChannelMessage::decode(&body.payload)?;
 

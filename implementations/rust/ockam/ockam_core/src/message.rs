@@ -217,7 +217,7 @@ impl<M: Message> Routed<M> {
     }
     /// Return a copy of the sender address for the wrapped message.
     #[inline]
-    pub fn sender(&self) -> Address {
+    pub fn sender(&self) -> Result<Address> {
         self.local_msg.transport().return_route.recipient()
     }
 
