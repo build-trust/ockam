@@ -1,4 +1,7 @@
+mod default;
+
 use crate::util::node_rpc;
+use crate::vault::default::DefaultCommand;
 use crate::{help, CommandGlobalOpts, Result};
 use anyhow::anyhow;
 use clap::{Args, Subcommand};
@@ -59,6 +62,8 @@ pub enum VaultSubcommand {
     },
     /// List vaults
     List {},
+    /// Set the default identity
+    Default(DefaultCommand),
 }
 
 impl VaultCommand {
@@ -133,6 +138,7 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
             opts.state.vaults.delete(&name).await?;
             println!("Vault '{name}' deleted");
         }
+        VaultSubcommand::Default(cmd) => cmd.run(opts),
     }
     Ok(())
 }
