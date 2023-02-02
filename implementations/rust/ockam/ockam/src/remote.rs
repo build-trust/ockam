@@ -299,7 +299,7 @@ impl Worker for RemoteForwarder {
 
         // FIXME: @ac check that return address is the same
         // We are the final recipient of the message because it's registration response for our Worker
-        if msg.onward_route().recipient() == self.main_address {
+        if msg.onward_route().recipient()? == self.main_address {
             debug!("RemoteForwarder received service message");
 
             let payload =
@@ -313,7 +313,7 @@ impl Worker for RemoteForwarder {
                 let route = msg.return_route();
 
                 info!("RemoteForwarder registered with route: {}", route);
-                let address = match route.clone().recipient().to_string().strip_prefix("0#") {
+                let address = match route.clone().recipient()?.to_string().strip_prefix("0#") {
                     Some(addr) => addr.to_string(),
                     None => return Err(OckamError::InvalidHubResponse.into()),
                 };

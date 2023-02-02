@@ -59,7 +59,7 @@ impl Worker for ChannelListener {
             rx_int_addr,
             tx_int_addr,
         } = msg.as_body();
-        let peer_channel_addr = msg.return_route().recipient();
+        let peer_channel_addr = msg.return_route().recipient()?;
 
         let peer_rx_base: Route = msg.return_route().modify().pop_back().into();
         let peer_rx_pub = peer_rx_base.clone().modify().append(rx_addr.clone()).into();
