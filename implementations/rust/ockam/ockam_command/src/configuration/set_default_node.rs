@@ -10,7 +10,7 @@ pub struct SetDefaultNodeCommand {
 impl SetDefaultNodeCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         if let Err(e) = run_impl(&self.name, &options) {
-            eprintln!("{}", e);
+            eprintln!("{e}");
             std::process::exit(e.code());
         }
     }

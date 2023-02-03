@@ -10,7 +10,7 @@ pub struct GetCommand {
 impl GetCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         if let Err(e) = run_impl(options, self) {
-            eprintln!("{}", e);
+            eprintln!("{e}");
             std::process::exit(e.code());
         }
     }

@@ -78,7 +78,7 @@ pub async fn run_impl(
 
     let addr = route_to_multiaddr(&route![worker_addr.to_string()])
         .ok_or_else(|| ApiError::generic("Invalid Outlet Address"))?;
-    println!("{}", addr);
+    println!("{addr}");
 
     Ok(())
 }

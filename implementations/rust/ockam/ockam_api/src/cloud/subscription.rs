@@ -115,7 +115,7 @@ mod node {
             let label = "unsubscribe";
             trace!(target: TARGET, subscription = %id, "unsubscribing");
 
-            let req_builder = Request::put(format!("/v0/{}/unsubscribe", id));
+            let req_builder = Request::put(format!("/v0/{id}/unsubscribe"));
 
             let ident = {
                 let inner = self.get().read().await;
@@ -147,7 +147,7 @@ mod node {
             let label = "list_sbuscriptions";
             trace!(target: TARGET, subscription = %id, "updating subscription space");
 
-            let req_builder = Request::put(format!("/v0/{}/space_id", id)).body(req_body);
+            let req_builder = Request::put(format!("/v0/{id}/space_id")).body(req_body);
 
             let ident = {
                 let inner = self.get().read().await;
@@ -178,7 +178,7 @@ mod node {
             let label = "update_subscription_contact_info";
             trace!(target: TARGET, subscription = %id, "updating subscription contact info");
 
-            let req_builder = Request::put(format!("/v0/{}/contact_info", id)).body(req_body);
+            let req_builder = Request::put(format!("/v0/{id}/contact_info")).body(req_body);
 
             let ident = {
                 let inner = self.get().read().await;
@@ -237,7 +237,7 @@ mod node {
             let label = "get_subscription";
             trace!(target: TARGET, subscription = %id, "getting subscription");
 
-            let req_builder = Request::get(format!("/v0/{}", id));
+            let req_builder = Request::get(format!("/v0/{id}"));
 
             let ident = {
                 let inner = self.get().read().await;

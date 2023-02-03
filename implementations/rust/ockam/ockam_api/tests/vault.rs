@@ -47,7 +47,7 @@ async fn full_flow(ctx: &mut Context) -> Result<()> {
     let key_id = res.key_id().to_string();
 
     // Get public key
-    let req = Request::get(format!("secrets/{}/public_key", key_id)).body(key_id.clone());
+    let req = Request::get(format!("secrets/{key_id}/public_key")).body(key_id.clone());
 
     let mut sending_buf = Vec::new();
     req.encode(&mut sending_buf)?;

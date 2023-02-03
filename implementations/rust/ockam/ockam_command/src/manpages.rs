@@ -42,7 +42,7 @@ impl ManpagesCommand {
     pub fn run(self) {
         let man_dir = match get_man_page_directory(&self.dir) {
             Ok(path) => path,
-            Err(error) => panic!("Error getting man page directory: {:?}", error),
+            Err(error) => panic!("Error getting man page directory: {error:?}"),
         };
         let clap_command = <OckamCommand as CommandFactory>::command();
         generate_man_pages(man_dir.as_path(), &clap_command, None, self.no_compression);
@@ -136,7 +136,7 @@ fn generate_man_page(
 fn remove_ascii_controls(input: Vec<u8>) -> Vec<u8> {
     let input_as_str = match str::from_utf8(&input) {
         Ok(input) => input,
-        Err(e) => panic!("Input contains non UTF-8 sequence: {}", e),
+        Err(e) => panic!("Input contains non UTF-8 sequence: {e}"),
     };
 
     let mut result: Vec<u8> = Default::default();

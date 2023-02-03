@@ -13,7 +13,7 @@ impl ResetCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         if self.yes || get_user_confirmation() {
             if let Err(e) = run_impl(opts) {
-                eprintln!("{}", e);
+                eprintln!("{e}");
                 std::process::exit(e.code());
             }
         }
@@ -27,10 +27,10 @@ fn run_impl(opts: CommandGlobalOpts) -> crate::Result<()> {
 
 fn get_user_confirmation() -> bool {
     let prompt = "Please confirm the you really want a full reset (y/N) ";
-    print!("{}", prompt);
+    print!("{prompt}");
     if io::stdout().flush().is_err() {
         // If stdout wasn't flushed properly, fallback to println
-        println!("{}", prompt);
+        println!("{prompt}");
     }
     let stdin = BufReader::new(io::stdin());
     stdin

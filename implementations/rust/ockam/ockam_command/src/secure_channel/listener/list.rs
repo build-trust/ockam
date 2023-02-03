@@ -41,7 +41,7 @@ async fn run_impl(
         &cmd.node_opts.api_node
     );
     for addr in res {
-        println!("  {}", addr);
+        println!("  {addr}");
     }
 
     Ok(())

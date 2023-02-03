@@ -114,5 +114,5 @@ pub fn build_config_path(config_dir: &Path, config_name: &str) -> PathBuf {
 }
 
 fn build_config_file_name(config_name: &str) -> String {
-    format!("{}.json", config_name)
+    format!("{config_name}.json")
 }

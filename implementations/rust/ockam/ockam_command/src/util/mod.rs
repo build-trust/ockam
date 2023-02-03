@@ -305,7 +305,7 @@ where
             serde_json::to_string_pretty(&b).context("Failed to serialize output")?
         }
     };
-    println!("{}", o);
+    println!("{o}");
     Ok(b)
 }
 
@@ -316,7 +316,7 @@ where
 /// TODO: We may want to change this behaviour in the future.
 pub async fn stop_node(mut ctx: Context) -> Result<()> {
     if let Err(e) = ctx.stop().await {
-        eprintln!("an error occurred while shutting down local node: {}", e);
+        eprintln!("an error occurred while shutting down local node: {e}");
     }
     Ok(())
 }
@@ -501,7 +501,7 @@ pub fn parse_node_name(input: &str) -> anyhow::Result<String> {
             Ok(maddr) => maddr,
             Err(e) => {
                 // Tested with input strings with large tcp numbers. e.g: `node create /node/n1/tcp/28273829`
-                err_message.push_str(&format!("\n{}", e));
+                err_message.push_str(&format!("\n{e}"));
                 return Err(anyhow!(err_message));
             }
         };

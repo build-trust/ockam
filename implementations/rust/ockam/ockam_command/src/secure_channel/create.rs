@@ -91,13 +91,13 @@ impl CreateCommand {
                 // if stdout is not interactive/tty write the secure channel address to it
                 // in case some other program is trying to read it as piped input
                 if !is_tty(std::io::stdout()) {
-                    println!("{}", multiaddr)
+                    println!("{multiaddr}")
                 }
 
                 // if output format is json, write json to stdout.
                 if options.global_args.output_format == OutputFormat::Json {
                     let json = json!([{ "address": multiaddr.to_string() }]);
-                    println!("{}", json);
+                    println!("{json}");
                 }
 
                 // if stderr is interactive/tty and we haven't been asked to be quiet
@@ -108,15 +108,15 @@ impl CreateCommand {
                 {
                     if options.global_args.no_color {
                         eprintln!("\n  Created Secure Channel:");
-                        eprintln!("  • From: /node/{}", parsed_from);
+                        eprintln!("  • From: /node/{parsed_from}");
                         eprintln!("  •   To: {} ({})", &self.to, &parsed_to);
-                        eprintln!("  •   At: {}", multiaddr);
+                        eprintln!("  •   At: {multiaddr}");
                     } else {
                         eprintln!("\n  Created Secure Channel:");
 
                         // From:
                         eprint!("{}", "  • From: ".light_magenta());
-                        eprintln!("{}", format!("/node/{}", parsed_from).light_yellow());
+                        eprintln!("{}", format!("/node/{parsed_from}").light_yellow());
 
                         // To:
                         eprint!("{}", "  •   To: ".light_magenta());
@@ -137,8 +137,7 @@ impl CreateCommand {
                     && options.global_args.output_format == OutputFormat::Plain
                 {
                     eprintln!(
-                        "Could not convert returned secure channel address {} into a multiaddr",
-                        route
+                        "Could not convert returned secure channel address {route} into a multiaddr"
                     );
                 }
 

@@ -47,7 +47,7 @@ impl Output for LongIdentityResponse<'_> {
     fn output(&self) -> anyhow::Result<String> {
         let mut w = String::new();
         let id: IdentityChangeHistory = serde_bare::from_slice(self.identity.0.as_ref())?;
-        write!(w, "{}", id)?;
+        write!(w, "{id}")?;
         Ok(w)
     }
 }

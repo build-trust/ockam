@@ -105,7 +105,7 @@ async fn print_status(
     let default_identity = opts.state.identities.default()?;
 
     for (i_idx, identity) in identities.iter().enumerate() {
-        println!("Identity[{}]", i_idx);
+        println!("Identity[{i_idx}]");
         if default_identity.config.identifier == identity.config.identifier {
             println!("{:2}Default: yes", "")
         }

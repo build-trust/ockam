@@ -43,7 +43,7 @@ pub mod config {
             None => {
                 refresh_spaces(ctx, opts, api_node, controller_route).await?;
                 Ok(try_get_space(&opts.config, space_name)
-                    .context(format!("Space '{}' does not exist", space_name))?)
+                    .context(format!("Space '{space_name}' does not exist"))?)
             }
         }
     }
