@@ -48,11 +48,11 @@ impl CreateCommand {
                 let to = response.payload.parse::<SocketAddrV4>()?;
                 if opts.global_args.no_color {
                     println!("\n  Created TCP Connection:");
-                    println!("  • From: /node/{}", from);
+                    println!("  • From: /node/{from}");
                     println!("  •   To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port());
                 } else {
                     println!("\n  Created TCP Connection:");
-                    println!("{}", format!("  • From: /node/{}", from).light_magenta());
+                    println!("{}", format!("  • From: /node/{from}").light_magenta());
                     println!(
                         "{}",
                         format!("  •   To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port())
@@ -69,14 +69,14 @@ impl CreateCommand {
                     .default_tcp_listener()?
                     .addr
                     .port();
-                let route: Route = route![(TCP, format!("localhost:{}", port))]
+                let route: Route = route![(TCP, format!("localhost:{port}"))]
                     .modify()
                     .append_t(TCP, response.payload.to_string())
                     .into();
                 let multiaddr = route_to_multiaddr(&route)
                     .context("Couldn't convert given address into `MultiAddr`")?;
                 let json = json!([{"route": multiaddr.to_string() }]);
-                println!("{}", json);
+                println!("{json}");
             }
         }
         Ok(())

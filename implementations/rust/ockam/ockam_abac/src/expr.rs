@@ -261,7 +261,7 @@ impl fmt::Display for Expr {
                             f.write_str("+inf")?
                         }
                     } else {
-                        write!(f, "{:?}", x)?
+                        write!(f, "{x:?}")?
                     }
                 }
                 Op::Show(Expr::Bool(b)) => write!(f, "{b}")?,

@@ -112,7 +112,7 @@ where
             .map_err(|err| ApiError::generic(&err.to_string()))?;
         let res = client
             .get(format!("{}/v1/userinfo", &self.tenant_base_url))
-            .header("Authorization", format!("Bearer {}", token))
+            .header("Authorization", format!("Bearer {token}"))
             .send()
             .await;
         if let Ok(res) = res {

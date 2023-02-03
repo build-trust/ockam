@@ -62,7 +62,7 @@ fn print_node_info(
 ) {
     println!();
     println!("Node:");
-    println!("  Name: {}", node_name);
+    println!("  Name: {node_name}");
     println!(
         "  Status: {}",
         match status_is_up {
@@ -74,16 +74,16 @@ fn print_node_info(
     println!("  Route To Node:");
     let mut m = MultiAddr::default();
     if m.push_back(Node::new(node_name)).is_ok() {
-        println!("    Short: {}", m);
+        println!("    Short: {m}");
     }
 
     let mut m = MultiAddr::default();
     if m.push_back(DnsAddr::new("localhost")).is_ok() && m.push_back(Tcp::new(node_port)).is_ok() {
-        println!("    Verbose: {}", m);
+        println!("    Verbose: {m}");
     }
 
     if let Some(id) = default_id {
-        println!("  Identity: {}", id);
+        println!("  Identity: {id}");
     }
 
     if let Some(list) = tcp_listeners {
@@ -101,7 +101,7 @@ fn print_node_info(
         for e in list {
             println!("    Listener:");
             if let Some(ma) = addr_to_multiaddr(e) {
-                println!("      Address: {}", ma);
+                println!("      Address: {ma}");
             }
         }
     }
@@ -113,7 +113,7 @@ fn print_node_info(
             println!("      Listen Address: {}", e.bind_addr);
             if let Some(r) = Route::parse(e.outlet_route.as_ref()) {
                 if let Some(ma) = route_to_multiaddr(&r) {
-                    println!("      Route To Outlet: {}", ma);
+                    println!("      Route To Outlet: {ma}");
                 }
             }
         }
@@ -123,7 +123,7 @@ fn print_node_info(
             println!("      Forward Address: {}", e.tcp_addr);
 
             if let Some(ma) = addr_to_multiaddr(e.worker_addr.as_ref()) {
-                println!("      Address: {}", ma);
+                println!("      Address: {ma}");
             }
         }
     }
@@ -134,7 +134,7 @@ fn print_node_info(
             println!("    Service:");
             println!("      Type: {}", e.service_type);
             if let Some(ma) = addr_to_multiaddr(e.addr.as_ref()) {
-                println!("      Address: {}", ma);
+                println!("      Address: {ma}");
             }
         }
     }

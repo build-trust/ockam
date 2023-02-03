@@ -48,7 +48,7 @@ async fn run_impl(
         .default_tcp_listener()?
         .addr
         .port();
-    let mut base_route = route![(TCP, format!("localhost:{}", port))];
+    let mut base_route = route![(TCP, format!("localhost:{port}"))];
     let r: Route = base_route
         .modify()
         .pop_back()

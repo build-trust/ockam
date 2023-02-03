@@ -181,7 +181,7 @@ async fn run_impl(
                 space_id,
             )
             .await?;
-            let req = Request::put(format!("subscription/{}/unsubscribe", subscription_id))
+            let req = Request::put(format!("subscription/{subscription_id}/unsubscribe"))
                 .body(CloudRequestWrapper::bare(controller_route));
             rpc.request(req).await?;
             rpc.parse_and_print_response::<Subscription>()?;
@@ -206,12 +206,9 @@ async fn run_impl(
                     )
                     .await?;
                     let req =
-                        Request::put(format!("subscription/{}/contact_info", subscription_id))
-                            .body(CloudRequestWrapper::new(
-                                json,
-                                controller_route,
-                                None::<CowStr>,
-                            ));
+                        Request::put(format!("subscription/{subscription_id}/contact_info")).body(
+                            CloudRequestWrapper::new(json, controller_route, None::<CowStr>),
+                        );
                     rpc.request(req).await?;
                     rpc.parse_and_print_response::<Subscription>()?;
                 }
@@ -229,7 +226,7 @@ async fn run_impl(
                         space_id,
                     )
                     .await?;
-                    let req = Request::put(format!("subscription/{}/space_id", subscription_id))
+                    let req = Request::put(format!("subscription/{subscription_id}/space_id"))
                         .body(CloudRequestWrapper::new(
                             new_space_id,
                             controller_route,

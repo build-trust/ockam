@@ -46,7 +46,7 @@ impl Worker for PipeSender {
         );
 
         match (msg.msg_addr(), self.peer.as_ref()) {
-            (ref addr, Some(&PeerRoute::Listener(_, ref _self))) if addr == _self => {
+            (ref addr, Some(PeerRoute::Listener(_, _self))) if addr == _self => {
                 let return_route = msg.return_route();
                 self.peer = Some(PeerRoute::Peer(return_route.clone()));
 

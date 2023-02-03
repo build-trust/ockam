@@ -45,7 +45,7 @@ async fn async_main(mut ctx: Context) -> Result<()> {
 
     // Wait to receive a reply and print it.
     let reply = ctx.receive::<String>().await?;
-    println!("[main] App Received: {}", reply); // should print "Hello Ockam!"
+    println!("[main] App Received: {reply}"); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
     ctx.stop().await

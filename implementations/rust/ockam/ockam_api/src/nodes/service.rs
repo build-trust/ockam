@@ -678,7 +678,7 @@ impl NodeManagerWorker {
             _ => {
                 warn!(%method, %path, "Called invalid endpoint");
                 Response::bad_request(req.id())
-                    .body(format!("Invalid endpoint: {}", path))
+                    .body(format!("Invalid endpoint: {path}"))
                     .to_vec()?
             }
         };

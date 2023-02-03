@@ -81,10 +81,10 @@ mod tests {
         assert!(poll_once(async { ac.is_authorized(&msg).await })?);
 
         let msg = LocalMessage::new(
-            TransportMessage::v1(onward_address2.clone(), route![], vec![]),
+            TransportMessage::v1(onward_address2, route![], vec![]),
             vec![],
         );
-        let msg = RelayMessage::new(source_address.clone(), onward_address1.clone(), msg);
+        let msg = RelayMessage::new(source_address, onward_address1, msg);
 
         assert!(!poll_once(async { ac.is_authorized(&msg).await })?);
 
@@ -112,7 +112,7 @@ mod tests {
             TransportMessage::v1(onward_address2.clone(), route![], vec![]),
             vec![],
         );
-        let msg = RelayMessage::new(source_address.clone(), onward_address2.clone(), msg);
+        let msg = RelayMessage::new(source_address.clone(), onward_address2, msg);
 
         assert!(poll_once(async { ac.is_authorized(&msg).await })?);
 
@@ -133,10 +133,10 @@ mod tests {
         assert!(!poll_once(async { ac.is_authorized(&msg).await })?);
 
         let msg = LocalMessage::new(
-            TransportMessage::v1(onward_address1.clone(), route![], vec![]),
+            TransportMessage::v1(onward_address1, route![], vec![]),
             vec![],
         );
-        let msg = RelayMessage::new(source_address.clone(), onward_address3.clone(), msg);
+        let msg = RelayMessage::new(source_address, onward_address3, msg);
 
         assert!(poll_once(async { ac.is_authorized(&msg).await })?);
 

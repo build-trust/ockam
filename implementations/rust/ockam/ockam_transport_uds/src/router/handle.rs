@@ -118,7 +118,7 @@ impl UdsRouterHandle {
         accepts.extend(
             pair.paths()
                 .iter()
-                .map(|x| Address::from_string(format!("{}#{}", UDS, x))),
+                .map(|x| Address::from_string(format!("{UDS}#{x}"))),
         );
         let self_addr = pair.tx_addr();
 

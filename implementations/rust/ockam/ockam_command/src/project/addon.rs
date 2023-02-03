@@ -267,8 +267,7 @@ async fn run_impl(
         let project_id = &lookup
             .get_project(project_name)
             .context(format!(
-                "Failed to get project {} from config lookup",
-                project_name
+                "Failed to get project {project_name} from config lookup"
             ))?
             .id;
         Ok(format!("{project_id}/addons"))
@@ -527,8 +526,7 @@ pub fn query_certificate_chain(domain: &str) -> anyhow::Result<String> {
     stream
         .write_all(
             format!(
-                "GET / HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nAccept-Encoding: identity\r\n\r\n",
-                domain
+                "GET / HTTP/1.1\r\nHost: {domain}\r\nConnection: close\r\nAccept-Encoding: identity\r\n\r\n"
             )
                 .as_bytes(),
         )

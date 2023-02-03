@@ -75,7 +75,7 @@ async fn run_impl(
                 space_id,
             )
             .await?;
-            let req = Request::get(format!("subscription/{}", subscription_id))
+            let req = Request::get(format!("subscription/{subscription_id}"))
                 .body(CloudRequestWrapper::bare(controller_route));
             rpc.request(req).await?;
             rpc.parse_and_print_response::<Subscription>()?;

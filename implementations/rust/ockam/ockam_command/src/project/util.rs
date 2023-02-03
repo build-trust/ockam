@@ -69,7 +69,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
             // This shouldn't fail, as we did a refresh above if we found any missing project.
             let p = cfg_lookup
                 .get_project(name)
-                .context(format!("Failed to get project {} from config lookup", name))?;
+                .context(format!("Failed to get project {name} from config lookup"))?;
             let id = p
                 .identity_id
                 .as_ref()

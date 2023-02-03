@@ -112,7 +112,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
 
         let proj = config_lookup
             .get_project(proj_name)
-            .context(format!("Unknown project {}", proj_name))?;
+            .context(format!("Unknown project {proj_name}"))?;
 
         self.project_lookup = Some(proj.clone());
         Ok(self)

@@ -120,7 +120,7 @@ impl VaultsState {
     pub async fn create(&self, name: &str, config: VaultConfig) -> Result<VaultState> {
         let path = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if path.exists() {
                 return Err(CliStateError::AlreadyExists(format!("vault `{name}`")));
             }
@@ -138,7 +138,7 @@ impl VaultsState {
     pub fn get(&self, name: &str) -> Result<VaultState> {
         let path = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if !path.exists() {
                 return Err(CliStateError::NotFound(format!("vault `{name}`")));
             }
@@ -201,7 +201,7 @@ impl VaultsState {
     pub fn set_default(&self, name: &str) -> Result<VaultState> {
         let original = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if !path.exists() {
                 return Err(CliStateError::NotFound(format!("vault `{name}`")));
             }
@@ -311,7 +311,7 @@ impl IdentitiesState {
     pub fn create(&self, name: &str, config: IdentityConfig) -> Result<IdentityState> {
         let path = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if path.exists() {
                 return Err(CliStateError::AlreadyExists(format!("identity `{name}`")));
             }
@@ -332,7 +332,7 @@ impl IdentitiesState {
     pub fn get(&self, name: &str) -> Result<IdentityState> {
         let path = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if !path.exists() {
                 return Err(CliStateError::NotFound(format!("identity `{name}`")));
             }
@@ -402,7 +402,7 @@ impl IdentitiesState {
     pub fn set_default(&self, name: &str) -> Result<IdentityState> {
         let original = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if !path.exists() {
                 return Err(CliStateError::NotFound(format!("identity `{name}`")));
             }
@@ -956,7 +956,7 @@ impl ProjectsState {
     pub async fn create(&self, name: &str, config: Project<'_>) -> Result<ProjectState> {
         let path = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if path.exists() {
                 return Err(CliStateError::AlreadyExists(format!("project `{name}`")));
             }
@@ -974,7 +974,7 @@ impl ProjectsState {
     pub fn get(&self, name: &str) -> Result<ProjectState> {
         let path = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if !path.exists() {
                 return Err(CliStateError::NotFound(format!("project `{name}`")));
             }
@@ -995,7 +995,7 @@ impl ProjectsState {
     pub fn set_default(&self, name: &str) -> Result<ProjectState> {
         let original = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if !path.exists() {
                 return Err(CliStateError::NotFound(format!("project `{name}`")));
             }

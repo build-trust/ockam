@@ -62,7 +62,7 @@ fn address_from_socket_addr(sock_addr: &SocketAddr) -> Result<Address> {
         }
     };
 
-    let address: Address = format!("{}#{}", UDS, path_str).into();
+    let address: Address = format!("{UDS}#{path_str}").into();
 
     Ok(address)
 }

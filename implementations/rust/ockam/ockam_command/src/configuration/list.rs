@@ -15,7 +15,7 @@ impl ListCommand {
             // in the future
             #[allow(irrefutable_let_patterns)]
             if let LookupValue::Address(addr) = value {
-                println!("Node:    {}\nAddress: {}\n", alias, addr);
+                println!("Node:    {alias}\nAddress: {addr}\n");
             }
         }
     }

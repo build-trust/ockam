@@ -48,8 +48,7 @@ impl ListCommand {
             let at = {
                 let channel_route = &route![channel_address];
                 let channel_multiaddr = route_to_multiaddr(channel_route).ok_or(format!(
-                    "Failed to convert route {} to multi-address",
-                    channel_route
+                    "Failed to convert route {channel_route} to multi-address"
                 ))?;
                 channel_multiaddr.to_string()
             };
@@ -61,30 +60,29 @@ impl ListCommand {
                 let parts: Vec<&str> = show_route.split(" => ").collect();
                 if parts.len() != 2 {
                     return Err(format!(
-                        "Invalid route received from show channel response -- {}",
-                        show_route
+                        "Invalid route received from show channel response -- {show_route}"
                     ));
                 }
 
                 let r1 = &route![*parts.first().unwrap()];
                 let r2 = &route![*parts.get(1).unwrap()];
                 let ma1 = route_to_multiaddr(r1)
-                    .ok_or(format!("Failed to convert route {} to multi-address", r1))?;
+                    .ok_or(format!("Failed to convert route {r1} to multi-address"))?;
                 let ma2 = route_to_multiaddr(r2)
-                    .ok_or(format!("Failed to convert route {} to multi-address", r2))?;
-                format!("{}{}", ma1, ma2)
+                    .ok_or(format!("Failed to convert route {r2} to multi-address"))?;
+                format!("{ma1}{ma2}")
             };
 
             // if stdout is not interactive/tty write the secure channel address to it
             // in case some other program is trying to read it as piped input
             if !is_tty(std::io::stdout()) {
-                println!("{}", at)
+                println!("{at}")
             }
 
             // if output format is json, write json to stdout.
             if options.global_args.output_format == OutputFormat::Json {
                 let json = json!([{ "address": at }]);
-                println!("{}", json);
+                println!("{json}");
             }
 
             // if stderr is interactive/tty and we haven't been asked to be quiet
@@ -92,13 +90,13 @@ impl ListCommand {
             if has_plain_stderr(options) {
                 println!("\n    Secure Channel:");
                 if options.global_args.no_color {
-                    eprintln!("      • From: /node/{}", from);
-                    eprintln!("      •   To: {}", to);
-                    eprintln!("      •   At: {}", at);
+                    eprintln!("      • From: /node/{from}");
+                    eprintln!("      •   To: {to}");
+                    eprintln!("      •   At: {at}");
                 } else {
                     // From:
                     eprint!("{}", "      • From: ".light_magenta());
-                    eprintln!("{}", format!("/node/{}", from).light_yellow());
+                    eprintln!("{}", format!("/node/{from}").light_yellow());
 
                     // To:
                     eprint!("{}", "      •   To: ".light_magenta());
@@ -156,7 +154,7 @@ async fn rpc(
             && !options.global_args.quiet
             && options.global_args.output_format == OutputFormat::Plain
         {
-            eprintln!("{}", e);
+            eprintln!("{e}");
         }
         std::process::exit(exitcode::PROTOCOL)
     }
