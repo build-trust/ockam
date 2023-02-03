@@ -3,11 +3,11 @@ use crate::config::lookup::{InternetAddress, LookupMeta};
 use crate::error::ApiError;
 use anyhow::anyhow;
 use core::str::FromStr;
-use ockam::{Address, Error, Result, TCP};
-use ockam_core::{Route, LOCAL};
+use ockam_core::compat::net::{SocketAddrV4, SocketAddrV6};
+use ockam_core::{Address, Error, Result, Route, LOCAL};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp};
 use ockam_multiaddr::{MultiAddr, Protocol};
-use std::net::{SocketAddrV4, SocketAddrV6};
+use ockam_transport_tcp::TCP;
 
 /// Go through a multiaddr and remove all instances of
 /// `/node/<whatever>` out of it and replaces it with a fully
@@ -230,4 +230,90 @@ fn clean_multiaddr_simple() {
     let addr: MultiAddr = "/project/hub/service/echoer".parse().unwrap();
     let (_new_addr, lookup_meta) = clean_multiaddr(&addr, &CliState::new().unwrap()).unwrap();
     assert!(lookup_meta.project.contains(&"hub".to_string()));
+}
+
+#[cfg(test)]
+pub mod test {
+    use crate::cli_state::{CliState, IdentityConfig, NodeConfig, VaultConfig};
+    use crate::nodes::service::{
+        NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
+    };
+    use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+    use ockam::Result;
+    use ockam_core::AsyncTryClone;
+    use ockam_identity::Identity;
+    use ockam_node::Context;
+
+    ///guard to delete the cli state at the end of the test
+    pub struct CliStateGuard {
+        cli_state: CliState,
+    }
+    impl Drop for CliStateGuard {
+        fn drop(&mut self) {
+            self.cli_state
+                .delete(true)
+                .expect("cannot delete cli state");
+        }
+    }
+
+    ///return a guard to automatically delete node state at the end
+    pub async fn start_manager_for_tests(context: &mut Context) -> Result<CliStateGuard> {
+        let tcp = ockam_transport_tcp::TcpTransport::create(&context).await?;
+        let cli_state = CliState::test()?;
+
+        let node_name = {
+            let vault_name = hex::encode(rand::random::<[u8; 4]>());
+            let vault = cli_state
+                .vaults
+                .create(&vault_name.clone(), VaultConfig::from_name(&vault_name)?)
+                .await?
+                .config
+                .get()
+                .await?;
+
+            let identity_name = hex::encode(rand::random::<[u8; 4]>());
+            let identity = Identity::create_ext(
+                context,
+                &cli_state.identities.authenticated_storage().await?,
+                &vault,
+            )
+            .await
+            .unwrap();
+            let config = IdentityConfig::new(&identity).await;
+            cli_state.identities.create(&identity_name, config).unwrap();
+
+            let node_name = hex::encode(rand::random::<[u8; 4]>());
+            let node_config = NodeConfig::try_default().unwrap();
+            cli_state.nodes.create(&node_name, node_config)?;
+
+            node_name
+        };
+
+        let node_manager = NodeManager::create(
+            &context,
+            NodeManagerGeneralOptions::new(node_name, true),
+            NodeManagerProjectsOptions::new(None, None, Default::default(), None),
+            NodeManagerTransportOptions::new(
+                (
+                    crate::nodes::models::transport::TransportType::Tcp,
+                    crate::nodes::models::transport::TransportMode::Listen,
+                    "127.0.0.1".into(),
+                ),
+                tcp.async_try_clone().await?,
+            ),
+        )
+        .await?;
+
+        let node_manager_worker = NodeManagerWorker::new(node_manager);
+        context
+            .start_worker(
+                NODEMANAGER_ADDR,
+                node_manager_worker,
+                ockam_core::AllowAll,
+                ockam_core::AllowAll,
+            )
+            .await?;
+
+        Ok(CliStateGuard { cli_state })
+    }
 }

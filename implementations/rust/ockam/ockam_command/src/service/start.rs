@@ -11,10 +11,11 @@ use ockam_api::nodes::models::services::{
     StartKafkaConsumerRequest, StartKafkaProducerRequest, StartOktaIdentityProviderRequest,
     StartServiceRequest,
 };
+use ockam_api::port_range::PortRange;
 use ockam_api::DefaultAddress;
 use ockam_core::api::{Request, RequestBuilder, Status};
+use ockam_core::compat::net::Ipv4Addr;
 use ockam_multiaddr::MultiAddr;
-use std::net::Ipv4Addr;
 
 /// Start a specified service
 #[derive(Clone, Debug, Args)]
@@ -71,11 +72,11 @@ pub enum StartSubCommand {
         #[arg(long)]
         ip: Ipv4Addr,
         #[arg(long)]
-        ports: Vec<u16>,
+        bootstrap_port: u16,
+        #[arg(long)]
+        port_range: PortRange,
         #[arg(long)]
         forwarding_addr: MultiAddr,
-        #[arg(long)]
-        route_to_client: Option<MultiAddr>,
     },
     #[command(hide = help::hide())]
     KafkaProducer {
@@ -84,11 +85,11 @@ pub enum StartSubCommand {
         #[arg(long)]
         ip: Ipv4Addr,
         #[arg(long)]
-        ports: Vec<u16>,
+        bootstrap_port: u16,
+        #[arg(long)]
+        port_range: PortRange,
         #[arg(long)]
         forwarding_addr: MultiAddr,
-        #[arg(long)]
-        route_to_client: Option<MultiAddr>,
     },
 }
 
@@ -193,14 +194,14 @@ async fn run_impl(
         StartSubCommand::KafkaConsumer {
             addr,
             ip,
-            ports,
+            bootstrap_port,
+            port_range,
             forwarding_addr,
-            route_to_client,
         } => {
             let payload =
-                StartKafkaConsumerRequest::new(ip, ports, forwarding_addr, route_to_client);
+                StartKafkaConsumerRequest::new(ip, bootstrap_port, port_range, forwarding_addr);
             let payload = StartServiceRequest::new(payload, &addr);
-            let req = Request::post("/node/services/kafka-consumer").body(payload);
+            let req = Request::post("/node/services/kafka_consumer").body(payload);
             start_service_impl(
                 ctx,
                 &opts,
@@ -215,14 +216,14 @@ async fn run_impl(
         StartSubCommand::KafkaProducer {
             addr,
             ip,
-            ports,
+            bootstrap_port,
+            port_range,
             forwarding_addr,
-            route_to_client,
         } => {
             let payload =
-                StartKafkaProducerRequest::new(ip, ports, forwarding_addr, route_to_client);
+                StartKafkaProducerRequest::new(ip, bootstrap_port, port_range, forwarding_addr);
             let payload = StartServiceRequest::new(payload, &addr);
-            let req = Request::post("/node/services/kafka-producer").body(payload);
+            let req = Request::post("/node/services/kafka_producer").body(payload);
             start_service_impl(
                 ctx,
                 &opts,
