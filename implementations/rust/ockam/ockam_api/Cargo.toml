@@ -32,9 +32,7 @@ default              = ["lmdb"]
 
 [dependencies]
 bytes           = { version = "1.4.0", default-features = false, features = ["serde"] }
-ockam           = { path = "../ockam", version = "^0.80.0", features = ["software_vault"] }
 either          = { version = "1.8.1", default-features = false }
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.14.0", features = ["cbor", "serde"] }
 cddl-cat        = { version = "0.6.1", optional = true }
 hex             = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 nix             = "0.26"
@@ -53,8 +51,15 @@ anyhow          = "1"
 directories     = "4"
 dirs            = "4.0.0"
 thiserror       = "1.0"
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
+reqwest         = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
+tokio-util      = { version = "0.7", features = ["codec"] }
+kafka-protocol  = "0.4"
+futures         = "0.3"
 sysinfo         = "0.27"
+
+ockam               = { path = "../ockam", version = "^0.80.0", features = ["software_vault"] }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.75.0" }
+ockam_multiaddr     = { path = "../ockam_multiaddr", version = "0.14.0", features = ["cbor", "serde"] }
 
 [dependencies.ockam_core]
 version          = "0.74.0"
@@ -97,3 +102,4 @@ ockam_api           = { path = ".", features = ["std", "authenticators"] }
 ockam_macros        = { version = "0.27.0", path = "../ockam_macros", features = ["std"] }
 ockam_transport_tcp = { version = "0.75.0", path = "../ockam_transport_tcp" }
 quickcheck          = "1.0.1"
+indexmap            = "1.7.0"

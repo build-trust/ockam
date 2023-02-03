@@ -52,7 +52,15 @@ where
                             break;
                         }
                     }
-                    Err(e) => error!("Error encountered during '{}' processing: {}", ctx_addr, e),
+                    Err(e) => {
+                        #[cfg(feature = "debugger")]
+                        error!(
+                            "Error encountered during '{}' processing: {:?}",
+                            ctx_addr, e
+                        );
+                        #[cfg(not(feature = "debugger"))]
+                        error!("Error encountered during '{}' processing: {}", ctx_addr, e);
+                    }
                 }
             }
 

@@ -1,6 +1,6 @@
 use minicbor::{Decode, Encode};
+use ockam_core::compat::net::Ipv4Addr;
 use ockam_core::{CowBytes, CowStr};
-use std::net::Ipv4Addr;
 
 use serde::Serialize;
 
@@ -42,24 +42,37 @@ impl<'a, T> StartServiceRequest<'a, T> {
 #[cbor(map)]
 pub struct StartKafkaConsumerRequest<'a> {
     #[b(1)] ip: CowStr<'a>,
-    #[n(2)] ports: Vec<u16>,
-    #[b(3)] forwarding_addr: CowStr<'a>,
-    #[b(4)] route_to_client: Option<CowStr<'a>>,
+    #[n(2)] bootstrap_port: u16,
+    #[n(3)] port_range: (u16,u16),
+    #[b(4)] forwarding_addr: CowStr<'a>,
 }
 
 impl<'a> StartKafkaConsumerRequest<'a> {
     pub fn new(
         ip: Ipv4Addr,
-        ports: Vec<u16>,
+        bootstrap_port: u16,
+        port_range: impl Into<(u16, u16)>,
         forwarding_addr: MultiAddr,
-        route_to_client: Option<MultiAddr>,
     ) -> Self {
         Self {
             ip: ip.to_string().into(),
-            ports,
+            bootstrap_port,
+            port_range: port_range.into(),
             forwarding_addr: forwarding_addr.to_string().into(),
-            route_to_client: route_to_client.map(|s| s.to_string().into()),
         }
+    }
+
+    pub fn ip(&self) -> &CowStr<'a> {
+        &self.ip
+    }
+    pub fn bootstrap_port(&self) -> u16 {
+        self.bootstrap_port
+    }
+    pub fn port_range(&self) -> (u16, u16) {
+        self.port_range
+    }
+    pub fn forwarding_addr(&self) -> &CowStr<'a> {
+        &self.forwarding_addr
     }
 }
 
@@ -68,24 +81,37 @@ impl<'a> StartKafkaConsumerRequest<'a> {
 #[cbor(map)]
 pub struct StartKafkaProducerRequest<'a> {
     #[b(1)] ip: CowStr<'a>,
-    #[n(2)] ports: Vec<u16>,
-    #[b(3)] forwarding_addr: CowStr<'a>,
-    #[b(4)] route_to_client: Option<CowStr<'a>>,
+    #[n(2)] bootstrap_port: u16,
+    #[n(3)] port_range: (u16,u16),
+    #[b(4)] forwarding_addr: CowStr<'a>,
 }
 
 impl<'a> StartKafkaProducerRequest<'a> {
     pub fn new(
         ip: Ipv4Addr,
-        ports: Vec<u16>,
+        bootstrap_port: u16,
+        port_range: impl Into<(u16, u16)>,
         forwarding_addr: MultiAddr,
-        route_to_client: Option<MultiAddr>,
     ) -> Self {
         Self {
             ip: ip.to_string().into(),
-            ports,
+            bootstrap_port,
+            port_range: port_range.into(),
             forwarding_addr: forwarding_addr.to_string().into(),
-            route_to_client: route_to_client.map(|s| s.to_string().into()),
         }
+    }
+
+    pub fn ip(&self) -> &CowStr<'a> {
+        &self.ip
+    }
+    pub fn bootstrap_port(&self) -> u16 {
+        self.bootstrap_port
+    }
+    pub fn port_range(&self) -> (u16, u16) {
+        self.port_range
+    }
+    pub fn forwarding_addr(&self) -> &CowStr<'a> {
+        &self.forwarding_addr
     }
 }
 

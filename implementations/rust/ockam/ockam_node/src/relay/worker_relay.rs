@@ -116,7 +116,12 @@ where
                             break;
                         },
                         // An error occurred -- log and continue
-                        Err(e) => error!("Error encountered during '{}' message handling: {}", address, e),
+                        Err(e) => {
+                            #[cfg(feature = "debugger")]
+                            error!("Error encountered during '{}' message handling: {:?}", address, e);
+                            #[cfg(not(feature = "debugger"))]
+                            error!("Error encountered during '{}' message handling: {}", address, e);
+                        }
                     }
                 },
                 result = ctrl_rx.recv() => {

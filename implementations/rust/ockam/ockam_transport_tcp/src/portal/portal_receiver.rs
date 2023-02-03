@@ -1,3 +1,4 @@
+use crate::portal::portal_message::MAX_PAYLOAD_SIZE;
 use crate::{PortalInternalMessage, PortalMessage};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, Encodable, LocalMessage, Route, TransportMessage};
@@ -5,8 +6,6 @@ use ockam_core::{route, Address, Processor, Result};
 use ockam_node::Context;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{error, warn};
-
-const MAX_PAYLOAD_SIZE: usize = 48 * 1024;
 
 /// A TCP Portal receiving message processor
 ///
