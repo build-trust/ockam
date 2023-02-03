@@ -29,6 +29,8 @@ mod portal;
 mod router;
 mod workers;
 
+pub use portal::PortalMessage;
+pub use portal::MAX_PAYLOAD_SIZE;
 pub(crate) use portal::*;
 pub(crate) use router::*;
 pub(crate) use workers::*;

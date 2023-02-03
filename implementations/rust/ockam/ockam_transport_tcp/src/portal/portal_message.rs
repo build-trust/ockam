@@ -2,7 +2,7 @@ use ockam_core::Message;
 use serde::{Deserialize, Serialize};
 
 /// A command message type for a Portal
-#[derive(Serialize, Deserialize, Message)]
+#[derive(Serialize, Deserialize, Message, Debug)]
 pub enum PortalMessage {
     /// First message that Inlet sends to the Outlet
     Ping,
@@ -21,3 +21,6 @@ pub enum PortalInternalMessage {
     /// Connection was dropped
     Disconnect,
 }
+
+///Maximum allowed size for a payload
+pub const MAX_PAYLOAD_SIZE: usize = 48 * 1024;
