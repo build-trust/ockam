@@ -104,6 +104,25 @@ pub(crate) struct CredentialsServiceInfo {}
 #[derive(Default)]
 pub(crate) struct AuthenticatorServiceInfo {}
 
+pub(crate) enum KafkaServiceKind {
+    Consumer,
+    Producer,
+}
+
+pub(crate) struct KafkaServiceInfo {
+    kind: KafkaServiceKind,
+}
+
+impl KafkaServiceInfo {
+    pub fn new(kind: KafkaServiceKind) -> Self {
+        Self { kind }
+    }
+
+    pub fn kind(&self) -> &KafkaServiceKind {
+        &self.kind
+    }
+}
+
 pub(crate) struct InletInfo {
     pub(crate) bind_addr: String,
     pub(crate) worker_addr: Address,
@@ -156,6 +175,7 @@ pub(crate) struct Registry {
     pub(crate) okta_identity_provider_services: BTreeMap<Address, OktaIdentityProviderServiceInfo>,
     pub(crate) uppercase_services: BTreeMap<Address, UppercaseServiceInfo>,
     pub(crate) echoer_services: BTreeMap<Address, EchoerServiceInfo>,
+    pub(crate) kafka_services: BTreeMap<Address, KafkaServiceInfo>,
     pub(crate) hop_services: BTreeMap<Address, HopServiceInfo>,
     pub(crate) verifier_services: BTreeMap<Address, VerifierServiceInfo>,
     pub(crate) credentials_services: BTreeMap<Address, CredentialsServiceInfo>,

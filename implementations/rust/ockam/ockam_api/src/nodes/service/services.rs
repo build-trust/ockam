@@ -3,6 +3,7 @@ use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::hop::Hop;
 use crate::identity::IdentityService;
+use crate::kafka::{KafkaPortalListener, KAFKA_BOOTSTRAP_ADDRESS, KAFKA_INTERCEPTOR_ADDRESS};
 use crate::nodes::models::services::{
     ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
     StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
@@ -10,15 +11,20 @@ use crate::nodes::models::services::{
     StartOktaIdentityProviderRequest, StartServiceRequest, StartUppercaseServiceRequest,
     StartVaultServiceRequest, StartVerifierService,
 };
-use crate::nodes::registry::{CredentialsServiceInfo, Registry, VerifierServiceInfo};
+use crate::nodes::registry::{
+    CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry, VerifierServiceInfo,
+};
 use crate::nodes::NodeManager;
+use crate::port_range::PortRange;
+use crate::try_multiaddr_to_route;
 use crate::uppercase::Uppercase;
 use crate::vault::VaultService;
 use crate::DefaultAddress;
 use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::AllowAll;
+use ockam_core::{AllowAll, Route};
+use ockam_multiaddr::MultiAddr;
 
 use super::NodeManagerWorker;
 
@@ -277,6 +283,54 @@ impl NodeManager {
             .insert(addr, OktaIdentityProviderServiceInfo::default());
         Ok(())
     }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) async fn start_kafka_service_impl<'a>(
+        &mut self,
+        context: &Context,
+        listener_address: Address,
+        bind_ip: String,
+        proxied_bootstrap_port: u16,
+        proxied_port_range: (u16, u16),
+        forwarding_addr: MultiAddr,
+        kind: KafkaServiceKind,
+    ) -> Result<()> {
+        let node_route = try_multiaddr_to_route(&forwarding_addr)?;
+        // We manipulate the route a bit, adding common pieces for both
+        // bootstrap route and broker route
+        let interceptor_route: Route = node_route
+            .clone()
+            .modify()
+            .prepend(listener_address.clone())
+            .append(Address::from_string(KAFKA_INTERCEPTOR_ADDRESS))
+            .into();
+
+        self.tcp_transport
+            .create_inlet(
+                format!("{}:{}", &bind_ip, proxied_bootstrap_port),
+                interceptor_route
+                    .clone()
+                    .modify()
+                    .append(Address::from_string(KAFKA_BOOTSTRAP_ADDRESS)),
+                AllowAll,
+            )
+            .await?;
+
+        KafkaPortalListener::start(
+            context,
+            interceptor_route,
+            listener_address.clone(),
+            bind_ip,
+            PortRange::try_from(proxied_port_range)
+                .map_err(|_| ApiError::message("invalid port range"))?,
+        )
+        .await?;
+
+        self.registry
+            .kafka_services
+            .insert(listener_address, KafkaServiceInfo::new(kind));
+        Ok(())
+    }
 }
 
 impl NodeManagerWorker {
@@ -463,27 +517,53 @@ impl NodeManagerWorker {
 
     pub(super) async fn start_kafka_consumer_service<'a>(
         &mut self,
-        _ctx: &Context,
+        context: &Context,
         req: &'a Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
+        let mut node_manager = self.node_manager.write().await;
         let body: StartServiceRequest<StartKafkaConsumerRequest> = dec.decode()?;
-        let _addr: Address = body.address().into();
-        let _body_req = body.request();
-        // TODO: @confluent - start kafka consumer service
+        let listener_address: Address = body.address().into();
+        let body_req = body.request();
+
+        node_manager
+            .start_kafka_service_impl(
+                context,
+                listener_address,
+                body_req.ip().to_string(),
+                body_req.bootstrap_port(),
+                body_req.port_range(),
+                body_req.forwarding_addr().to_string().parse()?,
+                KafkaServiceKind::Consumer,
+            )
+            .await?;
+
         Ok(Response::ok(req.id()).to_vec()?)
     }
 
     pub(super) async fn start_kafka_producer_service<'a>(
         &mut self,
-        _ctx: &Context,
+        context: &Context,
         req: &'a Request<'_>,
         dec: &mut Decoder<'_>,
     ) -> Result<Vec<u8>> {
+        let mut node_manager = self.node_manager.write().await;
         let body: StartServiceRequest<StartKafkaProducerRequest> = dec.decode()?;
-        let _addr: Address = body.address().into();
-        let _body_req = body.request();
-        // TODO: @confluent - start kafka producer service
+        let listener_address: Address = body.address().into();
+        let body_req = body.request();
+
+        node_manager
+            .start_kafka_service_impl(
+                context,
+                listener_address,
+                body_req.ip().to_string(),
+                body_req.bootstrap_port(),
+                body_req.port_range(),
+                body_req.forwarding_addr().to_string().parse()?,
+                KafkaServiceKind::Producer,
+            )
+            .await?;
+
         Ok(Response::ok(req.id()).to_vec()?)
     }
 
@@ -536,6 +616,15 @@ impl NodeManagerWorker {
             list.push(ServiceStatus::new(
                 addr.address(),
                 DefaultAddress::CREDENTIALS_SERVICE,
+            ))
+        });
+        registry.kafka_services.iter().for_each(|(address, info)| {
+            list.push(ServiceStatus::new(
+                address.address(),
+                match info.kind() {
+                    KafkaServiceKind::Consumer => "kafka-consumer",
+                    KafkaServiceKind::Producer => "kafka-producer",
+                },
             ))
         });
 
