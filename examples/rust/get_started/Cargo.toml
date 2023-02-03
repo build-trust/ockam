@@ -12,7 +12,12 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam/default", "ockam_transport_websocket", "serde_json/default"]
+std = ["ockam/default",
+  "ockam_transport_websocket",
+  "serde_json/default",
+  "ockam_multiaddr/std",
+  "ockam_api/std",
+  "ockam_api/authenticators"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
@@ -23,6 +28,9 @@ no_std = ["ockam/no_std"]
 alloc = ["ockam/alloc", "serde_json/alloc"]
 
 [dependencies]
+ockam_core = { path = "../../../implementations/rust/ockam/ockam_core" }
+ockam_multiaddr = { path = "../../../implementations/rust/ockam/ockam_multiaddr" }
+ockam_api = { path = "../../../implementations/rust/ockam/ockam_api" }
 ockam = { path = "../../../implementations/rust/ockam/ockam", default_features = false, features = [
     "software_vault",
 ] }
@@ -32,6 +40,8 @@ ockam_transport_uds = { path = "../../../implementations/rust/ockam/ockam_transp
 serde = { version = "1", default_features = false, features = ["derive"] }
 serde_json = { version = "1.0", default_features = false }
 hex = "0.4"
+minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
+anyhow = "1"
 
 [dev-dependencies]
 rand = { version = "0.8.4", features = ["std_rng"], default-features = false }
