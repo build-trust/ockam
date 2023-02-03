@@ -51,11 +51,6 @@ pub(crate) fn create_tcp_connection(
     Request::post("/node/tcp/connection").body(payload)
 }
 
-/// Construct a request to print Identity Id
-pub(crate) fn short_identity() -> RequestBuilder<'static, ()> {
-    Request::post("/node/identity/actions/show/short")
-}
-
 /// Construct a request to print a list of services for the given node
 pub(crate) fn list_services() -> RequestBuilder<'static, ()> {
     Request::get("/node/services")
