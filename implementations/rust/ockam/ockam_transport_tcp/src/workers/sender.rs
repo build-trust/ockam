@@ -16,7 +16,7 @@ use socket2::{SockRef, TcpKeepalive};
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
-use tracing::{debug, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 /// Provides the transmit and receive parts of a TCP connection
 #[derive(Debug)]
@@ -254,7 +254,7 @@ impl Worker for TcpSendWorker {
 
             match msg {
                 TcpSendWorkerMsg::ConnectionClosed => {
-                    warn!("Stopping sender due to closed connection {}", self.peer);
+                    info!("Stopping sender due to closed connection {}", self.peer);
                     // No need to stop Receiver as it notified us about connection drop and will
                     // stop itself
                     self.rx_should_be_stopped = false;
