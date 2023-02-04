@@ -222,8 +222,17 @@ pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> anyhow:
 
 pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> anyhow::Result<()> {
     let nodes_states = opts.state.nodes.list()?;
+    let mut deletion_errors = Vec::new();
     for s in nodes_states {
-        opts.state.nodes.delete(&s.config.name, force)?;
+        if let Err(e) = opts.state.nodes.delete(&s.config.name, force) {
+            deletion_errors.push((s.config.name.clone(), e));
+        }
+    }
+    if !deletion_errors.is_empty() {
+        return Err(anyhow!(
+            "errors while deleting nodes: {:?}",
+            deletion_errors
+        ));
     }
     Ok(())
 }
