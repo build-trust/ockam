@@ -50,6 +50,7 @@ impl CreateCommand {
                     println!("\n  Created TCP Connection:");
                     println!("  • From: /node/{from}");
                     println!("  •   To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port());
+                    println!("\n  Transport ID : {}", response.tid);
                 } else {
                     println!("\n  Created TCP Connection:");
                     println!("{}", format!("  • From: /node/{from}").light_magenta());
@@ -57,6 +58,10 @@ impl CreateCommand {
                         "{}",
                         format!("  •   To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port())
                             .light_magenta()
+                    );
+                    println!(
+                        "{}",
+                        format!("\n  Transport ID : {}", response.tid).light_blue()
                     );
                 }
             }
