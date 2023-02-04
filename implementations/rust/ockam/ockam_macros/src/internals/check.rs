@@ -39,7 +39,7 @@ pub(crate) mod item_fn {
         ockam_ctx
     }
 
-    pub(crate) fn ockam_ctx_is_mut_ref<'a>(ctx: &Context, ockam_ctx: &Option<FnVariable<'a>>) {
+    pub(crate) fn ockam_ctx_is_mut_ref(ctx: &Context, ockam_ctx: &Option<FnVariable>) {
         if let Some(ockam_ctx) = ockam_ctx {
             if ockam_ctx.and_token.is_none() {
                 let msg = "the `Context` argument must be passed as reference";

@@ -45,14 +45,14 @@ impl ConfigLookup {
 
     pub fn set_space(&mut self, id: &str, name: &str) {
         self.map.insert(
-            format!("/space/{}", name),
+            format!("/space/{name}"),
             LookupValue::Space(SpaceLookup { id: id.to_string() }),
         );
     }
 
     pub fn get_space(&self, name: &str) -> Option<&SpaceLookup> {
         self.map
-            .get(&format!("/space/{}", name))
+            .get(&format!("/space/{name}"))
             .and_then(|value| match value {
                 LookupValue::Space(space) => Some(space),
                 _ => None,
@@ -60,7 +60,7 @@ impl ConfigLookup {
     }
 
     pub fn remove_space(&mut self, name: &str) -> Option<LookupValue> {
-        self.map.remove(&format!("/space/{}", name))
+        self.map.remove(&format!("/space/{name}"))
     }
 
     pub fn remove_spaces(&mut self) {
@@ -70,12 +70,12 @@ impl ConfigLookup {
     /// Store a project route and identifier as lookup
     pub fn set_project(&mut self, name: String, proj: ProjectLookup) {
         self.map
-            .insert(format!("/project/{}", name), LookupValue::Project(proj));
+            .insert(format!("/project/{name}"), LookupValue::Project(proj));
     }
 
     pub fn get_project(&self, name: &str) -> Option<&ProjectLookup> {
         self.map
-            .get(&format!("/project/{}", name))
+            .get(&format!("/project/{name}"))
             .and_then(|value| match value {
                 LookupValue::Project(project) => Some(project),
                 _ => None,
@@ -83,7 +83,7 @@ impl ConfigLookup {
     }
 
     pub fn remove_project(&mut self, name: &str) -> Option<LookupValue> {
-        self.map.remove(&format!("/project/{}", name))
+        self.map.remove(&format!("/project/{name}"))
     }
 
     pub fn remove_projects(&mut self) {
@@ -137,9 +137,9 @@ impl fmt::Display for InternetAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(
             match self {
-                Self::Dns(addr, port) => format!("{}:{}", addr, port),
-                Self::V4(v4) => format!("{}", v4),
-                Self::V6(v6) => format!("{}", v6),
+                Self::Dns(addr, port) => format!("{addr}:{port}"),
+                Self::V4(v4) => format!("{v4}"),
+                Self::V6(v6) => format!("{v6}"),
             }
             .as_str(),
         )

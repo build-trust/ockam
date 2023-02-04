@@ -415,7 +415,7 @@ impl MultiAddr {
     /// Remove and return the last protocol component.
     ///
     /// O(n) in the number of protocols.
-    pub fn pop_back<'a, 'b>(&'a mut self) -> Option<ProtoValue<'b>> {
+    pub fn pop_back<'b>(&mut self) -> Option<ProtoValue<'b>> {
         let iter = ValidBytesIter(iter::BytesIter::with_registry(
             &self.dat[self.off..],
             self.reg.clone(),

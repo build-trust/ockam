@@ -52,7 +52,7 @@ impl<'a, T> CloudRequestWrapper<'a, T> {
         let maddr = MultiAddr::from_str(self.route.as_ref())
             .map_err(|_err| ApiError::generic(&format!("Invalid route: {}", self.route)))?;
         crate::multiaddr_to_route(&maddr)
-            .ok_or_else(|| ApiError::generic(&format!("Invalid MultiAddr: {}", maddr)))
+            .ok_or_else(|| ApiError::generic(&format!("Invalid MultiAddr: {maddr}")))
     }
 }
 
@@ -106,10 +106,7 @@ mod node {
             match StaticFiles::get("controller.id") {
                 Some(EmbeddedFile { data, .. }) => {
                     let s = core::str::from_utf8(data.as_ref()).map_err(|err| {
-                        ApiError::generic(&format!(
-                            "Failed to parse controller identity id: {}",
-                            err
-                        ))
+                        ApiError::generic(&format!("Failed to parse controller identity id: {err}"))
                     })?;
                     trace!(idt = %s, "Read controller identity id from file");
                     IdentityIdentifier::from_str(s)

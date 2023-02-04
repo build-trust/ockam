@@ -111,9 +111,9 @@ impl UdsSendWorker {
             "responder"
         };
 
-        let tx_addr = Address::random_tagged(&format!("UdsSendWorker_tx_addr_{}", role_str));
-        let int_addr = Address::random_tagged(&format!("UdsSendWorker_int_addr_{}", role_str));
-        let rx_addr = Address::random_tagged(&format!("UdsRecvProcessor_{}", role_str));
+        let tx_addr = Address::random_tagged(&format!("UdsSendWorker_tx_addr_{role_str}"));
+        let int_addr = Address::random_tagged(&format!("UdsSendWorker_int_addr_{role_str}"));
+        let rx_addr = Address::random_tagged(&format!("UdsRecvProcessor_{role_str}"));
         let sender = UdsSendWorker::new(router_handle, stream, peer.clone(), int_addr, rx_addr);
         Ok((
             sender,

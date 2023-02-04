@@ -35,7 +35,7 @@ impl<'a> SendMessage<'a> {
         let maddr = MultiAddr::from_str(self.route.as_ref())
             .map_err(|_err| ApiError::generic(&format!("Invalid route: {}", self.route)))?;
         crate::multiaddr_to_route(&maddr)
-            .ok_or_else(|| ApiError::generic(&format!("Invalid MultiAddr: {}", maddr)))
+            .ok_or_else(|| ApiError::generic(&format!("Invalid MultiAddr: {maddr}")))
     }
 }
 

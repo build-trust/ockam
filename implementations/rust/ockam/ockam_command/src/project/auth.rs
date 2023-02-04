@@ -98,7 +98,7 @@ async fn run_impl(
         for proto in service.iter() {
             addr.push_back_value(&proto)?;
         }
-        ockam_api::multiaddr_to_route(&addr).context(format!("Invalid MultiAddr {}", addr))?
+        ockam_api::multiaddr_to_route(&addr).context(format!("Invalid MultiAddr {addr}"))?
     };
 
     let mut client = Client::new(authenticator_route, &ctx).await?;
@@ -107,7 +107,7 @@ async fn run_impl(
         None => client.credential().await?,
         Some(token) => client.credential_with(&token).await?,
     };
-    println!("{}", credential);
+    println!("{credential}");
     delete_embedded_node(&opts, &node_name).await;
     Ok(())
 }

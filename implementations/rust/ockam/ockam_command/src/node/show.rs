@@ -5,7 +5,6 @@ use clap::Args;
 use colorful::Colorful;
 use core::time::Duration;
 use ockam::TcpTransport;
-use ockam_api::nodes::models::identity::ShortIdentityResponse;
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::services::ServiceList;
 use ockam_api::nodes::models::transport::TransportList;
@@ -62,7 +61,7 @@ fn print_node_info(
 ) {
     println!();
     println!("Node:");
-    println!("  Name: {}", node_name);
+    println!("  Name: {node_name}");
     println!(
         "  Status: {}",
         match status_is_up {
@@ -74,16 +73,16 @@ fn print_node_info(
     println!("  Route To Node:");
     let mut m = MultiAddr::default();
     if m.push_back(Node::new(node_name)).is_ok() {
-        println!("    Short: {}", m);
+        println!("    Short: {m}");
     }
 
     let mut m = MultiAddr::default();
     if m.push_back(DnsAddr::new("localhost")).is_ok() && m.push_back(Tcp::new(node_port)).is_ok() {
-        println!("    Verbose: {}", m);
+        println!("    Verbose: {m}");
     }
 
     if let Some(id) = default_id {
-        println!("  Identity: {}", id);
+        println!("  Identity: {id}");
     }
 
     if let Some(list) = tcp_listeners {
@@ -101,7 +100,7 @@ fn print_node_info(
         for e in list {
             println!("    Listener:");
             if let Some(ma) = addr_to_multiaddr(e) {
-                println!("      Address: {}", ma);
+                println!("      Address: {ma}");
             }
         }
     }
@@ -113,7 +112,7 @@ fn print_node_info(
             println!("      Listen Address: {}", e.bind_addr);
             if let Some(r) = Route::parse(e.outlet_route.as_ref()) {
                 if let Some(ma) = route_to_multiaddr(&r) {
-                    println!("      Route To Outlet: {}", ma);
+                    println!("      Route To Outlet: {ma}");
                 }
             }
         }
@@ -123,7 +122,7 @@ fn print_node_info(
             println!("      Forward Address: {}", e.tcp_addr);
 
             if let Some(ma) = addr_to_multiaddr(e.worker_addr.as_ref()) {
-                println!("      Address: {}", ma);
+                println!("      Address: {ma}");
             }
         }
     }
@@ -134,7 +133,7 @@ fn print_node_info(
             println!("    Service:");
             println!("      Type: {}", e.service_type);
             if let Some(ma) = addr_to_multiaddr(e.addr.as_ref()) {
-                println!("      Address: {}", ma);
+                println!("      Address: {ma}");
             }
         }
     }
@@ -146,15 +145,14 @@ pub async fn print_query_status(
     wait_until_ready: bool,
 ) -> anyhow::Result<()> {
     let cli_state = cli_state::CliState::new()?;
+    let node_state = cli_state.nodes.get(node_name)?;
     if !is_node_up(rpc, wait_until_ready).await? {
-        let node_state = cli_state.nodes.get(node_name)?;
         let node_port = node_state.setup()?.default_tcp_listener()?.addr.port();
         print_node_info(node_port, node_name, false, None, None, None, None, None);
     } else {
         // Get short id for the node
-        rpc.request(api::short_identity()).await?;
-        let default_id = match rpc.parse_response::<ShortIdentityResponse>() {
-            Ok(resp) => String::from(resp.identity_id),
+        let default_id = match node_state.config.identity_config() {
+            Ok(resp) => resp.identifier.to_string(),
             Err(_) => String::from("None"),
         };
 

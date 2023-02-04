@@ -1,4 +1,7 @@
+mod default;
+
 use crate::util::node_rpc;
+use crate::vault::default::DefaultCommand;
 use crate::{help, CommandGlobalOpts, Result};
 use anyhow::anyhow;
 use clap::{Args, Subcommand};
@@ -59,6 +62,8 @@ pub enum VaultSubcommand {
     },
     /// List vaults
     List {},
+    /// Set the default identity
+    Default(DefaultCommand),
 }
 
 impl VaultCommand {
@@ -107,7 +112,7 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
             let idt_name = cli_state::random_name();
             let idt_config = cli_state::IdentityConfig::new(&idt).await;
             opts.state.identities.create(&idt_name, idt_config)?;
-            println!("Identity attached to vault: {}", idt_name);
+            println!("Identity attached to vault: {idt_name}");
         }
         VaultSubcommand::Show { name } => {
             let name = name.unwrap_or(opts.state.vaults.default()?.name()?);
@@ -123,7 +128,7 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
                 return Err(anyhow!("No vaults registered on this system!").into());
             }
             for (idx, vault) in states.iter().enumerate() {
-                println!("Vault[{}]:", idx);
+                println!("Vault[{idx}]:");
                 for line in vault.to_string().lines() {
                     println!("{:2}{}", "", line)
                 }
@@ -131,8 +136,9 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
         }
         VaultSubcommand::Delete { name } => {
             opts.state.vaults.delete(&name).await?;
-            println!("Vault '{}' deleted", name);
+            println!("Vault '{name}' deleted");
         }
+        VaultSubcommand::Default(cmd) => cmd.run(opts),
     }
     Ok(())
 }

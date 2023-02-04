@@ -1,5 +1,6 @@
 use crate::cloud::project::Project;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
+use nix::errno::Errno;
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use ockam_identity::{Identity, IdentityIdentifier, SecureChannelRegistry};
 use ockam_vault::{storage::FileStorage, Vault};
@@ -13,6 +14,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use crate::lmdb::LmdbStorage;
+use ockam::compat::tokio;
 use thiserror::Error;
 
 type Result<T> = std::result::Result<T, CliStateError>;
@@ -119,7 +121,7 @@ impl VaultsState {
     pub async fn create(&self, name: &str, config: VaultConfig) -> Result<VaultState> {
         let path = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if path.exists() {
                 return Err(CliStateError::AlreadyExists(format!("vault `{name}`")));
             }
@@ -131,21 +133,26 @@ impl VaultsState {
             self.set_default(name)?;
         }
         config.get().await?;
-        Ok(VaultState { path, config })
+        Ok(VaultState {
+            name: name.to_string(),
+            path,
+            config,
+        })
     }
 
     pub fn get(&self, name: &str) -> Result<VaultState> {
         let path = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if !path.exists() {
                 return Err(CliStateError::NotFound(format!("vault `{name}`")));
             }
             path
         };
+        let name = file_stem(&path)?;
         let contents = std::fs::read_to_string(&path)?;
         let config = serde_json::from_str(&contents)?;
-        Ok(VaultState { path, config })
+        Ok(VaultState { name, path, config })
     }
 
     pub fn list(&self) -> Result<Vec<VaultState>> {
@@ -173,9 +180,8 @@ impl VaultsState {
                 let mut vaults = self.list()?;
                 vaults.retain(|v| v.path != vault_state.path);
                 if let Some(v) = vaults.first() {
-                    let name = v.name()?;
-                    println!("Setting default vault to '{}'", &name);
-                    self.set_default(&name)?;
+                    println!("Setting default vault to '{}'", &v.name);
+                    self.set_default(&v.name)?;
                 }
             }
         }
@@ -192,28 +198,42 @@ impl VaultsState {
 
     pub fn default(&self) -> Result<VaultState> {
         let path = std::fs::canonicalize(self.default_path()?)?;
+        let name = file_stem(&path)?;
         let contents = std::fs::read_to_string(&path)?;
         let config = serde_json::from_str(&contents)?;
-        Ok(VaultState { path, config })
+        Ok(VaultState { name, path, config })
     }
 
     pub fn set_default(&self, name: &str) -> Result<VaultState> {
         let original = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if !path.exists() {
                 return Err(CliStateError::NotFound(format!("vault `{name}`")));
             }
             path
         };
         let link = self.default_path()?;
+        // Remove link if it exists
+        let _ = std::fs::remove_file(&link);
+        // Create link to the identity
         std::os::unix::fs::symlink(original, link)?;
         self.get(name)
+    }
+
+    pub fn is_default(&self, name: &str) -> Result<bool> {
+        let _exists = self.get(name)?;
+        let default_name = {
+            let path = std::fs::canonicalize(self.default_path()?)?;
+            file_stem(&path)?
+        };
+        Ok(default_name.eq(name))
     }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct VaultState {
+    pub name: String,
     pub path: PathBuf,
     pub config: VaultConfig,
 }
@@ -310,7 +330,7 @@ impl IdentitiesState {
     pub fn create(&self, name: &str, config: IdentityConfig) -> Result<IdentityState> {
         let path = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if path.exists() {
                 return Err(CliStateError::AlreadyExists(format!("identity `{name}`")));
             }
@@ -331,7 +351,7 @@ impl IdentitiesState {
     pub fn get(&self, name: &str) -> Result<IdentityState> {
         let path = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if !path.exists() {
                 return Err(CliStateError::NotFound(format!("identity `{name}`")));
             }
@@ -356,7 +376,7 @@ impl IdentitiesState {
         Ok(identities)
     }
 
-    pub fn delete(&self, name: &str) -> Result<()> {
+    pub async fn delete(&self, name: &str) -> Result<()> {
         // Retrieve identity. If doesn't exist do nothing.
         let identity = match self.get(name) {
             Ok(i) => i,
@@ -367,21 +387,8 @@ impl IdentitiesState {
         // Abort if identity is being used by some running node.
         identity.in_use()?;
 
-        // Set default to another identity if it's the default
-        if let Ok(default) = self.default() {
-            if default.path == identity.path {
-                let _ = std::fs::remove_file(self.default_path()?);
-                let mut idts = self.list()?;
-                idts.retain(|i| i.path != identity.path);
-                if let Some(idt) = idts.first() {
-                    println!("Setting default identity to `{}`", idt.name);
-                    self.set_default(&idt.name)?;
-                }
-            }
-        }
-
         // Remove identity file
-        std::fs::remove_file(identity.path)?;
+        tokio::fs::remove_file(identity.path).await?;
 
         Ok(())
     }
@@ -398,17 +405,29 @@ impl IdentitiesState {
         Ok(IdentityState { name, path, config })
     }
 
+    pub fn is_default(&self, name: &str) -> Result<bool> {
+        let _exists = self.get(name)?;
+        let default_name = {
+            let path = std::fs::canonicalize(self.default_path()?)?;
+            file_stem(&path)?
+        };
+        Ok(default_name.eq(name))
+    }
+
     pub fn set_default(&self, name: &str) -> Result<IdentityState> {
         let original = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if !path.exists() {
                 return Err(CliStateError::NotFound(format!("identity `{name}`")));
             }
             path
         };
         let link = self.default_path()?;
-        std::os::unix::fs::symlink(original, link)?;
+        // Remove link if it exists
+        let _ = std::fs::remove_file(&link);
+        // Create link to the identity
+        std::os::unix::fs::symlink(original, &link)?;
         self.get(name)
     }
 
@@ -738,6 +757,14 @@ impl NodeState {
                     nix::sys::signal::Signal::SIGTERM
                 },
             )
+            .or_else(|e| {
+                if e == Errno::ESRCH {
+                    tracing::warn!(node = %self.config.name, %pid, "No such process");
+                    Ok(())
+                } else {
+                    Err(e)
+                }
+            })
             .map_err(|e| {
                 CliStateError::Io(std::io::Error::new(
                     std::io::ErrorKind::Other,
@@ -947,7 +974,7 @@ impl ProjectsState {
     pub async fn create(&self, name: &str, config: Project<'_>) -> Result<ProjectState> {
         let path = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if path.exists() {
                 return Err(CliStateError::AlreadyExists(format!("project `{name}`")));
             }
@@ -965,7 +992,7 @@ impl ProjectsState {
     pub fn get(&self, name: &str) -> Result<ProjectState> {
         let path = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if !path.exists() {
                 return Err(CliStateError::NotFound(format!("project `{name}`")));
             }
@@ -986,7 +1013,7 @@ impl ProjectsState {
     pub fn set_default(&self, name: &str) -> Result<ProjectState> {
         let original = {
             let mut path = self.dir.clone();
-            path.push(format!("{}.json", name));
+            path.push(format!("{name}.json"));
             if !path.exists() {
                 return Err(CliStateError::NotFound(format!("project `{name}`")));
             }

@@ -22,7 +22,7 @@ pub struct Mailbox {
 }
 
 impl Debug for Mailbox {
-    fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{} {{in:{:?} out:{:?}}}",
@@ -91,7 +91,7 @@ pub struct Mailboxes {
 }
 
 impl Debug for Mailboxes {
-    fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{:?} + {:?}",
@@ -436,7 +436,7 @@ impl Display for Address {
 }
 
 impl Debug for Address {
-    fn fmt<'a>(&'a self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         <Self as Display>::fmt(self, f)
     }
 }

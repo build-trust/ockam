@@ -8,7 +8,7 @@ pub struct GetDefaultNodeCommand {}
 impl GetDefaultNodeCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         if let Err(e) = run_impl(options) {
-            eprintln!("{}", e);
+            eprintln!("{e}");
             std::process::exit(e.code());
         }
     }

@@ -3,6 +3,10 @@ name: Documentation
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 on:
   workflow_dispatch:
   pull_request:
@@ -55,10 +59,11 @@ jobs:
       - name: Check that example source and guide code blocks match
         id: cache
         run: |
+          set -ex
           OCKAM_HOME=$PWD bash -ex tools/docs/check_documentation.sh
 
           # Only cache rust build if example blocks code was built
-          if [[ ls target ]]; then
+          if ls target; then
             echo "is_cached=true" >> $GITHUB_OUTPUT
           fi
 

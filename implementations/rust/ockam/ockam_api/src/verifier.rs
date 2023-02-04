@@ -107,7 +107,7 @@ where
             Ok(data) => data,
             Err(err) => {
                 let err = Error::new("/verify")
-                    .with_message(format!("error verifying a credential: {}", err));
+                    .with_message(format!("error verifying a credential: {err}"));
                 return Ok(Either::Left(Response::forbidden(id).body(err)));
             }
         };

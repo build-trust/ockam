@@ -51,11 +51,6 @@ pub(crate) fn create_tcp_connection(
     Request::post("/node/tcp/connection").body(payload)
 }
 
-/// Construct a request to print Identity Id
-pub(crate) fn short_identity() -> RequestBuilder<'static, ()> {
-    Request::post("/node/identity/actions/show/short")
-}
-
 /// Construct a request to print a list of services for the given node
 pub(crate) fn list_services() -> RequestBuilder<'static, ()> {
     Request::get("/node/services")
@@ -233,14 +228,14 @@ pub(crate) mod space {
         id: &str,
         cloud_route: &'a MultiAddr,
     ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
-        Request::get(format!("v0/spaces/{}", id)).body(CloudRequestWrapper::bare(cloud_route))
+        Request::get(format!("v0/spaces/{id}")).body(CloudRequestWrapper::bare(cloud_route))
     }
 
     pub(crate) fn delete<'a>(
         id: &str,
         cloud_route: &'a MultiAddr,
     ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
-        Request::delete(format!("v0/spaces/{}", id)).body(CloudRequestWrapper::bare(cloud_route))
+        Request::delete(format!("v0/spaces/{id}")).body(CloudRequestWrapper::bare(cloud_route))
     }
 }
 
@@ -258,7 +253,7 @@ pub(crate) mod project {
         cloud_route: &'a MultiAddr,
     ) -> RequestBuilder<'a, CloudRequestWrapper<'a, CreateProject<'a>>> {
         let b = CreateProject::new::<&str, &str>(project_name, &[], &[]);
-        Request::post(format!("v0/projects/{}", space_id)).body(CloudRequestWrapper::new(
+        Request::post(format!("v0/projects/{space_id}")).body(CloudRequestWrapper::new(
             b,
             cloud_route,
             None::<CowStr>,
@@ -273,7 +268,7 @@ pub(crate) mod project {
         id: &str,
         cloud_route: &'a MultiAddr,
     ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
-        Request::get(format!("v0/projects/{}", id)).body(CloudRequestWrapper::bare(cloud_route))
+        Request::get(format!("v0/projects/{id}")).body(CloudRequestWrapper::bare(cloud_route))
     }
 
     pub(crate) fn delete<'a>(
@@ -281,7 +276,7 @@ pub(crate) mod project {
         project_id: &'a str,
         cloud_route: &'a MultiAddr,
     ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
-        Request::delete(format!("v0/projects/{}/{}", space_id, project_id))
+        Request::delete(format!("v0/projects/{space_id}/{project_id}"))
             .body(CloudRequestWrapper::bare(cloud_route))
     }
 

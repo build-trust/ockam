@@ -11,11 +11,11 @@ pub struct DeleteCommand {
     #[arg(default_value_t = default_node_name(), group = "nodes")]
     node_name: String,
 
-    /// Terminate all nodes
+    /// Terminate all node processes and delete all node configurations
     #[arg(long, short, group = "nodes")]
     all: bool,
 
-    /// Clean up config directories and all nodes state directories
+    /// Terminate node process(es) immediately (uses SIGKILL instead of SIGTERM)
     #[arg(display_order = 901, long, short)]
     force: bool,
 }
@@ -23,7 +23,7 @@ pub struct DeleteCommand {
 impl DeleteCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         if let Err(e) = run_impl(opts, self) {
-            eprintln!("{}", e);
+            eprintln!("{e}");
             std::process::exit(e.code());
         }
     }
