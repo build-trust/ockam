@@ -13,6 +13,10 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   create_release:
     permissions:
@@ -40,7 +44,6 @@ jobs:
           gpg_email: '${{ secrets.GPG_EMAIL }}'
 
       - name: Get Release Text
-        shell: bash
         id: release_version
         env:
           GIT_TAG: '${{ github.event.inputs.git_tag }}'
@@ -237,7 +240,6 @@ jobs:
         target: ${{ matrix.target }}
 
     - name: Install packages (Ubuntu)
-      shell: bash
       if: matrix.os == 'ubuntu-18.04'
       run: |
         set -x
@@ -252,7 +254,6 @@ jobs:
     ## TODO Cache for faster build for different targets
 
     - name: Build Binary
-      shell: bash
       run: |
         set -x
         use_cross_build="${{ matrix.use-cross-build }}"
@@ -268,7 +269,6 @@ jobs:
         fi
 
     - name: Build archive
-      shell: bash
       run: |
         set -x
         cp target/${{ matrix.target }}/release/ockam ockam.${{ matrix.target }}
@@ -279,7 +279,6 @@ jobs:
       uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b
 
     - name: Sign Binary
-      shell: bash
       env:
         PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
         COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
@@ -373,7 +372,6 @@ jobs:
       - name: Build NIF For MacOS
         if: matrix.build == 'macos'
         working-directory: implementations/elixir/ockam/ockam_vault_software
-        shell: bash
         run: |
           set -x
           brew install erlang
@@ -387,7 +385,6 @@ jobs:
         uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b
 
       - name: Sign NIFs
-        shell: bash
         working-directory: ${{ matrix.release_path }}
         env:
           PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
@@ -425,20 +422,17 @@ jobs:
 
     steps:
       - name: Fetch All Assets
-        shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release download ${{ needs.create_release.outputs.tag_name }} -R ${{ github.repository_owner }}/ockam
 
       - name: Generate File SHASum
-        shell: bash
         run: shasum -a 256 ockam.* > sha256sums.txt
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b
 
       - name: Sign Files
-        shell: bash
         env:
           PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
