@@ -3,6 +3,7 @@ use clap::{Args, Subcommand};
 pub(crate) use create::CreateCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
+use logs::LogCommand;
 use ockam_api::cli_state::CliState;
 use show::ShowCommand;
 use start::StartCommand;
@@ -13,6 +14,7 @@ use crate::{help, CommandGlobalOpts};
 mod create;
 mod delete;
 mod list;
+mod logs;
 mod show;
 mod start;
 mod stop;
@@ -41,6 +43,7 @@ pub enum NodeSubcommand {
     #[command(display_order = 800)]
     List(ListCommand),
     #[command(display_order = 800)]
+    Logs(LogCommand),
     Show(ShowCommand),
     #[command(display_order = 800)]
     Start(StartCommand),
@@ -57,6 +60,7 @@ impl NodeCommand {
             NodeSubcommand::Show(c) => c.run(options),
             NodeSubcommand::Start(c) => c.run(options),
             NodeSubcommand::Stop(c) => c.run(options),
+            NodeSubcommand::Logs(c) => c.run(options),
         }
     }
 }
