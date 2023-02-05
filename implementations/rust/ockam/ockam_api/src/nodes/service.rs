@@ -94,7 +94,6 @@ pub(crate) struct AuthorityInfo {
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeManager {
     node_name: String,
-    api_transport_id: Alias,
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
     pub(crate) controller_identity_id: IdentityIdentifier,
@@ -237,7 +236,6 @@ impl NodeManager {
 
         let mut s = Self {
             node_name: general_options.node_name,
-            api_transport_id,
             transports,
             tcp_transport: transport_options.tcp_transport,
             controller_identity_id: Self::load_controller_identity_id()?,

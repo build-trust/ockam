@@ -86,11 +86,6 @@ impl NodeManagerWorker {
 
         let tid: Alias = body.tid.to_string();
 
-        if node_manager.api_transport_id == tid && !body.force {
-            warn!("User requested to delete the API transport without providing force OP flag...");
-            return Ok(Response::bad_request(req.id()));
-        }
-
         match node_manager.transports.get(&tid) {
             Some(t) if t.1 == TransportMode::Listen => {
                 warn!("It is not currently supported to destroy LISTEN transports");
