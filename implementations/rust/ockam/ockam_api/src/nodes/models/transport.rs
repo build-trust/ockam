@@ -78,17 +78,14 @@ pub struct DeleteTransport<'a> {
     #[n(0)] tag: TypeTag<4739996>,
     /// The transport ID to delete
     #[b(1)] pub tid: CowStr<'a>,
-    /// The user has indicated that deleting the API transport is A-OK
-    #[n(2)] pub force: bool,
 }
 
 impl<'a> DeleteTransport<'a> {
-    pub fn new<S: Into<CowStr<'a>>>(tid: S, force: bool) -> Self {
+    pub fn new<S: Into<CowStr<'a>>>(tid: S) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             tid: tid.into(),
-            force,
         }
     }
 }

@@ -12,26 +12,26 @@ pub struct DeleteCommand {
 
     /// Tcp Connection ID
     pub id: String,
-
-    /// Force this operation: delete the API transport if requested
-    #[arg(long)]
-    pub force: bool,
 }
+
 impl DeleteCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(run_impl, (options, self))
     }
 }
+
 async fn run_impl(
     ctx: ockam::Context,
     (opts, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> crate::Result<()> {
     let node_name = extract_address_value(&cmd.node_opts.api_node)?;
+
     let mut rpc = Rpc::background(&ctx, &opts, &node_name)?;
     let req = Request::delete("/node/tcp/connection")
-        .body(models::transport::DeleteTransport::new(&cmd.id, cmd.force));
+        .body(models::transport::DeleteTransport::new(&cmd.id));
     rpc.request(req).await?;
     rpc.is_ok()?;
+
     println!("Tcp connection `{}` successfully deleted", cmd.id);
     Ok(())
 }
