@@ -46,7 +46,7 @@ jobs:
 
       - name: Check If Mergify PR State Is Frozen
         run: |
-          if cat .github/mergify.yml | grep '#- schedule: Mon-Sun'; then
+          if cat .github/mergify.yml | grep '#- -files~=^(implementations/rust)'; then
             current_state="unfreeze"
           else
             current_state="freeze"
@@ -65,13 +65,13 @@ jobs:
         if: ${{ github.event.inputs.set_mergify_pr_state == 'freeze' }}
         run: |
           # Uncomment code that enables mergify schedule
-          sed -i -e 's/#- -files~=^(implementations/rust)/- -files~=^(implementations/rust)/g' .github/mergify.yml
+          sed -i -e 's/#- -files~=^(implementations\/rust)/- -files~=^(implementations\/rust)/g' .github/mergify.yml
 
       - name: Unfreeze PRs So That They Can Be Merged
         if: ${{ github.event.inputs.set_mergify_pr_state == 'unfreeze' }}
         run: |
           # Comment code that enables mergify schedule
-          sed -i -e 's/- -files~=^(implementations/rust)/#- -files~=^(implementations/rust)/g' .github/mergify.yml
+          sed -i -e 's/- -files~=^(implementations\/rust)/#- -files~=^(implementations\/rust)/g' .github/mergify.yml
 
       - name: Git Add Mergify Config
         run: |
