@@ -1,4 +1,3 @@
-use crate::help;
 use crate::node::NodeOpts;
 use crate::service::config::OktaIdentityProviderConfig;
 use crate::util::{api, node_rpc, RpcBuilder};
@@ -65,31 +64,41 @@ pub enum StartSubCommand {
         #[arg(long)]
         reload_enrollers: bool,
     },
-    #[command(hide = help::hide())]
     KafkaConsumer {
+        /// The local address of the service
         #[arg(long, default_value_t = kafka_consumer_default_addr())]
         addr: String,
+        /// The address where to bind and where the client will connect to
+        #[arg(long, default_value_t = [127, 0, 0, 1].into())]
+        bootstrap_server_ip: Ipv4Addr,
+        /// The port to bind to and where the client will connect to
         #[arg(long)]
-        ip: Ipv4Addr,
+        bootstrap_server_port: u16,
+        /// Local port range dynamically allocated to kafka brokers, mut not overlap with the
+        /// bootstrap port
         #[arg(long)]
-        bootstrap_port: u16,
+        brokers_port_range: PortRange,
+        /// The route to the project in ockam orchestrator, expected something like /project/<name>
         #[arg(long)]
-        port_range: PortRange,
-        #[arg(long)]
-        forwarding_addr: MultiAddr,
+        project_route: MultiAddr,
     },
-    #[command(hide = help::hide())]
     KafkaProducer {
+        /// The local address of the service
         #[arg(long, default_value_t = kafka_producer_default_addr())]
         addr: String,
+        /// The address where to bind and where the client will connect to
+        #[arg(long, default_value_t = [127, 0, 0, 1].into())]
+        bootstrap_server_ip: Ipv4Addr,
+        /// The port to bind to and where the client will connect to
         #[arg(long)]
-        ip: Ipv4Addr,
+        bootstrap_server_port: u16,
+        /// Local port range dynamically allocated to kafka brokers, mut not overlap with the
+        /// bootstrap port
         #[arg(long)]
-        bootstrap_port: u16,
+        brokers_port_range: PortRange,
+        /// The route to the project in ockam orchestrator, expected something like /project/<name>
         #[arg(long)]
-        port_range: PortRange,
-        #[arg(long)]
-        forwarding_addr: MultiAddr,
+        project_route: MultiAddr,
     },
 }
 
@@ -193,13 +202,17 @@ async fn run_impl(
         }
         StartSubCommand::KafkaConsumer {
             addr,
-            ip,
-            bootstrap_port,
-            port_range,
-            forwarding_addr,
+            bootstrap_server_ip,
+            bootstrap_server_port,
+            brokers_port_range,
+            project_route,
         } => {
-            let payload =
-                StartKafkaConsumerRequest::new(ip, bootstrap_port, port_range, forwarding_addr);
+            let payload = StartKafkaConsumerRequest::new(
+                bootstrap_server_ip,
+                bootstrap_server_port,
+                brokers_port_range,
+                project_route,
+            );
             let payload = StartServiceRequest::new(payload, &addr);
             let req = Request::post("/node/services/kafka_consumer").body(payload);
             start_service_impl(
@@ -215,13 +228,17 @@ async fn run_impl(
         }
         StartSubCommand::KafkaProducer {
             addr,
-            ip,
-            bootstrap_port,
-            port_range,
-            forwarding_addr,
+            bootstrap_server_ip,
+            bootstrap_server_port,
+            brokers_port_range,
+            project_route,
         } => {
-            let payload =
-                StartKafkaProducerRequest::new(ip, bootstrap_port, port_range, forwarding_addr);
+            let payload = StartKafkaProducerRequest::new(
+                bootstrap_server_ip,
+                bootstrap_server_port,
+                brokers_port_range,
+                project_route,
+            );
             let payload = StartServiceRequest::new(payload, &addr);
             let req = Request::post("/node/services/kafka_producer").body(payload);
             start_service_impl(

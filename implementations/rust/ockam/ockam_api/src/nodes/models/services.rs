@@ -41,38 +41,38 @@ impl<'a, T> StartServiceRequest<'a, T> {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaConsumerRequest<'a> {
-    #[b(1)] ip: CowStr<'a>,
-    #[n(2)] bootstrap_port: u16,
-    #[n(3)] port_range: (u16,u16),
-    #[b(4)] forwarding_addr: CowStr<'a>,
+    #[b(1)] bootstrap_server_ip: CowStr<'a>,
+    #[n(2)] bootstrap_server_port: u16,
+    #[n(3)] brokers_port_range: (u16, u16),
+    #[b(4)] project_route: CowStr<'a>,
 }
 
 impl<'a> StartKafkaConsumerRequest<'a> {
     pub fn new(
-        ip: Ipv4Addr,
-        bootstrap_port: u16,
-        port_range: impl Into<(u16, u16)>,
-        forwarding_addr: MultiAddr,
+        bootstrap_server_ip: Ipv4Addr,
+        bootstrap_server_port: u16,
+        brokers_port_range: impl Into<(u16, u16)>,
+        project_route: MultiAddr,
     ) -> Self {
         Self {
-            ip: ip.to_string().into(),
-            bootstrap_port,
-            port_range: port_range.into(),
-            forwarding_addr: forwarding_addr.to_string().into(),
+            bootstrap_server_ip: bootstrap_server_ip.to_string().into(),
+            bootstrap_server_port,
+            brokers_port_range: brokers_port_range.into(),
+            project_route: project_route.to_string().into(),
         }
     }
 
-    pub fn ip(&self) -> &CowStr<'a> {
-        &self.ip
+    pub fn bootstrap_server_ip(&self) -> &CowStr<'a> {
+        &self.bootstrap_server_ip
     }
-    pub fn bootstrap_port(&self) -> u16 {
-        self.bootstrap_port
+    pub fn bootstrap_server_port(&self) -> u16 {
+        self.bootstrap_server_port
     }
-    pub fn port_range(&self) -> (u16, u16) {
-        self.port_range
+    pub fn brokers_port_range(&self) -> (u16, u16) {
+        self.brokers_port_range
     }
-    pub fn forwarding_addr(&self) -> &CowStr<'a> {
-        &self.forwarding_addr
+    pub fn project_route(&self) -> &CowStr<'a> {
+        &self.project_route
     }
 }
 
@@ -80,38 +80,38 @@ impl<'a> StartKafkaConsumerRequest<'a> {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaProducerRequest<'a> {
-    #[b(1)] ip: CowStr<'a>,
-    #[n(2)] bootstrap_port: u16,
-    #[n(3)] port_range: (u16,u16),
-    #[b(4)] forwarding_addr: CowStr<'a>,
+    #[b(1)] bootstrap_server_ip: CowStr<'a>,
+    #[n(2)] bootstrap_server_port: u16,
+    #[n(3)] brokers_port_range: (u16, u16),
+    #[b(4)] project_route: CowStr<'a>,
 }
 
 impl<'a> StartKafkaProducerRequest<'a> {
     pub fn new(
-        ip: Ipv4Addr,
-        bootstrap_port: u16,
-        port_range: impl Into<(u16, u16)>,
-        forwarding_addr: MultiAddr,
+        bootstrap_server_ip: Ipv4Addr,
+        bootstrap_server_port: u16,
+        brokers_port_range: impl Into<(u16, u16)>,
+        project_route: MultiAddr,
     ) -> Self {
         Self {
-            ip: ip.to_string().into(),
-            bootstrap_port,
-            port_range: port_range.into(),
-            forwarding_addr: forwarding_addr.to_string().into(),
+            bootstrap_server_ip: bootstrap_server_ip.to_string().into(),
+            bootstrap_server_port,
+            brokers_port_range: brokers_port_range.into(),
+            project_route: project_route.to_string().into(),
         }
     }
 
-    pub fn ip(&self) -> &CowStr<'a> {
-        &self.ip
+    pub fn bootstrap_server_ip(&self) -> &CowStr<'a> {
+        &self.bootstrap_server_ip
     }
-    pub fn bootstrap_port(&self) -> u16 {
-        self.bootstrap_port
+    pub fn bootstrap_server_port(&self) -> u16 {
+        self.bootstrap_server_port
     }
-    pub fn port_range(&self) -> (u16, u16) {
-        self.port_range
+    pub fn brokers_port_range(&self) -> (u16, u16) {
+        self.brokers_port_range
     }
-    pub fn forwarding_addr(&self) -> &CowStr<'a> {
-        &self.forwarding_addr
+    pub fn project_route(&self) -> &CowStr<'a> {
+        &self.project_route
     }
 }
 
