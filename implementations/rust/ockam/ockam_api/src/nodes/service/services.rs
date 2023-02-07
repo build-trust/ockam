@@ -314,8 +314,23 @@ impl NodeManager {
             )
             .await?;
 
+        match kind {
+            KafkaServiceKind::Consumer => {
+                self.create_secure_channel_listener_impl(
+                    Address::from_string("kafka_consumer_secure_channel"),
+                    None,
+                    None,
+                    context,
+                )
+                .await?;
+            }
+            KafkaServiceKind::Producer => {}
+        }
+
+        let identity = self.identity()?.async_try_clone().await?;
         KafkaPortalListener::start(
             context,
+            identity,
             interceptor_route,
             listener_address.clone(),
             bind_ip,

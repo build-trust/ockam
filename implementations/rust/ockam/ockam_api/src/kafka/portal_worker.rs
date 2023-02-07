@@ -3,9 +3,11 @@ use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
     errcode::{Kind, Origin},
-    Address, AllowAll, Encodable, Error, LocalInfo, LocalMessage, Route, Routed, TransportMessage,
-    Worker,
+    Address, AllowAll, AsyncTryClone, Encodable, Error, LocalInfo, LocalMessage, Route, Routed,
+    TransportMessage, Worker,
 };
+use ockam_identity::authenticated_storage::AuthenticatedStorage;
+use ockam_identity::{Identity, IdentityVault};
 use ockam_node::Context;
 use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
 
@@ -40,20 +42,20 @@ enum Receiving {
 /// │        │◄────────────┤ Response│◄────────────┤        │
 /// └────────┘             └─────────┘             └────────┘
 ///```
-pub(crate) struct KafkaPortalWorker {
+pub(crate) struct KafkaPortalWorker<V: IdentityVault, S: AuthenticatedStorage> {
     //the instance of worker managing the opposite: request or response
     //the first one to receive the disconnect message will stop both workers
     other_worker_address: Address,
     reader: KafkaDecoder,
     writer: KafkaEncoder,
     receiving: Receiving,
-    shared_protocol_state: ProtocolState,
+    shared_protocol_state: ProtocolState<V, S>,
     inlet_map: KafkaInletMap,
     disconnect_received: Arc<AtomicBool>,
 }
 
 #[ockam::worker]
-impl Worker for KafkaPortalWorker {
+impl<V: IdentityVault, S: AuthenticatedStorage> Worker for KafkaPortalWorker<V, S> {
     type Message = PortalMessage;
     type Context = Context;
 
@@ -117,12 +119,13 @@ impl Worker for KafkaPortalWorker {
 }
 
 //internal error to return both io and ockam errors
+#[derive(Debug)]
 pub(crate) enum InterceptError {
     Io(ockam_core::compat::io::Error),
     Ockam(ockam_core::Error),
 }
 
-impl KafkaPortalWorker {
+impl<V: IdentityVault, S: AuthenticatedStorage> KafkaPortalWorker<V, S> {
     async fn forward(
         &self,
         context: &mut Context,
@@ -195,9 +198,11 @@ impl KafkaPortalWorker {
             if let Some(result) = maybe_result {
                 let complete_kafka_message = result.map_err(InterceptError::Io)?;
                 let transformed_message = match self.receiving {
-                    Receiving::Requests => self
-                        .shared_protocol_state
-                        .intercept_request(complete_kafka_message),
+                    Receiving::Requests => {
+                        self.shared_protocol_state
+                            .intercept_request(context, complete_kafka_message)
+                            .await
+                    }
                     Receiving::Responses => {
                         self.shared_protocol_state
                             .intercept_response(context, complete_kafka_message, &self.inlet_map)
@@ -205,7 +210,7 @@ impl KafkaPortalWorker {
                     }
                 }?;
 
-                trace!("transformed_message: {:?}", transformed_message.len());
+                trace!("transformed_message size: {}", transformed_message.len());
                 self.writer
                     .write_kafka_message(transformed_message.to_vec())
                     .await
@@ -225,14 +230,15 @@ impl KafkaPortalWorker {
     }
 }
 
-impl KafkaPortalWorker {
+impl<V: IdentityVault, S: AuthenticatedStorage> KafkaPortalWorker<V, S> {
     ///returns address used for inlet communications, aka the one facing the client side,
     /// used for requests.
     pub(crate) async fn start(
         context: &mut Context,
+        identity: Identity<V, S>,
         inlet_map: KafkaInletMap,
     ) -> ockam_core::Result<Address> {
-        let shared_protocol_state = ProtocolState::new();
+        let shared_protocol_state = ProtocolState::new(identity);
 
         let inlet_address = Address::random_tagged("KafkaPortalWorker.inlet");
         let outlet_address = Address::random_tagged("KafkaPortalWorker.outlet");
@@ -240,7 +246,7 @@ impl KafkaPortalWorker {
 
         let inlet_worker = Self {
             inlet_map: inlet_map.clone(),
-            shared_protocol_state: shared_protocol_state.clone(),
+            shared_protocol_state: shared_protocol_state.async_try_clone().await?,
             other_worker_address: outlet_address.clone(),
             reader: KafkaDecoder::new(),
             writer: KafkaEncoder::new(),
@@ -282,7 +288,9 @@ mod test {
 
     use ockam::Context;
     use ockam_core::{route, Routed};
+    use ockam_identity::Identity;
     use ockam_transport_tcp::PortalMessage;
+    use ockam_vault::Vault;
 
     use crate::kafka::inlet_map::KafkaInletMap;
     use crate::kafka::portal_worker::KafkaPortalWorker;
@@ -300,7 +308,11 @@ mod test {
             "0.0.0.0".into(),
             PortRange::new(20_000, 40_000).unwrap(),
         );
-        let portal_inlet_address = KafkaPortalWorker::start(context, inlet_map).await?;
+
+        let vault = Vault::create();
+        let identity = Identity::create(context, &vault).await?;
+
+        let portal_inlet_address = KafkaPortalWorker::start(context, identity, inlet_map).await?;
 
         context
             .send(
@@ -335,12 +347,16 @@ mod test {
     ) -> ockam::Result<()> {
         crate::test::start_manager_for_tests(context).await?;
 
+        let vault = Vault::create();
+        let identity = Identity::create(context, &vault).await?;
+
         let inlet_map = KafkaInletMap::new(
             route![],
             "127.0.0.1".into(),
             PortRange::new(20_000, 40_000).unwrap(),
         );
-        let portal_inlet_address = KafkaPortalWorker::start(context, inlet_map.clone()).await?;
+        let portal_inlet_address =
+            KafkaPortalWorker::start(context, identity, inlet_map.clone()).await?;
 
         let mut request_buffer = BytesMut::new();
         {

@@ -24,6 +24,7 @@ pub mod lmdb;
 
 #[macro_use]
 extern crate tracing;
+extern crate core;
 
 pub struct DefaultAddress;
 
