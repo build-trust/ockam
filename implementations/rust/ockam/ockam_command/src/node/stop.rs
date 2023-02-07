@@ -28,5 +28,6 @@ impl StopCommand {
 fn run_impl(opts: CommandGlobalOpts, cmd: StopCommand) -> crate::Result<()> {
     let node_state = opts.state.nodes.get(&cmd.node_name)?;
     node_state.kill_process(cmd.force)?;
+    println!("Stopped node '{}'", &cmd.node_name);
     Ok(())
 }
