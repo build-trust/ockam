@@ -239,6 +239,18 @@ pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> Result<()> {
     Ok(())
 }
 
+pub fn set_default_node(opts: &CommandGlobalOpts, name: &str) -> anyhow::Result<()> {
+    opts.state.nodes.set_default(name)?;
+    Ok(())
+}
+
+pub fn check_default(opts: &CommandGlobalOpts, name: &str) -> bool {
+    if let Ok(default) = opts.state.nodes.default() {
+        return default.config.name == name;
+    }
+    false
+}
+
 /// A utility function to spawn a new node into foreground mode
 #[allow(clippy::too_many_arguments)]
 pub fn spawn_node(
