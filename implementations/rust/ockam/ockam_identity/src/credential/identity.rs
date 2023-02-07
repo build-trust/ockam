@@ -1,8 +1,10 @@
-use crate::authenticated_storage::AuthenticatedStorage;
+use crate::alloc::string::ToString;
+use crate::authenticated_storage::{
+    AttributesEntry, AuthenticatedStorage, IdentityAttributeStorage,
+};
 use crate::credential::worker::CredentialExchangeWorker;
 use crate::credential::{
-    AttributesEntry, AttributesStorageUtils, Credential, CredentialBuilder, CredentialData,
-    Timestamp, Unverified, Verified,
+    Credential, CredentialBuilder, CredentialData, Timestamp, Unverified, Verified,
 };
 use crate::{
     Identity, IdentityError, IdentityIdentifier, IdentitySecureChannelLocalInfo,
@@ -61,9 +63,11 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         authorities: Vec<PublicIdentity>,
         address: impl Into<Address>,
         present_back: bool,
+        attributes_storage: impl IdentityAttributeStorage,
     ) -> Result<()> {
         let s = self.async_try_clone().await?;
-        let worker = CredentialExchangeWorker::new(authorities, present_back, s);
+        let worker =
+            CredentialExchangeWorker::new(authorities, present_back, s, attributes_storage);
 
         WorkerBuilder::with_mailboxes(
             Mailboxes::main(
@@ -116,6 +120,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         &self,
         route: impl Into<Route>,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
+        attributes_storage: &impl IdentityAttributeStorage,
     ) -> Result<()> {
         let credentials = self.credential.read().await;
         let credential = credentials.as_ref().ok_or_else(|| {
@@ -155,7 +160,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 
         let credential: Credential = dec.decode()?;
 
-        self.receive_presented_credential(their_id, credential, authorities)
+        self.receive_presented_credential(their_id, credential, authorities, attributes_storage)
             .await?;
 
         Ok(())
@@ -205,16 +210,31 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         sender: IdentityIdentifier,
         credential: Credential<'_>,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
+        attributes_storage: &impl IdentityAttributeStorage,
     ) -> Result<()> {
         let credential_data =
             Self::verify_credential(&sender, &credential, authorities, &self.vault).await?;
 
-        AttributesStorageUtils::put_attributes(
-            &sender,
-            AttributesEntry::new(credential_data.attributes, credential_data.expires),
-            &self.authenticated_storage,
-        )
-        .await?;
+        //TODO: review the credential' attributes types.   They are references and has lifetimes,
+        //etc,  but in reality this is always just deserizalided (either from wire or from
+        //storage), so imho all that just add to the complexity without gaining much
+        let attrs = credential_data
+            .attributes
+            .attrs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_vec()))
+            .collect();
+        attributes_storage
+            .put_attributes(
+                &sender,
+                AttributesEntry::new(
+                    attrs,
+                    Timestamp::now().unwrap(),
+                    Some(credential_data.expires),
+                    Some(credential_data.issuer),
+                ),
+            )
+            .await?;
 
         Ok(())
     }

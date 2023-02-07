@@ -2,14 +2,14 @@ pub mod types;
 
 use core::fmt;
 use minicbor::Decoder;
-use ockam_core::api::{decode_option, is_ok};
+use ockam_core::api::decode_option;
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
-use ockam_identity::authenticated_storage::AuthenticatedStorage;
+use ockam_identity::authenticated_storage::{AttributesEntry, IdentityAttributeStorageReader};
+use ockam_identity::IdentityIdentifier;
 use ockam_node::api::request;
 use ockam_node::Context;
 use tracing::trace;
-use types::Attribute;
 
 /// Auth API server.
 #[derive(Debug)]
@@ -18,7 +18,7 @@ pub struct Server<S> {
 }
 
 #[ockam_core::worker]
-impl<S: AuthenticatedStorage> Worker for Server<S> {
+impl<S: IdentityAttributeStorageReader> Worker for Server<S> {
     type Context = Context;
     type Message = Vec<u8>;
 
@@ -32,7 +32,7 @@ impl<S: AuthenticatedStorage> Worker for Server<S> {
     }
 }
 
-impl<S: AuthenticatedStorage> Server<S> {
+impl<S: IdentityAttributeStorageReader> Server<S> {
     pub fn new(s: S) -> Self {
         Server { store: s }
     }
@@ -51,20 +51,17 @@ impl<S: AuthenticatedStorage> Server<S> {
         }
 
         let res = match req.method() {
-            Some(Method::Get) => match req.path_segments::<5>().as_slice() {
-                ["authenticated", id, "attribute", key] => {
-                    if let Some(a) = self.store.get(id, key).await? {
-                        Response::ok(req.id()).body(Attribute::new(&a)).to_vec()?
+            Some(Method::Get) => match req.path_segments::<2>().as_slice() {
+                [""] => Response::ok(req.id())
+                    .body(self.store.list().await?)
+                    .to_vec()?,
+                [id] => {
+                    let identifier = IdentityIdentifier::try_from(id.to_string())?;
+                    if let Some(a) = self.store.get_attributes(&identifier).await? {
+                        Response::ok(req.id()).body(a).to_vec()?
                     } else {
                         Response::not_found(req.id()).to_vec()?
                     }
-                }
-                _ => ockam_core::api::unknown_path(&req).to_vec()?,
-            },
-            Some(Method::Delete) => match req.path_segments::<5>().as_slice() {
-                ["authenticated", id, "attribute", key] => {
-                    self.store.del(id, key).await?;
-                    Response::ok(req.id()).to_vec()?
                 }
                 _ => ockam_core::api::unknown_path(&req).to_vec()?,
             },
@@ -106,18 +103,18 @@ impl Client {
         })
     }
 
-    pub async fn get(&mut self, id: &str, attr: &str) -> ockam_core::Result<Option<&[u8]>> {
+    pub async fn get(&mut self, id: &str) -> ockam_core::Result<Option<AttributesEntry>> {
         let label = "get attribute";
-        let req = Request::get(format!("/authenticated/{id}/attribute/{attr}"));
+        let req = Request::get(format!("/{id}"));
         self.buf = request(&self.ctx, label, None, self.route.clone(), req).await?;
-        let a: Option<Attribute> = decode_option(label, "attribute", &self.buf)?;
-        Ok(a.map(|a| a.value()))
+        decode_option(label, "attribute", &self.buf)
     }
-
-    pub async fn del(&mut self, id: &str, attr: &str) -> ockam_core::Result<()> {
-        let label = "del attribute";
-        let req = Request::delete(format!("/authenticated/{id}/attribute/{attr}"));
+    pub async fn list(&mut self) -> ockam_core::Result<Vec<(IdentityIdentifier, AttributesEntry)>> {
+        let label = "list known identities";
+        let req = Request::get("/");
         self.buf = request(&self.ctx, label, None, self.route.clone(), req).await?;
-        is_ok(label, &self.buf)
+        let a: Option<Vec<(IdentityIdentifier, AttributesEntry)>> =
+            decode_option(label, "attribute", &self.buf)?;
+        Ok(a.unwrap())
     }
 }

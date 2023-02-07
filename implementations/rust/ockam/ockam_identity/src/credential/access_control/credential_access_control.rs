@@ -1,5 +1,4 @@
-use crate::authenticated_storage::AuthenticatedStorage;
-use crate::credential::AttributesStorageUtils;
+use crate::authenticated_storage::IdentityAttributeStorage;
 use crate::IdentitySecureChannelLocalInfo;
 use core::fmt::{Debug, Formatter};
 use ockam_core::access_control::IncomingAccessControl;
@@ -8,12 +7,12 @@ use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box, RelayMessage};
 
 #[derive(Clone)]
-pub struct CredentialAccessControl<S: AuthenticatedStorage> {
+pub struct CredentialAccessControl<S: IdentityAttributeStorage> {
     required_attributes: Vec<(String, Vec<u8>)>,
     storage: S,
 }
 
-impl<S: AuthenticatedStorage> CredentialAccessControl<S> {
+impl<S: IdentityAttributeStorage> CredentialAccessControl<S> {
     pub fn new(required_attributes: &[(String, Vec<u8>)], storage: S) -> Self {
         Self {
             required_attributes: required_attributes.to_vec(),
@@ -22,7 +21,7 @@ impl<S: AuthenticatedStorage> CredentialAccessControl<S> {
     }
 }
 
-impl<S: AuthenticatedStorage> Debug for CredentialAccessControl<S> {
+impl<S: IdentityAttributeStorage> Debug for CredentialAccessControl<S> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         let attributes = format!("{:?}", self.required_attributes.iter().map(|x| &x.0));
 
@@ -33,23 +32,22 @@ impl<S: AuthenticatedStorage> Debug for CredentialAccessControl<S> {
 }
 
 #[async_trait]
-impl<S: AuthenticatedStorage> IncomingAccessControl for CredentialAccessControl<S> {
+impl<S: IdentityAttributeStorage> IncomingAccessControl for CredentialAccessControl<S> {
     async fn is_authorized(&self, relay_message: &RelayMessage) -> Result<bool> {
         if let Ok(msg_identity_id) =
             IdentitySecureChannelLocalInfo::find_info(relay_message.local_message())
         {
-            let attributes = match AttributesStorageUtils::get_attributes(
-                msg_identity_id.their_identity_id(),
-                &self.storage,
-            )
-            .await?
+            let attributes = match self
+                .storage
+                .get_attributes(msg_identity_id.their_identity_id())
+                .await?
             {
                 Some(a) => a,
                 None => return Ok(false), // No attributes for that Identity
             };
 
             for required_attribute in self.required_attributes.iter() {
-                let attr_val = match attributes.get(&required_attribute.0) {
+                let attr_val = match attributes.attrs().get(&required_attribute.0) {
                     Some(v) => v,
                     None => return Ok(false), // No required key
                 };

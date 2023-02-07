@@ -1,5 +1,6 @@
-use crate::authenticated_storage::AuthenticatedStorage;
-use crate::credential::{AttributesStorageUtils, Credential, CredentialData, Timestamp, Verified};
+use crate::alloc::borrow::ToOwned;
+use crate::authenticated_storage::IdentityAttributeStorage;
+use crate::credential::{Credential, CredentialData, Timestamp, Verified};
 use crate::PublicIdentity;
 use crate::{IdentityIdentifier, IdentityStateConst, IdentityVault};
 use ockam_core::compat::collections::BTreeMap;
@@ -76,8 +77,11 @@ impl PublicIdentity {
     /// Return authenticated non-expired attributes attached to that Identity
     pub async fn get_attributes(
         &self,
-        authenticated_storage: &impl AuthenticatedStorage,
+        authenticated_storage: &impl IdentityAttributeStorage,
     ) -> Result<Option<BTreeMap<String, Vec<u8>>>> {
-        AttributesStorageUtils::get_attributes(self.identifier(), authenticated_storage).await
+        authenticated_storage
+            .get_attributes(self.identifier())
+            .await
+            .map(|r| r.map(|e| e.attrs().to_owned()))
     }
 }

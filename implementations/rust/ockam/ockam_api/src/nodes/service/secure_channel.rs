@@ -134,6 +134,7 @@ impl NodeManager {
                     .present_credential_mutual(
                         route![sc_addr.clone(), DefaultAddress::CREDENTIAL_SERVICE],
                         &authorities.public_identities(),
+                        &self.attributes_storage,
                     )
                     .await?;
                 debug!(%sc_addr, "Mutual credential presentation success");

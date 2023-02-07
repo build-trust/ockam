@@ -31,6 +31,7 @@ use ockam::{Address, AsyncTryClone, TCP};
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::{
+    bootstrapped_identities_store::PreTrustedIdentities,
     nodes::models::transport::{TransportMode, TransportType},
     nodes::{
         service::{
@@ -39,6 +40,7 @@ use ockam_api::{
         NodeManager, NodeManagerWorker, NODEMANAGER_ADDR,
     },
 };
+
 use ockam_core::{
     api::{Response, Status},
     AllowAll, LOCAL,
@@ -88,6 +90,13 @@ pub struct CreateCommand {
     #[arg(long, hide = true, value_parser=parse_launch_config)]
     pub launch_config: Option<Config>,
 
+    #[arg(long, group = "trusted")]
+    pub trusted_identities: Option<String>,
+    #[arg(long, group = "trusted")]
+    pub trusted_identities_file: Option<PathBuf>,
+    #[arg(long, group = "trusted")]
+    pub reload_from_trusted_identities_file: Option<PathBuf>,
+
     #[arg(long, hide = true)]
     pub project: Option<PathBuf>,
 
@@ -111,6 +120,9 @@ impl Default for CreateCommand {
             token: None,
             vault: None,
             identity: None,
+            trusted_identities: None,
+            trusted_identities_file: None,
+            reload_from_trusted_identities_file: None,
         }
     }
 }
@@ -254,10 +266,24 @@ async fn run_foreground_node(
             )?),
     )?;
 
+    let pre_trusted_identities = match (
+        cmd.trusted_identities,
+        cmd.trusted_identities_file,
+        cmd.reload_from_trusted_identities_file,
+    ) {
+        (Some(val), _, _) => Some(PreTrustedIdentities::new_from_string(&val)?),
+        (_, Some(val), _) => Some(PreTrustedIdentities::new_from_disk(val, false)?),
+        (_, _, Some(val)) => Some(PreTrustedIdentities::new_from_disk(val, true)?),
+        _ => None,
+    };
     let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
         &ctx,
-        NodeManagerGeneralOptions::new(cmd.node_name.clone(), cmd.launch_config.is_some()),
+        NodeManagerGeneralOptions::new(
+            cmd.node_name.clone(),
+            cmd.launch_config.is_some(),
+            pre_trusted_identities,
+        ),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&node_name)?.snapshot()),
             project_id,
@@ -444,6 +470,9 @@ async fn spawn_background_node(
         &cmd.tcp_listener_address,
         cmd.project.as_deref(),
         cmd.token.as_ref(),
+        cmd.trusted_identities.as_ref(),
+        cmd.trusted_identities_file.as_ref(),
+        cmd.reload_from_trusted_identities_file.as_ref(),
     )?;
 
     Ok(())

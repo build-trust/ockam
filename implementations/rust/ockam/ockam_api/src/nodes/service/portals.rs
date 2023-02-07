@@ -45,7 +45,7 @@ impl NodeManager {
                 let fallback = eq([ident("resource.project_id"), ident("subject.project_id")]);
                 self.policies.set_policy(r, a, &fallback).await?
             }
-            let store = self.authenticated_storage.clone();
+            let store = self.attributes_storage.async_try_clone().await?;
             let policies = self.policies.clone();
             Ok(Arc::new(PolicyAccessControl::new(
                 policies,

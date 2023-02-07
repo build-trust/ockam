@@ -1,7 +1,8 @@
 use hello_ockam::{create_attribute_access_control, create_token, get_credentials, import_project, OneTimeCode};
+use ockam::identity::authenticated_storage::{mem::InMemoryStorage, AuthenticatedAttributeStorage};
 use ockam::identity::credential::Credential;
 use ockam::identity::{Identity, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
-use ockam::{route, vault::Vault, Context, Result, TcpTransport};
+use ockam::{route, vault::Vault, AsyncTryClone, Context, Result, TcpTransport};
 use ockam_core::IncomingAccessControl;
 use std::sync::Arc;
 use std::time::Duration;
@@ -42,9 +43,13 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Use the TCP transport
     let tcp = TcpTransport::create(&ctx).await?;
 
+    // Use an in-memory storage
+    let storage = InMemoryStorage::new();
+    let attr_storage = AuthenticatedAttributeStorage::new(storage.clone());
+
     // Create an Identity for the edge plane
     let vault = Vault::create();
-    let edge_plane = Identity::create(&ctx, &vault).await?;
+    let edge_plane = Identity::create_ext(&ctx, &storage, &vault).await?;
 
     // 2. create a secure channel to the authority
     //    to retrieve the node credentials
@@ -69,12 +74,17 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // later on to exchange credentials with the control node
     edge_plane.set_credential(Some(credentials.to_owned())).await;
     edge_plane
-        .start_credentials_exchange_worker(vec![project.authority_public_identity()], "credential_exchange", true)
+        .start_credentials_exchange_worker(
+            vec![project.authority_public_identity()],
+            "credential_exchange",
+            true,
+            attr_storage.async_try_clone().await?,
+        )
         .await?;
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
     let access_control: Arc<dyn IncomingAccessControl> =
-        create_attribute_access_control(edge_plane.authenticated_storage().clone(), "component", "control");
+        create_attribute_access_control(attr_storage.async_try_clone().await?, "component", "control");
 
     // 4. create a tcp inlet with the above policy
 
@@ -110,6 +120,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .present_credential_mutual(
             route![secure_channel_to_control.clone(), "credential_exchange"],
             vec![&project.authority_public_identity()],
+            &attr_storage,
         )
         .await?;
     println!("credential exchange done");

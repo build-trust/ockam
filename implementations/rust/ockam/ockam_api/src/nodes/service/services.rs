@@ -96,6 +96,7 @@ impl NodeManager {
                 authorities.public_identities(),
                 addr.clone(),
                 !oneway,
+                self.attributes_storage.async_try_clone().await?,
             )
             .await?;
 
@@ -117,7 +118,7 @@ impl NodeManager {
             ));
         }
 
-        let s = self.authenticated_storage.async_try_clone().await?;
+        let s = self.attributes_storage.async_try_clone().await?;
         let server = Server::new(s);
         ctx.start_worker(
             addr.clone(),

@@ -14,6 +14,7 @@ use ockam_core::compat::{
 };
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{AllowAll, AsyncTryClone};
+use ockam_identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::tokio;
@@ -26,6 +27,8 @@ use std::time::Duration;
 
 use super::models::secure_channel::CredentialExchangeMode;
 use super::registry::Registry;
+use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
+use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::cli_state::CliState;
 use crate::config::cli::AuthoritiesConfig;
 use crate::config::lookup::ProjectLookup;
@@ -110,6 +113,8 @@ pub struct NodeManager {
     medic: JoinHandle<Result<(), ockam_core::Error>>,
     policies: LmdbStorage,
     token: Option<OneTimeCode>,
+    attributes_storage:
+        BootstrapedIdentityStore<PreTrustedIdentities, AuthenticatedAttributeStorage<LmdbStorage>>,
 }
 
 pub struct NodeManagerWorker {
@@ -159,13 +164,19 @@ impl NodeManager {
 pub struct NodeManagerGeneralOptions {
     node_name: String,
     skip_defaults: bool,
+    pre_trusted_identities: Option<PreTrustedIdentities>,
 }
 
 impl NodeManagerGeneralOptions {
-    pub fn new(node_name: String, skip_defaults: bool) -> Self {
+    pub fn new(
+        node_name: String,
+        skip_defaults: bool,
+        pre_trusted_identities: Option<PreTrustedIdentities>,
+    ) -> Self {
         Self {
             node_name,
             skip_defaults,
+            pre_trusted_identities,
         }
     }
 }
@@ -226,6 +237,20 @@ impl NodeManager {
         let node_state = cli_state.nodes.get(&general_options.node_name)?;
 
         let authenticated_storage = cli_state.identities.authenticated_storage().await?;
+
+        //TODO: fix this.  Either don't require it to be a bootstrappedidentitystore (and use the
+        //trait instead),  or pass it from the general_options always.
+        let attributes_storage = match general_options.pre_trusted_identities {
+            None => BootstrapedIdentityStore::new(
+                PreTrustedIdentities::new_from_string("{}")?,
+                AuthenticatedAttributeStorage::new(authenticated_storage.clone()),
+            ),
+            Some(f) => BootstrapedIdentityStore::new(
+                f,
+                AuthenticatedAttributeStorage::new(authenticated_storage.clone()),
+            ),
+        };
+
         let policies_storage = LmdbStorage::new(&node_state.policies_storage_path()).await?;
 
         let vault = node_state.config.vault().await?;
@@ -256,6 +281,7 @@ impl NodeManager {
             sessions,
             policies: policies_storage,
             token: projects_options.token,
+            attributes_storage,
         };
 
         if !general_options.skip_defaults {

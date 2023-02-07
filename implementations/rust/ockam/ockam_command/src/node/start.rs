@@ -57,6 +57,9 @@ async fn run_impl(
         &node_setup.default_tcp_listener()?.addr.to_string(), // The selected node api address
         None,               // No project information available
         None,               // No invitation code available
+        None,               // No trusted identities
+        None,               // "
+        None,               // "
     )?;
 
     // Print node status

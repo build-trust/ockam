@@ -4,7 +4,7 @@ use ockam_api::config::lookup::ProjectLookup;
 use rand::random;
 use std::env::current_exe;
 use std::fs::OpenOptions;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use ockam::identity::credential::OneTimeCode;
@@ -73,7 +73,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     let projects = cfg.inner().lookup().projects().collect();
     let node_man = NodeManager::create(
         ctx,
-        NodeManagerGeneralOptions::new(cmd.node_name.clone(), cmd.launch_config.is_some()),
+        NodeManagerGeneralOptions::new(cmd.node_name.clone(), cmd.launch_config.is_some(), None),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
             project_id,
@@ -246,6 +246,9 @@ pub fn spawn_node(
     address: &str,
     project: Option<&Path>,
     invite: Option<&OneTimeCode>,
+    trusted_identities: Option<&String>,
+    trusted_identities_file: Option<&PathBuf>,
+    reload_from_trusted_identities_file: Option<&PathBuf>,
 ) -> crate::Result<()> {
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
@@ -292,6 +295,25 @@ pub fn spawn_node(
     if let Some(c) = invite {
         args.push("--enrollment-token".to_string());
         args.push(hex::encode(c.code()))
+    }
+
+    if let Some(t) = trusted_identities {
+        args.push("--trusted-identities".to_string());
+        args.push(t.to_string())
+    } else if let Some(t) = trusted_identities_file {
+        args.push("--trusted-identities-file".to_string());
+        args.push(
+            t.to_str()
+                .unwrap_or_else(|| panic!("unsupported path {t:?}"))
+                .to_string(),
+        );
+    } else if let Some(t) = reload_from_trusted_identities_file {
+        args.push("--reload-from-trusted-identities-file".to_string());
+        args.push(
+            t.to_str()
+                .unwrap_or_else(|| panic!("unsupported path {t:?}"))
+                .to_string(),
+        );
     }
 
     args.push(name.to_owned());

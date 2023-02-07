@@ -97,6 +97,24 @@ impl AuthenticatedStorage for LmdbStorage {
     async fn del(&self, id: &str, key: &str) -> Result<()> {
         self.delete(format!("{id}:{key}")).await
     }
+
+    async fn keys(&self, namespace: &str) -> Result<Vec<String>> {
+        let d = self.clone();
+        let suffix = format!(":{}", namespace);
+        let t = move || {
+            let r = d.env.begin_ro_txn().map_err(map_lmdb_err)?;
+            let mut cursor = r.open_ro_cursor(d.map).map_err(map_lmdb_err)?;
+            Ok(cursor
+                .iter()
+                .filter_map(|r| {
+                    let (k, _) = r.unwrap();
+                    let key = str::from_utf8(k).unwrap();
+                    key.rsplit_once(&suffix).map(|(k, _)| k.to_string())
+                })
+                .collect())
+        };
+        task::spawn_blocking(t).await.map_err(map_join_err)?
+    }
 }
 
 /// Policy storage entry.
