@@ -27,6 +27,7 @@ async fn run_impl(
     // one in config, we update the pid stored in the config.
     // This should only happen if the node has failed in the past,
     // and has been restarted by something that is not this CLI.
+    let mut default = String::new();
     let node_names: Vec<_> = {
         let nodes_states = opts.state.nodes.list()?;
         if nodes_states.is_empty() {
@@ -34,6 +35,10 @@ async fn run_impl(
                 exitcode::IOERR,
                 anyhow!("No nodes registered on this system!"),
             ));
+        }
+        // default node
+        if let Ok(state) = opts.state.nodes.default() {
+            default = state.config.name;
         }
         nodes_states.iter().map(|s| s.config.name.clone()).collect()
     };
@@ -43,7 +48,8 @@ async fn run_impl(
     // Print node states
     for node_name in &node_names {
         let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
-        print_query_status(&mut rpc, node_name, false).await?;
+        let is_default = node_name == &default;
+        print_query_status(&mut rpc, node_name, false, is_default).await?;
     }
 
     Ok(())
