@@ -41,7 +41,11 @@ async fn run_impl(
 
     let tcp = TcpTransport::create(&ctx).await?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
-    print_query_status(&mut rpc, node_name, false).await?;
+    let mut is_default = false;
+    if let Ok(state) = opts.state.nodes.default() {
+        is_default = &state.config.name == node_name;
+    }
+    print_query_status(&mut rpc, node_name, false, is_default).await?;
     Ok(())
 }
 
@@ -52,6 +56,7 @@ async fn run_impl(
 fn print_node_info(
     node_port: u16,
     node_name: &str,
+    is_default: bool,
     status_is_up: bool,
     default_id: Option<&str>,
     services: Option<&ServiceList>,
@@ -61,7 +66,11 @@ fn print_node_info(
 ) {
     println!();
     println!("Node:");
-    println!("  Name: {node_name}");
+    if is_default {
+        println!("  Name: {node_name} (Default)");
+    } else {
+        println!("  Name: {node_name}");
+    }
     println!(
         "  Status: {}",
         match status_is_up {
@@ -143,12 +152,15 @@ pub async fn print_query_status(
     rpc: &mut Rpc<'_>,
     node_name: &str,
     wait_until_ready: bool,
+    is_default: bool,
 ) -> anyhow::Result<()> {
     let cli_state = cli_state::CliState::new()?;
     let node_state = cli_state.nodes.get(node_name)?;
     if !is_node_up(rpc, wait_until_ready).await? {
         let node_port = node_state.setup()?.default_tcp_listener()?.addr.port();
-        print_node_info(node_port, node_name, false, None, None, None, None, None);
+        print_node_info(
+            node_port, node_name, is_default, false, None, None, None, None, None,
+        );
     } else {
         // Get short id for the node
         let default_id = match node_state.config.identity_config() {
@@ -187,6 +199,7 @@ pub async fn print_query_status(
         print_node_info(
             node_port,
             node_name,
+            is_default,
             true,
             Some(&default_id),
             Some(&services),

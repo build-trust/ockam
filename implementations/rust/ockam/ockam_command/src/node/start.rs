@@ -51,7 +51,11 @@ async fn run_impl(
     // Print node status
     let tcp = TcpTransport::create(&ctx).await?;
     let mut rpc = RpcBuilder::new(&ctx, &opts, node_name).tcp(&tcp)?.build();
-    print_query_status(&mut rpc, node_name, true).await?;
+    let mut is_default = false;
+    if let Ok(state) = opts.state.nodes.default() {
+        is_default = &state.config.name == node_name;
+    }
+    print_query_status(&mut rpc, node_name, true, is_default).await?;
 
     Ok(())
 }
