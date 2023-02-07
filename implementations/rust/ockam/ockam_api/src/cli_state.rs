@@ -598,6 +598,9 @@ impl NodesState {
             path
         };
         let link = self.default_path()?;
+        // Remove file link if it exists
+        let _ = std::fs::remove_file(&link);
+        // Create link to new default node
         std::os::unix::fs::symlink(original, link)?;
         self.get(name)
     }

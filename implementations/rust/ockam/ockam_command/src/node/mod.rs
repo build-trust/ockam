@@ -1,6 +1,7 @@
 use clap::{Args, Subcommand};
 
 pub(crate) use create::CreateCommand;
+use default::DefaultCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
 use logs::LogCommand;
@@ -12,6 +13,7 @@ use stop::StopCommand;
 use crate::{help, CommandGlobalOpts};
 
 mod create;
+mod default;
 mod delete;
 mod list;
 mod logs;
@@ -49,6 +51,8 @@ pub enum NodeSubcommand {
     Start(StartCommand),
     #[command(display_order = 800)]
     Stop(StopCommand),
+    #[command(display_order = 800)]
+    Default(DefaultCommand),
 }
 
 impl NodeCommand {
@@ -61,6 +65,7 @@ impl NodeCommand {
             NodeSubcommand::Start(c) => c.run(options),
             NodeSubcommand::Stop(c) => c.run(options),
             NodeSubcommand::Logs(c) => c.run(options),
+            NodeSubcommand::Default(c) => c.run(options),
         }
     }
 }
