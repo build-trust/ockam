@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::SystemTime;
+use sysinfo::{Pid, System, SystemExt};
 
 use crate::lmdb::LmdbStorage;
 use ockam::compat::tokio;
@@ -733,6 +734,16 @@ impl NodeState {
     pub fn set_pid(&self, pid: i32) -> Result<()> {
         std::fs::write(self.path.join("pid"), pid.to_string())?;
         Ok(())
+    }
+
+    pub fn is_running(&self) -> bool {
+        if let Ok(Some(pid)) = self.pid() {
+            let mut sys = System::new();
+            sys.refresh_processes();
+            sys.process(Pid::from(pid as usize)).is_some()
+        } else {
+            false
+        }
     }
 
     pub fn stdout_log(&self) -> PathBuf {
