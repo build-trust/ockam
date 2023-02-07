@@ -3,7 +3,10 @@ use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::hop::Hop;
 use crate::identity::IdentityService;
-use crate::kafka::{KafkaPortalListener, KAFKA_BOOTSTRAP_ADDRESS, KAFKA_INTERCEPTOR_ADDRESS};
+use crate::kafka::{
+    KafkaPortalListener, KafkaSecureChannelControllerImpl, KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
+    ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS, ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
+};
 use crate::nodes::models::services::{
     ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
     StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
@@ -23,8 +26,10 @@ use crate::DefaultAddress;
 use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
 use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::{AllowAll, Route};
-use ockam_multiaddr::MultiAddr;
+use ockam_core::{route, AllowAll, Route};
+use ockam_multiaddr::proto::Project;
+use ockam_multiaddr::{MultiAddr, Protocol};
+use std::time::Duration;
 
 use super::NodeManagerWorker;
 
@@ -289,47 +294,105 @@ impl NodeManager {
     pub(super) async fn start_kafka_service_impl<'a>(
         &mut self,
         context: &Context,
-        listener_address: Address,
+        local_interceptor_address: Address,
         bind_ip: String,
-        proxied_bootstrap_port: u16,
-        proxied_port_range: (u16, u16),
-        forwarding_addr: MultiAddr,
+        server_bootstrap_port: u16,
+        brokers_port_range: (u16, u16),
+        project_route_multiaddr: MultiAddr,
         kind: KafkaServiceKind,
     ) -> Result<()> {
-        let node_route = try_multiaddr_to_route(&forwarding_addr)?;
-        // We manipulate the route a bit, adding common pieces for both
-        // bootstrap route and broker route
-        let interceptor_route: Route = node_route
-            .clone()
-            .modify()
-            .prepend(listener_address.clone())
-            .append(Address::from_string(KAFKA_INTERCEPTOR_ADDRESS))
-            .into();
+        //needed to allow testing
+        let is_using_project = project_route_multiaddr
+            .first()
+            .map(|value| value.code() == Project::CODE)
+            .unwrap_or(false);
+
+        let identity = self.identity()?.async_try_clone().await?;
+
+        let (bootstrap_address_route, interceptor_route, project_route) = if is_using_project {
+            let (maybe_tunnel_multiaddr, suffix_address) = self
+                .connect(
+                    &project_route_multiaddr,
+                    Some(identity.identifier().clone()),
+                    Some(Duration::from_secs(60)),
+                    context,
+                )
+                .await?;
+
+            let project_multiaddr = maybe_tunnel_multiaddr.try_with(&suffix_address)?;
+            let project_route = try_multiaddr_to_route(&project_multiaddr)?;
+
+            let bootstrap_address_route = route![
+                local_interceptor_address.clone(),
+                project_route.clone(),
+                ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
+                ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS
+            ];
+
+            let interceptor_route = route![
+                local_interceptor_address.clone(),
+                project_route.clone(),
+                ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
+            ];
+
+            debug!("bootstrap_address_route: {bootstrap_address_route:?}");
+            debug!("interceptor_route: {interceptor_route:?}");
+            debug!("project_route: {project_route:?}");
+            (bootstrap_address_route, interceptor_route, project_route)
+        } else {
+            // when executing `crate::kafka::test` integration tests the provided address change
+            // semantic a little bit and it's used only to point toward the outlet
+            let mut outlet_route = try_multiaddr_to_route(&project_route_multiaddr)?;
+            let bootstrap_address_route: Route = outlet_route
+                .modify()
+                .prepend(local_interceptor_address.clone())
+                .into();
+            (
+                bootstrap_address_route.clone(),
+                bootstrap_address_route,
+                route![],
+            )
+        };
 
         self.tcp_transport
             .create_inlet(
-                format!("{}:{}", &bind_ip, proxied_bootstrap_port),
-                interceptor_route
-                    .clone()
-                    .modify()
-                    .append(Address::from_string(KAFKA_BOOTSTRAP_ADDRESS)),
+                format!("{}:{}", &bind_ip, server_bootstrap_port),
+                bootstrap_address_route,
                 AllowAll,
             )
             .await?;
 
+        let secure_channel_controller =
+            KafkaSecureChannelControllerImpl::new(identity, project_route, is_using_project);
+
+        if let KafkaServiceKind::Consumer = kind {
+            secure_channel_controller
+                .start_consumer_listener(context)
+                .await?;
+
+            self.create_secure_channel_listener_impl(
+                Address::from_string(KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS),
+                None,
+                None,
+                context,
+            )
+            .await?;
+        }
+
         KafkaPortalListener::start(
             context,
+            secure_channel_controller.into_trait(),
             interceptor_route,
-            listener_address.clone(),
+            local_interceptor_address.clone(),
             bind_ip,
-            PortRange::try_from(proxied_port_range)
+            PortRange::try_from(brokers_port_range)
                 .map_err(|_| ApiError::message("invalid port range"))?,
         )
         .await?;
 
         self.registry
             .kafka_services
-            .insert(listener_address, KafkaServiceInfo::new(kind));
+            .insert(local_interceptor_address, KafkaServiceInfo::new(kind));
         Ok(())
     }
 }
@@ -531,10 +594,10 @@ impl NodeManagerWorker {
             .start_kafka_service_impl(
                 context,
                 listener_address,
-                body_req.ip().to_string(),
-                body_req.bootstrap_port(),
-                body_req.port_range(),
-                body_req.forwarding_addr().to_string().parse()?,
+                body_req.bootstrap_server_ip().to_string(),
+                body_req.bootstrap_server_port(),
+                body_req.brokers_port_range(),
+                body_req.project_route().to_string().parse()?,
                 KafkaServiceKind::Consumer,
             )
             .await?;
@@ -557,10 +620,10 @@ impl NodeManagerWorker {
             .start_kafka_service_impl(
                 context,
                 listener_address,
-                body_req.ip().to_string(),
-                body_req.bootstrap_port(),
-                body_req.port_range(),
-                body_req.forwarding_addr().to_string().parse()?,
+                body_req.bootstrap_server_ip().to_string(),
+                body_req.bootstrap_server_port(),
+                body_req.brokers_port_range(),
+                body_req.project_route().to_string().parse()?,
                 KafkaServiceKind::Producer,
             )
             .await?;

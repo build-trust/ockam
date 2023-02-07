@@ -228,24 +228,6 @@ pub enum ConfigureAddonCommand {
             value_parser(NonEmptyStringValueParser::new())
         )]
         bootstrap_server: String,
-
-        /// Confluent Cloud API key
-        #[arg(
-            long,
-            id = "api_key",
-            value_name = "API_KEY",
-            value_parser(NonEmptyStringValueParser::new())
-        )]
-        api_key: String,
-
-        /// Confluent Cloud API secret
-        #[arg(
-            long,
-            id = "api_secret",
-            value_name = "API_SECRET",
-            value_parser(NonEmptyStringValueParser::new())
-        )]
-        api_secret: String,
     },
 }
 
@@ -425,10 +407,8 @@ async fn run_impl(
                 ConfigureAddonCommand::Confluent {
                     project_name,
                     bootstrap_server,
-                    api_key,
-                    api_secret,
                 } => {
-                    let body = ConfluentConfig::new(bootstrap_server, api_key, api_secret);
+                    let body = ConfluentConfig::new(bootstrap_server);
                     let addon_id = "confluent";
                     let endpoint = format!("{}/{}", base_endpoint(&project_name)?, addon_id);
                     let req = Request::put(endpoint).body(CloudRequestWrapper::new(

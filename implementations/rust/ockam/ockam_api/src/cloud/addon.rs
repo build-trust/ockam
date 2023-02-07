@@ -33,22 +33,14 @@ pub struct ConfluentConfig<'a> {
 
     #[serde(borrow)]
     #[cbor(b(1))] pub bootstrap_server: CowStr<'a>,
-
-    #[serde(borrow)]
-    #[cbor(b(2))] pub api_key: CowStr<'a>,
-
-    #[serde(borrow)]
-    #[cbor(b(3))] pub api_secret: CowStr<'a>,
 }
 
 impl<'a> ConfluentConfig<'a> {
-    pub fn new<S: Into<CowStr<'a>>>(bootstrap_server: S, api_key: S, api_secret: S) -> Self {
+    pub fn new<S: Into<CowStr<'a>>>(bootstrap_server: S) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             bootstrap_server: bootstrap_server.into(),
-            api_key: api_key.into(),
-            api_secret: api_secret.into(),
         }
     }
 }
