@@ -239,16 +239,25 @@ pub mod test {
         NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
     };
     use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+    use ockam::compat::tokio::sync::RwLock;
     use ockam::Result;
     use ockam_core::AsyncTryClone;
     use ockam_identity::Identity;
     use ockam_node::Context;
+    use ockam_transport_tcp::TcpTransport;
+    use std::sync::Arc;
 
-    ///guard to delete the cli state at the end of the test
-    pub struct CliStateGuard {
+    /// This struct is used by tests, it has two responsibilities:
+    /// - guard to delete the cli state at the end of the test, the cli state
+    ///   is comprised by some files within the file system, created in a
+    ///   temporary directory, and possibly of sub-processes.
+    /// - useful access to the NodeManager
+    pub struct NodeManagerHandle {
         cli_state: CliState,
+        node_manager: Arc<RwLock<NodeManager>>,
     }
-    impl Drop for CliStateGuard {
+
+    impl Drop for NodeManagerHandle {
         fn drop(&mut self) {
             self.cli_state
                 .delete(true)
@@ -256,9 +265,19 @@ pub mod test {
         }
     }
 
-    ///return a guard to automatically delete node state at the end
-    pub async fn start_manager_for_tests(context: &mut Context) -> Result<CliStateGuard> {
-        let tcp = ockam_transport_tcp::TcpTransport::create(&context).await?;
+    impl NodeManagerHandle {
+        pub fn node_manager(&self) -> Arc<RwLock<NodeManager>> {
+            self.node_manager.clone()
+        }
+    }
+
+    /// Starts a local node manager and returns a handle to it.
+    ///
+    /// Be careful: if you drop the returned handle before the end of the test
+    /// things *will* break.
+    // #[must_use] make sense to enable only on rust 1.67+
+    pub async fn start_manager_for_tests(context: &mut Context) -> Result<NodeManagerHandle> {
+        let tcp = TcpTransport::create(&context).await?;
         let cli_state = CliState::test()?;
 
         let node_name = {
@@ -304,7 +323,8 @@ pub mod test {
         )
         .await?;
 
-        let node_manager_worker = NodeManagerWorker::new(node_manager);
+        let mut node_manager_worker = NodeManagerWorker::new(node_manager);
+        let node_manager = node_manager_worker.get().clone();
         context
             .start_worker(
                 NODEMANAGER_ADDR,
@@ -314,6 +334,9 @@ pub mod test {
             )
             .await?;
 
-        Ok(CliStateGuard { cli_state })
+        Ok(NodeManagerHandle {
+            cli_state,
+            node_manager,
+        })
     }
 }

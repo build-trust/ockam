@@ -52,10 +52,8 @@ directories     = "4"
 dirs            = "4.0.0"
 thiserror       = "1.0"
 reqwest         = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
-tokio-util      = { version = "0.7", features = ["codec"] }
-kafka-protocol  = "0.4"
-futures         = "0.3"
 sysinfo         = "0.28"
+kafka-protocol  = "0.5"
 
 ockam               = { path = "../ockam", version = "^0.80.0", features = ["software_vault"] }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.75.0" }
@@ -103,3 +101,4 @@ ockam_macros        = { version = "0.27.0", path = "../ockam_macros", features =
 ockam_transport_tcp = { version = "0.75.0", path = "../ockam_transport_tcp" }
 quickcheck          = "1.0.1"
 indexmap            = "1.7.0"
+uuid                = "0.8.2"
