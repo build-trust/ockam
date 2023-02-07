@@ -1,3 +1,4 @@
+use crate::alloc::string::ToString;
 use crate::authenticated_storage::mem::InMemoryStorage;
 use crate::authenticated_storage::AuthenticatedStorage;
 use crate::change::IdentitySignedChange;
@@ -7,12 +8,7 @@ use crate::{
     ChangeIdentifier, IdentityError, IdentityIdentifier, IdentityVault, KeyAttributes,
     PublicIdentity, SecureChannelRegistry,
 };
-use ockam_core::compat::{
-    boxed::Box,
-    string::{String, ToString},
-    sync::Arc,
-    vec::Vec,
-};
+use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::vault::{SecretPersistence, SecretType, Signature, CURVE25519_SECRET_LENGTH_U32};
 use ockam_core::{Address, Result};
 use ockam_core::{AsyncTryClone, DenyAll};

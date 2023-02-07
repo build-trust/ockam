@@ -1,7 +1,6 @@
 use ockam::abac::Expr::*;
 use ockam::abac::{eval, Env, Expr};
-use ockam::authenticated_storage::AuthenticatedStorage;
-use ockam::identity::credential::AttributesStorageUtils;
+use ockam::authenticated_storage::IdentityAttributeStorage;
 use ockam::identity::IdentitySecureChannelLocalInfo;
 use ockam::Result;
 use ockam_core::async_trait;
@@ -19,7 +18,7 @@ pub fn create_attribute_access_control<S>(
     attribute_value: &str,
 ) -> Arc<dyn IncomingAccessControl>
 where
-    S: AuthenticatedStorage,
+    S: IdentityAttributeStorage,
 {
     let expression = List(vec![
         Ident("=".into()),
@@ -55,7 +54,7 @@ impl<S> AbacAccessControl<S> {
 #[async_trait]
 impl<S> IncomingAccessControl for AbacAccessControl<S>
 where
-    S: AuthenticatedStorage,
+    S: IdentityAttributeStorage,
 {
     /// Return true if the sender of the message is validated by the expression stored in AbacAccessControl
     async fn is_authorized(&self, msg: &RelayMessage) -> Result<bool> {
@@ -67,9 +66,7 @@ where
         };
 
         // Get identity attributes and populate the environment:
-        let attrs = if let Some(a) =
-            AttributesStorageUtils::get_attributes(&their_identity_id, &self.attributes_storage).await?
-        {
+        let entry = if let Some(a) = self.attributes_storage.get_attributes(&their_identity_id).await? {
             a
         } else {
             return Ok(false);
@@ -77,7 +74,7 @@ where
 
         let mut e = Env::new();
 
-        for (k, v) in &attrs {
+        for (k, v) in entry.attrs() {
             if let Ok(s) = str::from_utf8(v) {
                 e.put(format!("subject.{k}"), Str(s.to_string()));
             }

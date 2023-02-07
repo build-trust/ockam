@@ -26,35 +26,45 @@ impl InMemoryStorage {
 
 #[async_trait]
 impl AuthenticatedStorage for InMemoryStorage {
-    async fn get(&self, id: &str, key: &str) -> Result<Option<Vec<u8>>> {
+    async fn get(&self, id: &str, namespace: &str) -> Result<Option<Vec<u8>>> {
         let m = self.map.read().unwrap();
-        if let Some(a) = m.get(id) {
-            return Ok(a.get(key).cloned());
+        if let Some(a) = m.get(namespace) {
+            return Ok(a.get(id).cloned());
         }
         Ok(None)
     }
 
-    async fn set(&self, id: &str, key: String, val: Vec<u8>) -> Result<()> {
+    async fn set(&self, id: &str, namespace: String, val: Vec<u8>) -> Result<()> {
         let mut m = self.map.write().unwrap();
-        match m.get_mut(id) {
+        match m.get_mut(&namespace) {
             Some(a) => {
-                a.insert(key, val);
+                a.insert(id.to_string(), val);
             }
             None => {
-                m.insert(id.to_string(), BTreeMap::from([(key, val)]));
+                m.insert(namespace, BTreeMap::from([(id.to_string(), val)]));
             }
         }
         Ok(())
     }
 
-    async fn del(&self, id: &str, key: &str) -> Result<()> {
+    async fn del(&self, id: &str, namespace: &str) -> Result<()> {
         let mut m = self.map.write().unwrap();
-        if let Some(a) = m.get_mut(id) {
-            a.remove(key);
+        if let Some(a) = m.get_mut(namespace) {
+            a.remove(id);
             if a.is_empty() {
-                m.remove(id);
+                m.remove(namespace);
             }
         }
         Ok(())
+    }
+
+    async fn keys(&self, namespace: &str) -> Result<Vec<String>> {
+        Ok(self
+            .map
+            .read()
+            .unwrap()
+            .get(namespace)
+            .map(|m| m.keys().cloned().collect())
+            .unwrap_or_default())
     }
 }

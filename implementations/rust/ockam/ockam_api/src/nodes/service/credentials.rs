@@ -120,7 +120,11 @@ impl NodeManagerWorker {
             identity.present_credential(route).await?;
         } else {
             identity
-                .present_credential_mutual(route, &node_manager.authorities()?.public_identities())
+                .present_credential_mutual(
+                    route,
+                    &node_manager.authorities()?.public_identities(),
+                    &node_manager.attributes_storage,
+                )
                 .await?;
         }
 

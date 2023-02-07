@@ -1,9 +1,13 @@
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{async_trait, AllowAll, Any, AsyncTryClone, DenyAll, Mailboxes};
 use ockam_core::{route, Result, Routed, Worker};
+use ockam_identity::authenticated_storage::{
+    mem::InMemoryStorage, AuthenticatedAttributeStorage, IdentityAttributeStorageReader,
+};
 use ockam_identity::credential::access_control::CredentialAccessControl;
-use ockam_identity::credential::{AttributesStorageUtils, Credential};
+use ockam_identity::credential::Credential;
 use ockam_identity::{Identity, TrustEveryonePolicy, TrustIdentifierPolicy};
+
 use ockam_node::{Context, WorkerBuilder};
 use ockam_vault::Vault;
 use std::sync::atomic::{AtomicI8, Ordering};
@@ -12,6 +16,9 @@ use std::time::Duration;
 #[ockam_macros::test]
 async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
+
+    let authenticated_attribute_storage =
+        AuthenticatedAttributeStorage::new(InMemoryStorage::new());
 
     let authority = Identity::create(ctx, &vault).await?;
 
@@ -24,7 +31,12 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let authorities = vec![authority.to_public().await?];
 
     server
-        .start_credentials_exchange_worker(authorities, "credential_exchange", false)
+        .start_credentials_exchange_worker(
+            authorities,
+            "credential_exchange",
+            false,
+            authenticated_attribute_storage.async_try_clone().await?,
+        )
         .await?;
 
     let client = Identity::create(ctx, &vault).await?;
@@ -46,12 +58,12 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .present_credential(route![channel, "credential_exchange"])
         .await?;
 
-    let attrs =
-        AttributesStorageUtils::get_attributes(client.identifier(), server.authenticated_storage())
-            .await?
-            .unwrap();
+    let attrs = authenticated_attribute_storage
+        .get_attributes(client.identifier())
+        .await?
+        .unwrap();
 
-    let val = attrs.get("is_superuser").unwrap();
+    let val = attrs.attrs().get("is_superuser").unwrap();
 
     assert_eq!(val.as_slice(), b"true");
 
@@ -61,6 +73,10 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
 #[ockam_macros::test]
 async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
+    let authenticated_attribute_storage_client_1 =
+        AuthenticatedAttributeStorage::new(InMemoryStorage::new());
+    let authenticated_attribute_storage_client_2 =
+        AuthenticatedAttributeStorage::new(InMemoryStorage::new());
 
     let authority = Identity::create(ctx, &vault).await?;
 
@@ -78,7 +94,14 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
 
     let authorities = vec![authority.to_public().await?];
     client2
-        .start_credentials_exchange_worker(authorities.clone(), "credential_exchange", true)
+        .start_credentials_exchange_worker(
+            authorities.clone(),
+            "credential_exchange",
+            true,
+            authenticated_attribute_storage_client_2
+                .async_try_clone()
+                .await?,
+        )
         .await?;
 
     let client1 = Identity::create(ctx, &vault).await?;
@@ -94,26 +117,26 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .await?;
 
     client1
-        .present_credential_mutual(route![channel, "credential_exchange"], &authorities)
+        .present_credential_mutual(
+            route![channel, "credential_exchange"],
+            &authorities,
+            &authenticated_attribute_storage_client_1,
+        )
         .await?;
 
-    let attrs1 = AttributesStorageUtils::get_attributes(
-        client1.identifier(),
-        client2.authenticated_storage(),
-    )
-    .await?
-    .unwrap();
+    let attrs1 = authenticated_attribute_storage_client_2
+        .get_attributes(client1.identifier())
+        .await?
+        .unwrap();
 
-    assert_eq!(attrs1.get("is_user").unwrap().as_slice(), b"true");
+    assert_eq!(attrs1.attrs().get("is_user").unwrap().as_slice(), b"true");
 
-    let attrs2 = AttributesStorageUtils::get_attributes(
-        client2.identifier(),
-        client1.authenticated_storage(),
-    )
-    .await?
-    .unwrap();
+    let attrs2 = authenticated_attribute_storage_client_1
+        .get_attributes(client2.identifier())
+        .await?
+        .unwrap();
 
-    assert_eq!(attrs2.get("is_admin").unwrap().as_slice(), b"true");
+    assert_eq!(attrs2.attrs().get("is_admin").unwrap().as_slice(), b"true");
 
     ctx.stop().await
 }
@@ -141,6 +164,8 @@ impl Worker for CountingWorker {
 #[ockam_macros::test]
 async fn access_control(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
+    let authenticated_attribute_storage =
+        AuthenticatedAttributeStorage::new(InMemoryStorage::new());
 
     let authority = Identity::create(ctx, &vault).await?;
 
@@ -153,7 +178,12 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let authorities = vec![authority.to_public().await?];
 
     server
-        .start_credentials_exchange_worker(authorities, "credential_exchange", false)
+        .start_credentials_exchange_worker(
+            authorities,
+            "credential_exchange",
+            false,
+            authenticated_attribute_storage.async_try_clone().await?,
+        )
         .await?;
 
     let client = Identity::create(ctx, &vault).await?;
@@ -178,10 +208,8 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     };
 
     let required_attributes = vec![("is_superuser".to_string(), b"true".to_vec())];
-    let access_control = CredentialAccessControl::new(
-        &required_attributes,
-        server.authenticated_storage().async_try_clone().await?,
-    );
+    let access_control =
+        CredentialAccessControl::new(&required_attributes, authenticated_attribute_storage);
 
     WorkerBuilder::with_access_control(
         Arc::new(access_control),

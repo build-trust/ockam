@@ -2,14 +2,12 @@
 
 mod identity;
 mod public_identity;
-mod storage_utils;
 mod worker;
 
 pub mod access_control;
 pub mod one_time_code;
 
 pub use one_time_code::*;
-pub use storage_utils::*;
 
 use crate::IdentityIdentifier;
 use core::fmt;
@@ -291,6 +289,10 @@ impl Timestamp {
 
     pub fn elapsed(&self, since: Timestamp) -> Option<Duration> {
         (self.0 >= since.0).then(|| Duration::from_secs(self.0 - since.0))
+    }
+
+    pub fn unix_time(&self) -> u64 {
+        self.0
     }
 }
 

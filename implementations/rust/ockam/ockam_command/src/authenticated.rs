@@ -3,11 +3,28 @@ use crate::util::embedded_node;
 use anyhow::{anyhow, Result};
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
+use ockam::compat::collections::HashMap;
 use ockam::{Context, TcpTransport};
 use ockam_api::auth;
+use ockam_identity::authenticated_storage::AttributesEntry;
+use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
+use termimad::{minimad::TextTemplate, MadSkin};
 
 const HELP_DETAIL: &str = "";
+
+const LIST_VIEW: &str = r#"
+## Authenticated Identities
+
+${identity
+> **Identifier:** ${identifier}
+> **Attributes:** ${attributes}
+> **Added At:** ${created_at}
+> **Expires At:** ${expires_at}
+> **Attested By:** ${attested_by}
+
+}
+"#;
 
 #[derive(Clone, Debug, Args)]
 #[command(hide = help::hide(), after_long_help = help::template(HELP_DETAIL))]
@@ -26,23 +43,11 @@ pub enum AuthenticatedSubcommand {
         /// Subject identifier
         #[arg(long, value_parser(NonEmptyStringValueParser::new()))]
         id: String,
-
-        /// Attribute key.
-        #[arg(value_parser(NonEmptyStringValueParser::new()))]
-        key: String,
     },
-    /// Delete attribute
-    Del {
+
+    List {
         /// Address to connect to.
         addr: MultiAddr,
-
-        /// Subject identifier
-        #[arg(long, value_parser(NonEmptyStringValueParser::new()))]
-        id: String,
-
-        /// Attribute key.
-        #[arg(value_parser(NonEmptyStringValueParser::new()))]
-        key: String,
     },
 }
 
@@ -57,18 +62,59 @@ impl AuthenticatedCommand {
 async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> crate::Result<()> {
     TcpTransport::create(&ctx).await?;
     match &cmd {
-        AuthenticatedSubcommand::Get { addr, id, key } => {
+        AuthenticatedSubcommand::Get { addr, id } => {
             let mut c = client(addr, &ctx).await?;
-            let val = c.get(id, key).await?;
-            println!("{val:?}")
+            if let Some(entry) = c.get(id).await? {
+                print_entries(&[(IdentityIdentifier::try_from(id.to_string()).unwrap(), entry)]);
+            } else {
+                println!("Not found");
+            }
         }
-        AuthenticatedSubcommand::Del { addr, id, key } => {
+        AuthenticatedSubcommand::List { addr } => {
             let mut c = client(addr, &ctx).await?;
-            c.del(id, key).await?;
+            print_entries(&c.list().await?);
         }
     }
 
     Ok(())
+}
+
+fn print_entries(entries: &[(IdentityIdentifier, AttributesEntry)]) {
+    let template = TextTemplate::from(LIST_VIEW);
+    let model: Vec<_> = entries
+        .iter()
+        .map(|(identifier, entry)| {
+            let attrs: HashMap<String, String> = entry
+                .attrs()
+                .iter()
+                .map(|(k, v)| (k.to_string(), String::from_utf8(v.clone()).unwrap()))
+                .collect();
+            (
+                String::from(identifier),
+                serde_json::to_string(&attrs).unwrap(),
+                format!("{:?}", entry.added().unix_time()),
+                entry
+                    .expires()
+                    .map_or("-".to_string(), |t| format!("{:?}", t.unix_time())),
+                entry.attested_by().map_or("-".to_string(), String::from),
+            )
+        })
+        .collect();
+    let mut expander = template.expander();
+
+    model.iter().for_each(
+        |(identifier, attributes, created_at, expires_at, attested_by)| {
+            expander
+                .sub("identity")
+                .set("identifier", identifier)
+                .set("attributes", attributes)
+                .set("created_at", created_at)
+                .set("expires_at", expires_at)
+                .set("attested_by", attested_by);
+        },
+    );
+    let skin = MadSkin::default();
+    skin.print_expander(expander);
 }
 
 async fn client(addr: &MultiAddr, ctx: &Context) -> Result<auth::Client> {

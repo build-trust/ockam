@@ -4,8 +4,9 @@ use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
 use ockam_core::{async_trait, RelayMessage};
 use ockam_core::{IncomingAccessControl, Result};
-use ockam_identity::authenticated_storage::AuthenticatedStorage;
-use ockam_identity::{credential::AttributesStorageUtils, IdentitySecureChannelLocalInfo};
+use ockam_identity::{
+    authenticated_storage::IdentityAttributeStorage, IdentitySecureChannelLocalInfo,
+};
 use tracing as log;
 
 use crate::eval::eval;
@@ -53,7 +54,7 @@ impl<P, S> PolicyAccessControl<P, S> {
 #[async_trait]
 impl<P, S> IncomingAccessControl for PolicyAccessControl<P, S>
 where
-    S: AuthenticatedStorage + fmt::Debug,
+    S: IdentityAttributeStorage + fmt::Debug,
     P: PolicyStorage + fmt::Debug,
 {
     async fn is_authorized(&self, msg: &RelayMessage) -> Result<bool> {
@@ -93,22 +94,21 @@ where
         };
 
         // Get identity attributes and populate the environment:
-        let attrs =
-            if let Some(a) = AttributesStorageUtils::get_attributes(&id, &self.attributes).await? {
-                a
-            } else {
-                log::debug! {
-                    resource = %self.resource,
-                    action   = %self.action,
-                    id       = %id,
-                    "attributes not found; access denied"
-                }
-                return Ok(false);
-            };
+        let attrs = if let Some(a) = self.attributes.get_attributes(&id).await? {
+            a
+        } else {
+            log::debug! {
+                resource = %self.resource,
+                action   = %self.action,
+                id       = %id,
+                "attributes not found; access denied"
+            }
+            return Ok(false);
+        };
 
         let mut e = self.environment.clone();
 
-        for (k, v) in &attrs {
+        for (k, v) in attrs.attrs() {
             if k.find(|c: char| c.is_whitespace()).is_some() {
                 log::warn! {
                     resource = %self.resource,

@@ -155,6 +155,20 @@ teardown() {
   assert_output --partial "/service/uppercase"
 }
 
+@test "create a node with a set of pre-trusted identities" {
+  # TODO:  authenticated command doesn't know anything about how to resolve 'node' multiaddr
+  run $OCKAM identity create t1
+  test_identity=$($OCKAM identity show t1)
+  run $OCKAM node create n1 --tcp-listener-address 127.0.0.1:6001 --trusted-identities "{\"$test_identity\": {\"sample_attr\": \"sample_val\"}}"
+  assert_success
+  run $OCKAM authenticated get --id $test_identity  /dnsaddr/127.0.0.1/tcp/6001/service/authenticated
+  assert_success
+  assert_output --partial "sample_val"
+  run $OCKAM authenticated list /dnsaddr/127.0.0.1/tcp/6001/service/authenticated
+  assert_success
+  assert_output --partial "sample_val"
+}
+
 @test "create a node with a name and send it a message" {
   $OCKAM node create n1
   run --separate-stderr $OCKAM message send "hello" --to /node/n1/service/uppercase

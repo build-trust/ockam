@@ -1,24 +1,38 @@
-use ockam::authenticated_storage::{AuthenticatedStorage, InMemoryStorage};
 use ockam_api::auth;
+use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
 use ockam_core::{AllowAll, Result};
 use ockam_node::Context;
 
 #[ockam_macros::test]
 async fn auth_smoke(ctx: &mut Context) -> Result<()> {
-    let s = InMemoryStorage::new();
-    ctx.start_worker("auth", auth::Server::new(s.clone()), AllowAll, AllowAll)
+    let s = PreTrustedIdentities::new_from_string(
+        r#"{"P624ed0b2e5a2be82e267ead6b3279f683616b66de9537a23e45343c95cbb357a":{"attr":"value"},
+            "P624ed0b2e5a2be82e267ead6b3279f683616b66de9537a23e45343c95cbb357b":{"attr":"value2"}
+           }"#,
+    )?;
+    ctx.start_worker("auth", auth::Server::new(s), AllowAll, AllowAll)
         .await?;
 
     let mut client = auth::Client::new("auth".into(), ctx).await?;
 
-    s.set("foo", "a".to_string(), b"hello".to_vec()).await?;
-    s.set("foo", "b".to_string(), b"world".to_vec()).await?;
+    // Retrieve an existing one
+    let entry = client
+        .get("P624ed0b2e5a2be82e267ead6b3279f683616b66de9537a23e45343c95cbb357a")
+        .await?
+        .expect("found");
+    assert_eq!(Some(&b"value"[..].to_vec()), entry.attrs().get("attr"));
+    assert_eq!(None, entry.attested_by());
+    assert_eq!(None, entry.expires());
 
-    assert_eq!(Some(&b"hello"[..]), client.get("foo", "a").await?);
-    assert_eq!(Some(&b"world"[..]), client.get("foo", "b").await?);
+    // Try to retrieve non-existing one
+    assert_eq!(
+        None,
+        client
+            .get("P111ed0b2e5a2be82e267ead6b3279f683616b66de9537a23e45343c95cbb357b")
+            .await?
+    );
 
-    client.del("foo", "a").await?;
-    assert_eq!(None, client.get("foo", "a").await?);
+    assert_eq!(2, client.list().await?.len());
 
     ctx.stop().await
 }
