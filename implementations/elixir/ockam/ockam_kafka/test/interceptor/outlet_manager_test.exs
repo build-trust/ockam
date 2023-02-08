@@ -9,7 +9,7 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
     ssl = false
     ssl_options = []
 
-    {:ok, _manager} = OutletManager.start_link([outlet_prefix, ssl, ssl_options])
+    {:ok, _manager} = start_supervised({OutletManager, [outlet_prefix, ssl, ssl_options]})
 
     [] = OutletManager.get_existing_outlets(outlet_prefix)
     [] = OutletManager.get_outlets()
@@ -41,7 +41,7 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
     ssl = true
     ssl_options = []
 
-    {:ok, _manager} = OutletManager.start_link([outlet_prefix, ssl, ssl_options])
+    {:ok, _manager} = start_supervised({OutletManager, [outlet_prefix, ssl, ssl_options]})
 
     to_create = [
       %Outlet{
