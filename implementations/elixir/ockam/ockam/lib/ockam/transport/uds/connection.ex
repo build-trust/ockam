@@ -23,8 +23,6 @@ defmodule Ockam.Transport.UDS.Connection do
   end
 
   @impl true
-  def handle_info(message, state)
-
   def handle_info({:tcp, socket, data}, %__MODULE__{socket: socket} = state) do
     Logger.debug("Received data: #{inspect(data)}")
 
@@ -35,16 +33,6 @@ defmodule Ockam.Transport.UDS.Connection do
       {:error, error} ->
         {:stop, {:error, error}, state}
     end
-  end
-
-  def handle_info({:tcp_error, socket, reason}, %__MODULE__{socket: socket} = state) do
-    Logger.error("Received TCP error: #{inspect(reason)}")
-    {:stop, :normal, state}
-  end
-
-  def handle_info({:tcp_closed, socket}, %__MODULE__{socket: socket} = state) do
-    Logger.debug("TCP connection closed")
-    {:stop, :normal, state}
   end
 
   defp decode_and_send_to_router(uds_message, state) do
