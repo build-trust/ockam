@@ -29,7 +29,7 @@ mod portal;
 mod router;
 mod workers;
 
-pub(crate) use portal::*;
+pub use portal::*;
 pub(crate) use router::*;
 pub(crate) use workers::*;
 
