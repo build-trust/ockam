@@ -12,6 +12,14 @@ defmodule Ockam.Kafka.Interceptor.InletManager.Test do
     {:ok, _manager} =
       InletManager.start_link([base_port, allowed_ports, base_route, outlet_prefix])
 
+    on_exit(fn ->
+      try do
+        GenServer.stop(InletManager)
+      catch
+        _type, _reason -> :ok
+      end
+    end)
+
     inlets = InletManager.list_inlets()
 
     assert map_size(inlets) == 0
@@ -41,6 +49,14 @@ defmodule Ockam.Kafka.Interceptor.InletManager.Test do
 
     {:ok, _manager} =
       InletManager.start_link([base_port, allowed_ports, base_route, outlet_prefix])
+
+    on_exit(fn ->
+      try do
+        GenServer.stop(InletManager)
+      catch
+        _type, _reason -> :ok
+      end
+    end)
 
     :ok = InletManager.set_inlets([1])
     inlets = InletManager.list_inlets()

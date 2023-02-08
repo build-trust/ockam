@@ -139,6 +139,20 @@ defmodule Ockam.Kafka.Interceptor.Test do
 
     {:ok, _pid} = Ockam.Kafka.Interceptor.OutletManager.start_link([outlet_prefix, false, []])
 
+    on_exit(fn ->
+      try do
+        GenServer.stop(OutletManager)
+      catch
+        _type, _reason -> :ok
+      end
+
+      try do
+        GenServer.stop(InletManager)
+      catch
+        _type, _reason -> :ok
+      end
+    end)
+
     {:ok, _pid, "kafka_interceptor"} =
       Ockam.Transport.Portal.Interceptor.start_link(
         address: "kafka_interceptor",

@@ -11,6 +11,14 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
 
     {:ok, _manager} = start_supervised({OutletManager, [outlet_prefix, ssl, ssl_options]})
 
+    on_exit(fn ->
+      try do
+        GenServer.stop(OutletManager)
+      catch
+        _type, _reason -> :ok
+      end
+    end)
+
     [] = OutletManager.get_existing_outlets(outlet_prefix)
     [] = OutletManager.get_outlets()
 
@@ -42,6 +50,14 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
     ssl_options = []
 
     {:ok, _manager} = start_supervised({OutletManager, [outlet_prefix, ssl, ssl_options]})
+
+    on_exit(fn ->
+      try do
+        GenServer.stop(OutletManager)
+      catch
+        _type, _reason -> :ok
+      end
+    end)
 
     to_create = [
       %Outlet{
