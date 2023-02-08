@@ -42,7 +42,7 @@ jobs:
 
       - name: Get commit information from Github (Pull Request)
         if: github.event_name == 'pull_request'
-        run: gh api repos/build-trust/ockam/pulls/${{ github.event.number }}/commits > commits.json
+        run: gh api repos/${{ github.repository_owner }}/ockam/pulls/${{ github.event.number }}/commits > commits.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
