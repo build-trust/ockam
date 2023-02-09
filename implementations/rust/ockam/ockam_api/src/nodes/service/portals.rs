@@ -11,7 +11,7 @@ use minicbor::Decoder;
 use ockam::compat::asynchronous::RwLock;
 use ockam::compat::tokio::time::timeout;
 use ockam::{Address, AsyncTryClone, Result};
-use ockam_abac::expr::{and, eq, ident, str};
+use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::{Action, Env, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::{AllowAll, IncomingAccessControl};
