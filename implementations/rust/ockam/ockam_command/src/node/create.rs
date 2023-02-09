@@ -467,6 +467,14 @@ async fn spawn_background_node(
     )
     .await?;
 
+    let proj_path = if let Some(path) = cmd.project.clone() {
+        Some(path)
+    } else if let Ok(proj) = opts.state.projects.default() {
+        Some(proj.path)
+    } else {
+        None
+    };
+
     // Construct the arguments list and re-execute the ockam
     // CLI in foreground mode to start the newly created node
     spawn_node(
@@ -474,7 +482,7 @@ async fn spawn_background_node(
         opts.global_args.verbose,
         &node_name,
         &cmd.tcp_listener_address,
-        cmd.project.as_deref(),
+        proj_path.as_deref(),
         cmd.token.as_ref(),
     )?;
 
