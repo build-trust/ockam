@@ -42,10 +42,7 @@ impl NodeManager {
             // Check if a policy exists for (resource, action) and if not, then
             // create a default entry:
             if self.policies.get_policy(r, a).await?.is_none() {
-                let fallback = and([
-                    eq([ident("resource.project_id"), ident("subject.project_id")]),
-                    eq([ident("subject.role"), str("member")]),
-                ]);
+                let fallback = eq([ident("resource.project_id"), ident("subject.project_id")]);
                 self.policies.set_policy(r, a, &fallback).await?
             }
             let store = self.authenticated_storage.clone();
