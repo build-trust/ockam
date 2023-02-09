@@ -117,6 +117,23 @@ impl Default for CreateCommand {
 }
 
 impl CreateCommand {
+    async fn project_or_default(&self, opts: &CommandGlobalOpts) -> anyhow::Result<Option<String>> {
+        let proj_path = if let Some(path) = self.project.clone() {
+            Some(path)
+        } else if let Ok(proj) = opts.state.projects.default() {
+            Some(proj.path)
+        } else {
+            None
+        };
+
+        match &proj_path {
+            Some(path) => {
+                let s = tokio::fs::read_to_string(path).await?;
+                Ok(Some(s))
+            }
+            None => Ok(None),
+        }
+    }
     pub fn run(self, options: CommandGlobalOpts) {
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
@@ -181,7 +198,17 @@ async fn run_impl(
     print_query_status(&mut rpc, node_name, true).await?;
 
     // Do we need to eagerly fetch a project membership credential?
-    let get_credential = cmd.project.is_some() && cmd.token.is_some();
+    let proj_string = cmd.project_or_default(&opts).await?;
+    let proj_info = match &proj_string {
+        Some(s) => {
+            let proj_info: ProjectInfo = serde_json::from_str(s)?;
+
+            Some(proj_info)
+        }
+        None => None,
+    };
+
+    let get_credential = proj_info.is_some() && cmd.token.is_some();
     if get_credential {
         rpc.request(api::credentials::get_credential(false)).await?;
         if rpc.parse_and_print_response::<Credential>().is_err() {
@@ -220,10 +247,18 @@ async fn run_foreground_node(
         .await?;
     }
 
-    let project_id = match &cmd.project {
-        Some(path) => {
-            let s = tokio::fs::read_to_string(path).await?;
-            let p: ProjectInfo = serde_json::from_str(&s)?;
+    let proj_string = cmd.project_or_default(&opts).await?;
+    let proj_info = match &proj_string {
+        Some(s) => {
+            let proj_info: ProjectInfo = serde_json::from_str(s)?;
+
+            Some(proj_info)
+        }
+        None => None,
+    };
+
+    let project_id = match proj_info {
+        Some(p) => {
             let project_id = p.id.to_string();
             project::config::set_project(cfg, &(&p).into()).await?;
             add_project_authority_from_project_info(p, &node_name, cfg).await?;
@@ -233,7 +268,7 @@ async fn run_foreground_node(
     };
 
     // Do we need to eagerly fetch a project membership credential?
-    let get_credential = !cmd.child_process && cmd.project.is_some() && cmd.token.is_some();
+    let get_credential = !cmd.child_process && project_id.is_some() && cmd.token.is_some();
 
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = cmd.tcp_listener_address;
