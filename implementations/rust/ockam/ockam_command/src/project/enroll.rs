@@ -2,9 +2,10 @@ use clap::Args;
 use std::collections::HashMap;
 
 use anyhow::{anyhow, Context as _};
+use ockam::identity::credential::OneTimeCode;
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
-use ockam_api::authenticator::direct::types::{AddMember, CreateToken, OneTimeCode};
+use ockam_api::authenticator::direct::types::{AddMember, CreateToken};
 use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority};
 use ockam_core::api::Request;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
@@ -113,7 +114,7 @@ impl Runner {
                 .body(CreateToken::new().with_attributes(self.cmd.attributes()?));
             rpc.request(req).await?;
             let res: OneTimeCode = rpc.parse_response()?;
-            println!("{}", hex::encode(res.code()))
+            println!("{}", res.to_string())
         }
 
         delete_embedded_node(&self.opts, &node_name).await;

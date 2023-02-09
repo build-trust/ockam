@@ -6,7 +6,9 @@ mod storage_utils;
 mod worker;
 
 pub mod access_control;
+pub mod one_time_code;
 
+pub use one_time_code::*;
 pub use storage_utils::*;
 
 use crate::IdentityIdentifier;
