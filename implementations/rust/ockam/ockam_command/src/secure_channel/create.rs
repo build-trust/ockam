@@ -19,7 +19,8 @@ use ockam_api::{
     clean_multiaddr, nodes::models::secure_channel::CreateSecureChannelResponse, route_to_multiaddr,
 };
 use ockam_api::{config::lookup::ConfigLookup, nodes::models};
-use ockam_multiaddr::MultiAddr;
+use ockam_multiaddr::proto::Project;
+use ockam_multiaddr::{MultiAddr, Protocol};
 
 /// Create Secure Channels
 #[derive(Clone, Debug, Args)]
@@ -45,6 +46,16 @@ pub struct CreateCommand {
 impl CreateCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(rpc, (options, self));
+    }
+
+    pub fn check_credentials(&self) -> Option<bool> {
+        // FIXME: this is a hack to disable credential checks when accessing local nodes.
+        //  It will get fixed when we integrate the access control arguments into the outlet command.
+        if self.to.matches(0, &[Project::CODE.into()]) {
+            Some(true)
+        } else {
+            Some(false)
+        }
     }
 
     // Read the `to` argument and return a MultiAddr
@@ -151,7 +162,6 @@ impl CreateCommand {
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
-
     let config = &opts.config.lookup();
     let from = &cmd.parse_from_node(config);
     let to = &cmd
@@ -167,6 +177,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
         to,
         authorized_identifiers,
         CredentialExchangeMode::Mutual,
+        cmd.check_credentials(),
         cmd.cloud_opts.identity.clone(),
     );
     let request = Request::post("/node/secure_channel").body(payload);

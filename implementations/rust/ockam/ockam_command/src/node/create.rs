@@ -1,10 +1,9 @@
 use clap::Args;
-use minicbor::Decoder;
-use ockam_identity::credential::Credential;
 use rand::prelude::random;
 use tokio::io::AsyncBufReadExt;
 
 use anyhow::{anyhow, Context as _};
+use minicbor::Decoder;
 use std::{
     net::{IpAddr, SocketAddr},
     path::PathBuf,
@@ -12,10 +11,12 @@ use std::{
 };
 use tracing::error;
 
+use crate::node::util::delete_node;
+use crate::project::ProjectInfo;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start;
-use crate::util::node_rpc;
+use crate::util::{api, node_rpc};
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
     help, node::show::print_query_status, node::HELP_DETAIL, project, util::find_available_port,
@@ -26,7 +27,6 @@ use crate::{
     node::util::{add_project_authority_from_project_info, init_node_state},
     util::RpcBuilder,
 };
-use crate::{project::ProjectInfo, util::api};
 use ockam::{Address, AsyncTryClone, TCP};
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::transport::CreateTransportJson;
@@ -40,12 +40,9 @@ use ockam_api::{
         NodeManager, NodeManagerWorker, NODEMANAGER_ADDR,
     },
 };
-use ockam_core::{
-    api::{Response, Status},
-    AllowAll, LOCAL,
-};
-
-use super::util::delete_node;
+use ockam_core::api::{Response, Status};
+use ockam_core::{AllowAll, LOCAL};
+use ockam_identity::credential::Credential;
 
 /// Create a node
 #[derive(Clone, Debug, Args)]
@@ -117,6 +114,24 @@ impl Default for CreateCommand {
 }
 
 impl CreateCommand {
+    async fn project_or_default(&self, opts: &CommandGlobalOpts) -> anyhow::Result<Option<String>> {
+        let proj_path = if let Some(path) = self.project.clone() {
+            Some(path)
+        } else if let Ok(proj) = opts.state.projects.default() {
+            Some(proj.path)
+        } else {
+            None
+        };
+
+        match &proj_path {
+            Some(path) => {
+                let s = tokio::fs::read_to_string(path).await?;
+                Ok(Some(s))
+            }
+            None => Ok(None),
+        }
+    }
+
     pub fn run(self, options: CommandGlobalOpts) {
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
@@ -220,10 +235,17 @@ async fn run_foreground_node(
         .await?;
     }
 
-    let project_id = match &cmd.project {
-        Some(path) => {
-            let s = tokio::fs::read_to_string(path).await?;
-            let p: ProjectInfo = serde_json::from_str(&s)?;
+    let proj_string = cmd.project_or_default(&opts).await?;
+    let proj_info = match &proj_string {
+        Some(s) => {
+            let proj_info: ProjectInfo = serde_json::from_str(s)?;
+
+            Some(proj_info)
+        }
+        None => None,
+    };
+    let project_id = match proj_info {
+        Some(p) => {
             let project_id = p.id.to_string();
             project::config::set_project(cfg, &(&p).into()).await?;
             add_project_authority_from_project_info(p, &node_name, cfg).await?;

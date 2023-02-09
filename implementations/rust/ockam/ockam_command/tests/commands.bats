@@ -526,7 +526,7 @@ teardown() {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM node create blue
-  $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
   $OCKAM forwarder create blue --at /project/default --to /node/blue
 
   $OCKAM node create green
@@ -541,7 +541,7 @@ teardown() {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM node create blue
-  $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
   $OCKAM forwarder create blue --at /project/default --to /node/blue
 
   $OCKAM node create green
@@ -575,7 +575,7 @@ teardown() {
   assert_success
 
   export OCKAM_HOME=/tmp/ockam
-  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
   assert_success
 
   run $OCKAM forwarder create blue --at /project/default --to /node/blue
@@ -617,7 +617,7 @@ teardown() {
   assert_success
 
   export OCKAM_HOME=/tmp/ockam
-  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
   assert_success
   run  $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"
@@ -654,7 +654,7 @@ teardown() {
   assert_success
 
   OCKAM_HOME=/tmp/ockam
-  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
   assert_success
   run  $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"
@@ -693,7 +693,7 @@ teardown() {
   run $OCKAM policy set --at blue --resource tcp-outlet --expression '(= subject.app "app1")'
   assert_success
 
-  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
+  run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000 --check-credential
   assert_success
   run $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"

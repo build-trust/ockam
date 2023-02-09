@@ -32,13 +32,8 @@ pub struct CreateCommand {
 
     /// Enable credentials authorization.
     /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
-    #[arg(long, display_order = 900, conflicts_with = "disable_check_credential")]
+    #[arg(long, display_order = 900, default_value = "false")]
     check_credential: bool,
-
-    /// Disable credentials authorization.
-    /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
-    #[arg(long, display_order = 900, conflicts_with = "check_credential")]
-    disable_check_credential: bool,
 
     /// Assign a name to this outlet.
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
@@ -51,13 +46,7 @@ impl CreateCommand {
     }
 
     pub fn check_credential(&self) -> Option<bool> {
-        if self.check_credential {
-            Some(true)
-        } else if self.disable_check_credential {
-            Some(false)
-        } else {
-            None
-        }
+        Some(self.check_credential)
     }
 }
 

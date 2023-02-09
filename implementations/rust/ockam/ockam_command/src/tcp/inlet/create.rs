@@ -37,16 +37,6 @@ pub struct CreateCommand {
     #[arg(long, name = "AUTHORIZED", display_order = 900)]
     authorized: Option<IdentityIdentifier>,
 
-    /// Enable credentials authorization.
-    /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
-    #[arg(long, display_order = 900, conflicts_with = "disable_check_credential")]
-    check_credential: bool,
-
-    /// Disable credentials authorization.
-    /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
-    #[arg(long, display_order = 900, conflicts_with = "check_credential")]
-    disable_check_credential: bool,
-
     /// Assign a name to this inlet.
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
     alias: Option<String>,
@@ -58,17 +48,18 @@ impl CreateCommand {
     }
 
     pub fn check_credential(&self) -> Option<bool> {
-        if self.check_credential {
+        // FIXME: this is a hack to disable credential checks when accessing local nodes.
+        //  It will get fixed when we integrate the access control arguments into the outlet command.
+        if self.to.matches(0, &[Project::CODE.into()]) {
             Some(true)
-        } else if self.disable_check_credential {
-            Some(false)
         } else {
-            None
+            Some(false)
         }
     }
 }
 
 async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
+    let check_credential = cmd.check_credential();
     cmd.to = process_multi_addr(&cmd.to, &opts.state)?;
 
     // Check if the port is used by some other services or process
@@ -83,7 +74,6 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
     let node = extract_address_value(&cmd.at)?;
 
     let req = {
-        let check_credential = cmd.check_credential();
         let mut payload = if cmd.to.matches(0, &[Project::CODE.into()]) {
             if cmd.authorized.is_some() {
                 return Err(anyhow!("--authorized can not be used with project addresses").into());

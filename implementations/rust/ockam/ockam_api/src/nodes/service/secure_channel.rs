@@ -81,11 +81,13 @@ impl NodeManager {
         Ok(sc_addr)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(super) async fn create_secure_channel_impl(
         &mut self,
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         credential_exchange_mode: CredentialExchangeMode,
+        check_credential: Option<bool>,
         timeout: Option<Duration>,
         identity_name: Option<CowStr<'_>>,
         ctx: &Context,
@@ -108,7 +110,11 @@ impl NodeManager {
             .create_secure_channel_internal(&identity, sc_route, authorized_identifiers, timeout)
             .await?;
 
-        let actual_exchange_mode = if self.enable_credential_checks {
+        let check_credential = match check_credential {
+            Some(b) => b,
+            None => self.enable_credential_checks,
+        };
+        let actual_exchange_mode = if check_credential {
             credential_exchange_mode
         } else {
             CredentialExchangeMode::None
@@ -245,6 +251,7 @@ impl NodeManagerWorker {
             credential_exchange_mode,
             timeout,
             identity,
+            check_credentials,
             ..
         } = dec.decode()?;
 
@@ -272,6 +279,7 @@ impl NodeManagerWorker {
                 route,
                 authorized_identifiers,
                 credential_exchange_mode,
+                check_credentials,
                 timeout,
                 identity,
                 ctx,

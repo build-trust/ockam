@@ -119,6 +119,7 @@ pub async fn create_secure_channel_to_project(
         project_access_route,
         Some(authorized_identifier),
         credential_exchange_mode,
+        None,
         identity,
     );
     let req = Request::post("/node/secure_channel").body(payload);
@@ -143,6 +144,7 @@ pub async fn create_secure_channel_to_authority(
         addr,
         Some(allowed),
         CredentialExchangeMode::None,
+        Some(false),
         identity,
     );
     let req = Request::post("/node/secure_channel").body(payload);

@@ -350,7 +350,7 @@ impl NodeManager {
                 let i = Some(vec![i]);
                 let m = CredentialExchangeMode::Oneway;
                 let w = self
-                    .create_secure_channel_impl(r, i, m, timeout, None, ctx)
+                    .create_secure_channel_impl(r, i, m, None, timeout, None, ctx)
                     .await?;
                 let a = MultiAddr::default().try_with(addr.iter().skip(1))?;
                 return Ok((try_address_to_multiaddr(&w)?, a));
@@ -364,7 +364,7 @@ impl NodeManager {
             let i = auth.clone().map(|i| vec![i]);
             let m = CredentialExchangeMode::Mutual;
             let w = self
-                .create_secure_channel_impl(r, i, m, timeout, None, ctx)
+                .create_secure_channel_impl(r, i, m, None, timeout, None, ctx)
                 .await?;
             return Ok((try_address_to_multiaddr(&w)?, b));
         }
@@ -376,7 +376,7 @@ impl NodeManager {
             let i = auth.clone().map(|i| vec![i]);
             let m = CredentialExchangeMode::Mutual;
             let w = self
-                .create_secure_channel_impl(r, i, m, timeout, None, ctx)
+                .create_secure_channel_impl(r, i, m, None, timeout, None, ctx)
                 .await?;
             return Ok((try_address_to_multiaddr(&w)?, MultiAddr::default()));
         }
