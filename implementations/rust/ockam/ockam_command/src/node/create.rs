@@ -1,6 +1,6 @@
 use clap::Args;
 use minicbor::Decoder;
-use ockam_identity::credential::Credential;
+use ockam::identity::credential::{Credential, OneTimeCode};
 use rand::prelude::random;
 use tokio::io::AsyncBufReadExt;
 
@@ -31,7 +31,6 @@ use ockam::{Address, AsyncTryClone, TCP};
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::{
-    authenticator::direct::types::OneTimeCode,
     nodes::models::transport::{TransportMode, TransportType},
     nodes::{
         service::{

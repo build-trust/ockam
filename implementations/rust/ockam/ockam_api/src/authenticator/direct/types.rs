@@ -1,6 +1,4 @@
-use minicbor::bytes::ByteArray;
 use minicbor::{Decode, Encode};
-use ockam::compat::rand::{self, RngCore};
 use ockam_core::CowStr;
 use ockam_identity::IdentityIdentifier;
 use serde::{Deserialize, Serialize};
@@ -81,38 +79,5 @@ impl<'a> CreateToken<'a> {
             .into_iter()
             .map(|(k, v)| (k.into_owned(), v.into_owned()))
             .collect()
-    }
-}
-
-/// A one-time code to enroll a member.
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct OneTimeCode {
-    #[cfg(feature = "tag")]
-    #[n(0)] tag: TypeTag<5112299>,
-    #[n(1)] code: ByteArray<32>,
-}
-
-impl OneTimeCode {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        let mut code = [0; 32];
-        rand::thread_rng().fill_bytes(&mut code);
-        OneTimeCode::from(code)
-    }
-
-    pub fn code(&self) -> &[u8; 32] {
-        &self.code
-    }
-}
-
-impl From<[u8; 32]> for OneTimeCode {
-    fn from(code: [u8; 32]) -> Self {
-        OneTimeCode {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            code: code.into(),
-        }
     }
 }

@@ -86,5 +86,6 @@ ockam_transport_tcp = { path = "../ockam_transport_tcp" }
 ockam_vault = { path = "../ockam_vault", version = "^0.70.0" }
 zeroize = { version = "1.4.2" }
 quickcheck = "1.0.3"
+quickcheck_macros = "1.0.0"
 rand_xorshift = "0"
 tokio = { version = "1.25", features = ["full"] }

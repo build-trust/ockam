@@ -7,9 +7,9 @@ use std::fs::OpenOptions;
 use std::path::Path;
 use std::process::Command;
 
+use ockam::identity::credential::OneTimeCode;
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpTransport};
-use ockam_api::authenticator::direct::types::OneTimeCode;
 use ockam_api::cli_state;
 use ockam_api::config::cli;
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};

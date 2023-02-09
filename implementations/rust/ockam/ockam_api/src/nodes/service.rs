@@ -3,6 +3,8 @@
 use minicbor::Decoder;
 
 use ockam::compat::asynchronous::RwLock;
+use ockam::identity::credential::OneTimeCode;
+use ockam::identity::{Identity, IdentityIdentifier, PublicIdentity};
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
 use ockam_core::compat::{
@@ -12,7 +14,6 @@ use ockam_core::compat::{
 };
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{AllowAll, AsyncTryClone};
-use ockam_identity::{Identity, IdentityIdentifier, PublicIdentity};
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::tokio;
@@ -25,7 +26,6 @@ use std::time::Duration;
 
 use super::models::secure_channel::CredentialExchangeMode;
 use super::registry::Registry;
-use crate::authenticator::direct::types::OneTimeCode;
 use crate::cli_state::CliState;
 use crate::config::cli::AuthoritiesConfig;
 use crate::config::lookup::ProjectLookup;

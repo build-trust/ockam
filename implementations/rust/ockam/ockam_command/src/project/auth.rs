@@ -1,8 +1,9 @@
 use clap::Args;
+use std::str::FromStr;
 
 use anyhow::{anyhow, Context as _};
+use ockam::identity::credential::OneTimeCode;
 use ockam::Context;
-use ockam_api::authenticator::direct::types::OneTimeCode;
 use ockam_api::cloud::enroll::auth0::AuthenticateAuth0Token;
 use ockam_api::cloud::project::OktaAuth0;
 use ockam_core::api::{Request, Status};
@@ -27,7 +28,7 @@ pub struct AuthCommand {
     #[arg(long = "okta", group = "authentication_method")]
     okta: bool,
 
-    #[arg(long = "token", group = "authentication_method", value_name = "ENROLLMENT TOKEN", value_parser = otc_parser)]
+    #[arg(long = "token", group = "authentication_method", value_name = "ENROLLMENT TOKEN", value_parser = OneTimeCode::from_str)]
     token: Option<OneTimeCode>,
 
     #[command(flatten)]
@@ -149,11 +150,4 @@ async fn authenticate_through_okta(
         eprintln!("{}", rpc.parse_err_msg(res, dec));
         Err(anyhow!("Failed to enroll").into())
     }
-}
-
-//TODO: copy-pasted from node/create.rs
-fn otc_parser(val: &str) -> anyhow::Result<OneTimeCode> {
-    let bytes = hex::decode(val)?;
-    let code = <[u8; 32]>::try_from(bytes.as_slice())?;
-    Ok(code.into())
 }

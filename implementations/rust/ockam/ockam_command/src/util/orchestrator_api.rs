@@ -11,15 +11,13 @@ use crate::{
 };
 use anyhow::{Context as _, Result};
 use minicbor::{Decode, Encode};
+use ockam::identity::credential::{Credential, OneTimeCode};
 use ockam::Context;
 use ockam_api::{
-    authenticator::direct::{types::OneTimeCode, Client},
-    config::lookup::ProjectLookup,
-    nodes::models::secure_channel::CredentialExchangeMode,
-    DefaultAddress,
+    authenticator::direct::Client, config::lookup::ProjectLookup,
+    nodes::models::secure_channel::CredentialExchangeMode, DefaultAddress,
 };
 use ockam_core::api::RequestBuilder;
-use ockam_identity::credential::Credential;
 use ockam_multiaddr::MultiAddr;
 use tracing::info;
 
