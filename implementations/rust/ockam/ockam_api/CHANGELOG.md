@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.23.0 - 2023-02-09
+
+### Added
+
+- Add command to set the default vault
+- Add command to set the default identity
+
+### Changed
+
+- Recipient returns an error instead of panicking
+- Nodestate implement check whether a node is running
+- Updated dependencies
+
+### Fixed
+
+- Apply `clippy --fix`
+- Deleting an identity won't affect the default
+
 ## 0.22.0 - 2023-01-31
 
 ### Added
