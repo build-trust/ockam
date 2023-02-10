@@ -20,6 +20,9 @@ pub struct StartCommand {
 
     #[arg(long, default_value = "false")]
     aws_kms: bool,
+
+    #[arg(long, default_value = "false")]
+    force: bool,
 }
 
 impl StartCommand {
@@ -35,6 +38,14 @@ async fn run_impl(
     let node_name = &cmd.node_name;
 
     let node_state = opts.state.nodes.get(node_name)?;
+    // Check if node is already running
+    if node_state.is_running() && !cmd.force {
+        println!(
+            "Restart aborted, node: {} already running",
+            node_state.config.name
+        );
+        return Ok(());
+    }
     node_state.kill_process(false)?;
     let node_setup = node_state.setup()?;
 
