@@ -19,7 +19,6 @@ use crate::{CommandGlobalOpts, Result};
 
 /// An authorised enroller can add members to a project.
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true)]
 pub struct EnrollCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]
