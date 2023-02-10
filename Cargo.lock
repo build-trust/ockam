@@ -3045,6 +3045,7 @@ dependencies = [
  "ockam_macros",
  "ockam_multiaddr",
  "ockam_vault",
+ "once_cell",
  "open",
  "pem-rfc7468",
  "rand 0.8.5",
