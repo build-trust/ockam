@@ -7,8 +7,9 @@ use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{route, Address, Error, Route};
+use ockam_core::{route, Address, AllowAll, Error, Route};
 use ockam_node::Context;
+use ockam_transport_tcp::InletController;
 
 use crate::kafka::kafka_outlet_address;
 use crate::nodes::models::portal::{CreateInlet, InletStatus};
@@ -21,28 +22,30 @@ type BrokerId = i32;
 ///Shared structure for every kafka worker to keep track of which brokers are being proxied
 /// with the relative inlet listener socket address.
 /// Also takes care of creating inlets dynamically when they are not present yet.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub(crate) struct KafkaInletMap {
     inner: Arc<Mutex<KafkaInletMapInner>>,
 }
 
-#[derive(Debug)]
 struct KafkaInletMapInner {
     broker_map: HashMap<BrokerId, SocketAddr>,
     port_range: PortRange,
     current_port: u16,
     bind_host: String,
     interceptor_route: Route,
+    inlet_creator: Arc<dyn InletController>,
 }
 
 impl KafkaInletMap {
     pub(crate) fn new(
+        inlet_creator: Arc<dyn InletController>,
         interceptor_route: Route,
         bind_address: String,
         port_range: PortRange,
     ) -> KafkaInletMap {
         Self {
             inner: Arc::new(Mutex::new(KafkaInletMapInner {
+                inlet_creator,
                 interceptor_route,
                 broker_map: HashMap::new(),
                 current_port: port_range.start(),
@@ -85,52 +88,17 @@ impl KafkaInletMap {
             ))
             .map_err(|err| Error::new(Origin::Transport, Kind::Invalid, err))?;
 
-            let to = route_to_multiaddr(
-                &self_guard
-                    .interceptor_route
-                    .clone()
-                    .modify()
-                    .append(kafka_outlet_address(broker_id))
-                    .into(),
-            )
-            .ok_or_else(|| {
-                Error::new(
-                    Origin::Transport,
-                    Kind::Invalid,
-                    "cannot convert route to multiaddr",
-                )
-            })?;
+            let to = self_guard
+                .interceptor_route
+                .clone()
+                .modify()
+                .append(kafka_outlet_address(broker_id))
+                .into();
 
-            let buffer: Vec<u8> = context
-                .send_and_receive(
-                    route![NODEMANAGER_ADDR],
-                    Request::post("/node/inlet")
-                        .body(CreateInlet::to_node(socket_address, to, None, None))
-                        .to_vec()?,
-                )
+            let (_worker_address, socket_address) = self_guard
+                .inlet_creator
+                .create_inlet(socket_address.to_string(), to, Arc::new(AllowAll))
                 .await?;
-
-            let mut decoder = Decoder::new(&buffer);
-            let response: Response = decoder.decode()?;
-
-            let status = response.status().unwrap_or(Status::InternalServerError);
-            if status != Status::Ok {
-                return Err(Error::new(
-                    Origin::Transport,
-                    Kind::Invalid,
-                    format!("cannot create inlet: {}", status),
-                ));
-            }
-            let _inlet_address = if !response.has_body() {
-                return Err(Error::new(
-                    Origin::Transport,
-                    Kind::Unknown,
-                    "invalid create inlet response",
-                ));
-            } else {
-                let status: InletStatus = decoder.decode()?;
-                Address::from(status.worker_addr.to_string())
-            };
 
             self_guard.current_port += 1;
             self_guard.broker_map.insert(broker_id, socket_address);

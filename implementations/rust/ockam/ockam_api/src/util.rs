@@ -239,14 +239,18 @@ pub mod test {
         NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
     };
     use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+    use ockam::compat::asynchronous::RwLock;
     use ockam::Result;
+    use ockam_core::compat::sync::Arc;
     use ockam_core::AsyncTryClone;
     use ockam_identity::Identity;
     use ockam_node::Context;
 
     ///guard to delete the cli state at the end of the test
     pub struct CliStateGuard {
-        cli_state: CliState,
+        pub cli_state: CliState,
+        pub node_manager: Arc<RwLock<NodeManager>>,
+        pub tcp: ockam_transport_tcp::TcpTransport,
     }
     impl Drop for CliStateGuard {
         fn drop(&mut self) {
@@ -304,7 +308,8 @@ pub mod test {
         )
         .await?;
 
-        let node_manager_worker = NodeManagerWorker::new(node_manager);
+        let mut node_manager_worker = NodeManagerWorker::new(node_manager);
+        let node_manager = node_manager_worker.get().clone();
         context
             .start_worker(
                 NODEMANAGER_ADDR,
@@ -314,6 +319,10 @@ pub mod test {
             )
             .await?;
 
-        Ok(CliStateGuard { cli_state })
+        Ok(CliStateGuard {
+            cli_state,
+            node_manager,
+            tcp,
+        })
     }
 }

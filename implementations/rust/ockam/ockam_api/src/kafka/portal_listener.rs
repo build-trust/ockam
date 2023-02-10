@@ -1,7 +1,9 @@
+use ockam_core::compat::sync::Arc;
 use tracing::trace;
 
 use ockam_core::{Address, AllowAll, Any, Route, Routed, Worker};
 use ockam_node::Context;
+use ockam_transport_tcp::InletController;
 
 use crate::kafka::inlet_map::KafkaInletMap;
 use crate::kafka::portal_worker::KafkaPortalWorker;
@@ -51,12 +53,13 @@ impl Worker for KafkaPortalListener {
 impl KafkaPortalListener {
     pub(crate) async fn start(
         context: &Context,
+        inlet_creator: Arc<dyn InletController>,
         interceptor_route: Route,
         listener_address: Address,
         bind_host: String,
         port_range: PortRange,
     ) -> ockam_core::Result<()> {
-        let inlet_map = KafkaInletMap::new(interceptor_route, bind_host, port_range);
+        let inlet_map = KafkaInletMap::new(inlet_creator, interceptor_route, bind_host, port_range);
 
         context
             .start_worker(

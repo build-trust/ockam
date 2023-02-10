@@ -19,6 +19,7 @@ use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::{Project, Secure, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
+use ockam_transport_tcp::InletController;
 use std::sync::Arc;
 
 use super::{NodeManager, NodeManagerWorker};

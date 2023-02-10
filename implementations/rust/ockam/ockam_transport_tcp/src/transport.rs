@@ -1,4 +1,5 @@
 use ockam_core::access_control::IncomingAccessControl;
+use ockam_core::async_trait;
 use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
 use ockam_core::{Address, AsyncTryClone, DenyAll, Mailboxes, Result, Route};
 use ockam_node::{Context, WorkerBuilder};
@@ -49,7 +50,42 @@ pub struct TcpTransport {
     router_handle: TcpRouterHandle,
 }
 
+#[async_trait]
+pub trait InletController: Send + Sync {
+    async fn create_inlet(
+        &self,
+        bind_addr: String,
+        outlet_route: Route,
+        access_control: Arc<dyn IncomingAccessControl>,
+    ) -> Result<(Address, SocketAddr)>;
+
+    async fn stop_inlet(&self, addr: Address) -> Result<()>;
+}
+
+#[async_trait]
+impl InletController for TcpTransport {
+    async fn create_inlet(
+        &self,
+        bind_addr: String,
+        outlet_route: Route,
+        access_control: Arc<dyn IncomingAccessControl>,
+    ) -> Result<(Address, SocketAddr)> {
+        self.create_inlet_impl(bind_addr.into(), outlet_route, access_control)
+            .await
+    }
+
+    async fn stop_inlet(&self, addr: Address) -> Result<()> {
+        self.router_handle.stop_inlet(addr).await?;
+
+        Ok(())
+    }
+}
+
 impl TcpTransport {
+    pub async fn create_inlet_controller(&self) -> Result<Arc<dyn InletController>> {
+        Ok(Arc::new(self.async_try_clone().await?))
+    }
+
     /// Create a new TCP transport and router for the current node
     ///
     /// ```rust

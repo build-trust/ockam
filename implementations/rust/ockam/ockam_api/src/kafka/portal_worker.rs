@@ -283,12 +283,14 @@ mod test {
     use kafka_protocol::protocol::StrBytes;
 
     use ockam::Context;
-    use ockam_core::{route, Routed};
-    use ockam_transport_tcp::PortalMessage;
+    use ockam_core::compat::sync::Arc;
+    use ockam_core::{route, AsyncTryClone, Routed};
+    use ockam_transport_tcp::{PortalMessage, TcpTransport};
 
     use crate::kafka::inlet_map::KafkaInletMap;
     use crate::kafka::portal_worker::KafkaPortalWorker;
     use crate::port_range::PortRange;
+    use ockam::compat::asynchronous::RwLock;
 
     const TEST_KAFKA_API_VERSION: i16 = 13;
 
@@ -297,7 +299,10 @@ mod test {
     async fn kafka_portal_worker__ping_pong_pass_through__should_pass(
         context: &mut Context,
     ) -> ockam::Result<()> {
+        let tcp_transport = TcpTransport::create(context).await?;
+
         let inlet_map = KafkaInletMap::new(
+            Arc::new(tcp_transport),
             route![],
             "0.0.0.0".into(),
             PortRange::new(20_000, 40_000).unwrap(),
@@ -335,9 +340,10 @@ mod test {
     async fn kafka_portal_worker__metadata_exchange__response_changed(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        crate::test::start_manager_for_tests(context).await?;
+        let handle = crate::test::start_manager_for_tests(context).await?;
 
         let inlet_map = KafkaInletMap::new(
+            handle.tcp.create_inlet_controller().await?,
             route![],
             "127.0.0.1".into(),
             PortRange::new(20_000, 40_000).unwrap(),

@@ -24,6 +24,8 @@ use ockam::{Address, AsyncTryClone, Context, Result};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::{AllowAll, Route};
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_tcp::InletController;
+use std::sync::Arc;
 
 use super::NodeManagerWorker;
 
@@ -316,6 +318,7 @@ impl NodeManager {
 
         KafkaPortalListener::start(
             context,
+            self.tcp_transport.create_inlet_controller().await?,
             interceptor_route,
             listener_address.clone(),
             bind_ip,
