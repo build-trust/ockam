@@ -5,6 +5,8 @@ permissions:
 
 on:
   workflow_dispatch:
+  merge_group:
+    branches: [develop]
   pull_request:
     paths:
       - '.github/workflows/elixir.yml'

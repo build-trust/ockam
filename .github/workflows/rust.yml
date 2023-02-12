@@ -8,6 +8,8 @@ on:
     inputs:
       commit_sha:
         description: SHA to test workflow
+  merge_group:
+    branches: [develop]
   pull_request:
     paths:
       - ".github/workflows/rust.yml"
