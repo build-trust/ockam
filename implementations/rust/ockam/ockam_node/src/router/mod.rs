@@ -157,6 +157,7 @@ impl Router {
         match msg {
             // Successful router registration command
             Router(tt, addr, sender) if !self.external.contains_key(&tt) => {
+                // TODO: Remove after other transport implementations are moved to new architecture
                 trace!("Registering new router for type {}", tt);
 
                 self.external.insert(tt, addr);
@@ -166,10 +167,13 @@ impl Router {
                     .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?
             }
             // Rejected router registration command
-            Router(_, _, sender) => sender
-                .send(RouterReply::router_exists())
-                .await
-                .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?,
+            Router(_, _, sender) => {
+                // TODO: Remove after other transport implementations are moved to new architecture
+                sender
+                    .send(RouterReply::router_exists())
+                    .await
+                    .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?
+            }
 
             //// ==! Basic worker control
             StartWorker {
@@ -283,6 +287,7 @@ impl Router {
             // Handle route/ sender requests
             SenderReq(ref addr, ref reply) => match determine_type(addr) {
                 RouteType::Internal => utils::resolve(self, addr, reply).await?,
+                // TODO: Remove after other transport implementations are moved to new architecture
                 RouteType::External(tt) => {
                     let addr = utils::router_addr(self, tt)?;
                     utils::resolve(self, &addr, reply).await?
