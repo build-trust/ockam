@@ -75,8 +75,7 @@ jobs:
         shell: bash
         run: |
           export PATH=$(pwd)/target/debug:$PATH;
-          cd implementations/rust/ockam/ockam_command/tests;
-          bats commands.bats;
+          bats implementations/rust/ockam/ockam_command/tests/bats;
 
       - name: Prep cache cargo_target before persisting
         uses: ./.github/actions/cargo_target_dir_pre_cache

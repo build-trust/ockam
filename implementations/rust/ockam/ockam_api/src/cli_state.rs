@@ -27,9 +27,9 @@ pub enum CliStateError {
     Serde(#[from] serde_json::Error),
     #[error("ockam error")]
     Ockam(#[from] ockam_core::Error),
-    #[error("`{0}` already exists")]
+    #[error("already exists: {0}")]
     AlreadyExists(String),
-    #[error("`{0}` not found")]
+    #[error("not found: {0}")]
     NotFound(String),
     #[error("{0}")]
     Invalid(String),
