@@ -45,7 +45,7 @@ tokio = { version = "1.25", features = [
     "time",
     "io-util",
 ] }
-tokio-util = { version = "0.7.1", features = ["net", "codec"] }
+tokio-util = { version = "0.7.7", features = ["net", "codec"] }
 
 [dev-dependencies]
 ockam_macros = { path = "../ockam_macros", version = "^0.27.0" }
