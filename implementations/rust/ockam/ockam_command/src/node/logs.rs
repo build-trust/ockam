@@ -21,7 +21,7 @@ pub struct LogCommand {
 impl LogCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         if let Err(e) = run_impl(opts, self) {
-            eprintln!("{}", e);
+            eprintln!("{e}");
             std::process::exit(e.code());
         }
     }
