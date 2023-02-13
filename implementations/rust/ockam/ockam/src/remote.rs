@@ -362,7 +362,7 @@ mod test {
     use super::*;
     use crate::workers::Echoer;
     use ockam_core::route;
-    use ockam_transport_tcp::{TcpTransport, TCP};
+    use ockam_transport_tcp::TcpTransport;
     use std::env;
 
     fn get_cloud_address() -> Option<String> {
@@ -387,16 +387,12 @@ mod test {
             return Ok(());
         };
 
-        WorkerBuilder::with_mailboxes(
-            Mailboxes::main("echoer", Arc::new(AllowAll), Arc::new(AllowAll)),
-            Echoer,
-        )
-        .start(ctx)
-        .await?;
+        ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
+            .await?;
 
-        TcpTransport::create(ctx).await?;
+        let tcp = TcpTransport::create(ctx).await?;
+        let node_in_hub = tcp.connect(cloud_address).await?;
 
-        let node_in_hub = (TCP, cloud_address);
         let remote_info = RemoteForwarder::create(ctx, node_in_hub.clone(), AllowAll).await?;
 
         let resp = ctx
@@ -421,16 +417,12 @@ mod test {
             return Ok(());
         };
 
-        WorkerBuilder::with_mailboxes(
-            Mailboxes::main("echoer", Arc::new(AllowAll), Arc::new(AllowAll)),
-            Echoer,
-        )
-        .start(ctx)
-        .await?;
+        ctx.start_worker("echoer", Echoer, AllowAll, AllowAll)
+            .await?;
 
-        TcpTransport::create(ctx).await?;
+        let tcp = TcpTransport::create(ctx).await?;
 
-        let node_in_hub = (TCP, cloud_address);
+        let node_in_hub = tcp.connect(cloud_address).await?;
         let _ = RemoteForwarder::create_static(ctx, node_in_hub.clone(), "alias", AllowAll).await?;
 
         let resp = ctx
