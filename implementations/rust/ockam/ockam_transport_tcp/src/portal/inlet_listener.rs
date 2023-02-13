@@ -1,4 +1,4 @@
-use crate::TcpPortalWorker;
+use crate::{TcpPortalWorker, TcpRegistry};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::{
     async_trait,
@@ -17,6 +17,7 @@ use tracing::{debug, error};
 /// after a call is made to
 /// [`TcpTransport::create_inlet`](crate::TcpTransport::create_inlet).
 pub(crate) struct TcpInletListenProcessor {
+    registry: TcpRegistry,
     inner: TcpListener,
     outlet_listener_route: Route,
     access_control: Arc<dyn IncomingAccessControl>,
@@ -26,6 +27,7 @@ impl TcpInletListenProcessor {
     /// Start a new `TcpInletListenProcessor`
     pub(crate) async fn start(
         ctx: &Context,
+        registry: TcpRegistry,
         outlet_listener_route: Route,
         addr: SocketAddr,
         access_control: Arc<dyn IncomingAccessControl>,
@@ -42,6 +44,7 @@ impl TcpInletListenProcessor {
         };
         let saddr = inner.local_addr().map_err(TransportError::from)?;
         let processor = Self {
+            registry,
             inner,
             outlet_listener_route,
             access_control: access_control.clone(),
@@ -62,13 +65,26 @@ impl TcpInletListenProcessor {
 impl Processor for TcpInletListenProcessor {
     type Context = Context;
 
+    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        self.registry.add_inlet_listener_processor(&ctx.address());
+
+        Ok(())
+    }
+
+    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        self.registry
+            .remove_inlet_listener_processor(&ctx.address());
+
+        Ok(())
+    }
+
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
         TcpPortalWorker::start_new_inlet(
             ctx,
+            self.registry.clone(),
             stream,
             peer,
-            // self.router_address.clone(),
             self.outlet_listener_route.clone(),
             self.access_control.clone(),
         )

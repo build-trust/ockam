@@ -1,4 +1,4 @@
-use crate::{PortalInternalMessage, PortalMessage, TcpPortalRecvProcessor};
+use crate::{PortalInternalMessage, PortalMessage, TcpPortalRecvProcessor, TcpRegistry};
 use core::time::Duration;
 use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
 use ockam_core::{
@@ -41,9 +41,10 @@ enum TypeName {
 /// [`TcpInletListenProcessor::process`](crate::TcpInletListenProcessor)
 /// after a new connection has been accepted.
 pub(crate) struct TcpPortalWorker {
+    registry: TcpRegistry,
     state: State,
-    tx: Option<OwnedWriteHalf>,
-    rx: Option<OwnedReadHalf>,
+    write_half: Option<OwnedWriteHalf>,
+    read_half: Option<OwnedReadHalf>,
     peer: SocketAddr,
     internal_address: Address,
     remote_address: Address,
@@ -57,6 +58,7 @@ impl TcpPortalWorker {
     /// Start a new `TcpPortalWorker` of type [`TypeName::Inlet`]
     pub(crate) async fn start_new_inlet(
         ctx: &Context,
+        registry: TcpRegistry,
         stream: TcpStream,
         peer: SocketAddr,
         ping_route: Route,
@@ -64,6 +66,7 @@ impl TcpPortalWorker {
     ) -> Result<Address> {
         Self::start(
             ctx,
+            registry,
             peer,
             State::SendPing { ping_route },
             Some(stream),
@@ -76,12 +79,14 @@ impl TcpPortalWorker {
     /// Start a new `TcpPortalWorker` of type [`TypeName::Outlet`]
     pub(crate) async fn start_new_outlet(
         ctx: &Context,
+        registry: TcpRegistry,
         peer: SocketAddr,
         pong_route: Route,
         access_control: Arc<dyn IncomingAccessControl>,
     ) -> Result<Address> {
         Self::start(
             ctx,
+            registry,
             peer,
             State::SendPong { pong_route },
             None,
@@ -94,6 +99,7 @@ impl TcpPortalWorker {
     /// Start a new `TcpPortalWorker`
     async fn start(
         ctx: &Context,
+        registry: TcpRegistry,
         peer: SocketAddr,
         state: State,
         stream: Option<TcpStream>,
@@ -118,9 +124,10 @@ impl TcpPortalWorker {
         };
 
         let worker = Self {
+            registry,
             state,
-            tx,
-            rx,
+            write_half: tx,
+            read_half: rx,
             peer,
             internal_address,
             remote_address: remote_address.clone(),
@@ -167,10 +174,14 @@ impl TcpPortalWorker {
 
     /// Start a `TcpPortalRecvProcessor`
     async fn start_receiver(&mut self, ctx: &Context, onward_route: Route) -> Result<()> {
-        if let Some(rx) = self.rx.take() {
+        if let Some(rx) = self.read_half.take() {
             let next_hop = onward_route.next()?.clone();
-            let receiver =
-                TcpPortalRecvProcessor::new(rx, self.internal_address.clone(), onward_route);
+            let receiver = TcpPortalRecvProcessor::new(
+                self.registry.clone(),
+                rx,
+                self.internal_address.clone(),
+                onward_route,
+            );
 
             let mailbox = Mailbox::new(
                 self.receiver_address.clone(),
@@ -288,13 +299,13 @@ impl TcpPortalWorker {
         )
         .await?;
 
-        if self.tx.is_none() {
+        if self.write_half.is_none() {
             let stream = TcpStream::connect(self.peer)
                 .await
                 .map_err(TransportError::from)?;
             let (rx, tx) = stream.into_split();
-            self.tx = Some(tx);
-            self.rx = Some(rx);
+            self.write_half = Some(tx);
+            self.read_half = Some(rx);
 
             self.start_receiver(ctx, pong_route.clone()).await?;
 
@@ -330,6 +341,14 @@ impl Worker for TcpPortalWorker {
                 return Err(TransportError::PortalInvalidState.into())
             }
         }
+
+        self.registry.add_portal_worker(&self.remote_address);
+
+        Ok(())
+    }
+
+    async fn shutdown(&mut self, _ctx: &mut Self::Context) -> Result<()> {
+        self.registry.remove_portal_worker(&self.remote_address);
 
         Ok(())
     }
@@ -406,7 +425,7 @@ impl Worker for TcpPortalWorker {
 
                     match msg {
                         PortalMessage::Payload(payload) => {
-                            if let Some(tx) = &mut self.tx {
+                            if let Some(tx) = &mut self.write_half {
                                 match tx.write_all(&payload).await {
                                     Ok(()) => {}
                                     Err(err) => {

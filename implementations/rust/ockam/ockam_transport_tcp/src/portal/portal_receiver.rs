@@ -1,5 +1,5 @@
 use crate::portal::portal_message::MAX_PAYLOAD_SIZE;
-use crate::{PortalInternalMessage, PortalMessage};
+use crate::{PortalInternalMessage, PortalMessage, TcpRegistry};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, Encodable, LocalMessage, Route, TransportMessage};
 use ockam_core::{route, Address, Processor, Result};
@@ -13,18 +13,25 @@ use tracing::{error, warn};
 /// `TcpPortalWorker` after a call is made to
 /// [`TcpPortalWorker::start_receiver`](crate::TcpPortalWorker::start_receiver)
 pub(crate) struct TcpPortalRecvProcessor {
+    registry: TcpRegistry,
     buf: Vec<u8>,
-    rx: OwnedReadHalf,
+    read_half: OwnedReadHalf,
     sender_address: Address,
     onward_route: Route,
 }
 
 impl TcpPortalRecvProcessor {
     /// Create a new `TcpPortalRecvProcessor`
-    pub fn new(rx: OwnedReadHalf, sender_address: Address, onward_route: Route) -> Self {
+    pub fn new(
+        registry: TcpRegistry,
+        read_half: OwnedReadHalf,
+        sender_address: Address,
+        onward_route: Route,
+    ) -> Self {
         Self {
+            registry,
             buf: Vec::with_capacity(MAX_PAYLOAD_SIZE),
-            rx,
+            read_half,
             sender_address,
             onward_route,
         }
@@ -35,10 +42,23 @@ impl TcpPortalRecvProcessor {
 impl Processor for TcpPortalRecvProcessor {
     type Context = Context;
 
+    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        self.registry.add_portal_receiver_processor(&ctx.address());
+
+        Ok(())
+    }
+
+    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        self.registry
+            .remove_portal_receiver_processor(&ctx.address());
+
+        Ok(())
+    }
+
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         self.buf.clear();
 
-        let _len = match self.rx.read_buf(&mut self.buf).await {
+        let _len = match self.read_half.read_buf(&mut self.buf).await {
             Ok(len) => len,
             Err(err) => {
                 error!("Tcp Portal connection read failed with error: {}", err);

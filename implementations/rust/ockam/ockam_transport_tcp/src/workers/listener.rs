@@ -1,14 +1,14 @@
-use crate::{TcpRouterHandle, TcpSendWorker};
+use crate::{TcpRegistry, TcpSendWorker};
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
-    AllowSourceAddress, AsyncTryClone, DenyAll,
+    IncomingAccessControl, OutgoingAccessControl,
 };
 use ockam_core::{Address, Mailbox, Mailboxes, Processor, Result};
-use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
+use ockam_node::{Context, ProcessorBuilder};
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
-use tracing::{debug, trace};
+use tracing::debug;
 
 /// A TCP Listen processor
 ///
@@ -16,15 +16,19 @@ use tracing::{debug, trace};
 /// after a call is made to
 /// [`TcpTransport::listen`](crate::TcpTransport::listen).
 pub(crate) struct TcpListenProcessor {
+    registry: TcpRegistry,
     inner: TcpListener,
-    router_handle: TcpRouterHandle,
+    sender_incoming_access_control: Arc<dyn IncomingAccessControl>,
+    receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
 }
 
 impl TcpListenProcessor {
     pub(crate) async fn start(
         ctx: &Context,
-        router_handle: TcpRouterHandle,
+        registry: TcpRegistry,
         addr: SocketAddr,
+        sender_incoming_access_control: Arc<dyn IncomingAccessControl>,
+        receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> Result<SocketAddr> {
         debug!("Binding TcpListener to {}", addr);
         let inner = TcpListener::bind(addr)
@@ -32,8 +36,10 @@ impl TcpListenProcessor {
             .map_err(TransportError::from)?;
         let saddr = inner.local_addr().map_err(TransportError::from)?;
         let processor = Self {
+            registry,
             inner,
-            router_handle,
+            sender_incoming_access_control,
+            receiver_outgoing_access_control,
         };
 
         let mailbox = Mailbox::deny_all(Address::random_tagged("TcpListenProcessor"));
@@ -50,7 +56,17 @@ impl Processor for TcpListenProcessor {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await
+        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+
+        self.registry.add_listener_processor(&ctx.address());
+
+        Ok(())
+    }
+
+    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        self.registry.remove_listener_processor(&ctx.address());
+
+        Ok(())
     }
 
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
@@ -60,38 +76,16 @@ impl Processor for TcpListenProcessor {
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
         debug!("TCP connection accepted");
 
-        let handle_clone = self.router_handle.async_try_clone().await?;
         // And create a connection worker for it
-        let (sender, pair) =
-            TcpSendWorker::new_pair(handle_clone, Some(stream), peer, Vec::new()).await?;
-
-        // Register the connection with the local TcpRouter
-        self.router_handle.register(&pair).await?;
-        debug!(%peer, "TCP connection registered");
-
-        trace! {
-            peer = %peer,
-            tx_addr = %pair.tx_addr(),
-            int_addr = %sender.internal_addr(),
-            "starting tcp connection worker"
-        };
-
-        let tx_mailbox = Mailbox::new(
-            pair.tx_addr(),
-            Arc::new(AllowSourceAddress(self.router_handle.main_addr().clone())),
-            Arc::new(DenyAll),
-        );
-
-        let internal_mailbox = Mailbox::new(
-            sender.internal_addr().clone(),
-            Arc::new(AllowSourceAddress(sender.rx_addr().clone())),
-            Arc::new(DenyAll),
-        );
-
-        let mailboxes = Mailboxes::new(tx_mailbox, vec![internal_mailbox]);
-        WorkerBuilder::with_mailboxes(mailboxes, sender)
-            .start(ctx)
-            .await?;
+        let _sender_worker_address = TcpSendWorker::start(
+            ctx,
+            self.registry.clone(),
+            Some(stream),
+            peer,
+            self.sender_incoming_access_control.clone(),
+            self.receiver_outgoing_access_control.clone(),
+        )
+        .await?;
 
         Ok(true)
     }
