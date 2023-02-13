@@ -38,31 +38,33 @@
 ///
 /// The network we establish between the control node, the edge node and the Orchestrator is the following
 ///
-///                   +-------------------------+
-///                   | Edge node               | Inlet <-- 127.0.0.1:7000
-///                   |                         | connected to "outlet" via secure channel
-///                   +-------------------------+
-///                     |                 |
-///  secure channel to  |                 | create secure channel to control
-///  project            |                 | via the forwarder
-///                     v                 |
-///                   +-------------------+-------+                 +--------------+
-///                   | Orchestrator      |       | get credentials | Authority    |
-///                   |                   |       |---------------->|              |
-///                   |                   |       |                 |              |
-///                   +------------forwarder------+                 +--------------+
-///                     ^          to control
-///                     |         ^       |
-///  secure channel to  |  create |       |
-///  project            |         |       v
-///                     |         |    "untrusted"
-///                   +--------------secure channel listener--+
-///                   |                                       |
-///                   | Control node                          | "outlet" --> 127.0.0.1:5000
-///                   |                                       |
-///                   +---------------------------------------+
+///       get credentials        +-------------------------------------+
+///       via secure channel     |                                     | Inlet <-- 127.0.0.1:7000
+///              +---------------+              Edge node              | connected to "outlet"
+///              |               |                                     | via secure channel
+///              |               +-------------------------------------+
+///              |                   |                           |
+///              |                   |                           | create secure channel to control
+///              |                   |                           | via the forwarder
+///              v                   v                           |
+///      +--------------+        +-------------------------------+-------+
+///      | Authority    |        |                               |       |
+///      |              |        |             Orchestrator      |       |
+///      |              |        |                               |       |
+///      +--------------+        +---------------------- forwarder ------+
+///              ^                  ^                    to control
+///              |                  |                   ^        |
+///              |                  |            create |        |
+///              |                  |                   |        v
+///              |                  |                   |     "untrusted"  secure channel
+///              |               +---------------------------------------+ listener
+///              |               |                                       |
+///              +---------------|              Control node             | "outlet" --> 127.0.0.1:5000
+///       get credentials        |                                       |
+///       via secure channel     +---------------------------------------+
 ///
-///   - we create initially some secure channels to the Orchestrator in order to retrieve credentials
+///
+///   - we create initially some secure channels to the Authority in order to retrieve credentials
 ///     based on a one-time token generated with `ockam project enroll --attribute component=<name of node>`
 ///
 ///   - then the control node creates a forwarder on the Orchestrator in order to accept TCP traffic without
