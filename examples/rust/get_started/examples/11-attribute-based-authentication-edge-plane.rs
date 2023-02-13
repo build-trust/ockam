@@ -20,8 +20,6 @@ use std::time::Duration;
 ///
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    env::set_var("OCKAM_LOG", "trace");
-
     // Use the TCP transport
     let tcp = TcpTransport::create(&ctx).await?;
 
