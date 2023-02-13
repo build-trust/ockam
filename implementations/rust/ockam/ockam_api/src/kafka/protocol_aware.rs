@@ -128,7 +128,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> ProtocolState<V, S> {
             .secure_channel_registry()
             .get_channel_list()
             .iter()
-            .find(|entry| entry.their_id() == &identifier && entry.is_initiator() == false)
+            .find(|entry| entry.their_id() == &identifier && !entry.is_initiator())
             .cloned()
             .ok_or_else(|| {
                 InterceptError::Ockam(ockam_core::Error::new(
@@ -184,7 +184,10 @@ impl<V: IdentityVault, S: AuthenticatedStorage> ProtocolState<V, S> {
                         for data in &mut topic.partition_data {
                             if let Some(content) = data.records.take() {
                                 let mut content = BytesMut::from(content.as_ref());
-                                let mut records = RecordBatchDecoder::decode(&mut content).unwrap();
+                                let mut records = RecordBatchDecoder::decode(&mut content)
+                                    .map_err(|_| {
+                                        InterceptError::Io(Error::from(ErrorKind::InvalidData))
+                                    })?;
 
                                 for record in records.iter_mut() {
                                     if let Some(record_value) = record.value.take() {
@@ -244,7 +247,9 @@ impl<V: IdentityVault, S: AuthenticatedStorage> ProtocolState<V, S> {
                                         compression: Compression::None,
                                     },
                                 )
-                                .unwrap();
+                                .map_err(|_| {
+                                    InterceptError::Io(Error::from(ErrorKind::InvalidData))
+                                })?;
 
                                 data.records = Some(encoded.freeze());
                             }
@@ -334,12 +339,20 @@ impl<V: IdentityVault, S: AuthenticatedStorage> ProtocolState<V, S> {
                         for partition in response.partitions.iter_mut() {
                             if let Some(content) = partition.records.take() {
                                 let mut content = BytesMut::from(content.as_ref());
-                                let mut records = RecordBatchDecoder::decode(&mut content).unwrap();
+                                let mut records = RecordBatchDecoder::decode(&mut content)
+                                    .map_err(|_| {
+                                        InterceptError::Io(Error::from(ErrorKind::InvalidData))
+                                    })?;
 
                                 for record in records.iter_mut() {
                                     if let Some(record_value) = record.value.take() {
-                                        let message_wrapper: MessageWrapper =
-                                            Decoder::new(record_value.as_ref()).decode().unwrap();
+                                        let message_wrapper: MessageWrapper = Decoder::new(
+                                            record_value.as_ref(),
+                                        )
+                                        .decode()
+                                        .map_err(|_| {
+                                            InterceptError::Io(Error::from(ErrorKind::InvalidData))
+                                        })?;
 
                                         let secure_channel_entry = self
                                             .get_secure_channel_worker_for(
@@ -377,7 +390,9 @@ impl<V: IdentityVault, S: AuthenticatedStorage> ProtocolState<V, S> {
                                         compression: Compression::None,
                                     },
                                 )
-                                .unwrap();
+                                .map_err(|_| {
+                                    InterceptError::Io(Error::from(ErrorKind::InvalidData))
+                                })?;
                                 partition.records = Some(encoded.freeze());
                             }
                         }
