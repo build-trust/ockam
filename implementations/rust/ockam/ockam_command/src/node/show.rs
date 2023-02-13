@@ -3,7 +3,6 @@ use crate::util::{api, node_rpc, Rpc, RpcBuilder};
 use crate::{help, node::HELP_DETAIL, CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
-use core::time::Duration;
 use ockam::TcpTransport;
 use ockam_api::nodes::models::portal::{InletList, OutletList};
 use ockam_api::nodes::models::services::ServiceList;
@@ -12,11 +11,11 @@ use ockam_api::{addr_to_multiaddr, cli_state, route_to_multiaddr};
 use ockam_core::Route;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
-use tokio_retry::strategy::FibonacciBackoff;
+use tokio_retry::strategy::FixedInterval;
 use tracing::debug;
 
-const IS_NODE_UP_MAX_ATTEMPTS: usize = 50;
-const IS_NODE_UP_MAX_TIMEOUT: Duration = Duration::from_secs(1);
+const IS_NODE_UP_TIME_BETWEEN_CHECKS_MS: usize = 50;
+const IS_NODE_UP_MAX_ATTEMPTS: usize = 20; // 1 second
 
 /// Show node details
 #[derive(Clone, Debug, Args)]
@@ -54,7 +53,7 @@ async fn run_impl(
 // clippy to stop complaining about it.
 #[allow(clippy::too_many_arguments)]
 fn print_node_info(
-    node_port: u16,
+    node_port: Option<u16>,
     node_name: &str,
     is_default: bool,
     status_is_up: bool,
@@ -85,9 +84,11 @@ fn print_node_info(
         println!("    Short: {m}");
     }
 
-    let mut m = MultiAddr::default();
-    if m.push_back(DnsAddr::new("localhost")).is_ok() && m.push_back(Tcp::new(node_port)).is_ok() {
-        println!("    Verbose: {m}");
+    if let Some(port) = node_port {
+        let mut m = MultiAddr::default();
+        if m.push_back(DnsAddr::new("localhost")).is_ok() && m.push_back(Tcp::new(port)).is_ok() {
+            println!("    Verbose: {m}");
+        }
     }
 
     if let Some(id) = default_id {
@@ -157,7 +158,12 @@ pub async fn print_query_status(
     let cli_state = cli_state::CliState::new()?;
     let node_state = cli_state.nodes.get(node_name)?;
     if !is_node_up(rpc, wait_until_ready).await? {
-        let node_port = node_state.setup()?.default_tcp_listener()?.addr.port();
+        let node_port = node_state.setup().ok().and_then(|setup| {
+            setup
+                .default_tcp_listener()
+                .ok()
+                .map(|listener| listener.addr.port())
+        });
         print_node_info(
             node_port, node_name, is_default, false, None, None, None, None, None,
         );
@@ -194,7 +200,12 @@ pub async fn print_query_status(
         let outlets = rpc.parse_response::<OutletList>()?;
 
         let node_state = cli_state.nodes.get(node_name)?;
-        let node_port = node_state.setup()?.default_tcp_listener()?.addr.port();
+        let node_port = node_state.setup().ok().and_then(|setup| {
+            setup
+                .default_tcp_listener()
+                .ok()
+                .map(|listener| listener.addr.port())
+        });
 
         print_node_info(
             node_port,
@@ -225,9 +236,8 @@ async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<bool> {
         false => 1,
     };
 
-    let timeout = FibonacciBackoff::from_millis(250)
-        .max_delay(IS_NODE_UP_MAX_TIMEOUT)
-        .take(attempts);
+    let timeout =
+        FixedInterval::from_millis(IS_NODE_UP_TIME_BETWEEN_CHECKS_MS as u64).take(attempts);
 
     let cli_state = cli_state::CliState::new()?;
     let now = std::time::Instant::now();
