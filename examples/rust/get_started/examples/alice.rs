@@ -1,11 +1,11 @@
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
+use ockam::{route, vault::Vault, Context, Result, TcpTransport};
 use std::io;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Alice.
     let vault = Vault::create();
@@ -24,7 +24,8 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Combine the tcp address of the node and the forwarding_address to get a route
     // to Bob's secure channel listener.
-    let route_to_bob_listener = route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "listener"];
+    let cloud_node = tcp.connect("1.node.ockam.network:4000").await?;
+    let route_to_bob_listener = route![cloud_node, forwarding_address, "listener"];
 
     // As Alice, connect to Bob's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.

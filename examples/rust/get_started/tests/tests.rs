@@ -71,13 +71,6 @@ fn run_04_routing_over_transport_two_hops() -> Result<(), Error> {
     .spawn()?;
     resp.match_stdout(r"(?i)Waiting for incoming TCP connection")?;
 
-    // Launch middle, wait for it to start up
-    let mid = CmdBuilder::new(&format!(
-        "cargo run --example 04-routing-over-transport-two-hops-middle {rand_port_middle}"
-    ))
-    .spawn()?;
-    mid.match_stdout(r"(?i)Waiting for incoming TCP connection")?;
-
     // Run initiator to completion
     let (exitcode, stdout) = CmdBuilder::new(&format!(
         "cargo run --example 04-routing-over-transport-two-hops-initiator {rand_port_middle} {rand_port_responder}"

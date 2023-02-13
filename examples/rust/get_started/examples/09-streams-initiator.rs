@@ -1,11 +1,12 @@
-use ockam::{route, stream::Stream, Context, Result, TcpTransport, TCP};
+use ockam::{route, stream::Stream, Context, Result, TcpTransport};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    let _tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
 
     // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
+    let hub_node_address = tcp.connect(hub_node_tcp_address).await?;
 
     // Create a stream client
     let (sender, _receiver) = Stream::new(&ctx)
@@ -14,9 +15,9 @@ async fn main(mut ctx: Context) -> Result<()> {
         .index_service("stream_kafka_index")
         .client_id("stream-over-cloud-node-initiator")
         .connect(
-            route![(TCP, hub_node_tcp_address)], // route to hub
-            "initiator-to-responder",            // outgoing stream
-            "responder-to-initiator",            // incoming stream
+            route![hub_node_address], // route to hub
+            "initiator-to-responder", // outgoing stream
+            "responder-to-initiator", // incoming stream
         )
         .await?;
 
