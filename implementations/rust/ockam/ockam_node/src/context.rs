@@ -13,9 +13,9 @@ use core::{
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
-    Address, AllowAll, AllowOnwardAddress, AsyncTryClone, DenyAll, Error, IncomingAccessControl,
-    LocalMessage, Mailboxes, Message, OutgoingAccessControl, Processor, RelayMessage, Result,
-    Route, TransportMessage, TransportType, Worker,
+    route, Address, AllowAll, AllowOnwardAddress, AsyncTryClone, DenyAll, Error,
+    IncomingAccessControl, LocalMessage, Mailboxes, Message, OutgoingAccessControl, Processor,
+    RelayMessage, Result, Route, TransportMessage, TransportType, Worker,
 };
 use ockam_core::{LocalInfo, Mailbox};
 
@@ -583,10 +583,10 @@ impl Context {
         let (reply_tx, mut reply_rx) = small_channel();
         let next = match route.next() {
             Ok(next) => next,
-            Err(_) => {
+            Err(err) => {
                 // TODO: communicate bad routes to calling function
                 tracing::error!("Invalid route for message sent from {}", sending_address);
-                panic!("invalid destination route");
+                return Err(err);
             }
         };
 
@@ -602,12 +602,8 @@ impl Context {
             .take_sender()?;
 
         // Pack the payload into a TransportMessage
-        let payload = msg.encode().unwrap();
-        let mut transport_msg = TransportMessage::v1(route, Route::new(), payload);
-        transport_msg
-            .return_route
-            .modify()
-            .append(sending_address.clone());
+        let payload = msg.encode().map_err(|_| NodeError::Data.internal())?;
+        let transport_msg = TransportMessage::v1(route, route![sending_address.clone()], payload);
 
         // Pack transport message into a LocalMessage wrapper
         let local_msg = LocalMessage::new(transport_msg, local_info);
