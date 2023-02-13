@@ -87,12 +87,13 @@ impl NodeManagerWorker {
         let tid: Alias = body.tid.to_string();
 
         match node_manager.transports.get(&tid) {
+            // FIXME
             Some(t) if t.1 == TransportMode::Listen => {
                 warn!("It is not currently supported to destroy LISTEN transports");
                 Ok(Response::bad_request(req.id()))
             }
-            Some(t) => {
-                node_manager.tcp_transport.disconnect(&t.2).await?;
+            Some(_t) => {
+                // FIXME node_manager.tcp_transport.disconnect(&t.2).await?;
                 node_manager.transports.remove(&tid);
                 Ok(Response::ok(req.id()))
             }

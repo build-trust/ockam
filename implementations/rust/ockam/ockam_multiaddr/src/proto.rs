@@ -209,3 +209,4 @@ gen_str_proto!(Node, 72526, "node");
 gen_str_proto!(Project, 82526, "project");
 gen_str_proto!(Space, 92526, "space");
 gen_str_proto!(Secure, 99526, "secure");
+gen_str_proto!(OTCP, 93526, "otcp");

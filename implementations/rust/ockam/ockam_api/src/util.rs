@@ -2,12 +2,10 @@ use crate::cli_state::CliState;
 use crate::config::lookup::{InternetAddress, LookupMeta};
 use crate::error::ApiError;
 use anyhow::anyhow;
-use core::str::FromStr;
-use ockam::{Address, Error, Result, TCP};
+use ockam::{Address, Error, Result};
 use ockam_core::{Route, LOCAL};
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp};
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp, OTCP};
 use ockam_multiaddr::{MultiAddr, Protocol};
-use std::net::{SocketAddrV4, SocketAddrV6};
 
 /// Go through a multiaddr and remove all instances of
 /// `/node/<whatever>` out of it and replaces it with a fully
@@ -50,33 +48,9 @@ pub fn clean_multiaddr(input: &MultiAddr, cli_state: &CliState) -> Result<(Multi
 /// Try to convert a multi-address to an Ockam route.
 pub fn multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
     let mut rb = Route::new();
-    let mut it = ma.iter().peekable();
-    while let Some(p) = it.next() {
+    for p in ma.iter() {
         match p.code() {
-            Ip4::CODE => {
-                let ip4 = p.cast::<Ip4>()?;
-                let tcp = it.next()?.cast::<Tcp>()?;
-                let add = Address::new(TCP, SocketAddrV4::new(*ip4, *tcp).to_string());
-                rb = rb.append(add)
-            }
-            Ip6::CODE => {
-                let ip6 = p.cast::<Ip6>()?;
-                let tcp = it.next()?.cast::<Tcp>()?;
-                let add = Address::new(TCP, SocketAddrV6::new(*ip6, *tcp, 0, 0).to_string());
-                rb = rb.append(add)
-            }
-            DnsAddr::CODE => {
-                let host = p.cast::<DnsAddr>()?;
-                if let Some(p) = it.peek() {
-                    if p.code() == Tcp::CODE {
-                        let tcp = p.cast::<Tcp>()?;
-                        rb = rb.append(Address::new(TCP, format!("{}:{}", &*host, *tcp)));
-                        let _ = it.next();
-                        continue;
-                    }
-                }
-                rb = rb.append(Address::new(TCP, &*host))
-            }
+            // Only hops that are directly translated to existing workers are allowed here
             Service::CODE => {
                 let local = p.cast::<Service>()?;
                 rb = rb.append(Address::new(LOCAL, &*local))
@@ -85,11 +59,16 @@ pub fn multiaddr_to_route(ma: &MultiAddr) -> Option<Route> {
                 let local = p.cast::<Secure>()?;
                 rb = rb.append(Address::new(LOCAL, &*local))
             }
+            OTCP::CODE => {
+                let local = p.cast::<OTCP>()?;
+                rb = rb.append(Address::new(LOCAL, &*local))
+            }
 
             // If your code crashes here then the front-end CLI isn't
             // properly calling `clean_multiaddr` before passing it to
             // the backend
             Node::CODE => unreachable!(),
+            Ip4::CODE | Ip6::CODE | DnsAddr::CODE => unreachable!(),
 
             other => {
                 error!(target: "ockam_api", code = %other, "unsupported protocol");
@@ -110,18 +89,12 @@ pub fn multiaddr_to_addr(ma: &MultiAddr) -> Option<Address> {
     let mut it = ma.iter().peekable();
     let p = it.next()?;
     match p.code() {
-        DnsAddr::CODE => {
-            let host = p.cast::<DnsAddr>()?;
-            if let Some(p) = it.peek() {
-                if p.code() == Tcp::CODE {
-                    let tcp = p.cast::<Tcp>()?;
-                    return Some(Address::new(TCP, format!("{}:{}", &*host, *tcp)));
-                }
-            }
-            None
-        }
         Service::CODE => {
             let local = p.cast::<Service>()?;
+            Some(Address::new(LOCAL, &*local))
+        }
+        OTCP::CODE => {
+            let local = p.cast::<OTCP>()?;
             Some(Address::new(LOCAL, &*local))
         }
         _ => None,
@@ -146,21 +119,6 @@ pub fn route_to_multiaddr(r: &Route) -> Option<MultiAddr> {
 pub fn try_address_to_multiaddr(a: &Address) -> Result<MultiAddr, Error> {
     let mut ma = MultiAddr::default();
     match a.transport_type() {
-        TCP => {
-            if let Ok(sa) = SocketAddrV4::from_str(a.address()) {
-                ma.push_back(Ip4::new(*sa.ip()))?;
-                ma.push_back(Tcp::new(sa.port()))?
-            } else if let Ok(sa) = SocketAddrV6::from_str(a.address()) {
-                ma.push_back(Ip6::new(*sa.ip()))?;
-                ma.push_back(Tcp::new(sa.port()))?
-            } else if let Some((host, port)) = a.address().split_once(':') {
-                ma.push_back(DnsAddr::new(host))?;
-                let n = u16::from_str(port).map_err(ApiError::wrap)?;
-                ma.push_back(Tcp::new(n))?
-            } else {
-                ma.push_back(DnsAddr::new(a.address()))?
-            }
-        }
         LOCAL => ma.push_back(Service::new(a.address()))?,
         other => {
             error!(target: "ockam_api", transport = %other, "unsupported transport type");
