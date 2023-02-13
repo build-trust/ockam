@@ -3,7 +3,6 @@ use ockam::identity::credential::Credential;
 use ockam::identity::{Identity, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
 use ockam::{route, vault::Vault, Context, Result, TcpTransport};
 use ockam_core::IncomingAccessControl;
-use std::env;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -18,8 +17,28 @@ use std::time::Duration;
 ///   - create a TCP inlet with some access control checking the authenticated attributes of the caller
 ///   - connect the TCP inlet to a server outlet
 ///
+/// The node needs to be started with:
+///
+///  - a project.json file created with `ockam project information --output json  > project.json`
+///  - a token created by an enroller node with `ockam project enroll --attribute component=edge`
+///
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
+    // create a token (with `ockam project enroll --attribute component=edge`)
+    // In principle this token is provided by another node which has enrolling privileges for the
+    // current project
+    let token: OneTimeCode = create_token("component", "edge").await?;
+    println!("token: {token:?}");
+
+    // set the path of the project information file
+    // In principle this file is provided by the enrolling node by running the command
+    // `ockam project information --output json  > project.json`
+    let project_information_path = "project.json";
+    start_node(ctx, project_information_path, token).await
+}
+
+/// start the edge node
+async fn start_node(ctx: Context, project_information_path: &str, token: OneTimeCode) -> Result<()> {
     // Use the TCP transport
     let tcp = TcpTransport::create(&ctx).await?;
 
@@ -27,11 +46,11 @@ async fn main(ctx: Context) -> Result<()> {
     let vault = Vault::create();
     let edge_plane = Identity::create(&ctx, &vault).await?;
 
-    // 1. create a secure channel to the authority
+    // 2. create a secure channel to the authority
     //    to retrieve the node credentials
 
-    // Import the authority identity and route from the project.json file
-    let project = import_project("project.json", &vault).await?;
+    // Import the authority identity and route from the information file
+    let project = import_project(project_information_path, &vault).await?;
 
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
@@ -42,13 +61,6 @@ async fn main(ctx: Context) -> Result<()> {
             Duration::from_secs(120),
         )
         .await?;
-
-    // 2. get credentials using a one-time token
-
-    // create the token obtained with `ockam project enroll --attribute component=edge`
-    // you can also copy and paste a token here and parse it with the project/otc_parser function
-    let token: OneTimeCode = create_token("component", "edge").await?;
-    println!("token: {token:?}");
 
     let credentials: Credential = get_credentials(&ctx, route![secure_channel, "authenticator"], token).await?;
     println!("{credentials}");
