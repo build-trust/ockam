@@ -1,13 +1,13 @@
-use crate::{TcpRecvProcessor, TcpRouterHandle};
+use crate::{TcpRecvProcessor, TcpRegistry};
 use cfg_if::cfg_if;
 use core::time::Duration;
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
-    AllowSourceAddress, DenyAll, LocalOnwardOnly,
+    AllowSourceAddress, DenyAll, IncomingAccessControl, OutgoingAccessControl,
 };
 use ockam_core::{
-    Address, Any, Decodable, Encodable, LocalMessage, Mailbox, Mailboxes, Message, Result, Routed,
+    Address, Any, Decodable, Encodable, Mailbox, Mailboxes, Message, Result, Routed,
     TransportMessage, Worker,
 };
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
@@ -18,31 +18,6 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 use tracing::{debug, info, trace, warn};
-
-/// Provides the transmit and receive parts of a TCP connection
-#[derive(Debug)]
-pub(crate) struct WorkerPair {
-    hostnames: Vec<String>,
-    peer: SocketAddr,
-    tx_addr: Address,
-}
-
-impl WorkerPair {
-    /// Return a reference to the peer's hostname(s)
-    pub fn hostnames(&self) -> &[String] {
-        &self.hostnames
-    }
-
-    /// Return a reference to the peer's [`SocketAddr`](std::net::SocketAddr)
-    pub fn peer(&self) -> SocketAddr {
-        self.peer
-    }
-
-    /// Return a clone of the transmit [`Address`]
-    pub fn tx_addr(&self) -> Address {
-        self.tx_addr.clone()
-    }
-}
 
 #[derive(Serialize, Deserialize, Message, Clone)]
 pub(crate) enum TcpSendWorkerMsg {
@@ -58,23 +33,27 @@ pub(crate) enum TcpSendWorkerMsg {
 /// worker pair, and listens for messages from the node message system
 /// to dispatch to a remote peer.
 pub(crate) struct TcpSendWorker {
-    router_handle: TcpRouterHandle,
-    rx: Option<OwnedReadHalf>,
-    tx: Option<OwnedWriteHalf>,
+    registry: TcpRegistry,
+    read_half: Option<OwnedReadHalf>,
+    write_half: Option<OwnedWriteHalf>,
     peer: SocketAddr,
-    internal_addr: Address,
-    rx_addr: Address,
+    self_internal_addr: Address,
+    self_address: Address,
+    receiver_processor_address: Address,
+    receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     rx_should_be_stopped: bool,
 }
 
 impl TcpSendWorker {
     /// Create a new `TcpSendWorker`
     fn new(
-        router_handle: TcpRouterHandle,
+        registry: TcpRegistry,
         stream: Option<TcpStream>,
         peer: SocketAddr,
-        internal_addr: Address,
-        rx_addr: Address,
+        self_internal_addr: Address,
+        self_address: Address,
+        receiver_processor_address: Address,
+        receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> Self {
         let (rx, tx) = match stream {
             Some(s) => {
@@ -85,90 +64,103 @@ impl TcpSendWorker {
         };
 
         Self {
-            router_handle,
-            rx,
-            tx,
+            registry,
+            read_half: rx,
+            write_half: tx,
             peer,
-            internal_addr,
-            rx_addr,
+            self_internal_addr,
+            receiver_processor_address,
+            self_address,
+            receiver_outgoing_access_control,
             rx_should_be_stopped: true,
         }
     }
 
-    pub(crate) fn internal_addr(&self) -> &Address {
-        &self.internal_addr
+    pub(crate) fn self_internal_addr(&self) -> &Address {
+        &self.self_internal_addr
     }
 
-    // Receiver processor address
-    pub(crate) fn rx_addr(&self) -> &Address {
-        &self.rx_addr
+    pub(crate) fn self_address(&self) -> &Address {
+        &self.self_address
     }
 
+    pub(crate) fn receiver_processor_address(&self) -> &Address {
+        &self.receiver_processor_address
+    }
+}
+
+impl TcpSendWorker {
     /// Create a `(TcpSendWorker, WorkerPair)` without spawning the worker.
-    pub(crate) async fn new_pair(
-        router_handle: TcpRouterHandle,
+    pub(crate) async fn create(
+        registry: TcpRegistry,
         stream: Option<TcpStream>,
         peer: SocketAddr,
-        hostnames: Vec<String>,
-    ) -> Result<(Self, WorkerPair)> {
+        outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+    ) -> Result<Self> {
         let role_str = if stream.is_none() {
             "initiator"
         } else {
             "responder"
         };
 
-        let tx_addr = Address::random_tagged(&format!("TcpSendWorker_tx_addr_{}", role_str));
-        let int_addr = Address::random_tagged(&format!("TcpSendWorker_int_addr_{}", role_str));
-        let rx_addr = Address::random_tagged(&format!("TcpRecvProcessor_{}", role_str));
-        let sender = TcpSendWorker::new(router_handle, stream, peer, int_addr, rx_addr);
-        Ok((
-            sender,
-            WorkerPair {
-                hostnames,
-                peer,
-                tx_addr,
-            },
-        ))
+        let self_address = Address::random_tagged(&format!("TcpSendWorker_tx_addr_{}", role_str));
+        let self_internal_address =
+            Address::random_tagged(&format!("TcpSendWorker_int_addr_{}", role_str));
+        let receiver_processor_address =
+            Address::random_tagged(&format!("TcpRecvProcessor_{}", role_str));
+        let sender = TcpSendWorker::new(
+            registry,
+            stream,
+            peer,
+            self_internal_address,
+            self_address,
+            receiver_processor_address,
+            outgoing_access_control,
+        );
+        Ok(sender)
     }
 
-    /// Start a `(TcpSendWorker, TcpRecvProcessor)` pair that opens and
+    /// Create a `(TcpSendWorker, TcpRecvProcessor)` pair that opens and
     /// manages the connection with the given peer
-    pub(crate) async fn start_pair(
+    pub(crate) async fn start(
         ctx: &Context,
-        router_handle: TcpRouterHandle,
+        registry: TcpRegistry,
         stream: Option<TcpStream>,
         peer: SocketAddr,
-        hostnames: Vec<String>,
-    ) -> Result<WorkerPair> {
-        let tcprouter_main_addr = router_handle.main_addr().clone();
-
+        sender_incoming_access_control: Arc<dyn IncomingAccessControl>,
+        receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+    ) -> Result<Address> {
         trace!("Creating new TCP worker pair");
-        let (sender, pair) = Self::new_pair(router_handle, stream, peer, hostnames).await?;
+        let sender_worker =
+            Self::create(registry, stream, peer, receiver_outgoing_access_control).await?;
+        let self_address = sender_worker.self_address().clone();
 
-        // Allow messages routed from Tcp Router
-        let tx_mailbox = Mailbox::new(
-            pair.tx_addr(),
-            Arc::new(AllowSourceAddress(tcprouter_main_addr)),
+        let main_mailbox = Mailbox::new(
+            self_address.clone(),
+            sender_incoming_access_control,
             Arc::new(DenyAll),
         );
 
         let internal_mailbox = Mailbox::new(
-            sender.internal_addr().clone(),
-            Arc::new(AllowSourceAddress(sender.rx_addr().clone())),
+            sender_worker.self_internal_addr().clone(),
+            Arc::new(AllowSourceAddress(
+                sender_worker.receiver_processor_address().clone(),
+            )),
             Arc::new(DenyAll),
         );
 
-        WorkerBuilder::with_mailboxes(Mailboxes::new(tx_mailbox, vec![internal_mailbox]), sender)
-            .start(ctx)
-            .await?;
+        WorkerBuilder::with_mailboxes(
+            Mailboxes::new(main_mailbox, vec![internal_mailbox]),
+            sender_worker,
+        )
+        .start(ctx)
+        .await?;
 
-        Ok(pair)
+        Ok(self_address)
     }
 
-    async fn stop_and_unregister(&self, ctx: &Context) -> Result<()> {
-        self.router_handle.unregister(ctx.address()).await?;
-
-        ctx.stop_worker(ctx.address()).await?;
+    async fn stop(&self, ctx: &Context) -> Result<()> {
+        ctx.stop_worker(self.self_address.clone()).await?;
 
         Ok(())
     }
@@ -181,7 +173,8 @@ impl Worker for TcpSendWorker {
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
-        if self.tx.is_none() {
+
+        if self.write_half.is_none() {
             debug!(addr = %self.peer, "Connecting");
             let connection = match TcpStream::connect(self.peer).await {
                 Ok(c) => {
@@ -190,7 +183,7 @@ impl Worker for TcpSendWorker {
                 }
                 Err(e) => {
                     debug!(addr = %self.peer, err = %e, "Failed to connect");
-                    self.stop_and_unregister(ctx).await?;
+                    self.stop(ctx).await?;
 
                     return Err(TransportError::from(e).into());
                 }
@@ -210,33 +203,41 @@ impl Worker for TcpSendWorker {
             socket.set_tcp_keepalive(&keepalive).unwrap();
 
             let (rx, tx) = connection.into_split();
-            self.tx = Some(tx);
-            self.rx = Some(rx);
+            self.write_half = Some(tx);
+            self.read_half = Some(rx);
         }
 
-        let rx = self.rx.take().ok_or(TransportError::GenericIo)?;
+        let rx = self.read_half.take().ok_or(TransportError::GenericIo)?;
 
         let receiver = TcpRecvProcessor::new(
+            self.registry.clone(),
             rx,
-            format!("{}#{}", crate::TCP, self.peer).into(),
-            self.internal_addr.clone(),
+            self.peer.to_string(),
+            self.self_address.clone(),
+            self.self_internal_addr.clone(),
         );
 
         let mailbox = Mailbox::new(
-            self.rx_addr().clone(),
+            self.receiver_processor_address().clone(),
             Arc::new(DenyAll),
-            Arc::new(LocalOnwardOnly), // Sending to this sender and workers that can receive messages from TCP
+            self.receiver_outgoing_access_control.clone(),
         );
         ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), receiver)
             .start(ctx)
             .await?;
 
+        self.registry.add_sender_worker(&self.self_address);
+
         Ok(())
     }
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        self.registry.remove_sender_worker(&self.self_address);
+
         if self.rx_should_be_stopped {
-            let _ = ctx.stop_processor(self.rx_addr().clone()).await;
+            let _ = ctx
+                .stop_processor(self.receiver_processor_address().clone())
+                .await;
         }
 
         Ok(())
@@ -249,13 +250,13 @@ impl Worker for TcpSendWorker {
         ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let tx = match &mut self.tx {
-            Some(tx) => tx,
+        let write_half = match &mut self.write_half {
+            Some(write_half) => write_half,
             None => return Err(TransportError::PeerNotFound.into()),
         };
 
         let recipient = msg.msg_addr();
-        if recipient == self.internal_addr {
+        if recipient == self.self_internal_addr {
             let msg = TcpSendWorkerMsg::decode(msg.payload())?;
 
             match msg {
@@ -264,22 +265,22 @@ impl Worker for TcpSendWorker {
                     // No need to stop Receiver as it notified us about connection drop and will
                     // stop itself
                     self.rx_should_be_stopped = false;
-                    self.stop_and_unregister(ctx).await?;
+                    self.stop(ctx).await?;
 
                     return Ok(());
                 }
             }
         } else {
-            let mut msg = LocalMessage::decode(msg.payload())?.into_transport_message();
+            let mut msg = msg.into_transport_message();
             // Remove our own address from the route so the other end
             // knows what to do with the incoming message
             msg.onward_route.step()?;
             // Create a message buffer with prepended length
             let msg = prepare_message(msg)?;
 
-            if tx.write_all(msg.as_slice()).await.is_err() {
+            if write_half.write_all(msg.as_slice()).await.is_err() {
                 warn!("Failed to send message to peer {}", self.peer);
-                self.stop_and_unregister(ctx).await?;
+                self.stop(ctx).await?;
 
                 return Ok(());
             }

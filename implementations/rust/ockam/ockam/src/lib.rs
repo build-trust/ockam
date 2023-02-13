@@ -121,4 +121,4 @@ pub mod authenticated_storage {
 }
 
 #[cfg(feature = "ockam_transport_tcp")]
-pub use ockam_transport_tcp::{TcpTransport, TCP};
+pub use ockam_transport_tcp::TcpTransport;
