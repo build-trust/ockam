@@ -1,4 +1,4 @@
-use crate::TcpSendWorkerMsg;
+use crate::{TcpRegistry, TcpSendWorkerMsg};
 use ockam_core::async_trait;
 use ockam_core::{Address, Decodable, LocalMessage, Processor, Result, TransportMessage};
 use ockam_node::Context;
@@ -15,17 +15,27 @@ use tracing::{error, info, trace};
 /// worker pair, and listens for incoming TCP packets, to relay into
 /// the node message system.
 pub(crate) struct TcpRecvProcessor {
-    rx: OwnedReadHalf,
-    peer_addr: Address,
+    registry: TcpRegistry,
+    read_half: OwnedReadHalf,
+    peer: String,
+    sender_address: Address,
     sender_internal_address: Address,
 }
 
 impl TcpRecvProcessor {
     /// Create a new `TcpRecvProcessor`
-    pub fn new(rx: OwnedReadHalf, peer_addr: Address, sender_internal_address: Address) -> Self {
+    pub fn new(
+        registry: TcpRegistry,
+        read_half: OwnedReadHalf,
+        peer_addr: String,
+        sender_address: Address,
+        sender_internal_address: Address,
+    ) -> Self {
         Self {
-            rx,
-            peer_addr,
+            registry,
+            read_half,
+            peer: peer_addr,
+            sender_address,
             sender_internal_address,
         }
     }
@@ -36,7 +46,17 @@ impl Processor for TcpRecvProcessor {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await
+        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+
+        self.registry.add_receiver_processor(&ctx.address());
+
+        Ok(())
+    }
+
+    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+        self.registry.remove_receiver_processor(&ctx.address());
+
+        Ok(())
     }
 
     /// Get the next message from the connection if there are any
@@ -53,12 +73,12 @@ impl Processor for TcpRecvProcessor {
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         // Run in a loop until TcpWorkerPair::stop() is called
         // First read a message length header...
-        let len = match self.rx.read_u16().await {
+        let len = match self.read_half.read_u16().await {
             Ok(len) => len,
             Err(_e) => {
                 info!(
                     "Connection to peer '{}' was closed; dropping stream",
-                    self.peer_addr
+                    self.peer
                 );
 
                 // Notify sender tx is closed
@@ -78,7 +98,7 @@ impl Processor for TcpRecvProcessor {
         let mut buf = vec![0; len as usize];
 
         // Then read into the buffer
-        match self.rx.read_exact(&mut buf).await {
+        match self.read_half.read_exact(&mut buf).await {
             Ok(_) => {}
             _ => {
                 error!("Failed to receive message of length: {}", len);
@@ -91,13 +111,15 @@ impl Processor for TcpRecvProcessor {
 
         // Heartbeat message
         if msg.onward_route.next().is_err() {
-            trace!("Got heartbeat message from: {}", self.peer_addr);
+            trace!("Got heartbeat message from: {}", self.peer);
             return Ok(true);
         }
 
         // Insert the peer address into the return route so that
         // reply routing can be properly resolved
-        msg.return_route.modify().prepend(self.peer_addr.clone());
+        msg.return_route
+            .modify()
+            .prepend(self.sender_address.clone());
 
         trace!("Message onward route: {}", msg.onward_route);
         trace!("Message return route: {}", msg.return_route);

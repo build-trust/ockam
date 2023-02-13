@@ -1,9 +1,13 @@
 use ockam_core::access_control::IncomingAccessControl;
-use ockam_core::compat::{boxed::Box, net::SocketAddr, sync::Arc};
-use ockam_core::{Address, AsyncTryClone, DenyAll, Mailboxes, Result, Route};
-use ockam_node::{Context, WorkerBuilder};
+use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
+use ockam_core::compat::{boxed::Box, sync::Arc};
+use ockam_core::{Address, AsyncTryClone, LocalOnwardOnly, LocalSourceOnly, Result, Route};
+use ockam_node::Context;
+use ockam_transport_core::TransportError;
 
-use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle};
+use crate::portal::TcpInletListenProcessor;
+use crate::workers::{TcpListenProcessor, TcpSendWorker};
+use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRegistry};
 
 /// High level management interface for TCP transports
 ///
@@ -46,11 +50,47 @@ use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRouter, TcpRouterHandle
 #[derive(AsyncTryClone)]
 #[async_try_clone(crate = "ockam_core")]
 pub struct TcpTransport {
-    router_handle: TcpRouterHandle,
+    ctx: Context,
+    registry: TcpRegistry,
 }
 
 impl TcpTransport {
-    /// Create a new TCP transport and router for the current node
+    /// Getter
+    pub fn ctx(&self) -> &Context {
+        &self.ctx
+    }
+    /// Registry of all active connections
+    pub fn registry(&self) -> &TcpRegistry {
+        &self.registry
+    }
+}
+
+impl TcpTransport {
+    /// Resolve the given peer to a [`SocketAddr`](std::net::SocketAddr)
+    fn resolve_peer(peer: String) -> Result<SocketAddr> {
+        // Try to parse as SocketAddr
+        if let Ok(p) = parse_socket_addr(&peer) {
+            return Ok(p);
+        }
+
+        // Try to resolve hostname
+        if let Ok(mut iter) = peer.to_socket_addrs() {
+            // Prefer ip4
+            if let Some(p) = iter.find(|x| x.is_ipv4()) {
+                return Ok(p);
+            }
+            if let Some(p) = iter.find(|x| x.is_ipv6()) {
+                return Ok(p);
+            }
+        }
+
+        // Nothing worked, return an error
+        Err(TransportError::InvalidAddress.into())
+    }
+}
+
+impl TcpTransport {
+    /// Create a TCP transport
     ///
     /// ```rust
     /// use ockam_transport_tcp::TcpTransport;
@@ -61,16 +101,13 @@ impl TcpTransport {
     /// # Ok(()) }
     /// ```
     pub async fn create(ctx: &Context) -> Result<Self> {
-        let router = TcpRouter::register(ctx).await?;
-
         Ok(Self {
-            router_handle: router,
+            ctx: ctx.async_try_clone().await?,
+            registry: TcpRegistry::default(),
         })
     }
 
-    /// Manually establish an outgoing TCP connection on an existing transport.
-    /// This step is optional because the underlying TcpRouter is capable of lazily establishing
-    /// a connection upon arrival of the initial message.
+    /// Establish an outgoing TCP connection.
     ///
     /// ```rust
     /// use ockam_transport_tcp::TcpTransport;
@@ -79,16 +116,31 @@ impl TcpTransport {
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// tcp.listen("127.0.0.1:8000").await?; // Listen on port 8000
-    /// tcp.connect("127.0.0.1:5000").await?; // and connect to port 5000
+    /// let addr = tcp.connect("127.0.0.1:5000").await?; // and connect to port 5000
     /// # Ok(()) }
     /// ```
-    pub async fn connect<S: AsRef<str>>(&self, peer: S) -> Result<Address> {
-        self.router_handle.connect(peer.as_ref()).await
+    pub async fn connect(&self, peer: impl Into<String>) -> Result<Address> {
+        // Resolve peer address
+        let socket = Self::resolve_peer(peer.into())?;
+
+        self.connect_socket(socket).await
     }
 
-    /// Disconnect from peer
-    pub async fn disconnect<S: AsRef<str>>(&self, peer: S) -> Result<()> {
-        self.router_handle.disconnect(peer.as_ref()).await
+    /// Establish an outgoing TCP connection.
+    pub async fn connect_socket(&self, socket: SocketAddr) -> Result<Address> {
+        // Create a new `WorkerPair` for the given peer containing a
+        // `TcpSendWorker` and `TcpRecvProcessor`
+        let sender_worker_addr = TcpSendWorker::start(
+            &self.ctx,
+            self.registry.clone(),
+            None,
+            socket,
+            Arc::new(LocalSourceOnly),
+            Arc::new(LocalOnwardOnly),
+        )
+        .await?;
+
+        Ok(sender_worker_addr)
     }
 
     /// Start listening to incoming connections on an existing transport
@@ -106,9 +158,19 @@ impl TcpTransport {
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// tcp.listen("127.0.0.1:8000").await?;
     /// # Ok(()) }
-    pub async fn listen<S: AsRef<str>>(&self, bind_addr: S) -> Result<SocketAddr> {
+    pub async fn listen(&self, bind_addr: impl AsRef<str>) -> Result<SocketAddr> {
         let bind_addr = parse_socket_addr(bind_addr.as_ref())?;
-        self.router_handle.bind(bind_addr).await
+        // Could be different from the bind_addr
+        let socket_addr = TcpListenProcessor::start(
+            &self.ctx,
+            self.registry.clone(),
+            bind_addr,
+            Arc::new(LocalSourceOnly),
+            Arc::new(LocalOnwardOnly),
+        )
+        .await?;
+
+        Ok(socket_addr)
     }
 }
 
@@ -119,12 +181,11 @@ impl TcpTransport {
     /// Pair of corresponding Inlet and Outlet is called Portal.
     ///
     /// ```rust
-    /// use ockam_transport_tcp::{TcpTransport, TCP};
+    /// use ockam_transport_tcp::TcpTransport;
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result, route};
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let hop_addr = "INTERMEDIARY_HOP:8000";
-    /// let route_path = route![(TCP, hop_addr), "outlet"];
+    /// let route_path = route!["outlet"];
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// tcp.create_inlet("inlet", route_path, AllowAll).await?;
@@ -155,21 +216,25 @@ impl TcpTransport {
         outlet_route: Route,
         access_control: Arc<dyn IncomingAccessControl>,
     ) -> Result<(Address, SocketAddr)> {
-        let bind_addr = parse_socket_addr(bind_addr)?;
-        self.router_handle
-            .bind_inlet(outlet_route, bind_addr, access_control)
-            .await
+        let socket_addr = parse_socket_addr(&bind_addr)?;
+        TcpInletListenProcessor::start(
+            &self.ctx,
+            self.registry.clone(),
+            outlet_route,
+            socket_addr,
+            access_control,
+        )
+        .await
     }
 
     /// Stop inlet at addr
     ///
     /// ```rust
-    /// use ockam_transport_tcp::{TcpTransport, TCP};
+    /// use ockam_transport_tcp::TcpTransport;
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result, route};
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let hop_addr = "INTERMEDIARY_HOP:8000";
-    /// let route = route![(TCP, hop_addr), "outlet"];
+    /// let route = route!["outlet"];
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// tcp.create_inlet("inlet", route, AllowAll).await?;
@@ -177,7 +242,7 @@ impl TcpTransport {
     /// # Ok(()) }
     /// ```
     pub async fn stop_inlet(&self, addr: impl Into<Address>) -> Result<()> {
-        self.router_handle.stop_inlet(addr).await?;
+        self.ctx.stop_processor(addr).await?;
 
         Ok(())
     }
@@ -220,12 +285,15 @@ impl TcpTransport {
         peer: String,
         access_control: Arc<dyn IncomingAccessControl>,
     ) -> Result<()> {
-        let worker = TcpOutletListenWorker::new(peer, access_control.clone());
-        WorkerBuilder::with_mailboxes(
-            Mailboxes::main(address, access_control, Arc::new(DenyAll)),
-            worker,
+        // Resolve peer address
+        let peer_addr = Self::resolve_peer(peer)?;
+        TcpOutletListenWorker::start(
+            &self.ctx,
+            self.registry.clone(),
+            address,
+            peer_addr,
+            access_control,
         )
-        .start(self.router_handle.ctx())
         .await?;
 
         Ok(())
@@ -245,7 +313,7 @@ impl TcpTransport {
     /// # Ok(()) }
     /// ```
     pub async fn stop_outlet(&self, addr: impl Into<Address>) -> Result<()> {
-        self.router_handle.stop_outlet(addr).await?;
+        self.ctx.stop_worker(addr).await?;
         Ok(())
     }
 }

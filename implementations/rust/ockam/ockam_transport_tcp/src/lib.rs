@@ -26,11 +26,11 @@ extern crate core;
 extern crate alloc;
 
 mod portal;
-mod router;
+mod registry;
 mod workers;
 
 pub use portal::*;
-pub(crate) use router::*;
+pub use registry::*;
 pub(crate) use workers::*;
 
 mod transport;
@@ -38,18 +38,13 @@ mod transport;
 pub use transport::*;
 
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::{Result, TransportType};
+use ockam_core::Result;
 use ockam_transport_core::TransportError;
-
-/// TCP address type constant
-pub const TCP: TransportType = TransportType::new(1);
 
 pub(crate) const CLUSTER_NAME: &str = "_internals.transport.tcp";
 
-fn parse_socket_addr<S: AsRef<str>>(s: S) -> Result<SocketAddr> {
-    Ok(s.as_ref()
-        .parse()
-        .map_err(|_| TransportError::InvalidAddress)?)
+fn parse_socket_addr(s: &str) -> Result<SocketAddr> {
+    Ok(s.parse().map_err(|_| TransportError::InvalidAddress)?)
 }
 
 #[cfg(test)]
