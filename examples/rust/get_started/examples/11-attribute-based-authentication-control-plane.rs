@@ -1,7 +1,7 @@
-use hello_ockam::{create_attribute_access_control, create_token, get_credentials, import_project, OneTimeCode};
+use hello_ockam::{create_attribute_access_control, create_token, get_credentials, import_project};
 use ockam::access_control::AllowAll;
 use ockam::identity::authenticated_storage::{mem::InMemoryStorage, AuthenticatedAttributeStorage};
-use ockam::identity::credential::Credential;
+use ockam::identity::credential::{Credential, OneTimeCode};
 use ockam::identity::{Identity, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
 
 use ockam::remote::RemoteForwarder;

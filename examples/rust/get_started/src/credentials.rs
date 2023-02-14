@@ -1,7 +1,6 @@
-use crate::OneTimeCode;
 use anyhow::anyhow;
 use minicbor::Decoder;
-use ockam::identity::credential::Credential;
+use ockam::identity::credential::{Credential, OneTimeCode};
 use ockam::{Context, Result};
 use ockam_core::api::{Request, Response};
 use ockam_core::errcode::{Kind, Origin};
