@@ -15,9 +15,11 @@ use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 pub use config::*;
 use ockam::{Address, Context, NodeBuilder, Route, TcpTransport};
 use ockam_api::cli_state::{CliState, NodeState};
+use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
 use ockam_core::DenyAll;
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Service, Space, Tcp};
 use ockam_multiaddr::{
     proto::{self, Node},
     MultiAddr, Protocol,
@@ -65,7 +67,7 @@ impl<'a> RpcBuilder<'a> {
     }
 
     pub fn to(mut self, to: &MultiAddr) -> Result<Self> {
-        self.to = ockam_api::multiaddr_to_route(to)
+        self.to = ockam_api::local_multiaddr_to_route(to)
             .ok_or_else(|| anyhow!("failed to convert {to} to route"))?;
         Ok(self)
     }
@@ -455,19 +457,19 @@ pub fn extract_address_value(input: &str) -> anyhow::Result<String> {
         let maddr = MultiAddr::from_str(input)?;
         if let Some(p) = maddr.iter().next() {
             match p.code() {
-                proto::Node::CODE => {
+                Node::CODE => {
                     addr = p
                         .cast::<proto::Node>()
                         .context("Failed to parse `node` protocol")?
                         .to_string();
                 }
-                proto::Service::CODE => {
+                Service::CODE => {
                     addr = p
                         .cast::<proto::Service>()
                         .context("Failed to parse `service` protocol")?
                         .to_string();
                 }
-                proto::Project::CODE => {
+                Project::CODE => {
                     addr = p
                         .cast::<proto::Project>()
                         .context("Failed to parse `project` protocol")?
@@ -524,7 +526,10 @@ pub fn parse_node_name(input: &str) -> anyhow::Result<String> {
 /// Example:
 ///     if n1 has address of 127.0.0.1:1234
 ///     `/node/n1` -> `/ip4/127.0.0.1/tcp/1234`
-pub fn process_multi_addr(addr: &MultiAddr, cli_state: &CliState) -> anyhow::Result<MultiAddr> {
+pub fn process_nodes_multiaddr(
+    addr: &MultiAddr,
+    cli_state: &CliState,
+) -> anyhow::Result<MultiAddr> {
     let mut processed_addr = MultiAddr::default();
     for proto in addr.iter() {
         match proto.code() {
@@ -540,6 +545,46 @@ pub fn process_multi_addr(addr: &MultiAddr, cli_state: &CliState) -> anyhow::Res
         }
     }
     Ok(processed_addr)
+}
+
+/// Go through a multiaddr and remove all instances of
+/// `/node/<whatever>` out of it and replaces it with a fully
+/// qualified address to the target
+pub fn clean_nodes_multiaddr(
+    input: &MultiAddr,
+    cli_state: &CliState,
+) -> Result<(MultiAddr, LookupMeta)> {
+    let mut new_ma = MultiAddr::default();
+    let mut lookup_meta = LookupMeta::default();
+    let it = input.iter().peekable();
+    for p in it {
+        match p.code() {
+            Node::CODE => {
+                let alias = p.cast::<Node>().expect("Failed to parse node name");
+                let node_setup = cli_state.nodes.get(&alias)?.setup()?;
+                let addr = &node_setup.default_tcp_listener()?.addr;
+                match addr {
+                    InternetAddress::Dns(dns, _) => new_ma.push_back(DnsAddr::new(dns))?,
+                    InternetAddress::V4(v4) => new_ma.push_back(Ip4(*v4.ip()))?,
+                    InternetAddress::V6(v6) => new_ma.push_back(Ip6(*v6.ip()))?,
+                }
+                new_ma.push_back(Tcp(addr.port()))?;
+            }
+            Project::CODE => {
+                // Parse project name from the MultiAddr.
+                let alias = p.cast::<Project>().expect("Failed to parse project name");
+                // Store it in the lookup meta, so we can later
+                // retrieve it from either the config or the cloud.
+                lookup_meta.project.push_back(alias.to_string());
+                // No substitution done here. It will be done later by `clean_projects_multiaddr`.
+                new_ma.push_back_value(&p)?
+            }
+            Space::CODE => panic!("/space/ substitutions are not supported yet!"),
+            _ => new_ma.push_back_value(&p)?,
+        }
+    }
+
+    Ok((new_ma, lookup_meta))
 }
 
 pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {
@@ -647,10 +692,12 @@ mod tests {
         ];
         for (ma, expected) in test_cases {
             if let Ok(addr) = expected {
-                let result = process_multi_addr(&ma, &cli_state).unwrap().to_string();
+                let result = process_nodes_multiaddr(&ma, &cli_state)
+                    .unwrap()
+                    .to_string();
                 assert_eq!(result, addr);
             } else {
-                assert!(process_multi_addr(&ma, &cli_state).is_err());
+                assert!(process_nodes_multiaddr(&ma, &cli_state).is_err());
             }
         }
 

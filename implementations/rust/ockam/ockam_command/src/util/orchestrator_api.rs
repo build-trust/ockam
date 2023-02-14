@@ -154,7 +154,8 @@ impl<'a> OrchestratorApiBuilder<'a> {
                 format!("/service/{}", DefaultAddress::AUTHENTICATOR).as_str(),
             )?;
             let addr = sc_addr.concat(&service)?;
-            ockam_api::multiaddr_to_route(&addr).context(format!("Invalid MultiAddr {addr}"))?
+            ockam_api::local_multiaddr_to_route(&addr)
+                .context(format!("Invalid MultiAddr {addr}"))?
         };
 
         let mut client = Client::new(authenticator_route, self.ctx).await?;

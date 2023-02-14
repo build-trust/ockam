@@ -111,7 +111,9 @@ mod node {
             project_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
 
             let label = "list_addons";
             trace!(target: TARGET, project_id, "listing addons");
@@ -181,7 +183,9 @@ mod node {
             trace!(target: TARGET, project_id, addon_id, "configuring addon");
 
             let req_wrapper: CloudRequestWrapper<T> = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
             let req_body = req_wrapper.req;
 
             let req_builder =
@@ -207,7 +211,9 @@ mod node {
             addon_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
 
             let label = "disable_addon";
             trace!(target: TARGET, project_id, addon_id, "disabling addon");

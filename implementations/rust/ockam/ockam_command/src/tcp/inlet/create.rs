@@ -1,5 +1,6 @@
 use crate::util::{
-    bind_to_port_check, exitcode, extract_address_value, node_rpc, process_multi_addr, RpcBuilder,
+    bind_to_port_check, exitcode, extract_address_value, node_rpc, process_nodes_multiaddr,
+    RpcBuilder,
 };
 use crate::Result;
 use crate::{help, CommandGlobalOpts};
@@ -69,7 +70,7 @@ impl CreateCommand {
 }
 
 async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
-    cmd.to = process_multi_addr(&cmd.to, &opts.state)?;
+    cmd.to = process_nodes_multiaddr(&cmd.to, &opts.state)?;
 
     // Check if the port is used by some other services or process
     if !bind_to_port_check(&cmd.from) {

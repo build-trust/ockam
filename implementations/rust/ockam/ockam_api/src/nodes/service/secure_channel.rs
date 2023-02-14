@@ -264,7 +264,8 @@ impl NodeManagerWorker {
 
         // TODO: Improve error handling + move logic into CreateSecureChannelRequest
         let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
-        let route = crate::multiaddr_to_route(&addr)
+        let route = crate::multiaddr_to_route(&addr, &node_manager.tcp_transport)
+            .await
             .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
         let channel = node_manager

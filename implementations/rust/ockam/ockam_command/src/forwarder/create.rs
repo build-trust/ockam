@@ -12,7 +12,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::forwarder::HELP_DETAIL;
 use crate::util::output::Output;
-use crate::util::{extract_address_value, node_rpc, process_multi_addr, RpcBuilder};
+use crate::util::{extract_address_value, node_rpc, process_nodes_multiaddr, RpcBuilder};
 use crate::Result;
 use crate::{help, CommandGlobalOpts};
 
@@ -51,7 +51,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
     let api_node = extract_address_value(&cmd.to)?;
     let at_rust_node = is_local_node(&cmd.at).context("Argument --at is not valid")?;
 
-    let ma = process_multi_addr(&cmd.at, &opts.state)?;
+    let ma = process_nodes_multiaddr(&cmd.at, &opts.state)?;
 
     let req = {
         let alias = if at_rust_node {

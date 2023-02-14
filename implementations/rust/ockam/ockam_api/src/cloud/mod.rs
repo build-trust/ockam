@@ -3,6 +3,7 @@ use std::str::FromStr;
 use minicbor::{Decode, Encode};
 
 use crate::error::ApiError;
+use ockam::TcpTransport;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{CowStr, Result, Route};
@@ -48,10 +49,11 @@ impl<'a, T> CloudRequestWrapper<'a, T> {
         }
     }
 
-    pub fn route(&self) -> Result<Route> {
+    pub async fn route(&self, tcp: &TcpTransport) -> Result<Route> {
         let maddr = MultiAddr::from_str(self.route.as_ref())
             .map_err(|_err| ApiError::generic(&format!("Invalid route: {}", self.route)))?;
-        crate::multiaddr_to_route(&maddr)
+        crate::multiaddr_to_route(&maddr, tcp)
+            .await
             .ok_or_else(|| ApiError::generic(&format!("Invalid MultiAddr: {maddr}")))
     }
 }

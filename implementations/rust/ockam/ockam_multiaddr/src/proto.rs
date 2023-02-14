@@ -203,6 +203,7 @@ macro_rules! gen_str_proto {
     };
 }
 
+gen_str_proto!(Worker, 102526, "worker");
 gen_str_proto!(DnsAddr, 56, "dnsaddr");
 gen_str_proto!(Service, 62526, "service");
 gen_str_proto!(Node, 72526, "node");

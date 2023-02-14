@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use minicbor::{Decode, Encode};
 
+use ockam::TcpTransport;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{CowBytes, CowStr};
@@ -31,10 +32,11 @@ impl<'a> SendMessage<'a> {
         }
     }
 
-    pub fn route(&self) -> Result<Route> {
+    pub async fn route(&self, tcp: &TcpTransport) -> Result<Route> {
         let maddr = MultiAddr::from_str(self.route.as_ref())
             .map_err(|_err| ApiError::generic(&format!("Invalid route: {}", self.route)))?;
-        crate::multiaddr_to_route(&maddr)
+        crate::multiaddr_to_route(&maddr, tcp)
+            .await
             .ok_or_else(|| ApiError::generic(&format!("Invalid MultiAddr: {maddr}")))
     }
 }
@@ -59,7 +61,9 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_body: super::SendMessage = dec.decode()?;
-            let route = req_body.route()?;
+            let route = req_body
+                .route(&self.node_manager.read().await.tcp_transport)
+                .await?;
             let msg = req_body.message.to_vec();
             let msg_length = msg.len();
 

@@ -98,7 +98,7 @@ async fn run_impl(
         for proto in service.iter() {
             addr.push_back_value(&proto)?;
         }
-        ockam_api::multiaddr_to_route(&addr).context(format!("Invalid MultiAddr {addr}"))?
+        ockam_api::local_multiaddr_to_route(&addr).context(format!("Invalid MultiAddr {addr}"))?
     };
 
     let mut client = Client::new(authenticator_route, &ctx).await?;

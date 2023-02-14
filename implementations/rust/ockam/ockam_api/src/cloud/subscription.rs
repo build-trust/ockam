@@ -110,7 +110,9 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
 
             let label = "unsubscribe";
             trace!(target: TARGET, subscription = %id, "unsubscribing");
@@ -141,7 +143,9 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<String> = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
             let req_body = req_wrapper.req;
 
             let label = "list_sbuscriptions";
@@ -172,7 +176,9 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<String> = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
             let req_body = req_wrapper.req;
 
             let label = "update_subscription_contact_info";
@@ -202,7 +208,9 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
 
             let label = "list_subscriptions";
             trace!(target: TARGET, "listing subscriptions");
@@ -232,7 +240,9 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
 
             let label = "get_subscription";
             trace!(target: TARGET, subscription = %id, "getting subscription");
@@ -261,7 +271,9 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<ActivateSubscription> = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
             let req_body = req_wrapper.req;
 
             let label = "activate_subscription";
