@@ -3,8 +3,10 @@ pub mod types;
 use core::{fmt, str};
 use lru::LruCache;
 use minicbor::{Decoder, Encode};
-use ockam::identity::authenticated_storage::AuthenticatedStorage;
-use ockam::identity::credential::{Credential, OneTimeCode, SchemaId};
+use ockam::identity::authenticated_storage::{
+    AttributesEntry, AuthenticatedStorage, IdentityAttributeStorage,
+};
+use ockam::identity::credential::{Credential, OneTimeCode, SchemaId, Timestamp};
 use ockam::identity::{
     Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityVault,
 };
@@ -25,7 +27,7 @@ use crate::authenticator::direct::types::CreateToken;
 
 use self::types::Enroller;
 
-const MEMBER: &str = "member";
+const LEGACY_MEMBER: &str = "member";
 const MAX_TOKEN_DURATION: Duration = Duration::from_secs(600);
 
 /// Schema identifier for a project membership credential.
@@ -36,12 +38,11 @@ const MAX_TOKEN_DURATION: Duration = Duration::from_secs(600);
 /// - `role`: b"member"
 pub const PROJECT_MEMBER_SCHEMA: SchemaId = SchemaId(1);
 pub const PROJECT_ID: &str = "project_id";
-pub const ROLE: &str = "role";
 
-pub struct Server<S, IS: AuthenticatedStorage, V: IdentityVault> {
+pub struct Server<S: AuthenticatedStorage, IS: IdentityAttributeStorage, V: IdentityVault> {
     project: Vec<u8>,
-    store: S,
-    ident: Identity<V, IS>,
+    store: IS,
+    ident: Identity<V, S>,
     filename: Option<String>,
     enrollers: HashMap<IdentityIdentifier, Enroller>,
     reload_enrollers: bool,
@@ -50,6 +51,7 @@ pub struct Server<S, IS: AuthenticatedStorage, V: IdentityVault> {
 
 struct Token {
     attrs: HashMap<String, String>,
+    generated_by: IdentityIdentifier,
     time: Instant,
 }
 
@@ -57,7 +59,7 @@ struct Token {
 impl<S, IS, V> Worker for Server<S, IS, V>
 where
     S: AuthenticatedStorage,
-    IS: AuthenticatedStorage,
+    IS: IdentityAttributeStorage,
     V: IdentityVault,
 {
     type Context = Context;
@@ -79,17 +81,35 @@ where
 impl<S, IS, V> Server<S, IS, V>
 where
     S: AuthenticatedStorage,
-    IS: AuthenticatedStorage,
+    IS: IdentityAttributeStorage,
     V: IdentityVault,
 {
-    pub fn new(
+    pub async fn new(
         project: Vec<u8>,
-        store: S,
+        store: IS,
         enrollers: &str,
         reload_enrollers: bool,
-        identity: Identity<V, IS>,
+        identity: Identity<V, S>,
     ) -> Result<Self> {
         let (filename, enrollers_data) = Self::parse_enrollers(enrollers)?;
+
+        //TODO: This block is from converting old-style member' data into
+        //      the new format suitable for our ABAC framework.  Remove it
+        //      once we don't have more legacy data around.
+        let legacy_s = identity.authenticated_storage();
+        for k in legacy_s.keys(LEGACY_MEMBER).await? {
+            if let Some(data) = legacy_s.get(&k, LEGACY_MEMBER).await? {
+                let m: HashMap<String, String> = minicbor::decode(&data)?;
+                let attrs = m
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
+                    .collect();
+                let entry = AttributesEntry::new(attrs, Timestamp::now().unwrap(), None, None);
+                let identifier = IdentityIdentifier::try_from(k.clone())?;
+                store.put_attributes(&identifier, entry).await?;
+            }
+            legacy_s.del(&k, LEGACY_MEMBER).await?;
+        }
 
         Ok(Server {
             project,
@@ -143,6 +163,7 @@ where
                         let res = Response::ok(req.id()).body(&otc).to_vec()?;
                         let tkn = Token {
                             attrs: att.into_owned_attributes(),
+                            generated_by: from.clone(),
                             time: Instant::now(),
                         };
                         self.tokens.put(*otc.code(), tkn);
@@ -155,10 +176,19 @@ where
                 ["members"] => match self.check_enroller(&req, from).await {
                     Ok(None) => {
                         let add: AddMember = dec.decode()?;
-                        let attributes = minicbor::to_vec(add.attributes())?;
-                        self.store
-                            .set(add.member().key_id(), MEMBER.to_string(), attributes)
-                            .await?;
+                        //TODO: fixme:  unify use of hashmap vs btreemap
+                        let attrs = add
+                            .attributes()
+                            .iter()
+                            .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
+                            .collect();
+                        let entry = AttributesEntry::new(
+                            attrs,
+                            Timestamp::now().unwrap(),
+                            None,
+                            Some(from.clone()),
+                        );
+                        self.store.put_attributes(add.member(), entry).await?;
                         Response::ok(req.id()).to_vec()?
                     }
                     Ok(Some(e)) => e.to_vec()?,
@@ -171,10 +201,20 @@ where
                         if tkn.time.elapsed() > MAX_TOKEN_DURATION {
                             api::forbidden(&req, "expired token").to_vec()?
                         } else {
-                            let attributes = minicbor::to_vec(&tkn.attrs)?;
-                            self.store
-                                .set(from.key_id(), MEMBER.to_string(), attributes)
-                                .await?;
+                            //TODO: fixme:  unify use of hashmap vs btreemap
+                            let attrs = tkn
+                                .attrs
+                                .iter()
+                                .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
+                                .collect();
+                            let entry = AttributesEntry::new(
+                                attrs,
+                                Timestamp::now().unwrap(),
+                                None,
+                                Some(tkn.generated_by),
+                            );
+                            self.store.put_attributes(from, entry).await?;
+                            //TODO: use the entry not the token
                             let crd = tkn
                                 .attrs
                                 .iter()
@@ -191,14 +231,15 @@ where
                     }
                 }
                 // Member wants a credential.
-                ["credential"] => match self.get_member(&req, from).await {
-                    Ok(Some(attrs)) => {
-                        let crd = attrs
+                ["credential"] => match self.store.get_attributes(from).await {
+                    Ok(Some(entry)) => {
+                        let crd = entry
+                            .attrs()
                             .iter()
                             .fold(
                                 Credential::builder(from.clone())
                                     .with_schema(PROJECT_MEMBER_SCHEMA),
-                                |crd, (a, v)| crd.with_attribute(a, v.as_bytes()),
+                                |crd, (a, v)| crd.with_attribute(a, v),
                             )
                             .with_attribute(PROJECT_ID, &self.project);
                         let crd = self.ident.issue_credential(crd).await?;
@@ -247,46 +288,6 @@ where
         }
 
         Ok(Some(api::forbidden(req, "unauthorized enroller")))
-    }
-
-    // Ok(Some(attrs)) if we have attributes for this identifier
-    // Ok(None) if we don't have any info for this identifier
-    // Err(error) in case of errors looking up / decoding the attributes
-    async fn get_member<'a>(
-        &self,
-        req: &'a Request<'_>,
-        member: &IdentityIdentifier,
-    ) -> Result<Option<HashMap<String, String>>> {
-        if let Some(data) = self.store.get(member.key_id(), MEMBER).await? {
-            match minicbor::decode(&data) {
-                Ok(attrs) => return Ok(Some(attrs)),
-                Err(_) => {
-                    // Attempt to adapt values in legacy format
-                    if minicbor::decode(&data)? {
-                        let member_attributes =
-                            HashMap::from([(ROLE.to_string(), MEMBER.to_string())]);
-                        let val = minicbor::to_vec(member_attributes)?;
-                        self.store
-                            .set(member.key_id(), MEMBER.to_string(), val)
-                            .await?;
-                        return Ok(Some(HashMap::from([(
-                            ROLE.to_string(),
-                            MEMBER.to_string(),
-                        )])));
-                    }
-                }
-            }
-        }
-        warn! {
-            target: "ockam_api::authenticator::direct::server",
-            member   = %member,
-            id       = %req.id(),
-            method   = ?req.method(),
-            path     = %req.path(),
-            body     = %req.has_body(),
-            "unauthorised member"
-        }
-        Ok(None)
     }
 }
 

@@ -473,6 +473,9 @@ async fn spawn_background_node(
         cmd.trusted_identities.as_ref(),
         cmd.trusted_identities_file.as_ref(),
         cmd.reload_from_trusted_identities_file.as_ref(),
+        cmd.launch_config
+            .as_ref()
+            .map(|config| serde_json::to_string(config).unwrap()),
     )?;
 
     Ok(())
