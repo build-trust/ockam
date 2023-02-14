@@ -1,7 +1,7 @@
 mod sessions;
 pub(crate) mod util;
 
-use crate::{multiaddr_to_route, DefaultAddress};
+use crate::{local_multiaddr_to_route, DefaultAddress};
 use minicbor::{Decode, Encode};
 use ockam::{LocalMessage, Route, TransportMessage, Worker};
 use ockam_core::compat::sync::{Arc, Mutex};
@@ -85,7 +85,7 @@ impl Medic {
                         let l = {
                             let v = Encodable::encode(&m).expect("message can be encoded");
                             let r: Route =
-                                if let Some(r) = multiaddr_to_route(session.ping_address()) {
+                                if let Some(r) = local_multiaddr_to_route(session.ping_address()) {
                                     r.clone()
                                         .modify()
                                         .append(DefaultAddress::ECHO_SERVICE)

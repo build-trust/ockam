@@ -1,5 +1,5 @@
 use super::{Buffer, Checked, Code, Codec, Protocol};
-use crate::proto::{DnsAddr, Node, Project, Secure, Service, Space, Tcp};
+use crate::proto::{DnsAddr, Node, Project, Secure, Service, Space, Tcp, Worker};
 use crate::{Error, ProtoValue};
 use core::fmt;
 use unsigned_varint::decode;
@@ -49,7 +49,8 @@ impl Codec for StdCodec {
                 let (x, y) = input.split_at(2);
                 Ok((Checked(x), y))
             }
-            c @ DnsAddr::CODE
+            c @ Worker::CODE
+            | c @ DnsAddr::CODE
             | c @ Service::CODE
             | c @ Node::CODE
             | c @ Project::CODE
@@ -68,6 +69,7 @@ impl Codec for StdCodec {
 
     fn is_valid_bytes(&self, code: Code, input: Checked<&[u8]>) -> bool {
         match code {
+            Worker::CODE => Worker::read_bytes(input).is_ok(),
             #[cfg(feature = "std")]
             crate::proto::Ip4::CODE => crate::proto::Ip4::read_bytes(input).is_ok(),
             #[cfg(feature = "std")]
@@ -85,6 +87,7 @@ impl Codec for StdCodec {
 
     fn write_bytes(&self, val: &ProtoValue, buf: &mut dyn Buffer) -> Result<(), Error> {
         match val.code() {
+            Worker::CODE => Worker::read_bytes(val.data())?.write_bytes(buf),
             #[cfg(feature = "std")]
             crate::proto::Ip4::CODE => crate::proto::Ip4::read_bytes(val.data())?.write_bytes(buf),
             #[cfg(feature = "std")]
@@ -108,6 +111,10 @@ impl Codec for StdCodec {
         buf: &mut dyn Buffer,
     ) -> Result<(), Error> {
         match prefix {
+            Worker::PREFIX => {
+                Worker::read_str(value)?.write_bytes(buf);
+                Ok(())
+            }
             #[cfg(feature = "std")]
             crate::proto::Ip4::PREFIX => {
                 crate::proto::Ip4::read_str(value)?.write_bytes(buf);
@@ -157,6 +164,10 @@ impl Codec for StdCodec {
         f: &mut fmt::Formatter,
     ) -> Result<(), Error> {
         match code {
+            Worker::CODE => {
+                Worker::read_bytes(value)?.write_str(f)?;
+                Ok(())
+            }
             #[cfg(feature = "std")]
             crate::proto::Ip4::CODE => {
                 crate::proto::Ip4::read_bytes(value)?.write_str(f)?;

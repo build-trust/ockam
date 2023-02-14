@@ -2,7 +2,6 @@ use anyhow::Context as _;
 use clap::Args;
 
 use ockam::{Context, TcpTransport};
-use ockam_api::clean_multiaddr;
 use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
 use ockam_api::nodes::service::message::SendMessage;
 use ockam_core::api::{Request, RequestBuilder};
@@ -10,7 +9,7 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node_with_vault_and_identity};
 use crate::util::api::{CloudOpts, ProjectOpts};
-use crate::util::{extract_address_value, node_rpc, RpcBuilder};
+use crate::util::{clean_nodes_multiaddr, extract_address_value, node_rpc, RpcBuilder};
 use crate::Result;
 use crate::{help, message::HELP_DETAIL, CommandGlobalOpts};
 
@@ -47,10 +46,6 @@ impl SendCommand {
 
 async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) -> Result<()> {
     async fn go(ctx: &mut Context, opts: &CommandGlobalOpts, cmd: SendCommand) -> Result<()> {
-        // Process `--to` Multiaddr
-        let (to, meta) =
-            clean_multiaddr(&cmd.to, &opts.state).context("Argument '--to' is invalid")?;
-
         // Setup environment depending on whether we are sending the message from an embedded node or a background node
         let (api_node, tcp) = if let Some(node) = &cmd.from {
             let api_node = extract_address_value(node)?;
@@ -68,6 +63,10 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
             (api_node, None)
         };
 
+        // Process `--to` Multiaddr
+        let (to, meta) =
+            clean_nodes_multiaddr(&cmd.to, &opts.state).context("Argument '--to' is invalid")?;
+
         // Replace `/project/<name>` occurrences with their respective secure channel addresses
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(
             ctx,
@@ -80,7 +79,6 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
         )
         .await?;
         let to = crate::project::util::clean_projects_multiaddr(to, projects_sc)?;
-
         // Send request
         let mut rpc = RpcBuilder::new(ctx, opts, &api_node)
             .tcp(tcp.as_ref())?
