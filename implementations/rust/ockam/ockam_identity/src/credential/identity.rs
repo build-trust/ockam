@@ -22,9 +22,9 @@ use ockam_node::api::{request, request_with_local_info};
 use ockam_node::WorkerBuilder;
 
 impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
-    pub async fn set_credential(&self, credential: Option<Credential<'static>>) {
+    pub async fn set_credential(&self, credential: Credential<'static>) {
         // TODO: May also verify received credential calling self.verify_self_credential
-        *self.credential.write().await = credential;
+        *self.credential.write().await = Some(credential);
     }
 
     pub async fn credential<'a>(&self) -> Option<Credential<'a>> {

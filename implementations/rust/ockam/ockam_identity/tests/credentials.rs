@@ -52,7 +52,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
 
     let credential = authority.issue_credential(credential).await?;
 
-    client.set_credential(Some(credential)).await;
+    client.set_credential(credential).await;
 
     client
         .present_credential(route![channel, "credential_exchange"])
@@ -86,7 +86,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         Credential::builder(client2.identifier().clone()).with_attribute("is_admin", b"true");
 
     let credential2 = authority.issue_credential(credential2).await?;
-    client2.set_credential(Some(credential2)).await;
+    client2.set_credential(credential2).await;
 
     client2
         .create_secure_channel_listener("listener", TrustEveryonePolicy)
@@ -110,7 +110,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         Credential::builder(client1.identifier().clone()).with_attribute("is_user", b"true");
 
     let credential1 = authority.issue_credential(credential1).await?;
-    client1.set_credential(Some(credential1)).await;
+    client1.set_credential(credential1).await;
 
     let channel = client1
         .create_secure_channel(route!["listener"], TrustEveryonePolicy)
@@ -199,7 +199,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
 
     let credential = authority.issue_credential(credential).await?;
 
-    client.set_credential(Some(credential)).await;
+    client.set_credential(credential).await;
 
     let counter = Arc::new(AtomicI8::new(0));
 
