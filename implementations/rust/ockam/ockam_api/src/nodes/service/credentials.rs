@@ -71,7 +71,7 @@ impl NodeManager {
             .await?;
         debug!("Verified self credential");
 
-        identity.set_credential(Some(credential.to_owned())).await;
+        identity.set_credential(credential.to_owned()).await;
 
         Ok(())
     }

@@ -72,7 +72,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // store the credentials and start a credentials exchange worker which will be
     // later on to exchange credentials with the control node
-    edge_plane.set_credential(Some(credentials.to_owned())).await;
+    edge_plane.set_credential(credentials.to_owned()).await;
     edge_plane
         .start_credentials_exchange_worker(
             vec![project.authority_public_identity()],
