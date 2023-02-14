@@ -60,6 +60,7 @@ async fn run_impl(
         None,               // No trusted identities
         None,               // "
         None,               // "
+        None,               // No launch config available
     )?;
 
     // Print node status

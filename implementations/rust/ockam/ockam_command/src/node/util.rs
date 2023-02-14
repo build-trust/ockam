@@ -71,6 +71,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     tcp.listen(&bind).await?;
 
     let projects = cfg.inner().lookup().projects().collect();
+
     let node_man = NodeManager::create(
         ctx,
         NodeManagerGeneralOptions::new(cmd.node_name.clone(), cmd.launch_config.is_some(), None),
@@ -116,6 +117,11 @@ pub async fn add_project_info_to_node_state(
             let s = tokio::fs::read_to_string(path).await?;
             let proj_info: ProjectInfo = serde_json::from_str(&s)?;
             let proj_lookup = ProjectLookup::from_project(&(&proj_info).into()).await?;
+
+            // FIXME What is this doing?.  We need to simplify how this work.
+            //       we also need to remove project names from routes, as nodes
+            //       are started with _one_  project.
+            project::config::set_project(cfg, &(&proj_info).into()).await?;
 
             if let Some(a) = proj_lookup.authority {
                 add_project_authority(a.identity().to_vec(), a.address().clone(), node_name, cfg)
@@ -249,6 +255,7 @@ pub fn spawn_node(
     trusted_identities: Option<&String>,
     trusted_identities_file: Option<&PathBuf>,
     reload_from_trusted_identities_file: Option<&PathBuf>,
+    launch_config: Option<String>,
 ) -> crate::Result<()> {
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
@@ -295,6 +302,11 @@ pub fn spawn_node(
     if let Some(c) = invite {
         args.push("--enrollment-token".to_string());
         args.push(hex::encode(c.code()))
+    }
+
+    if let Some(l) = launch_config {
+        args.push("--launch-config".to_string());
+        args.push(l);
     }
 
     if let Some(t) = trusted_identities {
