@@ -56,7 +56,7 @@ ockam = { path = "../../../ockam", default_features = false, features = ["softwa
 
 alloc-cortex-m = { version = "0.4.1", optional = true }
 cortex-m = { version = "0.7.2", optional = true }
-cortex-m-rt = { version = "0.6.14", optional = true }
+cortex-m-rt = { version = "0.7.3", optional = true }
 cortex-m-semihosting = { version = "0.3.7", optional = true }
 panic-semihosting = { version = "0.5.6", optional = true }
 tracing = { version = "0.1", default-features = false }
