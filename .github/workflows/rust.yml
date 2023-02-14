@@ -44,7 +44,7 @@ jobs:
     name: Rust - Lint Formatting
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
@@ -58,7 +58,7 @@ jobs:
     name: Rust - Lint with Cargo Clippy
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
@@ -75,7 +75,7 @@ jobs:
     name: Rust - Lint with Cargo Deny
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
@@ -89,7 +89,7 @@ jobs:
     name: Rust - Build Documentation
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
@@ -106,7 +106,7 @@ jobs:
     name: Rust - Build
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
@@ -123,7 +123,7 @@ jobs:
     name: Rust - Build Examples
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
@@ -140,7 +140,7 @@ jobs:
     name: Rust - Test
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
     services:
       ockam_cloud:
         image: ghcr.io/build-trust/ockam-cloud-node@sha256:518314876a5b07c263b88995792335c4426d940c10e5e638a60e66776d86cff5
@@ -162,7 +162,7 @@ jobs:
     name: Rust - Check Features - no_std alloc software_vault
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
@@ -181,7 +181,7 @@ jobs:
     name: Rust - Check Cargo Update
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
@@ -201,7 +201,7 @@ jobs:
     name: Rust - Nightly Check
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
@@ -220,7 +220,7 @@ jobs:
     name: Rust - Nightly Build
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
@@ -239,7 +239,7 @@ jobs:
     name: Rust - Nightly Test
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:

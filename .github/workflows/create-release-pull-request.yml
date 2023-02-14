@@ -44,6 +44,9 @@ jobs:
     runs-on: ubuntu-20.04
     environment: release
     container:
+      # Note: Do not update this image has it has installed all binaries
+      # to bump crates and generate changelogs which we don't want installed
+      # in our CI packages.
       image: ghcr.io/build-trust/ockam-builder@sha256:a04b6a0aa01a93ba9a5c67392872893b261772dedfcd58f72a1addacf7535c09
     steps:
       - name: Checkout Ockam
