@@ -12,13 +12,11 @@ use serde_json::json;
 
 use crate::secure_channel::HELP_DETAIL;
 use crate::util::api::CloudOpts;
-use crate::util::{is_tty, RpcBuilder};
+use crate::util::{clean_nodes_multiaddr, is_tty, RpcBuilder};
 use ockam::{identity::IdentityIdentifier, route, Context, TcpTransport};
 use ockam_api::nodes::models::secure_channel::CredentialExchangeMode;
-use ockam_api::{
-    clean_multiaddr, nodes::models::secure_channel::CreateSecureChannelResponse, route_to_multiaddr,
-};
 use ockam_api::{config::lookup::ConfigLookup, nodes::models};
+use ockam_api::{nodes::models::secure_channel::CreateSecureChannelResponse, route_to_multiaddr};
 use ockam_multiaddr::MultiAddr;
 
 /// Create Secure Channels
@@ -57,7 +55,7 @@ impl CreateCommand {
         api_node: &str,
         tcp: &TcpTransport,
     ) -> Result<MultiAddr> {
-        let (to, meta) = clean_multiaddr(&self.to, &opts.state)
+        let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .context(format!("Could not convert {} into route", &self.to))?;
 
         let projects_sc = crate::project::util::get_projects_secure_channels_from_config_lookup(

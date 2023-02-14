@@ -16,7 +16,7 @@ use crate::error::ApiError;
 use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use crate::session::util;
 use crate::session::{Replacer, Session};
-use crate::{multiaddr_to_route, try_multiaddr_to_addr};
+use crate::{local_multiaddr_to_route, try_multiaddr_to_addr};
 
 use super::{NodeManager, NodeManagerWorker};
 
@@ -38,7 +38,7 @@ impl NodeManagerWorker {
             .await?;
 
         let full = sec_chan.clone().try_with(&suffix)?;
-        let route = multiaddr_to_route(&full)
+        let route = local_multiaddr_to_route(&full)
             .ok_or_else(|| ApiError::message("invalid address: {addr}"))?;
 
         let forwarder = if req.at_rust_node() {
@@ -119,7 +119,7 @@ fn replacer(
                 let timeout = Some(util::MAX_CONNECT_TIME);
                 let (sec, rest) = this.connect(&addr, auth, timeout, ctx.as_ref()).await?;
                 let a = sec.clone().try_with(&rest)?;
-                let r = multiaddr_to_route(&a)
+                let r = local_multiaddr_to_route(&a)
                     .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {a}")))?;
                 if let Some(alias) = &alias {
                     RemoteForwarder::create_static(&ctx, r, alias, AllowAll /* FIXME: @ac */)

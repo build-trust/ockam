@@ -6,7 +6,7 @@ use crate::nodes::registry::{InletInfo, OutletInfo, Registry};
 use crate::nodes::service::random_alias;
 use crate::session::{util, Data, Replacer, Session};
 use crate::{actions, resources};
-use crate::{multiaddr_to_route, try_multiaddr_to_addr};
+use crate::{local_multiaddr_to_route, try_multiaddr_to_addr};
 use minicbor::Decoder;
 use ockam::compat::asynchronous::RwLock;
 use ockam::compat::tokio::time::timeout;
@@ -144,7 +144,7 @@ impl NodeManagerWorker {
             }
         };
 
-        let outlet_route = match multiaddr_to_route(&rest) {
+        let outlet_route = match local_multiaddr_to_route(&rest) {
             Some(route) => route,
             None => {
                 return Ok(Response::bad_request(rid)
@@ -380,7 +380,7 @@ fn replacer(
                     }
                 };
 
-                let r = multiaddr_to_route(&rest)
+                let r = local_multiaddr_to_route(&rest)
                     .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {rest}")))?;
 
                 // The previous inlet worker needs to be stopped:

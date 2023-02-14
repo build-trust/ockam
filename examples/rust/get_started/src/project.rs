@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use ockam::identity::{IdentityIdentifier, PublicIdentity};
 use ockam::vault::Vault;
+use ockam::TcpTransport;
 use ockam_api::multiaddr_to_route;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result, Route};
@@ -49,7 +50,7 @@ impl Project {
 
 /// Import a project identity into a Vault from a project.json path
 /// and return a Project struct
-pub async fn import_project(path: &str, vault: &Vault) -> Result<Project> {
+pub async fn import_project(path: &str, vault: &Vault, tcp: &TcpTransport) -> Result<Project> {
     match read_json(path)? {
         Value::Object(values) => {
             let project_identifier = IdentityIdentifier::from_str(get_field_as_str(&values, "identity")?.as_str())?;
@@ -59,11 +60,14 @@ pub async fn import_project(path: &str, vault: &Vault) -> Result<Project> {
                 PublicIdentity::import(&hex::decode(authority_identity).unwrap(), vault).await?;
 
             let authority_access_route = get_field_as_str(&values, "authority_access_route")?;
-            let authority_route: Route = multiaddr_to_route(&MultiAddr::from_str(authority_access_route.as_str())?)
-                .ok_or_else(|| error("incorrect multi address"))?;
+            let authority_route: Route =
+                multiaddr_to_route(&MultiAddr::from_str(authority_access_route.as_str())?, tcp)
+                    .await
+                    .ok_or_else(|| error("incorrect multi address"))?;
 
             let project_access_route = get_field_as_str(&values, "access_route")?;
-            let project_route: Route = multiaddr_to_route(&MultiAddr::from_str(project_access_route.as_str())?)
+            let project_route: Route = multiaddr_to_route(&MultiAddr::from_str(project_access_route.as_str())?, tcp)
+                .await
                 .ok_or_else(|| error("incorrect multi address"))?;
 
             Ok(Project {

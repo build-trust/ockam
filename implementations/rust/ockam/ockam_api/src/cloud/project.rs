@@ -14,7 +14,7 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
 
 use crate::error::ApiError;
-use crate::multiaddr_to_addr;
+use crate::multiaddr_to_socket_addr;
 
 #[derive(Encode, Decode, Serialize, Deserialize, Debug, Default)]
 #[cbor(map)]
@@ -122,8 +122,8 @@ impl Project<'_> {
     // then this will return the string "node.dnsaddr.com:4000".
     fn access_route_socket_addr(&self) -> Result<String> {
         let ma = self.access_route()?;
-        if let Some(addr) = multiaddr_to_addr(&ma) {
-            Ok(addr.address().to_string())
+        if let Some(addr) = multiaddr_to_socket_addr(&ma) {
+            Ok(addr)
         } else {
             Err(ApiError::generic(
                 "Project's access route has not a valid structure",
@@ -360,7 +360,9 @@ mod node {
             space_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<CreateProject> = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
             let req_body = req_wrapper.req;
 
             let label = "create_project";
@@ -407,7 +409,9 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
 
             let label = "list_projects";
             trace!(target: TARGET, "listing projects");
@@ -438,7 +442,9 @@ mod node {
             project_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
 
             let label = "get_project";
             trace!(target: TARGET, %project_id, "getting project");
@@ -470,7 +476,9 @@ mod node {
             project_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
 
             let label = "delete_project";
             trace!(target: TARGET, %space_id, %project_id, "deleting project");
@@ -501,7 +509,9 @@ mod node {
             project_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<AddEnroller> = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
             let req_body = req_wrapper.req;
 
             let label = "add_enroller";
@@ -533,7 +543,9 @@ mod node {
             project_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
 
             let label = "list_enrollers";
             trace!(target: TARGET, %project_id, "listing enrollers");
@@ -565,7 +577,9 @@ mod node {
             enroller_identity_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
 
             let label = "delete_enroller";
             trace!(target: TARGET, %project_id, %enroller_identity_id, "deleting enroller");

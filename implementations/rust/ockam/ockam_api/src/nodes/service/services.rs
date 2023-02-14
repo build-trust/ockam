@@ -22,7 +22,7 @@ use crate::port_range::PortRange;
 use crate::uppercase::Uppercase;
 use crate::vault::VaultService;
 use crate::DefaultAddress;
-use crate::{actions, resources, try_multiaddr_to_route};
+use crate::{actions, multiaddr_to_route, resources};
 use core::time::Duration;
 use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
@@ -315,7 +315,9 @@ impl NodeManager {
             .await?;
 
         let project_multiaddr = maybe_tunnel_multiaddr.try_with(&suffix_address)?;
-        let project_route = try_multiaddr_to_route(&project_multiaddr)?;
+        let project_route = multiaddr_to_route(&project_multiaddr, &self.tcp_transport)
+            .await
+            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
 
         let bootstrap_address_route = route![
             local_interceptor_address.clone(),

@@ -119,7 +119,7 @@ fn print_entries(entries: &[(IdentityIdentifier, AttributesEntry)]) {
 }
 
 async fn client(addr: &MultiAddr, ctx: &Context) -> Result<auth::Client> {
-    let to = ockam_api::multiaddr_to_route(addr)
+    let to = ockam_api::local_multiaddr_to_route(addr)
         .ok_or_else(|| anyhow!("failed to parse address: {addr}"))?;
     let cl = auth::Client::new(to, ctx).await?;
     Ok(cl)

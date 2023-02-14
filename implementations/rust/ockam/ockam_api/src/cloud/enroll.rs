@@ -45,7 +45,9 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<AuthenticateAuth0Token> = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
             let req_body: AuthenticateAuth0Token = req_wrapper.req;
             let req_builder = Request::post("v0/enroll").body(req_body);
             let api_service = "auth0_authenticator";
@@ -77,7 +79,9 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<Attributes> = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
             let req_body: Attributes = req_wrapper.req;
             let req_body = RequestEnrollmentToken::new(req_body);
 
@@ -110,7 +114,9 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<EnrollmentToken> = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
             let req_body: EnrollmentToken = req_wrapper.req;
             let req_builder = Request::post("v0/enroll").body(req_body);
             let api_service = "enrollment_token_authenticator";

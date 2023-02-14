@@ -44,7 +44,7 @@ impl NodeManager {
 
         let allowed = vec![authority.identity.identifier().clone()];
 
-        let route = match multiaddr_to_route(&authority.addr) {
+        let route = match multiaddr_to_route(&authority.addr, &self.tcp_transport).await {
             Some(route) => route,
             None => {
                 error!("INVALID ROUTE");
@@ -127,7 +127,7 @@ impl NodeManagerWorker {
         let request: PresentCredentialRequest = dec.decode()?;
 
         let route = MultiAddr::from_str(&request.route).map_err(map_multiaddr_err)?;
-        let route = match multiaddr_to_route(&route) {
+        let route = match multiaddr_to_route(&route, &node_manager.tcp_transport).await {
             Some(route) => route,
             None => return Err(ApiError::generic("invalid credentials service route")),
         };

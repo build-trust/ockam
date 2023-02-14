@@ -39,7 +39,9 @@ use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::session::util::starts_with_host_tcp_secure;
 use crate::session::{Medic, Sessions};
-use crate::{multiaddr_to_route, try_address_to_multiaddr, DefaultAddress};
+use crate::{
+    local_multiaddr_to_route, multiaddr_to_route, try_address_to_multiaddr, DefaultAddress,
+};
 
 pub mod message;
 
@@ -99,7 +101,7 @@ pub struct NodeManager {
     pub(crate) cli_state: CliState,
     node_name: String,
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
-    tcp_transport: TcpTransport,
+    pub(crate) tcp_transport: TcpTransport,
     pub(crate) controller_identity_id: IdentityIdentifier,
     skip_defaults: bool,
     enable_credential_checks: bool,
@@ -377,8 +379,8 @@ impl NodeManager {
                     .ok_or_else(|| ApiError::message("invalid project protocol in multiaddr"))?;
                 let (a, i) = self.resolve_project(&p)?;
                 debug!(addr = %a, "creating secure channel");
-                let r =
-                    multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+                let r = local_multiaddr_to_route(&a)
+                    .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                 let i = Some(vec![i]);
                 let m = CredentialExchangeMode::Oneway;
                 let w = self
@@ -392,7 +394,9 @@ impl NodeManager {
         if let Some(pos) = starts_with_host_tcp_secure(addr) {
             debug!(%addr, "creating secure channel");
             let (a, b) = addr.split(pos);
-            let r = multiaddr_to_route(&a).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+            let r = multiaddr_to_route(&a, &self.tcp_transport)
+                .await
+                .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
             let i = auth.clone().map(|i| vec![i]);
             let m = CredentialExchangeMode::Mutual;
             let w = self
@@ -403,8 +407,8 @@ impl NodeManager {
 
         if Some(Secure::CODE) == addr.last().map(|p| p.code()) {
             debug!(%addr, "creating secure channel");
-            let r =
-                multiaddr_to_route(addr).ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+            let r = local_multiaddr_to_route(addr)
+                .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
             let i = auth.clone().map(|i| vec![i]);
             let m = CredentialExchangeMode::Mutual;
             let w = self

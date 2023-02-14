@@ -92,7 +92,9 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<CreateInvitation> = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
             let req_body = req_wrapper.req;
 
             let label = "create_invitation";
@@ -128,7 +130,9 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
 
             let label = "list_invitations";
             trace!(target: TARGET, "listing invitations");
@@ -158,7 +162,9 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
 
             let label = "accept_invitation";
             trace!(target: TARGET, %id, "accepting invitation");
@@ -188,7 +194,9 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper.route()?;
+            let cloud_route = req_wrapper
+                .route(&self.get().read().await.tcp_transport)
+                .await?;
 
             let label = "reject_invitation";
             trace!(target: TARGET, %id, "rejecting invitation");
