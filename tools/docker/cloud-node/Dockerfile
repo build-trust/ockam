@@ -1,5 +1,5 @@
 # Stage 1 - Build elixir release of ockam_cloud_node elixir app
-FROM ghcr.io/build-trust/ockam-builder@sha256:dddc009b53bb579ec3e2edf3353668c1d5213f444162bec884342dfc69450348 as elixir-app-release-build
+FROM ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a as elixir-app-release-build
 COPY . /work
 RUN set -xe; \
     cd implementations/elixir; \
