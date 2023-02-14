@@ -236,3 +236,9 @@ impl Output for Credential {
         Ok(self.to_string())
     }
 }
+
+impl Output for Vec<u8> {
+    fn output(&self) -> anyhow::Result<String> {
+        Ok(hex::encode(self))
+    }
+}

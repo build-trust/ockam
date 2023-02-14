@@ -85,7 +85,7 @@ impl Runner {
                 &node_name,
                 a,
                 &replace_project(&self.cmd.to, a.address())?,
-                None, //for now always the default identity
+                self.cmd.cloud_opts.identity.clone(),
             )
             .await?;
             for proto in self.cmd.to.iter().skip(1) {

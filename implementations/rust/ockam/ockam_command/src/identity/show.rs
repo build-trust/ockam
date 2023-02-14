@@ -12,8 +12,11 @@ use ockam_identity::change_history::IdentityChangeHistory;
 pub struct ShowCommand {
     #[arg(default_value_t = default_identity_name())]
     name: String,
-    #[arg(short, long)]
+
+    #[arg(short, long, group = "full_opt")]
     full: bool,
+    #[arg(long, group = "full_opt")]
+    hex: bool,
 }
 
 impl ShowCommand {
@@ -32,7 +35,10 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> crate::Result<()> {
         );
     }
     let state = opts.state.identities.get(&cmd.name)?;
-    if cmd.full {
+    if cmd.hex {
+        let identity = state.config.change_history.export()?;
+        print_output(identity, &opts.global_args.output_format)?;
+    } else if cmd.full {
         let identity = state.config.change_history.export()?;
         let output = LongIdentityResponse::new(identity);
         print_output(output, &opts.global_args.output_format)?;

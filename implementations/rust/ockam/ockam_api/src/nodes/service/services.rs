@@ -227,7 +227,7 @@ impl NodeManager {
         if self.registry.authenticator_service.contains_key(&addr) {
             return Err(ApiError::generic("Authenticator service already started"));
         }
-        let db = self.authenticated_storage.async_try_clone().await?;
+        let db = self.attributes_storage.async_try_clone().await?;
         let id = self.identity()?.async_try_clone().await?;
         let au = crate::authenticator::direct::Server::new(
             proj.to_vec(),
@@ -235,7 +235,8 @@ impl NodeManager {
             enrollers,
             reload_enrollers,
             id,
-        )?;
+        )
+        .await?;
         ctx.start_worker(
             addr.clone(),
             au,
