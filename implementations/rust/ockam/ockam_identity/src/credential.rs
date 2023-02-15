@@ -13,6 +13,7 @@ use crate::IdentityIdentifier;
 use core::fmt;
 use core::marker::PhantomData;
 use core::time::Duration;
+use minicbor::bytes::ByteVec;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::{collections::BTreeMap, string::String, vec::Vec};
 use ockam_core::Result;
@@ -43,8 +44,10 @@ pub struct Credential {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3796735>,
     /// CBOR-encoded [`CredentialData`].
+    #[cbor(with = "minicbor::bytes")]
     #[b(1)] data: Vec<u8>,
     /// Cryptographic signature of attributes data.
+    #[cbor(with = "minicbor::bytes")]
     #[b(2)] signature: Vec<u8>,
 }
 
@@ -206,7 +209,8 @@ impl TryFrom<&Credential> for CredentialData<Unverified> {
 pub struct Attributes {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<4724285>,
-    #[b(1)] attrs: BTreeMap<String, Vec<u8>>
+
+    #[b(1)] attrs: BTreeMap<String, ByteVec>
 }
 
 impl Attributes {
@@ -231,15 +235,15 @@ impl Attributes {
     ///
     /// If an entry with the same key exists it is replaced with the new value.
     pub fn put(&mut self, k: &str, v: &[u8]) -> &mut Self {
-        self.attrs.insert(k.into(), v.into());
+        self.attrs.insert(k.into(), v.to_vec().into());
         self
     }
 
     pub fn get(&self, k: &str) -> Option<&[u8]> {
-        self.attrs.get(k).map(|s| &**s)
+        self.attrs.get(k).map(|s| &***s)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&String, &Vec<u8>)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &ByteVec)> {
         self.attrs.iter()
     }
 }
