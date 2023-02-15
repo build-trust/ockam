@@ -30,12 +30,12 @@ pub struct CreateCommand {
     #[arg(long, display_order = 902, id = "SOCKET_ADDRESS")]
     to: SocketAddr,
 
-    /// Enable credentials authorization.
+    /// Enable credential authorization.
     /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
     #[arg(long, display_order = 900, conflicts_with = "disable_check_credential")]
     check_credential: bool,
 
-    /// Disable credentials authorization.
+    /// Disable credential authorization.
     /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
     #[arg(long, display_order = 900, conflicts_with = "check_credential")]
     disable_check_credential: bool,

@@ -109,7 +109,7 @@ fn verifier_default_addr() -> String {
 }
 
 fn credentials_default_addr() -> String {
-    DefaultAddress::CREDENTIAL_SERVICE.to_string()
+    DefaultAddress::CREDENTIALS_SERVICE.to_string()
 }
 
 fn authenticator_default_addr() -> String {

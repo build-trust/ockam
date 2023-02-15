@@ -31,7 +31,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let authorities = vec![authority.to_public().await?];
 
     server
-        .start_credentials_exchange_worker(
+        .start_credential_exchange_worker(
             authorities,
             "credential_exchange",
             false,
@@ -94,7 +94,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
 
     let authorities = vec![authority.to_public().await?];
     client2
-        .start_credentials_exchange_worker(
+        .start_credential_exchange_worker(
             authorities.clone(),
             "credential_exchange",
             true,
@@ -178,7 +178,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let authorities = vec![authority.to_public().await?];
 
     server
-        .start_credentials_exchange_worker(
+        .start_credential_exchange_worker(
             authorities,
             "credential_exchange",
             false,

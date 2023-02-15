@@ -1,4 +1,4 @@
-use credentials_example::{BOB_LISTENER_ADDRESS, BOB_TCP_ADDRESS, ECHOER};
+use credential_example::{BOB_LISTENER_ADDRESS, BOB_TCP_ADDRESS, ECHOER};
 use ockam::identity::{Identity, IdentityTrait, TrustEveryonePolicy};
 use ockam::vault::{SecretAttributes, SecretPersistence, SecretType, SecretVault, Vault};
 use ockam::{route, Context, Result, TcpTransport, TCP};

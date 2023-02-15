@@ -58,7 +58,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 
     /// Start worker that will be available to receive others attributes and put them into storage,
     /// after successful verification
-    pub async fn start_credentials_exchange_worker(
+    pub async fn start_credential_exchange_worker(
         &self,
         authorities: Vec<PublicIdentity>,
         address: impl Into<Address>,
@@ -85,8 +85,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 
     /// Present credential to other party, route shall use secure channel
     pub async fn present_credential(&self, route: impl Into<Route>) -> Result<()> {
-        let credentials = self.credential.read().await;
-        let credential = credentials.as_ref().ok_or_else(|| {
+        let credential = self.credential.read().await;
+        let credential = credential.as_ref().ok_or_else(|| {
             Error::new(
                 Origin::Application,
                 Kind::Invalid,
@@ -122,8 +122,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         authorities: impl IntoIterator<Item = &PublicIdentity>,
         attributes_storage: &impl IdentityAttributeStorage,
     ) -> Result<()> {
-        let credentials = self.credential.read().await;
-        let credential = credentials.as_ref().ok_or_else(|| {
+        let credential = self.credential.read().await;
+        let credential = credential.as_ref().ok_or_else(|| {
             Error::new(
                 Origin::Application,
                 Kind::Invalid,

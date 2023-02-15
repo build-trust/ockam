@@ -25,7 +25,7 @@ impl<S: IdentityAttributeStorage> Debug for CredentialAccessControl<S> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         let attributes = format!("{:?}", self.required_attributes.iter().map(|x| &x.0));
 
-        f.debug_struct("Credentials Access Control")
+        f.debug_struct("Credential Access Control")
             .field("Required attributes", &attributes)
             .finish()
     }

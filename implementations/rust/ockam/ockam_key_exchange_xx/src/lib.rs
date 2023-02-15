@@ -74,7 +74,7 @@ mod tests {
 
     #[allow(non_snake_case)]
     #[ockam_macros::test]
-    async fn full_flow__correct_credentials__keys_should_match(ctx: &mut Context) -> Result<()> {
+    async fn full_flow__correct_credential__keys_should_match(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
 
         let key_exchanger = XXNewKeyExchanger::new(vault.async_try_clone().await.unwrap());

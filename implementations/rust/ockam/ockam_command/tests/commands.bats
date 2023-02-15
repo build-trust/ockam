@@ -457,7 +457,7 @@ teardown() {
 @test "send a message to a project node from command embedded node, enrolled member on different install" {
   skip  # FIXME  how to send a message to a project m1 is enrolled to?  (with m1 being on a different install
         #       than the admin?.  If we pass project' address directly (instead of /project/ thing), would
-        #       it present credentials? would read authority info from project.json?
+        #       it present credential? would read authority info from project.json?
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM project information --output json  > /tmp/project.json
@@ -565,7 +565,7 @@ teardown() {
   assert_success
 }
 
-@test "inlet/outlet example with credentials, not provided" {
+@test "inlet/outlet example with credential, not provided" {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM project information default --output json  > /tmp/project.json
@@ -602,12 +602,12 @@ teardown() {
 
   unset OCKAM_HOME
 
-  # Green can't establish secure channel with blue, because it doesn't exchange credentials with it.
+  # Green can't establish secure channel with blue, because it doesn't exchange credential with it.
   run curl --fail --head --max-time 10 127.0.0.1:7000
   assert_failure
 }
 
-@test "inlet (with implicit secure channel creation) / outlet example with credentials, not provided" {
+@test "inlet (with implicit secure channel creation) / outlet example with credential, not provided" {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM project information default --output json  > /tmp/project.json
@@ -643,7 +643,7 @@ teardown() {
   unset OCKAM_HOME
 }
 
-@test "inlet/outlet example with credentials" {
+@test "inlet/outlet example with credential" {
   skip_if_orchestrator_tests_not_enabled
 
   $OCKAM project information default --output json > /tmp/project.json
@@ -720,7 +720,7 @@ teardown() {
   assert_success
 }
 
-@test "project requiring credentials" {
+@test "project requiring credential" {
   skip_if_orchestrator_tests_not_enabled
   skip_if_long_tests_not_enabled
 

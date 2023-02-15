@@ -1,4 +1,4 @@
-use hello_ockam::{create_attribute_access_control, create_token, get_credentials, import_project};
+use hello_ockam::{create_attribute_access_control, create_token, get_credential, import_project};
 use ockam::access_control::AllowAll;
 use ockam::identity::authenticated_storage::{mem::InMemoryStorage, AuthenticatedAttributeStorage};
 use ockam::identity::credential::{Credential, OneTimeCode};
@@ -6,6 +6,7 @@ use ockam::identity::{Identity, TrustEveryonePolicy, TrustMultiIdentifiersPolicy
 
 use ockam::remote::RemoteForwarder;
 use ockam::{route, vault::Vault, AsyncTryClone, Context, Result, TcpTransport};
+use ockam_api::DefaultAddress;
 use ockam_core::IncomingAccessControl;
 use std::sync::Arc;
 use std::time::Duration;
@@ -56,7 +57,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     let control_plane = Identity::create_ext(&ctx, &storage, &vault).await?;
 
     // 2. create a secure channel to the authority
-    //    to retrieve the node credentials
+    //    to retrieve the node credential
 
     // Import the authority identity and route from the information file
     let project = import_project(project_information_path, &vault).await?;
@@ -71,14 +72,15 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         )
         .await?;
 
-    let credentials: Credential = get_credentials(&ctx, route![secure_channel, "authenticator"], token).await?;
-    println!("{credentials}");
+    let credential: Credential =
+        get_credential(&ctx, route![secure_channel, DefaultAddress::AUTHENTICATOR], token).await?;
+    println!("{credential}");
 
-    // store the credentials and start a credentials exchange worker which will be
+    // store the credential and start a credential exchange worker which will be
     // later on to exchange credentials with the edge node
-    control_plane.set_credential(credentials.to_owned()).await;
+    control_plane.set_credential(credential.to_owned()).await;
     control_plane
-        .start_credentials_exchange_worker(
+        .start_credential_exchange_worker(
             vec![project.authority_public_identity()],
             "credential_exchange",
             true,
@@ -109,9 +111,12 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .await?;
     println!("secure channel to project: {secure_channel_address:?}");
 
-    // present this node credentials to the project
+    // present this node credential to the project
     control_plane
-        .present_credential(route![secure_channel_address.clone(), "credentials"])
+        .present_credential(route![
+            secure_channel_address.clone(),
+            DefaultAddress::CREDENTIALS_SERVICE
+        ])
         .await?;
 
     // finally create a forwarder using the secure channel to the project

@@ -26,7 +26,7 @@ pub struct CreateInlet<'a> {
     #[n(2)] outlet_addr: MultiAddr,
     /// A human-friendly alias for this portal endpoint
     #[b(3)] alias: Option<CowStr<'a>>,
-    /// Enable credentials authorization.
+    /// Enable credential authorization.
     /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
     #[n(4)] check_credential: Option<bool>,
     /// An authorised identity for secure channels.
@@ -103,7 +103,7 @@ pub struct CreateOutlet<'a> {
     #[b(2)] pub worker_addr: Cow<'a, str>,
     /// A human-friendly alias for this portal endpoint
     #[b(3)] pub alias: Option<CowStr<'a>>,
-    /// Enable credentials authorization.
+    /// Enable credential authorization.
     /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
     #[n(4)] pub check_credential: Option<bool>,
 }

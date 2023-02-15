@@ -31,11 +31,11 @@ use crate::TypeTag;
 
 pub const MAX_CREDENTIAL_VALIDITY: Duration = Duration::from_secs(30 * 24 * 3600);
 
-/// Type to represent data of verified credentials.
+/// Type to represent data of verified credential.
 #[derive(Debug, Encode)]
 pub enum Verified {}
 
-/// Type to represent data of unverified credentials.
+/// Type to represent data of unverified credential.
 #[derive(Debug, Decode)]
 pub enum Unverified {}
 

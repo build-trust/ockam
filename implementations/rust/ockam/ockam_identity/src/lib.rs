@@ -32,7 +32,7 @@ pub mod change;
 /// Change history of an `Identity`
 pub mod change_history;
 
-/// Credentials support
+/// Credential support
 pub mod credential;
 
 /// Errors

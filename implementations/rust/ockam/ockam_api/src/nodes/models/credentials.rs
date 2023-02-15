@@ -1,4 +1,4 @@
-//! Credentials request/response types
+//! Credential request/response types
 
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
