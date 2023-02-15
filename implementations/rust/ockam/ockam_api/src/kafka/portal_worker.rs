@@ -15,6 +15,7 @@ use crate::kafka::decoder::KafkaDecoder;
 use crate::kafka::encoder::KafkaEncoder;
 use crate::kafka::inlet_map::KafkaInletMap;
 use crate::kafka::protocol_aware::ProtocolState;
+use crate::kafka::secure_channel_map::KafkaSecureChannelController;
 
 ///by default kafka supports up to 1MB messages, 16MB is the maximum suggested
 pub(crate) const MAX_KAFKA_MESSAGE_SIZE: usize = 16 * 1024 * 1024;
@@ -42,20 +43,20 @@ enum Receiving {
 /// │        │◄────────────┤ Response│◄────────────┤        │
 /// └────────┘             └─────────┘             └────────┘
 ///```
-pub(crate) struct KafkaPortalWorker<V: IdentityVault, S: AuthenticatedStorage> {
+pub(crate) struct KafkaPortalWorker {
     //the instance of worker managing the opposite: request or response
     //the first one to receive the disconnect message will stop both workers
     other_worker_address: Address,
     reader: KafkaDecoder,
     writer: KafkaEncoder,
     receiving: Receiving,
-    shared_protocol_state: ProtocolState<V, S>,
+    shared_protocol_state: ProtocolState,
     inlet_map: KafkaInletMap,
     disconnect_received: Arc<AtomicBool>,
 }
 
 #[ockam::worker]
-impl<V: IdentityVault, S: AuthenticatedStorage> Worker for KafkaPortalWorker<V, S> {
+impl Worker for KafkaPortalWorker {
     type Message = PortalMessage;
     type Context = Context;
 
@@ -125,7 +126,7 @@ pub(crate) enum InterceptError {
     Ockam(ockam_core::Error),
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> KafkaPortalWorker<V, S> {
+impl KafkaPortalWorker {
     async fn forward(
         &self,
         context: &mut Context,
@@ -230,15 +231,15 @@ impl<V: IdentityVault, S: AuthenticatedStorage> KafkaPortalWorker<V, S> {
     }
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> KafkaPortalWorker<V, S> {
+impl KafkaPortalWorker {
     ///returns address used for inlet communications, aka the one facing the client side,
     /// used for requests.
     pub(crate) async fn start(
         context: &mut Context,
-        identity: Identity<V, S>,
+        secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
         inlet_map: KafkaInletMap,
     ) -> ockam_core::Result<Address> {
-        let shared_protocol_state = ProtocolState::new(identity);
+        let shared_protocol_state = ProtocolState::new(secure_channel_controller);
 
         let inlet_address = Address::random_tagged("KafkaPortalWorker.inlet");
         let outlet_address = Address::random_tagged("KafkaPortalWorker.outlet");
@@ -294,6 +295,7 @@ mod test {
 
     use crate::kafka::inlet_map::KafkaInletMap;
     use crate::kafka::portal_worker::KafkaPortalWorker;
+    use crate::kafka::secure_channel_map::KafkaSecureChannelControllerImpl;
     use crate::port_range::PortRange;
 
     const TEST_KAFKA_API_VERSION: i16 = 13;
@@ -311,8 +313,11 @@ mod test {
 
         let vault = Vault::create();
         let identity = Identity::create(context, &vault).await?;
+        let secure_channel_controller =
+            KafkaSecureChannelControllerImpl::new(identity).into_trait();
 
-        let portal_inlet_address = KafkaPortalWorker::start(context, identity, inlet_map).await?;
+        let portal_inlet_address =
+            KafkaPortalWorker::start(context, secure_channel_controller, inlet_map).await?;
 
         context
             .send(
@@ -350,13 +355,16 @@ mod test {
         let vault = Vault::create();
         let identity = Identity::create(context, &vault).await?;
 
+        let secure_channel_controller =
+            KafkaSecureChannelControllerImpl::new(identity).into_trait();
+
         let inlet_map = KafkaInletMap::new(
             route![],
             "127.0.0.1".into(),
             PortRange::new(20_000, 40_000).unwrap(),
         );
         let portal_inlet_address =
-            KafkaPortalWorker::start(context, identity, inlet_map.clone()).await?;
+            KafkaPortalWorker::start(context, secure_channel_controller, inlet_map.clone()).await?;
 
         let mut request_buffer = BytesMut::new();
         {

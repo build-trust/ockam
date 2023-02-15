@@ -4,6 +4,7 @@ mod inlet_map;
 mod portal_listener;
 mod portal_worker;
 mod protocol_aware;
+mod secure_channel_map;
 
 use ockam_core::Address;
 pub(crate) use portal_listener::KafkaPortalListener;
