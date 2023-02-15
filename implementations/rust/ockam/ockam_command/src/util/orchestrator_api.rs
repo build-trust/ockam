@@ -142,7 +142,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
         self
     }
 
-    pub async fn authenticate(&self) -> Result<Credential<'a>> {
+    pub async fn authenticate(&self) -> Result<Credential> {
         let sc_addr = self
             .secure_channel_to(&OrchestratorEndpoint::Authenticator)
             .await?;
@@ -162,7 +162,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
             Some(token) => client.credential_with(&token).await?,
         };
 
-        Ok(credential.to_owned())
+        Ok(credential)
     }
 
     /// Sends the request and returns  the response

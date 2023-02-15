@@ -13,16 +13,13 @@ use crate::IdentityIdentifier;
 use core::fmt;
 use core::marker::PhantomData;
 use core::time::Duration;
-use minicbor::bytes::ByteSlice;
 use minicbor::{Decode, Encode};
-use ockam_core::compat::borrow::Cow;
-use ockam_core::compat::{
-    collections::BTreeMap,
-    string::{String, ToString},
-    vec::Vec,
-};
-use ockam_core::{CowBytes, CowStr, Result};
+use ockam_core::compat::{collections::BTreeMap, string::String, vec::Vec};
+use ockam_core::Result;
+use serde::de::Error;
+use serde::{Deserialize, Deserializer};
 use serde::{Serialize, Serializer};
+
 #[cfg(feature = "std")]
 use std::ops::Deref;
 
@@ -39,22 +36,23 @@ pub enum Verified {}
 #[derive(Debug, Decode)]
 pub enum Unverified {}
 
-#[derive(Clone, Debug, Decode, Encode)]
+#[derive(Clone, Debug, Decode, Encode, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct Credential<'a> {
+pub struct Credential {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<3796735>,
     /// CBOR-encoded [`CredentialData`].
-    #[b(1)] data: CowBytes<'a>,
+    #[b(1)] data: Vec<u8>,
     /// Cryptographic signature of attributes data.
-    #[b(2)] signature: CowBytes<'a>,
+    #[b(2)] signature: Vec<u8>,
 }
 
-impl fmt::Display for Credential<'_> {
+impl fmt::Display for Credential {
     #[cfg(feature = "std")]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let credential_data = CredentialData::try_from(self).map_err(|_| fmt::Error)?;
+        let credential_data: CredentialData<_> =
+            CredentialData::try_from(self).map_err(|_| fmt::Error)?;
         writeln!(f, "---")?;
         writeln!(f, " Subject: {}", credential_data.subject)?;
         writeln!(
@@ -88,17 +86,17 @@ impl fmt::Display for Credential<'_> {
 #[derive(Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct CredentialData<'a, T> {
+pub struct CredentialData<T> {
     /// A schema identifier to allow distinguishing sets of attributes.
     #[n(1)] schema: Option<SchemaId>,
     /// User-defined key-value pairs.
-    #[b(2)] attributes: Attributes<'a>,
+    #[b(2)] attributes: Attributes,
     /// The subject this credential is issued for.
     #[n(3)] subject: IdentityIdentifier,
     /// The entity that signed this credential.
     #[n(4)] issuer: IdentityIdentifier,
     /// The label of the issuer's public key.
-    #[b(5)] issuer_key_label: CowStr<'a>,
+    #[b(5)] issuer_key_label: String,
     /// The time when this credential was created.
     #[n(6)] created: Timestamp,
     /// The time this credential expires.
@@ -107,8 +105,8 @@ pub struct CredentialData<'a, T> {
     #[n(8)] status: Option<PhantomData<T>>
 }
 
-impl<'a> CredentialData<'a, Unverified> {
-    pub(crate) fn into_verified(self) -> CredentialData<'a, Verified> {
+impl CredentialData<Unverified> {
+    pub(crate) fn into_verified(self) -> CredentialData<Verified> {
         CredentialData {
             schema: self.schema,
             attributes: self.attributes,
@@ -122,8 +120,8 @@ impl<'a> CredentialData<'a, Unverified> {
     }
 }
 
-impl<'a> Credential<'a> {
-    pub fn builder<'b>(subject: IdentityIdentifier) -> CredentialBuilder<'b> {
+impl Credential {
+    pub fn builder(subject: IdentityIdentifier) -> CredentialBuilder {
         CredentialBuilder {
             schema: None,
             subject,
@@ -140,30 +138,17 @@ impl<'a> Credential<'a> {
         &self.data
     }
 
-    fn new<A, S>(data: A, signature: S) -> Self
-    where
-        A: Into<Cow<'a, [u8]>>,
-        S: Into<Cow<'a, [u8]>>,
-    {
+    fn new(data: Vec<u8>, signature: Vec<u8>) -> Self {
         Credential {
             #[cfg(feature = "tag")]
             tag: TypeTag,
-            data: CowBytes(data.into()),
-            signature: CowBytes(signature.into()),
-        }
-    }
-
-    pub fn to_owned<'r>(&'a self) -> Credential<'r> {
-        Credential {
-            #[cfg(feature = "tag")]
-            tag: TypeTag,
-            data: self.data.to_owned(),
-            signature: self.signature.to_owned(),
+            data,
+            signature,
         }
     }
 }
 
-impl<'a> CredentialData<'a, Verified> {
+impl CredentialData<Verified> {
     pub fn schema(&self) -> Option<SchemaId> {
         self.schema
     }
@@ -188,16 +173,16 @@ impl<'a> CredentialData<'a, Verified> {
         self.expires
     }
 
-    pub fn attributes(&self) -> &Attributes<'_> {
+    pub fn attributes(&self) -> &Attributes {
         &self.attributes
     }
 
-    pub fn into_attributes(self) -> Attributes<'a> {
+    pub fn into_attributes(self) -> Attributes {
         self.attributes
     }
 }
 
-impl<'a> CredentialData<'a, Unverified> {
+impl CredentialData<Unverified> {
     pub fn unverfied_issuer(&self) -> &IdentityIdentifier {
         &self.issuer
     }
@@ -206,11 +191,11 @@ impl<'a> CredentialData<'a, Unverified> {
     }
 }
 
-impl<'a, 'b: 'a> TryFrom<&'b Credential<'a>> for CredentialData<'a, Unverified> {
+impl TryFrom<&Credential> for CredentialData<Unverified> {
     type Error = minicbor::decode::Error;
 
-    fn try_from(value: &'b Credential<'a>) -> Result<Self, Self::Error> {
-        minicbor::decode(&value.data)
+    fn try_from(value: &Credential) -> Result<Self, Self::Error> {
+        minicbor::decode(value.clone().data.as_slice())
     }
 }
 
@@ -218,13 +203,13 @@ impl<'a, 'b: 'a> TryFrom<&'b Credential<'a>> for CredentialData<'a, Unverified> 
 #[derive(Debug, Clone, Default, Encode, Decode, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct Attributes<'a> {
+pub struct Attributes {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<4724285>,
-    #[b(1)] attrs: BTreeMap<&'a str, &'a ByteSlice>
+    #[b(1)] attrs: BTreeMap<String, Vec<u8>>
 }
 
-impl<'a> Attributes<'a> {
+impl Attributes {
     /// Create a new empty attribute set.
     pub fn new() -> Self {
         Attributes {
@@ -245,26 +230,17 @@ impl<'a> Attributes<'a> {
     /// Add a key-value pair to the attribute set.
     ///
     /// If an entry with the same key exists it is replaced with the new value.
-    pub fn put(&mut self, k: &'a str, v: &'a [u8]) -> &mut Self {
-        self.attrs.insert(k, v.into());
+    pub fn put(&mut self, k: &str, v: &[u8]) -> &mut Self {
+        self.attrs.insert(k.into(), v.into());
         self
     }
 
     pub fn get(&self, k: &str) -> Option<&[u8]> {
-        self.attrs.get(k).map(|s| &***s)
+        self.attrs.get(k).map(|s| &**s)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&str, &[u8])> {
-        self.attrs.iter().map(|(k, v)| (*k, &***v))
-    }
-
-    pub fn to_owned(&self) -> BTreeMap<String, Vec<u8>> {
-        let mut map = BTreeMap::default();
-        for (k, v) in self.iter() {
-            map.insert(k.to_string(), v.to_vec());
-        }
-
-        map
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Vec<u8>)> {
+        self.attrs.iter()
     }
 }
 
@@ -314,16 +290,16 @@ impl From<SchemaId> for u64 {
 }
 
 /// Convenience structure to create [`Credential`]s.
-pub struct CredentialBuilder<'a> {
+pub struct CredentialBuilder {
     schema: Option<SchemaId>,
-    attrs: Attributes<'a>,
+    attrs: Attributes,
     subject: IdentityIdentifier,
     validity: Duration,
 }
 
-impl<'a> CredentialBuilder<'a> {
+impl CredentialBuilder {
     /// Add some key-value pair as credential attribute.
-    pub fn with_attribute(mut self, k: &'a str, v: &'a [u8]) -> Self {
+    pub fn with_attribute(mut self, k: &str, v: &[u8]) -> Self {
         self.attrs.put(k, v);
         self
     }
@@ -349,13 +325,61 @@ impl<'a> CredentialBuilder<'a> {
     }
 }
 
-impl Serialize for Credential<'_> {
+impl Serialize for Credential {
     fn serialize<S: Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         let bytes = minicbor::to_vec(self).expect("encoding credential to vec never errors");
         if ser.is_human_readable() {
             ser.serialize_str(&hex::encode(&bytes))
         } else {
             ser.serialize_bytes(&bytes)
+        }
+    }
+}
+
+impl<'a> Deserialize<'a> for Credential {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'a>,
+    {
+        let bytes: Vec<u8> = if deserializer.is_human_readable() {
+            let s = String::deserialize(deserializer)?;
+            hex::decode(s).map_err(D::Error::custom)?
+        } else {
+            <Vec<u8>>::deserialize(deserializer)?
+        };
+        minicbor::decode(&bytes).map_err(D::Error::custom)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use quickcheck::{Arbitrary, Gen};
+    use quickcheck_macros::quickcheck;
+    use serde_json;
+
+    #[quickcheck]
+    fn test_serialization_roundtrip(credential: Credential) -> bool {
+        let serialized = serde_bare::to_vec(&credential).unwrap();
+        let actual: Credential = serde_bare::from_slice(serialized.as_slice()).unwrap();
+        actual == credential
+    }
+
+    #[quickcheck]
+    fn test_serialization_roundtrip_human_readable(credential: Credential) -> bool {
+        let serialized = serde_json::to_string(&credential).unwrap();
+        let actual: Credential = serde_json::from_str(serialized.as_str()).unwrap();
+        actual == credential
+    }
+
+    impl Arbitrary for Credential {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Credential::new(<Vec<u8>>::arbitrary(g), <Vec<u8>>::arbitrary(g))
+        }
+
+        /// there is no meaningful shrinking in general for a credential
+        fn shrink(&self) -> Box<dyn Iterator<Item = Credential>> {
+            Box::new(std::iter::empty())
         }
     }
 }

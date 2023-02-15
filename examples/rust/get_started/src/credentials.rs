@@ -8,7 +8,7 @@ use ockam_core::{Error, Route};
 
 /// Using a one-time token created for an identity enrolled with some specific attributes
 /// retrieve its credential from a central authority
-pub async fn get_credential(ctx: &Context, authority_route: Route, token: OneTimeCode) -> Result<Credential<'static>> {
+pub async fn get_credential(ctx: &Context, authority_route: Route, token: OneTimeCode) -> Result<Credential> {
     let request = Request::post("/credential").body(token);
     let mut buf = Vec::new();
     request.encode(&mut buf)?;
@@ -17,7 +17,7 @@ pub async fn get_credential(ctx: &Context, authority_route: Route, token: OneTim
     let mut d = Decoder::new(&response_bytes);
     let _: Response = d.decode()?;
     let credential: Credential = d.decode().map_err(|e| error(format!("{e}")))?;
-    Ok(credential.to_owned())
+    Ok(credential)
 }
 
 fn error(message: String) -> Error {

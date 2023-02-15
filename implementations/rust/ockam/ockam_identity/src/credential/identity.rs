@@ -17,25 +17,22 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::SignatureVec;
-use ockam_core::{Address, AllowAll, AsyncTryClone, CowStr, Error, Mailboxes, Result, Route};
+use ockam_core::{Address, AllowAll, AsyncTryClone, Error, Mailboxes, Result, Route};
 use ockam_node::api::{request, request_with_local_info};
 use ockam_node::WorkerBuilder;
 
 impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
-    pub async fn set_credential(&self, credential: Credential<'static>) {
+    pub async fn set_credential(&self, credential: Credential) {
         // TODO: May also verify received credential calling self.verify_self_credential
         *self.credential.write().await = Some(credential);
     }
 
-    pub async fn credential<'a>(&self) -> Option<Credential<'a>> {
+    pub async fn credential(&self) -> Option<Credential> {
         self.credential.read().await.clone()
     }
 
     /// Create a signed credential based on the given values.
-    pub async fn issue_credential<'a>(
-        &self,
-        builder: CredentialBuilder<'a>,
-    ) -> Result<Credential<'a>> {
+    pub async fn issue_credential(&self, builder: CredentialBuilder) -> Result<Credential> {
         let key_label = IdentityStateConst::ROOT_LABEL;
         let now = Timestamp::now()
             .ok_or_else(|| Error::new(Origin::Core, Kind::Internal, "invalid system time"))?;
@@ -45,7 +42,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             attributes: builder.attrs,
             subject: builder.subject,
             issuer: self.identifier().clone(),
-            issuer_key_label: CowStr(key_label.into()),
+            issuer_key_label: key_label.into(),
             created: now,
             expires: exp,
             status: None::<PhantomData<Verified>>,
@@ -168,12 +165,12 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 }
 
 impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
-    async fn verify_credential<'a>(
+    async fn verify_credential(
         sender: &IdentityIdentifier,
-        credential: &'a Credential<'a>,
+        credential: &Credential,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
         vault: &impl IdentityVault,
-    ) -> Result<CredentialData<'a, Verified>> {
+    ) -> Result<CredentialData<Verified>> {
         let credential_data: CredentialData<Unverified> = match minicbor::decode(&credential.data) {
             Ok(c) => c,
             Err(_) => return Err(IdentityError::InvalidCredentialFormat.into()),
@@ -195,9 +192,9 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         Ok(credential_data)
     }
 
-    pub async fn verify_self_credential<'a>(
+    pub async fn verify_self_credential(
         &self,
-        credential: &'a Credential<'a>,
+        credential: &Credential,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
     ) -> Result<()> {
         let _ = Self::verify_credential(self.identifier(), credential, authorities, &self.vault)
@@ -208,7 +205,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     pub(crate) async fn receive_presented_credential(
         &self,
         sender: IdentityIdentifier,
-        credential: Credential<'_>,
+        credential: Credential,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
         attributes_storage: &impl IdentityAttributeStorage,
     ) -> Result<()> {

@@ -13,12 +13,12 @@ impl PublicIdentity {
     /// Perform a signature check with the given identity.
     ///
     /// If successful, the credential data are returned.
-    pub async fn verify_credential<'a, 'b: 'a>(
+    pub async fn verify_credential(
         &self,
-        credential: &'b Credential<'b>,
+        credential: &Credential,
         subject: &IdentityIdentifier,
         vault: &impl IdentityVault,
-    ) -> Result<CredentialData<'a, Verified>> {
+    ) -> Result<CredentialData<Verified>> {
         let dat = CredentialData::try_from(credential)?;
         if dat.unverfied_key_label() != IdentityStateConst::ROOT_LABEL {
             return Err(Error::new(

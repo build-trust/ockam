@@ -196,10 +196,10 @@ pub(crate) mod enroll {
 
     use super::*;
 
-    pub(crate) fn auth0(
+    pub(crate) fn auth0<'a>(
         cmd: EnrollCommand,
         token: Auth0Token,
-    ) -> RequestBuilder<CloudRequestWrapper<AuthenticateAuth0Token>> {
+    ) -> RequestBuilder<'a, CloudRequestWrapper<'a, AuthenticateAuth0Token>> {
         let token = AuthenticateAuth0Token::new(token);
         Request::post("v0/enroll/auth0").body(CloudRequestWrapper::new(
             token,
