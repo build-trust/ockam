@@ -89,8 +89,8 @@ where
         &self,
         id: Id,
         req: &'a VerifyRequest<'a>,
-        cre: &'a Credential<'a>,
-    ) -> Result<Either<ResponseBuilder<Error<'_>>, CredentialData<'a, Verified>>> {
+        cre: &Credential,
+    ) -> Result<Either<ResponseBuilder<Error<'_>>, CredentialData<Verified>>> {
         let data = CredentialData::try_from(cre)?;
 
         let ident = if let Some(ident) = req.authority(data.unverfied_issuer()) {

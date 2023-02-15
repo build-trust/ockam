@@ -21,7 +21,7 @@ use ockam_vault::{KeyId, SecretAttributes};
 #[async_try_clone(crate = "ockam_core")]
 pub struct Identity<V: IdentityVault, S: AuthenticatedStorage> {
     id: IdentityIdentifier,
-    pub(crate) credential: Arc<RwLock<Option<Credential<'static>>>>,
+    pub(crate) credential: Arc<RwLock<Option<Credential>>>,
     pub(crate) change_history: Arc<RwLock<IdentityChangeHistory>>,
     pub(crate) ctx: Context,
     pub(crate) authenticated_storage: S,

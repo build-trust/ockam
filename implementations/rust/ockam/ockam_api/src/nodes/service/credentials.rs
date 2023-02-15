@@ -82,7 +82,7 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
-    ) -> Result<Either<ResponseBuilder<Error<'_>>, ResponseBuilder<Credential<'_>>>> {
+    ) -> Result<Either<ResponseBuilder<Error<'_>>, ResponseBuilder<Credential>>> {
         let mut node_manager = self.node_manager.write().await;
         let request: GetCredentialRequest = dec.decode()?;
 

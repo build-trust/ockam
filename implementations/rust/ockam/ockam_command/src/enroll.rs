@@ -248,7 +248,7 @@ impl Auth0Service {
         &self.0
     }
 
-    pub(crate) async fn token(&self) -> Result<Auth0Token<'_>> {
+    pub(crate) async fn token(&self) -> Result<Auth0Token> {
         let dc = self.device_code().await?;
 
         eprint!(
@@ -323,7 +323,7 @@ impl Auth0Service {
     }
 
     /// Poll for token until it's ready
-    async fn poll_token<'a>(&'a self, dc: DeviceCode<'a>) -> Result<Auth0Token<'_>> {
+    async fn poll_token<'a>(&'a self, dc: DeviceCode<'a>) -> Result<Auth0Token> {
         let client = self.provider().build_http_client()?;
         let token;
         loop {

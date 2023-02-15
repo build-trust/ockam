@@ -350,7 +350,7 @@ impl Client {
         }
     }
 
-    pub async fn credential(&mut self) -> Result<Credential<'_>> {
+    pub async fn credential(&mut self) -> Result<Credential> {
         let req = Request::post("/credential");
         self.buf = self.request("new-credential", None, &req).await?;
         assert_response_match("credential", &self.buf);
@@ -363,7 +363,7 @@ impl Client {
         }
     }
 
-    pub async fn credential_with(&mut self, c: &OneTimeCode) -> Result<Credential<'_>> {
+    pub async fn credential_with(&mut self, c: &OneTimeCode) -> Result<Credential> {
         let req = Request::post("/credential").body(c);
         self.buf = self.request("new-credential", None, &req).await?;
         assert_response_match("credential", &self.buf);

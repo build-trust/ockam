@@ -231,7 +231,7 @@ impl Output for Vec<Enroller<'_>> {
     }
 }
 
-impl Output for Credential<'_> {
+impl Output for Credential {
     fn output(&self) -> anyhow::Result<String> {
         Ok(self.to_string())
     }

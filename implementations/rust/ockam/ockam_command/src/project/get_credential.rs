@@ -57,7 +57,7 @@ async fn rpc(
             .to(&to)?
             .build()?;
         rpc.request(Request::post("/credential")).await?;
-        rpc.print_response::<Credential<'_>>()?;
+        rpc.print_response::<Credential>()?;
         Ok(())
     }
     let result = go(&mut ctx, &opts, &cmd).await;

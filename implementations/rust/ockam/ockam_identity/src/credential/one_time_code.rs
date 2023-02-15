@@ -11,7 +11,7 @@ use ockam_core::Result;
 /// A one-time code can be used to enroll
 /// a node with some authenticated attributes
 /// It can be retrieve with a command like `ockam project enroll --attribute component=control`
-#[derive(Debug, Clone, Decode, Encode, PartialEq)]
+#[derive(Debug, Clone, Decode, Encode, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OneTimeCode {

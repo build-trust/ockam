@@ -22,10 +22,10 @@ pub struct VerifyRequest<'a> {
 #[derive(Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct VerifyResponse<'a> {
+pub struct VerifyResponse {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<6845123>,
-    #[b(1)] attrs: Attributes<'a>,
+    #[b(1)] attrs: Attributes,
     #[n(2)] expires: Timestamp
 }
 
@@ -65,8 +65,8 @@ impl<'a> VerifyRequest<'a> {
     }
 }
 
-impl<'a> VerifyResponse<'a> {
-    pub fn new(attrs: Attributes<'a>, expires: Timestamp) -> Self {
+impl VerifyResponse {
+    pub fn new(attrs: Attributes, expires: Timestamp) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
@@ -75,7 +75,7 @@ impl<'a> VerifyResponse<'a> {
         }
     }
 
-    pub fn attributes(&self) -> &Attributes<'a> {
+    pub fn attributes(&self) -> &Attributes {
         &self.attrs
     }
 

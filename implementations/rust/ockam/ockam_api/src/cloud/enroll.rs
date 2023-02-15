@@ -10,10 +10,10 @@ use ockam_core::TypeTag;
 #[cfg_attr(test, derive(PartialEq, Eq, Clone))]
 #[cbor(transparent)]
 #[serde(transparent)]
-pub struct Token<'a>(#[n(0)] pub Cow<'a, str>);
+pub struct Token(#[n(0)] pub String);
 
-impl<'a> Token<'a> {
-    pub fn new(token: impl Into<Cow<'a, str>>) -> Self {
+impl Token {
+    pub fn new(token: impl Into<String>) -> Self {
         Self(token.into())
     }
 }
@@ -155,24 +155,24 @@ pub mod auth0 {
 
     #[derive(serde::Deserialize, Debug)]
     #[cfg_attr(test, derive(PartialEq, Eq, Clone))]
-    pub struct Auth0Token<'a> {
+    pub struct Auth0Token {
         pub token_type: TokenType,
-        pub access_token: Token<'a>,
+        pub access_token: Token,
     }
 
     #[derive(Encode, Decode, Debug)]
     #[cfg_attr(test, derive(Clone))]
     #[rustfmt::skip]
     #[cbor(map)]
-    pub struct AuthenticateAuth0Token<'a> {
+    pub struct AuthenticateAuth0Token {
         #[cfg(feature = "tag")]
         #[n(0)] pub tag: TypeTag<1058055>,
         #[n(1)] pub token_type: TokenType,
-        #[n(2)] pub access_token: Token<'a>,
+        #[n(2)] pub access_token: Token,
     }
 
-    impl<'a> AuthenticateAuth0Token<'a> {
-        pub fn new(token: Auth0Token<'a>) -> Self {
+    impl AuthenticateAuth0Token {
+        pub fn new(token: Auth0Token) -> Self {
             Self {
                 #[cfg(feature = "tag")]
                 tag: TypeTag,
@@ -205,14 +205,14 @@ pub mod enrollment_token {
     #[cfg_attr(test, derive(Decode, Clone))]
     #[rustfmt::skip]
     #[cbor(map)]
-    pub struct RequestEnrollmentToken<'a> {
+    pub struct RequestEnrollmentToken {
         #[cfg(feature = "tag")]
         #[n(0)] pub tag: TypeTag<8560526>,
-        #[b(1)] pub attributes: Attributes<'a>,
+        #[b(1)] pub attributes: Attributes,
     }
 
-    impl<'a> RequestEnrollmentToken<'a> {
-        pub fn new(attributes: Attributes<'a>) -> Self {
+    impl RequestEnrollmentToken {
+        pub fn new(attributes: Attributes) -> Self {
             Self {
                 #[cfg(feature = "tag")]
                 tag: TypeTag,
@@ -225,15 +225,15 @@ pub mod enrollment_token {
     #[cfg_attr(test, derive(Clone))]
     #[rustfmt::skip]
     #[cbor(map)]
-    pub struct EnrollmentToken<'a> {
+    pub struct EnrollmentToken {
         #[cfg(feature = "tag")]
         #[serde(skip)]
         #[n(0)] pub tag: TypeTag<8932763>,
-        #[n(1)] pub token: Token<'a>,
+        #[n(1)] pub token: Token,
     }
 
-    impl<'a> EnrollmentToken<'a> {
-        pub fn new(token: Token<'a>) -> Self {
+    impl EnrollmentToken {
+        pub fn new(token: Token) -> Self {
             Self {
                 #[cfg(feature = "tag")]
                 tag: TypeTag,
@@ -246,14 +246,14 @@ pub mod enrollment_token {
     #[cfg_attr(test, derive(Decode, Clone))]
     #[rustfmt::skip]
     #[cbor(map)]
-    pub struct AuthenticateEnrollmentToken<'a> {
+    pub struct AuthenticateEnrollmentToken {
         #[cfg(feature = "tag")]
         #[n(0)] pub tag: TypeTag<9463780>,
-        #[n(1)] pub token: Token<'a>,
+        #[n(1)] pub token: Token,
     }
 
-    impl<'a> AuthenticateEnrollmentToken<'a> {
-        pub fn new(token: EnrollmentToken<'a>) -> Self {
+    impl AuthenticateEnrollmentToken {
+        pub fn new(token: EnrollmentToken) -> Self {
             Self {
                 #[cfg(feature = "tag")]
                 tag: TypeTag,
