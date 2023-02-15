@@ -24,7 +24,7 @@ defmodule Ockam.Transport.UDS.Connection do
 
   @impl true
   def handle_info({:tcp, socket, data}, %__MODULE__{socket: socket} = state) do
-    Logger.debug("Received data: #{inspect(data)}")
+    Logger.debug("Received data: #{inspect(data)} on socket: #{inspect(socket)}")
 
     case decode_and_send_to_router(data, state) do
       {:ok, state} ->

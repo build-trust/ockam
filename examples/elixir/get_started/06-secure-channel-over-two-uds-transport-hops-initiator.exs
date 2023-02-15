@@ -4,11 +4,15 @@
 Ockam.Node.register_address("app")
 
 # Start the TCP Transport Add-on for Ockam Routing.
-Ockam.Transport.UDS.start()
+Ockam.Transport.UDS.start(path: "/tmp/hop1.sock")
+Ockam.Transport.UDS.start(path: "/tmp/hop2.sock")
 
 # Create a vault and an identity keypair.
 {:ok, vault} = Ockam.Vault.Software.init()
 {:ok, identity} = Ockam.Vault.secret_generate(vault, type: :curve25519)
+
+{:ok, hop1} = Ockam.Transport.UDS.Client.create(path: "/tmp/hop1.sock")
+{:ok, hop2} = Ockam.Transport.UDS.Client.create(path: "/tmp/hop2.sock")
 
 # Connect to a secure channel listener and perform a handshake.
 alias Ockam.Transport.UDSAddress

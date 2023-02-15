@@ -2,7 +2,7 @@
 
 alias Ockam.Transport.UDSAddress
 
-{:ok, _h1} = Hop.create(address: UDSAddress.new("/tmp/sock1"))
+{:ok, _} = Ockam.Transport.UDS.Client.create(path: "/tmp/hop.sock")
 
 # Start the TCP Transport Add-on for Ockam Routing and a TCP listener on port 3000.
-Ockam.Transport.UDS.start("/tmp/sock1")
+Ockam.Transport.UDS.start("/tmp/hop.sock")

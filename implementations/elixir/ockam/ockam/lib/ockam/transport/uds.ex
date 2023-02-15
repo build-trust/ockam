@@ -19,7 +19,7 @@ defmodule Ockam.Transport.UDS do
   @impl true
   def init(opts) do
     children = [
-      ConnectionSupervisor,
+      {ConnectionSupervisor, opts},
       {Listener, opts}
     ]
 
