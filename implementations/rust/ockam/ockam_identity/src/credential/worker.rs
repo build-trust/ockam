@@ -13,7 +13,7 @@ use tracing::{debug, error, trace, warn};
 
 const TARGET: &str = "ockam::credential_exchange_worker::service";
 
-/// Worker responsible for receiving and verifying other party's credentials
+/// Worker responsible for receiving and verifying other party's credential
 pub struct CredentialExchangeWorker<
     AS: IdentityAttributeStorage,
     S: AuthenticatedStorage,
@@ -140,8 +140,8 @@ impl<AS: IdentityAttributeStorage, S: AuthenticatedStorage, V: IdentityVault>
                         "Mutual credential presentation request processed successfully with {}",
                         sender
                     );
-                    let credentials = self.identity.credential.read().await;
-                    match credentials.as_ref() {
+                    let credential = self.identity.credential.read().await;
+                    match credential.as_ref() {
                         Some(p) if self.present_back => {
                             warn!("Mutual credential presentation request processed successfully with {}. Responding with own credential...", sender);
                             Response::ok(req.id()).body(p).to_vec()?

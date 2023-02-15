@@ -338,15 +338,15 @@ impl NodeManager {
 
         self.create_secure_channel_listener_impl(
             DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
-            None, // Not checking identifiers here in favor of credentials check
+            None, // Not checking identifiers here in favor of credential check
             None,
             ctx,
         )
         .await?;
 
-        // If we've been configured with authorities, we can start Credentials Exchange service
+        // If we've been configured with authorities, we can start Credential Exchange service
         if self.authorities().is_ok() {
-            self.start_credentials_service_impl(DefaultAddress::CREDENTIAL_SERVICE.into(), false)
+            self.start_credentials_service_impl(DefaultAddress::CREDENTIALS_SERVICE.into(), false)
                 .await?;
         }
 
@@ -500,7 +500,7 @@ impl NodeManagerWorker {
                 self.delete_transport(req, dec).await?.to_vec()?
             }
 
-            // ==*== Credentials ==*==
+            // ==*== Credential ==*==
             (Post, ["node", "credentials", "actions", "get"]) => self
                 .get_credential(req, dec)
                 .await?
@@ -536,45 +536,45 @@ impl NodeManagerWorker {
                 .to_vec()?,
 
             // ==*== Services ==*==
-            (Post, ["node", "services", "vault"]) => {
+            (Post, ["node", "services", DefaultAddress::VAULT_SERVICE]) => {
                 self.start_vault_service(ctx, req, dec).await?.to_vec()?
             }
-            (Post, ["node", "services", "identity"]) => {
+            (Post, ["node", "services", DefaultAddress::IDENTITY_SERVICE]) => {
                 self.start_identity_service(ctx, req, dec).await?.to_vec()?
             }
-            (Post, ["node", "services", "authenticated"]) => self
+            (Post, ["node", "services", DefaultAddress::AUTHENTICATED_SERVICE]) => self
                 .start_authenticated_service(ctx, req, dec)
                 .await?
                 .to_vec()?,
-            (Post, ["node", "services", "uppercase"]) => self
+            (Post, ["node", "services", DefaultAddress::UPPERCASE_SERVICE]) => self
                 .start_uppercase_service(ctx, req, dec)
                 .await?
                 .to_vec()?,
-            (Post, ["node", "services", "echo"]) => {
+            (Post, ["node", "services", DefaultAddress::ECHO_SERVICE]) => {
                 self.start_echoer_service(ctx, req, dec).await?.to_vec()?
             }
-            (Post, ["node", "services", "hop"]) => {
+            (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
                 self.start_hop_service(ctx, req, dec).await?.to_vec()?
             }
-            (Post, ["node", "services", "authenticator"]) => self
+            (Post, ["node", "services", DefaultAddress::AUTHENTICATOR]) => self
                 .start_authenticator_service(ctx, req, dec)
                 .await?
                 .to_vec()?,
-            (Post, ["node", "services", "verifier"]) => {
+            (Post, ["node", "services", DefaultAddress::VERIFIER]) => {
                 self.start_verifier_service(ctx, req, dec).await?.to_vec()?
             }
-            (Post, ["node", "services", "credentials"]) => self
+            (Post, ["node", "services", DefaultAddress::CREDENTIALS_SERVICE]) => self
                 .start_credentials_service(ctx, req, dec)
                 .await?
                 .to_vec()?,
-            (Post, ["node", "services", "okta_identity_provider"]) => self
+            (Post, ["node", "services", DefaultAddress::OKTA_IDENTITY_PROVIDER]) => self
                 .start_okta_identity_provider_service(ctx, req, dec)
                 .await?
                 .to_vec()?,
-            (Post, ["node", "services", "kafka_consumer"]) => {
+            (Post, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => {
                 self.start_kafka_consumer_service(ctx, req, dec).await?
             }
-            (Post, ["node", "services", "kafka_producer"]) => {
+            (Post, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => {
                 self.start_kafka_producer_service(ctx, req, dec).await?
             }
             (Get, ["node", "services"]) => {

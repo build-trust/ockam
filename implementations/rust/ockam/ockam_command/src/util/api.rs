@@ -18,6 +18,7 @@ use ockam::identity::IdentityIdentifier;
 use ockam::Result;
 use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
 use ockam_api::nodes::*;
+use ockam_api::DefaultAddress;
 use ockam_core::api::RequestBuilder;
 use ockam_core::api::{Request, Response};
 use ockam_core::{Address, CowStr};
@@ -117,7 +118,7 @@ pub(crate) fn list_secure_channel_listener() -> RequestBuilder<'static, ()> {
 /// Construct a request to start a Vault Service
 pub(crate) fn start_vault_service(addr: &str) -> RequestBuilder<'static, StartVaultServiceRequest> {
     let payload = StartVaultServiceRequest::new(addr);
-    Request::post("/node/services/vault").body(payload)
+    Request::post(node_service(DefaultAddress::VAULT_SERVICE)).body(payload)
 }
 
 /// Construct a request to start an Identity Service
@@ -125,7 +126,7 @@ pub(crate) fn start_identity_service(
     addr: &str,
 ) -> RequestBuilder<'static, StartIdentityServiceRequest> {
     let payload = StartIdentityServiceRequest::new(addr);
-    Request::post("/node/services/identity").body(payload)
+    Request::post(node_service(DefaultAddress::IDENTITY_SERVICE)).body(payload)
 }
 
 /// Construct a request to start an Authenticated Service
@@ -133,22 +134,22 @@ pub(crate) fn start_authenticated_service(
     addr: &str,
 ) -> RequestBuilder<'static, StartAuthenticatedServiceRequest> {
     let payload = StartAuthenticatedServiceRequest::new(addr);
-    Request::post("/node/services/authenticated").body(payload)
+    Request::post(node_service(DefaultAddress::AUTHENTICATED_SERVICE)).body(payload)
 }
 
 /// Construct a request to start a Verifier Service
 pub(crate) fn start_verifier_service(addr: &str) -> RequestBuilder<'static, StartVerifierService> {
     let payload = StartVerifierService::new(addr);
-    Request::post("/node/services/verifier").body(payload)
+    Request::post(node_service(DefaultAddress::VERIFIER)).body(payload)
 }
 
-/// Construct a request to start a Credentials Service
+/// Construct a request to start a Credential Service
 pub(crate) fn start_credentials_service(
     addr: &str,
     oneway: bool,
 ) -> RequestBuilder<'static, StartCredentialsService> {
     let payload = StartCredentialsService::new(addr, oneway);
-    Request::post("/node/services/credentials").body(payload)
+    Request::post(node_service(DefaultAddress::CREDENTIALS_SERVICE)).body(payload)
 }
 
 /// Construct a request to start an Authenticator Service
@@ -160,7 +161,7 @@ pub(crate) fn start_authenticator_service<'a>(
 ) -> RequestBuilder<'static, StartAuthenticatorRequest<'a>> {
     let payload =
         StartAuthenticatorRequest::new(addr, enrollers, reload_enrollers, project.as_bytes());
-    Request::post("/node/services/authenticator").body(payload)
+    Request::post(node_service(DefaultAddress::AUTHENTICATOR)).body(payload)
 }
 
 pub(crate) mod credentials {
@@ -180,6 +181,11 @@ pub(crate) mod credentials {
         let b = GetCredentialRequest::new(overwrite);
         Request::post("/node/credentials/actions/get").body(b)
     }
+}
+
+/// Return the path of a service given its name
+fn node_service(service_name: &str) -> String {
+    format!("/node/services/{service_name}")
 }
 
 /// Helpers to create enroll API requests

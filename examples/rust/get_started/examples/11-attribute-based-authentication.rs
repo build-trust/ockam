@@ -1,6 +1,6 @@
 /// INTRODUCTION
 ///
-/// This example shows how to use attribute-based credentials in order to have
+/// This example shows how to use attribute-based credential in order to have
 /// several devices connecting to a server, via the Ockam Orchestrator.
 ///
 /// The corresponding example using the command-line can be found here: https://docs.ockam.io/use-cases/apply-fine-grained-permissions-with-attribute-based-access-control-abac.
@@ -38,7 +38,7 @@
 ///
 /// The network we establish between the control node, the edge node and the Orchestrator is the following
 ///
-///       get credentials        +-------------------------------------+
+///       get credential         +-------------------------------------+
 ///       via secure channel     |                                     | Inlet <-- 127.0.0.1:7000
 ///              +---------------+              Edge node              | connected to "outlet"
 ///              |               |                                     | via secure channel
@@ -60,11 +60,11 @@
 ///              |               +---------------------------------------+ listener
 ///              |               |                                       |
 ///              +---------------|              Control node             | "outlet" --> 127.0.0.1:5000
-///       get credentials        |                                       |
+///       get credential         |                                       |
 ///       via secure channel     +---------------------------------------+
 ///
 ///
-///   - we create initially some secure channels to the Authority in order to retrieve credentials
+///   - we create initially some secure channels to the Authority in order to retrieve credential
 ///     based on a one-time token generated with `ockam project enroll --attribute component=<name of node>`
 ///
 ///   - then the control node creates a forwarder on the Orchestrator in order to accept TCP traffic without
@@ -85,7 +85,7 @@
 ///  - examples/11-attribute-based-authentication-edge-plane.rs: for the edge node
 ///  - src/project.rs: read the content of the project.json file
 ///  - src/token.rs: generate a one-time token using the ockam command line
-///  - src/credentials.rs: retrieve the credentials of a node from an authority (using the token above)
+///  - src/credentials.rs: retrieve the credential of a node from an authority (using the token above)
 ///  - src/attribute_access_control: example of creating an access control policy for one attribute only
 ///
 

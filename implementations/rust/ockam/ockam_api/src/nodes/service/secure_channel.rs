@@ -122,7 +122,10 @@ impl NodeManager {
                 debug!(%sc_addr, "One-way credential presentation");
                 self.get_credential_if_needed().await?;
                 identity
-                    .present_credential(route![sc_addr.clone(), DefaultAddress::CREDENTIAL_SERVICE])
+                    .present_credential(route![
+                        sc_addr.clone(),
+                        DefaultAddress::CREDENTIALS_SERVICE
+                    ])
                     .await?;
                 debug!(%sc_addr, "One-way credential presentation success");
             }
@@ -132,7 +135,7 @@ impl NodeManager {
                 let authorities = self.authorities()?;
                 identity
                     .present_credential_mutual(
-                        route![sc_addr.clone(), DefaultAddress::CREDENTIAL_SERVICE],
+                        route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
                         &authorities.public_identities(),
                         &self.attributes_storage,
                     )

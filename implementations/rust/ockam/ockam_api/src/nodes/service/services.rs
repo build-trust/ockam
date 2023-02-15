@@ -14,6 +14,7 @@ use crate::nodes::registry::{CredentialsServiceInfo, Registry, VerifierServiceIn
 use crate::nodes::NodeManager;
 use crate::uppercase::Uppercase;
 use crate::vault::VaultService;
+use crate::DefaultAddress;
 use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
 use ockam_core::api::{Request, Response, ResponseBuilder};
@@ -92,7 +93,7 @@ impl NodeManager {
         let authorities = self.authorities()?;
 
         identity
-            .start_credentials_exchange_worker(
+            .start_credential_exchange_worker(
                 authorities.public_identities(),
                 addr.clone(),
                 !oneway,
@@ -492,44 +493,59 @@ impl NodeManagerWorker {
         registry: &'a Registry,
     ) -> ResponseBuilder<ServiceList<'a>> {
         let mut list = Vec::new();
-        registry
-            .vault_services
-            .keys()
-            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "vault")));
-        registry
-            .identity_services
-            .keys()
-            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "identity")));
-        registry
-            .authenticated_services
-            .keys()
-            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "authenticated")));
-        registry
-            .uppercase_services
-            .keys()
-            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "uppercase")));
-        registry
-            .echoer_services
-            .keys()
-            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "echoer")));
-        registry
-            .hop_services
-            .keys()
-            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "hop")));
-        registry
-            .verifier_services
-            .keys()
-            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "verifier")));
-        registry
-            .credentials_services
-            .keys()
-            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "credentials")));
+        registry.vault_services.keys().for_each(|addr| {
+            list.push(ServiceStatus::new(
+                addr.address(),
+                DefaultAddress::VAULT_SERVICE,
+            ))
+        });
+        registry.identity_services.keys().for_each(|addr| {
+            list.push(ServiceStatus::new(
+                addr.address(),
+                DefaultAddress::IDENTITY_SERVICE,
+            ))
+        });
+        registry.authenticated_services.keys().for_each(|addr| {
+            list.push(ServiceStatus::new(
+                addr.address(),
+                DefaultAddress::AUTHENTICATED_SERVICE,
+            ))
+        });
+        registry.uppercase_services.keys().for_each(|addr| {
+            list.push(ServiceStatus::new(
+                addr.address(),
+                DefaultAddress::UPPERCASE_SERVICE,
+            ))
+        });
+        registry.echoer_services.keys().for_each(|addr| {
+            list.push(ServiceStatus::new(
+                addr.address(),
+                DefaultAddress::ECHO_SERVICE,
+            ))
+        });
+        registry.hop_services.keys().for_each(|addr| {
+            list.push(ServiceStatus::new(
+                addr.address(),
+                DefaultAddress::HOP_SERVICE,
+            ))
+        });
+        registry.verifier_services.keys().for_each(|addr| {
+            list.push(ServiceStatus::new(addr.address(), DefaultAddress::VERIFIER))
+        });
+        registry.credentials_services.keys().for_each(|addr| {
+            list.push(ServiceStatus::new(
+                addr.address(),
+                DefaultAddress::CREDENTIALS_SERVICE,
+            ))
+        });
 
         #[cfg(feature = "direct-authenticator")]
-        registry
-            .authenticator_service
-            .keys()
-            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "authenticator")));
+        registry.authenticator_service.keys().for_each(|addr| {
+            list.push(ServiceStatus::new(
+                addr.address(),
+                DefaultAddress::AUTHENTICATOR,
+            ))
+        });
 
         Response::ok(req.id()).body(ServiceList::new(list))
     }
