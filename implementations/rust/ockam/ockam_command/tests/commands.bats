@@ -438,7 +438,7 @@ teardown() {
   \"authority_access_route\" : \"/dnsaddr/127.0.0.1/tcp/4200/service/api\",
   \"authority_identity\" : \"$authority_identity_full\"}" > /tmp/project.json
 
-  # m1 is a member (it's on the set of pre-trusted identifier) so it can get it's own credential
+  # m1 is a member (its on the set of pre-trusted identifiers) so it can get it's own credential
   run $OCKAM project authenticate --project-path /tmp/project.json --identity m1
   assert_success
   assert_output --partial "sample_val"
