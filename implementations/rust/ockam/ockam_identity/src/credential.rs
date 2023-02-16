@@ -369,6 +369,16 @@ mod test {
         actual == credential
     }
 
+    #[test]
+    fn test_serialization() {
+        // this test makes sure that we are using the minicbor Bytes encoder
+        // for the Credential fields
+        let credential = Credential::new(vec![1, 2, 3], vec![5, 6, 7]);
+        let serialized = serde_bare::to_vec(&credential).unwrap();
+        let expected: Vec<u8> = vec![11, 162, 1, 67, 1, 2, 3, 2, 67, 5, 6, 7];
+        assert_eq!(serialized, expected)
+    }
+
     #[quickcheck]
     fn test_serialization_roundtrip_human_readable(credential: Credential) -> bool {
         let serialized = serde_json::to_string(&credential).unwrap();
