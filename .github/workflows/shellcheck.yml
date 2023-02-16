@@ -17,6 +17,8 @@ on:
   push:
     paths:
       - "**.sh"
+    branches:
+      - develop
   schedule:
     - cron: "0 1 * * *"
 
