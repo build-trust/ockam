@@ -16,7 +16,7 @@ pub use util::config;
 
 use clap::{Args, Subcommand};
 
-pub use crate::credential::get_credential::GetCredentialCommand;
+pub use crate::credential::get::GetCommand;
 pub use add_enroller::AddEnrollerCommand;
 pub use addon::AddonCommand;
 pub use create::CreateCommand;

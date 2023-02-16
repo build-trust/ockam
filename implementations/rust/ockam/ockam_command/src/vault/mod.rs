@@ -1,12 +1,13 @@
 mod default;
 
+use crate::error::Error;
 use crate::util::node_rpc;
 use crate::vault::default::DefaultCommand;
 use crate::{help, CommandGlobalOpts, Result};
 use anyhow::anyhow;
 use clap::{Args, Subcommand};
 use ockam::Context;
-use ockam_api::cli_state;
+use ockam_api::cli_state::{self, CliState};
 use ockam_core::vault::{Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault};
 use ockam_identity::{Identity, IdentityStateConst, KeyAttributes};
 use rand::prelude::random;
@@ -141,4 +142,24 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
         VaultSubcommand::Default(cmd) => cmd.run(opts),
     }
     Ok(())
+}
+
+pub fn default_vault_name() -> String {
+    let res_cli = CliState::new();
+
+    let cli_state = match res_cli {
+        Ok(cli_state) => cli_state,
+        Err(err) => {
+            eprintln!("Error initializing command state. \n\n {err:?}");
+            let command_err: Error = err.into();
+            std::process::exit(command_err.code());
+        }
+    };
+
+    let default_name = cli_state.vaults.default().map(|v| v.name);
+
+    match default_name {
+        Ok(name) => name,
+        Err(_) => "default".to_string(),
+    }
 }

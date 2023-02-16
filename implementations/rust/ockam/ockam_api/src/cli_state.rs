@@ -59,6 +59,7 @@ pub struct CliState {
     pub identities: IdentitiesState,
     pub nodes: NodesState,
     pub projects: ProjectsState,
+    pub credentials: CredentialsState,
     dir: PathBuf,
 }
 
@@ -71,6 +72,7 @@ impl CliState {
             identities: IdentitiesState::new(&dir)?,
             nodes: NodesState::new(&dir)?,
             projects: ProjectsState::new(&dir)?,
+            credentials: CredentialsState::new(&dir)?,
             dir,
         })
     }
@@ -365,6 +367,21 @@ impl IdentitiesState {
             path,
             config,
         })
+    }
+
+    pub fn get_by_identifier(&self, identifier: &IdentityIdentifier) -> Result<IdentityState> {
+        let identities = self.list()?;
+
+        let identity_state = identities
+            .into_iter()
+            .find(|ident_state| &ident_state.config.identifier == identifier);
+
+        match identity_state {
+            Some(is) => Ok(is),
+            None => Err(CliStateError::NotFound(format!(
+                "identity with identifier `{identifier}`"
+            ))),
+        }
     }
 
     pub fn list(&self) -> Result<Vec<IdentityState>> {
@@ -1050,6 +1067,122 @@ impl ProjectState {
                 CliStateError::Io(std::io::Error::new(
                     std::io::ErrorKind::Other,
                     "failed to parse the project name",
+                ))
+            })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CredentialConfig {
+    pub issuer: String,
+    pub encoded_credential: String,
+}
+
+impl CredentialConfig {
+    pub fn new(issuer: String, encoded_credential: String) -> Result<Self> {
+        Ok(Self {
+            issuer,
+            encoded_credential,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct CredentialsState {
+    dir: PathBuf,
+}
+
+impl CredentialsState {
+    fn new(cli_path: &Path) -> Result<Self> {
+        let dir = cli_path.join("credentials");
+        std::fs::create_dir_all(dir.join("data"))?;
+        Ok(Self { dir })
+    }
+
+    pub async fn create(&self, name: &str, cred: CredentialConfig) -> Result<CredentialState> {
+        let path = {
+            let mut path = self.dir.clone();
+            path.push(format!("{name}.json"));
+            if path.exists() {
+                return Err(CliStateError::AlreadyExists(format!("credential `{name}`")));
+            }
+            path
+        };
+        let contents = serde_json::to_string(&cred)?;
+        std::fs::write(&path, contents)?;
+        if !self.default_path()?.exists() {
+            self.set_default(name)?;
+        }
+
+        Ok(CredentialState { path })
+    }
+
+    pub fn get(&self, name: &str) -> Result<CredentialState> {
+        let path = {
+            let mut path = self.dir.clone();
+            path.push(format!("{name}.json"));
+            if !path.exists() {
+                return Err(CliStateError::NotFound(format!("credential `{name}`")));
+            }
+            path
+        };
+        Ok(CredentialState { path })
+    }
+
+    pub fn list(&self) -> Result<Vec<CredentialState>> {
+        let mut creds = vec![];
+        for entry in std::fs::read_dir(&self.dir)? {
+            if let Ok(cred) = self.get(&file_stem(&entry?.path())?) {
+                creds.push(cred);
+            }
+        }
+
+        Ok(creds)
+    }
+
+    pub fn default_path(&self) -> Result<PathBuf> {
+        Ok(CliState::defaults_dir()?.join("credential"))
+    }
+
+    pub fn default(&self) -> Result<CredentialState> {
+        let path = std::fs::canonicalize(self.default_path()?)?;
+        Ok(CredentialState { path })
+    }
+
+    pub fn set_default(&self, name: &str) -> Result<CredentialState> {
+        let original = {
+            let mut path = self.dir.clone();
+            path.push(format!("{name}.json"));
+            if !path.exists() {
+                return Err(CliStateError::NotFound(format!("credential `{name}`")));
+            }
+            path
+        };
+        let link = self.default_path()?;
+        std::os::unix::fs::symlink(original, link)?;
+        self.get(name)
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct CredentialState {
+    pub path: PathBuf,
+}
+
+impl CredentialState {
+    pub async fn config(&self) -> Result<CredentialConfig> {
+        let string_config = tokio::fs::read_to_string(&self.path).await?;
+        Ok(serde_json::from_str(&string_config)?)
+    }
+
+    pub fn name(&self) -> Result<String> {
+        self.path
+            .file_stem()
+            .and_then(|s| s.to_os_string().into_string().ok())
+            .ok_or_else(|| {
+                CliStateError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "failed to parse the credentials name",
                 ))
             })
     }

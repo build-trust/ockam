@@ -112,7 +112,7 @@ async fn default_space<'a>(
     let default_space = if available_spaces.is_empty() {
         let cmd = crate::space::CreateCommand {
             cloud_opts: cloud_opts.clone(),
-            name: crate::space::random_name(),
+            name: crate::util::random_name(),
             admins: vec![],
         };
         println!(

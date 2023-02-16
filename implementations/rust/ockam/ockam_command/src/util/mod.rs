@@ -561,6 +561,10 @@ pub fn is_tty<S: io_lifetimes::AsFilelike>(s: S) -> bool {
     s.is_terminal()
 }
 
+pub fn random_name() -> String {
+    hex::encode(rand::random::<[u8; 4]>())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
