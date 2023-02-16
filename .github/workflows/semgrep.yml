@@ -6,7 +6,12 @@ name: Semgrep
 permissions:
   contents: read
 
-on: [workflow_dispatch, pull_request, push]
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - develop
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}

@@ -25,6 +25,8 @@ on:
       - "**/Cargo.lock"
       - "implementations/rust/ockam/ockam_command/tests/commands.bats"
       - ".github/actions/**"
+    branches:
+      - develop
   schedule:
     - cron: "0 1 * * *"
 
