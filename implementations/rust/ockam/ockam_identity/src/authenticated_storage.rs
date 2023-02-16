@@ -37,6 +37,10 @@ pub struct AttributesEntry {
 }
 
 impl AttributesEntry {
+    //TODO: since we are converting from HashMap to BTreeMap in different parts,
+    //      it will make sense to have a constructor here taking a HashMap and doing
+    //      the conversion here.   Better:  standarize on either of the above for attributes.
+
     /// Constructor
     pub fn new(
         attrs: BTreeMap<String, Vec<u8>>,
