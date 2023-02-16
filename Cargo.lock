@@ -2292,6 +2292,7 @@ dependencies = [
  "ockam_transport_websocket",
  "rand 0.8.5",
  "serde",
+ "serde_bare",
  "serde_json",
 ]
 
@@ -3285,6 +3286,8 @@ dependencies = [
 name = "ockam_identity"
 version = "0.69.0"
 dependencies = [
+ "anyhow",
+ "async-trait",
  "cfg-if",
  "group 0.13.0",
  "heapless",
