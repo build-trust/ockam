@@ -43,6 +43,7 @@ pub use metadata::OckamMessage;
 pub use system::{SystemBuilder, SystemHandler, WorkerSystem};
 pub use unique::unique_with_prefix;
 
+pub mod access_control;
 pub mod channel;
 pub mod pipe;
 pub mod pipe2;
@@ -61,11 +62,7 @@ pub use ockam_core::{
     Worker,
 };
 
-/// Access Control
-pub mod access_control {
-    pub use ockam_core::access_control::*;
-    pub use ockam_identity::access_control::*;
-}
+pub use crate::access_control::*;
 
 /// Mark an Ockam Worker implementation.
 ///

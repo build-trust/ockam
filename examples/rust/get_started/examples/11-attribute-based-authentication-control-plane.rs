@@ -1,13 +1,12 @@
-use hello_ockam::{create_attribute_access_control, create_token, get_credential, import_project};
-use ockam::access_control::AllowAll;
-use ockam::identity::authenticated_storage::{mem::InMemoryStorage, AuthenticatedAttributeStorage};
+use hello_ockam::{create_token, get_credential, import_project};
+use ockam::access_control::{AbacAccessControl, AllowAll};
+use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential::{Credential, OneTimeCode};
 use ockam::identity::{Identity, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
 
 use ockam::remote::RemoteForwarder;
-use ockam::{route, vault::Vault, AsyncTryClone, Context, Result, TcpTransport};
+use ockam::{route, vault::Vault, Context, Result, TcpTransport};
 use ockam_api::DefaultAddress;
-use ockam_core::IncomingAccessControl;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -48,13 +47,9 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Initialize the TCP transport
     let tcp = TcpTransport::create(&ctx).await?;
 
-    // Use an in-memory storage
-    let storage = InMemoryStorage::new();
-    let attr_storage = AuthenticatedAttributeStorage::new(storage.clone());
-
     // Create an Identity for the control node
     let vault = Vault::create();
-    let control_plane = Identity::create_ext(&ctx, &storage, &vault).await?;
+    let control_plane = Identity::create(&ctx, &vault).await?;
 
     // 2. create a secure channel to the authority
     //    to retrieve the node credential
@@ -78,23 +73,23 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // store the credential and start a credential exchange worker which will be
     // later on to exchange credentials with the edge node
-    control_plane.set_credential(credential.to_owned()).await;
+    control_plane.set_credential(credential).await;
+    let attributes_storage = AuthenticatedAttributeStorage::new(control_plane.authenticated_storage().clone());
     control_plane
         .start_credential_exchange_worker(
             vec![project.authority_public_identity()],
             "credential_exchange",
             true,
-            attr_storage.async_try_clone().await?,
+            attributes_storage,
         )
         .await?;
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
-    let access_control: Arc<dyn IncomingAccessControl> =
-        create_attribute_access_control(attr_storage.async_try_clone().await?, "component", "edge");
+    let access_control = AbacAccessControl::create(control_plane.authenticated_storage(), "component", "edge");
 
     // 4. create a tcp outlet with the above policy
     let outlet = tcp
-        .create_outlet_impl("outlet".into(), "127.0.0.1:5000".into(), access_control)
+        .create_outlet_impl("outlet".into(), "127.0.0.1:5000".into(), Arc::new(access_control))
         .await?;
     println!("{outlet:?}");
 
