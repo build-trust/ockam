@@ -2,21 +2,31 @@ use crate::util::output::Output;
 use crate::util::print_output;
 use crate::CommandGlobalOpts;
 use anyhow::anyhow;
-use clap::Args;
+use clap::{Args, ValueEnum};
 use core::fmt::Write;
 use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 use ockam_identity::change_history::IdentityChangeHistory;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum Encoding {
+    Hex,
+}
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
     #[arg(default_value_t = default_identity_name())]
     name: String,
 
-    #[arg(short, long, group = "full_opt")]
+    #[arg(short, long)]
     full: bool,
-    #[arg(long, group = "full_opt")]
-    hex: bool,
+
+    //TODO: see if it make sense to have a --encoding argument shared across commands.
+    //      note the only reason this is here right now is that project.json expect the
+    //      authority' identity change history to be in hex format.  This only applies
+    //      for `full` (change history) identity.
+    #[arg(long, value_enum, requires = "full")]
+    encoding: Option<Encoding>,
 }
 
 impl ShowCommand {
@@ -35,13 +45,14 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> crate::Result<()> {
         );
     }
     let state = opts.state.identities.get(&cmd.name)?;
-    if cmd.hex {
+    if cmd.full {
         let identity = state.config.change_history.export()?;
-        print_output(identity, &opts.global_args.output_format)?;
-    } else if cmd.full {
-        let identity = state.config.change_history.export()?;
-        let output = LongIdentityResponse::new(identity);
-        print_output(output, &opts.global_args.output_format)?;
+        if Some(Encoding::Hex) == cmd.encoding {
+            print_output(identity, &opts.global_args.output_format)?;
+        } else {
+            let output = LongIdentityResponse::new(identity);
+            print_output(output, &opts.global_args.output_format)?;
+        }
     } else {
         let output = ShortIdentityResponse::new(state.config.identifier.to_string());
         print_output(output, &opts.global_args.output_format)?;
