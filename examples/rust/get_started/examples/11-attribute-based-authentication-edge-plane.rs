@@ -1,12 +1,13 @@
-use hello_ockam::{create_attribute_access_control, create_token, get_credential, import_project};
-use ockam::identity::authenticated_storage::{mem::InMemoryStorage, AuthenticatedAttributeStorage};
-use ockam::identity::credential::{Credential, OneTimeCode};
-use ockam::identity::{Identity, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
-use ockam::{route, vault::Vault, AsyncTryClone, Context, Result, TcpTransport};
-use ockam_api::DefaultAddress;
-use ockam_core::IncomingAccessControl;
 use std::sync::Arc;
 use std::time::Duration;
+
+use hello_ockam::{create_token, get_credential, import_project};
+use ockam::access_control::AbacAccessControl;
+use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
+use ockam::identity::credential::{Credential, OneTimeCode};
+use ockam::identity::{Identity, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
+use ockam::{route, vault::Vault, Context, Result, TcpTransport};
+use ockam_api::DefaultAddress;
 
 /// This node supports an "edge" server which can connect to a "control" node
 /// in order to connect its TCP inlet to the "control" node TCP outlet
@@ -44,13 +45,9 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Use the TCP transport
     let tcp = TcpTransport::create(&ctx).await?;
 
-    // Use an in-memory storage
-    let storage = InMemoryStorage::new();
-    let attr_storage = AuthenticatedAttributeStorage::new(storage.clone());
-
     // Create an Identity for the edge plane
     let vault = Vault::create();
-    let edge_plane = Identity::create_ext(&ctx, &storage, &vault).await?;
+    let edge_plane = Identity::create(&ctx, &vault).await?;
 
     // 2. create a secure channel to the authority
     //    to retrieve the node credential
@@ -75,18 +72,19 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // store the credential and start a credential exchange worker which will be
     // later on to exchange credentials with the control node
     edge_plane.set_credential(credential.to_owned()).await;
+
+    let attributes_storage = AuthenticatedAttributeStorage::new(edge_plane.authenticated_storage().clone());
     edge_plane
         .start_credential_exchange_worker(
             vec![project.authority_public_identity()],
             "credential_exchange",
             true,
-            attr_storage.async_try_clone().await?,
+            attributes_storage,
         )
         .await?;
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
-    let access_control: Arc<dyn IncomingAccessControl> =
-        create_attribute_access_control(attr_storage.async_try_clone().await?, "component", "control");
+    let access_control = AbacAccessControl::create(edge_plane.authenticated_storage(), "component", "control");
 
     // 4. create a tcp inlet with the above policy
 
@@ -121,11 +119,12 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     println!("secure channel address to the control node: {secure_channel_to_control:?}");
 
     // 4.4 exchange credential with the control node
+    let attributes_storage = AuthenticatedAttributeStorage::new(edge_plane.authenticated_storage().clone());
     edge_plane
         .present_credential_mutual(
             route![secure_channel_to_control.clone(), "credential_exchange"],
             vec![&project.authority_public_identity()],
-            &attr_storage,
+            &attributes_storage,
         )
         .await?;
     println!("credential exchange done");
@@ -133,7 +132,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 4.5 create a TCP inlet connected to the TCP outlet on the control node
     let outlet_route = route![secure_channel_to_control, "outlet"];
     let inlet = tcp
-        .create_inlet_impl("127.0.0.1:7000".into(), outlet_route.clone(), access_control)
+        .create_inlet_impl("127.0.0.1:7000".into(), outlet_route.clone(), Arc::new(access_control))
         .await?;
     println!("the inlet is {inlet:?}");
 
