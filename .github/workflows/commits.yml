@@ -4,6 +4,7 @@ permissions:
   contents: read
 
 on:
+  merge_group:
   workflow_dispatch:
   pull_request:
   push:
