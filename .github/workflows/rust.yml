@@ -32,6 +32,8 @@ on:
       - "gradlew"
       - "gradlew.bat"
       - ".github/actions/**"
+    branches:
+      - develop
   schedule:
     - cron: "0 1 * * *"
 

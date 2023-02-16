@@ -16,6 +16,8 @@ on:
     paths:
       - "**.toml"
       - "**/Cargo.lock"
+    branches:
+      - develop
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
