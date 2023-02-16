@@ -42,6 +42,7 @@ serde_json = { version = "1.0", default_features = false }
 hex = "0.4"
 minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
 anyhow = "1"
+serde_bare = "0.5.0"
 
 [dev-dependencies]
 rand = { version = "0.8.4", features = ["std_rng"], default-features = false }

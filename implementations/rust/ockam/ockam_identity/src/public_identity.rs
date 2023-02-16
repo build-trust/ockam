@@ -4,9 +4,10 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::vault::Signature;
 use ockam_core::Result;
 use ockam_vault::PublicKey;
+use serde::{Deserialize, Serialize};
 
 /// Public part of an `Identity`
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PublicIdentity {
     id: IdentityIdentifier,
     change_history: IdentityChangeHistory,
