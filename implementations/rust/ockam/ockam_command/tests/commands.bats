@@ -417,7 +417,7 @@ teardown() {
   run $OCKAM identity create m2
   run $OCKAM identity create m3
   enroller_identifier=$($OCKAM identity show enroller)
-  authority_identity_full=$($OCKAM identity show --hex authority)
+  authority_identity_full=$($OCKAM identity show --full --encoding hex authority)
   m1_identifier=$($OCKAM identity show m1)
   m2_identifier=$($OCKAM identity show m2)
 
