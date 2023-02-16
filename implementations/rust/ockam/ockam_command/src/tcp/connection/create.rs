@@ -47,21 +47,18 @@ impl CreateCommand {
 
                 let to = response.payload.parse::<SocketAddrV4>()?;
                 if opts.global_args.no_color {
-                    println!("\n  Created TCP Connection:");
-                    println!("  • From: /node/{from}");
-                    println!("  •   To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port());
-                    println!("\n  Transport ID : {}", response.tid);
+                    println!("\n  TCP Connection:");
+                    println!("    ID: {}", response.tid);
+                    println!("    From: /node/{from}");
+                    println!("    To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port());
                 } else {
-                    println!("\n  Created TCP Connection:");
-                    println!("{}", format!("  • From: /node/{from}").light_magenta());
+                    println!("\n  TCP Connection:");
+                    println!("{}", format!("    ID: {}", response.tid).light_magenta());
+                    println!("{}", format!("    From: /node/{from}").light_magenta());
                     println!(
                         "{}",
-                        format!("  •   To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port())
+                        format!("    To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port())
                             .light_magenta()
-                    );
-                    println!(
-                        "{}",
-                        format!("\n  Transport ID : {}", response.tid).light_blue()
                     );
                 }
             }
