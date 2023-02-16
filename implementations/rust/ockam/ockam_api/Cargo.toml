@@ -53,7 +53,7 @@ dirs            = "4.0.0"
 thiserror       = "1.0"
 reqwest         = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
 tokio-util      = { version = "0.7", features = ["codec"] }
-kafka-protocol  = "0.4"
+kafka-protocol  = "0.5"
 futures         = "0.3"
 sysinfo         = "0.27"
 
