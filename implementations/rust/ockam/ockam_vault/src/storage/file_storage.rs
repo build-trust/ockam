@@ -222,7 +222,7 @@ impl Storage for FileStorage {
                     }
                 })
                 .map(|le| VaultEntry::new(le.1.key_attributes, le.1.key.clone()))
-                .ok_or(VaultError::EntryNotFound)?)
+                .ok_or(VaultError::EntryNotFound(format!("vault entry {key_id:?}")))?)
         };
         self.read_transaction(t).await
     }
@@ -245,7 +245,9 @@ impl Storage for FileStorage {
                 let vault_entry = VaultEntry::new(removed.1.key_attributes, removed.1.key);
                 Ok((LegacySerializedVault::V1 { entries, next_id }, vault_entry))
             } else {
-                Err(Error::from(VaultError::EntryNotFound))
+                Err(Error::from(VaultError::EntryNotFound(format!(
+                    "vault entry {key_id:?}"
+                ))))
             }
         };
         self.write_transaction(t).await

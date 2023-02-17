@@ -19,7 +19,9 @@ impl SymmetricVault for Vault {
         self.preload_from_storage(key_id).await;
 
         let entries = self.data.entries.read().await;
-        let entry = entries.get(key_id).ok_or(VaultError::EntryNotFound)?;
+        let entry = entries
+            .get(key_id)
+            .ok_or(VaultError::EntryNotFound(format!("{key_id:?}")))?;
 
         if entry.key_attributes().stype() != SecretType::Aes {
             return Err(VaultError::AeadAesGcmEncrypt.into());
@@ -68,7 +70,9 @@ impl SymmetricVault for Vault {
         self.preload_from_storage(key_id).await;
 
         let entries = self.data.entries.read().await;
-        let entry = entries.get(key_id).ok_or(VaultError::EntryNotFound)?;
+        let entry = entries
+            .get(key_id)
+            .ok_or(VaultError::EntryNotFound(format!("aes key {key_id:?}")))?;
 
         if entry.key_attributes().stype() != SecretType::Aes {
             return Err(VaultError::AeadAesGcmEncrypt.into());

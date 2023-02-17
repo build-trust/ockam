@@ -1,3 +1,4 @@
+use ockam_core::compat::string::String;
 use ockam_core::{
     errcode::{Kind, Origin},
     Error,
@@ -5,10 +6,10 @@ use ockam_core::{
 
 /// Represents the failures that can occur in
 /// an Ockam vault
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum VaultError {
     /// Secret does not belong to this vault
-    SecretFromAnotherVault = 1,
+    SecretFromAnotherVault,
     /// Public key is invalid
     InvalidPublicKey,
     /// Unknown ECDH key type
@@ -16,7 +17,7 @@ pub enum VaultError {
     /// Invalid key type
     InvalidKeyType,
     /// Entry not found
-    EntryNotFound,
+    EntryNotFound(String),
     /// Invalid AES key length
     InvalidAesKeyLength,
     /// Invalid Secret length
@@ -53,7 +54,7 @@ impl core::fmt::Display for VaultError {
             Self::InvalidPublicKey => write!(f, "public key is invalid"),
             Self::UnknownEcdhKeyType => write!(f, "unknown ECDH key type"),
             Self::InvalidKeyType => write!(f, "invalid key type"),
-            Self::EntryNotFound => write!(f, "entry not found"),
+            Self::EntryNotFound(entry) => write!(f, "entry not found {entry}"),
             Self::InvalidAesKeyLength => write!(f, "invalid AES key length"),
             Self::InvalidSecretLength => write!(f, "invalid secret length"),
             Self::InvalidHkdfOutputType => write!(f, "invalid HKDF outputtype"),
@@ -83,7 +84,7 @@ impl From<VaultError> for Error {
             | InvalidHkdfOutputType
             | InvalidPrivateKeyLen
             | InvalidX25519SecretLength => Kind::Misuse,
-            UnknownEcdhKeyType | EntryNotFound | SecretNotFound => Kind::NotFound,
+            UnknownEcdhKeyType | EntryNotFound(_) | SecretNotFound => Kind::NotFound,
             _ => Kind::Invalid,
         };
 
