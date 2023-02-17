@@ -1,6 +1,6 @@
 use crate::{
     compat::{collections::VecDeque, string::String, vec::Vec},
-    route, Address, Result, RouteError, TransportType,
+    Address, Result, RouteError, TransportType,
 };
 use core::fmt::{self, Display};
 use serde::{Deserialize, Serialize};
@@ -234,7 +234,7 @@ impl From<RouteBuilder<'_>> for Route {
 /// A single address can represent a valid route.
 impl<T: Into<Address>> From<T> for Route {
     fn from(addr: T) -> Self {
-        route![addr]
+        Route::create(vec![addr])
     }
 }
 
@@ -338,6 +338,29 @@ impl RouteBuilder<'_> {
             .into_iter()
             .rev()
             .for_each(|addr| self.inner.push_front(addr));
+        self
+    }
+
+    /// Append a full route to an existing route.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use ockam_core::{route, Route, RouteBuilder};
+    /// let mut route_a: Route = route!["1#alice", "bob"];
+    /// let route_b: Route = route!["1#carol", "dave"];
+    ///
+    /// // ["1#alice", "0#bob", "1#carol", "0#dave"]
+    /// let route: Route = route_a.modify()
+    ///     .append_route(route_b)
+    ///     .into();
+    /// ```
+    ///
+    pub fn append_route(mut self, route: Route) -> Self {
+        route
+            .inner
+            .into_iter()
+            .for_each(|addr| self.inner.push_back(addr));
         self
     }
 
