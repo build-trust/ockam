@@ -3286,7 +3286,6 @@ dependencies = [
 name = "ockam_identity"
 version = "0.69.0"
 dependencies = [
- "anyhow",
  "async-trait",
  "cfg-if",
  "group 0.13.0",

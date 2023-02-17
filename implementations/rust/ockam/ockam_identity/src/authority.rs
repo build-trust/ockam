@@ -13,7 +13,6 @@ use AuthorityResponse::*;
 
 use crate::credential::Credential;
 use crate::{Identity, IdentityIdentifier, PublicIdentity};
-use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
 /// This struct provides a simplified Authority which can be used in test scenarios
@@ -226,9 +225,5 @@ impl AuthorityApi for AuthorityClient {
 }
 
 fn error(message: &str) -> Error {
-    Error::new(
-        Origin::Application,
-        Kind::Invalid,
-        anyhow!(message.to_string()),
-    )
+    Error::new(Origin::Application, Kind::Invalid, message.to_string())
 }
