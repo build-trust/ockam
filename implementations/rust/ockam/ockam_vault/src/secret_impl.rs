@@ -207,7 +207,7 @@ impl SecretVault for Vault {
             return Ok(entry.secret().clone());
         }
 
-        Err(VaultError::EntryNotFound.into())
+        Err(VaultError::EntryNotFound(format!("secret to export {key_id:?}")).into())
     }
 
     async fn secret_attributes_get(&self, key_id: &KeyId) -> Result<SecretAttributes> {
@@ -218,7 +218,7 @@ impl SecretVault for Vault {
             return Ok(e.key_attributes());
         }
 
-        Err(VaultError::EntryNotFound.into())
+        Err(VaultError::EntryNotFound(format!("secret attributes for {key_id:?}")).into())
     }
 
     /// Extract public key from secret. Only Curve25519 type is supported
@@ -226,7 +226,11 @@ impl SecretVault for Vault {
         self.preload_from_storage(key_id).await;
 
         let entries = self.data.entries.read().await;
-        let entry = entries.get(key_id).ok_or(VaultError::EntryNotFound)?;
+        let entry = entries
+            .get(key_id)
+            .ok_or(VaultError::EntryNotFound(format!(
+                "secret public key {key_id:?}"
+            )))?;
 
         match entry.key_attributes().stype() {
             SecretType::X25519 => {
@@ -294,14 +298,21 @@ impl SecretVault for Vault {
         };
 
         match entries.remove(&key_id) {
-            None => return Err(VaultError::EntryNotFound.into()),
+            None => {
+                return Err(
+                    VaultError::EntryNotFound(format!("secret to destroy {key_id:?}")).into(),
+                )
+            }
             Some(_entry) =>
             {
                 #[cfg(feature = "aws")]
                 if let Some(kms) = &self.aws_kms {
                     if let Secret::Aws(kid) = _entry.secret() {
                         if !kms.delete_key(kid).await? {
-                            return Err(VaultError::EntryNotFound.into());
+                            return Err(VaultError::EntryNotFound(format!(
+                                "secret to destroy {kid:?}"
+                            ))
+                            .into());
                         }
                     }
                 }

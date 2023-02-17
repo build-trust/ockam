@@ -47,7 +47,11 @@ impl AsymmetricVault for Vault {
         peer_public_key: &PublicKey,
     ) -> Result<KeyId> {
         let entries = self.data.entries.read().await;
-        let entry = entries.get(secret).ok_or(VaultError::EntryNotFound)?;
+        let entry = entries
+            .get(secret)
+            .ok_or(VaultError::EntryNotFound(format!(
+                "diffie hellman secret {secret:?}"
+            )))?;
 
         let dh = Self::ecdh_internal(entry, peer_public_key)?;
 

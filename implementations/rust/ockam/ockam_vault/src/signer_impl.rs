@@ -17,7 +17,11 @@ impl Signer for Vault {
         self.preload_from_storage(secret_key).await;
 
         let entries = self.data.entries.read().await;
-        let entry = entries.get(secret_key).ok_or(VaultError::EntryNotFound)?;
+        let entry = entries
+            .get(secret_key)
+            .ok_or(VaultError::EntryNotFound(format!(
+                "signing key {secret_key:?}"
+            )))?;
 
         match entry.key_attributes().stype() {
             SecretType::X25519 => {

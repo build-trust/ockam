@@ -35,7 +35,9 @@ impl Hasher for Vault {
 
         let ikm: Result<&[u8]> = match ikm {
             Some(ikm) => {
-                let ikm = entries.get(ikm).ok_or(VaultError::EntryNotFound)?;
+                let ikm = entries
+                    .get(ikm)
+                    .ok_or(VaultError::EntryNotFound(format!("hkdf_sha256 {ikm:?}")))?;
                 if ikm.key_attributes().stype() == SecretType::Buffer {
                     Ok(ikm.secret().try_as_key()?.as_ref())
                 } else {
@@ -47,7 +49,9 @@ impl Hasher for Vault {
 
         let ikm = ikm?;
 
-        let salt = entries.get(salt).ok_or(VaultError::EntryNotFound)?;
+        let salt = entries.get(salt).ok_or(VaultError::EntryNotFound(format!(
+            "hkdf_sha256 salt {salt:?}"
+        )))?;
 
         if salt.key_attributes().stype() != SecretType::Buffer {
             return Err(VaultError::InvalidKeyType.into());
