@@ -1,7 +1,7 @@
 use core::sync::atomic::{AtomicU8, Ordering};
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{route, AllowAll, Any, DenyAll, Mailboxes, Result, Routed, Worker};
+use ockam_core::{route, Address, AllowAll, Any, DenyAll, Mailboxes, Result, Routed, Worker};
 use ockam_identity::access_control::IdentityAccessControlBuilder;
 use ockam_identity::api::{DecryptionResponse, EncryptionRequest, EncryptionResponse};
 use ockam_identity::{
@@ -352,7 +352,7 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
     let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
 
     let n = rand::random::<u8>() % 5 + 4;
-    let mut channels = vec![];
+    let mut channels: Vec<Address> = vec![];
     for i in 0..n {
         bob.create_secure_channel_listener(i.to_string(), bob_trust_policy.clone())
             .await?;
