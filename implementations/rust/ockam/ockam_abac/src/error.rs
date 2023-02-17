@@ -10,7 +10,7 @@ pub enum ParseError {
     Utf8(Utf8Error),
     Int(ParseIntError),
     Float(ParseFloatError),
-    Other(wast::Error),
+    Other(String),
     Message(String),
     TypeMismatch(Expr, Expr),
 }
@@ -63,9 +63,10 @@ impl From<ParseFloatError> for ParseError {
     }
 }
 
+#[cfg(feature = "std")]
 impl From<wast::Error> for ParseError {
     fn from(e: wast::Error) -> Self {
-        Self::Other(e)
+        Self::Other(format!("{e:?}"))
     }
 }
 
@@ -98,10 +99,10 @@ impl fmt::Display for EvalError {
 impl std::error::Error for ParseError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            ParseError::Other(e) => Some(e),
             ParseError::Float(e) => Some(e),
             ParseError::Int(e) => Some(e),
             ParseError::Utf8(e) => Some(e),
+            ParseError::Other(_) => None,
             ParseError::Message(_) => None,
             ParseError::TypeMismatch(..) => None,
         }

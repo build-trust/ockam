@@ -1,10 +1,14 @@
+use crate::EvalError;
+#[cfg(feature = "std")]
+use crate::ParseError;
+#[cfg(feature = "std")]
+use core::str::FromStr;
+
+use core::cmp::Ordering;
 use core::fmt;
-use core::{cmp::Ordering, str::FromStr};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::string::String;
 use ockam_core::compat::vec::{vec, Vec};
-
-use crate::{EvalError, ParseError};
 
 #[derive(Debug, Clone, Encode, Decode)]
 #[rustfmt::skip]
@@ -300,6 +304,7 @@ impl fmt::Display for Expr {
     }
 }
 
+#[cfg(feature = "std")]
 impl TryFrom<&str> for Expr {
     type Error = ParseError;
 
@@ -312,6 +317,7 @@ impl TryFrom<&str> for Expr {
     }
 }
 
+#[cfg(feature = "std")]
 impl TryFrom<String> for Expr {
     type Error = ParseError;
 
@@ -320,6 +326,7 @@ impl TryFrom<String> for Expr {
     }
 }
 
+#[cfg(feature = "std")]
 impl FromStr for Expr {
     type Err = ParseError;
 

@@ -62,6 +62,7 @@ no_std = [
     "ockam_vault/no_std",
     "ockam_key_exchange_xx/no_std",
     "ockam_identity/no_std",
+    "ockam_abac/no_std",
 ]
 
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
