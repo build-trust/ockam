@@ -1,18 +1,20 @@
-use std::collections::HashMap;
-
-use serde::{Deserialize, Serialize};
-
+use crate::alloc::string::ToString;
+use ockam_core::compat::boxed::Box;
+use ockam_core::compat::collections::HashMap;
+use ockam_core::compat::string::String;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{AsyncTryClone, Error, Message, Result, Route, Routed, Worker};
+
+use crate::authenticated_storage::mem::InMemoryStorage;
 use ockam_node::Context;
 use ockam_vault::Vault;
 use AuthorityRequest::*;
 use AuthorityResponse::*;
 
-use crate::authenticated_storage::mem::InMemoryStorage;
 use crate::credential::Credential;
 use crate::{Identity, IdentityIdentifier, PublicIdentity};
 use anyhow::anyhow;
+use serde::{Deserialize, Serialize};
 
 /// This struct provides a simplified Authority which can be used in test scenarios
 /// by starting it as a Worker on any given node.

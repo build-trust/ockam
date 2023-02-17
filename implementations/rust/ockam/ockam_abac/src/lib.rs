@@ -6,10 +6,12 @@ extern crate alloc;
 mod env;
 mod error;
 mod eval;
-mod parser;
 mod policy;
 mod traits;
 mod types;
+
+#[cfg(feature = "std")]
+mod parser;
 
 pub mod expr;
 pub mod mem;
@@ -18,7 +20,9 @@ pub use env::Env;
 pub use error::{EvalError, ParseError};
 pub use eval::eval;
 pub use expr::Expr;
-pub use parser::parse;
 pub use policy::PolicyAccessControl;
 pub use traits::PolicyStorage;
 pub use types::{Action, Resource, Subject};
+
+#[cfg(feature = "std")]
+pub use parser::parse;

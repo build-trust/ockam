@@ -7,6 +7,8 @@ use ockam_core::compat::string::ToString;
 use ockam_core::compat::vec::Vec;
 use once_cell::race::OnceBox;
 use regex::Regex;
+
+#[cfg(feature = "std")]
 use wast::lexer::{FloatVal, Lexer, Token};
 
 /// Allowed identifier patterns.
@@ -17,6 +19,7 @@ fn ident_pattern() -> &'static Regex {
     })
 }
 
+#[cfg(feature = "std")]
 #[rustfmt::skip]
 pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
     /// A stack operation.

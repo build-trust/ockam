@@ -214,6 +214,8 @@ pub mod string {
 /// Provides `std::str`.
 pub mod str {
     #[cfg(feature = "alloc")]
+    pub use alloc::str::from_utf8;
+    #[cfg(feature = "alloc")]
     pub use alloc::str::FromStr;
 }
 
