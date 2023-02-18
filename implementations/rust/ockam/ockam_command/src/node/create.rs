@@ -1,8 +1,7 @@
 use clap::Args;
-use minicbor::Decoder;
-use ockam::identity::credential::{Credential, OneTimeCode};
 use rand::prelude::random;
 use tokio::io::AsyncBufReadExt;
+use tokio::time::{sleep, Duration};
 
 use anyhow::{anyhow, Context as _};
 use std::{
@@ -12,6 +11,7 @@ use std::{
 };
 use tracing::error;
 
+use crate::project::ProjectInfo;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::service::config::Config;
 use crate::service::start;
@@ -26,7 +26,6 @@ use crate::{
     node::util::{add_project_authority_from_project_info, init_node_state},
     util::RpcBuilder,
 };
-use crate::{project::ProjectInfo, util::api};
 use ockam::{Address, AsyncTryClone};
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::transport::CreateTransportJson;
@@ -41,12 +40,7 @@ use ockam_api::{
     },
 };
 
-use ockam_core::{
-    api::{Response, Status},
-    AllowAll, LOCAL,
-};
-
-use super::util::delete_node;
+use ockam_core::{AllowAll, LOCAL};
 
 /// Create a node
 #[derive(Clone, Debug, Args)]
@@ -77,10 +71,6 @@ pub struct CreateCommand {
     /// ockam_command started a child process to run this node in foreground.
     #[arg(display_order = 900, long, hide = true)]
     pub child_process: bool,
-
-    /// An enrollment token to allow this node to enroll into a project.
-    #[arg(long = "enrollment-token", value_name = "ENROLLMENT_TOKEN", value_parser = otc_parser)]
-    token: Option<OneTimeCode>,
 
     /// JSON config to setup a foreground node
     ///
@@ -117,7 +107,6 @@ impl Default for CreateCommand {
             child_process: false,
             launch_config: None,
             project: None,
-            token: None,
             vault: None,
             identity: None,
             trusted_identities: None,
@@ -195,17 +184,6 @@ async fn run_impl(
     }
     print_query_status(&mut rpc, node_name, true, is_default).await?;
 
-    // Do we need to eagerly fetch a project membership credential?
-    let get_credential = cmd.project.is_some() && cmd.token.is_some();
-    if get_credential {
-        rpc.request(api::credentials::get_credential(false, cmd.identity))
-            .await?;
-        if rpc.parse_and_print_response::<Credential>().is_err() {
-            eprintln!("failed to fetch membership credential");
-            delete_node(&opts, node_name, true)?;
-        }
-    }
-
     Ok(())
 }
 
@@ -248,9 +226,6 @@ async fn run_foreground_node(
         None => None,
     };
 
-    // Do we need to eagerly fetch a project membership credential?
-    let get_credential = !cmd.child_process && cmd.project.is_some() && cmd.token.is_some();
-
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = cmd.tcp_listener_address;
     let (socket_addr, listener_addr) = tcp.listen(&bind).await?;
@@ -290,7 +265,6 @@ async fn run_foreground_node(
             Some(&cfg.authorities(&node_name)?.snapshot()),
             project_id,
             projects,
-            cmd.token,
         ),
         NodeManagerTransportOptions::new(
             (
@@ -317,22 +291,20 @@ async fn run_foreground_node(
         let node_opts = super::NodeOpts {
             api_node: node_name.clone(),
         };
-        start_services(&ctx, &tcp, path, addr, node_opts, &opts).await?
-    }
-
-    if get_credential {
-        let req = api::credentials::get_credential(false, cmd.identity).to_vec()?;
-        let res: Vec<u8> = ctx.send_and_receive(NODEMANAGER_ADDR, req).await?;
-        let mut d = Decoder::new(&res);
-        match d.decode::<Response>() {
-            Ok(hdr) if hdr.status() == Some(Status::Ok) && hdr.has_body() => {
-                let c: Credential = d.decode()?;
-                println!("{c}")
-            }
-            Ok(_) | Err(_) => {
-                eprintln!("failed to fetch membership credential");
-                delete_node(&opts, &node_name, true)?;
-            }
+        if start_services(&ctx, &tcp, path, addr, node_opts, &opts)
+            .await
+            .is_err()
+        {
+            //TODO: Process should terminate on any error during its setup phase,
+            //      not just during the start_services.
+            //TODO: This sleep here is a workaround on some orchestrated environment,
+            //      the lmdb db, that is used for policy storage, failes to be re-opened
+            //      if it's still opened from another docker container, where they share
+            //      the same pid. By sleeping for a while we let this container be promoted
+            //      and the other being terminated, so when restarted it works.  This is
+            //      FAR from ideal.
+            sleep(Duration::from_secs(10)).await;
+            std::process::exit(exitcode::SOFTWARE);
         }
     }
 
@@ -423,8 +395,6 @@ async fn start_services(
                 opts,
                 &node_opts.api_node,
                 &cfg.address,
-                &cfg.enrollers,
-                cfg.reload_enrollers,
                 &cfg.project,
                 Some(tcp),
             )
@@ -476,7 +446,6 @@ async fn spawn_background_node(
         &node_name,
         &cmd.tcp_listener_address,
         cmd.project.as_deref(),
-        cmd.token.as_ref(),
         cmd.trusted_identities.as_ref(),
         cmd.trusted_identities_file.as_ref(),
         cmd.reload_from_trusted_identities_file.as_ref(),
@@ -486,10 +455,4 @@ async fn spawn_background_node(
     )?;
 
     Ok(())
-}
-
-fn otc_parser(val: &str) -> Result<OneTimeCode> {
-    let bytes = hex::decode(val)?;
-    let code = <[u8; 32]>::try_from(bytes.as_slice()).context("Failed to parse OTC")?;
-    Ok(code.into())
 }

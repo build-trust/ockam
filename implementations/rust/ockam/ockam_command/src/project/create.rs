@@ -8,7 +8,7 @@ use ockam::Context;
 use ockam_api::cloud::project::Project;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::project::util::{check_project_readiness, project_enroll_admin};
+use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::{space, CommandGlobalOpts};
@@ -62,7 +62,6 @@ async fn run_impl(
     let project = rpc.parse_response::<Project>()?;
     let project =
         check_project_readiness(ctx, &opts, &cmd.cloud_opts, &node_name, None, project).await?;
-    project_enroll_admin(ctx, &opts, &node_name, &project).await?;
     rpc.print_response(project)?;
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())

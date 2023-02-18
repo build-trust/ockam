@@ -18,7 +18,7 @@ use crate::util::{node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
 
 use crate::project::util::create_secure_channel_to_authority;
-use ockam_api::authenticator::direct::Client;
+use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
 use ockam_api::config::lookup::ProjectAuthority;
 use ockam_api::DefaultAddress;
 
@@ -86,15 +86,25 @@ async fn run_impl(
     if cmd.okta {
         authenticate_through_okta(&ctx, &opts, &node_name, proj, secure_channel_addr.clone())
             .await?
+    } else if let Some(tkn) = cmd.token {
+        // Return address to the authenticator in the authority node
+        let token_issuer_route = {
+            let service = MultiAddr::try_from(
+                format!("/service/{}", DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR).as_str(),
+            )?;
+            let mut addr = secure_channel_addr.clone();
+            for proto in service.iter() {
+                addr.push_back_value(&proto)?;
+            }
+            ockam_api::local_multiaddr_to_route(&addr)
+                .context(format!("Invalid MultiAddr {addr}"))?
+        };
+        let client = TokenAcceptorClient::new(RpcClient::new(token_issuer_route, &ctx).await?);
+        client.present_token(&tkn).await?
     }
-    // If we are given a token to enroll, it's passed on the api call that retrieves the
-    // credential the first time,  there is no separate step like in the okta case.
-    // After that initial credential request, the identity get enrolled into the authority
 
-    // Return address to the authenticator in the authority node
-    let authenticator_route = {
-        let service =
-            MultiAddr::try_from(format!("/service/{}", DefaultAddress::AUTHENTICATOR).as_str())?;
+    let credential_issuer_route = {
+        let service = MultiAddr::try_from("/service/credential_issuer")?;
         let mut addr = secure_channel_addr.clone();
         for proto in service.iter() {
             addr.push_back_value(&proto)?;
@@ -102,12 +112,9 @@ async fn run_impl(
         ockam_api::local_multiaddr_to_route(&addr).context(format!("Invalid MultiAddr {addr}"))?
     };
 
-    let mut client = Client::new(authenticator_route, &ctx).await?;
+    let client2 = CredentialIssuerClient::new(RpcClient::new(credential_issuer_route, &ctx).await?);
 
-    let credential = match cmd.token {
-        None => client.credential().await?,
-        Some(token) => client.credential_with(&token).await?,
-    };
+    let credential = client2.credential().await?;
     println!("{credential}");
     delete_embedded_node(&opts, &node_name).await;
     Ok(())

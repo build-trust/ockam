@@ -75,11 +75,19 @@ impl<B: IdentityAttributeStorageReader, S: IdentityAttributeStorage> IdentityAtt
         }
         match self.bootstrapped.get_attributes(sender).await? {
             None => self.storage.put_attributes(sender, entry).await,
-            Some(_) => Err(ockam_core::Error::new(
+            Some(_) => Ok(()),
+            /*
+                 * TODO: previous client automatically adds the project admin as a member.
+                 *       that is not needed, as the admin is part of the trusted anchors for the
+                 *       authority already.
+                 *       Remove the Ok() clause and replace by this error once we don't need to
+                 *       support the old cli version anymore.
+                    Err(ockam_core::Error::new(
                 Origin::Identity,
                 Kind::AlreadyExists,
                 "cant write attributes for a bootstrapped identity",
             )),
+                */
         }
     }
 }
@@ -130,6 +138,11 @@ impl PreTrustedIdentities {
                 )
             })
             .collect())
+    }
+}
+impl From<HashMap<IdentityIdentifier, AttributesEntry>> for PreTrustedIdentities {
+    fn from(h: HashMap<IdentityIdentifier, AttributesEntry>) -> PreTrustedIdentities {
+        PreTrustedIdentities::Fixed(h)
     }
 }
 

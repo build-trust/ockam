@@ -156,13 +156,10 @@ pub(crate) fn start_credentials_service(
 /// Construct a request to start an Authenticator Service
 pub(crate) fn start_authenticator_service<'a>(
     addr: &'a str,
-    enrollers: &'a str,
-    reload_enrollers: bool,
     project: &'a str,
 ) -> RequestBuilder<'static, StartAuthenticatorRequest<'a>> {
-    let payload =
-        StartAuthenticatorRequest::new(addr, enrollers, reload_enrollers, project.as_bytes());
-    Request::post(node_service(DefaultAddress::AUTHENTICATOR)).body(payload)
+    let payload = StartAuthenticatorRequest::new(addr, project.as_bytes());
+    Request::post(node_service(DefaultAddress::DIRECT_AUTHENTICATOR)).body(payload)
 }
 
 pub(crate) mod credentials {
@@ -253,8 +250,6 @@ pub(crate) mod space {
 pub(crate) mod project {
     use ockam_api::cloud::project::*;
 
-    use crate::project::*;
-
     use super::*;
 
     pub(crate) fn create<'a>(
@@ -288,32 +283,6 @@ pub(crate) mod project {
     ) -> RequestBuilder<'a, BareCloudRequestWrapper<'a>> {
         Request::delete(format!("v0/projects/{space_id}/{project_id}"))
             .body(CloudRequestWrapper::bare(cloud_route))
-    }
-
-    pub(crate) fn add_enroller(
-        cmd: &AddEnrollerCommand,
-    ) -> RequestBuilder<CloudRequestWrapper<AddEnroller>> {
-        let b = AddEnroller::new(&cmd.enroller_identity_id, cmd.description.as_deref());
-        Request::post(format!("v0/project-enrollers/{}", cmd.project_id)).body(
-            CloudRequestWrapper::new(b, &cmd.cloud_opts.route(), None::<CowStr>),
-        )
-    }
-
-    pub(crate) fn list_enrollers(
-        cmd: &ListEnrollersCommand,
-    ) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::get(format!("v0/project-enrollers/{}", cmd.project_id))
-            .body(CloudRequestWrapper::bare(&cmd.cloud_opts.route()))
-    }
-
-    pub(crate) fn delete_enroller(
-        cmd: &DeleteEnrollerCommand,
-    ) -> RequestBuilder<BareCloudRequestWrapper> {
-        Request::delete(format!(
-            "v0/project-enrollers/{}/{}",
-            cmd.project_id, cmd.enroller_identity_id
-        ))
-        .body(CloudRequestWrapper::bare(&cmd.cloud_opts.route()))
     }
 }
 

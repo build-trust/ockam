@@ -1,17 +1,16 @@
 use crate::error::ApiError;
 use core::str;
 use minicbor::Decoder;
+use ockam::identity::credential::Timestamp;
 use ockam_core::api;
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::{self, Result, Routed, Worker};
-use ockam_identity::authenticated_storage::AuthenticatedStorage;
+use ockam_identity::authenticated_storage::{AttributesEntry, IdentityAttributeStorageWriter};
 use ockam_identity::{IdentityIdentifier, IdentitySecureChannelLocalInfo};
 use ockam_node::Context;
 use reqwest::StatusCode;
 use std::collections::HashMap;
 use tracing::trace;
-
-const MEMBER: &str = "member";
 
 pub struct Server<S> {
     project: Vec<u8>,
@@ -24,7 +23,7 @@ pub struct Server<S> {
 #[ockam_core::worker]
 impl<S> Worker for Server<S>
 where
-    S: AuthenticatedStorage,
+    S: IdentityAttributeStorageWriter,
 {
     type Context = Context;
     type Message = Vec<u8>;
@@ -44,7 +43,7 @@ where
 
 impl<S> Server<S>
 where
-    S: AuthenticatedStorage,
+    S: IdentityAttributeStorageWriter,
 {
     pub fn new(
         project: Vec<u8>,
@@ -88,10 +87,27 @@ where
                         dec.decode()?;
                     debug!("device code received: {token:#?}");
                     if let Some(attrs) = self.check_token(&token.access_token.0).await? {
-                        let encoded_attrs = minicbor::to_vec(attrs)?;
-                        self.store
-                            .set(from.key_id(), MEMBER.to_string(), encoded_attrs)
-                            .await?;
+                        //TODO in some future, we will want to track that this entry
+                        //     was added by the okta addon.
+                        //     But for that we would need to give a separate identity to this
+                        //     addon, and made it an "enroller" (calling the enroll endpoint)
+                        let entry = AttributesEntry::new(
+                            attrs
+                                .into_iter()
+                                .map(|(k, v)| (k, v.as_bytes().to_vec()))
+                                .chain(
+                                    [(
+                                        crate::authenticator::direct::PROJECT_ID.to_owned(),
+                                        self.project.clone(),
+                                    )]
+                                    .into_iter(),
+                                )
+                                .collect(),
+                            Timestamp::now().unwrap(),
+                            None,
+                            None,
+                        );
+                        self.store.put_attributes(from, entry).await?;
                         Response::ok(req.id()).to_vec()?
                     } else {
                         api::forbidden(&req, "Forbidden").to_vec()?

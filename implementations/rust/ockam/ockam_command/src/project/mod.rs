@@ -1,13 +1,10 @@
-mod add_enroller;
 mod addon;
 mod auth;
 mod create;
 mod delete;
-mod delete_enroller;
 mod enroll;
 mod info;
 mod list;
-mod list_enrollers;
 mod show;
 pub mod util;
 
@@ -17,15 +14,12 @@ pub use util::config;
 use clap::{Args, Subcommand};
 
 pub use crate::credential::get_credential::GetCredentialCommand;
-pub use add_enroller::AddEnrollerCommand;
 pub use addon::AddonCommand;
 pub use create::CreateCommand;
 pub use delete::DeleteCommand;
-pub use delete_enroller::DeleteEnrollerCommand;
 pub use enroll::EnrollCommand;
 pub use info::InfoCommand;
 pub use list::ListCommand;
-pub use list_enrollers::ListEnrollersCommand;
 pub use show::ShowCommand;
 
 use crate::project::auth::AuthCommand;
@@ -46,9 +40,6 @@ pub enum ProjectSubcommand {
     List(ListCommand),
     Show(ShowCommand),
     Information(InfoCommand),
-    AddEnroller(AddEnrollerCommand),
-    ListEnrollers(ListEnrollersCommand),
-    DeleteEnroller(DeleteEnrollerCommand),
     Enroll(EnrollCommand),
     Addon(AddonCommand),
     Authenticate(AuthCommand),
@@ -61,9 +52,6 @@ impl ProjectCommand {
             ProjectSubcommand::Delete(c) => c.run(options),
             ProjectSubcommand::List(c) => c.run(options),
             ProjectSubcommand::Show(c) => c.run(options),
-            ProjectSubcommand::AddEnroller(c) => c.run(options),
-            ProjectSubcommand::ListEnrollers(c) => c.run(options),
-            ProjectSubcommand::DeleteEnroller(c) => c.run(options),
             ProjectSubcommand::Enroll(c) => c.run(options),
             ProjectSubcommand::Information(c) => c.run(options),
             ProjectSubcommand::Addon(c) => c.run(options),

@@ -15,7 +15,8 @@ use crate::nodes::models::services::{
     StartVaultServiceRequest, StartVerifierService,
 };
 use crate::nodes::registry::{
-    CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry, VerifierServiceInfo,
+    AuthenticatorServiceInfo, CredentialsServiceInfo, KafkaServiceInfo, KafkaServiceKind, Registry,
+    VerifierServiceInfo,
 };
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
@@ -26,12 +27,14 @@ use crate::{actions, multiaddr_to_route, resources};
 use core::time::Duration;
 use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
-use ockam_abac::expr::{eq, ident, str};
-use ockam_abac::PolicyStorage;
+use ockam_abac::expr::{and, eq, ident, str};
+use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
-use ockam_core::{route, AllowAll};
+use ockam_core::{route, AllowAll, IncomingAccessControl};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
+use ockam_node::WorkerBuilder;
+use std::sync::Arc;
 
 use super::NodeManagerWorker;
 
@@ -221,39 +224,170 @@ impl NodeManager {
         Ok(())
     }
 
+    async fn build_access_control(
+        &self,
+        r: &Resource,
+        a: &Action,
+        project_id: &str,
+        default: &Expr,
+    ) -> Result<Arc<dyn IncomingAccessControl>> {
+        // Populate environment with known attributes:
+        let mut env = Env::new();
+        env.put("resource.id", str(r.as_str()));
+        env.put("action.id", str(a.as_str()));
+        env.put("resource.project_id", str(project_id));
+        // Check if a policy exists for (resource, action) and if not, then
+        // create a default entry:
+        if self.policies.get_policy(r, a).await?.is_none() {
+            self.policies.set_policy(r, a, default).await?
+        }
+        Ok(Arc::new(PolicyAccessControl::new(
+            self.policies.clone(),
+            self.attributes_storage.async_try_clone().await?,
+            r.clone(),
+            a.clone(),
+            env,
+        )))
+    }
+
+    pub(super) async fn start_credential_issuer_service_impl(
+        &mut self,
+        ctx: &Context,
+        addr: Address,
+        proj: &[u8],
+    ) -> Result<()> {
+        if self.registry.authenticator_service.contains_key(&addr) {
+            return Err(ApiError::generic(
+                "Credential issuer service already started",
+            ));
+        }
+        let action = actions::HANDLE_MESSAGE;
+        let resource = Resource::new(&addr.to_string());
+        let project = std::str::from_utf8(proj).unwrap();
+        let rule = eq([ident("resource.project_id"), ident("subject.project_id")]);
+        let abac = self
+            .build_access_control(&resource, &action, project, &rule)
+            .await?;
+        let issuer = crate::authenticator::direct::CredentialIssuer::new(
+            proj.to_vec(),
+            self.attributes_storage.async_try_clone().await?,
+            self.identity()?.async_try_clone().await?,
+        )
+        .await?;
+        WorkerBuilder::with_access_control(abac, Arc::new(AllowAll), addr.clone(), issuer)
+            .start(ctx)
+            .await
+            .map(|_| ())?;
+        self.registry
+            .authenticator_service
+            .insert(addr, AuthenticatorServiceInfo::default());
+        Ok(())
+    }
+
     #[cfg(feature = "direct-authenticator")]
     pub(super) async fn start_direct_authenticator_service_impl(
         &mut self,
         ctx: &Context,
         addr: Address,
-        enrollers: &str,
-        reload_enrollers: bool,
         proj: &[u8],
     ) -> Result<()> {
-        use crate::nodes::registry::AuthenticatorServiceInfo;
         if self.registry.authenticator_service.contains_key(&addr) {
-            return Err(ApiError::generic("Authenticator service already started"));
+            return Err(ApiError::generic(
+                "Direct Authenticator  service already started",
+            ));
         }
-        let db = self.attributes_storage.async_try_clone().await?;
-        let id = self.identity()?.async_try_clone().await?;
-        let au = crate::authenticator::direct::Server::new(
+        let action = actions::HANDLE_MESSAGE;
+        let resource = Resource::new(&addr.to_string());
+        let project = std::str::from_utf8(proj).unwrap();
+        let rule = and([
+            eq([ident("resource.project_id"), ident("subject.project_id")]),
+            eq([ident("subject.ockam-role"), str("enroller")]),
+        ]);
+
+        let abac = self
+            .build_access_control(&resource, &action, project, &rule)
+            .await?;
+
+        let identity = self.identity()?.async_try_clone().await?;
+        let direct = crate::authenticator::direct::DirectAuthenticator::new(
             proj.to_vec(),
-            db,
-            enrollers,
-            reload_enrollers,
-            id,
+            self.attributes_storage.async_try_clone().await?,
+            identity.authenticated_storage().clone(),
         )
         .await?;
-        ctx.start_worker(
-            addr.clone(),
-            au,
-            AllowAll, // FIXME: @ac
-            AllowAll,
-        )
-        .await?;
+
+        WorkerBuilder::with_access_control(abac, Arc::new(AllowAll), addr.clone(), direct)
+            .start(ctx)
+            .await
+            .map(|_| ())?;
+
         self.registry
             .authenticator_service
             .insert(addr, AuthenticatorServiceInfo::default());
+
+        // TODO: remove this once compatibility with old clients is not required anymore
+        let legacy_api = crate::authenticator::direct::LegacyApiConverter::new();
+        ctx.start_worker("authenticator", legacy_api, AllowAll, AllowAll)
+            .await?;
+
+        Ok(())
+    }
+
+    pub(super) async fn start_enrollment_token_authenticator_pair(
+        &mut self,
+        ctx: &Context,
+        issuer_addr: Address,
+        acceptor_addr: Address,
+        proj: &[u8],
+    ) -> Result<()> {
+        if self
+            .registry
+            .authenticator_service
+            .contains_key(&issuer_addr)
+            || self
+                .registry
+                .authenticator_service
+                .contains_key(&acceptor_addr)
+        {
+            return Err(ApiError::generic(
+                "Enrollment token Authenticator service already started",
+            ));
+        }
+        let action = actions::HANDLE_MESSAGE;
+        let resource = Resource::new(&issuer_addr.to_string());
+        let project = std::str::from_utf8(proj).unwrap();
+        let (issuer, acceptor) =
+            crate::authenticator::direct::EnrollmentTokenAuthenticator::new_worker_pair(
+                proj.to_vec(),
+                self.attributes_storage.async_try_clone().await?,
+            );
+        let rule = and([
+            eq([ident("resource.project_id"), ident("subject.project_id")]),
+            eq([ident("subject.ockam-role"), str("enroller")]),
+        ]);
+        let abac = self
+            .build_access_control(&resource, &action, project, &rule)
+            .await?;
+        let allow_all = Arc::new(AllowAll);
+        WorkerBuilder::with_access_control(abac, allow_all.clone(), issuer_addr.clone(), issuer)
+            .start(ctx)
+            .await
+            .map(|_| ())?;
+        WorkerBuilder::with_access_control(
+            allow_all.clone(),
+            allow_all,
+            acceptor_addr.clone(),
+            acceptor,
+        )
+        .start(ctx)
+        .await
+        .map(|_| ())?;
+        self.registry
+            .authenticator_service
+            .insert(issuer_addr, AuthenticatorServiceInfo::default());
+        self.registry
+            .authenticator_service
+            .insert(acceptor_addr, AuthenticatorServiceInfo::default());
         Ok(())
     }
 
@@ -276,7 +410,7 @@ impl NodeManager {
                 "Okta Identity Provider service already started",
             ));
         }
-        let db = self.authenticated_storage.async_try_clone().await?;
+        let db = self.attributes_storage.async_try_clone().await?;
         let au =
             crate::okta::Server::new(proj.to_vec(), db, tenant_base_url, certificate, attributes)?;
         ctx.start_worker(
@@ -474,6 +608,7 @@ impl NodeManagerWorker {
         Ok(Response::ok(req.id()))
     }
 
+    //TODO: split this into the different services it really starts
     pub(super) async fn start_authenticator_service<'a>(
         &mut self,
         ctx: &Context,
@@ -490,11 +625,21 @@ impl NodeManagerWorker {
             let addr: Address = body.address().into();
 
             node_manager
-                .start_direct_authenticator_service_impl(
+                .start_direct_authenticator_service_impl(ctx, addr, body.project())
+                .await?;
+
+            node_manager
+                .start_credential_issuer_service_impl(
                     ctx,
-                    addr,
-                    body.enrollers(),
-                    body.reload_enrollers(),
+                    DefaultAddress::CREDENTIAL_ISSUER.into(),
+                    body.project(),
+                )
+                .await?;
+            node_manager
+                .start_enrollment_token_authenticator_pair(
+                    ctx,
+                    DefaultAddress::ENROLLMENT_TOKEN_ISSUER.into(),
+                    DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR.into(),
                     body.project(),
                 )
                 .await?;
@@ -718,12 +863,10 @@ impl NodeManagerWorker {
         });
 
         #[cfg(feature = "direct-authenticator")]
-        registry.authenticator_service.keys().for_each(|addr| {
-            list.push(ServiceStatus::new(
-                addr.address(),
-                DefaultAddress::AUTHENTICATOR,
-            ))
-        });
+        registry
+            .authenticator_service
+            .keys()
+            .for_each(|addr| list.push(ServiceStatus::new(addr.address(), "Authority")));
 
         Response::ok(req.id()).body(ServiceList::new(list))
     }

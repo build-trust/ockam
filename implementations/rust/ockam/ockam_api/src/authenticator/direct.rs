@@ -2,24 +2,21 @@ pub mod types;
 
 use core::{fmt, str};
 use lru::LruCache;
-use minicbor::{Decoder, Encode};
+use minicbor::{Decode, Decoder, Encode};
 use ockam::identity::authenticated_storage::{
-    AttributesEntry, AuthenticatedStorage, IdentityAttributeStorage,
+    AttributesEntry, AuthenticatedStorage, IdentityAttributeStorage, IdentityAttributeStorageReader,
 };
 use ockam::identity::credential::{Credential, OneTimeCode, SchemaId, Timestamp};
 use ockam::identity::{
     Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityVault,
 };
-use ockam_core::api::{
-    self, Error, Method, Request, RequestBuilder, Response, ResponseBuilder, Status,
-};
+use ockam_core::api::{self, Error, Method, Request, RequestBuilder, Response, Status};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
+use ockam_core::{self, Address, CowStr, DenyAll, Result, Route, Routed, Worker};
 use ockam_node::Context;
-use serde_json as json;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
-use std::path::Path;
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use tracing::{trace, warn};
 use types::AddMember;
@@ -32,10 +29,8 @@ use {
     ockam_core::api::{assert_request_match, assert_response_match},
 };
 
-use self::types::Enroller;
-
-const LEGACY_MEMBER: &str = "member";
 const MAX_TOKEN_DURATION: Duration = Duration::from_secs(600);
+const DEFAULT_CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Schema identifier for a project membership credential.
 ///
@@ -45,28 +40,171 @@ const MAX_TOKEN_DURATION: Duration = Duration::from_secs(600);
 /// - `role`: b"member"
 pub const PROJECT_MEMBER_SCHEMA: SchemaId = SchemaId(1);
 pub const PROJECT_ID: &str = "project_id";
+pub const LEGACY_MEMBER: &str = "member";
 
-pub struct Server<S: AuthenticatedStorage, IS: IdentityAttributeStorage, V: IdentityVault> {
-    project: Vec<u8>,
-    store: IS,
-    ident: Identity<V, S>,
-    filename: Option<String>,
-    enrollers: HashMap<IdentityIdentifier, Enroller>,
-    reload_enrollers: bool,
-    tokens: LruCache<[u8; 32], Token>,
+// This acts as a facade, modifying and forwarding incoming messages from legacy clients
+// to the new endpoints.   It's going to be removed once we don't need to maintain compatibility
+// with old clients anymore.
+pub struct LegacyApiConverter {}
+
+impl LegacyApiConverter {
+    pub fn new() -> Self {
+        Self {}
+    }
 }
 
-struct Token {
-    attrs: HashMap<String, String>,
-    generated_by: IdentityIdentifier,
-    time: Instant,
+// Keep clippy happy
+impl Default for LegacyApiConverter {
+    fn default() -> Self {
+        LegacyApiConverter::new()
+    }
 }
 
 #[ockam_core::worker]
-impl<S, IS, V> Worker for Server<S, IS, V>
+impl Worker for LegacyApiConverter {
+    type Context = Context;
+    type Message = Vec<u8>;
+
+    async fn handle_message(
+        &mut self,
+        ctx: &mut Context,
+        msg: Routed<Self::Message>,
+    ) -> Result<()> {
+        let body = msg.as_body().clone();
+        let mut dec = Decoder::new(&body);
+        let mut message = msg.into_local_message();
+        let mut second_msg = message.clone(); // Borrow checker.  When authenticating using an enrollment token,
+                                              // to adhere to the previous API this legacy worker actually issues
+                                              // _two_ request on behalf of the user: one to enroll, other to get
+                                              // the credential
+        let transport_message = message.transport_mut();
+
+        // Remove my address from the onward_route
+        transport_message.onward_route.step()?;
+
+        match dec.decode::<Request>() {
+            Ok(req) => match (req.method(), req.path()) {
+                (Some(Method::Post), "/tokens") => {
+                    transport_message
+                        .onward_route
+                        .modify()
+                        .append("enrollment_token_issuer");
+                    ctx.forward(message).await
+                }
+                (Some(Method::Post), "/members") => {
+                    transport_message
+                        .onward_route
+                        .modify()
+                        .append("direct_authenticator");
+                    ctx.forward(message).await
+                }
+                (Some(Method::Post), "/credential") if req.has_body() => {
+                    transport_message
+                        .onward_route
+                        .modify()
+                        .append("enrollment_token_acceptor");
+
+                    // We don't want the 200 OK to be routed back to the client here,
+                    // as legacy client is expecting the response to contain the credential.
+                    transport_message
+                        .return_route
+                        .modify()
+                        .prepend(ctx.address());
+                    ctx.forward(message).await?;
+                    // Give time for the enrollment to be done before asking for a credential.
+                    // A better alternative is to wait for the response on handle_message,
+                    // then decode it and issue the next message, then returning the credential
+                    // to the client.   But it's too cumbersome for this that is a workaround
+                    // to get previous clients to work, and we are removing this code soon after.
+                    ockam_node::compat::tokio::time::sleep(Duration::from_millis(2000)).await;
+                    // Request the credential,  note the return route points to the client
+                    let body = Request::post("/credential").to_vec()?;
+                    let transport_message = second_msg.transport_mut();
+                    transport_message
+                        .onward_route
+                        .modify()
+                        .append("credential_issuer");
+                    transport_message.payload = body;
+                    ctx.forward(second_msg).await?;
+                    Ok(())
+                }
+                (Some(Method::Post), "/credential") => {
+                    transport_message
+                        .onward_route
+                        .modify()
+                        .append("credential_issuer");
+                    ctx.forward(message).await
+                }
+                (_, _) => {
+                    warn!("Legacy Authority Compatibility Worker received request at unknown path: {req:?}");
+                    Ok(())
+                }
+            },
+            Err(_) => {
+                let mut dec = Decoder::new(&body);
+                match dec.decode::<Response>() {
+                    Ok(resp) => {
+                        if resp.status() == Some(Status::Ok) {
+                            debug!("Received resp: {resp:?}");
+                        } else {
+                            warn!("Received a non-ok response {resp:?}");
+                        }
+                    }
+                    _ => warn!("Received and discarded a non request/response message {message:?}"),
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+pub struct CredentialIssuer<
+    S: AuthenticatedStorage,
+    IS: IdentityAttributeStorageReader,
+    V: IdentityVault,
+> {
+    project: Vec<u8>,
+    store: IS,
+    ident: Identity<V, S>,
+}
+
+impl<S, IS, V> CredentialIssuer<S, IS, V>
 where
     S: AuthenticatedStorage,
-    IS: IdentityAttributeStorage,
+    IS: IdentityAttributeStorageReader,
+    V: IdentityVault,
+{
+    pub async fn new(project: Vec<u8>, store: IS, identity: Identity<V, S>) -> Result<Self> {
+        Ok(Self {
+            project,
+            store,
+            ident: identity,
+        })
+    }
+
+    async fn issue_credential(&self, from: &IdentityIdentifier) -> Result<Option<Credential>> {
+        match self.store.get_attributes(from).await? {
+            Some(entry) => {
+                let crd = entry
+                    .attrs()
+                    .iter()
+                    .fold(
+                        Credential::builder(from.clone()).with_schema(PROJECT_MEMBER_SCHEMA),
+                        |crd, (a, v)| crd.with_attribute(a, v),
+                    )
+                    .with_attribute(PROJECT_ID, &self.project);
+                Ok(Some(self.ident.issue_credential(crd).await?))
+            }
+            None => Ok(None),
+        }
+    }
+}
+
+#[ockam_core::worker]
+impl<S, IS, V> Worker for CredentialIssuer<S, IS, V>
+where
+    S: AuthenticatedStorage,
+    IS: IdentityAttributeStorageReader,
     V: IdentityVault,
 {
     type Context = Context;
@@ -74,145 +212,280 @@ where
 
     async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
         if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
-            let r = self.on_request(i.their_identity_id(), m.as_body()).await?;
-            c.send(m.return_route(), r).await
-        } else {
+            let from = i.their_identity_id();
             let mut dec = Decoder::new(m.as_body());
             let req: Request = dec.decode()?;
-            let res = api::forbidden(&req, "secure channel required").to_vec()?;
+            trace! {
+                target: "ockam_api::authenticator::direct::credential_issuer",
+                from   = %from,
+                id     = %req.id(),
+                method = ?req.method(),
+                path   = %req.path(),
+                body   = %req.has_body(),
+                "request"
+            }
+            let res = match (req.method(), req.path()) {
+                (Some(Method::Post), "/") | (Some(Method::Post), "/credential") => {
+                    match self.issue_credential(from).await {
+                        Ok(Some(crd)) => Response::ok(req.id()).body(crd).to_vec()?,
+                        Ok(None) => {
+                            // Again, this has already been checked by the access control, so if we
+                            // reach this point there is an error actually.
+                            api::forbidden(&req, "unauthorized member").to_vec()?
+                        }
+                        Err(error) => api::internal_error(&req, &error.to_string()).to_vec()?,
+                    }
+                }
+                _ => api::unknown_path(&req).to_vec()?,
+            };
             c.send(m.return_route(), res).await
+        } else {
+            secure_channel_required(c, m).await
         }
     }
 }
 
-impl<S, IS, V> Server<S, IS, V>
+pub struct DirectAuthenticator<IS: IdentityAttributeStorage> {
+    project: Vec<u8>,
+    store: IS,
+}
+
+impl<IS> DirectAuthenticator<IS>
 where
-    S: AuthenticatedStorage,
     IS: IdentityAttributeStorage,
-    V: IdentityVault,
 {
-    pub async fn new(
+    pub async fn new<S: AuthenticatedStorage>(
         project: Vec<u8>,
         store: IS,
-        enrollers: &str,
-        reload_enrollers: bool,
-        identity: Identity<V, S>,
+        legacy_store: S,
     ) -> Result<Self> {
-        let (filename, enrollers_data) = Self::parse_enrollers(enrollers)?;
-
         //TODO: This block is from converting old-style member' data into
         //      the new format suitable for our ABAC framework.  Remove it
         //      once we don't have more legacy data around.
-        let legacy_s = identity.authenticated_storage();
-        for k in legacy_s.keys(LEGACY_MEMBER).await? {
-            if let Some(data) = legacy_s.get(&k, LEGACY_MEMBER).await? {
+        for k in legacy_store.keys(LEGACY_MEMBER).await? {
+            if let Some(data) = legacy_store.get(&k, LEGACY_MEMBER).await? {
                 let m: HashMap<String, String> = minicbor::decode(&data)?;
                 let attrs = m
                     .iter()
                     .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
+                    .chain([(PROJECT_ID.to_owned(), project.clone())].into_iter())
                     .collect();
                 let entry = AttributesEntry::new(attrs, Timestamp::now().unwrap(), None, None);
-                let identifier = IdentityIdentifier::try_from(k.clone())?;
-                store.put_attributes(&identifier, entry).await?;
+                let identifier = IdentityIdentifier::from_key_id(&k);
+                match store.put_attributes(&identifier, entry).await {
+                    Ok(()) => info!("Converted membership information for {identifier:?}"),
+                    Err(err) => info!("Can't convert member: {identifier:?} : {err:?}"),
+                }
             }
-            legacy_s.del(&k, LEGACY_MEMBER).await?;
+            legacy_store.del(&k, LEGACY_MEMBER).await?;
         }
+        Ok(Self { project, store })
+    }
 
-        Ok(Server {
+    async fn add_member<'a>(
+        &self,
+        enroller: &IdentityIdentifier,
+        id: &IdentityIdentifier,
+        attrs: &HashMap<CowStr<'a>, CowStr<'a>>,
+    ) -> Result<()> {
+        let auth_attrs = attrs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
+            .chain([(PROJECT_ID.to_owned(), self.project.clone())].into_iter())
+            .collect();
+        let entry = AttributesEntry::new(
+            auth_attrs,
+            Timestamp::now().unwrap(),
+            None,
+            Some(enroller.clone()),
+        );
+        self.store.put_attributes(id, entry).await
+    }
+}
+
+#[ockam_core::worker]
+impl<IS> Worker for DirectAuthenticator<IS>
+where
+    IS: IdentityAttributeStorage,
+{
+    type Context = Context;
+    type Message = Vec<u8>;
+
+    async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
+        if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
+            let from = i.their_identity_id();
+            let mut dec = Decoder::new(m.as_body());
+            let req: Request = dec.decode()?;
+            trace! {
+                target: "ockam_api::authenticator::direct::direct_authenticator",
+                from   = %from,
+                id     = %req.id(),
+                method = ?req.method(),
+                path   = %req.path(),
+                body   = %req.has_body(),
+                "request"
+            }
+            let res = match (req.method(), req.path()) {
+                (Some(Method::Post), "/") | (Some(Method::Post), "/members") => {
+                    let add: AddMember = dec.decode()?;
+                    self.add_member(from, add.member(), add.attributes())
+                        .await?;
+                    Response::ok(req.id()).to_vec()?
+                }
+                _ => api::unknown_path(&req).to_vec()?,
+            };
+            c.send(m.return_route(), res).await
+        } else {
+            secure_channel_required(c, m).await
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct EnrollmentTokenAuthenticator {
+    project: Vec<u8>,
+    tokens: Arc<RwLock<LruCache<[u8; 32], Token>>>,
+}
+
+pub struct EnrollmentTokenIssuer(EnrollmentTokenAuthenticator);
+pub struct EnrollmentTokenAcceptor<IS: IdentityAttributeStorage>(EnrollmentTokenAuthenticator, IS);
+
+impl EnrollmentTokenAuthenticator {
+    pub fn new_worker_pair<IS: IdentityAttributeStorage>(
+        project: Vec<u8>,
+        storage: IS,
+    ) -> (EnrollmentTokenIssuer, EnrollmentTokenAcceptor<IS>) {
+        let base = Self {
             project,
-            store,
-            ident: identity,
-            filename,
-            enrollers: enrollers_data,
-            reload_enrollers,
-            tokens: LruCache::new(NonZeroUsize::new(128).expect("0 < 128")),
-        })
+            tokens: Arc::new(RwLock::new(LruCache::new(
+                NonZeroUsize::new(128).expect("0 < 128"),
+            ))),
+        };
+        (
+            EnrollmentTokenIssuer(base.clone()),
+            EnrollmentTokenAcceptor(base, storage),
+        )
     }
+}
 
-    fn parse_enrollers(
-        json_or_path: &str,
-    ) -> Result<(Option<String>, HashMap<IdentityIdentifier, Enroller>)> {
-        match json::from_str::<HashMap<IdentityIdentifier, Enroller>>(json_or_path) {
-            Ok(enrollers) => Ok((None, enrollers)),
-            Err(_) => {
-                let contents = std::fs::read_to_string(json_or_path)
-                    .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Io, e))?;
+impl EnrollmentTokenIssuer {
+    async fn issue_token(
+        &self,
+        enroller: &IdentityIdentifier,
+        attrs: HashMap<String, String>,
+    ) -> Result<OneTimeCode> {
+        let otc = OneTimeCode::new();
+        let tkn = Token {
+            attrs,
+            generated_by: enroller.clone(),
+            time: Instant::now(),
+        };
+        self.0
+            .tokens
+            .write()
+            .map(|mut r| {
+                r.put(*otc.code(), tkn);
+                otc
+            })
+            .map_err(|_| {
+                ockam_core::Error::new(
+                    Origin::Other,
+                    Kind::Internal,
+                    "failed to get read lock on tokens table",
+                )
+            })
+    }
+}
 
-                let enrollers = json::from_str(&contents)
-                    .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Invalid, e))?;
+#[ockam_core::worker]
+impl Worker for EnrollmentTokenIssuer {
+    type Context = Context;
+    type Message = Vec<u8>;
 
-                Ok((Some(json_or_path.to_string()), enrollers))
+    async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
+        if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
+            let from = i.their_identity_id();
+            let mut dec = Decoder::new(m.as_body());
+            let req: Request = dec.decode()?;
+            trace! {
+                target: "ockam_api::authenticator::direct::enrollment_token_issuer",
+                from   = %from,
+                id     = %req.id(),
+                method = ?req.method(),
+                path   = %req.path(),
+                body   = %req.has_body(),
+                "request"
             }
+            let res = match (req.method(), req.path()) {
+                (Some(Method::Post), "/") | (Some(Method::Post), "/tokens") => {
+                    let att: CreateToken = dec.decode()?;
+                    match self.issue_token(from, att.into_owned_attributes()).await {
+                        Ok(otc) => Response::ok(req.id()).body(&otc).to_vec()?,
+                        Err(error) => api::internal_error(&req, &error.to_string()).to_vec()?,
+                    }
+                }
+                _ => api::unknown_path(&req).to_vec()?,
+            };
+            c.send(m.return_route(), res).await
+        } else {
+            secure_channel_required(c, m).await
         }
     }
+}
 
-    async fn on_request(&mut self, from: &IdentityIdentifier, data: &[u8]) -> Result<Vec<u8>> {
-        let mut dec = Decoder::new(data);
-        let req: Request = dec.decode()?;
+#[ockam_core::worker]
+impl<IS> Worker for EnrollmentTokenAcceptor<IS>
+where
+    IS: IdentityAttributeStorage,
+{
+    type Context = Context;
+    type Message = Vec<u8>;
 
-        trace! {
-            target: "ockam_api::authenticator::direct::server",
-            from   = %from,
-            id     = %req.id(),
-            method = ?req.method(),
-            path   = %req.path(),
-            body   = %req.has_body(),
-            "request"
-        }
-
-        let res = match req.method() {
-            Some(Method::Post) => match req.path_segments::<2>().as_slice() {
-                // Enroller wants to create an enrollment token.
-                ["tokens"] => match self.check_enroller(&req, from).await {
-                    Ok(None) => {
-                        let att: CreateToken = dec.decode()?;
-                        let otc = OneTimeCode::new();
-                        let res = Response::ok(req.id()).body(&otc).to_vec()?;
-                        let tkn = Token {
-                            attrs: att.into_owned_attributes(),
-                            generated_by: from.clone(),
-                            time: Instant::now(),
-                        };
-                        self.tokens.put(*otc.code(), tkn);
-                        res
-                    }
-                    Ok(Some(e)) => e.to_vec()?,
-                    Err(e) => api::internal_error(&req, &e.to_string()).to_vec()?,
-                },
-                // Enroller wants to add a member.
-                ["members"] => match self.check_enroller(&req, from).await {
-                    Ok(None) => {
-                        let add: AddMember = dec.decode()?;
-                        //TODO: fixme:  unify use of hashmap vs btreemap
-                        let attrs = add
-                            .attributes()
-                            .iter()
-                            .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
-                            .collect();
-                        let entry = AttributesEntry::new(
-                            attrs,
-                            Timestamp::now().unwrap(),
-                            None,
-                            Some(from.clone()),
-                        );
-                        self.store.put_attributes(add.member(), entry).await?;
-                        Response::ok(req.id()).to_vec()?
-                    }
-                    Ok(Some(e)) => e.to_vec()?,
-                    Err(error) => api::internal_error(&req, &error.to_string()).to_vec()?,
-                },
-                // New member with an enrollment token wants its first credential.
-                ["credential"] if req.has_body() => {
+    async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
+        if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
+            let from = i.their_identity_id();
+            let mut dec = Decoder::new(m.as_body());
+            let req: Request = dec.decode()?;
+            trace! {
+                target: "ockam_api::authenticator::direct::enrollment_token_acceptor",
+                from   = %from,
+                id     = %req.id(),
+                method = ?req.method(),
+                path   = %req.path(),
+                body   = %req.has_body(),
+                "request"
+            }
+            let res = match (req.method(), req.path()) {
+                (Some(Method::Post), "/") | (Some(Method::Post), "/credential") => {
+                    //TODO: move out of the worker handle_message implementation
                     let otc: OneTimeCode = dec.decode()?;
-                    if let Some(tkn) = self.tokens.pop(otc.code()) {
-                        if tkn.time.elapsed() > MAX_TOKEN_DURATION {
-                            api::forbidden(&req, "expired token").to_vec()?
-                        } else {
+                    let token = match self.0.tokens.write() {
+                        Ok(mut r) => {
+                            if let Some(tkn) = r.pop(otc.code()) {
+                                if tkn.time.elapsed() > MAX_TOKEN_DURATION {
+                                    Err(api::forbidden(&req, "expired token"))
+                                } else {
+                                    Ok(tkn)
+                                }
+                            } else {
+                                Err(api::forbidden(&req, "unknown token"))
+                            }
+                        }
+                        Err(_) => Err(api::internal_error(
+                            &req,
+                            "Failed to get read lock on tokens table",
+                        )),
+                    };
+                    match token {
+                        Ok(tkn) => {
                             //TODO: fixme:  unify use of hashmap vs btreemap
                             let attrs = tkn
                                 .attrs
                                 .iter()
                                 .map(|(k, v)| (k.to_string(), v.as_bytes().to_vec()))
+                                .chain(
+                                    [(PROJECT_ID.to_owned(), self.0.project.clone())].into_iter(),
+                                )
                                 .collect();
                             let entry = AttributesEntry::new(
                                 attrs,
@@ -220,212 +493,25 @@ where
                                 None,
                                 Some(tkn.generated_by),
                             );
-                            self.store.put_attributes(from, entry).await?;
-                            //TODO: use the entry not the token
-                            let crd = tkn
-                                .attrs
-                                .iter()
-                                .fold(Credential::builder(from.clone()), |crd, (a, v)| {
-                                    crd.with_attribute(a, v.as_bytes())
-                                })
-                                .with_schema(PROJECT_MEMBER_SCHEMA)
-                                .with_attribute(PROJECT_ID, &self.project);
-                            let crd = self.ident.issue_credential(crd).await?;
-                            Response::ok(req.id()).body(crd).to_vec()?
+                            self.1.put_attributes(from, entry).await?;
+                            Response::ok(req.id()).to_vec()?
                         }
-                    } else {
-                        api::forbidden(&req, "unknown token").to_vec()?
+                        Err(err) => err.to_vec()?,
                     }
                 }
-                // Member wants a credential.
-                ["credential"] => match self.store.get_attributes(from).await {
-                    Ok(Some(entry)) => {
-                        let crd = entry
-                            .attrs()
-                            .iter()
-                            .fold(
-                                Credential::builder(from.clone())
-                                    .with_schema(PROJECT_MEMBER_SCHEMA),
-                                |crd, (a, v)| crd.with_attribute(a, v),
-                            )
-                            .with_attribute(PROJECT_ID, &self.project);
-                        let crd = self.ident.issue_credential(crd).await?;
-                        Response::ok(req.id()).body(crd).to_vec()?
-                    }
-                    Ok(None) => api::forbidden(&req, "unauthorized member").to_vec()?,
-                    Err(error) => api::internal_error(&req, &error.to_string()).to_vec()?,
-                },
                 _ => api::unknown_path(&req).to_vec()?,
-            },
-            _ => api::invalid_method(&req).to_vec()?,
-        };
-
-        Ok(res)
-    }
-
-    async fn check_enroller<'a>(
-        &mut self,
-        req: &'a Request<'_>,
-        enroller: &IdentityIdentifier,
-    ) -> Result<Option<ResponseBuilder<Error<'a>>>> {
-        if self.reload_enrollers && self.filename.is_some() {
-            let filename = self.filename.as_ref().unwrap();
-            let path = Path::new(&filename);
-            let contents = std::fs::read_to_string(path)
-                .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Io, e))?;
-
-            let enrollers: HashMap<IdentityIdentifier, Enroller> = json::from_str(&contents)
-                .map_err(|e| ockam_core::Error::new(Origin::Other, Kind::Invalid, e))?;
-
-            self.enrollers = enrollers;
+            };
+            c.send(m.return_route(), res).await
+        } else {
+            secure_channel_required(c, m).await
         }
-
-        if self.enrollers.contains_key(enroller) {
-            return Ok(None);
-        }
-
-        warn! {
-            target: "ockam_api::authenticator::direct::server",
-            enroller = %enroller,
-            id       = %req.id(),
-            method   = ?req.method(),
-            path     = %req.path(),
-            body     = %req.has_body(),
-            "unauthorised enroller"
-        }
-
-        Ok(Some(api::forbidden(req, "unauthorized enroller")))
     }
 }
 
-pub struct Client {
-    ctx: Context,
-    route: Route,
-    buf: Vec<u8>,
-}
-
-impl fmt::Debug for Client {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Client")
-            .field("route", &self.route)
-            .finish()
-    }
-}
-
-impl Client {
-    pub async fn new(r: Route, ctx: &Context) -> Result<Self> {
-        let ctx = ctx
-            .new_detached(
-                Address::random_tagged("AuthClient.direct.detached"),
-                DenyAll,
-                DenyAll,
-            )
-            .await?;
-        Ok(Client {
-            ctx,
-            route: r,
-            buf: Vec::new(),
-        })
-    }
-
-    pub async fn add_member(
-        &mut self,
-        id: IdentityIdentifier,
-        attributes: HashMap<&str, &str>,
-    ) -> Result<()> {
-        let req = Request::post("/members").body(AddMember::new(id).with_attributes(attributes));
-        self.buf = self.request("add-member", "add_member", &req).await?;
-        #[cfg(feature = "tag")]
-        assert_response_match(None, &self.buf, tag::cddl());
-        let mut d = Decoder::new(&self.buf);
-        let res = response("add-member", &mut d)?;
-        if res.status() == Some(Status::Ok) {
-            Ok(())
-        } else {
-            Err(error("add-member", &res, &mut d))
-        }
-    }
-
-    pub async fn create_token(&mut self, attributes: HashMap<&str, &str>) -> Result<OneTimeCode> {
-        let req = Request::post("/tokens").body(CreateToken::new().with_attributes(attributes));
-        self.buf = self.request("create-token", "create_token", &req).await?;
-        #[cfg(feature = "tag")]
-        assert_response_match("onetime_code", &self.buf, tag::cddl());
-        let mut d = Decoder::new(&self.buf);
-        let res = response("create-token", &mut d)?;
-        if res.status() == Some(Status::Ok) {
-            Ok(d.decode()?)
-        } else {
-            Err(error("create-token", &res, &mut d))
-        }
-    }
-
-    pub async fn credential(&mut self) -> Result<Credential> {
-        let req = Request::post("/credential");
-        self.buf = self.request("new-credential", None, &req).await?;
-        #[cfg(feature = "tag")]
-        assert_response_match("credential", &self.buf, tag::cddl());
-        let mut d = Decoder::new(&self.buf);
-        let res = response("new-credential", &mut d)?;
-        if res.status() == Some(Status::Ok) {
-            Ok(d.decode()?)
-        } else {
-            Err(error("new-credential", &res, &mut d))
-        }
-    }
-
-    pub async fn credential_with(&mut self, c: &OneTimeCode) -> Result<Credential> {
-        let req = Request::post("/credential").body(c);
-        self.buf = self.request("new-credential", None, &req).await?;
-        #[cfg(feature = "tag")]
-        assert_response_match("credential", &self.buf, tag::cddl());
-        let mut d = Decoder::new(&self.buf);
-        let res = response("new-credential", &mut d)?;
-        if res.status() == Some(Status::Ok) {
-            Ok(d.decode()?)
-        } else {
-            Err(error("new-credential", &res, &mut d))
-        }
-    }
-
-    /// Encode request header and body (if any) and send the package to the server.
-    async fn request<T>(
-        &mut self,
-        label: &str,
-        #[allow(unused_variables)] schema: impl Into<Option<&str>>,
-        req: &RequestBuilder<'_, T>,
-    ) -> Result<Vec<u8>>
-    where
-        T: Encode<()>,
-    {
-        let buf = req.to_vec()?;
-        #[cfg(feature = "tag")]
-        assert_request_match(schema, &buf, tag::cddl());
-        trace! {
-            target: "ockam_api::authenticator::direct::client",
-            id     = %req.header().id(),
-            method = ?req.header().method(),
-            path   = %req.header().path(),
-            body   = %req.header().has_body(),
-            "-> {label}"
-        };
-        let vec: Vec<u8> = self.ctx.send_and_receive(self.route.clone(), buf).await?;
-        Ok(vec)
-    }
-}
-
-/// Decode and log response header.
-fn response(label: &str, dec: &mut Decoder<'_>) -> Result<Response> {
-    let res: Response = dec.decode()?;
-    trace! {
-        target: "ockam_api::authenticator::direct::client",
-        re     = %res.re(),
-        id     = %res.id(),
-        status = ?res.status(),
-        body   = %res.has_body(),
-        "<- {label}"
-    }
-    Ok(res)
+struct Token {
+    attrs: HashMap<String, String>,
+    generated_by: IdentityIdentifier,
+    time: Instant,
 }
 
 /// Decode, log and map response error to ockam_core error.
@@ -448,4 +534,139 @@ fn error(label: &str, res: &Response, dec: &mut Decoder<'_>) -> ockam_core::Erro
     } else {
         ockam_core::Error::new(Origin::Application, Kind::Protocol, label)
     }
+}
+
+pub struct CredentialIssuerClient(RpcClient);
+impl CredentialIssuerClient {
+    pub fn new(client: RpcClient) -> Self {
+        CredentialIssuerClient(client)
+    }
+
+    pub async fn credential(&self) -> Result<Credential> {
+        self.0.request(&Request::post("/")).await
+    }
+}
+
+pub struct DirectAuthenticatorClient(RpcClient);
+impl DirectAuthenticatorClient {
+    pub fn new(client: RpcClient) -> Self {
+        DirectAuthenticatorClient(client)
+    }
+
+    pub async fn add_member(
+        &self,
+        id: IdentityIdentifier,
+        attributes: HashMap<&str, &str>,
+    ) -> Result<()> {
+        self.0
+            .request_no_resp_body(
+                &Request::post("/").body(AddMember::new(id).with_attributes(attributes)),
+            )
+            .await
+    }
+}
+
+pub struct TokenIssuerClient(RpcClient);
+impl TokenIssuerClient {
+    pub fn new(client: RpcClient) -> Self {
+        TokenIssuerClient(client)
+    }
+
+    pub async fn create_token(&self, attributes: HashMap<&str, &str>) -> Result<OneTimeCode> {
+        self.0
+            .request(&Request::post("/").body(CreateToken::new().with_attributes(attributes)))
+            .await
+    }
+}
+
+pub struct TokenAcceptorClient(RpcClient);
+impl TokenAcceptorClient {
+    pub fn new(client: RpcClient) -> Self {
+        TokenAcceptorClient(client)
+    }
+
+    pub async fn present_token(&self, c: &OneTimeCode) -> Result<()> {
+        self.0
+            .request_no_resp_body(&Request::post("/").body(c))
+            .await
+    }
+}
+
+pub struct RpcClient {
+    ctx: Context,
+    route: Route,
+    timeout: Duration,
+}
+
+impl fmt::Debug for RpcClient {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RpcClient")
+            .field("route", &self.route)
+            .finish()
+    }
+}
+
+impl RpcClient {
+    pub async fn new(r: Route, ctx: &Context) -> Result<Self> {
+        let ctx = ctx
+            .new_detached(Address::random_tagged("RpcClient"), DenyAll, DenyAll)
+            .await?;
+        Ok(RpcClient {
+            ctx,
+            route: r,
+            timeout: DEFAULT_CLIENT_TIMEOUT,
+        })
+    }
+
+    pub fn with_timeout(self, timeout: Duration) -> Self {
+        Self { timeout, ..self }
+    }
+
+    /// Encode request header and body (if any) and send the package to the server.
+    async fn request<T, R>(&self, req: &RequestBuilder<'_, T>) -> Result<R>
+    where
+        T: Encode<()>,
+        R: for<'a> Decode<'a, ()>,
+    {
+        let mut buf = Vec::new();
+        req.encode(&mut buf)?;
+        let vec: Vec<u8> = self
+            .ctx
+            .send_and_receive_with_timeout(self.route.clone(), buf, self.timeout)
+            .await?;
+        let mut d = Decoder::new(&vec);
+        let resp: Response = d.decode()?;
+        if resp.status() == Some(Status::Ok) {
+            Ok(d.decode()?)
+        } else {
+            Err(error("new-credential", &resp, &mut d))
+        }
+    }
+
+    /// Encode request header and body (if any) and send the package to the server.
+    async fn request_no_resp_body<T>(&self, req: &RequestBuilder<'_, T>) -> Result<()>
+    where
+        T: Encode<()>,
+    {
+        let mut buf = Vec::new();
+        req.encode(&mut buf)?;
+        let vec: Vec<u8> = self.ctx.send_and_receive(self.route.clone(), buf).await?;
+        let mut d = Decoder::new(&vec);
+        let resp: Response = d.decode()?;
+        if resp.status() == Some(Status::Ok) {
+            Ok(())
+        } else {
+            Err(error("new-credential", &resp, &mut d))
+        }
+    }
+}
+
+async fn secure_channel_required(c: &mut Context, m: Routed<Vec<u8>>) -> Result<()> {
+    // This was, actually, already checked by the access control. So if we reach this point
+    // it means there is a bug.  Also, if it' already checked, we should receive the Peer'
+    // identity, not an Option to the peer' identity.
+    let mut dec = Decoder::new(m.as_body());
+    let req: Request = dec.decode()?;
+    let res = api::forbidden(&req, "secure channel required").to_vec()?;
+    c.send(m.return_route(), res).await
 }

@@ -39,7 +39,10 @@ impl DefaultAddress {
     pub const HOP_SERVICE: &'static str = "hop";
     pub const CREDENTIALS_SERVICE: &'static str = "credentials";
     pub const SECURE_CHANNEL_LISTENER: &'static str = "api";
-    pub const AUTHENTICATOR: &'static str = "authenticator";
+    pub const DIRECT_AUTHENTICATOR: &'static str = "direct_authenticator";
+    pub const CREDENTIAL_ISSUER: &'static str = "credential_issuer";
+    pub const ENROLLMENT_TOKEN_ISSUER: &'static str = "enrollment_token_issuer";
+    pub const ENROLLMENT_TOKEN_ACCEPTOR: &'static str = "enrollment_token_acceptor";
     pub const VERIFIER: &'static str = "verifier";
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
     pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";

@@ -14,8 +14,10 @@ use minicbor::{Decode, Encode};
 use ockam::identity::credential::{Credential, OneTimeCode};
 use ockam::Context;
 use ockam_api::{
-    authenticator::direct::Client, config::lookup::ProjectLookup,
-    nodes::models::secure_channel::CredentialExchangeMode, DefaultAddress,
+    authenticator::direct::{CredentialIssuerClient, RpcClient},
+    config::lookup::ProjectLookup,
+    nodes::models::secure_channel::CredentialExchangeMode,
+    DefaultAddress,
 };
 use ockam_core::api::RequestBuilder;
 use ockam_multiaddr::MultiAddr;
@@ -149,19 +151,17 @@ impl<'a> OrchestratorApiBuilder<'a> {
 
         let authenticator_route = {
             let service = MultiAddr::try_from(
-                format!("/service/{}", DefaultAddress::AUTHENTICATOR).as_str(),
+                format!("/service/{}", DefaultAddress::CREDENTIAL_ISSUER).as_str(),
             )?;
             let addr = sc_addr.concat(&service)?;
             ockam_api::local_multiaddr_to_route(&addr)
                 .context(format!("Invalid MultiAddr {addr}"))?
         };
 
-        let mut client = Client::new(authenticator_route, self.ctx).await?;
+        let client =
+            CredentialIssuerClient::new(RpcClient::new(authenticator_route, self.ctx).await?);
 
-        let credential = match self.one_time_code.clone() {
-            None => client.credential().await?,
-            Some(token) => client.credential_with(&token).await?,
-        };
+        let credential = client.credential().await?;
 
         Ok(credential)
     }

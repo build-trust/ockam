@@ -1,4 +1,4 @@
-use crate::authenticator::direct::Client;
+use crate::authenticator::direct::{CredentialIssuerClient, RpcClient};
 use crate::error::ApiError;
 use crate::multiaddr_to_route;
 use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
@@ -58,18 +58,17 @@ impl NodeManager {
             .await?;
         debug!("Created secure channel to project authority");
 
-        let enrollment_token = self.token.take();
-
         // Borrow checker issues...
         let authorities = self.authorities()?;
 
-        let mut client =
-            Client::new(route![sc, DefaultAddress::AUTHENTICATOR], identity.ctx()).await?;
-        let credential = if let Some(code) = enrollment_token {
-            client.credential_with(&code).await?
-        } else {
-            client.credential().await?
-        };
+        let client = CredentialIssuerClient::new(
+            RpcClient::new(
+                route![sc, DefaultAddress::CREDENTIAL_ISSUER],
+                identity.ctx(),
+            )
+            .await?,
+        );
+        let credential = client.credential().await?;
         debug!("Got credential");
 
         identity

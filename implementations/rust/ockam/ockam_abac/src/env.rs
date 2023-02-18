@@ -10,6 +10,9 @@ impl Env {
     pub fn new() -> Self {
         Env(BTreeMap::new())
     }
+    pub fn new_from(v: BTreeMap<&str, Expr>) -> Self {
+        Env(v.into_iter().map(|(k, e)| (k.to_string(), e)).collect())
+    }
 
     pub fn get(&self, k: &str) -> Result<&Expr, EvalError> {
         self.0

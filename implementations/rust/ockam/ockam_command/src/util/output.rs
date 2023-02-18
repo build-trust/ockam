@@ -2,7 +2,7 @@ use anyhow::Context;
 use cli_table::{Cell, Style, Table};
 use core::fmt::Write;
 use ockam::identity::credential::Credential;
-use ockam_api::cloud::project::{Enroller, Project};
+use ockam_api::cloud::project::Project;
 
 use crate::project::ProjectInfo;
 use crate::util::comma_separated;
@@ -193,42 +193,6 @@ impl Output for ShowSecureChannelResponse<'_> {
         };
 
         Ok(s)
-    }
-}
-
-impl Output for Enroller<'_> {
-    fn output(&self) -> Result<String> {
-        let mut w = String::new();
-        write!(w, "Enroller")?;
-        write!(w, "\n  Identity id: {}", self.identity_id)?;
-        write!(w, "\n  Added by: {}", self.added_by)?;
-        Ok(w)
-    }
-}
-
-impl Output for Vec<Enroller<'_>> {
-    fn output(&self) -> Result<String> {
-        if self.is_empty() {
-            return Ok("No enrollers found".to_string());
-        }
-        let mut rows = vec![];
-        for Enroller {
-            identity_id,
-            added_by,
-            ..
-        } in self
-        {
-            rows.push([identity_id.cell(), added_by.cell()]);
-        }
-        let table = rows
-            .table()
-            .title([
-                "Identity ID".cell().bold(true),
-                "Added By".cell().bold(true),
-            ])
-            .display()?
-            .to_string();
-        Ok(table)
     }
 }
 

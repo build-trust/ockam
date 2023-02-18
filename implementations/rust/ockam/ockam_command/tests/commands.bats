@@ -432,14 +432,12 @@ teardown() {
   m1_identifier=$($OCKAM identity show m1)
   m2_identifier=$($OCKAM identity show m2)
 
-  # To startup an authority, we need some boilerplate setup in place.
-  # Create an enrollers file,  with the identity of the enroller we want
-  echo "{\"$enroller_identifier\": {}}" > /tmp/enrollers.json
   # Create a launch configuration json file,  to be used to start the authority node
-  echo '{"startup_services" : {"authenticator" : {"enrollers" : "/tmp/enrollers.json", "project" : "1"}, "secure_channel_listener": {}}}' >  /tmp/auth_launch_config.json
+  echo '{"startup_services" : {"authenticator" : {"project" : "1"}, "secure_channel_listener": {}}}' >  /tmp/auth_launch_config.json
 
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
-  run $OCKAM node create --tcp-listener-address=0.0.0.0:4200 --identity authority --launch-config /tmp/auth_launch_config.json --trusted-identities "{\"$m1_identifier\": {\"sample_attr\" : \"sample_val\"}}"  authority
+
+  run $OCKAM node create --tcp-listener-address=0.0.0.0:4200 --identity authority --launch-config /tmp/auth_launch_config.json --trusted-identities "{\"$m1_identifier\": {\"sample_attr\" : \"sample_val\", \"project_id\" : \"1\"}, \"$enroller_identifier\" : {\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}"  authority
   assert_success
 
   echo "{\"id\": \"1\",
@@ -755,12 +753,16 @@ teardown() {
   run $OCKAM identity create green
   run $OCKAM identity create blue
 
-  run $OCKAM node create green --project /tmp/project.json --identity green --enrollment-token $green_token
+  run $OCKAM project authenticate --project-path /tmp/project.json --identity green --token $green_token
+  assert_success
+  run $OCKAM node create green --project /tmp/project.json --identity green
   assert_success
   run $OCKAM policy set --at green --resource tcp-inlet --expression '(= subject.app "app1")'
   assert_success
 
-  run $OCKAM node create blue --project /tmp/project.json --identity blue --enrollment-token $blue_token
+  run $OCKAM project authenticate --project-path /tmp/project.json --identity blue --token $blue_token
+  assert_success
+  run $OCKAM node create blue --project /tmp/project.json --identity blue
   assert_success
   run $OCKAM policy set --at blue --resource tcp-outlet --expression '(= subject.app "app1")'
   assert_success
