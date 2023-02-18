@@ -4,20 +4,18 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context as _};
-use ockam::identity::credential::OneTimeCode;
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
-use ockam_api::authenticator::direct::types::{AddMember, CreateToken};
+use ockam_api::authenticator::direct::{DirectAuthenticatorClient, RpcClient, TokenIssuerClient};
 use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority};
-use ockam_core::api::Request;
+use ockam_api::DefaultAddress;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
-use tracing::debug;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::node::NodeOpts;
 use crate::project::util::create_secure_channel_to_authority;
 use crate::util::api::{CloudOpts, ProjectOpts};
-use crate::util::{node_rpc, RpcBuilder};
+use crate::util::node_rpc;
 use crate::{CommandGlobalOpts, Result};
 
 /// An authorised enroller can add members to a project.
@@ -36,7 +34,7 @@ pub struct EnrollCommand {
     #[arg(long, short)]
     member: Option<IdentityIdentifier>,
 
-    #[arg(long, short, default_value = "/project/default/service/authenticator")]
+    #[arg(long, short, default_value = "/project/default")]
     to: MultiAddr,
 
     /// Attributes in `key=value` format to be attached to the member
@@ -52,13 +50,13 @@ impl EnrollCommand {
         );
     }
 
-    fn attributes(&self) -> Result<HashMap<String, String>> {
+    fn attributes(&self) -> Result<HashMap<&str, &str>> {
         let mut attributes = HashMap::new();
         for attr in &self.attributes {
             let mut parts = attr.splitn(2, '=');
             let key = parts.next().context("key expected")?;
             let value = parts.next().context("value expected)")?;
-            attributes.insert(key.to_string(), value.to_string());
+            attributes.insert(key, value);
         }
         Ok(attributes)
     }
@@ -80,45 +78,61 @@ impl Runner {
             start_embedded_node(&self.ctx, &self.opts, Some(&self.cmd.project_opts)).await?;
 
         let map = self.opts.config.lookup();
-        let to = if let Some(a) = project_authority(&self.cmd.to, &map)? {
-            let mut addr = create_secure_channel_to_authority(
+        let base_addr = if let Some(a) = project_authority(&self.cmd.to, &map)? {
+            create_secure_channel_to_authority(
                 &self.ctx,
                 &self.opts,
                 &node_name,
                 a,
-                &replace_project(&self.cmd.to, a.address())?,
+                a.address(),
                 self.cmd.cloud_opts.identity.clone(),
             )
-            .await?;
-            for proto in self.cmd.to.iter().skip(1) {
-                addr.push_back_value(&proto).map_err(anyhow::Error::from)?
-            }
-            addr
+            .await?
         } else {
             self.cmd.to.clone()
         };
-        let mut rpc = RpcBuilder::new(&self.ctx, &self.opts, &node_name)
-            .to(&to)?
-            .build();
-
         // If an identity identifier is given add it as a member, otherwise
         // request an enrollment token that a future member can use to get a
         // credential.
         if let Some(id) = &self.cmd.member {
-            debug!(addr = %to, member = %id, attrs = ?self.cmd.attributes, "requesting to add member");
-            let req = Request::post("/members")
-                .body(AddMember::new(id.clone()).with_attributes(self.cmd.attributes()?));
-            rpc.request_with_timeout(req, Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT))
-                .await?;
-            rpc.is_ok()?;
+            let direct_authenticator_route = {
+                let service = MultiAddr::try_from(
+                    format!("/service/{}", DefaultAddress::DIRECT_AUTHENTICATOR).as_str(),
+                )?;
+                let mut addr = base_addr.clone();
+                for proto in service.iter() {
+                    addr.push_back_value(&proto)?;
+                }
+                ockam_api::local_multiaddr_to_route(&addr)
+                    .context(format!("Invalid MultiAddr {addr}"))?
+            };
+            let client = DirectAuthenticatorClient::new(
+                RpcClient::new(direct_authenticator_route, &self.ctx)
+                    .await?
+                    .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
+            );
+            client
+                .add_member(id.clone(), self.cmd.attributes()?)
+                .await?
         } else {
-            debug!(addr = %to, attrs = ?self.cmd.attributes, "requesting token");
-            let req = Request::post("/tokens")
-                .body(CreateToken::new().with_attributes(self.cmd.attributes()?));
-            rpc.request_with_timeout(req, Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT))
-                .await?;
-            let res: OneTimeCode = rpc.parse_response()?;
-            println!("{}", res.to_string())
+            let token_issuer_route = {
+                let service = MultiAddr::try_from(
+                    format!("/service/{}", DefaultAddress::ENROLLMENT_TOKEN_ISSUER).as_str(),
+                )?;
+                let mut addr = base_addr.clone();
+                for proto in service.iter() {
+                    addr.push_back_value(&proto)?;
+                }
+                ockam_api::local_multiaddr_to_route(&addr)
+                    .context(format!("Invalid MultiAddr {addr}"))?
+            };
+            let client = TokenIssuerClient::new(
+                RpcClient::new(token_issuer_route, &self.ctx)
+                    .await?
+                    .with_timeout(Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT)),
+            );
+            let token = client.create_token(self.cmd.attributes()?).await?;
+            println!("{}", token.to_string())
         }
 
         delete_embedded_node(&self.opts, &node_name).await;
@@ -148,21 +162,4 @@ fn project_authority<'a>(
         }
     }
     Ok(None)
-}
-
-/// Replaces the first `/project` with the given address.
-///
-/// Assumes (and asserts!) that the first protocol is a `/project`.
-pub fn replace_project(input: &MultiAddr, with: &MultiAddr) -> Result<MultiAddr> {
-    let mut iter = input.iter();
-    let first = iter.next().map(|p| p.code());
-    assert_eq!(first, Some(proto::Project::CODE));
-    let mut output = MultiAddr::default();
-    for proto in with.iter() {
-        output.push_back_value(&proto)?
-    }
-    for proto in iter {
-        output.push_back_value(&proto)?
-    }
-    Ok(output)
 }

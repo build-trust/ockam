@@ -3,7 +3,6 @@
 use minicbor::Decoder;
 
 use ockam::compat::asynchronous::RwLock;
-use ockam::identity::credential::OneTimeCode;
 use ockam::identity::{Identity, IdentityIdentifier, PublicIdentity};
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
@@ -113,12 +112,10 @@ pub struct NodeManager {
     project_id: Option<String>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
     authorities: Option<Authorities>,
-    pub(crate) authenticated_storage: LmdbStorage,
     pub(crate) registry: Registry,
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
     policies: LmdbStorage,
-    token: Option<OneTimeCode>,
     attributes_storage:
         BootstrapedIdentityStore<PreTrustedIdentities, AuthenticatedAttributeStorage<LmdbStorage>>,
 }
@@ -194,7 +191,6 @@ pub struct NodeManagerProjectsOptions<'a> {
     ac: Option<&'a AuthoritiesConfig>,
     project_id: Option<String>,
     projects: BTreeMap<String, ProjectLookup>,
-    token: Option<OneTimeCode>,
 }
 
 impl<'a> NodeManagerProjectsOptions<'a> {
@@ -202,13 +198,11 @@ impl<'a> NodeManagerProjectsOptions<'a> {
         ac: Option<&'a AuthoritiesConfig>,
         project_id: Option<String>,
         projects: BTreeMap<String, ProjectLookup>,
-        token: Option<OneTimeCode>,
     ) -> Self {
         Self {
             ac,
             project_id,
             projects,
-            token,
         }
     }
 }
@@ -252,11 +246,11 @@ impl NodeManager {
         let attributes_storage = match general_options.pre_trusted_identities {
             None => BootstrapedIdentityStore::new(
                 PreTrustedIdentities::new_from_string("{}")?,
-                AuthenticatedAttributeStorage::new(authenticated_storage.clone()),
+                AuthenticatedAttributeStorage::new(authenticated_storage),
             ),
             Some(f) => BootstrapedIdentityStore::new(
                 f,
-                AuthenticatedAttributeStorage::new(authenticated_storage.clone()),
+                AuthenticatedAttributeStorage::new(authenticated_storage),
             ),
         };
 
@@ -282,7 +276,6 @@ impl NodeManager {
             projects: Arc::new(projects_options.projects),
             project_id: projects_options.project_id,
             authorities: None,
-            authenticated_storage,
             registry: Default::default(),
             medic: {
                 let ctx = ctx.async_try_clone().await?;
@@ -290,7 +283,6 @@ impl NodeManager {
             },
             sessions,
             policies: policies_storage,
-            token: projects_options.token,
             attributes_storage,
         };
 
@@ -586,7 +578,7 @@ impl NodeManagerWorker {
             (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
                 self.start_hop_service(ctx, req, dec).await?.to_vec()?
             }
-            (Post, ["node", "services", DefaultAddress::AUTHENTICATOR]) => self
+            (Post, ["node", "services", DefaultAddress::DIRECT_AUTHENTICATOR]) => self
                 .start_authenticator_service(ctx, req, dec)
                 .await?
                 .to_vec()?,
@@ -676,18 +668,6 @@ impl NodeManagerWorker {
             (Get, ["v0", "spaces"]) => self.list_spaces(ctx, dec).await?,
             (Get, ["v0", "spaces", id]) => self.get_space(ctx, dec, id).await?,
             (Delete, ["v0", "spaces", id]) => self.delete_space(ctx, dec, id).await?,
-
-            // ==*== Project' enrollers ==*==
-            (Post, ["v0", "project-enrollers", project_id]) => {
-                self.add_project_enroller(ctx, dec, project_id).await?
-            }
-            (Get, ["v0", "project-enrollers", project_id]) => {
-                self.list_project_enrollers(ctx, dec, project_id).await?
-            }
-            (Delete, ["v0", "project-enrollers", project_id, identity_id]) => {
-                self.delete_project_enroller(ctx, dec, project_id, identity_id)
-                    .await?
-            }
 
             // ==*== Projects ==*==
             (Post, ["v0", "projects", space_id]) => self.create_project(ctx, dec, space_id).await?,

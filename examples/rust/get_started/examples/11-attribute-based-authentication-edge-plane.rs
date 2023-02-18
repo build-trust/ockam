@@ -7,7 +7,7 @@ use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential::OneTimeCode;
 use ockam::identity::{Identity, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
 use ockam::{route, vault::Vault, Context, Result, TcpTransport};
-use ockam_api::authenticator::direct::Client;
+use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
 use ockam_api::DefaultAddress;
 
 /// This node supports an "edge" server which can connect to a "control" node
@@ -66,8 +66,19 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         )
         .await?;
 
-    let mut client = Client::new(route![secure_channel, DefaultAddress::AUTHENTICATOR], &ctx).await?;
-    let credential = client.credential_with(&token).await?;
+    let token_acceptor = TokenAcceptorClient::new(
+        RpcClient::new(
+            route![secure_channel.clone(), DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR],
+            &ctx,
+        )
+        .await?,
+    );
+    token_acceptor.present_token(&token).await?;
+    let cred_client = CredentialIssuerClient::new(
+        RpcClient::new(route![secure_channel, DefaultAddress::CREDENTIAL_ISSUER], &ctx).await?,
+    );
+    let credential = cred_client.credential().await?;
+
     println!("{credential}");
 
     // store the credential and start a credential exchange worker which will be

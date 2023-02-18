@@ -1,7 +1,6 @@
 use minicbor::{Decode, Encode};
 use ockam_core::CowStr;
 use ockam_identity::IdentityIdentifier;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[cfg(feature = "tag")]
@@ -43,9 +42,6 @@ impl<'a> AddMember<'a> {
         &self.attributes
     }
 }
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub struct Enroller {}
 
 #[derive(Debug, Decode, Encode)]
 #[rustfmt::skip]

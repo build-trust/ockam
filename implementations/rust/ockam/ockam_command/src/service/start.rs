@@ -57,13 +57,7 @@ pub enum StartSubCommand {
         addr: String,
 
         #[arg(long)]
-        enrollers: String,
-
-        #[arg(long)]
         project: String,
-
-        #[arg(long)]
-        reload_enrollers: bool,
     },
     KafkaConsumer {
         /// The local address of the service
@@ -124,7 +118,7 @@ fn credentials_default_addr() -> String {
 }
 
 fn authenticator_default_addr() -> String {
-    DefaultAddress::AUTHENTICATOR.to_string()
+    DefaultAddress::DIRECT_AUTHENTICATOR.to_string()
 }
 
 fn kafka_consumer_default_addr() -> String {
@@ -182,24 +176,8 @@ async fn run_impl(
             let req = api::start_credentials_service(&addr, oneway);
             start_service_impl(ctx, &opts, node_name, &addr, "Credentials", req, Some(&tcp)).await?
         }
-        StartSubCommand::Authenticator {
-            addr,
-            enrollers,
-            reload_enrollers,
-            project,
-            ..
-        } => {
-            start_authenticator_service(
-                ctx,
-                &opts,
-                node_name,
-                &addr,
-                &enrollers,
-                reload_enrollers,
-                &project,
-                Some(&tcp),
-            )
-            .await?
+        StartSubCommand::Authenticator { addr, project, .. } => {
+            start_authenticator_service(ctx, &opts, node_name, &addr, &project, Some(&tcp)).await?
         }
         StartSubCommand::KafkaConsumer {
             addr,
@@ -330,12 +308,10 @@ pub async fn start_authenticator_service(
     opts: &CommandGlobalOpts,
     node_name: &str,
     serv_addr: &str,
-    enrollers: &str,
-    reload_enrollers: bool,
     project: &str,
     tcp: Option<&'_ TcpTransport>,
 ) -> Result<()> {
-    let req = api::start_authenticator_service(serv_addr, enrollers, reload_enrollers, project);
+    let req = api::start_authenticator_service(serv_addr, project);
     start_service_impl(ctx, opts, node_name, serv_addr, "Authenticator", req, tcp).await
 }
 
@@ -354,7 +330,11 @@ pub async fn start_okta_identity_provider(
         cfg.attributes.iter().map(|s| s as &str).collect(),
         cfg.project.as_bytes(),
     );
-    let req = Request::post("/node/services/okta_identity_provider").body(payload);
+    let req = Request::post(format!(
+        "/node/services/{}",
+        DefaultAddress::OKTA_IDENTITY_PROVIDER
+    ))
+    .body(payload);
     start_service_impl(
         ctx,
         opts,

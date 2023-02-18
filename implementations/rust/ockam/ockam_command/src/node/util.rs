@@ -7,7 +7,6 @@ use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use ockam::identity::credential::OneTimeCode;
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state;
@@ -83,7 +82,6 @@ pub async fn start_embedded_node_with_vault_and_identity(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
             project_id,
             projects,
-            None,
         ),
         NodeManagerTransportOptions::new(
             (
@@ -272,7 +270,6 @@ pub fn spawn_node(
     name: &str,
     address: &str,
     project: Option<&Path>,
-    invite: Option<&OneTimeCode>,
     trusted_identities: Option<&String>,
     trusted_identities_file: Option<&PathBuf>,
     reload_from_trusted_identities_file: Option<&PathBuf>,
@@ -318,11 +315,6 @@ pub fn spawn_node(
             .to_str()
             .unwrap_or_else(|| panic!("unsupported path {path:?}"));
         args.push(p.to_string())
-    }
-
-    if let Some(c) = invite {
-        args.push("--enrollment-token".to_string());
-        args.push(hex::encode(c.code()))
     }
 
     if let Some(l) = launch_config {

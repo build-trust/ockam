@@ -18,7 +18,7 @@ use ockam_api::cloud::space::Space;
 use ockam_core::api::Status;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
-use crate::project::util::{check_project_readiness, project_enroll_admin};
+use crate::project::util::check_project_readiness;
 
 use crate::space::util::config;
 use crate::util::api::CloudOpts;
@@ -55,23 +55,8 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: EnrollCommand) ->
     let space = default_space(ctx, &opts, &cloud_opts, &node_name).await?;
     default_project(ctx, &opts, &cloud_opts, &node_name, &space).await?;
     update_enrolled_identity(ctx, &opts, &node_name).await?;
-    enroll_admin_to_all_their_projects(ctx, &opts, &cloud_opts, &node_name).await?;
     delete_embedded_node(&opts, &node_name).await;
 
-    Ok(())
-}
-
-async fn enroll_admin_to_all_their_projects(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    cloud_opts: &CloudOpts,
-    node_name: &str,
-) -> Result<()> {
-    let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
-    rpc.request(api::project::list(&cloud_opts.route())).await?;
-    for project in rpc.parse_response::<Vec<Project>>()? {
-        project_enroll_admin(ctx, opts, node_name, &project).await?;
-    }
     Ok(())
 }
 

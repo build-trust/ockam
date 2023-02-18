@@ -427,7 +427,17 @@ impl IdentitiesState {
     }
 
     pub async fn authenticated_storage(&self) -> Result<LmdbStorage> {
-        Ok(LmdbStorage::new(self.dir.join("data").join("authenticated_storage.lmdb")).await?)
+        //TODO: remove this once we don't need to convert from old location anymore
+        //      there is probably a better place for this than here, but this code
+        //      is going to be short-lived and authenticated_storage/1 is anyway
+        //      called once at node startup by node_manager, so it's good enough.
+        let legacy_location = self.dir.join("authenticated_storage.lmdb");
+        let lmdb_path = self.dir.join("data").join("authenticated_storage.lmdb");
+        if legacy_location.exists() {
+            std::fs::rename(&legacy_location, &lmdb_path)?;
+        }
+
+        Ok(LmdbStorage::new(lmdb_path).await?)
     }
 }
 
