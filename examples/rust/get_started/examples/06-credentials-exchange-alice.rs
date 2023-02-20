@@ -1,6 +1,7 @@
+use hello_ockam::create_identity_with_secret;
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
-use ockam::identity::{Identity, TrustEveryonePolicy};
+use ockam::identity::TrustEveryonePolicy;
 use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
@@ -8,17 +9,21 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Initialize the TCP Transport
     TcpTransport::create(&ctx).await?;
 
-    // Create an Identity to represent Alice
-    let alice = Identity::create(&ctx, &Vault::create()).await?;
+    // Create an Identity representing Alice
+    // We preload Alice's vault with a secret key corresponding to the identity identifier
+    // P529d43ac7b01e23d3818d00e083508790bfe8825714644b98134db6c1a7a6602
+    // which is an identifier known to the credential issuer, with some preset attributes
+    let vault = Vault::create();
+    let key_id = "529d43ac7b01e23d3818d00e083508790bfe8825714644b98134db6c1a7a6602".to_string();
+    let secret = "acaf50c540be1494d67aaad78aca8d22ac62c4deb4fb113991a7b30a0bd0c757";
+    let alice = create_identity_with_secret(&ctx, vault, &key_id, secret).await?;
 
-    // Create a client to credential issuer
-    let issuer_route = route![(TCP, "127.0.0.1:5000"), "issuer"];
-    let issuer = CredentialIssuerClient::new(&ctx, issuer_route).await?;
+    // Create a client to the credential issuer
+    let issuer_route = route![(TCP, "127.0.0.1:5000"), "issuer_listener"];
+    let issuer = CredentialIssuerClient::new(&ctx, &alice, issuer_route).await?;
 
-    // Get a credential for Alice
-    let credential = issuer
-        .get_attribute_credential(alice.identifier(), "name", "alice")
-        .await?;
+    // Get a credential for Alice (this is done via a secure channel)
+    let credential = issuer.get_credential(alice.identifier()).await?.unwrap();
     println!("got a credential from the issuer\n{credential}");
     alice.set_credential(credential).await;
 
