@@ -15,7 +15,6 @@ use std::time::SystemTime;
 use sysinfo::{Pid, System, SystemExt};
 
 use crate::lmdb::LmdbStorage;
-use ockam::compat::tokio;
 use thiserror::Error;
 
 type Result<T> = std::result::Result<T, CliStateError>;
@@ -175,7 +174,7 @@ impl VaultsState {
         };
 
         // Remove vault files
-        tokio::fs::remove_file(vault_state.path).await?;
+        std::fs::remove_file(vault_state.path)?;
         vault_state.config.delete().await?;
 
         Ok(())
@@ -304,8 +303,8 @@ impl VaultConfig {
     }
 
     pub async fn delete(&self) -> Result<()> {
-        tokio::fs::remove_file(&self.path).await?;
-        tokio::fs::remove_file(&self.path.with_extension("json.lock")).await?;
+        std::fs::remove_file(&self.path)?;
+        std::fs::remove_file(self.path.with_extension("json.lock"))?;
         Ok(())
     }
 }
@@ -383,7 +382,7 @@ impl IdentitiesState {
         identity.in_use()?;
 
         // Remove identity file
-        tokio::fs::remove_file(identity.path).await?;
+        std::fs::remove_file(identity.path)?;
 
         Ok(())
     }
