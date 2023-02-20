@@ -1,5 +1,5 @@
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
-use ockam::identity::authority::{AuthorityApi, AuthorityClient};
+use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
 use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
 
@@ -11,15 +11,15 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Create an Identity to represent Alice
     let alice = Identity::create(&ctx, &Vault::create()).await?;
 
-    // Create a client to the Authority
-    let authority_route = route![(TCP, "127.0.0.1:5000"), "authority"];
-    let authority = AuthorityClient::new(&ctx, authority_route).await?;
+    // Create a client to credential issuer
+    let issuer_route = route![(TCP, "127.0.0.1:5000"), "issuer"];
+    let issuer = CredentialIssuerClient::new(&ctx, issuer_route).await?;
 
     // Get a credential for Alice
-    let credential = authority
+    let credential = issuer
         .get_attribute_credential(alice.identifier(), "name", "alice")
         .await?;
-    println!("got a credential from the authority\n{credential}");
+    println!("got a credential from the issuer\n{credential}");
     alice.set_credential(credential).await;
 
     // Create a secure channel to Bob's node
@@ -32,7 +32,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     alice
         .present_credential_mutual(
             route![channel.clone(), "credential_exchange"],
-            vec![&authority.public_identity().await?],
+            vec![&issuer.public_identity().await?],
             &AuthenticatedAttributeStorage::new(alice.authenticated_storage().clone()),
         )
         .await?;
