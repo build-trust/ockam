@@ -8,26 +8,26 @@ use ockam_core::{AsyncTryClone, Error, Message, Result, Route, Routed, Worker};
 use crate::authenticated_storage::mem::InMemoryStorage;
 use ockam_node::Context;
 use ockam_vault::Vault;
-use AuthorityRequest::*;
-use AuthorityResponse::*;
+use CredentialIssuerRequest::*;
+use CredentialIssuerResponse::*;
 
 use crate::credential::Credential;
 use crate::{Identity, IdentityIdentifier, PublicIdentity};
 use serde::{Deserialize, Serialize};
 
-/// This struct provides a simplified Authority which can be used in test scenarios
+/// This struct provides a simplified credential issuer which can be used in test scenarios
 /// by starting it as a Worker on any given node.
 ///
-/// Note that the storage associated to the Authority identity will not persist between runs.
-pub struct Authority {
+/// Note that the storage associated to the issuer identity will not persist between runs.
+pub struct CredentialIssuer {
     identity: Identity<Vault, InMemoryStorage>,
 }
 
-/// This trait provides an interface for an Authority so that it can be called directly
+/// This trait provides an interface for a CredentialIssuer so that it can be called directly
 /// or via a worker by sending messages
 #[ockam_core::async_trait]
-pub trait AuthorityApi {
-    /// Return the Authority public identity
+pub trait CredentialIssuerApi {
+    /// Return the issuer public identity
     async fn public_identity(&self) -> Result<PublicIdentity>;
 
     /// Create an authenticated credential for an attribute name/value pair
@@ -48,22 +48,22 @@ pub trait AuthorityApi {
     ) -> Result<Credential>;
 }
 
-impl Authority {
-    /// Create a fully in-memory Authority for testing
-    pub async fn create(ctx: &Context) -> Result<Authority> {
+impl CredentialIssuer {
+    /// Create a fully in-memory issuer for testing
+    pub async fn create(ctx: &Context) -> Result<CredentialIssuer> {
         let identity = Identity::create(ctx, &Vault::create()).await?;
-        Ok(Authority { identity })
+        Ok(CredentialIssuer { identity })
     }
 
-    /// Create a new Authority from an Identity
-    pub fn new(identity: Identity<Vault, InMemoryStorage>) -> Authority {
-        Authority { identity }
+    /// Create a new CredentialIssuer from an Identity
+    pub fn new(identity: Identity<Vault, InMemoryStorage>) -> CredentialIssuer {
+        CredentialIssuer { identity }
     }
 }
 
 #[ockam_core::async_trait]
-impl AuthorityApi for Authority {
-    /// Return the Authority public identity
+impl CredentialIssuerApi for CredentialIssuer {
+    /// Return the issuer public identity
     async fn public_identity(&self) -> Result<PublicIdentity> {
         self.identity.to_public().await
     }
@@ -97,19 +97,19 @@ impl AuthorityApi for Authority {
     }
 }
 
-/// Worker implementation for an Authority
-/// This worker provides an API to the Authority in order to:
+/// Worker implementation for a CredentialIssuer
+/// This worker provides an API to the CredentialIssuer in order to:
 ///   - get a credential
-///   - get the Authority public identity in order to verify credentials locally
+///   - get the issuer public identity in order to verify credentials locally
 #[ockam_core::worker]
-impl Worker for Authority {
-    type Message = AuthorityRequest;
+impl Worker for CredentialIssuer {
+    type Message = CredentialIssuerRequest;
     type Context = Context;
 
     async fn handle_message(
         &mut self,
         ctx: &mut Context,
-        msg: Routed<AuthorityRequest>,
+        msg: Routed<CredentialIssuerRequest>,
     ) -> Result<()> {
         let return_route = msg.return_route();
         match msg.body() {
@@ -132,53 +132,53 @@ impl Worker for Authority {
     }
 }
 
-/// Requests for the Authority worker API
+/// Requests for the CredentialIssuer worker API
 #[derive(ockam_core::Message, Serialize, Deserialize)]
-pub enum AuthorityRequest {
+pub enum CredentialIssuerRequest {
     /// get an authenticated credential for a subject and an attribute name/value
     GetAttributeCredential(IdentityIdentifier, String, String),
     /// get an authenticated credential a subject and a list of attributes
     GetCredential(IdentityIdentifier, HashMap<String, String>),
-    /// get the public identity of the Authority
+    /// get the public identity of the issuer
     GetPublicIdentity,
 }
 
-/// Responses for the Authority worker API
+/// Responses for the CredentialIssuer worker API
 #[derive(ockam_core::Message, Serialize, Deserialize)]
-pub enum AuthorityResponse {
+pub enum CredentialIssuerResponse {
     /// return an authenticated credential
     CredentialResponse(Credential),
-    /// return the public identity of the Authority
+    /// return the public identity of the issuer
     PublicIdentityResponse(PublicIdentity),
 }
 
-/// Client access to an Authority worker
-pub struct AuthorityClient {
+/// Client access to an CredentialIssuer worker
+pub struct CredentialIssuerClient {
     ctx: Context,
-    authority_route: Route,
+    credential_issuer_route: Route,
 }
 
-impl AuthorityClient {
-    /// Create an access to an Authority worker given a route to that worker
+impl CredentialIssuerClient {
+    /// Create an access to an CredentialIssuer worker given a route to that worker
     /// It uses a Context to send and receive messages
-    pub async fn new(ctx: &Context, authority_route: Route) -> Result<AuthorityClient> {
-        Ok(AuthorityClient {
+    pub async fn new(ctx: &Context, issuer_route: Route) -> Result<CredentialIssuerClient> {
+        Ok(CredentialIssuerClient {
             ctx: ctx.async_try_clone().await?,
-            authority_route,
+            credential_issuer_route: issuer_route,
         })
     }
 }
 
 #[ockam_core::async_trait]
-impl AuthorityApi for AuthorityClient {
+impl CredentialIssuerApi for CredentialIssuerClient {
     async fn public_identity(&self) -> Result<PublicIdentity> {
         let response = self
             .ctx
-            .send_and_receive(self.authority_route.clone(), GetPublicIdentity)
+            .send_and_receive(self.credential_issuer_route.clone(), GetPublicIdentity)
             .await?;
         match response {
             PublicIdentityResponse(identity) => Ok(identity),
-            _ => Err(error("missing public identity for the authority")),
+            _ => Err(error("missing public identity for the credential issuer")),
         }
     }
 
@@ -191,7 +191,7 @@ impl AuthorityApi for AuthorityClient {
         let response = self
             .ctx
             .send_and_receive(
-                self.authority_route.clone(),
+                self.credential_issuer_route.clone(),
                 GetAttributeCredential(
                     subject.clone(),
                     attribute_name.into(),
@@ -213,7 +213,7 @@ impl AuthorityApi for AuthorityClient {
         let response = self
             .ctx
             .send_and_receive(
-                self.authority_route.clone(),
+                self.credential_issuer_route.clone(),
                 GetCredential(subject.clone(), attributes),
             )
             .await?;

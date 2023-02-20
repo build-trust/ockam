@@ -36,7 +36,7 @@ pub mod change_history;
 pub mod credential;
 
 /// Authority test support
-pub mod authority;
+pub mod credential_issuer;
 
 /// Errors
 pub mod error;
