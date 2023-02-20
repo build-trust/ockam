@@ -55,7 +55,7 @@ reqwest         = { version = "0.11", default-features = false, features = ["jso
 tokio-util      = { version = "0.7", features = ["codec"] }
 kafka-protocol  = "0.4"
 futures         = "0.3"
-sysinfo         = "0.27"
+sysinfo         = "0.28"
 
 ockam               = { path = "../ockam", version = "^0.80.0", features = ["software_vault"] }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.75.0" }
