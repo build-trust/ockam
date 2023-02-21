@@ -19,17 +19,19 @@ use crate::nodes::registry::{
 };
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
-use crate::try_multiaddr_to_route;
 use crate::uppercase::Uppercase;
 use crate::vault::VaultService;
 use crate::DefaultAddress;
+use crate::{actions, resources, try_multiaddr_to_route};
+use core::time::Duration;
 use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
+use ockam_abac::expr::{eq, ident, str};
+use ockam_abac::PolicyStorage;
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::{route, AllowAll, Route};
 use ockam_multiaddr::proto::Project;
-use ockam_multiaddr::{MultiAddr, Protocol};
-use std::time::Duration;
+use ockam_multiaddr::MultiAddr;
 
 use super::NodeManagerWorker;
 
@@ -302,14 +304,13 @@ impl NodeManager {
         kind: KafkaServiceKind,
     ) -> Result<()> {
         //needed to allow testing
-        let is_using_project = project_route_multiaddr
+        let project_name = project_route_multiaddr
             .first()
-            .map(|value| value.code() == Project::CODE)
-            .unwrap_or(false);
+            .and_then(|value| value.cast::<Project>().map(|p| p.to_string()));
 
         let identity = self.identity()?.async_try_clone().await?;
-
-        let (bootstrap_address_route, interceptor_route, project_route) = if is_using_project {
+        let (bootstrap_address_route, interceptor_route, project_route) = if project_name.is_some()
+        {
             let (maybe_tunnel_multiaddr, suffix_address) = self
                 .connect(
                     &project_route_multiaddr,
@@ -354,6 +355,21 @@ impl NodeManager {
             )
         };
 
+        // override default policy to allow incoming packets from the project
+        if let Some(project_name) = &project_name {
+            let (_addr, identity_identifier) = self.resolve_project(project_name)?;
+            self.policies
+                .set_policy(
+                    &resources::INLET,
+                    &actions::HANDLE_MESSAGE,
+                    &eq([
+                        ident("subject.identity"),
+                        str(identity_identifier.to_string()),
+                    ]),
+                )
+                .await?;
+        }
+
         self.tcp_transport
             .create_inlet(
                 format!("{}:{}", &bind_ip, server_bootstrap_port),
@@ -363,7 +379,7 @@ impl NodeManager {
             .await?;
 
         let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(identity, project_route, is_using_project);
+            KafkaSecureChannelControllerImpl::new(identity, project_route, project_name.is_some());
 
         if let KafkaServiceKind::Consumer = kind {
             secure_channel_controller
