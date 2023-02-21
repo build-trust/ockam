@@ -1,20 +1,25 @@
 use std::convert::Infallible;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::version::Version;
 use crate::{exitcode, ExitCode};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Debug)]
 pub struct Error {
     code: ExitCode,
-    inner: anyhow::Error,
+    description: String,
+    cause: Option<String>,
 }
 
 impl Error {
     pub fn new(code: ExitCode, err: anyhow::Error) -> Self {
         assert_ne!(code, 0, "Error's exit code can't be OK");
-        Self { code, inner: err }
+        Self {
+            code,
+            description: err.to_string(),
+            cause: err.source().map(|s| s.to_string()),
+        }
     }
 
     pub fn code(&self) -> ExitCode {
@@ -22,29 +27,22 @@ impl Error {
     }
 }
 
-impl Debug for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", Version::short())?;
-        std::fmt::Debug::fmt(&self.inner, f)
-    }
-}
-
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", Version::short())?;
-        writeln!(
-            f,
-            "{{code: {}, err: {}, cause: {}}}",
-            self.code,
-            self.inner,
-            self.inner.root_cause()
-        )
+        if let Some(cause) = &self.cause {
+            writeln!(f, "{}. Caused by: {}", self.description, cause)?;
+        } else {
+            writeln!(f, "{}", self.description)?;
+        }
+        Ok(())
     }
 }
 
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        Some(self.inner.as_ref())
+impl std::error::Error for Error {}
+
+impl From<anyhow::Error> for Error {
+    fn from(e: anyhow::Error) -> Self {
+        Error::new(exitcode::SOFTWARE, e)
     }
 }
 
@@ -57,12 +55,6 @@ impl From<ockam::Error> for Error {
 impl From<ockam_api::cli_state::CliStateError> for Error {
     fn from(e: ockam_api::cli_state::CliStateError) -> Self {
         Error::new(exitcode::SOFTWARE, e.into())
-    }
-}
-
-impl From<anyhow::Error> for Error {
-    fn from(e: anyhow::Error) -> Self {
-        Error::new(exitcode::SOFTWARE, e)
     }
 }
 

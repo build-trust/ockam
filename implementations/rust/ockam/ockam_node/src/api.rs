@@ -24,7 +24,7 @@ where
     req.encode(&mut buf)?;
     assert_request_match(struct_name, &buf);
     trace! {
-        target:  "ockam_api",
+        target:  "ockam_node",
         id     = %req.header().id(),
         method = ?req.header().method(),
         path   = %req.header().path(),
