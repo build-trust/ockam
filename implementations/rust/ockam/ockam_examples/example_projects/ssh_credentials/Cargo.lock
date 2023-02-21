@@ -725,7 +725,6 @@ dependencies = [
  "ockam_channel",
  "ockam_core",
  "ockam_identity",
- "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
@@ -743,7 +742,6 @@ name = "ockam_channel"
 version = "0.56.0"
 dependencies = [
  "ockam_core",
- "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
@@ -800,7 +798,6 @@ dependencies = [
  "hex",
  "ockam_channel",
  "ockam_core",
- "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
@@ -815,19 +812,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_key_exchange_core"
-version = "0.47.0"
-dependencies = [
- "ockam_core",
- "zeroize",
-]
-
-[[package]]
 name = "ockam_key_exchange_xx"
 version = "0.52.0"
 dependencies = [
  "ockam_core",
- "ockam_key_exchange_core",
 ]
 
 [[package]]

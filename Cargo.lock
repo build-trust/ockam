@@ -3056,7 +3056,6 @@ dependencies = [
  "ockam_abac",
  "ockam_core",
  "ockam_identity",
- "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
@@ -3257,7 +3256,6 @@ dependencies = [
  "hex",
  "minicbor",
  "ockam_core",
- "ockam_key_exchange_core",
  "ockam_key_exchange_xx",
  "ockam_macros",
  "ockam_node",
@@ -3287,21 +3285,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_key_exchange_core"
-version = "0.65.0"
-dependencies = [
- "ockam_core",
- "zeroize",
-]
-
-[[package]]
 name = "ockam_key_exchange_x3dh"
 version = "0.69.0"
 dependencies = [
  "arrayref",
  "hex",
  "ockam_core",
- "ockam_key_exchange_core",
  "ockam_macros",
  "ockam_node",
  "ockam_vault",
@@ -3314,7 +3303,6 @@ version = "0.70.0"
 dependencies = [
  "hex",
  "ockam_core",
- "ockam_key_exchange_core",
  "ockam_macros",
  "ockam_node",
  "ockam_vault",

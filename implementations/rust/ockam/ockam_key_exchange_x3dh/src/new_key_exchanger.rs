@@ -1,7 +1,7 @@
 use crate::{Initiator, Responder, X3dhVault};
+use ockam_core::NewKeyExchanger;
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{AsyncTryClone, Result};
-use ockam_key_exchange_core::NewKeyExchanger;
 
 /// Represents an XX NewKeyExchanger
 #[derive(AsyncTryClone)]

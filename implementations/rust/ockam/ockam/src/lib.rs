@@ -96,7 +96,7 @@ pub mod compat {
 
 pub mod key_exchange {
     //! Module containing types required for key exchange.
-    pub use ockam_key_exchange_core::NewKeyExchanger;
+    pub use ockam_core::NewKeyExchanger;
     #[cfg(feature = "noise_xx")]
     pub use ockam_key_exchange_xx::XXNewKeyExchanger;
 }

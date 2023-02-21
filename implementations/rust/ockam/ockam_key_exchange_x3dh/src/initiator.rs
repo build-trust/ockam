@@ -14,7 +14,7 @@ use ockam_core::{
     },
     vault::{Secret, SecretKey},
 };
-use ockam_key_exchange_core::{CompletedKeyExchange, KeyExchanger};
+use ockam_core::{CompletedKeyExchange, KeyExchanger};
 
 #[derive(Debug, Clone, Copy)]
 enum InitiatorState {
