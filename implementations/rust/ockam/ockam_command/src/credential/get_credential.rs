@@ -13,6 +13,9 @@ pub struct GetCredentialCommand {
 
     #[arg(long)]
     pub overwrite: bool,
+
+    #[arg(long = "identity", value_name = "IDENTITY")]
+    identity: Option<String>,
 }
 
 impl GetCredentialCommand {
@@ -34,7 +37,10 @@ async fn run_impl(
     cmd: GetCredentialCommand,
 ) -> crate::Result<()> {
     let mut rpc = Rpc::background(ctx, &opts, &cmd.node_opts.api_node)?;
-    rpc.request(api::credentials::get_credential(cmd.overwrite))
-        .await?;
+    rpc.request(api::credentials::get_credential(
+        cmd.overwrite,
+        cmd.identity,
+    ))
+    .await?;
     Ok(())
 }

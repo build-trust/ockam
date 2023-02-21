@@ -198,7 +198,8 @@ async fn run_impl(
     // Do we need to eagerly fetch a project membership credential?
     let get_credential = cmd.project.is_some() && cmd.token.is_some();
     if get_credential {
-        rpc.request(api::credentials::get_credential(false)).await?;
+        rpc.request(api::credentials::get_credential(false, cmd.identity))
+            .await?;
         if rpc.parse_and_print_response::<Credential>().is_err() {
             eprintln!("failed to fetch membership credential");
             delete_node(&opts, node_name, true)?;
@@ -314,7 +315,7 @@ async fn run_foreground_node(
     }
 
     if get_credential {
-        let req = api::credentials::get_credential(false).to_vec()?;
+        let req = api::credentials::get_credential(false, cmd.identity).to_vec()?;
         let res: Vec<u8> = ctx.send_and_receive(NODEMANAGER_ADDR, req).await?;
         let mut d = Decoder::new(&res);
         match d.decode::<Response>() {

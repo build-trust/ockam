@@ -14,14 +14,16 @@ pub struct GetCredentialRequest {
     #[cfg(feature = "tag")]
     #[n(0)] tag: TypeTag<8479533>,
     #[n(1)] overwrite: bool,
+    #[n(2)] pub identity_name: Option<String>,
 }
 
 impl GetCredentialRequest {
-    pub fn new(overwrite: bool) -> Self {
+    pub fn new(overwrite: bool, identity_name: Option<String>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             overwrite,
+            identity_name,
         }
     }
 

@@ -3,7 +3,6 @@ use std::time::Duration;
 use super::{map_multiaddr_err, NodeManagerWorker};
 use crate::cli_state::CliState;
 use crate::error::ApiError;
-use crate::lmdb::LmdbStorage;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
     CredentialExchangeMode, DeleteSecureChannelRequest, DeleteSecureChannelResponse,
@@ -17,30 +16,34 @@ use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::{route, AsyncTryClone, CowStr};
-use ockam_identity::{Identity, IdentityIdentifier, TrustMultiIdentifiersPolicy};
+use ockam_identity::authenticated_storage::AuthenticatedStorage;
+use ockam_identity::{Identity, IdentityIdentifier, IdentityVault, TrustMultiIdentifiersPolicy};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
-use ockam_vault::Vault;
 
 impl NodeManager {
-    async fn get_credential_if_needed(&mut self) -> Result<()> {
-        let identity = self.identity()?;
-
+    async fn get_credential_if_needed<V: IdentityVault, S: AuthenticatedStorage>(
+        &mut self,
+        identity: &Identity<V, S>,
+    ) -> Result<()> {
         if identity.credential().await.is_some() {
             debug!("Credential check: credential already exists...");
             return Ok(());
         }
 
         debug!("Credential check: requesting...");
-        self.get_credential_impl(false).await?;
+        self.get_credential_impl(identity, false).await?;
         debug!("Credential check: got new credential...");
 
         Ok(())
     }
 
-    pub(crate) async fn create_secure_channel_internal(
+    pub(crate) async fn create_secure_channel_internal<
+        V: IdentityVault,
+        S: AuthenticatedStorage,
+    >(
         &mut self,
-        identity: &Identity<Vault, LmdbStorage>,
+        identity: &Identity<V, S>,
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         timeout: Option<Duration>,
@@ -120,7 +123,7 @@ impl NodeManager {
             }
             CredentialExchangeMode::Oneway => {
                 debug!(%sc_addr, "One-way credential presentation");
-                self.get_credential_if_needed().await?;
+                self.get_credential_if_needed(&identity).await?;
                 identity
                     .present_credential(route![
                         sc_addr.clone(),
@@ -131,7 +134,7 @@ impl NodeManager {
             }
             CredentialExchangeMode::Mutual => {
                 debug!(%sc_addr, "Mutual credential presentation");
-                self.get_credential_if_needed().await?;
+                self.get_credential_if_needed(&identity).await?;
                 let authorities = self.authorities()?;
                 identity
                     .present_credential_mutual(
@@ -248,7 +251,7 @@ impl NodeManagerWorker {
             authorized_identifiers,
             credential_exchange_mode,
             timeout,
-            identity,
+            identity_name: identity,
             ..
         } = dec.decode()?;
 

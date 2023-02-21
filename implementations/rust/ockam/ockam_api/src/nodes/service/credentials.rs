@@ -1,4 +1,5 @@
 use crate::authenticator::direct::Client;
+use crate::cli_state::CliState;
 use crate::error::ApiError;
 use crate::multiaddr_to_route;
 use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
@@ -10,16 +11,22 @@ use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::{route, AsyncTryClone};
+use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_identity::credential::Credential;
+use ockam_identity::{Identity, IdentityVault};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::Context;
 use std::str::FromStr;
 
 use super::NodeManagerWorker;
 
 impl NodeManager {
-    pub(super) async fn get_credential_impl(&mut self, overwrite: bool) -> Result<()> {
+    pub(super) async fn get_credential_impl<V: IdentityVault, S: AuthenticatedStorage>(
+        &mut self,
+        identity: &Identity<V, S>,
+        overwrite: bool,
+    ) -> Result<()> {
         debug!("Credential check: looking for identity");
-        let identity = self.identity()?.async_try_clone().await?;
 
         if identity.credential().await.is_some() && !overwrite {
             return Err(ApiError::generic("credential already exists"));
@@ -48,7 +55,7 @@ impl NodeManager {
 
         debug!("Create secure channel to project authority");
         let sc = self
-            .create_secure_channel_internal(&identity, route, Some(allowed), None)
+            .create_secure_channel_internal(identity, route, Some(allowed), None)
             .await?;
         debug!("Created secure channel to project authority");
 
@@ -82,17 +89,30 @@ impl NodeManagerWorker {
         &mut self,
         req: &Request<'_>,
         dec: &mut Decoder<'_>,
+        ctx: &Context,
     ) -> Result<Either<ResponseBuilder<Error<'_>>, ResponseBuilder<Credential>>> {
         let mut node_manager = self.node_manager.write().await;
         let request: GetCredentialRequest = dec.decode()?;
 
+        let identity = if let Some(identity) = &request.identity_name {
+            let state = CliState::new()?;
+            let idt_config = state.identities.get(identity)?.config;
+            match idt_config.get(ctx, node_manager.vault()?).await {
+                Ok(idt) => idt,
+                Err(_) => {
+                    let default_vault = &state.vaults.default()?.config.get().await?;
+                    idt_config.get(ctx, default_vault).await?
+                }
+            }
+        } else {
+            node_manager.identity()?.async_try_clone().await?
+        };
+
         node_manager
-            .get_credential_impl(request.is_overwrite())
+            .get_credential_impl(&identity, request.is_overwrite())
             .await?;
 
-        let ident = node_manager.identity()?;
-
-        if let Some(c) = ident.credential().await {
+        if let Some(c) = identity.credential().await {
             Ok(Either::Right(Response::ok(req.id()).body(c)))
         } else {
             let err = Error::default().with_message("error getting credential");

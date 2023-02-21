@@ -502,7 +502,7 @@ impl NodeManagerWorker {
 
             // ==*== Credential ==*==
             (Post, ["node", "credentials", "actions", "get"]) => self
-                .get_credential(req, dec)
+                .get_credential(req, dec, ctx)
                 .await?
                 .either(ResponseBuilder::to_vec, ResponseBuilder::to_vec)?,
             (Post, ["node", "credentials", "actions", "present"]) => {
