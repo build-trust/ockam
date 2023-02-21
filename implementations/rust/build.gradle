@@ -90,6 +90,15 @@ task build {
   }
 }
 
+task build_vault {
+  doLast {
+    exec {
+      environment environmentVars()
+      commandLine cargo('--locked', 'build', '-p', 'ockam_vault', '-p', 'ockam-ffi')
+    }
+  }
+}
+
 task build_examples {
   doLast {
     exec {
