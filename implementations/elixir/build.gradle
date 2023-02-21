@@ -28,8 +28,8 @@ ext {
   }
 }
 
-task rustBuild {
-  dependsOn gradle.includedBuild('rust').task(':build')
+task rustVaultBuild {
+  dependsOn gradle.includedBuild('rust').task(':build_vault')
 }
 
 task checkLocalHexAndRebar {
@@ -80,7 +80,7 @@ taskDeps = ['checkLocalHexAndRebar']
 apps.each { app ->
   task "test_${app.name}" {
     if(app.name == 'ockam_vault_software') {
-      dependsOn rustBuild
+      dependsOn rustVaultBuild
     }
     dependsOn checkLocalHexAndRebar
     doLast {
