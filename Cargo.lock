@@ -1808,6 +1808,7 @@ version = "0.1.0"
 name = "example_test_helper"
 version = "0.1.0"
 dependencies = [
+ "cfg-if",
  "duct",
  "libc",
  "regex",
@@ -3406,6 +3407,7 @@ dependencies = [
 name = "ockam_transport_tcp"
 version = "0.75.0"
 dependencies = [
+ "cfg-if",
  "hashbrown 0.13.2",
  "ockam_core",
  "ockam_macros",
