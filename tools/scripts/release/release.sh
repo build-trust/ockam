@@ -58,7 +58,7 @@ function ockam_bump() {
   gh run watch "$run_id" --exit-status -R $OWNER/ockam
 
   # Merge PR to a new branch to kickstart workflow
-  gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
+  gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" --label "release" \
     --base develop -H "${release_name}" -r mrinalwadhwa -R $OWNER/ockam
 }
 

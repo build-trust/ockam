@@ -1,0 +1,86 @@
+name: Activate/Deactivate Code Freeze CI
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch_name:
+        description: Branch Name To Create Pull Request
+        required: true
+      set_freeze_state:
+        type: choice
+        description: Set PR Freeze State
+        default: freeze
+        options:
+        - freeze
+        - unfreeze
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  code_freeze_automation:
+    name: Code Freeze Activator Automation
+    runs-on: ubuntu-22.04
+    environment: release
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+        with:
+          fetch-depth: 0
+
+      - name: Import GPG key
+        uses: build-trust/.github/actions/import_gpg@a6377d3c2dac878b92a0da26cdf3da2856c64840
+        with:
+          gpg_private_key: '${{ secrets.GPG_PRIVATE_KEY }}'
+          gpg_password: '${{ secrets.GPG_PASSPHRASE }}'
+          gpg_name: '${{ secrets.GPG_USER_NAME }}'
+          gpg_email: '${{ secrets.GPG_EMAIL }}'
+
+      - name: Check If PR State Is Frozen
+        run: |
+          if cat .github/workflows/code-freeze.yml | grep 'ON_FREEZE_MODE: false'; then
+            current_state="unfreeze"
+          else
+            current_state="freeze"
+          fi
+
+          if [[ ${{ github.event.inputs.set_freeze_state }} == $current_state ]]; then
+            echo "PR state already set to $current_state"
+            exit 1
+          fi
+
+      - name: Checkout To Specified Branch
+        run: |
+          git checkout -B ${{ github.event.inputs.branch_name }}
+
+      - name: Freeze PRs From Being Merged
+        if: ${{ github.event.inputs.set_freeze_state == 'freeze' }}
+        run: |
+          # Uncomment code that enables code freeze
+          sed -i -e 's/ON_FREEZE_MODE: false/ON_FREEZE_MODE: true/g' .github/workflows/code-freeze.yml
+
+      - name: Unfreeze PRs So That They Can Be Merged
+        if: ${{ github.event.inputs.set_freeze_state == 'unfreeze' }}
+        run: |
+          # Comment code that enables code freeze
+          sed -i -e 's/ON_FREEZE_MODE: true/ON_FREEZE_MODE: false/g' .github/workflows/code-freeze.yml
+
+      - name: Git Add Updated Workflow
+        run: |
+          git add .github/workflows/code-freeze.yml
+
+          if [[ ${{ github.event.inputs.set_freeze_state }} == 'freeze' ]]; then
+            git commit -S -m "ci: freeze pull_requests"
+          else
+            git commit -S -m "ci: unfreeze pull_requests"
+          fi
+
+          git push --set-upstream origin ${{ github.event.inputs.branch_name }}

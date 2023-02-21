@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
+code_freeze_file_name="activate-code-freeze.yml"
+
 if [[ -z $OWNER ]]; then
   echo "Please specify organization OWNER, e.g. build-trust"
   exit 1
@@ -44,14 +46,14 @@ function start_code_freeze_workflow() {
   set -e
   freeze_state="$1"
 
-  gh workflow run code-freeze.yml --ref develop \
-    -F branch_name="$code_freeze_branch_name" -F set_mergify_pr_state="$freeze_state" -R $OWNER/ockam
+  gh workflow run $code_freeze_file_name --ref develop \
+    -F branch_name="$code_freeze_branch_name" -F set_freeze_state="$freeze_state" -R $OWNER/ockam
 
   # Sleep for 10 seconds to ensure we are not affected by Github API downtime.
   sleep 10
 
   # Wait for workflow run
-  run_id=$(gh run list --workflow=code-freeze.yml -b develop -u "$GITHUB_USERNAME" -L 1 -R $OWNER/ockam --json databaseId | jq -r .[0].databaseId)
+  run_id=$(gh run list --workflow=$code_freeze_file_name -b develop -u "$GITHUB_USERNAME" -L 1 -R $OWNER/ockam --json databaseId | jq -r .[0].databaseId)
   approve_deployment "ockam" "$run_id" &
 
   gh run watch "$run_id" --exit-status -R $OWNER/ockam
@@ -69,12 +71,12 @@ function create_pr() {
 }
 
 # If it's a draft release, then we create a PR that perform code freeze
-if [[ $IS_DRAFT_RELEASE == true ]]; then
+if [[ $IS_DRAFT_RELEASE == true && $SKIP_CODE_FREEZE != true ]]; then
   echo "Kickstarting code freeze workflow"
   start_code_freeze_workflow "freeze"
   echo "Creating PR"
   create_pr "Ockam code freeze $(date +'%d-%m-%Y')" "This PR freezes Rust code PR merge."
-elif [[ $IS_DRAFT_RELEASE == false ]]; then
+elif [[ $IS_DRAFT_RELEASE == false && $SKIP_CODE_FREEZE != true ]]; then
   echo "Kickstarting code unfreeze workflow"
   start_code_freeze_workflow "unfreeze"
   echo "Creating PR"
