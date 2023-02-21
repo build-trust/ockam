@@ -1,7 +1,7 @@
 name: Gradle Cache
 description: Gradle Home Cache
 runs:
-  using: "composite"
+  using: composite
   steps:
     - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
       with:
