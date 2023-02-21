@@ -254,12 +254,7 @@ impl<'a> OrchestratorApiBuilder<'a> {
                     project_route,
                     &project_identity.to_string(),
                     self.credential_exchange_mode,
-                    None, //self.identity.clone(),
-                          //FIXME:  passing an identity here is broken.  Credential is retrieved and
-                          //associated with the identity,  but that identity object is _not_ the one that
-                          //is used latter to establish the security channel (due to clonning, etc).
-                          //Not passing identity here works as the embedded node was started with this
-                          //identity as the default one anyway.
+                    self.identity.clone(),
                 )
                 .await?
             }

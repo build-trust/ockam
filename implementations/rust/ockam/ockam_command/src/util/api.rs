@@ -177,8 +177,11 @@ pub(crate) mod credentials {
         Request::post("/node/credentials/actions/present").body(b)
     }
 
-    pub(crate) fn get_credential<'r>(overwrite: bool) -> RequestBuilder<'r, GetCredentialRequest> {
-        let b = GetCredentialRequest::new(overwrite);
+    pub(crate) fn get_credential<'r>(
+        overwrite: bool,
+        identity_name: Option<String>,
+    ) -> RequestBuilder<'r, GetCredentialRequest> {
+        let b = GetCredentialRequest::new(overwrite, identity_name);
         Request::post("/node/credentials/actions/get").body(b)
     }
 }
