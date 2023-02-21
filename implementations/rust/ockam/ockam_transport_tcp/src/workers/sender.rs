@@ -1,4 +1,5 @@
 use crate::{TcpRecvProcessor, TcpRouterHandle};
+use cfg_if::cfg_if;
 use core::time::Duration;
 use ockam_core::{
     async_trait,
@@ -180,7 +181,6 @@ impl Worker for TcpSendWorker {
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
-
         if self.tx.is_none() {
             debug!(addr = %self.peer, "Connecting");
             let connection = match TcpStream::connect(self.peer).await {
@@ -196,10 +196,16 @@ impl Worker for TcpSendWorker {
                 }
             };
 
-            let keepalive = TcpKeepalive::new()
+            let mut keepalive = TcpKeepalive::new()
                 .with_time(Duration::from_secs(300))
-                .with_retries(2)
                 .with_interval(Duration::from_secs(75));
+
+            cfg_if! {
+                if #[cfg(unix)] {
+                   keepalive = keepalive.with_retries(2);
+                }
+            }
+
             let socket = SockRef::from(&connection);
             socket.set_tcp_keepalive(&keepalive).unwrap();
 
