@@ -93,60 +93,53 @@ where
             return Ok(false);
         };
 
+        let mut environment = self.environment.clone();
+
         // Get identity attributes and populate the environment:
-        let attrs = if let Some(a) = self.attributes.get_attributes(&id).await? {
-            a
-        } else {
-            log::debug! {
-                resource = %self.resource,
-                action   = %self.action,
-                id       = %id,
-                "attributes not found; access denied"
-            }
-            return Ok(false);
-        };
-
-        let mut e = self.environment.clone();
-
-        for (k, v) in attrs.attrs() {
-            if k.find(|c: char| c.is_whitespace()).is_some() {
-                log::warn! {
-                    resource = %self.resource,
-                    action   = %self.action,
-                    id       = %id,
-                    key      = %k,
-                    "attribute key with whitespace ignored"
-                }
-            }
-            match str::from_utf8(v) {
-                Ok(s) => {
-                    if !self.overwrite && e.contains(k) {
-                        log::debug! {
-                            resource = %self.resource,
-                            action   = %self.action,
-                            id       = %id,
-                            key      = %k,
-                            "attribute already present"
-                        }
-                        continue;
-                    }
-                    e.put(format!("subject.{k}"), str(s.to_string()));
-                }
-                Err(e) => {
+        if let Some(attrs) = self.attributes.get_attributes(&id).await? {
+            for (key, value) in attrs.attrs() {
+                if key.find(|c: char| c.is_whitespace()).is_some() {
                     log::warn! {
                         resource = %self.resource,
                         action   = %self.action,
                         id       = %id,
-                        key      = %k,
-                        err      = %e,
-                        "failed to interpret attribute as string"
+                        key      = %key,
+                        "attribute key with whitespace ignored"
+                    }
+                }
+                match str::from_utf8(value) {
+                    Ok(s) => {
+                        if !self.overwrite && environment.contains(key) {
+                            log::debug! {
+                                resource = %self.resource,
+                                action   = %self.action,
+                                id       = %id,
+                                key      = %key,
+                                "attribute already present"
+                            }
+                            continue;
+                        }
+                        environment.put(format!("subject.{key}"), str(s.to_string()));
+                    }
+                    Err(e) => {
+                        log::warn! {
+                            resource = %self.resource,
+                            action   = %self.action,
+                            id       = %id,
+                            key      = %key,
+                            err      = %e,
+                            "failed to interpret attribute as string"
+                        }
                     }
                 }
             }
-        }
+        };
+
+        //add the identity itself as a subject parameter
+        environment.put("subject.identity", str(id.to_string()));
 
         // Finally, evaluate the expression and return the result:
-        match eval(&expr, &e) {
+        match eval(&expr, &environment) {
             Ok(Expr::Bool(b)) => {
                 log::debug! {
                     resource      = %self.resource,
