@@ -41,6 +41,8 @@
 //! assert_eq!(version.matches(".").count(), 2);
 //! ```
 //!
+use cfg_if::cfg_if;
+#[cfg(unix)]
 use duct::unix::HandleExt;
 use duct::{cmd, Handle};
 use regex::Regex;
@@ -228,10 +230,12 @@ impl Drop for CmdRunner {
     ///
     /// On non-unix, kill process.
     fn drop(&mut self) {
-        if cfg!(unix) {
-            let _ = self.handle.send_signal(libc::SIGINT);
-        } else {
-            let _ = self.handle.kill();
+        cfg_if! {
+            if #[cfg(unix)] {
+                let _ = self.handle.send_signal(libc::SIGINT);
+            } else {
+                let _ = self.handle.kill();
+            }
         }
     }
 }

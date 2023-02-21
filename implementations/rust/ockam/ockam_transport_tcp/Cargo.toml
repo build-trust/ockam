@@ -45,6 +45,7 @@ rand = "0.7"
 hashbrown = { version = "0.13", default-features = false }
 tracing = { version = "0.1", default-features = false }
 socket2 = "0.4.7"
+cfg-if = "1.0.0"
 
 [dev-dependencies]
 trybuild = { version = "1.0", features = ["diff"] }
