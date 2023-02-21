@@ -393,6 +393,7 @@ async fn run_impl(
 
                     // Wait until project is ready again
                     println!("Getting things ready for project...");
+                    tokio::time::sleep(std::time::Duration::from_secs(15)).await;
 
                     let project_id = config::get_project(&opts.config, &project_name)
                         .context("project not found in lookup")?;
@@ -442,6 +443,8 @@ async fn run_impl(
 
                     // Wait until project is ready again
                     println!("Getting things ready for project...");
+                    tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+
                     let project_id = config::get_project(&opts.config, &project_name)
                         .context("project not found in lookup")?;
                     let retry_strategy = FixedInterval::from_millis(5000).take(4);
