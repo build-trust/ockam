@@ -6,6 +6,8 @@ use crate::{
     error::*, parser, relay::CtrlSignal, router::SenderPair, Cancel, NodeMessage, ProcessorBuilder,
     ShutdownType, WorkerBuilder,
 };
+#[cfg(feature = "std")]
+use core::fmt::{Debug, Formatter};
 use core::{
     sync::atomic::{AtomicUsize, Ordering},
     time::Duration,
@@ -55,6 +57,17 @@ pub struct Context {
     receiver: SmallReceiver<RelayMessage>,
     async_drop_sender: Option<AsyncDropSender>,
     mailbox_count: Arc<AtomicUsize>,
+}
+
+#[cfg(feature = "std")]
+impl Debug for Context {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Context")
+            .field("mailboxes", &self.mailboxes)
+            .field("sender", &self.sender)
+            .field("runtime", &self.rt)
+            .finish()
+    }
 }
 
 impl Drop for Context {
