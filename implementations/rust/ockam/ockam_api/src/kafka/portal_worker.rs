@@ -295,7 +295,8 @@ mod test {
     use kafka_protocol::protocol::Decodable;
     use kafka_protocol::protocol::Encodable as KafkaEncodable;
     use kafka_protocol::protocol::StrBytes;
-    use ockam_core::{route, Address, Routed};
+    use ockam_core::compat::sync::{Arc, Mutex};
+    use ockam_core::{route, Address, AllowAll, Routed, Worker};
     use ockam_identity::Identity;
     use ockam_node::Context;
     use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
@@ -309,6 +310,34 @@ mod test {
     use crate::port_range::PortRange;
 
     const TEST_KAFKA_API_VERSION: i16 = 13;
+
+    //a simple worker that keep receiving buffer
+    #[derive(Clone)]
+    struct TcpPayloadReceiver {
+        buffer: Arc<Mutex<Vec<u8>>>,
+    }
+
+    #[ockam_core::worker]
+    impl Worker for TcpPayloadReceiver {
+        type Message = PortalMessage;
+        type Context = Context;
+
+        async fn handle_message(
+            &mut self,
+            _context: &mut Self::Context,
+            message: Routed<Self::Message>,
+        ) -> ockam_core::Result<()> {
+            match message.as_body() {
+                PortalMessage::Payload(payload) => {
+                    self.buffer.lock().unwrap().extend_from_slice(payload);
+                }
+
+                _ => {}
+            }
+
+            Ok(())
+        }
+    }
 
     #[allow(non_snake_case)]
     #[ockam_macros::test(timeout = 5_000)]
@@ -473,7 +502,7 @@ mod test {
     }
 
     #[allow(non_snake_case)]
-    #[ockam_macros::test(timeout = 30_000)]
+    #[ockam_macros::test(timeout = 60_000)]
     async fn kafka_portal_worker__almost_over_limit_than_limit_kafka_message__two_kafka_message_pass(
         context: &mut Context,
     ) -> ockam::Result<()> {
@@ -504,67 +533,47 @@ mod test {
                 .unwrap(),
         );
 
+        let receiver = TcpPayloadReceiver {
+            buffer: Default::default(),
+        };
+
+        context
+            .start_worker(
+                Address::from_string("tcp_payload_receiver"),
+                receiver.clone(),
+                AllowAll,
+                AllowAll,
+            )
+            .await?;
+
         // let's duplicate the message
         huge_outgoing_request.extend_from_slice(&huge_outgoing_request.to_vec());
 
-        let mut incoming_rebuilt_buffer = BytesMut::new();
         for chunk in huge_outgoing_request.as_ref().chunks(MAX_PAYLOAD_SIZE) {
             context
                 .send(
-                    route![portal_inlet_address.clone(), context.address()],
+                    route![portal_inlet_address.clone(), "tcp_payload_receiver"],
                     PortalMessage::Payload(chunk.to_vec()),
                 )
                 .await?;
-
-            //we need to start receiving messages right away since the message queue is limited
-            receive_buffer(
-                context,
-                huge_outgoing_request.len(),
-                &mut incoming_rebuilt_buffer,
-                Duration::from_millis(0),
-            )
-            .await;
         }
 
-        //receive last pieces with a generous timeout
-        receive_buffer(
-            context,
-            huge_outgoing_request.len(),
-            &mut incoming_rebuilt_buffer,
-            Duration::from_secs(60),
-        )
-        .await;
-
-        assert_eq!(incoming_rebuilt_buffer.len(), huge_outgoing_request.len());
-        assert_eq!(incoming_rebuilt_buffer, huge_outgoing_request);
-        context.stop().await
-    }
-
-    async fn receive_buffer(
-        context: &mut Context,
-        length_to_receive: usize,
-        incoming_rebuilt_buffer: &mut BytesMut,
-        timeout: Duration,
-    ) {
+        //make sure every packet was received
         loop {
-            let result = context
-                .receive_duration_timeout::<PortalMessage>(timeout)
-                .await;
-
-            if let Ok(message) = result {
-                if let PortalMessage::Payload(payload) = message.take().as_body() {
-                    incoming_rebuilt_buffer.put_slice(payload);
-                    if incoming_rebuilt_buffer.len() >= length_to_receive {
-                        break;
-                    }
-                } else {
-                    panic!("invalid message")
-                }
-            } else {
-                //we don't have any more messages if we reached timeout
+            if receiver.buffer.lock().unwrap().len() >= huge_outgoing_request.len() {
                 break;
             }
+            ockam_node::compat::tokio::time::sleep(Duration::from_millis(50)).await;
         }
+
+        let incoming_rebuilt_buffer = receiver.buffer.lock().unwrap().to_vec();
+
+        assert_eq!(incoming_rebuilt_buffer.len(), huge_outgoing_request.len());
+        assert_eq!(
+            incoming_rebuilt_buffer.as_slice(),
+            huge_outgoing_request.as_ref()
+        );
+        context.stop().await
     }
 
     async fn setup_only_worker(context: &mut Context) -> Address {
