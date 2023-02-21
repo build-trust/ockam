@@ -154,7 +154,7 @@ impl<'a> Rpc<'a> {
             .await
             .map_err(|_err| {
                 // Overwrite error to swallow inner cause and hide it from end-user
-                anyhow!("The request timed out, please try again")
+                anyhow!("The request timed out, please make sure the command's arguments are correct or try again")
             })?;
         Ok(())
     }
@@ -174,7 +174,7 @@ impl<'a> Rpc<'a> {
             .await
             .map_err(|_err| {
                 // Overwrite error to swallow inner cause and hide it from end-user
-                anyhow!("The request timed out, please try again")
+                anyhow!("The request timed out, please make sure the command's arguments are correct or try again")
             })?;
         Ok(())
     }
