@@ -3,8 +3,8 @@ use ockam_core::vault::{
     KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH_U32,
     CURVE25519_PUBLIC_LENGTH_USIZE, CURVE25519_SECRET_LENGTH_U32,
 };
+use ockam_core::CompletedKeyExchange;
 use ockam_core::{compat::vec::Vec, Result};
-use ockam_key_exchange_core::CompletedKeyExchange;
 
 mod dh_state;
 pub(crate) use dh_state::*;
@@ -389,8 +389,8 @@ mod tests {
         Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType, SecretVault,
         SymmetricVault, CURVE25519_SECRET_LENGTH_U32,
     };
+    use ockam_core::KeyExchanger;
     use ockam_core::Result;
-    use ockam_key_exchange_core::KeyExchanger;
     use ockam_node::Context;
     use ockam_vault::Vault;
 

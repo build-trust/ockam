@@ -2,7 +2,7 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::vault::SymmetricVault;
 use ockam_core::AsyncTryClone;
 use ockam_core::Message;
-use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
+use ockam_core::{KeyExchanger, NewKeyExchanger};
 use ockam_key_exchange_xx::XXVault;
 use serde::{Deserialize, Serialize};
 

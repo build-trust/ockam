@@ -2,7 +2,7 @@ use crate::state::State;
 use crate::{Initiator, Responder, XXVault};
 use ockam_core::{async_trait, compat::boxed::Box, AsyncTryClone, Result};
 
-use ockam_key_exchange_core::NewKeyExchanger;
+use ockam_core::NewKeyExchanger;
 
 /// Represents an XX NewKeyExchanger
 #[derive(AsyncTryClone)]

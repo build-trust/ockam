@@ -1,7 +1,6 @@
 digraph {
 ockam_core [color=red];
 ockam_core -> ockam_ffi [color=red];
-ockam_core -> ockam_key_exchange_core [color=red];
 ockam_core -> ockam_key_exchange_x3dh [color=red];
 ockam_core -> ockam_key_exchange_xx [color=red];
 ockam_core -> ockam_channel [color=red];
@@ -12,10 +11,9 @@ ockam_core -> ockam_vault_core [color=red];
 ockam_core -> ockam_vault_sync_core [color=red];
 ockam_core -> ockam_vault_test_suite [color=red];
 
-ockam_key_exchange_core [color=orange];
-ockam_key_exchange_core  -> ockam_key_exchange_xx [color=orange];
-ockam_key_exchange_core  -> ockam_key_exchange_x3dh [color=orange];
-ockam_key_exchange_core -> ockam_channel [color=orange];
+ockam_core  -> ockam_key_exchange_xx [color=orange];
+ockam_core  -> ockam_key_exchange_x3dh [color=orange];
+ockam_core -> ockam_channel [color=orange];
 
 ockam_key_exchange_xx [color=yellow];
 ockam_key_exchange_xx -> ockam_channel [color=yellow];
@@ -30,7 +28,7 @@ ockam_node -> ockam_vault_sync_core [color=green];
 ockam_vault_core [color=blue];
 ockam_vault_core -> ockam [color=blue];
 ockam_vault_core -> ockam_ffi [color=blue];
-ockam_vault_core -> ockam_key_exchange_core [color=blue];
+ockam_vault_core -> ockam_core [color=blue];
 ockam_vault_core  -> ockam_key_exchange_x3dh [color=blue];
 ockam_vault_core -> ockam_channel [color=blue];
 ockam_vault_core  -> ockam_key_exchange_xx [color=blue];

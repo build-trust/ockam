@@ -68,7 +68,7 @@ use ockam_core::vault::{AsymmetricVault, Hasher, SecretVault, SymmetricVault};
 mod tests {
     use super::*;
     use ockam_core::Result;
-    use ockam_key_exchange_core::{KeyExchanger, NewKeyExchanger};
+    use ockam_core::{KeyExchanger, NewKeyExchanger};
     use ockam_node::Context;
     use ockam_vault::Vault;
 

@@ -17,6 +17,7 @@ use core::time::Duration;
 use ockam_core::compat::vec::Vec;
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::vault::Signature;
+use ockam_core::NewKeyExchanger;
 use ockam_core::{
     async_trait, AllowAll, AllowOnwardAddress, AllowSourceAddress, DenyAll, LocalOnwardOnly,
     LocalSourceOnly, Mailbox, Mailboxes,
@@ -25,7 +26,6 @@ use ockam_core::{
     route, Address, Any, Decodable, Encodable, LocalMessage, Result, Route, Routed,
     TransportMessage, Worker,
 };
-use ockam_key_exchange_core::NewKeyExchanger;
 use ockam_key_exchange_xx::Initiator as XXInitiator;
 use ockam_key_exchange_xx::Responder as XXResponder;
 use ockam_key_exchange_xx::XXNewKeyExchanger;
