@@ -152,11 +152,13 @@ impl<'a> Rpc<'a> {
             .ctx
             .send_and_receive(route.clone(), req.to_vec()?)
             .await
-            .context("Failed to receive response from node")?;
+            .map_err(|_err| {
+                // Overwrite error to swallow inner cause and hide it from end-user
+                anyhow!("The request timed out, please try again")
+            })?;
         Ok(())
     }
 
-    #[allow(unused)]
     pub async fn request_with_timeout<T>(
         &mut self,
         req: RequestBuilder<'_, T>,
@@ -170,7 +172,10 @@ impl<'a> Rpc<'a> {
             .ctx
             .send_and_receive_with_timeout(route.clone(), req.to_vec()?, timeout)
             .await
-            .context("Failed to receive response from node")?;
+            .map_err(|_err| {
+                // Overwrite error to swallow inner cause and hide it from end-user
+                anyhow!("The request timed out, please try again")
+            })?;
         Ok(())
     }
 
@@ -332,7 +337,7 @@ where
             let res = f(ctx, a).await;
             if let Err(e) = res {
                 error!(%e);
-                eprintln!("{e:?}");
+                eprint!("{e}");
                 std::process::exit(e.code());
             }
             Ok(())
@@ -340,7 +345,7 @@ where
         a,
     );
     if let Err(e) = res {
-        eprintln!("Ockam node failed: {e}");
+        eprintln!("Ockam runtime failed: {e}");
         std::process::exit(exitcode::SOFTWARE);
     }
 }
