@@ -1,7 +1,7 @@
 name: CARGO_TARGET_DIR Cache
 description: CARGO_TARGET_DIR Cache
 runs:
-  using: "composite"
+  using: composite
   steps:
     - run: rustc --version > rustc_version.txt && cat rustc_version.txt
       shell: bash

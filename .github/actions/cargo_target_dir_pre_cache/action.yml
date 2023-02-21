@@ -1,7 +1,7 @@
 name: CARGO_TARGET_DIR Pre Cache
 description: CARGO_TARGET_DIR Pre Cache
 runs:
-  using: "composite"
+  using: composite
   steps:
     - shell: bash
       run: |
