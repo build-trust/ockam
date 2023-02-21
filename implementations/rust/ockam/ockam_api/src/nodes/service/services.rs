@@ -363,7 +363,7 @@ impl NodeManager {
                     &resources::INLET,
                     &actions::HANDLE_MESSAGE,
                     &eq([
-                        ident("subject.identity"),
+                        ident("subject.identifier"),
                         str(identity_identifier.to_string()),
                     ]),
                 )
