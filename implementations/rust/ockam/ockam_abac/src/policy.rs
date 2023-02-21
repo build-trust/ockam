@@ -135,8 +135,8 @@ where
             }
         };
 
-        //add the identity itself as a subject parameter
-        environment.put("subject.identity", str(id.to_string()));
+        //add the identifier itself as a subject parameter
+        environment.put("subject.identifier", str(id.to_string()));
 
         // Finally, evaluate the expression and return the result:
         match eval(&expr, &environment) {
