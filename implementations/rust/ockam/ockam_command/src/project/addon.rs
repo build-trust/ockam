@@ -42,7 +42,7 @@ About:
 
 Examples:
     Examples of how to configure and use the Confluent Cloud addon can be found within the example documentation.
-    https://docs.ockam.io/guides/examples/end-to-end-encrypted-kafka 
+    https://docs.ockam.io/guides/examples/end-to-end-encrypted-kafka
 "#;
 
 #[derive(Clone, Debug, Args)]
