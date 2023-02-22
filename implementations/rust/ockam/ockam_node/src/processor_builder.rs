@@ -11,7 +11,7 @@ use ockam_core::{
 ///
 /// Any incoming messages for the processor will first be subject to the
 /// configured `AccessControl` before it is passed on to
-/// [`Processor::handle_message`].
+/// [`Processor::process`].
 ///
 /// The [`Context::start_processor()`] function wraps this type and
 /// simply calls `ProcessorBuilder::with_inherited_access_control()`.

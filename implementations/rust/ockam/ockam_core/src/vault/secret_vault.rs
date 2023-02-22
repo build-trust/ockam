@@ -8,7 +8,7 @@ use super::Secret;
 ///
 /// # Examples
 ///
-/// See `ockam_vault::SoftwareVault` for a usage example.
+/// See `ockam_vault::vault::Vault` for a usage example.
 ///
 #[async_trait]
 pub trait SecretVault {
@@ -16,7 +16,7 @@ pub trait SecretVault {
     async fn secret_generate(&self, attributes: SecretAttributes) -> Result<KeyId>;
     /// Import a secret with the given attributes from binary form into the vault.
     async fn secret_import(&self, secret: Secret, attributes: SecretAttributes) -> Result<KeyId>;
-    /// Export a secret key to the binary form represented as [`SecretKey`].
+    /// Export a secret key to the binary form represented as [`Secret`].
     async fn secret_export(&self, key_id: &KeyId) -> Result<Secret>;
     /// Return the attributes for a secret.
     async fn secret_attributes_get(&self, key_id: &KeyId) -> Result<SecretAttributes>;

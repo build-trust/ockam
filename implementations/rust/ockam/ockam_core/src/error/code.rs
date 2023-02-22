@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 
 /// A set of abstract error codes describing an error. See the [module-level
-/// documentation](crate::error::codes) for details.
+/// documentation](crate::error::errcode) for details.
 ///
 /// The fields of this struct are `pub` for matching, but you need to go through
 /// one of the [constructor functions](ErrorCode::new) to create one of these
