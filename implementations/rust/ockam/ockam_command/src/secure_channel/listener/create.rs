@@ -27,6 +27,9 @@ pub struct CreateCommand {
     #[arg(short, long, value_name = "IDENTIFIERS")]
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 
+    #[arg(value_name = "VAULT", long)]
+    vault: Option<String>,
+
     #[arg(value_name = "IDENTITY", long)]
     identity: Option<String>,
 }
@@ -60,6 +63,7 @@ async fn run_impl(
         CreateSecureChannelListenerRequest::new(
             &cmd.address,
             cmd.authorized_identifiers,
+            cmd.vault,
             cmd.identity,
         ),
     );
