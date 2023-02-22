@@ -83,7 +83,7 @@ impl Mailbox {
     }
 }
 
-/// A collection of [`Mailbox`]es for a [`Context`]
+/// A collection of [`Mailbox`]es associated to given Context
 #[derive(Clone)]
 pub struct Mailboxes {
     main_mailbox: Mailbox,
@@ -126,7 +126,7 @@ impl Mailboxes {
         }
     }
 
-    /// Return an [`AddressSet`] containing all addresses represented by these `Mailboxes`
+    /// Return a list of [`Address`] containing all addresses represented by these `Mailboxes`
     pub fn aliases(&self) -> Vec<Address> {
         self.additional_mailboxes
             .iter()
@@ -197,7 +197,7 @@ impl Mailboxes {
         }
     }
 
-    /// Return the [`AddressSet`] represented by these `Mailboxes`
+    /// Return the list of [`Address`] represented by these `Mailboxes`
     pub fn addresses(&self) -> Vec<Address> {
         let mut addresses = vec![self.main_mailbox.address.clone()];
         addresses.append(&mut self.aliases());

@@ -219,52 +219,52 @@ impl Default for ShutdownType {
 }
 
 impl RouterReply {
-    /// Return [NodeReply::Ok]
+    /// Return [RouterReply::Ok]
     pub fn ok() -> NodeReplyResult {
         Ok(RouterReply::Ok)
     }
 
-    /// Return [NodeReply::State]
+    /// Return [RouterReply::State]
     pub fn state(b: bool) -> NodeReplyResult {
         Ok(RouterReply::State(b))
     }
 
-    /// Return [NodeError::NoSuchAddress]
+    /// Return [NodeError::Address] not found
     pub fn no_such_address(a: Address) -> NodeReplyResult {
         Err(NodeError::Address(a).not_found())
     }
 
-    /// Return [NodeError::WorkerExists] for the given address
+    /// Return [NodeError::Address] already exists for the given address
     pub fn worker_exists(a: Address) -> NodeReplyResult {
         Err(NodeError::Address(a).already_exists())
     }
 
-    /// Return [NodeError::RouterExists]
+    /// Return [NodeError::RouterState] already exists
     pub fn router_exists() -> NodeReplyResult {
         Err(NodeError::RouterState(RouterReason::Duplicate).already_exists())
     }
 
-    /// Return [NodeReply::Rejected(reason)]
+    /// Return [NodeError::NodeState] conflict
     pub fn node_rejected(reason: NodeReason) -> NodeReplyResult {
         Err(NodeError::NodeState(reason).conflict())
     }
 
-    /// Return [NodeReply::Rejected(reason)]
+    /// Return [NodeError::WorkerState] conflict
     pub fn worker_rejected(reason: WorkerReason) -> NodeReplyResult {
         Err(NodeError::WorkerState(reason).conflict())
     }
 
-    /// Return [NodeReply::Workers] for the given addresses
+    /// Return [RouterReply::Workers] for the given addresses
     pub fn workers(v: Vec<Address>) -> NodeReplyResult {
         Ok(Self::Workers(v))
     }
 
-    /// Return [NodeReply::Sender] for the given information
+    /// Return [RouterReply::Sender] for the given information
     pub fn sender(addr: Address, sender: MessageSender<RelayMessage>) -> NodeReplyResult {
         Ok(RouterReply::Sender { addr, sender })
     }
 
-    /// Consume the wrapper and return [NodeReply::Sender]
+    /// Consume the wrapper and return [RouterReply::Sender]
     pub fn take_sender(self) -> Result<(Address, MessageSender<RelayMessage>)> {
         match self {
             Self::Sender { addr, sender } => Ok((addr, sender)),
@@ -272,7 +272,7 @@ impl RouterReply {
         }
     }
 
-    /// Consume the wrapper and return [NodeReply::Workers]
+    /// Consume the wrapper and return [RouterReply::Workers]
     pub fn take_workers(self) -> Result<Vec<Address>> {
         match self {
             Self::Workers(w) => Ok(w),
@@ -280,7 +280,7 @@ impl RouterReply {
         }
     }
 
-    /// Consume the wrapper and return [NodeReply::State]
+    /// Consume the wrapper and return [RouterReply::State]
     pub fn take_state(self) -> Result<bool> {
         match self {
             Self::State(b) => Ok(b),
@@ -288,7 +288,7 @@ impl RouterReply {
         }
     }
 
-    /// Returns Ok if self is [NodeReply::Ok]
+    /// Returns Ok if self is [RouterReply::Ok]
     pub fn is_ok(self) -> Result<()> {
         match self {
             Self::Ok => Ok(()),

@@ -62,7 +62,7 @@ impl UdsTransport {
         })
     }
 
-    /// Connects the [`UdsRouterHandle`] to the given socket peer.
+    /// Connects the [`UdsTransport`] to the given socket peer.
     ///
     /// ```rust
     /// use ockam_transport_uds::UdsTransport;
@@ -77,7 +77,7 @@ impl UdsTransport {
         self.router_handle.connect(peer.as_ref()).await
     }
 
-    /// Disconnects the [`UdsRouterHandle`] from the given socket peer.
+    /// Disconnects the [`UdsTransport`] from the given socket peer.
     ///
     /// ```rust
     /// use ockam_transport_uds::UdsTransport;
@@ -94,7 +94,7 @@ impl UdsTransport {
         self.router_handle.disconnect(peer.as_ref()).await
     }
 
-    /// Binds the [`UdsRouterHandle`] to listen and accept incomming connection requests to the given socket.
+    /// Binds the [`UdsTransport`] to listen and accept incomming connection requests to the given socket.
     ///
     /// ```rust
     /// use ockam_transport_uds::UdsTransport;

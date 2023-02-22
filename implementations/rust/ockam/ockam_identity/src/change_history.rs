@@ -31,7 +31,7 @@ pub enum IdentityHistoryComparison {
     Older,
 }
 
-/// Full history of [`Identity`] changes. History and corresponding secret keys are enough to recreate [`Identity`]
+/// Full history of [`crate::identity::Identity`] changes. History and corresponding secret keys are enough to recreate [`crate::identity::Identity`]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IdentityChangeHistory(Vec<IdentitySignedChange>);
 

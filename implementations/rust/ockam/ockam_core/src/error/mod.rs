@@ -28,7 +28,7 @@ pub type Result<T, E = Error> = core::result::Result<T, E>;
 ///
 /// Errors store:
 ///
-/// - A set of [error codes](`codes::Code`), which abstractly describe the
+/// - An [`ErrorCode`], which abstractly describe the
 ///   problem and allow easily matching against specific categories of error.
 /// - An open-ended payload, to which arbitrary data can be attached.
 /// - The "cause", of this error, if it has not been lost to serialization.
@@ -82,7 +82,7 @@ impl Error {
         Self(inner::ErrorData::new_without_cause(origin, kind).into())
     }
 
-    /// Return the [codes](`codes::ErrorCodes`) that identify this error.
+    /// Return the [`ErrorCode`] that identifies this error.
     pub fn code(&self) -> ErrorCode {
         self.0.code
     }
