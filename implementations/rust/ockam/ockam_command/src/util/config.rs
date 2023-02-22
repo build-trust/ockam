@@ -2,7 +2,7 @@
 
 use std::{ops::Deref, path::PathBuf, sync::RwLockReadGuard};
 
-use anyhow::Result;
+use crate::Result;
 use tracing::trace;
 
 use ockam::identity::IdentityIdentifier;
@@ -104,7 +104,7 @@ impl AuthoritiesConfig {
         let mut cfg = self.inner.write();
         cfg.add_authority(i, a);
         drop(cfg);
-        self.inner.persist_config_updates()
+        Ok(self.inner.persist_config_updates()?)
     }
 
     pub fn snapshot(&self) -> cli::AuthoritiesConfig {

@@ -1,6 +1,7 @@
 use crate::help;
 use crate::util::embedded_node;
-use anyhow::{anyhow, Result};
+use crate::Result;
+use anyhow::anyhow;
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 use ockam::compat::collections::HashMap;

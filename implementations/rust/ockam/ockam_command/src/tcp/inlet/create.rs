@@ -4,7 +4,6 @@ use crate::util::{
 use crate::Result;
 use crate::{help, CommandGlobalOpts};
 use anyhow::anyhow;
-use anyhow::ensure;
 use clap::Args;
 use ockam::identity::IdentityIdentifier;
 use ockam::{Context, TcpTransport};
@@ -105,10 +104,10 @@ async fn rpc(ctx: Context, (opts, mut cmd): (CommandGlobalOpts, CreateCommand)) 
     Ok(())
 }
 
-fn alias_parser(arg: &str) -> anyhow::Result<String> {
-    ensure! {
-        !arg.contains(':'),
-        "an inlet alias must not contain ':' characters"
+fn alias_parser(arg: &str) -> Result<String> {
+    if arg.contains(':') {
+        Err(anyhow!("an inlet alias must not contain ':' characters").into())
+    } else {
+        Ok(arg.to_string())
     }
-    Ok(arg.to_string())
 }

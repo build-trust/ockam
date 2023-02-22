@@ -1,6 +1,6 @@
-use std::convert::Infallible;
 use std::fmt::{Debug, Display, Formatter};
 
+use crate::version::Version;
 use crate::{exitcode, ExitCode};
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -29,6 +29,7 @@ impl Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", Version::short())?;
         if let Some(cause) = &self.cause {
             writeln!(f, "{}. Caused by: {}", self.description, cause)?;
         } else {
@@ -46,50 +47,24 @@ impl From<anyhow::Error> for Error {
     }
 }
 
-impl From<ockam::Error> for Error {
-    fn from(e: ockam::Error) -> Self {
-        Error::new(exitcode::SOFTWARE, e.into())
-    }
+macro_rules! gen_from_impl {
+    ($t:ty, $c:ident) => {
+        impl From<$t> for Error {
+            fn from(e: $t) -> Self {
+                Error::new(exitcode::$c, e.into())
+            }
+        }
+    };
 }
 
-impl From<ockam_api::cli_state::CliStateError> for Error {
-    fn from(e: ockam_api::cli_state::CliStateError) -> Self {
-        Error::new(exitcode::SOFTWARE, e.into())
-    }
-}
-
-impl From<std::io::Error> for Error {
-    fn from(e: std::io::Error) -> Self {
-        Error::new(exitcode::IOERR, e.into())
-    }
-}
-
-impl From<ockam_multiaddr::Error> for Error {
-    fn from(e: ockam_multiaddr::Error) -> Self {
-        Error::new(exitcode::SOFTWARE, e.into())
-    }
-}
-
-impl From<minicbor::decode::Error> for Error {
-    fn from(e: minicbor::decode::Error) -> Self {
-        Error::new(exitcode::DATAERR, e.into())
-    }
-}
-
-impl From<minicbor::encode::Error<Infallible>> for Error {
-    fn from(e: minicbor::encode::Error<Infallible>) -> Self {
-        Error::new(exitcode::DATAERR, e.into())
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(e: serde_json::Error) -> Self {
-        Error::new(exitcode::DATAERR, e.into())
-    }
-}
-
-impl From<std::net::AddrParseError> for Error {
-    fn from(e: std::net::AddrParseError) -> Self {
-        Error::new(exitcode::SOFTWARE, e.into())
-    }
-}
+gen_from_impl!(std::io::Error, IOERR);
+gen_from_impl!(std::fmt::Error, SOFTWARE);
+gen_from_impl!(std::net::AddrParseError, DATAERR);
+gen_from_impl!(hex::FromHexError, DATAERR);
+gen_from_impl!(serde_bare::error::Error, DATAERR);
+gen_from_impl!(serde_json::Error, DATAERR);
+gen_from_impl!(minicbor::encode::Error<std::convert::Infallible>, DATAERR);
+gen_from_impl!(minicbor::decode::Error, DATAERR);
+gen_from_impl!(ockam::Error, SOFTWARE);
+gen_from_impl!(ockam_api::cli_state::CliStateError, SOFTWARE);
+gen_from_impl!(ockam_multiaddr::Error, SOFTWARE);

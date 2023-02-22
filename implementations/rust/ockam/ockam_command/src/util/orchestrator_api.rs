@@ -7,9 +7,9 @@ use crate::{
         ProjectInfo,
     },
     util::Rpc,
-    CommandGlobalOpts,
+    CommandGlobalOpts, Result,
 };
-use anyhow::{Context as _, Result};
+use anyhow::Context as _;
 use minicbor::{Decode, Encode};
 use ockam::identity::credential::{Credential, OneTimeCode};
 use ockam::Context;

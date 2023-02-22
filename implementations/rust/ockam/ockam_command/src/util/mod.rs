@@ -6,7 +6,7 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::{anyhow, Context as _, Result};
+use anyhow::{anyhow, Context as _};
 use minicbor::{data::Type, Decode, Decoder, Encode};
 use tracing::{debug, error, trace};
 use tracing_subscriber::prelude::*;
@@ -25,7 +25,7 @@ use ockam_multiaddr::{
 
 use crate::node::util::start_embedded_node;
 use crate::util::output::Output;
-use crate::{CommandGlobalOpts, OutputFormat};
+use crate::{CommandGlobalOpts, OutputFormat, Result};
 
 pub mod api;
 pub mod exitcode;
@@ -218,7 +218,7 @@ impl<'a> Rpc<'a> {
             Ok(t) => Ok(t),
             Err(e) => {
                 error!(%e, dec = %minicbor::display(&self.buf), hex = %hex::encode(&self.buf), "Failed to decode response");
-                Err(anyhow!("Failed to decode response body: {}", e))
+                Err(anyhow!("Failed to decode response body: {}", e).into())
             }
         }
     }
@@ -247,7 +247,7 @@ impl<'a> Rpc<'a> {
             Ok(dec)
         } else {
             let msg = self.parse_err_msg(hdr, dec);
-            Err(anyhow!(msg))
+            Err(anyhow!(msg).into())
         }
     }
 
@@ -452,7 +452,7 @@ pub fn print_path(p: &Path) -> String {
 ///
 /// The input string can be either a plain address of a MultiAddr formatted string.
 /// Examples: `/node/<name>`, `<name>`
-pub fn extract_address_value(input: &str) -> anyhow::Result<String> {
+pub fn extract_address_value(input: &str) -> Result<String> {
     // we default to the `input` value
     let mut addr = input.to_string();
     // if input has "/", we process it as a MultiAddr
@@ -479,14 +479,14 @@ pub fn extract_address_value(input: &str) -> anyhow::Result<String> {
                         .context("Failed to parse `project` protocol")?
                         .to_string();
                 }
-                code => return Err(anyhow!("Protocol {code} not supported")),
+                code => return Err(anyhow!("Protocol {code} not supported").into()),
             }
         } else {
-            return Err(err);
+            return Err(err.into());
         }
     }
     if addr.is_empty() {
-        return Err(anyhow!("Empty address in input: {input}"));
+        return Err(anyhow!("Empty address in input: {input}").into());
     }
     Ok(addr)
 }
@@ -496,7 +496,7 @@ pub fn extract_address_value(input: &str) -> anyhow::Result<String> {
 /// Ensures that the node's name will be returned if the input string is a `MultiAddr` of the `node` type
 /// Examples:
 ///     `node create n1` returns n1, `node create /node/n1` returns n1, `node create /tcp/n2` returns an error message.
-pub fn parse_node_name(input: &str) -> anyhow::Result<String> {
+pub fn parse_node_name(input: &str) -> Result<String> {
     let addr = input.to_string();
     // if input has "/", we process it as a MultiAddr like in `extract_address_value`
     if input.contains('/') {
@@ -507,7 +507,7 @@ pub fn parse_node_name(input: &str) -> anyhow::Result<String> {
             Err(e) => {
                 // Tested with input strings with large tcp numbers. e.g: `node create /node/n1/tcp/28273829`
                 err_message.push_str(&format!("\n{e}"));
-                return Err(anyhow!(err_message));
+                return Err(anyhow!(err_message).into());
             }
         };
         if let Some(p) = maddr.iter().next() {
@@ -516,11 +516,11 @@ pub fn parse_node_name(input: &str) -> anyhow::Result<String> {
                 return Ok(node_name);
             }
         } else {
-            return Err(anyhow!(err_message));
+            return Err(anyhow!(err_message).into());
         }
     }
     if addr.is_empty() {
-        return Err(anyhow!("Empty address in node name input: {input}"));
+        return Err(anyhow!("Empty address in node name input: {input}").into());
     }
     Ok(addr)
 }
@@ -530,7 +530,7 @@ pub fn parse_node_name(input: &str) -> anyhow::Result<String> {
 /// Example:
 ///     if n1 has address of 127.0.0.1:1234
 ///     `/node/n1` -> `/ip4/127.0.0.1/tcp/1234`
-pub fn process_multi_addr(addr: &MultiAddr, cli_state: &CliState) -> anyhow::Result<MultiAddr> {
+pub fn process_multi_addr(addr: &MultiAddr, cli_state: &CliState) -> Result<MultiAddr> {
     let mut processed_addr = MultiAddr::default();
     for proto in addr.iter() {
         match proto.code() {

@@ -1,6 +1,6 @@
 use crate::util::output::Output;
 use crate::util::print_output;
-use crate::CommandGlobalOpts;
+use crate::{CommandGlobalOpts, Result};
 use anyhow::anyhow;
 use clap::{Args, ValueEnum};
 use core::fmt::Write;
@@ -61,7 +61,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> crate::Result<()> {
 }
 
 impl Output for LongIdentityResponse<'_> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         let mut w = String::new();
         let id: IdentityChangeHistory = serde_bare::from_slice(self.identity.0.as_ref())?;
         write!(w, "{id}")?;
@@ -70,7 +70,7 @@ impl Output for LongIdentityResponse<'_> {
 }
 
 impl Output for ShortIdentityResponse<'_> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "{}", self.identity_id)?;
         Ok(w)

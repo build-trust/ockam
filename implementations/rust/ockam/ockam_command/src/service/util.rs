@@ -2,9 +2,10 @@ use core::fmt::Write;
 use ockam_api::nodes::models::services::ServiceList;
 
 use crate::util::output::Output;
+use crate::Result;
 
 impl Output for ServiceList<'_> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         if self.list.is_empty() {
             return Ok("No services found".to_string());
         }

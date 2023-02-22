@@ -2,7 +2,8 @@ use crate::node::NodeOpts;
 use crate::service::config::OktaIdentityProviderConfig;
 use crate::util::{api, node_rpc, RpcBuilder};
 use crate::CommandGlobalOpts;
-use anyhow::{anyhow, Result};
+use crate::Result;
+use anyhow::anyhow;
 use clap::{Args, Subcommand};
 use minicbor::Encode;
 use ockam::{Context, TcpTransport};
@@ -281,7 +282,7 @@ where
         }
         _ => {
             eprintln!("{}", rpc.parse_err_msg(res, dec));
-            Err(anyhow!("Failed to start {serv_name} service"))
+            Err(anyhow!("Failed to start {serv_name} service").into())
         }
     }
 }

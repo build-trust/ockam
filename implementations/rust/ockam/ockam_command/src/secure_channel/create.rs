@@ -56,7 +56,7 @@ impl CreateCommand {
         cloud_addr: &MultiAddr,
         api_node: &str,
         tcp: &TcpTransport,
-    ) -> anyhow::Result<MultiAddr> {
+    ) -> Result<MultiAddr> {
         let (to, meta) = clean_multiaddr(&self.to, &opts.state)
             .context(format!("Could not convert {} into route", &self.to))?;
 
