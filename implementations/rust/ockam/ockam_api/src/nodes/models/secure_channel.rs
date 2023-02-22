@@ -99,13 +99,15 @@ pub struct CreateSecureChannelListenerRequest<'a> {
     #[n(0)] tag: TypeTag<8112242>,
     #[b(1)] pub addr: Cow<'a, str>,
     #[b(2)] pub authorized_identifiers: Option<Vec<CowStr<'a>>>,
-    #[b(3)] pub identity: Option<CowStr<'a>>,
+    #[b(3)] pub vault: Option<CowStr<'a>>,
+    #[b(4)] pub identity: Option<CowStr<'a>>,
 }
 
 impl<'a> CreateSecureChannelListenerRequest<'a> {
     pub fn new(
         addr: &Address,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+        vault: Option<String>,
         identity: Option<String>,
     ) -> Self {
         Self {
@@ -114,6 +116,7 @@ impl<'a> CreateSecureChannelListenerRequest<'a> {
             addr: addr.to_string().into(),
             authorized_identifiers: authorized_identifiers
                 .map(|x| x.into_iter().map(|y| y.to_string().into()).collect()),
+            vault: vault.map(|x| x.into()),
             identity: identity.map(|x| x.into()),
         }
     }

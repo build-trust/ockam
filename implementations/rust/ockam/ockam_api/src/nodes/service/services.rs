@@ -390,6 +390,7 @@ impl NodeManager {
                 Address::from_string(KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS),
                 None,
                 None,
+                None,
                 context,
             )
             .await?;

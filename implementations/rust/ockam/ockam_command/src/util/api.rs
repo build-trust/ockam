@@ -100,6 +100,7 @@ pub(crate) fn create_secure_channel_listener(
     let payload = models::secure_channel::CreateSecureChannelListenerRequest::new(
         addr,
         authorized_identifiers,
+        None,
         identity,
     );
 
