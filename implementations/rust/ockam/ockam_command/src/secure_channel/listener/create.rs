@@ -27,7 +27,7 @@ pub struct CreateCommand {
     #[arg(short, long, value_name = "IDENTIFIERS")]
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
 
-    #[arg(value_name = "VAULT", long)]
+    #[arg(value_name = "VAULT", long, requires = "identity")]
     vault: Option<String>,
 
     #[arg(value_name = "IDENTITY", long)]
