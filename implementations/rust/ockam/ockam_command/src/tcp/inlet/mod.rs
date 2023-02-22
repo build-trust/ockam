@@ -16,7 +16,7 @@ pub struct TcpInletCommand {
 #[derive(Clone, Debug, Subcommand)]
 pub enum TcpInletSubCommand {
     Create(CreateCommand),
-    List(ListCommand)
+    List(ListCommand),
 }
 
 impl TcpInletCommand {
