@@ -27,6 +27,24 @@ use crate::util::output::Output;
 use crate::util::{api, exitcode, node_rpc, Rpc};
 use crate::{help, CommandGlobalOpts, Result};
 
+const INFLUXDB_HELP_DETAIL: &str = r#"
+About:
+    InfluxDB addon allows you to create, store and retrieve InfluxDB Tokens with expiry times.
+
+Examples:
+    Examples of how to configure and use the InfluxDB Cloud addon can be found within the example documentation.
+    https://docs.ockam.io/guides/examples/influxdb-cloud-token-lease-management
+"#;
+
+const CONFLUENT_HELP_DETAIL: &str = r#"
+About:
+    Confluent Cloud addon allows you to enable end-to-end encryption with your Kafka Consumers and Kafka Producers
+
+Examples:
+    Examples of how to configure and use the Confluent Cloud addon can be found within the example documentation.
+    https://docs.ockam.io/guides/examples/end-to-end-encrypted-kafka 
+"#;
+
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, subcommand_required = true)]
 pub struct AddonCommand {
@@ -74,6 +92,7 @@ pub enum AddonSubcommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum ConfigureAddonCommand {
+    /// Configure the Okta addon for a project
     Okta {
         /// Ockam Project name
         #[arg(
@@ -120,6 +139,8 @@ pub enum ConfigureAddonCommand {
         #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
         attributes: Vec<String>,
     },
+    /// Configure the InfluxDB Cloud addon for a project
+    #[command(after_long_help = help::template(INFLUXDB_HELP_DETAIL))]
     InfluxDb {
         /// Ockam Project Name
         #[arg(
@@ -208,7 +229,8 @@ pub enum ConfigureAddonCommand {
         )]
         admin_access_role: Option<String>,
     },
-    #[command(hide = help::hide())]
+    /// Configure the Confluent Cloud addon for a project
+    #[command(after_long_help = help::template(CONFLUENT_HELP_DETAIL))]
     Confluent {
         /// Ockam project name
         #[arg(
