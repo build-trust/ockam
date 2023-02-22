@@ -174,6 +174,9 @@ impl NodeManager {
                 idt_config.get(ctx, self.vault()?).await?
             }
         } else {
+            if vault_name.is_some() {
+                warn!("The optional vault is ignored when an optional identity is not specified. Using the default identity.");
+            }
             self.identity()?.async_try_clone().await?
         };
 

@@ -941,3 +941,32 @@ function skip_if_long_tests_not_enabled() {
     skip "LONG_TESTS are not enabled"
   fi
 }
+
+@test "secure-channels with authorized identifiers" {
+  run $OCKAM vault delete v1
+  run $OCKAM vault delete v2
+  run $OCKAM identity delete i1
+  run $OCKAM identity delete i2
+
+  run $OCKAM vault create v1
+  assert_success
+  run $OCKAM identity create i1 --vault v1
+  assert_success
+  idt1=$($OCKAM identity show i1)
+
+  run $OCKAM vault create v2
+  assert_success
+  run $OCKAM identity create i2 --vault v2
+  assert_success
+  idt2=$($OCKAM identity show i2)
+
+  run $OCKAM node create n1 --vault v1 --identity i1
+  assert_success
+  run $OCKAM node create n2 --vault v1 --identity i1
+  assert_success
+
+  run $OCKAM secure-channel-listener create l --at n2 --vault v2 --identity i2 --authorized-identifiers $idt1
+  run bash -c " $OCKAM secure-channel create --from n1 --to /node/n2/service/l --authorized $idt2 \
+              | $OCKAM message send hello --from /node/n1 --to -/service/uppercase"
+  assert_success
+}
