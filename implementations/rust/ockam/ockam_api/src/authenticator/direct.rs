@@ -10,8 +10,9 @@ use ockam::identity::credential::{Credential, OneTimeCode, SchemaId, Timestamp};
 use ockam::identity::{
     Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityVault,
 };
-use ockam_core::api::{self, assert_request_match, assert_response_match};
-use ockam_core::api::{Error, Method, Request, RequestBuilder, Response, ResponseBuilder, Status};
+use ockam_core::api::{
+    self, Error, Method, Request, RequestBuilder, Response, ResponseBuilder, Status,
+};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
 use ockam_node::Context;
@@ -24,6 +25,12 @@ use tracing::{trace, warn};
 use types::AddMember;
 
 use crate::authenticator::direct::types::CreateToken;
+
+#[cfg(feature = "tag")]
+use {
+    crate::schema::tag,
+    ockam_core::api::{assert_request_match, assert_response_match},
+};
 
 use self::types::Enroller;
 
@@ -328,7 +335,8 @@ impl Client {
     ) -> Result<()> {
         let req = Request::post("/members").body(AddMember::new(id).with_attributes(attributes));
         self.buf = self.request("add-member", "add_member", &req).await?;
-        assert_response_match(None, &self.buf);
+        #[cfg(feature = "tag")]
+        assert_response_match(None, &self.buf, tag::cddl());
         let mut d = Decoder::new(&self.buf);
         let res = response("add-member", &mut d)?;
         if res.status() == Some(Status::Ok) {
@@ -341,7 +349,8 @@ impl Client {
     pub async fn create_token(&mut self, attributes: HashMap<&str, &str>) -> Result<OneTimeCode> {
         let req = Request::post("/tokens").body(CreateToken::new().with_attributes(attributes));
         self.buf = self.request("create-token", "create_token", &req).await?;
-        assert_response_match("onetime_code", &self.buf);
+        #[cfg(feature = "tag")]
+        assert_response_match("onetime_code", &self.buf, tag::cddl());
         let mut d = Decoder::new(&self.buf);
         let res = response("create-token", &mut d)?;
         if res.status() == Some(Status::Ok) {
@@ -354,7 +363,8 @@ impl Client {
     pub async fn credential(&mut self) -> Result<Credential> {
         let req = Request::post("/credential");
         self.buf = self.request("new-credential", None, &req).await?;
-        assert_response_match("credential", &self.buf);
+        #[cfg(feature = "tag")]
+        assert_response_match("credential", &self.buf, tag::cddl());
         let mut d = Decoder::new(&self.buf);
         let res = response("new-credential", &mut d)?;
         if res.status() == Some(Status::Ok) {
@@ -367,7 +377,8 @@ impl Client {
     pub async fn credential_with(&mut self, c: &OneTimeCode) -> Result<Credential> {
         let req = Request::post("/credential").body(c);
         self.buf = self.request("new-credential", None, &req).await?;
-        assert_response_match("credential", &self.buf);
+        #[cfg(feature = "tag")]
+        assert_response_match("credential", &self.buf, tag::cddl());
         let mut d = Decoder::new(&self.buf);
         let res = response("new-credential", &mut d)?;
         if res.status() == Some(Status::Ok) {
@@ -381,15 +392,15 @@ impl Client {
     async fn request<T>(
         &mut self,
         label: &str,
-        schema: impl Into<Option<&str>>,
+        #[allow(unused_variables)] schema: impl Into<Option<&str>>,
         req: &RequestBuilder<'_, T>,
     ) -> Result<Vec<u8>>
     where
         T: Encode<()>,
     {
-        let mut buf = Vec::new();
-        req.encode(&mut buf)?;
-        assert_request_match(schema, &buf);
+        let buf = req.to_vec()?;
+        #[cfg(feature = "tag")]
+        assert_request_match(schema, &buf, tag::cddl());
         trace! {
             target: "ockam_api::authenticator::direct::client",
             id     = %req.header().id(),

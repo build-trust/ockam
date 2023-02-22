@@ -60,7 +60,10 @@ error-traces = ["backtrace", "tracing-error", "once_cell"]
 # message flows within Ockam apps.
 debugger = []
 
-tag = ["cddl-cat"]
+tag = ["cddl-cat", "serde_cbor"]
+
+[dev-dependencies]
+quickcheck = "1.0.1"
 
 [dependencies]
 ockam_macros = { path = "../ockam_macros", version = "^0.27.0", default_features = false }
@@ -96,3 +99,4 @@ tracing-error = { version = "0.2", default-features = false, optional = true }
 backtrace = { version = "0.3", default-features = false, features = ["std", "serialize-serde"], optional = true }
 once_cell = { version = "1", optional = true, default-features = false }
 cddl-cat = { version = "0.6.1", optional = true }
+serde_cbor = { version = "0.11.2", optional = true }

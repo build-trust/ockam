@@ -186,7 +186,7 @@ pub mod tests {
         use cddl_cat::validate_cbor_bytes;
         use quickcheck::{quickcheck, TestResult};
 
-        use ockam_core::api::SCHEMA;
+        use crate::schema::SCHEMA;
 
         use super::*;
 

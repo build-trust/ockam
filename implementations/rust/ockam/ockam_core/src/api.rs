@@ -10,10 +10,63 @@ use minicbor::encode::{self, Encoder, Write};
 use minicbor::{Decode, Decoder, Encode};
 use tinyvec::ArrayVec;
 
-#[cfg(feature = "tag")]
-use crate::TypeTag;
-
 pub const SCHEMA: &str = core::include_str!("schema.cddl");
+
+#[cfg(feature = "tag")]
+use {
+    crate::TypeTag,
+    alloc::collections::btree_map::Entry,
+    cddl_cat::{context::BasicContext, flatten::flatten, parse_cddl},
+    once_cell::race::OnceBox,
+};
+
+#[cfg(feature = "tag")]
+pub fn merged_cddl(cddl_schemas: &[&str]) -> Result<BasicContext> {
+    fn schema(cddl_schema: &str) -> Result<BasicContext> {
+        let cddl =
+            parse_cddl(cddl_schema).map_err(|e| crate::Error::new(Origin::Core, Kind::Io, e))?;
+        let cddl = flatten(&cddl).map_err(|e| crate::Error::new(Origin::Core, Kind::Io, e))?;
+        Ok(BasicContext::new(cddl))
+    }
+
+    let merged_schema = [&[SCHEMA], cddl_schemas].concat();
+    if let Some(merged_cddl) = merged_schema
+        .iter()
+        .map(|schema_str| schema(schema_str))
+        .reduce(|acc, cddl| {
+            let mut ctx = acc?;
+            for (k, v) in cddl?.rules {
+                match ctx.rules.entry(k) {
+                    Entry::Vacant(e) => {
+                        e.insert(v);
+                    }
+                    Entry::Occupied(e) => {
+                        return Err(crate::Error::new(
+                            Origin::Core,
+                            Kind::AlreadyExists,
+                            format!("CDDL files contain duplicate keys: {}", e.key()),
+                        ))
+                    }
+                }
+            }
+            Ok(ctx)
+        })
+    {
+        merged_cddl
+    } else {
+        Err(crate::Error::new(
+            Origin::Core,
+            Kind::Io,
+            "No valid CDDL schema provided".to_string(),
+        ))
+    }
+}
+
+#[cfg(feature = "tag")]
+pub fn cddl() -> &'static BasicContext {
+    static INSTANCE: OnceBox<BasicContext> = OnceBox::new();
+    INSTANCE.get_or_init(|| Box::new(merged_cddl(&[]).unwrap()))
+}
 
 /// A request header.
 #[derive(Debug, Clone, Encode, Decode)]
@@ -451,7 +504,7 @@ impl<'a, T: Encode<()>> RequestBuilder<'a, T> {
         Ok(())
     }
 
-    pub fn to_vec(self) -> Result<Vec<u8>, encode::Error<<Vec<u8> as Write>::Error>> {
+    pub fn to_vec(&self) -> Result<Vec<u8>, encode::Error<<Vec<u8> as Write>::Error>> {
         let mut buf = Vec::new();
         self.encode(&mut buf)?;
 
@@ -523,42 +576,65 @@ impl<T: Encode<()>> ResponseBuilder<T> {
 }
 
 #[allow(unused_variables)]
-pub fn assert_request_match<'a>(struct_name: impl Into<Option<&'a str>>, cbor: &[u8]) {
-    #[cfg(feature = "tag")]
-    {
-        use cddl_cat::validate_cbor_bytes;
+#[cfg(feature = "tag")]
+pub fn assert_request_match<'a>(
+    struct_name: impl Into<Option<&'a str>>,
+    cbor: &[u8],
+    cddl_context: &BasicContext,
+) {
+    use cddl_cat::validate_cbor;
 
-        let mut dec = Decoder::new(cbor);
-        dec.decode::<Request>().expect("header");
+    let cbor_value = serde_cbor::from_slice(cbor).expect("header");
 
-        if let Err(e) = validate_cbor_bytes("request", SCHEMA, &cbor[..dec.position()]) {
-            tracing::error!(error = %e, "request header mismatch")
-        }
-
-        if let Some(struct_name) = struct_name.into() {
-            if let Err(e) = validate_cbor_bytes(struct_name, SCHEMA, &cbor[dec.position()..]) {
-                tracing::error!(%struct_name, error = %e, "request body mismatch")
+    match cddl_context.rules.get("request") {
+        Some(request_rules) => {
+            if let Err(e) = validate_cbor(request_rules, &cbor_value, cddl_context) {
+                tracing::error!(error = %e, "request header mismatch")
             }
+        }
+        None => tracing::error!("no request header definition found"),
+    }
+
+    if let Some(struct_name) = struct_name.into() {
+        match cddl_context.rules.get(struct_name) {
+            Some(request_rules) => {
+                if let Err(e) = validate_cbor(request_rules, &cbor_value, cddl_context) {
+                    tracing::error!(error = %e, "request body mismatch")
+                }
+            }
+            None => tracing::error!("no request body definition found"),
         }
     }
 }
 
+#[cfg(feature = "tag")]
 #[allow(unused_variables)]
-pub fn assert_response_match<'a>(struct_name: impl Into<Option<&'a str>>, cbor: &[u8]) {
-    #[cfg(feature = "tag")]
-    {
-        use cddl_cat::validate_cbor_bytes;
+pub fn assert_response_match<'a>(
+    struct_name: impl Into<Option<&'a str>>,
+    cbor: &[u8],
+    cddl_context: &BasicContext,
+) {
+    use cddl_cat::validate_cbor;
 
-        let mut dec = Decoder::new(cbor);
-        dec.decode::<Response>().expect("header");
+    let cbor_value = serde_cbor::from_slice(cbor).expect("header");
 
-        if let Err(e) = validate_cbor_bytes("response", SCHEMA, &cbor[..dec.position()]) {
-            tracing::error!(error = %e, "response header mismatch")
+    match cddl_context.rules.get("response") {
+        Some(request_rules) => {
+            if let Err(e) = validate_cbor(request_rules, &cbor_value, cddl_context) {
+                tracing::error!(error = %e, "response header mismatch")
+            }
         }
-
+        None => tracing::error!("no response header definition found"),
+    }
+    if let Some(struct_name) = struct_name.into() {
         if let Some(struct_name) = struct_name.into() {
-            if let Err(e) = validate_cbor_bytes(struct_name, SCHEMA, &cbor[dec.position()..]) {
-                tracing::error!(%struct_name, error = %e, "response body mismatch")
+            match cddl_context.rules.get(struct_name) {
+                Some(request_rules) => {
+                    if let Err(e) = validate_cbor(request_rules, &cbor_value, cddl_context) {
+                        tracing::error!(error = %e, "response body mismatch")
+                    }
+                }
+                None => tracing::error!("no response body definition found"),
             }
         }
     }
@@ -568,7 +644,9 @@ pub fn assert_response_match<'a>(struct_name: impl Into<Option<&'a str>>, cbor: 
 pub fn is_ok(label: &str, buf: &[u8]) -> Result<()> {
     let mut d = Decoder::new(buf);
     let res = response(label, &mut d)?;
-    assert_response_match(None, buf);
+
+    #[cfg(feature = "tag")]
+    assert_response_match(None, buf, cddl());
     if res.status() == Some(Status::Ok) {
         Ok(())
     } else {
@@ -579,14 +657,15 @@ pub fn is_ok(label: &str, buf: &[u8]) -> Result<()> {
 /// Decode response and an optional body.
 pub fn decode_option<'a, 'b, T: Decode<'b, ()>>(
     label: &'a str,
-    struct_name: impl Into<Option<&'a str>>,
+    #[allow(unused_variables)] struct_name: impl Into<Option<&'a str>>,
     buf: &'b [u8],
 ) -> Result<Option<T>> {
     let mut d = Decoder::new(buf);
     let res = response(label, &mut d)?;
     match res.status() {
         Some(Status::Ok) => {
-            assert_response_match(struct_name, buf);
+            #[cfg(feature = "tag")]
+            assert_response_match(struct_name, buf, cddl());
             Ok(Some(d.decode()?))
         }
         Some(Status::NotFound) => Ok(None),
@@ -636,7 +715,6 @@ pub(crate) fn error(label: &str, res: &Response, dec: &mut Decoder<'_>) -> crate
         crate::Error::new(Origin::Application, Kind::Protocol, label)
     }
 }
-
 /// Newtype around a byte-slice that is assumed to be CBOR-encoded.
 #[derive(Debug, Copy, Clone)]
 pub struct Cbor<'a>(pub &'a [u8]);
@@ -650,5 +728,179 @@ impl<C> Encode<C> for Cbor<'_> {
         e.writer_mut()
             .write_all(self.0)
             .map_err(encode::Error::write)
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "tag")]
+mod merged_cddl_test {
+
+    use super::merged_cddl;
+
+    #[test]
+    fn test_merged_cddl() {
+        use cddl_cat::validate_cbor;
+        use serde::Serialize;
+
+        let schema1: &str = r##"request_1 = {id: int, name: tstr}"##;
+        let schema2: &str = r##"request_2 = {id: int, name: tstr}"##;
+
+        let merged_cddl = merged_cddl(&[schema1, schema2]);
+        let rule_request_1 = merged_cddl
+            .as_ref()
+            .unwrap()
+            .rules
+            .get("request_1")
+            .unwrap();
+
+        #[derive(Serialize)]
+        struct Request1Struct {
+            id: i8,
+            name: String,
+        }
+
+        let request_1 = Request1Struct {
+            id: 1,
+            name: "request_1".to_string(),
+        };
+
+        let cbor_bytes = serde_cbor::to_vec(&request_1).unwrap();
+        let cbor_value = serde_cbor::from_slice(&cbor_bytes).unwrap();
+        validate_cbor(rule_request_1, &cbor_value, merged_cddl.as_ref().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn test_merged_cddl_duplicate_entry() {
+        let schema1: &str = r##"request_1 = {id: int, name: tstr}"##;
+
+        // same key, albeit with captial "ID" -> should error
+        let schema2: &str = r##"request_1 = {ID: int, name: tstr}"##;
+
+        let merged_cddl = merged_cddl(&[schema1, schema2]);
+        match merged_cddl {
+            Err(e) => assert_eq!(
+                "CDDL files contain duplicate keys: request_1",
+                e.to_string()
+            ),
+            Ok(_) => panic!("Returned an Ok variant!"),
+        }
+    }
+
+    #[test]
+    fn test_merged_cddl_no_valid_cddl() {
+        let schema1: &str = r##"foo bar"##;
+
+        let merged_cddl = merged_cddl(&[schema1]);
+        match merged_cddl {
+            Err(e) => assert_eq!("Unparseable(bar)", e.to_string()),
+            Ok(_) => panic!("Returned an Ok variant!"),
+        }
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "tag")]
+mod schema_test {
+
+    use super::*;
+    use cddl_cat::validate_cbor_bytes;
+    use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
+
+    const METHODS: &[Method] = &[
+        Method::Get,
+        Method::Post,
+        Method::Put,
+        Method::Delete,
+        Method::Patch,
+    ];
+
+    const STATUS: &[Status] = &[
+        Status::Ok,
+        Status::BadRequest,
+        Status::NotFound,
+        Status::MethodNotAllowed,
+        Status::InternalServerError,
+        Status::NotImplemented,
+    ];
+
+    #[derive(Debug, Clone)]
+    struct Req(Request<'static>);
+
+    #[derive(Debug, Clone)]
+    struct Res(Response);
+
+    #[derive(Debug, Clone)]
+    struct Er(Error<'static>);
+
+    impl Arbitrary for Req {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Req(Request::new(
+                *g.choose(METHODS).unwrap(),
+                String::arbitrary(g),
+                bool::arbitrary(g),
+            ))
+        }
+    }
+
+    impl Arbitrary for Res {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Res(Response::new(
+                Id::fresh(),
+                *g.choose(STATUS).unwrap(),
+                bool::arbitrary(g),
+            ))
+        }
+    }
+
+    impl Arbitrary for Er {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let mut e = Error::new(String::arbitrary(g));
+            if bool::arbitrary(g) {
+                e = e.with_method(*g.choose(METHODS).unwrap())
+            }
+            if bool::arbitrary(g) {
+                e = e.with_message(String::arbitrary(g))
+            }
+            Er(e)
+        }
+    }
+
+    quickcheck! {
+        fn request_schema(a: Req) -> TestResult {
+            let cbor = minicbor::to_vec(a.0).unwrap();
+            if let Err(e) = validate_cbor_bytes("request", SCHEMA, &cbor) {
+                return TestResult::error(e.to_string())
+            }
+            TestResult::passed()
+        }
+
+        fn response_schema(a: Res) -> TestResult {
+            let cbor = minicbor::to_vec(a.0).unwrap();
+            if let Err(e) = validate_cbor_bytes("response", SCHEMA, &cbor) {
+                return TestResult::error(e.to_string())
+            }
+            TestResult::passed()
+        }
+
+        fn error_schema(a: Er) -> TestResult {
+            let cbor = minicbor::to_vec(a.0).unwrap();
+            if let Err(e) = validate_cbor_bytes("error", SCHEMA, &cbor) {
+                return TestResult::error(e.to_string())
+            }
+            TestResult::passed()
+        }
+
+        fn type_check(a: Req, b: Res, c: Er) -> TestResult {
+            let cbor_a = minicbor::to_vec(a.0).unwrap();
+            let cbor_b = minicbor::to_vec(b.0).unwrap();
+            let cbor_c = minicbor::to_vec(c.0).unwrap();
+            assert!(minicbor::decode::<Response>(&cbor_a).is_err());
+            assert!(minicbor::decode::<Error>(&cbor_a).is_err());
+            assert!(minicbor::decode::<Request>(&cbor_b).is_err());
+            assert!(minicbor::decode::<Error>(&cbor_b).is_err());
+            assert!(minicbor::decode::<Request>(&cbor_c).is_err());
+            assert!(minicbor::decode::<Response>(&cbor_c).is_err());
+            TestResult::passed()
+        }
     }
 }

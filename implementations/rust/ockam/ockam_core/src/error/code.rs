@@ -230,19 +230,17 @@ pub enum Kind {
     /// available on the [`Error`](crate::Error) itself.
     NotFound = 4,
 
-    /// The operation failed because
+    /// The operation failed because a resource already exists.
     ///
     /// For example, this may be appropriate for:
     ///
-    /// - A vault which does not recognize a `Secret` which it receives.
-    /// - FFI that receives an integer `handle` that does not belong to any
-    ///   known entity.
-    /// - Local [`Address`](crate::Address) which don't correspond to any known
-    ///   `Worker` or `Processor`.
-    /// - [`Address`](crate::Address) with a transport of an unknown or
-    ///   unsupported type.
+    /// - A ockam node already exists
+    /// - A vault state already exists
+    /// - An entry in a cddl file that already has an entry for a given key.
+    ///   This would indicate that a resource has been definied multiple times,
+    ///   possibly in different wasys.
     ///
-    /// Information about what exactly it is that could not be located should be
+    /// Information about what exactly it is that already existed should be
     /// available on the [`Error`](crate::Error) itself.
     AlreadyExists = 5,
 
