@@ -1,0 +1,204 @@
+;;; Authenticated attributes ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+attributes = {
+    ?0: 4724285,
+     1: {* text => bytes }
+}
+
+attribute = {
+    ?0: 4592146,
+     1: value
+}
+
+value = bytes
+
+;;; Spaces ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+space = {
+   ?0: 7574645
+    1: space_id
+    2: space_name
+    3: [+ user]
+}
+user = text
+
+
+spaces = [* space]
+
+
+
+create_space = {
+   ?0: 3888657,
+    1: space_name
+    2: [+ user]
+}
+
+space_id   = text
+space_name = text
+
+;;; Projects ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+project = {
+   ?0: 9056532,
+    1: project_id,
+    2: project_name,
+    3: space_name,
+    4: [+ service_name],
+    5: access_route,  ; could be an empty string if the cloud node hasn't started yet (TODO: make it an optional field instead)
+    6: [+ user],
+    7: space_id,
+    ?8: project_node_identity, ; optional, it can be missing if the cloud node hasn't started yet
+    ?9: authority_access_route, ; optional, it can be missing if the authority hasn't started yet
+    ?10: authority_identity ; optional, hex encoded authority identity
+}
+
+project_node_identity = identity_id
+
+authority_access_route = text
+authority_identity = text
+
+projects = [* project]
+
+create_project = {
+    ?0: 8669570,
+    1: project_name,
+    2: [+ service_name]
+    3: [+ user]
+}
+
+project_id   = text
+project_name = text
+service_name = text
+access_route = text
+
+;;; Identity ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+identity_create_response = {
+    ?0: 3500430,
+     1: identity,
+     2: identity_id,
+}
+
+validate_identity_change_history_request = {
+    ?0: 4245404,
+     1: identity,
+}
+
+validate_identity_change_history_response = {
+    ?0: 3500430,
+     1: identity_id,
+}
+
+compare_identity_change_history_request = {
+    ?0: 7300740,
+     1: current_identity,
+     2: known_identity,
+}
+
+create_signature_request = {
+    ?0: 1019956,
+     1: identity,
+     2: data,
+}
+
+create_signature_response = {
+    ?0: 2592832,
+     1: signature,
+}
+
+verify_signature_request = {
+    ?0: 7550780,
+     1: signer_identity,
+     2: data,
+     3: signature,
+}
+
+verify_signature_response = {
+    ?0: 1236745,
+     1: verified,
+}
+
+identity         = bytes
+current_identity = bytes
+known_identity   = bytes
+signer_identity  = bytes
+identity_id      = text
+signature        = bytes
+peer_identity_id = text
+data             = bytes
+verified         = bool
+
+;;; Enroll ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+enrollment_token = {
+    ?0: 8932763,
+     1: token
+}
+
+token = text
+
+request_enrollment_token = {
+    ?0: 8560526,
+     1: attributes
+}
+
+;;; Credential ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+credential = {
+    ?0: 3796735,
+     1: credential_data_bytes,
+     2: credential_signature_bytes
+}
+
+credential_data_bytes = bytes
+credential_signature_bytes = bytes
+
+credential_data = {
+    ?1: uint,        ;; schema id
+     2: attributes,
+     3: identity_id, ;; subject
+     4: identity_id, ;; issuer
+     5: text,        ;; issuer key label
+     6: uint,        ;; POSIX timestamp (created)
+     7: uint         ;; POSIX timestamp (expiry)
+}
+
+verify_request = {
+    ?0: 6844116,
+     1: bytes,                      ;; credential
+     2: identity_id,                ;; subject
+     3: { identity_id => identity } ;; acceptable identities
+}
+
+verify_response = {
+    ?0: 6845123,
+     1: attributes,
+     2: uint        ;; expiration timestamp
+}
+
+;;; Authenticator ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+add_member = {
+    ?0: 2820828,
+     1: identity_id,
+}
+
+create_token = {
+	?0: 2502742,
+     1: {* text => text } ;; attributes
+}
+
+onetime_code = {
+    ?0: 5112299,
+	 1: bytes    ;; 32 bytes code
+}
+
+;;; Subscription ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+activate_request = {
+    ?0: 3888657,
+     1: text,       ;; space_id
+     2: text,       ;; subscription_data
+     3: text,       ;; space_name
+     4: [+ text]    ;; owner_emails
+}
