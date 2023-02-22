@@ -22,7 +22,7 @@ permissions:
 env:
   DEPLOYMENT_NAME: ockam
   ARTIFACT_NAME: ockam
-  ORGANIZATION: build-trust
+  ORGANIZATION: ${{ github.repository_owner }}
 
 jobs:
   build-and-publish-artifact:

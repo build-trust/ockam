@@ -261,7 +261,7 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
 
   temp_dir=$(mktemp -d)
   pushd "$temp_dir"
-  gh release download "$latest_tag_name" -R $owner/ockam
+  gh release download "$latest_tag_name" -p sha256sums.txt -R $owner/ockam
 
   # TODO Ensure that SHA are cosign verified
   while read -r line; do
