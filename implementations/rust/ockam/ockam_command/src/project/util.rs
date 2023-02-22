@@ -1,7 +1,7 @@
 use std::io::Write;
 use std::str::FromStr;
 
-use anyhow::{anyhow, Context as _, Result};
+use anyhow::{anyhow, Context as _};
 use ockam_core::api::Request;
 use tracing::debug;
 
@@ -17,7 +17,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 use crate::project::enroll::replace_project;
 use crate::util::api::CloudOpts;
 use crate::util::{api, RpcBuilder};
-use crate::{CommandGlobalOpts, OckamConfig};
+use crate::{CommandGlobalOpts, OckamConfig, Result};
 
 pub fn clean_projects_multiaddr(
     input: MultiAddr,
@@ -313,9 +313,9 @@ pub mod config {
     async fn set(config: &OckamConfig, project: &Project<'_>) -> Result<()> {
         if !project.is_ready() {
             trace!("Project is not ready yet {}", project.output()?);
-            return Err(anyhow!(
-                "Project is not ready yet, wait a few seconds and try again"
-            ));
+            return Err(
+                anyhow!("Project is not ready yet, wait a few seconds and try again").into(),
+            );
         }
 
         config.set_project_alias(

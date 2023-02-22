@@ -1,7 +1,7 @@
-use anyhow::{Context as _, Result};
-
 use ockam::Context;
 use ockam_api::cloud::space::Space;
+
+use crate::Result;
 
 pub mod config {
     use crate::util::{api, RpcBuilder};
@@ -39,18 +39,20 @@ pub mod config {
         controller_route: &MultiAddr,
     ) -> Result<String> {
         match try_get_space(&opts.config, space_name) {
-            Some(id) => Ok(id),
-            None => {
+            Ok(id) => Ok(id),
+            Err(_) => {
                 refresh_spaces(ctx, opts, api_node, controller_route).await?;
-                Ok(try_get_space(&opts.config, space_name)
-                    .context(format!("Space '{space_name}' does not exist"))?)
+                Ok(try_get_space(&opts.config, space_name)?)
             }
         }
     }
 
-    pub fn try_get_space(config: &OckamConfig, name: &str) -> Option<String> {
+    pub fn try_get_space(config: &OckamConfig, name: &str) -> Result<String> {
         let inner = config.write();
-        inner.lookup.get_space(name).map(|s| s.id.clone())
+        match inner.lookup.get_space(name) {
+            Some(s) => Ok(s.id.clone()),
+            None => Err(anyhow::anyhow!("Space '{name}' does not exist").into()),
+        }
     }
 
     async fn refresh_spaces(

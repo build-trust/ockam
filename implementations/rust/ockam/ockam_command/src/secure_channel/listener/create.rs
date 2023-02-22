@@ -11,7 +11,7 @@ use ockam_core::{Address, Route};
 use crate::node::default_node_name;
 use crate::secure_channel::HELP_DETAIL;
 use crate::util::{api, exitcode, extract_address_value, node_rpc, Rpc};
-use crate::{help, CommandGlobalOpts};
+use crate::{help, CommandGlobalOpts, Result};
 
 /// Create Secure Channel Listeners
 #[derive(Clone, Debug, Args)]
@@ -82,7 +82,7 @@ pub async fn create_listener(
     authorized_identifiers: Option<Vec<IdentityIdentifier>>,
     identity: Option<String>,
     mut base_route: Route,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
             base_route.modify().append(NODEMANAGER_ADDR),

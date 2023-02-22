@@ -6,6 +6,7 @@ use ockam_api::cloud::project::{Enroller, Project};
 
 use crate::project::ProjectInfo;
 use crate::util::comma_separated;
+use crate::Result;
 use colorful::Colorful;
 use ockam_api::cloud::space::Space;
 use ockam_api::nodes::models::secure_channel::{
@@ -33,23 +34,23 @@ use ockam_core::route;
 /// }
 ///
 /// impl Output for MyType {
-///     fn output(&self) -> anyhow::Result<String> {
+///     fn output(&self) -> Result<String> {
 ///         Ok(self.to_string())
 ///     }
 /// }
 /// ```
 pub trait Output {
-    fn output(&self) -> anyhow::Result<String>;
+    fn output(&self) -> Result<String>;
 }
 
 impl<O: Output> Output for &O {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         (*self).output()
     }
 }
 
 impl Output for Space<'_> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "Space")?;
         write!(w, "\n  Id: {}", self.id)?;
@@ -60,7 +61,7 @@ impl Output for Space<'_> {
 }
 
 impl Output for Vec<Space<'_>> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         if self.is_empty() {
             return Ok("No spaces found".to_string());
         }
@@ -85,7 +86,7 @@ impl Output for Vec<Space<'_>> {
 }
 
 impl Output for Project<'_> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "Project")?;
         write!(w, "\n  Id: {}", self.id)?;
@@ -104,7 +105,7 @@ impl Output for Project<'_> {
 }
 
 impl Output for ProjectInfo<'_> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         let pi = self
             .identity
             .as_ref()
@@ -122,7 +123,7 @@ impl Output for ProjectInfo<'_> {
 }
 
 impl Output for Vec<Project<'_>> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         if self.is_empty() {
             return Ok("No projects found".to_string());
         }
@@ -157,7 +158,7 @@ impl Output for Vec<Project<'_>> {
 }
 
 impl Output for CreateSecureChannelResponse<'_> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         let addr = route_to_multiaddr(&route![self.addr.to_string()])
             .context("Invalid Secure Channel Address")?
             .to_string();
@@ -166,7 +167,7 @@ impl Output for CreateSecureChannelResponse<'_> {
 }
 
 impl Output for ShowSecureChannelResponse<'_> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         let s = match &self.channel {
             Some(addr) => {
                 format!(
@@ -196,7 +197,7 @@ impl Output for ShowSecureChannelResponse<'_> {
 }
 
 impl Output for Enroller<'_> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "Enroller")?;
         write!(w, "\n  Identity id: {}", self.identity_id)?;
@@ -206,7 +207,7 @@ impl Output for Enroller<'_> {
 }
 
 impl Output for Vec<Enroller<'_>> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         if self.is_empty() {
             return Ok("No enrollers found".to_string());
         }
@@ -232,13 +233,13 @@ impl Output for Vec<Enroller<'_>> {
 }
 
 impl Output for Credential {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         Ok(self.to_string())
     }
 }
 
 impl Output for Vec<u8> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         Ok(hex::encode(self))
     }
 }

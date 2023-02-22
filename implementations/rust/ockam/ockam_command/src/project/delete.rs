@@ -1,4 +1,3 @@
-use anyhow::Context as _;
 use clap::Args;
 
 use ockam::Context;
@@ -42,8 +41,7 @@ async fn run_impl(
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
 ) -> crate::Result<()> {
-    let space_id = space::config::try_get_space(&opts.config, &cmd.space_name)
-        .context(format!("Space '{}' does not exist", cmd.space_name))?;
+    let space_id = space::config::try_get_space(&opts.config, &cmd.space_name)?;
 
     let node_name = start_embedded_node(ctx, &opts, None).await?;
     let controller_route = &cmd.cloud_opts.route();

@@ -15,7 +15,6 @@ use ockam_api::nodes::models::services::{
 use tracing::trace;
 
 use ockam::identity::IdentityIdentifier;
-use ockam::Result;
 use ockam_api::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
 use ockam_api::nodes::*;
 use ockam_api::DefaultAddress;
@@ -25,6 +24,7 @@ use ockam_core::{Address, CowStr};
 use ockam_multiaddr::MultiAddr;
 
 use crate::util::DEFAULT_CONTROLLER_ADDRESS;
+use crate::Result;
 
 ////////////// !== generators
 
@@ -357,11 +357,11 @@ impl CloudOpts {
 
 ////////////// !== validators
 
-pub(crate) fn validate_cloud_resource_name(s: &str) -> anyhow::Result<()> {
+pub(crate) fn validate_cloud_resource_name(s: &str) -> Result<()> {
     let project_name_regex = Regex::new(r"^[a-zA-Z0-9]+([a-zA-Z0-9-_\.]?[a-zA-Z0-9])*$").unwrap();
     let is_project_name_valid = project_name_regex.is_match(s);
     if !is_project_name_valid {
-        Err(anyhow!("Invalid name"))
+        Err(anyhow!("Invalid name").into())
     } else {
         Ok(())
     }

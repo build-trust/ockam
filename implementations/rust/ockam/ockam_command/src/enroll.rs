@@ -78,7 +78,7 @@ async fn enroll(
     opts: &CommandGlobalOpts,
     cmd: &EnrollCommand,
     node_name: &str,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let auth0 = Auth0Service::new(Auth0Provider::Auth0);
     let token = auth0.token().await?;
     let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
@@ -92,7 +92,7 @@ async fn enroll(
         Ok(())
     } else {
         eprintln!("{}", rpc.parse_err_msg(res, dec));
-        Err(anyhow!("Failed to enroll"))
+        Err(anyhow!("Failed to enroll").into())
     }
 }
 

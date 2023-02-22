@@ -19,7 +19,7 @@ use crate::util::node_rpc;
 use crate::util::{bind_to_port_check, embedded_node_that_is_not_stopped, exitcode};
 use crate::{
     help, node::show::print_query_status, node::HELP_DETAIL, project, util::find_available_port,
-    CommandGlobalOpts,
+    CommandGlobalOpts, Result,
 };
 use crate::{node::util::spawn_node, util::parse_node_name};
 use crate::{
@@ -142,7 +142,7 @@ impl CreateCommand {
         }
     }
 
-    fn overwrite_addr(&self) -> anyhow::Result<Self> {
+    fn overwrite_addr(&self) -> Result<Self> {
         let cmd = self.clone();
         let addr: SocketAddr = if &cmd.tcp_listener_address == "127.0.0.1:0" {
             let port = find_available_port().context("failed to acquire available port")?;
@@ -157,7 +157,7 @@ impl CreateCommand {
     }
 }
 
-fn parse_launch_config(config_or_path: &str) -> anyhow::Result<Config> {
+fn parse_launch_config(config_or_path: &str) -> Result<Config> {
     match serde_json::from_str::<Config>(config_or_path) {
         Ok(c) => Ok(c),
         Err(_) => {
@@ -366,7 +366,7 @@ async fn start_services(
     addr: SocketAddr,
     node_opts: super::NodeOpts,
     opts: &CommandGlobalOpts,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let config = {
         if let Some(sc) = &cfg.startup_services {
             sc.clone()
@@ -482,8 +482,8 @@ async fn spawn_background_node(
     Ok(())
 }
 
-fn otc_parser(val: &str) -> anyhow::Result<OneTimeCode> {
+fn otc_parser(val: &str) -> Result<OneTimeCode> {
     let bytes = hex::decode(val)?;
-    let code = <[u8; 32]>::try_from(bytes.as_slice())?;
+    let code = <[u8; 32]>::try_from(bytes.as_slice()).context("Failed to parse OTC")?;
     Ok(code.into())
 }

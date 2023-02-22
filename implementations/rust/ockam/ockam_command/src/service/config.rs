@@ -1,4 +1,5 @@
-use anyhow::{anyhow, Context, Result};
+use crate::Result;
+use anyhow::Context as _;
 use ockam::identity::IdentityIdentifier;
 use ockam_api::DefaultAddress;
 use serde::{Deserialize, Serialize};
@@ -97,8 +98,9 @@ pub struct Config {
 impl Config {
     pub(crate) fn read<P: AsRef<Path>>(path: P) -> Result<Self> {
         let s = std::fs::read_to_string(path.as_ref())
-            .with_context(|| anyhow!("failed to read {:?}", path.as_ref()))?;
-        serde_json::from_str(&s).with_context(|| anyhow!("invalid config {:?}", path.as_ref()))
+            .context(format!("failed to read {:?}", path.as_ref()))?;
+        let c = serde_json::from_str(&s).context(format!("invalid config {:?}", path.as_ref()))?;
+        Ok(c)
     }
 }
 

@@ -128,7 +128,7 @@ impl Runner {
 fn project_authority<'a>(
     input: &MultiAddr,
     map: &'a ConfigLookup,
-) -> anyhow::Result<Option<&'a ProjectAuthority>> {
+) -> Result<Option<&'a ProjectAuthority>> {
     if let Some(proto) = input.first() {
         if proto.code() == proto::Project::CODE {
             let proj = proto.cast::<proto::Project>().expect("project protocol");
@@ -136,10 +136,10 @@ fn project_authority<'a>(
                 if let Some(a) = &p.authority {
                     return Ok(Some(a));
                 } else {
-                    return Err(anyhow!("missing authority in project {:?}", &*proj));
+                    return Err(anyhow!("missing authority in project {:?}", &*proj).into());
                 }
             } else {
-                return Err(anyhow!("unknown project {}", &*proj));
+                return Err(anyhow!("unknown project {}", &*proj).into());
             }
         }
     }
@@ -149,7 +149,7 @@ fn project_authority<'a>(
 /// Replaces the first `/project` with the given address.
 ///
 /// Assumes (and asserts!) that the first protocol is a `/project`.
-pub fn replace_project(input: &MultiAddr, with: &MultiAddr) -> anyhow::Result<MultiAddr> {
+pub fn replace_project(input: &MultiAddr, with: &MultiAddr) -> Result<MultiAddr> {
     let mut iter = input.iter();
     let first = iter.next().map(|p| p.code());
     assert_eq!(first, Some(proto::Project::CODE));

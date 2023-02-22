@@ -13,7 +13,7 @@ use crate::node::util::delete_embedded_node;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
 use crate::util::{node_rpc, Rpc};
-use crate::{help, CommandGlobalOpts};
+use crate::{help, CommandGlobalOpts, Result};
 
 const HELP_DETAIL: &str = "";
 
@@ -132,7 +132,7 @@ pub mod utils {
 }
 
 impl Output for Subscription<'_> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "Subscription")?;
         write!(w, "\n  Id: {}", self.id)?;
@@ -150,7 +150,7 @@ impl Output for Subscription<'_> {
 }
 
 impl Output for Vec<Subscription<'_>> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         if self.is_empty() {
             return Ok("No subscriptions found".to_string());
         }

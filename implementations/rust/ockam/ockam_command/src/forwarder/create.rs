@@ -78,7 +78,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
 }
 
 impl Output for ForwarderInfo<'_> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         Ok(format!("/service/{}", self.remote_address()))
     }
 }

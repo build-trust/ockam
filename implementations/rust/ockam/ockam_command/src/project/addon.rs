@@ -25,7 +25,7 @@ use crate::project::util::check_project_readiness;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
 use crate::util::{api, exitcode, node_rpc, Rpc};
-use crate::{help, CommandGlobalOpts};
+use crate::{help, CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, subcommand_required = true)]
@@ -456,7 +456,7 @@ async fn run_impl(
 }
 
 impl Output for Addon<'_> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         let mut w = String::new();
         write!(w, "Addon:")?;
         write!(w, "\n  Id: {}", self.id)?;
@@ -468,7 +468,7 @@ impl Output for Addon<'_> {
 }
 
 impl Output for Vec<Addon<'_>> {
-    fn output(&self) -> anyhow::Result<String> {
+    fn output(&self) -> Result<String> {
         if self.is_empty() {
             return Ok("No addons found".to_string());
         }
@@ -484,14 +484,16 @@ impl Output for Vec<Addon<'_>> {
     }
 }
 
-pub fn query_certificate_chain(domain: &str) -> anyhow::Result<String> {
+pub fn query_certificate_chain(domain: &str) -> Result<String> {
     use std::io::Write;
     let domain_with_port = domain.to_string() + ":443";
 
     // Setup Root Certificate Store
     let mut root_certificate_store = RootCertStore::empty();
     for c in rustls_native_certs::load_native_certs()? {
-        root_certificate_store.add(&Certificate(c.0))?;
+        root_certificate_store
+            .add(&Certificate(c.0))
+            .context("failed to add certificate to root certificate store")?;
     }
 
     // Configure TLS Client
@@ -503,7 +505,11 @@ pub fn query_certificate_chain(domain: &str) -> anyhow::Result<String> {
     );
 
     // Make an HTTP request
-    let mut client_connection = ClientConnection::new(client_configuration, domain.try_into()?)?;
+    let server_name = domain
+        .try_into()
+        .context("failed to convert domain to a ServerName")?;
+    let mut client_connection = ClientConnection::new(client_configuration, server_name)
+        .context("failed to create a client connection")?;
     let mut tcp_stream = TcpStream::connect(domain_with_port)?;
     let mut stream = Stream::new(&mut client_connection, &mut tcp_stream);
     stream
@@ -515,7 +521,7 @@ pub fn query_certificate_chain(domain: &str) -> anyhow::Result<String> {
         )
         .context("failed to write to tcp stream")?;
 
-    let connection = Connection::try_from(client_connection)?;
+    let connection = Connection::try_from(client_connection).context("failed to get connection")?;
     let certificate_chain = connection
         .peer_certificates()
         .context("could not discover certificate chain")?;

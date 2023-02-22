@@ -1,6 +1,6 @@
 use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::{help, CommandGlobalOpts};
-use anyhow::ensure;
+use crate::{help, CommandGlobalOpts, Result};
+use anyhow::anyhow;
 use clap::Args;
 use ockam::Context;
 use ockam_api::{
@@ -94,10 +94,10 @@ fn make_api_request<'a>(cmd: CreateCommand) -> crate::Result<RequestBuilder<'a, 
     Ok(request)
 }
 
-fn alias_parser(arg: &str) -> anyhow::Result<String> {
-    ensure! {
-        !arg.contains(':'),
-        "an outlet alias must not contain ':' characters"
+fn alias_parser(arg: &str) -> Result<String> {
+    if arg.contains(':') {
+        Err(anyhow!("an inlet alias must not contain ':' characters").into())
+    } else {
+        Ok(arg.to_string())
     }
-    Ok(arg.to_string())
 }

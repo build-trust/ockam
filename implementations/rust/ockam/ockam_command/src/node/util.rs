@@ -24,14 +24,13 @@ use ockam_vault::Vault;
 use crate::node::CreateCommand;
 use crate::project::ProjectInfo;
 use crate::util::api::ProjectOpts;
-use crate::CommandGlobalOpts;
-use crate::{project, OckamConfig};
+use crate::{project, CommandGlobalOpts, OckamConfig, Result};
 
 pub async fn start_embedded_node(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     project_opts: Option<&ProjectOpts>,
-) -> anyhow::Result<String> {
+) -> Result<String> {
     start_embedded_node_with_vault_and_identity(ctx, opts, None, None, project_opts).await
 }
 
@@ -41,7 +40,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
     vault: Option<&String>,
     identity: Option<&String>,
     project_opts: Option<&ProjectOpts>,
-) -> anyhow::Result<String> {
+) -> Result<String> {
     let cfg = &opts.config;
     let cmd = CreateCommand::default();
 
@@ -103,7 +102,7 @@ pub async fn add_project_info_to_node_state(
     node_name: &str,
     cfg: &OckamConfig,
     project_opts: &ProjectOpts,
-) -> anyhow::Result<Option<String>> {
+) -> Result<Option<String>> {
     let proj_path = if let Some(path) = project_opts.project_path.clone() {
         Some(path)
     } else if let Ok(proj) = opts.state.projects.default() {
@@ -138,7 +137,7 @@ pub(super) async fn init_node_state(
     node_name: &str,
     vault: Option<&String>,
     identity: Option<&String>,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     // Get vault specified in the argument, or get the default
     let vault_state = if let Some(v) = vault {
         opts.state.vaults.get(v)?
@@ -189,7 +188,7 @@ pub(super) async fn add_project_authority(
     authority_access_route: MultiAddr,
     node: &str,
     cfg: &OckamConfig,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let v = Vault::default();
     let i = PublicIdentity::import(&authority_identity, &v).await?;
     let a = cli::Authority::new(authority_identity, authority_access_route);
@@ -201,7 +200,7 @@ pub(super) async fn add_project_authority_from_project_info(
     p: ProjectInfo<'_>,
     node: &str,
     cfg: &OckamConfig,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let m = p
         .authority_access_route
         .map(|a| MultiAddr::try_from(&*a))
@@ -213,7 +212,7 @@ pub(super) async fn add_project_authority_from_project_info(
     if let Some((a, m)) = a.zip(m) {
         add_project_authority(a, m, node, cfg).await
     } else {
-        Err(anyhow!("missing authority in project info"))
+        Err(anyhow!("missing authority in project info").into())
     }
 }
 
@@ -221,12 +220,12 @@ pub async fn delete_embedded_node(opts: &CommandGlobalOpts, name: &str) {
     let _ = delete_node(opts, name, false);
 }
 
-pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> anyhow::Result<()> {
+pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> Result<()> {
     opts.state.nodes.delete(name, force)?;
     Ok(())
 }
 
-pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> anyhow::Result<()> {
+pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> Result<()> {
     let nodes_states = opts.state.nodes.list()?;
     let mut deletion_errors = Vec::new();
     for s in nodes_states {
@@ -235,10 +234,7 @@ pub fn delete_all_nodes(opts: CommandGlobalOpts, force: bool) -> anyhow::Result<
         }
     }
     if !deletion_errors.is_empty() {
-        return Err(anyhow!(
-            "errors while deleting nodes: {:?}",
-            deletion_errors
-        ));
+        return Err(anyhow!("errors while deleting nodes: {:?}", deletion_errors).into());
     }
     Ok(())
 }
