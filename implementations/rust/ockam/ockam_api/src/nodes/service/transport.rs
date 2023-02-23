@@ -52,17 +52,15 @@ impl NodeManagerWorker {
                 .tcp_transport
                 .connect(&addr)
                 .await
-                .map(|ockam_addr| ockam_addr.to_string()),
+                .map(|ockam_addr| ockam_addr.address().to_string()),
             _ => unimplemented!(),
         };
 
         let response = match res {
-            Ok(_) => {
+            Ok(res) => {
                 let tid = random_alias();
-                node_manager
-                    .transports
-                    .insert(tid.clone(), (tt, tm, addr.clone()));
-                Response::ok(req.id()).body(TransportStatus::new(tt, tm, addr, tid))
+                node_manager.transports.insert(tid.clone(), (tt, tm, addr));
+                Response::ok(req.id()).body(TransportStatus::new(tt, tm, res, tid))
             }
             Err(msg) => Response::bad_request(req.id()).body(TransportStatus::new(
                 tt,

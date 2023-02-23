@@ -13,7 +13,7 @@ use ockam_core::compat::{
     sync::{Arc, Mutex},
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{AllowAll, AsyncTryClone};
+use ockam_core::{route, AllowAll, AsyncTryClone};
 use ockam_identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -37,10 +37,11 @@ use crate::lmdb::LmdbStorage;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
-use crate::session::util::starts_with_host_tcp_secure;
+use crate::session::util::{starts_with_host_tcp, starts_with_secure};
 use crate::session::{Medic, Sessions};
 use crate::{
-    local_multiaddr_to_route, multiaddr_to_route, try_address_to_multiaddr, DefaultAddress,
+    local_multiaddr_to_route, multiaddr_to_route, route_to_multiaddr, try_address_to_multiaddr,
+    DefaultAddress,
 };
 
 pub mod message;
@@ -361,7 +362,7 @@ impl NodeManager {
         Ok(())
     }
 
-    /// Resolve project ID (if any) and create secure channel.
+    /// Resolve project ID (if any), create secure channel (if needed) and create a tcp connection
     ///
     /// Returns the secure channel worker address (if any) and the remainder
     /// of the address argument.
@@ -379,7 +380,8 @@ impl NodeManager {
                     .ok_or_else(|| ApiError::message("invalid project protocol in multiaddr"))?;
                 let (a, i) = self.resolve_project(&p)?;
                 debug!(addr = %a, "creating secure channel");
-                let r = local_multiaddr_to_route(&a)
+                let r = multiaddr_to_route(&a, &self.tcp_transport)
+                    .await
                     .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                 let i = Some(vec![i]);
                 let m = CredentialExchangeMode::Oneway;
@@ -391,18 +393,34 @@ impl NodeManager {
             }
         }
 
-        if let Some(pos) = starts_with_host_tcp_secure(addr) {
-            debug!(%addr, "creating secure channel");
-            let (a, b) = addr.split(pos);
-            let r = multiaddr_to_route(&a, &self.tcp_transport)
+        if let Some(pos1) = starts_with_host_tcp(addr) {
+            debug!(%addr, "creating a tcp connection");
+            let (a1, b1) = addr.split(pos1);
+            let r1 = multiaddr_to_route(&a1, &self.tcp_transport)
                 .await
                 .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-            let i = auth.clone().map(|i| vec![i]);
-            let m = CredentialExchangeMode::Mutual;
-            let w = self
-                .create_secure_channel_impl(r, i, m, timeout, None, ctx)
-                .await?;
-            return Ok((try_address_to_multiaddr(&w)?, b));
+
+            return match starts_with_secure(&b1) {
+                Some(pos2) => {
+                    debug!(%addr, "creating a secure channel");
+                    let (a2, b2) = b1.split(pos2);
+                    let i = auth.clone().map(|i| vec![i]);
+                    let m = CredentialExchangeMode::Mutual;
+                    let r2 = multiaddr_to_route(&a2, &self.tcp_transport)
+                        .await
+                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+                    let w = self
+                        .create_secure_channel_impl(route![r1, r2], i, m, timeout, None, ctx)
+                        .await?;
+
+                    Ok((try_address_to_multiaddr(&w)?, b2))
+                }
+                None => Ok((
+                    route_to_multiaddr(&r1)
+                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?,
+                    b1,
+                )),
+            };
         }
 
         if Some(Secure::CODE) == addr.last().map(|p| p.code()) {
