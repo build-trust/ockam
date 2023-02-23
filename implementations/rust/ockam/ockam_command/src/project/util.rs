@@ -2,6 +2,7 @@ use std::io::Write;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context as _};
+use colorful::Colorful;
 use ockam_core::api::Request;
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
@@ -194,13 +195,14 @@ pub async fn check_project_readiness<'a>(
 
             // Handle the project show request result
             // so we can provide better errors in the case orchestrator does not respond timely
-            if let Ok(_) = rpc
+            if rpc
                 .request(api::project::show(&project_id, cloud_route))
                 .await
+                .is_ok()
             {
                 let p = rpc.parse_response::<Project>()?;
                 if p.is_ready() {
-                    println!("✅");
+                    println!(" {}", "✔︎".light_green());
                     return Ok(p.to_owned());
                 }
             }
@@ -220,7 +222,7 @@ pub async fn check_project_readiness<'a>(
             // Handle the reachable result, so we can provide better errors in the case a project isn't
             if let Ok(reachable) = project.is_reachable().await {
                 if reachable {
-                    println!("✅");
+                    println!(" {}", "✔︎".light_green());
                     return Ok(());
                 }
             }
@@ -259,7 +261,7 @@ pub async fn check_project_readiness<'a>(
             {
                 // Try to delete secure channel, ignore result.
                 let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
-                println!("✅");
+                println!(" {}", "✔︎".light_green());
                 return Ok(());
             }
             print!(".");
@@ -295,7 +297,7 @@ pub async fn check_project_readiness<'a>(
             {
                 // Try to delete secure channel, ignore result.
                 let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
-                println!("✅");
+                println!(" {}", "✔︎".light_green());
                 return Ok(());
             }
 
