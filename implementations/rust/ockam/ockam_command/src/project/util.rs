@@ -3,6 +3,8 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Context as _};
 use ockam_core::api::Request;
+use tokio_retry::strategy::FixedInterval;
+use tokio_retry::Retry;
 use tracing::debug;
 
 use ockam::identity::IdentityIdentifier;
@@ -174,102 +176,113 @@ pub async fn check_project_readiness<'a>(
     tcp: Option<&TcpTransport>,
     mut project: Project<'a>,
 ) -> Result<Project<'a>> {
+    // 3 Mins (180 Seconds) per strategy with 5 second intervals
+    let retry_strategy = FixedInterval::from_millis(5000).take(36);
+
     // Persist project config prior to checking readiness which might take a while
     config::set_project_id(&opts.config, &project).await?;
 
     // Check if Project and Project Authority info is available
+    println!("Project created!");
     if !project.is_ready() {
-        print!("Project created. Waiting for it to be ready...");
+        print!("Waiting for it to be ready...");
         let cloud_route = &cloud_opts.route();
-        loop {
-            print!(".");
+        let project_id = project.id.clone();
+        project = Retry::spawn(retry_strategy.clone(), || async {
             std::io::stdout().flush()?;
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
             let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
-            rpc.request(api::project::show(&project.id, cloud_route))
-                .await?;
-            let p = rpc.parse_response::<Project>()?;
-            if p.is_ready() {
-                project = p.to_owned();
-                println!();
-                break;
+
+            // Handle the project show request result
+            // so we can provide better errors in the case orchestrator does not respond timely
+            if let Ok(_) = rpc
+                .request(api::project::show(&project_id, cloud_route))
+                .await
+            {
+                let p = rpc.parse_response::<Project>()?;
+                if p.is_ready() {
+                    println!("✅");
+                    return Ok(p.to_owned());
+                }
             }
-        }
-    }
-    if !project.is_reachable().await? {
-        print!("Establishing connection (this can take a few minutes)...");
-        loop {
             print!(".");
-            std::io::stdout().flush()?;
-            tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-            if project.is_reachable().await? {
-                println!();
-                break;
-            }
-        }
+            Err(anyhow!("Project creation timed out. Plaese try again."))
+        })
+        .await?;
+
+        println!();
     }
+
+    {
+        print!("Establishing connection (this can take a few minutes)...");
+        Retry::spawn(retry_strategy.clone(), || async {
+            std::io::stdout().flush()?;
+
+            // Handle the reachable result, so we can provide better errors in the case a project isn't
+            if let Ok(reachable) = project.is_reachable().await {
+                if reachable {
+                    println!("✅");
+                    return Ok(());
+                }
+            }
+
+            print!(".");
+            Err(anyhow!("Timed out while trying to establish a connection to the project. Please try again."))
+        }).await?;
+
+        println!();
+    }
+
     {
         print!("Establishing secure channel...");
         std::io::stdout().flush()?;
+
         let project_route = project.access_route()?;
         let project_identity = project
             .identity
             .as_ref()
-            .context("We already checked that the project has an identity")?
+            .context("Project identity is not set.")?
             .to_string();
-        match create_secure_channel_to_project(
-            ctx,
-            opts,
-            api_node,
-            tcp,
-            &project_route,
-            &project_identity,
-            CredentialExchangeMode::None,
-            None,
-        )
-        .await
-        {
-            Ok(sc_addr) => {
+
+        Retry::spawn(retry_strategy.clone(), || async {
+            std::io::stdout().flush()?;
+            if let Ok(sc_addr) = create_secure_channel_to_project(
+                ctx,
+                opts,
+                api_node,
+                tcp,
+                &project_route,
+                &project_identity,
+                CredentialExchangeMode::None,
+                None,
+            )
+            .await
+            {
                 // Try to delete secure channel, ignore result.
                 let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
+                println!("✅");
+                return Ok(());
             }
-            Err(_) => {
-                loop {
-                    print!(".");
-                    std::io::stdout().flush()?;
-                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                    if let Ok(sc_addr) = create_secure_channel_to_project(
-                        ctx,
-                        opts,
-                        api_node,
-                        tcp,
-                        &project_route,
-                        &project_identity,
-                        CredentialExchangeMode::None,
-                        None,
-                    )
-                    .await
-                    {
-                        // Try to delete secure channel, ignore result.
-                        let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
-                        break;
-                    }
-                }
-            }
-        }
+            print!(".");
+            Err(anyhow!("Timed out while trying to establish a secure channel to the project. Please try again."))
+        })
+        .await?;
+
         println!();
     }
 
     {
         print!("Establishing secure channel to authority...");
         std::io::stdout().flush()?;
+
         let authority = ProjectAuthority::from_raw(
             &project.authority_access_route,
             &project.authority_identity,
         )
         .await?
         .context("Project does not have an authority defined.")?;
-        loop {
+
+        Retry::spawn(retry_strategy.clone(), || async {
+            std::io::stdout().flush()?;
             if let Ok(sc_addr) = create_secure_channel_to_authority(
                 ctx,
                 opts,
@@ -282,16 +295,18 @@ pub async fn check_project_readiness<'a>(
             {
                 // Try to delete secure channel, ignore result.
                 let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
-                break;
-            } else {
-                print!(".");
-                std::io::stdout().flush()?;
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                println!("✅");
+                return Ok(());
             }
-        }
+
+            print!(".");
+            Err(anyhow!("Time out while trying to establish a secure channel to the project authority. Please try again."))
+        })
+        .await?;
+
         println!();
     }
-    std::io::stdout().flush()?;
+
     // Persist project config with all its fields
     config::set_project(&opts.config, &project).await?;
     Ok(project)

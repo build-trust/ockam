@@ -8,8 +8,6 @@ use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 use reqwest::Url;
 use rustls::{Certificate, ClientConfig, ClientConnection, Connection, RootCertStore, Stream};
-use tokio_retry::strategy::FixedInterval;
-use tokio_retry::Retry;
 
 use ockam::Context;
 use ockam_api::cloud::addon::{Addon, ConfluentConfig};
@@ -449,25 +447,19 @@ async fn run_impl(
 
                     let project_id = config::get_project(&opts.config, &project_name)
                         .context("project not found in lookup")?;
-                    let retry_strategy = FixedInterval::from_millis(5000).take(4);
-                    Retry::spawn(retry_strategy, || async {
-                        let mut rpc = rpc.clone();
-                        rpc.request(api::project::show(&project_id, controller_route))
-                            .await?;
-                        let project: Project = rpc.parse_response()?;
-                        check_project_readiness(
-                            &ctx,
-                            &opts,
-                            &cmd.cloud_opts,
-                            rpc.node_name(),
-                            None,
-                            project,
-                        )
+                    let mut rpc = rpc.clone();
+                    rpc.request(api::project::show(&project_id, controller_route))
                         .await?;
-                        Ok(())
-                    })
-                    .await
-                    .map_err(|e: crate::error::Error| anyhow!(e.to_string()))?;
+                    let project: Project = rpc.parse_response()?;
+                    check_project_readiness(
+                        &ctx,
+                        &opts,
+                        &cmd.cloud_opts,
+                        rpc.node_name(),
+                        None,
+                        project,
+                    )
+                    .await?;
                     println!("Confluent addon configured successfully");
                 }
             }
