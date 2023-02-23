@@ -235,6 +235,7 @@ fn clean_multiaddr_simple() {
 #[cfg(test)]
 pub mod test {
     use crate::cli_state::{CliState, IdentityConfig, NodeConfig, VaultConfig};
+    use crate::lmdb::LmdbStorage;
     use crate::nodes::service::{
         NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
     };
@@ -245,6 +246,7 @@ pub mod test {
     use ockam_identity::Identity;
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
+    use ockam_vault::Vault;
     use std::sync::Arc;
 
     /// This struct is used by tests, it has two responsibilities:
@@ -253,8 +255,10 @@ pub mod test {
     ///   temporary directory, and possibly of sub-processes.
     /// - useful access to the NodeManager
     pub struct NodeManagerHandle {
-        cli_state: CliState,
-        node_manager: Arc<RwLock<NodeManager>>,
+        pub cli_state: CliState,
+        pub node_manager: Arc<RwLock<NodeManager>>,
+        pub tcp: TcpTransport,
+        pub identity: Identity<Vault, LmdbStorage>,
     }
 
     impl Drop for NodeManagerHandle {
@@ -262,12 +266,6 @@ pub mod test {
             self.cli_state
                 .delete(true)
                 .expect("cannot delete cli state");
-        }
-    }
-
-    impl NodeManagerHandle {
-        pub fn node_manager(&self) -> Arc<RwLock<NodeManager>> {
-            self.node_manager.clone()
         }
     }
 
@@ -280,33 +278,29 @@ pub mod test {
         let tcp = TcpTransport::create(&context).await?;
         let cli_state = CliState::test()?;
 
-        let node_name = {
-            let vault_name = hex::encode(rand::random::<[u8; 4]>());
-            let vault = cli_state
-                .vaults
-                .create(&vault_name.clone(), VaultConfig::from_name(&vault_name)?)
-                .await?
-                .config
-                .get()
-                .await?;
+        let vault_name = hex::encode(rand::random::<[u8; 4]>());
+        let vault = cli_state
+            .vaults
+            .create(&vault_name.clone(), VaultConfig::from_name(&vault_name)?)
+            .await?
+            .config
+            .get()
+            .await?;
 
-            let identity_name = hex::encode(rand::random::<[u8; 4]>());
-            let identity = Identity::create_ext(
-                context,
-                &cli_state.identities.authenticated_storage().await?,
-                &vault,
-            )
-            .await
-            .unwrap();
-            let config = IdentityConfig::new(&identity).await;
-            cli_state.identities.create(&identity_name, config).unwrap();
+        let identity_name = hex::encode(rand::random::<[u8; 4]>());
+        let identity = Identity::create_ext(
+            context,
+            &cli_state.identities.authenticated_storage().await?,
+            &vault,
+        )
+        .await
+        .unwrap();
+        let config = IdentityConfig::new(&identity).await;
+        cli_state.identities.create(&identity_name, config).unwrap();
 
-            let node_name = hex::encode(rand::random::<[u8; 4]>());
-            let node_config = NodeConfig::try_default().unwrap();
-            cli_state.nodes.create(&node_name, node_config)?;
-
-            node_name
-        };
+        let node_name = hex::encode(rand::random::<[u8; 4]>());
+        let node_config = NodeConfig::try_default().unwrap();
+        cli_state.nodes.create(&node_name, node_config)?;
 
         let node_manager = NodeManager::create(
             &context,
@@ -337,6 +331,8 @@ pub mod test {
         Ok(NodeManagerHandle {
             cli_state,
             node_manager,
+            tcp: tcp.async_try_clone().await?,
+            identity,
         })
     }
 }

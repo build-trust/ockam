@@ -18,14 +18,11 @@ mod test {
     use kafka_protocol::records::{
         Compression, RecordBatchDecoder, RecordBatchEncoder, RecordEncodeOptions, TimestampType,
     };
-    use minicbor::Decoder;
     use ockam::compat::tokio::io::DuplexStream;
     use ockam::Context;
-    use ockam_core::api::Request;
-    use ockam_core::api::{Response, Status};
-    use ockam_core::errcode::{Kind, Origin};
-    use ockam_core::{route, Error};
-    use ockam_multiaddr::MultiAddr;
+    use ockam_core::async_trait;
+    use ockam_core::{route, Address, AllowAll, AsyncTryClone, Route};
+    use ockam_identity::TrustEveryonePolicy;
     use ockam_node::compat::tokio;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
@@ -37,166 +34,86 @@ mod test {
     use tokio::task::JoinHandle;
     use uuid::Uuid;
 
-    use crate::nodes::models::portal::CreateOutlet;
-    use crate::nodes::models::services::{
-        StartKafkaConsumerRequest, StartKafkaProducerRequest, StartServiceRequest,
+    use crate::hop::Hop;
+    use crate::kafka::secure_channel_map::ForwarderCreator;
+    use crate::kafka::{
+        KafkaPortalListener, KafkaSecureChannelControllerImpl,
+        KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
     };
-    use crate::nodes::NODEMANAGER_ADDR;
+    use crate::nodes::registry::KafkaServiceKind;
+    use crate::test::NodeManagerHandle;
 
+    //TODO: upgrade to 13 by adding a metadata request to map uuid<=>topic_name
     const TEST_KAFKA_API_VERSION: i16 = 12;
 
-    async fn send_and_receive_ignore_body(
-        context: &mut Context,
-        request: Vec<u8>,
+    struct HopForwarderCreator {}
+
+    #[async_trait]
+    impl ForwarderCreator for HopForwarderCreator {
+        async fn create_forwarder(&self, context: &Context, alias: String) -> ockam::Result<()> {
+            trace!("creating mock forwarder for: {alias}");
+            //replicating the same logic of the orchestrator by adding consumer__
+            context
+                .start_worker(
+                    Address::from_string(format!("consumer__{alias}")),
+                    Hop,
+                    AllowAll,
+                    AllowAll,
+                )
+                .await?;
+            Ok(())
+        }
+    }
+
+    async fn create_kafka_service(
+        context: &Context,
+        handle: &NodeManagerHandle,
+        listener_address: Address,
+        outlet_route: Route,
+        bind_ip: String,
+        server_bootstrap_port: u16,
+        brokers_port_range: (u16, u16),
+        kind: KafkaServiceKind,
     ) -> ockam::Result<()> {
-        let buffer: Vec<u8> = context
-            .send_and_receive(route![NODEMANAGER_ADDR], request)
+        let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
+            handle.identity.async_try_clone().await?,
+            route![],
+            HopForwarderCreator {},
+        );
+
+        //the possibility to accept secure channels is the only real
+        //difference between consumer and producer
+        if let KafkaServiceKind::Consumer = kind {
+            secure_channel_controller
+                .create_consumer_listener(context)
+                .await?;
+            handle
+                .identity
+                .create_secure_channel_listener(
+                    KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
+                    TrustEveryonePolicy,
+                )
+                .await?;
+        }
+
+        handle
+            .tcp
+            .create_inlet(
+                format!("{bind_ip}:{server_bootstrap_port}"),
+                route![listener_address.clone(), outlet_route.clone()],
+                AllowAll,
+            )
             .await?;
 
-        let mut decoder = Decoder::new(&buffer);
-        let response: Response = decoder.decode()?;
-        match response.status() {
-            None => {
-                return Err(Error::new(
-                    Origin::Transport,
-                    Kind::Invalid,
-                    "missing status",
-                ))
-            }
-            Some(Status::Ok) => {}
-            Some(status) => {
-                return Err(Error::new(
-                    Origin::Transport,
-                    Kind::Invalid,
-                    format!("{}", status),
-                ))
-            }
-        }
-
-        Ok(())
-    }
-
-    struct TcpServerSimulator {
-        stream: DuplexStream,
-        join_handles: Arc<Mutex<Vec<JoinHandle<()>>>>,
-        is_stopping: Arc<AtomicBool>,
-    }
-
-    impl TcpServerSimulator {
-        pub fn stream(&mut self) -> &mut DuplexStream {
-            &mut self.stream
-        }
-
-        ///stops every async task running and wait for completion
-        /// must be called to avoid leaks to be sure everything is closed before
-        /// moving on the next test
-        pub async fn destroy_and_wait(self) -> () {
-            self.is_stopping.store(true, Ordering::SeqCst);
-            //we want to close the channel _before_ joining current handles to interrupt them
-            drop(self.stream);
-            let mut guard = self.join_handles.lock().await;
-            for handle in guard.iter_mut() {
-                //we don't care about failures
-                let _ = handle.await;
-            }
-        }
-
-        ///starts a tcp listener for one connection and returns a virtual buffer
-        /// linked to the first socket
-        pub async fn start(address: &str) -> Self {
-            let listener = TcpListener::bind(address).await.unwrap();
-            let join_handles: Arc<Mutex<Vec<JoinHandle<()>>>> = Arc::new(Mutex::new(Vec::new()));
-            let is_stopping = Arc::new(AtomicBool::new(false));
-
-            let (test_side_duplex, simulator_side_duplex) = tokio::io::duplex(4096);
-            let (simulator_read_half, simulator_write_half) =
-                tokio::io::split(simulator_side_duplex);
-
-            let handle: JoinHandle<()> = {
-                let is_stopping = is_stopping.clone();
-                let join_handles = join_handles.clone();
-                tokio::spawn(async move {
-                    let socket;
-                    loop {
-                        //tokio would block on the listener forever, we need to poll a little in
-                        //order to interrupt it
-                        let timeout_future =
-                            tokio::time::timeout(Duration::from_millis(200), listener.accept());
-                        if let Ok(result) = timeout_future.await {
-                            match result {
-                                Ok((current_socket, _)) => {
-                                    socket = current_socket;
-                                    break;
-                                }
-                                Err(_) => {
-                                    return;
-                                }
-                            }
-                        }
-                        if is_stopping.load(Ordering::SeqCst) {
-                            return;
-                        }
-                    }
-
-                    let (socket_read_half, socket_write_half) = socket.into_split();
-                    let handle: JoinHandle<()> = tokio::spawn(async move {
-                        Self::relay_traffic(
-                            "socket_read_half",
-                            socket_read_half,
-                            "simulator_write_half",
-                            simulator_write_half,
-                        )
-                        .await
-                    });
-                    join_handles.lock().await.push(handle);
-
-                    let handle: JoinHandle<()> = tokio::spawn(async move {
-                        Self::relay_traffic(
-                            "simulator_read_half",
-                            simulator_read_half,
-                            "socket_write_half",
-                            socket_write_half,
-                        )
-                        .await
-                    });
-                    join_handles.lock().await.push(handle);
-                })
-            };
-            join_handles.lock().await.push(handle);
-
-            Self {
-                stream: test_side_duplex,
-                join_handles,
-                is_stopping,
-            }
-        }
-
-        async fn relay_traffic<W: AsyncWriteExt + Unpin, R: AsyncReadExt + Unpin>(
-            read_half_name: &'static str,
-            mut read_half: R,
-            write_half_name: &'static str,
-            mut write_half: W,
-        ) {
-            let mut buffer = [0; 1024];
-            loop {
-                let read = match read_half.read(&mut buffer).await {
-                    Ok(read) => read,
-                    Err(err) => {
-                        warn!("{write_half_name} error: closing channel: {:?}", err);
-                        break;
-                    }
-                };
-
-                if read == 0 {
-                    info!("{read_half_name} returned empty buffer: clean channel close");
-                    break;
-                }
-                if write_half.write(&buffer[0..read]).await.is_err() {
-                    warn!("{write_half_name} error: closing channel");
-                    break;
-                }
-            }
-        }
+        KafkaPortalListener::create(
+            context,
+            secure_channel_controller.into_trait(),
+            outlet_route,
+            listener_address,
+            bind_ip.parse().unwrap(),
+            brokers_port_range.try_into().unwrap(),
+        )
+        .await
     }
 
     #[allow(non_snake_case)]
@@ -204,52 +121,41 @@ mod test {
     async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        let _handler = crate::util::test::start_manager_for_tests(context).await?;
+        let handler = crate::util::test::start_manager_for_tests(context).await?;
 
-        //ask the node manager to create needed services
-        {
-            //for both consumer and producer we create a mock kafka server so we can read
-            //and validate traffic as well as reply
-            let request =
-                Request::post("/node/services/kafka_consumer").body(StartServiceRequest::new(
-                    StartKafkaConsumerRequest::new(
-                        "127.0.1.1".parse().unwrap(),
-                        4000,
-                        (4001, 4001),
-                        MultiAddr::try_from("/service/kafka_consumer_outlet")?,
-                    ),
-                    "kafka_consumer_listener",
-                ));
-            send_and_receive_ignore_body(context, request.to_vec()?).await?;
+        create_kafka_service(
+            context,
+            &handler,
+            Address::from_string("kafka_consumer_listener"),
+            route!["kafka_consumer_outlet"],
+            "127.0.1.1".parse().unwrap(),
+            4000,
+            (4001, 4010),
+            KafkaServiceKind::Consumer,
+        )
+        .await?;
 
-            let request = Request::post("/node/outlet").body(CreateOutlet::new(
-                "127.0.1.1:5000",
-                "kafka_consumer_outlet",
-                None,
-                None,
-            ));
-            send_and_receive_ignore_body(context, request.to_vec()?).await?;
+        create_kafka_service(
+            context,
+            &handler,
+            Address::from_string("kafka_producer_listener"),
+            route!["kafka_producer_outlet"],
+            "127.0.1.1".parse().unwrap(),
+            6000,
+            (6001, 6010),
+            KafkaServiceKind::Producer,
+        )
+        .await?;
 
-            let request =
-                Request::post("/node/services/kafka_producer").body(StartServiceRequest::new(
-                    StartKafkaProducerRequest::new(
-                        "127.0.1.1".parse().unwrap(),
-                        6000,
-                        (6001, 6001),
-                        MultiAddr::try_from("/service/kafka_producer_outlet")?,
-                    ),
-                    "kafka_producer_listener",
-                ));
-            send_and_receive_ignore_body(context, request.to_vec()?).await?;
+        handler
+            .tcp
+            .create_outlet("kafka_consumer_outlet", "127.0.1.1:5000", AllowAll)
+            .await?;
 
-            let request = Request::post("/node/outlet").body(CreateOutlet::new(
-                "127.0.1.1:7000",
-                "kafka_producer_outlet",
-                None,
-                None,
-            ));
-            send_and_receive_ignore_body(context, request.to_vec()?).await?;
-        }
+        handler
+            .tcp
+            .create_outlet("kafka_producer_outlet", "127.0.1.1:7000", AllowAll)
+            .await?;
 
         let mut consumer_mock_kafka = TcpServerSimulator::start("127.0.1.1:5000").await;
         //to create forwarder for the partition 1 of 'my-topic'
@@ -569,5 +475,128 @@ mod test {
         let request = T::decode(&mut header_and_request_buffer, TEST_KAFKA_API_VERSION).unwrap();
         trace!("read_kafka_message...done");
         request
+    }
+
+    struct TcpServerSimulator {
+        stream: DuplexStream,
+        join_handles: Arc<Mutex<Vec<JoinHandle<()>>>>,
+        is_stopping: Arc<AtomicBool>,
+    }
+
+    impl TcpServerSimulator {
+        pub fn stream(&mut self) -> &mut DuplexStream {
+            &mut self.stream
+        }
+
+        ///stops every async task running and wait for completion
+        /// must be called to avoid leaks to be sure everything is closed before
+        /// moving on the next test
+        pub async fn destroy_and_wait(self) -> () {
+            self.is_stopping.store(true, Ordering::SeqCst);
+            //we want to close the channel _before_ joining current handles to interrupt them
+            drop(self.stream);
+            let mut guard = self.join_handles.lock().await;
+            for handle in guard.iter_mut() {
+                //we don't care about failures
+                let _ = handle.await;
+            }
+        }
+
+        ///starts a tcp listener for one connection and returns a virtual buffer
+        /// linked to the first socket
+        pub async fn start(address: &str) -> Self {
+            let listener = TcpListener::bind(address).await.unwrap();
+            let join_handles: Arc<Mutex<Vec<JoinHandle<()>>>> = Arc::new(Mutex::new(Vec::new()));
+            let is_stopping = Arc::new(AtomicBool::new(false));
+
+            let (test_side_duplex, simulator_side_duplex) = tokio::io::duplex(4096);
+            let (simulator_read_half, simulator_write_half) =
+                tokio::io::split(simulator_side_duplex);
+
+            let handle: JoinHandle<()> = {
+                let is_stopping = is_stopping.clone();
+                let join_handles = join_handles.clone();
+                tokio::spawn(async move {
+                    let socket;
+                    loop {
+                        //tokio would block on the listener forever, we need to poll a little in
+                        //order to interrupt it
+                        let timeout_future =
+                            tokio::time::timeout(Duration::from_millis(200), listener.accept());
+                        if let Ok(result) = timeout_future.await {
+                            match result {
+                                Ok((current_socket, _)) => {
+                                    socket = current_socket;
+                                    break;
+                                }
+                                Err(_) => {
+                                    return;
+                                }
+                            }
+                        }
+                        if is_stopping.load(Ordering::SeqCst) {
+                            return;
+                        }
+                    }
+
+                    let (socket_read_half, socket_write_half) = socket.into_split();
+                    let handle: JoinHandle<()> = tokio::spawn(async move {
+                        Self::relay_traffic(
+                            "socket_read_half",
+                            socket_read_half,
+                            "simulator_write_half",
+                            simulator_write_half,
+                        )
+                        .await
+                    });
+                    join_handles.lock().await.push(handle);
+
+                    let handle: JoinHandle<()> = tokio::spawn(async move {
+                        Self::relay_traffic(
+                            "simulator_read_half",
+                            simulator_read_half,
+                            "socket_write_half",
+                            socket_write_half,
+                        )
+                        .await
+                    });
+                    join_handles.lock().await.push(handle);
+                })
+            };
+            join_handles.lock().await.push(handle);
+
+            Self {
+                stream: test_side_duplex,
+                join_handles,
+                is_stopping,
+            }
+        }
+
+        async fn relay_traffic<W: AsyncWriteExt + Unpin, R: AsyncReadExt + Unpin>(
+            read_half_name: &'static str,
+            mut read_half: R,
+            write_half_name: &'static str,
+            mut write_half: W,
+        ) {
+            let mut buffer = [0; 1024];
+            loop {
+                let read = match read_half.read(&mut buffer).await {
+                    Ok(read) => read,
+                    Err(err) => {
+                        warn!("{write_half_name} error: closing channel: {:?}", err);
+                        break;
+                    }
+                };
+
+                if read == 0 {
+                    info!("{read_half_name} returned empty buffer: clean channel close");
+                    break;
+                }
+                if write_half.write(&buffer[0..read]).await.is_err() {
+                    warn!("{write_half_name} error: closing channel");
+                    break;
+                }
+            }
+        }
     }
 }

@@ -61,7 +61,7 @@ impl Worker for KafkaPortalListener {
 }
 
 impl KafkaPortalListener {
-    pub(crate) async fn start(
+    pub(crate) async fn create(
         context: &Context,
         secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
         interceptor_route: Route,
@@ -69,13 +69,11 @@ impl KafkaPortalListener {
         bind_host: String,
         port_range: PortRange,
     ) -> ockam_core::Result<()> {
-        let inlet_map = KafkaInletMap::new(interceptor_route, bind_host, port_range);
-
         context
             .start_worker(
                 listener_address,
                 Self {
-                    inlet_map: inlet_map.clone(),
+                    inlet_map: KafkaInletMap::new(interceptor_route, bind_host, port_range),
                     secure_channel_controller,
                     uuid_to_name: Default::default(),
                 },

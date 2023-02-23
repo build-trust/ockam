@@ -1,4 +1,3 @@
-use crate::hop::Hop;
 use crate::kafka::{
     KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS, KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
     ORCHESTRATOR_KAFKA_CONSUMERS,
@@ -68,6 +67,31 @@ pub(crate) trait KafkaSecureChannelController: Send + Sync {
     ) -> Result<()>;
 }
 
+#[async_trait]
+pub(crate) trait ForwarderCreator: Send + Sync + 'static {
+    async fn create_forwarder(&self, context: &Context, alias: String) -> Result<()>;
+}
+
+pub(crate) struct RemoteForwarderCreator {
+    hub_route: Route,
+}
+
+#[async_trait]
+impl ForwarderCreator for RemoteForwarderCreator {
+    async fn create_forwarder(&self, context: &Context, alias: String) -> Result<()> {
+        trace!("creating remote forwarder for: {alias}");
+        let remote_forwarder_information = RemoteForwarder::create_static(
+            context,
+            self.hub_route.clone(),
+            alias.clone(),
+            AllowAll,
+        )
+        .await?;
+        trace!("remote forwarder created: {remote_forwarder_information:?}");
+        Ok(())
+    }
+}
+
 ///Unique identifier for a specific secure_channel.
 /// Used in order to distinguish between secure channels created between
 /// the same identities.
@@ -76,12 +100,18 @@ struct SecureChannelIdentifierMessage {
     secure_channel_identifier: UniqueSecureChannelId,
 }
 
-pub(crate) struct KafkaSecureChannelControllerImpl<V: IdentityVault, S: AuthenticatedStorage> {
-    inner: Arc<Mutex<InnerSecureChannelControllerImpl<V, S>>>,
+pub(crate) struct KafkaSecureChannelControllerImpl<
+    V: IdentityVault,
+    S: AuthenticatedStorage,
+    F: ForwarderCreator,
+> {
+    inner: Arc<Mutex<InnerSecureChannelControllerImpl<V, S, F>>>,
 }
 
 //had to manually implement since #[derive(Clone)] doesn't work well in this situation
-impl<V: IdentityVault, S: AuthenticatedStorage> Clone for KafkaSecureChannelControllerImpl<V, S> {
+impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator> Clone
+    for KafkaSecureChannelControllerImpl<V, S, F>
+{
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
@@ -92,42 +122,64 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Clone for KafkaSecureChannelCont
 /// An identifier of the secure channel **instance**
 pub(crate) type UniqueSecureChannelId = u64;
 type TopicPartition = (String, i32);
-struct InnerSecureChannelControllerImpl<V: IdentityVault, S: AuthenticatedStorage> {
+struct InnerSecureChannelControllerImpl<
+    V: IdentityVault,
+    S: AuthenticatedStorage,
+    F: ForwarderCreator,
+> {
     //we are using encryptor api address as unique _local_ identifier
     //of the secure channel
     id_encryptor_map: HashMap<UniqueSecureChannelId, Address>,
     topic_encryptor_map: HashMap<TopicPartition, (UniqueSecureChannelId, Address)>,
     identity: Identity<V, S>,
     project_route: Route,
-    is_using_project: bool,
     topic_forwarder_set: HashSet<TopicPartition>,
+    forwarder_creator: F,
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> KafkaSecureChannelControllerImpl<V, S> {
-    ///tunnel_to_access_route could be a secure channel or some other kind of tunnel
-    /// or empty if local
+impl<V: IdentityVault, S: AuthenticatedStorage>
+    KafkaSecureChannelControllerImpl<V, S, RemoteForwarderCreator>
+{
     pub(crate) fn new(
         identity: Identity<V, S>,
         project_route: Route,
-        is_using_project: bool,
-    ) -> KafkaSecureChannelControllerImpl<V, S> {
+    ) -> KafkaSecureChannelControllerImpl<V, S, RemoteForwarderCreator> {
+        Self::new_extended(
+            identity,
+            project_route.clone(),
+            RemoteForwarderCreator {
+                hub_route: route![project_route, ORCHESTRATOR_KAFKA_CONSUMERS],
+            },
+        )
+    }
+}
+
+impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator>
+    KafkaSecureChannelControllerImpl<V, S, F>
+{
+    /// to manually specify `ForwarderCreator`, for testing purposes
+    pub(crate) fn new_extended(
+        identity: Identity<V, S>,
+        project_route: Route,
+        forwarder_creator: F,
+    ) -> KafkaSecureChannelControllerImpl<V, S, F> {
         Self {
             inner: Arc::new(Mutex::new(InnerSecureChannelControllerImpl {
                 id_encryptor_map: Default::default(),
                 topic_encryptor_map: Default::default(),
                 topic_forwarder_set: Default::default(),
                 identity,
+                forwarder_creator,
                 project_route,
-                is_using_project,
             })),
         }
     }
 
-    pub(crate) async fn start_consumer_listener(&self, context: &Context) -> Result<()> {
+    pub(crate) async fn create_consumer_listener(&self, context: &Context) -> Result<()> {
         context
             .start_worker(
                 Address::from_string(KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS),
-                SecureChannelControllerListener::<V, S> {
+                SecureChannelControllerListener::<V, S, F> {
                     controller: self.clone(),
                 },
                 AllowAll,
@@ -150,12 +202,18 @@ impl<V: IdentityVault, S: AuthenticatedStorage> KafkaSecureChannelControllerImpl
     }
 }
 
-struct SecureChannelControllerListener<V: IdentityVault, S: AuthenticatedStorage> {
-    controller: KafkaSecureChannelControllerImpl<V, S>,
+struct SecureChannelControllerListener<
+    V: IdentityVault,
+    S: AuthenticatedStorage,
+    F: ForwarderCreator,
+> {
+    controller: KafkaSecureChannelControllerImpl<V, S, F>,
 }
 
 #[ockam::worker]
-impl<V: IdentityVault, S: AuthenticatedStorage> Worker for SecureChannelControllerListener<V, S> {
+impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator> Worker
+    for SecureChannelControllerListener<V, S, F>
+{
     type Message = SecureChannelIdentifierMessage;
     type Context = Context;
 
@@ -175,7 +233,9 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Worker for SecureChannelControll
     }
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> KafkaSecureChannelControllerImpl<V, S> {
+impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator>
+    KafkaSecureChannelControllerImpl<V, S, F>
+{
     ///returns encryptor api address
     async fn get_or_create_secure_channel_for(
         &self,
@@ -201,12 +261,11 @@ impl<V: IdentityVault, S: AuthenticatedStorage> KafkaSecureChannelControllerImpl
                 let encryptor_address = inner
                     .identity
                     .create_secure_channel(
-                        inner
-                            .project_route
-                            .clone()
-                            .modify()
-                            .append(topic_partition_address.clone())
-                            .append(KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS),
+                        route![
+                            inner.project_route.clone(),
+                            topic_partition_address.clone(),
+                            KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS
+                        ],
                         TrustEveryonePolicy,
                     )
                     .await?;
@@ -284,8 +343,8 @@ impl<V: IdentityVault, S: AuthenticatedStorage> KafkaSecureChannelControllerImpl
 }
 
 #[async_trait]
-impl<V: IdentityVault, S: AuthenticatedStorage> KafkaSecureChannelController
-    for KafkaSecureChannelControllerImpl<V, S>
+impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator> KafkaSecureChannelController
+    for KafkaSecureChannelControllerImpl<V, S, F>
 {
     async fn encrypt_content_for(
         &self,
@@ -355,43 +414,16 @@ impl<V: IdentityVault, S: AuthenticatedStorage> KafkaSecureChannelController
     ) -> Result<()> {
         let mut inner = self.inner.lock().await;
 
-        let hub_route: Route = inner
-            .project_route
-            .modify()
-            .append(ORCHESTRATOR_KAFKA_CONSUMERS)
-            .into();
-
         for partition in partitions {
             let topic_key: TopicPartition = (topic_name.to_string(), partition);
             if inner.topic_forwarder_set.contains(&topic_key) {
                 continue;
             }
-
             let alias = format!("{topic_name}_{partition}");
-
-            if inner.is_using_project {
-                trace!("creating remote forwarder for: {alias}");
-                let remote_forwarder_information = RemoteForwarder::create_static(
-                    context,
-                    hub_route.clone(),
-                    alias.clone(),
-                    AllowAll,
-                )
+            inner
+                .forwarder_creator
+                .create_forwarder(context, alias)
                 .await?;
-                trace!("remote forwarder created: {remote_forwarder_information:?}");
-            } else {
-                trace!("creating mock forwarder for: {alias}");
-                //replicating the same logic of the orchestrator by adding consumer__
-                context
-                    .start_worker(
-                        Address::from_string(format!("consumer__{alias}")),
-                        Hop,
-                        AllowAll,
-                        AllowAll,
-                    )
-                    .await?;
-            };
-
             inner.topic_forwarder_set.insert(topic_key);
         }
 
