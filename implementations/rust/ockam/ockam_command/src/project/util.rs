@@ -177,8 +177,9 @@ pub async fn check_project_readiness<'a>(
     tcp: Option<&TcpTransport>,
     mut project: Project<'a>,
 ) -> Result<Project<'a>> {
-    // 3 Mins (180 Seconds) per strategy with 5 second intervals
-    let retry_strategy = FixedInterval::from_millis(5000).take(36);
+    // Total of 10 Mins sleep strategy with 5 second intervals between each retry
+    let total_sleep_time_ms = 10 * 60 * 1000;
+    let retry_strategy = FixedInterval::from_millis(5000).take(total_sleep_time_ms / 5000);
 
     // Persist project config prior to checking readiness which might take a while
     config::set_project_id(&opts.config, &project).await?;
