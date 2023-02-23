@@ -1,6 +1,7 @@
 use clap::Args;
 
 use anyhow::anyhow;
+use ockam_api::cloud::ORCHESTRATOR_RESTART_TIMEOUT;
 use std::borrow::Borrow;
 use std::io::stdin;
 
@@ -18,6 +19,7 @@ use ockam_core::api::Status;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::project::util::{check_project_readiness, project_enroll_admin};
+
 use crate::space::util::config;
 use crate::util::api::CloudOpts;
 use crate::util::output::Output;
@@ -158,11 +160,10 @@ async fn default_project<'a>(
     // If the space has no projects, create one
     let default_project = if available_projects.is_empty() {
         let mut rpc = RpcBuilder::new(ctx, opts, node_name).build();
-        rpc.request(api::project::create(
-            "default",
-            &space.id,
-            &cloud_opts.route(),
-        ))
+        rpc.request_with_timeout(
+            api::project::create("default", &space.id, &cloud_opts.route()),
+            Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
+        )
         .await?;
         rpc.parse_response::<Project>()?.to_owned()
     }

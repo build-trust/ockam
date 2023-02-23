@@ -177,6 +177,7 @@ pub async fn check_project_readiness<'a>(
     // Persist project config prior to checking readiness which might take a while
     config::set_project_id(&opts.config, &project).await?;
 
+    // Check if Project and Project Authority info is available
     if !project.is_ready() {
         print!("Project created. Waiting for it to be ready...");
         let cloud_route = &cloud_opts.route();
@@ -254,6 +255,38 @@ pub async fn check_project_readiness<'a>(
                         break;
                     }
                 }
+            }
+        }
+        println!();
+    }
+
+    {
+        print!("Establishing secure channel to authority...");
+        std::io::stdout().flush()?;
+        let authority = ProjectAuthority::from_raw(
+            &project.authority_access_route,
+            &project.authority_identity,
+        )
+        .await?
+        .context("Project does not have an authority defined.")?;
+        loop {
+            if let Ok(sc_addr) = create_secure_channel_to_authority(
+                ctx,
+                opts,
+                api_node,
+                &authority,
+                authority.address(),
+                None,
+            )
+            .await
+            {
+                // Try to delete secure channel, ignore result.
+                let _ = delete_secure_channel(ctx, opts, api_node, tcp, &sc_addr).await;
+                break;
+            } else {
+                print!(".");
+                std::io::stdout().flush()?;
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
             }
         }
         println!();

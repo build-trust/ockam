@@ -22,6 +22,9 @@ pub mod subscription;
 /// add the env variable. `OCKAM_CONTROLLER_IDENTITY_ID={identity.id-contents} ockam ...`
 pub(crate) const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY_ID";
 
+/// A default timeout in seconds
+pub const ORCHESTRATOR_RESTART_TIMEOUT: u64 = 180;
+
 pub type ProjectAddress = CowStr<'static>;
 
 /// A wrapper around a cloud request with extra fields.
@@ -74,6 +77,7 @@ impl<'a> BareCloudRequestWrapper<'a> {
 mod node {
     use std::env;
     use std::str::FromStr;
+    use std::time::Duration;
 
     use minicbor::Encode;
     use ockam_vault::Vault;
@@ -82,8 +86,8 @@ mod node {
     use ockam_core::api::RequestBuilder;
     use ockam_core::{self, route, Address, Result, Route};
     use ockam_identity::{Identity, IdentityIdentifier, TrustIdentifierPolicy};
-    use ockam_node::api::request;
-    use ockam_node::Context;
+    use ockam_node::api::request_with_timeout;
+    use ockam_node::{Context, DEFAULT_TIMEOUT};
 
     use crate::cloud::OCKAM_CONTROLLER_IDENTITY_ID;
     use crate::error::ApiError;
@@ -157,13 +161,40 @@ mod node {
         where
             T: Encode<()>,
         {
+            self.request_controller_with_timeout(
+                ctx,
+                label,
+                schema,
+                cloud_route,
+                api_service,
+                req,
+                ident,
+                Duration::from_secs(DEFAULT_TIMEOUT),
+            )
+            .await
+        }
+
+        pub(super) async fn request_controller_with_timeout<T>(
+            &mut self,
+            ctx: &Context,
+            label: &str,
+            schema: impl Into<Option<&str>>,
+            cloud_route: impl Into<Route>,
+            api_service: &str,
+            req: RequestBuilder<'_, T>,
+            ident: Identity<Vault, LmdbStorage>,
+            timeout: Duration,
+        ) -> Result<Vec<u8>>
+        where
+            T: Encode<()>,
+        {
             let mut node_manger = self.get().write().await;
             let cloud_route = cloud_route.into();
             let sc = node_manger
                 .controller_secure_channel(cloud_route, ident)
                 .await?;
             let route = route![&sc.to_string(), api_service];
-            let res = request(ctx, label, schema, route, req).await;
+            let res = request_with_timeout(ctx, label, schema, route, req, timeout).await;
             ctx.stop_worker(sc).await?;
             res
         }

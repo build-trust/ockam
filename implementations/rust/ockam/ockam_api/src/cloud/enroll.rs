@@ -19,6 +19,8 @@ impl Token {
 }
 
 mod node {
+    use std::time::Duration;
+
     use minicbor::Decoder;
     use tracing::trace;
 
@@ -29,7 +31,7 @@ mod node {
 
     use crate::cloud::enroll::auth0::AuthenticateAuth0Token;
     use crate::cloud::enroll::enrollment_token::{EnrollmentToken, RequestEnrollmentToken};
-    use crate::cloud::CloudRequestWrapper;
+    use crate::cloud::{CloudRequestWrapper, ORCHESTRATOR_RESTART_TIMEOUT};
     use crate::nodes::NodeManagerWorker;
     use ockam_identity::credential::Attributes;
 
@@ -55,7 +57,7 @@ mod node {
                 inner.identity()?.async_try_clone().await?
             };
 
-            self.request_controller(
+            self.request_controller_with_timeout(
                 ctx,
                 api_service,
                 None,
@@ -63,6 +65,7 @@ mod node {
                 api_service,
                 req_builder,
                 ident,
+                Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
             )
             .await
         }
@@ -118,7 +121,7 @@ mod node {
             };
 
             trace!(target: TARGET, "authenticating token");
-            self.request_controller(
+            self.request_controller_with_timeout(
                 ctx,
                 api_service,
                 None,
@@ -126,6 +129,7 @@ mod node {
                 api_service,
                 req_builder,
                 ident,
+                Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
             )
             .await
         }

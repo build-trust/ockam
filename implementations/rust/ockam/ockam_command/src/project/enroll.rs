@@ -1,5 +1,7 @@
 use clap::Args;
+use ockam_api::cloud::ORCHESTRATOR_RESTART_TIMEOUT;
 use std::collections::HashMap;
+use std::time::Duration;
 
 use anyhow::{anyhow, Context as _};
 use ockam::identity::credential::OneTimeCode;
@@ -106,13 +108,15 @@ impl Runner {
             debug!(addr = %to, member = %id, attrs = ?self.cmd.attributes, "requesting to add member");
             let req = Request::post("/members")
                 .body(AddMember::new(id.clone()).with_attributes(self.cmd.attributes()?));
-            rpc.request(req).await?;
+            rpc.request_with_timeout(req, Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT))
+                .await?;
             rpc.is_ok()?;
         } else {
             debug!(addr = %to, attrs = ?self.cmd.attributes, "requesting token");
             let req = Request::post("/tokens")
                 .body(CreateToken::new().with_attributes(self.cmd.attributes()?));
-            rpc.request(req).await?;
+            rpc.request_with_timeout(req, Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT))
+                .await?;
             let res: OneTimeCode = rpc.parse_response()?;
             println!("{}", res.to_string())
         }
