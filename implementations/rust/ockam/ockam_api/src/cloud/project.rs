@@ -334,6 +334,8 @@ impl<'a> AddEnroller<'a> {
 }
 
 mod node {
+    use std::time::Duration;
+
     use minicbor::Decoder;
     use tracing::trace;
 
@@ -342,7 +344,9 @@ mod node {
     use ockam_node::Context;
 
     use crate::cli_state;
-    use crate::cloud::{BareCloudRequestWrapper, CloudRequestWrapper};
+    use crate::cloud::{
+        BareCloudRequestWrapper, CloudRequestWrapper, ORCHESTRATOR_RESTART_TIMEOUT,
+    };
     use crate::nodes::NodeManagerWorker;
 
     use super::*;
@@ -386,7 +390,7 @@ mod node {
                 }
             };
 
-            self.request_controller(
+            self.request_controller_with_timeout(
                 ctx,
                 label,
                 "create_project",
@@ -394,6 +398,7 @@ mod node {
                 "projects",
                 req_builder,
                 ident,
+                Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
             )
             .await
         }

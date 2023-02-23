@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use clap::Args;
+use ockam_api::cloud::ORCHESTRATOR_RESTART_TIMEOUT;
 use rand::prelude::random;
 
 use ockam::Context;
@@ -51,11 +54,10 @@ async fn run_impl(
     let space_id = space::config::try_get_space(&opts.config, &cmd.space_name)?;
     let node_name = start_embedded_node(ctx, &opts, None).await?;
     let mut rpc = RpcBuilder::new(ctx, &opts, &node_name).build();
-    rpc.request(api::project::create(
-        &cmd.project_name,
-        &space_id,
-        &cmd.cloud_opts.route(),
-    ))
+    rpc.request_with_timeout(
+        api::project::create(&cmd.project_name, &space_id, &cmd.cloud_opts.route()),
+        Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
+    )
     .await?;
     let project = rpc.parse_response::<Project>()?;
     let project =
