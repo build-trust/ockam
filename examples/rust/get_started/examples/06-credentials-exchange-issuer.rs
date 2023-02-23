@@ -1,6 +1,7 @@
+use ockam::access_control::IdentityIdAccessControl;
 use ockam::identity::credential_issuer::CredentialIssuer;
 use ockam::identity::TrustEveryonePolicy;
-use ockam::{Context, IdentityIdAccessControl, TcpTransport};
+use ockam::{Context, TcpTransport};
 use ockam_core::{AllowAll, Result};
 
 /// This node starts a temporary credential issuer accessible via TCP on localhost:5000
