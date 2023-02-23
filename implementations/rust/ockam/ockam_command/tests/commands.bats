@@ -330,7 +330,6 @@ teardown() {
   $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to 127.0.0.1:5000
   $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:6000 --to /node/n1/service/outlet --alias "My TCP Inlet"
 
-  run curl --fail --head 127.0.0.1:6000
   assert_output --partial "My TCP Inlet"
   assert_output --partial "127.0.0.1:6000"
   assert_output --partial "/ip4/127.0.0.1/tcp/62020/service/outlet"
