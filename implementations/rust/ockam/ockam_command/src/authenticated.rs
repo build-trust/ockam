@@ -54,6 +54,7 @@ pub enum AuthenticatedSubcommand {
 
 impl AuthenticatedCommand {
     pub fn run(self) {
+        // FIXME: Requires update to the latest format
         if let Err(e) = embedded_node(run_impl, self.subcommand) {
             eprintln!("Ockam node failed: {e:?}",);
         }
@@ -61,10 +62,10 @@ impl AuthenticatedCommand {
 }
 
 async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> crate::Result<()> {
-    TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
     match &cmd {
         AuthenticatedSubcommand::Get { addr, id } => {
-            let mut c = client(addr, &ctx).await?;
+            let mut c = client(&ctx, &tcp, addr).await?;
             if let Some(entry) = c.get(id).await? {
                 print_entries(&[(IdentityIdentifier::try_from(id.to_string()).unwrap(), entry)]);
             } else {
@@ -72,7 +73,7 @@ async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> crate::Result<(
             }
         }
         AuthenticatedSubcommand::List { addr } => {
-            let mut c = client(addr, &ctx).await?;
+            let mut c = client(&ctx, &tcp, addr).await?;
             print_entries(&c.list().await?);
         }
     }
@@ -118,8 +119,9 @@ fn print_entries(entries: &[(IdentityIdentifier, AttributesEntry)]) {
     skin.print_expander(expander);
 }
 
-async fn client(addr: &MultiAddr, ctx: &Context) -> Result<auth::Client> {
-    let to = ockam_api::local_multiaddr_to_route(addr)
+async fn client(ctx: &Context, tcp: &TcpTransport, addr: &MultiAddr) -> Result<auth::Client> {
+    let to = ockam_api::multiaddr_to_route(addr, tcp)
+        .await
         .ok_or_else(|| anyhow!("failed to parse address: {addr}"))?;
     let cl = auth::Client::new(to, ctx).await?;
     Ok(cl)
