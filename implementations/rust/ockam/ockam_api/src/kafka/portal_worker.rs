@@ -12,7 +12,7 @@ use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
 
 use crate::kafka::inlet_map::KafkaInletMap;
 use crate::kafka::length_delimited::{length_encode, KafkaMessageDecoder};
-use crate::kafka::protocol_aware::{ProtocolState, TopicUuidMap};
+use crate::kafka::protocol_aware::{Interceptor, TopicUuidMap};
 use crate::kafka::secure_channel_map::KafkaSecureChannelController;
 
 ///by default kafka supports up to 1MB messages, 16MB is the maximum suggested
@@ -46,7 +46,7 @@ pub(crate) struct KafkaPortalWorker {
     //the first one to receive the disconnect message will stop both workers
     other_worker_address: Address,
     receiving: Receiving,
-    shared_protocol_state: ProtocolState,
+    shared_protocol_state: Interceptor,
     inlet_map: KafkaInletMap,
     disconnect_received: Arc<AtomicBool>,
     decoder: KafkaMessageDecoder,
@@ -248,7 +248,7 @@ impl KafkaPortalWorker {
         uuid_to_name: TopicUuidMap,
         inlet_map: KafkaInletMap,
     ) -> ockam_core::Result<Address> {
-        let shared_protocol_state = ProtocolState::new(secure_channel_controller, uuid_to_name);
+        let shared_protocol_state = Interceptor::new(secure_channel_controller, uuid_to_name);
 
         let inlet_address = Address::random_tagged("KafkaPortalWorker.inlet");
         let outlet_address = Address::random_tagged("KafkaPortalWorker.outlet");
@@ -586,7 +586,7 @@ mod test {
         let vault = Vault::create();
         let identity = Identity::create(context, &vault).await.unwrap();
         let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(identity, route![], false).into_trait();
+            KafkaSecureChannelControllerImpl::new(identity, route![]).into_trait();
 
         let portal_inlet_address = KafkaPortalWorker::start_kafka_portal(
             context,
@@ -638,7 +638,7 @@ mod test {
         let identity = Identity::create(context, &vault).await?;
 
         let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(identity, route![], false).into_trait();
+            KafkaSecureChannelControllerImpl::new(identity, route![]).into_trait();
 
         let inlet_map = KafkaInletMap::new(
             route![],

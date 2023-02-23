@@ -18,7 +18,7 @@ use crate::route_to_multiaddr;
 
 type BrokerId = i32;
 
-///Shared structure for every kafka worker to keep track of which brokers are being proxied
+/// Shared structure for every kafka worker to keep track of which brokers are being proxied
 /// with the relative inlet listener socket address.
 /// Also takes care of creating inlets dynamically when they are not present yet.
 #[derive(Debug, Clone)]
@@ -58,7 +58,7 @@ impl KafkaInletMap {
         self_guard.broker_map.get(&broker_id).map(|x| x.clone())
     }
 
-    ///assert the presence of an inlet for a broker
+    /// Asserts the presence of an inlet for a broker
     /// on first time it'll create the inlet and return the relative address
     /// on the second one it'll just return the address
     pub(crate) async fn assert_inlet_for_broker(

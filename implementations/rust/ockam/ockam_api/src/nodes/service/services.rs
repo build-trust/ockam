@@ -28,8 +28,8 @@ use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
 use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::PolicyStorage;
-use ockam_core::api::{Request, Response, ResponseBuilder};
-use ockam_core::{route, AllowAll, Route};
+use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
+use ockam_core::{route, AllowAll};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
 
@@ -296,6 +296,7 @@ impl NodeManager {
     pub(super) async fn start_kafka_service_impl<'a>(
         &mut self,
         context: &Context,
+        project_name: String,
         local_interceptor_address: Address,
         bind_ip: String,
         server_bootstrap_port: u16,
@@ -303,72 +304,48 @@ impl NodeManager {
         project_route_multiaddr: MultiAddr,
         kind: KafkaServiceKind,
     ) -> Result<()> {
-        //needed to allow testing
-        let project_name = project_route_multiaddr
-            .first()
-            .and_then(|value| value.cast::<Project>().map(|p| p.to_string()));
-
         let identity = self.identity()?.async_try_clone().await?;
-        let (bootstrap_address_route, interceptor_route, project_route) = if project_name.is_some()
-        {
-            let (maybe_tunnel_multiaddr, suffix_address) = self
-                .connect(
-                    &project_route_multiaddr,
-                    Some(identity.identifier().clone()),
-                    Some(Duration::from_secs(60)),
-                    context,
-                )
-                .await?;
-
-            let project_multiaddr = maybe_tunnel_multiaddr.try_with(&suffix_address)?;
-            let project_route = try_multiaddr_to_route(&project_multiaddr)?;
-
-            let bootstrap_address_route = route![
-                local_interceptor_address.clone(),
-                project_route.clone(),
-                ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
-                ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS
-            ];
-
-            let interceptor_route = route![
-                local_interceptor_address.clone(),
-                project_route.clone(),
-                ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
-            ];
-
-            debug!("bootstrap_address_route: {bootstrap_address_route:?}");
-            debug!("interceptor_route: {interceptor_route:?}");
-            debug!("project_route: {project_route:?}");
-            (bootstrap_address_route, interceptor_route, project_route)
-        } else {
-            // when executing `crate::kafka::test` integration tests the provided address change
-            // semantic a little bit and it's used only to point toward the outlet
-            let mut outlet_route = try_multiaddr_to_route(&project_route_multiaddr)?;
-            let bootstrap_address_route: Route = outlet_route
-                .modify()
-                .prepend(local_interceptor_address.clone())
-                .into();
-            (
-                bootstrap_address_route.clone(),
-                bootstrap_address_route,
-                route![],
+        let (maybe_tunnel_multiaddr, suffix_address) = self
+            .connect(
+                &project_route_multiaddr,
+                Some(identity.identifier().clone()),
+                Some(Duration::from_secs(60)),
+                context,
             )
-        };
+            .await?;
+
+        let project_multiaddr = maybe_tunnel_multiaddr.try_with(&suffix_address)?;
+        let project_route = try_multiaddr_to_route(&project_multiaddr)?;
+
+        let bootstrap_address_route = route![
+            local_interceptor_address.clone(),
+            project_route.clone(),
+            ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
+            ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS
+        ];
+
+        let interceptor_route = route![
+            local_interceptor_address.clone(),
+            project_route.clone(),
+            ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
+        ];
+
+        debug!("bootstrap_address_route: {bootstrap_address_route:?}");
+        debug!("interceptor_route: {interceptor_route:?}");
+        debug!("project_route: {project_route:?}");
 
         // override default policy to allow incoming packets from the project
-        if let Some(project_name) = &project_name {
-            let (_addr, identity_identifier) = self.resolve_project(project_name)?;
-            self.policies
-                .set_policy(
-                    &resources::INLET,
-                    &actions::HANDLE_MESSAGE,
-                    &eq([
-                        ident("subject.identifier"),
-                        str(identity_identifier.to_string()),
-                    ]),
-                )
-                .await?;
-        }
+        let (_addr, identity_identifier) = self.resolve_project(&project_name)?;
+        self.policies
+            .set_policy(
+                &resources::INLET,
+                &actions::HANDLE_MESSAGE,
+                &eq([
+                    ident("subject.identifier"),
+                    str(identity_identifier.to_string()),
+                ]),
+            )
+            .await?;
 
         self.tcp_transport
             .create_inlet(
@@ -379,11 +356,11 @@ impl NodeManager {
             .await?;
 
         let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(identity, project_route, project_name.is_some());
+            KafkaSecureChannelControllerImpl::new(identity, project_route);
 
         if let KafkaServiceKind::Consumer = kind {
             secure_channel_controller
-                .start_consumer_listener(context)
+                .create_consumer_listener(context)
                 .await?;
 
             self.create_secure_channel_listener_impl(
@@ -396,7 +373,7 @@ impl NodeManager {
             .await?;
         }
 
-        KafkaPortalListener::start(
+        KafkaPortalListener::create(
             context,
             secure_channel_controller.into_trait(),
             interceptor_route,
@@ -607,14 +584,23 @@ impl NodeManagerWorker {
         let listener_address: Address = body.address().into();
         let body_req = body.request();
 
+        let project_route = body_req.project_route().to_string().parse()?;
+        let project_name = match self.extract_project(req, &project_route) {
+            Ok(project_name) => project_name,
+            Err(err) => {
+                return Ok(err.to_vec()?);
+            }
+        };
+
         node_manager
             .start_kafka_service_impl(
                 context,
+                project_name,
                 listener_address,
                 body_req.bootstrap_server_ip().to_string(),
                 body_req.bootstrap_server_port(),
                 body_req.brokers_port_range(),
-                body_req.project_route().to_string().parse()?,
+                project_route,
                 KafkaServiceKind::Consumer,
             )
             .await?;
@@ -633,9 +619,18 @@ impl NodeManagerWorker {
         let listener_address: Address = body.address().into();
         let body_req = body.request();
 
+        let project_route = body_req.project_route().to_string().parse()?;
+        let project_name = match self.extract_project(req, &project_route) {
+            Ok(project_name) => project_name,
+            Err(err) => {
+                return Ok(err.to_vec()?);
+            }
+        };
+
         node_manager
             .start_kafka_service_impl(
                 context,
+                project_name,
                 listener_address,
                 body_req.bootstrap_server_ip().to_string(),
                 body_req.bootstrap_server_port(),
@@ -646,6 +641,17 @@ impl NodeManagerWorker {
             .await?;
 
         Ok(Response::ok(req.id()).to_vec()?)
+    }
+
+    fn extract_project<'a>(
+        &self,
+        req: &'a Request<'_>,
+        project_route_multiaddr: &MultiAddr,
+    ) -> std::result::Result<String, ResponseBuilder<Error<'a>>> {
+        project_route_multiaddr
+            .first()
+            .and_then(|value| value.cast::<Project>().map(|p| p.to_string()))
+            .ok_or_else(|| bad_request(req, "invalid project route"))
     }
 
     pub(super) fn list_services<'a>(
