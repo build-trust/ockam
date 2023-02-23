@@ -174,6 +174,7 @@ mod node {
             .await
         }
 
+        #[allow(clippy::too_many_arguments)]
         pub(super) async fn request_controller_with_timeout<T>(
             &mut self,
             ctx: &Context,
