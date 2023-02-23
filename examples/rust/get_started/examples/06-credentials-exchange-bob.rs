@@ -1,7 +1,8 @@
 // This node starts a tcp listener, a secure channel listener, and an echoer worker.
 // It then runs forever waiting for messages.
 use hello_ockam::{create_identity_with_secret, Echoer};
-use ockam::access_control::{AbacAccessControl, AllowAll};
+use ockam::abac::AbacAccessControl;
+use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
 use ockam::identity::TrustEveryonePolicy;

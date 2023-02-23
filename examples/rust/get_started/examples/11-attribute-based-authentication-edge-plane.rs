@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use hello_ockam::{create_token, get_credential, import_project};
-use ockam::access_control::AbacAccessControl;
+use ockam::abac::AbacAccessControl;
 use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential::{Credential, OneTimeCode};
 use ockam::identity::{Identity, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
