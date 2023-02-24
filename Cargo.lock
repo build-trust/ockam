@@ -1847,7 +1847,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4d68f517805463f3a896a9d29c1d6ff09d3579ded64a7201b4069f8f9c0d52fd"
 dependencies = [
  "dummy",
- "rand 0.8.5",
+ "rand",
  "uuid",
 ]
 
@@ -1905,7 +1905,7 @@ dependencies = [
  "example_test_helper",
  "file_diff",
  "ockam",
- "rand 0.8.5",
+ "rand",
  "serde",
  "structopt",
  "tokio",
@@ -2290,7 +2290,7 @@ dependencies = [
  "ockam_transport_udp",
  "ockam_transport_uds",
  "ockam_transport_websocket",
- "rand 0.8.5",
+ "rand",
  "serde",
  "serde_bare",
  "serde_json",
@@ -3094,7 +3094,7 @@ dependencies = [
  "ockam_node",
  "ockam_transport_tcp",
  "ockam_vault",
- "rand 0.8.5",
+ "rand",
  "rand_xorshift",
  "serde",
  "serde_json",
@@ -3124,7 +3124,7 @@ dependencies = [
  "ockam_identity",
  "once_cell",
  "quickcheck",
- "rand 0.8.5",
+ "rand",
  "regex",
  "rustyline",
  "rustyline-derive",
@@ -3164,7 +3164,7 @@ dependencies = [
  "ockam_vault",
  "once_cell",
  "quickcheck",
- "rand 0.8.5",
+ "rand",
  "reqwest",
  "rust-embed",
  "serde",
@@ -3214,7 +3214,7 @@ dependencies = [
  "once_cell",
  "open",
  "pem-rfc7468",
- "rand 0.8.5",
+ "rand",
  "regex",
  "reqwest",
  "rustls",
@@ -3252,7 +3252,7 @@ dependencies = [
  "ockam_macros",
  "once_cell",
  "quickcheck",
- "rand 0.8.5",
+ "rand",
  "rand_pcg",
  "serde",
  "serde_bare",
@@ -3300,7 +3300,7 @@ dependencies = [
  "ockam_vault",
  "quickcheck",
  "quickcheck_macros",
- "rand 0.8.5",
+ "rand",
  "rand_xorshift",
  "serde",
  "serde-big-array",
@@ -3365,7 +3365,7 @@ dependencies = [
  "ockam_multiaddr",
  "once_cell",
  "quickcheck",
- "rand 0.8.5",
+ "rand",
  "serde",
  "serde_json",
  "tinyvec",
@@ -3439,7 +3439,7 @@ dependencies = [
  "ockam_macros",
  "ockam_node",
  "ockam_transport_core",
- "rand 0.7.3",
+ "rand",
  "serde",
  "socket2",
  "tokio",
@@ -3459,7 +3459,7 @@ dependencies = [
  "ockam_macros",
  "ockam_node",
  "ockam_transport_core",
- "rand 0.7.3",
+ "rand",
  "serde",
  "tokio",
  "tokio-util",
@@ -3513,7 +3513,7 @@ dependencies = [
  "ockam_macros",
  "ockam_node",
  "p256",
- "rand 0.8.5",
+ "rand",
  "rand_pcg",
  "serde",
  "serde_json",
@@ -3908,7 +3908,7 @@ checksum = "588f6378e4dd99458b60ec275b4477add41ce4fa9f64dcba6f15adccb19b50d6"
 dependencies = [
  "env_logger",
  "log",
- "rand 0.8.5",
+ "rand",
 ]
 
 [[package]]
@@ -3943,36 +3943,13 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a6b1679d49b24bbfe0c803429aa1874472f50d9b363131f0e89fc356b544d03"
-dependencies = [
- "getrandom 0.1.16",
- "libc",
- "rand_chacha 0.2.2",
- "rand_core 0.5.1",
- "rand_hc",
-]
-
-[[package]]
-name = "rand"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
 dependencies = [
  "libc",
- "rand_chacha 0.3.1",
+ "rand_chacha",
  "rand_core 0.6.4",
-]
-
-[[package]]
-name = "rand_chacha"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4c8ed856279c9737206bf725bf36935d8666ead7aa69b52be55af369d193402"
-dependencies = [
- "ppv-lite86",
- "rand_core 0.5.1",
 ]
 
 [[package]]
@@ -4001,15 +3978,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 dependencies = [
  "getrandom 0.2.8",
-]
-
-[[package]]
-name = "rand_hc"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca3129af7b92a17112d59ad498c6f81eaf463253766b90396d39ea7a39d6613c"
-dependencies = [
- "rand_core 0.5.1",
 ]
 
 [[package]]
@@ -5139,7 +5107,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f57eb36ecbe0fc510036adff84824dd3c24bb781e21bfa67b69d556aa85214f"
 dependencies = [
  "pin-project",
- "rand 0.8.5",
+ "rand",
  "tokio",
 ]
 
@@ -5336,7 +5304,7 @@ dependencies = [
  "http",
  "httparse",
  "log",
- "rand 0.8.5",
+ "rand",
  "sha1",
  "thiserror",
  "url",

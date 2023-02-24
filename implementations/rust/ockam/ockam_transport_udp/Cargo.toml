@@ -33,7 +33,7 @@ futures-util = "0.3"
 ockam_core = { path = "../ockam_core", version = "^0.75.0", default_features = false }
 ockam_node = { path = "../ockam_node", version = "^0.78.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.48.0" }
-rand = "0.7"
+rand = "0.8"
 hashbrown = { version = "0.13" }
 tracing = { version = "0.1", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }

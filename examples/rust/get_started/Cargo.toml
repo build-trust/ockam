@@ -45,5 +45,5 @@ anyhow = "1"
 serde_bare = "0.5.0"
 
 [dev-dependencies]
-rand = { version = "0.8.4", features = ["std_rng"], default-features = false }
+rand = { version = "0.8.5", features = ["std_rng"], default-features = false }
 example_test_helper = { path = "../../../tools/docs/example_test_helper" }
