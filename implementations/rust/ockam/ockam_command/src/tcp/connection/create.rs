@@ -6,7 +6,7 @@ use crate::{
 use clap::Args;
 use colorful::Colorful;
 use ockam_api::nodes::models;
-use ockam_multiaddr::proto::{DnsAddr, Tcp};
+use ockam_multiaddr::proto::{DnsAddr, Tcp, Worker};
 use ockam_multiaddr::MultiAddr;
 use serde_json::json;
 use std::net::SocketAddrV4;
@@ -72,9 +72,9 @@ impl CreateCommand {
                     .addr
                     .port();
                 let mut multiaddr = MultiAddr::default();
-                multiaddr.push_back(DnsAddr::new("localhost"))?; // FIXME: test
+                multiaddr.push_back(DnsAddr::new("localhost"))?;
                 multiaddr.push_back(Tcp::new(port))?;
-                // FIXME multiaddr.push_back(OTCP::new(response.payload.to_string()))?;
+                multiaddr.push_back(Worker::new(response.payload.to_string()))?;
                 let json = json!([{"route": multiaddr.to_string() }]);
                 println!("{json}");
             }
