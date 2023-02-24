@@ -1,7 +1,10 @@
 mod echoer;
 pub use echoer::*;
 
+mod forwarder;
 mod hop;
+
+pub use forwarder::*;
 pub use hop::*;
 
 mod credentials;
