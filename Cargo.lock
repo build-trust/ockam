@@ -705,7 +705,7 @@ dependencies = [
  "serde-xml-rs",
  "thiserror",
  "tokio",
- "uuid 1.3.0",
+ "uuid",
 ]
 
 [[package]]
@@ -752,7 +752,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
- "uuid 1.3.0",
+ "uuid",
  "windows",
 ]
 
@@ -900,9 +900,9 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "783fe232adfca04f90f56201b26d79682d4cd2625e0bc7290b95123afe558ade"
+checksum = "350b9cf31731f9957399229e9b2adc51eeabdfbe9d71d9a0552275fd12710d09"
 dependencies = [
  "os_str_bytes",
 ]
@@ -1848,7 +1848,7 @@ checksum = "4d68f517805463f3a896a9d29c1d6ff09d3579ded64a7201b4069f8f9c0d52fd"
 dependencies = [
  "dummy",
  "rand 0.8.5",
- "uuid 1.3.0",
+ "uuid",
 ]
 
 [[package]]
@@ -2567,7 +2567,7 @@ dependencies = [
  "log",
  "once_cell",
  "static_assertions",
- "uuid 1.3.0",
+ "uuid",
 ]
 
 [[package]]
@@ -2581,9 +2581,9 @@ dependencies = [
 
 [[package]]
 name = "kafka-protocol"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f73d62060373a9a181e2f1d927c42c1302f48fb72fb56e9493d8349bf2398af"
+checksum = "cebc01df243e6091ed064d9de637cab66c37799fb7f1be171438562bbea39c6d"
 dependencies = [
  "bytes 1.4.0",
  "crc",
@@ -2595,7 +2595,7 @@ dependencies = [
  "paste",
  "snap",
  "string",
- "uuid 0.8.2",
+ "uuid",
 ]
 
 [[package]]
@@ -3175,7 +3175,7 @@ dependencies = [
  "time",
  "tinyvec",
  "tracing",
- "uuid 0.8.2",
+ "uuid",
 ]
 
 [[package]]
@@ -3418,7 +3418,7 @@ dependencies = [
  "stm32f4xx-hal",
  "stm32h7xx-hal",
  "tracing",
- "uuid 1.3.0",
+ "uuid",
 ]
 
 [[package]]
@@ -4879,9 +4879,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
-version = "1.0.108"
+version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d56e159d99e6c2b93995d171050271edb50ecc5288fbc7cc17de8fdce4e58c14"
+checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5438,12 +5438,6 @@ name = "utf8parse"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "936e4b492acfd135421d8dca4b1aa80a7bfc26e702ef3af710e0752684df5372"
-
-[[package]]
-name = "uuid"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 
 [[package]]
 name = "uuid"
