@@ -342,7 +342,7 @@ teardown() {
 
   assert_output --partial "Alias: tcp-inlet-2"
   assert_output --partial "TCP Address: 127.0.0.1:6000"
-  assert_output --regexp "To Outlet Address: /ip4/127.0.0.1/tcp/.*/service/outlet"
+  assert_output --regexp "To Outlet Address: /service/.*/service/outlet"
 }
 
 @test "create an inlet/outlet pair with relay through a forwarder and move tcp traffic through it" {
@@ -400,7 +400,7 @@ teardown() {
   run $OCKAM node create n1
   run $OCKAM tcp-connection create --from n1 --to 127.0.0.1:5000 --output json
   assert_success
-  assert_output --regexp '[{"route":"/dnsaddr/localhost/tcp/[[:digit:]]+/ip4/127.0.0.1/tcp/5000"}]'
+  assert_output --regexp '[{"route":"/dnsaddr/localhost/tcp/[[:digit:]]+/worker/[[:graph:]]+"}]'
 
   run $OCKAM tcp-connection list --node n1
   assert_success
@@ -411,7 +411,7 @@ teardown() {
   run $OCKAM node create n1
   run $OCKAM tcp-connection create --from n1 --to 127.0.0.1:5000 --output json
   assert_success
-  id=$($OCKAM tcp-connection list --node n1 | grep -o "[0-9a-f]\{32\}")
+  id=$($OCKAM tcp-connection list --node n1 | grep -o "[0-9a-f]\{32\}" | head -1)
   run $OCKAM tcp-connection delete --node n1 $id
   assert_success
   assert_output "Tcp connection \`$id\` successfully deleted"
