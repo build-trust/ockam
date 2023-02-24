@@ -1,27 +1,20 @@
 use example_test_helper::{CmdBuilder, Error};
-
-// Avoid tests clashing on TCP ports when run in parallel
-const RUN_01_PORT: u32 = 4000;
-const RUN_02_INLET_PORT: u32 = 4001;
-const RUN_02_ROUTING_PORT: u32 = 4002;
-const RUN_03_INLET_PORT: u32 = 4003;
-const RUN_03_ROUTING_PORT: u32 = 4004;
-const RUN_04_INLET_PORT: u32 = 4005;
+use ockam::compat::rand;
+use ockam::compat::rand::Rng;
 
 #[test]
 fn run_01_inlet_outlet_one_process() -> Result<(), Error> {
+    let port = rand::thread_rng().gen_range(10000..65535);
     // Spawn example, wait for it to start up
     let runner = CmdBuilder::new(&format!(
-        "cargo run --example 01-inlet-outlet 127.0.0.1:{RUN_01_PORT} ockam.io:80"
+        "cargo run --example 01-inlet-outlet 127.0.0.1:{port} ockam.io:80"
     ))
     .spawn()?;
     runner.match_stdout(r"(?i)Starting new processor")?;
 
     // Run curl and check for a successful run
-    let (exitcode, stdout) = CmdBuilder::new(&format!(
-        "curl -s -L -H \"Host: ockam.io\" http://127.0.0.1:{RUN_01_PORT}/"
-    ))
-    .run()?;
+    let (exitcode, stdout) =
+        CmdBuilder::new(&format!("curl -s -L -H \"Host: ockam.io\" http://127.0.0.1:{port}/")).run()?;
     assert_eq!(Some(0), exitcode);
     println!("curl stdout...");
     println!("{stdout}");
@@ -31,23 +24,22 @@ fn run_01_inlet_outlet_one_process() -> Result<(), Error> {
 
 #[test]
 fn run_02_inlet_outlet_seperate_processes() -> Result<(), Error> {
+    let routing_port = rand::thread_rng().gen_range(10000..65535);
+    let inlet_port = rand::thread_rng().gen_range(10000..65535);
     // Spawn outlet, wait for it to start up
-    let outlet = CmdBuilder::new(&format!(
-        "cargo run --example 02-outlet ockam.io:80 {RUN_02_ROUTING_PORT}"
-    ))
-    .spawn()?;
+    let outlet = CmdBuilder::new(&format!("cargo run --example 02-outlet ockam.io:80 {routing_port}")).spawn()?;
     outlet.match_stdout(r"(?i)Waiting for incoming TCP connection")?;
 
     // Spawn inlet, wait for it to start up
     let inlet = CmdBuilder::new(&format!(
-        "cargo run --example 02-inlet 127.0.0.1:{RUN_02_INLET_PORT} {RUN_02_ROUTING_PORT}"
+        "cargo run --example 02-inlet 127.0.0.1:{inlet_port} {routing_port}"
     ))
     .spawn()?;
     inlet.match_stdout(r"(?i)Binding \w+ to 127.0.0.1")?;
 
     // Run curl and check for a successful run
     let (exitcode, stdout) = CmdBuilder::new(&format!(
-        "curl -s -L -H \"Host: ockam.io\" http://127.0.0.1:{RUN_02_INLET_PORT}/"
+        "curl -s -L -H \"Host: ockam.io\" http://127.0.0.1:{inlet_port}/"
     ))
     .run()?;
     assert_eq!(Some(0), exitcode);
@@ -59,23 +51,22 @@ fn run_02_inlet_outlet_seperate_processes() -> Result<(), Error> {
 
 #[test]
 fn run_03_inlet_outlet_seperate_processes_secure_channel() -> Result<(), Error> {
+    let routing_port = rand::thread_rng().gen_range(10000..65535);
+    let inlet_port = rand::thread_rng().gen_range(10000..65535);
     // Spawn outlet, wait for it to start up
-    let outlet = CmdBuilder::new(&format!(
-        "cargo run --example 03-outlet ockam.io:80 {RUN_03_ROUTING_PORT}"
-    ))
-    .spawn()?;
+    let outlet = CmdBuilder::new(&format!("cargo run --example 03-outlet ockam.io:80 {routing_port}")).spawn()?;
     outlet.match_stdout(r"(?i)Waiting for incoming TCP connection")?;
 
     // Spawn inlet, wait for it to start up
     let inlet = CmdBuilder::new(&format!(
-        "cargo run --example 03-inlet 127.0.0.1:{RUN_03_INLET_PORT} {RUN_03_ROUTING_PORT}"
+        "cargo run --example 03-inlet 127.0.0.1:{inlet_port} {routing_port}"
     ))
     .spawn()?;
     inlet.match_stdout(r"(?i)Binding \w+ to 127.0.0.1")?;
 
     // Run curl and check for a successful run
     let (exitcode, stdout) = CmdBuilder::new(&format!(
-        "curl -s -L -H \"Host: ockam.io\" http://127.0.0.1:{RUN_03_INLET_PORT}/"
+        "curl -s -L -H \"Host: ockam.io\" http://127.0.0.1:{inlet_port}/"
     ))
     .run()?;
     assert_eq!(Some(0), exitcode);
@@ -87,6 +78,7 @@ fn run_03_inlet_outlet_seperate_processes_secure_channel() -> Result<(), Error> 
 
 #[test]
 fn run_04_inlet_outlet_seperate_processes_secure_channel_via_ockam_hub() -> Result<(), Error> {
+    let port = rand::thread_rng().gen_range(10000..65535);
     // Spawn outlet, wait for it to start up, grab dynamic forwarding address
     let outlet = CmdBuilder::new("cargo run --example 04-outlet ockam.io:80").spawn()?;
     outlet.match_stdout(r"(?i)RemoteForwarder was created on the node")?;
@@ -94,17 +86,12 @@ fn run_04_inlet_outlet_seperate_processes_secure_channel_via_ockam_hub() -> Resu
     println!("Forwarding address: {fwd_address}");
 
     // Spawn inlet, wait for it to start up
-    let inlet = CmdBuilder::new(&format!(
-        "cargo run --example 04-inlet 127.0.0.1:{RUN_04_INLET_PORT} {fwd_address}"
-    ))
-    .spawn()?;
+    let inlet = CmdBuilder::new(&format!("cargo run --example 04-inlet 127.0.0.1:{port} {fwd_address}")).spawn()?;
     inlet.match_stdout(r"(?i)Binding \w+ to 127.0.0.1")?;
 
     // // Run curl and check for a successful run
-    let (exitcode, stdout) = CmdBuilder::new(&format!(
-        "curl -s -L -H \"Host: ockam.io\" http://127.0.0.1:{RUN_04_INLET_PORT}/"
-    ))
-    .run()?;
+    let (exitcode, stdout) =
+        CmdBuilder::new(&format!("curl -s -L -H \"Host: ockam.io\" http://127.0.0.1:{port}/")).run()?;
     assert_eq!(Some(0), exitcode);
     println!("curl stdout...");
     println!("{stdout}");
