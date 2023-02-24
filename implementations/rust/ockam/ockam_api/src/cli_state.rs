@@ -62,26 +62,28 @@ pub struct CliState {
 }
 
 impl CliState {
-    pub fn new() -> Result<Self> {
-        let dir = Self::dir()?;
-        std::fs::create_dir_all(dir.join("defaults"))?;
+    pub fn new_extended(ockam_home: PathBuf) -> Result<Self> {
+        std::fs::create_dir_all(ockam_home.join("defaults"))?;
         Ok(Self {
-            vaults: VaultsState::new(&dir)?,
-            identities: IdentitiesState::new(&dir)?,
-            nodes: NodesState::new(&dir)?,
-            projects: ProjectsState::new(&dir)?,
-            dir,
+            vaults: VaultsState::new(ockam_home.clone())?,
+            identities: IdentitiesState::new(ockam_home.clone())?,
+            nodes: NodesState::new(ockam_home.clone())?,
+            projects: ProjectsState::new(ockam_home.clone())?,
+            dir: ockam_home,
         })
     }
 
+    pub fn new() -> Result<Self> {
+        Self::new_extended(Self::ockam_home_from_environment()?)
+    }
+
     pub fn test() -> Result<Self> {
-        let tests_dir = dirs::home_dir()
+        let ockam_home = dirs::home_dir()
             .ok_or_else(|| CliStateError::NotFound("home dir".to_string()))?
             .join(".ockam")
             .join(".tests")
             .join(random_name());
-        std::env::set_var("OCKAM_HOME", tests_dir);
-        Self::new()
+        Self::new_extended(ockam_home)
     }
 
     pub fn delete(&self, force: bool) -> Result<()> {
@@ -92,7 +94,7 @@ impl CliState {
         Ok(())
     }
 
-    pub fn dir() -> Result<PathBuf> {
+    pub fn ockam_home_from_environment() -> Result<PathBuf> {
         Ok(match std::env::var("OCKAM_HOME") {
             Ok(dir) => PathBuf::from(&dir),
             Err(_) => dirs::home_dir()
@@ -101,21 +103,22 @@ impl CliState {
         })
     }
 
-    fn defaults_dir() -> Result<PathBuf> {
-        Ok(Self::dir()?.join("defaults"))
+    fn defaults_dir(ockam_home: &PathBuf) -> Result<PathBuf> {
+        Ok(ockam_home.join("defaults"))
     }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct VaultsState {
     dir: PathBuf,
+    ockam_home: PathBuf,
 }
 
 impl VaultsState {
-    fn new(cli_path: &Path) -> Result<Self> {
-        let dir = cli_path.join("vaults");
+    fn new(ockam_home: PathBuf) -> Result<Self> {
+        let dir = ockam_home.join("vaults");
         std::fs::create_dir_all(dir.join("data"))?;
-        Ok(Self { dir })
+        Ok(Self { dir, ockam_home })
     }
 
     pub async fn create(&self, name: &str, config: VaultConfig) -> Result<VaultState> {
@@ -181,7 +184,7 @@ impl VaultsState {
     }
 
     pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(CliState::defaults_dir()?.join("vault"))
+        Ok(CliState::defaults_dir(&self.ockam_home)?.join("vault"))
     }
 
     pub fn default(&self) -> Result<VaultState> {
@@ -312,13 +315,14 @@ impl VaultConfig {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IdentitiesState {
     dir: PathBuf,
+    ockam_home: PathBuf,
 }
 
 impl IdentitiesState {
-    fn new(cli_path: &Path) -> Result<Self> {
-        let dir = cli_path.join("identities");
+    fn new(ockam_home: PathBuf) -> Result<Self> {
+        let dir = ockam_home.join("identities");
         std::fs::create_dir_all(dir.join("data"))?;
-        Ok(Self { dir })
+        Ok(Self { dir, ockam_home })
     }
 
     pub fn create(&self, name: &str, config: IdentityConfig) -> Result<IdentityState> {
@@ -388,7 +392,7 @@ impl IdentitiesState {
     }
 
     pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(CliState::defaults_dir()?.join("identity"))
+        Ok(CliState::defaults_dir(&self.ockam_home)?.join("identity"))
     }
 
     pub fn default(&self) -> Result<IdentityState> {
@@ -569,17 +573,18 @@ impl Display for EnrollmentStatus {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NodesState {
     pub dir: PathBuf,
+    ockam_home: PathBuf,
 }
 
 impl NodesState {
-    fn new(cli_path: &Path) -> Result<Self> {
-        let dir = cli_path.join("nodes");
+    fn new(ockam_home: PathBuf) -> Result<Self> {
+        let dir = ockam_home.join("nodes");
         std::fs::create_dir_all(&dir)?;
-        Ok(Self { dir })
+        Ok(Self { dir, ockam_home })
     }
 
     pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(CliState::defaults_dir()?.join("node"))
+        Ok(CliState::defaults_dir(&self.ockam_home)?.join("node"))
     }
 
     pub fn default(&self) -> Result<NodeState> {
@@ -969,13 +974,14 @@ impl TryFrom<&PathBuf> for NodeSetupConfig {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ProjectsState {
     dir: PathBuf,
+    ockam_home: PathBuf,
 }
 
 impl ProjectsState {
-    fn new(cli_path: &Path) -> Result<Self> {
-        let dir = cli_path.join("projects");
+    fn new(ockam_home: PathBuf) -> Result<Self> {
+        let dir = ockam_home.join("projects");
         std::fs::create_dir_all(dir.join("data"))?;
-        Ok(Self { dir })
+        Ok(Self { dir, ockam_home })
     }
 
     pub async fn create(&self, name: &str, config: Project<'_>) -> Result<ProjectState> {
@@ -1009,7 +1015,7 @@ impl ProjectsState {
     }
 
     pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(CliState::defaults_dir()?.join("project"))
+        Ok(CliState::defaults_dir(&self.ockam_home)?.join("project"))
     }
 
     pub fn default(&self) -> Result<ProjectState> {
