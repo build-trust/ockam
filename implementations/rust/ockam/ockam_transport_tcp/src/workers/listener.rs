@@ -2,10 +2,10 @@ use crate::{TcpRegistry, TcpSendWorker};
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
-    IncomingAccessControl, OutgoingAccessControl,
+    DenyAll, IncomingAccessControl, OutgoingAccessControl,
 };
-use ockam_core::{Address, Mailbox, Mailboxes, Processor, Result};
-use ockam_node::{Context, ProcessorBuilder};
+use ockam_core::{Address, Processor, Result};
+use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
 use tracing::debug;
@@ -29,7 +29,7 @@ impl TcpListenProcessor {
         addr: SocketAddr,
         sender_incoming_access_control: Arc<dyn IncomingAccessControl>,
         receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-    ) -> Result<SocketAddr> {
+    ) -> Result<(SocketAddr, Address)> {
         debug!("Binding TcpListener to {}", addr);
         let inner = TcpListener::bind(addr)
             .await
@@ -42,12 +42,11 @@ impl TcpListenProcessor {
             receiver_outgoing_access_control,
         };
 
-        let mailbox = Mailbox::deny_all(Address::random_tagged("TcpListenProcessor"));
-        ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), processor)
-            .start(ctx)
+        let address = Address::random_tagged("TcpListenProcessor");
+        ctx.start_processor(address.clone(), processor, DenyAll, DenyAll)
             .await?;
 
-        Ok(saddr)
+        Ok((saddr, address))
     }
 }
 

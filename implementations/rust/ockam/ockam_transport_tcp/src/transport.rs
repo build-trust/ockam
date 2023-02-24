@@ -158,10 +158,10 @@ impl TcpTransport {
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// tcp.listen("127.0.0.1:8000").await?;
     /// # Ok(()) }
-    pub async fn listen(&self, bind_addr: impl AsRef<str>) -> Result<SocketAddr> {
+    pub async fn listen(&self, bind_addr: impl AsRef<str>) -> Result<(SocketAddr, Address)> {
         let bind_addr = parse_socket_addr(bind_addr.as_ref())?;
         // Could be different from the bind_addr
-        let socket_addr = TcpListenProcessor::start(
+        let (socket_addr, address) = TcpListenProcessor::start(
             &self.ctx,
             self.registry.clone(),
             bind_addr,
@@ -170,7 +170,8 @@ impl TcpTransport {
         )
         .await?;
 
-        Ok(socket_addr)
+        Ok((socket_addr, address))
+    }
     }
 }
 
