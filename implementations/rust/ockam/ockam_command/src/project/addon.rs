@@ -333,7 +333,7 @@ async fn run_impl(
                     println!("Okta addon enabled");
 
                     // Wait until project is ready again
-                    println!("Getting things ready for project...");
+                    println!("Reconfiguring project (this can take a few minutes) ...");
                     tokio::time::sleep(std::time::Duration::from_secs(45)).await;
                     let project_id = config::get_project(&opts.config, &project_name)
                         .context("project not found in lookup")?;
@@ -394,7 +394,7 @@ async fn run_impl(
                     println!("InfluxDB addon enabled");
 
                     // Wait until project is ready again
-                    println!("Getting things ready for project...");
+                    println!("Reconfiguring project (this can take a few minutes) ...");
                     tokio::time::sleep(std::time::Duration::from_secs(45)).await;
 
                     let project_id = config::get_project(&opts.config, &project_name)
@@ -442,7 +442,7 @@ async fn run_impl(
                     println!("Confluent addon enabled");
 
                     // Wait until project is ready again
-                    println!("Getting things ready for project...");
+                    println!("Reconfiguring project (this can take a few minutes) ...");
                     tokio::time::sleep(std::time::Duration::from_secs(45)).await;
 
                     let project_id = config::get_project(&opts.config, &project_name)
