@@ -330,8 +330,19 @@ teardown() {
   $OCKAM tcp-outlet create --at /node/n1 --from /service/outlet --to 127.0.0.1:5000
   $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:6000 --to /node/n1/service/outlet
 
-  assert_output --partial "127.0.0.1:6000"
-  assert_output --partial "/ip4/127.0.0.1/tcp/62020/service/outlet"
+  run curl --fail --head 127.0.0.1:6000
+  assert_success
+}
+
+@test "list inlets on a node" {
+  $OCKAM node create n1
+  $OCKAM node create n2
+  $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:6000 --to /node/n1/service/outlet --alias tcp-inlet-2
+  run $OCKAM tcp-inlet list --node /node/n2
+
+  assert_output --partial "Alias: tcp-inlet-2"
+  assert_output --partial "TCP Address: 127.0.0.1:6000"
+  assert_output --regexp "To Outlet Address: /ip4/127.0.0.1/tcp/.*/service/outlet"
 }
 
 @test "create an inlet/outlet pair with relay through a forwarder and move tcp traffic through it" {
