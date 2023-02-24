@@ -632,7 +632,7 @@ mod test {
     async fn kafka_portal_worker__metadata_exchange__response_changed(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        crate::test::start_manager_for_tests(context).await?;
+        let _handle = crate::test::start_manager_for_tests(context).await?;
 
         let vault = Vault::create();
         let identity = Identity::create(context, &vault).await?;
