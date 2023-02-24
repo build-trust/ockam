@@ -1,6 +1,6 @@
 [package]
 name = "ockam_identity"
-version = "0.68.0"
+version = "0.69.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
@@ -58,11 +58,11 @@ alloc = [
 ]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.74.0", default-features = false }
+ockam_core = { path = "../ockam_core", version = "^0.75.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.27.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.77.0", default-features = false }
-ockam_vault = { path = "../ockam_vault", version = "^0.70.0", default-features = false, optional = true }
-ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.70.0", default-features = false, optional = true }
+ockam_node = { path = "../ockam_node", version = "^0.78.0", default-features = false }
+ockam_vault = { path = "../ockam_vault", version = "^0.71.0", default-features = false, optional = true }
+ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.71.0", default-features = false, optional = true }
 serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
 minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
 cfg-if = "1.0.0"
@@ -79,7 +79,7 @@ hex = { version = "0.4", default-features = false }
 
 [dev-dependencies]
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }
-ockam_vault = { path = "../ockam_vault", version = "^0.70.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.71.0" }
 zeroize = { version = "1.4.2" }
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"

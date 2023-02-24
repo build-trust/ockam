@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_core"
-version = "0.47.0"
+version = "0.48.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
@@ -31,5 +31,5 @@ no_std = ["ockam_core/no_std"]
 alloc = ["ockam_core/alloc"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.74.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.75.0", default_features = false }
 tracing = { version = "0.1", default-features = false }

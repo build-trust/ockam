@@ -30,9 +30,9 @@ alloc = []
 [dependencies]
 bytes = "1.4.0"
 futures-util = "0.3"
-ockam_core = { path = "../ockam_core", version = "^0.74.0", default_features = false }
-ockam_node = { path = "../ockam_node", version = "^0.77.0" }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.47.0" }
+ockam_core = { path = "../ockam_core", version = "^0.75.0", default_features = false }
+ockam_node = { path = "../ockam_node", version = "^0.78.0" }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.48.0" }
 rand = "0.7"
 hashbrown = { version = "0.13" }
 tracing = { version = "0.1", default-features = false }
@@ -49,7 +49,7 @@ tokio-util = { version = "0.7.7", features = ["net", "codec"] }
 
 [dev-dependencies]
 ockam_macros = { path = "../ockam_macros", version = "^0.27.0" }
-ockam = { path = "../ockam", version = "^0.80.0" }
+ockam = { path = "../ockam", version = "^0.81.0" }
 
 [[example]]
 name = "client"

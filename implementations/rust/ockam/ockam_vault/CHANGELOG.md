@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.71.0 - 2023-02-24
+
+### Added
+
+- Add more information to `EntryNotFound` errors
+
+### Changed
+
+- Bump aws-sdk-kms to 0.24.0 and aws-config to 0.54.1
+- Updated dependencies
+
 ## 0.70.0 - 2023-02-09
 
 ### Changed

@@ -1,6 +1,6 @@
 [package]
 name        = "ockam_api"
-version     = "0.23.0"
+version     = "0.24.0"
 edition     = "2021"
 authors     = ["Ockam Developers"]
 license     = "Apache-2.0"
@@ -56,24 +56,24 @@ reqwest         = { version = "0.11", default-features = false, features = ["jso
 sysinfo         = "0.28"
 kafka-protocol  = "0.5"
 
-ockam               = { path = "../ockam", version = "^0.80.0", features = ["software_vault"] }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.75.0" }
-ockam_multiaddr     = { path = "../ockam_multiaddr", version = "0.14.0", features = ["cbor", "serde"] }
+ockam               = { path = "../ockam", version = "^0.81.0", features = ["software_vault"] }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.76.0" }
+ockam_multiaddr     = { path = "../ockam_multiaddr", version = "0.15.0", features = ["cbor", "serde"] }
 
 [dependencies.ockam_core]
-version          = "0.74.0"
+version          = "0.75.0"
 path             = "../ockam_core"
 default-features = false
 features         = ["no_std", "alloc"]
 
 [dependencies.ockam_node]
-version          = "0.77.0"
+version          = "0.78.0"
 path             = "../ockam_node"
 default-features = false
 features         = ["no_std", "alloc"]
 
 [dependencies.ockam_vault]
-version          = "0.70.0"
+version          = "0.71.0"
 path             = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
@@ -81,13 +81,13 @@ default-features = false
 features         = ["std", "aws", "rustcrypto"]
 
 [dependencies.ockam_identity]
-version          = "0.68.0"
+version          = "0.69.0"
 path             = "../ockam_identity"
 default-features = false
 features         = ["std"]
 
 [dependencies.ockam_abac]
-version          = "0.14.0"
+version          = "0.15.0"
 path             = "../ockam_abac"
 default-features = false
 
@@ -99,7 +99,7 @@ mockall             = "0.11"
 # TODO enable "tag" feature once implemented on elixir side
 ockam_api           = { path = ".", features = ["std", "authenticators"] }
 ockam_macros        = { version = "0.27.0", path = "../ockam_macros", features = ["std"] }
-ockam_transport_tcp = { version = "0.75.0", path = "../ockam_transport_tcp" }
+ockam_transport_tcp = { version = "0.76.0", path = "../ockam_transport_tcp" }
 quickcheck          = "1.0.1"
 indexmap            = "1.7.0"
 uuid                = "0.8.2"

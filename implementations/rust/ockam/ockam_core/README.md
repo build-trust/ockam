@@ -21,7 +21,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_core = "0.74.0"
+ockam_core = "0.75.0"
 ```
 
 ## Crate Features
@@ -32,7 +32,7 @@ be disabled as follows
 
 ```
 [dependencies]
-ockam_core = { version = "0.74.0" , default-features = false }
+ockam_core = { version = "0.75.0" , default-features = false }
 ```
 
 Please note that Cargo features are unioned across the entire dependency

@@ -14,7 +14,7 @@ repository = "https://github.com/build-trust/ockam/tree/develop/implementations/
 keywords = ["ockam", "crypto", "encryption", "authentication"]
 license = "Apache-2.0"
 name = "ockam_executor"
-version = "0.42.0"
+version = "0.43.0"
 publish = true
 rust-version = "1.56.0"
 
@@ -40,7 +40,7 @@ futures = { version = "0.3.26", default-features = false, features = [
     "async-await",
 ] }
 heapless = { version = "0.7", features = ["mpmc_large"] }
-ockam_core = { path = "../ockam_core", version = "^0.74.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.75.0", default_features = false }
 pin-project-lite = "0.2"
 pin-utils = "0.1.0"
 tracing = { version = "0.1", default_features = false }

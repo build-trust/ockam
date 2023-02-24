@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.81.0 - 2023-02-24
+
+### Changed
+
+- Move the `OneTimeCode` struct from the ockam_api crate to the ockam_identity crate
+- Pre-trusted identity identifiers attributes
+- All functions from ockam_command now return a `crate::Result`
+- Updated dependencies
+
+### Fixed
+
+- Reduce cli bootstrap time by an order of magnitude for both release and dev profiles
+- Commands shows concise errors with a more human-readable format
+- Update project readiness check to include authority
+
+### Removed
+
+- Remove the lifetime annotation on `Credential` and `Attributes`
+
 ## 0.80.0 - 2023-02-09
 
 ### Changed

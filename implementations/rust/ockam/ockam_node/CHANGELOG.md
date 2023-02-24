@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.78.0 - 2023-02-24
+
+### Added
+
+- Added a debug instance for context
+
+### Changed
+
+- Split cddl schema files & merge when cbor api validation is needed
+- Updated dependencies
+
+### Fixed
+
+- Commands shows concise errors with a more human-readable format
+- Fixed the broken links in the rust doc
+- Update project readiness check to include authority
+
 ## 0.77.0 - 2023-02-09
 
 ### Changed

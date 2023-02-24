@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.70.0 - 2023-02-24
+
+### Changed
+
+- Use credential instead of credentials
+- Inlined the ockam_key_exchange_core crate into the ockam_core crate
+- Updated dependencies
+
 ## 0.69.0 - 2023-02-09
 
 ### Changed

@@ -12,5 +12,5 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_transport_uds = "0.4.0"
+ockam_transport_uds = "0.5.0"
 ```

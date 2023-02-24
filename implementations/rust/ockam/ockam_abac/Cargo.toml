@@ -1,6 +1,6 @@
 [package]
 name        = "ockam_abac"
-version     = "0.14.0"
+version     = "0.15.0"
 authors     = ["Ockam Developers"]
 edition     = "2021"
 license     = "Apache-2.0"
@@ -29,8 +29,8 @@ std     = [
 [dependencies]
 either           = { version = "1.8.1", default-features = false }
 minicbor         = { version = "0.19.0", features = ["derive", "alloc"] }
-ockam_core       = { version = "0.74.0", path = "../ockam_core", default-features = false }
-ockam_identity   = { version = "0.68.0", path = "../ockam_identity", default-features = false }
+ockam_core       = { version = "0.75.0", path = "../ockam_core", default-features = false }
+ockam_identity   = { version = "0.69.0", path = "../ockam_identity", default-features = false }
 once_cell        = { version = "1.17.1", default-features = false, features = ["alloc"] }
 regex            = "1.7.1"
 str-buf          = "3.0.1"

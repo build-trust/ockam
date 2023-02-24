@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_ble"
-version = "0.35.0"
+version = "0.36.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
@@ -84,9 +84,9 @@ pic32mx1xxfxxxb = ["pic32", "pic32-hal/pic32mx1xxfxxxb"]
 pic32mx2xxfxxxb = ["pic32", "pic32-hal/pic32mx2xxfxxxb"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.74.0", default_features = false }
-ockam_node = { path = "../ockam_node", version = "^0.77.0", default_features = false }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.47.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.75.0", default_features = false }
+ockam_node = { path = "../ockam_node", version = "^0.78.0", default_features = false }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.48.0", default_features = false }
 
 futures = { version = "0.3.26", default-features = false }
 futures-util = { version = "0.3.19", default-features = false, features = ["alloc", "async-await-macro", "sink"] }
@@ -124,8 +124,8 @@ cortex-m = "0.7.7"
 riscv = "0.10.0"
 
 [dev-dependencies]
-ockam_identity = { path = "../ockam_identity", version = "^0.68.0" }
-ockam_vault = { path = "../ockam_vault", version = "^0.70.0" }
+ockam_identity = { path = "../ockam_identity", version = "^0.69.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.71.0" }
 
 [[example]]
 name = "04-routing-over-ble-transport-initiator"

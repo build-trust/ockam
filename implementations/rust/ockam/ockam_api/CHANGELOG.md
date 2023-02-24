@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.24.0 - 2023-02-24
+
+### Added
+
+- Add default subcommand to node
+
+### Changed
+
+- Pre-trusted identity identifiers attributes
+- Use credential instead of credentials
+- Usable kafka sidecar implementation
+- Standarize where authority stores membership information
+- Implemented kafka message encryption and orchestrator integration
+- Bump aws-sdk-kms to 0.24.0 and aws-config to 0.54.1
+- Split cddl schema files & merge when cbor api validation is needed
+- Updated dependencies
+
+### Fixed
+
+- Deleting a vault won't affect the default
+
+### Removed
+
+- Remove the lifetime annotation on `Credential` and `Attributes`
+
 ## 0.23.0 - 2023-02-09
 
 ### Added

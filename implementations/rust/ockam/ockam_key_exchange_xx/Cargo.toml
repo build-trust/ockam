@@ -1,6 +1,6 @@
 [package]
 name = "ockam_key_exchange_xx"
-version = "0.70.0"
+version = "0.71.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
@@ -35,10 +35,10 @@ no_std = ["ockam_core/no_std", "ockam_macros/no_std"]
 alloc = ["ockam_core/alloc", "ockam_macros/alloc"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.74.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.75.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.27.0", default_features = false }
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", version = "^0.70.0" }
-ockam_node = { path = "../ockam_node", version = "^0.77.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.71.0" }
+ockam_node = { path = "../ockam_node", version = "^0.78.0" }
 hex = "0.4"

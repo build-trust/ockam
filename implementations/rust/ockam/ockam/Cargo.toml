@@ -22,7 +22,7 @@ license = "Apache-2.0"
 name = "ockam"
 readme = "README.md"
 repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam"
-version = "0.80.0"
+version = "0.81.0"
 rust-version = "1.56.0"
 publish = true
 
@@ -83,14 +83,14 @@ name = "tests"
 path = "tests/main.rs"
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.74.0", default-features = false }
+ockam_core = { path = "../ockam_core", version = "^0.75.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.27.0", default_features = false }
-ockam_node = { path = "../ockam_node", version = "^0.77.0", default-features = false }
-ockam_vault = { path = "../ockam_vault", version = "^0.70.0", default_features = false, optional = true }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.75.0", optional = true }
-ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.70.0", default_features = false, optional = true }
-ockam_identity = { path = "../ockam_identity", version = "^0.68.0", default_features = false }
-ockam_abac = { path = "../ockam_abac", version = "^0.14.0", default_features = false, optional = true }
+ockam_node = { path = "../ockam_node", version = "^0.78.0", default-features = false }
+ockam_vault = { path = "../ockam_vault", version = "^0.71.0", default_features = false, optional = true }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.76.0", optional = true }
+ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.71.0", default_features = false, optional = true }
+ockam_identity = { path = "../ockam_identity", version = "^0.69.0", default_features = false }
+ockam_abac = { path = "../ockam_abac", version = "^0.15.0", default_features = false, optional = true }
 arrayref = "0.3"
 minicbor = { version = "0.19.0", features = ["alloc", "derive"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
@@ -101,8 +101,8 @@ hex = { version = "0.4", default-features = false }
 dyn-clone = "1.0"
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", version = "^0.70.0" }
-ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.70.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.71.0" }
+ockam_key_exchange_xx = { path = "../ockam_key_exchange_xx", version = "^0.71.0" }
 trybuild = { version = "1.0", features = ["diff"] }
 serde_json = "1.0"
 rand_xorshift = "0.3"

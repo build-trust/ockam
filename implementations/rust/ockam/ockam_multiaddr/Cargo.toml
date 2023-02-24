@@ -1,6 +1,6 @@
 [package]
 name        = "ockam_multiaddr"
-version     = "0.14.0"
+version     = "0.15.0"
 authors     = ["Ockam Developers"]
 license     = "Apache-2.0"
 edition     = "2021"
@@ -21,7 +21,7 @@ tinyvec         = { version = "1.5.1", features = ["alloc"] }
 unsigned-varint = "0.7.1"
 
 [dependencies.ockam_core]
-version          = "0.74.0"
+version          = "0.75.0"
 path             = "../ockam_core"
 default-features = false
 features         = ["no_std", "alloc"]
