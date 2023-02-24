@@ -2,7 +2,7 @@
 // Starts a tcp listener at 127.0.0.1:3000
 // It then runs forever waiting to route messages.
 
-use hello_ockam::Hop;
+use hello_ockam::Forwarder;
 use ockam::access_control::AllowAll;
 use ockam::{Context, Result, TcpTransport};
 
@@ -11,11 +11,19 @@ async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
+    let connection_to_responder = tcp.connect("127.0.0.1:4000").await?;
+
     // Create a TCP listener and wait for incoming connections.
     tcp.listen("127.0.0.1:3000").await?;
 
     // Create a Hop worker
-    ctx.start_worker("hop", Hop, AllowAll, AllowAll).await?;
+    ctx.start_worker(
+        "forward_to_responder",
+        Forwarder(connection_to_responder),
+        AllowAll,
+        AllowAll,
+    )
+    .await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())
