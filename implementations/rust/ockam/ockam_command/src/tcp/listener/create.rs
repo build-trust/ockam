@@ -3,11 +3,12 @@ use crate::util::extract_address_value;
 use crate::util::node_rpc;
 use crate::util::Rpc;
 use crate::CommandGlobalOpts;
-use anyhow::Context;
 use clap::Args;
-use ockam::{route, Route, TCP};
-use ockam_api::{nodes::models, route_to_multiaddr};
+use ockam_api::nodes::models;
 use ockam_core::api::Request;
+use ockam_multiaddr::proto::{DnsAddr, Service, Tcp};
+use ockam_multiaddr::MultiAddr;
+
 #[derive(Args, Clone, Debug)]
 pub struct CreateCommand {
     #[command(flatten)]
@@ -48,14 +49,10 @@ async fn run_impl(
         .default_tcp_listener()?
         .addr
         .port();
-    let mut base_route = route![(TCP, format!("localhost:{port}"))];
-    let r: Route = base_route
-        .modify()
-        .pop_back()
-        .append_t(TCP, response.payload.to_string())
-        .into();
-    let multiaddr =
-        route_to_multiaddr(&r).context("Couldn't convert given address into `MultiAddr`")?;
+    let mut multiaddr = MultiAddr::default();
+    multiaddr.push_back(DnsAddr::new("localhost"))?;
+    multiaddr.push_back(Tcp::new(port))?;
+    multiaddr.push_back(Service::new(response.payload.to_string()))?;
     println!("Tcp listener created! You can send messages to it via this route:\n`{multiaddr}`",);
 
     Ok(())
