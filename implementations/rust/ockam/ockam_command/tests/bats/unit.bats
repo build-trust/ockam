@@ -200,7 +200,7 @@ teardown() {
   # Create tcp-connection and check output
   run "$OCKAM" tcp-connection create --from n1 --to 127.0.0.1:5000 --output json
   assert_success
-  assert_output --regexp '[{"route":"/dnsaddr/localhost/tcp/[[:digit:]]+/ip4/127.0.0.1/tcp/5000"}]'
+  assert_output --regexp '[{"route":"/dnsaddr/localhost/tcp/[[:digit:]]+/worker/[[:graph:]]+"}]'
 
   # Check that the connection is listed
   run "$OCKAM" tcp-connection list --node n1
@@ -208,7 +208,7 @@ teardown() {
   assert_output --partial "127.0.0.1:5000"
 
   # Delete the connection
-  id=$($OCKAM tcp-connection list --node n1 | grep -o "[0-9a-f]\{32\}")
+  id=$($OCKAM tcp-connection list --node n1 | grep -o "[0-9a-f]\{32\}" | head -1)
   run "$OCKAM" tcp-connection delete --node n1 "$id"
   assert_success
 
