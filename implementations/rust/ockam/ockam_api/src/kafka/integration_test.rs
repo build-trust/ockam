@@ -70,11 +70,8 @@ mod test {
         handle: &NodeManagerHandle,
         listener_address: Address,
         outlet_route: Route,
-        bind_ip: String,
-        server_bootstrap_port: u16,
-        brokers_port_range: (u16, u16),
         kind: KafkaServiceKind,
-    ) -> ockam::Result<()> {
+    ) -> ockam::Result<u16> {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
             handle.identity.async_try_clone().await?,
             route![],
@@ -96,10 +93,10 @@ mod test {
                 .await?;
         }
 
-        handle
+        let (_, socket_address) = handle
             .tcp
             .create_inlet(
-                format!("{bind_ip}:{server_bootstrap_port}"),
+                format!("127.0.0.1:0"),
                 route![listener_address.clone(), outlet_route.clone()],
                 AllowAll,
             )
@@ -110,10 +107,12 @@ mod test {
             secure_channel_controller.into_trait(),
             outlet_route,
             listener_address,
-            bind_ip.parse().unwrap(),
-            brokers_port_range.try_into().unwrap(),
+            "127.0.0.1".parse().unwrap(),
+            (0, 0).try_into().unwrap(),
         )
-        .await
+        .await?;
+
+        Ok(socket_address.port())
     }
 
     #[allow(non_snake_case)]
@@ -123,47 +122,61 @@ mod test {
     ) -> ockam::Result<()> {
         let handler = crate::util::test::start_manager_for_tests(context).await?;
 
-        create_kafka_service(
+        let consumer_bootstrap_port = create_kafka_service(
             context,
             &handler,
             Address::from_string("kafka_consumer_listener"),
             route!["kafka_consumer_outlet"],
-            "127.0.1.1".parse().unwrap(),
-            4000,
-            (4001, 4010),
             KafkaServiceKind::Consumer,
         )
         .await?;
 
-        create_kafka_service(
+        let producer_bootstrap_port = create_kafka_service(
             context,
             &handler,
             Address::from_string("kafka_producer_listener"),
             route!["kafka_producer_outlet"],
-            "127.0.1.1".parse().unwrap(),
-            6000,
-            (6001, 6010),
             KafkaServiceKind::Producer,
         )
         .await?;
 
+        //before produce a new key, the consumer has to issue a Fetch request
+        // so the sidecar can react by creating the forwarder for the partition 1 of 'my-topic'
+        {
+            let mut consumer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;
+            handler
+                .tcp
+                .create_outlet(
+                    "kafka_consumer_outlet",
+                    format!("127.0.0.1:{}", consumer_mock_kafka.port),
+                    AllowAll,
+                )
+                .await?;
+
+            simulate_first_kafka_consumer_empty_reply_and_ignore_result(
+                consumer_bootstrap_port,
+                &mut consumer_mock_kafka,
+            )
+            .await;
+            drop(consumer_mock_kafka);
+            //drop the outlet and re-create it when we need it later
+            context.stop_worker("kafka_consumer_outlet").await?;
+        }
+
+        let mut producer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;
         handler
             .tcp
-            .create_outlet("kafka_consumer_outlet", "127.0.1.1:5000", AllowAll)
+            .create_outlet(
+                "kafka_producer_outlet",
+                format!("127.0.0.1:{}", producer_mock_kafka.port),
+                AllowAll,
+            )
             .await?;
-
-        handler
-            .tcp
-            .create_outlet("kafka_producer_outlet", "127.0.1.1:7000", AllowAll)
-            .await?;
-
-        let mut consumer_mock_kafka = TcpServerSimulator::start("127.0.1.1:5000").await;
-        //to create forwarder for the partition 1 of 'my-topic'
-        simulate_first_kafka_consumer_empty_reply_and_ignore_result(&mut consumer_mock_kafka).await;
-        drop(consumer_mock_kafka);
-
-        let mut producer_mock_kafka = TcpServerSimulator::start("127.0.1.1:7000").await;
-        let request = simulate_kafka_producer_and_read_request(&mut producer_mock_kafka).await;
+        let request = simulate_kafka_producer_and_read_request(
+            producer_bootstrap_port,
+            &mut producer_mock_kafka,
+        )
+        .await;
 
         let encrypted_body = request
             .topic_data
@@ -187,9 +200,21 @@ mod test {
             "hello world!".as_bytes()
         );
 
-        let mut consumer_mock_kafka = TcpServerSimulator::start("127.0.1.1:5000").await;
-        let plain_fetch_response =
-            simulate_kafka_consumer_and_read_response(&mut consumer_mock_kafka, &request).await;
+        let mut consumer_mock_kafka = TcpServerSimulator::start(&format!("127.0.0.1:0")).await;
+        handler
+            .tcp
+            .create_outlet(
+                "kafka_consumer_outlet",
+                format!("127.0.0.1:{}", consumer_mock_kafka.port),
+                AllowAll,
+            )
+            .await?;
+        let plain_fetch_response = simulate_kafka_consumer_and_read_response(
+            consumer_bootstrap_port,
+            &mut consumer_mock_kafka,
+            &request,
+        )
+        .await;
 
         let plain_content = plain_fetch_response
             .responses
@@ -219,9 +244,13 @@ mod test {
     }
 
     async fn simulate_kafka_producer_and_read_request(
+        producer_bootstrap_port: u16,
         producer_mock_kafka: &mut TcpServerSimulator,
     ) -> ProduceRequest {
-        let mut kafka_client_connection = TcpStream::connect("127.0.1.1:6000").await.unwrap();
+        let mut kafka_client_connection =
+            TcpStream::connect(format!("127.0.0.1:{producer_bootstrap_port}"))
+                .await
+                .unwrap();
         send_kafka_produce_request(&mut kafka_client_connection).await;
         read_kafka_message::<&mut DuplexStream, RequestHeader, ProduceRequest>(
             producer_mock_kafka.stream(),
@@ -293,9 +322,13 @@ mod test {
     //this is needed in order to make the consumer create the forwarders to the secure
     //channel
     async fn simulate_first_kafka_consumer_empty_reply_and_ignore_result(
+        consumer_bootstrap_port: u16,
         mock_kafka_connection: &mut TcpServerSimulator,
     ) -> () {
-        let mut kafka_client_connection = TcpStream::connect("127.0.1.1:4000").await.unwrap();
+        let mut kafka_client_connection =
+            TcpStream::connect(format!("127.0.0.1:{consumer_bootstrap_port}"))
+                .await
+                .unwrap();
         send_kafka_fetch_request(&mut kafka_client_connection).await;
         //we don't want the answer, but we need to be sure the
         // message passed through and the forwarder had been created
@@ -308,10 +341,14 @@ mod test {
 
     //we use the encrypted producer request to generate the encrypted fetch response
     async fn simulate_kafka_consumer_and_read_response(
+        consumer_bootstrap_port: u16,
         mock_kafka_connection: &mut TcpServerSimulator,
         producer_request: &ProduceRequest,
     ) -> FetchResponse {
-        let mut kafka_client_connection = TcpStream::connect("127.0.1.1:4000").await.unwrap();
+        let mut kafka_client_connection =
+            TcpStream::connect(format!("127.0.0.1:{consumer_bootstrap_port}"))
+                .await
+                .unwrap();
         send_kafka_fetch_request(&mut kafka_client_connection).await;
         let _fetch_request: FetchRequest =
             read_kafka_message::<&mut DuplexStream, RequestHeader, FetchRequest>(
@@ -481,6 +518,7 @@ mod test {
         stream: DuplexStream,
         join_handles: Arc<Mutex<Vec<JoinHandle<()>>>>,
         is_stopping: Arc<AtomicBool>,
+        port: u16,
     }
 
     impl TcpServerSimulator {
@@ -488,7 +526,7 @@ mod test {
             &mut self.stream
         }
 
-        ///stops every async task running and wait for completion
+        /// Stops every async task running and wait for completion
         /// must be called to avoid leaks to be sure everything is closed before
         /// moving on the next test
         pub async fn destroy_and_wait(self) -> () {
@@ -502,10 +540,11 @@ mod test {
             }
         }
 
-        ///starts a tcp listener for one connection and returns a virtual buffer
+        /// Starts a tcp listener for one connection and returns a virtual buffer
         /// linked to the first socket
         pub async fn start(address: &str) -> Self {
             let listener = TcpListener::bind(address).await.unwrap();
+            let port = listener.local_addr().unwrap().port();
             let join_handles: Arc<Mutex<Vec<JoinHandle<()>>>> = Arc::new(Mutex::new(Vec::new()));
             let is_stopping = Arc::new(AtomicBool::new(false));
 
@@ -567,6 +606,7 @@ mod test {
 
             Self {
                 stream: test_side_duplex,
+                port,
                 join_handles,
                 is_stopping,
             }

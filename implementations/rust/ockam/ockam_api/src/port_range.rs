@@ -2,8 +2,8 @@ use core::str::FromStr;
 use ockam_core::compat::fmt::Formatter;
 use ockam_core::compat::io::{Error, ErrorKind};
 
-///Represents a range of port, inclusive start, inclusive end.
-///Always guarantee that end is bigger than start and at least 1 port in the range
+/// Represents a range of port, inclusive start, inclusive end.
+/// Always guarantee that end is bigger than start and at least 1 port in the range
 #[derive(PartialEq, Debug, Clone, Copy, Eq, Hash)]
 pub struct PortRange {
     start: u16,
