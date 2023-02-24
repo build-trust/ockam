@@ -3,11 +3,11 @@ use crate::{
     util::{api, extract_address_value, node_rpc, Rpc},
     CommandGlobalOpts, OutputFormat,
 };
-use anyhow::Context;
 use clap::Args;
 use colorful::Colorful;
-use ockam::{route, Route, TCP};
-use ockam_api::{nodes::models, route_to_multiaddr};
+use ockam_api::nodes::models;
+use ockam_multiaddr::proto::{DnsAddr, Tcp};
+use ockam_multiaddr::MultiAddr;
 use serde_json::json;
 use std::net::SocketAddrV4;
 
@@ -71,12 +71,10 @@ impl CreateCommand {
                     .default_tcp_listener()?
                     .addr
                     .port();
-                let route: Route = route![(TCP, format!("localhost:{port}"))]
-                    .modify()
-                    .append_t(TCP, response.payload.to_string())
-                    .into();
-                let multiaddr = route_to_multiaddr(&route)
-                    .context("Couldn't convert given address into `MultiAddr`")?;
+                let mut multiaddr = MultiAddr::default();
+                multiaddr.push_back(DnsAddr::new("localhost"))?; // FIXME: test
+                multiaddr.push_back(Tcp::new(port))?;
+                // FIXME multiaddr.push_back(OTCP::new(response.payload.to_string()))?;
                 let json = json!([{"route": multiaddr.to_string() }]);
                 println!("{json}");
             }

@@ -27,7 +27,7 @@ use crate::{
     util::RpcBuilder,
 };
 use crate::{project::ProjectInfo, util::api};
-use ockam::{Address, AsyncTryClone, TCP};
+use ockam::{Address, AsyncTryClone};
 use ockam::{Context, TcpTransport};
 use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::{
@@ -376,8 +376,8 @@ async fn start_services(
         }
     };
 
-    let addr = Address::from((TCP, addr.to_string()));
-    tcp.connect(addr.address()).await?;
+    // Checking if node accepts connections
+    let addr = tcp.connect_socket(addr).await?;
 
     if let Some(cfg) = config.vault {
         if !cfg.disabled {

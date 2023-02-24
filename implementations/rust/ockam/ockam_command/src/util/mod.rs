@@ -13,7 +13,7 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 pub use config::*;
-use ockam::{Address, Context, NodeBuilder, Route, TcpTransport, TCP};
+use ockam::{Address, Context, NodeBuilder, Route, TcpTransport};
 use ockam_api::cli_state::{CliState, NodeState};
 use ockam_api::nodes::NODEMANAGER_ADDR;
 use ockam_core::api::{RequestBuilder, Response, Status};
@@ -188,19 +188,18 @@ impl<'a> Rpc<'a> {
                 ref tcp,
             } => {
                 let port = node_state.setup()?.default_tcp_listener()?.addr.port();
-                let addr = Address::from((TCP, format!("localhost:{port}")));
-                let addr_str = addr.address();
-                match tcp {
+                let addr_str = format!("localhost:{port}");
+                let addr = match tcp {
                     None => {
                         let tcp = TcpTransport::create(ctx).await?;
-                        tcp.connect(addr_str).await?;
+                        tcp.connect(addr_str).await?
                     }
                     Some(tcp) => {
-                        // Ignore "already connected" error.
-                        let _ = tcp.connect(addr_str).await;
+                        // Create a new connection anyway
+                        tcp.connect(addr_str).await?
                     }
-                }
-                to.modify().prepend_route(addr.into());
+                };
+                to.modify().prepend(addr);
                 to
             }
         };
