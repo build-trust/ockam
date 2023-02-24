@@ -172,6 +172,15 @@ impl TcpTransport {
 
         Ok((socket_addr, address))
     }
+
+    /// Interrupt an active TCP connection given it's `Address`
+    pub async fn disconnect(&self, address: &Address) -> Result<()> {
+        self.ctx.stop_worker(address.clone()).await
+    }
+
+    /// Interrupt an active TCP listener given it's `Address`
+    pub async fn stop_listener(&self, address: &Address) -> Result<()> {
+        self.ctx.stop_processor(address.clone()).await
     }
 }
 
