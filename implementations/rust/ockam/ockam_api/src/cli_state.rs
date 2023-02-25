@@ -982,9 +982,6 @@ impl ProjectsState {
         let path = {
             let mut path = self.dir.clone();
             path.push(format!("{name}.json"));
-            if path.exists() {
-                return Err(CliStateError::AlreadyExists(format!("project `{name}`")));
-            }
             path
         };
         let contents = serde_json::to_string(&config)?;
