@@ -1,18 +1,15 @@
-use ockam_core::{Address, Message, Result};
+use ockam_core::{Message, Result};
 use serde::{Deserialize, Serialize};
+use std::net::SocketAddr;
 
 #[derive(Serialize, Deserialize, Debug, Message)]
 pub enum UdpRouterRequest {
-    /// Register a new client to this routing scope.
-    Register {
-        /// Specify an accept scope for this client.
-        accepts: Vec<Address>,
-        /// The clients own worker bus address.
-        self_addr: Address,
-    },
+    /// Listen on a local UDP port so the local node can
+    /// act as a server to other nodes
+    Listen { local_addr: SocketAddr },
 }
 
 #[derive(Serialize, Deserialize, Debug, Message)]
 pub enum UdpRouterResponse {
-    Register(Result<()>),
+    Listen(Result<()>),
 }
