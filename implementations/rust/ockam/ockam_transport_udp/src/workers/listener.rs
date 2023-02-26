@@ -1,53 +1,43 @@
+use super::TransportMessageCodec;
+use crate::UDP;
 use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
-use ockam_core::compat::sync::Arc;
-use ockam_core::{
-    async_trait, Address, AllowAll, LocalMessage, Mailbox, Mailboxes, Processor, Result,
-};
-use ockam_node::{Context, ProcessorBuilder};
+use ockam_core::{async_trait, route, Address, AllowAll, LocalMessage, Processor, Result};
+use ockam_node::Context;
 use tokio_util::udp::UdpFramed;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
-use crate::{router::UdpRouterHandle, transport::UdpAddress};
-
-use super::TransportMessageCodec;
-
-/// A UDP listen processor
+/// A listener for the UDP transport
 ///
-/// UDP listen processors are created by `UdpTransport`
-/// after a call is made to
-/// [`UdpTransport::listen`](crate::UdpTransport::listen).
+/// This processor handles the reception of messages on a
+/// local socket. See [`UdpRouter`](crate::router::UdpRouter) for more details.
+///
+/// When a message is received, the address of the paired sender
+/// ([`UdpSendWorker`](crate::workers::UdpSendWorker)) is injected into the message's
+/// return route so that replies are sent to the sender.
 pub(crate) struct UdpListenProcessor {
     /// The read half of the udnerlying UDP socket.
     stream: SplitStream<UdpFramed<TransportMessageCodec>>,
-    /// The address of the sender worker which owns
-    /// the write half of the underlying UDP socket.
-    tx_addr: Address,
-    /// Handle of a registered UDP router.
-    router_handle: UdpRouterHandle,
+    /// Address of our sender counterpart
+    sender_addr: Address,
 }
 
 impl UdpListenProcessor {
     pub(crate) async fn start(
         ctx: &Context,
         stream: SplitStream<UdpFramed<TransportMessageCodec>>,
-        tx_addr: Address,
-        router_handle: UdpRouterHandle,
+        sender_addr: Address,
     ) -> Result<()> {
         let processor = Self {
             stream,
-            tx_addr,
-            router_handle,
+            sender_addr,
         };
+        let addr = Address::random_tagged("UdpListenProcessor");
+
         // FIXME: @ac
-        let mailbox = Mailbox::new(
-            Address::random_tagged("UdpListenProcessor"),
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        );
-        ProcessorBuilder::with_mailboxes(Mailboxes::new(mailbox, vec![]), processor)
-            .start(ctx)
+        ctx.start_processor(addr.clone(), processor, AllowAll, AllowAll)
             .await?;
+
         Ok(())
     }
 }
@@ -65,28 +55,30 @@ impl Processor for UdpListenProcessor {
         let (mut msg, addr) = match self.stream.next().await {
             Some(res) => match res {
                 Ok((msg, addr)) => (msg, addr),
-                Err(_e) => {
-                    info!("Failed to read message from UDP socket.");
-                    return Ok(false);
+                Err(e) => {
+                    error!(
+                        "Failed to read message, will wait for next message: {:?}",
+                        e
+                    );
+                    return Ok(true);
                 }
             },
             None => {
-                info!("No message read, keep socket alive.");
+                info!("No message read, will wait for next message.");
                 return Ok(true);
             }
         };
 
-        // Register peer addr with sender half
-        // TODO: should `register` be called for every TransportMessage received?
-        self.router_handle
-            .register(self.tx_addr.clone(), addr.to_string())
-            .await?;
+        // Set return route to go directly to paired sender, skipping the UDP router
+        msg.return_route = route![
+            self.sender_addr.clone(),
+            Address::new(UDP, addr.to_string()),
+            msg.return_route
+        ];
 
-        msg.return_route.modify().prepend(UdpAddress::from(addr));
-
-        debug!("Message onward route: {}", msg.onward_route);
-        debug!("Message return route: {}", msg.return_route);
-
+        debug!(onward_route = %msg.onward_route,
+            return_route = %msg.return_route,
+            "Forwarding UDP message");
         ctx.forward(LocalMessage::new(msg, vec![])).await?;
 
         Ok(true)

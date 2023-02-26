@@ -1,63 +1,76 @@
-use ockam_core::compat::{collections::BTreeMap, str::FromStr};
-use std::ops::Deref;
-use std::sync::Arc;
-
-use futures_util::StreamExt;
-use ockam_core::{
-    async_trait, Address, AllowAll, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Result,
-    Routed, Worker,
-};
-use ockam_node::{Context, WorkerBuilder};
-
 use crate::router::messages::{UdpRouterRequest, UdpRouterResponse};
 use crate::router::UdpRouterHandle;
+use crate::workers::{TransportMessageCodec, UdpListenProcessor, UdpSendWorker};
+use futures_util::StreamExt;
+use ockam_core::{
+    async_trait, Address, AllowAll, Any, Decodable, DenyAll, LocalMessage, Mailbox, Mailboxes,
+    Result, Routed, Worker,
+};
+use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::sync::Arc;
 use tokio::net::UdpSocket;
 use tokio_util::udp::UdpFramed;
 use tracing::{debug, error, trace};
 
-use crate::transport::UdpAddress;
-use crate::workers::{TransportMessageCodec, UdpListenProcessor, UdpSendWorker};
-
-/// A UDP address router and listener
+/// The router for the UDP transport
 ///
-/// In order to create new UDP workers you need a router
-/// to map remote addresses of `type = 2` to worker addresses.
-/// This type facilitates this.
+/// The router opens a single 'client' local socket for messages which were
+/// initiaited by an entity within the local node.
 ///
-/// Optionally you can also start listening for incoming datagrams
-/// if the local node is part of a server architecture.
+/// The router opens a 'server' local socket whenever a user calls
+/// [`listen()`](crate::UdpTransport::listen) on the transport.
+///
+/// For each open local socket, the router creates a 'sender'
+/// ([`UdpSendWorker`](UdpSendWorker)) and a 'listener'
+/// ([`UdpListenProcessor`](UdpListenProcessor)) to handle messages
+/// sent and received on that socket.
+///
+/// The router only expects to have to route 'client' messages to the 'client'
+/// sender. 'server' messages bypass the router as listeners inject the
+/// sender's address into the return route of received messages.
+///
+/// This transport only supports IPv4.
 pub(crate) struct UdpRouter {
     ctx: Context,
     main_addr: Address,
     api_addr: Address,
-    map: BTreeMap<Address, Address>,
-    allow_auto_connection: bool,
+    /// Sender for 'client' messages
+    client_sender: Address,
 }
 
 impl UdpRouter {
     /// Create and register a new UDP router with the node context
     pub(crate) async fn register(ctx: &Context) -> Result<UdpRouterHandle> {
         // This context is only used to start workers, doesn't need to send nor receive messages
-        let mailboxes = Mailboxes::new(
-            Mailbox::deny_all(Address::random_tagged("UdpRouter.detached")),
-            vec![],
-        );
-        let child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
+        let child_ctx = ctx
+            .new_detached(
+                Address::random_tagged("UdpRouter.detached"),
+                DenyAll,
+                DenyAll,
+            )
+            .await?;
 
         let main_addr = Address::random_tagged("UdpRouter.main_addr");
         let api_addr = Address::random_tagged("UdpRouter.api_addr");
         debug!("Initialising new UdpRouter with address {}", &main_addr);
 
+        let handle = UdpRouterHandle::try_new(&child_ctx, &api_addr).await?;
+
+        // Create sender, listener pair for 'client' messages
+        let client_sender = Self::create_sender_listener(
+            &child_ctx,
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 0),
+        )
+        .await?;
+
         let router = Self {
             ctx: child_ctx,
             main_addr: main_addr.clone(),
             api_addr: api_addr.clone(),
-            map: BTreeMap::new(),
-            allow_auto_connection: true,
+            client_sender,
         };
-
-        let handle = router.create_self_handle().await?;
 
         let main_mailbox = Mailbox::new(
             main_addr.clone(),
@@ -79,106 +92,45 @@ impl UdpRouter {
         Ok(handle)
     }
 
-    /// Create a new `UdpRouterHandle` representing this router
-    async fn create_self_handle(&self) -> Result<UdpRouterHandle> {
-        let mailboxes = Mailboxes::new(
-            Mailbox::deny_all(Address::random_tagged("UdpRouterHandle.handle")),
-            vec![],
-        );
-        let handle_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
-
-        let handle = UdpRouterHandle::new(handle_ctx, self.api_addr.clone());
-        Ok(handle)
-    }
-
+    /// Handle the routing of 'client' messages
     async fn handle_route(&mut self, ctx: &Context, mut msg: LocalMessage) -> Result<()> {
-        trace!(
-            "UDP route request: {:?}",
-            msg.transport().onward_route.next()
-        );
-
-        let onward = msg.transport().onward_route.next()?.clone();
-
-        let next = if let Some(n) = self.map.get(&onward) {
-            n.clone()
-        } else {
-            let peer_str = match String::from_utf8(onward.deref().clone()) {
-                Ok(s) => s,
-                Err(_e) => return Err(TransportError::UnknownRoute.into()),
-            };
-
-            if self.allow_auto_connection {
-                self.connect(peer_str).await?
-            } else {
-                return Err(TransportError::UnknownRoute.into());
-            }
-        };
-
-        let transport_msg = msg.transport_mut();
-        transport_msg.onward_route.step()?;
-        // Prepend peer socket addr so that sender can use it
-        transport_msg.onward_route.modify().prepend(onward);
-        transport_msg.onward_route.modify().prepend(next.clone());
-
-        ctx.send(next.clone(), msg).await?;
-
-        Ok(())
+        // Forward message to sender for 'client' messages
+        let addr = self.client_sender.clone();
+        msg.transport_mut().onward_route.modify().prepend(addr);
+        ctx.forward(msg).await
     }
 
-    async fn handle_register(&mut self, accepts: Vec<Address>, self_addr: Address) -> Result<()> {
-        if let Some(f) = accepts.first().cloned() {
-            trace!("UDP registration request: {} => {}", f, self_addr);
-        } else {
-            error!("Tried to register a new client without passing any `Address`");
+    /// Create a sender, listener pair for the given socket address.
+    ///
+    /// Returns the address of the created sender.
+    async fn create_sender_listener(ctx: &Context, local_addr: SocketAddr) -> Result<Address> {
+        // This transport only supports IPv4
+        if !local_addr.is_ipv4() {
+            error!(local_addr = %local_addr, "This transport only supprts IPv4");
             return Err(TransportError::InvalidAddress.into());
         }
 
-        for accept in &accepts {
-            if self.map.contains_key(accept) {
-                // TODO: is returning OK right if addr(s) are already registered
-                return Ok(());
-            }
-        }
-
-        for accept in accepts {
-            self.map.insert(accept, self_addr.clone());
-        }
-
-        Ok(())
-    }
-
-    async fn connect(&mut self, peer: String) -> Result<Address> {
-        let socket = UdpSocket::bind("127.0.0.1:0")
+        // Bind new socket
+        let socket = UdpSocket::bind(local_addr)
             .await
-            .map_err(TransportError::from)?;
+            .map_err(|_| TransportError::InvalidAddress)?;
+
+        // Split socket into sink and stream
         let (sink, stream) = UdpFramed::new(socket, TransportMessageCodec).split();
 
-        let tx_addr = Address::random_tagged("Udp.Sender.connect.tx_addr");
+        debug!("Creating new sender and listener for {}", local_addr);
+
+        // Create sender
+        let sender_addr = Address::random_tagged("UdpSendWorker");
         let sender = UdpSendWorker::new(sink);
         // FIXME: @ac
-        self.ctx
-            .start_worker(tx_addr.clone(), sender, AllowAll, AllowAll)
+        ctx.start_worker(sender_addr.clone(), sender, AllowAll, AllowAll)
             .await?;
-        UdpListenProcessor::start(
-            &self.ctx,
-            stream,
-            tx_addr.clone(),
-            self.create_self_handle().await?,
-        )
-        .await?;
 
-        let (peer, hostnames) = UdpRouterHandle::resolve_peer(peer)?;
-        let mut accepts: Vec<Address> = vec![UdpAddress::from(peer).into()];
-        accepts.extend(
-            hostnames
-                .iter()
-                .filter_map(|s| UdpAddress::from_str(s).ok())
-                .map(|addr| addr.into()),
-        );
+        // Create listener
+        UdpListenProcessor::start(ctx, stream, sender_addr.clone()).await?;
 
-        self.handle_register(accepts, tx_addr.clone()).await?;
-
-        Ok(tx_addr)
+        Ok(sender_addr)
     }
 }
 
@@ -193,28 +145,32 @@ impl Worker for UdpRouter {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        let return_route = msg.return_route();
         let msg_addr = msg.msg_addr();
 
         if msg_addr == self.main_addr {
-            self.handle_route(ctx, msg.into_local_message()).await?;
+            // Process messages on main_addr
+            trace!(
+                "handle_message() MAIN_ADDR: onward_route = {}, return_route = {}",
+                msg.return_route(),
+                msg.onward_route(),
+            );
+            let msg = msg.into_local_message();
+            self.handle_route(ctx, msg).await?;
         } else if msg_addr == self.api_addr {
+            // Process messages on api_addr
+            let return_route = msg.return_route();
             let msg = UdpRouterRequest::decode(msg.payload())?;
+            trace!("handle_message() API_ADDR: msg = {:?}", msg);
             match msg {
-                UdpRouterRequest::Register { accepts, self_addr } => {
-                    trace!("handle_message register: {:?} => {:?}", accepts, self_addr);
-                    let res = self.handle_register(accepts, self_addr).await;
-
-                    ctx.send_from_address(
-                        return_route,
-                        UdpRouterResponse::Register(res),
-                        self.api_addr.clone(),
-                    )
-                    .await?;
+                UdpRouterRequest::Listen { local_addr } => {
+                    let res = Self::create_sender_listener(&self.ctx, local_addr).await;
+                    let res = res.map(|_| ());
+                    ctx.send_from_address(return_route, UdpRouterResponse::Listen(res), msg_addr)
+                        .await?;
                 }
             };
         } else {
-            return Err(TransportError::InvalidAddress.into());
+            return Err(TransportError::Protocol.into());
         }
 
         Ok(())
