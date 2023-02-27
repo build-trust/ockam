@@ -173,7 +173,7 @@ jobs:
             exit 1
           fi
 
-      - name: Check all commit authors and committers have accepted Ockam CLA.
+      - name: Check all commit authors co-authors and committers have accepted Ockam CLA.
         run: |
           commits=$(git rev-list --reverse $FIRST_COMMIT..HEAD)
           commits=($FIRST_COMMIT ${commits[@]})
@@ -185,6 +185,9 @@ jobs:
 
             author=$(git show -s --format='%ae' $commit)
             echo "Author: $author"
+            co_authors=$(git show -s --format='%b' $commit | grep -o -E '<[^>]+>' | sed 's/<//;s/>//' | tr '\n' ' ')
+            co_authors=($co_authors)
+            echo "Co-Authors: $co_authors"
             committer=$(git show -s --format='%ce' $commit)
             echo "Committer: $committer"
 
@@ -194,6 +197,16 @@ jobs:
               echo -e "$commit commit author $author has not accepted the CLA."
               err=true
             fi
+
+            for co_author in "${co_authors[@]}"
+            do
+              if grep -q -iF "$co_author" 'CONTRIBUTORS_EMAILS.txt'; then
+                echo "[✓] $commit co-author $co_author has accepted the CLA."
+              else
+                echo -e "$commit commit co-author $co_author has not accepted the CLA."
+                err=true
+              fi
+            done
 
             if grep -q -iF "$committer" 'CONTRIBUTORS_EMAILS.txt'; then
               echo "[✓] $commit committer $committer has accepted the CLA."
