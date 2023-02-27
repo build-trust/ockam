@@ -75,7 +75,7 @@ fn make_api_request<'a>(cmd: CreateCommand) -> crate::Result<RequestBuilder<'a, 
 
 fn alias_parser(arg: &str) -> Result<String> {
     if arg.contains(':') {
-        Err(anyhow!("an inlet alias must not contain ':' characters").into())
+        Err(anyhow!("an outlet alias must not contain ':' characters").into())
     } else {
         Ok(arg.to_string())
     }
