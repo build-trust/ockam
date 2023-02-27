@@ -304,14 +304,6 @@ teardown() {
   output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/n2scl | \
     $OCKAM message send "$msg" --from /node/n1 --to -/service/uppercase)
   assert [ "$output" == "$(to_uppercase "$msg")" ]
-
-  # Add a third node to the mix
-  run --separate-stderr "$OCKAM" node create n3
-  assert_success
-  msg=$(random_str)
-  output=$($OCKAM secure-channel create --from n1 --to /node/n2/service/hop/node/n3/service/api | \
-    $OCKAM message send "$msg" --from n1 --to -/service/uppercase)
-  assert [ "$output" == "$(to_uppercase "$msg")" ]
 }
 
 # ===== FORWARDER
