@@ -139,7 +139,7 @@ pub enum ConfigureAddonCommand {
     },
     /// Configure the InfluxDB Cloud addon for a project
     #[command(after_long_help = help::template(INFLUXDB_HELP_DETAIL))]
-    InfluxDb {
+    Influxdb {
         /// Ockam Project Name
         #[arg(
             long = "project",
@@ -352,7 +352,7 @@ async fn run_impl(
 
                     println!("Okta addon configured successfully");
                 }
-                ConfigureAddonCommand::InfluxDb {
+                ConfigureAddonCommand::Influxdb {
                     project_name,
                     endpoint_url,
                     token,
