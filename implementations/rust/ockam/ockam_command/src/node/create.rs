@@ -253,7 +253,7 @@ async fn run_foreground_node(
 
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = cmd.tcp_listener_address;
-    tcp.listen(&bind).await?;
+    let (socket_addr, listener_addr) = tcp.listen(&bind).await?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
     let setup_config = node_state.setup()?;
@@ -293,7 +293,12 @@ async fn run_foreground_node(
             cmd.token,
         ),
         NodeManagerTransportOptions::new(
-            (TransportType::Tcp, TransportMode::Listen, bind),
+            (
+                TransportType::Tcp,
+                TransportMode::Listen,
+                listener_addr,
+                socket_addr.to_string(),
+            ),
             tcp.async_try_clone().await?,
         ),
     )

@@ -46,11 +46,18 @@ pub async fn list_listeners<'a>(list: &[TransportStatus<'a>]) -> crate::Result<(
              TransportStatus {
                  tt,
                  tm,
-                 payload,
+                 socket_addr,
+                 worker_addr,
                  tid,
                  ..
              }| {
-                let row = vec![tid.cell(), tt.cell(), tm.cell(), payload.cell()];
+                let row = vec![
+                    tid.cell(),
+                    tt.cell(),
+                    tm.cell(),
+                    socket_addr.cell(),
+                    worker_addr.cell(),
+                ];
                 acc.push(row);
                 acc
             },
@@ -61,6 +68,7 @@ pub async fn list_listeners<'a>(list: &[TransportStatus<'a>]) -> crate::Result<(
             "Transport Type".cell().bold(true),
             "Mode".cell().bold(true),
             "Address bind".cell().bold(true),
+            "Worker address".cell().bold(true),
         ]);
 
     print_stdout(table)?;

@@ -45,7 +45,7 @@ impl CreateCommand {
             OutputFormat::Plain => {
                 let from = &self.node_opts.from;
 
-                let to = response.payload.parse::<SocketAddrV4>()?;
+                let to = response.socket_addr.parse::<SocketAddrV4>()?;
                 if opts.global_args.no_color {
                     println!("\n  TCP Connection:");
                     println!("    ID: {}", response.tid);
@@ -74,7 +74,7 @@ impl CreateCommand {
                 let mut multiaddr = MultiAddr::default();
                 multiaddr.push_back(DnsAddr::new("localhost"))?;
                 multiaddr.push_back(Tcp::new(port))?;
-                multiaddr.push_back(Worker::new(response.payload.to_string()))?;
+                multiaddr.push_back(Worker::new(response.worker_addr.to_string()))?;
                 let json = json!([{"route": multiaddr.to_string() }]);
                 println!("{json}");
             }

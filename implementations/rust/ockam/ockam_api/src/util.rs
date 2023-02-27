@@ -304,6 +304,7 @@ pub mod test {
                     crate::nodes::models::transport::TransportType::Tcp,
                     crate::nodes::models::transport::TransportMode::Listen,
                     "127.0.0.1".into(),
+                    "".into(),
                 ),
                 tcp.async_try_clone().await?,
             ),

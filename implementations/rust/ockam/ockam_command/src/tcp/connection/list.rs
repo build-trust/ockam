@@ -38,11 +38,18 @@ async fn run_impl(
              TransportStatus {
                  tt,
                  tm,
-                 payload,
+                 socket_addr,
+                 worker_addr,
                  tid,
                  ..
              }| {
-                let row = vec![tid.cell(), tt.cell(), tm.cell(), payload.cell()];
+                let row = vec![
+                    tid.cell(),
+                    tt.cell(),
+                    tm.cell(),
+                    socket_addr.cell(),
+                    worker_addr.cell(),
+                ];
                 acc.push(row);
                 acc
             },
@@ -52,7 +59,8 @@ async fn run_impl(
             "Transport ID".cell().bold(true),
             "Transport Type".cell().bold(true),
             "Mode".cell().bold(true),
-            "Address bind".cell().bold(true),
+            "Socket address".cell().bold(true),
+            "Worker address".cell().bold(true),
         ]);
 
     print_stdout(table).context("failed to print node status")?;
