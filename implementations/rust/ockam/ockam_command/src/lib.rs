@@ -13,6 +13,7 @@ mod help;
 mod identity;
 mod lease;
 mod manpages;
+mod markdown;
 mod message;
 mod node;
 mod policy;
@@ -41,6 +42,7 @@ use forwarder::ForwarderCommand;
 use identity::IdentityCommand;
 use lease::LeaseCommand;
 use manpages::ManpagesCommand;
+use markdown::MarkdownCommand;
 use message::MessageCommand;
 use node::NodeCommand;
 use policy::PolicyCommand;
@@ -208,6 +210,7 @@ pub enum OckamSubcommand {
     Admin(AdminCommand),
     Manpages(ManpagesCommand),
     Lease(LeaseCommand),
+    Markdown(MarkdownCommand),
 }
 
 pub fn run() {
@@ -272,6 +275,7 @@ impl OckamCommand {
             OckamSubcommand::Admin(c) => c.run(options),
             OckamSubcommand::Manpages(c) => c.run(),
             OckamSubcommand::Lease(c) => c.run(options),
+            OckamSubcommand::Markdown(c) => c.run(),
         }
     }
 }
