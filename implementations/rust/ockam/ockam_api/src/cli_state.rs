@@ -3,10 +3,9 @@ use crate::cloud::project::Project;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 
 use nix::errno::Errno;
+use ockam_core::compat::sync::Arc;
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
-use ockam_identity::credential::Credential;
-use ockam_identity::{Identity, IdentityIdentifier, SecureChannelRegistry};
-
+use ockam_identity::{Identity, IdentityIdentifier, IdentityVault, SecureChannelRegistry};
 use ockam_vault::{storage::FileStorage, Vault};
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -14,11 +13,12 @@ use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
 use std::time::SystemTime;
 use sysinfo::{Pid, System, SystemExt};
 
 use crate::lmdb::LmdbStorage;
+use ockam_identity::authenticated_storage::AuthenticatedStorage;
+use ockam_identity::credential::Credential;
 use thiserror::Error;
 
 type Result<T> = std::result::Result<T, CliStateError>;
@@ -447,7 +447,7 @@ impl IdentitiesState {
         self.get(name)
     }
 
-    pub async fn authenticated_storage(&self) -> Result<LmdbStorage> {
+    pub async fn authenticated_storage(&self) -> Result<Arc<dyn AuthenticatedStorage>> {
         //TODO: remove this once we don't need to convert from old location anymore
         //      there is probably a better place for this than here, but this code
         //      is going to be short-lived and authenticated_storage/1 is anyway
@@ -458,7 +458,7 @@ impl IdentitiesState {
             std::fs::rename(&legacy_location, &lmdb_path)?;
         }
 
-        Ok(LmdbStorage::new(lmdb_path).await?)
+        Ok(Arc::new(LmdbStorage::new(lmdb_path).await?))
     }
 }
 
@@ -506,8 +506,8 @@ impl IdentityState {
     pub async fn get(
         &self,
         ctx: &ockam::Context,
-        vault: &Vault,
-    ) -> Result<Identity<Vault, LmdbStorage>> {
+        vault: Arc<dyn IdentityVault>,
+    ) -> Result<Identity> {
         let data = self.config.change_history.export()?;
         let cli_state_path = self
             .path
@@ -519,10 +519,14 @@ impl IdentityState {
             .identities
             .authenticated_storage()
             .await?;
-        Ok(
-            Identity::import_ext(ctx, &data, &storage, &SecureChannelRegistry::new(), vault)
-                .await?,
+        Ok(Identity::import_ext(
+            ctx,
+            &data,
+            storage,
+            &SecureChannelRegistry::new(),
+            vault.clone(),
         )
+        .await?)
     }
 }
 
@@ -571,7 +575,7 @@ pub struct IdentityConfig {
 }
 
 impl IdentityConfig {
-    pub async fn new(identity: &Identity<Vault, LmdbStorage>) -> Self {
+    pub async fn new(identity: &Identity) -> Self {
         let identifier = identity.identifier().clone();
         let change_history = identity.change_history().await;
         Self {
@@ -888,11 +892,11 @@ impl NodeConfig {
         Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
     }
 
-    pub async fn identity(&self, ctx: &ockam::Context) -> Result<Identity<Vault, LmdbStorage>> {
-        let vault = self.vault().await?;
+    pub async fn identity(&self, ctx: &ockam::Context) -> Result<Identity> {
+        let vault: Arc<dyn IdentityVault> = Arc::new(self.vault().await?);
         let state_path = std::fs::canonicalize(&self.default_identity)?;
         let state = IdentityState::try_from(&state_path)?;
-        state.get(ctx, &vault).await
+        state.get(ctx, vault).await
     }
 }
 
@@ -1298,9 +1302,9 @@ mod tests {
         let identity_name = {
             let name = hex::encode(rand::random::<[u8; 4]>());
             let vault_state = sut.vaults.get(&vault_name).unwrap();
-            let vault = vault_state.get().await.unwrap();
+            let vault: Arc<dyn IdentityVault> = Arc::new(vault_state.get().await.unwrap());
             let identity =
-                Identity::create_ext(ctx, &sut.identities.authenticated_storage().await?, &vault)
+                Identity::create_ext(ctx, sut.identities.authenticated_storage().await?, vault)
                     .await
                     .unwrap();
             let config = IdentityConfig::new(&identity).await;

@@ -342,19 +342,17 @@ pub fn is_local_node(ma: &MultiAddr) -> anyhow::Result<bool> {
 #[cfg(test)]
 pub mod test {
     use crate::cli_state::{CliState, IdentityConfig, NodeConfig, VaultConfig};
-    use crate::lmdb::LmdbStorage;
     use crate::nodes::service::{
         NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
     };
     use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
-    use ockam::compat::tokio::sync::RwLock;
     use ockam::Result;
+    use ockam_core::compat::sync::Arc;
     use ockam_core::AsyncTryClone;
-    use ockam_identity::Identity;
+    use ockam_identity::{Identity, IdentityVault};
+    use ockam_node::compat::asynchronous::RwLock;
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
-    use ockam_vault::Vault;
-    use std::sync::Arc;
 
     /// This struct is used by tests, it has two responsibilities:
     /// - guard to delete the cli state at the end of the test, the cli state
@@ -365,7 +363,7 @@ pub mod test {
         pub cli_state: CliState,
         pub node_manager: Arc<RwLock<NodeManager>>,
         pub tcp: TcpTransport,
-        pub identity: Identity<Vault, LmdbStorage>,
+        pub identity: Arc<Identity>,
     }
 
     impl Drop for NodeManagerHandle {
@@ -394,10 +392,11 @@ pub mod test {
             .await?;
 
         let identity_name = hex::encode(rand::random::<[u8; 4]>());
+        let vault: Arc<dyn IdentityVault> = Arc::new(vault);
         let identity = Identity::create_ext(
             context,
-            &cli_state.identities.authenticated_storage().await?,
-            &vault,
+            cli_state.identities.authenticated_storage().await?,
+            vault,
         )
         .await
         .unwrap();
@@ -439,7 +438,7 @@ pub mod test {
             cli_state,
             node_manager,
             tcp: tcp.async_try_clone().await?,
-            identity,
+            identity: Arc::new(identity),
         })
     }
 }

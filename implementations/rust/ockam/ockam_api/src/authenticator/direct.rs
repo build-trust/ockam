@@ -7,16 +7,14 @@ use ockam::identity::authenticated_storage::{
     AttributesEntry, AuthenticatedStorage, IdentityAttributeStorage, IdentityAttributeStorageReader,
 };
 use ockam::identity::credential::{Credential, OneTimeCode, SchemaId, Timestamp};
-use ockam::identity::{
-    Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityVault,
-};
+use ockam::identity::{Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo};
 use ockam_core::api::{self, Error, Method, Request, RequestBuilder, Response, Status};
+use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{self, Address, CowStr, DenyAll, Result, Route, Routed, Worker};
 use ockam_node::Context;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
-use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use tracing::{trace, warn};
 use types::AddMember;
@@ -152,23 +150,18 @@ impl Worker for LegacyApiConverter {
     }
 }
 
-pub struct CredentialIssuer<
-    S: AuthenticatedStorage,
-    IS: IdentityAttributeStorageReader,
-    V: IdentityVault,
-> {
+pub struct CredentialIssuer {
     project: Vec<u8>,
-    store: IS,
-    ident: Identity<V, S>,
+    store: Arc<dyn IdentityAttributeStorageReader>,
+    ident: Arc<Identity>,
 }
 
-impl<S, IS, V> CredentialIssuer<S, IS, V>
-where
-    S: AuthenticatedStorage,
-    IS: IdentityAttributeStorageReader,
-    V: IdentityVault,
-{
-    pub async fn new(project: Vec<u8>, store: IS, identity: Identity<V, S>) -> Result<Self> {
+impl CredentialIssuer {
+    pub async fn new(
+        project: Vec<u8>,
+        store: Arc<dyn IdentityAttributeStorageReader>,
+        identity: Arc<Identity>,
+    ) -> Result<Self> {
         Ok(Self {
             project,
             store,
@@ -195,12 +188,7 @@ where
 }
 
 #[ockam_core::worker]
-impl<S, IS, V> Worker for CredentialIssuer<S, IS, V>
-where
-    S: AuthenticatedStorage,
-    IS: IdentityAttributeStorageReader,
-    V: IdentityVault,
-{
+impl Worker for CredentialIssuer {
     type Context = Context;
     type Message = Vec<u8>;
 
@@ -239,19 +227,16 @@ where
     }
 }
 
-pub struct DirectAuthenticator<IS: IdentityAttributeStorage> {
+pub struct DirectAuthenticator {
     project: Vec<u8>,
-    store: IS,
+    store: Arc<dyn IdentityAttributeStorage>,
 }
 
-impl<IS> DirectAuthenticator<IS>
-where
-    IS: IdentityAttributeStorage,
-{
-    pub async fn new<S: AuthenticatedStorage>(
+impl DirectAuthenticator {
+    pub async fn new(
         project: Vec<u8>,
-        store: IS,
-        legacy_store: S,
+        store: Arc<dyn IdentityAttributeStorage>,
+        legacy_store: Arc<dyn AuthenticatedStorage>,
     ) -> Result<Self> {
         //TODO: This block is from converting old-style member' data into
         //      the new format suitable for our ABAC framework.  Remove it
@@ -298,10 +283,7 @@ where
 }
 
 #[ockam_core::worker]
-impl<IS> Worker for DirectAuthenticator<IS>
-where
-    IS: IdentityAttributeStorage,
-{
+impl Worker for DirectAuthenticator {
     type Context = Context;
     type Message = Vec<u8>;
 
@@ -342,13 +324,16 @@ pub struct EnrollmentTokenAuthenticator {
 }
 
 pub struct EnrollmentTokenIssuer(EnrollmentTokenAuthenticator);
-pub struct EnrollmentTokenAcceptor<IS: IdentityAttributeStorage>(EnrollmentTokenAuthenticator, IS);
+pub struct EnrollmentTokenAcceptor(
+    EnrollmentTokenAuthenticator,
+    Arc<dyn IdentityAttributeStorage>,
+);
 
 impl EnrollmentTokenAuthenticator {
-    pub fn new_worker_pair<IS: IdentityAttributeStorage>(
+    pub fn new_worker_pair(
         project: Vec<u8>,
-        storage: IS,
-    ) -> (EnrollmentTokenIssuer, EnrollmentTokenAcceptor<IS>) {
+        storage: Arc<dyn IdentityAttributeStorage>,
+    ) -> (EnrollmentTokenIssuer, EnrollmentTokenAcceptor) {
         let base = Self {
             project,
             tokens: Arc::new(RwLock::new(LruCache::new(
@@ -428,10 +413,7 @@ impl Worker for EnrollmentTokenIssuer {
 }
 
 #[ockam_core::worker]
-impl<IS> Worker for EnrollmentTokenAcceptor<IS>
-where
-    IS: IdentityAttributeStorage,
-{
+impl Worker for EnrollmentTokenAcceptor {
     type Context = Context;
     type Message = Vec<u8>;
 

@@ -4,6 +4,7 @@ use either::Either;
 use minicbor::Decoder;
 use ockam_core::api::{self, Id, ResponseBuilder};
 use ockam_core::api::{Error, Method, Request, Response};
+use ockam_core::compat::sync::Arc;
 use ockam_core::{self, Result, Routed, Worker};
 use ockam_identity::credential::{Credential, CredentialData, Verified};
 use ockam_identity::{IdentityVault, PublicIdentity};
@@ -12,16 +13,12 @@ use tracing::trace;
 
 use self::types::{VerifyRequest, VerifyResponse};
 
-#[derive(Debug)]
-pub struct Verifier<V> {
-    vault: V,
+pub struct Verifier {
+    vault: Arc<dyn IdentityVault>,
 }
 
 #[ockam_core::worker]
-impl<V> Worker for Verifier<V>
-where
-    V: IdentityVault,
-{
+impl Worker for Verifier {
     type Context = Context;
     type Message = Vec<u8>;
 
@@ -31,11 +28,8 @@ where
     }
 }
 
-impl<V> Verifier<V>
-where
-    V: IdentityVault,
-{
-    pub fn new(vault: V) -> Self {
+impl Verifier {
+    pub fn new(vault: Arc<dyn IdentityVault>) -> Self {
         Self { vault }
     }
 
@@ -94,14 +88,14 @@ where
         let data = CredentialData::try_from(cre)?;
 
         let ident = if let Some(ident) = req.authority(data.unverified_issuer()) {
-            PublicIdentity::import(ident, &self.vault).await?
+            PublicIdentity::import_arc(ident, self.vault.clone()).await?
         } else {
             let err = Error::new("/verify").with_message("unauthorised issuer");
             return Ok(Either::Left(Response::unauthorized(id).body(err)));
         };
 
         let data = match ident
-            .verify_credential(cre, req.subject(), &self.vault)
+            .verify_credential(cre, req.subject(), self.vault.clone())
             .await
         {
             Ok(data) => data,

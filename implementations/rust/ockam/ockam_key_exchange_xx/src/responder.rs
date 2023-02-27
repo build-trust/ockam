@@ -1,5 +1,5 @@
 use crate::state::State;
-use crate::{XXError, XXVault};
+use crate::XXError;
 use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
@@ -7,7 +7,7 @@ use ockam_core::compat::{
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 use ockam_core::{CompletedKeyExchange, KeyExchanger};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum ResponderState {
     DecodeMessage1,
     EncodeMessage2,
@@ -16,14 +16,14 @@ enum ResponderState {
 }
 
 /// Represents an XX responder
-#[derive(Debug)]
-pub struct Responder<V: XXVault> {
+#[derive(Debug, Clone)]
+pub struct Responder {
     state: ResponderState,
-    state_data: State<V>,
+    state_data: State,
 }
 
-impl<V: XXVault> Responder<V> {
-    pub(crate) fn new(state_data: State<V>) -> Self {
+impl Responder {
+    pub(crate) fn new(state_data: State) -> Self {
         Responder {
             state: ResponderState::DecodeMessage1,
             state_data,
@@ -32,7 +32,7 @@ impl<V: XXVault> Responder<V> {
 }
 
 #[async_trait]
-impl<V: XXVault> KeyExchanger for Responder<V> {
+impl KeyExchanger for Responder {
     async fn name(&self) -> Result<String> {
         Ok("NOISE_XX".to_string())
     }
@@ -73,7 +73,7 @@ impl<V: XXVault> KeyExchanger for Responder<V> {
         Ok(matches!(self.state, ResponderState::Done))
     }
 
-    async fn finalize(self) -> Result<CompletedKeyExchange> {
+    async fn finalize(&mut self) -> Result<CompletedKeyExchange> {
         match self.state {
             ResponderState::Done => self.state_data.finalize_responder().await,
             _ => Err(XXError::InvalidState.into()),

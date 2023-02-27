@@ -4,6 +4,7 @@ use minicbor::Decoder;
 use ockam::identity::credential::Timestamp;
 use ockam_core::api;
 use ockam_core::api::{Method, Request, Response};
+use ockam_core::compat::sync::Arc;
 use ockam_core::{self, Result, Routed, Worker};
 use ockam_identity::authenticated_storage::{AttributesEntry, IdentityAttributeStorageWriter};
 use ockam_identity::{IdentityIdentifier, IdentitySecureChannelLocalInfo};
@@ -12,19 +13,16 @@ use reqwest::StatusCode;
 use std::collections::HashMap;
 use tracing::trace;
 
-pub struct Server<S> {
+pub struct Server {
     project: Vec<u8>,
-    store: S,
+    store: Arc<dyn IdentityAttributeStorageWriter>,
     tenant_base_url: String,
     certificate: reqwest::Certificate,
     attributes: Vec<String>,
 }
 
 #[ockam_core::worker]
-impl<S> Worker for Server<S>
-where
-    S: IdentityAttributeStorageWriter,
-{
+impl Worker for Server {
     type Context = Context;
     type Message = Vec<u8>;
 
@@ -41,13 +39,10 @@ where
     }
 }
 
-impl<S> Server<S>
-where
-    S: IdentityAttributeStorageWriter,
-{
+impl Server {
     pub fn new(
         project: Vec<u8>,
-        store: S,
+        store: Arc<dyn IdentityAttributeStorageWriter>,
         tenant_base_url: &str,
         certificate: &str,
         attributes: &[&str],

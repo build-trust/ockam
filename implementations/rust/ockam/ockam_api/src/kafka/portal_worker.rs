@@ -586,7 +586,7 @@ mod test {
         let vault = Vault::create();
         let identity = Identity::create(context, &vault).await.unwrap();
         let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(identity, route![]).into_trait();
+            KafkaSecureChannelControllerImpl::new(Arc::new(identity), route![]).into_trait();
 
         let portal_inlet_address = KafkaPortalWorker::start_kafka_portal(
             context,
@@ -638,7 +638,7 @@ mod test {
         let identity = Identity::create(context, &vault).await?;
 
         let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(identity, route![]).into_trait();
+            KafkaSecureChannelControllerImpl::new(Arc::new(identity), route![]).into_trait();
 
         let inlet_map = KafkaInletMap::new(
             route![],

@@ -2,6 +2,7 @@
 
 use crate::config::{lookup::ConfigLookup, ConfigValues};
 use crate::{cli_state, HexByteVec};
+use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_identity::{IdentityIdentifier, IdentityVault, PublicIdentity};
 use ockam_multiaddr::MultiAddr;
@@ -72,13 +73,13 @@ impl AuthoritiesConfig {
         self.authorities.iter()
     }
 
-    pub async fn to_public_identities<V>(&self, vault: &V) -> Result<Vec<PublicIdentity>>
-    where
-        V: IdentityVault,
-    {
+    pub async fn to_public_identities(
+        &self,
+        vault: Arc<dyn IdentityVault>,
+    ) -> Result<Vec<PublicIdentity>> {
         let mut v = Vec::new();
         for a in self.authorities.values() {
-            v.push(PublicIdentity::import(a.identity.as_slice(), vault).await?)
+            v.push(PublicIdentity::import_arc(a.identity.as_slice(), vault.clone()).await?)
         }
         Ok(v)
     }

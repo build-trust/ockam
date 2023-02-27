@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use super::{map_multiaddr_err, NodeManagerWorker};
-
 use crate::error::ApiError;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
@@ -15,9 +14,9 @@ use minicbor::Decoder;
 use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
+use ockam_core::compat::sync::Arc;
 use ockam_core::sessions::{SessionId, Sessions};
-use ockam_core::{route, AsyncTryClone, CowStr};
-use ockam_identity::authenticated_storage::AuthenticatedStorage;
+use ockam_core::{route, CowStr};
 
 use ockam_identity::{
     Identity, IdentityIdentifier, IdentityVault, SecureChannelListenerTrustOptions,
@@ -27,10 +26,7 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
 impl NodeManager {
-    async fn get_credential_if_needed<V: IdentityVault, S: AuthenticatedStorage>(
-        &mut self,
-        identity: &Identity<V, S>,
-    ) -> Result<()> {
+    async fn get_credential_if_needed(&mut self, identity: &Identity) -> Result<()> {
         if identity.credential().await.is_some() {
             debug!("Credential check: credential already exists...");
             return Ok(());
@@ -43,12 +39,9 @@ impl NodeManager {
         Ok(())
     }
 
-    pub(crate) async fn create_secure_channel_internal<
-        V: IdentityVault,
-        S: AuthenticatedStorage,
-    >(
+    pub(crate) async fn create_secure_channel_internal(
         &mut self,
-        identity: &Identity<V, S>,
+        identity: &Identity,
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         timeout: Option<Duration>,
@@ -105,17 +98,18 @@ impl NodeManager {
         credential_name: Option<CowStr<'_>>,
         session: Option<(Sessions, SessionId)>,
     ) -> Result<Address> {
-        let identity = if let Some(identity) = identity_name {
+        let identity: Arc<Identity> = if let Some(identity) = identity_name {
             let idt_state = self.cli_state.identities.get(&identity)?;
             match idt_state.get(ctx, self.vault()?).await {
-                Ok(idt) => idt,
+                Ok(idt) => Arc::new(idt),
                 Err(_) => {
                     let default_vault = &self.cli_state.vaults.default()?.get().await?;
-                    idt_state.get(ctx, default_vault).await?
+                    let vault: Arc<dyn IdentityVault> = Arc::new(default_vault.clone());
+                    Arc::new(idt_state.get(ctx, vault).await?)
                 }
             }
         } else {
-            self.identity()?.async_try_clone().await?
+            self.identity.clone()
         };
         let provided_credential = if let Some(credential_name) = credential_name {
             Some(
@@ -179,7 +173,7 @@ impl NodeManager {
                     .present_credential_mutual(
                         route![sc_addr.clone(), DefaultAddress::CREDENTIALS_SERVICE],
                         &authorities.public_identities(),
-                        &self.attributes_storage,
+                        self.attributes_storage.clone(),
                         provided_credential.as_ref(),
                     )
                     .await?;
@@ -204,19 +198,20 @@ impl NodeManager {
             addr
         );
 
-        let identity = if let Some(identity) = identity_name {
+        let identity: Arc<Identity> = if let Some(identity) = identity_name {
             let idt_state = self.cli_state.identities.get(&identity)?;
             if let Some(vault) = vault_name {
-                let vault = self.cli_state.vaults.get(&vault)?.get().await?;
-                idt_state.get(ctx, &vault).await?
+                let default_vault = self.cli_state.vaults.get(&vault)?.get().await?;
+                let vault: Arc<dyn IdentityVault> = Arc::new(default_vault.clone());
+                Arc::new(idt_state.get(ctx, vault).await?)
             } else {
-                idt_state.get(ctx, self.vault()?).await?
+                Arc::new(idt_state.get(ctx, self.vault()?).await?)
             }
         } else {
             if vault_name.is_some() {
                 warn!("The optional vault is ignored when an optional identity is not specified. Using the default identity.");
             }
-            self.identity()?.async_try_clone().await?
+            self.identity.clone()
         };
 
         let trust_options = SecureChannelListenerTrustOptions::new(); // FIXME: add session_id
@@ -238,8 +233,7 @@ impl NodeManager {
 
     pub(super) async fn delete_secure_channel(&mut self, addr: &Address) -> Result<()> {
         debug!(%addr, "deleting secure channel");
-        let identity = self.identity()?;
-        identity.stop_secure_channel(addr).await?;
+        self.identity.stop_secure_channel(addr).await?;
         self.registry.secure_channels.remove_by_addr(addr);
         Ok(())
     }

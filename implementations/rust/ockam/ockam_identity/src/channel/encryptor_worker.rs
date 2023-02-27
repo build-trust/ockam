@@ -1,6 +1,5 @@
 use crate::api::{EncryptionRequest, EncryptionResponse};
 use crate::channel::addresses::Addresses;
-use crate::channel::common::SecureChannelVault;
 use crate::channel::encryptor::Encryptor;
 use crate::channel::Role;
 use crate::error::IdentityError;
@@ -10,21 +9,21 @@ use ockam_core::{Any, Result, Routed, TransportMessage, Worker};
 use ockam_node::Context;
 use tracing::debug;
 
-pub(crate) struct EncryptorWorker<V: SecureChannelVault> {
+pub(crate) struct EncryptorWorker {
     role: Role,
     addresses: Addresses,
     remote_route: Route,
     remote_backwards_compatibility_address: Address,
-    encryptor: Encryptor<V>,
+    encryptor: Encryptor,
 }
 
-impl<V: SecureChannelVault> EncryptorWorker<V> {
+impl EncryptorWorker {
     pub fn new(
         role: Role,
         addresses: Addresses,
         remote_route: Route,
         remote_backwards_compatibility_address: Address,
-        encryptor: Encryptor<V>,
+        encryptor: Encryptor,
     ) -> Self {
         Self {
             role,
@@ -111,7 +110,7 @@ impl<V: SecureChannelVault> EncryptorWorker<V> {
 }
 
 #[async_trait]
-impl<V: SecureChannelVault> Worker for EncryptorWorker<V> {
+impl Worker for EncryptorWorker {
     type Message = Any;
     type Context = Context;
 

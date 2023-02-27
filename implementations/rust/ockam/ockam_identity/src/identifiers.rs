@@ -5,6 +5,7 @@ use minicbor::decode::{self, Decoder};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
 use ockam_core::compat::string::{String, ToString};
+use ockam_core::compat::sync::Arc;
 use ockam_core::vault::{Hasher, KeyId};
 use ockam_core::{Error, Result};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -125,7 +126,7 @@ impl AsRef<[u8]> for ChangeIdentifier {
 
 impl ChangeIdentifier {
     /// Initial `ChangeIdentifier` that is used as a previous_identifier of the first change
-    pub async fn initial(hasher: &(impl Hasher + Sync)) -> Self {
+    pub async fn initial(hasher: Arc<dyn Hasher>) -> Self {
         let h = match hasher.sha256(IdentityStateConst::INITIAL_CHANGE).await {
             Ok(hash) => hash,
             Err(_) => panic!("failed to hash initial change"),

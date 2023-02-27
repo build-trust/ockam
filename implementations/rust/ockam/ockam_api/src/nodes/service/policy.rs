@@ -1,7 +1,7 @@
 use crate::nodes::models::policy::{Policy, PolicyList};
 use either::Either;
 use minicbor::Decoder;
-use ockam_abac::{Action, PolicyStorage, Resource};
+use ockam_abac::{Action, Resource};
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
 use ockam_core::Result;
 

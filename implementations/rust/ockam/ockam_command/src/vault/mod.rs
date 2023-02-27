@@ -8,6 +8,7 @@ use anyhow::anyhow;
 use clap::{Args, Subcommand};
 use ockam::Context;
 use ockam_api::cli_state::{self, CliState, CliStateError};
+use ockam_core::compat::sync::Arc;
 use ockam_core::vault::{Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault};
 use ockam_identity::{Identity, IdentityStateConst, KeyAttributes};
 use rand::prelude::random;
@@ -95,8 +96,8 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
                 let attrs = KeyAttributes::new(IdentityStateConst::ROOT_LABEL.to_string(), attrs);
                 Identity::create_with_external_key_ext(
                     &ctx,
-                    &opts.state.identities.authenticated_storage().await?,
-                    &v,
+                    opts.state.identities.authenticated_storage().await?,
+                    Arc::new(v),
                     &kid,
                     attrs,
                 )

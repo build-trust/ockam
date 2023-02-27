@@ -7,6 +7,7 @@ use crate::{
 use core::cmp::Ordering;
 use core::fmt;
 use minicbor::{Decode, Encode};
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{allow, deny, Encodable, Result};
 use ockam_vault::PublicKey;
@@ -123,7 +124,7 @@ impl IdentityChangeHistory {
     /// Cryptographically compute `IdentityIdentifier`
     pub async fn compute_identity_id(
         &self,
-        vault: &impl IdentityVault,
+        vault: Arc<dyn IdentityVault>,
     ) -> Result<IdentityIdentifier> {
         let root_public_key = self.get_first_root_public_key()?;
 
@@ -163,11 +164,11 @@ impl IdentityChangeHistory {
     }
 
     /// Verify all changes present in current `IdentityChangeHistory`
-    pub async fn verify_all_existing_changes(&self, vault: &impl IdentityVault) -> Result<bool> {
+    pub async fn verify_all_existing_changes(&self, vault: Arc<dyn IdentityVault>) -> Result<bool> {
         for i in 0..self.0.len() {
             let existing_changes = &self.as_ref()[..i];
             let new_change = &self.as_ref()[i];
-            if !Self::verify_change(existing_changes, new_change, vault).await? {
+            if !Self::verify_change(existing_changes, new_change, vault.clone()).await? {
                 return deny();
             }
         }
@@ -229,7 +230,7 @@ impl IdentityChangeHistory {
     pub(crate) async fn verify_change(
         existing_changes: &[IdentitySignedChange],
         new_change: &IdentitySignedChange,
-        vault: &impl IdentityVault,
+        vault: Arc<dyn IdentityVault>,
     ) -> Result<bool> {
         let change_binary = new_change
             .change()

@@ -1,15 +1,16 @@
 use crate::error::IdentityError;
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::vault::{KeyId, SymmetricVault};
 use ockam_core::Result;
 
-pub(crate) struct Encryptor<V: SymmetricVault> {
+pub(crate) struct Encryptor {
     key: KeyId,
     nonce: u64,
-    vault: V,
+    vault: Arc<dyn SymmetricVault>,
 }
 
-impl<V: SymmetricVault> Encryptor<V> {
+impl Encryptor {
     /// We use u64 nonce since it's convenient to work with it (e.g. increment)
     /// But we use 8-byte be format to send it over to the other side (according to noise spec)
     /// And we use 12-byte be format for encryption, since AES-GCM wants 12 bytes
@@ -44,7 +45,7 @@ impl<V: SymmetricVault> Encryptor<V> {
         Ok(res)
     }
 
-    pub fn new(key: KeyId, nonce: u64, vault: V) -> Self {
+    pub fn new(key: KeyId, nonce: u64, vault: Arc<dyn SymmetricVault>) -> Self {
         Self { key, nonce, vault }
     }
 }

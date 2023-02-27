@@ -11,10 +11,8 @@ use ockam_core::{async_trait, route, Address, AllowAll, Error, Result, Route, Ro
 use ockam_identity::api::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
 };
-use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_identity::{
-    Identity, IdentityVault, SecureChannelRegistryEntry, SecureChannelTrustOptions,
-    TrustEveryonePolicy,
+    Identity, SecureChannelRegistryEntry, SecureChannelTrustOptions, TrustEveryonePolicy,
 };
 use ockam_node::compat::tokio::sync::Mutex;
 use ockam_node::Context;
@@ -103,18 +101,12 @@ struct SecureChannelIdentifierMessage {
     secure_channel_identifier: UniqueSecureChannelId,
 }
 
-pub(crate) struct KafkaSecureChannelControllerImpl<
-    V: IdentityVault,
-    S: AuthenticatedStorage,
-    F: ForwarderCreator,
-> {
-    inner: Arc<Mutex<InnerSecureChannelControllerImpl<V, S, F>>>,
+pub(crate) struct KafkaSecureChannelControllerImpl<F: ForwarderCreator> {
+    inner: Arc<Mutex<InnerSecureChannelControllerImpl<F>>>,
 }
 
 //had to manually implement since #[derive(Clone)] doesn't work well in this situation
-impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator> Clone
-    for KafkaSecureChannelControllerImpl<V, S, F>
-{
+impl<F: ForwarderCreator> Clone for KafkaSecureChannelControllerImpl<F> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
@@ -125,28 +117,22 @@ impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator> Clone
 /// An identifier of the secure channel **instance**
 pub(crate) type UniqueSecureChannelId = u64;
 type TopicPartition = (String, i32);
-struct InnerSecureChannelControllerImpl<
-    V: IdentityVault,
-    S: AuthenticatedStorage,
-    F: ForwarderCreator,
-> {
+struct InnerSecureChannelControllerImpl<F: ForwarderCreator> {
     //we are using encryptor api address as unique _local_ identifier
     //of the secure channel
     id_encryptor_map: HashMap<UniqueSecureChannelId, Address>,
     topic_encryptor_map: HashMap<TopicPartition, (UniqueSecureChannelId, Address)>,
-    identity: Identity<V, S>,
+    identity: Arc<Identity>,
     project_route: Route,
     topic_forwarder_set: HashSet<TopicPartition>,
     forwarder_creator: F,
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage>
-    KafkaSecureChannelControllerImpl<V, S, RemoteForwarderCreator>
-{
+impl KafkaSecureChannelControllerImpl<RemoteForwarderCreator> {
     pub(crate) fn new(
-        identity: Identity<V, S>,
+        identity: Arc<Identity>,
         project_route: Route,
-    ) -> KafkaSecureChannelControllerImpl<V, S, RemoteForwarderCreator> {
+    ) -> KafkaSecureChannelControllerImpl<RemoteForwarderCreator> {
         Self::new_extended(
             identity,
             project_route.clone(),
@@ -157,15 +143,13 @@ impl<V: IdentityVault, S: AuthenticatedStorage>
     }
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator>
-    KafkaSecureChannelControllerImpl<V, S, F>
-{
+impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
     /// to manually specify `ForwarderCreator`, for testing purposes
     pub(crate) fn new_extended(
-        identity: Identity<V, S>,
+        identity: Arc<Identity>,
         project_route: Route,
         forwarder_creator: F,
-    ) -> KafkaSecureChannelControllerImpl<V, S, F> {
+    ) -> KafkaSecureChannelControllerImpl<F> {
         Self {
             inner: Arc::new(Mutex::new(InnerSecureChannelControllerImpl {
                 id_encryptor_map: Default::default(),
@@ -182,7 +166,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator>
         context
             .start_worker(
                 Address::from_string(KAFKA_SECURE_CHANNEL_CONTROLLER_ADDRESS),
-                SecureChannelControllerListener::<V, S, F> {
+                SecureChannelControllerListener::<F> {
                     controller: self.clone(),
                 },
                 AllowAll,
@@ -205,18 +189,12 @@ impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator>
     }
 }
 
-struct SecureChannelControllerListener<
-    V: IdentityVault,
-    S: AuthenticatedStorage,
-    F: ForwarderCreator,
-> {
-    controller: KafkaSecureChannelControllerImpl<V, S, F>,
+struct SecureChannelControllerListener<F: ForwarderCreator> {
+    controller: KafkaSecureChannelControllerImpl<F>,
 }
 
 #[ockam::worker]
-impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator> Worker
-    for SecureChannelControllerListener<V, S, F>
-{
+impl<F: ForwarderCreator> Worker for SecureChannelControllerListener<F> {
     type Message = SecureChannelIdentifierMessage;
     type Context = Context;
 
@@ -236,9 +214,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator> Worker
     }
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator>
-    KafkaSecureChannelControllerImpl<V, S, F>
-{
+impl<F: ForwarderCreator> KafkaSecureChannelControllerImpl<F> {
     ///returns encryptor api address
     async fn get_or_create_secure_channel_for(
         &self,
@@ -350,9 +326,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator>
 }
 
 #[async_trait]
-impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator> KafkaSecureChannelController
-    for KafkaSecureChannelControllerImpl<V, S, F>
-{
+impl<F: ForwarderCreator> KafkaSecureChannelController for KafkaSecureChannelControllerImpl<F> {
     async fn encrypt_content_for(
         &self,
         context: &mut Context,

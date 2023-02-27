@@ -1,4 +1,5 @@
 use ockam_core::compat::collections::{BTreeMap, HashMap};
+use ockam_core::compat::sync::Arc;
 
 use ockam::authenticated_storage::AttributesEntry;
 use ockam::identity::Identity;
@@ -7,7 +8,7 @@ use ockam::vault::Vault;
 use ockam_api::authenticator::direct;
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
 use ockam_core::compat::rand::random_string;
-use ockam_core::{AllowAll, AsyncTryClone, Result};
+use ockam_core::{AllowAll, Result};
 use ockam_identity::credential::Timestamp;
 use ockam_identity::{PublicIdentity, TrustEveryonePolicy};
 use ockam_node::Context;
@@ -17,8 +18,8 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let api_worker_addr = random_string();
     let auth_worker_addr = random_string();
 
-    let auth_identity = Identity::create(ctx, &Vault::create()).await?;
-    let member_identity = Identity::create(ctx, &Vault::create()).await?;
+    let auth_identity = Arc::new(Identity::create(ctx, &Vault::create()).await?);
+    let member_identity = Arc::new(Identity::create(ctx, &Vault::create()).await?);
     let now = Timestamp::now().unwrap();
     let pre_trusted = HashMap::from([(
         member_identity.identifier().clone(),
@@ -29,18 +30,14 @@ async fn credential(ctx: &mut Context) -> Result<()> {
             None,
         ),
     )]);
-    let store = PreTrustedIdentities::from(pre_trusted);
+    let store = Arc::new(PreTrustedIdentities::from(pre_trusted));
 
     // Create the CredentialIssuer:
     auth_identity
         .create_secure_channel_listener(&api_worker_addr, TrustEveryonePolicy)
         .await?;
-    let auth = direct::CredentialIssuer::new(
-        b"project42".to_vec(),
-        store,
-        auth_identity.async_try_clone().await?,
-    )
-    .await?;
+    let auth =
+        direct::CredentialIssuer::new(b"project42".to_vec(), store, auth_identity.clone()).await?;
     ctx.start_worker(
         &auth_worker_addr,
         auth,
@@ -60,11 +57,13 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     // Get a fresh member credential and verify its validity:
     let cred = c.credential().await?;
     let exported = auth_identity.export().await?;
+    let vault = Arc::new(Vault::create());
+
     let pkey = PublicIdentity::import(&exported, &Vault::create())
         .await
         .unwrap();
     let data = pkey
-        .verify_credential(&cred, member_identity.identifier(), &Vault::create())
+        .verify_credential(&cred, member_identity.identifier(), vault)
         .await?;
     assert_eq!(
         Some(b"project42".as_slice()),

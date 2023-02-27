@@ -4,7 +4,7 @@ use crate::{async_trait, compat::boxed::Box};
 
 /// A trait for hashing input data into a fixed length output.
 #[async_trait]
-pub trait Hasher {
+pub trait Hasher: Sync + Send {
     /// Compute the SHA-256 digest given input `data`.
     async fn sha256(&self, data: &[u8]) -> Result<[u8; 32]>;
     /// Derive multiple output [`super::Secret`]s with given attributes using

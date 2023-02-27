@@ -25,7 +25,6 @@ extern crate alloc;
 mod error;
 
 pub use error::*;
-use ockam_core::AsyncTryClone;
 
 /// The number of bytes in a SHA256 digest
 pub const SHA256_SIZE_U32: u32 = 32;
@@ -39,19 +38,12 @@ pub const AES_GCM_TAGSIZE_USIZE: usize = 16;
 
 /// Vault with XX required functionality
 pub trait XXVault:
-    SecretVault + Hasher + AsymmetricVault + SymmetricVault + AsyncTryClone + Send + Sync + 'static
+    SecretVault + Hasher + AsymmetricVault + SymmetricVault + Send + Sync + 'static
 {
 }
 
 impl<D> XXVault for D where
-    D: SecretVault
-        + Hasher
-        + AsymmetricVault
-        + SymmetricVault
-        + AsyncTryClone
-        + Send
-        + Sync
-        + 'static
+    D: SecretVault + Hasher + AsymmetricVault + SymmetricVault + Send + Sync + 'static
 {
 }
 
@@ -71,13 +63,14 @@ mod tests {
     use ockam_core::{KeyExchanger, NewKeyExchanger};
     use ockam_node::Context;
     use ockam_vault::Vault;
+    use std::sync::Arc;
 
     #[allow(non_snake_case)]
     #[ockam_macros::test]
     async fn full_flow__correct_credential__keys_should_match(ctx: &mut Context) -> Result<()> {
-        let vault = Vault::create();
+        let vault = Arc::new(Vault::create());
 
-        let key_exchanger = XXNewKeyExchanger::new(vault.async_try_clone().await.unwrap());
+        let key_exchanger = XXNewKeyExchanger::new(vault.clone());
 
         let mut initiator = key_exchanger.initiator().await.unwrap();
         let mut responder = key_exchanger.responder().await.unwrap();
