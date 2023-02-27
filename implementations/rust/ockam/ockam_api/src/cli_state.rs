@@ -58,19 +58,23 @@ pub struct CliState {
     pub identities: IdentitiesState,
     pub nodes: NodesState,
     pub projects: ProjectsState,
-    dir: PathBuf,
+    pub dir: PathBuf,
 }
 
 impl CliState {
-    pub fn new() -> Result<Self> {
-        let dir = Self::dir()?;
+    pub fn try_default() -> Result<Self> {
+        let dir = Self::default_dir()?;
+        Self::new(&dir)
+    }
+
+    pub fn new(dir: &Path) -> Result<Self> {
         std::fs::create_dir_all(dir.join("defaults"))?;
         Ok(Self {
-            vaults: VaultsState::new(&dir)?,
-            identities: IdentitiesState::new(&dir)?,
-            nodes: NodesState::new(&dir)?,
-            projects: ProjectsState::new(&dir)?,
-            dir,
+            vaults: VaultsState::new(dir)?,
+            identities: IdentitiesState::new(dir)?,
+            nodes: NodesState::new(dir)?,
+            projects: ProjectsState::new(dir)?,
+            dir: dir.to_path_buf(),
         })
     }
 
@@ -80,8 +84,7 @@ impl CliState {
             .join(".ockam")
             .join(".tests")
             .join(random_name());
-        std::env::set_var("OCKAM_HOME", tests_dir);
-        Self::new()
+        Self::new(&tests_dir)
     }
 
     pub fn delete(&self, force: bool) -> Result<()> {
@@ -92,7 +95,8 @@ impl CliState {
         Ok(())
     }
 
-    pub fn dir() -> Result<PathBuf> {
+    /// Returns the default directory for the CLI state.
+    pub fn default_dir() -> Result<PathBuf> {
         Ok(match std::env::var("OCKAM_HOME") {
             Ok(dir) => PathBuf::from(&dir),
             Err(_) => dirs::home_dir()
@@ -101,8 +105,9 @@ impl CliState {
         })
     }
 
-    fn defaults_dir() -> Result<PathBuf> {
-        Ok(Self::dir()?.join("defaults"))
+    /// Returns the directory where the default objects are stored.
+    fn defaults_dir(dir: &Path) -> Result<PathBuf> {
+        Ok(dir.join("defaults"))
     }
 }
 
@@ -129,15 +134,16 @@ impl VaultsState {
         };
         let contents = serde_json::to_string(&config)?;
         std::fs::write(&path, contents)?;
-        if !self.default_path()?.exists() {
-            self.set_default(name)?;
-        }
-        config.get().await?;
-        Ok(VaultState {
+        let state = VaultState {
             name: name.to_string(),
             path,
             config,
-        })
+        };
+        state.get().await?;
+        if !self.default_path()?.exists() {
+            self.set_default(name)?;
+        }
+        Ok(state)
     }
 
     pub fn get(&self, name: &str) -> Result<VaultState> {
@@ -149,10 +155,7 @@ impl VaultsState {
             }
             path
         };
-        let name = file_stem(&path)?;
-        let contents = std::fs::read_to_string(&path)?;
-        let config = serde_json::from_str(&contents)?;
-        Ok(VaultState { name, path, config })
+        VaultState::try_from(&path)
     }
 
     pub fn list(&self) -> Result<Vec<VaultState>> {
@@ -174,22 +177,18 @@ impl VaultsState {
         };
 
         // Remove vault files
-        std::fs::remove_file(vault_state.path)?;
-        vault_state.config.delete().await?;
+        vault_state.delete()?;
 
         Ok(())
     }
 
     pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(CliState::defaults_dir()?.join("vault"))
+        Ok(CliState::defaults_dir(self.dir.parent().expect("Should have parent"))?.join("vault"))
     }
 
     pub fn default(&self) -> Result<VaultState> {
         let path = std::fs::canonicalize(self.default_path()?)?;
-        let name = file_stem(&path)?;
-        let contents = std::fs::read_to_string(&path)?;
-        let config = serde_json::from_str(&contents)?;
-        Ok(VaultState { name, path, config })
+        VaultState::try_from(&path)
     }
 
     pub fn set_default(&self, name: &str) -> Result<VaultState> {
@@ -238,6 +237,32 @@ impl VaultState {
                 ))
             })
     }
+
+    fn data_path(&self, name: &str) -> Result<PathBuf> {
+        Ok(self
+            .path
+            .parent()
+            .expect("Should have parent")
+            .join("data")
+            .join(format!("{name}-storage.json")))
+    }
+
+    pub async fn get(&self) -> Result<Vault> {
+        let vault_storage = FileStorage::create(self.data_path(&self.name)?).await?;
+        let mut vault = Vault::new(Some(Arc::new(vault_storage)));
+        if self.config.aws_kms {
+            vault.enable_aws_kms().await?
+        }
+        Ok(vault)
+    }
+
+    pub fn delete(&self) -> Result<()> {
+        std::fs::remove_file(&self.path)?;
+        let data_path = self.data_path(&self.name)?;
+        std::fs::remove_file(&data_path)?;
+        std::fs::remove_file(data_path.with_extension("json.lock"))?;
+        Ok(())
+    }
 }
 
 impl Display for VaultState {
@@ -259,53 +284,34 @@ impl Display for VaultState {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
-pub struct VaultConfig {
-    path: PathBuf,
+impl TryFrom<&PathBuf> for VaultState {
+    type Error = CliStateError;
 
+    fn try_from(path: &PathBuf) -> std::result::Result<Self, Self::Error> {
+        let name = file_stem(path)?;
+        let contents = std::fs::read_to_string(path)?;
+        let config = serde_json::from_str(&contents)?;
+        Ok(Self {
+            name,
+            path: path.clone(),
+            config,
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Default)]
+pub struct VaultConfig {
     #[serde(default)]
     aws_kms: bool,
 }
 
 impl VaultConfig {
-    pub fn new(path: PathBuf, aws_kms: bool) -> Result<Self> {
-        Ok(Self { path, aws_kms })
-    }
-
-    pub fn from_name(name: &str) -> Result<Self> {
-        Ok(Self {
-            path: Self::path(name)?,
-            aws_kms: false,
-        })
-    }
-
-    pub async fn get(&self) -> Result<Vault> {
-        let vault_storage = FileStorage::create(self.path.clone()).await?;
-        let mut vault = Vault::new(Some(Arc::new(vault_storage)));
-        if self.aws_kms {
-            vault.enable_aws_kms().await?
-        }
-        Ok(vault)
-    }
-
-    pub fn path(name: &str) -> Result<PathBuf> {
-        let state = CliState::new()?;
-        let path = state
-            .vaults
-            .dir
-            .join("data")
-            .join(format!("{name}-storage.json"));
-        Ok(path)
+    pub fn new(aws_kms: bool) -> Result<Self> {
+        Ok(Self { aws_kms })
     }
 
     pub fn is_aws(&self) -> bool {
         self.aws_kms
-    }
-
-    pub async fn delete(&self) -> Result<()> {
-        std::fs::remove_file(&self.path)?;
-        std::fs::remove_file(self.path.with_extension("json.lock"))?;
-        Ok(())
     }
 }
 
@@ -332,14 +338,15 @@ impl IdentitiesState {
         };
         let contents = serde_json::to_string(&config)?;
         std::fs::write(&path, contents)?;
-        if !self.default_path()?.exists() {
-            self.set_default(name)?;
-        }
-        Ok(IdentityState {
+        let state = IdentityState {
             name: name.to_string(),
             path,
             config,
-        })
+        };
+        if !self.default_path()?.exists() {
+            self.set_default(name)?;
+        }
+        Ok(state)
     }
 
     pub fn get(&self, name: &str) -> Result<IdentityState> {
@@ -351,13 +358,7 @@ impl IdentitiesState {
             }
             path
         };
-        let contents = std::fs::read_to_string(&path)?;
-        let config = serde_json::from_str(&contents)?;
-        Ok(IdentityState {
-            name: name.to_string(),
-            path,
-            config,
-        })
+        IdentityState::try_from(&path)
     }
 
     pub fn list(&self) -> Result<Vec<IdentityState>> {
@@ -388,15 +389,15 @@ impl IdentitiesState {
     }
 
     pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(CliState::defaults_dir()?.join("identity"))
+        Ok(
+            CliState::defaults_dir(self.dir.parent().expect("Should have parent"))?
+                .join("identity"),
+        )
     }
 
     pub fn default(&self) -> Result<IdentityState> {
         let path = std::fs::canonicalize(self.default_path()?)?;
-        let name = file_stem(&path)?;
-        let contents = std::fs::read_to_string(&path)?;
-        let config = serde_json::from_str(&contents)?;
-        Ok(IdentityState { name, path, config })
+        IdentityState::try_from(&path)
     }
 
     pub fn is_default(&self, name: &str) -> Result<bool> {
@@ -445,7 +446,13 @@ impl IdentityState {
     }
 
     fn in_use(&self) -> Result<()> {
-        self.in_use_by(&CliState::new()?.nodes.list()?)
+        let cli_state_path = self
+            .path
+            .parent()
+            .expect("Should have identities dir as parent")
+            .parent()
+            .expect("Should have CliState dir as parent");
+        self.in_use_by(&CliState::new(cli_state_path)?.nodes.list()?)
     }
 
     fn in_use_by(&self, nodes: &[NodeState]) -> Result<()> {
@@ -463,6 +470,43 @@ impl IdentityState {
     pub fn set_enrollment_status(&mut self) -> Result<()> {
         self.config.enrollment_status = Some(EnrollmentStatus::enrolled());
         self.persist()
+    }
+
+    pub async fn get(
+        &self,
+        ctx: &ockam::Context,
+        vault: &Vault,
+    ) -> Result<Identity<Vault, LmdbStorage>> {
+        let data = self.config.change_history.export()?;
+        let cli_state_path = self
+            .path
+            .parent()
+            .expect("Should have identities dir as parent")
+            .parent()
+            .expect("Should have CliState dir as parent");
+        let storage = CliState::new(cli_state_path)?
+            .identities
+            .authenticated_storage()
+            .await?;
+        Ok(
+            Identity::import_ext(ctx, &data, &storage, &SecureChannelRegistry::new(), vault)
+                .await?,
+        )
+    }
+}
+
+impl TryFrom<&PathBuf> for IdentityState {
+    type Error = CliStateError;
+
+    fn try_from(path: &PathBuf) -> std::result::Result<Self, Self::Error> {
+        let name = file_stem(path)?;
+        let contents = std::fs::read_to_string(path)?;
+        let config = serde_json::from_str(&contents)?;
+        Ok(IdentityState {
+            name,
+            path: path.clone(),
+            config,
+        })
     }
 }
 
@@ -505,19 +549,6 @@ impl IdentityConfig {
             enrollment_status: None,
         }
     }
-
-    pub async fn get(
-        &self,
-        ctx: &ockam::Context,
-        vault: &Vault,
-    ) -> Result<Identity<Vault, LmdbStorage>> {
-        let data = self.change_history.export()?;
-        let storage = CliState::new()?.identities.authenticated_storage().await?;
-        Ok(
-            Identity::import_ext(ctx, &data, &storage, &SecureChannelRegistry::new(), vault)
-                .await?,
-        )
-    }
 }
 
 impl PartialEq for IdentityConfig {
@@ -553,6 +584,7 @@ impl Display for EnrollmentStatus {
             writeln!(f, "Enrolled: no")?;
         }
 
+        // FIX: it fails to compile in some environments
         // match OffsetDateTime::from(self.created_at).format(&Iso8601::DEFAULT) {
         //     Ok(time_str) => writeln!(f, "Timestamp: {}", time_str)?,
         //     Err(err) => writeln!(
@@ -578,8 +610,9 @@ impl NodesState {
         Ok(Self { dir })
     }
 
+    /// Returns the path to the default node
     pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(CliState::defaults_dir()?.join("node"))
+        Ok(CliState::defaults_dir(self.dir.parent().expect("Should have parent"))?.join("node"))
     }
 
     pub fn default(&self) -> Result<NodeState> {
@@ -750,8 +783,8 @@ impl NodeState {
         self.path.join("stderr.log")
     }
 
-    pub fn policies_storage_path(&self) -> PathBuf {
-        self.path.join("policies_storage.lmdb")
+    pub async fn policies_storage(&self) -> Result<LmdbStorage> {
+        Ok(LmdbStorage::new(self.path.join("policies_storage.lmdb")).await?)
     }
 
     pub fn kill_process(&self, sigkill: bool) -> Result<()> {
@@ -803,7 +836,7 @@ pub struct NodeConfig {
 
 impl NodeConfig {
     pub fn try_default() -> Result<Self> {
-        let cli_state = CliState::new()?;
+        let cli_state = CliState::try_default()?;
         Ok(Self {
             name: random_name(),
             version: NodeConfigVersion::latest(),
@@ -814,9 +847,9 @@ impl NodeConfig {
     }
 
     pub async fn vault(&self) -> Result<Vault> {
-        let path = std::fs::canonicalize(&self.default_vault)?;
-        let config: VaultConfig = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
-        config.get().await
+        let state_path = std::fs::canonicalize(&self.default_vault)?;
+        let state = VaultState::try_from(&state_path)?;
+        state.get().await
     }
 
     pub fn identity_config(&self) -> Result<IdentityConfig> {
@@ -826,9 +859,23 @@ impl NodeConfig {
 
     pub async fn identity(&self, ctx: &ockam::Context) -> Result<Identity<Vault, LmdbStorage>> {
         let vault = self.vault().await?;
-        let path = std::fs::canonicalize(&self.default_identity)?;
-        let config: IdentityConfig = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
-        config.get(ctx, &vault).await
+        let state_path = std::fs::canonicalize(&self.default_identity)?;
+        let state = IdentityState::try_from(&state_path)?;
+        state.get(ctx, &vault).await
+    }
+}
+
+impl TryFrom<&CliState> for NodeConfig {
+    type Error = CliStateError;
+
+    fn try_from(cli_state: &CliState) -> std::result::Result<Self, Self::Error> {
+        Ok(Self {
+            name: random_name(),
+            version: NodeConfigVersion::latest(),
+            default_vault: cli_state.vaults.default()?.path,
+            default_identity: cli_state.identities.default()?.path,
+            setup: NodeSetupConfig::default(),
+        })
     }
 }
 
@@ -1006,7 +1053,7 @@ impl ProjectsState {
     }
 
     pub fn default_path(&self) -> Result<PathBuf> {
-        Ok(CliState::defaults_dir()?.join("project"))
+        Ok(CliState::defaults_dir(self.dir.parent().expect("Should have parent"))?.join("project"))
     }
 
     pub fn default(&self) -> Result<ProjectState> {
@@ -1072,12 +1119,7 @@ mod tests {
         // Vaults
         let vault_name = {
             let name = hex::encode(rand::random::<[u8; 4]>());
-
-            let path = VaultConfig::path(&name)?;
-            let vault_storage = FileStorage::create(path.clone()).await?;
-            Vault::new(Some(Arc::new(vault_storage)));
-
-            let config = VaultConfig::from_name(&name)?;
+            let config = VaultConfig::default();
 
             let state = sut.vaults.create(&name, config).await.unwrap();
             let got = sut.vaults.get(&name).unwrap();
@@ -1092,8 +1134,8 @@ mod tests {
         // Identities
         let identity_name = {
             let name = hex::encode(rand::random::<[u8; 4]>());
-            let vault_config = sut.vaults.get(&vault_name).unwrap().config;
-            let vault = vault_config.get().await.unwrap();
+            let vault_state = sut.vaults.get(&vault_name).unwrap();
+            let vault = vault_state.get().await.unwrap();
             let identity =
                 Identity::create_ext(ctx, &sut.identities.authenticated_storage().await?, &vault)
                     .await
@@ -1113,7 +1155,7 @@ mod tests {
         // Nodes
         let node_name = {
             let name = hex::encode(rand::random::<[u8; 4]>());
-            let config = NodeConfig::try_default().unwrap();
+            let config = NodeConfig::try_from(&sut).unwrap();
 
             let state = sut.nodes.create(&name, config).unwrap();
             let got = sut.nodes.get(&name).unwrap();

@@ -44,7 +44,7 @@ impl OckamConfig {
     }
 
     pub fn authorities(&self, node: &str) -> Result<AuthoritiesConfig> {
-        let path = cli_state::CliState::new()?.nodes.dir.join(node);
+        let path = cli_state::CliState::try_default()?.nodes.dir.join(node);
         AuthoritiesConfig::load(path)
     }
 

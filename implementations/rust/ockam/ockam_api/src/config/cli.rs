@@ -46,7 +46,7 @@ impl ConfigValues for OckamConfig {
 impl OckamConfig {
     /// Determine the default storage location for the ockam config
     pub fn dir() -> PathBuf {
-        cli_state::CliState::dir().unwrap()
+        cli_state::CliState::default_dir().unwrap()
     }
 
     /// This function could be zero-copy if we kept the lock on the

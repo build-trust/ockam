@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use super::{map_multiaddr_err, NodeManagerWorker};
-use crate::cli_state::CliState;
 use crate::error::ApiError;
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelListenerRequest, CreateSecureChannelRequest, CreateSecureChannelResponse,
@@ -94,13 +93,12 @@ impl NodeManager {
         ctx: &Context,
     ) -> Result<Address> {
         let identity = if let Some(identity) = identity_name {
-            let state = CliState::new()?;
-            let idt_config = state.identities.get(&identity)?.config;
-            match idt_config.get(ctx, self.vault()?).await {
+            let idt_state = self.cli_state.identities.get(&identity)?;
+            match idt_state.get(ctx, self.vault()?).await {
                 Ok(idt) => idt,
                 Err(_) => {
-                    let default_vault = &state.vaults.default()?.config.get().await?;
-                    idt_config.get(ctx, default_vault).await?
+                    let default_vault = &self.cli_state.vaults.default()?.get().await?;
+                    idt_state.get(ctx, default_vault).await?
                 }
             }
         } else {
@@ -165,13 +163,12 @@ impl NodeManager {
         );
 
         let identity = if let Some(identity) = identity_name {
-            let state = CliState::new()?;
-            let idt_config = state.identities.get(&identity)?.config;
+            let idt_state = self.cli_state.identities.get(&identity)?;
             if let Some(vault) = vault_name {
-                let vault = state.vaults.get(&vault)?.config.get().await?;
-                idt_config.get(ctx, &vault).await?
+                let vault = self.cli_state.vaults.get(&vault)?.get().await?;
+                idt_state.get(ctx, &vault).await?
             } else {
-                idt_config.get(ctx, self.vault()?).await?
+                idt_state.get(ctx, self.vault()?).await?
             }
         } else {
             if vault_name.is_some() {

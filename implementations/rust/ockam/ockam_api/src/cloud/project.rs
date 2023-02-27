@@ -343,7 +343,6 @@ mod node {
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
-    use crate::cli_state;
     use crate::cloud::{
         BareCloudRequestWrapper, CloudRequestWrapper, ORCHESTRATOR_RESTART_TIMEOUT,
     };
@@ -368,21 +367,20 @@ mod node {
             trace!(target: TARGET, %space_id, project_name = %req_body.name, "creating project");
 
             let req_builder = Request::post(format!("/v0/{space_id}")).body(&req_body);
-            let cli_state = cli_state::CliState::new()?;
 
             let ident = {
                 let inner = self.get().read().await;
                 match &req_wrapper.identity_name {
                     Some(existing_identity_name) => {
-                        let identity_cfg = cli_state
+                        let identity_state = inner
+                            .cli_state
                             .identities
-                            .get(existing_identity_name.as_ref())?
-                            .config;
-                        match identity_cfg.get(ctx, inner.vault()?).await {
+                            .get(existing_identity_name.as_ref())?;
+                        match identity_state.get(ctx, inner.vault()?).await {
                             Ok(idt) => idt,
                             Err(_) => {
-                                let vault_cfg = cli_state.vaults.default()?.config;
-                                identity_cfg.get(ctx, &vault_cfg.get().await?).await?
+                                let vault_state = inner.cli_state.vaults.default()?;
+                                identity_state.get(ctx, &vault_state.get().await?).await?
                             }
                         }
                     }

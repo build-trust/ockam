@@ -96,6 +96,7 @@ pub(crate) struct AuthorityInfo {
 
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeManager {
+    pub(crate) cli_state: CliState,
     node_name: String,
     transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
     tcp_transport: TcpTransport,
@@ -162,6 +163,7 @@ impl NodeManager {
 }
 
 pub struct NodeManagerGeneralOptions {
+    cli_state: CliState,
     node_name: String,
     skip_defaults: bool,
     pre_trusted_identities: Option<PreTrustedIdentities>,
@@ -169,11 +171,13 @@ pub struct NodeManagerGeneralOptions {
 
 impl NodeManagerGeneralOptions {
     pub fn new(
+        cli_state: CliState,
         node_name: String,
         skip_defaults: bool,
         pre_trusted_identities: Option<PreTrustedIdentities>,
     ) -> Self {
         Self {
+            cli_state,
             node_name,
             skip_defaults,
             pre_trusted_identities,
@@ -233,7 +237,7 @@ impl NodeManager {
         let mut transports = BTreeMap::new();
         transports.insert(api_transport_id.clone(), transport_options.api_transport);
 
-        let cli_state = CliState::new()?;
+        let cli_state = general_options.cli_state;
         let node_state = cli_state.nodes.get(&general_options.node_name)?;
 
         let authenticated_storage = cli_state.identities.authenticated_storage().await?;
@@ -251,7 +255,7 @@ impl NodeManager {
             ),
         };
 
-        let policies_storage = LmdbStorage::new(&node_state.policies_storage_path()).await?;
+        let policies_storage = node_state.policies_storage().await?;
 
         let vault = node_state.config.vault().await?;
         let identity = node_state.config.identity(ctx).await?;
@@ -260,6 +264,7 @@ impl NodeManager {
         let sessions = medic.sessions();
 
         let mut s = Self {
+            cli_state,
             node_name: general_options.node_name,
             transports,
             tcp_transport: transport_options.tcp_transport,

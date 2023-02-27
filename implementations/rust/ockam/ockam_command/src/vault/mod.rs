@@ -11,7 +11,6 @@ use ockam_api::cli_state::CliStateError;
 use ockam_core::vault::{Secret, SecretAttributes, SecretPersistence, SecretType, SecretVault};
 use ockam_identity::{Identity, IdentityStateConst, KeyAttributes};
 use rand::prelude::random;
-use std::path::PathBuf;
 
 const HELP_DETAIL: &str = "";
 
@@ -75,15 +74,8 @@ impl VaultCommand {
 
 async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) -> Result<()> {
     match cmd.subcommand {
-        VaultSubcommand::Create {
-            name,
-            path,
-            aws_kms,
-        } => {
-            let path = path.map(PathBuf::from).unwrap_or_else(|| {
-                cli_state::VaultConfig::path(&name).expect("Failed to build Vault's path")
-            });
-            let config = cli_state::VaultConfig::new(path, aws_kms)?;
+        VaultSubcommand::Create { name, aws_kms, .. } => {
+            let config = cli_state::VaultConfig::new(aws_kms)?;
             opts.state.vaults.create(&name, config.clone()).await?;
             println!("Vault created: {}", &name);
         }
@@ -91,11 +83,11 @@ async fn run_impl(ctx: Context, (opts, cmd): (CommandGlobalOpts, VaultCommand)) 
             vault: v_name,
             key_id,
         } => {
-            let v_config = opts.state.vaults.get(&v_name)?.config;
-            if !v_config.is_aws() {
+            let v_state = opts.state.vaults.get(&v_name)?;
+            if !v_state.config.is_aws() {
                 return Err(anyhow!("Vault {} is not an AWS KMS vault", v_name).into());
             }
-            let v = v_config.get().await?;
+            let v = v_state.get().await?;
             let idt = {
                 let attrs =
                     SecretAttributes::new(SecretType::NistP256, SecretPersistence::Persistent, 32);

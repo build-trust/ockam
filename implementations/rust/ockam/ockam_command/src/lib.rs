@@ -153,7 +153,7 @@ impl CommandGlobalOpts {
         Self {
             global_args,
             config,
-            state: CliState::new().expect("Failed to load CLI state"),
+            state: CliState::try_default().expect("Failed to load CLI state"),
         }
     }
 }
