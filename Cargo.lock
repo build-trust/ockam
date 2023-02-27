@@ -1463,7 +1463,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1a467a65c5e759bce6e65eaf91cc29f466cdc57cb65777bd646872a8a1fd4de"
 dependencies = [
  "const-oid",
- "pem-rfc7468",
+ "pem-rfc7468 0.6.0",
  "zeroize",
 ]
 
@@ -1685,7 +1685,7 @@ dependencies = [
  "ff 0.12.1",
  "generic-array 0.14.6",
  "group 0.12.1",
- "pem-rfc7468",
+ "pem-rfc7468 0.6.0",
  "pkcs8",
  "rand_core 0.6.4",
  "sec1",
@@ -3213,7 +3213,7 @@ dependencies = [
  "ockam_vault",
  "once_cell",
  "open",
- "pem-rfc7468",
+ "pem-rfc7468 0.7.0",
  "rand",
  "regex",
  "reqwest",
@@ -3694,6 +3694,15 @@ name = "pem-rfc7468"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24d159833a9105500e0398934e205e0773f0b27529557134ecfc51c27646adac"
+dependencies = [
+ "base64ct",
+]
+
+[[package]]
+name = "pem-rfc7468"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88b39c9bfcfc231068454382784bb460aae594343fb030d46e9f50a645418412"
 dependencies = [
  "base64ct",
 ]
