@@ -228,7 +228,8 @@ pub fn is_local_node(ma: &MultiAddr) -> anyhow::Result<bool> {
 #[test]
 fn clean_multiaddr_simple() {
     let addr: MultiAddr = "/project/hub/service/echoer".parse().unwrap();
-    let (_new_addr, lookup_meta) = clean_multiaddr(&addr, &CliState::new().unwrap()).unwrap();
+    let (_new_addr, lookup_meta) =
+        clean_multiaddr(&addr, &CliState::try_default().unwrap()).unwrap();
     assert!(lookup_meta.project.contains(&"hub".to_string()));
 }
 
@@ -281,9 +282,8 @@ pub mod test {
         let vault_name = hex::encode(rand::random::<[u8; 4]>());
         let vault = cli_state
             .vaults
-            .create(&vault_name.clone(), VaultConfig::from_name(&vault_name)?)
+            .create(&vault_name.clone(), VaultConfig::default())
             .await?
-            .config
             .get()
             .await?;
 
@@ -299,12 +299,12 @@ pub mod test {
         cli_state.identities.create(&identity_name, config).unwrap();
 
         let node_name = hex::encode(rand::random::<[u8; 4]>());
-        let node_config = NodeConfig::try_default().unwrap();
+        let node_config = NodeConfig::try_from(&cli_state).unwrap();
         cli_state.nodes.create(&node_name, node_config)?;
 
         let node_manager = NodeManager::create(
             &context,
-            NodeManagerGeneralOptions::new(node_name, true, None),
+            NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, None),
             NodeManagerProjectsOptions::new(None, None, Default::default(), None),
             NodeManagerTransportOptions::new(
                 (

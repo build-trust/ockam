@@ -85,7 +85,7 @@ pub struct NodeOpts {
 }
 
 pub fn default_node_name() -> String {
-    CliState::new()
+    CliState::try_default()
         .unwrap()
         .nodes
         .default()

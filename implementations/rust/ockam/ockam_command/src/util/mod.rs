@@ -573,9 +573,6 @@ mod tests {
     use ockam_api::cli_state::{IdentityConfig, NodeConfig, VaultConfig};
     use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
     use ockam_identity::Identity;
-    use ockam_vault::storage::FileStorage;
-    use ockam_vault::Vault;
-    use std::sync::Arc;
 
     #[test]
     fn test_extract_address_value() {
@@ -608,10 +605,9 @@ mod tests {
         let cli_state = CliState::test()?;
 
         let v_name = cli_state::random_name();
-        let v_config = VaultConfig::from_name(&v_name)?;
-        let v_storage = FileStorage::create(VaultConfig::path(&v_name)?).await?;
-        let v = Vault::new(Some(Arc::new(v_storage)));
+        let v_config = VaultConfig::default();
         cli_state.vaults.create(&v_name, v_config).await?;
+        let v = cli_state.vaults.get(&v_name)?.get().await?;
 
         let idt = Identity::create_ext(
             ctx,
@@ -624,7 +620,9 @@ mod tests {
             .identities
             .create(&cli_state::random_name(), idt_config)?;
 
-        let n_state = cli_state.nodes.create("n1", NodeConfig::try_default()?)?;
+        let n_state = cli_state
+            .nodes
+            .create("n1", NodeConfig::try_from(&cli_state)?)?;
         let n_setup = n_state.setup()?;
         n_state.set_setup(&n_setup.add_transport(CreateTransportJson::new(
             TransportType::Tcp,

@@ -1,4 +1,4 @@
-use crate::cli_state;
+use crate::cli_state::CliState;
 use crate::identity::models::*;
 use core::convert::Infallible;
 use minicbor::encode::Write;
@@ -16,10 +16,11 @@ use tracing::trace;
 pub struct IdentityService {
     ctx: Context,
     vault: Vault,
+    cli_state: CliState,
 }
 
 impl IdentityService {
-    pub async fn new(ctx: &Context, vault: Vault) -> Result<Self> {
+    pub async fn new(ctx: &Context, vault: Vault, cli_state: CliState) -> Result<Self> {
         Ok(Self {
             ctx: ctx
                 .new_detached(
@@ -29,6 +30,7 @@ impl IdentityService {
                 )
                 .await?,
             vault,
+            cli_state,
         })
     }
 }
@@ -110,8 +112,7 @@ impl IdentityService {
         match method {
             Get => match req.path_segments::<2>().as_slice() {
                 [identity_name] => {
-                    let cli_state = cli_state::CliState::new()?;
-                    let identity = cli_state.identities.get(identity_name)?;
+                    let identity = self.cli_state.identities.get(identity_name)?;
                     let body = CreateResponse::new(
                         identity.config.change_history.export()?,
                         String::from(identity.config.identifier),
@@ -155,8 +156,7 @@ impl IdentityService {
                         None => Identity::import(&self.ctx, args.identity(), &self.vault).await?,
 
                         Some(vault_name) => {
-                            let cli_state = cli_state::CliState::new()?;
-                            let v = cli_state.vaults.get(&vault_name)?.config.get().await?;
+                            let v = self.cli_state.vaults.get(&vault_name)?.get().await?;
                             Identity::import(&self.ctx, args.identity(), &v).await?
                         }
                     };

@@ -73,7 +73,12 @@ pub async fn start_embedded_node_with_vault_and_identity(
 
     let node_man = NodeManager::create(
         ctx,
-        NodeManagerGeneralOptions::new(cmd.node_name.clone(), cmd.launch_config.is_some(), None),
+        NodeManagerGeneralOptions::new(
+            opts.state.clone(),
+            cmd.node_name.clone(),
+            cmd.launch_config.is_some(),
+            None,
+        ),
         NodeManagerProjectsOptions::new(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
             project_id,
@@ -147,7 +152,7 @@ pub(super) async fn init_node_state(
         v
     } else {
         let n = hex::encode(random::<[u8; 4]>());
-        let c = cli_state::VaultConfig::from_name(&n)?;
+        let c = cli_state::VaultConfig::default();
         opts.state.vaults.create(&n, c).await?
     };
 
@@ -159,7 +164,7 @@ pub(super) async fn init_node_state(
     else if let Ok(idt) = opts.state.identities.default() {
         idt
     } else {
-        let vault = vault_state.config.get().await?;
+        let vault = vault_state.get().await?;
         let identity_name = hex::encode(random::<[u8; 4]>());
         let identity = Identity::create_ext(
             ctx,

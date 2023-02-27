@@ -1,5 +1,4 @@
 use crate::authenticator::direct::Client;
-use crate::cli_state::CliState;
 use crate::error::ApiError;
 use crate::multiaddr_to_route;
 use crate::nodes::models::credentials::{GetCredentialRequest, PresentCredentialRequest};
@@ -95,13 +94,12 @@ impl NodeManagerWorker {
         let request: GetCredentialRequest = dec.decode()?;
 
         let identity = if let Some(identity) = &request.identity_name {
-            let state = CliState::new()?;
-            let idt_config = state.identities.get(identity)?.config;
-            match idt_config.get(ctx, node_manager.vault()?).await {
+            let idt_state = node_manager.cli_state.identities.get(identity)?;
+            match idt_state.get(ctx, node_manager.vault()?).await {
                 Ok(idt) => idt,
                 Err(_) => {
-                    let default_vault = &state.vaults.default()?.config.get().await?;
-                    idt_config.get(ctx, default_vault).await?
+                    let default_vault = &node_manager.cli_state.vaults.default()?.get().await?;
+                    idt_state.get(ctx, default_vault).await?
                 }
             }
         } else {

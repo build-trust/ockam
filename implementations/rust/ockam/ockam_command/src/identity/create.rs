@@ -26,22 +26,21 @@ async fn run_impl(
     ctx: Context,
     (options, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    let vault_config = if let Some(vault_name) = cmd.vault {
-        options.state.vaults.get(&vault_name)?.config
+    let vault_state = if let Some(vault_name) = cmd.vault {
+        options.state.vaults.get(&vault_name)?
     } else if options.state.vaults.default().is_err() {
         let vault_name = hex::encode(random::<[u8; 4]>());
-        let config = options
+        let state = options
             .state
             .vaults
-            .create(&vault_name, VaultConfig::from_name(&vault_name)?)
-            .await?
-            .config;
+            .create(&vault_name, VaultConfig::default())
+            .await?;
         println!("Default vault created: {}", &vault_name);
-        config
+        state
     } else {
-        options.state.vaults.default()?.config
+        options.state.vaults.default()?
     };
-    let vault = vault_config.get().await?;
+    let vault = vault_state.get().await?;
     let identity = Identity::create_ext(
         &ctx,
         &options.state.identities.authenticated_storage().await?,

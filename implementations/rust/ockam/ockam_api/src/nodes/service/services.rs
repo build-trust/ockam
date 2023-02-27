@@ -73,7 +73,7 @@ impl NodeManager {
         }
 
         let vault = self.vault()?.async_try_clone().await?;
-        let service = IdentityService::new(ctx, vault).await?;
+        let service = IdentityService::new(ctx, vault, self.cli_state.clone()).await?;
 
         ctx.start_worker(
             addr.clone(),

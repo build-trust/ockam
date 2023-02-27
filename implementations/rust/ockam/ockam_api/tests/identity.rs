@@ -1,4 +1,5 @@
 use minicbor::Decoder;
+use ockam_api::cli_state::CliState;
 use ockam_api::identity::models::*;
 use ockam_api::identity::IdentityService;
 use ockam_core::api::{Request, Response, Status};
@@ -153,20 +154,21 @@ async fn verify_signature(
 
 #[ockam_macros::test]
 async fn full_flow(ctx: &mut Context) -> Result<()> {
+    let cli_state = CliState::test().unwrap();
     let vault1 = Vault::create();
     let vault2 = Vault::create();
 
     // Start services
     ctx.start_worker(
         "1",
-        IdentityService::new(ctx, vault1.async_try_clone().await?).await?,
+        IdentityService::new(ctx, vault1.async_try_clone().await?, cli_state.clone()).await?,
         LocalSourceOnly,
         LocalOnwardOnly,
     )
     .await?;
     ctx.start_worker(
         "2",
-        IdentityService::new(ctx, vault2.async_try_clone().await?).await?,
+        IdentityService::new(ctx, vault2.async_try_clone().await?, cli_state).await?,
         LocalSourceOnly,
         LocalOnwardOnly,
     )

@@ -281,6 +281,7 @@ async fn run_foreground_node(
     let node_man = NodeManager::create(
         &ctx,
         NodeManagerGeneralOptions::new(
+            opts.state.clone(),
             cmd.node_name.clone(),
             cmd.launch_config.is_some(),
             pre_trusted_identities,
