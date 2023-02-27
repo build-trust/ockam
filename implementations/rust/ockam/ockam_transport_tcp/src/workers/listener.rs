@@ -1,3 +1,4 @@
+use crate::workers::ConnectionRole;
 use crate::{TcpRegistry, TcpSendWorker};
 use ockam_core::{
     async_trait,
@@ -79,7 +80,8 @@ impl Processor for TcpListenProcessor {
         let _sender_worker_address = TcpSendWorker::start(
             ctx,
             self.registry.clone(),
-            Some(stream),
+            stream,
+            ConnectionRole::Responder,
             peer,
             self.sender_incoming_access_control.clone(),
             self.receiver_outgoing_access_control.clone(),
