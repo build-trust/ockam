@@ -1,4 +1,5 @@
 use crate::{XXError, XXVault, AES_GCM_TAGSIZE_USIZE, SHA256_SIZE_USIZE};
+use ockam_core::compat::sync::Arc;
 use ockam_core::vault::{
     KeyId, PublicKey, SecretAttributes, SecretPersistence, SecretType, AES256_SECRET_LENGTH_U32,
     CURVE25519_PUBLIC_LENGTH_USIZE, CURVE25519_SECRET_LENGTH_U32,
@@ -10,7 +11,8 @@ mod dh_state;
 pub(crate) use dh_state::*;
 
 /// Represents the XX Handshake
-pub(crate) struct State<V: XXVault> {
+#[derive(Clone)]
+pub(crate) struct State {
     run_prologue: bool,
     identity_key: Option<KeyId>,
     identity_public_key: Option<PublicKey>,
@@ -18,13 +20,13 @@ pub(crate) struct State<V: XXVault> {
     ephemeral_public: Option<PublicKey>,
     _remote_static_public_key: Option<PublicKey>,
     remote_ephemeral_public_key: Option<PublicKey>,
-    dh_state: DhState<V>,
+    dh_state: DhState,
     nonce: u16,
     h: Option<[u8; SHA256_SIZE_USIZE]>,
-    vault: V,
+    vault: Arc<dyn XXVault>,
 }
 
-impl<V: XXVault> core::fmt::Debug for State<V> {
+impl core::fmt::Debug for State {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(
             f,
@@ -37,8 +39,8 @@ impl<V: XXVault> core::fmt::Debug for State<V> {
     }
 }
 
-impl<V: XXVault> State<V> {
-    pub(crate) async fn new(vault: &V) -> Result<Self> {
+impl State {
+    pub(crate) async fn new(vault: Arc<dyn XXVault>) -> Result<Self> {
         Ok(Self {
             run_prologue: true,
             identity_key: None,
@@ -47,15 +49,15 @@ impl<V: XXVault> State<V> {
             ephemeral_public: None,
             _remote_static_public_key: None,
             remote_ephemeral_public_key: None,
-            dh_state: DhState::empty(vault.async_try_clone().await?),
+            dh_state: DhState::empty(vault.clone()),
             nonce: 0,
             h: None,
-            vault: vault.async_try_clone().await?,
+            vault: vault.clone(),
         })
     }
 }
 
-impl<V: XXVault> State<V> {
+impl State {
     fn get_symmetric_key_type_and_length(&self) -> (SecretType, u32) {
         (SecretType::Aes, AES256_SECRET_LENGTH_U32)
     }
@@ -103,7 +105,7 @@ impl<V: XXVault> State<V> {
         // mix_hash(xx, NULL, 0);
         let mut h = [0u8; SHA256_SIZE_USIZE];
         h[..self.get_protocol_name().len()].copy_from_slice(self.get_protocol_name());
-        self.dh_state = DhState::new(&h, self.vault.async_try_clone().await?).await?;
+        self.dh_state = DhState::new(&h, self.vault.clone()).await?;
         self.h = Some(self.vault.sha256(&h).await?);
 
         Ok(())
@@ -185,14 +187,14 @@ impl<V: XXVault> State<V> {
     }
 
     /// Set this state up to send and receive messages
-    fn finalize(self, encrypt_key: KeyId, decrypt_key: KeyId) -> Result<CompletedKeyExchange> {
+    fn finalize(&mut self, encrypt_key: KeyId, decrypt_key: KeyId) -> Result<CompletedKeyExchange> {
         let h = self.h.ok_or(XXError::InvalidState)?;
 
         Ok(CompletedKeyExchange::new(h, encrypt_key, decrypt_key))
     }
 }
 
-impl<V: XXVault> State<V> {
+impl State {
     pub(crate) async fn run_prologue(&mut self) -> Result<()> {
         if self.run_prologue {
             self.prologue().await
@@ -202,7 +204,7 @@ impl<V: XXVault> State<V> {
     }
 }
 
-impl<V: XXVault> State<V> {
+impl State {
     /// Encode the first message to be sent
     pub(crate) async fn encode_message_1<B: AsRef<[u8]>>(&mut self, payload: B) -> Result<Vec<u8>> {
         let ephemeral_public_key = self
@@ -282,14 +284,14 @@ impl<V: XXVault> State<V> {
         Ok(encrypted_s_and_tag)
     }
 
-    pub(crate) async fn finalize_initiator(mut self) -> Result<CompletedKeyExchange> {
+    pub(crate) async fn finalize_initiator(&mut self) -> Result<CompletedKeyExchange> {
         let keys = { self.split().await? };
 
         self.finalize(keys.1, keys.0)
     }
 }
 
-impl<V: XXVault> State<V> {
+impl State {
     /// Decode the first message sent
     pub(crate) async fn decode_message_1<B: AsRef<[u8]>>(
         &mut self,
@@ -373,7 +375,7 @@ impl<V: XXVault> State<V> {
         Ok(payload)
     }
 
-    pub(crate) async fn finalize_responder(mut self) -> Result<CompletedKeyExchange> {
+    pub(crate) async fn finalize_responder(&mut self) -> Result<CompletedKeyExchange> {
         let keys = { self.split().await? };
 
         self.finalize(keys.0, keys.1)
@@ -385,12 +387,13 @@ mod tests {
     use crate::state::{DhState, State};
     use crate::{Initiator, Responder, XXVault};
     use hex::{decode, encode};
+    use ockam_core::compat::sync::Arc;
     use ockam_core::vault::{
-        Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType, SecretVault,
-        SymmetricVault, CURVE25519_SECRET_LENGTH_U32,
+        Secret, SecretAttributes, SecretKey, SecretPersistence, SecretType,
+        CURVE25519_SECRET_LENGTH_U32,
     };
-    use ockam_core::KeyExchanger;
     use ockam_core::Result;
+    use ockam_core::{AsyncTryClone, KeyExchanger};
     use ockam_node::Context;
     use ockam_vault::Vault;
 
@@ -403,7 +406,8 @@ mod tests {
             100, 252, 104, 43, 230, 163, 171, 75, 104, 44, 141, 182, 75,
         ];
 
-        let mut state = State::new(&vault).await.unwrap();
+        let vault: Arc<dyn XXVault> = Arc::new(vault);
+        let mut state = State::new(vault.clone()).await.unwrap();
         let res = state.prologue().await;
         assert!(res.is_ok());
         assert_eq!(state.h.unwrap(), exp_h);
@@ -438,10 +442,10 @@ mod tests {
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
         const MSG_3_PAYLOAD: &str = "";
 
-        let mut vault = Vault::create();
+        let vault: Arc<dyn XXVault> = Arc::new(Vault::create());
 
         mock_handshake(
-            &mut vault,
+            vault,
             INIT_STATIC,
             INIT_EPH,
             RESP_STATIC,
@@ -459,8 +463,8 @@ mod tests {
     }
 
     #[allow(clippy::too_many_arguments)]
-    async fn mock_handshake<V: XXVault>(
-        vault: &mut V,
+    async fn mock_handshake(
+        vault: Arc<dyn XXVault>,
         init_static: &'static str,
         init_eph: &'static str,
         resp_static: &'static str,
@@ -472,8 +476,8 @@ mod tests {
         msg_3_payload: &'static str,
         msg_3_ciphertext: &'static str,
     ) {
-        let mut initiator = mock_prologue(vault, init_static, init_eph).await;
-        let mut responder = mock_prologue(vault, resp_static, resp_eph).await;
+        let mut initiator = mock_prologue(vault.clone(), init_static, init_eph).await;
+        let mut responder = mock_prologue(vault.clone(), resp_static, resp_eph).await;
 
         let res = initiator
             .encode_message_1(decode(msg_1_payload).unwrap())
@@ -526,10 +530,10 @@ mod tests {
         const MSG_3_PAYLOAD: &str = "746573745f6d73675f32";
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40232c55cd96d1350af861f6a04978f7d5e070c07602c6b84d25a331242a71c50ae31dd4c164267fd48bd2";
 
-        let mut vault = Vault::create();
+        let vault: Arc<dyn XXVault> = Arc::new(Vault::create());
 
         mock_handshake(
-            &mut vault,
+            vault,
             INIT_STATIC,
             INIT_EPH,
             RESP_STATIC,
@@ -562,10 +566,10 @@ mod tests {
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
         const MSG_3_PAYLOAD: &str = "";
 
-        let mut vault = Vault::create();
+        let vault: Arc<dyn XXVault> = Arc::new(Vault::create());
 
-        let initiator = mock_prologue(&mut vault, INIT_STATIC, INIT_EPH).await;
-        let responder = mock_prologue(&mut vault, RESP_STATIC, RESP_EPH).await;
+        let initiator = mock_prologue(vault.clone(), INIT_STATIC, INIT_EPH).await;
+        let responder = mock_prologue(vault.clone(), RESP_STATIC, RESP_EPH).await;
 
         let mut initiator = Initiator::new(initiator);
         let mut responder = Responder::new(responder);
@@ -634,11 +638,11 @@ mod tests {
         ctx.stop().await
     }
 
-    async fn mock_prologue<V: XXVault>(
-        vault: &mut V,
+    async fn mock_prologue(
+        vault: Arc<dyn XXVault>,
         static_private: &str,
         ephemeral_private: &str,
-    ) -> State<V> {
+    ) -> State {
         let attributes = SecretAttributes::new(
             SecretType::X25519,
             SecretPersistence::Ephemeral,

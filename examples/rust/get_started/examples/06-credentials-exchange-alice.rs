@@ -3,6 +3,7 @@ use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerCl
 use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy};
 use ockam::sessions::Sessions;
 use ockam::{route, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
+use std::sync::Arc;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -49,11 +50,12 @@ async fn main(mut ctx: Context) -> Result<()> {
     println!("created a secure channel at {channel:?}");
 
     // Send Alice credentials over the secure channel
+    let storage = AuthenticatedAttributeStorage::new(alice.authenticated_storage().clone());
     alice
         .present_credential_mutual(
             route![channel.clone(), "credential_exchange"],
             vec![&issuer.public_identity().await?],
-            &AuthenticatedAttributeStorage::new(alice.authenticated_storage().clone()),
+            Arc::new(storage),
             None,
         )
         .await?;

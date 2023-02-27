@@ -24,15 +24,14 @@ pub mod access_control;
 /// SecureChannel API
 pub mod api;
 
-use crate::authenticated_storage::AuthenticatedStorage;
 use crate::channel::decryptor_worker::DecryptorWorker;
 use crate::channel::listener::IdentityChannelListener;
 use crate::error::IdentityError;
-use crate::{Identity, IdentityVault};
+use crate::Identity;
 use core::time::Duration;
 use ockam_core::{Address, AsyncTryClone, Result, Route};
 
-impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+impl Identity {
     /// Spawns a SecureChannel listener at given `Address` with given [`SecureChannelListenerTrustOptions`]
     pub async fn create_secure_channel_listener(
         &self,

@@ -2,7 +2,6 @@ use core::time::Duration;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::sessions::{SessionId, Sessions};
 use ockam_core::{route, Address, AllowAll, Result, Route};
-use ockam_identity::authenticated_storage::mem::InMemoryStorage;
 use ockam_identity::{
     Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions, TrustEveryonePolicy,
 };
@@ -263,7 +262,7 @@ async fn create_tcp_connection(
 }
 
 struct SecureChannelListenerInfo {
-    identity: Identity<Vault, InMemoryStorage>,
+    identity: Identity,
 }
 
 impl SecureChannelListenerInfo {
@@ -302,7 +301,7 @@ async fn create_secure_channel_listener(
 }
 
 struct SecureChannelInfo {
-    identity: Identity<Vault, InMemoryStorage>,
+    identity: Identity,
     address: Address,
 }
 

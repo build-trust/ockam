@@ -1,3 +1,4 @@
+use std::sync::Arc;
 // This node starts a tcp listener, a secure channel listener, and an echoer worker.
 // It then runs forever waiting for messages.
 use hello_ockam::Echoer;
@@ -43,13 +44,9 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Start a worker which will receive credentials sent by Alice and issued by the issuer node
     let issuer_identity = issuer.public_identity().await?;
-    bob.start_credential_exchange_worker(
-        vec![issuer_identity],
-        "credential_exchange",
-        true,
-        AuthenticatedAttributeStorage::new(bob.authenticated_storage().clone()),
-    )
-    .await?;
+    let storage = AuthenticatedAttributeStorage::new(bob.authenticated_storage().clone());
+    bob.start_credential_exchange_worker(vec![issuer_identity], "credential_exchange", true, Arc::new(storage))
+        .await?;
 
     // Create a secure channel listener to allow Alice to create a secure channel to Bob's node
     let listener_session_id = sessions.generate_session_id();
@@ -61,7 +58,7 @@ async fn main(ctx: Context) -> Result<()> {
     println!("created a secure channel listener");
 
     // Start an echoer service which will only allow subjects with name = alice
-    let alice_only = AbacAccessControl::create(bob.authenticated_storage(), "name", "alice");
+    let alice_only = AbacAccessControl::create(bob.authenticated_storage().clone(), "name", "alice");
     ctx.start_worker("echoer", Echoer, alice_only, AllowAll).await?;
 
     // Create a TCP listener and wait for incoming connections

@@ -1,37 +1,36 @@
 use crate::state::State;
 use crate::{Initiator, Responder, XXVault};
-use ockam_core::{async_trait, compat::boxed::Box, AsyncTryClone, Result};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 use ockam_core::NewKeyExchanger;
 
 /// Represents an XX NewKeyExchanger
-#[derive(AsyncTryClone)]
-#[async_try_clone(crate = "ockam_core")]
-pub struct XXNewKeyExchanger<V: XXVault> {
-    vault: V,
+pub struct XXNewKeyExchanger {
+    vault: Arc<dyn XXVault>,
 }
 
-impl<V: XXVault> XXNewKeyExchanger<V> {
+impl XXNewKeyExchanger {
     /// Create a new XXNewKeyExchanger
-    pub fn new(vault: V) -> Self {
+    pub fn new(vault: Arc<dyn XXVault>) -> Self {
         Self { vault }
     }
 }
 
 #[async_trait]
-impl<V: XXVault> NewKeyExchanger for XXNewKeyExchanger<V> {
-    type Initiator = Initiator<V>;
-    type Responder = Responder<V>;
+impl NewKeyExchanger for XXNewKeyExchanger {
+    type Initiator = Initiator;
+    type Responder = Responder;
 
     /// Create a new initiator using the provided backing vault
-    async fn initiator(&self) -> Result<Initiator<V>> {
-        let ss = State::new(&self.vault).await?;
+    async fn initiator(&self) -> Result<Initiator> {
+        let ss = State::new(self.vault.clone()).await?;
         Ok(Initiator::new(ss))
     }
 
     /// Create a new responder using the provided backing vault
-    async fn responder(&self) -> Result<Responder<V>> {
-        let ss = State::new(&self.vault).await?;
+    async fn responder(&self) -> Result<Responder> {
+        let ss = State::new(self.vault.clone()).await?;
         Ok(Responder::new(ss))
     }
 }

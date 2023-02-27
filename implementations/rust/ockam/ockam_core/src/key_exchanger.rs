@@ -21,7 +21,7 @@ pub trait KeyExchanger {
     /// Returns true if the key exchange process is complete.
     async fn is_complete(&self) -> Result<bool>;
     /// Return the data and keys needed for channels. Key exchange must be completed prior to calling this function.
-    async fn finalize(self) -> Result<CompletedKeyExchange>;
+    async fn finalize(&mut self) -> Result<CompletedKeyExchange>;
 }
 
 /// A creator of both initiator and responder peers of a key exchange.
@@ -39,7 +39,7 @@ pub trait NewKeyExchanger {
 }
 
 /// The state of a completed key exchange.
-#[derive(Debug, Zeroize)]
+#[derive(Debug, Clone, Zeroize)]
 #[zeroize(drop)]
 pub struct CompletedKeyExchange {
     h: [u8; 32],

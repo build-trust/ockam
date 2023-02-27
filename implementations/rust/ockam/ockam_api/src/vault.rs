@@ -6,24 +6,25 @@ use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
 use models::*;
 use ockam_core::api::{Error, Id, Method, Request, Response, Status};
-use ockam_core::vault::{
-    AsymmetricVault, Hasher, KeyId, SecretVault, Signature, Signer, SymmetricVault, Verifier,
-};
+use ockam_core::compat::sync::Arc;
+use ockam_core::vault::{KeyId, Signature};
 use ockam_core::CowStr;
 use ockam_core::{Result, Routed, Worker};
+use ockam_identity::IdentityVault;
 use ockam_node::Context;
-use ockam_vault::Vault;
 use tracing::trace;
 
 /// Vault Service Worker
 pub struct VaultService {
-    vault: Vault,
+    vault: Arc<dyn IdentityVault>,
 }
 
 impl VaultService {
     /// Constructor
-    pub fn new(vault: Vault) -> Self {
-        Self { vault }
+    pub fn new(vault: Arc<dyn IdentityVault>) -> Self {
+        Self {
+            vault: vault.clone(),
+        }
     }
 }
 

@@ -1,17 +1,15 @@
 use crate::api::{DecryptionRequest, DecryptionResponse};
-use crate::authenticated_storage::AuthenticatedStorage;
 use crate::channel::addresses::Addresses;
-use crate::channel::common::{
-    AuthenticationConfirmation, CreateResponderChannelMessage, Role, SecureChannelKeyExchanger,
-};
+use crate::channel::common::{AuthenticationConfirmation, CreateResponderChannelMessage, Role};
 use crate::channel::decryptor::Decryptor;
 use crate::channel::decryptor_state::{ExchangeIdentity, Initialized, KeyExchange, State};
 use crate::channel::encryptor::Encryptor;
 use crate::channel::encryptor_worker::EncryptorWorker;
 use crate::channel::messages::IdentityChannelMessage;
 use crate::{
-    Identity, IdentityError, IdentitySecureChannelLocalInfo, IdentityVault, PublicIdentity,
-    SecureChannelRegistryEntry, SecureChannelTrustInfo, SecureChannelTrustOptions, TrustPolicy,
+    to_symmetric_vault, to_xx_vault, Identity, IdentityError, IdentitySecureChannelLocalInfo,
+    PublicIdentity, SecureChannelRegistryEntry, SecureChannelTrustInfo, SecureChannelTrustOptions,
+    TrustPolicy,
 };
 use core::time::Duration;
 use ockam_core::compat::vec::Vec;
@@ -26,35 +24,30 @@ use ockam_core::{
     route, Address, Any, Decodable, Encodable, LocalMessage, Result, Route, Routed,
     TransportMessage, Worker,
 };
-use ockam_key_exchange_xx::Initiator as XXInitiator;
-use ockam_key_exchange_xx::Responder as XXResponder;
 use ockam_key_exchange_xx::XXNewKeyExchanger;
+use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::{Context, WorkerBuilder};
 use tracing::{debug, info, warn};
 
-pub(crate) struct DecryptorWorker<
-    V: IdentityVault,
-    K: SecureChannelKeyExchanger,
-    S: AuthenticatedStorage,
-> {
+pub(crate) struct DecryptorWorker {
     role: Role,
     addresses: Addresses,
     // Route to the other side of the channel
     remote_route: Route,
     remote_backwards_compatibility_address: Option<Address>,
     init_payload: Option<Vec<u8>>,
-    identity: Identity<V, S>,
+    identity: Identity,
     trust_policy: Arc<dyn TrustPolicy>,
-    state_key_exchange: Option<KeyExchange<K>>,
-    state_exchange_identity: Option<ExchangeIdentity<V>>,
-    state_initialized: Option<Initialized<V>>,
+    state_key_exchange: Option<KeyExchange>,
+    state_exchange_identity: Option<ExchangeIdentity>,
+    state_initialized: Option<Initialized>,
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXInitiator<V>, S> {
+impl DecryptorWorker {
     pub async fn create_initiator(
         ctx: &Context,
         remote_route: Route,
-        identity: Identity<V, S>,
+        identity: Identity,
         trust_options: SecureChannelTrustOptions,
         timeout: Duration,
     ) -> Result<Address> {
@@ -68,8 +61,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXInitiator<V
             )
             .await?;
 
-        let vault = identity.vault.async_try_clone().await?;
-        let key_exchanger = XXNewKeyExchanger::new(vault.async_try_clone().await?)
+        let key_exchanger = XXNewKeyExchanger::new(to_xx_vault(identity.vault.clone()))
             .initiator()
             .await?;
 
@@ -88,7 +80,9 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXInitiator<V
             init_payload: None,
             identity,
             trust_policy: trust_options.trust_policy,
-            state_key_exchange: Some(KeyExchange { key_exchanger }),
+            state_key_exchange: Some(KeyExchange {
+                key_exchanger: Arc::new(RwLock::new(key_exchanger)),
+            }),
             state_exchange_identity: None,
             state_initialized: None,
         };
@@ -110,10 +104,10 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXInitiator<V
     }
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXResponder<V>, S> {
+impl DecryptorWorker {
     pub(crate) async fn create_responder(
         ctx: &Context,
-        identity: Identity<V, S>,
+        identity: Identity,
         trust_options: SecureChannelTrustOptions,
         msg: Routed<CreateResponderChannelMessage>,
     ) -> Result<()> {
@@ -131,7 +125,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXResponder<V
 
         let addresses = Addresses::generate(Role::Responder);
 
-        let vault = identity.vault.async_try_clone().await?;
+        let vault = to_xx_vault(identity.vault.clone());
         let key_exchanger = XXNewKeyExchanger::new(vault).responder().await?;
 
         let mailboxes = Self::mailboxes(&addresses);
@@ -149,7 +143,9 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXResponder<V
             init_payload: Some(body.payload().to_vec()),
             identity,
             trust_policy: trust_options.trust_policy,
-            state_key_exchange: Some(KeyExchange { key_exchanger }),
+            state_key_exchange: Some(KeyExchange {
+                key_exchanger: Arc::new(RwLock::new(key_exchanger)),
+            }),
             state_exchange_identity: None,
             state_initialized: None,
         };
@@ -167,9 +163,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXResponder<V
     }
 }
 
-impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
-    DecryptorWorker<V, K, S>
-{
+impl DecryptorWorker {
     fn mailboxes(addresses: &Addresses) -> Mailboxes {
         let remote_mailbox = Mailbox::new(
             addresses.decryptor_remote.clone(),
@@ -197,9 +191,7 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
 }
 
 // Key exchange
-impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
-    DecryptorWorker<V, K, S>
-{
+impl DecryptorWorker {
     async fn send_key_exchange_payload(
         ctx: &mut <Self as Worker>::Context,
         payload: Vec<u8>,
@@ -254,16 +246,22 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
                 "SecureChannel received KeyExchangeRemote at {}",
                 &self.addresses.decryptor_remote
             );
-            let _ = state.key_exchanger.handle_response(payload).await?;
+            let mut exchanger = state.key_exchanger.write().await;
+            let _ = exchanger.handle_response(payload).await?;
         }
 
         // If we'll need to generate another request
         let mut request_was_sent = false;
 
         // Key exchange hasn't been completed -> generate and send next request
-        if !state.key_exchanger.is_complete().await? {
+        if !state.key_exchanger.read().await.is_complete().await? {
             request_was_sent = true;
-            let payload = state.key_exchanger.generate_request(&[]).await?;
+            let payload = state
+                .key_exchanger
+                .write()
+                .await
+                .generate_request(&[])
+                .await?;
 
             // We should send first_responder_address only with first message from the initiator
             let custom_payload = if self.role.is_initiator() && first_run {
@@ -283,7 +281,7 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
         }
 
         // Still not completed -> wait for the next message from the other side
-        if !state.key_exchanger.is_complete().await? {
+        if !state.key_exchanger.read().await.is_complete().await? {
             return Ok(());
         }
 
@@ -292,17 +290,18 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
             .state_key_exchange
             .take()
             .ok_or(IdentityError::InvalidSecureChannelInternalState)?;
-        let keys = state.key_exchanger.finalize().await?;
+
+        let keys = state.key_exchanger.write().await.finalize().await?;
 
         let state = ExchangeIdentity {
             encryptor: Encryptor::new(
                 keys.encrypt_key().clone(),
                 0,
-                self.identity.vault.async_try_clone().await?,
+                to_symmetric_vault(self.identity.vault.clone()),
             ),
             decryptor: Decryptor::new(
                 keys.decrypt_key().clone(),
-                self.identity.vault.async_try_clone().await?,
+                to_symmetric_vault(self.identity.vault.clone()),
             ),
             auth_hash: *keys.h(),
             identity_sent: false,
@@ -326,9 +325,7 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
 }
 
 // Identity exchange
-impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
-    DecryptorWorker<V, K, S>
-{
+impl DecryptorWorker {
     fn state(&self) -> Result<State> {
         if self.state_key_exchange.is_some() {
             return Ok(State::KeyExchange);
@@ -378,7 +375,8 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
                 &self.addresses.decryptor_remote
             );
 
-            let their_identity = PublicIdentity::import(&identity, &self.identity.vault).await?;
+            let their_identity =
+                PublicIdentity::import_arc(&identity, self.identity.vault.clone()).await?;
             let their_identity_id = their_identity.identifier();
 
             // Verify responder posses their Identity key
@@ -387,7 +385,7 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
                     &Signature::new(signature),
                     &state.auth_hash,
                     None,
-                    &self.identity.vault,
+                    self.identity.vault.clone(),
                 )
                 .await?;
 
@@ -541,9 +539,7 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
 }
 
 // Decryption
-impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
-    DecryptorWorker<V, K, S>
-{
+impl DecryptorWorker {
     async fn handle_decrypt_api(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
@@ -650,9 +646,7 @@ impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage>
 }
 
 #[async_trait]
-impl<V: IdentityVault, K: SecureChannelKeyExchanger, S: AuthenticatedStorage> Worker
-    for DecryptorWorker<V, K, S>
-{
+impl Worker for DecryptorWorker {
     type Message = Any;
     type Context = Context;
 

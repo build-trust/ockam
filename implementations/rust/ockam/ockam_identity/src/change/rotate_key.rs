@@ -1,7 +1,6 @@
-use crate::authenticated_storage::AuthenticatedStorage;
 use crate::change::{IdentityChange, IdentitySignedChange, Signature, SignatureType};
 use crate::change_history::IdentityChangeHistory;
-use crate::{ChangeIdentifier, Identity, IdentityError, IdentityVault, KeyAttributes};
+use crate::{ChangeIdentifier, Identity, IdentityError, KeyAttributes};
 use core::fmt;
 use ockam_core::vault::PublicKey;
 use ockam_core::{Encodable, Result};
@@ -57,7 +56,7 @@ impl fmt::Display for RotateKeyChangeData {
     }
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+impl Identity {
     /// Rotate key change
     pub(crate) async fn make_rotate_key_change(
         &self,
@@ -72,8 +71,9 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         )?
         .clone();
 
-        let last_key_in_chain =
-            Self::get_secret_key_from_change(&last_change_in_chain, &self.vault).await?;
+        let last_key_in_chain = self
+            .get_secret_key_from_change(&last_change_in_chain)
+            .await?;
 
         let secret_attributes = key_attributes.secret_attributes();
 

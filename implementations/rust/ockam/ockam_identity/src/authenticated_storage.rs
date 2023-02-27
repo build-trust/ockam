@@ -4,13 +4,14 @@ use crate::credential::Timestamp;
 use crate::{IdentityIdentifier, IdentityStateConst};
 use minicbor::{Decode, Encode};
 use ockam_core::async_trait;
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{AsyncTryClone, Result};
+use ockam_core::Result;
 
 /// Storage for Authenticated data
 #[async_trait]
-pub trait AuthenticatedStorage: AsyncTryClone + Send + Sync + 'static {
+pub trait AuthenticatedStorage: Send + Sync + 'static {
     /// Get entry
     async fn get(&self, id: &str, key: &str) -> Result<Option<Vec<u8>>>;
 
@@ -78,7 +79,7 @@ impl AttributesEntry {
 
 /// Trait implementing read access to an AuthenticatedIdentities table
 #[async_trait]
-pub trait IdentityAttributeStorageReader: AsyncTryClone + Send + Sync + 'static {
+pub trait IdentityAttributeStorageReader: Send + Sync + 'static {
     /// Get the attributes associated with the given identity identifier
     async fn get_attributes(
         &self,
@@ -91,7 +92,7 @@ pub trait IdentityAttributeStorageReader: AsyncTryClone + Send + Sync + 'static 
 
 /// Trait implementing write access to an AuthenticatedIdentities table
 #[async_trait]
-pub trait IdentityAttributeStorageWriter: AsyncTryClone + Send + Sync + 'static {
+pub trait IdentityAttributeStorageWriter: Send + Sync + 'static {
     /// Set the attributes associated with the given identity identifier.
     /// Previous values gets overridden.
     async fn put_attributes(
@@ -106,29 +107,40 @@ pub trait IdentityAttributeStorageWriter: AsyncTryClone + Send + Sync + 'static 
 pub trait IdentityAttributeStorage:
     IdentityAttributeStorageReader + IdentityAttributeStorageWriter
 {
+    /// Return this storage as a read storage
+    fn as_identity_attribute_storage_reader(&self) -> Arc<dyn IdentityAttributeStorageReader>;
+
+    /// Return this storage as a write storage
+    fn as_identity_attribute_storage_writer(&self) -> Arc<dyn IdentityAttributeStorageWriter>;
 }
 
 /// Implementation of `IdentityAttributeStorage` trait based on an underling
 /// `AuthenticatedStorage` store.
-#[derive(AsyncTryClone)]
-#[async_try_clone(crate = "ockam_core")]
-#[derive(Debug)]
-pub struct AuthenticatedAttributeStorage<S: AuthenticatedStorage> {
-    storage: S,
+#[derive(Clone)]
+pub struct AuthenticatedAttributeStorage {
+    storage: Arc<dyn AuthenticatedStorage>,
 }
 
-impl<S: AuthenticatedStorage> AuthenticatedAttributeStorage<S> {
+impl AuthenticatedAttributeStorage {
     /// Constructor. `AttributesEntry` entries are serialized and stored on the underling
     /// storage given.
-    pub fn new(storage: S) -> Self {
+    pub fn new(storage: Arc<dyn AuthenticatedStorage>) -> Self {
         Self { storage }
     }
 }
 
-impl<S: AuthenticatedStorage> IdentityAttributeStorage for AuthenticatedAttributeStorage<S> {}
+impl IdentityAttributeStorage for AuthenticatedAttributeStorage {
+    fn as_identity_attribute_storage_reader(&self) -> Arc<dyn IdentityAttributeStorageReader> {
+        Arc::new(self.clone())
+    }
+
+    fn as_identity_attribute_storage_writer(&self) -> Arc<dyn IdentityAttributeStorageWriter> {
+        Arc::new(self.clone())
+    }
+}
 
 #[async_trait]
-impl<S: AuthenticatedStorage> IdentityAttributeStorageReader for AuthenticatedAttributeStorage<S> {
+impl IdentityAttributeStorageReader for AuthenticatedAttributeStorage {
     async fn list(&self) -> Result<Vec<(IdentityIdentifier, AttributesEntry)>> {
         let mut l = Vec::new();
         for id in self
@@ -176,7 +188,7 @@ impl<S: AuthenticatedStorage> IdentityAttributeStorageReader for AuthenticatedAt
 }
 
 #[async_trait]
-impl<S: AuthenticatedStorage> IdentityAttributeStorageWriter for AuthenticatedAttributeStorage<S> {
+impl IdentityAttributeStorageWriter for AuthenticatedAttributeStorage {
     async fn put_attributes(
         &self,
         sender: &IdentityIdentifier,

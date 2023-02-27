@@ -75,13 +75,14 @@ impl<'a> BareCloudRequestWrapper<'a> {
 mod node {
     use std::env;
     use std::str::FromStr;
+    use std::sync::Arc;
     use std::time::Duration;
 
     use minicbor::Encode;
     use rust_embed::EmbeddedFile;
 
     use ockam_core::api::RequestBuilder;
-    use ockam_core::{self, route, AsyncTryClone, CowStr, Result};
+    use ockam_core::{self, route, CowStr, Result};
     use ockam_identity::{IdentityIdentifier, SecureChannelTrustOptions, TrustIdentifierPolicy};
     use ockam_multiaddr::MultiAddr;
     use ockam_node::api::request_with_timeout;
@@ -174,14 +175,18 @@ mod node {
                             .identities
                             .get(existing_identity_name.as_ref())?;
                         match identity_state.get(ctx, node_manager.vault()?).await {
-                            Ok(idt) => idt,
+                            Ok(idt) => Arc::new(idt),
                             Err(_) => {
                                 let vault_state = node_manager.cli_state.vaults.default()?;
-                                identity_state.get(ctx, &vault_state.get().await?).await?
+                                Arc::new(
+                                    identity_state
+                                        .get(ctx, Arc::new(vault_state.get().await?))
+                                        .await?,
+                                )
                             }
                         }
                     }
-                    None => node_manager.identity()?.async_try_clone().await?,
+                    None => node_manager.identity.clone(),
                 }
             };
             let sc = {

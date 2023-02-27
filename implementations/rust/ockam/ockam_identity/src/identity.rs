@@ -5,31 +5,32 @@ use crate::change::IdentitySignedChange;
 use crate::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use crate::credential::Credential;
 use crate::{
-    ChangeIdentifier, IdentityError, IdentityIdentifier, IdentityVault, KeyAttributes,
+    to_hasher, ChangeIdentifier, IdentityError, IdentityIdentifier, IdentityVault, KeyAttributes,
     PublicIdentity, SecureChannelRegistry,
 };
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::vault::Secret::Key;
 use ockam_core::vault::{
-    SecretKey, SecretPersistence, SecretType, Signature, CURVE25519_SECRET_LENGTH_U32,
+    SecretKey, SecretPersistence, SecretType, SecretVault, Signature, CURVE25519_SECRET_LENGTH_U32,
 };
 use ockam_core::{Address, Result};
 use ockam_core::{AsyncTryClone, DenyAll};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
+use ockam_vault::{Hasher, Vault};
 use ockam_vault::{KeyId, SecretAttributes};
 
 /// Identity implementation
 #[derive(AsyncTryClone)]
 #[async_try_clone(crate = "ockam_core")]
-pub struct Identity<V: IdentityVault, S: AuthenticatedStorage> {
+pub struct Identity {
     id: IdentityIdentifier,
     pub(crate) credential: Arc<RwLock<Option<Credential>>>,
     pub(crate) change_history: Arc<RwLock<IdentityChangeHistory>>,
     pub(crate) ctx: Context,
-    pub(crate) authenticated_storage: S,
+    pub(crate) authenticated_storage: Arc<dyn AuthenticatedStorage>,
     pub(crate) secure_channel_registry: SecureChannelRegistry,
-    pub(crate) vault: V,
+    pub(crate) vault: Arc<dyn IdentityVault>,
 }
 
 /// `Identity`-related constants
@@ -47,15 +48,15 @@ impl IdentityStateConst {
     pub const ATTRIBUTES_KEY: &'static str = "ATTRIBUTES";
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+impl Identity {
     /// Identity constructor
     pub(crate) fn new(
         id: IdentityIdentifier,
         change_history: IdentityChangeHistory,
         ctx: Context,
-        authenticated_storage: S,
+        authenticated_storage: Arc<dyn AuthenticatedStorage>,
         secure_channel_registry: SecureChannelRegistry,
-        vault: V,
+        vault: Arc<dyn IdentityVault>,
     ) -> Self {
         Self {
             id,
@@ -72,12 +73,15 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     pub async fn import_ext(
         ctx: &Context,
         data: &[u8],
-        authenticated_storage: &S,
+        authenticated_storage: Arc<dyn AuthenticatedStorage>,
         secure_channel_registry: &SecureChannelRegistry,
-        vault: &V,
+        vault: Arc<dyn IdentityVault>,
     ) -> Result<Self> {
         let change_history = IdentityChangeHistory::import(data)?;
-        if !change_history.verify_all_existing_changes(vault).await? {
+        if !change_history
+            .verify_all_existing_changes(vault.clone())
+            .await?
+        {
             return Err(IdentityError::IdentityVerificationFailed.into());
         }
         let child_ctx = ctx
@@ -88,17 +92,15 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             )
             .await?;
 
-        let id = change_history.compute_identity_id(vault).await?;
-
-        let vault = vault.async_try_clone().await?;
+        let id = change_history.compute_identity_id(vault.clone()).await?;
 
         let identity = Self::new(
             id,
             change_history,
             child_ctx,
-            authenticated_storage.async_try_clone().await?,
+            authenticated_storage,
             secure_channel_registry.clone(),
-            vault,
+            vault.clone(),
         );
 
         Ok(identity)
@@ -106,9 +108,9 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 
     async fn create_impl(
         ctx: &Context,
-        authenticated_storage: S,
+        authenticated_storage: Arc<dyn AuthenticatedStorage>,
         secure_channel_registry: SecureChannelRegistry,
-        vault: &V,
+        vault: Arc<dyn IdentityVault>,
         kid: Option<&KeyId>,
         key_attribs: KeyAttributes,
     ) -> Result<Self> {
@@ -119,14 +121,15 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
                 DenyAll,
             )
             .await?;
-        let initial_change_id = ChangeIdentifier::initial(vault).await;
+        let hasher: Arc<dyn Hasher> = to_hasher(vault.clone());
+        let initial_change_id = ChangeIdentifier::initial(hasher).await;
 
         let create_key_change = Self::make_create_key_change_static(
             kid,
             initial_change_id,
             key_attribs.clone(),
             None,
-            vault,
+            vault.clone(),
         )
         .await?;
 
@@ -138,13 +141,14 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         }
 
         // Sanity check
-        if !change_history.verify_all_existing_changes(vault).await? {
+        if !change_history
+            .verify_all_existing_changes(vault.clone())
+            .await?
+        {
             return Err(IdentityError::IdentityVerificationFailed.into());
         }
 
-        let id = change_history.compute_identity_id(vault).await?;
-
-        let vault = vault.async_try_clone().await?;
+        let id = change_history.compute_identity_id(vault.clone()).await?;
 
         let identity = Self::new(
             id,
@@ -152,14 +156,18 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             child_ctx,
             authenticated_storage,
             secure_channel_registry,
-            vault,
+            vault.clone(),
         );
 
         Ok(identity)
     }
 
     /// Create an `Identity`. Extended version
-    pub async fn create_ext(ctx: &Context, authenticated_storage: &S, vault: &V) -> Result<Self> {
+    pub async fn create_ext(
+        ctx: &Context,
+        authenticated_storage: Arc<dyn AuthenticatedStorage>,
+        vault: Arc<dyn IdentityVault>,
+    ) -> Result<Self> {
         let attrs = KeyAttributes::new(
             IdentityStateConst::ROOT_LABEL.to_string(),
             SecretAttributes::new(
@@ -170,7 +178,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         );
         Self::create_impl(
             ctx,
-            authenticated_storage.async_try_clone().await?,
+            authenticated_storage,
             SecureChannelRegistry::new(),
             vault,
             None,
@@ -182,14 +190,14 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     /// Create an `Identity` with an external key. Extended version
     pub async fn create_with_external_key_ext(
         ctx: &Context,
-        authenticated_storage: &S,
-        vault: &V,
+        authenticated_storage: Arc<dyn AuthenticatedStorage>,
+        vault: Arc<dyn IdentityVault>,
         kid: &KeyId,
         attrs: KeyAttributes,
     ) -> Result<Self> {
         Self::create_impl(
             ctx,
-            authenticated_storage.async_try_clone().await?,
+            authenticated_storage,
             SecureChannelRegistry::new(),
             vault,
             Some(kid),
@@ -199,9 +207,9 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     }
 }
 
-impl<V: IdentityVault> Identity<V, InMemoryStorage> {
+impl Identity {
     /// Create an `Identity` with a new secret key and `InMemoryStorage`
-    pub async fn create(ctx: &Context, vault: &V) -> Result<Self> {
+    pub async fn create_arc(ctx: &Context, vault: Arc<dyn IdentityVault>) -> Result<Self> {
         let attrs = KeyAttributes::new(
             IdentityStateConst::ROOT_LABEL.to_string(),
             SecretAttributes::new(
@@ -212,7 +220,7 @@ impl<V: IdentityVault> Identity<V, InMemoryStorage> {
         );
         Self::create_impl(
             ctx,
-            InMemoryStorage::new(),
+            Arc::new(InMemoryStorage::new()),
             SecureChannelRegistry::new(),
             vault,
             None,
@@ -221,16 +229,23 @@ impl<V: IdentityVault> Identity<V, InMemoryStorage> {
         .await
     }
 
+    /// Create an `Identity` with a new secret key and `InMemoryStorage`
+    pub async fn create(ctx: &Context, vault: &Vault) -> Result<Self> {
+        let vault: Arc<dyn IdentityVault> = Arc::new(vault.clone());
+        Identity::create_arc(ctx, vault).await
+    }
+
     /// Create an `Identity` with an external key.
     pub async fn create_with_external_key(
         ctx: &Context,
-        vault: &V,
+        vault: Vault,
         kid: &KeyId,
         attrs: KeyAttributes,
     ) -> Result<Self> {
+        let vault: Arc<dyn IdentityVault> = Arc::new(vault.clone());
         Self::create_impl(
             ctx,
-            InMemoryStorage::new(),
+            Arc::new(InMemoryStorage::new()),
             SecureChannelRegistry::new(),
             vault,
             Some(kid),
@@ -240,15 +255,19 @@ impl<V: IdentityVault> Identity<V, InMemoryStorage> {
     }
 
     /// Import and verify `Identity` from the binary format. Uses `InMemoryStorage`
-    pub async fn import(ctx: &Context, data: &[u8], vault: &V) -> Result<Self> {
-        Self::import_ext(
-            ctx,
-            data,
-            &InMemoryStorage::new(),
-            &SecureChannelRegistry::new(),
-            vault,
-        )
-        .await
+    pub async fn import(ctx: &Context, data: &[u8], vault: Vault) -> Result<Self> {
+        let vault: Arc<dyn IdentityVault> = Arc::new(vault);
+        Identity::import_arc(ctx, data, vault).await
+    }
+
+    /// Import and verify `Identity` from the binary format. Uses `InMemoryStorage`
+    pub async fn import_arc(
+        ctx: &Context,
+        data: &[u8],
+        vault: Arc<dyn IdentityVault>,
+    ) -> Result<Self> {
+        let storage: Arc<dyn AuthenticatedStorage> = Arc::new(InMemoryStorage::new());
+        Self::import_ext(ctx, data, storage, &SecureChannelRegistry::new(), vault).await
     }
 
     /// Create an identity with a vault initialized with a specific private key
@@ -257,10 +276,10 @@ impl<V: IdentityVault> Identity<V, InMemoryStorage> {
     /// the exported secret as a hex string
     pub async fn create_identity_with_secret(
         ctx: &Context,
-        vault: V,
+        vault: Vault,
         key_id: &KeyId,
         secret: &str,
-    ) -> Result<Identity<V, InMemoryStorage>> {
+    ) -> Result<Identity> {
         let key_attributes = KeyAttributes::default_with_label(IdentityStateConst::ROOT_LABEL);
         vault
             .secret_import(
@@ -268,24 +287,24 @@ impl<V: IdentityVault> Identity<V, InMemoryStorage> {
                 key_attributes.secret_attributes(),
             )
             .await?;
-        Identity::create_with_external_key(ctx, &vault, key_id, key_attributes).await
+        Identity::create_with_external_key(ctx, vault, key_id, key_attributes).await
     }
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+impl Identity {
     /// Export an `Identity` to the binary format
     pub async fn export(&self) -> Result<Vec<u8>> {
         self.change_history.read().await.export()
     }
 
     /// Vault
-    pub fn vault(&self) -> &V {
-        &self.vault
+    pub fn vault(&self) -> Arc<dyn IdentityVault> {
+        self.vault.clone()
     }
 
     /// `AuthenticatedStorage`
-    pub fn authenticated_storage(&self) -> &S {
-        &self.authenticated_storage
+    pub fn authenticated_storage(&self) -> Arc<dyn AuthenticatedStorage> {
+        self.authenticated_storage.clone()
     }
 
     /// `SecureChannelRegistry` with all known SecureChannels this `Identity` has created
@@ -304,14 +323,13 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     }
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+impl Identity {
     pub(crate) async fn get_secret_key_from_change(
+        &self,
         change: &IdentitySignedChange,
-        vault: &V,
     ) -> Result<KeyId> {
         let public_key = change.change().public_key()?;
-
-        vault.compute_key_id_for_public_key(&public_key).await
+        self.vault.compute_key_id_for_public_key(&public_key).await
     }
 
     async fn add_change(&self, change: IdentitySignedChange) -> Result<()> {
@@ -322,7 +340,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     }
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+impl Identity {
     /// `IdentityIdentifier` of this `Identity`
     pub fn identifier(&self) -> &IdentityIdentifier {
         &self.id
@@ -380,7 +398,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             label,
         )?
         .clone();
-        Self::get_secret_key_from_change(&change, &self.vault).await
+        self.get_secret_key_from_change(&change).await
     }
 
     /// Generate Proof of possession of [`crate::Identity`].
@@ -413,7 +431,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             )
             .await?
         {
-            let known = PublicIdentity::import(&known, &self.vault).await?;
+            let known = PublicIdentity::import_arc(&known, self.vault.clone()).await?;
 
             Ok(Some(known))
         } else {
@@ -476,7 +494,7 @@ mod test {
         Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))
     }
 
-    impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+    impl Identity {
         pub async fn get_root_public_key(&self) -> Result<PublicKey> {
             self.change_history.read().await.get_root_public_key()
         }
@@ -489,7 +507,7 @@ mod test {
             self.change_history
                 .read()
                 .await
-                .verify_all_existing_changes(&self.vault)
+                .verify_all_existing_changes(self.vault.clone())
                 .await
         }
     }

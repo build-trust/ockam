@@ -2,9 +2,9 @@
 
 use minicbor::Decoder;
 
-use ockam::compat::asynchronous::RwLock;
 use ockam::identity::{Identity, IdentityIdentifier, PublicIdentity};
 use ockam::{Address, Context, ForwardingService, Result, Routed, TcpTransport, Worker};
+use ockam_abac::PolicyStorage;
 use ockam_core::api::{Error, Method, Request, Response, ResponseBuilder, Status};
 use ockam_core::compat::{
     boxed::Box,
@@ -13,13 +13,16 @@ use ockam_core::compat::{
 };
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, AllowAll, AsyncTryClone};
-use ockam_identity::authenticated_storage::AuthenticatedAttributeStorage;
+use ockam_identity::authenticated_storage::{
+    AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
+};
 use ockam_identity::credential::Credential;
+use ockam_identity::IdentityVault;
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
+use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::tokio;
 use ockam_node::tokio::task::JoinHandle;
-use ockam_vault::Vault;
 use std::collections::BTreeMap;
 use std::error::Error as _;
 use std::path::PathBuf;
@@ -32,7 +35,6 @@ use crate::cli_state::CliState;
 use crate::config::cli::AuthoritiesConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
-use crate::lmdb::LmdbStorage;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
@@ -109,17 +111,16 @@ pub struct NodeManager {
     pub(crate) controller_identity_id: IdentityIdentifier,
     skip_defaults: bool,
     enable_credential_checks: bool,
-    vault: Vault,
-    identity: Identity<Vault, LmdbStorage>,
+    vault: Arc<dyn IdentityVault>,
+    pub(crate) identity: Arc<Identity>,
     project_id: Option<String>,
     projects: Arc<BTreeMap<String, ProjectLookup>>,
     authorities: Option<Authorities>,
     pub(crate) registry: Registry,
     sessions: Arc<Mutex<Sessions>>,
     medic: JoinHandle<Result<(), ockam_core::Error>>,
-    policies: LmdbStorage,
-    attributes_storage:
-        BootstrapedIdentityStore<PreTrustedIdentities, AuthenticatedAttributeStorage<LmdbStorage>>,
+    policies: Arc<dyn PolicyStorage>,
+    attributes_storage: Arc<dyn IdentityAttributeStorage>,
 }
 
 pub struct NodeManagerWorker {
@@ -144,12 +145,8 @@ pub struct IdentityOverride {
 }
 
 impl NodeManager {
-    pub(crate) fn identity(&self) -> Result<&Identity<Vault, LmdbStorage>> {
-        Ok(&self.identity)
-    }
-
-    pub(crate) fn vault(&self) -> Result<&Vault> {
-        Ok(&self.vault)
+    pub(crate) fn vault(&self) -> Result<Arc<dyn IdentityVault>> {
+        Ok(self.vault.clone())
     }
 
     pub(crate) fn authorities(&self) -> Result<&Authorities> {
@@ -244,25 +241,31 @@ impl NodeManager {
         let cli_state = general_options.cli_state;
         let node_state = cli_state.nodes.get(&general_options.node_name)?;
 
-        let authenticated_storage = cli_state.identities.authenticated_storage().await?;
+        let authenticated_storage: Arc<dyn AuthenticatedStorage> =
+            cli_state.identities.authenticated_storage().await?;
 
         //TODO: fix this.  Either don't require it to be a bootstrappedidentitystore (and use the
         //trait instead),  or pass it from the general_options always.
-        let attributes_storage = match general_options.pre_trusted_identities {
-            None => BootstrapedIdentityStore::new(
-                PreTrustedIdentities::new_from_string("{}")?,
-                AuthenticatedAttributeStorage::new(authenticated_storage),
-            ),
-            Some(f) => BootstrapedIdentityStore::new(
-                f,
-                AuthenticatedAttributeStorage::new(authenticated_storage),
-            ),
-        };
+        let attributes_storage: Arc<dyn IdentityAttributeStorage> =
+            Arc::new(match general_options.pre_trusted_identities {
+                None => BootstrapedIdentityStore::new(
+                    Arc::new(PreTrustedIdentities::new_from_string("{}")?),
+                    Arc::new(AuthenticatedAttributeStorage::new(
+                        authenticated_storage.clone(),
+                    )),
+                ),
+                Some(f) => BootstrapedIdentityStore::new(
+                    Arc::new(f),
+                    Arc::new(AuthenticatedAttributeStorage::new(
+                        authenticated_storage.clone(),
+                    )),
+                ),
+            });
 
-        let policies_storage = node_state.policies_storage().await?;
+        let policies: Arc<dyn PolicyStorage> = Arc::new(node_state.policies_storage().await?);
 
-        let vault = node_state.config.vault().await?;
-        let identity = node_state.config.identity(ctx).await?;
+        let vault: Arc<dyn IdentityVault> = Arc::new(node_state.config.vault().await?);
+        let identity = Arc::new(node_state.config.identity(ctx).await?);
         if let Some(cred) = projects_options.credential {
             identity.set_credential(cred.to_owned()).await;
         }
@@ -290,7 +293,7 @@ impl NodeManager {
                 tokio::spawn(medic.start(ctx))
             },
             sessions,
-            policies: policies_storage,
+            policies,
             attributes_storage,
         };
 
@@ -299,6 +302,7 @@ impl NodeManager {
                 s.configure_authorities(ac).await?;
             }
         }
+
         // Always start the echoer service as ockam_api::Medic assumes it will be
         // started unconditionally on every node. It's used for liveness checks.
         s.start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
@@ -314,7 +318,7 @@ impl NodeManager {
 
         for a in ac.authorities() {
             v.push(AuthorityInfo {
-                identity: PublicIdentity::import(a.1.identity(), vault).await?,
+                identity: PublicIdentity::import_arc(a.1.identity(), vault.clone()).await?,
                 addr: a.1.access_route().clone(),
             })
         }

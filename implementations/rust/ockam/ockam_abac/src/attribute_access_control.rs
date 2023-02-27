@@ -14,6 +14,7 @@ use crate::{eval, Env, Expr};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
+use ockam_core::compat::sync::Arc;
 use ockam_identity::authenticated_storage::{
     AuthenticatedAttributeStorage, AuthenticatedStorage, IdentityAttributeStorage,
 };
@@ -23,23 +24,27 @@ use ockam_identity::IdentitySecureChannelLocalInfo;
 /// to verify if a policy expression is valid
 /// A similar access control policy is available as [`crate::policy::PolicyAccessControl`] where
 /// as [`crate::PolicyStorage`] can be used to retrieve a specific policy for a given resource and action
-pub struct AbacAccessControl<S> {
-    attributes: S,
+pub struct AbacAccessControl {
+    attributes: Arc<dyn IdentityAttributeStorage>,
     expression: Expr,
     environment: Env,
 }
 
 /// Debug implementation printing out the policy expression only
-impl<S> Debug for AbacAccessControl<S> {
+impl Debug for AbacAccessControl {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let expression = self.expression.clone();
         f.write_str(format!("{expression:?}").as_str())
     }
 }
 
-impl<S> AbacAccessControl<S> {
+impl AbacAccessControl {
     /// Create a new AccessControl using a specific policy for checking attributes
-    pub fn new(attributes: S, expression: Expr, environment: Env) -> Self {
+    pub fn new(
+        attributes: Arc<dyn IdentityAttributeStorage>,
+        expression: Expr,
+        environment: Env,
+    ) -> Self {
         Self {
             attributes,
             expression,
@@ -50,20 +55,18 @@ impl<S> AbacAccessControl<S> {
     /// Create an AccessControl which will verify that the sender of
     /// a message has an authenticated attribute with the correct name and value
     pub fn create(
-        storage: &S,
+        storage: Arc<dyn AuthenticatedStorage>,
         attribute_name: &str,
         attribute_value: &str,
-    ) -> AbacAccessControl<AuthenticatedAttributeStorage<S>>
-    where
-        S: AuthenticatedStorage + Clone,
-    {
+    ) -> AbacAccessControl
+where {
         let expression = List(vec![
             Ident("=".into()),
             Ident(format!("subject.{attribute_name}")),
             Str(attribute_value.into()),
         ]);
         AbacAccessControl::new(
-            AuthenticatedAttributeStorage::new(storage.clone()),
+            Arc::new(AuthenticatedAttributeStorage::new(storage)),
             expression,
             Env::new(),
         )
@@ -71,10 +74,7 @@ impl<S> AbacAccessControl<S> {
 }
 
 #[async_trait]
-impl<S> IncomingAccessControl for AbacAccessControl<S>
-where
-    S: IdentityAttributeStorage,
-{
+impl IncomingAccessControl for AbacAccessControl {
     /// Return true if the sender of the message is validated by the expression stored in AbacAccessControl
     async fn is_authorized(&self, msg: &RelayMessage) -> Result<bool> {
         // Get identity identifier from message metadata:

@@ -1,9 +1,10 @@
 use crate::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use crate::{IdentityError, IdentityIdentifier, IdentityVault};
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::vault::Signature;
 use ockam_core::Result;
-use ockam_vault::PublicKey;
+use ockam_vault::{PublicKey, Vault};
 use serde::{Deserialize, Serialize};
 
 /// Public part of an `Identity`
@@ -24,13 +25,23 @@ impl PublicIdentity {
     }
 
     /// Import from the binary format
-    pub async fn import(data: &[u8], vault: &impl IdentityVault) -> Result<Self> {
+    pub async fn import(data: &[u8], vault: &Vault) -> Result<Self> {
+        let vault: Arc<dyn IdentityVault> = Arc::new(vault.clone());
+        let result = PublicIdentity::import_arc(data, vault).await?;
+        Ok(result)
+    }
+
+    /// Import from the binary format
+    pub async fn import_arc(data: &[u8], vault: Arc<dyn IdentityVault>) -> Result<Self> {
         let change_history = IdentityChangeHistory::import(data)?;
-        if !change_history.verify_all_existing_changes(vault).await? {
+        if !change_history
+            .verify_all_existing_changes(vault.clone())
+            .await?
+        {
             return Err(IdentityError::IdentityVerificationFailed.into());
         }
 
-        let id = change_history.compute_identity_id(vault).await?;
+        let id = change_history.compute_identity_id(vault.clone()).await?;
 
         let identity = Self::new(id, change_history);
 
@@ -65,7 +76,7 @@ impl PublicIdentity {
         signature: &Signature,
         data: &[u8],
         key_label: Option<&str>,
-        vault: &impl IdentityVault,
+        vault: Arc<dyn IdentityVault>,
     ) -> Result<bool> {
         let public_key = match key_label {
             Some(label) => self.get_public_key(label)?,

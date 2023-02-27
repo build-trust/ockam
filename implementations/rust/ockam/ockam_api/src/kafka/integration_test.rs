@@ -21,11 +21,11 @@ mod test {
     use ockam::compat::tokio::io::DuplexStream;
     use ockam::Context;
     use ockam_core::async_trait;
-    use ockam_core::{route, Address, AllowAll, AsyncTryClone, Route};
+    use ockam_core::compat::sync::Arc;
+    use ockam_core::{route, Address, AllowAll, Route};
     use ockam_identity::TrustEveryonePolicy;
     use ockam_node::compat::tokio;
     use std::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::Arc;
     use std::time::Duration;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
@@ -74,7 +74,7 @@ mod test {
         kind: KafkaServiceKind,
     ) -> ockam::Result<u16> {
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
-            handle.identity.async_try_clone().await?,
+            handle.identity.clone(),
             route![],
             HopForwarderCreator {},
         );

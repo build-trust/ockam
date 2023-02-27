@@ -9,8 +9,8 @@ use either::Either;
 use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Error, Request, Response, ResponseBuilder};
-use ockam_core::{route, AsyncTryClone};
-use ockam_identity::authenticated_storage::AuthenticatedStorage;
+use ockam_core::compat::sync::Arc;
+use ockam_core::route;
 use ockam_identity::credential::Credential;
 use ockam_identity::{Identity, IdentityVault};
 use ockam_multiaddr::MultiAddr;
@@ -20,9 +20,9 @@ use std::str::FromStr;
 use super::NodeManagerWorker;
 
 impl NodeManager {
-    pub(super) async fn get_credential_impl<V: IdentityVault, S: AuthenticatedStorage>(
+    pub(super) async fn get_credential_impl(
         &mut self,
-        identity: &Identity<V, S>,
+        identity: &Identity,
         overwrite: bool,
     ) -> Result<()> {
         debug!("Credential check: looking for identity");
@@ -102,14 +102,15 @@ impl NodeManagerWorker {
         let identity = if let Some(identity) = &request.identity_name {
             let idt_state = node_manager.cli_state.identities.get(identity)?;
             match idt_state.get(ctx, node_manager.vault()?).await {
-                Ok(idt) => idt,
+                Ok(idt) => Arc::new(idt),
                 Err(_) => {
                     let default_vault = &node_manager.cli_state.vaults.default()?.get().await?;
-                    idt_state.get(ctx, default_vault).await?
+                    let vault: Arc<dyn IdentityVault> = Arc::new(default_vault.clone());
+                    Arc::new(idt_state.get(ctx, vault).await?)
                 }
             }
         } else {
-            node_manager.identity()?.async_try_clone().await?
+            node_manager.identity.clone()
         };
 
         node_manager
@@ -139,16 +140,18 @@ impl NodeManagerWorker {
             None => return Err(ApiError::generic("invalid credentials service route")),
         };
 
-        let identity = node_manager.identity()?;
-
         if request.oneway {
-            identity.present_credential(route, None).await?;
+            node_manager
+                .identity
+                .present_credential(route, None)
+                .await?;
         } else {
-            identity
+            node_manager
+                .identity
                 .present_credential_mutual(
                     route,
                     &node_manager.authorities()?.public_identities(),
-                    &node_manager.attributes_storage,
+                    node_manager.attributes_storage.clone(),
                     None,
                 )
                 .await?;
