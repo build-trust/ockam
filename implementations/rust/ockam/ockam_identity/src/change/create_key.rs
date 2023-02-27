@@ -1,10 +1,13 @@
-use crate::authenticated_storage::AuthenticatedStorage;
 use crate::change::{IdentityChange, IdentitySignedChange, Signature, SignatureType};
 use crate::change_history::IdentityChangeHistory;
 use crate::IdentityError::InvalidInternalState;
-use crate::{ChangeIdentifier, Identity, IdentityError, IdentityVault, KeyAttributes};
+use crate::{
+    to_hasher, to_secret_vault, ChangeIdentifier, Identity, IdentityError, IdentityVault,
+    KeyAttributes,
+};
 use core::fmt;
-use ockam_core::vault::{KeyId, PublicKey};
+use ockam_core::compat::sync::Arc;
+use ockam_core::vault::{KeyId, PublicKey, SecretVault};
 use ockam_core::{Encodable, Result};
 use serde::{Deserialize, Serialize};
 
@@ -58,11 +61,11 @@ impl fmt::Display for CreateKeyChangeData {
     }
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+impl Identity {
     async fn generate_key_if_needed(
         secret: Option<&KeyId>,
         key_attributes: &KeyAttributes,
-        vault: &V,
+        vault: &Arc<dyn SecretVault>,
     ) -> Result<KeyId> {
         if let Some(s) = secret {
             Ok(s.clone())
@@ -79,9 +82,11 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         prev_id: ChangeIdentifier,
         key_attributes: KeyAttributes,
         root_key: Option<&KeyId>,
-        vault: &V,
+        vault: Arc<dyn IdentityVault>,
     ) -> Result<IdentitySignedChange> {
-        let secret_key = Self::generate_key_if_needed(secret, &key_attributes, vault).await?;
+        let secret_key =
+            Self::generate_key_if_needed(secret, &key_attributes, &to_secret_vault(vault.clone()))
+                .await?;
 
         let public_key = vault.secret_public_key_get(&secret_key).await?;
 
@@ -133,13 +138,19 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
 
         let prev_id = match change_history.get_last_change_id() {
             Ok(prev_id) => prev_id,
-            Err(_) => ChangeIdentifier::initial(&self.vault).await,
+            Err(_) => ChangeIdentifier::initial(to_hasher(self.vault.clone())).await,
         };
 
         let root_secret = self.get_root_secret_key().await?;
         let root_key = Some(&root_secret);
 
-        Self::make_create_key_change_static(secret, prev_id, key_attributes, root_key, &self.vault)
-            .await
+        Self::make_create_key_change_static(
+            secret,
+            prev_id,
+            key_attributes,
+            root_key,
+            self.vault.clone(),
+        )
+        .await
     }
 }

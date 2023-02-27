@@ -29,13 +29,14 @@ use core::time::Duration;
 use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
 use ockam_abac::expr::{and, eq, ident, str};
-use ockam_abac::{Action, Env, Expr, PolicyAccessControl, PolicyStorage, Resource};
+use ockam_abac::{Action, Env, Expr, PolicyAccessControl, Resource};
 use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
+use ockam_core::compat::sync::Arc;
 use ockam_core::{route, AllowAll, IncomingAccessControl};
+use ockam_identity::authenticated_storage::IdentityAttributeStorageReader;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::WorkerBuilder;
-use std::sync::Arc;
 
 use super::NodeManagerWorker;
 
@@ -49,8 +50,7 @@ impl NodeManager {
             return Err(ApiError::generic("Vault service exists at this address"));
         }
 
-        let vault = self.vault()?.async_try_clone().await?;
-        let service = VaultService::new(vault);
+        let service = VaultService::new(self.vault()?.clone());
 
         ctx.start_worker(
             addr.clone(),
@@ -76,8 +76,7 @@ impl NodeManager {
             return Err(ApiError::generic("Identity service exists at this address"));
         }
 
-        let vault = self.vault()?.async_try_clone().await?;
-        let service = IdentityService::new(ctx, vault, self.cli_state.clone()).await?;
+        let service = IdentityService::new(ctx, self.vault.clone(), self.cli_state.clone()).await?;
 
         ctx.start_worker(
             addr.clone(),
@@ -105,16 +104,14 @@ impl NodeManager {
             ));
         }
 
-        let identity = self.identity()?;
-
         let authorities = self.authorities()?;
 
-        identity
+        self.identity
             .start_credential_exchange_worker(
                 authorities.public_identities(),
                 addr.clone(),
                 !oneway,
-                self.attributes_storage.async_try_clone().await?,
+                self.attributes_storage.clone(),
             )
             .await?;
 
@@ -136,8 +133,10 @@ impl NodeManager {
             ));
         }
 
-        let s = self.attributes_storage.async_try_clone().await?;
-        let server = Server::new(s);
+        let identity_attributes_reader: Arc<dyn IdentityAttributeStorageReader> = self
+            .attributes_storage
+            .as_identity_attribute_storage_reader();
+        let server = Server::new(identity_attributes_reader.clone());
         ctx.start_worker(
             addr.clone(),
             server,
@@ -244,7 +243,7 @@ impl NodeManager {
         }
         Ok(Arc::new(PolicyAccessControl::new(
             self.policies.clone(),
-            self.attributes_storage.async_try_clone().await?,
+            self.attributes_storage.clone(),
             r.clone(),
             a.clone(),
             env,
@@ -271,8 +270,9 @@ impl NodeManager {
             .await?;
         let issuer = crate::authenticator::direct::CredentialIssuer::new(
             proj.to_vec(),
-            self.attributes_storage.async_try_clone().await?,
-            self.identity()?.async_try_clone().await?,
+            self.attributes_storage
+                .as_identity_attribute_storage_reader(),
+            self.identity.clone(),
         )
         .await?;
         WorkerBuilder::with_access_control(abac, Arc::new(AllowAll), addr.clone(), issuer)
@@ -309,11 +309,10 @@ impl NodeManager {
             .build_access_control(&resource, &action, project, &rule)
             .await?;
 
-        let identity = self.identity()?.async_try_clone().await?;
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
             proj.to_vec(),
-            self.attributes_storage.async_try_clone().await?,
-            identity.authenticated_storage().clone(),
+            self.attributes_storage.clone(),
+            self.identity.authenticated_storage().clone(),
         )
         .await?;
 
@@ -411,7 +410,9 @@ impl NodeManager {
                 "Okta Identity Provider service already started",
             ));
         }
-        let db = self.attributes_storage.async_try_clone().await?;
+        let db = self
+            .attributes_storage
+            .as_identity_attribute_storage_writer();
         let au =
             crate::okta::Server::new(proj.to_vec(), db, tenant_base_url, certificate, attributes)?;
         ctx.start_worker(
@@ -439,9 +440,8 @@ impl NodeManager {
         project_route_multiaddr: MultiAddr,
         kind: KafkaServiceKind,
     ) -> Result<()> {
-        let identity = self.identity()?.async_try_clone().await?;
         let connection = Connection::new(context, &project_route_multiaddr)
-            .with_authorized_identity(identity.identifier().clone())
+            .with_authorized_identity(self.identity.clone().identifier().clone())
             .with_timeout(Duration::from_secs(60));
         let (maybe_tunnel_multiaddr, suffix_address) = self.connect(connection).await?;
 
@@ -488,7 +488,7 @@ impl NodeManager {
             .await?;
 
         let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(identity, project_route);
+            KafkaSecureChannelControllerImpl::new(self.identity.clone(), project_route);
 
         if let KafkaServiceKind::Consumer = kind {
             secure_channel_controller
@@ -680,8 +680,7 @@ impl NodeManagerWorker {
             return Err(ApiError::generic("Verifier service exists at this address"));
         }
 
-        let vault = node_manager.vault.async_try_clone().await?;
-        let vs = crate::verifier::Verifier::new(vault);
+        let vs = crate::verifier::Verifier::new(node_manager.vault.clone());
         ctx.start_worker(
             addr.clone(),
             vs,

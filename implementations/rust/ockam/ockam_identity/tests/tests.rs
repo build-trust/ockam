@@ -5,6 +5,7 @@ use ockam_identity::Identity;
 use ockam_node::Context;
 use ockam_vault::Vault;
 use rand::{thread_rng, RngCore};
+use std::sync::Arc;
 
 fn test_error<S: Into<String>>(error: S) -> Result<()> {
     Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))
@@ -39,7 +40,7 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
 
     let known_bob = alice.get_known_identity(bob.identifier()).await?.unwrap();
     if !known_bob
-        .verify_signature(&bob_proof, &state, None, &alice_vault)
+        .verify_signature(&bob_proof, &state, None, Arc::new(alice_vault))
         .await?
     {
         return test_error("bob's proof was invalid");
@@ -47,7 +48,7 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
 
     let known_alice = bob.get_known_identity(alice.identifier()).await?.unwrap();
     if !known_alice
-        .verify_signature(&alice_proof, &state, None, &bob_vault)
+        .verify_signature(&alice_proof, &state, None, Arc::new(bob_vault))
         .await?
     {
         return test_error("alice's proof was invalid");
@@ -122,7 +123,7 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
 
     let known_bob = alice.get_known_identity(bob.identifier()).await?.unwrap();
     if !known_bob
-        .verify_signature(&bob_proof, &state, None, &alice_vault)
+        .verify_signature(&bob_proof, &state, None, Arc::new(alice_vault))
         .await?
     {
         return test_error("bob's proof was invalid");
@@ -130,7 +131,7 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
 
     let known_alice = bob.get_known_identity(alice.identifier()).await?.unwrap();
     if !known_alice
-        .verify_signature(&alice_proof, &state, None, &bob_vault)
+        .verify_signature(&alice_proof, &state, None, Arc::new(bob_vault))
         .await?
     {
         return test_error("alice's proof was invalid");

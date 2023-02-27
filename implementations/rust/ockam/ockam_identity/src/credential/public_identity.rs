@@ -4,7 +4,7 @@ use crate::credential::{Credential, CredentialData, Timestamp, Verified};
 use crate::PublicIdentity;
 use crate::{IdentityIdentifier, IdentityStateConst, IdentityVault};
 use ockam_core::compat::collections::BTreeMap;
-use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::compat::{string::String, sync::Arc, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::Signature;
 use ockam_core::{Error, Result};
@@ -17,7 +17,7 @@ impl PublicIdentity {
         &self,
         credential: &Credential,
         subject: &IdentityIdentifier,
-        vault: &impl IdentityVault,
+        vault: Arc<dyn IdentityVault>,
     ) -> Result<CredentialData<Verified>> {
         let dat = CredentialData::try_from(credential)?;
         if dat.unverified_key_label() != IdentityStateConst::ROOT_LABEL {

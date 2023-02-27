@@ -4,6 +4,7 @@ use core::fmt;
 use minicbor::Decoder;
 use ockam_core::api::decode_option;
 use ockam_core::api::{Method, Request, Response};
+use ockam_core::compat::sync::Arc;
 use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
 use ockam_identity::authenticated_storage::{AttributesEntry, IdentityAttributeStorageReader};
 use ockam_identity::IdentityIdentifier;
@@ -12,13 +13,12 @@ use ockam_node::Context;
 use tracing::trace;
 
 /// Auth API server.
-#[derive(Debug)]
-pub struct Server<S> {
-    store: S,
+pub struct Server {
+    store: Arc<dyn IdentityAttributeStorageReader>,
 }
 
 #[ockam_core::worker]
-impl<S: IdentityAttributeStorageReader> Worker for Server<S> {
+impl Worker for Server {
     type Context = Context;
     type Message = Vec<u8>;
 
@@ -32,8 +32,8 @@ impl<S: IdentityAttributeStorageReader> Worker for Server<S> {
     }
 }
 
-impl<S: IdentityAttributeStorageReader> Server<S> {
-    pub fn new(s: S) -> Self {
+impl Server {
+    pub fn new(s: Arc<dyn IdentityAttributeStorageReader>) -> Self {
         Server { store: s }
     }
 

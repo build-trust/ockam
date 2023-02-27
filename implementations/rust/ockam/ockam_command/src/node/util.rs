@@ -16,6 +16,7 @@ use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
 };
 use ockam_api::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_core::compat::sync::Arc;
 use ockam_core::AllowAll;
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
@@ -179,8 +180,8 @@ pub(super) async fn init_node_state(
         let identity_name = hex::encode(random::<[u8; 4]>());
         let identity = Identity::create_ext(
             ctx,
-            &opts.state.identities.authenticated_storage().await?,
-            &vault,
+            opts.state.identities.authenticated_storage().await?,
+            Arc::new(vault),
         )
         .await?;
         let identity_config = cli_state::IdentityConfig::new(&identity).await;
@@ -205,8 +206,7 @@ pub(super) async fn add_project_authority(
     node: &str,
     cfg: &OckamConfig,
 ) -> Result<()> {
-    let v = Vault::default();
-    let i = PublicIdentity::import(&authority_identity, &v).await?;
+    let i = PublicIdentity::import(&authority_identity, &Vault::default()).await?;
     let a = cli::Authority::new(authority_identity, authority_access_route);
     cfg.authorities(node)?
         .add_authority(i.identifier().clone(), a)

@@ -1,23 +1,24 @@
 use crate::channel::encryptor::Encryptor;
 use crate::error::IdentityError;
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::vault::{KeyId, SymmetricVault};
 use ockam_core::Result;
 
 #[derive(Clone)]
-pub(crate) struct Decryptor<V: SymmetricVault> {
+pub(crate) struct Decryptor {
     key: KeyId,
-    vault: V,
+    vault: Arc<dyn SymmetricVault>,
 }
 
-impl<V: SymmetricVault> Decryptor<V> {
+impl Decryptor {
     /// Restore 12-byte nonce needed for AES GCM from 8 byte that we use for noise
     fn convert_nonce_from_small(b: &[u8]) -> Result<[u8; 12]> {
         let bytes: [u8; 8] = b.try_into().map_err(|_| IdentityError::InvalidNonce)?;
 
         let nonce = u64::from_be_bytes(bytes);
 
-        Ok(Encryptor::<V>::convert_nonce_from_u64(nonce).1)
+        Ok(Encryptor::convert_nonce_from_u64(nonce).1)
     }
 
     pub async fn decrypt(&self, payload: &[u8]) -> Result<Vec<u8>> {
@@ -32,7 +33,7 @@ impl<V: SymmetricVault> Decryptor<V> {
             .await
     }
 
-    pub fn new(key: KeyId, vault: V) -> Self {
+    pub fn new(key: KeyId, vault: Arc<dyn SymmetricVault>) -> Self {
         Self { key, vault }
     }
 }

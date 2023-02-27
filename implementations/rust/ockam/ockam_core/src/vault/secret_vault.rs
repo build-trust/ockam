@@ -11,7 +11,7 @@ use super::Secret;
 /// See `ockam_vault::vault::Vault` for a usage example.
 ///
 #[async_trait]
-pub trait SecretVault {
+pub trait SecretVault: Sync + Send {
     /// Generate a fresh secret with the given attributes.
     async fn secret_generate(&self, attributes: SecretAttributes) -> Result<KeyId>;
     /// Import a secret with the given attributes from binary form into the vault.

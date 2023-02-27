@@ -1,7 +1,8 @@
 use ockam_core::async_trait;
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{collections::HashMap, string::String, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{AsyncTryClone, Result};
+use ockam_core::Result;
 use ockam_identity::authenticated_storage::{
     AttributesEntry, IdentityAttributeStorage, IdentityAttributeStorageReader,
     IdentityAttributeStorageWriter,
@@ -12,19 +13,17 @@ use serde_json as json;
 use std::path::PathBuf;
 use tracing::trace;
 
-#[derive(AsyncTryClone)]
-#[async_try_clone(crate = "ockam_core")]
-#[derive(Debug)]
-pub struct BootstrapedIdentityStore<B: IdentityAttributeStorageReader, S: IdentityAttributeStorage>
-{
-    bootstrapped: B,
-    storage: S,
+#[derive(Clone)]
+pub struct BootstrapedIdentityStore {
+    bootstrapped: Arc<dyn IdentityAttributeStorageReader>,
+    storage: Arc<dyn IdentityAttributeStorage>,
 }
 
-impl<B: IdentityAttributeStorageReader, S: IdentityAttributeStorage>
-    BootstrapedIdentityStore<B, S>
-{
-    pub fn new(bootstrapped: B, storage: S) -> Self {
+impl BootstrapedIdentityStore {
+    pub fn new(
+        bootstrapped: Arc<dyn IdentityAttributeStorageReader>,
+        storage: Arc<dyn IdentityAttributeStorage>,
+    ) -> Self {
         Self {
             bootstrapped,
             storage,
@@ -33,9 +32,7 @@ impl<B: IdentityAttributeStorageReader, S: IdentityAttributeStorage>
 }
 
 #[async_trait]
-impl<B: IdentityAttributeStorageReader, S: IdentityAttributeStorage> IdentityAttributeStorageReader
-    for BootstrapedIdentityStore<B, S>
-{
+impl IdentityAttributeStorageReader for BootstrapedIdentityStore {
     async fn get_attributes(
         &self,
         identity_id: &IdentityIdentifier,
@@ -60,9 +57,7 @@ impl<B: IdentityAttributeStorageReader, S: IdentityAttributeStorage> IdentityAtt
 }
 
 #[async_trait]
-impl<B: IdentityAttributeStorageReader, S: IdentityAttributeStorage> IdentityAttributeStorageWriter
-    for BootstrapedIdentityStore<B, S>
-{
+impl IdentityAttributeStorageWriter for BootstrapedIdentityStore {
     async fn put_attributes(
         &self,
         sender: &IdentityIdentifier,
@@ -92,9 +87,14 @@ impl<B: IdentityAttributeStorageReader, S: IdentityAttributeStorage> IdentityAtt
     }
 }
 
-impl<B: IdentityAttributeStorageReader, S: IdentityAttributeStorage> IdentityAttributeStorage
-    for BootstrapedIdentityStore<B, S>
-{
+impl IdentityAttributeStorage for BootstrapedIdentityStore {
+    fn as_identity_attribute_storage_reader(&self) -> Arc<dyn IdentityAttributeStorageReader> {
+        Arc::new(self.clone())
+    }
+
+    fn as_identity_attribute_storage_writer(&self) -> Arc<dyn IdentityAttributeStorageWriter> {
+        Arc::new(self.clone())
+    }
 }
 
 #[derive(Clone, Debug)]

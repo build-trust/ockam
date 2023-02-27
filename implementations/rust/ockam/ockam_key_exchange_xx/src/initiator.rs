@@ -1,5 +1,5 @@
 use crate::state::State;
-use crate::{XXError, XXVault};
+use crate::XXError;
 use ockam_core::compat::{
     string::{String, ToString},
     vec::Vec,
@@ -7,7 +7,7 @@ use ockam_core::compat::{
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 use ockam_core::{CompletedKeyExchange, KeyExchanger};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum InitiatorState {
     EncodeMessage1,
     DecodeMessage2,
@@ -16,14 +16,14 @@ enum InitiatorState {
 }
 
 /// Represents an XX initiator
-#[derive(Debug)]
-pub struct Initiator<V: XXVault> {
+#[derive(Debug, Clone)]
+pub struct Initiator {
     state: InitiatorState,
-    state_data: State<V>,
+    state_data: State,
 }
 
-impl<V: XXVault> Initiator<V> {
-    pub(crate) fn new(state_data: State<V>) -> Self {
+impl Initiator {
+    pub(crate) fn new(state_data: State) -> Self {
         Initiator {
             state: InitiatorState::EncodeMessage1,
             state_data,
@@ -32,7 +32,7 @@ impl<V: XXVault> Initiator<V> {
 }
 
 #[async_trait]
-impl<V: XXVault> KeyExchanger for Initiator<V> {
+impl KeyExchanger for Initiator {
     async fn name(&self) -> Result<String> {
         Ok("NOISE_XX".to_string())
     }
@@ -73,7 +73,7 @@ impl<V: XXVault> KeyExchanger for Initiator<V> {
         Ok(matches!(self.state, InitiatorState::Done))
     }
 
-    async fn finalize(self) -> Result<CompletedKeyExchange> {
+    async fn finalize(&mut self) -> Result<CompletedKeyExchange> {
         match self.state {
             InitiatorState::Done => self.state_data.finalize_initiator().await,
             _ => Err(XXError::InvalidState.into()),

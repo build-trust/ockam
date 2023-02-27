@@ -1,19 +1,18 @@
-use crate::authenticated_storage::AuthenticatedStorage;
 use crate::channel::common::CreateResponderChannelMessage;
 use crate::channel::decryptor_worker::DecryptorWorker;
-use crate::{Identity, IdentityVault, SecureChannelListenerTrustOptions};
+use crate::{Identity, SecureChannelListenerTrustOptions};
 use ockam_core::compat::boxed::Box;
 use ockam_core::sessions::SessionIdLocalInfo;
 use ockam_core::{Address, AllowAll, AsyncTryClone, DenyAll, Result, Routed, Worker};
 use ockam_node::Context;
 
-pub(crate) struct IdentityChannelListener<V: IdentityVault, S: AuthenticatedStorage> {
+pub(crate) struct IdentityChannelListener {
     trust_options: SecureChannelListenerTrustOptions,
-    identity: Identity<V, S>,
+    identity: Identity,
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> IdentityChannelListener<V, S> {
-    pub fn new(trust_options: SecureChannelListenerTrustOptions, identity: Identity<V, S>) -> Self {
+impl IdentityChannelListener {
+    pub fn new(trust_options: SecureChannelListenerTrustOptions, identity: Identity) -> Self {
         Self {
             trust_options,
             identity,
@@ -24,7 +23,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> IdentityChannelListener<V, S> {
         ctx: &Context,
         address: Address,
         trust_options: SecureChannelListenerTrustOptions,
-        identity: Identity<V, S>,
+        identity: Identity,
     ) -> Result<()> {
         if let Some((sessions, session_id)) = &trust_options.session {
             sessions.set_listener_session_id(&address, session_id);
@@ -43,7 +42,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> IdentityChannelListener<V, S> {
 }
 
 #[ockam_core::worker]
-impl<V: IdentityVault, S: AuthenticatedStorage> Worker for IdentityChannelListener<V, S> {
+impl Worker for IdentityChannelListener {
     type Message = CreateResponderChannelMessage;
     type Context = Context;
 

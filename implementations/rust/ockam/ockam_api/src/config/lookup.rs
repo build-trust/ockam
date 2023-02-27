@@ -273,8 +273,7 @@ impl ProjectAuthority {
                 .ok_or_else(|| ApiError::generic("Identity is not set"))?;
             let a =
                 hex::decode(&**a).map_err(|_| ApiError::generic("Invalid project authority"))?;
-            let v = Vault::default();
-            let p = PublicIdentity::import(&a, &v).await?;
+            let p = PublicIdentity::import(&a, &Vault::default()).await?;
             Ok(Some(ProjectAuthority::new(p.identifier().clone(), rte, a)))
         } else {
             Ok(None)

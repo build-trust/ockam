@@ -1,13 +1,13 @@
-use crate::authenticated_storage::AuthenticatedStorage;
 use crate::change::IdentitySignedChange;
 use crate::change_history::IdentityChangeHistory;
 use crate::{Identity, IdentityVault, PublicIdentity};
+use ockam_core::compat::sync::Arc;
 use ockam_core::vault::{
     AsymmetricVault, Buffer, Hasher, KeyId, PublicKey, Secret, SecretAttributes, SecretVault,
     Signature, Signer, SmallBuffer, SymmetricVault, Verifier,
 };
+use ockam_core::Result;
 use ockam_core::{async_trait, compat::boxed::Box};
-use ockam_core::{AsyncTryClone, Result};
 use ockam_node::Context;
 use ockam_vault::Vault;
 use rand::distributions::Standard;
@@ -15,10 +15,9 @@ use rand::prelude::Distribution;
 use rand::{thread_rng, Rng};
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
-impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
-    pub async fn eject_random_signature(self) -> Result<Identity<V, S>> {
+impl Identity {
+    pub async fn eject_random_signature(self) -> Result<Identity> {
         let mut history = self.change_history.read().await.as_ref().to_vec();
 
         let i = thread_rng().gen_range(0..history.len());
@@ -88,32 +87,31 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     }
 }
 
-#[derive(AsyncTryClone)]
-#[async_try_clone(crate = "ockam_core")]
-struct CrazyVault<V: IdentityVault> {
+#[derive(Clone)]
+struct CrazyVault {
     prob_to_produce_invalid_signature: f32,
     forged_operation_occurred: Arc<AtomicBool>,
-    vault: V,
+    vault: Arc<dyn IdentityVault>,
 }
 
-impl<V: IdentityVault> CrazyVault<V> {
+impl CrazyVault {
     pub fn forged_operation_occurred(&self) -> bool {
         self.forged_operation_occurred.load(Ordering::Relaxed)
     }
 }
 
-impl<V: IdentityVault> CrazyVault<V> {
-    pub fn new(prob_to_produce_invalid_signature: f32, vault: V) -> Self {
+impl CrazyVault {
+    pub fn new(prob_to_produce_invalid_signature: f32, vault: Arc<dyn IdentityVault>) -> Self {
         Self {
             prob_to_produce_invalid_signature,
             forged_operation_occurred: Arc::new(false.into()),
-            vault,
+            vault: vault.clone(),
         }
     }
 }
 
 #[async_trait]
-impl<V: IdentityVault> SecretVault for CrazyVault<V> {
+impl SecretVault for CrazyVault {
     async fn secret_generate(&self, attributes: SecretAttributes) -> Result<KeyId> {
         self.vault.secret_generate(attributes).await
     }
@@ -140,7 +138,7 @@ impl<V: IdentityVault> SecretVault for CrazyVault<V> {
 }
 
 #[async_trait]
-impl<V: IdentityVault> SymmetricVault for CrazyVault<V> {
+impl SymmetricVault for CrazyVault {
     async fn aead_aes_gcm_encrypt(
         &self,
         key_id: &KeyId,
@@ -167,7 +165,7 @@ impl<V: IdentityVault> SymmetricVault for CrazyVault<V> {
 }
 
 #[async_trait]
-impl<V: IdentityVault> Hasher for CrazyVault<V> {
+impl Hasher for CrazyVault {
     async fn sha256(&self, data: &[u8]) -> Result<[u8; 32]> {
         self.vault.sha256(data).await
     }
@@ -186,7 +184,7 @@ impl<V: IdentityVault> Hasher for CrazyVault<V> {
 }
 
 #[async_trait]
-impl<V: IdentityVault> AsymmetricVault for CrazyVault<V> {
+impl AsymmetricVault for CrazyVault {
     async fn ec_diffie_hellman(
         &self,
         secret: &KeyId,
@@ -201,7 +199,7 @@ impl<V: IdentityVault> AsymmetricVault for CrazyVault<V> {
 }
 
 #[async_trait]
-impl<V: IdentityVault> Signer for CrazyVault<V> {
+impl Signer for CrazyVault {
     async fn sign(&self, key_id: &KeyId, data: &[u8]) -> Result<Signature> {
         let mut signature = self.vault.sign(key_id, data).await?;
         if thread_rng().gen_range(0.0..1.0) <= self.prob_to_produce_invalid_signature {
@@ -216,7 +214,7 @@ impl<V: IdentityVault> Signer for CrazyVault<V> {
 }
 
 #[async_trait]
-impl<V: IdentityVault> Verifier for CrazyVault<V> {
+impl Verifier for CrazyVault {
     async fn verify(
         &self,
         signature: &Signature,
@@ -235,12 +233,14 @@ impl<V: IdentityVault> Verifier for CrazyVault<V> {
 async fn test_invalid_signature(ctx: &mut Context) -> Result<()> {
     for _ in 0..100 {
         let vault = Vault::create();
-        let vault = CrazyVault::new(0.1, vault);
+        let identity_vault: Arc<dyn IdentityVault> = Arc::new(vault);
+        let crazy_vault = CrazyVault::new(0.1, identity_vault);
+        let crazy_identity_vault: Arc<dyn IdentityVault> = Arc::new(crazy_vault.clone());
 
-        let identity = Identity::create(ctx, &vault).await?;
+        let identity = Identity::create_arc(ctx, crazy_identity_vault).await?;
 
         let res = PublicIdentity::import(&identity.export().await?, &Vault::create()).await;
-        if vault.forged_operation_occurred() {
+        if crazy_vault.forged_operation_occurred() {
             assert!(res.is_err());
             break;
         } else {
@@ -251,7 +251,7 @@ async fn test_invalid_signature(ctx: &mut Context) -> Result<()> {
             identity.random_change().await?;
 
             let res = PublicIdentity::import(&identity.export().await?, &Vault::create()).await;
-            if vault.forged_operation_occurred() {
+            if crazy_vault.forged_operation_occurred() {
                 assert!(res.is_err());
                 break;
             } else {

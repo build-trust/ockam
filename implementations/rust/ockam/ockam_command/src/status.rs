@@ -5,10 +5,8 @@ use anyhow::anyhow;
 use clap::Args;
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::{IdentityState, NodeState};
-use ockam_api::lmdb::LmdbStorage;
 use ockam_api::nodes::models::base::NodeStatus;
 use ockam_identity::Identity;
-use ockam_vault::Vault;
 use std::time::Duration;
 
 /// Display Ockam Status
@@ -20,7 +18,7 @@ pub struct StatusCommand {
 }
 
 struct NodeDetails {
-    identity: Identity<Vault, LmdbStorage>,
+    identity: Identity,
     state: NodeState,
     status: String,
 }

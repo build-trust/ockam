@@ -3,6 +3,7 @@ use crate::CommandGlobalOpts;
 use clap::Args;
 use ockam::Context;
 use ockam_api::cli_state::{self, VaultConfig};
+use ockam_core::compat::sync::Arc;
 use ockam_identity::Identity;
 use rand::prelude::random;
 
@@ -43,8 +44,8 @@ async fn run_impl(
     let vault = vault_state.get().await?;
     let identity = Identity::create_ext(
         &ctx,
-        &options.state.identities.authenticated_storage().await?,
-        &vault,
+        options.state.identities.authenticated_storage().await?,
+        Arc::new(vault),
     )
     .await?;
     let identity_config = cli_state::IdentityConfig::new(&identity).await;

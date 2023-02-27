@@ -1,8 +1,9 @@
 use ockam_core::compat::{boxed::Box, sync::Arc};
-use ockam_core::{async_trait, AllowAll, Any, AsyncTryClone, DenyAll, Mailboxes};
+use ockam_core::{async_trait, AllowAll, Any, DenyAll, Mailboxes};
 use ockam_core::{route, Result, Routed, Worker};
 use ockam_identity::authenticated_storage::{
-    mem::InMemoryStorage, AuthenticatedAttributeStorage, IdentityAttributeStorageReader,
+    mem::InMemoryStorage, AuthenticatedAttributeStorage, IdentityAttributeStorage,
+    IdentityAttributeStorageReader,
 };
 use ockam_identity::credential::access_control::CredentialAccessControl;
 use ockam_identity::credential::Credential;
@@ -18,7 +19,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
 
     let authenticated_attribute_storage =
-        AuthenticatedAttributeStorage::new(InMemoryStorage::new());
+        AuthenticatedAttributeStorage::new(Arc::new(InMemoryStorage::new()));
 
     let authority = Identity::create(ctx, &vault).await?;
 
@@ -29,13 +30,12 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let authorities = vec![authority.to_public().await?];
-
     server
         .start_credential_exchange_worker(
             authorities,
             "credential_exchange",
             false,
-            authenticated_attribute_storage.async_try_clone().await?,
+            Arc::new(authenticated_attribute_storage.clone()),
         )
         .await?;
 
@@ -74,9 +74,10 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
 async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
     let authenticated_attribute_storage_client_1 =
-        AuthenticatedAttributeStorage::new(InMemoryStorage::new());
+        AuthenticatedAttributeStorage::new(Arc::new(InMemoryStorage::new()));
+    let storage2 = Arc::new(InMemoryStorage::new());
     let authenticated_attribute_storage_client_2 =
-        AuthenticatedAttributeStorage::new(InMemoryStorage::new());
+        AuthenticatedAttributeStorage::new(storage2.clone());
 
     let authority = Identity::create(ctx, &vault).await?;
 
@@ -98,9 +99,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
             authorities.clone(),
             "credential_exchange",
             true,
-            authenticated_attribute_storage_client_2
-                .async_try_clone()
-                .await?,
+            Arc::new(authenticated_attribute_storage_client_2),
         )
         .await?;
 
@@ -116,16 +115,18 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         .create_secure_channel(route!["listener"], TrustEveryonePolicy)
         .await?;
 
+    let storage: Arc<dyn IdentityAttributeStorage> =
+        Arc::new(authenticated_attribute_storage_client_1.clone());
     client1
         .present_credential_mutual(
             route![channel, "credential_exchange"],
             &authorities,
-            &authenticated_attribute_storage_client_1,
+            storage,
             None,
         )
         .await?;
 
-    let attrs1 = authenticated_attribute_storage_client_2
+    let attrs1 = AuthenticatedAttributeStorage::new(storage2.clone())
         .get_attributes(client1.identifier())
         .await?
         .unwrap();
@@ -165,11 +166,8 @@ impl Worker for CountingWorker {
 #[ockam_macros::test]
 async fn access_control(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
-    let authenticated_attribute_storage =
-        AuthenticatedAttributeStorage::new(InMemoryStorage::new());
-
+    let storage = Arc::new(InMemoryStorage::new());
     let authority = Identity::create(ctx, &vault).await?;
-
     let server = Identity::create(ctx, &vault).await?;
 
     server
@@ -183,7 +181,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
             authorities,
             "credential_exchange",
             false,
-            authenticated_attribute_storage.async_try_clone().await?,
+            Arc::new(AuthenticatedAttributeStorage::new(storage.clone())),
         )
         .await?;
 
@@ -209,8 +207,10 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     };
 
     let required_attributes = vec![("is_superuser".to_string(), b"true".to_vec())];
-    let access_control =
-        CredentialAccessControl::new(&required_attributes, authenticated_attribute_storage);
+    let access_control = CredentialAccessControl::new(
+        &required_attributes,
+        AuthenticatedAttributeStorage::new(storage.clone()),
+    );
 
     WorkerBuilder::with_access_control(
         Arc::new(access_control),

@@ -4,23 +4,27 @@ use core::convert::Infallible;
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
 use ockam_core::api::{Error, Id, Method, Request, Response, Status};
+use ockam_core::compat::sync::Arc;
 use ockam_core::vault::Signature;
 use ockam_core::{Address, DenyAll, Result, Routed, Worker};
 use ockam_identity::change_history::IdentityHistoryComparison;
-use ockam_identity::{Identity, PublicIdentity};
+use ockam_identity::{Identity, IdentityVault, PublicIdentity};
 use ockam_node::Context;
-use ockam_vault::Vault;
 use tracing::trace;
 
 /// Vault Service Worker
 pub struct IdentityService {
     ctx: Context,
-    vault: Vault,
+    vault: Arc<dyn IdentityVault>,
     cli_state: CliState,
 }
 
 impl IdentityService {
-    pub async fn new(ctx: &Context, vault: Vault, cli_state: CliState) -> Result<Self> {
+    pub async fn new(
+        ctx: &Context,
+        vault: Arc<dyn IdentityVault>,
+        cli_state: CliState,
+    ) -> Result<Self> {
         Ok(Self {
             ctx: ctx
                 .new_detached(
@@ -123,7 +127,7 @@ impl IdentityService {
             },
             Post => match req.path_segments::<2>().as_slice() {
                 [""] => {
-                    let identity = Identity::create(&self.ctx, &self.vault).await?;
+                    let identity = Identity::create_arc(&self.ctx, self.vault.clone()).await?;
                     let identifier = identity.identifier();
 
                     let body =
@@ -138,7 +142,8 @@ impl IdentityService {
 
                     let args = dec.decode::<ValidateIdentityChangeHistoryRequest>()?;
                     let identity =
-                        Identity::import(&self.ctx, args.identity(), &self.vault).await?;
+                        Identity::import_arc(&self.ctx, args.identity(), self.vault.clone())
+                            .await?;
 
                     let body = ValidateIdentityChangeHistoryResponse::new(String::from(
                         identity.identifier(),
@@ -153,11 +158,14 @@ impl IdentityService {
 
                     let args = dec.decode::<CreateSignatureRequest>()?;
                     let identity = match args.vault_name() {
-                        None => Identity::import(&self.ctx, args.identity(), &self.vault).await?,
+                        None => {
+                            Identity::import_arc(&self.ctx, args.identity(), self.vault.clone())
+                                .await?
+                        }
 
                         Some(vault_name) => {
-                            let v = self.cli_state.vaults.get(&vault_name)?.get().await?;
-                            Identity::import(&self.ctx, args.identity(), &v).await?
+                            let vault = self.cli_state.vaults.get(&vault_name)?.get().await?;
+                            Identity::import(&self.ctx, args.identity(), vault).await?
                         }
                     };
 
@@ -174,14 +182,15 @@ impl IdentityService {
 
                     let args = dec.decode::<VerifySignatureRequest>()?;
                     let peer_identity =
-                        PublicIdentity::import(args.signer_identity(), &self.vault).await?;
+                        PublicIdentity::import_arc(args.signer_identity(), self.vault.clone())
+                            .await?;
 
                     let verified = peer_identity
                         .verify_signature(
                             &Signature::new(args.signature().to_vec()),
                             args.data(),
                             None,
-                            &self.vault,
+                            self.vault.clone(),
                         )
                         .await?;
 
@@ -197,13 +206,15 @@ impl IdentityService {
                     let args = dec.decode::<CompareIdentityChangeHistoryRequest>()?;
 
                     let current_identity =
-                        PublicIdentity::import(args.current_identity(), &self.vault).await?;
+                        PublicIdentity::import_arc(args.current_identity(), self.vault.clone())
+                            .await?;
 
                     let body = if args.known_identity().is_empty() {
                         IdentityHistoryComparison::Newer
                     } else {
                         let known_identity =
-                            PublicIdentity::import(args.known_identity(), &self.vault).await?;
+                            PublicIdentity::import_arc(args.known_identity(), self.vault.clone())
+                                .await?;
 
                         current_identity.compare(&known_identity)
                     };

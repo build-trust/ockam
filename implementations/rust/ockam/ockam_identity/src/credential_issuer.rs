@@ -4,7 +4,6 @@ use ockam_core::compat::collections::BTreeMap;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, AsyncTryClone, Error, Message, Result, Route, Routed, Worker};
 
-use crate::authenticated_storage::mem::InMemoryStorage;
 use ockam_node::Context;
 use ockam_vault::Vault;
 use CredentialIssuerRequest::*;
@@ -33,7 +32,7 @@ use serde::{Deserialize, Serialize};
 /// A Credential for a given identity can then be retrieved with the `get_credential` method.
 ///
 pub struct CredentialIssuer {
-    identity: Identity<Vault, InMemoryStorage>,
+    identity: Identity,
 }
 
 impl CredentialIssuer {
@@ -44,22 +43,19 @@ impl CredentialIssuer {
     }
 
     /// Create a new CredentialIssuer from an Identity
-    pub fn new(identity: Identity<Vault, InMemoryStorage>) -> CredentialIssuer {
+    pub fn new(identity: Identity) -> CredentialIssuer {
         CredentialIssuer { identity }
     }
 
     /// Return the identity holding credentials
-    pub fn identity(&self) -> &Identity<Vault, InMemoryStorage> {
+    pub fn identity(&self) -> &Identity {
         &self.identity
     }
 
     /// Return the attributes storage for the issuer identity
-    async fn attributes_storage(&self) -> Result<AuthenticatedAttributeStorage<InMemoryStorage>> {
+    async fn attributes_storage(&self) -> Result<AuthenticatedAttributeStorage> {
         Ok(AuthenticatedAttributeStorage::new(
-            self.identity
-                .authenticated_storage()
-                .async_try_clone()
-                .await?,
+            self.identity.authenticated_storage().clone(),
         ))
     }
 
@@ -70,7 +66,7 @@ impl CredentialIssuer {
         attribute_name: &str,
         attribute_value: &str,
     ) -> Result<()> {
-        let attributes_storage = self.attributes_storage().await?;
+        let attributes_storage: AuthenticatedAttributeStorage = self.attributes_storage().await?;
         let mut attributes = match attributes_storage.get_attributes(subject).await? {
             Some(entry) => (*entry.attrs()).clone(),
             None => BTreeMap::new(),
@@ -99,12 +95,8 @@ impl CredentialIssuerApi for CredentialIssuer {
     /// Create an authenticated credential for an identity
     async fn get_credential(&self, subject: &IdentityIdentifier) -> Result<Option<Credential>> {
         let mut builder = Credential::builder(subject.clone());
-        if let Some(attributes) = self
-            .attributes_storage()
-            .await?
-            .get_attributes(subject)
-            .await?
-        {
+        let identity_attributes: AuthenticatedAttributeStorage = self.attributes_storage().await?;
+        if let Some(attributes) = identity_attributes.get_attributes(subject).await? {
             builder =
                 attributes
                     .attrs()

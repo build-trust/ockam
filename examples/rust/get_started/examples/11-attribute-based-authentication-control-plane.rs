@@ -92,18 +92,18 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // store the credential and start a credential exchange worker which will be
     // later on to exchange credentials with the edge node
     control_plane.set_credential(credential).await;
-    let attributes_storage = AuthenticatedAttributeStorage::new(control_plane.authenticated_storage().clone());
+    let storage = AuthenticatedAttributeStorage::new(control_plane.authenticated_storage().clone());
     control_plane
         .start_credential_exchange_worker(
             vec![project.authority_public_identity()],
             "credential_exchange",
             true,
-            attributes_storage,
+            Arc::new(storage),
         )
         .await?;
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
-    let access_control = AbacAccessControl::create(control_plane.authenticated_storage(), "component", "edge");
+    let access_control = AbacAccessControl::create(control_plane.authenticated_storage().clone(), "component", "edge");
 
     // 4. create a tcp outlet with the above policy
     let outlet = tcp

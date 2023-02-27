@@ -11,6 +11,7 @@ pub(crate) use get::GetCommand;
 pub(crate) use issue::IssueCommand;
 pub(crate) use list::ListCommand;
 use ockam::Context;
+use ockam_core::compat::sync::Arc;
 use ockam_identity::credential::Credential;
 use ockam_identity::credential::CredentialData;
 use ockam_identity::credential::Unverified;
@@ -70,7 +71,7 @@ pub async fn validate_encoded_cred(
     opts: &CommandGlobalOpts,
     ctx: &Context,
 ) -> Result<()> {
-    let vault = opts.state.vaults.get(vault)?.get().await?;
+    let vault = Arc::new(opts.state.vaults.get(vault)?.get().await?);
 
     let bytes = match hex::decode(encoded_cred) {
         Ok(b) => b,
@@ -83,12 +84,12 @@ pub async fn validate_encoded_cred(
 
     let ident_state = opts.state.identities.get_by_identifier(issuer)?;
 
-    let ident = ident_state.get(ctx, &vault).await?;
+    let ident = ident_state.get(ctx, vault.clone()).await?;
 
     ident
         .to_public()
         .await?
-        .verify_credential(&cred, cred_data.unverified_subject(), &vault)
+        .verify_credential(&cred, cred_data.unverified_subject(), vault)
         .await?;
 
     Ok(())

@@ -1,12 +1,10 @@
-use crate::authenticated_storage::{AuthenticatedStorage, IdentityAttributeStorage};
+use crate::authenticated_storage::IdentityAttributeStorage;
 use crate::credential::Credential;
-use crate::{
-    Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, IdentityVault, PublicIdentity,
-};
+use crate::{Identity, IdentityIdentifier, IdentitySecureChannelLocalInfo, PublicIdentity};
 use minicbor::Decoder;
 use ockam_core::api::{Error, Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::async_trait;
-use ockam_core::compat::{boxed::Box, string::ToString, vec::Vec};
+use ockam_core::compat::{boxed::Box, string::ToString, sync::Arc, vec::Vec};
 use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
 use tracing::{debug, error, trace, warn};
@@ -14,25 +12,19 @@ use tracing::{debug, error, trace, warn};
 const TARGET: &str = "ockam::credential_exchange_worker::service";
 
 /// Worker responsible for receiving and verifying other party's credential
-pub struct CredentialExchangeWorker<
-    AS: IdentityAttributeStorage,
-    S: AuthenticatedStorage,
-    V: IdentityVault,
-> {
+pub struct CredentialExchangeWorker {
     authorities: Vec<PublicIdentity>,
     present_back: bool,
-    identity: Identity<V, S>,
-    attributes_storage: AS,
+    identity: Identity,
+    attributes_storage: Arc<dyn IdentityAttributeStorage>,
 }
 
-impl<AS: IdentityAttributeStorage, S: AuthenticatedStorage, V: IdentityVault>
-    CredentialExchangeWorker<AS, S, V>
-{
+impl CredentialExchangeWorker {
     pub fn new(
         authorities: Vec<PublicIdentity>,
         present_back: bool,
-        identity: Identity<V, S>,
-        attributes_storage: AS,
+        identity: Identity,
+        attributes_storage: Arc<dyn IdentityAttributeStorage>,
     ) -> Self {
         Self {
             authorities,
@@ -43,9 +35,7 @@ impl<AS: IdentityAttributeStorage, S: AuthenticatedStorage, V: IdentityVault>
     }
 }
 
-impl<AS: IdentityAttributeStorage, S: AuthenticatedStorage, V: IdentityVault>
-    CredentialExchangeWorker<AS, S, V>
-{
+impl CredentialExchangeWorker {
     /// Create a generic bad request response.
     pub fn bad_request<'a>(id: Id, path: &'a str, msg: &'a str) -> ResponseBuilder<Error<'a>> {
         let e = Error::new(path).with_message(msg);
@@ -94,7 +84,7 @@ impl<AS: IdentityAttributeStorage, S: AuthenticatedStorage, V: IdentityVault>
                         sender.clone(),
                         credential,
                         self.authorities.iter(),
-                        &self.attributes_storage,
+                        self.attributes_storage.clone(),
                     )
                     .await;
 
@@ -125,7 +115,7 @@ impl<AS: IdentityAttributeStorage, S: AuthenticatedStorage, V: IdentityVault>
                         sender.clone(),
                         credential,
                         self.authorities.iter(),
-                        &self.attributes_storage,
+                        self.attributes_storage.clone(),
                     )
                     .await;
 
@@ -167,9 +157,7 @@ impl<AS: IdentityAttributeStorage, S: AuthenticatedStorage, V: IdentityVault>
 }
 
 #[async_trait]
-impl<AS: IdentityAttributeStorage, S: AuthenticatedStorage, V: IdentityVault> Worker
-    for CredentialExchangeWorker<AS, S, V>
-{
+impl Worker for CredentialExchangeWorker {
     type Message = Vec<u8>;
     type Context = Context;
 

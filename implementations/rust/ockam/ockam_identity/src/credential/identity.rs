@@ -1,7 +1,5 @@
 use crate::alloc::string::ToString;
-use crate::authenticated_storage::{
-    AttributesEntry, AuthenticatedStorage, IdentityAttributeStorage,
-};
+use crate::authenticated_storage::{AttributesEntry, IdentityAttributeStorage};
 use crate::credential::worker::CredentialExchangeWorker;
 use crate::credential::{
     Credential, CredentialBuilder, CredentialData, Timestamp, Unverified, Verified,
@@ -19,10 +17,9 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::SignatureVec;
 use ockam_core::{Address, AllowAll, AsyncTryClone, Error, Mailboxes, Result, Route};
 use ockam_node::api::{request, request_with_local_info};
-
 use ockam_node::WorkerBuilder;
 
-impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+impl Identity {
     pub async fn set_credential(&self, credential: Credential) {
         // TODO: May also verify received credential calling self.verify_self_credential
         *self.credential.write().await = Some(credential);
@@ -61,7 +58,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         authorities: Vec<PublicIdentity>,
         address: impl Into<Address>,
         present_back: bool,
-        attributes_storage: impl IdentityAttributeStorage,
+        attributes_storage: Arc<dyn IdentityAttributeStorage>,
     ) -> Result<()> {
         let s = self.async_try_clone().await?;
         let worker =
@@ -115,7 +112,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         &self,
         route: impl Into<Route>,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
-        attributes_storage: &impl IdentityAttributeStorage,
+        attributes_storage: Arc<dyn IdentityAttributeStorage>,
         provided_credential: Option<&Credential>,
     ) -> Result<()> {
         let credential = self.get_credential_or_provided(provided_credential).await?;
@@ -163,12 +160,12 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     }
 }
 
-impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
+impl Identity {
     async fn verify_credential(
         sender: &IdentityIdentifier,
         credential: &Credential,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
-        vault: &impl IdentityVault,
+        vault: Arc<dyn IdentityVault>,
     ) -> Result<CredentialData<Verified>> {
         let credential_data: CredentialData<Unverified> = match minicbor::decode(&credential.data) {
             Ok(c) => c,
@@ -183,7 +180,10 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             None => return Err(IdentityError::UnknownAuthority.into()),
         };
 
-        let credential_data = match issuer.verify_credential(credential, sender, vault).await {
+        let credential_data = match issuer
+            .verify_credential(credential, sender, vault.clone())
+            .await
+        {
             Ok(d) => d,
             Err(_) => return Err(IdentityError::CredentialVerificationFailed.into()),
         };
@@ -196,8 +196,13 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         credential: &Credential,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
     ) -> Result<()> {
-        let _ = Self::verify_credential(self.identifier(), credential, authorities, &self.vault)
-            .await?;
+        let _ = Self::verify_credential(
+            self.identifier(),
+            credential,
+            authorities,
+            self.vault.clone(),
+        )
+        .await?;
         Ok(())
     }
 
@@ -206,10 +211,10 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         sender: IdentityIdentifier,
         credential: Credential,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
-        attributes_storage: &impl IdentityAttributeStorage,
+        attributes_storage: Arc<dyn IdentityAttributeStorage>,
     ) -> Result<()> {
         let credential_data =
-            Self::verify_credential(&sender, &credential, authorities, &self.vault).await?;
+            Self::verify_credential(&sender, &credential, authorities, self.vault.clone()).await?;
 
         //TODO: review the credential' attributes types.   They are references and has lifetimes,
         //etc,  but in reality this is always just deserizalided (either from wire or from
