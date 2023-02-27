@@ -154,7 +154,7 @@ teardown() {
 }
 
 @test "projects - enable and disable addons" {
-  skip # TODO: wait until cloud has the influx-db and confluent addons enabled
+  skip # TODO: wait until cloud has the influxdb and confluent addons enabled
 
   run --separate-stderr "$OCKAM" project addon list --project default
   assert_success
@@ -186,7 +186,7 @@ teardown() {
   #      responsible, and that a member enrolled on a different ockam install can access it.
   skip_if_influxdb_test_not_enabled
 
-  run "$OCKAM" project addon configure influx-db  --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}"
+  run "$OCKAM" project addon configure influxdb  --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}"
   assert_success
 
   sleep 30 #FIXME  workaround, project not yet ready after configuring addon
