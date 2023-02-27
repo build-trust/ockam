@@ -24,6 +24,20 @@ pub(crate) enum TcpSendWorkerMsg {
     ConnectionClosed,
 }
 
+pub(crate) enum ConnectionRole {
+    Initiator,
+    Responder,
+}
+
+impl ConnectionRole {
+    fn str(&self) -> &'static str {
+        match self {
+            ConnectionRole::Initiator => "initiator",
+            ConnectionRole::Responder => "responder",
+        }
+    }
+}
+
 /// A TCP sending message worker
 ///
 /// Create this worker type by calling
@@ -35,7 +49,7 @@ pub(crate) enum TcpSendWorkerMsg {
 pub(crate) struct TcpSendWorker {
     registry: TcpRegistry,
     read_half: Option<OwnedReadHalf>,
-    write_half: Option<OwnedWriteHalf>,
+    write_half: OwnedWriteHalf,
     peer: SocketAddr,
     self_internal_addr: Address,
     self_address: Address,
@@ -48,24 +62,18 @@ impl TcpSendWorker {
     /// Create a new `TcpSendWorker`
     fn new(
         registry: TcpRegistry,
-        stream: Option<TcpStream>,
+        stream: TcpStream,
         peer: SocketAddr,
         self_internal_addr: Address,
         self_address: Address,
         receiver_processor_address: Address,
         receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> Self {
-        let (rx, tx) = match stream {
-            Some(s) => {
-                let (rx, tx) = s.into_split();
-                (Some(rx), Some(tx))
-            }
-            None => (None, None),
-        };
+        let (rx, tx) = stream.into_split();
 
         Self {
             registry,
-            read_half: rx,
+            read_half: Some(rx),
             write_half: tx,
             peer,
             self_internal_addr,
@@ -93,15 +101,12 @@ impl TcpSendWorker {
     /// Create a `(TcpSendWorker, WorkerPair)` without spawning the worker.
     pub(crate) async fn create(
         registry: TcpRegistry,
-        stream: Option<TcpStream>,
+        stream: TcpStream,
+        role: ConnectionRole,
         peer: SocketAddr,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> Result<Self> {
-        let role_str = if stream.is_none() {
-            "initiator"
-        } else {
-            "responder"
-        };
+        let role_str = role.str();
 
         let self_address = Address::random_tagged(&format!("TcpSendWorker_tx_addr_{}", role_str));
         let self_internal_address =
@@ -125,14 +130,21 @@ impl TcpSendWorker {
     pub(crate) async fn start(
         ctx: &Context,
         registry: TcpRegistry,
-        stream: Option<TcpStream>,
+        stream: TcpStream,
+        role: ConnectionRole,
         peer: SocketAddr,
         sender_incoming_access_control: Arc<dyn IncomingAccessControl>,
         receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> Result<Address> {
         trace!("Creating new TCP worker pair");
-        let sender_worker =
-            Self::create(registry, stream, peer, receiver_outgoing_access_control).await?;
+        let sender_worker = Self::create(
+            registry,
+            stream,
+            role,
+            peer,
+            receiver_outgoing_access_control,
+        )
+        .await?;
         let self_address = sender_worker.self_address().clone();
 
         let main_mailbox = Mailbox::new(
@@ -164,6 +176,35 @@ impl TcpSendWorker {
 
         Ok(())
     }
+
+    pub(crate) async fn connect(peer: SocketAddr) -> Result<TcpStream> {
+        debug!(addr = %peer, "Connecting");
+        let connection = match TcpStream::connect(peer).await {
+            Ok(c) => {
+                debug!(addr = %peer, "Connected");
+                c
+            }
+            Err(e) => {
+                debug!(addr = %peer, err = %e, "Failed to connect");
+                return Err(TransportError::from(e).into());
+            }
+        };
+
+        let mut keepalive = TcpKeepalive::new()
+            .with_time(Duration::from_secs(300))
+            .with_interval(Duration::from_secs(75));
+
+        cfg_if! {
+            if #[cfg(unix)] {
+               keepalive = keepalive.with_retries(2);
+            }
+        }
+
+        let socket = SockRef::from(&connection);
+        socket.set_tcp_keepalive(&keepalive).unwrap();
+
+        Ok(connection)
+    }
 }
 
 #[async_trait]
@@ -174,44 +215,11 @@ impl Worker for TcpSendWorker {
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         ctx.set_cluster(crate::CLUSTER_NAME).await?;
 
-        if self.write_half.is_none() {
-            debug!(addr = %self.peer, "Connecting");
-            let connection = match TcpStream::connect(self.peer).await {
-                Ok(c) => {
-                    debug!(addr = %self.peer, "Connected");
-                    c
-                }
-                Err(e) => {
-                    debug!(addr = %self.peer, err = %e, "Failed to connect");
-                    self.stop(ctx).await?;
-
-                    return Err(TransportError::from(e).into());
-                }
-            };
-
-            let mut keepalive = TcpKeepalive::new()
-                .with_time(Duration::from_secs(300))
-                .with_interval(Duration::from_secs(75));
-
-            cfg_if! {
-                if #[cfg(unix)] {
-                   keepalive = keepalive.with_retries(2);
-                }
-            }
-
-            let socket = SockRef::from(&connection);
-            socket.set_tcp_keepalive(&keepalive).unwrap();
-
-            let (rx, tx) = connection.into_split();
-            self.write_half = Some(tx);
-            self.read_half = Some(rx);
-        }
-
-        let rx = self.read_half.take().ok_or(TransportError::GenericIo)?;
+        let read_half = self.read_half.take().ok_or(TransportError::GenericIo)?;
 
         let receiver = TcpRecvProcessor::new(
             self.registry.clone(),
-            rx,
+            read_half,
             self.peer.to_string(),
             self.self_address.clone(),
             self.self_internal_addr.clone(),
@@ -250,11 +258,6 @@ impl Worker for TcpSendWorker {
         ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        let write_half = match &mut self.write_half {
-            Some(write_half) => write_half,
-            None => return Err(TransportError::PeerNotFound.into()),
-        };
-
         let recipient = msg.msg_addr();
         if recipient == self.self_internal_addr {
             let msg = TcpSendWorkerMsg::decode(msg.payload())?;
@@ -278,7 +281,7 @@ impl Worker for TcpSendWorker {
             // Create a message buffer with prepended length
             let msg = prepare_message(msg)?;
 
-            if write_half.write_all(msg.as_slice()).await.is_err() {
+            if self.write_half.write_all(msg.as_slice()).await.is_err() {
                 warn!("Failed to send message to peer {}", self.peer);
                 self.stop(ctx).await?;
 

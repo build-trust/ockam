@@ -6,7 +6,7 @@ use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
 use crate::portal::TcpInletListenProcessor;
-use crate::workers::{TcpListenProcessor, TcpSendWorker};
+use crate::workers::{ConnectionRole, TcpListenProcessor, TcpSendWorker};
 use crate::{parse_socket_addr, TcpOutletListenWorker, TcpRegistry};
 
 /// High level management interface for TCP transports
@@ -128,12 +128,15 @@ impl TcpTransport {
 
     /// Establish an outgoing TCP connection.
     pub async fn connect_socket(&self, socket: SocketAddr) -> Result<Address> {
+        let stream = TcpSendWorker::connect(socket).await?;
+
         // Create a new `WorkerPair` for the given peer containing a
         // `TcpSendWorker` and `TcpRecvProcessor`
         let sender_worker_addr = TcpSendWorker::start(
             &self.ctx,
             self.registry.clone(),
-            None,
+            stream,
+            ConnectionRole::Initiator,
             socket,
             Arc::new(LocalSourceOnly),
             Arc::new(LocalOnwardOnly),
