@@ -22,22 +22,15 @@ function skip_if_long_tests_not_enabled() {
 
 function load_orchestrator_data() {
   if [ ! -z "${ORCHESTRATOR_TESTS}" ]; then
-    if [ ! -d "$HOME/.ockam" ]; then
-      echo "Ockam data directory not found: $HOME/.ockam"
-      exit 1
-    elif [ ! -f "$HOME/.ockam/project.json" ]; then
-      OCKAM_HOME="$HOME/.ockam" $OCKAM project information --output json >"$HOME/.ockam/project.json"
+    if [ ! -f "$OCKAM_HOME_BASE/project.json" ]; then
+      OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM project information --output json >"$OCKAM_HOME_BASE/project.json"
     fi
-    export PROJECT_JSON_PATH="$HOME/.ockam/project.json"
+    export PROJECT_JSON_PATH="$OCKAM_HOME_BASE/project.json"
   fi
 }
 
 function copy_orchestrator_data() {
   if [ ! -z "${ORCHESTRATOR_TESTS}" ]; then
-    if [ ! -d "$HOME/.ockam" ]; then
-      echo "Ockam data directory not found: $HOME/.ockam"
-      exit 1
-    fi
-    cp -r "$HOME/.ockam" $OCKAM_HOME
+    cp -a $OCKAM_HOME_BASE $OCKAM_HOME
   fi
 }

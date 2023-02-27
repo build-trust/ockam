@@ -30,12 +30,11 @@ LONG_TESTS=1 bats implementations/rust/ockam/ockam_command/tests/bats
 
 ## How to run the orchestrator tests
 
-The orchestrator tests require having an enrolled identity under `$HOME/.ockam`, which will be copied to each test environment.
+The orchestrator tests require having an enrolled identity under `$OCKAM_HOME` (by default set at `$HOME/.ockam`), which will be copied to each test environment.
 
 To do so, run the following:
 
 ```bash
-OCKAM_HOME=$HOME/.ockam
 ockam enroll
 ```
 
