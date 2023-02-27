@@ -52,7 +52,7 @@ async fn run_impl(
     let mut multiaddr = MultiAddr::default();
     multiaddr.push_back(DnsAddr::new("localhost"))?;
     multiaddr.push_back(Tcp::new(port))?;
-    multiaddr.push_back(Service::new(response.payload.to_string()))?;
+    multiaddr.push_back(Service::new(response.worker_addr.to_string()))?;
     println!("Tcp listener created! You can send messages to it via this route:\n`{multiaddr}`",);
 
     Ok(())

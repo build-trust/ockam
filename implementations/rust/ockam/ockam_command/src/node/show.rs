@@ -101,7 +101,8 @@ fn print_node_info(
             println!("    Transport:");
             println!("      Type: {}", e.tt);
             println!("      Mode: {}", e.tm);
-            println!("      Address: {}", e.payload);
+            println!("      Socket: {}", e.socket_addr);
+            println!("      Worker: {}", e.worker_addr);
         }
     }
 

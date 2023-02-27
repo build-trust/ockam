@@ -97,11 +97,13 @@ pub(crate) struct AuthorityInfo {
     addr: MultiAddr,
 }
 
+type TransportsType = BTreeMap<Alias, (TransportType, TransportMode, Address, String)>;
+
 /// Node manager provides a messaging API to interact with the current node
 pub struct NodeManager {
     pub(crate) cli_state: CliState,
     node_name: String,
-    transports: BTreeMap<Alias, (TransportType, TransportMode, String)>,
+    transports: TransportsType,
     pub(crate) tcp_transport: TcpTransport,
     pub(crate) controller_identity_id: IdentityIdentifier,
     skip_defaults: bool,
@@ -212,13 +214,13 @@ impl<'a> NodeManagerProjectsOptions<'a> {
 }
 
 pub struct NodeManagerTransportOptions {
-    api_transport: (TransportType, TransportMode, String),
+    api_transport: (TransportType, TransportMode, Address, String),
     tcp_transport: TcpTransport,
 }
 
 impl NodeManagerTransportOptions {
     pub fn new(
-        api_transport: (TransportType, TransportMode, String),
+        api_transport: (TransportType, TransportMode, Address, String),
         tcp_transport: TcpTransport,
     ) -> Self {
         Self {
