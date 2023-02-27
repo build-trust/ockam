@@ -5,9 +5,20 @@ if [[ -z $OCKAM ]]; then
   export OCKAM=ockam
 fi
 
+# Setup base directory for CLI state
+if [[ -z $OCKAM_HOME ]]; then
+  export OCKAM_HOME_BASE="$HOME/.ockam"
+else
+  export OCKAM_HOME_BASE="$OCKAM_HOME"
+fi
+if [ ! -d "$OCKAM_HOME_BASE" ]; then
+  echo "Ockam CLI directory $OCKAM_HOME_BASE does not exist. Creating..." >&3
+  mkdir -p "$OCKAM_HOME_BASE"
+fi
+
 if [[ -z $BATS_LIB ]]; then
-  BATS_LIB=$(brew --prefix)/lib # macos
-  # BATS_LIB=$NVM_DIR/versions/node/v18.8.0/lib/node_modules # linux
+  export BATS_LIB=$(brew --prefix)/lib # macos
+  # export BATS_LIB=$NVM_DIR/versions/node/v18.8.0/lib/node_modules # linux
 fi
 
 # Load bats extensions
@@ -45,7 +56,7 @@ teardown_python_server() {
 }
 
 python_pid_file_path() {
-  echo "$HOME/.ockam/http_server.pid"
+  echo "$OCKAM_HOME_BASE/http_server.pid"
 }
 
 # Sets the CLI directory to a random directory under /tmp
