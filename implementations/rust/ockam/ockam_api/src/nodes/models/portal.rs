@@ -11,7 +11,7 @@ use ockam_core::TypeTag;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 
-/// Request body to create an inlet or outlet
+/// Request body to create an inlet
 #[derive(Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
@@ -76,7 +76,7 @@ impl<'a> CreateInlet<'a> {
     }
 }
 
-/// Request body to create an inlet or outlet
+/// Request body to create an outlet
 #[derive(Clone, Debug, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
@@ -103,6 +103,29 @@ impl<'a> CreateOutlet<'a> {
             tcp_addr: tcp_addr.into(),
             worker_addr: worker_addr.into(),
             alias: alias.into(),
+        }
+    }
+}
+
+/// Request body to delete an outlet
+#[derive(Clone, Debug, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct DeleteOutlet<'a> {
+    /// The alias of the TCP outlet to be deleted
+    #[b(1)] pub alias: CowStr<'a>,
+    #[b(2)] pub addr: CowStr<'a>
+}
+
+impl<'a> DeleteOutlet<'a> {
+    pub fn new(
+        alias: impl Into<CowStr<'a>>,
+        addr: impl Into<CowStr<'a>>,
+
+    ) -> Self {
+        Self {
+            alias: alias.into(),
+            addr: addr.into(),
         }
     }
 }

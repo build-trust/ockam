@@ -1,6 +1,6 @@
 use crate::error::ApiError;
 use crate::nodes::models::portal::{
-    CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
+    CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus, DeleteOutlet,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo, Registry};
 use crate::nodes::service::random_alias;
@@ -10,7 +10,7 @@ use crate::{local_multiaddr_to_route, try_multiaddr_to_addr};
 use minicbor::Decoder;
 use ockam::compat::asynchronous::RwLock;
 use ockam::compat::tokio::time::timeout;
-use ockam::{Address, AsyncTryClone, Result};
+use ockam::{Address, AsyncTryClone, Result, TCP};
 use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::{Action, Env, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Request, Response, ResponseBuilder};
@@ -306,6 +306,62 @@ impl NodeManagerWorker {
                 Response::bad_request(req.id()).body(OutletStatus::new(
                     tcp_addr,
                     worker_addr.to_string(),
+                    alias,
+                    Some(e.to_string().into()),
+                ))
+            }
+        })
+    }
+
+    pub(super) async fn delete_outlet<'a>(
+        &mut self,
+        req: &Request<'_>,
+        dec: &mut Decoder<'_>,
+    ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
+        let mut node_manager = self.node_manager.write().await;
+        let DeleteOutlet {
+            alias,
+            addr,
+        } = dec.decode()?;
+
+        let alias = alias.into_owned();
+        info!("Handling request to delete outlet portal");
+
+        let tcp_addr = Address::new(TCP, addr.clone().into_owned());
+        let res = node_manager
+            .tcp_transport
+            .stop_outlet(tcp_addr)
+            .await;
+
+        Ok(match res {
+            Ok(_) => {
+                // TODO: Use better way to remove outlets?
+                let removed_outlet = node_manager.registry.outlets.remove(
+                    &alias,
+                );
+
+
+                if let Some(successfully_removed_outlet) = removed_outlet {
+                    Response::ok(req.id()).body(OutletStatus::new(
+                        addr.into_owned(),
+                        successfully_removed_outlet.worker_addr.to_string(),
+                        alias,
+                        None,
+                    ))
+                } else {
+                    Response::internal_error(req.id()).body(OutletStatus::new(
+                        addr.into_owned(),
+                        "",
+                        alias,
+                        None,
+                    ))
+                }
+
+            }
+            Err(e) => {
+                Response::bad_request(req.id()).body(OutletStatus::new(
+                    addr.into_owned(),
+                    "",
                     alias,
                     Some(e.to_string().into()),
                 ))
