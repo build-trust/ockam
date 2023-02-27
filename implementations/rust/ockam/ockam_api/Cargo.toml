@@ -23,7 +23,7 @@ std = [
     "tinyvec/std",
     "tracing/std"
 ]
-tag = ["cddl-cat", "once_cell", "ockam_core/tag"]
+tag = ["cddl-cat", "ockam_core/tag"]
 vault-storage        = ["ockam_vault/storage"]
 lmdb                 = ["std", "lmdb-rkv"]
 authenticators       = ["direct-authenticator"]
@@ -51,7 +51,7 @@ anyhow          = "1"
 directories     = "4"
 dirs            = "4.0.0"
 thiserror       = "1.0"
-once_cell       = { version = "1", optional = true, default-features = false }
+once_cell       = { version = "1", default-features = false }
 reqwest         = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"] }
 sysinfo         = "0.28"
 kafka-protocol  = "0.5.1"

@@ -4,13 +4,14 @@ use nix::errno::Errno;
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use ockam_identity::{Identity, IdentityIdentifier, SecureChannelRegistry};
 use ockam_vault::{storage::FileStorage, Vault};
+use once_cell::sync::Lazy;
 use rand::random;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 use sysinfo::{Pid, System, SystemExt};
 
@@ -52,6 +53,31 @@ impl From<CliStateError> for ockam_core::Error {
     }
 }
 
+static OCKAM_HOME: Lazy<RwLock<Option<PathBuf>>> = Lazy::new(|| RwLock::new(None));
+
+pub struct OckamHome;
+
+impl OckamHome {
+    fn get() -> PathBuf {
+        if let Some(path) = OCKAM_HOME.read().unwrap().as_ref() {
+            return path.clone();
+        }
+
+        let new_val = match std::env::var("OCKAM_HOME") {
+            Ok(dir) => PathBuf::from(&dir),
+            Err(_) => dirs::home_dir().unwrap().join(".ockam"),
+        };
+
+        *OCKAM_HOME.write().unwrap() = Some(new_val.clone());
+
+        new_val
+    }
+
+    fn set(path: PathBuf) {
+        *OCKAM_HOME.write().unwrap() = Some(path);
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CliState {
     pub vaults: VaultsState,
@@ -80,7 +106,7 @@ impl CliState {
             .join(".ockam")
             .join(".tests")
             .join(random_name());
-        std::env::set_var("OCKAM_HOME", tests_dir);
+        OckamHome::set(tests_dir);
         Self::new()
     }
 
@@ -93,12 +119,7 @@ impl CliState {
     }
 
     pub fn dir() -> Result<PathBuf> {
-        Ok(match std::env::var("OCKAM_HOME") {
-            Ok(dir) => PathBuf::from(&dir),
-            Err(_) => dirs::home_dir()
-                .ok_or_else(|| CliStateError::NotFound("home dir".to_string()))?
-                .join(".ockam"),
-        })
+        Ok(OckamHome::get())
     }
 
     fn defaults_dir() -> Result<PathBuf> {
