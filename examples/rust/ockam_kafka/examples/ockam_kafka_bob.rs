@@ -4,7 +4,7 @@ use ockam::{
     route,
     stream::Stream,
     vault::Vault,
-    Context, Result, Routed, TcpTransport, Worker, TCP,
+    Context, Result, Routed, TcpTransport, Worker,
 };
 
 struct Echoer;
@@ -27,7 +27,7 @@ impl Worker for Echoer {
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Bob.
     let vault = Vault::create();
@@ -48,7 +48,7 @@ async fn main(ctx: Context) -> Result<()> {
     // - a receiver (consumer) for the `alice_to_bob` stream
     // - a sender (producer) for the `bob_to_alice` stream.
 
-    let node_in_hub = (TCP, "1.node.ockam.network:4000");
+    let node_in_hub = tcp.connect("1.node.ockam.network:4000").await?;
     let b_to_a_stream_address = ockam::unique_with_prefix("bob_to_alice");
     let a_to_b_stream_address = ockam::unique_with_prefix("alice_to_bob");
 

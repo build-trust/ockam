@@ -2,12 +2,12 @@ use hello_ockam::create_identity_with_secret;
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
 use ockam::identity::TrustEveryonePolicy;
-use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
+use ockam::{route, vault::Vault, Context, Result, TcpTransport};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Initialize the TCP Transport
-    TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
 
     // Create an Identity representing Alice
     // We preload Alice's vault with a secret key corresponding to the identity identifier
@@ -19,7 +19,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     let alice = create_identity_with_secret(&ctx, vault, &key_id, secret).await?;
 
     // Create a client to the credential issuer
-    let issuer_route = route![(TCP, "127.0.0.1:5000"), "issuer_listener"];
+    let issuer_connection = tcp.connect("127.0.0.1:5000").await?;
+    let issuer_route = route![issuer_connection, "issuer_listener"];
     let issuer = CredentialIssuerClient::new(&ctx, &alice, issuer_route).await?;
 
     // Get a credential for Alice (this is done via a secure channel)
@@ -28,8 +29,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     alice.set_credential(credential).await;
 
     // Create a secure channel to Bob's node
+    let bob_connection = tcp.connect("127.0.0.1:4000").await?;
     let channel = alice
-        .create_secure_channel(route![(TCP, "127.0.0.1:4000"), "bob_listener"], TrustEveryonePolicy)
+        .create_secure_channel(route![bob_connection, "bob_listener"], TrustEveryonePolicy)
         .await?;
     println!("created a secure channel at {channel:?}");
 

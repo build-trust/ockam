@@ -1,6 +1,6 @@
 use ockam::access_control::AllowAll;
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, vault::Vault, Context, Result, Route, TcpTransport, TCP};
+use ockam::{route, vault::Vault, Context, Result, Route, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -19,11 +19,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Expect second command line argument to be the Outlet node forwarder address
     let forwarding_address = std::env::args().nth(2).expect("no outlet forwarding address given");
-    let r = route![
-        (TCP, "1.node.ockam.network:4000"),
-        forwarding_address,
-        "secure_channel_listener"
-    ];
+    let node_in_hub = tcp.connect("1.node.ockam.network:4000").await?;
+    let r = route![node_in_hub, forwarding_address, "secure_channel_listener"];
     let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,

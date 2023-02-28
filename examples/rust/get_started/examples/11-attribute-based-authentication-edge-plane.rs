@@ -53,7 +53,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     //    to retrieve the node credential
 
     // Import the authority identity and route from the information file
-    let project = import_project(project_information_path, &vault).await?;
+    let project = import_project(project_information_path, &vault, &tcp).await?;
 
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
