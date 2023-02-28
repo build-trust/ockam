@@ -1,6 +1,6 @@
 use ockam::access_control::AllowAll;
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{remote::RemoteForwarder, Routed, TcpTransport, Worker, TCP};
+use ockam::{remote::RemoteForwarder, Routed, TcpTransport, Worker};
 use ockam::{vault::Vault, Context, Result};
 
 struct Echoer;
@@ -23,7 +23,11 @@ impl Worker for Echoer {
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
+
+    // Start a worker, of type Echoer, at address "echoer".
+    // This worker will echo back every message it receives, along its return route.
+    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
     // Create a Vault to safely store secret keys for Bob.
     let vault = Vault::create();
@@ -45,15 +49,11 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
-    let node_in_hub = (TCP, "1.node.ockam.network:4000");
+    let node_in_hub = tcp.connect("1.node.ockam.network:4000").await?;
     let forwarder = RemoteForwarder::create(&ctx, node_in_hub, AllowAll).await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address for Bob is:");
     println!("{}", forwarder.remote_address());
-
-    // Start a worker, of type Echoer, at address "echoer".
-    // This worker will echo back every message it receives, along its return route.
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
     // We won't call ctx.stop() here, this program will run until you stop it with Ctrl-C
     Ok(())

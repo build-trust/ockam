@@ -7,7 +7,7 @@ use ockam::{
     identity::{Identity, TrustEveryonePolicy},
     remote::RemoteForwarder,
     vault::Vault,
-    Context, Error, Result, Routed, TcpTransport, Worker, TCP,
+    Context, Error, Result, Routed, TcpTransport, Worker,
 };
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
@@ -81,7 +81,7 @@ impl Worker for FileReception {
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Receiver.
     let vault = Vault::create();
@@ -104,7 +104,7 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
-    let node_in_hub = (TCP, "1.node.ockam.network:4000");
+    let node_in_hub = tcp.connect("1.node.ockam.network:4000").await?;
     let forwarder = RemoteForwarder::create(&ctx, node_in_hub, AllowAll).await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address for Receiver is:");

@@ -1,13 +1,13 @@
 // examples/sender.rs
 
 use file_transfer::{FileData, FileDescription};
+use ockam::TcpTransport;
 use ockam::{
     identity::{Identity, TrustEveryonePolicy},
     route,
     vault::Vault,
     Context,
 };
-use ockam::{TcpTransport, TCP};
 
 use std::path::PathBuf;
 
@@ -37,7 +37,7 @@ async fn main(ctx: Context) -> Result<()> {
     let opt = Opt::from_args();
 
     // Initialize the TCP Transport.
-    TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Sender.
     let vault = Vault::create();
@@ -51,9 +51,12 @@ async fn main(ctx: Context) -> Result<()> {
     // Read this forwarding address for Receiver's secure channel listener from command line argument.
     let forwarding_address = opt.address.trim();
 
-    // Combine the tcp address of the node and the forwarding_address to get a route
+    // Connect to the cloud node over TCP
+    let node_in_hub = tcp.connect("1.node.ockam.network:4000").await?;
+
+    // Combine the tcp address of the cloud node and the forwarding_address to get a route
     // to Receiver's secure channel listener.
-    let route_to_receiver_listener = route![(TCP, "1.node.ockam.network:4000"), forwarding_address, "listener"];
+    let route_to_receiver_listener = route![node_in_hub, forwarding_address, "listener"];
 
     // As Sender, connect to the Receiver's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Receiver.

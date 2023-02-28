@@ -11,8 +11,10 @@ async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let tcp = TcpTransport::create(&ctx).await?;
 
+    // Create a TCP connection to Bob.
     let connection_to_bob = tcp.connect("127.0.0.1:4000").await?;
 
+    // Start a Forwarder to forward messages to Bob using the TCP connection.
     ctx.start_worker("forward_to_bob", Forwarder(connection_to_bob), AllowAll, AllowAll)
         .await?;
 

@@ -1,12 +1,13 @@
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, stream::Stream, vault::Vault, Context, Result, TcpTransport, TCP};
+use ockam::{route, stream::Stream, vault::Vault, Context, Result, TcpTransport};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
-    let _tcp = TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
 
     // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
+    let node_in_hub = tcp.connect(hub_node_tcp_address).await?;
 
     // Create a vault
     let vault = Vault::create();
@@ -21,9 +22,9 @@ async fn main(mut ctx: Context) -> Result<()> {
         .index_service("stream_kafka_index")
         .client_id("secure-channel-over-stream-over-cloud-node-initiator")
         .connect(
-            route![(TCP, hub_node_tcp_address)], // route to hub
-            "sc-initiator-to-responder",         // outgoing stream
-            "sc-responder-to-initiator",         // incoming stream
+            route![node_in_hub],         // route to hub
+            "sc-initiator-to-responder", // outgoing stream
+            "sc-responder-to-initiator", // incoming stream
         )
         .await?;
 

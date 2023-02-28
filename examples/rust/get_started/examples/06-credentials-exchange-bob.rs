@@ -6,7 +6,7 @@ use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
 use ockam::identity::TrustEveryonePolicy;
-use ockam::{vault::Vault, Context, Result, TcpTransport, TCP};
+use ockam::{vault::Vault, Context, Result, TcpTransport};
 use ockam_core::route;
 
 #[ockam::node]
@@ -24,7 +24,8 @@ async fn main(ctx: Context) -> Result<()> {
     let bob = create_identity_with_secret(&ctx, vault, &key_id, secret).await?;
 
     // Create a client to a credential issuer
-    let issuer_route = route![(TCP, "127.0.0.1:5000"), "issuer_listener"];
+    let issuer_connection = tcp.connect("127.0.0.1:5000").await?;
+    let issuer_route = route![issuer_connection, "issuer_listener"];
     let issuer = CredentialIssuerClient::new(&ctx, &bob, issuer_route).await?;
 
     // Get a credential for Bob (this is done via a secure channel)
