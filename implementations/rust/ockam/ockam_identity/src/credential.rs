@@ -192,6 +192,9 @@ impl CredentialData<Unverified> {
     pub fn unverfied_key_label(&self) -> &str {
         &self.issuer_key_label
     }
+    pub fn unverfied_subject(&self) -> &IdentityIdentifier {
+        &self.subject
+    }
 }
 
 impl TryFrom<&Credential> for CredentialData<Unverified> {

@@ -51,7 +51,3 @@ impl SpaceCommand {
         }
     }
 }
-
-pub fn random_name() -> String {
-    hex::encode(rand::random::<[u8; 4]>())
-}

@@ -7,7 +7,7 @@ use crate::util::{api, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
-pub struct GetCredentialCommand {
+pub struct GetCommand {
     #[command(flatten)]
     pub node_opts: NodeOpts,
 
@@ -18,23 +18,20 @@ pub struct GetCredentialCommand {
     identity: Option<String>,
 }
 
-impl GetCredentialCommand {
+impl GetCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(rpc, (options, self));
     }
 }
 
-async fn rpc(
-    mut ctx: Context,
-    (opts, cmd): (CommandGlobalOpts, GetCredentialCommand),
-) -> crate::Result<()> {
+async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, GetCommand)) -> crate::Result<()> {
     run_impl(&mut ctx, opts, cmd).await
 }
 
 async fn run_impl(
     ctx: &mut Context,
     opts: CommandGlobalOpts,
-    cmd: GetCredentialCommand,
+    cmd: GetCommand,
 ) -> crate::Result<()> {
     let mut rpc = Rpc::background(ctx, &opts, &cmd.node_opts.api_node)?;
     rpc.request(api::credentials::get_credential(
