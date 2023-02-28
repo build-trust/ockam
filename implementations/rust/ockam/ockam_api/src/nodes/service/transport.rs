@@ -1,7 +1,7 @@
 use crate::nodes::models::transport::{
     CreateTransport, DeleteTransport, TransportList, TransportMode, TransportStatus,
 };
-use crate::nodes::service::{random_alias, Alias, TransportsType};
+use crate::nodes::service::{random_alias, Alias, Transports};
 use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Request, Response, ResponseBuilder};
@@ -12,7 +12,7 @@ impl NodeManagerWorker {
     pub(super) fn get_tcp_con_or_list<'a>(
         &self,
         req: &Request<'a>,
-        transports: &'a TransportsType,
+        transports: &'a Transports,
         mode: TransportMode,
     ) -> ResponseBuilder<TransportList<'a>> {
         Response::ok(req.id()).body(TransportList::new(
