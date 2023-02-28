@@ -266,6 +266,8 @@ async fn is_node_up(rpc: &mut Rpc<'_>, wait_until_ready: bool) -> Result<bool> {
         {
             debug!("Node is up. Took {:?}", now.elapsed());
             return Ok(true);
+        } else {
+            tokio::time::sleep(t).await;
         }
     }
     Ok(false)
