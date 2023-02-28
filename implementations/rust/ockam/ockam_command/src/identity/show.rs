@@ -4,7 +4,7 @@ use crate::{
     EncodeFormat, {CommandGlobalOpts, Result},
 };
 use anyhow::anyhow;
-use clap::{Args, ValueEnum};
+use clap::Args;
 use core::fmt::Write;
 use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
