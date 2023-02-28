@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use crate::{
     identity::default_identity_name,
-    util::{node_rpc, print_output},
+    util::{node_rpc, print_encodable},
     vault::default_vault_name,
-    CommandGlobalOpts, Result,
+    CommandGlobalOpts, EncodeFormat, Result,
 };
 use anyhow::Context as _;
 use clap::Args;
@@ -25,6 +25,10 @@ pub struct IssueCommand {
 
     #[arg(default_value_t = default_vault_name())]
     pub vault: String,
+
+    /// Encoding Format
+    #[arg(long = "encoding", value_enum, default_value = "plain")]
+    encode_format: EncodeFormat,
 }
 
 impl IssueCommand {
@@ -61,7 +65,7 @@ async fn run_impl(
 
     let credential = ident.issue_credential(cred_builder).await?;
 
-    print_output(credential, &opts.global_args.output_format)?;
+    print_encodable(credential, &cmd.encode_format)?;
 
     Ok(())
 }

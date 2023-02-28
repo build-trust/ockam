@@ -1,17 +1,14 @@
 use crate::util::output::Output;
 use crate::util::print_output;
-use crate::{CommandGlobalOpts, Result};
+use crate::{
+    EncodeFormat, {CommandGlobalOpts, Result},
+};
 use anyhow::anyhow;
 use clap::{Args, ValueEnum};
 use core::fmt::Write;
 use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
 use ockam_identity::change_history::IdentityChangeHistory;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-enum Encoding {
-    Hex,
-}
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -26,7 +23,7 @@ pub struct ShowCommand {
     //      authority' identity change history to be in hex format.  This only applies
     //      for `full` (change history) identity.
     #[arg(long, value_enum, requires = "full")]
-    encoding: Option<Encoding>,
+    encoding: Option<EncodeFormat>,
 }
 
 impl ShowCommand {
@@ -47,7 +44,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: ShowCommand) -> crate::Result<()> {
     let state = opts.state.identities.get(&cmd.name)?;
     if cmd.full {
         let identity = state.config.change_history.export()?;
-        if Some(Encoding::Hex) == cmd.encoding {
+        if Some(EncodeFormat::Hex) == cmd.encoding {
             print_output(identity, &opts.global_args.output_format)?;
         } else {
             let output = LongIdentityResponse::new(identity);

@@ -143,6 +143,12 @@ pub enum OutputFormat {
     Json,
 }
 
+#[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
+pub enum EncodeFormat {
+    Plain,
+    Hex,
+}
+
 #[derive(Clone)]
 pub struct CommandGlobalOpts {
     pub global_args: GlobalArgs,

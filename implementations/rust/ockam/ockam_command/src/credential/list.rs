@@ -1,4 +1,5 @@
 use clap::{arg, Args};
+use colorful::Colorful;
 use ockam::Context;
 use ockam_identity::{credential::Credential, IdentityIdentifier};
 
@@ -47,8 +48,8 @@ async fn run_impl(
         )
         .await
         {
-            Ok(_) => "✅",
-            Err(_) => "❌",
+            Ok(_) => "✔︎".light_green(),
+            Err(_) => "✕".light_red(),
         };
 
         println!("Credential: {cred_name} {is_verified}");
