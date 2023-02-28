@@ -111,6 +111,10 @@ impl NodeManager {
             .create_secure_channel_internal(&identity, sc_route, authorized_identifiers, timeout)
             .await?;
 
+        warn!(
+            "WTF: self.enable_credential_checks: {}",
+            self.enable_credential_checks
+        );
         let actual_exchange_mode = if self.enable_credential_checks {
             credential_exchange_mode
         } else {

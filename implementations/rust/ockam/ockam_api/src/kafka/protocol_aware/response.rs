@@ -73,7 +73,6 @@ impl Interceptor {
                 ApiKey::FindCoordinatorKey => {
                     return self
                         .handle_find_coordinator_response(
-                            context,
                             &mut buffer,
                             inlet_map,
                             &request_info,
@@ -84,13 +83,7 @@ impl Interceptor {
 
                 ApiKey::MetadataKey => {
                     return self
-                        .handle_metadata_response(
-                            context,
-                            &mut buffer,
-                            inlet_map,
-                            request_info,
-                            &header,
-                        )
+                        .handle_metadata_response(&mut buffer, inlet_map, request_info, &header)
                         .await;
                 }
                 _ => {}
@@ -110,7 +103,6 @@ impl Interceptor {
     // to dedicated tcp inlet ports
     async fn handle_metadata_response(
         &self,
-        context: &mut Context,
         buffer: &mut Bytes,
         inlet_map: &KafkaInletMap,
         request_info: RequestInfo,
@@ -137,7 +129,7 @@ impl Interceptor {
 
         for (broker_id, info) in response.brokers.iter_mut() {
             let inlet_address: SocketAddr = inlet_map
-                .assert_inlet_for_broker(context, broker_id.0)
+                .assert_inlet_for_broker(broker_id.0)
                 .await
                 .map_err(InterceptError::Ockam)?;
 
@@ -158,7 +150,6 @@ impl Interceptor {
 
     async fn handle_find_coordinator_response(
         &self,
-        context: &mut Context,
         buffer: &mut Bytes,
         inlet_map: &KafkaInletMap,
         request_info: &RequestInfo,
@@ -173,7 +164,7 @@ impl Interceptor {
         if request_info.request_api_version >= 4 {
             for coordinator in response.coordinators.iter_mut() {
                 let inlet_address: SocketAddr = inlet_map
-                    .assert_inlet_for_broker(context, coordinator.node_id.0)
+                    .assert_inlet_for_broker(coordinator.node_id.0)
                     .await
                     .map_err(InterceptError::Ockam)?;
 
@@ -183,7 +174,7 @@ impl Interceptor {
             }
         } else {
             let inlet_address: SocketAddr = inlet_map
-                .assert_inlet_for_broker(context, response.node_id.0)
+                .assert_inlet_for_broker(response.node_id.0)
                 .await
                 .map_err(InterceptError::Ockam)?;
 

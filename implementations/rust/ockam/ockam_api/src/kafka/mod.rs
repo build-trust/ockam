@@ -9,8 +9,10 @@ mod portal_worker;
 mod protocol_aware;
 mod secure_channel_map;
 
+pub(crate) use inlet_map::KafkaInletMap;
 use ockam_core::Address;
 pub(crate) use portal_listener::KafkaPortalListener;
+pub(crate) use secure_channel_map::KafkaSecureChannelController;
 pub(crate) use secure_channel_map::KafkaSecureChannelControllerImpl;
 
 pub const ORCHESTRATOR_KAFKA_CONSUMERS: &str = "kafka_consumers";

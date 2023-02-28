@@ -296,10 +296,10 @@ mod test {
     use kafka_protocol::protocol::Encodable as KafkaEncodable;
     use kafka_protocol::protocol::StrBytes;
     use ockam_core::compat::sync::{Arc, Mutex};
-    use ockam_core::{route, Address, AllowAll, Routed, Worker};
+    use ockam_core::{route, Address, AllowAll, AsyncTryClone, Routed, Worker};
     use ockam_identity::Identity;
     use ockam_node::Context;
-    use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
+    use ockam_transport_tcp::{PortalMessage, TcpTransport, MAX_PAYLOAD_SIZE};
     use ockam_vault::Vault;
     use std::collections::BTreeMap;
     use std::time::Duration;
@@ -578,8 +578,11 @@ mod test {
 
     async fn setup_only_worker(context: &mut Context) -> Address {
         let inlet_map = KafkaInletMap::new(
+            TcpTransport::create(context).await.unwrap(),
+            Arc::new(AllowAll),
             route![],
-            "0.0.0.0".into(),
+            "non-usable-address".into(),
+            0,
             PortRange::new(20_000, 40_000).unwrap(),
         );
 
@@ -632,7 +635,7 @@ mod test {
     async fn kafka_portal_worker__metadata_exchange__response_changed(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        crate::test::start_manager_for_tests(context).await?;
+        let handle = crate::test::start_manager_for_tests(context).await?;
 
         let vault = Vault::create();
         let identity = Identity::create(context, &vault).await?;
@@ -641,8 +644,11 @@ mod test {
             KafkaSecureChannelControllerImpl::new(identity, route![]).into_trait();
 
         let inlet_map = KafkaInletMap::new(
+            handle.tcp.async_try_clone().await?,
+            Arc::new(AllowAll),
             route![],
             "127.0.0.1".into(),
+            0,
             PortRange::new(20_000, 40_000).unwrap(),
         );
         let portal_inlet_address = KafkaPortalWorker::start_kafka_portal(

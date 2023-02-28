@@ -4,9 +4,11 @@ use crate::error::ApiError;
 use crate::hop::Hop;
 use crate::identity::IdentityService;
 use crate::kafka::{
-    KafkaPortalListener, KafkaSecureChannelControllerImpl, KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
+    KafkaInletMap, KafkaPortalListener, KafkaSecureChannelController,
+    KafkaSecureChannelControllerImpl, KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
     ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS, ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
 };
+use crate::lmdb::LmdbStorage;
 use crate::nodes::models::services::{
     ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
     StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
@@ -19,19 +21,32 @@ use crate::nodes::registry::{
 };
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
+use crate::session::{Replacer, Session};
 use crate::uppercase::Uppercase;
 use crate::vault::VaultService;
-use crate::DefaultAddress;
-use crate::{actions, resources, try_multiaddr_to_route};
+use crate::{
+    actions, resources, route_to_multiaddr, try_address_to_multiaddr, try_multiaddr_to_route,
+};
+use crate::{multiaddr_to_route, DefaultAddress};
 use core::time::Duration;
 use minicbor::Decoder;
-use ockam::{Address, AsyncTryClone, Context, Result};
 use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::PolicyStorage;
 use ockam_core::api::{bad_request, Error, Request, Response, ResponseBuilder};
+use ockam_core::compat::sync::Arc;
 use ockam_core::{route, AllowAll};
+use ockam_core::{Address, AsyncTryClone, Result};
+use ockam_identity::access_control::IdentityIdAccessControl;
+use ockam_identity::authenticated_storage::AuthenticatedStorage;
+use ockam_identity::{
+    Identity, IdentityIdentifier, IdentityVault, TrustEveryonePolicy, TrustIdentifierPolicy,
+};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
+use ockam_node::compat::asynchronous::RwLock;
+use ockam_node::Context;
+use ockam_vault::Vault;
+use std::ops::Add;
 
 use super::NodeManagerWorker;
 
@@ -296,6 +311,7 @@ impl NodeManager {
     pub(super) async fn start_kafka_service_impl<'a>(
         &mut self,
         context: &Context,
+        node_manager: Arc<RwLock<NodeManager>>,
         project_name: String,
         local_interceptor_address: Address,
         bind_ip: String,
@@ -303,36 +319,14 @@ impl NodeManager {
         brokers_port_range: (u16, u16),
         project_route_multiaddr: MultiAddr,
         kind: KafkaServiceKind,
-    ) -> Result<()> {
-        let identity = self.identity()?.async_try_clone().await?;
-        let (maybe_tunnel_multiaddr, suffix_address) = self
-            .connect(
-                &project_route_multiaddr,
-                Some(identity.identifier().clone()),
-                Some(Duration::from_secs(60)),
-                context,
-            )
-            .await?;
+    ) -> Result<Replacer> {
+        let local_identity = self.identity()?.async_try_clone().await?;
+        let project_info = self.resolve_project(&project_name).unwrap();
 
-        let project_multiaddr = maybe_tunnel_multiaddr.try_with(&suffix_address)?;
-        let project_route = try_multiaddr_to_route(&project_multiaddr)?;
-
-        let bootstrap_address_route = route![
-            local_interceptor_address.clone(),
-            project_route.clone(),
-            ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
-            ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS
-        ];
-
-        let interceptor_route = route![
-            local_interceptor_address.clone(),
-            project_route.clone(),
-            ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
-        ];
-
-        debug!("bootstrap_address_route: {bootstrap_address_route:?}");
-        debug!("interceptor_route: {interceptor_route:?}");
-        debug!("project_route: {project_route:?}");
+        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            local_identity.async_try_clone().await?,
+            route![],
+        );
 
         // override default policy to allow incoming packets from the project
         let (_addr, identity_identifier) = self.resolve_project(&project_name)?;
@@ -346,17 +340,6 @@ impl NodeManager {
                 ]),
             )
             .await?;
-
-        self.tcp_transport
-            .create_inlet(
-                format!("{}:{}", &bind_ip, server_bootstrap_port),
-                bootstrap_address_route,
-                AllowAll,
-            )
-            .await?;
-
-        let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(identity, project_route);
 
         if let KafkaServiceKind::Consumer = kind {
             secure_channel_controller
@@ -373,21 +356,108 @@ impl NodeManager {
             .await?;
         }
 
-        KafkaPortalListener::create(
-            context,
-            secure_channel_controller.into_trait(),
-            interceptor_route,
-            local_interceptor_address.clone(),
+        let secure_channel_controller_trait = secure_channel_controller.into_trait();
+
+        let only_from_project =
+            Arc::new(IdentityIdAccessControl::new(vec![project_info.1.clone()]));
+
+        let inlet_map = KafkaInletMap::new(
+            self.tcp_transport.async_try_clone().await?,
+            only_from_project,
+            route![],
             bind_ip,
+            server_bootstrap_port,
             PortRange::try_from(brokers_port_range)
                 .map_err(|_| ApiError::message("invalid port range"))?,
+        );
+
+        KafkaPortalListener::create(
+            context,
+            secure_channel_controller_trait.clone(),
+            local_interceptor_address.clone(),
+            inlet_map.clone(),
         )
         .await?;
+
+        let replacer = Self::kafka_connection_replacer(
+            Arc::new(context.async_try_clone().await?),
+            node_manager,
+            inlet_map.clone(),
+            secure_channel_controller_trait.clone(),
+            Arc::new(local_identity),
+            project_route_multiaddr,
+            local_interceptor_address.clone(),
+        );
 
         self.registry
             .kafka_services
             .insert(local_interceptor_address, KafkaServiceInfo::new(kind));
-        Ok(())
+
+        //since we are holding the node manager lock which is needed by the replacer
+        //we cannot call `replacer` it from within the method
+        Ok(replacer)
+    }
+
+    fn kafka_connection_replacer<V: IdentityVault, S: AuthenticatedStorage>(
+        context: Arc<Context>,
+        node_manager: Arc<RwLock<NodeManager>>,
+        inlet_map: KafkaInletMap,
+        secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
+        local_identity: Arc<Identity<V, S>>,
+        project_route_multiaddr: MultiAddr,
+        local_interceptor_address: Address,
+    ) -> Replacer {
+        Box::new(move |_old_multiaddr| {
+            let inlet_map = inlet_map.clone();
+            let context = context.clone();
+            let local_identity = local_identity.clone();
+            let local_interceptor_address = local_interceptor_address.clone();
+            let secure_channel_controller = secure_channel_controller.clone();
+            let node_manager = node_manager.clone();
+            let project_route_multiaddr = project_route_multiaddr.clone();
+            Box::pin(async move {
+                debug!(
+                    "replacer called for kafka service: {}",
+                    project_route_multiaddr.to_string()
+                );
+
+                let mut node_manager = node_manager.write().await;
+                let (maybe_tunnel_multiaddr, suffix_address) = node_manager
+                    .connect(
+                        &project_route_multiaddr,
+                        Some(local_identity.identifier().clone()),
+                        Some(Duration::from_secs(20)),
+                        &context,
+                    )
+                    .await?;
+                debug!("connected");
+
+                let project_multiaddr = maybe_tunnel_multiaddr.try_with(&suffix_address)?;
+                let project_route = try_multiaddr_to_route(&project_multiaddr)?;
+
+                let interceptor_route = route![
+                    local_interceptor_address,
+                    project_route.clone(),
+                    ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS
+                ];
+
+                debug!("project_route: {project_route:?}");
+                debug!("interceptor_route: {interceptor_route:?}");
+
+                //let's restart forwarders and close existing secure channels
+                secure_channel_controller
+                    .change_route(&context, interceptor_route.clone())
+                    .await?;
+
+                //and then rebuild every inlet
+                inlet_map
+                    .change_route(&context, interceptor_route.clone())
+                    .await?;
+
+                route_to_multiaddr(&project_route)
+                    .ok_or_else(|| ApiError::generic("cannot convert route to multiaddr"))
+            })
+        })
     }
 }
 
@@ -592,9 +662,10 @@ impl NodeManagerWorker {
             }
         };
 
-        node_manager
+        let mut replacer = node_manager
             .start_kafka_service_impl(
                 context,
+                self.node_manager.clone(),
                 project_name,
                 listener_address,
                 body_req.bootstrap_server_ip().to_string(),
@@ -604,6 +675,18 @@ impl NodeManagerWorker {
                 KafkaServiceKind::Consumer,
             )
             .await?;
+
+        drop(node_manager);
+
+        //initialize the first connection
+        let initial_multiaddr = replacer(MultiAddr::default()).await?;
+
+        let mut session = Session::new(initial_multiaddr);
+        //add a session with the replacer
+        session.set_replacer(replacer);
+
+        let mut node_manager = self.node_manager.write().await;
+        node_manager.sessions.lock().unwrap().add(session);
 
         Ok(Response::ok(req.id()).to_vec()?)
     }
@@ -627,9 +710,10 @@ impl NodeManagerWorker {
             }
         };
 
-        node_manager
+        let mut replacer = node_manager
             .start_kafka_service_impl(
                 context,
+                self.node_manager.clone(),
                 project_name,
                 listener_address,
                 body_req.bootstrap_server_ip().to_string(),
@@ -639,6 +723,18 @@ impl NodeManagerWorker {
                 KafkaServiceKind::Producer,
             )
             .await?;
+
+        drop(node_manager);
+
+        //initialize the first connection
+        let initial_multiaddr = replacer(MultiAddr::default()).await?;
+
+        let mut session = Session::new(initial_multiaddr);
+        //add a session with the replacer
+        session.set_replacer(replacer);
+
+        let mut node_manager = self.node_manager.write().await;
+        node_manager.sessions.lock().unwrap().add(session);
 
         Ok(Response::ok(req.id()).to_vec()?)
     }

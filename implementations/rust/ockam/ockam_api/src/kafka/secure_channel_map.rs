@@ -5,14 +5,16 @@ use crate::kafka::{
 use ockam::remote::RemoteForwarder;
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::{join, join_all};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Message;
 use ockam_core::{async_trait, route, Address, AllowAll, Error, Result, Route, Routed, Worker};
+use ockam_core::{AsyncTryClone, Message};
 use ockam_identity::api::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
 };
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_identity::{Identity, IdentityVault, SecureChannelRegistryEntry, TrustEveryonePolicy};
+use ockam_node::compat::futures::FutureExt;
 use ockam_node::compat::tokio::sync::Mutex;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
@@ -34,6 +36,13 @@ pub(crate) struct KafkaEncryptedContent {
 /// This is a proxy trait to avoid propagating the vault implementation.
 #[async_trait]
 pub(crate) trait KafkaSecureChannelController: Send + Sync {
+    /// Change the route for future connections and close existing ones.
+    /// Forwarders are re-created as well as outgoing secure channels, however, incoming
+    /// secure channel are **not** closed since they may be still useful to decode
+    /// pending messages.
+    /// This method is useful when connection goes down and a new route is created.
+    async fn change_route(&self, context: &Context, new_route: Route) -> Result<()>;
+
     /// Encrypts the content specifically for the consumer waiting for that topic name and
     /// partition.
     /// To do so it'll create a secure channel which will be used for key exchange only.
@@ -69,6 +78,7 @@ pub(crate) trait KafkaSecureChannelController: Send + Sync {
 
 #[async_trait]
 pub(crate) trait ForwarderCreator: Send + Sync + 'static {
+    /// Create a forwarder, if it exists it'll be replaced
     async fn create_forwarder(&self, context: &Context, alias: String) -> Result<()>;
 }
 
@@ -239,23 +249,26 @@ impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator>
     ///returns encryptor api address
     async fn get_or_create_secure_channel_for(
         &self,
-        context: &mut Context,
-        topic_name: &str,
+        context: &Context,
+        topic_name: impl Into<String>,
         partition: i32,
     ) -> Result<(UniqueSecureChannelId, SecureChannelRegistryEntry)> {
+        let topic_name = topic_name.into();
+
         //here we should have the orchestrator address and expect forwarders to be
         // present in the orchestrator with the format "consumer_{partition}_{topic_name}"
-
         let topic_partition_key = (topic_name.to_string(), partition);
-        //consumer__ prefix is added by the orchestrator
-        let topic_partition_address = format!("consumer__{topic_name}_{partition}");
 
+        //TODO: avoid locking while creating a secure channel itself but also allow a double
+        // initialization and throwing away duplicated
         let mut inner = self.inner.lock().await;
 
         let (random_unique_id, encryptor_address) = {
             if let Some(encryptor_address) = inner.topic_encryptor_map.get(&topic_partition_key) {
                 encryptor_address.clone()
             } else {
+                //consumer__ prefix is added by the orchestrator
+                let topic_partition_address = format!("consumer__{topic_name}_{partition}");
                 trace!("creating new secure channel to {topic_partition_address}");
 
                 let encryptor_address = inner
@@ -346,6 +359,58 @@ impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator>
 impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator> KafkaSecureChannelController
     for KafkaSecureChannelControllerImpl<V, S, F>
 {
+    async fn change_route(&self, context: &Context, new_route: Route) -> Result<()> {
+        // let mut secure_channels_to_recreate = Vec::new();
+        let mut inner = self.inner.lock().await;
+
+        inner.project_route = new_route;
+
+        //since closing and re-creating every secure channel sequentially take a lot of time
+        //we want parallelize as much as we can
+        let mut create_secure_channel_futures = Vec::new();
+
+        for ((topic_name, topic_partition), (_old_unique_id, encryptor_address)) in
+            &inner.topic_encryptor_map
+        {
+            if let Err(error) = inner.identity.stop_secure_channel(encryptor_address).await {
+                warn!("cannot stop secure channel: {error}");
+            }
+
+            create_secure_channel_futures.push(self.get_or_create_secure_channel_for(
+                context,
+                topic_name.clone(),
+                *topic_partition,
+            ));
+        }
+
+        //clear the encryptor map since we closed every secure channel
+        inner.topic_encryptor_map.clear();
+
+        //replacing existing forwarders
+        for topic_key in &inner.topic_forwarder_set {
+            let (topic_name, partition) = topic_key;
+            let alias = format!("{topic_name}_{partition}");
+            inner
+                .forwarder_creator
+                .create_forwarder(context, alias)
+                .await?;
+        }
+
+        //since the creation of new secure channels requires the lock
+        //we first drop it and then start awaiting for results
+        drop(inner);
+
+        //creation of new secure channels is an optional operation
+        //if something went wrong we can just log it
+        for create_secure_channel_result in join_all(create_secure_channel_futures).await {
+            if let Err(error) = create_secure_channel_result {
+                warn!("cannot pre-create secure channel: {error}");
+            }
+        }
+
+        Ok(())
+    }
+
     async fn encrypt_content_for(
         &self,
         context: &mut Context,

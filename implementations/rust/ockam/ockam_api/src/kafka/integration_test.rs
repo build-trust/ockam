@@ -104,6 +104,7 @@ mod test {
 
         KafkaPortalListener::create(
             context,
+            handle.tcp.async_try_clone().await?,
             secure_channel_controller.into_trait(),
             outlet_route,
             listener_address,
