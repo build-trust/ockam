@@ -121,6 +121,7 @@ pub async fn create_secure_channel_to_project(
         Some(authorized_identifier),
         credential_exchange_mode,
         identity,
+        None,
     );
     let req = Request::post("/node/secure_channel").body(payload);
     rpc.request(req).await?;
@@ -145,6 +146,7 @@ pub async fn create_secure_channel_to_authority(
         Some(allowed),
         CredentialExchangeMode::None,
         identity,
+        None,
     );
     let req = Request::post("/node/secure_channel").body(payload);
     rpc.request(req).await?;

@@ -38,6 +38,10 @@ pub struct CreateCommand {
     /// Orchestrator address to resolve projects present in the `at` argument
     #[command(flatten)]
     cloud_opts: CloudOpts,
+
+    /// Name of a stored Credential to use within this Secure Channel
+    #[arg(short, long)]
+    pub credential: Option<String>,
 }
 
 impl CreateCommand {
@@ -166,6 +170,7 @@ async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> R
         authorized_identifiers,
         CredentialExchangeMode::Mutual,
         cmd.cloud_opts.identity.clone(),
+        cmd.credential.clone(),
     );
     let request = Request::post("/node/secure_channel").body(payload);
 

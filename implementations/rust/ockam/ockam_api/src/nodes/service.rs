@@ -14,6 +14,7 @@ use ockam_core::compat::{
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, AllowAll, AsyncTryClone};
 use ockam_identity::authenticated_storage::AuthenticatedAttributeStorage;
+use ockam_identity::credential::{Credential, OneTimeCode};
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::tokio;
@@ -191,6 +192,7 @@ pub struct NodeManagerProjectsOptions<'a> {
     ac: Option<&'a AuthoritiesConfig>,
     project_id: Option<String>,
     projects: BTreeMap<String, ProjectLookup>,
+    credential: Option<Credential>,
 }
 
 impl<'a> NodeManagerProjectsOptions<'a> {
@@ -198,11 +200,13 @@ impl<'a> NodeManagerProjectsOptions<'a> {
         ac: Option<&'a AuthoritiesConfig>,
         project_id: Option<String>,
         projects: BTreeMap<String, ProjectLookup>,
+        credential: Option<Credential>,
     ) -> Self {
         Self {
             ac,
             project_id,
             projects,
+            credential,
         }
     }
 }
@@ -258,6 +262,9 @@ impl NodeManager {
 
         let vault = node_state.config.vault().await?;
         let identity = node_state.config.identity(ctx).await?;
+        if let Some(cred) = projects_options.credential {
+            identity.set_credential(cred.to_owned()).await;
+        }
 
         let medic = Medic::new();
         let sessions = medic.sessions();
@@ -291,7 +298,6 @@ impl NodeManager {
                 s.configure_authorities(ac).await?;
             }
         }
-
         // Always start the echoer service as ockam_api::Medic assumes it will be
         // started unconditionally on every node. It's used for liveness checks.
         s.start_echoer_service_impl(ctx, DefaultAddress::ECHO_SERVICE.into())
@@ -380,7 +386,7 @@ impl NodeManager {
                 let i = Some(vec![i]);
                 let m = CredentialExchangeMode::Oneway;
                 let w = self
-                    .create_secure_channel_impl(r, i, m, timeout, None, ctx)
+                    .create_secure_channel_impl(r, i, m, timeout, None, ctx, None)
                     .await?;
                 let a = MultiAddr::default().try_with(addr.iter().skip(1))?;
                 return Ok((try_address_to_multiaddr(&w)?, a));
@@ -404,7 +410,7 @@ impl NodeManager {
                         .await
                         .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                     let w = self
-                        .create_secure_channel_impl(route![r1, r2], i, m, timeout, None, ctx)
+                        .create_secure_channel_impl(route![r1, r2], i, m, timeout, None, ctx, None)
                         .await?;
 
                     Ok((try_address_to_multiaddr(&w)?, b2))
@@ -424,7 +430,7 @@ impl NodeManager {
             let i = auth.clone().map(|i| vec![i]);
             let m = CredentialExchangeMode::Mutual;
             let w = self
-                .create_secure_channel_impl(r, i, m, timeout, None, ctx)
+                .create_secure_channel_impl(r, i, m, timeout, None, ctx, None)
                 .await?;
             return Ok((try_address_to_multiaddr(&w)?, MultiAddr::default()));
         }

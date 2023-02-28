@@ -55,7 +55,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     client.set_credential(credential).await;
 
     client
-        .present_credential(route![channel, "credential_exchange"])
+        .present_credential(route![channel, "credential_exchange"], None)
         .await?;
 
     let attrs = authenticated_attribute_storage
@@ -121,6 +121,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
             route![channel, "credential_exchange"],
             &authorities,
             &authenticated_attribute_storage_client_1,
+            None,
         )
         .await?;
 
@@ -237,7 +238,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     assert_eq!(counter.load(Ordering::Relaxed), 0);
 
     client
-        .present_credential(route![channel.clone(), "credential_exchange"])
+        .present_credential(route![channel.clone(), "credential_exchange"], None)
         .await?;
 
     child_ctx

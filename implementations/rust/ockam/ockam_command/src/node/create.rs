@@ -1,4 +1,9 @@
 use clap::Args;
+use minicbor::Decoder;
+use ockam::identity::credential::Credential;
+use ockam_identity::PublicIdentity;
+use ockam_multiaddr::MultiAddr;
+use ockam_vault::Vault;
 use rand::prelude::random;
 use tokio::io::AsyncBufReadExt;
 use tokio::time::{sleep, Duration};
@@ -28,7 +33,6 @@ use crate::{
 };
 use ockam::{Address, AsyncTryClone};
 use ockam::{Context, TcpTransport};
-use ockam_api::nodes::models::transport::CreateTransportJson;
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
     nodes::models::transport::{TransportMode, TransportType},
@@ -39,6 +43,7 @@ use ockam_api::{
         NodeManager, NodeManagerWorker, NODEMANAGER_ADDR,
     },
 };
+use ockam_api::{config::cli, nodes::models::transport::CreateTransportJson};
 
 use ockam_core::{AllowAll, LOCAL};
 
@@ -95,6 +100,12 @@ pub struct CreateCommand {
 
     #[arg(long = "identity", value_name = "IDENTITY")]
     identity: Option<String>,
+
+    #[arg(long = "authority-identity")]
+    pub authority_identities: Option<Vec<String>>,
+
+    #[arg(long = "credential", value_name = "CREDENTIAL_NAME")]
+    pub credential: Option<String>,
 }
 
 impl Default for CreateCommand {
@@ -112,6 +123,8 @@ impl Default for CreateCommand {
             trusted_identities: None,
             trusted_identities_file: None,
             reload_from_trusted_identities_file: None,
+            authority_identities: None,
+            credential: None,
         }
     }
 }
@@ -214,6 +227,22 @@ async fn run_foreground_node(
         .await?;
     }
 
+    if let Some(authority_identities) = &cmd.authority_identities {
+        for identity in authority_identities.iter() {
+            let identity_as_bytes = match hex::decode(identity) {
+                Ok(b) => b,
+                Err(e) => return Err(anyhow!(e).into()),
+            };
+            let vault = Vault::default();
+            let i = PublicIdentity::import(&identity_as_bytes, &vault).await?;
+            // FIXME: `/secure` address is not a real address for a local identity credential authority
+            //        -  Oakley
+            let a = cli::Authority::new(identity_as_bytes, MultiAddr::from_str("/secure")?);
+            cfg.authorities(&node_name)?
+                .add_authority(i.identifier().clone(), a)?;
+        }
+    }
+
     let project_id = match &cmd.project {
         Some(path) => {
             let s = tokio::fs::read_to_string(path).await?;
@@ -253,6 +282,23 @@ async fn run_foreground_node(
         _ => None,
     };
     let projects = cfg.inner().lookup().projects().collect();
+
+    let credential = match cmd.credential {
+        Some(cred_name) => {
+            let cred_state = opts.state.credentials.get(&cred_name)?;
+            let config = cred_state.config().await?;
+
+            let bytes = match hex::decode(config.encoded_credential) {
+                Ok(b) => b,
+                Err(e) => return Err(anyhow!(e).into()),
+            };
+
+            let cred: Credential = minicbor::decode(&bytes)?;
+            Some(cred)
+        }
+        None => None,
+    };
+
     let node_man = NodeManager::create(
         &ctx,
         NodeManagerGeneralOptions::new(
@@ -265,6 +311,7 @@ async fn run_foreground_node(
             Some(&cfg.authorities(&node_name)?.snapshot()),
             project_id,
             projects,
+            credential,
         ),
         NodeManagerTransportOptions::new(
             (
@@ -452,6 +499,8 @@ async fn spawn_background_node(
         cmd.launch_config
             .as_ref()
             .map(|config| serde_json::to_string(config).unwrap()),
+        cmd.authority_identities.as_ref(),
+        cmd.credential.as_ref(),
     )?;
 
     Ok(())

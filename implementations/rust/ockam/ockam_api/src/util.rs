@@ -298,7 +298,7 @@ pub mod test {
         let node_manager = NodeManager::create(
             &context,
             NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, None),
-            NodeManagerProjectsOptions::new(None, None, Default::default()),
+            NodeManagerProjectsOptions::new(None, None, Default::default(), None),
             NodeManagerTransportOptions::new(
                 (
                     crate::nodes::models::transport::TransportType::Tcp,

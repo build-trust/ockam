@@ -35,6 +35,7 @@ pub struct CreateSecureChannelRequest<'a> {
     #[n(3)] pub credential_exchange_mode: CredentialExchangeMode,
     #[n(4)] pub timeout: Option<Duration>,
     #[b(5)] pub identity_name: Option<CowStr<'a>>,
+    #[b(6)] pub credential_name: Option<CowStr<'a>>,
 }
 
 impl<'a> CreateSecureChannelRequest<'a> {
@@ -43,6 +44,7 @@ impl<'a> CreateSecureChannelRequest<'a> {
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         credential_exchange_mode: CredentialExchangeMode,
         identity_name: Option<String>,
+        credential_name: Option<String>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -53,6 +55,7 @@ impl<'a> CreateSecureChannelRequest<'a> {
             credential_exchange_mode,
             timeout: None,
             identity_name: identity_name.map(|x| x.into()),
+            credential_name: credential_name.map(|x| x.into()),
         }
     }
 }

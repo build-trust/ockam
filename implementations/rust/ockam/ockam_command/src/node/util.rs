@@ -82,6 +82,7 @@ pub async fn start_embedded_node_with_vault_and_identity(
             Some(&cfg.authorities(&cmd.node_name)?.snapshot()),
             project_id,
             projects,
+            None,
         ),
         NodeManagerTransportOptions::new(
             (
@@ -274,6 +275,8 @@ pub fn spawn_node(
     trusted_identities_file: Option<&PathBuf>,
     reload_from_trusted_identities_file: Option<&PathBuf>,
     launch_config: Option<String>,
+    authority_identities: Option<&Vec<String>>,
+    credential: Option<&String>,
 ) -> crate::Result<()> {
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
@@ -339,6 +342,18 @@ pub fn spawn_node(
                 .unwrap_or_else(|| panic!("unsupported path {t:?}"))
                 .to_string(),
         );
+    }
+
+    if let Some(authority_identities) = authority_identities {
+        for identity in authority_identities.iter() {
+            args.push("--authority-identity".to_string());
+            args.push(identity.to_string());
+        }
+    }
+
+    if let Some(credential) = credential {
+        args.push("--credential".to_string());
+        args.push(credential.to_string());
     }
 
     args.push(name.to_owned());

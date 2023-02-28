@@ -121,10 +121,10 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // present this node credential to the project
     control_plane
-        .present_credential(route![
-            secure_channel_address.clone(),
-            DefaultAddress::CREDENTIALS_SERVICE
-        ])
+        .present_credential(
+            route![secure_channel_address.clone(), DefaultAddress::CREDENTIALS_SERVICE],
+            None,
+        )
         .await?;
 
     // finally create a forwarder using the secure channel to the project
