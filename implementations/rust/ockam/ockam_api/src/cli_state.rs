@@ -3,7 +3,7 @@ use crate::nodes::models::transport::{CreateTransportJson, TransportMode, Transp
 use nix::errno::Errno;
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
 use ockam_identity::{Identity, IdentityIdentifier, SecureChannelRegistry};
-use ockam_node::tokio;
+
 use ockam_vault::{storage::FileStorage, Vault};
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -1225,7 +1225,7 @@ pub struct CredentialState {
 
 impl CredentialState {
     pub async fn config(&self) -> Result<CredentialConfig> {
-        let string_config = tokio::fs::read_to_string(&self.path).await?;
+        let string_config = std::fs::read_to_string(&self.path)?;
         Ok(serde_json::from_str(&string_config)?)
     }
 
