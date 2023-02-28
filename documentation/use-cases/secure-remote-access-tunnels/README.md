@@ -225,7 +225,7 @@ Create a file at `examples/02-inlet.rs` and copy the below code snippet to it.
 ```rust
 // examples/02-inlet.rs
 use ockam::access_control::AllowAll;
-use ockam::{route, Context, Result, TcpTransport, TCP};
+use ockam::{route, Context, Result, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -239,7 +239,8 @@ async fn main(ctx: Context) -> Result<()> {
     // by a second command line argument.
 
     let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
-    let route_to_outlet = route![(TCP, &format!("127.0.0.1:{outlet_port}")), "outlet"];
+    let outlet_connection = tcp.connect(&format!("127.0.0.1:{outlet_port}")).await?;
+    let route_to_outlet = route![outlet_connection, "outlet"];
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
     // For example: 127.0.0.1:4001
@@ -373,7 +374,7 @@ Create a file at `examples/03-inlet.rs` and copy the below code snippet to it.
 // examples/03-inlet.rs
 use ockam::access_control::AllowAll;
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, vault::Vault, Context, Result, TcpTransport, TCP};
+use ockam::{route, vault::Vault, Context, Result, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -393,7 +394,8 @@ async fn main(ctx: Context) -> Result<()> {
     let vault = Vault::create();
     let e = Identity::create(&ctx, &vault).await?;
     let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
-    let r = route![(TCP, &format!("127.0.0.1:{outlet_port}")), "secure_channel_listener"];
+    let outlet_connection = tcp.connect(&format!("127.0.0.1:{outlet_port}")).await?;
+    let r = route![outlet_connection, "secure_channel_listener"];
     let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
@@ -489,7 +491,7 @@ use ockam::{
     identity::{Identity, TrustEveryonePolicy},
     remote::RemoteForwarder,
     vault::Vault,
-    Context, Result, TcpTransport, TCP,
+    Context, Result, TcpTransport,
 };
 
 #[ockam::node]
@@ -527,7 +529,7 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
-    let node_in_hub = (TCP, "1.node.ockam.network:4000");
+    let node_in_hub = tcp.connect("1.node.ockam.network:4000").await?;
     let forwarder = RemoteForwarder::create(&ctx, node_in_hub, AllowAll).await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address in Hub is:");
@@ -546,7 +548,7 @@ Create a file at `examples/04-inlet.rs` and copy the below code snippet to it.
 // examples/04-inlet.rs
 use ockam::access_control::AllowAll;
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, vault::Vault, Context, Result, Route, TcpTransport, TCP};
+use ockam::{route, vault::Vault, Context, Result, Route, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -565,11 +567,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Expect second command line argument to be the Outlet node forwarder address
     let forwarding_address = std::env::args().nth(2).expect("no outlet forwarding address given");
-    let r = route![
-        (TCP, "1.node.ockam.network:4000"),
-        forwarding_address,
-        "secure_channel_listener"
-    ];
+    let node_in_hub = tcp.connect("1.node.ockam.network:4000").await?;
+    let r = route![node_in_hub, forwarding_address, "secure_channel_listener"];
     let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,

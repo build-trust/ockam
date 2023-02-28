@@ -183,7 +183,7 @@ use ockam::{
     route,
     stream::Stream,
     vault::Vault,
-    Context, Result, Routed, TcpTransport, Worker, TCP,
+    Context, Result, Routed, TcpTransport, Worker,
 };
 
 struct Echoer;
@@ -206,7 +206,7 @@ impl Worker for Echoer {
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Bob.
     let vault = Vault::create();
@@ -227,7 +227,7 @@ async fn main(ctx: Context) -> Result<()> {
     // - a receiver (consumer) for the `alice_to_bob` stream
     // - a sender (producer) for the `bob_to_alice` stream.
 
-    let node_in_hub = (TCP, "1.node.ockam.network:4000");
+    let node_in_hub = tcp.connect("1.node.ockam.network:4000").await?;
     let b_to_a_stream_address = ockam::unique_with_prefix("bob_to_alice");
     let a_to_b_stream_address = ockam::unique_with_prefix("alice_to_bob");
 
@@ -269,14 +269,14 @@ use ockam::{
     stream::Stream,
     unique_with_prefix,
     vault::Vault,
-    Context, Result, TcpTransport, TCP,
+    Context, Result, TcpTransport,
 };
 use std::io;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    TcpTransport::create(&ctx).await?;
+    let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a Vault to safely store secret keys for Alice.
     let vault = Vault::create();
@@ -301,13 +301,13 @@ async fn main(mut ctx: Context) -> Result<()> {
     let a_to_b_stream_address = a_to_b_stream_address.trim();
 
     // We now know that the route to:
-    // - send messages to bob is [(TCP, "1.node.ockam.network:4000"), a_to_b_stream_address]
-    // - receive messages from bob is [(TCP, "1.node.ockam.network:4000"), b_to_a_stream_address]
+    // - send messages to bob is [node_in_hub, a_to_b_stream_address]
+    // - receive messages from bob is [node_in_hub, b_to_a_stream_address]
 
     // Starts a sender (producer) for the alice_to_bob stream and a receiver (consumer)
     // for the `bob_to_alice` stream to get two-way communication.
 
-    let node_in_hub = (TCP, "1.node.ockam.network:4000");
+    let node_in_hub = tcp.connect("1.node.ockam.network:4000").await?;
     let (sender, _receiver) = Stream::new(&ctx)
         .await?
         .stream_service("stream_kafka")
