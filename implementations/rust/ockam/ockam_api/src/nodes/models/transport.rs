@@ -147,9 +147,9 @@ pub struct TransportStatus<'a> {
     #[n(2)] pub tt: TransportType,
     /// The mode the transport should operate in
     #[n(3)] pub tm: TransportMode,
-    /// The status payload
+    /// Corresponding socket address
     #[b(4)] pub socket_addr: CowStr<'a>,
-    /// The status payload
+    /// Corresponding worker address
     #[b(5)] pub worker_addr: CowStr<'a>,
     /// Transport ID inside the node manager
     ///
