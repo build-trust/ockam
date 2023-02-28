@@ -81,15 +81,22 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     }
 
     /// Present credential to other party, route shall use secure channel
-    pub async fn present_credential(&self, route: impl Into<Route>) -> Result<()> {
-        let credential = self.credential.read().await;
-        let credential = credential.as_ref().ok_or_else(|| {
-            Error::new(
-                Origin::Application,
-                Kind::Invalid,
-                "no credential to present",
-            )
-        })?;
+    pub async fn present_credential(
+        &self,
+        route: impl Into<Route>,
+        provided_credential: Option<&Credential>,
+    ) -> Result<()> {
+        let rw_credential = self.credential.read().await;
+        let credential = match provided_credential {
+            Some(c) => c,
+            None => rw_credential.as_ref().ok_or_else(|| {
+                Error::new(
+                    Origin::Application,
+                    Kind::Invalid,
+                    "no credential to present",
+                )
+            })?,
+        };
 
         let buf = request(
             &self.ctx,
@@ -118,15 +125,19 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         route: impl Into<Route>,
         authorities: impl IntoIterator<Item = &PublicIdentity>,
         attributes_storage: &impl IdentityAttributeStorage,
+        provided_credential: Option<&Credential>,
     ) -> Result<()> {
-        let credential = self.credential.read().await;
-        let credential = credential.as_ref().ok_or_else(|| {
-            Error::new(
-                Origin::Application,
-                Kind::Invalid,
-                "no credential to present",
-            )
-        })?;
+        let rw_credential = self.credential.read().await;
+        let credential = match provided_credential {
+            Some(c) => c,
+            None => rw_credential.as_ref().ok_or_else(|| {
+                Error::new(
+                    Origin::Application,
+                    Kind::Invalid,
+                    "no credential to present",
+                )
+            })?,
+        };
 
         let path = "actions/present_mutual";
         let (buf, local_info) = request_with_local_info(
@@ -146,6 +157,13 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         let res: Response = dec.decode()?;
         match res.status() {
             Some(Status::Ok) => {}
+            Some(s) => {
+                return Err(Error::new(
+                    Origin::Application,
+                    Kind::Invalid,
+                    format!("credential presentation failed: {}", s),
+                ))
+            }
             _ => {
                 return Err(Error::new(
                     Origin::Application,

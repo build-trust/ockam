@@ -134,13 +134,14 @@ impl NodeManagerWorker {
         let identity = node_manager.identity()?;
 
         if request.oneway {
-            identity.present_credential(route).await?;
+            identity.present_credential(route, None).await?;
         } else {
             identity
                 .present_credential_mutual(
                     route,
                     &node_manager.authorities()?.public_identities(),
                     &node_manager.attributes_storage,
+                    None,
                 )
                 .await?;
         }

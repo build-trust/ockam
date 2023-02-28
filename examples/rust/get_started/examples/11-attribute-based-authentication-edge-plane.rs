@@ -112,10 +112,10 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 4.2 and send this node credential to the project
     edge_plane
-        .present_credential(route![
-            secure_channel_address.clone(),
-            DefaultAddress::CREDENTIALS_SERVICE
-        ])
+        .present_credential(
+            route![secure_channel_address.clone(), DefaultAddress::CREDENTIALS_SERVICE],
+            None,
+        )
         .await?;
 
     // 4.3 then create a secure channel to the control node (via its forwarder)
@@ -137,6 +137,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
             route![secure_channel_to_control.clone(), "credential_exchange"],
             vec![&project.authority_public_identity()],
             &attributes_storage,
+            None,
         )
         .await?;
     println!("credential exchange done");
