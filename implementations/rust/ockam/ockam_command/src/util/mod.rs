@@ -25,8 +25,8 @@ use ockam_multiaddr::{
     MultiAddr, Protocol,
 };
 
-use crate::node::util::start_embedded_node;
 use crate::util::output::Output;
+use crate::{node::util::start_embedded_node, EncodeFormat};
 use crate::{CommandGlobalOpts, OutputFormat, Result};
 
 pub mod api;
@@ -297,7 +297,9 @@ impl<'a> Rpc<'a> {
     where
         T: Output + serde::Serialize,
     {
-        print_output(b, &self.opts.global_args.output_format)
+        let r = print_output(b, &self.opts.global_args.output_format)?;
+        println!();
+        Ok(r)
     }
 }
 
@@ -311,8 +313,24 @@ where
             serde_json::to_string_pretty(&b).context("Failed to serialize output")?
         }
     };
-    println!("{o}");
+    print!("{o}");
     Ok(b)
+}
+
+pub fn print_encodable<T>(e: T, encode_format: &EncodeFormat) -> Result<()>
+where
+    T: Encode<()> + Output,
+{
+    let o = match encode_format {
+        EncodeFormat::Plain => e.output().context("Failed serialize output")?,
+        EncodeFormat::Hex => {
+            let bytes = minicbor::to_vec(e).expect("Unable to encode response");
+            hex::encode(bytes)
+        }
+    };
+
+    print!("{o}");
+    Ok(())
 }
 
 /// A simple wrapper for shutting down the local embedded node (for

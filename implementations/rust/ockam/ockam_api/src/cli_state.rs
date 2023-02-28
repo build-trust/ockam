@@ -76,7 +76,7 @@ impl CliState {
             identities: IdentitiesState::new(dir)?,
             nodes: NodesState::new(dir)?,
             projects: ProjectsState::new(dir)?,
-            credentials: CredentialsState::new(&dir)?,
+            credentials: CredentialsState::new(dir)?,
             dir: dir.to_path_buf(),
         })
     }
