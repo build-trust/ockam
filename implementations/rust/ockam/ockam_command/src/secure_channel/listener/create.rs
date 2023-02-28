@@ -25,7 +25,7 @@ pub struct CreateCommand {
 
     /// Authorized Identifiers of secure channel initiators
     #[arg(short, long, value_name = "IDENTIFIERS")]
-    authorized_identifiers: Option<Vec<IdentityIdentifier>>,
+    authorized: Option<Vec<IdentityIdentifier>>,
 
     #[arg(value_name = "VAULT", long, requires = "identity")]
     vault: Option<String>,
@@ -62,7 +62,7 @@ async fn run_impl(
     let req = Request::post("/node/secure_channel_listener").body(
         CreateSecureChannelListenerRequest::new(
             &cmd.address,
-            cmd.authorized_identifiers,
+            cmd.authorized,
             cmd.vault,
             cmd.identity,
         ),

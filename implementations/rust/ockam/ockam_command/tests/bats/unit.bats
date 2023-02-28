@@ -270,7 +270,7 @@ teardown() {
   assert_success
 
   msg=$(random_str)
-  run "$OCKAM" secure-channel-listener create l --at n2 --vault v2 --identity i2 --authorized-identifiers "$idt1"
+  run "$OCKAM" secure-channel-listener create l --at n2 --vault v2 --identity i2 --authorized "$idt1"
   run bash -c " $OCKAM secure-channel create --from n1 --to /node/n2/service/l --authorized $idt2 \
               | $OCKAM message send $msg --from /node/n1 --to -/service/echo"
   assert_success
