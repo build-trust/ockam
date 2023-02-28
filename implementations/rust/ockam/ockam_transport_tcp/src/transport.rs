@@ -165,7 +165,7 @@ impl TcpTransport {
     /// # Ok(()) }
     pub async fn listen(&self, bind_addr: impl AsRef<str>) -> Result<(SocketAddr, Address)> {
         let bind_addr = parse_socket_addr(bind_addr.as_ref())?;
-        // Could be different from the bind_addr
+        // Could be different from the bind_addr, e.g., if binding to port 0\
         let (socket_addr, address) = TcpListenProcessor::start(
             &self.ctx,
             self.registry.clone(),
@@ -178,12 +178,12 @@ impl TcpTransport {
         Ok((socket_addr, address))
     }
 
-    /// Interrupt an active TCP connection given it's `Address`
+    /// Interrupt an active TCP connection given its `Address`
     pub async fn disconnect(&self, address: &Address) -> Result<()> {
         self.ctx.stop_worker(address.clone()).await
     }
 
-    /// Interrupt an active TCP listener given it's `Address`
+    /// Interrupt an active TCP listener given its `Address`
     pub async fn stop_listener(&self, address: &Address) -> Result<()> {
         self.ctx.stop_processor(address.clone()).await
     }
