@@ -4,6 +4,7 @@ use crate::{util::node_rpc, vault::default_vault_name, CommandGlobalOpts};
 use anyhow::anyhow;
 
 use clap::Args;
+use colorful::Colorful;
 use ockam::Context;
 
 use ockam_identity::IdentityIdentifier;
@@ -43,10 +44,10 @@ async fn run_impl(
 
     match validate_encoded_cred(&cred_as_str, &cmd.issuer, &cmd.vault, &opts, &ctx).await {
         Ok(_) => {
-            println!("✅ Verified Credential");
+            println!("{} Verified Credential", "✔︎".light_green());
         }
         Err(e) => {
-            println!("❌ Credential is not valid!\n\n{e}");
+            println!("{} Credential is not valid!\n\n{e}", "✕".light_red());
         }
     };
 

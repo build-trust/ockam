@@ -20,9 +20,6 @@ pub struct StoreCommand {
     #[arg(long = "issuer")]
     pub issuer: IdentityIdentifier,
 
-    #[arg(long = "subject")]
-    pub subject: IdentityIdentifier,
-
     #[arg(group = "credential_value", value_name = "CREDENTIAL_STRING", long)]
     pub credential: Option<String>,
 
