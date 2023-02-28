@@ -31,7 +31,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Address {
     tt: TransportType,
-    // TODO: It's binary but in most cases we assume it to be an UTF-8 string
+    // It's binary but in most cases we assume it to be an UTF-8 string
     inner: Vec<u8>,
 }
 
