@@ -85,8 +85,6 @@
 ///  - examples/11-attribute-based-authentication-edge-plane.rs: for the edge node
 ///  - src/project.rs: read the content of the project.json file
 ///  - src/token.rs: generate a one-time token using the ockam command line
-///  - src/credentials.rs: retrieve the credential of a node from an authority (using the token above)
-///  - src/attribute_access_control: example of creating an access control policy for one attribute only
 ///
 
 /// unused main function

@@ -1,12 +1,13 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use hello_ockam::{create_token, get_credential, import_project};
+use hello_ockam::{create_token, import_project};
 use ockam::abac::AbacAccessControl;
 use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
-use ockam::identity::credential::{Credential, OneTimeCode};
+use ockam::identity::credential::OneTimeCode;
 use ockam::identity::{Identity, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
 use ockam::{route, vault::Vault, Context, Result, TcpTransport};
+use ockam_api::authenticator::direct::Client;
 use ockam_api::DefaultAddress;
 
 /// This node supports an "edge" server which can connect to a "control" node
@@ -65,8 +66,8 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         )
         .await?;
 
-    let credential: Credential =
-        get_credential(&ctx, route![secure_channel, DefaultAddress::AUTHENTICATOR], token).await?;
+    let mut client = Client::new(route![secure_channel, DefaultAddress::AUTHENTICATOR], &ctx).await?;
+    let credential = client.credential_with(&token).await?;
     println!("{credential}");
 
     // store the credential and start a credential exchange worker which will be

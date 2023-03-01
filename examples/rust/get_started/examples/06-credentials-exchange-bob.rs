@@ -1,11 +1,11 @@
 // This node starts a tcp listener, a secure channel listener, and an echoer worker.
 // It then runs forever waiting for messages.
-use hello_ockam::{create_identity_with_secret, Echoer};
+use hello_ockam::Echoer;
 use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
-use ockam::identity::TrustEveryonePolicy;
+use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{vault::Vault, Context, Result, TcpTransport};
 use ockam_core::route;
 
@@ -21,7 +21,7 @@ async fn main(ctx: Context) -> Result<()> {
     let vault = Vault::create();
     let key_id = "0189a2aec3799fe9d0dc0f982063022b697f18562a403eb46fa3d32be5bd31f8".to_string();
     let secret = "08ddb4458a53d5493eac7e9941a1b0d06896efa2d1efac8cf225ee1ccb824458";
-    let bob = create_identity_with_secret(&ctx, vault, &key_id, secret).await?;
+    let bob = Identity::create_identity_with_secret(&ctx, vault, &key_id, secret).await?;
 
     // Create a client to a credential issuer
     let issuer_connection = tcp.connect("127.0.0.1:5000").await?;
