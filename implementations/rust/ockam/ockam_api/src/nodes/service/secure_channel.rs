@@ -85,6 +85,7 @@ impl NodeManager {
         Ok(sc_addr)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(super) async fn create_secure_channel_impl(
         &mut self,
         sc_route: Route,

@@ -17,7 +17,7 @@ teardown() {
     msg=$(random_str)
 
     # Create Two identities
-    $OCKAM identity create i1 
+    $OCKAM identity create i1
     $OCKAM identity show i1 > i1.id
 
     $OCKAM identity create i2
@@ -46,7 +46,7 @@ teardown() {
     $OCKAM node create n2 --authority-identity $(cat authority) --identity i2 --credential i2-cred
 
 
-    # Create a secure channel between n1 and n2 
+    # Create a secure channel between n1 and n2
     # n1 will present the credential provided within this command
     # n2 will present the cerdential preset when created
     run --separate-stderr $OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api --credential i1-cred \
