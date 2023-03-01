@@ -13,12 +13,12 @@ on:
       commit_sha:
         description: SHA to test workflow
   merge_group:
-    paths:
-      - "**.sh"
   pull_request:
     paths:
       - "**.sh"
   push:
+    paths:
+      - "**.sh"
     branches:
       - develop
   schedule:
