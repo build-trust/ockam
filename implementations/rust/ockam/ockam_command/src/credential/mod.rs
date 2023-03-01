@@ -88,7 +88,7 @@ pub async fn validate_encoded_cred(
     ident
         .to_public()
         .await?
-        .verify_credential(&cred, cred_data.unverfied_subject(), &vault)
+        .verify_credential(&cred, cred_data.unverified_subject(), &vault)
         .await?;
 
     Ok(())

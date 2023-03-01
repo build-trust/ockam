@@ -20,7 +20,7 @@ impl PublicIdentity {
         vault: &impl IdentityVault,
     ) -> Result<CredentialData<Verified>> {
         let dat = CredentialData::try_from(credential)?;
-        if dat.unverfied_key_label() != IdentityStateConst::ROOT_LABEL {
+        if dat.unverified_key_label() != IdentityStateConst::ROOT_LABEL {
             return Err(Error::new(
                 Origin::Application,
                 Kind::Invalid,
@@ -60,7 +60,7 @@ impl PublicIdentity {
             .verify_signature(
                 &sig,
                 credential.unverified_data(),
-                Some(dat.unverfied_key_label()),
+                Some(dat.unverified_key_label()),
                 vault,
             )
             .await?

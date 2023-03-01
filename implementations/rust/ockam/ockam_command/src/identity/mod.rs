@@ -59,10 +59,8 @@ pub fn default_identity_name() -> String {
         }
     };
 
-    let default_name = cli_state.identities.default().map(|i| i.name);
-
-    match default_name {
-        Ok(name) => name,
-        Err(_) => "default".to_string(),
-    }
+    cli_state
+        .identities
+        .default()
+        .map_or("default".to_string(), |i| i.name)
 }

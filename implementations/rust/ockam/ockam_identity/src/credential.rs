@@ -7,6 +7,7 @@ mod worker;
 pub mod access_control;
 pub mod one_time_code;
 
+use ockam_core::compat::collections::HashMap;
 pub use one_time_code::*;
 
 use crate::IdentityIdentifier;
@@ -186,13 +187,13 @@ impl CredentialData<Verified> {
 }
 
 impl CredentialData<Unverified> {
-    pub fn unverfied_issuer(&self) -> &IdentityIdentifier {
+    pub fn unverified_issuer(&self) -> &IdentityIdentifier {
         &self.issuer
     }
-    pub fn unverfied_key_label(&self) -> &str {
+    pub fn unverified_key_label(&self) -> &str {
         &self.issuer_key_label
     }
-    pub fn unverfied_subject(&self) -> &IdentityIdentifier {
+    pub fn unverified_subject(&self) -> &IdentityIdentifier {
         &self.subject
     }
 }
@@ -305,6 +306,13 @@ pub struct CredentialBuilder {
 }
 
 impl CredentialBuilder {
+    pub fn from_attributes(identity: IdentityIdentifier, attrs: HashMap<String, String>) -> Self {
+        attrs
+            .iter()
+            .fold(Credential::builder(identity), |crd, (k, v)| {
+                crd.with_attribute(k, v.as_bytes())
+            })
+    }
     /// Add some key-value pair as credential attribute.
     pub fn with_attribute(mut self, k: &str, v: &[u8]) -> Self {
         self.attrs.put(k, v);
