@@ -35,6 +35,7 @@ use ockam::{Address, AsyncTryClone};
 use ockam::{Context, TcpTransport};
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
+    config::cli::Authority,
     nodes::models::transport::{TransportMode, TransportType},
     nodes::{
         service::{
@@ -101,8 +102,8 @@ pub struct CreateCommand {
     #[arg(long = "identity", value_name = "IDENTITY")]
     identity: Option<String>,
 
-    #[arg(long = "authority-identity")]
-    pub authority_identities: Option<Vec<String>>,
+    #[arg(long = "authority-identity", value_parser = parse_identity_authority)]
+    pub authority_identities: Option<Vec<Authority>>,
 
     #[arg(long = "credential", value_name = "CREDENTIAL_NAME")]
     pub credential: Option<String>,
@@ -227,19 +228,12 @@ async fn run_foreground_node(
         .await?;
     }
 
-    if let Some(authority_identities) = &cmd.authority_identities {
-        for identity in authority_identities.iter() {
-            let identity_as_bytes = match hex::decode(identity) {
-                Ok(b) => b,
-                Err(e) => return Err(anyhow!(e).into()),
-            };
+    if let Some(authority_identities) = cmd.authority_identities {
+        for auth in authority_identities.into_iter() {
             let vault = Vault::default();
-            let i = PublicIdentity::import(&identity_as_bytes, &vault).await?;
-            // FIXME: `/secure` address is not a real address for a local identity credential authority
-            //        -  Oakley
-            let a = cli::Authority::new(identity_as_bytes, MultiAddr::from_str("/secure")?);
+            let i = PublicIdentity::import(auth.identity(), &vault).await?;
             cfg.authorities(&node_name)?
-                .add_authority(i.identifier().clone(), a)?;
+                .add_authority(i.identifier().clone(), auth)?;
         }
     }
 
@@ -284,18 +278,14 @@ async fn run_foreground_node(
     let projects = cfg.inner().lookup().projects().collect();
 
     let credential = match cmd.credential {
-        Some(cred_name) => {
-            let cred_state = opts.state.credentials.get(&cred_name)?;
-            let config = cred_state.config().await?;
-
-            let bytes = match hex::decode(config.encoded_credential) {
-                Ok(b) => b,
-                Err(e) => return Err(anyhow!(e).into()),
-            };
-
-            let cred: Credential = minicbor::decode(&bytes)?;
-            Some(cred)
-        }
+        Some(cred_name) => Some(
+            opts.state
+                .credentials
+                .get(&cred_name)?
+                .config()
+                .await?
+                .credential()?,
+        ),
         None => None,
     };
 
@@ -504,4 +494,22 @@ async fn spawn_background_node(
     )?;
 
     Ok(())
+}
+
+fn otc_parser(val: &str) -> Result<OneTimeCode> {
+    let bytes = hex::decode(val)?;
+    let code = <[u8; 32]>::try_from(bytes.as_slice()).context("Failed to parse OTC")?;
+    Ok(code.into())
+}
+
+fn parse_identity_authority(identity: &str) -> Result<Authority> {
+    let identity_as_bytes = match hex::decode(identity) {
+        Ok(b) => b,
+        Err(e) => return Err(anyhow!(e).into()),
+    };
+
+    // TODO: FIXME - Identity Authorities do not have an address `/secure` is being used as a placeholder
+    //        -  Oakley
+    let a = cli::Authority::new(identity_as_bytes, MultiAddr::from_str("/secure")?);
+    Ok(a)
 }
