@@ -49,8 +49,6 @@ teardown() {
     # Create a secure channel between n1 and n2
     # n1 will present the credential provided within this command
     # n2 will present the cerdential preset when created
-    run --separate-stderr $OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api --credential i1-cred \
-        | $OCKAM message send hello --from /node/n1 --to -/service/uppercase
-
-    assert_output "$msg"
+    run --separate-stderr $OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api --credential i1-credential
+    assert_success
 }

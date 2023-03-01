@@ -128,7 +128,7 @@ impl NodeManager {
         // TODO: Determine when we can remove this? Or find a better way to determine
         //       when to check credentials. Currently enable_credential_checks only if a PROJECT AC and PROJECT ID are set
         //       -- Oakley
-        let actual_exchange_mode = if self.enable_credential_checks || provided_credential.is_none()
+        let actual_exchange_mode = if self.enable_credential_checks || provided_credential.is_some()
         {
             credential_exchange_mode
         } else {
