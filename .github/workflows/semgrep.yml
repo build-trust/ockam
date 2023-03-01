@@ -13,6 +13,7 @@ on:
       commit_sha:
         description: SHA to test workflow
   pull_request:
+  merge_group:
   push:
     branches:
       - develop

@@ -20,13 +20,6 @@ on:
       - "gradlew"
       - "gradlew.bat"
       - ".github/actions/**"
-      # This is a temporary fix.
-      # To allow merge queue to merge PRs, we need Rust and Elixir
-      # workflows to pass successfully. This PR ensures we also
-      # run Rust workflows on update to Elixir code.
-      - '**.ex'
-      - '**.exs'
-      - '**/mix.lock'
   push:
     paths:
       - ".github/workflows/rust.yml"
@@ -38,13 +31,6 @@ on:
       - "gradlew"
       - "gradlew.bat"
       - ".github/actions/**"
-      # This is a temporary fix.
-      # To allow merge queue to merge PRs, we need Rust and Elixir
-      # workflows to pass successfully. This PR ensures we also
-      # run Rust workflows on update to Elixir code.
-      - '**.ex'
-      - '**.exs'
-      - '**/mix.lock'
     branches:
       - develop
   schedule:

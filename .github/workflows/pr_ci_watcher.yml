@@ -1,0 +1,43 @@
+name: PR CI Watcher
+
+permissions:
+  contents: read
+
+on:
+  merge_group:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  done:
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+    permissions:
+      actions: read
+      pull-requests: read
+
+    name: PR CI Watcher
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout Ockam
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+        with:
+          fetch-depth: 0
+
+      - name: Check Running Actions For PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -ex
+
+          pr_number="${{ github.ref_name }}"
+          branch_name="${{ github.head_ref }}"
+
+          if [[ ${{ github.event_name }} == 'pull_request' ]]; then
+            PR_NUMBER="${{ github.head_ref || github.ref_name }}" ORGANIZATION="${{ github.repository_owner }}" bash tools/scripts/pr_ci_watcher/pr_ci_watcher.sh
+          elif [[ ${{ github.event_name }} == 'merge_group' ]]; then
+            BRANCH_NAME="${{ github.head_ref || github.ref_name }}" ORGANIZATION="${{ github.repository_owner }}" bash tools/scripts/pr_ci_watcher/ci_watcher.sh
+          fi

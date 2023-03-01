@@ -9,6 +9,14 @@ on:
     inputs:
       commit_sha:
         description: SHA to test workflow
+  merge_group:
+    paths:
+      - ".github/workflows/ockam_command.yml"
+      - "**.rs"
+      - "**.toml"
+      - "**/Cargo.lock"
+      - "implementations/rust/ockam/ockam_command/tests/commands.bats"
+      - ".github/actions/**"
   pull_request:
     paths:
       - ".github/workflows/ockam_command.yml"
