@@ -1,7 +1,6 @@
-use hello_ockam::create_identity_with_secret;
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
-use ockam::identity::TrustEveryonePolicy;
+use ockam::identity::{Identity, TrustEveryonePolicy};
 use ockam::{route, vault::Vault, Context, Result, TcpTransport};
 
 #[ockam::node]
@@ -16,7 +15,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create();
     let key_id = "529d43ac7b01e23d3818d00e083508790bfe8825714644b98134db6c1a7a6602".to_string();
     let secret = "acaf50c540be1494d67aaad78aca8d22ac62c4deb4fb113991a7b30a0bd0c757";
-    let alice = create_identity_with_secret(&ctx, vault, &key_id, secret).await?;
+    let alice = Identity::create_identity_with_secret(&ctx, vault, &key_id, secret).await?;
 
     // Create a client to the credential issuer
     let issuer_connection = tcp.connect("127.0.0.1:5000").await?;

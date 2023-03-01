@@ -9,7 +9,10 @@ use crate::{
     PublicIdentity, SecureChannelRegistry,
 };
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
-use ockam_core::vault::{SecretPersistence, SecretType, Signature, CURVE25519_SECRET_LENGTH_U32};
+use ockam_core::vault::Secret::Key;
+use ockam_core::vault::{
+    SecretKey, SecretPersistence, SecretType, Signature, CURVE25519_SECRET_LENGTH_U32,
+};
 use ockam_core::{Address, Result};
 use ockam_core::{AsyncTryClone, DenyAll};
 use ockam_node::compat::asynchronous::RwLock;
@@ -246,6 +249,26 @@ impl<V: IdentityVault> Identity<V, InMemoryStorage> {
             vault,
         )
         .await
+    }
+
+    /// Create an identity with a vault initialized with a specific private key
+    /// encoded as a hex string.
+    /// Such a key can be obtained by running vault.secret_export and then encoding
+    /// the exported secret as a hex string
+    pub async fn create_identity_with_secret(
+        ctx: &Context,
+        vault: V,
+        key_id: &KeyId,
+        secret: &str,
+    ) -> Result<Identity<V, InMemoryStorage>> {
+        let key_attributes = KeyAttributes::default_with_label(IdentityStateConst::ROOT_LABEL);
+        vault
+            .secret_import(
+                Key(SecretKey::new(hex::decode(secret).unwrap())),
+                key_attributes.secret_attributes(),
+            )
+            .await?;
+        Identity::create_with_external_key(ctx, &vault, key_id, key_attributes).await
     }
 }
 
