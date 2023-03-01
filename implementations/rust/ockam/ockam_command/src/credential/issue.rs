@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use ockam_core::compat::collections::HashMap;
 
 use crate::{
     identity::default_identity_name,
@@ -9,7 +9,7 @@ use crate::{
 use anyhow::Context as _;
 use clap::Args;
 use ockam::Context;
-use ockam_identity::{credential::Credential, IdentityIdentifier};
+use ockam_identity::{credential::CredentialBuilder, IdentityIdentifier};
 
 #[derive(Clone, Debug, Args)]
 pub struct IssueCommand {
@@ -53,10 +53,7 @@ async fn run_impl(
     (opts, cmd): (CommandGlobalOpts, IssueCommand),
 ) -> crate::Result<()> {
     let attrs = cmd.attributes()?;
-    let cred_builder = attrs.iter().fold(
-        Credential::builder(cmd.for_identity.clone()),
-        |crd, (k, v)| crd.with_attribute(k, v.as_bytes()),
-    );
+    let cred_builder = CredentialBuilder::from_attributes(cmd.for_identity.clone(), attrs);
 
     let vault = opts.state.vaults.get(&cmd.vault)?.get().await?;
     let ident_state = opts.state.identities.get(&cmd.as_identity)?;

@@ -93,7 +93,7 @@ where
     ) -> Result<Either<ResponseBuilder<Error<'_>>, CredentialData<Verified>>> {
         let data = CredentialData::try_from(cre)?;
 
-        let ident = if let Some(ident) = req.authority(data.unverfied_issuer()) {
+        let ident = if let Some(ident) = req.authority(data.unverified_issuer()) {
             PublicIdentity::import(ident, &self.vault).await?
         } else {
             let err = Error::new("/verify").with_message("unauthorised issuer");

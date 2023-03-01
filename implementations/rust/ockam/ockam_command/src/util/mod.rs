@@ -297,24 +297,39 @@ impl<'a> Rpc<'a> {
     where
         T: Output + serde::Serialize,
     {
-        let r = print_output(b, &self.opts.global_args.output_format)?;
-        println!();
-        Ok(r)
+        println_output(b, &self.opts.global_args.output_format)
     }
+}
+
+pub fn println_output<T>(b: T, output_format: &OutputFormat) -> Result<T>
+where
+    T: Output + serde::Serialize,
+{
+    let o = get_output(&b, output_format)?;
+    println!("{o}");
+    Ok(b)
 }
 
 pub fn print_output<T>(b: T, output_format: &OutputFormat) -> Result<T>
 where
     T: Output + serde::Serialize,
 {
-    let o = match output_format {
-        OutputFormat::Plain => b.output().context("Failed to serialize output")?,
-        OutputFormat::Json => {
-            serde_json::to_string_pretty(&b).context("Failed to serialize output")?
-        }
-    };
+    let o = get_output(&b, output_format)?;
     print!("{o}");
     Ok(b)
+}
+
+fn get_output<T>(b: &T, output_format: &OutputFormat) -> Result<String>
+where
+    T: Output + serde::Serialize,
+{
+    let output = match output_format {
+        OutputFormat::Plain => b.output().context("Failed to serialize output")?,
+        OutputFormat::Json => {
+            serde_json::to_string_pretty(b).context("Failed to serialize output")?
+        }
+    };
+    Ok(output)
 }
 
 pub fn print_encodable<T>(e: T, encode_format: &EncodeFormat) -> Result<()>

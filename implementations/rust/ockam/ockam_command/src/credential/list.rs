@@ -48,8 +48,8 @@ async fn run_impl(
         )
         .await
         {
-            Ok(_) => "✔︎".light_green(),
-            Err(_) => "✕".light_red(),
+            Ok(_) => format!("Verified({})", "✔︎".light_green()),
+            Err(_) => format!("Unverified({})", "✕".light_red()),
         };
 
         println!("Credential: {cred_name} {is_verified}");
