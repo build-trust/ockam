@@ -1344,6 +1344,7 @@ mod tests {
             "projects".to_string(),
             "projects/data".to_string(),
             "credentials".to_string(),
+            "credentials/data".to_string(),
             "defaults".to_string(),
             "defaults/vault".to_string(),
             "defaults/identity".to_string(),
@@ -1434,6 +1435,12 @@ mod tests {
                 "credentials" => {
                     assert!(entry.path().is_dir());
                     found_entries.push(dir_name.clone());
+                    entry.path().read_dir().unwrap().for_each(|entry| {
+                        let entry = entry.unwrap();
+                        assert!(entry.path().is_dir());
+                        let file_name = entry.file_name().into_string().unwrap();
+                        found_entries.push(format!("{dir_name}/{file_name}"));
+                    });
                 }
                 _ => panic!("unexpected file"),
             }
