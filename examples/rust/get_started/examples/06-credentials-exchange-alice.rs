@@ -40,6 +40,7 @@ async fn main(mut ctx: Context) -> Result<()> {
             route![channel.clone(), "credential_exchange"],
             vec![&issuer.public_identity().await?],
             &AuthenticatedAttributeStorage::new(alice.authenticated_storage().clone()),
+            None,
         )
         .await?;
     println!("exchange done!");

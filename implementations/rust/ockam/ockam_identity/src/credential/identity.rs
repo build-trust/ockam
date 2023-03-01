@@ -19,6 +19,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::vault::SignatureVec;
 use ockam_core::{Address, AllowAll, AsyncTryClone, Error, Mailboxes, Result, Route};
 use ockam_node::api::{request, request_with_local_info};
+
 use ockam_node::WorkerBuilder;
 
 impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
@@ -86,17 +87,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         route: impl Into<Route>,
         provided_credential: Option<&Credential>,
     ) -> Result<()> {
-        let rw_credential = self.credential.read().await;
-        let credential = match provided_credential {
-            Some(c) => c,
-            None => rw_credential.as_ref().ok_or_else(|| {
-                Error::new(
-                    Origin::Application,
-                    Kind::Invalid,
-                    "no credential to present",
-                )
-            })?,
-        };
+        let credential = self.get_credential_or_provided(provided_credential).await?;
 
         let buf = request(
             &self.ctx,
@@ -127,17 +118,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         attributes_storage: &impl IdentityAttributeStorage,
         provided_credential: Option<&Credential>,
     ) -> Result<()> {
-        let rw_credential = self.credential.read().await;
-        let credential = match provided_credential {
-            Some(c) => c,
-            None => rw_credential.as_ref().ok_or_else(|| {
-                Error::new(
-                    Origin::Application,
-                    Kind::Invalid,
-                    "no credential to present",
-                )
-            })?,
-        };
+        let credential = self.get_credential_or_provided(provided_credential).await?;
 
         let path = "actions/present_mutual";
         let (buf, local_info) = request_with_local_info(
@@ -252,5 +233,26 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             .await?;
 
         Ok(())
+    }
+
+    /// Gets a clone of the identities current credential
+    /// or uses the provided credential if one exists
+    async fn get_credential_or_provided(
+        &self,
+        provided_cred: Option<&Credential>,
+    ) -> Result<Credential> {
+        let rw_credential = self.credential.read().await;
+        let credential = match provided_cred {
+            Some(c) => c,
+            None => rw_credential.as_ref().ok_or_else(|| {
+                Error::new(
+                    Origin::Application,
+                    Kind::Invalid,
+                    "no credential to present",
+                )
+            })?,
+        };
+
+        Ok(credential.clone())
     }
 }

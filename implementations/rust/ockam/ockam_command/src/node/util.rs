@@ -10,7 +10,7 @@ use std::process::Command;
 use ockam::identity::{Identity, PublicIdentity};
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state;
-use ockam_api::config::cli;
+use ockam_api::config::cli::{self, Authority};
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
 use ockam_api::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerProjectsOptions, NodeManagerTransportOptions,
@@ -275,7 +275,7 @@ pub fn spawn_node(
     trusted_identities_file: Option<&PathBuf>,
     reload_from_trusted_identities_file: Option<&PathBuf>,
     launch_config: Option<String>,
-    authority_identities: Option<&Vec<String>>,
+    authority_identities: Option<&Vec<Authority>>,
     credential: Option<&String>,
 ) -> crate::Result<()> {
     // On systems with non-obvious path setups (or during
@@ -345,9 +345,10 @@ pub fn spawn_node(
     }
 
     if let Some(authority_identities) = authority_identities {
-        for identity in authority_identities.iter() {
+        for authority in authority_identities.iter() {
+            let identity = hex::encode(authority.identity());
             args.push("--authority-identity".to_string());
-            args.push(identity.to_string());
+            args.push(identity);
         }
     }
 

@@ -1,8 +1,10 @@
 use crate::cloud::project::Project;
 
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
+
 use nix::errno::Errno;
 use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
+use ockam_identity::credential::Credential;
 use ockam_identity::{Identity, IdentityIdentifier, SecureChannelRegistry};
 
 use ockam_vault::{storage::FileStorage, Vault};
@@ -1136,6 +1138,19 @@ impl CredentialConfig {
             issuer,
             encoded_credential,
         })
+    }
+
+    pub fn credential(&self) -> Result<Credential> {
+        let bytes = match hex::decode(&self.encoded_credential) {
+            Ok(b) => b,
+            Err(e) => {
+                return Err(CliStateError::Invalid(format!(
+                    "Unable to hex decode credential. {e}"
+                )))
+            }
+        };
+        minicbor::decode::<Credential>(&bytes)
+            .map_err(|e| CliStateError::Invalid(format!("Unable to decode credential. {e}")))
     }
 }
 

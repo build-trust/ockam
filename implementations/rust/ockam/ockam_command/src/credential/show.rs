@@ -1,12 +1,11 @@
 use clap::{arg, Args};
 use colorful::Colorful;
 use ockam::Context;
-use ockam_identity::{credential::Credential, IdentityIdentifier};
+use ockam_identity::IdentityIdentifier;
 
 use crate::{
     credential::validate_encoded_cred, util::node_rpc, vault::default_vault_name, CommandGlobalOpts,
 };
-use anyhow::anyhow;
 
 #[derive(Clone, Debug, Args)]
 pub struct ShowCommand {
@@ -27,26 +26,25 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
-    let cred_state = opts.state.credentials.get(&cmd.credential_name)?;
-    let cred_name = cred_state.name()?;
+    let cred_name = cmd.credential_name;
 
-    let config = cred_state.config().await?;
+    let cred_config = opts.state.credentials.get(&cred_name)?.config().await?;
 
-    let bytes = match hex::decode(&config.encoded_credential) {
-        Ok(b) => b,
-        Err(e) => return Err(anyhow!(e).into()),
+    let issuer = IdentityIdentifier::try_from(cred_config.issuer.to_string())?;
+    let is_verified = match validate_encoded_cred(
+        &cred_config.encoded_credential,
+        &issuer,
+        &cmd.vault,
+        &opts,
+        &ctx,
+    )
+    .await
+    {
+        Ok(_) => "✔︎".light_green(),
+        Err(_) => "✕".light_red(),
     };
 
-    let cred: Credential = minicbor::decode(&bytes)?;
-    let issuer = IdentityIdentifier::try_from(config.issuer)?;
-    let is_verified =
-        match validate_encoded_cred(&config.encoded_credential, &issuer, &cmd.vault, &opts, &ctx)
-            .await
-        {
-            Ok(_) => "✔︎".light_green(),
-            Err(_) => "✕".light_red(),
-        };
-
+    let cred = cred_config.credential()?;
     println!("Credential: {cred_name} {is_verified}");
     println!("{cred}");
 

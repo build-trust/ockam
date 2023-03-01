@@ -17,7 +17,7 @@ use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::{route, AsyncTryClone, CowStr};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
-use ockam_identity::credential::Credential;
+
 use ockam_identity::{Identity, IdentityIdentifier, IdentityVault, TrustMultiIdentifiersPolicy};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
@@ -108,20 +108,14 @@ impl NodeManager {
             self.identity()?.async_try_clone().await?
         };
         let provided_credential = if let Some(credential_name) = credential_name {
-            let encoded_cred = self
-                .cli_state
-                .credentials
-                .get(&credential_name)?
-                .config()
-                .await?
-                .encoded_credential;
-
-            let bytes = match hex::decode(encoded_cred) {
-                Ok(b) => b,
-                Err(e) => return Err(ApiError::wrap(e)),
-            };
-
-            Some(minicbor::decode::<Credential>(&bytes)?)
+            Some(
+                self.cli_state
+                    .credentials
+                    .get(&credential_name)?
+                    .config()
+                    .await?
+                    .credential()?,
+            )
         } else {
             None
         };
@@ -131,16 +125,16 @@ impl NodeManager {
             .await?;
 
         // TODO: Determine when we can remove this? Or find a better way to determine
-        //       when to check credentials. Currently it only checks if a PROJECT AC and PROJECT ID are set
+        //       when to check credentials. Currently enable_credential_checks only if a PROJECT AC and PROJECT ID are set
         //       -- Oakley
-        // IMPORTANT!: Currently only commented out to test secure channel work
-        // let actual_exchange_mode = if self.enable_credential_checks {
-        //     credential_exchange_mode
-        // } else {
-        //     CredentialExchangeMode::None
-        // };
+        let actual_exchange_mode = if self.enable_credential_checks || provided_credential.is_none()
+        {
+            credential_exchange_mode
+        } else {
+            CredentialExchangeMode::None
+        };
 
-        match credential_exchange_mode {
+        match actual_exchange_mode {
             CredentialExchangeMode::None => {
                 debug!(%sc_addr, "No credential presentation");
             }
