@@ -26,15 +26,24 @@ async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, ShowCommand),
 ) -> crate::Result<()> {
-    let cred_name = cmd.credential_name;
+    display_credential(&opts, &ctx, &cmd.credential_name, &cmd.vault).await?;
 
+    Ok(())
+}
+
+pub(crate) async fn display_credential(
+    opts: &CommandGlobalOpts,
+    ctx: &Context,
+    cred_name: &str,
+    vault_name: &str,
+) -> crate::Result<()> {
     let cred_config = opts.state.credentials.get(&cred_name)?.config().await?;
 
     let issuer = IdentityIdentifier::try_from(cred_config.issuer.to_string())?;
     let is_verified = match validate_encoded_cred(
         &cred_config.encoded_credential,
         &issuer,
-        &cmd.vault,
+        &vault_name,
         &opts,
         &ctx,
     )
