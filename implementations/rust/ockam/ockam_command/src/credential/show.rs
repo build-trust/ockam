@@ -37,15 +37,15 @@ pub(crate) async fn display_credential(
     cred_name: &str,
     vault_name: &str,
 ) -> crate::Result<()> {
-    let cred_config = opts.state.credentials.get(&cred_name)?.config().await?;
+    let cred_config = opts.state.credentials.get(cred_name)?.config().await?;
 
     let issuer = IdentityIdentifier::try_from(cred_config.issuer.to_string())?;
     let is_verified = match validate_encoded_cred(
         &cred_config.encoded_credential,
         &issuer,
-        &vault_name,
-        &opts,
-        &ctx,
+        vault_name,
+        opts,
+        ctx,
     )
     .await
     {
