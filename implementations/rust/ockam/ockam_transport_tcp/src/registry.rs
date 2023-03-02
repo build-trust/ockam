@@ -80,6 +80,13 @@ impl TcpRegistry {
     }
 }
 
+impl TcpRegistry {
+    /// Return [`Address`]es of all active sender workers
+    pub fn get_all_sender_workers(&self) -> Vec<Address> {
+        self.registry.read().unwrap().sender_workers.clone()
+    }
+}
+
 #[derive(Default)]
 struct InternalRegistry {
     portal_workers: Vec<Address>,

@@ -1,10 +1,6 @@
-use crate::workers::ConnectionRole;
-use crate::{TcpRegistry, TcpSendWorker};
-use ockam_core::{
-    async_trait,
-    compat::{net::SocketAddr, sync::Arc},
-    DenyAll, IncomingAccessControl, OutgoingAccessControl,
-};
+use crate::workers::{Addresses, ConnectionRole, TcpRecvProcessor};
+use crate::{TcpListenerTrustOptions, TcpRegistry, TcpSendWorker};
+use ockam_core::{async_trait, compat::net::SocketAddr, DenyAll};
 use ockam_core::{Address, Processor, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
@@ -19,8 +15,7 @@ use tracing::debug;
 pub(crate) struct TcpListenProcessor {
     registry: TcpRegistry,
     inner: TcpListener,
-    sender_incoming_access_control: Arc<dyn IncomingAccessControl>,
-    receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+    trust_options: TcpListenerTrustOptions,
 }
 
 impl TcpListenProcessor {
@@ -28,8 +23,7 @@ impl TcpListenProcessor {
         ctx: &Context,
         registry: TcpRegistry,
         addr: SocketAddr,
-        sender_incoming_access_control: Arc<dyn IncomingAccessControl>,
-        receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+        trust_options: TcpListenerTrustOptions,
     ) -> Result<(SocketAddr, Address)> {
         debug!("Binding TcpListener to {}", addr);
         let inner = TcpListener::bind(addr)
@@ -39,8 +33,7 @@ impl TcpListenProcessor {
         let processor = Self {
             registry,
             inner,
-            sender_incoming_access_control,
-            receiver_outgoing_access_control,
+            trust_options,
         };
 
         let address = Address::random_tagged("TcpListenProcessor");
@@ -76,15 +69,33 @@ impl Processor for TcpListenProcessor {
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
         debug!("TCP connection accepted");
 
-        // And create a connection worker for it
-        let _sender_worker_address = TcpSendWorker::start(
+        let access_control = self.trust_options.access_control();
+
+        let addresses = Addresses::generate(ConnectionRole::Responder);
+
+        let (read_half, write_half) = stream.into_split();
+
+        // Worker to receive messages from the Node and send them over the wire
+        TcpSendWorker::start(
             ctx,
             self.registry.clone(),
-            stream,
-            ConnectionRole::Responder,
+            write_half,
+            &addresses,
             peer,
-            self.sender_incoming_access_control.clone(),
-            self.receiver_outgoing_access_control.clone(),
+            access_control.sender_incoming_access_control,
+        )
+        .await?;
+
+        // Processor to receive messages over the wire and forward them to the node
+        TcpRecvProcessor::start(
+            ctx,
+            self.registry.clone(),
+            read_half,
+            &addresses,
+            peer,
+            access_control.receiver_outgoing_access_control,
+            // This session_id (if present) will be added to messages' LocalInfo
+            access_control.fresh_session_id,
         )
         .await?;
 
