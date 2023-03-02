@@ -10,10 +10,13 @@ mod messages;
 mod common;
 mod local_info;
 mod registry;
+mod trust_options;
 mod trust_policy;
+
 pub use common::*;
 pub use local_info::*;
 pub use registry::*;
+pub use trust_options::*;
 pub use trust_policy::*;
 
 /// `AccessControl` implementation based on SecureChannel authentication guarantees
@@ -27,8 +30,7 @@ use crate::channel::listener::IdentityChannelListener;
 use crate::error::IdentityError;
 use crate::{Identity, IdentityVault};
 use core::time::Duration;
-use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, AllowAll, AsyncTryClone, DenyAll, Result, Route};
+use ockam_core::{Address, AsyncTryClone, Result, Route};
 
 impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     /// Spawns a SecureChannel listener at given `Address`
@@ -37,27 +39,45 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         address: impl Into<Address>,
         trust_policy: impl TrustPolicy,
     ) -> Result<()> {
+        self.create_secure_channel_listener_trust(
+            address,
+            SecureChannelListenerTrustOptions::new().with_trust_policy(trust_policy),
+        )
+        .await
+    }
+
+    /// Spawns a SecureChannel listener at given `Address` with given [`SecureChannelListenerTrustOptions`]
+    pub async fn create_secure_channel_listener_trust(
+        &self,
+        address: impl Into<Address>,
+        trust_options: SecureChannelListenerTrustOptions,
+    ) -> Result<()> {
         let identity_clone = self.async_try_clone().await?;
 
-        let listener = IdentityChannelListener::new(trust_policy, identity_clone);
-
-        self.ctx
-            .start_worker(
-                address.into(),
-                listener,
-                AllowAll, // TODO: @ac allow to customize
-                DenyAll,
-            )
+        IdentityChannelListener::create(&self.ctx, address.into(), trust_options, identity_clone)
             .await?;
 
         Ok(())
     }
 
-    /// Initiate a SecureChannel using `Route` to the SecureChannel listener
+    /// Initiate a SecureChannel using [`Route`] to the SecureChannel listener
     pub async fn create_secure_channel(
         &self,
         route: impl Into<Route>,
         trust_policy: impl TrustPolicy,
+    ) -> Result<Address> {
+        self.create_secure_channel_trust(
+            route,
+            SecureChannelTrustOptions::new().with_trust_policy(trust_policy),
+        )
+        .await
+    }
+
+    /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelTrustOptions`]
+    pub async fn create_secure_channel_trust(
+        &self,
+        route: impl Into<Route>,
+        trust_options: SecureChannelTrustOptions,
     ) -> Result<Address> {
         let identity_clone = self.async_try_clone().await?;
 
@@ -65,7 +85,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             &self.ctx,
             route.into(),
             identity_clone,
-            Arc::new(trust_policy),
+            trust_options,
             Duration::from_secs(120),
         )
         .await
@@ -78,13 +98,28 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
         trust_policy: impl TrustPolicy,
         timeout: Duration,
     ) -> Result<Address> {
+        self.create_secure_channel_extended_trust(
+            route,
+            SecureChannelTrustOptions::new().with_trust_policy(trust_policy),
+            timeout,
+        )
+        .await
+    }
+
+    /// Extended function to create a SecureChannel with [`SecureChannelTrustOptions`]
+    pub async fn create_secure_channel_extended_trust(
+        &self,
+        route: impl Into<Route>,
+        trust_options: SecureChannelTrustOptions,
+        timeout: Duration,
+    ) -> Result<Address> {
         let identity_clone = self.async_try_clone().await?;
 
         DecryptorWorker::create_initiator(
             &self.ctx,
             route.into(),
             identity_clone,
-            Arc::new(trust_policy),
+            trust_options,
             timeout,
         )
         .await
