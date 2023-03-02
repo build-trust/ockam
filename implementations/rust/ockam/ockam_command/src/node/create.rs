@@ -389,7 +389,7 @@ async fn start_services(
     };
 
     // Checking if node accepts connections
-    let addr = tcp.connect_socket(addr).await?;
+    let addr = tcp.connect(addr.to_string()).await?;
 
     if let Some(cfg) = config.vault {
         if !cfg.disabled {

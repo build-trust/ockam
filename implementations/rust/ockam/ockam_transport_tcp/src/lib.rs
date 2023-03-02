@@ -28,10 +28,12 @@ extern crate alloc;
 mod portal;
 mod registry;
 mod transport;
+mod trust_options;
 
 pub use portal::*;
 pub use registry::*;
 pub use transport::*;
+pub use trust_options::*;
 
 mod workers;
 pub(crate) use workers::*;

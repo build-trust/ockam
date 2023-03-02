@@ -1,13 +1,17 @@
 use ockam_core::access_control::IncomingAccessControl;
 use ockam_core::compat::net::{SocketAddr, ToSocketAddrs};
 use ockam_core::compat::{boxed::Box, sync::Arc};
-use ockam_core::{Address, AsyncTryClone, LocalOnwardOnly, LocalSourceOnly, Result, Route};
+use ockam_core::{Address, AsyncTryClone, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
 use crate::portal::TcpInletListenProcessor;
-use crate::workers::{ConnectionRole, TcpListenProcessor, TcpSendWorker};
-use crate::{TcpOutletListenWorker, TcpRegistry};
+use crate::workers::{
+    Addresses, ConnectionRole, TcpListenProcessor, TcpRecvProcessor, TcpSendWorker,
+};
+use crate::{
+    TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpOutletListenWorker, TcpRegistry,
+};
 
 pub(crate) const CLUSTER_NAME: &str = "_internals.transport.tcp";
 
@@ -122,30 +126,47 @@ impl TcpTransport {
     /// # Ok(()) }
     /// ```
     pub async fn connect(&self, peer: impl Into<String>) -> Result<Address> {
+        self.connect_trust(peer, TcpConnectionTrustOptions::new())
+            .await
+    }
+
+    /// Connect with trust options
+    pub async fn connect_trust(
+        &self,
+        peer: impl Into<String>,
+        trust_options: TcpConnectionTrustOptions,
+    ) -> Result<Address> {
         // Resolve peer address
         let socket = Self::resolve_peer(peer.into())?;
 
-        self.connect_socket(socket).await
-    }
+        let (read_half, write_half) = TcpSendWorker::connect(socket).await?;
 
-    /// Establish an outgoing TCP connection.
-    pub async fn connect_socket(&self, socket: SocketAddr) -> Result<Address> {
-        let stream = TcpSendWorker::connect(socket).await?;
+        let access_control = trust_options.access_control();
 
-        // Create a new `WorkerPair` for the given peer containing a
-        // `TcpSendWorker` and `TcpRecvProcessor`
-        let sender_worker_addr = TcpSendWorker::start(
+        let addresses = Addresses::generate(ConnectionRole::Initiator);
+
+        TcpSendWorker::start(
             &self.ctx,
             self.registry.clone(),
-            stream,
-            ConnectionRole::Initiator,
+            write_half,
+            &addresses,
             socket,
-            Arc::new(LocalSourceOnly),
-            Arc::new(LocalOnwardOnly),
+            access_control.sender_incoming_access_control,
         )
         .await?;
 
-        Ok(sender_worker_addr)
+        TcpRecvProcessor::start(
+            &self.ctx,
+            self.registry.clone(),
+            read_half,
+            &addresses,
+            socket,
+            access_control.receiver_outgoing_access_control,
+            access_control.fresh_session_id,
+        )
+        .await?;
+
+        Ok(addresses.sender_address().clone())
     }
 
     /// Start listening to incoming connections on an existing transport
@@ -164,16 +185,21 @@ impl TcpTransport {
     /// tcp.listen("127.0.0.1:8000").await?;
     /// # Ok(()) }
     pub async fn listen(&self, bind_addr: impl AsRef<str>) -> Result<(SocketAddr, Address)> {
+        self.listen_trust(bind_addr, TcpListenerTrustOptions::new())
+            .await
+    }
+
+    /// Start a listener with trust options
+    pub async fn listen_trust(
+        &self,
+        bind_addr: impl AsRef<str>,
+        trust_options: TcpListenerTrustOptions,
+    ) -> Result<(SocketAddr, Address)> {
         let bind_addr = parse_socket_addr(bind_addr.as_ref())?;
         // Could be different from the bind_addr, e.g., if binding to port 0\
-        let (socket_addr, address) = TcpListenProcessor::start(
-            &self.ctx,
-            self.registry.clone(),
-            bind_addr,
-            Arc::new(LocalSourceOnly),
-            Arc::new(LocalOnwardOnly),
-        )
-        .await?;
+        let (socket_addr, address) =
+            TcpListenProcessor::start(&self.ctx, self.registry.clone(), bind_addr, trust_options)
+                .await?;
 
         Ok((socket_addr, address))
     }
