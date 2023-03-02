@@ -227,6 +227,7 @@ pub mod sync {
     pub use alloc::sync::Arc;
 
     /// Wrap `spin::RwLock` as it does not return LockResult<Guard> like `std::sync::Mutex`.
+    #[derive(Debug)]
     pub struct RwLock<T>(spin::RwLock<T>);
     impl<T> RwLock<T> {
         /// Creates a new spinlock wrapping the supplied data.
