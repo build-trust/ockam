@@ -54,6 +54,7 @@ pub mod api;
 pub mod compat;
 /// Debugger
 pub mod debugger;
+pub mod sessions;
 pub mod vault;
 
 mod cbor_utils;
