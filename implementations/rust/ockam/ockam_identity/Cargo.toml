@@ -20,12 +20,14 @@ default = ["std", "software_vault", "noise_xx"]
 noise_xx = ["ockam_key_exchange_xx"]
 software_vault = [
     "ockam_vault",
+    "ockam_vault/rustcrypto"
 ]
 lease_proto_json = ["serde_json"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
 std = [
+    "alloc",
     "ockam_core/std",
     "ockam_macros/std",
     "ockam_key_exchange_xx/std",
