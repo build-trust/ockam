@@ -1,3 +1,4 @@
+use core::time::Duration;
 use ockam_core::compat::rand::{self, Rng};
 use ockam_core::{route, AllowAll, Result, Routed, Worker};
 use ockam_node::Context;
@@ -148,6 +149,7 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
     assert_eq!(reply1, msg1, "Should receive the same message");
 
     transport.stop_listener(&listener_worker).await?;
+    ctx.sleep(Duration::from_millis(10)).await;
 
     let res = transport.connect(&listener_address).await;
     assert!(
