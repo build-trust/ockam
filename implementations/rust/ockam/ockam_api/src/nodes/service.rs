@@ -14,7 +14,7 @@ use ockam_core::compat::{
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, AllowAll, AsyncTryClone};
 use ockam_identity::authenticated_storage::AuthenticatedAttributeStorage;
-use ockam_identity::credential::{Credential, OneTimeCode};
+use ockam_identity::credential::Credential;
 use ockam_multiaddr::proto::{Project, Secure};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::tokio;
