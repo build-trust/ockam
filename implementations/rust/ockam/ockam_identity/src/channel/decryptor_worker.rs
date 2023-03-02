@@ -11,7 +11,7 @@ use crate::channel::encryptor_worker::EncryptorWorker;
 use crate::channel::messages::IdentityChannelMessage;
 use crate::{
     Identity, IdentityError, IdentitySecureChannelLocalInfo, IdentityVault, PublicIdentity,
-    SecureChannelRegistryEntry, SecureChannelTrustInfo, TrustPolicy,
+    SecureChannelRegistryEntry, SecureChannelTrustInfo, SecureChannelTrustOptions, TrustPolicy,
 };
 use core::time::Duration;
 use ockam_core::compat::vec::Vec;
@@ -55,7 +55,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXInitiator<V
         ctx: &Context,
         remote_route: Route,
         identity: Identity<V, S>,
-        trust_policy: Arc<dyn TrustPolicy>,
+        trust_options: SecureChannelTrustOptions,
         timeout: Duration,
     ) -> Result<Address> {
         let addresses = Addresses::generate(Role::Initiator);
@@ -75,6 +75,11 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXInitiator<V
 
         let mailboxes = Self::mailboxes(&addresses);
 
+        if let Some((sessions, session_id)) = trust_options.ciphertext_session {
+            // Allow a sender with corresponding session_id send messages to this address
+            sessions.set_session_id(&addresses.decryptor_remote, &session_id);
+        }
+
         let worker = DecryptorWorker {
             role: Role::Initiator,
             addresses: addresses.clone(),
@@ -82,7 +87,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXInitiator<V
             remote_backwards_compatibility_address: None,
             init_payload: None,
             identity,
-            trust_policy,
+            trust_policy: trust_options.trust_policy,
             state_key_exchange: Some(KeyExchange { key_exchanger }),
             state_exchange_identity: None,
             state_initialized: None,
@@ -109,7 +114,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXResponder<V
     pub(crate) async fn create_responder(
         ctx: &Context,
         identity: Identity<V, S>,
-        trust_policy: Arc<dyn TrustPolicy>,
+        trust_options: SecureChannelTrustOptions,
         msg: Routed<CreateResponderChannelMessage>,
     ) -> Result<()> {
         // Route to the decryptor on the other side
@@ -131,6 +136,11 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXResponder<V
 
         let mailboxes = Self::mailboxes(&addresses);
 
+        if let Some((sessions, session_id)) = trust_options.ciphertext_session {
+            // Allow a sender with corresponding session_id send messages to this address
+            sessions.set_session_id(&addresses.decryptor_remote, &session_id);
+        }
+
         let worker = DecryptorWorker {
             role: Role::Responder,
             addresses: addresses.clone(),
@@ -138,7 +148,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> DecryptorWorker<V, XXResponder<V
             remote_backwards_compatibility_address: Some(remote_backwards_compatibility_address),
             init_payload: Some(body.payload().to_vec()),
             identity,
-            trust_policy,
+            trust_policy: trust_options.trust_policy,
             state_key_exchange: Some(KeyExchange { key_exchanger }),
             state_exchange_identity: None,
             state_initialized: None,
