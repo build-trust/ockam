@@ -28,6 +28,7 @@ use core::fmt::Debug;
 #[async_trait]
 #[allow(clippy::wrong_self_convention)]
 pub trait IncomingAccessControl: Debug + Send + Sync + 'static {
+    // TODO: Consider &mut self
     /// Return true if the message is allowed to pass, and false if not.
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool>;
 }
@@ -58,6 +59,7 @@ pub trait IncomingAccessControl: Debug + Send + Sync + 'static {
 #[async_trait]
 #[allow(clippy::wrong_self_convention)]
 pub trait OutgoingAccessControl: Debug + Send + Sync + 'static {
+    // TODO: Consider &mut self
     /// Return true if the message is allowed to pass, and false if not.
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool>;
 }
