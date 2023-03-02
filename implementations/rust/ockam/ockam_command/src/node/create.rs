@@ -1,6 +1,4 @@
 use clap::Args;
-use minicbor::Decoder;
-use ockam::identity::credential::Credential;
 use ockam_identity::PublicIdentity;
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::Vault;
@@ -494,12 +492,6 @@ async fn spawn_background_node(
     )?;
 
     Ok(())
-}
-
-fn otc_parser(val: &str) -> Result<OneTimeCode> {
-    let bytes = hex::decode(val)?;
-    let code = <[u8; 32]>::try_from(bytes.as_slice()).context("Failed to parse OTC")?;
-    Ok(code.into())
 }
 
 fn parse_identity_authority(identity: &str) -> Result<Authority> {
