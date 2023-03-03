@@ -61,6 +61,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     }
 
     /// Initiate a SecureChannel using [`Route`] to the SecureChannel listener
+    #[deprecated]
     pub async fn create_secure_channel(
         &self,
         route: impl Into<Route>,
@@ -92,6 +93,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
     }
 
     /// Extended function to create a SecureChannel
+    #[deprecated]
     pub async fn create_secure_channel_extended(
         &self,
         route: impl Into<Route>,
