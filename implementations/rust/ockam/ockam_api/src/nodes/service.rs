@@ -40,8 +40,8 @@ use crate::nodes::models::workers::{WorkerList, WorkerStatus};
 use crate::session::util::{starts_with_host_tcp, starts_with_secure};
 use crate::session::{Medic, Sessions};
 use crate::{
-    local_multiaddr_to_route, multiaddr_to_route, route_to_multiaddr, try_address_to_multiaddr,
-    DefaultAddress,
+    create_tcp_session, local_multiaddr_to_route, multiaddr_to_route, route_to_multiaddr,
+    try_address_to_multiaddr, DefaultAddress,
 };
 
 pub mod message;
@@ -387,20 +387,21 @@ impl NodeManager {
                     .ok_or_else(|| ApiError::message("invalid project protocol in multiaddr"))?;
                 let (a, i) = self.resolve_project(&p)?;
                 debug!(addr = %a, "creating secure channel");
-                let r = multiaddr_to_route(&a, transport)
+                let tcp_session = create_tcp_session(&a, transport)
                     .await
                     .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                 let i = Some(vec![i]);
                 let m = CredentialExchangeMode::Oneway;
                 let w = self
                     .create_secure_channel_impl(
-                        r,
+                        tcp_session.route,
                         i,
                         m,
                         timeout,
                         identity_name,
                         ctx,
                         credential_name,
+                        Some((tcp_session.sessions, tcp_session.session_id)),
                     )
                     .await?;
                 let a = MultiAddr::default().try_with(addr.iter().skip(1))?;
@@ -411,7 +412,7 @@ impl NodeManager {
         if let Some(pos1) = starts_with_host_tcp(addr) {
             debug!(%addr, "creating a tcp connection");
             let (a1, b1) = addr.split(pos1);
-            let r1 = multiaddr_to_route(&a1, transport)
+            let tcp_session1 = create_tcp_session(&a1, transport)
                 .await
                 .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
 
@@ -426,20 +427,21 @@ impl NodeManager {
                         .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                     let w = self
                         .create_secure_channel_impl(
-                            route![r1, r2],
+                            route![tcp_session1.route, r2],
                             i,
                             m,
                             timeout,
                             identity_name,
                             ctx,
                             credential_name,
+                            Some((tcp_session1.sessions, tcp_session1.session_id)),
                         )
                         .await?;
 
                     Ok((try_address_to_multiaddr(&w)?, b2))
                 }
                 None => Ok((
-                    route_to_multiaddr(&r1)
+                    route_to_multiaddr(&tcp_session1.route)
                         .ok_or_else(|| ApiError::generic("invalid multiaddr"))?,
                     b1,
                 )),
@@ -453,7 +455,7 @@ impl NodeManager {
             let i = authorized_identities.clone().map(|i| vec![i]);
             let m = CredentialExchangeMode::Mutual;
             let w = self
-                .create_secure_channel_impl(r, i, m, timeout, None, ctx, None)
+                .create_secure_channel_impl(r, i, m, timeout, None, ctx, None, None)
                 .await?;
             return Ok((try_address_to_multiaddr(&w)?, MultiAddr::default()));
         }

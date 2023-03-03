@@ -1,9 +1,11 @@
 use crate::error::ApiError;
 use anyhow::anyhow;
 use ockam::TcpTransport;
+use ockam_core::sessions::{SessionId, Sessions};
 use ockam_core::{Address, Error, Result, Route, LOCAL};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Tcp, Worker};
 use ockam_multiaddr::{MultiAddr, Protocol};
+use ockam_transport_tcp::TcpConnectionTrustOptions;
 use std::net::{SocketAddrV4, SocketAddrV6};
 
 /// Try to convert a multi-address to an Ockam route.
@@ -74,7 +76,104 @@ pub fn multiaddr_to_socket_addr(ma: &MultiAddr) -> Option<String> {
     None
 }
 
+pub struct TcpSession {
+    pub sessions: Sessions,
+    pub session_id: SessionId,
+    pub route: Route,
+}
+
+pub async fn create_tcp_session(ma: &MultiAddr, tcp: &TcpTransport) -> Option<TcpSession> {
+    let mut rb = Route::new();
+    let mut it = ma.iter().peekable();
+    let sessions = Sessions::default();
+    let session_id = sessions.generate_session_id();
+
+    let mut trust_options =
+        Some(TcpConnectionTrustOptions::new().with_session(&sessions, &session_id));
+
+    while let Some(p) = it.next() {
+        match p.code() {
+            Ip4::CODE => {
+                let ip4 = p.cast::<Ip4>()?;
+                let port = it.next()?.cast::<Tcp>()?;
+                let socket_addr = SocketAddrV4::new(*ip4, *port);
+
+                let trust_options = match trust_options.take() {
+                    Some(trust_options) => trust_options,
+                    None => return None, // Only 1 TCP hop is allowed
+                };
+
+                let addr = tcp
+                    .connect_trust(socket_addr.to_string(), trust_options)
+                    .await
+                    .ok()?;
+                rb = rb.append(addr)
+            }
+            Ip6::CODE => {
+                let ip6 = p.cast::<Ip6>()?;
+                let port = it.next()?.cast::<Tcp>()?;
+                let socket_addr = SocketAddrV6::new(*ip6, *port, 0, 0);
+
+                let trust_options = match trust_options.take() {
+                    Some(trust_options) => trust_options,
+                    None => return None, // Only 1 TCP hop is allowed
+                };
+
+                let addr = tcp
+                    .connect_trust(socket_addr.to_string(), trust_options)
+                    .await
+                    .ok()?;
+                rb = rb.append(addr)
+            }
+            DnsAddr::CODE => {
+                let host = p.cast::<DnsAddr>()?;
+                if let Some(p) = it.peek() {
+                    if p.code() == Tcp::CODE {
+                        let port = p.cast::<Tcp>()?;
+
+                        let trust_options = match trust_options.take() {
+                            Some(trust_options) => trust_options,
+                            None => return None, // Only 1 TCP hop is allowed
+                        };
+
+                        let addr = tcp
+                            .connect_trust(format!("{}:{}", &*host, *port), trust_options)
+                            .await
+                            .ok()?;
+                        rb = rb.append(addr);
+                        let _ = it.next();
+                        continue;
+                    }
+                }
+            }
+            Worker::CODE => {
+                let local = p.cast::<Worker>()?;
+                rb = rb.append(Address::new(LOCAL, &*local))
+            }
+            Service::CODE => {
+                let local = p.cast::<Service>()?;
+                rb = rb.append(Address::new(LOCAL, &*local))
+            }
+            Secure::CODE => {
+                let local = p.cast::<Secure>()?;
+                rb = rb.append(Address::new(LOCAL, &*local))
+            }
+            other => {
+                error!(target: "ockam_api", code = %other, "unsupported protocol");
+                return None;
+            }
+        }
+    }
+
+    Some(TcpSession {
+        sessions,
+        session_id,
+        route: rb.into(),
+    })
+}
+
 /// Try to convert a multi-address to an Ockam route.
+#[deprecated]
 pub async fn multiaddr_to_route(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Route> {
     let mut rb = Route::new();
     let mut it = ma.iter().peekable();
