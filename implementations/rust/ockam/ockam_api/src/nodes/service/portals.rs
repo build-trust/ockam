@@ -340,7 +340,6 @@ impl NodeManagerWorker {
                     &alias,
                 );
 
-
                 if let Some(successfully_removed_outlet) = removed_outlet {
                     Response::ok(req.id()).body(OutletStatus::new(
                         addr.into_owned(),

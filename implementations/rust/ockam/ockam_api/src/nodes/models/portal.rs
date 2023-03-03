@@ -112,6 +112,8 @@ impl<'a> CreateOutlet<'a> {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteOutlet<'a> {
+    #[cfg(feature = "tag")]
+    #[n(0)] tag: TypeTag<1193889>,
     /// The alias of the TCP outlet to be deleted
     #[b(1)] pub alias: CowStr<'a>,
     #[b(2)] pub addr: CowStr<'a>
