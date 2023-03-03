@@ -62,7 +62,6 @@ mod node {
     use tracing::trace;
 
     use ockam_core::api::Request;
-    use ockam_core::AsyncTryClone;
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
@@ -79,9 +78,7 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<CreateSpace> = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
 
             let label = "create_space";
@@ -89,19 +86,14 @@ mod node {
 
             let req_builder = Request::post("/v0/").body(req_body);
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller(
                 ctx,
                 label,
                 "create_space",
-                cloud_route,
+                &cloud_multiaddr,
                 "spaces",
                 req_builder,
-                ident,
+                None,
             )
             .await
         }
@@ -112,22 +104,23 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "list_spaces";
             trace!(target: TARGET, "listing spaces");
 
             let req_builder = Request::get("/v0/");
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
-            self.request_controller(ctx, label, None, cloud_route, "spaces", req_builder, ident)
-                .await
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                &cloud_multiaddr,
+                "spaces",
+                req_builder,
+                None,
+            )
+            .await
         }
 
         pub(crate) async fn get_space(
@@ -137,22 +130,23 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "get_space";
             trace!(target: TARGET, space = %id, space = %id, "getting space");
 
             let req_builder = Request::get(format!("/v0/{id}"));
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
-            self.request_controller(ctx, label, None, cloud_route, "spaces", req_builder, ident)
-                .await
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                &cloud_multiaddr,
+                "spaces",
+                req_builder,
+                None,
+            )
+            .await
         }
 
         pub(crate) async fn delete_space(
@@ -162,22 +156,23 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "delete_space";
             trace!(target: TARGET, space = %id, "deleting space");
 
             let req_builder = Request::delete(format!("/v0/{id}"));
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
-            self.request_controller(ctx, label, None, cloud_route, "spaces", req_builder, ident)
-                .await
+            self.request_controller(
+                ctx,
+                label,
+                None,
+                &cloud_multiaddr,
+                "spaces",
+                req_builder,
+                None,
+            )
+            .await
         }
     }
 }

@@ -2,11 +2,10 @@ use std::str::FromStr;
 
 use minicbor::{Decode, Encode};
 
-use ockam::TcpTransport;
+use ockam_core::Result;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{CowBytes, CowStr};
-use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
 
 use crate::error::ApiError;
@@ -32,12 +31,9 @@ impl<'a> SendMessage<'a> {
         }
     }
 
-    pub async fn route(&self, tcp: &TcpTransport) -> Result<Route> {
-        let maddr = MultiAddr::from_str(self.route.as_ref())
-            .map_err(|_err| ApiError::generic(&format!("Invalid route: {}", self.route)))?;
-        crate::multiaddr_to_route(&maddr, tcp)
-            .await
-            .ok_or_else(|| ApiError::generic(&format!("Invalid MultiAddr: {maddr}")))
+    pub fn multiaddr(&self) -> Result<MultiAddr> {
+        MultiAddr::from_str(self.route.as_ref())
+            .map_err(|_err| ApiError::generic(&format!("Invalid route: {}", self.route)))
     }
 }
 
@@ -45,8 +41,11 @@ mod node {
     use minicbor::Decoder;
     use tracing::trace;
 
+    use crate::error::ApiError;
+    use crate::local_multiaddr_to_route;
+    use crate::nodes::connection::Connection;
     use ockam_core::api::{Request, Response, Status};
-    use ockam_core::{self, Result};
+    use ockam_core::{self, AsyncTryClone, Result};
     use ockam_node::Context;
 
     use crate::nodes::NodeManagerWorker;
@@ -61,11 +60,16 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_body: super::SendMessage = dec.decode()?;
-            let route = req_body
-                .route(&self.node_manager.read().await.tcp_transport)
-                .await?;
+            let multiaddr = req_body.multiaddr()?;
             let msg = req_body.message.to_vec();
             let msg_length = msg.len();
+
+            let mut node_manager = self.node_manager.write().await;
+            let tcp_transport = node_manager.tcp_transport.async_try_clone().await?;
+            let connection = Connection::new(&tcp_transport, ctx, &multiaddr);
+            let (sc, _) = node_manager.connect(connection).await?;
+            let route = local_multiaddr_to_route(&sc)
+                .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {sc}")))?;
 
             trace!(target: TARGET, route = %req_body.route, msg_l = %msg_length, "sending message");
 

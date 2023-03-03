@@ -13,6 +13,7 @@ use ockam_node::tokio::time::timeout;
 use ockam_node::Context;
 
 use crate::error::ApiError;
+use crate::nodes::connection::Connection;
 use crate::nodes::models::forwarder::{CreateForwarder, ForwarderInfo};
 use crate::session::util;
 use crate::session::{Replacer, Session};
@@ -33,9 +34,11 @@ impl NodeManagerWorker {
 
         debug!(addr = %req.address(), alias = ?req.alias(), "Handling CreateForwarder request");
 
-        let (sec_chan, suffix) = node_manager
-            .connect(req.address(), req.authorized(), None, ctx)
-            .await?;
+        let tcp_transport = node_manager.tcp_transport.async_try_clone().await?;
+        let connection = Connection::new(&tcp_transport, ctx, req.address())
+            .with_authorized_identities(req.authorized());
+
+        let (sec_chan, suffix) = node_manager.connect(connection).await?;
 
         let full = sec_chan.clone().try_with(&suffix)?;
         let route = local_multiaddr_to_route(&full)
@@ -116,8 +119,11 @@ fn replacer(
                 let prev = try_multiaddr_to_addr(&prev)?;
                 let mut this = manager.write().await;
                 let _ = this.delete_secure_channel(&prev).await;
-                let timeout = Some(util::MAX_CONNECT_TIME);
-                let (sec, rest) = this.connect(&addr, auth, timeout, ctx.as_ref()).await?;
+                let tcp_transport = this.tcp_transport.async_try_clone().await?;
+                let connection = Connection::new(&tcp_transport, ctx.as_ref(), &addr)
+                    .with_authorized_identities(auth)
+                    .with_timeout(util::MAX_CONNECT_TIME);
+                let (sec, rest) = this.connect(connection).await?;
                 let a = sec.clone().try_with(&rest)?;
                 let r = local_multiaddr_to_route(&a)
                     .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {a}")))?;

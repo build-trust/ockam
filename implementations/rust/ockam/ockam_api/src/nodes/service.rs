@@ -23,7 +23,6 @@ use ockam_vault::Vault;
 use std::collections::BTreeMap;
 use std::error::Error as _;
 use std::path::PathBuf;
-use std::time::Duration;
 
 use super::models::secure_channel::CredentialExchangeMode;
 use super::registry::Registry;
@@ -34,6 +33,7 @@ use crate::config::cli::AuthoritiesConfig;
 use crate::config::lookup::ProjectLookup;
 use crate::error::ApiError;
 use crate::lmdb::LmdbStorage;
+use crate::nodes::connection::Connection;
 use crate::nodes::models::base::NodeStatus;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::models::workers::{WorkerList, WorkerStatus};
@@ -366,13 +366,20 @@ impl NodeManager {
     ///
     /// Returns the secure channel worker address (if any) and the remainder
     /// of the address argument.
-    async fn connect(
+    pub(crate) async fn connect(
         &mut self,
-        addr: &MultiAddr,
-        auth: Option<IdentityIdentifier>,
-        timeout: Option<Duration>,
-        ctx: &Context,
+        connection: Connection<'_, TcpTransport>,
     ) -> Result<(MultiAddr, MultiAddr)> {
+        let Connection {
+            ctx,
+            transport,
+            addr,
+            identity_name,
+            credential_name,
+            authorized_identities,
+            timeout,
+        } = connection;
+
         if let Some(p) = addr.first() {
             if p.code() == Project::CODE {
                 let p = p
@@ -380,13 +387,21 @@ impl NodeManager {
                     .ok_or_else(|| ApiError::message("invalid project protocol in multiaddr"))?;
                 let (a, i) = self.resolve_project(&p)?;
                 debug!(addr = %a, "creating secure channel");
-                let r = multiaddr_to_route(&a, &self.tcp_transport)
+                let r = multiaddr_to_route(&a, transport)
                     .await
                     .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                 let i = Some(vec![i]);
                 let m = CredentialExchangeMode::Oneway;
                 let w = self
-                    .create_secure_channel_impl(r, i, m, timeout, None, ctx, None)
+                    .create_secure_channel_impl(
+                        r,
+                        i,
+                        m,
+                        timeout,
+                        identity_name,
+                        ctx,
+                        credential_name,
+                    )
                     .await?;
                 let a = MultiAddr::default().try_with(addr.iter().skip(1))?;
                 return Ok((try_address_to_multiaddr(&w)?, a));
@@ -396,7 +411,7 @@ impl NodeManager {
         if let Some(pos1) = starts_with_host_tcp(addr) {
             debug!(%addr, "creating a tcp connection");
             let (a1, b1) = addr.split(pos1);
-            let r1 = multiaddr_to_route(&a1, &self.tcp_transport)
+            let r1 = multiaddr_to_route(&a1, transport)
                 .await
                 .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
 
@@ -404,13 +419,21 @@ impl NodeManager {
                 Some(pos2) => {
                     debug!(%addr, "creating a secure channel");
                     let (a2, b2) = b1.split(pos2);
-                    let i = auth.clone().map(|i| vec![i]);
+                    let i = authorized_identities.clone().map(|i| vec![i]);
                     let m = CredentialExchangeMode::Mutual;
-                    let r2 = multiaddr_to_route(&a2, &self.tcp_transport)
+                    let r2 = multiaddr_to_route(&a2, transport)
                         .await
                         .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                     let w = self
-                        .create_secure_channel_impl(route![r1, r2], i, m, timeout, None, ctx, None)
+                        .create_secure_channel_impl(
+                            route![r1, r2],
+                            i,
+                            m,
+                            timeout,
+                            identity_name,
+                            ctx,
+                            credential_name,
+                        )
                         .await?;
 
                     Ok((try_address_to_multiaddr(&w)?, b2))
@@ -427,7 +450,7 @@ impl NodeManager {
             debug!(%addr, "creating secure channel");
             let r = local_multiaddr_to_route(addr)
                 .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-            let i = auth.clone().map(|i| vec![i]);
+            let i = authorized_identities.clone().map(|i| vec![i]);
             let m = CredentialExchangeMode::Mutual;
             let w = self
                 .create_secure_channel_impl(r, i, m, timeout, None, ctx, None)
@@ -732,9 +755,9 @@ impl Worker for NodeManagerWorker {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let mut node_manger = self.node_manager.write().await;
-        if !node_manger.skip_defaults {
-            node_manger.initialize_defaults(ctx).await?;
+        let mut node_manager = self.node_manager.write().await;
+        if !node_manager.skip_defaults {
+            node_manager.initialize_defaults(ctx).await?;
         }
 
         Ok(())

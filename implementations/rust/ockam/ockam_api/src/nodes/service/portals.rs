@@ -1,4 +1,5 @@
 use crate::error::ApiError;
+use crate::nodes::connection::Connection;
 use crate::nodes::models::portal::{
     CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus,
 };
@@ -131,13 +132,15 @@ impl NodeManagerWorker {
         // forwarder to the actual outlet on the target node. However it is also
         // possible that there is just a single secure channel used to go directly
         // to another node.
+        let tcp_transport = node_manager.tcp_transport.async_try_clone().await?;
         let (outer, rest) = {
-            let (sec1, rest) = node_manager
-                .connect(req.outlet_addr(), req.authorized(), None, ctx)
-                .await?;
+            let connection = Connection::new(&tcp_transport, ctx, req.outlet_addr())
+                .with_authorized_identities(req.authorized());
+            let (sec1, rest) = node_manager.connect(connection).await?;
             if !sec1.is_empty() && rest.matches(0, &[Service::CODE.into(), Secure::CODE.into()]) {
                 let addr = sec1.clone().try_with(rest.iter().take(2))?;
-                let (sec2, _) = node_manager.connect(&addr, None, None, ctx).await?;
+                let connection = Connection::new(&tcp_transport, ctx, &addr);
+                let (sec2, _) = node_manager.connect(connection).await?;
                 (sec1, sec2.try_with(rest.iter().skip(2))?)
             } else {
                 (MultiAddr::default(), sec1.try_with(&rest)?)
@@ -342,7 +345,7 @@ fn replacer(
             let f = async {
                 let prev = try_multiaddr_to_addr(&prev)?;
                 let mut this = manager.write().await;
-                let timeout = Some(util::MAX_CONNECT_TIME);
+                let timeout = util::MAX_CONNECT_TIME;
 
                 // First the previous secure channel is deleted, and -- if secure
                 // channels were nested -- the outer one as well:
@@ -356,7 +359,11 @@ fn replacer(
                 // Now a connection attempt is made:
 
                 let rest = {
-                    let (sec1, rest) = this.connect(&addr, auth, timeout, ctx.as_ref()).await?;
+                    let tcp_transport = this.tcp_transport.async_try_clone().await?;
+                    let connection = Connection::new(&tcp_transport, ctx.as_ref(), &addr)
+                        .with_authorized_identities(auth)
+                        .with_timeout(timeout);
+                    let (sec1, rest) = this.connect(connection).await?;
                     if !sec1.is_empty()
                         && rest.matches(0, &[Service::CODE.into(), Secure::CODE.into()])
                     {
@@ -366,7 +373,9 @@ fn replacer(
                         data.put(OUTER_CHAN, sec1.clone());
 
                         let addr = sec1.clone().try_with(rest.iter().take(2))?;
-                        let (sec2, _) = this.connect(&addr, None, timeout, ctx.as_ref()).await?;
+                        let connection = Connection::new(&tcp_transport, ctx.as_ref(), &addr)
+                            .with_timeout(timeout);
+                        let (sec2, _) = this.connect(connection).await?;
                         sec2.try_with(rest.iter().skip(2))?
                     } else {
                         sec1.try_with(&rest)?
