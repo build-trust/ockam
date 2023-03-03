@@ -269,7 +269,7 @@ pub mod test {
     /// things *will* break.
     // #[must_use] make sense to enable only on rust 1.67+
     pub async fn start_manager_for_tests(context: &mut Context) -> Result<NodeManagerHandle> {
-        let tcp = TcpTransport::create(&context).await?;
+        let tcp = TcpTransport::create(context).await?;
         let cli_state = CliState::test()?;
 
         let vault_name = hex::encode(rand::random::<[u8; 4]>());
@@ -296,7 +296,7 @@ pub mod test {
         cli_state.nodes.create(&node_name, node_config)?;
 
         let node_manager = NodeManager::create(
-            &context,
+            context,
             NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, None),
             NodeManagerProjectsOptions::new(None, None, Default::default(), None),
             NodeManagerTransportOptions::new(

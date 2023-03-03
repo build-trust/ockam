@@ -1,7 +1,6 @@
 use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-use ockam_core::AsyncTryClone;
 use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
@@ -110,28 +109,21 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "unsubscribe";
             trace!(target: TARGET, subscription = %id, "unsubscribing");
 
             let req_builder = Request::put(format!("/v0/{id}/unsubscribe"));
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller(
                 ctx,
                 label,
                 None,
-                cloud_route,
+                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
-                ident,
+                None,
             )
             .await
         }
@@ -143,9 +135,7 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<String> = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
 
             let label = "list_sbuscriptions";
@@ -153,19 +143,14 @@ mod node {
 
             let req_builder = Request::put(format!("/v0/{id}/space_id")).body(req_body);
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller(
                 ctx,
                 label,
                 None,
-                cloud_route,
+                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
-                ident,
+                None,
             )
             .await
         }
@@ -176,9 +161,7 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<String> = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
 
             let label = "update_subscription_contact_info";
@@ -186,19 +169,14 @@ mod node {
 
             let req_builder = Request::put(format!("/v0/{id}/contact_info")).body(req_body);
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller(
                 ctx,
                 label,
                 None,
-                cloud_route,
+                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
-                ident,
+                None,
             )
             .await
         }
@@ -208,28 +186,21 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "list_subscriptions";
             trace!(target: TARGET, "listing subscriptions");
 
             let req_builder = Request::get("/v0/");
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller(
                 ctx,
                 label,
                 None,
-                cloud_route,
+                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
-                ident,
+                None,
             )
             .await
         }
@@ -240,28 +211,21 @@ mod node {
             id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "get_subscription";
             trace!(target: TARGET, subscription = %id, "getting subscription");
 
             let req_builder = Request::get(format!("/v0/{id}"));
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller(
                 ctx,
                 label,
                 None,
-                cloud_route,
+                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
-                ident,
+                None,
             )
             .await
         }
@@ -271,9 +235,7 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<ActivateSubscription> = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
 
             let label = "activate_subscription";
@@ -281,19 +243,14 @@ mod node {
 
             let req_builder = Request::post("/v0/activate").body(req_body);
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller(
                 ctx,
                 label,
                 "activate_request",
-                cloud_route,
+                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
-                ident,
+                None,
             )
             .await
         }

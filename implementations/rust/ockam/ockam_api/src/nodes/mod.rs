@@ -3,6 +3,7 @@ pub mod registry;
 
 pub mod service;
 
+pub(crate) mod connection;
 pub mod models;
 
 /// A const address to bind and send messages to
