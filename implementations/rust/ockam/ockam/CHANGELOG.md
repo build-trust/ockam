@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.82.0 - 2023-03-03
+
+### Changed
+
+- Moved the access control based on attributes and a policy to the ockam crate
+- Reuse the abac control policy inside the policy access control
+- Rework `TCP`
+- Updated dependencies
+
 ## 0.81.0 - 2023-02-24
 
 ### Changed

@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.25.0 - 2023-03-03
+
+### Added
+
+- Add print encodable output
+
+### Changed
+
+- Refactor `CliState` so it can be built using an explicit directory
+- Update `ockam_api` and `ockam_command` according to `TCP` updates
+- Parse `/node/n1` to `/worker/addr` after connecting to the node via tcp
+- Extend `ockam_api` transport info
+- Use abac in authority services implementation
+- Expand credential commands
+- Update secure-channel create to allow for a provided credential
+- Updated dependencies
+
+### Fixed
+
+- Fixes broken tests for macos, let the os choose available ports
+- Reorganize bats tests to run them in parallel
+- 'ockam enroll' ovewrites current configuration instead of returning error
+- Update cli_state test with credentials entry
+
 ## 0.24.0 - 2023-02-24
 
 ### Added

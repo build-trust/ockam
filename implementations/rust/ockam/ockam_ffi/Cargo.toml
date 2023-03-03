@@ -1,6 +1,6 @@
 [package]
 name = "ockam-ffi"
-version = "0.67.0"
+version = "0.68.0"
 authors = ["Ockam Developers"]
 edition = "2021"
 license = "Apache-2.0"
@@ -27,8 +27,8 @@ crate-type = ["staticlib"]
 default = []
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.75.0" }
-ockam_vault = { path = "../ockam_vault", version = "^0.71.0" }
+ockam_core = { path = "../ockam_core", version = "^0.76.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.72.0" }
 lazy_static = "1.4"
 tokio = { version = "1.25", features = ["full"] }
 futures = { version = "0.3.26" }

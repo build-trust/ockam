@@ -20,7 +20,7 @@ keywords = [
 ]
 license = "Apache-2.0"
 name = "ockam_node"
-version = "0.78.0"
+version = "0.79.0"
 publish = true
 rust-version = "1.56.0"
 
@@ -51,7 +51,7 @@ debugger = ["ockam_core/debugger"]
 tag = ["cddl-cat", "once_cell", "ockam_core/tag"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.75.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.76.0", default_features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.27.0" }
 tokio = { version = "1.25", default-features = false, optional = true, features = [
     "sync",
@@ -68,7 +68,7 @@ tracing-subscriber = { version = "0.3", features = [
     "env-filter",
 ], optional = true }
 heapless = { version = "0.7", features = ["mpmc_large"], optional = true }
-ockam_executor = { path = "../ockam_executor", version = "^0.43.0", default-features = false, optional = true }
+ockam_executor = { path = "../ockam_executor", version = "^0.44.0", default-features = false, optional = true }
 serde_bare = { version = "0.5.0", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 minicbor = { version = "0.19.0", features = ["derive"] }

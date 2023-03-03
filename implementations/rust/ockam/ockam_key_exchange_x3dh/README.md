@@ -20,7 +20,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_key_exchange_x3dh = "0.70.0"
+ockam_key_exchange_x3dh = "0.71.0"
 ```
 
 ## License
