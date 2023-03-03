@@ -42,10 +42,10 @@ mod node {
     use tracing::trace;
 
     use crate::error::ApiError;
-    use crate::local_multiaddr_to_route;
     use crate::nodes::connection::Connection;
+    use crate::{local_multiaddr_to_route, multiaddr_to_route};
     use ockam_core::api::{Request, Response, Status};
-    use ockam_core::{self, AsyncTryClone, Result};
+    use ockam_core::{self, route, AsyncTryClone, Result};
     use ockam_node::Context;
 
     use crate::nodes::NodeManagerWorker;
@@ -67,9 +67,10 @@ mod node {
             let mut node_manager = self.node_manager.write().await;
             let tcp_transport = node_manager.tcp_transport.async_try_clone().await?;
             let connection = Connection::new(&tcp_transport, ctx, &multiaddr);
-            let (sc, _) = node_manager.connect(connection).await?;
-            let route = local_multiaddr_to_route(&sc)
-                .ok_or_else(|| ApiError::message(format!("invalid multiaddr: {sc}")))?;
+            let (sc, suffix) = node_manager.connect(connection).await?;
+            let full = sc.try_with(&suffix)?;
+            let route =
+                local_multiaddr_to_route(&full).ok_or(ApiError::generic("Invalid route"))?;
 
             trace!(target: TARGET, route = %req_body.route, msg_l = %msg_length, "sending message");
 
