@@ -4,7 +4,6 @@ use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use crate::cloud::addon::ConfluentConfigResponse;
-use ockam_core::AsyncTryClone;
 use ockam_core::CowStr;
 use ockam_core::Result;
 #[cfg(feature = "tag")]
@@ -321,9 +320,7 @@ mod node {
             space_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<CreateProject> = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
 
             let label = "create_project";
@@ -331,34 +328,14 @@ mod node {
 
             let req_builder = Request::post(format!("/v0/{space_id}")).body(&req_body);
 
-            let ident = {
-                let inner = self.get().read().await;
-                match &req_wrapper.identity_name {
-                    Some(existing_identity_name) => {
-                        let identity_state = inner
-                            .cli_state
-                            .identities
-                            .get(existing_identity_name.as_ref())?;
-                        match identity_state.get(ctx, inner.vault()?).await {
-                            Ok(idt) => idt,
-                            Err(_) => {
-                                let vault_state = inner.cli_state.vaults.default()?;
-                                identity_state.get(ctx, &vault_state.get().await?).await?
-                            }
-                        }
-                    }
-                    None => inner.identity()?.async_try_clone().await?,
-                }
-            };
-
             self.request_controller_with_timeout(
                 ctx,
                 label,
                 "create_project",
-                cloud_route,
+                &cloud_multiaddr,
                 "projects",
                 req_builder,
-                ident,
+                req_wrapper.identity_name,
                 Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
             )
             .await
@@ -370,28 +347,21 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "list_projects";
             trace!(target: TARGET, "listing projects");
 
             let req_builder = Request::get("/v0");
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller(
                 ctx,
                 label,
                 None,
-                cloud_route,
+                &cloud_multiaddr,
                 "projects",
                 req_builder,
-                ident,
+                None,
             )
             .await
         }
@@ -403,28 +373,21 @@ mod node {
             project_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "get_project";
             trace!(target: TARGET, %project_id, "getting project");
 
             let req_builder = Request::get(format!("/v0/{project_id}"));
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller(
                 ctx,
                 label,
                 None,
-                cloud_route,
+                &cloud_multiaddr,
                 "projects",
                 req_builder,
-                ident,
+                None,
             )
             .await
         }
@@ -437,28 +400,21 @@ mod node {
             project_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "delete_project";
             trace!(target: TARGET, %space_id, %project_id, "deleting project");
 
             let req_builder = Request::delete(format!("/v0/{space_id}/{project_id}"));
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller(
                 ctx,
                 label,
                 None,
-                cloud_route,
+                &cloud_multiaddr,
                 "projects",
                 req_builder,
-                ident,
+                None,
             )
             .await
         }

@@ -81,7 +81,6 @@ mod node {
     use std::time::Duration;
 
     use minicbor::{Decode, Decoder, Encode};
-    use ockam::AsyncTryClone;
     use tracing::trace;
 
     use ockam_core::api::Request;
@@ -107,28 +106,21 @@ mod node {
             project_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "list_addons";
             trace!(target: TARGET, project_id, "listing addons");
 
             let req_builder = Request::get(format!("/v0/{project_id}/addons"));
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller(
                 ctx,
                 label,
                 None,
-                cloud_route,
+                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
-                ident,
+                None,
             )
             .await
         }
@@ -167,21 +159,11 @@ mod node {
             project_id: &str,
             addon_id: &str,
         ) -> Result<Vec<u8>> {
-            let ident = self
-                .get()
-                .read()
-                .await
-                .identity()?
-                .async_try_clone()
-                .await?;
-
             let label = "configure_addon";
             trace!(target: TARGET, project_id, addon_id, "configuring addon");
 
             let req_wrapper: CloudRequestWrapper<T> = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body = req_wrapper.req;
 
             let req_builder =
@@ -191,10 +173,10 @@ mod node {
                 ctx,
                 label,
                 None,
-                cloud_route,
+                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
-                ident,
+                None,
                 Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
             )
             .await
@@ -208,28 +190,21 @@ mod node {
             addon_id: &str,
         ) -> Result<Vec<u8>> {
             let req_wrapper: BareCloudRequestWrapper = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
 
             let label = "disable_addon";
             trace!(target: TARGET, project_id, addon_id, "disabling addon");
 
             let req_builder = Request::delete(format!("/v0/{project_id}/addons/{addon_id}"));
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller(
                 ctx,
                 label,
                 None,
-                cloud_route,
+                &cloud_multiaddr,
                 API_SERVICE,
                 req_builder,
-                ident,
+                None,
             )
             .await
         }

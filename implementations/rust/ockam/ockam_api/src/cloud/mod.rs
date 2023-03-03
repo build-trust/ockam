@@ -3,10 +3,9 @@ use std::str::FromStr;
 use minicbor::{Decode, Encode};
 
 use crate::error::ApiError;
-use ockam::TcpTransport;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-use ockam_core::{CowStr, Result, Route};
+use ockam_core::{CowStr, Result};
 use ockam_multiaddr::MultiAddr;
 
 pub mod addon;
@@ -52,12 +51,9 @@ impl<'a, T> CloudRequestWrapper<'a, T> {
         }
     }
 
-    pub async fn route(&self, tcp: &TcpTransport) -> Result<Route> {
-        let maddr = MultiAddr::from_str(self.route.as_ref())
-            .map_err(|_err| ApiError::generic(&format!("Invalid route: {}", self.route)))?;
-        crate::multiaddr_to_route(&maddr, tcp)
-            .await
-            .ok_or_else(|| ApiError::generic(&format!("Invalid MultiAddr: {maddr}")))
+    pub fn multiaddr(&self) -> Result<MultiAddr> {
+        MultiAddr::from_str(self.route.as_ref())
+            .map_err(|_err| ApiError::generic(&format!("Invalid route: {}", self.route)))
     }
 }
 
@@ -82,18 +78,18 @@ mod node {
     use std::time::Duration;
 
     use minicbor::Encode;
-    use ockam_vault::Vault;
     use rust_embed::EmbeddedFile;
 
     use ockam_core::api::RequestBuilder;
-    use ockam_core::{self, route, Address, Result, Route};
-    use ockam_identity::{Identity, IdentityIdentifier, TrustIdentifierPolicy};
+    use ockam_core::{self, route, AsyncTryClone, CowStr, Result};
+    use ockam_identity::IdentityIdentifier;
+    use ockam_multiaddr::MultiAddr;
     use ockam_node::api::request_with_timeout;
     use ockam_node::{Context, DEFAULT_TIMEOUT};
 
     use crate::cloud::OCKAM_CONTROLLER_IDENTITY_ID;
     use crate::error::ApiError;
-    use crate::lmdb::LmdbStorage;
+    use crate::nodes::connection::Connection;
     use crate::nodes::{NodeManager, NodeManagerWorker};
     use crate::StaticFiles;
 
@@ -127,25 +123,6 @@ mod node {
         pub(crate) fn controller_identity_id(&self) -> IdentityIdentifier {
             self.controller_identity_id.clone()
         }
-
-        /// Returns a secure channel between the node and the controller.
-        async fn controller_secure_channel(
-            &mut self,
-            route: impl Into<Route>,
-            identity: Identity<Vault, LmdbStorage>,
-        ) -> Result<Address> {
-            let route = route.into();
-            // Create secure channel for the given route using the orchestrator identity.
-            trace!(target: TARGET, %route, "Creating orchestrator secure channel");
-            let addr = identity
-                .create_secure_channel(
-                    route,
-                    TrustIdentifierPolicy::new(self.controller_identity_id()),
-                )
-                .await?;
-            debug!(target: TARGET, %addr, "Orchestrator secure channel created");
-            Ok(addr)
-        }
     }
 
     impl NodeManagerWorker {
@@ -155,10 +132,10 @@ mod node {
             ctx: &Context,
             label: &str,
             schema: impl Into<Option<&str>>,
-            cloud_route: impl Into<Route>,
+            cloud_multiaddr: &MultiAddr,
             api_service: &str,
             req: RequestBuilder<'_, T>,
-            ident: Identity<Vault, LmdbStorage>,
+            ident: Option<CowStr<'_>>,
         ) -> Result<Vec<u8>>
         where
             T: Encode<()>,
@@ -167,7 +144,7 @@ mod node {
                 ctx,
                 label,
                 schema,
-                cloud_route,
+                cloud_multiaddr,
                 api_service,
                 req,
                 ident,
@@ -182,23 +159,25 @@ mod node {
             ctx: &Context,
             label: &str,
             schema: impl Into<Option<&str>>,
-            cloud_route: impl Into<Route>,
+            cloud_multiaddr: &MultiAddr,
             api_service: &str,
             req: RequestBuilder<'_, T>,
-            ident: Identity<Vault, LmdbStorage>,
+            ident: Option<CowStr<'_>>,
             timeout: Duration,
         ) -> Result<Vec<u8>>
         where
             T: Encode<()>,
         {
-            let mut node_manger = self.get().write().await;
-            let cloud_route = cloud_route.into();
-            let sc = node_manger
-                .controller_secure_channel(cloud_route, ident)
-                .await?;
+            let mut node_manager = self.get().write().await;
+            let tcp_transport = node_manager.tcp_transport.async_try_clone().await?;
+            let connection = Connection::new(&tcp_transport, ctx, cloud_multiaddr)
+                .with_identity_name(ident)
+                .with_authorized_identities(node_manager.controller_identity_id())
+                .with_timeout(timeout);
+            let (sc, _) = node_manager.connect(connection).await?;
             let route = route![&sc.to_string(), api_service];
             let res = request_with_timeout(ctx, label, schema, route, req, timeout).await;
-            ctx.stop_worker(sc).await?;
+            ctx.stop_worker(&sc.to_string()).await?;
             res
         }
     }

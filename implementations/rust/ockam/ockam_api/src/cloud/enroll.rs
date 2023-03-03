@@ -25,7 +25,6 @@ mod node {
     use tracing::trace;
 
     use ockam_core::api::Request;
-    use ockam_core::AsyncTryClone;
     use ockam_core::{self, Result};
     use ockam_node::Context;
 
@@ -45,28 +44,21 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<AuthenticateAuth0Token> = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body: AuthenticateAuth0Token = req_wrapper.req;
             let req_builder = Request::post("v0/enroll").body(req_body);
             let api_service = "auth0_authenticator";
 
             trace!(target: TARGET, "executing auth0 flow");
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller_with_timeout(
                 ctx,
                 api_service,
                 None,
-                cloud_route,
+                &cloud_multiaddr,
                 api_service,
                 req_builder,
-                ident,
+                None,
                 Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
             )
             .await
@@ -79,9 +71,7 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<Attributes> = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body: Attributes = req_wrapper.req;
             let req_body = RequestEnrollmentToken::new(req_body);
 
@@ -90,19 +80,14 @@ mod node {
 
             let req_builder = Request::post("v0/").body(req_body);
 
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
-
             self.request_controller(
                 ctx,
                 label,
                 "request_enrollment_token",
-                cloud_route,
+                &cloud_multiaddr,
                 "projects",
                 req_builder,
-                ident,
+                None,
             )
             .await
         }
@@ -114,27 +99,20 @@ mod node {
             dec: &mut Decoder<'_>,
         ) -> Result<Vec<u8>> {
             let req_wrapper: CloudRequestWrapper<EnrollmentToken> = dec.decode()?;
-            let cloud_route = req_wrapper
-                .route(&self.get().read().await.tcp_transport)
-                .await?;
+            let cloud_multiaddr = req_wrapper.multiaddr()?;
             let req_body: EnrollmentToken = req_wrapper.req;
             let req_builder = Request::post("v0/enroll").body(req_body);
             let api_service = "enrollment_token_authenticator";
-
-            let ident = {
-                let inner = self.get().read().await;
-                inner.identity()?.async_try_clone().await?
-            };
 
             trace!(target: TARGET, "authenticating token");
             self.request_controller_with_timeout(
                 ctx,
                 api_service,
                 None,
-                cloud_route,
+                &cloud_multiaddr,
                 api_service,
                 req_builder,
-                ident,
+                None,
                 Duration::from_secs(ORCHESTRATOR_RESTART_TIMEOUT),
             )
             .await

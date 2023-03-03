@@ -7,6 +7,7 @@ use crate::kafka::{
     KafkaPortalListener, KafkaSecureChannelControllerImpl, KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
     ORCHESTRATOR_KAFKA_BOOTSTRAP_ADDRESS, ORCHESTRATOR_KAFKA_INTERCEPTOR_ADDRESS,
 };
+use crate::nodes::connection::Connection;
 use crate::nodes::models::services::{
     ServiceList, ServiceStatus, StartAuthenticatedServiceRequest, StartAuthenticatorRequest,
     StartCredentialsService, StartEchoerServiceRequest, StartHopServiceRequest,
@@ -439,14 +440,11 @@ impl NodeManager {
         kind: KafkaServiceKind,
     ) -> Result<()> {
         let identity = self.identity()?.async_try_clone().await?;
-        let (maybe_tunnel_multiaddr, suffix_address) = self
-            .connect(
-                &project_route_multiaddr,
-                Some(identity.identifier().clone()),
-                Some(Duration::from_secs(60)),
-                context,
-            )
-            .await?;
+        let tcp_transport = self.tcp_transport.async_try_clone().await?;
+        let connection = Connection::new(&tcp_transport, context, &project_route_multiaddr)
+            .with_authorized_identities(identity.identifier().clone())
+            .with_timeout(Duration::from_secs(60));
+        let (maybe_tunnel_multiaddr, suffix_address) = self.connect(connection).await?;
 
         let project_multiaddr = maybe_tunnel_multiaddr.try_with(&suffix_address)?;
         let project_route = multiaddr_to_route(&project_multiaddr, &self.tcp_transport)
