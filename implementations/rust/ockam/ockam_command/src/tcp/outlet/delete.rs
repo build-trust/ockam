@@ -45,32 +45,17 @@ pub async fn run_impl(
     ctx: Context,
     (options, cmd): (CommandGlobalOpts, DeleteCommand),
 ) -> crate::Result<()> {
-    // let node = extract_address_value(&cmd.at/)?;
-    // let mut rpc = Rpc::background(&ctx, &options, &node)?;
+    let alias = cmd.alias.clone();
 
-    // let cmd = DeleteCommand {
-    //     from: extract_address_value(&cmd.from)?,
-    //     ..cmd
-    // };
-
-    // rpc.request(make_api_request(cmd)?).await?;
-    // let OutletStatus { worker_addr, .. } = rpc.parse_response()?;
-
-    // let addr = route_to_multiaddr(&route![worker_addr.to_string()])
-    //     .ok_or_else(|| ApiError::generic("Invalid Outlet Address"))?;
-    // println!("{addr}");
-
-    // TO-DO: here, a request has to be sent to API, using a DeleteOutlet structure containing node + alias
-    // This request will use the `.remove()` method from the registry's BTree. (See portals.rs AND portal.rs under ockam API)
     let node = extract_address_value(&cmd.node_opts.api_node)?;
     let mut rpc = Rpc::background(&ctx, &options, &node)?;
     rpc.request(make_api_request(cmd)?).await?;
 
     let OutletStatus { worker_addr, .. } = rpc.parse_response()?;
-
     let addr = route_to_multiaddr(&route![worker_addr.to_string()])
         .ok_or_else(|| ApiError::generic("Invalid Outlet Address"))?;
-    println!("{addr}");
+
+    println!("Deleted TCP Outlet '{}' on node '{}'", alias, addr);
     Ok(())
 }
 
