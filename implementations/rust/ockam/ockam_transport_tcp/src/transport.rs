@@ -125,6 +125,7 @@ impl TcpTransport {
     /// let addr = tcp.connect("127.0.0.1:5000").await?; // and connect to port 5000
     /// # Ok(()) }
     /// ```
+    #[deprecated]
     pub async fn connect(&self, peer: impl Into<String>) -> Result<Address> {
         self.connect_trust(peer, TcpConnectionTrustOptions::new())
             .await
@@ -184,6 +185,7 @@ impl TcpTransport {
     /// let tcp = TcpTransport::create(&ctx).await?;
     /// tcp.listen("127.0.0.1:8000").await?;
     /// # Ok(()) }
+    #[deprecated]
     pub async fn listen(&self, bind_addr: impl AsRef<str>) -> Result<(SocketAddr, Address)> {
         self.listen_trust(bind_addr, TcpListenerTrustOptions::new())
             .await
