@@ -37,7 +37,7 @@ rand = "0.8"
 hashbrown = { version = "0.13" }
 tracing = { version = "0.1", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-tokio = { version = "1.25", features = [
+tokio = { version = "1.26", features = [
     "rt-multi-thread",
     "sync",
     "net",

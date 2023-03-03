@@ -10,7 +10,7 @@ rust-version = "1.56.0"
 [dependencies]
 ockam = { path = "../../../implementations/rust/ockam/ockam" }
 structopt = { version = "0.3.25", default-features = false }
-tokio = { version = "1.25.0", features = ["fs", "io-util"] }
+tokio = { version = "1.26.0", features = ["fs", "io-util"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 anyhow = "1.0.69"
 
