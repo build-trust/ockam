@@ -82,7 +82,7 @@ mod node {
 
     use ockam_core::api::RequestBuilder;
     use ockam_core::{self, route, AsyncTryClone, CowStr, Result};
-    use ockam_identity::IdentityIdentifier;
+    use ockam_identity::{IdentityIdentifier, TrustIdentifierPolicy};
     use ockam_multiaddr::MultiAddr;
     use ockam_node::api::request_with_timeout;
     use ockam_node::{Context, DEFAULT_TIMEOUT};
@@ -91,7 +91,7 @@ mod node {
     use crate::error::ApiError;
     use crate::nodes::connection::Connection;
     use crate::nodes::{NodeManager, NodeManagerWorker};
-    use crate::StaticFiles;
+    use crate::{local_multiaddr_to_route, StaticFiles};
 
     const TARGET: &str = "ockam_api::nodemanager::service";
 
@@ -168,16 +168,41 @@ mod node {
         where
             T: Encode<()>,
         {
-            let mut node_manager = self.get().write().await;
-            let tcp_transport = node_manager.tcp_transport.async_try_clone().await?;
-            let connection = Connection::new(&tcp_transport, ctx, cloud_multiaddr)
-                .with_identity_name(ident)
-                .with_authorized_identities(node_manager.controller_identity_id())
-                .with_timeout(timeout);
-            let (sc, _) = node_manager.connect(connection).await?;
+            let identity = {
+                let node_manager = self.get().read().await;
+                match &ident {
+                    Some(existing_identity_name) => {
+                        let identity_state = node_manager
+                            .cli_state
+                            .identities
+                            .get(existing_identity_name.as_ref())?;
+                        match identity_state.get(ctx, node_manager.vault()?).await {
+                            Ok(idt) => idt,
+                            Err(_) => {
+                                let vault_state = node_manager.cli_state.vaults.default()?;
+                                identity_state.get(ctx, &vault_state.get().await?).await?
+                            }
+                        }
+                    }
+                    None => node_manager.identity()?.async_try_clone().await?,
+                }
+            };
+            let sc = {
+                let node_manager = self.get().read().await;
+                let cloud_route =
+                    crate::multiaddr_to_route(&cloud_multiaddr, &node_manager.tcp_transport)
+                        .await
+                        .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+                identity
+                    .create_secure_channel(
+                        cloud_route,
+                        TrustIdentifierPolicy::new(node_manager.controller_identity_id()),
+                    )
+                    .await?
+            };
             let route = route![&sc.to_string(), api_service];
             let res = request_with_timeout(ctx, label, schema, route, req, timeout).await;
-            ctx.stop_worker(&sc.to_string()).await?;
+            ctx.stop_worker(sc).await?;
             res
         }
     }

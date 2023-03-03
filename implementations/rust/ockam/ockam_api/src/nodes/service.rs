@@ -412,12 +412,11 @@ impl NodeManager {
         if let Some(pos1) = starts_with_host_tcp(addr) {
             debug!(%addr, "creating a tcp connection");
             let (a1, b1) = addr.split(pos1);
-            let tcp_session1 = create_tcp_session(&a1, transport)
-                .await
-                .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
-
             return match starts_with_secure(&b1) {
                 Some(pos2) => {
+                    let tcp_session = create_tcp_session(&a1, transport)
+                        .await
+                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                     debug!(%addr, "creating a secure channel");
                     let (a2, b2) = b1.split(pos2);
                     let i = authorized_identities.clone().map(|i| vec![i]);
@@ -427,24 +426,29 @@ impl NodeManager {
                         .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                     let w = self
                         .create_secure_channel_impl(
-                            route![tcp_session1.route, r2],
+                            route![tcp_session.route, r2],
                             i,
                             m,
                             timeout,
                             identity_name,
                             ctx,
                             credential_name,
-                            Some((tcp_session1.sessions, tcp_session1.session_id)),
+                            Some((tcp_session.sessions, tcp_session.session_id)),
                         )
                         .await?;
 
                     Ok((try_address_to_multiaddr(&w)?, b2))
                 }
-                None => Ok((
-                    route_to_multiaddr(&tcp_session1.route)
-                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?,
-                    b1,
-                )),
+                None => {
+                    let route = multiaddr_to_route(&addr, transport)
+                        .await
+                        .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
+                    Ok((
+                        route_to_multiaddr(&route)
+                            .ok_or_else(|| ApiError::generic("invalid multiaddr"))?,
+                        MultiAddr::default(),
+                    ))
+                }
             };
         }
 
