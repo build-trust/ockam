@@ -15,6 +15,7 @@ use minicbor::Decoder;
 use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Request, Response, ResponseBuilder};
+use ockam_core::sessions::{SessionId, Sessions};
 use ockam_core::{route, AsyncTryClone, CowStr};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
 
@@ -95,6 +96,7 @@ impl NodeManager {
         identity_name: Option<CowStr<'_>>,
         ctx: &Context,
         credential_name: Option<CowStr<'_>>,
+        session: Option<(Sessions, SessionId)>,
     ) -> Result<Address> {
         let identity = if let Some(identity) = identity_name {
             let idt_state = self.cli_state.identities.get(&identity)?;
@@ -313,6 +315,7 @@ impl NodeManagerWorker {
                 identity,
                 ctx,
                 credential_name,
+                None,
             )
             .await?;
 
