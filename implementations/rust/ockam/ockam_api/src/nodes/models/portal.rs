@@ -26,41 +26,31 @@ pub struct CreateInlet<'a> {
     #[n(2)] outlet_addr: MultiAddr,
     /// A human-friendly alias for this portal endpoint
     #[b(3)] alias: Option<CowStr<'a>>,
-    /// Enable credential authorization.
-    /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
-    #[n(4)] check_credential: Option<bool>,
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
-    #[n(5)] authorized: Option<IdentityIdentifier>
+    #[n(4)] authorized: Option<IdentityIdentifier>
 }
 
 impl<'a> CreateInlet<'a> {
-    pub fn via_project(listen: SocketAddr, to: MultiAddr, check_credential: Option<bool>) -> Self {
+    pub fn via_project(listen: SocketAddr, to: MultiAddr) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             listen_addr: listen,
             outlet_addr: to,
             alias: None,
-            check_credential,
             authorized: None,
         }
     }
 
-    pub fn to_node(
-        listen: SocketAddr,
-        to: MultiAddr,
-        check_credential: Option<bool>,
-        auth: Option<IdentityIdentifier>,
-    ) -> Self {
+    pub fn to_node(listen: SocketAddr, to: MultiAddr, auth: Option<IdentityIdentifier>) -> Self {
         Self {
             #[cfg(feature = "tag")]
             tag: TypeTag,
             listen_addr: listen,
             outlet_addr: to,
             alias: None,
-            check_credential,
             authorized: auth,
         }
     }
@@ -84,10 +74,6 @@ impl<'a> CreateInlet<'a> {
     pub fn alias(&self) -> Option<&str> {
         self.alias.as_deref()
     }
-
-    pub fn check_credential(&self) -> Option<bool> {
-        self.check_credential
-    }
 }
 
 /// Request body to create an inlet or outlet
@@ -103,9 +89,6 @@ pub struct CreateOutlet<'a> {
     #[b(2)] pub worker_addr: Cow<'a, str>,
     /// A human-friendly alias for this portal endpoint
     #[b(3)] pub alias: Option<CowStr<'a>>,
-    /// Enable credential authorization.
-    /// Defaults to the Node's `enable-credential-checks` value passed upon creation.
-    #[n(4)] pub check_credential: Option<bool>,
 }
 
 impl<'a> CreateOutlet<'a> {
@@ -113,7 +96,6 @@ impl<'a> CreateOutlet<'a> {
         tcp_addr: impl Into<Cow<'a, str>>,
         worker_addr: impl Into<Cow<'a, str>>,
         alias: impl Into<Option<CowStr<'a>>>,
-        check_credential: Option<bool>,
     ) -> Self {
         Self {
             #[cfg(feature = "tag")]
@@ -121,7 +103,6 @@ impl<'a> CreateOutlet<'a> {
             tcp_addr: tcp_addr.into(),
             worker_addr: worker_addr.into(),
             alias: alias.into(),
-            check_credential,
         }
     }
 }
