@@ -105,7 +105,7 @@ impl KafkaInletMap {
                 .send_and_receive(
                     route![NODEMANAGER_ADDR],
                     Request::post("/node/inlet")
-                        .body(CreateInlet::to_node(socket_address, to, None, None))
+                        .body(CreateInlet::to_node(socket_address, to, None))
                         .to_vec()?,
                 )
                 .await?;

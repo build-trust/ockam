@@ -154,10 +154,7 @@ impl NodeManagerWorker {
 
         let resource = req.alias().map(Resource::new).unwrap_or(resources::INLET);
 
-        let check_credential = match req.check_credential() {
-            Some(b) => b,
-            None => node_manager.enable_credential_checks,
-        };
+        let check_credential = node_manager.enable_credential_checks;
         let project_id = if check_credential {
             let pid = req
                 .outlet_addr()
@@ -256,7 +253,6 @@ impl NodeManagerWorker {
             tcp_addr,
             worker_addr,
             alias,
-            check_credential,
             ..
         } = dec.decode()?;
         let tcp_addr = tcp_addr.to_string();
@@ -269,10 +265,7 @@ impl NodeManagerWorker {
         info!("Handling request to create outlet portal");
         let worker_addr = Address::from(worker_addr.as_ref());
 
-        let check_credential = match check_credential {
-            Some(b) => b,
-            None => node_manager.enable_credential_checks,
-        };
+        let check_credential = node_manager.enable_credential_checks;
         let project_id = if check_credential {
             Some(node_manager.project_id()?.to_string())
         } else {
