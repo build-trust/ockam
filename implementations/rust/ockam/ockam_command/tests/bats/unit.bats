@@ -372,4 +372,8 @@ teardown() {
 
   run curl --fail --head --max-time 10 "127.0.0.1:$port"
   assert_success
+
+  run "$OCKAM" secure-channel list --at green
+  assert_success
+  assert_output --partial "/service"
 }
