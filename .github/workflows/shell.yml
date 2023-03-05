@@ -1,0 +1,57 @@
+# This workflow checks shell scripts
+name: Shell
+
+permissions:
+  contents: read
+
+on:
+  merge_group:
+  pull_request:
+    paths:
+      - ".github/workflows/shell.yml"
+      - "**.sh"
+      - "**.bash"
+  push:
+    paths:
+      - ".github/workflows/shell.yml"
+      - "**.sh"
+      - "**.bash"
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Git commit sha, on which, to run this workflow
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # shellcheck gives warnings and suggestions for bash/sh shell scripts.
+  # https://github.com/koalaman/shellcheck
+  lint_shellcheck:
+    name: Shell - lint_shellcheck
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+      - run: shellcheck -S error $(find . -iname "*.sh" -o -name "*.bash")
+
+  # shfmt checks format of shell programs
+  # https://github.com/mvdan/sh#shfmt
+  lint_shfmt:
+    name: Shell - lint_shfmt
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
+    steps:
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+      - run: shfmt -d $(find . -iname "*.sh" -o -name "*.bash")
