@@ -1,4 +1,3 @@
-
 # Install
 # =======
 # MacOS:
@@ -47,11 +46,17 @@ NODE_PATH=/tmp
 setup_file() {
   bats_require_minimum_version 1.5.0
 
-  pushd "$(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir')" &>/dev/null || { echo "pushd failed"; exit 1; }
+  pushd "$(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir')" &>/dev/null || {
+    echo "pushd failed"
+    exit 1
+  }
   python3 -m http.server --bind 127.0.0.1 5000 &
   pid="$!"
-  echo "$pid" > "$BATS_FILE_TMPDIR/http_server.pid"
-  popd || { echo "popd failed"; exit 1; }
+  echo "$pid" >"$BATS_FILE_TMPDIR/http_server.pid"
+  popd || {
+    echo "popd failed"
+    exit 1
+  }
 }
 
 teardown_file() {
@@ -75,7 +80,6 @@ teardown() {
   OCKAM_HOME=/tmp/ockam $OCKAM node delete --all || true
   rm -rf /tmp/ockam
 }
-
 
 @test "create a node without a name" {
   run $OCKAM node create
@@ -161,7 +165,7 @@ teardown() {
   test_identity=$($OCKAM identity show t1)
   run $OCKAM node create n1 --tcp-listener-address 127.0.0.1:6001 --trusted-identities "{\"$test_identity\": {\"sample_attr\": \"sample_val\"}}"
   assert_success
-  run $OCKAM authenticated get --id $test_identity  /dnsaddr/127.0.0.1/tcp/6001/service/authenticated
+  run $OCKAM authenticated get --id $test_identity /dnsaddr/127.0.0.1/tcp/6001/service/authenticated
   assert_success
   assert_output --partial "sample_val"
   run $OCKAM authenticated list /dnsaddr/127.0.0.1/tcp/6001/service/authenticated
@@ -276,7 +280,7 @@ teardown() {
   $OCKAM node create n1
   $OCKAM node create n2
 
-  output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api | \
+  output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api |
     $OCKAM message send hello --from n1 --to -/service/uppercase)
 
   assert [ "$output" == "HELLO" ]
@@ -285,7 +289,7 @@ teardown() {
 @test "create a secure channel between three nodes and send message through it - in a pipeline" {
   for i in {1..3}; do $OCKAM node create "n$i"; done
 
-  output=$($OCKAM secure-channel create --from n1 --to /node/n2/serice/hop/node/n3/service/api | \
+  output=$($OCKAM secure-channel create --from n1 --to /node/n2/serice/hop/node/n3/service/api |
     $OCKAM message send "hello ockam" --from /node/n1 --to -/service/uppercase)
 
   assert [ "$output" == "HELLO OCKAM" ]
@@ -296,7 +300,7 @@ teardown() {
   $OCKAM node create n2
 
   $OCKAM secure-channel-listener create "listener" --at /node/n2
-  output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/listener | \
+  output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/listener |
     $OCKAM message send hello --from /node/n1 --to -/service/uppercase)
 
   assert [ "$output" == "HELLO" ]
@@ -317,7 +321,7 @@ teardown() {
   $OCKAM node create n1
   $OCKAM node create n2
 
-  output=$($OCKAM forwarder create --at /node/n1 --to /node/n2  | \
+  output=$($OCKAM forwarder create --at /node/n1 --to /node/n2 |
     $OCKAM message send hello --to /node/n1/service/hop/-/service/uppercase)
 
   assert [ "$output" == "HELLO" ]
@@ -353,8 +357,8 @@ teardown() {
   $OCKAM forwarder create blue --at /node/relay --to /node/blue
 
   $OCKAM node create green
-  $OCKAM secure-channel create --from /node/green --to /node/relay/service/hop/service/forward_to_blue/service/api \
-    | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
+  $OCKAM secure-channel create --from /node/green --to /node/relay/service/hop/service/forward_to_blue/service/api |
+    $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
 
   run curl --fail --head 127.0.0.1:7000
   assert_success
@@ -433,11 +437,11 @@ teardown() {
   m2_identifier=$($OCKAM identity show m2)
 
   # Create a launch configuration json file,  to be used to start the authority node
-  echo '{"startup_services" : {"authenticator" : {"project" : "1"}, "secure_channel_listener": {}}}' >  /tmp/auth_launch_config.json
+  echo '{"startup_services" : {"authenticator" : {"project" : "1"}, "secure_channel_listener": {}}}' >/tmp/auth_launch_config.json
 
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
 
-  run $OCKAM node create --tcp-listener-address=0.0.0.0:4200 --identity authority --launch-config /tmp/auth_launch_config.json --trusted-identities "{\"$m1_identifier\": {\"sample_attr\" : \"sample_val\", \"project_id\" : \"1\"}, \"$enroller_identifier\" : {\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}"  authority
+  run $OCKAM node create --tcp-listener-address=0.0.0.0:4200 --identity authority --launch-config /tmp/auth_launch_config.json --trusted-identities "{\"$m1_identifier\": {\"sample_attr\" : \"sample_val\", \"project_id\" : \"1\"}, \"$enroller_identifier\" : {\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}" authority
   assert_success
 
   echo "{\"id\": \"1\",
@@ -445,7 +449,7 @@ teardown() {
   \"identity\" : \"P6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94\",
   \"access_route\" : \"/dnsaddr/127.0.0.1/tcp/4000/service/api\",
   \"authority_access_route\" : \"/dnsaddr/127.0.0.1/tcp/4200/service/api\",
-  \"authority_identity\" : \"$authority_identity_full\"}" > /tmp/project.json
+  \"authority_identity\" : \"$authority_identity_full\"}" >/tmp/project.json
 
   # m1 is a member (its on the set of pre-trusted identifiers) so it can get it's own credential
   run $OCKAM project authenticate --project-path /tmp/project.json --identity m1
@@ -459,8 +463,8 @@ teardown() {
   assert_success
   assert_output --partial "m2_member"
 
-  token=$($OCKAM project enroll --identity enroller --project-path /tmp/project.json  --attribute sample_attr=m3_member)
-  run $OCKAM project authenticate --project-path /tmp/project.json --identity m3  --token $token
+  token=$($OCKAM project enroll --identity enroller --project-path /tmp/project.json --attribute sample_attr=m3_member)
+  run $OCKAM project authenticate --project-path /tmp/project.json --identity m3 --token $token
   assert_success
   assert_output --partial "m3_member"
 }
@@ -489,7 +493,7 @@ teardown() {
 @test "send a message to a project node from command embedded node, passing identity" {
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project information --output json  > /tmp/project.json
+  $OCKAM project information --output json >/tmp/project.json
 
   run $OCKAM identity create m1
   run $OCKAM identity create m2
@@ -511,12 +515,12 @@ teardown() {
 }
 
 @test "send a message to a project node from command embedded node, enrolled member on different install" {
-  skip  # FIXME  how to send a message to a project m1 is enrolled to?  (with m1 being on a different install
-        #       than the admin?.  If we pass project' address directly (instead of /project/ thing), would
-        #       it present credential? would read authority info from project.json?
+  skip # FIXME  how to send a message to a project m1 is enrolled to?  (with m1 being on a different install
+  #       than the admin?.  If we pass project' address directly (instead of /project/ thing), would
+  #       it present credential? would read authority info from project.json?
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project information --output json  > /tmp/project.json
+  $OCKAM project information --output json >/tmp/project.json
 
   export OCKAM_HOME=/tmp/ockam
   $OCKAM identity create m1
@@ -540,7 +544,6 @@ teardown() {
   assert_failure
 }
 
-
 @test "list projects" {
   skip_if_orchestrator_tests_not_enabled
 
@@ -559,7 +562,7 @@ teardown() {
 @test "project enrollment" {
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project information default --output json  > /tmp/project.json
+  $OCKAM project information default --output json >/tmp/project.json
 
   export OCKAM_HOME=/tmp/ockam
   run $OCKAM identity create green
@@ -572,11 +575,9 @@ teardown() {
   run $OCKAM project authenticate --identity green --project-path /tmp/project.json
   assert_failure
 
-
   unset OCKAM_HOME
   $OCKAM project enroll --member $green_identifier --attribute role=member
   blue_token=$($OCKAM project enroll --attribute role=member)
-
 
   export OCKAM_HOME=/tmp/ockam
 
@@ -591,7 +592,6 @@ teardown() {
   assert_output --partial $blue_identifier
 }
 
-
 @test "create an inlet/outlet pair with relay through a forwarder in an orchestrator project and move tcp traffic through it" {
   skip_if_orchestrator_tests_not_enabled
 
@@ -600,8 +600,8 @@ teardown() {
   $OCKAM forwarder create blue --at /project/default --to /node/blue
 
   $OCKAM node create green
-  $OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api \
-    | $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
+  $OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_blue/service/api |
+    $OCKAM tcp-inlet create --at /node/green --from 127.0.0.1:7000 --to -/service/outlet
 
   run curl --fail --head 127.0.0.1:7000
   assert_success
@@ -624,7 +624,7 @@ teardown() {
 @test "inlet/outlet example with credential, not provided" {
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project information default --output json  > /tmp/project.json
+  $OCKAM project information default --output json >/tmp/project.json
 
   export OCKAM_HOME=/tmp/ockam
 
@@ -666,7 +666,7 @@ teardown() {
 @test "inlet (with implicit secure channel creation) / outlet example with credential, not provided" {
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project information default --output json  > /tmp/project.json
+  $OCKAM project information default --output json >/tmp/project.json
 
   export OCKAM_HOME=/tmp/ockam
 
@@ -689,7 +689,7 @@ teardown() {
   export OCKAM_HOME=/tmp/ockam
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
   assert_success
-  run  $OCKAM forwarder create blue --at /project/default --to /node/blue
+  run $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"
   assert_success
 
@@ -702,7 +702,7 @@ teardown() {
 @test "inlet/outlet example with credential" {
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project information default --output json > /tmp/project.json
+  $OCKAM project information default --output json >/tmp/project.json
 
   OCKAM_HOME=/tmp/ockam
 
@@ -726,7 +726,7 @@ teardown() {
   OCKAM_HOME=/tmp/ockam
   run $OCKAM tcp-outlet create --at /node/blue --from /service/outlet --to 127.0.0.1:5000
   assert_success
-  run  $OCKAM forwarder create blue --at /project/default --to /node/blue
+  run $OCKAM forwarder create blue --at /project/default --to /node/blue
   assert_output --partial "forward_to_blue"
   assert_success
 
@@ -742,8 +742,7 @@ teardown() {
 @test "inlet (with implicit secure channel creation) / outlet example with enrollment token" {
   skip_if_orchestrator_tests_not_enabled
 
-  $OCKAM project information  default --output json  > /tmp/project.json
-
+  $OCKAM project information default --output json >/tmp/project.json
 
   green_token=$($OCKAM project enroll --attribute app=app1)
   blue_token=$($OCKAM project enroll --attribute app=app1)
@@ -793,7 +792,7 @@ teardown() {
   run $OCKAM project create "${space_name}" "${project_name}"
   assert_success
 
-  $OCKAM project information "${project_name}" --output json  > "/tmp/${project_name}_project.json"
+  $OCKAM project information "${project_name}" --output json >"/tmp/${project_name}_project.json"
 
   export OCKAM_HOME=/tmp/ockam
 
@@ -807,7 +806,6 @@ teardown() {
 
   run $OCKAM node create blue --project "/tmp/${project_name}_project.json" --identity blue
   assert_success
-
 
   # Blue can't create forwarder as it isn't a member
   run $OCKAM forwarder create blue --at "/project/${project_name}" --to /node/blue
@@ -860,7 +858,7 @@ teardown() {
   assert_output --partial --regex "Id: confluent\n +Enabled: true"
 
   run --separate-stderr $OCKAM project addon disable --addon okta --project default
-  run --separate-stderr $OCKAM project addon disable --addon  --project default
+  run --separate-stderr $OCKAM project addon disable --addon --project default
   run --separate-stderr $OCKAM project addon disable --addon confluent --project default
 
   run --separate-stderr $OCKAM project addon list --project default
@@ -875,13 +873,12 @@ teardown() {
   skip_if_orchestrator_tests_not_enabled
   skip_if_influxdb_test_not_enabled
 
-
-  run $OCKAM project addon configure influxdb  --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}"
+  run $OCKAM project addon configure influxdb --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}"
   assert_success
 
   sleep 30 #FIXME  workaround, project not yet ready after configuring addon
 
-  $OCKAM project information default --output json  > /tmp/project.json
+  $OCKAM project information default --output json >/tmp/project.json
 
   export OCKAM_HOME=/tmp/ockam
   run $OCKAM identity create m1
@@ -895,7 +892,6 @@ teardown() {
   $OCKAM project enroll --member $m1_identifier --attribute service=sensor
   $OCKAM project enroll --member $m2_identifier --attribute service=web
 
-
   export OCKAM_HOME=/tmp/ockam
 
   # m1 and m2 identity was added by enroller
@@ -906,7 +902,6 @@ teardown() {
   run $OCKAM project authenticate --identity m2 --project-path /tmp/project.json
   assert_success
   assert_output --partial $green_identifier
-
 
   # m1 and m2 can use the lease manager
   run $OCKAM lease --identity m1 --project-path /tmp/project.json create
@@ -919,7 +914,7 @@ teardown() {
   assert_failure
 
   unset OCKAM_HOME
-  run $OCKAM project addon configure influx-db  --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}" --user-access-role '(= subject.service "sensor")'
+  run $OCKAM project addon configure influx-db --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}" --user-access-role '(= subject.service "sensor")'
   assert_success
 
   sleep 30 #FIXME  workaround, project not yet ready after configuring addon
@@ -933,7 +928,6 @@ teardown() {
   run $OCKAM lease --identity m2 --project-path /tmp/project.json create
   assert_failure
 }
-
 
 function skip_if_influxdb_test_not_enabled() {
   # shellcheck disable=SC2031

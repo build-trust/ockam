@@ -26,7 +26,7 @@ function load_orchestrator_data() {
       echo "Ockam data directory not found: $HOME/.ockam"
       exit 1
     elif [ ! -f "$HOME/.ockam/project.json" ]; then
-      OCKAM_HOME="$HOME/.ockam" $OCKAM project information --output json > "$HOME/.ockam/project.json"
+      OCKAM_HOME="$HOME/.ockam" $OCKAM project information --output json >"$HOME/.ockam/project.json"
     fi
     export PROJECT_JSON_PATH="$HOME/.ockam/project.json"
   fi

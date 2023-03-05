@@ -35,8 +35,8 @@ teardown() {
 
   run --separate-stderr "$OCKAM" node create green
   assert_success
-  $OCKAM secure-channel create --from /node/green --to "/project/default/service/forward_to_$fwd/service/api" \
-    | $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to -/service/outlet
+  $OCKAM secure-channel create --from /node/green --to "/project/default/service/forward_to_$fwd/service/api" |
+    $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to -/service/outlet
 
   run curl --fail --head --max-time 10 "127.0.0.1:$port"
   assert_success
