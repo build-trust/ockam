@@ -1,0 +1,15 @@
+name: Propose a new feature
+description: Suggest a new feature or enhancement to Ockam.
+body:
+  - type: textarea
+    attributes:
+      label: Current behavior
+      description: "Please describe the current behaviour:"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Desired behavior
+      description: "Please describe this could be better:"
+    validations:
+      required: true
