@@ -4,12 +4,16 @@ permissions:
   contents: read
 
 on:
+  merge_group:
   workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: SHA to test workflow
+  push:
+    branches: [ develop ]
   branch_protection_rule:
   schedule:
     - cron: '0 1 * * 1'
-  push:
-    branches: [ develop ]
 
 jobs:
   analyze:

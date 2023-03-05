@@ -4,6 +4,7 @@ permissions:
   contents: read
 
 on:
+  merge_group:
   workflow_dispatch:
     inputs:
       commit_sha:
@@ -16,7 +17,6 @@ on:
       - "**/Cargo.lock"
       - "implementations/rust/ockam/ockam_command/tests/commands.bats"
       - ".github/actions/**"
-
   push:
     paths:
       - ".github/workflows/ockam_command.yml"

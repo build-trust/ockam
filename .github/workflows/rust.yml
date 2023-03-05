@@ -4,12 +4,11 @@ permissions:
   contents: read
 
 on:
+  merge_group:
   workflow_dispatch:
     inputs:
       commit_sha:
         description: SHA to test workflow
-  merge_group:
-    branches: [develop]
   pull_request:
     paths:
       - ".github/workflows/rust.yml"
