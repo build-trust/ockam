@@ -8,7 +8,11 @@ defaults:
     shell: bash
 
 on:
+  merge_group:
   workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: SHA to test workflow
   pull_request:
     paths:
       - '.github/workflows/documentation.yml'

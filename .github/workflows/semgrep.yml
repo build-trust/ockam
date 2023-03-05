@@ -7,7 +7,11 @@ permissions:
   contents: read
 
 on:
+  merge_group:
   workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: SHA to test workflow
   pull_request:
   push:
     branches:

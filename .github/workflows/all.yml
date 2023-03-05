@@ -5,14 +5,10 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: SHA to test workflow
   merge_group:
-    paths:
-      - '.github/workflows/all.yml'
-      - '**.gradle'
-      - 'tools/gradle/**'
-      - 'gradlew'
-      - 'gradlew.bat'
-      - '.github/actions/**'
   pull_request:
     paths:
       - '.github/workflows/all.yml'

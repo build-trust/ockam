@@ -4,9 +4,11 @@ permissions:
   contents: read
 
 on:
-  workflow_dispatch:
   merge_group:
-    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: SHA to test workflow
   pull_request:
     paths:
       - '.github/workflows/elixir.yml'
