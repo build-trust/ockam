@@ -1,0 +1,24 @@
+name: Shell
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths-ignore:
+      - ".github/workflows/shell.yml"
+      - "**.sh"
+      - "**.bash"
+
+jobs:
+  lint_shellcheck:
+    name: Shell - lint_shellcheck
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Shell - lint_shellcheck - Ignored"'
+
+  lint_shfmt:
+    name: Shell - lint_shfmt
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Shell - lint_shfmt - Ignored"'
