@@ -76,7 +76,7 @@ teardown() {
   assert_success
   run "$OCKAM" project create "${space_name}" "${project_name}"
   assert_success
-  $OCKAM project information "${project_name}" --output json  > "$ENROLLED_OCKAM_HOME/${project_name}_project.json"
+  $OCKAM project information "${project_name}" --output json >"$ENROLLED_OCKAM_HOME/${project_name}_project.json"
 
   # Change to a new home directory where there are no enrolled identities
   setup_home_dir
@@ -119,11 +119,11 @@ teardown() {
 }
 
 @test "projects - send a message to a project node from an embedded node, enrolled member on different install" {
-  skip  # FIXME  how to send a message to a project m1 is enrolled to?  (with m1 being on a different install
-        #       than the admin?.  If we pass project' address directly (instead of /project/ thing), would
-        #       it present credentials? would read authority info from project.json?
+  skip # FIXME  how to send a message to a project m1 is enrolled to?  (with m1 being on a different install
+  #       than the admin?.  If we pass project' address directly (instead of /project/ thing), would
+  #       it present credentials? would read authority info from project.json?
 
-  $OCKAM project information --output json  > /tmp/project.json
+  $OCKAM project information --output json >/tmp/project.json
 
   export OCKAM_HOME=/tmp/ockam
   $OCKAM identity create m1
@@ -172,7 +172,7 @@ teardown() {
   assert_output --partial --regex "Id: confluent\n +Enabled: true"
 
   run --separate-stderr "$OCKAM" project addon disable --addon okta --project default
-  run --separate-stderr "$OCKAM" project addon disable --addon  --project default
+  run --separate-stderr "$OCKAM" project addon disable --addon --project default
   run --separate-stderr "$OCKAM" project addon disable --addon confluent --project default
 
   run --separate-stderr "$OCKAM" project addon list --project default
@@ -186,12 +186,12 @@ teardown() {
   #      responsible, and that a member enrolled on a different ockam install can access it.
   skip_if_influxdb_test_not_enabled
 
-  run "$OCKAM" project addon configure influxdb  --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}"
+  run "$OCKAM" project addon configure influxdb --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}"
   assert_success
 
   sleep 30 #FIXME  workaround, project not yet ready after configuring addon
 
-  $OCKAM project information default --output json  > /tmp/project.json
+  $OCKAM project information default --output json >/tmp/project.json
 
   export OCKAM_HOME=/tmp/ockam
   run "$OCKAM" identity create m1
@@ -216,7 +216,6 @@ teardown() {
   assert_success
   assert_output --partial $green_identifier
 
-
   # m1 and m2 can use the lease manager
   run "$OCKAM" lease --identity m1 --project-path "$PROJECT_JSON_PATH" create
   assert_success
@@ -228,7 +227,7 @@ teardown() {
   assert_failure
 
   unset OCKAM_HOME
-  run "$OCKAM" project addon configure influx-db  --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}" --user-access-role '(= subject.service "sensor")'
+  run "$OCKAM" project addon configure influx-db --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}" --user-access-role '(= subject.service "sensor")'
   assert_success
 
   sleep 30 #FIXME  workaround, project not yet ready after configuring addon

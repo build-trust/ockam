@@ -20,11 +20,17 @@ setup_python_server() {
   p=$(python_pid_file_path)
   if [[ ! -f "$p" ]]; then
     mkdir -p "${p%/*}" && touch "$p"
-    pushd "$(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir')" &>/dev/null || { echo "pushd failed"; exit 1; }
+    pushd "$(mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir')" &>/dev/null || {
+      echo "pushd failed"
+      exit 1
+    }
     python3 -m http.server --bind 127.0.0.1 5000 &
     pid="$!"
-    echo "$pid" > "$p"
-    popd || { echo "popd failed"; exit 1; }
+    echo "$pid" >"$p"
+    popd || {
+      echo "popd failed"
+      exit 1
+    }
   fi
 }
 

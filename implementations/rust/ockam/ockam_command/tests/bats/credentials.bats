@@ -24,7 +24,7 @@ teardown() {
   idt2=$($OCKAM identity show i2)
 
   # No "run" here since it won't redirect the output to a file if we do so.
-  "$OCKAM" credential issue --as i1 --for "$idt2" --attribute application="Smart Factory" --attribute city="New York" --encoding hex > "$OCKAM_HOME/credential"
+  "$OCKAM" credential issue --as i1 --for "$idt2" --attribute application="Smart Factory" --attribute city="New York" --encoding hex >"$OCKAM_HOME/credential"
 
   run "$OCKAM" credential verify --issuer "$idt1" --credential-path "$OCKAM_HOME/credential"
   assert_success
@@ -44,4 +44,3 @@ teardown() {
   assert_output --partial "Credential: smart_nyc_cred"
   assert_output --partial "Attributes: {\"application\": \"Smart Factory\", \"city\": \"New York\"}"
 }
-

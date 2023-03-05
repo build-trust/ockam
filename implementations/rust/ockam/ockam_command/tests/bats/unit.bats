@@ -294,14 +294,14 @@ teardown() {
 
   # Piping the output of the first command into the second
   msg=$(random_str)
-  output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api | \
+  output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/api |
     $OCKAM message send "$msg" --from /node/n1 --to -/service/uppercase)
   assert [ "$output" == "$(to_uppercase "$msg")" ]
 
   # Using an explicit secure channel listener
   $OCKAM secure-channel-listener create n2scl --at /node/n2
   msg=$(random_str)
-  output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/n2scl | \
+  output=$($OCKAM secure-channel create --from /node/n1 --to /node/n2/service/n2scl |
     $OCKAM message send "$msg" --from /node/n1 --to -/service/uppercase)
   assert [ "$output" == "$(to_uppercase "$msg")" ]
 }
@@ -323,7 +323,7 @@ teardown() {
 
   # Piping the output of the first command into the second
   msg=$(random_str)
-  output=$($OCKAM forwarder create --at /node/n2 --to /node/n1  | \
+  output=$($OCKAM forwarder create --at /node/n2 --to /node/n1 |
     $OCKAM message send "$msg" --to /node/n2/service/hop/-/service/uppercase)
   assert [ "$output" == "$(to_uppercase "$msg")" ]
 }
@@ -356,8 +356,8 @@ teardown() {
 
   run --separate-stderr "$OCKAM" node create green
   assert_success
-  $OCKAM secure-channel create --from /node/green --to /node/relay/service/hop/service/forward_to_blue/service/api \
-    | $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to -/service/outlet
+  $OCKAM secure-channel create --from /node/green --to /node/relay/service/hop/service/forward_to_blue/service/api |
+    $OCKAM tcp-inlet create --at /node/green --from "127.0.0.1:$port" --to -/service/outlet
 
   run curl --fail --head --max-time 10 "127.0.0.1:$port"
   assert_success
