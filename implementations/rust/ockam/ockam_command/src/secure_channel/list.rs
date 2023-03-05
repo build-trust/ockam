@@ -57,20 +57,18 @@ impl ListCommand {
                 let show_route = show_response
                     .route
                     .ok_or("Failed to retrieve route from show channel response")?;
-                let parts: Vec<&str> = show_route.split(" => ").collect();
-                if parts.len() != 2 {
-                    return Err(format!(
-                        "Invalid route received from show channel response -- {show_route}"
-                    ));
-                }
-
-                let r1 = &route![*parts.first().unwrap()];
-                let r2 = &route![*parts.get(1).unwrap()];
-                let ma1 = route_to_multiaddr(r1)
-                    .ok_or(format!("Failed to convert route {r1} to multi-address"))?;
-                let ma2 = route_to_multiaddr(r2)
-                    .ok_or(format!("Failed to convert route {r2} to multi-address"))?;
-                format!("{ma1}{ma2}")
+                show_route
+                    .split(" => ")
+                    .map(|p| {
+                        let r = route![p];
+                        route_to_multiaddr(&r)
+                            .ok_or(format!("Failed to convert route {r} to multi-address"))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join("")
             };
 
             // if stdout is not interactive/tty write the secure channel address to it
