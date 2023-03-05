@@ -1,14 +1,11 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Report a bug or an issue
-    url: https://github.com/build-trust/ockam/issues/new/
-    about: Report a bug or an issue in Ockam
-  - name: Request a feature
-    url: https://github.com/build-trust/ockam/discussions/new
-    about: Request a new feature to be added to Ockam
   - name: Ask a question
-    url: https://github.com/build-trust/ockam/discussions/new
-    about: Ask questions and discuss with other Ockam community members
+    url: https://github.com/build-trust/ockam/discussions/new?category=help-wanted
+    about: Ask questions and discuss with other Ockam community members.
   - name: Learn how to contribute
     url: https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md
-    about: Learn how to contribute to Ockam
+    about: Learn how to contribute to Ockam.
+  - name: Join us on discord
+    url: https://discord.gg/RAbjRr3kds
+    about: Meet and learn with other Ockam community members.

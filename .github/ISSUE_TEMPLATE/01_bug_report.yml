@@ -1,0 +1,31 @@
+name: Report an issue
+description: Create a report to help us improve Ockam.
+body:
+  - type: textarea
+    attributes:
+      label: Observed behavior
+      description: "Please describe what you observed:"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      description: "Please tell us the series of commands or code snippets you ran:"
+      placeholder: |
+        1. Run '...'
+        2. Then run '...'
+        3. Then see the following error '...'
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected behavior
+      description: "Please describe what you were you expexting to happen instead:"
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Ockam Version
+      description: "Please tell us the version of Ockam Command or Library that you’re using:"
+    validations:
+      required: true
