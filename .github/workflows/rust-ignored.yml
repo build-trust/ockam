@@ -98,6 +98,12 @@ jobs:
 
   test_ockam_command:
     name: Rust - test_ockam_command
-    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        build: [linux_86]
+        include:
+        - build: linux_86
+          os: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
     steps:
       - run: 'echo "Rust - lint_cargo_lock - Ignored"'
