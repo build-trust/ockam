@@ -187,7 +187,7 @@ mod node {
             let sc = {
                 let node_manager = self.get().read().await;
                 let cloud_session =
-                    crate::create_tcp_session(&cloud_multiaddr, &node_manager.tcp_transport)
+                    crate::create_tcp_session(cloud_multiaddr, &node_manager.tcp_transport)
                         .await
                         .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
                 let trust_options = SecureChannelTrustOptions::new().with_trust_policy(

@@ -1,13 +1,13 @@
 use crate::help;
 use crate::util::embedded_node;
 use crate::Result;
-use anyhow::{anyhow, ensure, Context as _};
+use anyhow::{anyhow, Context as _};
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 use ockam::compat::collections::HashMap;
 use ockam::{Context, TcpTransport};
+use ockam_api::auth;
 use ockam_api::is_local_node;
-use ockam_api::{auth, create_tcp_session};
 use ockam_identity::authenticated_storage::AttributesEntry;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
