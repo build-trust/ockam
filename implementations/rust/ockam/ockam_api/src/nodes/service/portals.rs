@@ -132,14 +132,13 @@ impl NodeManagerWorker {
         // forwarder to the actual outlet on the target node. However it is also
         // possible that there is just a single secure channel used to go directly
         // to another node.
-        let tcp_transport = node_manager.tcp_transport.async_try_clone().await?;
         let (outer, rest) = {
-            let connection = Connection::new(&tcp_transport, ctx, req.outlet_addr())
-                .with_authorized_identities(req.authorized());
+            let connection =
+                Connection::new(ctx, req.outlet_addr()).with_authorized_identity(req.authorized());
             let (sec1, rest) = node_manager.connect(connection).await?;
             if !sec1.is_empty() && rest.matches(0, &[Service::CODE.into(), Secure::CODE.into()]) {
                 let addr = sec1.clone().try_with(rest.iter().take(2))?;
-                let connection = Connection::new(&tcp_transport, ctx, &addr);
+                let connection = Connection::new(ctx, &addr);
                 let (sec2, _) = node_manager.connect(connection).await?;
                 (sec1, sec2.try_with(rest.iter().skip(2))?)
             } else {
@@ -359,9 +358,8 @@ fn replacer(
                 // Now a connection attempt is made:
 
                 let rest = {
-                    let tcp_transport = this.tcp_transport.async_try_clone().await?;
-                    let connection = Connection::new(&tcp_transport, ctx.as_ref(), &addr)
-                        .with_authorized_identities(auth)
+                    let connection = Connection::new(ctx.as_ref(), &addr)
+                        .with_authorized_identity(auth)
                         .with_timeout(timeout);
                     let (sec1, rest) = this.connect(connection).await?;
                     if !sec1.is_empty()
@@ -373,8 +371,7 @@ fn replacer(
                         data.put(OUTER_CHAN, sec1.clone());
 
                         let addr = sec1.clone().try_with(rest.iter().take(2))?;
-                        let connection = Connection::new(&tcp_transport, ctx.as_ref(), &addr)
-                            .with_timeout(timeout);
+                        let connection = Connection::new(ctx.as_ref(), &addr).with_timeout(timeout);
                         let (sec2, _) = this.connect(connection).await?;
                         sec2.try_with(rest.iter().skip(2))?
                     } else {

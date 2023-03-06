@@ -249,6 +249,10 @@ async fn run_foreground_node(
 
     let tcp = TcpTransport::create(&ctx).await?;
     let bind = cmd.tcp_listener_address;
+
+    // This listener gives exclusive access to our node, make sure this is intended
+    // + make sure this tcp address is only reachable from the local loopback and/or intended
+    // network
     let (socket_addr, listener_addr) = tcp.listen(&bind).await?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
@@ -389,6 +393,8 @@ async fn start_services(
     };
 
     // Checking if node accepts connections
+    // Connection without a Session gives exclusive access to the node
+    // that runs that connection, make sure it's intended
     let addr = tcp.connect(addr.to_string()).await?;
 
     if let Some(cfg) = config.vault {
