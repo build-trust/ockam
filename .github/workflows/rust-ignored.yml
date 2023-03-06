@@ -1,0 +1,103 @@
+name: Rust
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths-ignore:
+      - ".github/workflows/rust.yml"
+      - ".github/actions/**"
+      - "**.rs"
+      - "**.toml"
+      - "**/Cargo.lock"
+      - "implementations/rust/ockam/ockam_command/tests/**.bats"
+      - "**.gradle"
+      - "tools/gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+
+jobs:
+  lint_cargo_fmt_check:
+    name: Rust - lint_cargo_fmt_check
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - lint_cargo_fmt_check - Ignored"'
+
+  lint_cargo_clippy:
+    name: Rust - lint_cargo_clippy
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - lint_cargo_clippy - Ignored"'
+
+  lint_cargo_deny:
+    name: Rust - lint_cargo_clippy
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - lint_cargo_clippy - Ignored"'
+
+  build_docs:
+    name: Rust - build_docs
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - build_docs - Ignored"'
+
+  build:
+    name: Rust - build
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - build - Ignored"'
+
+  build_examples:
+    name: Rust - build_examples
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - build_examples - Ignored"'
+
+  test:
+    name: Rust - test
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - test - Ignored"'
+
+  check_no_std:
+    name: Rust - check_no_std
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - check_no_std - Ignored"'
+
+  check_cargo_update:
+    name: Rust - check_cargo_update
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - check_cargo_update - Ignored"'
+
+  check_nightly:
+    name: Rust - check_nightly
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - check_nightly - Ignored"'
+
+  build_nightly:
+    name: Rust - build_nightly
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - build_nightly - Ignored"'
+
+  test_nightly:
+    name: Rust - test_nightly
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - test_nightly - Ignored"'
+
+  lint_cargo_lock:
+    name: Rust - lint_cargo_lock
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - lint_cargo_lock - Ignored"'
+
+  test_ockam_command:
+    name: Rust - test_ockam_command
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - lint_cargo_lock - Ignored"'
