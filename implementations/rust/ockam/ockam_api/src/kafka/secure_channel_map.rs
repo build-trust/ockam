@@ -12,7 +12,10 @@ use ockam_identity::api::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
 };
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
-use ockam_identity::{Identity, IdentityVault, SecureChannelRegistryEntry, TrustEveryonePolicy};
+use ockam_identity::{
+    Identity, IdentityVault, SecureChannelRegistryEntry, SecureChannelTrustOptions,
+    TrustEveryonePolicy,
+};
 use ockam_node::compat::tokio::sync::Mutex;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
@@ -258,16 +261,19 @@ impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator>
             } else {
                 trace!("creating new secure channel to {topic_partition_address}");
 
-                // TODO: Figure out if session should be used
+                // This route should not use Sessions because we are using tunnel over existing
+                // secure channel
+                let trust_options =
+                    SecureChannelTrustOptions::new().with_trust_policy(TrustEveryonePolicy);
                 let encryptor_address = inner
                     .identity
-                    .create_secure_channel(
+                    .create_secure_channel_trust(
                         route![
                             inner.project_route.clone(),
                             topic_partition_address.clone(),
                             KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS
                         ],
-                        TrustEveryonePolicy,
+                        trust_options,
                     )
                     .await?;
 
