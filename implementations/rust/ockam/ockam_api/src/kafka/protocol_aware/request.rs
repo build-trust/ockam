@@ -9,13 +9,15 @@ use kafka_protocol::records::{
     Compression, RecordBatchDecoder, RecordBatchEncoder, RecordEncodeOptions,
 };
 use minicbor::encode::Encoder;
+#[cfg(feature = "tag")]
+use ockam_core::TypeTag;
 use ockam_node::Context;
 use std::convert::TryFrom;
 use std::io::{Error, ErrorKind};
 use tracing::{trace, warn};
 
 use crate::kafka::portal_worker::InterceptError;
-use crate::kafka::protocol_aware::utils::{decode, encode};
+use crate::kafka::protocol_aware::utils::{decode_body, encode_request};
 use crate::kafka::protocol_aware::{Interceptor, MessageWrapper, RequestInfo};
 
 impl Interceptor {
@@ -29,12 +31,22 @@ impl Interceptor {
         //let's clone the view of the buffer without cloning the content
         let mut buffer = original.peek_bytes(0..original.len());
 
+        let api_key_num = buffer
+            .peek_bytes(0..2)
+            .try_get_i16()
+            .map_err(|_| InterceptError::Io(Error::from(ErrorKind::InvalidData)))?;
+
+        let api_key = ApiKey::try_from(api_key_num).map_err(|_| {
+            warn!("unknown request api: {api_key_num}");
+            InterceptError::Io(Error::from(ErrorKind::InvalidData))
+        })?;
+
         let version = buffer
             .peek_bytes(2..4)
             .try_get_i16()
             .map_err(|_| InterceptError::Io(Error::from(ErrorKind::InvalidData)))?;
 
-        let result = RequestHeader::decode(&mut buffer, version);
+        let result = RequestHeader::decode(&mut buffer, api_key.request_header_version(version));
         let header = match result {
             Ok(header) => header,
             Err(_) => {
@@ -44,51 +56,46 @@ impl Interceptor {
             }
         };
 
-        if let Ok(api_key) = ApiKey::try_from(header.request_api_key) {
-            trace!(
-                "request: length: {}, correlation {}, version {}, api {:?}",
-                buffer.len(),
-                header.correlation_id,
-                header.request_api_version,
-                api_key
-            );
+        trace!(
+            "request: length: {}, correlation {}, version {}, api {:?}",
+            buffer.len(),
+            header.correlation_id,
+            header.request_api_version,
+            api_key
+        );
 
-            match api_key {
-                ApiKey::ProduceKey => {
-                    return self
-                        .handle_produce_request(context, &mut buffer, &header)
-                        .await;
-                }
-                ApiKey::FetchKey => {
-                    self.handle_fetch_request(context, &mut buffer, &header)
-                        .await?;
-                }
-                ApiKey::MetadataKey | ApiKey::FindCoordinatorKey => {
-                    self.request_map.lock().unwrap().insert(
-                        header.correlation_id,
-                        RequestInfo {
-                            request_api_key: api_key,
-                            request_api_version: header.request_api_version,
-                        },
-                    );
-                }
-                //we cannot allow to pass modified hosts with wrong security settings
-                //we could somehow map them, but these operations are administrative
-                //and should not impact consumer/producer flow
-                //this is valid for both LeaderAndIsrKey and UpdateMetadataKey
-                ApiKey::LeaderAndIsrKey => {
-                    warn!("leader and isr key not supported! closing connection");
-                    return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
-                }
-                ApiKey::UpdateMetadataKey => {
-                    warn!("update metadata not supported! closing connection");
-                    return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
-                }
-                _ => {}
+        match api_key {
+            ApiKey::ProduceKey => {
+                return self
+                    .handle_produce_request(context, &mut buffer, &header)
+                    .await;
             }
-        } else {
-            warn!("unknown request api: {:?}", header.request_api_key);
-            return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
+            ApiKey::FetchKey => {
+                self.handle_fetch_request(context, &mut buffer, &header)
+                    .await?;
+            }
+            ApiKey::MetadataKey | ApiKey::FindCoordinatorKey => {
+                self.request_map.lock().unwrap().insert(
+                    header.correlation_id,
+                    RequestInfo {
+                        request_api_key: api_key,
+                        request_api_version: header.request_api_version,
+                    },
+                );
+            }
+            //we cannot allow to pass modified hosts with wrong security settings
+            //we could somehow map them, but these operations are administrative
+            //and should not impact consumer/producer flow
+            //this is valid for both LeaderAndIsrKey and UpdateMetadataKey
+            ApiKey::LeaderAndIsrKey => {
+                warn!("leader and isr key not supported! closing connection");
+                return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
+            }
+            ApiKey::UpdateMetadataKey => {
+                warn!("update metadata not supported! closing connection");
+                return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
+            }
+            _ => {}
         }
 
         Ok(original)
@@ -100,7 +107,7 @@ impl Interceptor {
         buffer: &mut Bytes,
         header: &RequestHeader,
     ) -> Result<(), InterceptError> {
-        let request: FetchRequest = decode(buffer, header.request_api_version)?;
+        let request: FetchRequest = decode_body(buffer, header.request_api_version)?;
 
         //we intercept every partition interested by the kafka client
         //and create a forwarder for each
@@ -151,7 +158,7 @@ impl Interceptor {
         buffer: &mut Bytes,
         header: &RequestHeader,
     ) -> Result<BytesMut, InterceptError> {
-        let mut request: ProduceRequest = decode(buffer, header.request_api_version)?;
+        let mut request: ProduceRequest = decode_body(buffer, header.request_api_version)?;
 
         //the content can be set in multiple topics and partitions in a single message
         //for each we wrap the content and add the secure channel identifier of
@@ -211,6 +218,11 @@ impl Interceptor {
             }
         }
 
-        encode(header, &request, header.request_api_version)
+        encode_request(
+            header,
+            &request,
+            header.request_api_version,
+            ApiKey::ProduceKey,
+        )
     }
 }

@@ -35,6 +35,7 @@ mod test {
     use uuid::Uuid;
 
     use crate::hop::Hop;
+    use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
     use crate::kafka::secure_channel_map::ForwarderCreator;
     use crate::kafka::{
         KafkaPortalListener, KafkaSecureChannelControllerImpl,
@@ -252,8 +253,9 @@ mod test {
                 .await
                 .unwrap();
         send_kafka_produce_request(&mut kafka_client_connection).await;
-        read_kafka_message::<&mut DuplexStream, RequestHeader, ProduceRequest>(
+        read_kafka_request::<&mut DuplexStream, RequestHeader, ProduceRequest>(
             producer_mock_kafka.stream(),
+            ApiKey::ProduceKey,
         )
         .await
     }
@@ -316,7 +318,7 @@ mod test {
             .build()
             .unwrap();
 
-        send_kafka_message(stream, header, request).await;
+        send_kafka_request(stream, header, request, ApiKey::ProduceKey).await;
     }
 
     //this is needed in order to make the consumer create the forwarders to the secure
@@ -351,14 +353,16 @@ mod test {
                 .unwrap();
         send_kafka_fetch_request(&mut kafka_client_connection).await;
         let _fetch_request: FetchRequest =
-            read_kafka_message::<&mut DuplexStream, RequestHeader, FetchRequest>(
+            read_kafka_request::<&mut DuplexStream, RequestHeader, FetchRequest>(
                 mock_kafka_connection.stream(),
+                ApiKey::FetchKey,
             )
             .await;
 
         send_kafka_fetch_response(mock_kafka_connection.stream(), &producer_request).await;
-        read_kafka_message::<&mut TcpStream, ResponseHeader, FetchResponse>(
+        read_kafka_response::<&mut TcpStream, ResponseHeader, FetchResponse>(
             &mut kafka_client_connection,
+            ApiKey::FetchKey,
         )
         .await
     }
@@ -378,7 +382,7 @@ mod test {
             .records
             .clone();
 
-        send_kafka_message(
+        send_kafka_response(
             stream,
             ResponseHeader::builder()
                 .correlation_id(1)
@@ -413,12 +417,13 @@ mod test {
                 .unknown_tagged_fields(Default::default())
                 .build()
                 .unwrap(),
+            ApiKey::FetchKey,
         )
         .await;
     }
 
     async fn send_kafka_fetch_request(stream: &mut TcpStream) {
-        send_kafka_message(
+        send_kafka_request(
             stream,
             RequestHeader::builder()
                 .request_api_key(ApiKey::FetchKey as i16)
@@ -458,38 +463,85 @@ mod test {
                 .unknown_tagged_fields(Default::default())
                 .build()
                 .unwrap(),
+            ApiKey::FetchKey,
         )
         .await;
     }
 
-    async fn send_kafka_message<S: AsyncWriteExt + Unpin, H: KafkaEncodable, T: KafkaEncodable>(
+    async fn send_kafka_request<S: AsyncWriteExt + Unpin, H: KafkaEncodable, T: KafkaEncodable>(
         mut stream: S,
         header: H,
-        message: T,
+        body: T,
+        api_key: ApiKey,
     ) {
-        let size = header.compute_size(TEST_KAFKA_API_VERSION).unwrap()
-            + message.compute_size(TEST_KAFKA_API_VERSION).unwrap();
+        let encoded = encode_request(&header, &body, TEST_KAFKA_API_VERSION, api_key).unwrap();
 
         let mut request_buffer = BytesMut::new();
-        request_buffer.put_u32(size as u32);
+        request_buffer.put_u32(encoded.len() as u32);
+        request_buffer.put_slice(&encoded);
 
-        header
-            .encode(&mut request_buffer, TEST_KAFKA_API_VERSION)
-            .unwrap();
-        message
-            .encode(&mut request_buffer, TEST_KAFKA_API_VERSION)
-            .unwrap();
-
-        trace!("send_kafka_message...");
+        trace!("send_kafka_request...");
         stream.write_all(&request_buffer).await.unwrap();
         stream.flush().await.unwrap();
-        trace!("send_kafka_message...done");
+        trace!("send_kafka_request...done");
     }
 
-    async fn read_kafka_message<S: AsyncReadExt + Unpin, H: KafkaDecodable, T: KafkaDecodable>(
+    async fn send_kafka_response<S: AsyncWriteExt + Unpin, H: KafkaEncodable, T: KafkaEncodable>(
         mut stream: S,
+        header: H,
+        body: T,
+        api_key: ApiKey,
+    ) {
+        let encoded = encode_response(&header, &body, TEST_KAFKA_API_VERSION, api_key).unwrap();
+
+        let mut request_buffer = BytesMut::new();
+        request_buffer.put_u32(encoded.len() as u32);
+        request_buffer.put_slice(&encoded);
+
+        trace!("send_kafka_response...");
+        stream.write_all(&request_buffer).await.unwrap();
+        stream.flush().await.unwrap();
+        trace!("send_kafka_response...done");
+    }
+
+    async fn read_kafka_request<S: AsyncReadExt + Unpin, H: KafkaDecodable, T: KafkaDecodable>(
+        mut stream: S,
+        api_key: ApiKey,
     ) -> T {
-        trace!("read_kafka_message...");
+        trace!("read_kafka_request...");
+        let header_and_request_buffer = read_packet(&mut stream).await;
+        let mut header_and_request_buffer = BytesMut::from(header_and_request_buffer.as_slice());
+
+        let _header = H::decode(
+            &mut header_and_request_buffer,
+            api_key.request_header_version(TEST_KAFKA_API_VERSION),
+        )
+        .unwrap();
+        let request = T::decode(&mut header_and_request_buffer, TEST_KAFKA_API_VERSION).unwrap();
+        trace!("read_kafka_request...done");
+        request
+    }
+
+    async fn read_kafka_response<S: AsyncReadExt + Unpin, H: KafkaDecodable, T: KafkaDecodable>(
+        mut stream: S,
+        api_key: ApiKey,
+    ) -> T {
+        trace!("read_kafka_response...");
+        let header_and_request_buffer = read_packet(&mut stream).await;
+        let mut header_and_request_buffer = BytesMut::from(header_and_request_buffer.as_slice());
+
+        let _header = H::decode(
+            &mut header_and_request_buffer,
+            api_key.response_header_version(TEST_KAFKA_API_VERSION),
+        )
+        .unwrap();
+        let request = T::decode(&mut header_and_request_buffer, TEST_KAFKA_API_VERSION).unwrap();
+        trace!("read_kafka_response...done");
+        request
+    }
+
+    async fn read_packet<S: AsyncReadExt + Unpin>(stream: &mut S) -> [u8; 1024] {
+        trace!("read_packet...");
         let size = {
             let mut length_buffer = [0; 4];
             let read = stream.read_exact(&mut length_buffer).await.unwrap();
@@ -506,12 +558,9 @@ mod test {
             .unwrap();
         assert_eq!(size as usize, read);
 
-        let mut header_and_request_buffer = BytesMut::from(header_and_request_buffer.as_slice());
+        trace!("read_kafka_request...done");
 
-        let _header = H::decode(&mut header_and_request_buffer, TEST_KAFKA_API_VERSION).unwrap();
-        let request = T::decode(&mut header_and_request_buffer, TEST_KAFKA_API_VERSION).unwrap();
-        trace!("read_kafka_message...done");
-        request
+        header_and_request_buffer
     }
 
     struct TcpServerSimulator {

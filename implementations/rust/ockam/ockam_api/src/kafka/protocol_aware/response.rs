@@ -18,7 +18,7 @@ use tracing::{info, trace, warn};
 
 use crate::kafka::inlet_map::KafkaInletMap;
 use crate::kafka::portal_worker::InterceptError;
-use crate::kafka::protocol_aware::utils::{decode, encode, string_to_str_bytes};
+use crate::kafka::protocol_aware::utils::{decode_body, encode_response, string_to_str_bytes};
 use crate::kafka::protocol_aware::{Interceptor, MessageWrapper, RequestInfo};
 
 impl Interceptor {
@@ -45,7 +45,12 @@ impl Interceptor {
             .cloned();
 
         if let Some(request_info) = result {
-            let result = ResponseHeader::decode(&mut buffer, request_info.request_api_version);
+            let result = ResponseHeader::decode(
+                &mut buffer,
+                request_info
+                    .request_api_key
+                    .response_header_version(request_info.request_api_version),
+            );
             let header = match result {
                 Ok(header) => header,
                 Err(_) => {
@@ -116,7 +121,7 @@ impl Interceptor {
         request_info: RequestInfo,
         header: &ResponseHeader,
     ) -> Result<BytesMut, InterceptError> {
-        let mut response: MetadataResponse = decode(buffer, request_info.request_api_version)?;
+        let mut response: MetadataResponse = decode_body(buffer, request_info.request_api_version)?;
 
         //we need to keep a map of topic uuid to topic name since fetch
         //operations only use uuid
@@ -153,7 +158,12 @@ impl Interceptor {
         }
         trace!("metadata response after: {:?}", &response);
 
-        encode(header, &response, request_info.request_api_version)
+        encode_response(
+            header,
+            &response,
+            request_info.request_api_version,
+            ApiKey::MetadataKey,
+        )
     }
 
     async fn handle_find_coordinator_response(
@@ -165,7 +175,7 @@ impl Interceptor {
         header: &ResponseHeader,
     ) -> Result<BytesMut, InterceptError> {
         let mut response: FindCoordinatorResponse =
-            decode(buffer, request_info.request_api_version)?;
+            decode_body(buffer, request_info.request_api_version)?;
 
         //similarly to metadata, we want to expressed the coordinator using
         //local sidecar ip address
@@ -192,7 +202,12 @@ impl Interceptor {
             response.port = inlet_address.port() as i32;
         }
 
-        encode(header, &response, request_info.request_api_version)
+        encode_response(
+            header,
+            &response,
+            request_info.request_api_version,
+            ApiKey::FindCoordinatorKey,
+        )
     }
 
     async fn handle_fetch_response(
@@ -202,7 +217,7 @@ impl Interceptor {
         request_info: &RequestInfo,
         header: &ResponseHeader,
     ) -> Result<BytesMut, InterceptError> {
-        let mut response: FetchResponse = decode(buffer, request_info.request_api_version)?;
+        let mut response: FetchResponse = decode_body(buffer, request_info.request_api_version)?;
 
         //in every response we want to decrypt the message content
         //we take every record batch content, unwrap and decode it
@@ -250,6 +265,11 @@ impl Interceptor {
             }
         }
 
-        encode(header, &response, request_info.request_api_version)
+        encode_response(
+            header,
+            &response,
+            request_info.request_api_version,
+            ApiKey::FetchKey,
+        )
     }
 }
