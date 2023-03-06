@@ -2,7 +2,7 @@
 // It then routes a message, to a worker on a different node, through this encrypted channel.
 
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, vault::Vault, Context, Result, TcpTransport};
+use ockam::{route, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -16,7 +16,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let alice = Identity::create(&ctx, &vault).await?;
 
     // Create a TCP connection to the middle node.
-    let connection_to_middle_node = tcp.connect("localhost:3000").await?;
+    let connection_to_middle_node = tcp.connect("localhost:3000", TcpConnectionTrustOptions::new()).await?;
 
     // Connect to a secure channel listener and perform a handshake.
     let r = route![connection_to_middle_node, "forward_to_bob", "bob_listener"];

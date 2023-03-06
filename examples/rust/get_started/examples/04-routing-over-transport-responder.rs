@@ -3,7 +3,7 @@
 
 use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
-use ockam::{Context, Result, TcpTransport};
+use ockam::{Context, Result, TcpListenerTrustOptions, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -14,7 +14,7 @@ async fn main(ctx: Context) -> Result<()> {
     ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
     // Create a TCP listener and wait for incoming connections.
-    tcp.listen("127.0.0.1:4000").await?;
+    tcp.listen("127.0.0.1:4000", TcpListenerTrustOptions::new()).await?;
 
     // Don't call ctx.stop() here so this node runs forever.
     Ok(())

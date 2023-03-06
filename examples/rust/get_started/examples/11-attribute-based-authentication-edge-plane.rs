@@ -70,7 +70,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let secure_channel = edge_plane
-        .create_secure_channel_extended_trust(tcp_authority_session.route, trust_options, Duration::from_secs(120))
+        .create_secure_channel_extended(tcp_authority_session.route, trust_options, Duration::from_secs(120))
         .await?;
 
     let token_acceptor = TokenAcceptorClient::new(
@@ -118,7 +118,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 4.1 first created a secure channel to the project
     let secure_channel_address = edge_plane
-        .create_secure_channel_extended_trust(
+        .create_secure_channel_extended(
             tcp_project_session.route,
             project_trust_options,
             Duration::from_secs(120),

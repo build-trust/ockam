@@ -2,7 +2,7 @@ use core::time::Duration;
 use ockam_core::compat::rand::{self, Rng};
 use ockam_core::{route, AllowAll, Result, Routed, Worker};
 use ockam_node::Context;
-use ockam_transport_tcp::TcpTransport;
+use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
 
 pub struct Echoer;
 
@@ -23,7 +23,11 @@ async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> 
         .await?;
 
     let transport = TcpTransport::create(ctx).await?;
-    let listener_address = transport.listen("127.0.0.1:0").await?.0.to_string();
+    let listener_address = transport
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .await?
+        .0
+        .to_string();
 
     let msg1: String = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
@@ -36,14 +40,18 @@ async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> 
         .map(char::from)
         .collect();
 
-    let tx_address1 = transport.connect(&listener_address).await?;
+    let tx_address1 = transport
+        .connect(&listener_address, TcpConnectionTrustOptions::new())
+        .await?;
 
     let reply1: String = ctx
         .send_and_receive(route![tx_address1.clone(), "echoer"], msg1.clone())
         .await?;
     assert_eq!(reply1, msg1, "Should receive the same message");
 
-    let tx_address2 = transport.connect(&listener_address).await?;
+    let tx_address2 = transport
+        .connect(&listener_address, TcpConnectionTrustOptions::new())
+        .await?;
     let reply2: String = ctx
         .send_and_receive(route![tx_address2.clone(), "echoer"], msg2.clone())
         .await?;
@@ -63,7 +71,11 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
         .await?;
 
     let transport = TcpTransport::create(ctx).await?;
-    let listener_address = transport.listen("127.0.0.1:0").await?.0.to_string();
+    let listener_address = transport
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .await?
+        .0
+        .to_string();
 
     let msg1: String = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
@@ -81,14 +93,18 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
         .map(char::from)
         .collect();
 
-    let tx_address1 = transport.connect(&listener_address).await?;
+    let tx_address1 = transport
+        .connect(&listener_address, TcpConnectionTrustOptions::new())
+        .await?;
 
     let reply1: String = ctx
         .send_and_receive(route![tx_address1.clone(), "echoer"], msg1.clone())
         .await?;
     assert_eq!(reply1, msg1, "Should receive the same message");
 
-    let tx_address2 = transport.connect(&listener_address).await?;
+    let tx_address2 = transport
+        .connect(&listener_address, TcpConnectionTrustOptions::new())
+        .await?;
     let reply2: String = ctx
         .send_and_receive(route![tx_address2.clone(), "echoer"], msg2.clone())
         .await?;
@@ -127,7 +143,9 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
         .await?;
 
     let transport = TcpTransport::create(ctx).await?;
-    let (listener_socket, listener_worker) = transport.listen("127.0.0.1:0").await?;
+    let (listener_socket, listener_worker) = transport
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .await?;
     let listener_address = listener_socket.to_string();
 
     let msg1: String = rand::thread_rng()
@@ -141,7 +159,9 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
         .map(char::from)
         .collect();
 
-    let tx_address = transport.connect(&listener_address).await?;
+    let tx_address = transport
+        .connect(&listener_address, TcpConnectionTrustOptions::new())
+        .await?;
 
     let reply1: String = ctx
         .send_and_receive(route![tx_address.clone(), "echoer"], msg1.clone())
@@ -151,7 +171,9 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
     transport.stop_listener(&listener_worker).await?;
     ctx.sleep(Duration::from_millis(10)).await;
 
-    let res = transport.connect(&listener_address).await;
+    let res = transport
+        .connect(&listener_address, TcpConnectionTrustOptions::new())
+        .await;
     assert!(
         res.is_err(),
         "Should not accept connection after listener is stopped"

@@ -1,6 +1,6 @@
 // This node routes a message, to a worker on a different node, over the tcp transport.
 
-use ockam::{route, Context, Result, TcpTransport};
+use ockam::{route, Context, Result, TcpConnectionTrustOptions, TcpTransport};
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -8,7 +8,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a TCP connection to a different node.
-    let connection_to_responder = tcp.connect("localhost:4000").await?;
+    let connection_to_responder = tcp.connect("localhost:4000", TcpConnectionTrustOptions::new()).await?;
 
     // Send a message to the "echoer" worker on a different node, over a tcp transport.
     let r = route![connection_to_responder, "echoer"];

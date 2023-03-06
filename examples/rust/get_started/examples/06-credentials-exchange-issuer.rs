@@ -1,7 +1,7 @@
 use ockam::access_control::IdentityIdAccessControl;
 use ockam::identity::credential_issuer::CredentialIssuer;
 use ockam::identity::TrustEveryonePolicy;
-use ockam::{Context, TcpTransport};
+use ockam::{Context, TcpListenerTrustOptions, TcpTransport};
 use ockam_core::{AllowAll, Result};
 
 /// This node starts a temporary credential issuer accessible via TCP on localhost:5000
@@ -20,7 +20,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Create a TCP listener and wait for incoming connections.
-    tcp.listen("127.0.0.1:5000").await?;
+    tcp.listen("127.0.0.1:5000", TcpListenerTrustOptions::new()).await?;
 
     // Create a CredentialIssuer which stores attributes for Alice and Bob, knowing their identity
     let issuer = CredentialIssuer::create(&ctx).await?;

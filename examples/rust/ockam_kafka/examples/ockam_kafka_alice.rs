@@ -4,7 +4,7 @@ use ockam::{
     stream::Stream,
     unique_with_prefix,
     vault::Vault,
-    Context, Result, TcpTransport,
+    Context, Result, TcpConnectionTrustOptions, TcpTransport,
 };
 use std::io;
 
@@ -42,7 +42,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     // Starts a sender (producer) for the alice_to_bob stream and a receiver (consumer)
     // for the `bob_to_alice` stream to get two-way communication.
 
-    let node_in_hub = tcp.connect("1.node.ockam.network:4000").await?;
+    let node_in_hub = tcp
+        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .await?;
     let (sender, _receiver) = Stream::new(&ctx)
         .await?
         .stream_service("stream_kafka")

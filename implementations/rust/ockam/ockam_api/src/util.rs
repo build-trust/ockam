@@ -103,7 +103,7 @@ pub async fn create_tcp_session(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Tc
                 };
 
                 let addr = tcp
-                    .connect_trust(socket_addr.to_string(), trust_options)
+                    .connect(socket_addr.to_string(), trust_options)
                     .await
                     .ok()?;
                 rb = rb.append(addr)
@@ -119,7 +119,7 @@ pub async fn create_tcp_session(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Tc
                 };
 
                 let addr = tcp
-                    .connect_trust(socket_addr.to_string(), trust_options)
+                    .connect(socket_addr.to_string(), trust_options)
                     .await
                     .ok()?;
                 rb = rb.append(addr)
@@ -136,7 +136,7 @@ pub async fn create_tcp_session(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Tc
                         };
 
                         let addr = tcp
-                            .connect_trust(format!("{}:{}", &*host, *port), trust_options)
+                            .connect(format!("{}:{}", &*host, *port), trust_options)
                             .await
                             .ok()?;
                         rb = rb.append(addr);
@@ -190,7 +190,7 @@ pub async fn multiaddr_to_route(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Ro
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV4::new(*ip4, *port);
                 let addr = tcp
-                    .connect_trust(socket_addr.to_string(), trust_options.clone())
+                    .connect(socket_addr.to_string(), trust_options.clone())
                     .await
                     .ok()?;
                 rb = rb.append(addr)
@@ -200,7 +200,7 @@ pub async fn multiaddr_to_route(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Ro
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV6::new(*ip6, *port, 0, 0);
                 let addr = tcp
-                    .connect_trust(socket_addr.to_string(), trust_options.clone())
+                    .connect(socket_addr.to_string(), trust_options.clone())
                     .await
                     .ok()?;
                 rb = rb.append(addr)
@@ -211,7 +211,7 @@ pub async fn multiaddr_to_route(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Ro
                     if p.code() == Tcp::CODE {
                         let port = p.cast::<Tcp>()?;
                         let addr = tcp
-                            .connect_trust(format!("{}:{}", &*host, *port), trust_options.clone())
+                            .connect(format!("{}:{}", &*host, *port), trust_options.clone())
                             .await
                             .ok()?;
                         rb = rb.append(addr);

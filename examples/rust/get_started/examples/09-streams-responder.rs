@@ -1,6 +1,6 @@
 use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
-use ockam::{route, stream::Stream, Context, Result, TcpTransport};
+use ockam::{route, stream::Stream, Context, Result, TcpConnectionTrustOptions, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -11,7 +11,9 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Set the address of the Kafka node you created here. (e.g. "192.0.2.1:4000")
     let hub_node_tcp_address = "<Your node Address copied from hub.ockam.network>";
-    let node_in_hub = tcp.connect(hub_node_tcp_address).await?;
+    let node_in_hub = tcp
+        .connect(hub_node_tcp_address, TcpConnectionTrustOptions::new())
+        .await?;
 
     // Create a stream client
     Stream::new(&ctx)

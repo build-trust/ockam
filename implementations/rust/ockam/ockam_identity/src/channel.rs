@@ -33,52 +33,30 @@ use core::time::Duration;
 use ockam_core::{Address, AsyncTryClone, Result, Route};
 
 impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
-    /// Spawns a SecureChannel listener at given `Address`
+    /// Spawns a SecureChannel listener at given `Address` with given [`SecureChannelListenerTrustOptions`]
     pub async fn create_secure_channel_listener(
         &self,
         address: impl Into<Address>,
-        trust_policy: impl TrustPolicy,
-    ) -> Result<()> {
-        self.create_secure_channel_listener_trust(
-            address,
-            SecureChannelListenerTrustOptions::new().with_trust_policy(trust_policy),
-        )
-        .await
-    }
-
-    /// Spawns a SecureChannel listener at given `Address` with given [`SecureChannelListenerTrustOptions`]
-    pub async fn create_secure_channel_listener_trust(
-        &self,
-        address: impl Into<Address>,
-        trust_options: SecureChannelListenerTrustOptions,
+        trust_options: impl Into<SecureChannelListenerTrustOptions>,
     ) -> Result<()> {
         let identity_clone = self.async_try_clone().await?;
 
-        IdentityChannelListener::create(&self.ctx, address.into(), trust_options, identity_clone)
-            .await?;
+        IdentityChannelListener::create(
+            &self.ctx,
+            address.into(),
+            trust_options.into(),
+            identity_clone,
+        )
+        .await?;
 
         Ok(())
     }
 
-    /// Initiate a SecureChannel using [`Route`] to the SecureChannel listener
-    #[deprecated]
+    /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelTrustOptions`]
     pub async fn create_secure_channel(
         &self,
         route: impl Into<Route>,
-        trust_policy: impl TrustPolicy,
-    ) -> Result<Address> {
-        self.create_secure_channel_trust(
-            route,
-            SecureChannelTrustOptions::new().with_trust_policy(trust_policy),
-        )
-        .await
-    }
-
-    /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelTrustOptions`]
-    pub async fn create_secure_channel_trust(
-        &self,
-        route: impl Into<Route>,
-        trust_options: SecureChannelTrustOptions,
+        trust_options: impl Into<SecureChannelTrustOptions>,
     ) -> Result<Address> {
         let identity_clone = self.async_try_clone().await?;
 
@@ -86,33 +64,17 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             &self.ctx,
             route.into(),
             identity_clone,
-            trust_options,
+            trust_options.into(),
             Duration::from_secs(120),
         )
         .await
     }
 
-    /// Extended function to create a SecureChannel
-    #[deprecated]
+    /// Extended function to create a SecureChannel with [`SecureChannelTrustOptions`]
     pub async fn create_secure_channel_extended(
         &self,
         route: impl Into<Route>,
-        trust_policy: impl TrustPolicy,
-        timeout: Duration,
-    ) -> Result<Address> {
-        self.create_secure_channel_extended_trust(
-            route,
-            SecureChannelTrustOptions::new().with_trust_policy(trust_policy),
-            timeout,
-        )
-        .await
-    }
-
-    /// Extended function to create a SecureChannel with [`SecureChannelTrustOptions`]
-    pub async fn create_secure_channel_extended_trust(
-        &self,
-        route: impl Into<Route>,
-        trust_options: SecureChannelTrustOptions,
+        trust_options: impl Into<SecureChannelTrustOptions>,
         timeout: Duration,
     ) -> Result<Address> {
         let identity_clone = self.async_try_clone().await?;
@@ -121,7 +83,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Identity<V, S> {
             &self.ctx,
             route.into(),
             identity_clone,
-            trust_options,
+            trust_options.into(),
             timeout,
         )
         .await

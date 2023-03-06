@@ -267,7 +267,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator>
                     SecureChannelTrustOptions::new().with_trust_policy(TrustEveryonePolicy);
                 let encryptor_address = inner
                     .identity
-                    .create_secure_channel_trust(
+                    .create_secure_channel(
                         route![
                             inner.project_route.clone(),
                             topic_partition_address.clone(),

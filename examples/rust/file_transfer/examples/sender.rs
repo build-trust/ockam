@@ -1,13 +1,13 @@
 // examples/sender.rs
 
 use file_transfer::{FileData, FileDescription};
-use ockam::TcpTransport;
 use ockam::{
     identity::{Identity, TrustEveryonePolicy},
     route,
     vault::Vault,
     Context,
 };
+use ockam::{TcpConnectionTrustOptions, TcpTransport};
 
 use std::path::PathBuf;
 
@@ -52,7 +52,9 @@ async fn main(ctx: Context) -> Result<()> {
     let forwarding_address = opt.address.trim();
 
     // Connect to the cloud node over TCP
-    let node_in_hub = tcp.connect("1.node.ockam.network:4000").await?;
+    let node_in_hub = tcp
+        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .await?;
 
     // Combine the tcp address of the cloud node and the forwarding_address to get a route
     // to Receiver's secure channel listener.

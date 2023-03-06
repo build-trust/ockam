@@ -199,7 +199,7 @@ mod node {
                     trust_options
                 };
                 identity
-                    .create_secure_channel_trust(cloud_session.route, trust_options)
+                    .create_secure_channel(cloud_session.route, trust_options)
                     .await?
             };
             let route = route![&sc.to_string(), api_service];

@@ -71,7 +71,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let secure_channel = control_plane
-        .create_secure_channel_extended_trust(tcp_session.route, trust_options, Duration::from_secs(120))
+        .create_secure_channel_extended(tcp_session.route, trust_options, Duration::from_secs(120))
         .await?;
 
     let token_acceptor = TokenAcceptorClient::new(
@@ -125,7 +125,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // create a secure channel to the project first
     // we make sure that we indeed connect to the correct project on the Orchestrator
     let secure_channel_address = control_plane
-        .create_secure_channel_extended_trust(
+        .create_secure_channel_extended(
             tcp_project_session.route,
             project_trust_options,
             Duration::from_secs(120),

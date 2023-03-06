@@ -116,23 +116,16 @@ impl TcpTransport {
     /// Establish an outgoing TCP connection.
     ///
     /// ```rust
-    /// use ockam_transport_tcp::TcpTransport;
+    /// use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.listen("127.0.0.1:8000").await?; // Listen on port 8000
-    /// let addr = tcp.connect("127.0.0.1:5000").await?; // and connect to port 5000
+    /// tcp.listen("127.0.0.1:8000", TcpListenerTrustOptions::new()).await?; // Listen on port 8000
+    /// let addr = tcp.connect("127.0.0.1:5000", TcpConnectionTrustOptions::new()).await?; // and connect to port 5000
     /// # Ok(()) }
     /// ```
-    #[deprecated]
-    pub async fn connect(&self, peer: impl Into<String>) -> Result<Address> {
-        self.connect_trust(peer, TcpConnectionTrustOptions::new())
-            .await
-    }
-
-    /// Connect with trust options
-    pub async fn connect_trust(
+    pub async fn connect(
         &self,
         peer: impl Into<String>,
         trust_options: TcpConnectionTrustOptions,
@@ -178,21 +171,14 @@ impl TcpTransport {
     /// which port was actually bound.
     ///
     /// ```rust
-    /// use ockam_transport_tcp::TcpTransport;
+    /// use ockam_transport_tcp::{TcpListenerTrustOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.listen("127.0.0.1:8000").await?;
+    /// tcp.listen("127.0.0.1:8000", TcpListenerTrustOptions::new()).await?;
     /// # Ok(()) }
-    #[deprecated]
-    pub async fn listen(&self, bind_addr: impl AsRef<str>) -> Result<(SocketAddr, Address)> {
-        self.listen_trust(bind_addr, TcpListenerTrustOptions::new())
-            .await
-    }
-
-    /// Start a listener with trust options
-    pub async fn listen_trust(
+    pub async fn listen(
         &self,
         bind_addr: impl AsRef<str>,
         trust_options: TcpListenerTrustOptions,

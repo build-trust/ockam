@@ -5,9 +5,8 @@ use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
-use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy};
-use ockam::{vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
-use ockam_api::create_tcp_session;
+use ockam::identity::{Identity, SecureChannelListenerTrustOptions, SecureChannelTrustOptions, TrustEveryonePolicy};
+use ockam::{vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
 use ockam_core::route;
 use ockam_core::sessions::Sessions;
 
@@ -29,12 +28,12 @@ async fn main(ctx: Context) -> Result<()> {
     let sessions = Sessions::default();
     let session_id = sessions.generate_session_id();
     let issuer_tcp_trust_options = TcpConnectionTrustOptions::new().with_session(&sessions, &session_id);
-    let issuer_connection = tcp.connect_trust("127.0.0.1:5000", issuer_tcp_trust_options).await?;
+    let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_trust_options).await?;
     let issuer_trust_options = SecureChannelTrustOptions::new()
         .with_trust_policy(TrustEveryonePolicy)
         .with_ciphertext_session(&sessions, &session_id);
     let issuer_channel = bob
-        .create_secure_channel_trust(route![issuer_connection, "issuer_listener"], issuer_trust_options)
+        .create_secure_channel(route![issuer_connection, "issuer_listener"], issuer_trust_options)
         .await?;
     let issuer = CredentialIssuerClient::new(&ctx, route![issuer_channel]).await?;
 
@@ -54,7 +53,11 @@ async fn main(ctx: Context) -> Result<()> {
     .await?;
 
     // Create a secure channel listener to allow Alice to create a secure channel to Bob's node
-    bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy)
+    let listener_session_id = sessions.generate_session_id();
+    let secure_channel_listener_trust_options = SecureChannelListenerTrustOptions::new()
+        .with_trust_policy(TrustEveryonePolicy)
+        .with_session(&sessions, &listener_session_id);
+    bob.create_secure_channel_listener("bob_listener", secure_channel_listener_trust_options)
         .await?;
     println!("created a secure channel listener");
 
@@ -63,7 +66,8 @@ async fn main(ctx: Context) -> Result<()> {
     ctx.start_worker("echoer", Echoer, alice_only, AllowAll).await?;
 
     // Create a TCP listener and wait for incoming connections
-    tcp.listen("127.0.0.1:4000").await?;
+    let tcp_listener_trust_options = TcpListenerTrustOptions::new().with_session(&sessions, &listener_session_id);
+    tcp.listen("127.0.0.1:4000", tcp_listener_trust_options).await?;
     println!("created a TCP listener");
 
     // Don't call ctx.stop() here so this node runs forever.
