@@ -1,12 +1,13 @@
 use crate::help;
 use crate::util::embedded_node;
 use crate::Result;
-use anyhow::anyhow;
+use anyhow::{anyhow, ensure, Context as _};
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 use ockam::compat::collections::HashMap;
 use ockam::{Context, TcpTransport};
-use ockam_api::auth;
+use ockam_api::is_local_node;
+use ockam_api::{auth, create_tcp_session};
 use ockam_identity::authenticated_storage::AttributesEntry;
 use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
@@ -54,7 +55,6 @@ pub enum AuthenticatedSubcommand {
 
 impl AuthenticatedCommand {
     pub fn run(self) {
-        // FIXME: Requires update to the latest format
         if let Err(e) = embedded_node(run_impl, self.subcommand) {
             eprintln!("Ockam node failed: {e:?}",);
         }
@@ -62,9 +62,11 @@ impl AuthenticatedCommand {
 }
 
 async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> crate::Result<()> {
+    // FIXME: add support to target remote nodes.
     let tcp = TcpTransport::create(&ctx).await?;
     match &cmd {
         AuthenticatedSubcommand::Get { addr, id } => {
+            is_local_node(addr).context("The address must point to a local node")?;
             let mut c = client(&ctx, &tcp, addr).await?;
             if let Some(entry) = c.get(id).await? {
                 print_entries(&[(IdentityIdentifier::try_from(id.to_string()).unwrap(), entry)]);
@@ -73,6 +75,7 @@ async fn run_impl(ctx: Context, cmd: AuthenticatedSubcommand) -> crate::Result<(
             }
         }
         AuthenticatedSubcommand::List { addr } => {
+            is_local_node(addr).context("The address must point to a local node")?;
             let mut c = client(&ctx, &tcp, addr).await?;
             print_entries(&c.list().await?);
         }
