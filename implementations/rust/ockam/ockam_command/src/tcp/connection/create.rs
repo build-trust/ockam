@@ -9,7 +9,6 @@ use ockam_api::nodes::models;
 use ockam_multiaddr::proto::{DnsAddr, Tcp, Worker};
 use ockam_multiaddr::MultiAddr;
 use serde_json::json;
-use std::net::SocketAddrV4;
 
 #[derive(Clone, Debug, Args)]
 pub struct TcpConnectionNodeOpts {
@@ -44,8 +43,7 @@ impl CreateCommand {
         match opts.global_args.output_format {
             OutputFormat::Plain => {
                 let from = &self.node_opts.from;
-
-                let to = response.socket_addr.parse::<SocketAddrV4>()?;
+                let to = response.socket_addr()?;
                 if opts.global_args.no_color {
                     println!("\n  TCP Connection:");
                     println!("    ID: {}", response.tid);

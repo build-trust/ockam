@@ -1,6 +1,8 @@
 use minicbor::{Decode, Encode};
-use ockam_core::{CowStr, Result};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{CowStr, Error, Result};
 use std::fmt::{self, Display};
+use std::net::SocketAddrV4;
 
 use crate::cli_state::CliStateError;
 use crate::config::lookup::InternetAddress;
@@ -175,6 +177,12 @@ impl<'a> TransportStatus<'a> {
             worker_addr: worker_addr.into(),
             tid: tid.into(),
         }
+    }
+
+    pub fn socket_addr(&self) -> Result<SocketAddrV4> {
+        self.socket_addr
+            .parse::<SocketAddrV4>()
+            .map_err(|err| Error::new(Origin::Transport, Kind::Invalid, err))
     }
 }
 
