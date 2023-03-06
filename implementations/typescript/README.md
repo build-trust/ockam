@@ -5,8 +5,18 @@ systems that you can trust.
 
 This folder contains the Typescript implementation of Ockam.
 
-## Try
+# Build
 
+Install pnpm - https://pnpm.io/installation
+
+Install dependencies
 ```
-yarn install
+pnpm install
+```
+
+Build and run an example
+```
+pnpm build
+pnpm example
+pnpm clean
 ```
