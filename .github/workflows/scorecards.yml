@@ -4,20 +4,17 @@ permissions:
   contents: read
 
 on:
-  merge_group:
-  workflow_dispatch:
-    inputs:
-      commit_sha:
-        description: SHA to test workflow
-  push:
-    branches: [ develop ]
   branch_protection_rule:
+  push:
+    branches:
+      - develop
   schedule:
+    # At 1am on Monday
     - cron: '0 1 * * 1'
 
 jobs:
   analyze:
-    name: Scorecards - Analyze
+    name: OSSF Scorecards - analyze
     runs-on: ubuntu-20.04
     permissions:
       actions: read
