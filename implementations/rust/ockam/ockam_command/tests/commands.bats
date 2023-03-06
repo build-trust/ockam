@@ -441,7 +441,7 @@ teardown() {
 
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
 
-  run $OCKAM node create --tcp-listener-address=0.0.0.0:4200 --identity authority --launch-config /tmp/auth_launch_config.json --trusted-identities "{\"$m1_identifier\": {\"sample_attr\" : \"sample_val\", \"project_id\" : \"1\"}, \"$enroller_identifier\" : {\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}" authority
+  run $OCKAM node create --tcp-listener-address=127.0.0.1:4200 --identity authority --launch-config /tmp/auth_launch_config.json --trusted-identities "{\"$m1_identifier\": {\"sample_attr\" : \"sample_val\", \"project_id\" : \"1\"}, \"$enroller_identifier\" : {\"project_id\" : \"1\", \"ockam-role\" : \"enroller\"}}" authority
   assert_success
 
   echo "{\"id\": \"1\",
