@@ -38,7 +38,6 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
         with:
-          ref: ${{ github.event.inputs.commit_sha }}
           fetch-depth: 0 # checkout full tree
 
       - name: Checkout (Pull Request)
@@ -181,8 +180,9 @@ jobs:
             exit 1
           fi
 
-      - name: Check all commit authors and committers have accepted Ockam CLA.
+      - name: Check all commit authors co-authors and committers have accepted Ockam CLA.
         run: |
+          set -x
           commits=$(git rev-list --reverse $FIRST_COMMIT..HEAD)
           commits=($FIRST_COMMIT ${commits[@]})
           err=false
@@ -193,6 +193,12 @@ jobs:
 
             author=$(git show -s --format='%ae' $commit)
             echo "Author: $author"
+            co_authors=$(git show -s --format='%(trailers:key=Co-authored-by)' | grep -o -E '<[^>]+>' | sed 's/<//;s/>//' | tr '\n' ' ') || echo ''
+            if [ -n "$co_authors" ]; then
+              co_authors=($co_authors)
+              echo "Co-Authors: $co_authors"
+            fi
+
             committer=$(git show -s --format='%ce' $commit)
             echo "Committer: $committer"
 
@@ -201,6 +207,18 @@ jobs:
             else
               echo -e "$commit commit author $author has not accepted the CLA."
               err=true
+            fi
+
+            if [ -n "$co_authors" ]; then
+              for co_author in "${co_authors[@]}"
+              do
+                if grep -q -iF "$co_author" 'CONTRIBUTORS_EMAILS.txt'; then
+                  echo "[✓] $commit co-author $co_author has accepted the CLA."
+                else
+                  echo -e "$commit commit co-author $co_author has not accepted the CLA."
+                  err=true
+                fi
+              done
             fi
 
             if grep -q -iF "$committer" 'CONTRIBUTORS_EMAILS.txt'; then
