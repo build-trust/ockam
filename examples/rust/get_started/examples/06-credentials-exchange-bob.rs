@@ -5,9 +5,11 @@ use ockam::abac::AbacAccessControl;
 use ockam::access_control::AllowAll;
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
-use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{vault::Vault, Context, Result, TcpTransport};
+use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy};
+use ockam::{vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
+use ockam_api::create_tcp_session;
 use ockam_core::route;
+use ockam_core::sessions::Sessions;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -24,9 +26,17 @@ async fn main(ctx: Context) -> Result<()> {
     let bob = Identity::create_identity_with_secret(&ctx, vault, &key_id, secret).await?;
 
     // Create a client to a credential issuer
-    let issuer_connection = tcp.connect("127.0.0.1:5000").await?;
-    let issuer_route = route![issuer_connection, "issuer_listener"];
-    let issuer = CredentialIssuerClient::new(&ctx, &bob, issuer_route).await?;
+    let sessions = Sessions::default();
+    let session_id = sessions.generate_session_id();
+    let issuer_tcp_trust_options = TcpConnectionTrustOptions::new().with_session(&sessions, &session_id);
+    let issuer_connection = tcp.connect_trust("127.0.0.1:5000", issuer_tcp_trust_options).await?;
+    let issuer_trust_options = SecureChannelTrustOptions::new()
+        .with_trust_policy(TrustEveryonePolicy)
+        .with_ciphertext_session(&sessions, &session_id);
+    let issuer_channel = bob
+        .create_secure_channel_trust(route![issuer_connection, "issuer_listener"], issuer_trust_options)
+        .await?;
+    let issuer = CredentialIssuerClient::new(&ctx, route![issuer_channel]).await?;
 
     // Get a credential for Bob (this is done via a secure channel)
     let credential = issuer.get_credential(bob.identifier()).await?.unwrap();
