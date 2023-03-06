@@ -258,6 +258,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage, F: ForwarderCreator>
             } else {
                 trace!("creating new secure channel to {topic_partition_address}");
 
+                // TODO: Figure out if session should be used
                 let encryptor_address = inner
                     .identity
                     .create_secure_channel(

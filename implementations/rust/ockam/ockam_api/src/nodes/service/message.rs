@@ -42,10 +42,10 @@ mod node {
     use tracing::trace;
 
     use crate::error::ApiError;
+    use crate::local_multiaddr_to_route;
     use crate::nodes::connection::Connection;
-    use crate::{local_multiaddr_to_route, multiaddr_to_route};
     use ockam_core::api::{Request, Response, Status};
-    use ockam_core::{self, route, AsyncTryClone, Result};
+    use ockam_core::{self, Result};
     use ockam_node::Context;
 
     use crate::nodes::NodeManagerWorker;
@@ -65,8 +65,7 @@ mod node {
             let msg_length = msg.len();
 
             let mut node_manager = self.node_manager.write().await;
-            let tcp_transport = node_manager.tcp_transport.async_try_clone().await?;
-            let connection = Connection::new(&tcp_transport, ctx, &multiaddr);
+            let connection = Connection::new(ctx, &multiaddr);
             let (sc, suffix) = node_manager.connect(connection).await?;
             let full = sc.try_with(&suffix)?;
             let route =

@@ -77,8 +77,7 @@ pub fn multiaddr_to_socket_addr(ma: &MultiAddr) -> Option<String> {
 }
 
 pub struct TcpSession {
-    pub sessions: Sessions,
-    pub session_id: SessionId,
+    pub session: Option<(Sessions, SessionId)>,
     pub route: Route,
 }
 
@@ -165,16 +164,23 @@ pub async fn create_tcp_session(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Tc
         }
     }
 
-    Some(TcpSession {
-        sessions,
-        session_id,
-        route: rb.into(),
-    })
+    match trust_options {
+        Some(_) => Some(TcpSession {
+            session: None,
+            route: rb.into(),
+        }),
+        None => Some(TcpSession {
+            session: Some((sessions, session_id)),
+            route: rb.into(),
+        }),
+    }
 }
 
 /// Try to convert a multi-address to an Ockam route.
 #[deprecated]
 pub async fn multiaddr_to_route(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Route> {
+    // Guaranteed to be called when we use Tcp connection without a secure channel
+    let trust_options = TcpConnectionTrustOptions::new();
     let mut rb = Route::new();
     let mut it = ma.iter().peekable();
     while let Some(p) = it.next() {
@@ -183,14 +189,20 @@ pub async fn multiaddr_to_route(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Ro
                 let ip4 = p.cast::<Ip4>()?;
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV4::new(*ip4, *port);
-                let addr = tcp.connect(socket_addr.to_string()).await.ok()?;
+                let addr = tcp
+                    .connect_trust(socket_addr.to_string(), trust_options.clone())
+                    .await
+                    .ok()?;
                 rb = rb.append(addr)
             }
             Ip6::CODE => {
                 let ip6 = p.cast::<Ip6>()?;
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV6::new(*ip6, *port, 0, 0);
-                let addr = tcp.connect(socket_addr.to_string()).await.ok()?;
+                let addr = tcp
+                    .connect_trust(socket_addr.to_string(), trust_options.clone())
+                    .await
+                    .ok()?;
                 rb = rb.append(addr)
             }
             DnsAddr::CODE => {
@@ -198,7 +210,10 @@ pub async fn multiaddr_to_route(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Ro
                 if let Some(p) = it.peek() {
                     if p.code() == Tcp::CODE {
                         let port = p.cast::<Tcp>()?;
-                        let addr = tcp.connect(format!("{}:{}", &*host, *port)).await.ok()?;
+                        let addr = tcp
+                            .connect_trust(format!("{}:{}", &*host, *port), trust_options.clone())
+                            .await
+                            .ok()?;
                         rb = rb.append(addr);
                         let _ = it.next();
                         continue;

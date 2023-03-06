@@ -10,7 +10,7 @@ use crate::nodes::models::secure_channel::{
 };
 use crate::nodes::registry::Registry;
 use crate::nodes::NodeManager;
-use crate::DefaultAddress;
+use crate::{create_tcp_session, DefaultAddress};
 use minicbor::Decoder;
 use ockam::identity::TrustEveryonePolicy;
 use ockam::{Address, Result, Route};
@@ -19,7 +19,10 @@ use ockam_core::sessions::{SessionId, Sessions};
 use ockam_core::{route, AsyncTryClone, CowStr};
 use ockam_identity::authenticated_storage::AuthenticatedStorage;
 
-use ockam_identity::{Identity, IdentityIdentifier, IdentityVault, TrustMultiIdentifiersPolicy};
+use ockam_identity::{
+    Identity, IdentityIdentifier, IdentityVault, SecureChannelListenerTrustOptions,
+    SecureChannelTrustOptions, TrustMultiIdentifiersPolicy,
+};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
@@ -49,9 +52,12 @@ impl NodeManager {
         sc_route: Route,
         authorized_identifiers: Option<Vec<IdentityIdentifier>>,
         timeout: Option<Duration>,
+        session: Option<(Sessions, SessionId)>,
     ) -> Result<Address> {
         // If channel was already created, do nothing.
         if let Some(channel) = self.registry.secure_channels.get_by_route(&sc_route) {
+            // Actually should not happen, since every time a new TCP connection is created, so the
+            // route is different
             let addr = channel.addr();
             debug!(%addr, "Using cached secure channel");
             return Ok(addr.clone());
@@ -60,22 +66,23 @@ impl NodeManager {
 
         debug!(%sc_route, "Creating secure channel");
         let timeout = timeout.unwrap_or(Duration::from_secs(120));
-        let sc_addr = match authorized_identifiers.clone() {
-            Some(ids) => {
-                identity
-                    .create_secure_channel_extended(
-                        sc_route.clone(),
-                        TrustMultiIdentifiersPolicy::new(ids),
-                        timeout,
-                    )
-                    .await
+        let trust_options = SecureChannelTrustOptions::new();
+
+        let trust_options = match session {
+            Some((sessions, session_id)) => {
+                trust_options.with_ciphertext_session(&sessions, &session_id)
             }
-            None => {
-                identity
-                    .create_secure_channel_extended(sc_route.clone(), TrustEveryonePolicy, timeout)
-                    .await
-            }
-        }?;
+            None => trust_options,
+        };
+
+        let trust_options = match authorized_identifiers.clone() {
+            Some(ids) => trust_options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
+            None => trust_options.with_trust_policy(TrustEveryonePolicy),
+        };
+
+        let sc_addr = identity
+            .create_secure_channel_extended_trust(sc_route.clone(), trust_options, timeout)
+            .await?;
 
         debug!(%sc_route, %sc_addr, "Created secure channel");
 
@@ -124,7 +131,13 @@ impl NodeManager {
         };
 
         let sc_addr = self
-            .create_secure_channel_internal(&identity, sc_route, authorized_identifiers, timeout)
+            .create_secure_channel_internal(
+                &identity,
+                sc_route,
+                authorized_identifiers,
+                timeout,
+                session,
+            )
             .await?;
 
         // TODO: Determine when we can remove this? Or find a better way to determine
@@ -206,21 +219,15 @@ impl NodeManager {
             self.identity()?.async_try_clone().await?
         };
 
-        match authorized_identifiers {
-            Some(ids) => {
-                identity
-                    .create_secure_channel_listener(
-                        addr.clone(),
-                        TrustMultiIdentifiersPolicy::new(ids),
-                    )
-                    .await
-            }
-            None => {
-                identity
-                    .create_secure_channel_listener(addr.clone(), TrustEveryonePolicy)
-                    .await
-            }
-        }?;
+        let trust_options = SecureChannelListenerTrustOptions::new(); // FIXME: add session_id
+        let trust_options = match authorized_identifiers {
+            Some(ids) => trust_options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
+            None => trust_options.with_trust_policy(TrustEveryonePolicy),
+        };
+
+        identity
+            .create_secure_channel_listener_trust(addr.clone(), trust_options)
+            .await?;
 
         self.registry
             .secure_channel_listeners
@@ -302,20 +309,20 @@ impl NodeManagerWorker {
 
         // TODO: Improve error handling + move logic into CreateSecureChannelRequest
         let addr = MultiAddr::try_from(addr.as_ref()).map_err(map_multiaddr_err)?;
-        let route = crate::multiaddr_to_route(&addr, &node_manager.tcp_transport)
+        let tcp_session = create_tcp_session(&addr, &node_manager.tcp_transport)
             .await
             .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
 
         let channel = node_manager
             .create_secure_channel_impl(
-                route,
+                tcp_session.route,
                 authorized_identifiers,
                 credential_exchange_mode,
                 timeout,
                 identity,
                 ctx,
                 credential_name,
-                None,
+                tcp_session.session,
             )
             .await?;
 

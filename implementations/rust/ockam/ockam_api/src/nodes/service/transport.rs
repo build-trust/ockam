@@ -51,11 +51,15 @@ impl NodeManagerWorker {
         let res = match (tt, tm) {
             (Tcp, Listen) => node_manager
                 .tcp_transport
+                // We don't use Sessions for listeners and connections created manually
+                // TODO: Add that functionality
                 .listen(&addr)
                 .await
                 .map(|(socket, worker_address)| (socket.to_string(), worker_address)),
             (Tcp, Connect) => node_manager
                 .tcp_transport
+                // We don't use Sessions for listeners and connections created manually
+                // TODO: Add that functionality
                 .connect(&socket_addr)
                 .await
                 .map(|worker_address| (socket_addr, worker_address)),

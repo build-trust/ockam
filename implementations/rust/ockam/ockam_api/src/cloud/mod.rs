@@ -82,18 +82,15 @@ mod node {
 
     use ockam_core::api::RequestBuilder;
     use ockam_core::{self, route, AsyncTryClone, CowStr, Result};
-    use ockam_identity::{IdentityIdentifier, TrustIdentifierPolicy};
+    use ockam_identity::{IdentityIdentifier, SecureChannelTrustOptions, TrustIdentifierPolicy};
     use ockam_multiaddr::MultiAddr;
     use ockam_node::api::request_with_timeout;
     use ockam_node::{Context, DEFAULT_TIMEOUT};
 
     use crate::cloud::OCKAM_CONTROLLER_IDENTITY_ID;
     use crate::error::ApiError;
-    use crate::nodes::connection::Connection;
     use crate::nodes::{NodeManager, NodeManagerWorker};
-    use crate::{local_multiaddr_to_route, StaticFiles};
-
-    const TARGET: &str = "ockam_api::nodemanager::service";
+    use crate::StaticFiles;
 
     impl NodeManager {
         /// Load controller identity id from file.
@@ -189,15 +186,20 @@ mod node {
             };
             let sc = {
                 let node_manager = self.get().read().await;
-                let cloud_route =
-                    crate::multiaddr_to_route(&cloud_multiaddr, &node_manager.tcp_transport)
+                let cloud_session =
+                    crate::create_tcp_session(&cloud_multiaddr, &node_manager.tcp_transport)
                         .await
                         .ok_or_else(|| ApiError::generic("Invalid Multiaddr"))?;
+                let trust_options = SecureChannelTrustOptions::new().with_trust_policy(
+                    TrustIdentifierPolicy::new(node_manager.controller_identity_id()),
+                );
+                let trust_options = if let Some((sessions, session_id)) = cloud_session.session {
+                    trust_options.with_ciphertext_session(&sessions, &session_id)
+                } else {
+                    trust_options
+                };
                 identity
-                    .create_secure_channel(
-                        cloud_route,
-                        TrustIdentifierPolicy::new(node_manager.controller_identity_id()),
-                    )
+                    .create_secure_channel_trust(cloud_session.route, trust_options)
                     .await?
             };
             let route = route![&sc.to_string(), api_service];
