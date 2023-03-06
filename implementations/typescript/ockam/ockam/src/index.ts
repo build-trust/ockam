@@ -63,3 +63,5 @@ export function example3() {
 
   node.route({ onwardRoute: ["h1", "h2", "h3", "echoer"], returnRoute: ["app"], payload: "hello" })
 }
+
+example3();
