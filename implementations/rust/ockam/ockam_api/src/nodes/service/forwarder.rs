@@ -34,9 +34,8 @@ impl NodeManagerWorker {
 
         debug!(addr = %req.address(), alias = ?req.alias(), "Handling CreateForwarder request");
 
-        let tcp_transport = node_manager.tcp_transport.async_try_clone().await?;
-        let connection = Connection::new(&tcp_transport, ctx, req.address())
-            .with_authorized_identities(req.authorized());
+        let connection =
+            Connection::new(ctx, req.address()).with_authorized_identity(req.authorized());
 
         let (sec_chan, suffix) = node_manager.connect(connection).await?;
 
@@ -119,9 +118,8 @@ fn replacer(
                 let prev = try_multiaddr_to_addr(&prev)?;
                 let mut this = manager.write().await;
                 let _ = this.delete_secure_channel(&prev).await;
-                let tcp_transport = this.tcp_transport.async_try_clone().await?;
-                let connection = Connection::new(&tcp_transport, ctx.as_ref(), &addr)
-                    .with_authorized_identities(auth)
+                let connection = Connection::new(ctx.as_ref(), &addr)
+                    .with_authorized_identity(auth)
                     .with_timeout(util::MAX_CONNECT_TIME);
                 let (sec, rest) = this.connect(connection).await?;
                 let a = sec.clone().try_with(&rest)?;

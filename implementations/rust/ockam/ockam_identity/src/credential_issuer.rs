@@ -204,6 +204,7 @@ impl CredentialIssuerClient {
 #[ockam_core::async_trait]
 impl CredentialIssuerApi for CredentialIssuerClient {
     async fn public_identity(&self) -> Result<PublicIdentity> {
+        // TODO: Create a tcp connection here + use sessions
         let channel = self
             .identity
             .create_secure_channel(self.credential_issuer_route.clone(), TrustEveryonePolicy)
@@ -220,6 +221,7 @@ impl CredentialIssuerApi for CredentialIssuerClient {
     }
 
     async fn get_credential(&self, subject: &IdentityIdentifier) -> Result<Option<Credential>> {
+        // TODO: Create a tcp connection here + use sessions
         let channel = self
             .identity
             .create_secure_channel(self.credential_issuer_route.clone(), TrustEveryonePolicy)

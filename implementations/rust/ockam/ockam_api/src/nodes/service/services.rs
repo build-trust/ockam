@@ -23,8 +23,8 @@ use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
 use crate::uppercase::Uppercase;
 use crate::vault::VaultService;
-use crate::DefaultAddress;
-use crate::{actions, multiaddr_to_route, resources};
+use crate::{actions, resources};
+use crate::{local_multiaddr_to_route, DefaultAddress};
 use core::time::Duration;
 use minicbor::Decoder;
 use ockam::{Address, AsyncTryClone, Context, Result};
@@ -440,15 +440,13 @@ impl NodeManager {
         kind: KafkaServiceKind,
     ) -> Result<()> {
         let identity = self.identity()?.async_try_clone().await?;
-        let tcp_transport = self.tcp_transport.async_try_clone().await?;
-        let connection = Connection::new(&tcp_transport, context, &project_route_multiaddr)
-            .with_authorized_identities(identity.identifier().clone())
+        let connection = Connection::new(context, &project_route_multiaddr)
+            .with_authorized_identity(identity.identifier().clone())
             .with_timeout(Duration::from_secs(60));
         let (maybe_tunnel_multiaddr, suffix_address) = self.connect(connection).await?;
 
         let project_multiaddr = maybe_tunnel_multiaddr.try_with(&suffix_address)?;
-        let project_route = multiaddr_to_route(&project_multiaddr, &self.tcp_transport)
-            .await
+        let project_route = local_multiaddr_to_route(&project_multiaddr)
             .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
 
         let bootstrap_address_route = route![

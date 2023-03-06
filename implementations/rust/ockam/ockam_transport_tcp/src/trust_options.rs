@@ -9,7 +9,7 @@ pub(crate) struct TcpConnectionAccessControl {
 }
 
 /// Trust Options for a TCP connection
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct TcpConnectionTrustOptions {
     pub(crate) session: Option<(Sessions, SessionId)>,
 }
