@@ -1,0 +1,149 @@
+name: Elixir
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.github/workflows/elixir.yml'
+      - '.github/actions/**'
+      - '**.ex'
+      - '**.exs'
+      - '**/mix.lock'
+      - '**/priv/**'
+      - '**/native/**'
+      - '**.rs'
+      - '**.toml'
+      - '**/Cargo.lock'
+      - '**.gradle'
+      - 'tools/gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+
+jobs:
+  lint_ockam_vault_software:
+    name: Elixir - lint_ockam_vault_software
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - lint_ockam_vault_software - Ignored"'
+
+  lint_ockam:
+    name: Elixir - lint_ockam
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - lint_ockam - Ignored"'
+
+  lint_ockam_kafka:
+    name: Elixir - lint_ockam_kafka
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - lint_ockam_kafka - Ignored"'
+
+  lint_ockam_services:
+    name: Elixir - lint_ockam_services
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - lint_ockam_services - Ignored"'
+
+  lint_ockam_metrics:
+    name: Elixir - lint_ockam_metrics
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - lint_ockam_metrics - Ignored"'
+
+  lint_ockam_healthcheck:
+    name: Elixir - lint_ockam_healthcheck
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - lint_ockam_healthcheck - Ignored"'
+
+  lint_ockam_cloud_node:
+    name: Elixir - lint_ockam_cloud_node
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - lint_ockam_cloud_node - Ignored"'
+
+  build_ockam_vault_software:
+    name: Elixir - build_ockam_vault_software
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - build_ockam_vault_software - Ignored"'
+
+  build_ockam:
+    name: Elixir - build_ockam
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - build_ockam - Ignored"'
+
+  build_ockam_kafka:
+    name: Elixir - build_ockam_kafka
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - build_ockam_kafka - Ignored"'
+
+  build_ockam_services:
+    name: Elixir - build_ockam_services
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - build_ockam_services - Ignored"'
+
+  build_ockam_metrics:
+    name: Elixir - build_ockam_metrics
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - build_ockam_metrics - Ignored"'
+
+  build_ockam_healthcheck:
+    name: Elixir - build_ockam_healthcheck
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - build_ockam_healthcheck - Ignored"'
+
+  build_ockam_cloud_node:
+    name: Elixir - build_ockam_cloud_node
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - build_ockam_cloud_node - Ignored"'
+
+  test_ockam_vault_software:
+    name: Elixir - test_ockam_vault_software
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - test_ockam_vault_software - Ignored"'
+
+  test_ockam:
+    name: Elixir - test_ockam
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - test_ockam - Ignored"'
+
+  test_ockam_kafka:
+    name: Elixir - test_ockam_kafka
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - test_ockam_kafka - Ignored"'
+
+  test_ockam_services:
+    name: Elixir - test_ockam_services
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - test_ockam_services - Ignored"'
+
+  test_ockam_metrics:
+    name: Elixir - test_ockam_metrics
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - test_ockam_metrics - Ignored"'
+
+  test_ockam_healthcheck:
+    name: Elixir - test_ockam_healthcheck
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - test_ockam_healthcheck - Ignored"'
+
+  test_ockam_cloud_node:
+    name: Elixir - test_ockam_cloud_node
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Elixir - test_ockam_cloud_node - Ignored"'
