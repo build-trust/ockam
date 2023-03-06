@@ -1,0 +1,58 @@
+name: Rust
+
+permissions:
+  contents: read
+
+on:
+  merge_group:
+  pull_request:
+    paths:
+      - ".github/workflows/rust-link-cargo-lock.yml"
+      - ".github/actions/**"
+      - "**.toml"
+      - "**/Cargo.lock"
+  push:
+    paths:
+      - ".github/workflows/rust-link-cargo-lock.yml"
+      - ".github/actions/**"
+      - "**.toml"
+      - "**/Cargo.lock"
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Git commit sha, on which, to run this workflow
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lint_cargo_lock:
+    name: Rust - lint_cargo_lock
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/build-trust/ockam-builder@sha256:26c5bba9deca18953043a3a2368ec6bb00035676965432f35be24f88e316363a
+    steps:
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+      - uses: ./.github/actions/cargo_home_cache
+      - uses: ./.github/actions/cargo_target_dir_cache
+      - name: Check whether Cargo.lock is same as CI-generated Cargo.lock
+        run: |
+          old_hash=`sha384sum Cargo.lock`
+          rm Cargo.lock
+          RUSTFLAGS='--cfg tokio_unstable -Dwarnings' cargo check
+          expected_hash=`sha384sum Cargo.lock`
+          if [ "$old_hash" = "$expected_hash" ]; then
+              echo "Cargo.lock hash matches CI-generated Cargo.lock hash"
+          else
+              echo "Cargo.lock hash does not match CI-generated Cargo.lock hash. Expected: $expected_hash Got: $old_hash" && exit 1
+          fi
+      - uses: ./.github/actions/cargo_target_dir_pre_cache

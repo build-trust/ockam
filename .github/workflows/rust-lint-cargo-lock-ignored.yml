@@ -1,0 +1,19 @@
+name: Rust
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths-ignore:
+      - ".github/workflows/rust-link-cargo-lock.yml"
+      - ".github/actions/**"
+      - "**.toml"
+      - "**/Cargo.lock"
+
+jobs:
+  lint_cargo_lock:
+    name: Rust - lint_cargo_lock
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "Rust - lint_cargo_lock - Ignored"'
