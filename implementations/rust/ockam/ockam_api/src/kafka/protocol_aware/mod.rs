@@ -1,6 +1,6 @@
+use crate::kafka::secure_channel_map::{KafkaSecureChannelController, UniqueSecureChannelId};
 use kafka_protocol::messages::ApiKey;
 use minicbor::{Decode, Encode};
-
 use ockam_core::compat::{
     collections::HashMap,
     fmt::Debug,
@@ -10,11 +10,10 @@ use ockam_core::AsyncTryClone;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 
-use crate::kafka::secure_channel_map::{KafkaSecureChannelController, UniqueSecureChannelId};
-
 mod request;
 mod response;
-mod utils;
+mod tests;
+pub(super) mod utils;
 
 #[derive(Clone, Debug)]
 struct RequestInfo {
