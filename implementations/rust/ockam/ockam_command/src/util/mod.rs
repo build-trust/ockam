@@ -13,7 +13,7 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 pub use config::*;
-use ockam::{Address, Context, NodeBuilder, Route, TcpTransport};
+use ockam::{Address, Context, NodeBuilder, Route, TcpConnectionTrustOptions, TcpTransport};
 use ockam_api::cli_state::{CliState, NodeState};
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::nodes::NODEMANAGER_ADDR;
@@ -196,11 +196,13 @@ impl<'a> Rpc<'a> {
                         let tcp = TcpTransport::create(ctx).await?;
                         // Connection without a Session gives exclusive access to the node
                         // that runs that connection, make sure it's intended
-                        tcp.connect(addr_str).await?
+                        tcp.connect(addr_str, TcpConnectionTrustOptions::new())
+                            .await?
                     }
                     Some(tcp) => {
                         // Create a new connection anyway
-                        tcp.connect(addr_str).await?
+                        tcp.connect(addr_str, TcpConnectionTrustOptions::new())
+                            .await?
                         // Connection without a Session gives exclusive access to the node
                         // that runs that connection, make sure it's intended
                     }

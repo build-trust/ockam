@@ -362,7 +362,7 @@ mod test {
     use super::*;
     use crate::workers::Echoer;
     use ockam_core::route;
-    use ockam_transport_tcp::TcpTransport;
+    use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpTransport};
     use std::env;
 
     fn get_cloud_address() -> Option<String> {
@@ -391,7 +391,9 @@ mod test {
             .await?;
 
         let tcp = TcpTransport::create(ctx).await?;
-        let node_in_hub = tcp.connect(cloud_address).await?;
+        let node_in_hub = tcp
+            .connect(cloud_address, TcpConnectionTrustOptions::new())
+            .await?;
 
         let remote_info = RemoteForwarder::create(ctx, node_in_hub.clone(), AllowAll).await?;
 
@@ -422,7 +424,9 @@ mod test {
 
         let tcp = TcpTransport::create(ctx).await?;
 
-        let node_in_hub = tcp.connect(cloud_address).await?;
+        let node_in_hub = tcp
+            .connect(cloud_address, TcpConnectionTrustOptions::new())
+            .await?;
         let _ = RemoteForwarder::create_static(ctx, node_in_hub.clone(), "alias", AllowAll).await?;
 
         let resp = ctx

@@ -81,7 +81,7 @@ impl NodeManager {
         };
 
         let sc_addr = identity
-            .create_secure_channel_extended_trust(sc_route.clone(), trust_options, timeout)
+            .create_secure_channel_extended(sc_route.clone(), trust_options, timeout)
             .await?;
 
         debug!(%sc_route, %sc_addr, "Created secure channel");
@@ -226,7 +226,7 @@ impl NodeManager {
         };
 
         identity
-            .create_secure_channel_listener_trust(addr.clone(), trust_options)
+            .create_secure_channel_listener(addr.clone(), trust_options)
             .await?;
 
         self.registry

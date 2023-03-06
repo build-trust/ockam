@@ -2,7 +2,7 @@ use ockam_core::compat::rand::{self, Rng};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{route, AllowAll, Mailboxes, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
-use ockam_transport_tcp::TcpTransport;
+use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions, TcpTransport};
 
 pub struct Echoer;
 
@@ -19,7 +19,9 @@ impl Worker for Echoer {
 #[ockam_macros::test]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
     let transport = TcpTransport::create(ctx).await?;
-    let (listener_address, _) = transport.listen("127.0.0.1:0").await?;
+    let (listener_address, _) = transport
+        .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+        .await?;
     WorkerBuilder::with_mailboxes(
         Mailboxes::main("echoer", Arc::new(AllowAll), Arc::new(AllowAll)),
         Echoer,
@@ -27,7 +29,12 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
     .start(ctx)
     .await?;
 
-    let addr = transport.connect(listener_address.to_string()).await?;
+    let addr = transport
+        .connect(
+            listener_address.to_string(),
+            TcpConnectionTrustOptions::new(),
+        )
+        .await?;
 
     // Sender
     {

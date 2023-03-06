@@ -1,7 +1,7 @@
 use ockam_core::compat::rand::{self, Rng};
 use ockam_core::{route, Result};
 use ockam_node::Context;
-use ockam_transport_tcp::TcpTransport;
+use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpTransport};
 use std::time::Duration;
 use tracing::info;
 
@@ -16,7 +16,12 @@ async fn tcp_keepalive_test(ctx: &mut Context) -> Result<()> {
         .map(char::from)
         .collect();
 
-    let cloud = tcp.connect("1.node.ockam.network:4000").await?;
+    let cloud = tcp
+        .connect(
+            "1.node.ockam.network:4000",
+            TcpConnectionTrustOptions::new(),
+        )
+        .await?;
 
     // Send the message to the cloud node echoer
     // Wait to receive an echo and print it.

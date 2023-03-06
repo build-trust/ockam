@@ -88,3 +88,25 @@ impl SecureChannelListenerTrustOptions {
         }
     }
 }
+
+// Keeps backwards compatibility to allow creating secure channel by only specifying a TrustPolicy
+// TODO: remove in the future to make API safer
+impl<T> From<T> for SecureChannelTrustOptions
+where
+    T: TrustPolicy,
+{
+    fn from(trust_policy: T) -> Self {
+        Self::new().with_trust_policy(trust_policy)
+    }
+}
+
+// Keeps backwards compatibility to allow creating secure channel by only specifying a TrustPolicy
+// TODO: remove in the future to make API safer
+impl<T> From<T> for SecureChannelListenerTrustOptions
+where
+    T: TrustPolicy,
+{
+    fn from(trust_policy: T) -> Self {
+        Self::new().with_trust_policy(trust_policy)
+    }
+}

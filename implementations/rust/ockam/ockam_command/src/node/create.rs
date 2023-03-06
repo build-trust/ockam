@@ -29,7 +29,7 @@ use crate::{
     node::util::{add_project_authority_from_project_info, init_node_state},
     util::RpcBuilder,
 };
-use ockam::{Address, AsyncTryClone};
+use ockam::{Address, AsyncTryClone, TcpConnectionTrustOptions, TcpListenerTrustOptions};
 use ockam::{Context, TcpTransport};
 use ockam_api::{
     bootstrapped_identities_store::PreTrustedIdentities,
@@ -253,7 +253,7 @@ async fn run_foreground_node(
     // This listener gives exclusive access to our node, make sure this is intended
     // + make sure this tcp address is only reachable from the local loopback and/or intended
     // network
-    let (socket_addr, listener_addr) = tcp.listen(&bind).await?;
+    let (socket_addr, listener_addr) = tcp.listen(&bind, TcpListenerTrustOptions::new()).await?;
 
     let node_state = opts.state.nodes.get(&node_name)?;
     let setup_config = node_state.setup()?;
@@ -395,7 +395,9 @@ async fn start_services(
     // Checking if node accepts connections
     // Connection without a Session gives exclusive access to the node
     // that runs that connection, make sure it's intended
-    let addr = tcp.connect(addr.to_string()).await?;
+    let addr = tcp
+        .connect(addr.to_string(), TcpConnectionTrustOptions::new())
+        .await?;
 
     if let Some(cfg) = config.vault {
         if !cfg.disabled {

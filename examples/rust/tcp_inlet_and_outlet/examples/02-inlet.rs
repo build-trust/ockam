@@ -1,5 +1,5 @@
 use ockam::access_control::AllowAll;
-use ockam::{route, Context, Result, TcpTransport};
+use ockam::{route, Context, Result, TcpConnectionTrustOptions, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -13,7 +13,9 @@ async fn main(ctx: Context) -> Result<()> {
     // by a second command line argument.
 
     let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
-    let outlet_connection = tcp.connect(&format!("127.0.0.1:{outlet_port}")).await?;
+    let outlet_connection = tcp
+        .connect(&format!("127.0.0.1:{outlet_port}"), TcpConnectionTrustOptions::new())
+        .await?;
     let route_to_outlet = route![outlet_connection, "outlet"];
 
     // Expect first command line argument to be the TCP address on which to start an Inlet

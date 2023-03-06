@@ -4,7 +4,7 @@ use ockam::{
     route,
     stream::Stream,
     vault::Vault,
-    Context, Result, Routed, TcpTransport, Worker,
+    Context, Result, Routed, TcpConnectionTrustOptions, TcpTransport, Worker,
 };
 
 struct Echoer;
@@ -48,7 +48,9 @@ async fn main(ctx: Context) -> Result<()> {
     // - a receiver (consumer) for the `alice_to_bob` stream
     // - a sender (producer) for the `bob_to_alice` stream.
 
-    let node_in_hub = tcp.connect("1.node.ockam.network:4000").await?;
+    let node_in_hub = tcp
+        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .await?;
     let b_to_a_stream_address = ockam::unique_with_prefix("bob_to_alice");
     let a_to_b_stream_address = ockam::unique_with_prefix("alice_to_bob");
 

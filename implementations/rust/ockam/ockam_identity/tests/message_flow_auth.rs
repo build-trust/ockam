@@ -55,10 +55,12 @@ async fn create_tcp_listener(ctx: &Context, with_session: bool) -> Result<TcpLis
         let sessions = Sessions::default();
         let session_id = sessions.generate_session_id();
         let trust_options = TcpListenerTrustOptions::new().with_session(&sessions, &session_id);
-        let (socket_addr, _) = tcp.listen_trust("127.0.0.1:0", trust_options).await?;
+        let (socket_addr, _) = tcp.listen("127.0.0.1:0", trust_options).await?;
         (socket_addr, Some((sessions, session_id)))
     } else {
-        let (socket_addr, _) = tcp.listen("127.0.0.1:0").await?;
+        let (socket_addr, _) = tcp
+            .listen("127.0.0.1:0", TcpListenerTrustOptions::new())
+            .await?;
         (socket_addr, None)
     };
 
@@ -86,12 +88,12 @@ async fn create_connection(
         let sessions = Sessions::default();
         let session_id = sessions.generate_session_id();
         let trust_options = TcpConnectionTrustOptions::new().with_session(&sessions, &session_id);
-        let address = tcp
-            .connect_trust(socket_addr.to_string(), trust_options)
-            .await?;
+        let address = tcp.connect(socket_addr.to_string(), trust_options).await?;
         (address, Some((sessions, session_id)))
     } else {
-        let address = tcp.connect(socket_addr.to_string()).await?;
+        let address = tcp
+            .connect(socket_addr.to_string(), TcpConnectionTrustOptions::new())
+            .await?;
         (address, None)
     };
 
@@ -122,17 +124,17 @@ async fn create_secure_channel_listener(
 ) -> Result<SecureChannelListenerInfo> {
     let identity = Identity::create(ctx, &Vault::create()).await?;
 
-    if let Some((sessions, session_id)) = session {
-        let trust_options =
-            SecureChannelListenerTrustOptions::new().with_session(sessions, session_id);
-        identity
-            .create_secure_channel_listener_trust("listener", trust_options)
-            .await?;
+    let trust_options =
+        SecureChannelListenerTrustOptions::new().with_trust_policy(TrustEveryonePolicy);
+    let trust_options = if let Some((sessions, session_id)) = session {
+        trust_options.with_session(sessions, session_id)
     } else {
-        identity
-            .create_secure_channel_listener("listener", TrustEveryonePolicy)
-            .await?;
-    }
+        trust_options
+    };
+
+    identity
+        .create_secure_channel_listener("listener", trust_options)
+        .await?;
 
     let info = SecureChannelListenerInfo { identity };
 
@@ -150,23 +152,19 @@ async fn create_secure_channel(
 ) -> Result<SecureChannelInfo> {
     let identity = Identity::create(ctx, &Vault::create()).await?;
 
-    let address = if let Some((sessions, session_id)) = &connection.session {
-        let trust_options =
-            SecureChannelTrustOptions::new().with_ciphertext_session(sessions, session_id);
-        identity
-            .create_secure_channel_trust(
-                route![connection.address.clone(), "listener"],
-                trust_options,
-            )
-            .await?
+    let trust_options = SecureChannelTrustOptions::new();
+    let trust_options = if let Some((sessions, session_id)) = &connection.session {
+        trust_options.with_ciphertext_session(sessions, session_id)
     } else {
-        identity
-            .create_secure_channel(
-                route![connection.address.clone(), "listener"],
-                TrustEveryonePolicy,
-            )
-            .await?
+        trust_options
     };
+
+    let address = identity
+        .create_secure_channel(
+            route![connection.address.clone(), "listener"],
+            trust_options,
+        )
+        .await?;
 
     let info = SecureChannelInfo { identity, address };
 

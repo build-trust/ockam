@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use ockam::identity::{Identity, PublicIdentity};
-use ockam::{Context, TcpTransport};
+use ockam::{Context, TcpListenerTrustOptions, TcpTransport};
 use ockam_api::cli_state;
 use ockam_api::config::cli::{self, Authority};
 use ockam_api::nodes::models::transport::{TransportMode, TransportType};
@@ -69,7 +69,8 @@ pub async fn start_embedded_node_with_vault_and_identity(
     // This listener gives exclusive access to our node, make sure this is intended
     // + make sure this tcp address is only reachable from the local loopback and/or intended
     // network
-    let (socket_addr, listened_worker_address) = tcp.listen(&bind).await?;
+    let (socket_addr, listened_worker_address) =
+        tcp.listen(&bind, TcpListenerTrustOptions::new()).await?;
 
     let projects = cfg.inner().lookup().projects().collect();
 

@@ -20,14 +20,14 @@ async fn main(mut ctx: Context) -> Result<()> {
 
     // Create a client to the credential issuer
     let sessions = Sessions::default();
-    let session_id = sessions.generate_session_id();
-    let issuer_tcp_trust_options = TcpConnectionTrustOptions::new().with_session(&sessions, &session_id);
-    let issuer_connection = tcp.connect_trust("127.0.0.1:5000", issuer_tcp_trust_options).await?;
+    let issuer_session_id = sessions.generate_session_id();
+    let issuer_tcp_trust_options = TcpConnectionTrustOptions::new().with_session(&sessions, &issuer_session_id);
+    let issuer_connection = tcp.connect("127.0.0.1:5000", issuer_tcp_trust_options).await?;
     let issuer_trust_options = SecureChannelTrustOptions::new()
         .with_trust_policy(TrustEveryonePolicy)
-        .with_ciphertext_session(&sessions, &session_id);
+        .with_ciphertext_session(&sessions, &issuer_session_id);
     let issuer_channel = alice
-        .create_secure_channel_trust(route![issuer_connection, "issuer_listener"], issuer_trust_options)
+        .create_secure_channel(route![issuer_connection, "issuer_listener"], issuer_trust_options)
         .await?;
     let issuer = CredentialIssuerClient::new(&ctx, route![issuer_channel]).await?;
 
@@ -37,9 +37,14 @@ async fn main(mut ctx: Context) -> Result<()> {
     alice.set_credential(credential).await;
 
     // Create a secure channel to Bob's node
-    let bob_connection = tcp.connect("127.0.0.1:4000").await?;
+    let bob_session_id = sessions.generate_session_id();
+    let bob_tcp_trust_options = TcpConnectionTrustOptions::new().with_session(&sessions, &bob_session_id);
+    let bob_connection = tcp.connect("127.0.0.1:4000", bob_tcp_trust_options).await?;
+    let channel_trust_options = SecureChannelTrustOptions::new()
+        .with_trust_policy(TrustEveryonePolicy)
+        .with_ciphertext_session(&sessions, &bob_session_id);
     let channel = alice
-        .create_secure_channel(route![bob_connection, "bob_listener"], TrustEveryonePolicy)
+        .create_secure_channel(route![bob_connection, "bob_listener"], channel_trust_options)
         .await?;
     println!("created a secure channel at {channel:?}");
 

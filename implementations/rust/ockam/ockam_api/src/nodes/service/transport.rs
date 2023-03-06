@@ -5,6 +5,7 @@ use crate::nodes::service::{random_alias, Alias, Transports};
 use minicbor::Decoder;
 use ockam::Result;
 use ockam_core::api::{Request, Response, ResponseBuilder};
+use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions};
 
 use super::NodeManagerWorker;
 
@@ -53,14 +54,14 @@ impl NodeManagerWorker {
                 .tcp_transport
                 // We don't use Sessions for listeners and connections created manually
                 // TODO: Add that functionality
-                .listen(&addr)
+                .listen(&addr, TcpListenerTrustOptions::new())
                 .await
                 .map(|(socket, worker_address)| (socket.to_string(), worker_address)),
             (Tcp, Connect) => node_manager
                 .tcp_transport
                 // We don't use Sessions for listeners and connections created manually
                 // TODO: Add that functionality
-                .connect(&socket_addr)
+                .connect(&socket_addr, TcpConnectionTrustOptions::new())
                 .await
                 .map(|worker_address| (socket_addr, worker_address)),
             _ => unimplemented!(),

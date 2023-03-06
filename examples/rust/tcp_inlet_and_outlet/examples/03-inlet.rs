@@ -1,6 +1,6 @@
 use ockam::access_control::AllowAll;
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, vault::Vault, Context, Result, TcpTransport};
+use ockam::{route, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -20,7 +20,9 @@ async fn main(ctx: Context) -> Result<()> {
     let vault = Vault::create();
     let e = Identity::create(&ctx, &vault).await?;
     let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
-    let outlet_connection = tcp.connect(&format!("127.0.0.1:{outlet_port}")).await?;
+    let outlet_connection = tcp
+        .connect(&format!("127.0.0.1:{outlet_port}"), TcpConnectionTrustOptions::new())
+        .await?;
     let r = route![outlet_connection, "secure_channel_listener"];
     let channel = e.create_secure_channel(r, TrustEveryonePolicy).await?;
 

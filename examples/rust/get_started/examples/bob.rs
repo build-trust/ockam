@@ -1,6 +1,6 @@
 use ockam::access_control::AllowAll;
 use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{remote::RemoteForwarder, Routed, TcpTransport, Worker};
+use ockam::{remote::RemoteForwarder, Routed, TcpConnectionTrustOptions, TcpTransport, Worker};
 use ockam::{vault::Vault, Context, Result};
 
 struct Echoer;
@@ -49,7 +49,9 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
-    let node_in_hub = tcp.connect("1.node.ockam.network:4000").await?;
+    let node_in_hub = tcp
+        .connect("1.node.ockam.network:4000", TcpConnectionTrustOptions::new())
+        .await?;
     let forwarder = RemoteForwarder::create(&ctx, node_in_hub, AllowAll).await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address for Bob is:");
