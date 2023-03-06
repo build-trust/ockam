@@ -441,7 +441,7 @@ impl NodeManager {
                 }
                 None => {
                     // We don't use a secure channel here, should be safe without sessions
-                    let route = multiaddr_to_route(&addr, transport)
+                    let route = multiaddr_to_route(addr, transport)
                         .await
                         .ok_or_else(|| ApiError::generic("invalid multiaddr"))?;
                     Ok((

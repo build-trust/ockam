@@ -177,7 +177,6 @@ pub async fn create_tcp_session(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Tc
 }
 
 /// Try to convert a multi-address to an Ockam route.
-#[deprecated]
 pub async fn multiaddr_to_route(ma: &MultiAddr, tcp: &TcpTransport) -> Option<Route> {
     // Guaranteed to be called when we use Tcp connection without a secure channel
     let trust_options = TcpConnectionTrustOptions::new();
