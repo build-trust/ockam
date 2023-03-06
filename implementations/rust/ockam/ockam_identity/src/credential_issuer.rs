@@ -15,7 +15,7 @@ use crate::authenticated_storage::{
     IdentityAttributeStorageWriter,
 };
 use crate::credential::{Credential, Timestamp};
-use crate::{Identity, IdentityIdentifier, PublicIdentity, TrustEveryonePolicy};
+use crate::{Identity, IdentityIdentifier, PublicIdentity};
 use serde::{Deserialize, Serialize};
 
 /// This struct provides a simplified credential issuer which can be used in test scenarios
@@ -181,21 +181,15 @@ pub enum CredentialIssuerResponse {
 /// Client access to an CredentialIssuer worker
 pub struct CredentialIssuerClient {
     ctx: Context,
-    identity: Identity<Vault, InMemoryStorage>,
     credential_issuer_route: Route,
 }
 
 impl CredentialIssuerClient {
     /// Create an access to an CredentialIssuer worker given a route to that worker
     /// It uses a Context to send and receive messages
-    pub async fn new(
-        ctx: &Context,
-        identity: &Identity<Vault, InMemoryStorage>,
-        issuer_route: Route,
-    ) -> Result<CredentialIssuerClient> {
+    pub async fn new(ctx: &Context, issuer_route: Route) -> Result<CredentialIssuerClient> {
         Ok(CredentialIssuerClient {
             ctx: ctx.async_try_clone().await?,
-            identity: identity.async_try_clone().await?,
             credential_issuer_route: issuer_route,
         })
     }
@@ -204,15 +198,12 @@ impl CredentialIssuerClient {
 #[ockam_core::async_trait]
 impl CredentialIssuerApi for CredentialIssuerClient {
     async fn public_identity(&self) -> Result<PublicIdentity> {
-        // TODO: Create a tcp connection here + use sessions
-        let channel = self
-            .identity
-            .create_secure_channel(self.credential_issuer_route.clone(), TrustEveryonePolicy)
-            .await?;
-
         let response = self
             .ctx
-            .send_and_receive(route![channel, "issuer"], GetPublicIdentity)
+            .send_and_receive(
+                route![self.credential_issuer_route.clone(), "issuer"],
+                GetPublicIdentity,
+            )
             .await?;
         match response {
             PublicIdentityResponse(identity) => Ok(identity),
@@ -221,15 +212,12 @@ impl CredentialIssuerApi for CredentialIssuerClient {
     }
 
     async fn get_credential(&self, subject: &IdentityIdentifier) -> Result<Option<Credential>> {
-        // TODO: Create a tcp connection here + use sessions
-        let channel = self
-            .identity
-            .create_secure_channel(self.credential_issuer_route.clone(), TrustEveryonePolicy)
-            .await?;
-
         let response = self
             .ctx
-            .send_and_receive(route![channel, "issuer"], GetCredential(subject.clone()))
+            .send_and_receive(
+                route![self.credential_issuer_route.clone(), "issuer"],
+                GetCredential(subject.clone()),
+            )
             .await?;
         match response {
             CredentialResponse(credential) => Ok(credential),

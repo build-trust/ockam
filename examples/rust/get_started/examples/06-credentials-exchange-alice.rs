@@ -1,7 +1,8 @@
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
-use ockam::identity::{Identity, TrustEveryonePolicy};
-use ockam::{route, vault::Vault, Context, Result, TcpTransport};
+use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy};
+use ockam::{route, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
+use ockam_core::sessions::Sessions;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
@@ -18,9 +19,17 @@ async fn main(mut ctx: Context) -> Result<()> {
     let alice = Identity::create_identity_with_secret(&ctx, vault, &key_id, secret).await?;
 
     // Create a client to the credential issuer
-    let issuer_connection = tcp.connect("127.0.0.1:5000").await?;
-    let issuer_route = route![issuer_connection, "issuer_listener"];
-    let issuer = CredentialIssuerClient::new(&ctx, &alice, issuer_route).await?;
+    let sessions = Sessions::default();
+    let session_id = sessions.generate_session_id();
+    let issuer_tcp_trust_options = TcpConnectionTrustOptions::new().with_session(&sessions, &session_id);
+    let issuer_connection = tcp.connect_trust("127.0.0.1:5000", issuer_tcp_trust_options).await?;
+    let issuer_trust_options = SecureChannelTrustOptions::new()
+        .with_trust_policy(TrustEveryonePolicy)
+        .with_ciphertext_session(&sessions, &session_id);
+    let issuer_channel = alice
+        .create_secure_channel_trust(route![issuer_connection, "issuer_listener"], issuer_trust_options)
+        .await?;
+    let issuer = CredentialIssuerClient::new(&ctx, route![issuer_channel]).await?;
 
     // Get a credential for Alice (this is done via a secure channel)
     let credential = issuer.get_credential(alice.identifier()).await?.unwrap();

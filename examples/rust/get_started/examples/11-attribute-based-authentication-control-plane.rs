@@ -125,7 +125,11 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // create a secure channel to the project first
     // we make sure that we indeed connect to the correct project on the Orchestrator
     let secure_channel_address = control_plane
-        .create_secure_channel_extended_trust(project.route(), project_trust_options, Duration::from_secs(120))
+        .create_secure_channel_extended_trust(
+            tcp_project_session.route,
+            project_trust_options,
+            Duration::from_secs(120),
+        )
         .await?;
     println!("secure channel to project: {secure_channel_address:?}");
 
