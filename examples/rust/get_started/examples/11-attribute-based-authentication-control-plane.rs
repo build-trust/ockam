@@ -1,13 +1,13 @@
 use hello_ockam::{create_token, import_project};
 use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential::OneTimeCode;
-use ockam::identity::{Identity, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
+use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy, TrustMultiIdentifiersPolicy};
 
 use ockam::abac::AbacAccessControl;
 use ockam::remote::RemoteForwarder;
 use ockam::{route, vault::Vault, Context, Result, TcpTransport};
 use ockam_api::authenticator::direct::{CredentialIssuerClient, RpcClient, TokenAcceptorClient};
-use ockam_api::DefaultAddress;
+use ockam_api::{create_tcp_session, DefaultAddress};
 use ockam_core::AllowAll;
 use std::sync::Arc;
 use std::time::Duration;
@@ -57,16 +57,21 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     //    to retrieve the node credential
 
     // Import the authority identity and route from the information file
-    let project = import_project(project_information_path, &vault, &tcp).await?;
+    let project = import_project(project_information_path, &vault).await?;
 
+    let tcp_session = create_tcp_session(&project.authority_route(), &tcp).await.unwrap(); // FIXME: Handle error
+    let trust_options = SecureChannelTrustOptions::new().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![
+        project.authority_public_identifier(),
+    ]));
+    let trust_options = if let Some((sessions, session_id)) = tcp_session.session {
+        trust_options.with_ciphertext_session(&sessions, &session_id)
+    } else {
+        trust_options
+    };
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let secure_channel = control_plane
-        .create_secure_channel_extended(
-            project.authority_route(),
-            TrustMultiIdentifiersPolicy::new(vec![project.authority_public_identifier()]),
-            Duration::from_secs(120),
-        )
+        .create_secure_channel_extended_trust(tcp_session.route, trust_options, Duration::from_secs(120))
         .await?;
 
     let token_acceptor = TokenAcceptorClient::new(
@@ -108,14 +113,19 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 5. create a forwarder on the Ockam orchestrator
 
+    let tcp_project_session = create_tcp_session(&project.route(), &tcp).await.unwrap(); // FIXME: Handle error
+    let project_trust_options = SecureChannelTrustOptions::new()
+        .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.identifier()]));
+    let project_trust_options = if let Some((sessions, session_id)) = tcp_project_session.session {
+        project_trust_options.with_ciphertext_session(&sessions, &session_id)
+    } else {
+        project_trust_options
+    };
+
     // create a secure channel to the project first
     // we make sure that we indeed connect to the correct project on the Orchestrator
     let secure_channel_address = control_plane
-        .create_secure_channel_extended(
-            project.route(),
-            TrustMultiIdentifiersPolicy::new(vec![project.identifier()]),
-            Duration::from_secs(120),
-        )
+        .create_secure_channel_extended_trust(project.route(), project_trust_options, Duration::from_secs(120))
         .await?;
     println!("secure channel to project: {secure_channel_address:?}");
 

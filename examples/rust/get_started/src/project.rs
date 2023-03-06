@@ -1,10 +1,8 @@
 use anyhow::anyhow;
 use ockam::identity::{IdentityIdentifier, PublicIdentity};
 use ockam::vault::Vault;
-use ockam::TcpTransport;
-use ockam_api::multiaddr_to_route;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Error, Result, Route};
+use ockam_core::{Error, Result};
 use ockam_multiaddr::MultiAddr;
 use serde_json::{Map, Value};
 use std::fs::File;
@@ -16,8 +14,8 @@ use std::str::FromStr;
 pub struct Project {
     pub project_identifier: IdentityIdentifier,
     pub authority_public_identity: PublicIdentity,
-    pub authority_route: Route,
-    pub project_route: Route,
+    pub authority_route: MultiAddr,
+    pub project_route: MultiAddr,
 }
 
 /// Accessors for a Project
@@ -38,19 +36,19 @@ impl Project {
     }
 
     /// Return the authority route
-    pub fn authority_route(&self) -> Route {
+    pub fn authority_route(&self) -> MultiAddr {
         self.authority_route.clone()
     }
 
     /// Return the project route
-    pub fn route(&self) -> Route {
+    pub fn route(&self) -> MultiAddr {
         self.project_route.clone()
     }
 }
 
 /// Import a project identity into a Vault from a project.json path
 /// and return a Project struct
-pub async fn import_project(path: &str, vault: &Vault, tcp: &TcpTransport) -> Result<Project> {
+pub async fn import_project(path: &str, vault: &Vault) -> Result<Project> {
     match read_json(path)? {
         Value::Object(values) => {
             let project_identifier = IdentityIdentifier::from_str(get_field_as_str(&values, "identity")?.as_str())?;
@@ -60,15 +58,12 @@ pub async fn import_project(path: &str, vault: &Vault, tcp: &TcpTransport) -> Re
                 PublicIdentity::import(&hex::decode(authority_identity).unwrap(), vault).await?;
 
             let authority_access_route = get_field_as_str(&values, "authority_access_route")?;
-            let authority_route: Route =
-                multiaddr_to_route(&MultiAddr::from_str(authority_access_route.as_str())?, tcp)
-                    .await
-                    .ok_or_else(|| error("incorrect multi address"))?;
+            let authority_route =
+                MultiAddr::from_str(authority_access_route.as_str()).map_err(|_| error("incorrect multi address"))?;
 
             let project_access_route = get_field_as_str(&values, "access_route")?;
-            let project_route: Route = multiaddr_to_route(&MultiAddr::from_str(project_access_route.as_str())?, tcp)
-                .await
-                .ok_or_else(|| error("incorrect multi address"))?;
+            let project_route =
+                MultiAddr::from_str(project_access_route.as_str()).map_err(|_| error("incorrect multi address"))?;
 
             Ok(Project {
                 project_identifier,
