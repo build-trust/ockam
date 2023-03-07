@@ -39,10 +39,12 @@ defmodule Ockam.Kafka.Interceptor.InletManager.Test do
     inlets = InletManager.list_inlets()
 
     assert map_size(inlets) == 3
+
+    GenServer.stop(InletManager)
   end
 
   test "inlet internals" do
-    base_port = 8000
+    base_port = 9000
     allowed_ports = 10
     base_route = ["outlets"]
     outlet_prefix = "outlet_"
@@ -68,5 +70,7 @@ defmodule Ockam.Kafka.Interceptor.InletManager.Test do
     expected_port = base_port + 1
 
     assert {:ok, ^expected_port} = Map.get(inlet1_state, :listen_socket) |> :inet.port()
+
+    GenServer.stop(InletManager)
   end
 end

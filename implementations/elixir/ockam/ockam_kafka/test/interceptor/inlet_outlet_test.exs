@@ -10,7 +10,7 @@ defmodule Ockam.Kafka.Interceptor.InletOutlet.Test do
     ssl = false
     ssl_options = []
 
-    base_port = 9000
+    base_port = 7000
     allowed_ports = 10
     base_route = []
 
@@ -18,6 +18,20 @@ defmodule Ockam.Kafka.Interceptor.InletOutlet.Test do
       InletManager.start_link([base_port, allowed_ports, base_route, outlet_prefix])
 
     {:ok, _outlet_manager} = OutletManager.start_link([outlet_prefix, ssl, ssl_options])
+
+    on_exit(fn ->
+      try do
+        GenServer.stop(OutletManager)
+      catch
+        _type, _reason -> :ok
+      end
+
+      try do
+        GenServer.stop(InletManager)
+      catch
+        _type, _reason -> :ok
+      end
+    end)
 
     Ockam.Transport.TCP.start(listen: [port: 4000])
 
@@ -34,12 +48,15 @@ defmodule Ockam.Kafka.Interceptor.InletOutlet.Test do
     ])
 
     ## Connect to inlet port
-    {:ok, client} = Ockam.Transport.TCP.Client.create(destination: {"localhost", 9001})
+    {:ok, client} = Ockam.Transport.TCP.Client.create(destination: {"localhost", 7001})
 
     {:ok, "echo"} = Ockam.Services.Echo.create(address: "echo")
 
     ## We can call "echo" via inlet-outlet pair
     assert {:ok, %Ockam.Message{payload: "HI"}} =
              Ockam.Workers.Call.call_on_current_process("HI", [client, "echo"])
+
+    GenServer.stop(OutletManager)
+    GenServer.stop(InletManager)
   end
 end
