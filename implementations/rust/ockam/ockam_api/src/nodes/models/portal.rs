@@ -121,7 +121,7 @@ pub struct DeleteOutlet<'a> {
 impl<'a> DeleteOutlet<'a> {
     pub fn new(alias: impl Into<CowStr<'a>>) -> Self {
         Self {
-             #[cfg(feature = "tag")]
+            #[cfg(feature = "tag")]
             tag: TypeTag,
             alias: alias.into(),
         }
