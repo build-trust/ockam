@@ -42,6 +42,8 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
     OutletManager.set_outlets(to_create)
 
     assert ^to_create = OutletManager.get_existing_outlets(outlet_prefix) |> Enum.sort()
+
+    GenServer.stop(OutletManager)
   end
 
   test "ssl outlet" do
@@ -75,5 +77,7 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
              |> :sys.get_state()
              |> Map.get(:worker_options)
              |> Keyword.get(:ssl)
+
+    GenServer.stop(OutletManager)
   end
 end

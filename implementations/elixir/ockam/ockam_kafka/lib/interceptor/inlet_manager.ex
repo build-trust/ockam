@@ -7,6 +7,8 @@ defmodule Ockam.Kafka.Interceptor.InletManager do
   """
   use GenServer
 
+  require Logger
+
   def start_link([base_port, allowed_ports, base_route, outlet_prefix]) do
     GenServer.start_link(
       __MODULE__,
@@ -18,6 +20,8 @@ defmodule Ockam.Kafka.Interceptor.InletManager do
 
   @impl true
   def init([base_port, allowed_ports, base_route, outlet_prefix]) do
+    Process.flag(:trap_exit, true)
+
     {:ok,
      %{
        base_port: base_port,
@@ -77,6 +81,30 @@ defmodule Ockam.Kafka.Interceptor.InletManager do
 
         {:reply, :ok, state}
     end
+  end
+
+  @impl true
+  def handle_info({:EXIT, from, :normal}, state) do
+    Logger.debug("Received exit :normal signal from #{inspect(from)}")
+    {:noreply, state}
+  end
+
+  def handle_info({:EXIT, _from, reason}, state) do
+    {:stop, reason, state}
+  end
+
+  @impl true
+  def terminate(reason, state) do
+    Logger.info("Stopping inlet manager: #{inspect(reason)}")
+    cleanup_inlets(state)
+    :ok
+  end
+
+  defp cleanup_inlets(%{inlets: inlets} = state) do
+    Enum.reduce(inlets, state, fn {port_offset, _pid}, state ->
+      {:ok, state} = stop_inlet(port_offset, state)
+      state
+    end)
   end
 
   defp stop_inlet(port_offset, %{inlets: inlets} = state) do

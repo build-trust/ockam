@@ -16,6 +16,8 @@ defmodule Ockam.Kafka.Interceptor.OutletManager do
 
   alias Ockam.Kafka.Interceptor.OutletManager.Outlet
 
+  require Logger
+
   def start_link([outlet_prefix, ssl, ssl_options]) do
     GenServer.start_link(
       __MODULE__,
@@ -26,6 +28,8 @@ defmodule Ockam.Kafka.Interceptor.OutletManager do
 
   @impl true
   def init([outlet_prefix, ssl, ssl_options]) do
+    Process.flag(:trap_exit, true)
+
     {:ok,
      %{
        outlet_prefix: outlet_prefix,
@@ -81,6 +85,23 @@ defmodule Ockam.Kafka.Interceptor.OutletManager do
     end
   end
 
+  @impl true
+  def handle_info({:EXIT, from, :normal}, state) do
+    Logger.debug("Received exit :normal signal from #{inspect(from)}")
+    {:noreply, state}
+  end
+
+  def handle_info({:EXIT, _from, reason}, state) do
+    {:stop, reason, state}
+  end
+
+  @impl true
+  def terminate(reason, state) do
+    Logger.info("Stopping outlet manager: #{inspect(reason)}")
+    cleanup_outlets(state)
+    :ok
+  end
+
   def get_existing_outlets(outlet_prefix) do
     Ockam.Node.list_addresses()
     |> Enum.filter(fn address -> String.starts_with?(address, outlet_prefix) end)
@@ -112,6 +133,12 @@ defmodule Ockam.Kafka.Interceptor.OutletManager do
     outlet_prefix <> to_string(node_id)
   end
 
+  defp cleanup_outlets(state) do
+    Map.get(state, :outlet_prefix)
+    |> get_existing_outlets()
+    |> Enum.each(&stop_outlet/1)
+  end
+
   defp stop_outlet(%Outlet{node_id: node_id, outlet_prefix: outlet_prefix}) do
     Ockam.Node.stop(outlet_address(node_id, outlet_prefix))
   end
@@ -128,6 +155,7 @@ defmodule Ockam.Kafka.Interceptor.OutletManager do
     address = outlet_address(node_id, outlet_prefix)
     ## We crash on failures because error handling would be too complex
     ## TODO: see if we can propagate the error
+    ## TODO: manage outlets in a supervisor
     {:ok, _pid, _extra} =
       Ockam.Session.Spawner.start_link(
         address: address,
