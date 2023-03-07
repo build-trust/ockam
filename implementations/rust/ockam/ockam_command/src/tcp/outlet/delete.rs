@@ -1,10 +1,11 @@
 use crate::node::NodeOpts;
 use crate::util::{extract_address_value, node_rpc, Rpc};
 use crate::CommandGlobalOpts;
-use anyhow::ensure;
+use crate::Result;
+use anyhow::anyhow;
 use clap::Args;
 use ockam::Context;
-use ockam_api::nodes::models::portal::{DeleteOutlet, OutletStatus};
+use ockam_api::nodes::models::portal::DeleteOutlet;
 use ockam_core::api::{Request, RequestBuilder};
 
 /// Delete a TCP Outlet
@@ -36,14 +37,9 @@ pub async fn run_impl(
     let mut rpc = Rpc::background(&ctx, &options, &node)?;
     rpc.request(make_api_request(cmd)?).await?;
 
-    let OutletStatus { payload, .. } = rpc.parse_response()?;
+    rpc.is_ok()?;
 
-    if let Some(payload_response) = payload {
-        println!("Error deleting Outlet: {}", payload_response);
-        return Ok(());
-    }
-
-    println!("Deleted TCP Outlet '{}' on node '{}'", alias, node);
+    println!("Deleted TCP Outlet '{alias}' on node '{node}'");
     Ok(())
 }
 
@@ -55,10 +51,10 @@ fn make_api_request<'a>(cmd: DeleteCommand) -> crate::Result<RequestBuilder<'a, 
     Ok(request)
 }
 
-fn alias_parser(arg: &str) -> anyhow::Result<String> {
-    ensure! {
-        !arg.contains(':'),
-        "an outlet alias must not contain ':' characters"
+fn alias_parser(arg: &str) -> Result<String> {
+    if arg.contains(':') {
+        Err(anyhow!("an outlet alias must not contain ':' characters").into())
+    } else {
+        Ok(arg.to_string())
     }
-    Ok(arg.to_string())
 }

@@ -324,45 +324,37 @@ impl NodeManagerWorker {
         let DeleteOutlet { alias, .. } = dec.decode()?;
 
         let alias = alias.into_owned();
-        info!("Handling request to delete outlet portal");
-        if let Some(outlet_to_delete) = node_manager.registry.outlets.get(&alias) {
-            let tcp_addr = outlet_to_delete.tcp_addr.clone();
-            let worker_addr = outlet_to_delete.worker_addr.clone();
-            let res = node_manager.tcp_transport.stop_outlet(worker_addr).await;
 
-            Ok(match res {
-                Ok(_) => {
-                    // TODO: Use better way to remove outlets?
-                    let removed_outlet = node_manager.registry.outlets.remove(&alias);
-
-                    if let Some(successfully_removed_outlet) = removed_outlet {
-                        Response::ok(req.id()).body(OutletStatus::new(
-                            successfully_removed_outlet.tcp_addr.to_string(),
-                            successfully_removed_outlet.worker_addr.to_string(),
-                            alias,
-                            None,
-                        ))
-                    } else {
-                        info!("Failed to remove outlet from node manager registry");
-                        Response::internal_error(req.id())
-                            .body(OutletStatus::new(tcp_addr, "", alias, None))
-                    }
-                }
-                Err(e) => Response::bad_request(req.id()).body(OutletStatus::new(
-                    tcp_addr,
-                    "",
+        info!(%alias, "Handling request to delete outlet portal");
+        if let Some(outlet_to_delete) = node_manager.registry.outlets.remove(&alias) {
+            let was_stopped = node_manager
+                .tcp_transport
+                .stop_outlet(outlet_to_delete.worker_addr.clone())
+                .await
+                .is_ok();
+            if was_stopped {
+                Ok(Response::ok(req.id()).body(OutletStatus::new(
+                    outlet_to_delete.tcp_addr,
+                    outlet_to_delete.worker_addr.to_string(),
                     alias,
-                    Some(e.to_string().into()),
-                )),
-            })
+                    None,
+                )))
+            } else {
+                error!(%alias, "Failed to remove outlet from node registry");
+                Ok(Response::internal_error(req.id()).body(OutletStatus::new(
+                    outlet_to_delete.tcp_addr,
+                    outlet_to_delete.worker_addr.to_string(),
+                    alias.clone(),
+                    Some(format!("Failed to remove outlet with alias {alias}").into()),
+                )))
+            }
         } else {
-            let payload_log = format!("There is no corresponding outlet for the {}", alias);
-            info!(payload_log);
-            Ok(Response::bad_request(req.id()).body(OutletStatus::new(
-                "",
-                "",
-                alias,
-                Some(payload_log.into()),
+            error!(%alias, "Outlet not found in the node registry");
+            Ok(Response::not_found(req.id()).body(OutletStatus::new(
+                "".to_string(),
+                "".to_string(),
+                alias.clone(),
+                Some(format!("Outlet with alias {alias} not found").into()),
             )))
         }
     }
