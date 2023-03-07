@@ -23,12 +23,6 @@ use types::AddMember;
 
 use crate::authenticator::direct::types::CreateToken;
 
-#[cfg(feature = "tag")]
-use {
-    crate::schema::tag,
-    ockam_core::api::{assert_request_match, assert_response_match},
-};
-
 const MAX_TOKEN_DURATION: Duration = Duration::from_secs(600);
 const DEFAULT_CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 
