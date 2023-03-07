@@ -175,4 +175,5 @@ The code in this repository is licensed under the terms of the [Apache License 2
 - [ockam.io](https://www.ockam.io/)
 - [Documentation](https://docs.ockam.io/)
 - [Contribute to Ockam](https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md#contributing-to-ockam-on-github)
+- [Build Trust community Discord server](https://discord.gg/RAbjRr3kds)
 - [Ockam Orchestrator on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-wsd42efzcpsxk)
