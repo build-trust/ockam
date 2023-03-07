@@ -1,16 +1,11 @@
 use crate::node::NodeOpts;
 use crate::util::{extract_address_value, node_rpc, Rpc};
-use crate::{CommandGlobalOpts};
+use crate::CommandGlobalOpts;
 use anyhow::ensure;
 use clap::Args;
 use ockam::Context;
-use ockam_api::{
-    error::ApiError,
-    nodes::models::portal::{DeleteOutlet, OutletStatus},
-    route_to_multiaddr,
-};
+use ockam_api::nodes::models::portal::{DeleteOutlet, OutletStatus};
 use ockam_core::api::{Request, RequestBuilder};
-use ockam_core::route;
 
 /// Delete a TCP Outlet
 #[derive(Clone, Debug, Args)]
@@ -29,16 +24,6 @@ impl DeleteCommand {
     pub fn run(self, options: CommandGlobalOpts) {
         node_rpc(run_impl, (options, self))
     }
-
-    // pub fn check_credential(&self) -> Option<bool> {
-    //     if self.check_credential {
-    //         Some(true)
-    //     } else if self.disable_check_credential {
-    //         Some(false)
-    //     } else {
-    //         None
-    //     }
-    // }
 }
 
 pub async fn run_impl(
@@ -51,19 +36,21 @@ pub async fn run_impl(
     let mut rpc = Rpc::background(&ctx, &options, &node)?;
     rpc.request(make_api_request(cmd)?).await?;
 
-    let OutletStatus { worker_addr, .. } = rpc.parse_response()?;
-    let addr = route_to_multiaddr(&route![worker_addr.to_string()])
-        .ok_or_else(|| ApiError::generic("Invalid Outlet Address"))?;
+    let OutletStatus { payload, .. } = rpc.parse_response()?;
 
-    println!("Deleted TCP Outlet '{}' on node '{}'", alias, addr);
+    if let Some(payload_response) = payload {
+        println!("Error deleting Outlet: {}", payload_response);
+        return Ok(());
+    }
+
+    println!("Deleted TCP Outlet '{}' on node '{}'", alias, node);
     Ok(())
 }
 
 /// Construct a request to delete a tcp outlet
 fn make_api_request<'a>(cmd: DeleteCommand) -> crate::Result<RequestBuilder<'a, DeleteOutlet<'a>>> {
     // let alias = cmd.alias.map(|a| a.into());
-    let addr = extract_address_value(&cmd.node_opts.api_node)?;
-    let payload = DeleteOutlet::new(cmd.alias, addr);
+    let payload = DeleteOutlet::new(cmd.alias);
     let request = Request::delete("/node/outlet").body(payload);
     Ok(request)
 }

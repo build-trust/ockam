@@ -116,18 +116,14 @@ pub struct DeleteOutlet<'a> {
     #[n(0)] tag: TypeTag<1193889>,
     /// The alias of the TCP outlet to be deleted
     #[b(1)] pub alias: CowStr<'a>,
-    #[b(2)] pub addr: CowStr<'a>
 }
 
 impl<'a> DeleteOutlet<'a> {
-    pub fn new(
-        alias: impl Into<CowStr<'a>>,
-        addr: impl Into<CowStr<'a>>,
-
-    ) -> Self {
+    pub fn new(alias: impl Into<CowStr<'a>>) -> Self {
         Self {
+             #[cfg(feature = "tag")]
+            tag: TypeTag,
             alias: alias.into(),
-            addr: addr.into(),
         }
     }
 }
