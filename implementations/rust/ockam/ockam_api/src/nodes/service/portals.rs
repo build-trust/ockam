@@ -1,7 +1,7 @@
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::portal::{
-    CreateInlet, CreateOutlet, InletList, InletStatus, OutletList, OutletStatus, DeleteOutlet,
+    CreateInlet, CreateOutlet, DeleteOutlet, InletList, InletStatus, OutletList, OutletStatus,
 };
 use crate::nodes::registry::{InletInfo, OutletInfo, Registry};
 use crate::nodes::service::random_alias;
@@ -11,7 +11,7 @@ use crate::{local_multiaddr_to_route, try_multiaddr_to_addr};
 use minicbor::Decoder;
 use ockam::compat::asynchronous::RwLock;
 use ockam::compat::tokio::time::timeout;
-use ockam::{Address, AsyncTryClone, Result, TCP};
+use ockam::{Address, AsyncTryClone, Result};
 use ockam_abac::expr::{eq, ident, str};
 use ockam_abac::{Action, Env, PolicyAccessControl, PolicyStorage, Resource};
 use ockam_core::api::{Request, Response, ResponseBuilder};
@@ -321,53 +321,50 @@ impl NodeManagerWorker {
         dec: &mut Decoder<'_>,
     ) -> Result<ResponseBuilder<OutletStatus<'a>>> {
         let mut node_manager = self.node_manager.write().await;
-        let DeleteOutlet {
-            alias,
-            addr,
-        } = dec.decode()?;
+        let DeleteOutlet { alias, .. } = dec.decode()?;
 
         let alias = alias.into_owned();
         info!("Handling request to delete outlet portal");
+        if let Some(outlet_to_delete) = node_manager.registry.outlets.get(&alias) {
+            let tcp_addr = outlet_to_delete.tcp_addr.clone();
+            let worker_addr = outlet_to_delete.worker_addr.clone();
+            let res = node_manager.tcp_transport.stop_outlet(worker_addr).await;
 
-        let tcp_addr = Address::new(TCP, addr.clone().into_owned());
-        let res = node_manager
-            .tcp_transport
-            .stop_outlet(tcp_addr)
-            .await;
+            Ok(match res {
+                Ok(_) => {
+                    // TODO: Use better way to remove outlets?
+                    let removed_outlet = node_manager.registry.outlets.remove(&alias);
 
-        Ok(match res {
-            Ok(_) => {
-                // TODO: Use better way to remove outlets?
-                let removed_outlet = node_manager.registry.outlets.remove(
-                    &alias,
-                );
-
-                if let Some(successfully_removed_outlet) = removed_outlet {
-                    Response::ok(req.id()).body(OutletStatus::new(
-                        addr.into_owned(),
-                        successfully_removed_outlet.worker_addr.to_string(),
-                        alias,
-                        None,
-                    ))
-                } else {
-                    Response::internal_error(req.id()).body(OutletStatus::new(
-                        addr.into_owned(),
-                        "",
-                        alias,
-                        None,
-                    ))
+                    if let Some(successfully_removed_outlet) = removed_outlet {
+                        Response::ok(req.id()).body(OutletStatus::new(
+                            successfully_removed_outlet.tcp_addr.to_string(),
+                            successfully_removed_outlet.worker_addr.to_string(),
+                            alias,
+                            None,
+                        ))
+                    } else {
+                        info!("Failed to remove outlet from node manager registry");
+                        Response::internal_error(req.id())
+                            .body(OutletStatus::new(tcp_addr, "", alias, None))
+                    }
                 }
-
-            }
-            Err(e) => {
-                Response::bad_request(req.id()).body(OutletStatus::new(
-                    addr.into_owned(),
+                Err(e) => Response::bad_request(req.id()).body(OutletStatus::new(
+                    tcp_addr,
                     "",
                     alias,
                     Some(e.to_string().into()),
-                ))
-            }
-        })
+                )),
+            })
+        } else {
+            let payload_log = format!("There is no corresponding outlet for the {}", alias);
+            info!(payload_log);
+            Ok(Response::bad_request(req.id()).body(OutletStatus::new(
+                "",
+                "",
+                alias,
+                Some(payload_log.into()),
+            )))
+        }
     }
 }
 
