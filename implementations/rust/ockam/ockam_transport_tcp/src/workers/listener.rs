@@ -95,7 +95,7 @@ impl Processor for TcpListenProcessor {
             peer,
             access_control.receiver_outgoing_access_control,
             // This session_id (if present) will be added to messages' LocalInfo
-            access_control.fresh_session_id,
+            access_control.session_id,
         )
         .await?;
 

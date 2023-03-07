@@ -156,7 +156,7 @@ impl TcpTransport {
             &addresses,
             socket,
             access_control.receiver_outgoing_access_control,
-            access_control.fresh_session_id,
+            access_control.session_id,
         )
         .await?;
 

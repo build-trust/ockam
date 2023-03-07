@@ -41,7 +41,7 @@ impl Sessions {
 
     /// Get [`SessionId`] for given [`Address`]
     pub fn get_session_id(&self, address: &Address) -> Option<SessionId> {
-        match self.internal.write().unwrap().get_info(address) {
+        match self.internal.read().unwrap().get_info(address) {
             Some(address_info) => address_info.session_id.clone(),
             None => None,
         }
@@ -57,7 +57,7 @@ impl Sessions {
 
     /// Get listener [`SessionId`] for given [`Address`]
     pub fn get_listener_session_id(&self, address: &Address) -> Option<SessionId> {
-        match self.internal.write().unwrap().get_info(address) {
+        match self.internal.read().unwrap().get_info(address) {
             Some(address_info) => address_info.listener_session_id.clone(),
             None => None,
         }
@@ -103,7 +103,7 @@ impl SessionsInternal {
             .unwrap()
     }
 
-    fn get_info(&mut self, address: &Address) -> Option<&AddressInfo> {
+    fn get_info(&self, address: &Address) -> Option<&AddressInfo> {
         self.data.iter().find(|&x| &x.address == address)
     }
 }

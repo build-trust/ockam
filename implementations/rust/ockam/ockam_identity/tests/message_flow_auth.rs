@@ -11,6 +11,158 @@ use ockam_transport_tcp::{TcpConnectionTrustOptions, TcpListenerTrustOptions, Tc
 use ockam_vault::Vault;
 use rand::random;
 
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn sessions__secure_channel_over_tcp_without_session__should_pass_messages(
+    ctx: &mut Context,
+) -> Result<()> {
+    let bob_tcp_info = create_tcp_listener_without_session(ctx).await?;
+
+    let bob_listener_info = create_secure_channel_listener(ctx, &bob_tcp_info.session).await?;
+
+    let connection_to_bob = create_tcp_connection(ctx, &bob_tcp_info.socket_addr, false).await?;
+    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
+    let connection_to_alice = bob_tcp_info.get_connection();
+
+    message_should_pass(ctx, &connection_to_bob.address).await?;
+    message_should_pass(ctx, &connection_to_alice).await?;
+
+    let channel_to_bob = create_secure_channel(ctx, &connection_to_bob).await?;
+    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
+    let channel_to_alice = bob_listener_info.get_channel();
+
+    message_should_pass(ctx, &channel_to_bob.address).await?;
+    message_should_pass(ctx, &channel_to_alice).await?;
+
+    ctx.stop().await
+}
+
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn sessions__secure_channel_over_tcp_with_alice_session__should_not_pass_messages(
+    ctx: &mut Context,
+) -> Result<()> {
+    let bob_tcp_info = create_tcp_listener_without_session(ctx).await?;
+
+    let connection_to_bob = create_tcp_connection(ctx, &bob_tcp_info.socket_addr, true).await?;
+
+    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
+    let connection_to_alice = bob_tcp_info.get_connection();
+
+    message_should_pass(ctx, &connection_to_bob.address).await?;
+    message_should_not_pass(ctx, &connection_to_alice).await?;
+
+    let bob_listener_info = create_secure_channel_listener(ctx, &bob_tcp_info.session).await?;
+
+    let channel_to_bob = create_secure_channel(ctx, &connection_to_bob).await?;
+    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
+    let channel_to_alice = bob_listener_info.get_channel();
+
+    message_should_pass(ctx, &channel_to_bob.address).await?;
+    message_should_pass(ctx, &channel_to_alice).await?;
+
+    let res = channel_to_bob
+        .identity
+        .create_secure_channel_extended(
+            route![connection_to_bob.address.clone(), "listener"],
+            TrustEveryonePolicy,
+            Duration::from_secs(1),
+        )
+        .await;
+    assert!(
+        res.is_err(),
+        "We can only create 1 secure channel with that connection"
+    );
+
+    ctx.stop().await
+}
+
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn sessions__secure_channel_over_tcp_with_bob_session__should_not_pass_messages(
+    ctx: &mut Context,
+) -> Result<()> {
+    let bob_tcp_info = create_tcp_listener_with_session(&ctx).await?;
+
+    let connection_to_bob = create_tcp_connection(ctx, &bob_tcp_info.socket_addr, false).await?;
+    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
+    let connection_to_alice = bob_tcp_info.get_connection();
+
+    message_should_not_pass(ctx, &connection_to_bob.address).await?;
+    message_should_pass(ctx, &connection_to_alice).await?;
+
+    let bob_listener_info = create_secure_channel_listener(ctx, &bob_tcp_info.session).await?;
+
+    let channel_to_bob = create_secure_channel(ctx, &connection_to_bob).await?;
+    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
+    let channel_to_alice = bob_listener_info.get_channel();
+
+    message_should_pass(ctx, &channel_to_bob.address).await?;
+    message_should_pass(ctx, &channel_to_alice).await?;
+
+    let res = channel_to_bob
+        .identity
+        .create_secure_channel_extended(
+            route![connection_to_bob.address.clone(), "listener"],
+            TrustEveryonePolicy,
+            Duration::from_secs(1),
+        )
+        .await;
+    assert!(
+        res.is_err(),
+        "We can only create 1 secure channel with that connection"
+    );
+
+    ctx.stop().await
+}
+
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn sessions__secure_channel_over_tcp_with_both_sides_session__should_not_pass_messages(
+    ctx: &mut Context,
+) -> Result<()> {
+    let bob_tcp_info = create_tcp_listener_with_session(ctx).await?;
+
+    let connection_to_bob = create_tcp_connection(ctx, &bob_tcp_info.socket_addr, true).await?;
+    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
+    let connection_to_alice = bob_tcp_info.get_connection();
+
+    message_should_not_pass(ctx, &connection_to_bob.address).await?;
+    message_should_not_pass(ctx, &connection_to_alice).await?;
+
+    let bob_listener_info = create_secure_channel_listener(ctx, &bob_tcp_info.session).await?;
+
+    let channel_to_bob = create_secure_channel(ctx, &connection_to_bob).await?;
+    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
+    let channel_to_alice = bob_listener_info.get_channel();
+
+    message_should_pass(ctx, &channel_to_bob.address).await?;
+    message_should_pass(ctx, &channel_to_alice).await?;
+
+    let res = channel_to_bob
+        .identity
+        .create_secure_channel_extended(
+            route![connection_to_bob.address.clone(), "listener"],
+            TrustEveryonePolicy,
+            Duration::from_secs(1),
+        )
+        .await;
+    assert!(
+        res.is_err(),
+        "We can only create 1 secure channel with that connection"
+    );
+
+    ctx.stop().await
+}
+
+async fn message_should_pass(ctx: &Context, address: &Address) -> Result<()> {
+    check_message_flow(ctx, route![address.clone()], true).await
+}
+
+async fn message_should_not_pass(ctx: &Context, address: &Address) -> Result<()> {
+    check_message_flow(ctx, route![address.clone()], false).await
+}
+
 async fn check_message_flow(ctx: &Context, route: Route, should_pass: bool) -> Result<()> {
     let address = Address::random_local();
     let mut receiving_ctx = ctx
@@ -49,6 +201,14 @@ impl TcpListenerInfo {
     }
 }
 
+async fn create_tcp_listener_with_session(ctx: &Context) -> Result<TcpListenerInfo> {
+    create_tcp_listener(ctx, true).await
+}
+
+async fn create_tcp_listener_without_session(ctx: &Context) -> Result<TcpListenerInfo> {
+    create_tcp_listener(ctx, false).await
+}
+
 async fn create_tcp_listener(ctx: &Context, with_session: bool) -> Result<TcpListenerInfo> {
     let tcp = TcpTransport::create(ctx).await?;
     let (socket_addr, session) = if with_session {
@@ -78,7 +238,7 @@ struct TcpConnectionInfo {
     session: Option<(Sessions, SessionId)>,
 }
 
-async fn create_connection(
+async fn create_tcp_connection(
     ctx: &Context,
     socket_addr: &SocketAddr,
     with_session: bool,
@@ -169,148 +329,4 @@ async fn create_secure_channel(
     let info = SecureChannelInfo { identity, address };
 
     Ok(info)
-}
-
-#[allow(non_snake_case)]
-#[ockam_macros::test]
-async fn sessions__secure_channel_over_tcp_without_session__should_pass_messages(
-    ctx: &mut Context,
-) -> Result<()> {
-    let bob_tcp_info = create_tcp_listener(ctx, false).await?;
-
-    let bob_listener_info = create_secure_channel_listener(ctx, &bob_tcp_info.session).await?;
-
-    let connection_to_bob = create_connection(ctx, &bob_tcp_info.socket_addr, false).await?;
-    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
-    let connection_to_alice = bob_tcp_info.get_connection();
-
-    check_message_flow(ctx, route![connection_to_bob.address.clone()], true).await?;
-    check_message_flow(ctx, route![connection_to_alice.clone()], true).await?;
-
-    let channel_to_bob = create_secure_channel(ctx, &connection_to_bob).await?;
-    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
-    let channel_to_alice = bob_listener_info.get_channel();
-
-    check_message_flow(ctx, route![channel_to_bob.address.clone()], true).await?;
-    check_message_flow(ctx, route![channel_to_alice.clone()], true).await?;
-
-    ctx.stop().await
-}
-
-#[allow(non_snake_case)]
-#[ockam_macros::test]
-async fn sessions__secure_channel_over_tcp_with_alice_session__should_not_pass_messages(
-    ctx: &mut Context,
-) -> Result<()> {
-    let bob_tcp_info = create_tcp_listener(ctx, false).await?;
-
-    let connection_to_bob = create_connection(ctx, &bob_tcp_info.socket_addr, true).await?;
-
-    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
-    let connection_to_alice = bob_tcp_info.get_connection();
-
-    check_message_flow(ctx, route![connection_to_bob.address.clone()], true).await?;
-    check_message_flow(ctx, route![connection_to_alice.clone()], false).await?;
-
-    let bob_listener_info = create_secure_channel_listener(ctx, &bob_tcp_info.session).await?;
-
-    let channel_to_bob = create_secure_channel(ctx, &connection_to_bob).await?;
-    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
-    let channel_to_alice = bob_listener_info.get_channel();
-
-    check_message_flow(ctx, route![channel_to_bob.address.clone()], true).await?;
-    check_message_flow(ctx, route![channel_to_alice.clone()], true).await?;
-
-    let res = channel_to_bob
-        .identity
-        .create_secure_channel_extended(
-            route![connection_to_bob.address.clone(), "listener"],
-            TrustEveryonePolicy,
-            Duration::from_secs(1),
-        )
-        .await;
-    assert!(
-        res.is_err(),
-        "We can only create 1 secure channel with that connection"
-    );
-
-    ctx.stop().await
-}
-
-#[allow(non_snake_case)]
-#[ockam_macros::test]
-async fn sessions__secure_channel_over_tcp_with_bob_session__should_not_pass_messages(
-    ctx: &mut Context,
-) -> Result<()> {
-    let bob_tcp_info = create_tcp_listener(&ctx, true).await?;
-
-    let connection_to_bob = create_connection(ctx, &bob_tcp_info.socket_addr, false).await?;
-    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
-    let connection_to_alice = bob_tcp_info.get_connection();
-
-    check_message_flow(ctx, route![connection_to_bob.address.clone()], false).await?;
-    check_message_flow(ctx, route![connection_to_alice.clone()], true).await?;
-
-    let bob_listener_info = create_secure_channel_listener(ctx, &bob_tcp_info.session).await?;
-
-    let channel_to_bob = create_secure_channel(ctx, &connection_to_bob).await?;
-    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
-    let channel_to_alice = bob_listener_info.get_channel();
-
-    check_message_flow(ctx, route![channel_to_bob.address.clone()], true).await?;
-    check_message_flow(ctx, route![channel_to_alice.clone()], true).await?;
-
-    let res = channel_to_bob
-        .identity
-        .create_secure_channel_extended(
-            route![connection_to_bob.address.clone(), "listener"],
-            TrustEveryonePolicy,
-            Duration::from_secs(1),
-        )
-        .await;
-    assert!(
-        res.is_err(),
-        "We can only create 1 secure channel with that connection"
-    );
-
-    ctx.stop().await
-}
-
-#[allow(non_snake_case)]
-#[ockam_macros::test]
-async fn sessions__secure_channel_over_tcp_with_both_sides_session__should_not_pass_messages(
-    ctx: &mut Context,
-) -> Result<()> {
-    let bob_tcp_info = create_tcp_listener(ctx, true).await?;
-
-    let connection_to_bob = create_connection(ctx, &bob_tcp_info.socket_addr, true).await?;
-    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
-    let connection_to_alice = bob_tcp_info.get_connection();
-
-    check_message_flow(ctx, route![connection_to_bob.address.clone()], false).await?;
-    check_message_flow(ctx, route![connection_to_alice.clone()], false).await?;
-
-    let bob_listener_info = create_secure_channel_listener(ctx, &bob_tcp_info.session).await?;
-
-    let channel_to_bob = create_secure_channel(ctx, &connection_to_bob).await?;
-    ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
-    let channel_to_alice = bob_listener_info.get_channel();
-
-    check_message_flow(ctx, route![channel_to_bob.address.clone()], true).await?;
-    check_message_flow(ctx, route![channel_to_alice.clone()], true).await?;
-
-    let res = channel_to_bob
-        .identity
-        .create_secure_channel_extended(
-            route![connection_to_bob.address.clone(), "listener"],
-            TrustEveryonePolicy,
-            Duration::from_secs(1),
-        )
-        .await;
-    assert!(
-        res.is_err(),
-        "We can only create 1 secure channel with that connection"
-    );
-
-    ctx.stop().await
 }

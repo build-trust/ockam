@@ -55,7 +55,7 @@ impl<V: IdentityVault, S: AuthenticatedStorage> Worker for IdentityChannelListen
         let identity = self.identity.async_try_clone().await?;
 
         // Check if there is a session that connection worker added to LocalInfo
-        // If yet - decryptor will be added to that session to be able to receive further messages
+        // If yes - decryptor will be added to that session to be able to receive further messages
         // from the transport connection
         let session_id = SessionIdLocalInfo::find_info(msg.local_message())
             .ok()
