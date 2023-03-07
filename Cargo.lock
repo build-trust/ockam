@@ -1283,9 +1283,9 @@ dependencies = [
 
 [[package]]
 name = "csv"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af91f40b7355f82b0a891f50e70399475945bb0b0da4f1700ce60761c9d3e359"
+checksum = "0b015497079b9a9d69c02ad25de6c0a6edef051ea6360a327d0bd05802ef64ad"
 dependencies = [
  "csv-core",
  "itoa",
@@ -3332,19 +3332,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ockam_key_exchange_x3dh"
-version = "0.71.0"
-dependencies = [
- "arrayref",
- "hex",
- "ockam_core",
- "ockam_macros",
- "ockam_node",
- "ockam_vault",
- "zeroize",
-]
-
-[[package]]
 name = "ockam_key_exchange_xx"
 version = "0.72.0"
 dependencies = [
@@ -3571,12 +3558,11 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "open"
-version = "3.2.0"
+version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2078c0039e6a54a0c42c28faa984e115fb4c2d5bf2208f77d1961002df8576f8"
+checksum = "21ecf2487e799604735754d2c5896106785987b441b5aee58f242e4d4963179a"
 dependencies = [
  "pathdiff",
- "windows-sys 0.42.0",
 ]
 
 [[package]]
