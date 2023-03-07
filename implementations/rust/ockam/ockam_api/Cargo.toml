@@ -39,7 +39,7 @@ nix             = "0.26"
 minicbor        = { version = "0.19.0", features = ["alloc", "derive"] }
 rust-embed      = "6"
 rand            = "0.8"
-serde           = { version = "1.0.152", features = ["derive"] }
+serde           = { version = "1.0.153", features = ["derive"] }
 serde_json      = "1.0.93"
 time            = { version = "0.3.20", default-features = false }
 tempfile        = "3.4.0"
