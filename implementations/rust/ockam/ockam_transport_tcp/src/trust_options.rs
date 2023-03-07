@@ -3,7 +3,7 @@ use ockam_core::sessions::{SessionId, SessionOutgoingAccessControlBuilder, Sessi
 use ockam_core::{IncomingAccessControl, LocalOnwardOnly, LocalSourceOnly, OutgoingAccessControl};
 
 pub(crate) struct TcpConnectionAccessControl {
-    pub fresh_session_id: Option<SessionId>,
+    pub session_id: Option<SessionId>,
     pub sender_incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub receiver_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
 }
@@ -34,14 +34,14 @@ impl TcpConnectionTrustOptions {
     pub(crate) fn access_control(self) -> TcpConnectionAccessControl {
         match self.session {
             Some((sessions, session_id)) => TcpConnectionAccessControl {
-                fresh_session_id: Some(session_id.clone()),
+                session_id: Some(session_id.clone()),
                 sender_incoming_access_control: Arc::new(LocalSourceOnly),
                 receiver_outgoing_access_control: Arc::new(
                     SessionOutgoingAccessControlBuilder::new(session_id, sessions).build(),
                 ),
             },
             None => TcpConnectionAccessControl {
-                fresh_session_id: None,
+                session_id: None,
                 sender_incoming_access_control: Arc::new(LocalSourceOnly),
                 receiver_outgoing_access_control: Arc::new(LocalOnwardOnly),
             },
@@ -79,22 +79,19 @@ impl TcpListenerTrustOptions {
     pub(crate) fn access_control(&self) -> TcpConnectionAccessControl {
         match &self.session {
             Some((sessions, listener_session_id)) => {
-                let fresh_session_id = sessions.generate_session_id();
+                let session_id = sessions.generate_session_id();
                 TcpConnectionAccessControl {
-                    fresh_session_id: Some(fresh_session_id.clone()),
+                    session_id: Some(session_id.clone()),
                     sender_incoming_access_control: Arc::new(LocalSourceOnly),
                     receiver_outgoing_access_control: Arc::new(
-                        SessionOutgoingAccessControlBuilder::new(
-                            fresh_session_id,
-                            sessions.clone(),
-                        )
-                        .allow_one_message_to_the_listener(listener_session_id.clone())
-                        .build(),
+                        SessionOutgoingAccessControlBuilder::new(session_id, sessions.clone())
+                            .allow_one_message_to_the_listener(listener_session_id.clone())
+                            .build(),
                     ),
                 }
             }
             None => TcpConnectionAccessControl {
-                fresh_session_id: None,
+                session_id: None,
                 sender_incoming_access_control: Arc::new(LocalSourceOnly),
                 receiver_outgoing_access_control: Arc::new(LocalOnwardOnly),
             },

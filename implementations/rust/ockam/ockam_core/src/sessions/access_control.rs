@@ -8,7 +8,7 @@ use crate::{OutgoingAccessControl, RelayMessage};
 pub struct SessionOutgoingAccessControlBuilder {
     session_id: SessionId,
     listener_session_id: Option<SessionId>,
-    allow_only_1_message_to_the_listener: bool,
+    allow_one_message_to_the_listener: bool,
     sessions: Sessions,
 }
 
@@ -18,7 +18,7 @@ impl SessionOutgoingAccessControlBuilder {
         Self {
             session_id,
             listener_session_id: None,
-            allow_only_1_message_to_the_listener: true,
+            allow_one_message_to_the_listener: true,
             sessions,
         }
     }
@@ -28,7 +28,7 @@ impl SessionOutgoingAccessControlBuilder {
         SessionOutgoingAccessControl::new(
             self.session_id,
             self.listener_session_id,
-            self.allow_only_1_message_to_the_listener,
+            self.allow_one_message_to_the_listener,
             self.sessions,
         )
     }
@@ -37,7 +37,7 @@ impl SessionOutgoingAccessControlBuilder {
     /// make listener to spawn a new session)
     pub fn allow_one_message_to_the_listener(mut self, listener_session_id: SessionId) -> Self {
         self.listener_session_id = Some(listener_session_id);
-        self.allow_only_1_message_to_the_listener = true;
+        self.allow_one_message_to_the_listener = true;
 
         self
     }
