@@ -1,13 +1,12 @@
 mod create;
-mod list;
 mod delete;
+mod list;
 
 use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
 use create::CreateCommand;
-use list::ListCommand;
 use delete::DeleteCommand;
-
+use list::ListCommand;
 
 /// Manage TCP Outlets
 #[derive(Clone, Debug, Args)]
