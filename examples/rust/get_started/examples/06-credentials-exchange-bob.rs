@@ -16,13 +16,13 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = TcpTransport::create(&ctx).await?;
 
     // Create an Identity representing Bob
-    // We preload Bob's vault with a secret key corresponding to the identity identifier
-    // P0189a2aec3799fe9d0dc0f982063022b697f18562a403eb46fa3d32be5bd31f8
+    // We preload Bob's vault with a change history and secret key corresponding to the identity identifier
+    // Pada09e0f96e56580f6a0cb54f55ecbde6c973db6732e30dfb39b178760aed041
     // which is an identifier known to the credential issuer, with some preset attributes
     let vault = Vault::create();
-    let key_id = "0189a2aec3799fe9d0dc0f982063022b697f18562a403eb46fa3d32be5bd31f8".to_string();
-    let secret = "08ddb4458a53d5493eac7e9941a1b0d06896efa2d1efac8cf225ee1ccb824458";
-    let bob = Identity::create_identity_with_secret(&ctx, vault, &key_id, secret).await?;
+    let identity_history = "01ed8a5b1303f975c1296c990d1bd3c1946cfef328de20531e3511ec5604ce0dd9000547c93239ba3d818ec26c9cdadd2a35cbdf1fa3b6d1a731e06164b1079fb7b8084f434b414d5f524b03012000000020e8c328bc0cc07a374762091d037e69c36fdd4d2e1a651abd4d43a1362d3f800503010140a349968063d7337d0c965969fa9c640824c01a6d37fe130d4ab963b0271b9d5bbf0923faa5e27f15359554f94f08676df01b99d997944e4feaf0caaa1189480e";
+    let secret = "5b2b3f2abbd1787704d8f8b363529f8e2d8f423b6dd4b96a2c462e4f0e04ee18";
+    let bob = Identity::create_identity_with_history(&ctx, vault, identity_history, secret).await?;
 
     // Create a client to a credential issuer
     let sessions = Sessions::default();
