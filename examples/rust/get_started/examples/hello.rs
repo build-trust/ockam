@@ -11,14 +11,14 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create();
 
     // Create an Identity to represent Bob.
-    let bob = Identity::create(&ctx, &vault).await?;
+    let bob = Identity::create(&ctx, vault.clone()).await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
     bob.create_secure_channel_listener("bob", TrustEveryonePolicy).await?;
 
     // Create an entity to represent Alice.
-    let alice = Identity::create(&ctx, &vault).await?;
+    let alice = Identity::create(&ctx, vault.clone()).await?;
 
     // As Alice, connect to Bob's secure channel listener and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.

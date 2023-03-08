@@ -28,7 +28,7 @@ impl IdentityBuilder {
 
     /// Build an `Identity`
     pub async fn build(self) -> Result<Identity> {
-        Identity::create_arc(&self.ctx, self.vault).await
+        Identity::create(&self.ctx, self.vault).await
     }
 }
 
@@ -42,7 +42,7 @@ mod test {
 
     #[ockam_macros::test]
     async fn test_builder(ctx: &mut Context) -> Result<()> {
-        let vault: Arc<dyn IdentityVault> = Arc::new(Vault::create());
+        let vault: Arc<dyn IdentityVault> = Vault::create();
         let builder = IdentityBuilder::new(ctx, vault).await.unwrap();
         let _ = builder.build().await.unwrap();
 

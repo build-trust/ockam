@@ -21,9 +21,8 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let authenticated_attribute_storage =
         AuthenticatedAttributeStorage::new(Arc::new(InMemoryStorage::new()));
 
-    let authority = Identity::create(ctx, &vault).await?;
-
-    let server = Identity::create(ctx, &vault).await?;
+    let authority = Identity::create(ctx, vault.clone()).await?;
+    let server = Identity::create(ctx, vault.clone()).await?;
 
     server
         .create_secure_channel_listener("listener", TrustEveryonePolicy)
@@ -39,7 +38,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let client = Identity::create(ctx, &vault).await?;
+    let client = Identity::create(ctx, vault).await?;
     let channel = client
         .create_secure_channel(
             route!["listener"],
@@ -79,9 +78,8 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let authenticated_attribute_storage_client_2 =
         AuthenticatedAttributeStorage::new(storage2.clone());
 
-    let authority = Identity::create(ctx, &vault).await?;
-
-    let client2 = Identity::create(ctx, &vault).await?;
+    let authority = Identity::create(ctx, vault.clone()).await?;
+    let client2 = Identity::create(ctx, vault.clone()).await?;
 
     let credential2 =
         Credential::builder(client2.identifier().clone()).with_attribute("is_admin", b"true");
@@ -103,7 +101,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let client1 = Identity::create(ctx, &vault).await?;
+    let client1 = Identity::create(ctx, vault).await?;
 
     let credential1 =
         Credential::builder(client1.identifier().clone()).with_attribute("is_user", b"true");
@@ -167,8 +165,8 @@ impl Worker for CountingWorker {
 async fn access_control(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
     let storage = Arc::new(InMemoryStorage::new());
-    let authority = Identity::create(ctx, &vault).await?;
-    let server = Identity::create(ctx, &vault).await?;
+    let authority = Identity::create(ctx, vault.clone()).await?;
+    let server = Identity::create(ctx, vault.clone()).await?;
 
     server
         .create_secure_channel_listener("listener", TrustEveryonePolicy)
@@ -185,7 +183,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let client = Identity::create(ctx, &vault).await?;
+    let client = Identity::create(ctx, vault.clone()).await?;
     let channel = client
         .create_secure_channel(
             route!["listener"],

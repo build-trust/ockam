@@ -188,7 +188,7 @@ async fn main(ctx: Context) -> Result<()> {
     let config = Config::new();
 
     let vault = Vault::create(&ctx).await?;
-    let mut hub = Identity::create(&ctx, &vault)?;
+    let mut hub = Identity::create(&ctx, vault)?;
 
     hub.create_secure_channel_listener("secure_channel_listener_service", TrustEveryonePolicy)?;
 

@@ -318,7 +318,7 @@ impl NodeManager {
 
         for a in ac.authorities() {
             v.push(AuthorityInfo {
-                identity: PublicIdentity::import_arc(a.1.identity(), vault.clone()).await?,
+                identity: PublicIdentity::import(a.1.identity(), vault.clone()).await?,
                 addr: a.1.access_route().clone(),
             })
         }

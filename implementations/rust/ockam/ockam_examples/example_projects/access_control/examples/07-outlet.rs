@@ -15,7 +15,7 @@ async fn main(ctx: Context) -> Result<()> {
     //      that will wait for requests to start an Authenticated Key Exchange.
 
     let vault = Vault::create();
-    let e = Identity::create(&ctx, &vault).await?;
+    let e = Identity::create(&ctx, vault).await?;
     let storage = InMemoryStorage::new();
     e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &storage)
         .await?;
@@ -43,7 +43,9 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // Use port 4000, unless otherwise specified by second command line argument.
 
-    let port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
+    let port = std::env::args()
+        .nth(2)
+        .unwrap_or_else(|| "4000".to_string());
     tcp.listen(format!("127.0.0.1:{port}")).await?;
 
     #[cfg(feature = "debugger")]

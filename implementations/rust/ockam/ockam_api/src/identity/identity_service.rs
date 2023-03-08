@@ -127,7 +127,7 @@ impl IdentityService {
             },
             Post => match req.path_segments::<2>().as_slice() {
                 [""] => {
-                    let identity = Identity::create_arc(&self.ctx, self.vault.clone()).await?;
+                    let identity = Identity::create(&self.ctx, self.vault.clone()).await?;
                     let identifier = identity.identifier();
 
                     let body =
@@ -142,8 +142,7 @@ impl IdentityService {
 
                     let args = dec.decode::<ValidateIdentityChangeHistoryRequest>()?;
                     let identity =
-                        Identity::import_arc(&self.ctx, args.identity(), self.vault.clone())
-                            .await?;
+                        Identity::import(&self.ctx, args.identity(), self.vault.clone()).await?;
 
                     let body = ValidateIdentityChangeHistoryResponse::new(String::from(
                         identity.identifier(),
@@ -159,13 +158,12 @@ impl IdentityService {
                     let args = dec.decode::<CreateSignatureRequest>()?;
                     let identity = match args.vault_name() {
                         None => {
-                            Identity::import_arc(&self.ctx, args.identity(), self.vault.clone())
-                                .await?
+                            Identity::import(&self.ctx, args.identity(), self.vault.clone()).await?
                         }
 
                         Some(vault_name) => {
                             let vault = self.cli_state.vaults.get(&vault_name)?.get().await?;
-                            Identity::import(&self.ctx, args.identity(), vault).await?
+                            Identity::import(&self.ctx, args.identity(), Arc::new(vault)).await?
                         }
                     };
 
@@ -182,8 +180,7 @@ impl IdentityService {
 
                     let args = dec.decode::<VerifySignatureRequest>()?;
                     let peer_identity =
-                        PublicIdentity::import_arc(args.signer_identity(), self.vault.clone())
-                            .await?;
+                        PublicIdentity::import(args.signer_identity(), self.vault.clone()).await?;
 
                     let verified = peer_identity
                         .verify_signature(
@@ -206,14 +203,13 @@ impl IdentityService {
                     let args = dec.decode::<CompareIdentityChangeHistoryRequest>()?;
 
                     let current_identity =
-                        PublicIdentity::import_arc(args.current_identity(), self.vault.clone())
-                            .await?;
+                        PublicIdentity::import(args.current_identity(), self.vault.clone()).await?;
 
                     let body = if args.known_identity().is_empty() {
                         IdentityHistoryComparison::Newer
                     } else {
                         let known_identity =
-                            PublicIdentity::import_arc(args.known_identity(), self.vault.clone())
+                            PublicIdentity::import(args.known_identity(), self.vault.clone())
                                 .await?;
 
                         current_identity.compare(&known_identity)

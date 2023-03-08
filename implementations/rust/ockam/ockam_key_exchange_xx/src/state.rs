@@ -406,7 +406,7 @@ mod tests {
             100, 252, 104, 43, 230, 163, 171, 75, 104, 44, 141, 182, 75,
         ];
 
-        let vault: Arc<dyn XXVault> = Arc::new(vault);
+        let vault: Arc<dyn XXVault> = vault;
         let mut state = State::new(vault.clone()).await.unwrap();
         let res = state.prologue().await;
         assert!(res.is_ok());
@@ -442,7 +442,7 @@ mod tests {
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
         const MSG_3_PAYLOAD: &str = "";
 
-        let vault: Arc<dyn XXVault> = Arc::new(Vault::create());
+        let vault: Arc<dyn XXVault> = Vault::create();
 
         mock_handshake(
             vault,
@@ -530,7 +530,7 @@ mod tests {
         const MSG_3_PAYLOAD: &str = "746573745f6d73675f32";
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40232c55cd96d1350af861f6a04978f7d5e070c07602c6b84d25a331242a71c50ae31dd4c164267fd48bd2";
 
-        let vault: Arc<dyn XXVault> = Arc::new(Vault::create());
+        let vault: Arc<dyn XXVault> = Vault::create();
 
         mock_handshake(
             vault,
@@ -566,7 +566,7 @@ mod tests {
         const MSG_3_CIPHERTEXT: &str = "e610eadc4b00c17708bf223f29a66f02342fbedf6c0044736544b9271821ae40e70144cecd9d265dffdc5bb8e051c3f83db32a425e04d8f510c58a43325fbc56";
         const MSG_3_PAYLOAD: &str = "";
 
-        let vault: Arc<dyn XXVault> = Arc::new(Vault::create());
+        let vault: Arc<dyn XXVault> = Vault::create();
 
         let initiator = mock_prologue(vault.clone(), INIT_STATIC, INIT_EPH).await;
         let responder = mock_prologue(vault.clone(), RESP_STATIC, RESP_EPH).await;

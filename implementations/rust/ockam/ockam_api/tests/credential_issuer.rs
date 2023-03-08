@@ -18,8 +18,8 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     let api_worker_addr = random_string();
     let auth_worker_addr = random_string();
 
-    let auth_identity = Arc::new(Identity::create(ctx, &Vault::create()).await?);
-    let member_identity = Arc::new(Identity::create(ctx, &Vault::create()).await?);
+    let auth_identity = Arc::new(Identity::create(ctx, Vault::create()).await?);
+    let member_identity = Arc::new(Identity::create(ctx, Vault::create()).await?);
     let now = Timestamp::now().unwrap();
     let pre_trusted = HashMap::from([(
         member_identity.identifier().clone(),
@@ -57,9 +57,9 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     // Get a fresh member credential and verify its validity:
     let cred = c.credential().await?;
     let exported = auth_identity.export().await?;
-    let vault = Arc::new(Vault::create());
+    let vault = Vault::create();
 
-    let pkey = PublicIdentity::import(&exported, &Vault::create())
+    let pkey = PublicIdentity::import(&exported, Vault::create())
         .await
         .unwrap();
     let data = pkey

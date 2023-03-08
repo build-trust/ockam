@@ -20,7 +20,7 @@ async fn main(ctx: Context) -> Result<()> {
     let vault = Vault::create();
 
     // Create an Identity
-    let bob = Identity::create(&ctx, &vault).await?;
+    let bob = Identity::create(&ctx, vault).await?;
 
     // Create a secure channel listener at address "secure_channel_listener"
     bob.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy)

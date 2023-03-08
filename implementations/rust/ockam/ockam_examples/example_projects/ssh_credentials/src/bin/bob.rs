@@ -30,7 +30,7 @@ async fn main(ctx: Context) -> Result<()> {
         .start(ctx)
         .await?;
 
-    let bob = Identity::create(&ctx, &vault).await?;
+    let bob = Identity::create(&ctx, vault).await?;
 
     let public_key_path = env::var("PUBLIC_KEY_PATH").unwrap();
     let public_key = fs::read_to_string(public_key_path).unwrap();

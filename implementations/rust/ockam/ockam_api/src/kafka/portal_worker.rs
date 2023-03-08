@@ -584,7 +584,7 @@ mod test {
         );
 
         let vault = Vault::create();
-        let identity = Identity::create(context, &vault).await.unwrap();
+        let identity = Identity::create(context, vault).await.unwrap();
         let secure_channel_controller =
             KafkaSecureChannelControllerImpl::new(Arc::new(identity), route![]).into_trait();
 
@@ -635,7 +635,7 @@ mod test {
         crate::test::start_manager_for_tests(context).await?;
 
         let vault = Vault::create();
-        let identity = Identity::create(context, &vault).await?;
+        let identity = Identity::create(context, vault).await?;
 
         let secure_channel_controller =
             KafkaSecureChannelControllerImpl::new(Arc::new(identity), route![]).into_trait();
