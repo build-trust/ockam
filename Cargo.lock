@@ -1719,7 +1719,7 @@ version = "1.0.0-alpha.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3babfc7fd332142a0b11aebf592992f211f4e01b6222fb04b03aba1bd80018d"
 dependencies = [
- "nb 1.0.0",
+ "nb 1.1.0",
 ]
 
 [[package]]
@@ -1999,7 +1999,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9607bfc4c388f9d629704f56ede4a007546cad417b3bcd6fc7c87dc7edce04a"
 dependencies = [
  "fugit",
- "nb 1.0.0",
+ "nb 1.1.0",
 ]
 
 [[package]]
@@ -2974,14 +2974,14 @@ version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "801d31da0513b6ec5214e9bf433a77966320625a37860f910be265be6e18d06f"
 dependencies = [
- "nb 1.0.0",
+ "nb 1.1.0",
 ]
 
 [[package]]
 name = "nb"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "546c37ac5d9e56f55e73b677106873d9d9f5190605e41a856503623648488cae"
+checksum = "8d5439c4ad607c3c23abf66de8c8bf57ba8adcd1f129e699851a6e43935d339d"
 
 [[package]]
 name = "nibble_vec"
@@ -3402,7 +3402,7 @@ dependencies = [
  "futures 0.3.26",
  "futures-util",
  "heapless",
- "nb 1.0.0",
+ "nb 1.1.0",
  "ockam_core",
  "ockam_identity",
  "ockam_node",
@@ -3719,7 +3719,7 @@ dependencies = [
  "enumflags2",
  "mips-mcu",
  "mips-rt",
- "nb 1.0.0",
+ "nb 1.1.0",
  "pic32mx2xx",
 ]
 
@@ -4724,7 +4724,7 @@ dependencies = [
  "embedded-storage",
  "fugit",
  "fugit-timer",
- "nb 1.0.0",
+ "nb 1.1.0",
  "rand_core 0.6.4",
  "stm32f4",
  "time",
@@ -4756,7 +4756,7 @@ dependencies = [
  "embedded-dma",
  "embedded-hal 0.2.7",
  "fugit",
- "nb 1.0.0",
+ "nb 1.1.0",
  "paste",
  "stm32h7",
  "void",
