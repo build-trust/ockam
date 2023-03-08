@@ -14,7 +14,7 @@ teardown() {
 
 # ===== TESTS
 
-@test "credentials - issue, verify, store, show and list" {
+@test "credential - issue, verify, store, show and list" {
   run "$OCKAM" identity create i1
   assert_success
   idt1=$($OCKAM identity show i1)

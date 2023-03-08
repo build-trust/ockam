@@ -65,7 +65,7 @@ teardown() {
   OCKAM_HOME=$ENROLLED_OCKAM_HOME
 }
 
-@test "projects - access requiring credentials" {
+@test "projects - access requiring credential" {
   skip_if_long_tests_not_enabled
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
@@ -121,7 +121,7 @@ teardown() {
 @test "projects - send a message to a project node from an embedded node, enrolled member on different install" {
   skip # FIXME  how to send a message to a project m1 is enrolled to?  (with m1 being on a different install
   #       than the admin?.  If we pass project' address directly (instead of /project/ thing), would
-  #       it present credentials? would read authority info from project.json?
+  #       it present credential? would read authority info from project.json?
 
   $OCKAM project information --output json >/tmp/project.json
 
@@ -227,7 +227,7 @@ teardown() {
   assert_failure
 
   unset OCKAM_HOME
-  run "$OCKAM" project addon configure influx-db --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}" --user-access-role '(= subject.service "sensor")'
+  run "$OCKAM" project addon configure influxdb --org-id "${INFLUXDB_ORG_ID}" --token "${INFLUXDB_TOKEN}" --endpoint-url "${INFLUXDB_ENDPOINT}" --max-ttl 60 --permissions "${INFLUXDB_PERMISSIONS}" --user-access-role '(= subject.service "sensor")'
   assert_success
 
   sleep 30 #FIXME  workaround, project not yet ready after configuring addon

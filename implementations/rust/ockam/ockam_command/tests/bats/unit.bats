@@ -330,6 +330,17 @@ teardown() {
 
 # ===== PORTALS (INLET/OUTLET)
 
+@test "portals - list inlets on a node" {
+  $OCKAM node create n1
+  $OCKAM node create n2
+  $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:6000 --to /node/n1/service/outlet --alias tcp-inlet-2
+  run $OCKAM tcp-inlet list --node /node/n2
+
+  assert_output --partial "Alias: tcp-inlet-2"
+  assert_output --partial "TCP Address: 127.0.0.1:6000"
+  assert_output --regexp "To Outlet Address: /service/.*/service/outlet"
+}
+
 @test "portals - create an inlet/outlet pair and move tcp traffic through it" {
   port=6000
   run --separate-stderr "$OCKAM" node create n1
