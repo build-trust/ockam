@@ -3,13 +3,14 @@ use hello_ockam::Echoer;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let _tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let _tcp = node.create_tcp_transport().await?;
 
     // Start an echoer
-    ctx.start_worker("echoer", Echoer).await?;
+    node.start_worker("echoer", Echoer).await?;
 
     // Create the stream
-    Stream::new(&ctx).await?
+    node.create_stream().await?
         .connect(
             route![(TCP, "localhost:4000")],
             // Stream name from THIS to OTHER

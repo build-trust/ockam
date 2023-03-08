@@ -10,12 +10,9 @@ use anyhow::anyhow;
 pub(crate) use get::GetCommand;
 pub(crate) use issue::IssueCommand;
 pub(crate) use list::ListCommand;
-use ockam::Context;
+use ockam::identity::credential::{Credential, CredentialData, Unverified};
+use ockam::identity::IdentityIdentifier;
 use ockam_core::compat::sync::Arc;
-use ockam_identity::credential::Credential;
-use ockam_identity::credential::CredentialData;
-use ockam_identity::credential::Unverified;
-use ockam_identity::IdentityIdentifier;
 pub(crate) use present::PresentCommand;
 pub(crate) use show::ShowCommand;
 pub(crate) use store::StoreCommand;
@@ -68,7 +65,6 @@ pub async fn validate_encoded_cred(
     issuer: &IdentityIdentifier,
     vault: &str,
     opts: &CommandGlobalOpts,
-    ctx: &Context,
 ) -> Result<()> {
     let vault = Arc::new(opts.state.vaults.get(vault)?.get().await?);
 
@@ -78,17 +74,15 @@ pub async fn validate_encoded_cred(
     };
 
     let cred: Credential = minicbor::decode(&bytes)?;
-
     let cred_data: CredentialData<Unverified> = minicbor::decode(cred.unverified_data())?;
 
     let ident_state = opts.state.identities.get_by_identifier(issuer)?;
 
-    let ident = ident_state.get(ctx, vault.clone()).await?;
-
-    ident
-        .to_public()
-        .await?
-        .verify_credential(&cred, cred_data.unverified_subject(), vault)
+    let identity = ident_state.get(vault.clone()).await?;
+    let identities = ident_state.make_identities(vault.clone()).await?;
+    identities
+        .credentials()
+        .verify_credential(cred_data.unverified_subject(), &[identity], cred)
         .await?;
 
     Ok(())

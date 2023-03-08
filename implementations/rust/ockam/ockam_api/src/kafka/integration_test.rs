@@ -77,6 +77,7 @@ mod test {
     ) -> ockam::Result<u16> {
         let flow_controls = FlowControls::default();
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
+            handle.secure_channels.clone(),
             handle.identity.clone(),
             route![],
             HopForwarderCreator {},
@@ -90,8 +91,10 @@ mod test {
                 .create_consumer_listener(context)
                 .await?;
             handle
-                .identity
+                .secure_channels
                 .create_secure_channel_listener(
+                    context,
+                    &handle.identity,
                     KAFKA_SECURE_CHANNEL_LISTENER_ADDRESS,
                     SecureChannelListenerOptions::new(),
                 )

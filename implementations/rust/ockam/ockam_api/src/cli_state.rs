@@ -5,11 +5,12 @@ use crate::config::lookup::ProjectLookup;
 use crate::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
 
 use nix::errno::Errno;
-use ockam_core::compat::sync::Arc;
-use ockam_identity::change_history::{IdentityChangeHistory, IdentityHistoryComparison};
-use ockam_identity::{
-    Identity, IdentityIdentifier, IdentityVault, PublicIdentity, SecureChannelRegistry,
+use ockam::identity::identity::{IdentityChangeHistory, IdentityHistoryComparison};
+use ockam::identity::{
+    identities, Identities, IdentitiesRepository, IdentitiesStorage, IdentitiesVault, Identity,
+    IdentityIdentifier,
 };
+use ockam_core::compat::sync::Arc;
 use ockam_vault::{storage::FileStorage, Vault};
 use rand::random;
 use serde::{Deserialize, Serialize};
@@ -20,9 +21,8 @@ use std::time::SystemTime;
 use sysinfo::{Pid, System, SystemExt};
 
 use crate::lmdb::LmdbStorage;
+use ockam::identity::credential::Credential;
 use ockam_core::env::get_env_with_default;
-use ockam_identity::authenticated_storage::AuthenticatedStorage;
-use ockam_identity::credential::Credential;
 use thiserror::Error;
 
 type Result<T> = std::result::Result<T, CliStateError>;
@@ -150,6 +150,72 @@ impl CliState {
     /// Returns the directory where the default objects are stored.
     fn defaults_dir(dir: &Path) -> Result<PathBuf> {
         Ok(dir.join("defaults"))
+    }
+
+    pub async fn create_vault_state(&self, vault_name: Option<String>) -> Result<VaultState> {
+        let vault_state = if let Some(v) = vault_name {
+            self.vaults.get(v.as_str())?
+        }
+        // Or get the default
+        else if let Ok(v) = self.vaults.default() {
+            v
+        } else {
+            let n = hex::encode(random::<[u8; 4]>());
+            let c = VaultConfig::default();
+            self.vaults.create(&n, c).await?
+        };
+        Ok(vault_state)
+    }
+
+    pub async fn create_identity_state(
+        &self,
+        identity_name: Option<String>,
+        vault: Vault,
+    ) -> Result<IdentityState> {
+        // get the identity name specified in the argument,
+        // and don't try to recreate an identity state if it already exists
+        if let Some(name) = identity_name {
+            if let Ok(identity_state) = self.identities.get(name.as_str()) {
+                Ok(identity_state)
+            } else {
+                self.make_identity_state(vault, Some(name)).await
+            }
+        }
+        // or make a new one with a default name
+        else {
+            self.make_identity_state(vault, None).await
+        }
+    }
+
+    async fn make_identity_state(
+        &self,
+        vault: Vault,
+        name: Option<String>,
+    ) -> Result<IdentityState> {
+        let identity = self
+            .get_identities(vault)
+            .await?
+            .identities_creation()
+            .create_identity()
+            .await?;
+        let identity_config = IdentityConfig::new(&identity).await;
+        let identity_name = name.unwrap_or_else(|| hex::encode(random::<[u8; 4]>()));
+        self.identities
+            .create(identity_name.as_str(), identity_config)
+    }
+
+    pub async fn get_identities(&self, vault: Vault) -> Result<Arc<Identities>> {
+        Ok(identities::builder()
+            .with_identities_vault(Arc::new(vault))
+            .with_identities_repository(self.identities.identities_repository().await?)
+            .build())
+    }
+
+    pub async fn default_identities(&self) -> Result<Arc<Identities>> {
+        Ok(identities::builder()
+            .with_identities_vault(self.vaults.default()?.identities_vault().await?)
+            .with_identities_repository(self.identities.identities_repository().await?)
+            .build())
     }
 }
 
@@ -311,6 +377,13 @@ impl VaultState {
 
     pub fn vault_file_path(&self) -> Result<PathBuf> {
         self.data_path(&self.name)
+    }
+
+    pub async fn identities_vault(&self) -> Result<Arc<dyn IdentitiesVault>> {
+        let path = self.vault_file_path()?;
+        Ok(Arc::new(Vault::new(Some(Arc::new(
+            FileStorage::create(path).await?,
+        )))))
     }
 
     pub fn delete(&self) -> Result<()> {
@@ -509,12 +582,14 @@ impl IdentitiesState {
         self.get(name)
     }
 
-    pub async fn authenticated_storage(&self) -> Result<Arc<dyn AuthenticatedStorage>> {
-        let lmdb_path = self.authenticated_storage_path()?;
-        Ok(Arc::new(LmdbStorage::new(lmdb_path).await?))
+    pub async fn identities_repository(&self) -> Result<Arc<dyn IdentitiesRepository>> {
+        let lmdb_path = self.identities_repository_path()?;
+        Ok(Arc::new(IdentitiesStorage::new(Arc::new(
+            LmdbStorage::new(lmdb_path).await?,
+        ))))
     }
 
-    pub fn authenticated_storage_path(&self) -> Result<PathBuf> {
+    pub fn identities_repository_path(&self) -> Result<PathBuf> {
         let lmdb_path = self.dir.join("data").join("authenticated_storage.lmdb");
         Ok(lmdb_path)
     }
@@ -561,30 +636,34 @@ impl IdentityState {
         self.persist()
     }
 
-    pub async fn get(
-        &self,
-        ctx: &ockam::Context,
-        vault: Arc<dyn IdentityVault>,
-    ) -> Result<Identity> {
+    pub async fn get(&self, vault: Arc<dyn IdentitiesVault>) -> Result<Identity> {
         let data = self.config.change_history.export()?;
+        Ok(self
+            .make_identities(vault)
+            .await?
+            .identities_creation()
+            .import_identity(&data)
+            .await?)
+    }
+
+    pub async fn make_identities(
+        &self,
+        vault: Arc<dyn IdentitiesVault>,
+    ) -> Result<Arc<Identities>> {
         let cli_state_path = self
             .path
             .parent()
             .expect("Should have identities dir as parent")
             .parent()
             .expect("Should have CliState dir as parent");
-        let storage = CliState::new(cli_state_path)?
+        let repository = CliState::new(cli_state_path)?
             .identities
-            .authenticated_storage()
+            .identities_repository()
             .await?;
-        Ok(Identity::import_ext(
-            ctx,
-            &data,
-            storage,
-            &SecureChannelRegistry::new(),
-            vault.clone(),
-        )
-        .await?)
+        Ok(identities::builder()
+            .with_identities_vault(vault)
+            .with_identities_repository(repository)
+            .build())
     }
 }
 
@@ -634,8 +713,8 @@ pub struct IdentityConfig {
 
 impl IdentityConfig {
     pub async fn new(identity: &Identity) -> Self {
-        let identifier = identity.identifier().clone();
-        let change_history = identity.change_history().await;
+        let identifier = identity.identifier();
+        let change_history = identity.change_history();
         Self {
             identifier,
             change_history,
@@ -643,8 +722,8 @@ impl IdentityConfig {
         }
     }
 
-    pub fn public_identity(&self) -> PublicIdentity {
-        PublicIdentity::new(self.identifier.clone(), self.change_history.clone())
+    pub fn identity(&self) -> Identity {
+        Identity::new(self.identifier.clone(), self.change_history.clone())
     }
 }
 
@@ -989,11 +1068,11 @@ impl NodeConfig {
         Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
     }
 
-    pub async fn identity(&self, ctx: &ockam::Context) -> Result<Identity> {
-        let vault: Arc<dyn IdentityVault> = Arc::new(self.vault().await?);
+    pub async fn default_identity(&self) -> Result<Identity> {
+        let vault: Arc<dyn IdentitiesVault> = Arc::new(self.vault().await?);
         let state_path = std::fs::canonicalize(&self.default_identity)?;
         let state = IdentityState::try_from(&state_path)?;
-        state.get(ctx, vault).await
+        state.get(vault).await
     }
 }
 
@@ -1383,12 +1462,12 @@ impl TrustContextState {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CredentialConfig {
-    pub issuer: PublicIdentity,
+    pub issuer: Identity,
     pub encoded_credential: String,
 }
 
 impl CredentialConfig {
-    pub fn new(issuer: PublicIdentity, encoded_credential: String) -> Result<Self> {
+    pub fn new(issuer: Identity, encoded_credential: String) -> Result<Self> {
         Ok(Self {
             issuer,
             encoded_credential,
@@ -1401,7 +1480,7 @@ impl CredentialConfig {
             Err(e) => {
                 return Err(CliStateError::Invalid(format!(
                     "Unable to hex decode credential. {e}"
-                )))
+                )));
             }
         };
         minicbor::decode::<Credential>(&bytes)
@@ -1553,11 +1632,16 @@ mod tests {
         let identity_name = {
             let name = hex::encode(random::<[u8; 4]>());
             let vault_state = sut.vaults.get(&vault_name).unwrap();
-            let vault: Arc<dyn IdentityVault> = Arc::new(vault_state.get().await.unwrap());
-            let identity =
-                Identity::create_ext(ctx, sut.identities.authenticated_storage().await?, vault)
-                    .await
-                    .unwrap();
+            let vault: Arc<dyn IdentitiesVault> = Arc::new(vault_state.get().await.unwrap());
+            let identities = identities::builder()
+                .with_identities_vault(vault)
+                .with_identities_repository(sut.identities.identities_repository().await?)
+                .build();
+            let identity = identities
+                .identities_creation()
+                .create_identity()
+                .await
+                .unwrap();
             let config = IdentityConfig::new(&identity).await;
 
             let state = sut.identities.create(&name, config).unwrap();

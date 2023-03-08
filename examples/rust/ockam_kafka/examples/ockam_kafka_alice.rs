@@ -1,20 +1,15 @@
 use ockam::identity::SecureChannelOptions;
-use ockam::{
-    identity::Identity, route, stream::Stream, unique_with_prefix, vault::Vault, Context, Result, TcpConnectionOptions,
-    TcpTransport,
-};
+use ockam::{node, route, unique_with_prefix, Context, Result, TcpConnectionOptions};
 use std::io;
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
-
-    // Create a Vault to safely store secret keys for Alice.
-    let vault = Vault::create();
+    let mut node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity to represent Alice.
-    let alice = Identity::create(&ctx, vault).await?;
+    let alice = node.create_identity().await?;
 
     // This program expects that Bob has created two streams
     // bob_to_alice and alice_to_bob on the cloud node at 1.node.ockam.network:4000
@@ -42,7 +37,8 @@ async fn main(mut ctx: Context) -> Result<()> {
     let node_in_hub = tcp
         .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
-    let (sender, _receiver) = Stream::new(&ctx)
+    let (sender, _receiver) = node
+        .create_stream()
         .await?
         .stream_service("stream_kafka")
         .index_service("stream_kafka_index")
@@ -54,7 +50,9 @@ async fn main(mut ctx: Context) -> Result<()> {
     // perform an Authenticated Key Exchange to establish an encrypted secure
     // channel with Bob.
     let r = route![sender.clone(), "listener"];
-    let channel = alice.create_secure_channel(r, SecureChannelOptions::new()).await?;
+    let channel = node
+        .create_secure_channel(&alice, r, SecureChannelOptions::new())
+        .await?;
 
     println!("\n[✓] End-to-end encrypted secure channel was established.\n");
 
@@ -66,10 +64,11 @@ async fn main(mut ctx: Context) -> Result<()> {
         let message = message.trim();
 
         // Send the provided message, through the channel, to Bob's echoer.
-        ctx.send(route![channel.clone(), "echoer"], message.to_string()).await?;
+        node.send(route![channel.clone(), "echoer"], message.to_string())
+            .await?;
 
         // Wait to receive an echo and print it.
-        let reply = ctx.receive::<String>().await?;
+        let reply = node.receive::<String>().await?;
         println!("Alice received an echo: {}\n", reply); // should print "Hello Ockam!"
     }
 

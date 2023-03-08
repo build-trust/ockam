@@ -1,20 +1,18 @@
-use ockam::identity::{Identity, SecureChannelListenerOptions};
-use ockam::{vault::Vault, Context, Result, TcpListenerOptions, TcpOutletOptions, TcpTransport};
+use ockam::identity::SecureChannelListenerOptions;
+use ockam::{node, Context, Result, TcpListenerOptions, TcpOutletOptions};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Create:
-    //   1. A Vault to store our cryptographic keys
-    //   2. An Identity to represent this Node
-    //   3. A Secure Channel Listener at Worker address - secure_channel_listener
+    //   1. An Identity to represent this Node
+    //   2. A Secure Channel Listener at Worker address - secure_channel_listener
     //      that will wait for requests to start an Authenticated Key Exchange.
-
-    let vault = Vault::create();
-    let e = Identity::create(&ctx, vault).await?;
-    e.create_secure_channel_listener("secure_channel_listener", SecureChannelListenerOptions::new())
+    let e = node.create_identity().await?;
+    node.create_secure_channel_listener(&e, "secure_channel_listener", SecureChannelListenerOptions::new())
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.

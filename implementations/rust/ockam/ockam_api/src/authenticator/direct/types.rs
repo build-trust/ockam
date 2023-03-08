@@ -1,6 +1,6 @@
 use minicbor::{Decode, Encode};
+use ockam::identity::IdentityIdentifier;
 use ockam_core::CowStr;
-use ockam_identity::IdentityIdentifier;
 use std::collections::HashMap;
 
 #[cfg(feature = "tag")]

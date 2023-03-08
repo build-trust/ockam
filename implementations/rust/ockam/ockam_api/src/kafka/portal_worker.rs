@@ -304,13 +304,12 @@ mod test {
     use kafka_protocol::protocol::Decodable;
     use kafka_protocol::protocol::Encodable as KafkaEncodable;
     use kafka_protocol::protocol::StrBytes;
+    use ockam::identity::secure_channels;
     use ockam_core::compat::sync::{Arc, Mutex};
     use ockam_core::flow_control::FlowControls;
     use ockam_core::{route, Address, AllowAll, Routed, Worker};
-    use ockam_identity::Identity;
-    use ockam_node::{Context, MessageReceiveOptions};
+    use ockam_node::Context;
     use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
-    use ockam_vault::Vault;
     use std::collections::BTreeMap;
     use std::time::Duration;
 
@@ -318,6 +317,7 @@ mod test {
     use crate::kafka::portal_worker::{KafkaPortalWorker, MAX_KAFKA_MESSAGE_SIZE};
     use crate::kafka::secure_channel_map::KafkaSecureChannelControllerImpl;
     use crate::port_range::PortRange;
+    use ockam::MessageReceiveOptions;
 
     const TEST_KAFKA_API_VERSION: i16 = 13;
 
@@ -590,12 +590,22 @@ mod test {
             PortRange::new(20_000, 40_000).unwrap(),
         );
 
-        let vault = Vault::create();
-        let identity = Identity::create(context, vault).await.unwrap();
+        let secure_channels = secure_channels();
+        let identity = secure_channels
+            .identities()
+            .identities_creation()
+            .create_identity()
+            .await
+            .unwrap();
+
         let flow_controls = FlowControls::default();
-        let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(Arc::new(identity), route![], &flow_controls)
-                .into_trait();
+        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            secure_channels,
+            identity,
+            route![],
+            &flow_controls,
+        )
+        .into_trait();
 
         KafkaPortalWorker::start_kafka_portal(
             context,
@@ -643,12 +653,21 @@ mod test {
     ) -> ockam::Result<()> {
         crate::test::start_manager_for_tests(context).await?;
 
-        let vault = Vault::create();
-        let identity = Identity::create(context, vault).await?;
+        let secure_channels = secure_channels();
+        let identity = secure_channels
+            .identities()
+            .identities_creation()
+            .create_identity()
+            .await?;
+
         let flow_controls = FlowControls::default();
-        let secure_channel_controller =
-            KafkaSecureChannelControllerImpl::new(Arc::new(identity), route![], &flow_controls)
-                .into_trait();
+        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            secure_channels.clone(),
+            identity,
+            route![],
+            &flow_controls,
+        )
+        .into_trait();
 
         let inlet_map = KafkaInletMap::new(
             route![],

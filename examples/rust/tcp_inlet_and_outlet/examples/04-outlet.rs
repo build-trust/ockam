@@ -1,18 +1,15 @@
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteForwarderOptions;
-use ockam::{
-    identity::Identity, remote::RemoteForwarder, vault::Vault, Context, Result, TcpConnectionOptions, TcpOutletOptions,
-    TcpTransport,
-};
+use ockam::{node, Context, Result, TcpConnectionOptions, TcpOutletOptions};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
-    let vault = Vault::create();
-    let e = Identity::create(&ctx, vault).await?;
-    e.create_secure_channel_listener("secure_channel_listener", SecureChannelListenerOptions::new())
+    let e = node.create_identity().await?;
+    node.create_secure_channel_listener(&e, "secure_channel_listener", SecureChannelListenerOptions::new())
         .await?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
@@ -44,7 +41,9 @@ async fn main(ctx: Context) -> Result<()> {
     let node_in_hub = tcp
         .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
-    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, RemoteForwarderOptions::new()).await?;
+    let forwarder = node
+        .create_forwarder(node_in_hub, RemoteForwarderOptions::new())
+        .await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address in Hub is:");
     println!("{}", forwarder.remote_address());

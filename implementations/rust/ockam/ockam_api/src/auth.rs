@@ -2,20 +2,19 @@ pub mod types;
 
 use core::fmt;
 use minicbor::Decoder;
+use ockam::identity::{AttributesEntry, IdentityAttributesReader, IdentityIdentifier};
 use ockam_core::api::decode_option;
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{self, Address, DenyAll, Result, Route, Routed, Worker};
-use ockam_identity::authenticated_storage::{AttributesEntry, IdentityAttributeStorageReader};
-use ockam_identity::IdentityIdentifier;
 use ockam_node::api::request;
 use ockam_node::{Context, MessageSendReceiveOptions};
 use tracing::trace;
 
 /// Auth API server.
 pub struct Server {
-    store: Arc<dyn IdentityAttributeStorageReader>,
+    store: Arc<dyn IdentityAttributesReader>,
 }
 
 #[ockam_core::worker]
@@ -34,7 +33,7 @@ impl Worker for Server {
 }
 
 impl Server {
-    pub fn new(s: Arc<dyn IdentityAttributeStorageReader>) -> Self {
+    pub fn new(s: Arc<dyn IdentityAttributesReader>) -> Self {
         Server { store: s }
     }
 

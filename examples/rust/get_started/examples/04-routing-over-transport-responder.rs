@@ -3,19 +3,19 @@
 
 use hello_ockam::Echoer;
 use ockam::access_control::AllowAll;
-use ockam::{Context, Result, TcpListenerOptions, TcpTransport};
+use ockam::{node, Context, Result, TcpListenerOptions};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Create an echoer worker
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
+    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
     // Create a TCP listener and wait for incoming connections.
     tcp.listen("127.0.0.1:4000", TcpListenerOptions::new()).await?;
 
-    // Don't call ctx.stop() here so this node runs forever.
+    // Don't call node.stop() here so this node runs forever.
     Ok(())
 }

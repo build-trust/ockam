@@ -15,7 +15,7 @@ async fn main(ctx: Context) -> Result<()> {
     //      that will wait for requests to start an Authenticated Key Exchange.
 
     let vault = Vault::create();
-    let e = Identity::create(&ctx, vault).await?;
+    let e = Identities::create(&ctx, vault).await?;
     let storage = InMemoryStorage::new();
     e.create_secure_channel_listener("secure_channel_listener", TrustEveryonePolicy, &storage)
         .await?;

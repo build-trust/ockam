@@ -10,6 +10,7 @@ use crate::{actions, resources, DefaultAddress};
 use crate::{local_multiaddr_to_route, try_multiaddr_to_addr};
 use minicbor::Decoder;
 use ockam::compat::tokio::time::timeout;
+use ockam::identity::IdentityIdentifier;
 use ockam::{Address, AsyncTryClone, Result};
 
 use ockam_abac::Resource;
@@ -17,7 +18,6 @@ use ockam_core::api::{Request, Response, ResponseBuilder};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControlPolicy;
 use ockam_core::IncomingAccessControl;
-use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::proto::{Project, Secure, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::compat::asynchronous::RwLock;
@@ -487,10 +487,10 @@ fn replacer(
                 // First the previous secure channel is deleted, and -- if secure
                 // channels were nested -- the outer one as well:
 
-                let _ = this.delete_secure_channel(&prev).await;
+                let _ = this.delete_secure_channel(&ctx, &prev).await;
                 if let Some(a) = data.get::<MultiAddr>(OUTER_CHAN) {
                     let a = try_multiaddr_to_addr(&a)?;
-                    let _ = this.delete_secure_channel(&a).await;
+                    let _ = this.delete_secure_channel(&ctx, &a).await;
                 }
 
                 // Now a connection attempt is made:

@@ -4,11 +4,11 @@ use std::sync::Arc;
 use minicbor::Decoder;
 
 use ockam::compat::asynchronous::RwLock;
+use ockam::identity::IdentityIdentifier;
 use ockam::remote::{RemoteForwarder, RemoteForwarderInfo, RemoteForwarderOptions};
 use ockam::Result;
 use ockam_core::api::{Id, Request, Response, ResponseBuilder, Status};
 use ockam_core::AsyncTryClone;
-use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio::time::timeout;
 use ockam_node::Context;
@@ -162,7 +162,7 @@ fn replacer(
             let f = async {
                 let prev = try_multiaddr_to_addr(&prev)?;
                 let mut this = manager.write().await;
-                let _ = this.delete_secure_channel(&prev).await;
+                let _ = this.delete_secure_channel(&ctx, &prev).await;
                 let connection = Connection::new(ctx.as_ref(), &addr)
                     .with_authorized_identity(auth)
                     .with_timeout(util::MAX_CONNECT_TIME)

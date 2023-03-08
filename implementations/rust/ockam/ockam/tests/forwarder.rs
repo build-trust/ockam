@@ -3,10 +3,9 @@ use ockam::workers::Echoer;
 use ockam::ForwardingService;
 use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
 use ockam_core::{route, Address, AllowAll, Result};
-use ockam_identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
+use ockam_identity::{secure_channels, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_node::{Context, MessageReceiveOptions, MessageSendReceiveOptions};
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
-use ockam_vault::Vault;
 use std::time::Duration;
 
 // Node creates a Forwarding service and a Remote Forwarder, Echoer is reached through the Forwarder. No flow control
@@ -181,9 +180,16 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     // Cloud
     ForwardingService::create(ctx, "forwarding_service", AllowAll, AllowAll).await?;
 
-    let cloud_identity = Identity::create(ctx, Vault::create()).await?;
-    cloud_identity
-        .create_secure_channel_listener("cloud_listener", SecureChannelListenerOptions::new())
+    let secure_channels = secure_channels();
+    let identities_creation = secure_channels.identities().identities_creation();
+    let cloud_identity = identities_creation.create_identity().await?;
+    secure_channels
+        .create_secure_channel_listener(
+            ctx,
+            &cloud_identity,
+            "cloud_listener",
+            SecureChannelListenerOptions::new(),
+        )
         .await?;
 
     let cloud_tcp = TcpTransport::create(ctx).await?;
@@ -212,9 +218,11 @@ async fn test4(ctx: &mut Context) -> Result<()> {
             TcpConnectionOptions::as_producer(&server_flow_controls, &server_tcp_flow_control_id),
         )
         .await?;
-    let server_identity = Identity::create(ctx, Vault::create()).await?;
-    let cloud_server_channel = server_identity
+    let server_identity = identities_creation.create_identity().await?;
+    let cloud_server_channel = secure_channels
         .create_secure_channel(
+            ctx,
+            &server_identity,
             route![cloud_server_connection, "cloud_listener"],
             SecureChannelOptions::as_producer(
                 &server_flow_controls,
@@ -223,8 +231,10 @@ async fn test4(ctx: &mut Context) -> Result<()> {
             .as_consumer(&server_flow_controls),
         )
         .await?;
-    server_identity
+    secure_channels
         .create_secure_channel_listener(
+            ctx,
+            &server_identity,
             "server_listener",
             SecureChannelListenerOptions::as_spawner(
                 &server_flow_controls,
@@ -258,9 +268,11 @@ async fn test4(ctx: &mut Context) -> Result<()> {
             TcpConnectionOptions::as_producer(&client_flow_controls, &client_tcp_flow_control_id),
         )
         .await?;
-    let client_identity = Identity::create(ctx, Vault::create()).await?;
-    let cloud_client_channel = client_identity
+    let client_identity = identities_creation.create_identity().await?;
+    let cloud_client_channel = secure_channels
         .create_secure_channel(
+            ctx,
+            &client_identity,
             route![cloud_client_connection, "cloud_listener"],
             SecureChannelOptions::as_producer(
                 &client_flow_controls,
@@ -270,8 +282,10 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let tunnel_channel = client_identity
+    let tunnel_channel = secure_channels
         .create_secure_channel(
+            ctx,
+            &client_identity,
             route![
                 cloud_client_channel,
                 remote_info.remote_address(),

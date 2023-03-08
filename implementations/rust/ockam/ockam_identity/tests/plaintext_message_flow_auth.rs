@@ -3,10 +3,9 @@ use crate::common::{
 };
 use ockam_core::flow_control::{FlowControlPolicy, FlowControls};
 use ockam_core::{route, Address, AllowAll, Result};
-use ockam_identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
+use ockam_identity::{secure_channels, SecureChannelListenerOptions, SecureChannelOptions};
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
-use ockam_vault::Vault;
 use std::time::Duration;
 
 mod common;
@@ -21,24 +20,43 @@ async fn test1(ctx: &mut Context) -> Result<()> {
     let flow_controls_bob = FlowControls::default();
     let flow_control_id_bob_channel = flow_controls_bob.generate_id();
 
-    let alice = Identity::create(ctx, Vault::create()).await?;
-    let bob = Identity::create(ctx, Vault::create()).await?;
+    let alice_secure_channels = secure_channels();
+    let bob_secure_channels = secure_channels();
 
-    bob.create_secure_channel_listener(
-        "listener",
-        SecureChannelListenerOptions::as_spawner(&flow_controls_bob, &flow_control_id_bob_channel),
-    )
-    .await?;
+    let alice = alice_secure_channels
+        .identities()
+        .identities_creation()
+        .create_identity()
+        .await?;
+    let bob = bob_secure_channels
+        .identities()
+        .identities_creation()
+        .create_identity()
+        .await?;
 
-    let channel_to_bob = alice
+    bob_secure_channels
+        .create_secure_channel_listener(
+            ctx,
+            &bob,
+            "listener",
+            SecureChannelListenerOptions::as_spawner(
+                &flow_controls_bob,
+                &flow_control_id_bob_channel,
+            ),
+        )
+        .await?;
+
+    let channel_to_bob = alice_secure_channels
         .create_secure_channel(
+            ctx,
+            &alice,
             route!["listener"],
             SecureChannelOptions::as_producer(&flow_controls_alice, &flow_control_id_alice_channel),
         )
         .await?;
 
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
-    let channel_to_alice = bob
+    let channel_to_alice = bob_secure_channels
         .secure_channel_registry()
         .get_channel_list()
         .first()
@@ -105,25 +123,41 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     message_should_not_pass(ctx, &connection_to_bob).await?;
     message_should_not_pass(ctx, &connection_to_alice).await?;
 
-    let alice = Identity::create(ctx, Vault::create()).await?;
-    let bob = Identity::create(ctx, Vault::create()).await?;
+    let alice_secure_channels = secure_channels();
+    let bob_secure_channels = secure_channels();
 
-    bob.create_secure_channel_listener(
-        "listener",
-        SecureChannelListenerOptions::as_spawner(
-            &flow_controls_bob,
-            &flow_control_id_bob_plaintext,
+    let alice = alice_secure_channels
+        .identities()
+        .identities_creation()
+        .create_identity()
+        .await?;
+    let bob = bob_secure_channels
+        .identities()
+        .identities_creation()
+        .create_identity()
+        .await?;
+
+    bob_secure_channels
+        .create_secure_channel_listener(
+            ctx,
+            &bob,
+            "listener",
+            SecureChannelListenerOptions::as_spawner(
+                &flow_controls_bob,
+                &flow_control_id_bob_plaintext,
+            )
+            .as_consumer_with_flow_control_id(
+                &flow_controls_bob,
+                &flow_control_id_bob_tcp,
+                FlowControlPolicy::SpawnerAllowOnlyOneMessage,
+            ),
         )
-        .as_consumer_with_flow_control_id(
-            &flow_controls_bob,
-            &flow_control_id_bob_tcp,
-            FlowControlPolicy::SpawnerAllowOnlyOneMessage,
-        ),
-    )
-    .await?;
+        .await?;
 
-    let channel_to_bob = alice
+    let channel_to_bob = alice_secure_channels
         .create_secure_channel(
+            ctx,
+            &alice,
             route![connection_to_bob, "listener"],
             SecureChannelOptions::as_producer(
                 &flow_controls_alice,
@@ -135,7 +169,9 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     ctx.sleep(Duration::from_millis(50)).await; // Wait for workers to add themselves to the registry
 
-    let channels = bob.secure_channel_registry().get_channel_list();
+    let channels = bob_secure_channels
+        .secure_channel_registry()
+        .get_channel_list();
     assert_eq!(channels.len(), 1);
     let channel_to_alice = channels
         .first()

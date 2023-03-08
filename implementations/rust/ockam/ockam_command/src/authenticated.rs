@@ -5,12 +5,11 @@ use anyhow::{anyhow, Context as _};
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 use ockam::compat::collections::HashMap;
+use ockam::identity::{AttributesEntry, IdentityIdentifier};
 use ockam::{Context, TcpTransport};
 use ockam_api::auth;
 use ockam_api::is_local_node;
 use ockam_core::flow_control::FlowControls;
-use ockam_identity::authenticated_storage::AttributesEntry;
-use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use termimad::{minimad::TextTemplate, MadSkin};
 

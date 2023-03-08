@@ -1,16 +1,19 @@
-use ockam::AsyncTryClone;
+use ockam::{node, MessageSendReceiveOptions, TcpInletOptions};
 use ockam_core::compat::sync::Arc;
 use std::time::Duration;
 
 use hello_ockam::{create_token, import_project};
 use ockam::abac::AbacAccessControl;
-use ockam::identity::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential::OneTimeCode;
-use ockam::identity::{AuthorityInfo, Identity, SecureChannelOptions, TrustContext, TrustMultiIdentifiersPolicy};
-use ockam::{route, vault::Vault, Context, MessageSendReceiveOptions, Result, TcpInletOptions, TcpTransport};
-use ockam_api::authenticator::direct::{RpcClient, TokenAcceptorClient};
-use ockam_api::{multiaddr_to_route, CredentialIssuerInfo, CredentialIssuerRetriever, DefaultAddress};
+use ockam::identity::{
+    identities, AuthorityService, RemoteCredentialsRetriever, RemoteCredentialsRetrieverInfo, SecureChannelOptions,
+    TrustContext, TrustMultiIdentifiersPolicy,
+};
+use ockam::{route, Context, Result};
+use ockam_api::authenticator::direct::TokenAcceptorClient;
+use ockam_api::{multiaddr_to_route, DefaultAddress};
 use ockam_core::flow_control::FlowControls;
+use ockam_node::RpcClient;
 
 /// This node supports an "edge" server which can connect to a "control" node
 /// in order to connect its TCP inlet to the "control" node TCP outlet
@@ -46,26 +49,25 @@ async fn main(ctx: Context) -> Result<()> {
 /// start the edge node
 async fn start_node(ctx: Context, project_information_path: &str, token: OneTimeCode) -> Result<()> {
     // Use the TCP transport
-    let tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Create an Identity for the edge plane
-    let vault = Vault::create();
-    let edge_plane = Identity::create(&ctx, vault.clone()).await?;
+    let edge_plane = node.create_identity().await?;
 
     // 2. create a secure channel to the authority
     //    to retrieve the node credential
 
     // Import the authority identity and route from the information file
-    let project = import_project(project_information_path, vault).await?;
+    let project = import_project(project_information_path, node.identities_vault()).await?;
 
     let flow_controls = FlowControls::default();
     let tcp_authority_route = multiaddr_to_route(&project.authority_route(), &tcp, &flow_controls)
         .await
         .unwrap(); // FIXME: Handle error
-    let authority_options = SecureChannelOptions::new().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![
-        project.authority_public_identifier(),
-    ]));
-    let options = if let Some(_flow_control_id) = tcp_authority_route.flow_control_id {
+    let authority_options = SecureChannelOptions::new()
+        .with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![project.authority_identifier()]));
+    let options = if let Some(_session_id) = tcp_authority_route.flow_control_id {
         authority_options.as_consumer(&flow_controls)
     } else {
         authority_options
@@ -73,47 +75,67 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
-    let secure_channel = edge_plane
-        .create_secure_channel_extended(tcp_authority_route.route, options, Duration::from_secs(120))
+    let secure_channel = node
+        .create_secure_channel_extended(
+            &edge_plane,
+            tcp_authority_route.route,
+            options,
+            Duration::from_secs(120),
+        )
         .await?;
 
     let token_acceptor = TokenAcceptorClient::new(
         RpcClient::new(
             route![secure_channel.clone(), DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR],
-            &ctx,
+            &node.context().await?,
         )
         .await?,
     );
     token_acceptor.present_token(&token).await?;
 
     // Create a trust context that will be used to authenticate credential exchanges
+    let tcp_project_session = multiaddr_to_route(&project.route(), &tcp, &flow_controls)
+        .await
+        .unwrap(); // FIXME: Handle error
+
     let trust_context = TrustContext::new(
         "trust_context_id".to_string(),
-        Some(AuthorityInfo::new(
-            project.authority_public_identity(),
-            Some(Arc::new(CredentialIssuerRetriever::new(
-                CredentialIssuerInfo::new(
-                    hex::encode(project.authority_public_identity().export()?),
-                    project.authority_route(),
+        Some(AuthorityService::new(
+            node.credentials(),
+            project.authority_identity(),
+            Some(Arc::new(RemoteCredentialsRetriever::new(
+                node.secure_channels(),
+                RemoteCredentialsRetrieverInfo::new(
+                    project.authority_identity(),
+                    tcp_project_session.route,
+                    DefaultAddress::CREDENTIAL_ISSUER.into(),
                 ),
-                tcp.async_try_clone().await?,
+                flow_controls.clone(),
             ))),
         )),
     );
 
-    let credential = trust_context.authority()?.credential(&edge_plane).await?;
+    let credential = trust_context
+        .authority()?
+        .credential(&node.context().await?, &edge_plane)
+        .await?;
 
     println!("{credential}");
 
     // start a credential exchange worker which will be
     // later on to exchange credentials with the control node
-    let storage = AuthenticatedAttributeStorage::new(edge_plane.authenticated_storage().clone());
-    edge_plane
-        .start_credential_exchange_worker(trust_context, "credential_exchange", true, Arc::new(storage))
+    node.credentials_server()
+        .start(
+            &node.context().await?,
+            trust_context,
+            project.authority_identity(),
+            "credential_exchange".into(),
+            true,
+        )
         .await?;
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
-    let access_control = AbacAccessControl::create(edge_plane.authenticated_storage().clone(), "component", "control");
+    let access_control = AbacAccessControl::create(identities().repository(), "component", "control");
 
     // 4. create a tcp inlet with the above policy
 
@@ -129,24 +151,31 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     };
 
     // 4.1 first created a secure channel to the project
-    let secure_channel_address = edge_plane
-        .create_secure_channel_extended(tcp_project_route.route, project_options, Duration::from_secs(120))
+    let secure_channel_address = node
+        .create_secure_channel_extended(
+            &edge_plane,
+            tcp_project_route.route,
+            project_options,
+            Duration::from_secs(120),
+        )
         .await?;
     println!("secure channel address to the project: {secure_channel_address:?}");
 
     // 4.2 and send this node credential to the project
-    edge_plane
+    node.credentials_server()
         .present_credential(
+            &node.context().await?,
             route![secure_channel_address.clone(), DefaultAddress::CREDENTIALS_SERVICE],
-            &credential,
+            credential.clone(),
             MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
         )
         .await?;
 
     // 4.3 then create a secure channel to the control node (via its forwarder)
     let secure_channel_listener_route = route![secure_channel_address, "forward_to_control_plane1", "untrusted"];
-    let secure_channel_to_control = edge_plane
+    let secure_channel_to_control = node
         .create_secure_channel_extended(
+            &edge_plane,
             secure_channel_listener_route.clone(),
             SecureChannelOptions::new(),
             Duration::from_secs(120),
@@ -156,13 +185,12 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     println!("secure channel address to the control node: {secure_channel_to_control:?}");
 
     // 4.4 exchange credential with the control node
-    let storage = AuthenticatedAttributeStorage::new(edge_plane.authenticated_storage().clone());
-    edge_plane
+    node.credentials_server()
         .present_credential_mutual(
+            &node.context().await?,
             route![secure_channel_to_control.clone(), "credential_exchange"],
-            vec![&project.authority_public_identity()],
-            Arc::new(storage),
-            &credential,
+            &[project.authority_identity()],
+            credential,
             MessageSendReceiveOptions::new().with_flow_control(&flow_controls),
         )
         .await?;

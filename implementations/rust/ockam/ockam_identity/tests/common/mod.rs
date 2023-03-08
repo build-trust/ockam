@@ -1,11 +1,13 @@
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::flow_control::{FlowControlId, FlowControlPolicy, FlowControls};
 use ockam_core::{route, Address, AllowAll, Result, Route};
-use ockam_identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
+use ockam_identity::{
+    secure_channels, Identity, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
+};
 use ockam_node::{Context, MessageReceiveOptions};
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
-use ockam_vault::Vault;
 use rand::random;
+use std::sync::Arc;
 
 #[allow(dead_code)]
 pub async fn message_should_pass(ctx: &Context, address: &Address) -> Result<()> {
@@ -207,12 +209,13 @@ async fn create_tcp_connection(
 #[allow(dead_code)]
 pub struct SecureChannelListenerInfo {
     pub identity: Identity,
+    pub secure_channels: Arc<SecureChannels>,
 }
 
 impl SecureChannelListenerInfo {
     #[allow(dead_code)]
     pub fn get_channel(&self) -> Address {
-        self.identity
+        self.secure_channels
             .secure_channel_registry()
             .get_channel_list()
             .first()
@@ -228,7 +231,10 @@ pub async fn create_secure_channel_listener(
     flow_control: &Option<(FlowControls, FlowControlId)>,
     with_tcp_listener: bool,
 ) -> Result<SecureChannelListenerInfo> {
-    let identity = Identity::create(ctx, Vault::create()).await?;
+    let secure_channels = secure_channels();
+    let identities_creation = secure_channels.identities().identities_creation();
+
+    let identity = identities_creation.create_identity().await?;
 
     let options = SecureChannelListenerOptions::new();
     let options = if let Some((flow_controls, flow_control_id)) = flow_control {
@@ -243,17 +249,21 @@ pub async fn create_secure_channel_listener(
         options
     };
 
-    identity
-        .create_secure_channel_listener("listener", options)
+    secure_channels
+        .create_secure_channel_listener(ctx, &identity, "listener", options)
         .await?;
 
-    let info = SecureChannelListenerInfo { identity };
+    let info = SecureChannelListenerInfo {
+        secure_channels,
+        identity,
+    };
 
     Ok(info)
 }
 
 #[allow(dead_code)]
 pub struct SecureChannelInfo {
+    pub secure_channels: Arc<SecureChannels>,
     pub identity: Identity,
     pub address: Address,
 }
@@ -263,7 +273,10 @@ pub async fn create_secure_channel(
     ctx: &Context,
     connection: &TcpConnectionInfo,
 ) -> Result<SecureChannelInfo> {
-    let identity = Identity::create(ctx, Vault::create()).await?;
+    let secure_channels = secure_channels();
+    let identities_creation = secure_channels.identities().identities_creation();
+
+    let identity = identities_creation.create_identity().await?;
 
     let options = SecureChannelOptions::new();
     let options = if let Some((flow_controls, _flow_control_id)) = &connection.flow_control {
@@ -272,11 +285,20 @@ pub async fn create_secure_channel(
         options
     };
 
-    let address = identity
-        .create_secure_channel(route![connection.address.clone(), "listener"], options)
+    let address = secure_channels
+        .create_secure_channel(
+            ctx,
+            &identity,
+            route![connection.address.clone(), "listener"],
+            options,
+        )
         .await?;
 
-    let info = SecureChannelInfo { identity, address };
+    let info = SecureChannelInfo {
+        secure_channels,
+        identity,
+        address,
+    };
 
     Ok(info)
 }

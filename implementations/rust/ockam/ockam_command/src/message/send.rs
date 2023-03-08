@@ -20,9 +20,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/send/after_long_help.txt");
 /// Send messages
 #[derive(Clone, Debug, Args)]
 #[command(
-    arg_required_else_help = true,
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+arg_required_else_help = true,
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct SendCommand {
     /// The node to send messages from
@@ -64,7 +64,7 @@ async fn rpc(mut ctx: Context, (opts, cmd): (CommandGlobalOpts, SendCommand)) ->
                 ctx,
                 opts,
                 None,
-                Some(&cmd.cloud_opts.identity),
+                Some(cmd.cloud_opts.identity.clone()),
                 Some(&cmd.trust_context_opts),
             )
             .await?;

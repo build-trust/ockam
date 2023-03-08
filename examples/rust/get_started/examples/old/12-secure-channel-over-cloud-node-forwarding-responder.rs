@@ -10,22 +10,21 @@ async fn main(ctx: Context) -> Result<()> {
     let cloud_node_tcp_address = "Paste the tcp address of your cloud node here.";
 
     // Initialize the TCP Transport.
-    let _tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let _tcp = node.create_tcp_transport().await?;
 
     // Create an echoer worker
-    ctx.start_worker("echoer", Echoer).await?;
-    let vault = Vault::create(&ctx).expect("failed to create vault");
-    let mut bob = Entity::create(&ctx, &vault).await?;
+    node.start_worker("echoer", Echoer).await?;
+    let bob = node.create_identity().await?;
 
     // Create a secure channel listener at address "bob_secure_channel_listener"
-    bob.create_secure_channel_listener("bob_secure_channel_listener", TrustEveryonePolicy).await?;
+    node.create_secure_channel_listener(bob, "bob_secure_channel_listener", TrustEveryonePolicy).await?;
 
-    let forwarder = RemoteForwarder::create(
-        &ctx,
+    let forwarder = node.create_forwarder(
         (TCP, cloud_node_tcp_address),
         "bob_secure_channel_listener",
     )
-    .await?;
+        .await?;
 
     println!("Forwarding address: {}", forwarder.remote_address());
 

@@ -5,10 +5,10 @@ use std::net::SocketAddr;
 use minicbor::{Decode, Encode};
 use ockam_core::compat::borrow::Cow;
 
+use ockam::identity::IdentityIdentifier;
 use ockam_core::CowStr;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use serde::ser::SerializeStruct;
 use serde::Serialize;

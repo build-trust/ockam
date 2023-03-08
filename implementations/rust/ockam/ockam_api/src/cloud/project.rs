@@ -4,11 +4,11 @@ use minicbor::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use crate::cloud::addon::ConfluentConfigResponse;
+use ockam::identity::IdentityIdentifier;
 use ockam_core::CowStr;
 use ockam_core::Result;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
-use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
 

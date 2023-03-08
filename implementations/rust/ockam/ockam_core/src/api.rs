@@ -45,7 +45,7 @@ pub fn merged_cddl(cddl_schemas: &[&str]) -> Result<BasicContext> {
                             Origin::Core,
                             Kind::AlreadyExists,
                             format!("CDDL files contain duplicate keys: {}", e.key()),
-                        ))
+                        ));
                     }
                 }
             }
@@ -92,7 +92,7 @@ pub struct Request<'a> {
     /// how to handle unknown methods.
     #[n(3)] method: Option<Method>,
     /// Indicator if a request body is expected after this header.
-    #[n(4)] has_body: bool
+    #[n(4)] has_body: bool,
 }
 
 /// The response header.
@@ -119,7 +119,7 @@ pub struct Response {
     /// how to handle unknown codes.
     #[n(3)] status: Option<Status>,
     /// Indicator if a response body is expected after this header.
-    #[n(4)] has_body: bool
+    #[n(4)] has_body: bool,
 }
 
 /// Create an error response because the request path was unknown.
@@ -182,7 +182,7 @@ pub enum Method {
     #[n(1)] Post,
     #[n(2)] Put,
     #[n(3)] Delete,
-    #[n(4)] Patch
+    #[n(4)] Patch,
 }
 
 impl Display for Method {
@@ -211,7 +211,7 @@ pub enum Status {
     #[n(409)] Conflict,
     #[n(405)] MethodNotAllowed,
     #[n(500)] InternalServerError,
-    #[n(501)] NotImplemented
+    #[n(501)] NotImplemented,
 }
 
 impl Display for Status {
@@ -715,6 +715,7 @@ pub(crate) fn error(label: &str, res: &Response, dec: &mut Decoder<'_>) -> crate
         crate::Error::new(Origin::Application, Kind::Protocol, label)
     }
 }
+
 /// Newtype around a byte-slice that is assumed to be CBOR-encoded.
 #[derive(Debug, Copy, Clone)]
 pub struct Cbor<'a>(pub &'a [u8]);
@@ -734,7 +735,6 @@ impl<C> Encode<C> for Cbor<'_> {
 #[cfg(test)]
 #[cfg(feature = "tag")]
 mod merged_cddl_test {
-
     use super::merged_cddl;
 
     #[test]
@@ -801,7 +801,6 @@ mod merged_cddl_test {
 #[cfg(test)]
 #[cfg(feature = "tag")]
 mod schema_test {
-
     use super::*;
     use cddl_cat::validate_cbor_bytes;
     use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};

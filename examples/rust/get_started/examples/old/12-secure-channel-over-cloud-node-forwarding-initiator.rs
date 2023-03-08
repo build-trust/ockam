@@ -11,25 +11,25 @@ async fn main(mut ctx: Context) -> Result<()> {
         "Paste the forwarding address of the secure channel here.";
 
     // Initialize the TCP Transport.
-    let _tcp = TcpTransport::create(&ctx).await?;
+    let mut node = node(ctx);
+    let _tcp = node.create_tcp_transport().await?;
 
-    let vault = Vault::create(&ctx).expect("failed to create vault");
-    let mut alice = Entity::create(&ctx, &vault).await?;
+    let mut alice = node.create_identity().await?;
     let cloud_node_route = route![
         (TCP, cloud_node_tcp_address),
         secure_channel_listener_forwarding_address
     ];
 
-    let channel = alice.create_secure_channel(cloud_node_route, TrustEveryonePolicy).await?;
+    let channel = node.create_secure_channel(cloud_node_route, TrustEveryonePolicy).await?;
 
     let echoer_route = route![channel, "echoer"];
 
-    ctx.send(echoer_route, "Hello world!".to_string()).await?;
+    node.send(echoer_route, "Hello world!".to_string()).await?;
 
     // Wait to receive a reply and print it.
-    let reply = ctx.receive::<String>().await?;
+    let reply = node.receive::<String>().await?;
     println!("App Received: {}", reply); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
-    ctx.stop().await
+    node.stop().await
 }

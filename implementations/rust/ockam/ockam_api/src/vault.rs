@@ -5,23 +5,23 @@ use core::convert::Infallible;
 use minicbor::encode::Write;
 use minicbor::{Decoder, Encode};
 use models::*;
+use ockam::identity::IdentitiesVault;
 use ockam_core::api::{Error, Id, Method, Request, Response, Status};
 use ockam_core::compat::sync::Arc;
 use ockam_core::vault::{KeyId, Signature};
 use ockam_core::CowStr;
 use ockam_core::{Result, Routed, Worker};
-use ockam_identity::IdentityVault;
 use ockam_node::Context;
 use tracing::trace;
 
 /// Vault Service Worker
 pub struct VaultService {
-    vault: Arc<dyn IdentityVault>,
+    vault: Arc<dyn IdentitiesVault>,
 }
 
 impl VaultService {
     /// Constructor
-    pub fn new(vault: Arc<dyn IdentityVault>) -> Self {
+    pub fn new(vault: Arc<dyn IdentitiesVault>) -> Self {
         Self {
             vault: vault.clone(),
         }

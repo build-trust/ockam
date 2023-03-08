@@ -3,7 +3,7 @@
 use ockam::{route, Context, Result, TcpTransport, TCP};
 
 #[ockam::node]
-async fn main(mut ctx: Context) -> Result<()> {
+async fn main(ctx: Context) -> Result<()> {
     // Create a cloud node by going to https://hub.ockam.network
     let cloud_node_tcp_address = "Paste the tcp address of your cloud node here.";
 
@@ -12,20 +12,21 @@ async fn main(mut ctx: Context) -> Result<()> {
     let echoer_forwarding_address = "Paste the forwarding address of the echoer here.";
 
     // Initialize the TCP Transport.
-    let _tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let _tcp = node.create_tcp_transport().await?;
 
     // Send a message to the echoer worker, on a different node,
     // using a forwarding address on your cloud node
-    ctx.send(
+    node.send(
         route![(TCP, cloud_node_tcp_address), echoer_forwarding_address],
         "Hello Ockam!".to_string(),
     )
-    .await?;
+        .await?;
 
     // Wait to receive a reply and print it.
-    let reply = ctx.receive::<String>().await?;
+    let reply = node.receive::<String>().await?;
     println!("App Received: {}", reply); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
-    ctx.stop().await
+    node.stop().await
 }

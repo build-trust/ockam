@@ -10,8 +10,7 @@ use anyhow::anyhow;
 use clap::Args;
 use ockam::Context;
 use ockam_api::cli_state::CredentialConfig;
-use ockam_identity::PublicIdentity;
-use ockam_vault::Vault;
+use ockam_identity::{identities, Identity};
 
 #[derive(Clone, Debug, Args)]
 pub struct StoreCommand {
@@ -35,14 +34,17 @@ impl StoreCommand {
     pub fn run(self, opts: CommandGlobalOpts) {
         node_rpc(run_impl, (opts, self));
     }
-    pub async fn public_identity(&self) -> Result<PublicIdentity> {
+
+    pub async fn identity(&self) -> Result<Identity> {
         let identity_as_bytes = match hex::decode(&self.issuer) {
             Ok(b) => b,
             Err(e) => return Err(anyhow!(e).into()),
         };
-
-        let public_identity = PublicIdentity::import(&identity_as_bytes, Vault::create()).await?;
-        Ok(public_identity)
+        let identity = identities()
+            .identities_creation()
+            .import_identity(&identity_as_bytes)
+            .await?;
+        Ok(identity)
     }
 }
 
@@ -61,7 +63,7 @@ async fn run_impl(
         .credentials
         .create(
             &cmd.credential_name,
-            CredentialConfig::new(cmd.public_identity().await?, cred_as_str)?,
+            CredentialConfig::new(cmd.identity().await?, cred_as_str)?,
         )
         .await?;
 

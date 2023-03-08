@@ -1,11 +1,10 @@
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::DefaultAddress;
+use ockam::identity::credential::Timestamp;
+use ockam::identity::{AttributesEntry, Identity, IdentityIdentifier};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
 use ockam_core::compat::fmt::{Display, Formatter};
-use ockam_identity::authenticated_storage::AttributesEntry;
-use ockam_identity::credential::Timestamp;
-use ockam_identity::{IdentityIdentifier, PublicIdentity};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -14,7 +13,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Configuration {
     /// Authority identity or identity associated with the newly created node
-    pub identity: PublicIdentity,
+    pub identity: Identity,
 
     /// path where the storage for identity attributes should be persisted
     pub storage_path: PathBuf,
@@ -55,13 +54,13 @@ pub struct Configuration {
 /// Local and private functions for the authority configuration
 impl Configuration {
     /// Return the project identifier as bytes
-    pub(crate) fn project_identifier(&self) -> Vec<u8> {
-        self.project_identifier.as_bytes().to_vec()
+    pub(crate) fn project_identifier(&self) -> String {
+        self.project_identifier.clone()
     }
 
     /// Return the trust context identifier as bytes
-    pub(crate) fn trust_context_identifier(&self) -> Vec<u8> {
-        self.trust_context_identifier.as_bytes().to_vec()
+    pub(crate) fn trust_context_identifier(&self) -> String {
+        self.trust_context_identifier.clone()
     }
 
     /// Return the address for the TCP listener

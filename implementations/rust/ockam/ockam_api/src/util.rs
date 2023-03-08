@@ -261,10 +261,10 @@ pub mod test {
         NodeManagerTransportOptions, NodeManagerTrustOptions,
     };
     use crate::nodes::{NodeManager, NodeManagerWorker, NODEMANAGER_ADDR};
+    use ockam::identity::{secure_channels, Identity, SecureChannels};
     use ockam::Result;
     use ockam_core::compat::sync::Arc;
     use ockam_core::AsyncTryClone;
-    use ockam_identity::{Identity, IdentityVault};
     use ockam_node::compat::asynchronous::RwLock;
     use ockam_node::Context;
     use ockam_transport_tcp::TcpTransport;
@@ -278,7 +278,8 @@ pub mod test {
         pub cli_state: CliState,
         pub node_manager: Arc<RwLock<NodeManager>>,
         pub tcp: TcpTransport,
-        pub identity: Arc<Identity>,
+        pub secure_channels: Arc<SecureChannels>,
+        pub identity: Identity,
     }
 
     impl Drop for NodeManagerHandle {
@@ -307,14 +308,16 @@ pub mod test {
             .await?;
 
         let identity_name = hex::encode(rand::random::<[u8; 4]>());
-        let vault: Arc<dyn IdentityVault> = Arc::new(vault);
-        let identity = Identity::create_ext(
-            context,
-            cli_state.identities.authenticated_storage().await?,
-            vault,
-        )
-        .await
-        .unwrap();
+        let secure_channels = secure_channels::builder()
+            .with_identities_vault(Arc::new(vault))
+            .with_identities_repository(cli_state.identities.identities_repository().await?)
+            .build();
+        let identity = secure_channels
+            .identities()
+            .identities_creation()
+            .create_identity()
+            .await
+            .unwrap();
         let config = IdentityConfig::new(&identity).await;
         cli_state.identities.create(&identity_name, config).unwrap();
 
@@ -355,7 +358,8 @@ pub mod test {
             cli_state,
             node_manager,
             tcp: tcp.async_try_clone().await?,
-            identity: Arc::new(identity),
+            secure_channels: secure_channels.clone(),
+            identity: identity.clone(),
         })
     }
 }

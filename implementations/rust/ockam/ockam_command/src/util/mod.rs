@@ -683,8 +683,6 @@ mod tests {
     use ockam_api::cli_state;
     use ockam_api::cli_state::{IdentityConfig, NodeConfig, VaultConfig};
     use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, TransportType};
-    use ockam_core::compat::sync::Arc;
-    use ockam_identity::Identity;
 
     #[test]
     fn test_extract_address_value() {
@@ -720,12 +718,13 @@ mod tests {
         let v_config = VaultConfig::default();
         cli_state.vaults.create(&v_name, v_config).await?;
         let v = cli_state.vaults.get(&v_name)?.get().await?;
-        let idt = Identity::create_ext(
-            ctx,
-            cli_state.identities.authenticated_storage().await?,
-            Arc::new(v),
-        )
-        .await?;
+        let idt = cli_state
+            .get_identities(v)
+            .await
+            .unwrap()
+            .identities_creation()
+            .create_identity()
+            .await?;
         let idt_config = IdentityConfig::new(&idt).await;
         cli_state
             .identities

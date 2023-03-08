@@ -6,7 +6,6 @@ use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::{docs, identity, CommandGlobalOpts, Result};
 use anyhow::{anyhow, Context as _};
 use clap::{ArgGroup, Args};
-use ockam::AsyncTryClone;
 use ockam::Context;
 use ockam_api::bootstrapped_identities_store::PreTrustedIdentities;
 use ockam_api::nodes::authority_node;
@@ -15,8 +14,7 @@ use ockam_api::nodes::models::transport::{CreateTransportJson, TransportMode, Tr
 use ockam_api::DefaultAddress;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
-use ockam_identity::authenticated_storage::AttributesEntry;
-use ockam_identity::IdentityIdentifier;
+use ockam_identity::{AttributesEntry, IdentityIdentifier};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
@@ -92,18 +90,13 @@ pub struct CreateCommand {
 
 /// Start an authority node by calling the `ockam` executable with the current command-line
 /// arguments
-async fn spawn_background_node(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    cmd: &CreateCommand,
-) -> crate::Result<()> {
+async fn spawn_background_node(opts: &CommandGlobalOpts, cmd: &CreateCommand) -> crate::Result<()> {
     // Create node state, including the vault and identity if they don't exist
     init_node_state(
-        ctx,
         opts,
         &cmd.node_name,
-        cmd.vault.as_ref(),
-        cmd.identity.as_ref(),
+        cmd.vault.clone(),
+        cmd.identity.clone(),
     )
     .await?;
 
@@ -220,11 +213,11 @@ impl CreateCommand {
 
 /// Given a Context start a node in a new OS process
 async fn create_background_node(
-    ctx: Context,
+    _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
     // Spawn node in another, new process
-    spawn_background_node(&ctx, &opts, &cmd).await
+    spawn_background_node(&opts, &cmd).await
 }
 
 /// Start an authority node:
@@ -246,18 +239,17 @@ async fn start_authority_node(
         .exists()
     {
         init_node_state(
-            &ctx,
             &options,
             &command.node_name,
-            cmd.vault.as_ref(),
-            cmd.identity.as_ref(),
+            cmd.vault,
+            cmd.identity.clone(),
         )
         .await?;
     };
 
     // retrieve the authority identity if it has been created before
     // otherwise create a new one
-    let public_identity = match cmd.identity {
+    let identity = match cmd.identity {
         Some(identity_name) => options
             .state
             .identities
@@ -265,13 +257,12 @@ async fn start_authority_node(
             .context("Identity not found")
             .unwrap()
             .config
-            .public_identity(),
+            .identity(),
         None => match options.state.identities.default().ok() {
-            Some(state) => state.config.public_identity(),
+            Some(state) => state.config.identity(),
             None => {
                 let cmd = identity::CreateCommand::new("authority".into(), None);
-                cmd.create_identity(ctx.async_try_clone().await?, options.clone())
-                    .await?
+                cmd.create_identity(options.clone()).await?
             }
         },
     };
@@ -307,14 +298,12 @@ async fn start_authority_node(
             )?),
     )?;
 
-    let trusted_identities = &command.trusted_identities(
-        &command.project_identifier.clone(),
-        public_identity.identifier(),
-    )?;
+    let trusted_identities =
+        &command.trusted_identities(&command.project_identifier.clone(), &identity.identifier())?;
 
     let configuration = authority_node::Configuration {
-        identity: public_identity,
-        storage_path: options.state.identities.authenticated_storage_path()?,
+        identity,
+        storage_path: options.state.identities.identities_repository_path()?,
         vault_path: options.state.vaults.default()?.vault_file_path()?,
         project_identifier: command.project_identifier.clone(),
         trust_context_identifier: command.project_identifier,

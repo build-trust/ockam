@@ -32,7 +32,7 @@ mod node {
     use crate::cloud::enroll::enrollment_token::{EnrollmentToken, RequestEnrollmentToken};
     use crate::cloud::{CloudRequestWrapper, ORCHESTRATOR_RESTART_TIMEOUT};
     use crate::nodes::NodeManagerWorker;
-    use ockam_identity::credential::Attributes;
+    use ockam::identity::credential::Attributes;
 
     const TARGET: &str = "ockam_api::cloud::enroll";
 
@@ -182,7 +182,7 @@ pub mod auth0 {
 }
 
 pub mod enrollment_token {
-    use ockam_identity::credential::Attributes;
+    use ockam::identity::credential::Attributes;
     use serde::Serialize;
 
     use super::*;

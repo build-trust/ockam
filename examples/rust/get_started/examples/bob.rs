@@ -1,8 +1,8 @@
 use ockam::access_control::AllowAll;
-use ockam::identity::{Identity, SecureChannelListenerOptions};
+use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteForwarderOptions;
-use ockam::{remote::RemoteForwarder, Routed, TcpConnectionOptions, TcpTransport, Worker};
-use ockam::{vault::Vault, Context, Result};
+use ockam::{node, Routed, TcpConnectionOptions, Worker};
+use ockam::{Context, Result};
 
 struct Echoer;
 
@@ -24,21 +24,19 @@ impl Worker for Echoer {
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
     // Start a worker, of type Echoer, at address "echoer".
     // This worker will echo back every message it receives, along its return route.
-    ctx.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
-
-    // Create a Vault to safely store secret keys for Bob.
-    let vault = Vault::create();
+    node.start_worker("echoer", Echoer, AllowAll, AllowAll).await?;
 
     // Create an Identity to represent Bob.
-    let bob = Identity::create(&ctx, vault).await?;
+    let bob = node.create_identity().await?;
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    bob.create_secure_channel_listener("listener", SecureChannelListenerOptions::new())
+    node.create_secure_channel_listener(&bob, "listener", SecureChannelListenerOptions::new())
         .await?;
 
     // The computer that is running this program is likely within a private network and
@@ -53,7 +51,9 @@ async fn main(ctx: Context) -> Result<()> {
     let node_in_hub = tcp
         .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
-    let forwarder = RemoteForwarder::create(&ctx, node_in_hub, RemoteForwarderOptions::new()).await?;
+    let forwarder = node
+        .create_forwarder(node_in_hub, RemoteForwarderOptions::new())
+        .await?;
     println!("\n[✓] RemoteForwarder was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address for Bob is:");
     println!("{}", forwarder.remote_address());

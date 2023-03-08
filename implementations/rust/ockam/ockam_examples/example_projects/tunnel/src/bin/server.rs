@@ -63,7 +63,7 @@ impl Worker for ConnectionBrokerWorker {
 async fn main(ctx: Context) -> Result<()> {
     // create a secure listening channel
     let vault = Vault::create(&ctx).await?;
-    let mut me = Identity::create(&ctx, vault)?;
+    let mut me = Identities::create(&ctx, vault)?;
     me.create_secure_channel_listener("secure_listener", TrustEveryonePolicy)?;
 
     // start listening over TCP and start worker

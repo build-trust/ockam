@@ -1,13 +1,16 @@
-use ockam::identity::{Identity, SecureChannelOptions};
-use ockam::{route, vault::Vault, Context, Result, TcpConnectionOptions, TcpInletOptions, TcpTransport};
+use ockam::identity::SecureChannelOptions;
+use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpInletOptions};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
-    let tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let tcp = node.create_tcp_transport().await?;
 
-    // Create a Vault to store our cryptographic keys and an Identity to represent this Node.
-    // Then initiate a handshake with the secure channel listener on the node that has the
+    let e = node.create_identity().await?;
+    let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
+
+    // Initiate a handshake with the secure channel listener on the node that has the
     // TCP Transport Outlet.
     //
     // For this example, we know that the Outlet node is listening for Ockam Routing Messages
@@ -15,15 +18,11 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // We assume the Outlet node is listening on port 4000, unless otherwise specified
     // by a second command line argument.
-
-    let vault = Vault::create();
-    let e = Identity::create(&ctx, vault).await?;
-    let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     let outlet_connection = tcp
         .connect(&format!("127.0.0.1:{outlet_port}"), TcpConnectionOptions::new())
         .await?;
     let r = route![outlet_connection, "secure_channel_listener"];
-    let channel = e.create_secure_channel(r, SecureChannelOptions::new()).await?;
+    let channel = node.create_secure_channel(&e, r, SecureChannelOptions::new()).await?;
 
     // We know Secure Channel address that tunnels messages to the node with an Outlet,
     // we also now that Outlet lives at "outlet" address at that node.

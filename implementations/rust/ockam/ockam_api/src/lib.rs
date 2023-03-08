@@ -4,7 +4,6 @@ pub mod bootstrapped_identities_store;
 pub mod cli_state;
 pub mod cloud;
 pub mod config;
-pub mod credential_retriever;
 pub mod echoer;
 pub mod error;
 pub mod hop;
@@ -21,7 +20,7 @@ pub mod verifier;
 mod schema;
 mod session;
 mod util;
-pub use credential_retriever::*;
+
 pub use util::*;
 
 #[cfg(feature = "lmdb")]
@@ -55,11 +54,13 @@ impl DefaultAddress {
 
 pub mod actions {
     use ockam_abac::Action;
+
     pub const HANDLE_MESSAGE: Action = Action::assert_inline("handle_message");
 }
 
 pub mod resources {
     use ockam_abac::Resource;
+
     pub const INLET: Resource = Resource::assert_inline("tcp-inlet");
     pub const OUTLET: Resource = Resource::assert_inline("tcp-outlet");
 }

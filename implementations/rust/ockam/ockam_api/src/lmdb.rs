@@ -1,11 +1,11 @@
 use core::str;
 use lmdb::{Cursor, Database, Environment, Transaction};
 use minicbor::{Decode, Encode};
+use ockam::identity::identities::storage::Storage;
 use ockam_abac::{Action, Expr, PolicyStorage, Resource};
 use ockam_core::async_trait;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
-use ockam_identity::authenticated_storage::AuthenticatedStorage;
 use ockam_node::tokio::task::{self, JoinError};
 use std::borrow::Cow;
 use std::fmt;
@@ -15,7 +15,7 @@ use tokio_retry::strategy::{jitter, FixedInterval};
 use tokio_retry::Retry;
 use tracing as log;
 
-/// Lmdb AuthenticatedStorage implementation
+/// Lmdb AttributesStorage implementation
 #[derive(Clone)]
 pub struct LmdbStorage {
     env: Arc<Environment>,
@@ -87,7 +87,7 @@ impl LmdbStorage {
 }
 
 #[async_trait]
-impl AuthenticatedStorage for LmdbStorage {
+impl Storage for LmdbStorage {
     async fn get(&self, id: &str, key: &str) -> Result<Option<Vec<u8>>> {
         let d = self.clone();
         let k = format!("{id}:{key}");

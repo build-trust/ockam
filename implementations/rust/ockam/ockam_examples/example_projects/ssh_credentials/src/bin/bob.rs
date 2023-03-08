@@ -1,8 +1,8 @@
 use credential_example::{BOB_LISTENER_ADDRESS, BOB_TCP_ADDRESS, ECHOER};
 use ockam::identity::access_control::IdentityAccessControlBuilder;
-use ockam::identity::{Identity, TrustPublicKeyPolicy};
+use ockam::identity::{secure_channels, Identity, TrustPublicKeyPolicy};
 use ockam::vault::{PublicKey, SecretType, Vault};
-use ockam::{Context, Result, Routed, TcpTransport, Worker};
+use ockam::{Context, Result, Routed, TcpTransport, Worker, WorkerBuilder};
 use ockam_core::AsyncTryClone;
 use std::{env, fs};
 
@@ -23,14 +23,13 @@ impl Worker for Echoer {
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
-    let vault = Vault::create();
-
     let access_control = IdentityAccessControlBuilder::new_with_any_id();
     WorkerBuilder::with_access_control(access_control, ECHOER, Echoer)
-        .start(ctx)
+        .start(&ctx)
         .await?;
 
-    let bob = Identity::create(&ctx, vault).await?;
+    let secure_channels = secure_channels();
+    let bob = secure_channels.identities().create().await?;
 
     let public_key_path = env::var("PUBLIC_KEY_PATH").unwrap();
     let public_key = fs::read_to_string(public_key_path).unwrap();
@@ -43,10 +42,10 @@ async fn main(ctx: Context) -> Result<()> {
 
     let public_key = PublicKey::new(public_key.as_ref().to_vec(), SecretType::Ed25519);
 
-    let trust_policy =
-        TrustPublicKeyPolicy::new(public_key, "SSH", bob.async_try_clone().await.unwrap());
+    let trust_policy = TrustPublicKeyPolicy::new(public_key, "SSH", secure_channels.identities());
 
-    bob.create_secure_channel_listener(BOB_LISTENER_ADDRESS, trust_policy)
+    secure_channels
+        .create_secure_channel_listener(&ctx, &bob, BOB_LISTENER_ADDRESS, trust_policy)
         .await?;
 
     let tcp = TcpTransport::create(&ctx).await?;

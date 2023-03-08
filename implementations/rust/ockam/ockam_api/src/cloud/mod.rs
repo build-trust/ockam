@@ -74,16 +74,15 @@ impl<'a> BareCloudRequestWrapper<'a> {
 
 mod node {
     use std::str::FromStr;
-    use std::sync::Arc;
     use std::time::Duration;
 
     use minicbor::Encode;
     use rust_embed::EmbeddedFile;
 
+    use ockam::identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
     use ockam_core::api::RequestBuilder;
     use ockam_core::env::get_env;
     use ockam_core::{self, route, CowStr, Result};
-    use ockam_identity::{IdentityIdentifier, SecureChannelOptions, TrustIdentifierPolicy};
     use ockam_multiaddr::MultiAddr;
     use ockam_node::api::request;
     use ockam_node::{Context, MessageSendReceiveOptions, DEFAULT_TIMEOUT};
@@ -166,29 +165,21 @@ mod node {
         where
             T: Encode<()>,
         {
+            let identity_name = ident.map(|i| i.to_string()).clone();
             let identity = {
                 let node_manager = self.get().read().await;
-                match &ident {
-                    Some(existing_identity_name) => {
-                        let identity_state = node_manager
-                            .cli_state
-                            .identities
-                            .get(existing_identity_name.as_ref())?;
-                        match identity_state.get(ctx, node_manager.vault()?).await {
-                            Ok(idt) => Arc::new(idt),
-                            Err(_) => {
-                                let vault_state = node_manager.cli_state.vaults.default()?;
-                                Arc::new(
-                                    identity_state
-                                        .get(ctx, Arc::new(vault_state.get().await?))
-                                        .await?,
-                                )
-                            }
-                        }
-                    }
-                    None => node_manager.identity.clone(),
-                }
+                node_manager
+                    .get_identity(None, identity_name.clone())
+                    .await?
             };
+
+            let secure_channels = {
+                let mut node_manager = self.get().write().await;
+                node_manager
+                    .get_secure_channels(None, identity_name.clone())
+                    .await?
+            };
+
             let (sc_address, flow_controls, _sc_flow_control_id) = {
                 let node_manager = self.get().read().await;
                 let cloud_route = crate::multiaddr_to_route(
@@ -208,8 +199,8 @@ mod node {
                     node_manager.controller_identity_id(),
                 ))
                 .as_consumer(&node_manager.flow_controls);
-                let sc_address = identity
-                    .create_secure_channel(cloud_route.route, options)
+                let sc_address = secure_channels
+                    .create_secure_channel(ctx, &identity, cloud_route.route, options)
                     .await?;
 
                 (
@@ -218,6 +209,7 @@ mod node {
                     sc_flow_control_id,
                 )
             };
+
             let route = route![sc_address.clone(), api_service];
             let options = MessageSendReceiveOptions::new()
                 .with_timeout(timeout)

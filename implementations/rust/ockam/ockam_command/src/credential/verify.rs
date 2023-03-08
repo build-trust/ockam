@@ -6,9 +6,7 @@ use anyhow::anyhow;
 use clap::Args;
 use colorful::Colorful;
 use ockam::Context;
-
-use ockam_identity::PublicIdentity;
-use ockam_vault::Vault;
+use ockam_identity::{identities, Identity};
 
 use super::validate_encoded_cred;
 
@@ -32,19 +30,21 @@ impl VerifyCommand {
         node_rpc(run_impl, (opts, self));
     }
 
-    pub async fn issuer(&self) -> Result<PublicIdentity> {
+    pub async fn issuer(&self) -> Result<Identity> {
         let identity_as_bytes = match hex::decode(&self.issuer) {
             Ok(b) => b,
             Err(e) => return Err(anyhow!(e).into()),
         };
-
-        let issuer = PublicIdentity::import(&identity_as_bytes, Vault::create()).await?;
-        Ok(issuer)
+        let identity = identities()
+            .identities_creation()
+            .import_identity(&identity_as_bytes)
+            .await?;
+        Ok(identity)
     }
 }
 
 async fn run_impl(
-    ctx: Context,
+    _ctx: Context,
     (opts, cmd): (CommandGlobalOpts, VerifyCommand),
 ) -> crate::Result<()> {
     let cred_as_str = match (&cmd.credential, &cmd.credential_path) {
@@ -55,10 +55,9 @@ async fn run_impl(
 
     match validate_encoded_cred(
         &cred_as_str,
-        cmd.issuer().await?.identifier(),
+        &cmd.issuer().await?.identifier(),
         &cmd.vault,
         &opts,
-        &ctx,
     )
     .await
     {

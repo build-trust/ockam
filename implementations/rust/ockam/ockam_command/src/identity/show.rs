@@ -4,9 +4,9 @@ use crate::{docs, CommandGlobalOpts, EncodeFormat, Result};
 use anyhow::anyhow;
 use clap::Args;
 use core::fmt::Write;
+use ockam::identity::identity::IdentityChangeHistory;
 use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::identity::{LongIdentityResponse, ShortIdentityResponse};
-use ockam_identity::change_history::IdentityChangeHistory;
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");

@@ -7,12 +7,13 @@ async fn main(ctx: Context) -> Result<()> {
     let cloud_node_tcp_address = "Paste the tcp address of your cloud node here.";
 
     // Initialize the TCP Transport.
-    let _tcp = TcpTransport::create(&ctx).await?;
+    let node = node(ctx);
+    let _tcp = node.create_tcp_transport().await?;
 
     // Create an echoer worker
-    ctx.start_worker("echoer", Echoer).await?;
+    node.start_worker("echoer", Echoer).await?;
 
-    let forwarder = RemoteForwarder::create(&ctx, (TCP, cloud_node_tcp_address), "echoer").await?;
+    let forwarder = node.create_forwarder((TCP, cloud_node_tcp_address), "echoer").await?;
     println!(
         "Forwarding address of echoer: {}",
         forwarder.remote_address()

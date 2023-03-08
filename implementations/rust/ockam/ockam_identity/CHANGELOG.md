@@ -465,7 +465,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Create worker builder for cleaner worker access control initialisation
 - Identity updates
-- `AuthenticatedTable` -> `AuthenticatedStorage`
+- `AuthenticatedTable` -> `AttributesStorage`
 
 ## 0.49.0 - 2022-06-14
 
@@ -849,4 +849,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v0.1.0 - 2021-05-17
 
 - Initial release.
-

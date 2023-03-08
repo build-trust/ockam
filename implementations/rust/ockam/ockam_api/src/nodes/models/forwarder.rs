@@ -1,8 +1,8 @@
 use minicbor::{Decode, Encode};
 
+use ockam::identity::IdentityIdentifier;
 use ockam::remote::RemoteForwarderInfo;
 use ockam_core::CowStr;
-use ockam_identity::IdentityIdentifier;
 use ockam_multiaddr::MultiAddr;
 
 #[cfg(feature = "tag")]

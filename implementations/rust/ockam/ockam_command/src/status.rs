@@ -3,10 +3,10 @@ use crate::CommandGlobalOpts;
 use crate::Result;
 use anyhow::anyhow;
 use clap::Args;
+use ockam::identity::Identity;
 use ockam::{Context, TcpTransport};
 use ockam_api::cli_state::{IdentityState, NodeState};
 use ockam_api::nodes::models::base::NodeStatus;
-use ockam_identity::Identity;
 use std::time::Duration;
 
 /// Display Ockam Status
@@ -43,7 +43,7 @@ async fn run_impl(ctx: &Context, opts: CommandGlobalOpts, cmd: StatusCommand) ->
     let tcp = TcpTransport::create(ctx).await?;
     for node_state in &node_states {
         let node_infos = NodeDetails {
-            identity: node_state.config.identity(ctx).await?,
+            identity: node_state.config.default_identity().await?,
             state: node_state.clone(),
             status: get_node_status(ctx, &opts, node_state, &tcp).await?,
         };
@@ -111,7 +111,7 @@ async fn print_status(
             println!("{:2}{}", "", line);
         }
 
-        node_details.retain(|nd| nd.identity.identifier() == &identity.config.identifier);
+        node_details.retain(|nd| nd.identity.identifier() == identity.config.identifier);
         if !node_details.is_empty() {
             println!("{:2}Linked Nodes:", "");
             for (n_idx, node) in node_details.iter().enumerate() {

@@ -6,11 +6,12 @@ use std::time::Duration;
 use anyhow::{anyhow, Context as _};
 use ockam::identity::IdentityIdentifier;
 use ockam::Context;
-use ockam_api::authenticator::direct::{DirectAuthenticatorClient, RpcClient, TokenIssuerClient};
+use ockam_api::authenticator::direct::{DirectAuthenticatorClient, TokenIssuerClient};
 use ockam_api::config::lookup::{ConfigLookup, ProjectAuthority};
 use ockam_api::DefaultAddress;
 use ockam_core::route;
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
+use ockam_node::RpcClient;
 
 use crate::node::util::{delete_embedded_node, start_embedded_node};
 use crate::node::NodeOpts;
@@ -83,14 +84,14 @@ impl Runner {
             if let Some(tc) = self.cmd.trust_opts.trust_context.as_ref() {
                 let cred_retr = tc.authority()?.own_credential()?;
                 let addr = match cred_retr {
-                    ockam_api::config::cli::CredentialRetrieverType::FromCredentialIssuer(c) => {
-                        &c.maddr
+                    ockam_api::config::cli::CredentialRetrieverConfig::FromCredentialIssuer(c) => {
+                        &c.multiaddr
                     }
                     _ => {
                         return Err(anyhow!(
                             "Trust context must be configured with a credential issuer"
                         )
-                        .into())
+                        .into());
                     }
                 };
                 let (sc_addr, sc_flow_control_id) = create_secure_channel_to_authority(
