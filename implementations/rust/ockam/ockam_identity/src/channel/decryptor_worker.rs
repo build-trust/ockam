@@ -25,7 +25,6 @@ use ockam_core::{
     TransportMessage, Worker,
 };
 use ockam_key_exchange_xx::XXNewKeyExchanger;
-use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::{Context, WorkerBuilder};
 use tracing::{debug, info, warn};
 
@@ -81,7 +80,7 @@ impl DecryptorWorker {
             identity,
             trust_policy: trust_options.trust_policy,
             state_key_exchange: Some(KeyExchange {
-                key_exchanger: Arc::new(RwLock::new(key_exchanger)),
+                key_exchanger: Box::new(key_exchanger),
             }),
             state_exchange_identity: None,
             state_initialized: None,
@@ -144,7 +143,7 @@ impl DecryptorWorker {
             identity,
             trust_policy: trust_options.trust_policy,
             state_key_exchange: Some(KeyExchange {
-                key_exchanger: Arc::new(RwLock::new(key_exchanger)),
+                key_exchanger: Box::new(key_exchanger),
             }),
             state_exchange_identity: None,
             state_initialized: None,
@@ -246,7 +245,7 @@ impl DecryptorWorker {
                 "SecureChannel received KeyExchangeRemote at {}",
                 &self.addresses.decryptor_remote
             );
-            let mut exchanger = state.key_exchanger.write().await;
+            let exchanger = &mut state.key_exchanger;
             let _ = exchanger.handle_response(payload).await?;
         }
 
@@ -254,14 +253,9 @@ impl DecryptorWorker {
         let mut request_was_sent = false;
 
         // Key exchange hasn't been completed -> generate and send next request
-        if !state.key_exchanger.read().await.is_complete().await? {
+        if !state.key_exchanger.is_complete().await? {
             request_was_sent = true;
-            let payload = state
-                .key_exchanger
-                .write()
-                .await
-                .generate_request(&[])
-                .await?;
+            let payload = state.key_exchanger.generate_request(&[]).await?;
 
             // We should send first_responder_address only with first message from the initiator
             let custom_payload = if self.role.is_initiator() && first_run {
@@ -281,17 +275,17 @@ impl DecryptorWorker {
         }
 
         // Still not completed -> wait for the next message from the other side
-        if !state.key_exchanger.read().await.is_complete().await? {
+        if !state.key_exchanger.is_complete().await? {
             return Ok(());
         }
 
         // Key exchange completed, proceed to Identity Exchange
-        let state = self
+        let mut state = self
             .state_key_exchange
             .take()
             .ok_or(IdentityError::InvalidSecureChannelInternalState)?;
 
-        let keys = state.key_exchanger.write().await.finalize().await?;
+        let keys = state.key_exchanger.finalize().await?;
 
         let state = ExchangeIdentity {
             encryptor: Encryptor::new(

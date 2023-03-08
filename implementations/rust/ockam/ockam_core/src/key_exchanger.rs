@@ -11,7 +11,7 @@ use zeroize::Zeroize;
 
 /// A trait implemented by both Initiator and Responder peers.
 #[async_trait]
-pub trait KeyExchanger {
+pub trait KeyExchanger: Send + Sync + 'static {
     /// Return key exchange unique name.
     async fn name(&self) -> Result<String>;
     /// Generate request that should be sent to the other party.
@@ -28,9 +28,9 @@ pub trait KeyExchanger {
 #[async_trait]
 pub trait NewKeyExchanger {
     /// Initiator
-    type Initiator: KeyExchanger + Send + Sync + 'static;
+    type Initiator: KeyExchanger;
     /// Responder
-    type Responder: KeyExchanger + Send + Sync + 'static;
+    type Responder: KeyExchanger;
 
     /// Create a new Key Exchanger with the initiator role
     async fn initiator(&self) -> Result<Self::Initiator>;
