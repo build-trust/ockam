@@ -51,13 +51,13 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // Create an Identity for the control node
     let vault = Vault::create();
-    let control_plane = Identity::create(&ctx, &vault).await?;
+    let control_plane = Identity::create(&ctx, vault.clone()).await?;
 
     // 2. create a secure channel to the authority
     //    to retrieve the node credential
 
     // Import the authority identity and route from the information file
-    let project = import_project(project_information_path, &vault).await?;
+    let project = import_project(project_information_path, vault).await?;
 
     let tcp_session = create_tcp_session(&project.authority_route(), &tcp).await.unwrap(); // FIXME: Handle error
     let trust_options = SecureChannelTrustOptions::new().with_trust_policy(TrustMultiIdentifiersPolicy::new(vec![

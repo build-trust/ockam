@@ -228,8 +228,8 @@ async fn run_foreground_node(
 
     if let Some(authority_identities) = cmd.authority_identities {
         for auth in authority_identities.into_iter() {
-            let vault = Vault::default();
-            let i = PublicIdentity::import(auth.identity(), &vault).await?;
+            let vault = Vault::create();
+            let i = PublicIdentity::import(auth.identity(), vault).await?;
             cfg.authorities(&node_name)?
                 .add_authority(i.identifier().clone(), auth)?;
         }

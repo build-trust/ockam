@@ -206,7 +206,7 @@ pub(super) async fn add_project_authority(
     node: &str,
     cfg: &OckamConfig,
 ) -> Result<()> {
-    let i = PublicIdentity::import(&authority_identity, &Vault::default()).await?;
+    let i = PublicIdentity::import(&authority_identity, Vault::create()).await?;
     let a = cli::Authority::new(authority_identity, authority_access_route);
     cfg.authorities(node)?
         .add_authority(i.identifier().clone(), a)

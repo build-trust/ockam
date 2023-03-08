@@ -9,7 +9,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let _tcp = TcpTransport::create(&ctx).await?;
 
     let vault = Vault::create();
-    let alice = Identity::create(&ctx, &vault).await?;
+    let alice = Identity::create(&ctx, vault).await?;
 
     let secret_key_path = env::var("SECRET_KEY_PATH").unwrap();
     let secret_key = fs::read_to_string(secret_key_path).unwrap();

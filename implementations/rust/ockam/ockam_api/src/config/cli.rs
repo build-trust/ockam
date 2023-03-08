@@ -79,7 +79,7 @@ impl AuthoritiesConfig {
     ) -> Result<Vec<PublicIdentity>> {
         let mut v = Vec::new();
         for a in self.authorities.values() {
-            v.push(PublicIdentity::import_arc(a.identity.as_slice(), vault.clone()).await?)
+            v.push(PublicIdentity::import(a.identity.as_slice(), vault.clone()).await?)
         }
         Ok(v)
     }

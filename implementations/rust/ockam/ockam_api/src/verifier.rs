@@ -88,7 +88,7 @@ impl Verifier {
         let data = CredentialData::try_from(cre)?;
 
         let ident = if let Some(ident) = req.authority(data.unverified_issuer()) {
-            PublicIdentity::import_arc(ident, self.vault.clone()).await?
+            PublicIdentity::import(ident, self.vault.clone()).await?
         } else {
             let err = Error::new("/verify").with_message("unauthorised issuer");
             return Ok(Either::Left(Response::unauthorized(id).body(err)));

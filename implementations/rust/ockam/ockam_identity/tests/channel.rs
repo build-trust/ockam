@@ -16,8 +16,8 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
     let alice_vault = Vault::create();
     let bob_vault = Vault::create();
 
-    let alice = Identity::create(ctx, &alice_vault).await?;
-    let bob = Identity::create(ctx, &bob_vault).await?;
+    let alice = Identity::create(ctx, alice_vault).await?;
+    let bob = Identity::create(ctx, bob_vault).await?;
 
     let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
     let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
@@ -71,8 +71,8 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
     let alice_vault = Vault::create();
     let bob_vault = Vault::create();
 
-    let alice = Identity::create(ctx, &alice_vault).await?;
-    let bob = Identity::create(ctx, &bob_vault).await?;
+    let alice = Identity::create(ctx, alice_vault).await?;
+    let bob = Identity::create(ctx, bob_vault).await?;
 
     bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy)
         .await?;
@@ -128,8 +128,8 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     let alice_vault = Vault::create();
     let bob_vault = Vault::create();
 
-    let alice = Identity::create(ctx, &alice_vault).await?;
-    let bob = Identity::create(ctx, &bob_vault).await?;
+    let alice = Identity::create(ctx, alice_vault).await?;
+    let bob = Identity::create(ctx, bob_vault).await?;
 
     bob.create_secure_channel_listener("bob_listener", TrustEveryonePolicy)
         .await?;
@@ -223,8 +223,8 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
 async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
 
-    let alice = Identity::create(ctx, &vault).await?;
-    let bob = Identity::create(ctx, &vault).await?;
+    let alice = Identity::create(ctx, vault.clone()).await?;
+    let bob = Identity::create(ctx, vault.clone()).await?;
 
     let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
     let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
@@ -279,8 +279,8 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
 async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
 
-    let alice = Identity::create(ctx, &vault).await?;
-    let bob = Identity::create(ctx, &vault).await?;
+    let alice = Identity::create(ctx, vault.clone()).await?;
+    let bob = Identity::create(ctx, vault.clone()).await?;
 
     let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
     let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
@@ -345,8 +345,8 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
 async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
 
-    let alice = Identity::create(ctx, &vault).await?;
-    let bob = Identity::create(ctx, &vault).await?;
+    let alice = Identity::create(ctx, vault.clone()).await?;
+    let bob = Identity::create(ctx, vault.clone()).await?;
 
     let alice_trust_policy = TrustIdentifierPolicy::new(bob.identifier().clone());
     let bob_trust_policy = TrustIdentifierPolicy::new(alice.identifier().clone());
@@ -426,8 +426,8 @@ async fn access_control__known_participant__should_pass_messages(ctx: &mut Conte
 
     let vault = Vault::create();
 
-    let alice = Identity::create(ctx, &vault).await?;
-    let bob = Identity::create(ctx, &vault).await?;
+    let alice = Identity::create(ctx, vault.clone()).await?;
+    let bob = Identity::create(ctx, vault.clone()).await?;
 
     let access_control = IdentityAccessControlBuilder::new_with_id(alice.identifier().clone());
     WorkerBuilder::with_access_control(
@@ -477,8 +477,8 @@ async fn access_control__unknown_participant__should_not_pass_messages(
 
     let vault = Vault::create();
 
-    let alice = Identity::create(ctx, &vault).await?;
-    let bob = Identity::create(ctx, &vault).await?;
+    let alice = Identity::create(ctx, vault.clone()).await?;
+    let bob = Identity::create(ctx, vault.clone()).await?;
 
     let access_control = IdentityAccessControlBuilder::new_with_id(bob.identifier().clone());
     WorkerBuilder::with_access_control(

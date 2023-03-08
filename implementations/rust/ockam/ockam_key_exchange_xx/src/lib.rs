@@ -63,12 +63,11 @@ mod tests {
     use ockam_core::{KeyExchanger, NewKeyExchanger};
     use ockam_node::Context;
     use ockam_vault::Vault;
-    use std::sync::Arc;
 
     #[allow(non_snake_case)]
     #[ockam_macros::test]
     async fn full_flow__correct_credential__keys_should_match(ctx: &mut Context) -> Result<()> {
-        let vault = Arc::new(Vault::create());
+        let vault = Vault::create();
 
         let key_exchanger = XXNewKeyExchanger::new(vault.clone());
 

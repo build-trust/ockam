@@ -5,7 +5,6 @@ use ockam_identity::Identity;
 use ockam_node::Context;
 use ockam_vault::Vault;
 use rand::{thread_rng, RngCore};
-use std::sync::Arc;
 
 fn test_error<S: Into<String>>(error: S) -> Result<()> {
     Err(Error::new_without_cause(Origin::Identity, Kind::Unknown).context("msg", error.into()))
@@ -17,8 +16,8 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
     let bob_vault = Vault::create();
 
     // Alice and Bob are distinct Entities.
-    let alice = Identity::create(ctx, &alice_vault).await?;
-    let bob = Identity::create(ctx, &bob_vault).await?;
+    let alice = Identity::create(ctx, alice_vault.clone()).await?;
+    let bob = Identity::create(ctx, bob_vault.clone()).await?;
 
     alice
         .update_known_identity(bob.identifier(), &bob.to_public().await?)
@@ -40,7 +39,7 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
 
     let known_bob = alice.get_known_identity(bob.identifier()).await?.unwrap();
     if !known_bob
-        .verify_signature(&bob_proof, &state, None, Arc::new(alice_vault))
+        .verify_signature(&bob_proof, &state, None, alice_vault)
         .await?
     {
         return test_error("bob's proof was invalid");
@@ -48,7 +47,7 @@ async fn test_auth_use_case(ctx: &mut Context) -> Result<()> {
 
     let known_alice = bob.get_known_identity(alice.identifier()).await?.unwrap();
     if !known_alice
-        .verify_signature(&alice_proof, &state, None, Arc::new(bob_vault))
+        .verify_signature(&alice_proof, &state, None, bob_vault)
         .await?
     {
         return test_error("alice's proof was invalid");
@@ -65,8 +64,8 @@ async fn test_key_rotation(ctx: &mut Context) -> Result<()> {
     let bob_vault = Vault::create();
 
     // Alice and Bob are distinct Entities.
-    let alice = Identity::create(ctx, &alice_vault).await?;
-    let bob = Identity::create(ctx, &bob_vault).await?;
+    let alice = Identity::create(ctx, alice_vault).await?;
+    let bob = Identity::create(ctx, bob_vault).await?;
 
     // Both identities rotate keys.
     alice.rotate_root_key().await?;
@@ -90,8 +89,8 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
     let bob_vault = Vault::create();
 
     // Alice and Bob are distinct Entities.
-    let alice = Identity::create(ctx, &alice_vault).await?;
-    let bob = Identity::create(ctx, &bob_vault).await?;
+    let alice = Identity::create(ctx, alice_vault.clone()).await?;
+    let bob = Identity::create(ctx, bob_vault.clone()).await?;
 
     alice
         .update_known_identity(bob.identifier(), &bob.to_public().await?)
@@ -123,7 +122,7 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
 
     let known_bob = alice.get_known_identity(bob.identifier()).await?.unwrap();
     if !known_bob
-        .verify_signature(&bob_proof, &state, None, Arc::new(alice_vault))
+        .verify_signature(&bob_proof, &state, None, alice_vault)
         .await?
     {
         return test_error("bob's proof was invalid");
@@ -131,7 +130,7 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
 
     let known_alice = bob.get_known_identity(alice.identifier()).await?.unwrap();
     if !known_alice
-        .verify_signature(&alice_proof, &state, None, Arc::new(bob_vault))
+        .verify_signature(&alice_proof, &state, None, bob_vault)
         .await?
     {
         return test_error("alice's proof was invalid");
@@ -145,7 +144,7 @@ async fn test_update_contact_and_reprove(ctx: &mut Context) -> Result<()> {
 #[ockam_macros::test]
 async fn add_key(ctx: &mut Context) -> Result<()> {
     let vault = Vault::create();
-    let e = Identity::create(ctx, &vault).await?;
+    let e = Identity::create(ctx, vault.clone()).await?;
 
     let key = vault
         .secret_generate(SecretAttributes::new(

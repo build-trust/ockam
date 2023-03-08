@@ -38,7 +38,7 @@ pub struct CredentialIssuer {
 impl CredentialIssuer {
     /// Create a fully in-memory issuer for testing
     pub async fn create(ctx: &Context) -> Result<CredentialIssuer> {
-        let identity = Identity::create(ctx, &Vault::create()).await?;
+        let identity = Identity::create(ctx, Vault::create()).await?;
         Ok(CredentialIssuer { identity })
     }
 

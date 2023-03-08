@@ -15,7 +15,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create();
 
     // Create an Identity
-    let alice = Identity::create(&ctx, &vault).await?;
+    let alice = Identity::create(&ctx, vault).await?;
 
     // Create a stream client
     let (sender, _receiver) = Stream::new(&ctx)

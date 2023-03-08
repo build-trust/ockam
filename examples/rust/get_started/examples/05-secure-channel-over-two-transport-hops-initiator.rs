@@ -13,7 +13,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create();
 
     // Create an Identity to represent Alice.
-    let alice = Identity::create(&ctx, &vault).await?;
+    let alice = Identity::create(&ctx, vault).await?;
 
     // Create a TCP connection to the middle node.
     let connection_to_middle_node = tcp.connect("localhost:3000", TcpConnectionTrustOptions::new()).await?;

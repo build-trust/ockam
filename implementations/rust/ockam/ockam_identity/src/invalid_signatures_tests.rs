@@ -233,13 +233,12 @@ impl Verifier for CrazyVault {
 async fn test_invalid_signature(ctx: &mut Context) -> Result<()> {
     for _ in 0..100 {
         let vault = Vault::create();
-        let identity_vault: Arc<dyn IdentityVault> = Arc::new(vault);
-        let crazy_vault = CrazyVault::new(0.1, identity_vault);
+        let crazy_vault = CrazyVault::new(0.1, vault.clone());
         let crazy_identity_vault: Arc<dyn IdentityVault> = Arc::new(crazy_vault.clone());
 
-        let identity = Identity::create_arc(ctx, crazy_identity_vault).await?;
+        let identity = Identity::create(ctx, crazy_identity_vault).await?;
 
-        let res = PublicIdentity::import(&identity.export().await?, &Vault::create()).await;
+        let res = PublicIdentity::import(&identity.export().await?, Vault::create()).await;
         if crazy_vault.forged_operation_occurred() {
             assert!(res.is_err());
             break;
@@ -250,7 +249,7 @@ async fn test_invalid_signature(ctx: &mut Context) -> Result<()> {
         loop {
             identity.random_change().await?;
 
-            let res = PublicIdentity::import(&identity.export().await?, &Vault::create()).await;
+            let res = PublicIdentity::import(&identity.export().await?, Vault::create()).await;
             if crazy_vault.forged_operation_occurred() {
                 assert!(res.is_err());
                 break;
@@ -270,18 +269,18 @@ async fn test_eject_signatures(ctx: &mut Context) -> Result<()> {
     for _ in 0..100 {
         let vault = Vault::create();
 
-        let identity = Identity::create(ctx, &vault).await?;
+        let identity = Identity::create(ctx, vault).await?;
 
         let j: i32 = thread_rng().gen_range(0..10);
         for _ in 0..j {
             identity.random_change().await?;
         }
 
-        let res = PublicIdentity::import(&identity.export().await?, &Vault::create()).await;
+        let res = PublicIdentity::import(&identity.export().await?, Vault::create()).await;
         assert!(res.is_ok());
 
         let identity = identity.eject_random_signature().await?;
-        let res = PublicIdentity::import(&identity.export().await?, &Vault::create()).await;
+        let res = PublicIdentity::import(&identity.export().await?, Vault::create()).await;
         assert!(res.is_err());
     }
 

@@ -1,6 +1,5 @@
 use anyhow::anyhow;
-use ockam::identity::{IdentityIdentifier, PublicIdentity};
-use ockam::vault::Vault;
+use ockam::identity::{IdentityIdentifier, IdentityVault, PublicIdentity};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_multiaddr::MultiAddr;
@@ -8,6 +7,7 @@ use serde_json::{Map, Value};
 use std::fs::File;
 use std::io::Read;
 use std::str::FromStr;
+use std::sync::Arc;
 
 /// This struct contains the json data exported
 /// when running `ockam project information > project.json`
@@ -48,7 +48,7 @@ impl Project {
 
 /// Import a project identity into a Vault from a project.json path
 /// and return a Project struct
-pub async fn import_project(path: &str, vault: &Vault) -> Result<Project> {
+pub async fn import_project(path: &str, vault: Arc<dyn IdentityVault>) -> Result<Project> {
     match read_json(path)? {
         Value::Object(values) => {
             let project_identifier = IdentityIdentifier::from_str(get_field_as_str(&values, "identity")?.as_str())?;

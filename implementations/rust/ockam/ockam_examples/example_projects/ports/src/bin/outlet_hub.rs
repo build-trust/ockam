@@ -3,7 +3,7 @@ use ockam::{route, Context, Identity, Result, TcpTransport, TrustEveryonePolicy,
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create(&ctx).await?;
-    let mut fabric_machine = Identity::create(&ctx, &vault)?;
+    let mut fabric_machine = Identity::create(&ctx, vault)?;
 
     let tcp = TcpTransport::create(&ctx).await?;
 

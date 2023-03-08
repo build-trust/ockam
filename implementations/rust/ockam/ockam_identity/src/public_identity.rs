@@ -4,7 +4,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::vault::Signature;
 use ockam_core::Result;
-use ockam_vault::{PublicKey, Vault};
+use ockam_vault::PublicKey;
 use serde::{Deserialize, Serialize};
 
 /// Public part of an `Identity`
@@ -25,14 +25,7 @@ impl PublicIdentity {
     }
 
     /// Import from the binary format
-    pub async fn import(data: &[u8], vault: &Vault) -> Result<Self> {
-        let vault: Arc<dyn IdentityVault> = Arc::new(vault.clone());
-        let result = PublicIdentity::import_arc(data, vault).await?;
-        Ok(result)
-    }
-
-    /// Import from the binary format
-    pub async fn import_arc(data: &[u8], vault: Arc<dyn IdentityVault>) -> Result<Self> {
+    pub async fn import(data: &[u8], vault: Arc<dyn IdentityVault>) -> Result<Self> {
         let change_history = IdentityChangeHistory::import(data)?;
         if !change_history
             .verify_all_existing_changes(vault.clone())

@@ -11,13 +11,13 @@ use crate::{
 use ockam_core::compat::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use ockam_core::vault::Secret::Key;
 use ockam_core::vault::{
-    SecretKey, SecretPersistence, SecretType, SecretVault, Signature, CURVE25519_SECRET_LENGTH_U32,
+    SecretKey, SecretPersistence, SecretType, Signature, CURVE25519_SECRET_LENGTH_U32,
 };
 use ockam_core::{Address, Result};
 use ockam_core::{AsyncTryClone, DenyAll};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
-use ockam_vault::{Hasher, Vault};
+use ockam_vault::Hasher;
 use ockam_vault::{KeyId, SecretAttributes};
 
 /// Identity implementation
@@ -209,7 +209,7 @@ impl Identity {
 
 impl Identity {
     /// Create an `Identity` with a new secret key and `InMemoryStorage`
-    pub async fn create_arc(ctx: &Context, vault: Arc<dyn IdentityVault>) -> Result<Self> {
+    pub async fn create(ctx: &Context, vault: Arc<dyn IdentityVault>) -> Result<Self> {
         let attrs = KeyAttributes::new(
             IdentityStateConst::ROOT_LABEL.to_string(),
             SecretAttributes::new(
@@ -229,20 +229,13 @@ impl Identity {
         .await
     }
 
-    /// Create an `Identity` with a new secret key and `InMemoryStorage`
-    pub async fn create(ctx: &Context, vault: &Vault) -> Result<Self> {
-        let vault: Arc<dyn IdentityVault> = Arc::new(vault.clone());
-        Identity::create_arc(ctx, vault).await
-    }
-
     /// Create an `Identity` with an external key.
     pub async fn create_with_external_key(
         ctx: &Context,
-        vault: Vault,
+        vault: Arc<dyn IdentityVault>,
         kid: &KeyId,
         attrs: KeyAttributes,
     ) -> Result<Self> {
-        let vault: Arc<dyn IdentityVault> = Arc::new(vault.clone());
         Self::create_impl(
             ctx,
             Arc::new(InMemoryStorage::new()),
@@ -255,17 +248,7 @@ impl Identity {
     }
 
     /// Import and verify `Identity` from the binary format. Uses `InMemoryStorage`
-    pub async fn import(ctx: &Context, data: &[u8], vault: Vault) -> Result<Self> {
-        let vault: Arc<dyn IdentityVault> = Arc::new(vault);
-        Identity::import_arc(ctx, data, vault).await
-    }
-
-    /// Import and verify `Identity` from the binary format. Uses `InMemoryStorage`
-    pub async fn import_arc(
-        ctx: &Context,
-        data: &[u8],
-        vault: Arc<dyn IdentityVault>,
-    ) -> Result<Self> {
+    pub async fn import(ctx: &Context, data: &[u8], vault: Arc<dyn IdentityVault>) -> Result<Self> {
         let storage: Arc<dyn AuthenticatedStorage> = Arc::new(InMemoryStorage::new());
         Self::import_ext(ctx, data, storage, &SecureChannelRegistry::new(), vault).await
     }
@@ -276,7 +259,7 @@ impl Identity {
     /// the exported secret as a hex string
     pub async fn create_identity_with_secret(
         ctx: &Context,
-        vault: Vault,
+        vault: Arc<dyn IdentityVault>,
         key_id: &KeyId,
         secret: &str,
     ) -> Result<Identity> {
@@ -431,7 +414,7 @@ impl Identity {
             )
             .await?
         {
-            let known = PublicIdentity::import_arc(&known, self.vault.clone()).await?;
+            let known = PublicIdentity::import(&known, self.vault.clone()).await?;
 
             Ok(Some(known))
         } else {
@@ -516,7 +499,7 @@ mod test {
     async fn test_basic_identity_key_ops(ctx: &mut Context) -> Result<()> {
         let vault = Vault::create();
 
-        let identity = Identity::create(ctx, &vault).await?;
+        let identity = Identity::create(ctx, vault).await?;
 
         if !identity.verify_changes().await? {
             return test_error("verify_changes failed");

@@ -6,7 +6,7 @@ async fn main(mut ctx: Context) -> Result<()> {
     let vault = Vault::create(&ctx).await?;
 
     // Create an Identity to represent this machine
-    let mut fabric_machine = Identity::create(&ctx, &vault)?;
+    let mut fabric_machine = Identity::create(&ctx, vault)?;
 
     // Initialize the TCP Transport
     let tcp = TcpTransport::create(&ctx).await?;

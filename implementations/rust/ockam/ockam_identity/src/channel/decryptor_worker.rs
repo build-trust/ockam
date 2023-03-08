@@ -370,7 +370,7 @@ impl DecryptorWorker {
             );
 
             let their_identity =
-                PublicIdentity::import_arc(&identity, self.identity.vault.clone()).await?;
+                PublicIdentity::import(&identity, self.identity.vault.clone()).await?;
             let their_identity_id = their_identity.identifier();
 
             // Verify responder posses their Identity key

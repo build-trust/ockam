@@ -18,7 +18,7 @@ async fn main(ctx: Context) -> Result<()> {
     // by a second command line argument.
 
     let vault = Vault::create();
-    let e = Identity::create(&ctx, &vault).await?;
+    let e = Identity::create(&ctx, vault).await?;
     let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     let outlet_connection = tcp
         .connect(&format!("127.0.0.1:{outlet_port}"), TcpConnectionTrustOptions::new())

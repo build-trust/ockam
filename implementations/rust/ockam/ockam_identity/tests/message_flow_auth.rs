@@ -281,7 +281,7 @@ async fn create_secure_channel_listener(
     ctx: &Context,
     session: &Option<(Sessions, SessionId)>,
 ) -> Result<SecureChannelListenerInfo> {
-    let identity = Identity::create(ctx, &Vault::create()).await?;
+    let identity = Identity::create(ctx, Vault::create()).await?;
 
     let trust_options =
         SecureChannelListenerTrustOptions::new().with_trust_policy(TrustEveryonePolicy);
@@ -309,7 +309,7 @@ async fn create_secure_channel(
     ctx: &Context,
     connection: &TcpConnectionInfo,
 ) -> Result<SecureChannelInfo> {
-    let identity = Identity::create(ctx, &Vault::create()).await?;
+    let identity = Identity::create(ctx, Vault::create()).await?;
 
     let trust_options = SecureChannelTrustOptions::new();
     let trust_options = if let Some((sessions, session_id)) = &connection.session {

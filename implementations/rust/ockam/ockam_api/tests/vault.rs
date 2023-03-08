@@ -9,13 +9,12 @@ use ockam_core::vault::{SecretAttributes, SecretPersistence, SecretType};
 use ockam_core::{route, AllowAll, Result};
 use ockam_node::Context;
 use ockam_vault::Vault;
-use std::sync::Arc;
 
 #[ockam_macros::test]
 async fn full_flow(ctx: &mut Context) -> Result<()> {
     // Start service
     let vault = Vault::create();
-    let service = VaultService::new(Arc::new(vault));
+    let service = VaultService::new(vault);
 
     ctx.start_worker("vault_service", service, AllowAll, AllowAll)
         .await?;

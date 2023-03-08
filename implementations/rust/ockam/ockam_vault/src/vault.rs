@@ -56,8 +56,8 @@ impl Vault {
     }
 
     /// Same as ```Vault::new()```
-    pub fn create() -> Self {
-        Self::new(None)
+    pub fn create() -> Arc<Vault> {
+        Arc::new(Self::new(None))
     }
 
     /// Enable AWS KMS.
