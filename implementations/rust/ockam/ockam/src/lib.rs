@@ -67,6 +67,11 @@ pub mod access_control {
     pub use ockam_identity::access_control::*;
 }
 
+/// Sessions
+pub mod sessions {
+    pub use ockam_core::sessions::*;
+}
+
 /// Mark an Ockam Worker implementation.
 ///
 /// This is currently implemented as a re-export of the `async_trait` macro, but

@@ -1,8 +1,8 @@
 use ockam::authenticated_storage::AuthenticatedAttributeStorage;
 use ockam::identity::credential_issuer::{CredentialIssuerApi, CredentialIssuerClient};
 use ockam::identity::{Identity, SecureChannelTrustOptions, TrustEveryonePolicy};
+use ockam::sessions::Sessions;
 use ockam::{route, vault::Vault, Context, Result, TcpConnectionTrustOptions, TcpTransport};
-use ockam_core::sessions::Sessions;
 
 #[ockam::node]
 async fn main(mut ctx: Context) -> Result<()> {
