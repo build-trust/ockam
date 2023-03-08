@@ -1,12 +1,11 @@
 use crate::channel::decryptor::Decryptor;
 use crate::channel::encryptor::Encryptor;
 use crate::IdentityIdentifier;
-use ockam_core::compat::sync::Arc;
+use ockam_core::compat::boxed::Box;
 use ockam_core::KeyExchanger;
-use ockam_node::compat::asynchronous::RwLock;
 
 pub(crate) struct KeyExchange {
-    pub key_exchanger: Arc<RwLock<dyn KeyExchanger + Send + Sync>>,
+    pub key_exchanger: Box<dyn KeyExchanger>,
 }
 
 pub(crate) struct ExchangeIdentity {
