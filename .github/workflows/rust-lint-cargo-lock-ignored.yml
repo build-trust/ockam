@@ -1,4 +1,4 @@
-name: Rust
+name: Rust Cargo Lock Lint
 
 permissions:
   contents: read
@@ -6,7 +6,7 @@ permissions:
 on:
   pull_request:
     paths-ignore:
-      - ".github/workflows/rust-link-cargo-lock.yml"
+      - ".github/workflows/rust-lint-cargo-lock.yml"
       - ".github/actions/**"
       - "**.toml"
       - "**/Cargo.lock"
