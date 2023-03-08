@@ -37,7 +37,6 @@ std = [
     "serde_bare/std",
     "minicbor/std",
 ]
-
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
 no_std = [
@@ -79,6 +78,7 @@ rand = { version = "0.8", default-features = false }
 tracing = { version = "0.1", default_features = false }
 hex = { version = "0.4", default-features = false }
 async-trait = "0.1.64"
+time = { version = "0.3.20", features = ["macros", "formatting"]}
 
 [dev-dependencies]
 ockam_transport_tcp = { path = "../ockam_transport_tcp" }

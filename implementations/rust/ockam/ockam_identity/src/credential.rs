@@ -21,6 +21,8 @@ use ockam_core::Result;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use serde::{Serialize, Serializer};
+use time::format_description::well_known::iso8601::{Iso8601, TimePrecision};
+use time::{Error::Format, OffsetDateTime};
 
 #[cfg(feature = "std")]
 use std::ops::Deref;
@@ -55,30 +57,66 @@ pub struct Credential {
 impl fmt::Display for Credential {
     #[cfg(feature = "std")]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let credential_data: CredentialData<_> =
-            CredentialData::try_from(self).map_err(|_| fmt::Error)?;
+        let data = CredentialData::<Unverified>::try_from(self)
+            .map_err(|_| fmt::Error)?
+            .into_verified();
+        write!(f, "{}", data)?;
+        writeln!(f, " Signature: {}", hex::encode(self.signature.deref()))?;
         writeln!(f, "---")?;
-        writeln!(f, " Subject: {}", credential_data.subject)?;
-        writeln!(
-            f,
-            " Issuer: {} ({})",
-            credential_data.issuer, credential_data.issuer_key_label
-        )?;
-        //TODO: write timestamps on human-readable format. Should we add a dependency for this?
-        writeln!(f, " Created: {}", u64::from(credential_data.created))?;
-        writeln!(f, " Expires: {}", u64::from(credential_data.expires))?;
+        writeln!(f, "\n")
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Credential {{ ... }}")
+    }
+}
+
+impl fmt::Display for CredentialData<Verified> {
+    #[cfg(feature = "std")]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use time::format_description::well_known::iso8601;
+
+        writeln!(f, "---")?;
+        writeln!(f, " Subject: {}", self.subject)?;
+        writeln!(f, " Issuer: {} ({})", self.issuer, self.issuer_key_label)?;
+
+        let human_readable_time =
+            |time: Timestamp| match OffsetDateTime::from_unix_timestamp(u64::from(time) as i64) {
+                Ok(time) => {
+                    let now_iso = match time.format(
+                        &Iso8601::<
+                            {
+                                iso8601::Config::DEFAULT
+                                    .set_time_precision(TimePrecision::Second {
+                                        decimal_digits: None,
+                                    })
+                                    .encode()
+                            },
+                        >,
+                    ) {
+                        Ok(now_iso) => now_iso,
+                        Err(_) => Format(time::error::Format::InvalidComponent("timestamp error"))
+                            .to_string(),
+                    };
+                    now_iso
+                }
+                Err(_) => Format(time::error::Format::InvalidComponent(
+                    "unix time is invalid",
+                ))
+                .to_string(),
+            };
+        writeln!(f, " Created: {}", human_readable_time(self.created))?;
+        writeln!(f, " Expires: {}", human_readable_time(self.expires))?;
         write!(f, " Attributes: ")?;
         f.debug_map()
             .entries(
-                credential_data
-                    .attributes
+                self.attributes
                     .iter()
                     .map(|(k, v)| (k, std::str::from_utf8(v).unwrap_or("**binary**"))),
             )
             .finish()?;
-        writeln!(f, "\n")?;
-        writeln!(f, " Signature: {}", hex::encode(self.signature.deref()))?;
-        writeln!(f, "---")
+        writeln!(f, "\n")
     }
 
     #[cfg(not(feature = "std"))]
@@ -406,5 +444,14 @@ mod test {
         fn shrink(&self) -> Box<dyn Iterator<Item = Credential>> {
             Box::new(std::iter::empty())
         }
+    }
+
+    #[test]
+    fn test_display_credential() {
+        // this test makes sure that we are using the minicbor Bytes encoder
+        // for the Credential fields
+        let credential = Credential::new(vec![1, 2, 3], vec![5, 6, 7]);
+        let actual = format!("{credential}");
+        assert_eq!(actual, "expected")
     }
 }
