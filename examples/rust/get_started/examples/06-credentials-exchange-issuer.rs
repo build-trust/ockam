@@ -24,8 +24,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a CredentialIssuer which stores attributes for Alice and Bob, knowing their identity
     let issuer = CredentialIssuer::create(&ctx).await?;
-    let alice = "P529d43ac7b01e23d3818d00e083508790bfe8825714644b98134db6c1a7a6602".try_into()?;
-    let bob = "P0189a2aec3799fe9d0dc0f982063022b697f18562a403eb46fa3d32be5bd31f8".try_into()?;
+    let alice = "Pe92f183eb4c324804ef4d62962dea94cf095a265d4d28500c34e1a4e0d5ef638".try_into()?;
+    let bob = "Pada09e0f96e56580f6a0cb54f55ecbde6c973db6732e30dfb39b178760aed041".try_into()?;
 
     issuer.put_attribute_value(&alice, "name", "alice").await?;
     issuer.put_attribute_value(&bob, "name", "bob").await?;

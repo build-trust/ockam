@@ -257,10 +257,10 @@ impl Identity {
     /// encoded as a hex string.
     /// Such a key can be obtained by running vault.secret_export and then encoding
     /// the exported secret as a hex string
-    pub async fn create_identity_with_secret(
+    pub async fn create_identity_with_history(
         ctx: &Context,
         vault: Arc<dyn IdentityVault>,
-        key_id: &KeyId,
+        identity_history: &str,
         secret: &str,
     ) -> Result<Identity> {
         let key_attributes = KeyAttributes::default_with_label(IdentityStateConst::ROOT_LABEL);
@@ -270,7 +270,16 @@ impl Identity {
                 key_attributes.secret_attributes(),
             )
             .await?;
-        Identity::create_with_external_key(ctx, vault, key_id, key_attributes).await
+        let identity_history_data: Vec<u8> =
+            hex::decode(identity_history).map_err(|_| IdentityError::InvalidInternalState)?;
+        Identity::import_ext(
+            ctx,
+            identity_history_data.as_slice(),
+            Arc::new(InMemoryStorage::default()),
+            &SecureChannelRegistry::default(),
+            vault,
+        )
+        .await
     }
 }
 
